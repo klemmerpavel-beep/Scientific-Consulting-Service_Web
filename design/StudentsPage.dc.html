@@ -1,8 +1,16 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сопровождение диплома, ВКР и магистерской — ProDisser</title>
+<meta name="description" content="Куратор по вашей специальности разбирает работу, план по неделям, научная редактура и оформление по ГОСТ 7.32 и методичке кафедры. Разбор причин возврата с нормоконтроля.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ProDisser">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Сопровождение диплома, ВКР и магистерской — ProDisser">
+<meta property="og:description" content="Куратор по вашей специальности разбирает работу, план по неделям, научная редактура и оформление по ГОСТ 7.32 и методичке кафедры. Разбор причин возврата с нормоконтроля.">
+<meta name="twitter:card" content="summary_large_image">
 <script src="./support.js"></script>
 </head>
 <body>
@@ -103,8 +111,8 @@
 <section class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:64px 30px 48px">
 <div class="sp-hero" style="gap:40px;align-items:start">
 <div style="min-width:0">
-<span style="display:inline-block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178;margin-bottom:24px">Студентам, магистрантам и специалистам · с 2016 года</span>
-<h1 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:clamp(30px,3vw,42px);line-height:1.2;font-weight:500;letter-spacing:-.018em;color:#16121C;max-width:20ch">Диплом, который <span style="background:#DDC4FA;border-radius:6px;padding:2px 10px">примут с первого раза</span></h1>
+<span style="display:inline-block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178;margin-bottom:24px">Студентам, магистрантам и специалистам</span>
+<h1 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:clamp(30px,3vw,42px);line-height:1.2;font-weight:500;letter-spacing:-.018em;color:#16121C;max-width:20ch">Диплом, собранный <span style="background:#DDC4FA;border-radius:6px;padding:2px 10px">под требования вашей кафедры</span></h1>
 <p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#4A4157;max-width:46ch">Куратор по вашей специальности за 20 минут разберёт вашу работу и честно скажет, что успеваем к вашему сроку. Дальше — план по неделям, редактура и оформление по методичке кафедры.</p>
 
 <form onSubmit="{{ submitTop }}" style="margin:32px 0 0;max-width:420px;display:flex;flex-wrap:wrap;align-items:center;gap:12px">
@@ -119,6 +127,7 @@
 </sc-for>
 </div>
 <input id="sp-contact" name="contact" type="{{ contactTypeTop }}" autocomplete="{{ contactAutoTop }}" required="{{ true }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" style="flex:1 1 220px;min-width:0;box-sizing:border-box;height:48px;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0">
+<label for="sp-consent-top" style="flex:1 1 100%;display:flex;min-height:44px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
 <button type="submit" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Оставить заявку</button>
 <sc-if value="{{ sentTop }}" hint-placeholder-val="{{ false }}">
 <div role="status" style="flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #5FE6B6;border-radius:10px;padding:12px 16px">
@@ -346,7 +355,7 @@
 <h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:24ch;text-wrap:pretty">Над дипломом работает <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">команда, а не один исполнитель</span></h2>
 <p style="margin:0;font-size:15px;line-height:25px;color:#4A4157;max-width:40ch">Над работой закреплены четверо: менеджер, куратор по специальности, методолог и научный редактор. Исполнителей на стороне не ищем.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
-<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:18px;letter-spacing:.06em;color:#7B2BE0;flex:0 0 auto">С 2016</span><span style="font-size:13px;line-height:20px;color:#584A6B">сопровождаем дипломы и ВКР по всей России</span></div>
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:18px;letter-spacing:.06em;color:#7B2BE0;flex:0 0 auto">С 2016</span><span style="font-size:13px;line-height:20px;color:#584A6B">научный коллектив сопровождает дипломы и ВКР по всей России</span></div>
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:18px;letter-spacing:.06em;color:#7B2BE0;flex:0 0 auto">04</span><span style="font-size:13px;line-height:20px;color:#584A6B">специалиста закрепляем за работой до самой защиты</span></div>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px">
@@ -543,6 +552,11 @@
 </div>
 </div>
 <div style="display:flex;flex-direction:column;gap:14px">
+<span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#16121C">Другие направления</span>
+<a href="./main.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Аспирантам и соискателям</a>
+<a href="./business.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Компаниям и коллективам</a>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#16121C">Меню</span>
 <a href="#route" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Как устроена работа</a>
 <a href="#cost" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Смета и нормоконтроль</a>
@@ -557,7 +571,7 @@
 </div>
 </div>
 <div style="position:relative;max-width:1220px;margin:0 auto;padding:0 30px 34px;display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap">
-<span style="font-size:12px;line-height:19px;color:#6B6178">© 2016–2026 ProDisser — Научный Консалтинг</span>
+<span style="font-size:12px;line-height:19px;color:#6B6178">© 2026 ProDisser — Научный Консалтинг</span>
 <div style="display:flex;gap:18px;flex-wrap:wrap">
 <a href="./offer.html" style="font-size:12px;line-height:19px;color:#6B6178" style-hover="color:#7B2BE0">Публичная оферта</a>
 <a href="./privacy.html" style="font-size:12px;line-height:19px;color:#6B6178" style-hover="color:#7B2BE0">Политика конфиденциальности</a>
@@ -653,7 +667,7 @@ class Component extends DCLogic {
       ? 'Выберите свою ситуацию — покажем состав работ по неделям'
       : 'До защиты ' + weeksLeft + (weeksLeft === 1 ? ' неделя' : (weeksLeft > 1 && weeksLeft < 5 ? ' недели' : ' недель'));
     const planNote = weeksLeft === null
-      ? 'Маршрут по умолчанию для выбранной ситуации. После ввода даты недели встанут на календарь.'
+      ? 'Маршрут по умолчанию для выбранной ситуации. Точные даты зафиксируем в договоре после разбора работы.'
       : (tight
         ? 'Сокращённый состав: оставили работы, которые успеваем сделать качественно.'
         : 'Срок позволяет пройти маршрут целиком, с запасом на замечания научного руководителя.');
