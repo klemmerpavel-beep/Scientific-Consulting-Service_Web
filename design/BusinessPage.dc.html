@@ -66,9 +66,9 @@
 <a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-family:'Onest',Arial,sans-serif;font-size:28px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 200ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(221,196,250,.45)" style-active="background:rgba(221,196,250,.62)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
 <div style="display:flex;align-items:center;gap:24px">
 <nav class="bp-nav" aria-label="Разделы страницы" style="display:flex;align-items:center;gap:24px">
-<a href="#trl" style="font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Уровень готовности</a>
-<a href="#catalog" style="font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Каталог работ</a>
-<a href="#rights" style="font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Права на результат</a>
+<a href="#trl" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Уровень готовности</a>
+<a href="#catalog" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Каталог работ</a>
+<a href="#rights" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Права на результат</a>
 </nav>
 <a href="#request" style="display:inline-flex;align-items:center;background:#16121C;color:#FFFFFF;font-size:13px;font-weight:600;padding:12px 24px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2A2233;color:#FFFFFF">Оставить заявку</a>
 </div>
@@ -89,10 +89,10 @@
 <div role="group" aria-label="Способ связи для заявки" style="display:inline-flex;gap:4px;padding:4px;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start;flex:0 0 auto;grid-column:span 2">
 <sc-for list="{{ contactTabsTop }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
@@ -182,7 +182,7 @@
 <div style="width:76%;display:flex;flex-direction:column;gap:8px;align-items:center">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">Заказчик</span>
 <span style="font-family:'Onest',Arial,sans-serif;font-size:26px;line-height:30px;font-weight:500;letter-spacing:-.02em;text-align:center;color:#16121C">Вы</span>
-<span style="align-self:stretch;font-family:'Onest',Arial,sans-serif;font-size:11px;line-height:17px;text-align:center;color:#584A6B">Ставите задачу и принимаете этапы</span>
+<span style="align-self:stretch;font-family:'Onest',Arial,sans-serif;font-size:12px;line-height:1.5;text-align:center;color:#584A6B">Ставите задачу и принимаете этапы</span>
 </div>
 </div>
 <div class="bp-crew" style="position:absolute;left:4.396%;top:14.154%;width:31.26%;min-width:186px;height:138px;box-sizing:border-box;border:1px solid #EEE7F4;border-radius:14px;background:#FFFFFF;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(22,18,28,.09);border-color:#D9BCF6">
@@ -301,7 +301,7 @@
 </div>
 <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;align-items:stretch">
 <sc-for list="{{ packs }}" as="p" hint-placeholder-count="5">
-<article id="{{ p.anchor }}" class="bp-pack" style="grid-column:span {{ p.span }};scroll-margin-top:24px;border:1px solid {{ p.border }};border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:inset 0 -3px 0 {{ p.edge }},0 1px 2px rgba(22,18,28,.05);display:flex;flex-direction:column;gap:14px">
+<article id="{{ p.anchor }}" class="bp-pack" style="grid-column:span {{ p.span }};scroll-margin-top:24px;border:1px solid {{ p.border }};border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:inset 0 -3px 0 {{ p.edge }},0 1px 2px rgba(22,18,28,.05);display:flex;flex-direction:column;justify-content:space-between;gap:14px">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
 <span style="display:flex;flex-direction:column;gap:6px;min-width:0">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;color:{{ p.ink }}">{{ p.num }}</span>
@@ -323,7 +323,7 @@
 <span style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:6px;border-bottom:1px solid #F2ECF7"><span style="font-size:13px;line-height:1.5;color:#16121C;min-width:0">{{ d.name }}</span><span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178;text-align:right">{{ d.norm }}</span></span>
 </sc-for>
 </div>
-<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid #F2ECF7;font-size:12px;line-height:1.5;color:#6B6178">{{ p.why }} Точный срок фиксируется календарным планом после разбора материала.</p>
+<p style="margin:0;padding-top:12px;border-top:1px solid #F2ECF7;font-size:12px;line-height:1.5;color:#6B6178">{{ p.why }} Точный срок фиксируется календарным планом после разбора материала.</p>
 </article>
 </sc-for>
 </div>
@@ -369,7 +369,7 @@
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid #EAE3F2">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#6B6178">{{ g.norm }}</span>
-<a href="#request" style="display:inline-flex;align-items:center;gap:8px;font-size:13px;line-height:1.4;font-weight:600;color:#7B2BE0" style-hover="color:#5E17B8">Обсудить это направление<span aria-hidden="true" style="width:14px;height:14px;display:block;background:#7B2BE0;-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
+<a href="#request" style="display:inline-flex;align-items:center;min-height:44px;gap:8px;font-size:13px;line-height:1.4;font-weight:600;color:#7B2BE0" style-hover="color:#5E17B8">Обсудить это направление<span aria-hidden="true" style="width:14px;height:14px;display:block;background:#7B2BE0;-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
 </div>
 </sc-if>
@@ -404,8 +404,8 @@
 <div style="height:100%;border-radius:999px;background:#7B2BE0;transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ reasonScale }}"></div>
 </div>
 <div style="display:flex;gap:10px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущие механизмы" onClick="{{ prevReason }}" style="appearance:none;cursor:pointer;width:40px;height:40px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
-<button type="button" aria-label="Следующие механизмы" onClick="{{ nextReason }}" style="appearance:none;cursor:pointer;width:40px;height:40px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Предыдущие механизмы" onClick="{{ prevReason }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Следующие механизмы" onClick="{{ nextReason }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
 </div>
 </div>
 </section>
@@ -446,10 +446,10 @@
 <div role="group" aria-label="Способ связи для сметы" style="display:inline-flex;gap:4px;padding:4px;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start;flex:0 0 auto">
 <sc-for list="{{ contactTabsBottom }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
@@ -463,7 +463,7 @@
 </select></label>
 <label for="bp-term" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Срок или дедлайн конкурса
 <input id="bp-term" name="deadline" type="text" autocomplete="off" placeholder="Например: подача до 30 ноября" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0"></label>
-<label for="bp-consent" style="display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="bp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
+<label for="bp-consent" style="display:flex;min-height:44px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="bp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
 <button type="submit" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;margin-top:10px;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Отправить заявку</button>
 <sc-if value="{{ sentMain }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="-1" style="display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #5FE6B6;border-radius:10px;padding:12px 16px">
@@ -506,11 +506,11 @@
 </div>
 <div style="display:flex;flex-direction:column;gap:14px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#16121C">Меню</span>
-<a href="#trl" style="font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Уровень готовности</a>
-<a href="#packs" style="font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Пять предложений</a>
-<a href="#catalog" style="font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Каталог работ</a>
-<a href="#rights" style="font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Права на результат</a>
-<a href="./index.html" style="font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Другие направления</a>
+<a href="#trl" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Уровень готовности</a>
+<a href="#packs" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Пять предложений</a>
+<a href="#catalog" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Каталог работ</a>
+<a href="#rights" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Права на результат</a>
+<a href="./index.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Другие направления</a>
 </div>
 <div style="display:flex;flex-direction:column;gap:14px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#16121C">Контакты</span>
@@ -540,7 +540,7 @@
    — стандарт оформления отчёта о НИР (номер редакции ГОСТ 7.32 на дату сборки);
    — сроки ведомственных процедур регистрации охранных документов. */
 class Component extends DCLogic {
-  state = { trl: 5, open: { 0: true }, allOpen: false, sentTop: false, sentMain: false, reasonPage: 0, reasonPages: 1 };
+  state = { trl: 5, open: { 0: true }, allOpen: false, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, highlight: null, reasonPage: 0, reasonPages: 1 };
   goReason(dir){
     const t = document.querySelector('[data-carousel="reasons"]');
     if (!t) return;

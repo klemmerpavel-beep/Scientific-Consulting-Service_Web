@@ -65,7 +65,7 @@
 <header class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
 <a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;text-decoration:none;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 200ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(221,196,250,.45)" style-active="background:rgba(221,196,250,.62)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
 <div style="position:relative;display:flex;align-items:center;gap:16px">
-<button type="button" class="pd-burger" aria-expanded="{{ navOpenAttr }}" aria-controls="pd-nav" aria-label="Меню разделов" onClick="{{ toggleNav }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:10px;background:#FFFFFF;align-items:center;justify-content:center;flex-direction:column;gap:4px">
+<button type="button" class="pd-burger" aria-expanded="{{ navOpenAttr }}" aria-controls="pd-nav" aria-label="Меню разделов" onClick="{{ toggleNav }}" style="appearance:none;cursor:pointer;flex:0 0 44px;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:10px;background:#FFFFFF;align-items:center;justify-content:center;flex-direction:column;gap:4px">
 <span aria-hidden="true" style="width:18px;height:2px;background:#16121C;border-radius:2px;display:block"></span>
 <span aria-hidden="true" style="width:18px;height:2px;background:#16121C;border-radius:2px;display:block"></span>
 <span aria-hidden="true" style="width:18px;height:2px;background:#16121C;border-radius:2px;display:block"></span>
@@ -109,10 +109,10 @@
 </div>
 <div class="pd-heroart" style="position:relative;min-height:420px">
 <div style="position:absolute;left:4%;top:0;width:168px;height:168px;border-radius:50%;background:#C79AF3;overflow:hidden;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05)">
-<image-slot id="mp-photo-1" shape="circle" data-alt="Куратор проекта — кандидат наук вашего направления" placeholder="" style="width:168px;height:168px"></image-slot>
+<image-slot id="mp-photo-1" shape="circle" data-alt="Куратор проекта — кандидат наук вашего направления" placeholder="Фото куратора" style="width:168px;height:168px"></image-slot>
 </div>
 <div style="position:absolute;right:8px;top:132px;width:112px;height:112px;border-radius:50%;background:#4FD9A6;overflow:hidden;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05)">
-<image-slot id="mp-photo-2" shape="circle" data-alt="Научный редактор проекта" placeholder="" style="width:112px;height:112px"></image-slot>
+<image-slot id="mp-photo-2" shape="circle" data-alt="Научный редактор проекта" placeholder="Фото редактора" style="width:112px;height:112px"></image-slot>
 </div>
 </div>
 </div>
@@ -192,8 +192,8 @@
 <div style="height:100%;border-radius:999px;background:#7B2BE0;transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ planScale }}"></div>
 </div>
 <div style="display:flex;gap:8px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущие этапы" onClick="{{ prevPlan }}" style="appearance:none;cursor:pointer;width:34px;height:34px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:14px;height:14px;display:block;background:#7B2BE0;-webkit-mask:{{ prevMask }};mask:{{ prevMask }}"></span></button>
-<button type="button" aria-label="Следующие этапы" onClick="{{ nextPlan }}" style="appearance:none;cursor:pointer;width:34px;height:34px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:14px;height:14px;display:block;background:#7B2BE0;-webkit-mask:{{ nextMask }};mask:{{ nextMask }}"></span></button>
+<button type="button" aria-label="Предыдущие этапы" onClick="{{ prevPlan }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:14px;height:14px;display:block;background:#7B2BE0;-webkit-mask:{{ prevMask }};mask:{{ prevMask }}"></span></button>
+<button type="button" aria-label="Следующие этапы" onClick="{{ nextPlan }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:14px;height:14px;display:block;background:#7B2BE0;-webkit-mask:{{ nextMask }};mask:{{ nextMask }}"></span></button>
 </div>
 </div>
 </div>
@@ -216,7 +216,7 @@
 <p style="margin:0;font-size:13px;line-height:19px;color:#584A6B">{{ u.text }}</p>
 <div style="margin-top:auto;padding-top:14px;border-top:1px solid #F2ECF7;display:flex;gap:8px;align-items:flex-start">
 <span aria-hidden="true" style="width:5px;height:5px;flex:0 0 5px;margin-top:6px;border-radius:50%;background:{{ u.dot }}"></span>
-<span style="font-size:11px;line-height:17px;color:#6B6178">{{ u.proof }}</span>
+<span style="font-size:12px;line-height:1.5;color:#6B6178">{{ u.proof }}</span>
 </div>
 </article>
 </sc-for>
@@ -287,7 +287,7 @@
 <p style="margin:0;font-size:13px;line-height:20px;color:#584A6B">{{ p.text }}</p>
 <div style="margin-top:auto;padding-top:14px;border-top:1px solid #F2ECF7;display:flex;flex-wrap:wrap;gap:6px">
 <sc-for list="{{ p.tags }}" as="tag" hint-placeholder-count="3">
-<span style="background:#F4F4FB;border:1px solid #EAE3F2;border-radius:999px;padding:5px 11px;font-size:11px;line-height:16px;font-weight:500;color:#5A5A8C;white-space:nowrap">{{ tag.text }}</span>
+<span style="background:#F4F4FB;border:1px solid #EAE3F2;border-radius:999px;padding:5px 11px;font-size:12px;line-height:1.5;font-weight:500;color:#5A5A8C;white-space:nowrap">{{ tag.text }}</span>
 </sc-for>
 </div>
 </article>
@@ -298,8 +298,8 @@
 <div style="height:100%;border-radius:999px;background:#7B2BE0;transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ stepScale }}"></div>
 </div>
 <div style="display:flex;gap:10px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущий этап" onClick="{{ prevStep }}" style="appearance:none;cursor:pointer;width:42px;height:42px;border:1px solid #D9BCF6;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:#7B2BE0;-webkit-mask:{{ prevMask }};mask:{{ prevMask }}"></span></button>
-<button type="button" aria-label="Следующий этап" onClick="{{ nextStep }}" style="appearance:none;cursor:pointer;width:42px;height:42px;border:1px solid #D9BCF6;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:#7B2BE0;-webkit-mask:{{ nextMask }};mask:{{ nextMask }}"></span></button>
+<button type="button" aria-label="Предыдущий этап" onClick="{{ prevStep }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #D9BCF6;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:#7B2BE0;-webkit-mask:{{ prevMask }};mask:{{ prevMask }}"></span></button>
+<button type="button" aria-label="Следующий этап" onClick="{{ nextStep }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #D9BCF6;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:#7B2BE0;-webkit-mask:{{ nextMask }};mask:{{ nextMask }}"></span></button>
 </div>
 </div>
 </section>
@@ -333,7 +333,7 @@
 <div style="width:76%;display:flex;flex-direction:column;gap:8px;align-items:center">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">Заказчик</span>
 <span style="font-family:'Onest',Arial,sans-serif;font-size:26px;line-height:30px;font-weight:500;letter-spacing:-.02em;text-align:center;color:#16121C">Вы</span>
-<span style="align-self:stretch;font-family:'Onest',Arial,sans-serif;font-size:11px;line-height:17px;text-align:center;color:#584A6B">Ставите задачу и принимаете этапы</span>
+<span style="align-self:stretch;font-family:'Onest',Arial,sans-serif;font-size:12px;line-height:1.5;text-align:center;color:#584A6B">Ставите задачу и принимаете этапы</span>
 </div>
 </div>
 <div class="pd-crew" style="position:absolute;left:4.396%;top:14.154%;width:31.26%;min-width:186px;height:138px;box-sizing:border-box;border:1px solid #EEE7F4;border-radius:14px;background:#FFFFFF;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(22,18,28,.09);border-color:#D9BCF6">
@@ -420,7 +420,7 @@
 <div style="flex:1 1 auto;min-height:260px;background:rgba(255,255,255,.92);border:1px solid #EEE7F4;border-radius:14px;display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr);align-items:stretch;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05)">
 <div style="position:relative;min-height:260px;display:flex;align-items:stretch">
 <div style="position:absolute;left:-38px;right:-20px;top:-56px;bottom:-16px">
-<image-slot id="mp-faq-photo" shape="rect" fit="contain" transparent="" data-alt="Менеджер проекта отвечает на вопросы" placeholder="" style="position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 22px 30px rgba(22,18,28,.22)) drop-shadow(0 4px 8px rgba(22,18,28,.1))"></image-slot>
+<image-slot id="mp-faq-photo" shape="rect" fit="contain" transparent="" data-alt="Менеджер проекта отвечает на вопросы" placeholder="Фото: менеджер проекта" style="position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 22px 30px rgba(22,18,28,.22)) drop-shadow(0 4px 8px rgba(22,18,28,.1))"></image-slot>
 </div>
 </div>
 <div style="padding:20px 24px 22px;display:flex;flex-direction:column;justify-content:center;gap:10px">
@@ -428,7 +428,7 @@
 <p style="margin:0;font-size:13px;line-height:21px;color:#584A6B;max-width:44ch">Напишите или позвоните. Расскажем, как устроена работа, сколько занимает и что входит в стоимость.</p>
 <div style="margin-top:8px;display:flex;flex-direction:column;gap:10px">
 <span style="display:flex;align-items:center;gap:10px;font-size:15px;line-height:22px;font-weight:600;color:#16121C"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#7B2BE0;-webkit-mask:{{ phoneMask }};mask:{{ phoneMask }}"></span> 8-000-000-00-00</span>
-<a href="mailto:info.prodisser@gmail.com" style="display:flex;align-items:center;gap:10px;font-size:14px;line-height:21px;color:#4A4157" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#7B2BE0;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:14px;line-height:21px;color:#4A4157" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#7B2BE0;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
 </div>
 </div>
 </div>
@@ -466,7 +466,7 @@
 <div class="pd-request" style="background:rgba(255,255,255,.92);border:1px solid #EEE7F4;border-radius:14px;overflow:hidden;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05)">
 <div style="position:relative;min-height:440px;padding:26px 0 26px 26px;display:flex;align-items:center">
 <div style="position:relative;width:100%;height:100%;min-height:388px">
-<image-slot id="mp-request-photo" shape="rect" fit="contain" transparent="" data-alt="Куратор обсуждает задачу с автором" placeholder="" style="position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 22px 30px rgba(22,18,28,.24)) drop-shadow(0 4px 8px rgba(22,18,28,.12))"></image-slot>
+<image-slot id="mp-request-photo" shape="rect" fit="contain" transparent="" data-alt="Куратор обсуждает задачу с автором" placeholder="Фото: разбор задачи" style="position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 22px 30px rgba(22,18,28,.24)) drop-shadow(0 4px 8px rgba(22,18,28,.12))"></image-slot>
 </div>
 </div>
 <div style="padding:34px 38px 36px;display:flex;flex-direction:column;gap:24px">
@@ -482,10 +482,10 @@
 <div role="group" aria-label="Способ связи" style="display:inline-flex;gap:4px;padding:4px;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start;flex:0 0 auto">
 <sc-for list="{{ contactTabs }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
@@ -497,7 +497,7 @@
 <button type="submit" style="appearance:none;border:0;cursor:pointer;height:52px;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:14px;font-weight:600;padding:0 32px;border-radius:999px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 8px 20px rgba(22,18,28,.18);transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Отправить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:#FFFFFF;-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span></button>
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:16px;letter-spacing:.05em;text-transform:uppercase;color:#6B6178">Консультация 20 мин · бесплатно</span>
 </div>
-<label for="mp-consent" style="margin:6px 0 0;display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;max-width:60ch;cursor:pointer"><input id="mp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
+<label for="mp-consent" style="margin:6px 0 0;display:flex;min-height:44px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;max-width:60ch;cursor:pointer"><input id="mp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
 <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="-1" data-sent style="display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #B2E8D3;border-radius:10px;padding:12px 16px">
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:#0E4E3C;-webkit-mask:{{ checkPlainMask }};mask:{{ checkPlainMask }}"></span>
@@ -526,14 +526,14 @@
 </div>
 <div style="display:flex;flex-direction:column;gap:14px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#16121C">Меню</span>
-<a href="#services" style="font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Направления работы</a>
-<a href="#process" style="font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Схема работы</a>
-<a href="#faq" style="font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Вопросы</a>
+<a href="#services" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Направления работы</a>
+<a href="#process" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Схема работы</a>
+<a href="#faq" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Вопросы</a>
 </div>
 <div style="display:flex;flex-direction:column;gap:14px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#16121C">Контакты</span>
 <span style="display:flex;align-items:center;gap:10px;font-size:17px;line-height:24px;font-weight:500;color:#16121C"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:{{ phoneMask }};mask:{{ phoneMask }}"></span> 8-000-000-00-00</span>
-<a href="mailto:info.prodisser@gmail.com" style="display:flex;align-items:center;gap:10px;font-size:15px;line-height:22px;color:#4A4157" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:15px;line-height:22px;color:#4A4157" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
 </div>
 </div>
 <div style="position:relative;max-width:1220px;margin:0 auto;padding:0 30px 34px;display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap">
@@ -549,7 +549,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { open: 0, sent: false, stepPage: 0, stepFrac: 0, planPage: 0, planPages: 1, offerOpen: false, trackAt: 1, navOpen: false };
+  state = { open: 0, sent: false, contact: 0, stepPage: 0, stepFrac: 0, planPage: 0, planPages: 1, offerOpen: false, trackAt: 1, navOpen: false };
   componentDidMount(){
     this.measure = () => {
       const t = document.querySelector('[data-carousel="plan"]');

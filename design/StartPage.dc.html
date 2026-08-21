@@ -55,7 +55,7 @@
 <header class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
 <a href="#main" onClick="{{ toTop }}" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;text-decoration:none;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 200ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(221,196,250,.45)" style-active="background:rgba(221,196,250,.62)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
 <span style="display:flex;align-items:center;gap:28px;flex:0 0 auto">
-<a href="#request" style="display:inline-flex;align-items:center;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2A2233;color:#FFFFFF">Личный кабинет</a>
+<a href="#request" style="display:inline-flex;align-items:center;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2A2233;color:#FFFFFF">Оставить заявку</a>
 </span>
 </header>
 
@@ -73,10 +73,10 @@
 <div role="group" aria-label="Способ связи для консультации" style="display:inline-flex;gap:4px;padding:4px;background:#F4F4F8;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start">
 <sc-for list="{{ contactTabsTop }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#6B6178;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#6B6178;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
@@ -84,8 +84,8 @@
 <button type="submit" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:16px 36px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Оставить заявку</button>
 </form>
 <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
-<label for="sp-privacy" style="display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-privacy" name="privacy" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./privacy.html" style="color:#7B2BE0" style-hover="color:#5E17B8">Политику конфиденциальности</a></span></label>
-<label for="sp-terms" style="display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-terms" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю условия <a href="./offer.html" style="color:#7B2BE0" style-hover="color:#5E17B8">публичной оферты</a></span></label>
+<label for="sp-privacy" style="display:flex;min-height:44px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-privacy" name="privacy" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./privacy.html" style="color:#7B2BE0" style-hover="color:#5E17B8">Политику конфиденциальности</a></span></label>
+<label for="sp-terms" style="display:flex;min-height:44px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-terms" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю условия <a href="./offer.html" style="color:#7B2BE0" style-hover="color:#5E17B8">публичной оферты</a></span></label>
 </div>
 <sc-if value="{{ sentTop }}" hint-placeholder-val="{{ false }}">
 <div role="status" style="margin-top:16px;max-width:344px;display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #B2E8D3;border-radius:10px;padding:12px 16px">
@@ -236,8 +236,8 @@
 <div style="height:100%;border-radius:999px;background:#7B2BE0;transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ scopeScale }}"></div>
 </div>
 <div style="display:flex;gap:10px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущие карточки" onClick="{{ prevScope }}" style="appearance:none;cursor:pointer;width:40px;height:40px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
-<button type="button" aria-label="Следующие карточки" onClick="{{ nextScope }}" style="appearance:none;cursor:pointer;width:40px;height:40px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Предыдущие карточки" onClick="{{ prevScope }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Следующие карточки" onClick="{{ nextScope }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
 </div>
 </div>
 </section>
@@ -284,8 +284,8 @@
 <div style="height:100%;border-radius:999px;background:#7B2BE0;transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ grtScale }}"></div>
 </div>
 <div style="display:flex;gap:10px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущие гарантии" onClick="{{ prevGrt }}" style="appearance:none;cursor:pointer;width:40px;height:40px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
-<button type="button" aria-label="Следующие гарантии" onClick="{{ nextGrt }}" style="appearance:none;cursor:pointer;width:40px;height:40px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Предыдущие гарантии" onClick="{{ prevGrt }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Следующие гарантии" onClick="{{ nextGrt }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
 </div>
 </div>
 </section>
@@ -317,10 +317,10 @@
 <div role="group" aria-label="Способ связи для заявки" style="display:inline-flex;gap:4px;padding:4px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start;flex:0 0 auto">
 <sc-for list="{{ contactTabsBottom }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#6B6178;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#F4F4F8;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#6B6178;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#F4F4F8;color:#16121C">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
@@ -329,8 +329,8 @@
 <button type="submit" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 34px;height:56px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Отправить заявку</button>
 </form>
 <div style="display:flex;flex-direction:column;gap:8px">
-<label for="sp-privacy-2" style="display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-privacy-2" name="privacy" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./privacy.html" style="color:#7B2BE0" style-hover="color:#5E17B8">Политику конфиденциальности</a></span></label>
-<label for="sp-terms-2" style="display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-terms-2" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю условия <a href="./offer.html" style="color:#7B2BE0" style-hover="color:#5E17B8">публичной оферты</a></span></label>
+<label for="sp-privacy-2" style="display:flex;min-height:44px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-privacy-2" name="privacy" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./privacy.html" style="color:#7B2BE0" style-hover="color:#5E17B8">Политику конфиденциальности</a></span></label>
+<label for="sp-terms-2" style="display:flex;min-height:44px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-terms-2" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю условия <a href="./offer.html" style="color:#7B2BE0" style-hover="color:#5E17B8">публичной оферты</a></span></label>
 </div>
 <sc-if value="{{ sentBottom }}" hint-placeholder-val="{{ false }}">
 <div role="status" style="display:flex;gap:8px;align-items:flex-start;background:#FFFFFF;border:1px solid #B2E8D3;border-radius:10px;padding:12px 16px">

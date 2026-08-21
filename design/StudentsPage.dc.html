@@ -90,9 +90,9 @@
 <a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-family:'Onest',Arial,sans-serif;font-size:28px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 200ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(221,196,250,.45)" style-active="background:rgba(221,196,250,.62)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
 <div style="display:flex;align-items:center;gap:24px">
 <nav class="sp-nav" aria-label="Разделы страницы" style="display:flex;align-items:center;gap:24px">
-<a href="#route" style="font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Маршрут до защиты</a>
-<a href="#norm" style="font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Нормоконтроль</a>
-<a href="#cost" style="font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Смета</a>
+<a href="#route" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Маршрут до защиты</a>
+<a href="#norm" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Нормоконтроль</a>
+<a href="#cost" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Смета</a>
 </nav>
 <a href="#request" style="display:inline-flex;align-items:center;background:#16121C;color:#FFFFFF;font-size:13px;font-weight:600;padding:12px 24px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2A2233;color:#FFFFFF">Оставить заявку</a>
 </div>
@@ -111,10 +111,10 @@
 <div role="group" aria-label="Способ связи для консультации" style="display:inline-flex;gap:4px;padding:4px;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start;flex:0 0 auto">
 <sc-for list="{{ contactTabsTop }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
@@ -186,10 +186,10 @@
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
 <sc-for list="{{ situations }}" as="s" hint-placeholder-count="4">
 <sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:10px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ s.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ s.label }}</button>
 </sc-if>
 <sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ s.pick }}" style="appearance:none;border:1px solid #EAE3F2;cursor:pointer;background:#FFFFFF;color:#4A4157;border-radius:999px;padding:10px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0;color:#16121C">{{ s.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ s.pick }}" style="appearance:none;border:1px solid #EAE3F2;cursor:pointer;background:#FFFFFF;color:#4A4157;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0;color:#16121C">{{ s.label }}</button>
 </sc-if>
 </sc-for>
 </div>
@@ -368,7 +368,7 @@
 <div style="width:76%;display:flex;flex-direction:column;gap:8px;align-items:center">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">Заказчик</span>
 <span style="font-family:'Onest',Arial,sans-serif;font-size:26px;line-height:30px;font-weight:500;letter-spacing:-.02em;text-align:center;color:#16121C">Вы</span>
-<span style="align-self:stretch;font-family:'Onest',Arial,sans-serif;font-size:11px;line-height:17px;text-align:center;color:#584A6B">Пишете работу и принимаете этапы</span>
+<span style="align-self:stretch;font-family:'Onest',Arial,sans-serif;font-size:12px;line-height:1.5;text-align:center;color:#584A6B">Пишете работу и принимаете этапы</span>
 </div>
 </div>
 <div class="sp-crew" style="position:absolute;left:4.396%;top:14.154%;width:31.26%;min-width:186px;height:138px;box-sizing:border-box;border:1px solid #EEE7F4;border-radius:14px;background:#FFFFFF;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(22,18,28,.09);border-color:#D9BCF6">
@@ -424,7 +424,7 @@
 <div style="position:relative;min-height:300px;display:flex;align-items:stretch">
 <div style="position:absolute;left:0;right:-12px;top:-96px;bottom:0">
 <span style="display:block;position:absolute;inset:0;filter:grayscale(1);transition:filter 200ms cubic-bezier(.2,0,.2,1)" style-hover="filter:grayscale(0)">
-<image-slot id="sp-faq-photo" shape="rect" fit="contain" transparent="" data-alt="Менеджер проекта отвечает на вопросы студента" placeholder="" style="position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 22px 30px rgba(22,18,28,.22)) drop-shadow(0 4px 8px rgba(22,18,28,.1))"></image-slot>
+<image-slot id="sp-faq-photo" shape="rect" fit="contain" transparent="" data-alt="Менеджер проекта отвечает на вопросы студента" placeholder="Фото: менеджер проекта" style="position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 22px 30px rgba(22,18,28,.22)) drop-shadow(0 4px 8px rgba(22,18,28,.1))"></image-slot>
 </span>
 </div>
 </div>
@@ -433,7 +433,7 @@
 <p style="margin:0;font-size:13px;line-height:1.6;color:#4A4157;max-width:44ch">Напишите или позвоните. Расскажем, как устроена работа и что успеваем к вашей дате.</p>
 <div style="margin-top:8px;display:flex;flex-direction:column;gap:10px">
 <span style="display:flex;align-items:center;gap:10px;font-size:15px;line-height:1.4;font-weight:600;color:#16121C"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#7B2BE0;-webkit-mask:{{ phoneMask }};mask:{{ phoneMask }}"></span> 8-000-000-00-00</span>
-<a href="mailto:info.prodisser@gmail.com" style="display:flex;align-items:center;gap:10px;font-size:14px;line-height:1.5;color:#4A4157" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#7B2BE0;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:14px;line-height:1.5;color:#4A4157" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#7B2BE0;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
 </div>
 </div>
 </div>
@@ -484,16 +484,16 @@
 <div role="group" aria-label="Способ связи для заявки" style="display:inline-flex;gap:4px;padding:4px;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start;flex:0 0 auto">
 <sc-for list="{{ contactTabsBottom }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
 <label for="rq-contact" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Контакт для связи
 <input id="rq-contact" name="contact" type="{{ contactTypeBottom }}" autocomplete="{{ contactAutoBottom }}" required="{{ true }}" placeholder="{{ contactPlaceholderBottom }}" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0"></label>
-<label for="rq-consent" style="display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="rq-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
+<label for="rq-consent" style="display:flex;min-height:44px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="rq-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
 <button type="submit" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Отправить заявку</button>
 <sc-if value="{{ sentMain }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="-1" style="display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #5FE6B6;border-radius:10px;padding:12px 16px">
@@ -544,16 +544,16 @@
 </div>
 <div style="display:flex;flex-direction:column;gap:14px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#16121C">Меню</span>
-<a href="#route" style="font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Как устроена работа</a>
-<a href="#cost" style="font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Смета и нормоконтроль</a>
-<a href="#faq" style="font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Вопросы</a>
-<a href="#request" style="font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Оставить заявку</a>
-<a href="./index.html" style="font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Другие направления</a>
+<a href="#route" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Как устроена работа</a>
+<a href="#cost" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Смета и нормоконтроль</a>
+<a href="#faq" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Вопросы</a>
+<a href="#request" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Оставить заявку</a>
+<a href="./index.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:20px;color:#6B6178" style-hover="color:#16121C">Другие направления</a>
 </div>
 <div style="display:flex;flex-direction:column;gap:14px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#16121C">Контакты</span>
 <span style="display:flex;align-items:center;gap:10px;font-size:17px;line-height:24px;font-weight:500;color:#16121C"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:{{ phoneMask }};mask:{{ phoneMask }}"></span> 8-000-000-00-00</span>
-<a href="mailto:info.prodisser@gmail.com" style="display:flex;align-items:center;gap:10px;font-size:15px;line-height:22px;color:#4A4157" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:15px;line-height:22px;color:#4A4157" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
 </div>
 </div>
 <div style="position:relative;max-width:1220px;margin:0 auto;padding:0 30px 34px;display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap">
@@ -569,7 +569,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { date: '', situation: 1, open: -1, sentTop: false, sentMain: false, offerOpen: false, normOpen: false };
+  state = { date: '', situation: 1, open: -1, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false };
   componentDidMount(){
     this.onResize = () => {
       if (this.raf) return;
