@@ -28,9 +28,7 @@
 .pd-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-routes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-cta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-.pd-routeimg{filter:grayscale(1);transition:filter 200ms cubic-bezier(.2,0,.2,1)}
 .pd-routes a:hover .pd-routebg,.pd-routes a:focus-visible .pd-routebg{background:transparent!important}
-.pd-routes a:hover .pd-routeimg,.pd-routes a:focus-visible .pd-routeimg{filter:grayscale(0)}
 @media (max-width:1024px){.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.pd-hero,.pd-cta{grid-template-columns:minmax(0,1fr)}.pd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-card{flex:0 0 clamp(260px,72vw,320px)}}
 @media (max-width:768px){.pd-metrics,.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
@@ -114,16 +112,12 @@
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding-top:8px">
 <div style="display:flex;flex-direction:column;gap:2px;max-width:190px;align-items:center;text-align:center">
 <span style="width:190px;height:190px;border-radius:50%;background:#DDC4FA;overflow:hidden;display:block">
-<span style="display:block;width:100%;height:100%;filter:grayscale(1);transition:filter 200ms cubic-bezier(.2,0,.2,1)" style-hover="filter:grayscale(0)">
 <image-slot id="sp-avatar-1" shape="circle" data-alt="Куратор проекта — кандидат наук вашего научного направления" placeholder="Фото куратора" style="width:190px;height:190px"></image-slot>
-</span>
 </span>
 <span style="font-size:13px;line-height:1.5;color:#6B6178">Куратор проекта — кандидат наук вашего направления</span>
 </div><div style="display:flex;flex-direction:column;gap:2px;max-width:130px;padding-top:123px;align-items:center;text-align:center">
 <span style="width:130px;height:130px;border-radius:50%;background:#5FE6B6;overflow:hidden;display:block">
-<span style="display:block;width:100%;height:100%;filter:grayscale(1);transition:filter 200ms cubic-bezier(.2,0,.2,1)" style-hover="filter:grayscale(0)">
 <image-slot id="sp-avatar-2c" shape="circle" data-alt="Научный редактор проекта" placeholder="Фото редактора" style="width:130px;height:130px"></image-slot>
-</span>
 </span><span style="font-size:13px;line-height:1.5;color:#6B6178">Научный редактор проекта</span>
 
 </div>
@@ -154,8 +148,8 @@
 <div class="pd-routes" style="gap:16px;align-items:stretch">
 <a href="./main.html" style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #ECE5F3;border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 #7B2BE0,0 1px 2px rgba(22,18,28,.05)">
 <span class="pd-routebg" style="display:block;height:355px;background:#DDC4FA;transition:background 220ms cubic-bezier(.2,0,.2,1)">
-<span class="pd-routeimg" style="display:block;width:100%;height:355px">
-<image-slot id="sp-route-1" shape="rect" fit="cover" transparent="" data-alt="Аспирант готовит диссертацию к защите" placeholder="Фото: аспирант" style="width:100%;height:355px"></image-slot>
+<span style="display:block;width:100%;height:355px">
+<image-slot id="sp-route-1" shape="rect" fit="contain" transparent="" data-alt="Аспирант готовит диссертацию к защите" placeholder="Фото: аспирант" style="width:100%;height:355px"></image-slot>
 </span>
 </span>
 <span style="display:flex;flex-direction:column;gap:16px;padding:24px 24px 24px;flex:1 1 auto">
@@ -169,8 +163,8 @@
 </a>
 <a href="./students.html" style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #ECE5F3;border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 #3DDCA0,0 1px 2px rgba(22,18,28,.05)">
 <span class="pd-routebg" style="display:block;height:355px;background:#5FE6B6;transition:background 220ms cubic-bezier(.2,0,.2,1)">
-<span class="pd-routeimg" style="display:block;width:100%;height:355px">
-<image-slot id="sp-route-2b" shape="rect" fit="cover" transparent="" data-alt="Студент работает над дипломом и научной статьёй" placeholder="Фото: студент" style="width:100%;height:355px"></image-slot>
+<span style="display:block;width:100%;height:355px">
+<image-slot id="sp-route-2b" shape="rect" fit="contain" transparent="" data-alt="Студент работает над дипломом и научной статьёй" placeholder="Фото: студент" style="width:100%;height:355px"></image-slot>
 </span>
 </span>
 <span style="display:flex;flex-direction:column;gap:16px;padding:24px 24px 24px;flex:1 1 auto">
@@ -184,8 +178,8 @@
 </a>
 <a href="./business.html" style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #ECE5F3;border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 #BFB4CE,0 1px 2px rgba(22,18,28,.05)">
 <span class="pd-routebg" style="display:block;height:355px;background:#EFE9F5;transition:background 220ms cubic-bezier(.2,0,.2,1)">
-<span class="pd-routeimg" style="display:block;width:100%;height:355px">
-<image-slot id="sp-route-3" shape="rect" fit="cover" transparent="" data-alt="Научный коллектив компании обсуждает разработку" placeholder="Фото: команда" style="width:100%;height:355px"></image-slot>
+<span style="display:block;width:100%;height:355px">
+<image-slot id="sp-route-3" shape="rect" fit="contain" transparent="" data-alt="Научный коллектив компании обсуждает разработку" placeholder="Фото: команда" style="width:100%;height:355px"></image-slot>
 </span>
 </span>
 <span style="display:flex;flex-direction:column;gap:16px;padding:24px 24px 24px;flex:1 1 auto">

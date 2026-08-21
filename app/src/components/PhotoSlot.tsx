@@ -32,11 +32,7 @@ type Props = {
   placeholder?: string;
   /** Снимок в первом экране грузится сразу, остальные — по мере прокрутки */
   priority?: boolean;
-  /**
-   * Фотополосы карточек направлений: чёрно-белый снимок раскрывается в цвет
-   * при наведении на всю карточку. Правило раскраски живёт в стилях макета
-   * (`.pd-routeimg`), здесь только имя класса.
-   */
+  /** Класс из макета: снимки выводятся в цвете, обесцвечивание снято (Р-11) */
   className?: string;
   style?: React.CSSProperties;
 };
@@ -89,6 +85,40 @@ export default function PhotoSlot({
       >
         {placeholder ?? 'Фото'}
       </div>
+    );
+  }
+
+  // Полосы карточек направлений: фигура входит снизу, голова у верхней
+  // кромки. Снимки пришли в разных пропорциях, и `cover` резал их
+  // по-разному — от 31 % у одного до 2 % у другого, отчего люди выходили
+  // разного размера. Здесь размер задаётся явно множителем `scale`:
+  // высота фигуры равна высоте слота, умноженной на него.
+  const figure = fit === 'contain' && photo.scale !== undefined;
+
+  if (figure) {
+    return (
+      <span style={{ ...box, display: 'block', position: 'relative' }}>
+        <img
+          className={className}
+          src={photo.src}
+          alt={alt}
+          width={photo.width}
+          height={photo.height}
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
+          decoding="async"
+          style={{
+            display: 'block',
+            position: 'absolute',
+            left: '50%',
+            top: `${photo.offsetY ?? 0}%`,
+            transform: 'translateX(-50%)',
+            width: 'auto',
+            height: `${(photo.scale ?? 1) * 100}%`,
+            objectFit: 'contain',
+          }}
+        />
+      </span>
     );
   }
 

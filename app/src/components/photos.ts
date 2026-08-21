@@ -30,6 +30,14 @@ export type Photo = {
   height: number;
   /** Точка кадрирования, если лицо не по центру */
   position?: string;
+  /**
+   * Для фотополос: во сколько раз высота фигуры больше высоты слота.
+   * Снимки пришли в разных пропорциях, и без явного множителя люди
+   * выходили разного размера в соседних карточках.
+   */
+  scale?: number;
+  /** Сдвиг фигуры вниз от верхней кромки, в процентах высоты слота */
+  offsetY?: number;
 };
 
 const CURATOR:  Photo = { src: '/photos/curator.webp',  width: 380, height: 290, position: 'center 30%' };
@@ -38,32 +46,50 @@ const POSTGRAD: Photo = { src: '/photos/postgrad.webp', width: 572, height: 784,
 const STUDENT:  Photo = { src: '/photos/student.webp',  width: 652, height: 682, position: 'center top' };
 const BUSINESS: Photo = { src: '/photos/business.webp', width: 549, height: 549, position: 'center top' };
 
+// Фотополосы карточек направлений. Множитель выровнен так, чтобы в трёх
+// соседних карточках головы были одного размера и на одной высоте.
+const STRIP_POSTGRAD: Photo = { ...POSTGRAD, scale: 1.36, offsetY: 3 };
+const STRIP_STUDENT:  Photo = { ...STUDENT,  scale: 1.06, offsetY: 1 };
+const STRIP_BUSINESS: Photo = { ...BUSINESS, scale: 1.24, offsetY: 1 };
+
+// Снимки в блоках «Вопросы» и «Заявка»: фигура прижата к нижней кромке
+// карточки, как в исходных макетах. Без явного множителя `contain`
+// вписывал человека целиком, и он терялся посреди белого поля.
+//
+// В крупные карточки идут только большие оригиналы. Снимок редактора
+// (171×149) в карточке блока «Вопросы» растягивался в 6,9 раза и мылил;
+// он остаётся в круглых портретах, где его размера хватает.
+//
+// Слот «Вопросов» на странице аспирантов узкий и высокий (268×654):
+// в него идёт вертикальный снимок, иначе фигуру срезает по локти.
+// На каждой странице четыре снимка — четыре разных человека.
+const CARD_STUDENT:  Photo = { ...STUDENT,  scale: 0.92, offsetY: 8 };
+const CARD_POSTGRAD: Photo = { ...POSTGRAD, scale: 0.94, offsetY: 6 };
+const CARD_BUSINESS: Photo = { ...BUSINESS, scale: 0.90, offsetY: 10 };
+
 export const PHOTOS: Record<string, Photo> = {
   // ——— Посадочная: расстановка из исходной сборки ———
-  'sp-avatar-1': CURATOR,     // круг 190px — куратор проекта
-  'sp-avatar-2c': EDITOR,     // круг 130px — научный редактор
-  'sp-route-1': POSTGRAD,     // полоса 355px — аспирантам
-  'sp-route-2b': STUDENT,     // полоса 355px — студентам
-  'sp-route-3': BUSINESS,     // полоса 355px — бизнесу
+  'sp-avatar-1': CURATOR,        // круг 190px — куратор проекта
+  'sp-avatar-2c': EDITOR,        // круг 130px — научный редактор
+  'sp-route-1': STRIP_POSTGRAD,  // полоса 355px — аспирантам
+  'sp-route-2b': STRIP_STUDENT,  // полоса 355px — студентам
+  'sp-route-3': STRIP_BUSINESS,  // полоса 355px — бизнесу
 
-  // ——— Аспирантам: те же роли, что на посадочной ———
-  'mp-photo-1': CURATOR,      // круг 168px — куратор
-  'mp-photo-2': EDITOR,       // круг 112px — научный редактор
-  'mp-request-photo': POSTGRAD, // блок заявки: аспирант с работой
+  // ——— Аспирантам: расстановка сверена со снимками заказчика ———
+  'mp-photo-1': CURATOR,        // круг 168px — куратор
+  'mp-photo-2': EDITOR,         // круг 112px — научный редактор
+  'mp-request-photo': CARD_STUDENT,  // блок заявки
+  'mp-faq-photo': CARD_POSTGRAD,     // блок вопросов
 
   // ——— Студентам ———
-  'sp-stud-1': STUDENT,       // круг 178px — студент
-  'sp-stud-2': EDITOR,        // круг 122px — научный редактор
-  'sp-request-photo': POSTGRAD,
+  'sp-stud-1': STUDENT,         // круг 178px — студент
+  'sp-stud-2': EDITOR,          // круг 122px — научный редактор
+  'sp-request-photo': CARD_POSTGRAD, // блок заявки
+  'sp-faq-photo': CARD_BUSINESS,     // блок вопросов
 
   // ——— Бизнесу ———
-  'bp-photo-1': BUSINESS,     // круг 178px — отраслевой эксперт
-  'bp-photo-2': CURATOR,      // круг 122px — менеджер проекта
-
-  // Слоты блоков «Вопросы» на двух страницах ждут снимка менеджера:
-  // подходящего кадра среди присланных нет, заглушка остаётся честной.
-  // 'mp-faq-photo': …
-  // 'sp-faq-photo': …
+  'bp-photo-1': BUSINESS,       // круг 178px — отраслевой эксперт
+  'bp-photo-2': CURATOR,        // круг 122px — менеджер проекта
 };
 
 /** Слоты первого экрана: грузятся сразу, а не по мере прокрутки */
