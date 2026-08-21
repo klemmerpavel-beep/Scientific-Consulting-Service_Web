@@ -1,0 +1,71 @@
+# Развёртывание на российском VPS. Два сервиса: приложение и база.
+# Обратный прокси и сертификат — на стороне хоста, см. deploy/nginx.conf.
+#
+# Запуск:
+#   cp deploy/.env.deploy.example deploy/.env
+#   отредактировать deploy/.env
+#   docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-prodisser}
+      POSTGRES_USER: ${POSTGRES_USER:-prodisser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?пароль базы обязателен}
+      # Локаль нужна для правильной сортировки русского текста в админ-панели
+      LANG: ru_RU.utf8
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # Резервные копии складываются сюда, забираются с хоста
+      - ./backups:/backups
+    # Порт наружу не открывается: база доступна только приложению
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-prodisser} -d ${POSTGRES_DB:-prodisser}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ../app
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?публичный адрес обязателен}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-prodisser}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-prodisser}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      LEAD_MAIL_TO: ${LEAD_MAIL_TO:-}
+    # Наружу приложение не смотрит: перед ним обратный прокси хоста
+    ports:
+      - '127.0.0.1:3000:3000'
+
+  # Накат миграций отдельным разовым запуском: приложение не должно менять
+  # схему само — иначе два экземпляра при перезапуске полезут в базу разом.
+  migrate:
+    build:
+      context: ../app
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+    profiles: ['migrate']
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-prodisser}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-prodisser}
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+
+volumes:
+  db-data:

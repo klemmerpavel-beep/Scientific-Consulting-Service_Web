@@ -1,0 +1,55 @@
+name: Сборка и проверки
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      # Клиент базы нужен до проверки типов: код страниц его импортирует.
+      # Адрес здесь фиктивный — подключения на этом шаге не происходит.
+      - run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+
+      - name: Проверка типов
+        run: npm run typecheck
+
+      - name: Сборка
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+          NEXT_PUBLIC_SITE_URL: https://prodisser.ru
+
+      # Перенос из макетов должен быть воспроизводим: если сгенерированные
+      # компоненты разошлись с макетами, значит правку внесли не туда.
+      - name: Перенос макетов совпадает с исходниками
+        working-directory: .
+        run: |
+          for t in "StartPage:StartPage:landing" "MainPage:PostgradPage:postgrad" \
+                   "StudentsPage:StudentsPage:students" "BusinessPage:BusinessPage:business" \
+                   "OfferPage:OfferPage:landing" "PrivacyPage:PrivacyPage:landing" \
+                   "ConsentPage:ConsentPage:landing"; do
+            IFS=: read -r src name source <<< "$t"
+            node tools/dc-to-tsx.mjs "design/$src.dc.html" \
+              "app/src/components/pages/$name.tsx" "$name" "$source"
+          done
+          git diff --exit-code -- app/src/components/pages \
+            || { echo "::error::Сгенерированные компоненты разошлись с макетами. Правьте макет и переносите заново."; exit 1; }
