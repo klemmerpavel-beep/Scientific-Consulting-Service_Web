@@ -1,0 +1,38 @@
+/* Базовый слой. Оформление страниц живёт в перенесённых макетах —
+   здесь только то, что общее для всего приложения. */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #FFFFFF;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-onest), 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Макеты обращаются к семействам по имени — связываем их с загруженными */
+:root {
+  --onest: var(--font-onest);
+  --jetbrains: var(--font-mono);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+*:focus-visible {
+  outline: 2px solid #7B2BE0;
+  outline-offset: 2px;
+}
+
+input[type='checkbox'] { accent-color: #7B2BE0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

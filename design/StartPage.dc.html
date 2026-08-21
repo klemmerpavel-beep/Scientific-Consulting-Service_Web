@@ -76,6 +76,7 @@
 <h2 style="margin:32px 0 0;font-family:'Onest',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:500;color:#16121C">Записаться на первичную консультацию</h2>
 <p style="margin:8px 0 0;font-size:13px;line-height:1.6;color:#6B6178;max-width:40ch">Оставьте контакты — консультация занимает 20 минут. По её итогам назовём объём работы.</p>
 <form style="margin:16px 0 0;max-width:344px;display:flex;flex-direction:column;gap:16px" onSubmit="{{ submitTop }}">
+<input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
 <div role="group" aria-label="Способ связи для консультации" style="display:inline-flex;gap:4px;padding:4px;background:#F4F4F8;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start">
 <sc-for list="{{ contactTabsTop }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
@@ -87,7 +88,7 @@
 </sc-for>
 </div>
 <input type="{{ contactTypeTop }}" name="contact" autocomplete="{{ contactAutoTop }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" required="{{ true }}" style="width:100%;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Onest',Arial,sans-serif;font-size:15px;color:#16121C;background:#FFFFFF;border:1px solid #E6DEEF;border-radius:10px" style-focus="border-color:#7B2BE0">
-<button type="submit" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:16px 36px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Оставить заявку</button>
+<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:16px 36px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Оставить заявку</button>
 <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
 <label for="sp-privacy" style="display:flex;min-height:44px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-privacy" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
 <label for="sp-terms" style="display:flex;min-height:44px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-terms" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:#7B2BE0" style-hover="color:#5E17B8">оферту</a> и <a href="./privacy.html" style="color:#7B2BE0" style-hover="color:#5E17B8">политику</a></span></label>
@@ -97,6 +98,11 @@
 <div role="status" style="margin-top:16px;max-width:344px;display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #B2E8D3;border-radius:10px;padding:12px 16px">
 <span style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:#0E4E3C;-webkit-mask:url('./assets/icons/check.svg') center/contain no-repeat;mask:url('./assets/icons/check.svg') center/contain no-repeat"></span>
 <span style="font-size:13px;line-height:1.5;color:#0E4E3C">Заявка принята — скоро свяжемся с вами.</span>
+</div>
+</sc-if>
+<sc-if value="{{ errorTop }}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="display:flex;gap:8px;align-items:flex-start;background:#FAE7E5;border:1px solid #F0C9C3;border-radius:10px;padding:12px 16px">
+<span style="font-size:13px;line-height:1.5;color:#8E2C22">{{ errorTop }}</span>
 </div>
 </sc-if>
 </div>
@@ -320,6 +326,7 @@
 <p style="margin:0;font-size:15px;line-height:1.6;color:#4A4157">Первичная консультация проводится <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px;font-weight:500;color:#16121C">бесплатно</span> и включает предварительную оценку работы</p>
 <p style="margin:0;font-size:13px;line-height:1.6;color:#4A4157">Отвечает менеджер проекта, Пн—Пт 10:00—19:00. Он предложит время консультации с куратором вашего направления.</p>
 <form style="margin-top:16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center" onSubmit="{{ submitBottom }}">
+<input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
 <div role="group" aria-label="Способ связи для заявки" style="display:inline-flex;gap:4px;padding:4px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start;flex:0 0 auto">
 <sc-for list="{{ contactTabsBottom }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
@@ -332,7 +339,7 @@
 </div>
 <input type="hidden" name="direction" value="{{ direction }}">
 <input type="{{ contactTypeBottom }}" name="contact" autocomplete="{{ contactAutoBottom }}" placeholder="{{ contactPlaceholderBottom }}" aria-label="{{ contactPlaceholderBottom }}" required="{{ true }}" style="flex:1 1 260px;min-width:0;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Onest',Arial,sans-serif;font-size:15px;color:#16121C;background:#FFFFFF;border:1px solid #E6DEEF;border-radius:10px" style-focus="border-color:#7B2BE0">
-<button type="submit" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 34px;height:56px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Отправить заявку</button>
+<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 34px;height:56px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Отправить заявку</button>
 <div style="display:flex;flex-direction:column;gap:8px">
 <label for="sp-privacy-2" style="display:flex;min-height:44px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-privacy-2" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
 <label for="sp-terms-2" style="display:flex;min-height:44px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-terms-2" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:#7B2BE0" style-hover="color:#5E17B8">оферту</a> и <a href="./privacy.html" style="color:#7B2BE0" style-hover="color:#5E17B8">политику</a></span></label>
@@ -342,6 +349,11 @@
 <div role="status" style="display:flex;gap:8px;align-items:flex-start;background:#FFFFFF;border:1px solid #B2E8D3;border-radius:10px;padding:12px 16px">
 <span style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:#0E4E3C;-webkit-mask:url('./assets/icons/check.svg') center/contain no-repeat;mask:url('./assets/icons/check.svg') center/contain no-repeat"></span>
 <span style="font-size:13px;line-height:1.5;color:#0E4E3C">Заявка принята — скоро свяжемся с вами.</span>
+</div>
+</sc-if>
+<sc-if value="{{ errorBottom }}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="display:flex;gap:8px;align-items:flex-start;background:#FAE7E5;border:1px solid #F0C9C3;border-radius:10px;padding:12px 16px">
+<span style="font-size:13px;line-height:1.5;color:#8E2C22">{{ errorBottom }}</span>
 </div>
 </sc-if>
 </div>

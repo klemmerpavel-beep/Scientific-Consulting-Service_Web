@@ -1,0 +1,80 @@
+// Хранилище заявок. Требование ч. 5 ст. 18 152-ФЗ: запись, систематизация,
+// накопление и хранение персональных данных граждан РФ выполняются с
+// использованием баз, находящихся на территории России. База разворачивается
+// на той же площадке, что и приложение, — см. docs/DECISIONS.md, Р-04 и Р-06.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Заявка с сайта. Одна запись — одно обращение.
+model Lead {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  /// Страница, с которой пришла заявка: landing, postgrad, students, business
+  source    String
+  /// Форма на странице: hero, request — на случай, если форм несколько
+  form      String
+
+  name         String?
+  contactKind  String   // email | phone
+  contact      String
+  organization String?
+  topic        String?
+  speciality   String?
+  need         String?
+  deadline     String?
+  direction    String?
+  message      String?  @db.Text
+
+  /// Журнал согласий: что именно отметил заявитель и в какой редакции текста
+  consentGiven    Boolean
+  consentVersion  String
+  termsAccepted   Boolean  @default(false)
+  marketingOptIn  Boolean  @default(false)
+
+  /// Доказательства для проверки регулятором
+  ip        String?
+  userAgent String?  @db.Text
+
+  status    LeadStatus @default(NEW)
+  notes     String?    @db.Text
+
+  deliveries Delivery[]
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([source])
+}
+
+enum LeadStatus {
+  NEW
+  IN_PROGRESS
+  CONSULTED
+  CONTRACTED
+  DECLINED
+  SPAM
+}
+
+/// Доставка заявки в канал. Заявка сохраняется всегда, доставка может не пройти —
+/// эта таблица показывает, что именно не дошло и почему.
+model Delivery {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  channel   String   // telegram | email
+  ok        Boolean
+  error     String?  @db.Text
+  attempts  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([ok])
+}
