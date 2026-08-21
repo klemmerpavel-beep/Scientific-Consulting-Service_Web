@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Дизайн-система ProDisser" description="Внутренний справочник: токены, каркасы сайта и рабочего интерфейса, 19 компонентов, состояния, предельные данные и отчёт приёмки." -->
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<script src="./ds-base.js"></script>
+<style>body{margin:0;background:#FFFFFF}a{color:#7B2BE0;text-decoration:none}a:hover{color:#5E17B8}*:focus-visible{outline:2px solid #7B2BE0;outline-offset:2px}input[type=checkbox]{accent-color:#7B2BE0}
+.pd-skip{position:absolute;left:-9999px;top:0;z-index:9;background:#16121C;color:#FFFFFF;padding:12px 20px;border-radius:0 0 10px 0;font-size:13px;font-weight:600}
+.pd-skip:focus{left:0;color:#FFFFFF}
+.pd-scroll{overflow-x:auto;overscroll-behavior-x:contain}
+@media (max-width:1024px){.pd-4{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:768px){.pd-2,.pd-3,.pd-4,.pd-split{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:480px){.pd-pad{padding-left:20px;padding-right:20px}.pd-7{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}</style>
+</helmet>
+<div style="position:relative;background:#FFFFFF;color:#16121C;font-family:'Onest','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
+<a class="pd-skip" href="#main">Перейти к содержанию</a>
+
+<header class="pd-pad" style="max-width:1220px;margin:0 auto;padding:56px 30px 0">
+<span style="display:inline-block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178;margin-bottom:16px">ProDisser · дизайн-система · v1</span>
+<h1 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:28px;line-height:1.24;font-weight:500;letter-spacing:-.015em;color:#16121C;max-width:24ch">Дизайн-система ProDisser</h1>
+<p style="margin:16px 0 0;font-size:15px;line-height:1.6;color:#4A4157;max-width:64ch">Единый источник правды для шести поверхностей сервиса: посадочная страница, страница для аспирантов, страницы студентов и бизнеса, личный кабинет клиента и админ-панель. Ядро токенов общее, ветви две — воздушный «Сайт» и плотный «Рабочий интерфейс». Значение, которого нет в разделе 01, верстать запрещено.</p>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:24px">
+<sc-for list="{{ nav }}" as="n" hint-placeholder-count="6">
+<a href="{{ n.href }}" style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:999px;padding:8px 16px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#4A4157" style-hover="border-color:#7B2BE0;color:#7B2BE0">{{ n.label }}</a>
+</sc-for>
+</div>
+</header>
+
+<main id="main">
+
+<section id="tokens" data-screen-label="01 Токены" class="pd-pad" style="max-width:1220px;margin:64px auto 0;padding:0 30px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #EAE3F2">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Раздел 01</span>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C">Токены</h2>
+</div>
+<span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto">Единственное место в документе, где встречаются сырые значения</span>
+</div>
+
+<h3 style="margin:0 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Поверхности и границы</h3>
+<div class="pd-4" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+<sc-for list="{{ surfaces }}" as="t" hint-placeholder-count="7">
+<div style="border:1px solid #EAE3F2;border-radius:10px;overflow:hidden;background:#FFFFFF">
+<div style="height:56px;background:{{ t.value }};border-bottom:1px solid #F2ECF7"></div>
+<div style="padding:12px 14px;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:13px;line-height:1.4;font-weight:600;color:#16121C">{{ t.name }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">{{ t.token }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#4A4157">{{ t.value }}</span>
+</div>
+</div>
+</sc-for>
+</div>
+
+<h3 style="margin:32px 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Текст</h3>
+<div class="pd-4" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+<sc-for list="{{ inks }}" as="t" hint-placeholder-count="4">
+<div style="border:1px solid #EAE3F2;border-radius:10px;padding:14px;background:{{ t.on }};display:flex;flex-direction:column;gap:6px">
+<span style="font-size:17px;line-height:1.4;font-weight:600;color:{{ t.value }}">Aa Аа 2016</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:{{ t.value }}">{{ t.token }} · {{ t.value }}</span>
+<span style="font-size:11px;line-height:1.4;color:{{ t.value }}">{{ t.note }}</span>
+</div>
+</sc-for>
+</div>
+
+<h3 style="margin:32px 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Акценты</h3>
+<div class="pd-4" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+<sc-for list="{{ accents }}" as="t" hint-placeholder-count="7">
+<div style="border:1px solid #EAE3F2;border-radius:10px;overflow:hidden;background:#FFFFFF">
+<div style="height:48px;background:{{ t.value }}"></div>
+<div style="padding:12px 14px;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:13px;line-height:1.4;font-weight:600;color:#16121C">{{ t.name }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">{{ t.token }} · {{ t.value }}</span>
+<span style="font-size:11px;line-height:1.4;color:#4A4157">{{ t.note }}</span>
+</div>
+</div>
+</sc-for>
+</div>
+
+<h3 style="margin:32px 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Статусы заказа</h3>
+<div class="pd-7" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+<sc-for list="{{ orderStatuses }}" as="s" hint-placeholder-count="7">
+<div style="border:1px solid #EAE3F2;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;background:#FFFFFF">
+<span style="align-self:flex-start;background:{{ s.bg }};color:{{ s.fg }};border-radius:999px;padding:6px 12px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase">{{ s.label }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">{{ s.bg }} · {{ s.fg }}</span>
+</div>
+</sc-for>
+</div>
+
+<h3 style="margin:32px 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Статусы денег</h3>
+<div class="pd-4" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+<sc-for list="{{ moneyStatuses }}" as="s" hint-placeholder-count="4">
+<div style="border:1px solid #EAE3F2;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;background:#FFFFFF">
+<span style="align-self:flex-start;background:{{ s.bg }};color:{{ s.fg }};border-radius:999px;padding:6px 12px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase">{{ s.label }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">{{ s.bg }} · {{ s.fg }}</span>
+</div>
+</sc-for>
+</div>
+
+<div class="pd-2" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:32px">
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<h3 style="margin:0 0 14px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Кегли — ровно семь</h3>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ sizes }}" as="s" hint-placeholder-count="7">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:10px;border-bottom:1px solid #F2ECF7">
+<span style="font-size:{{ s.px }};line-height:1.24;color:#16121C">{{ s.sample }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178;text-align:right;flex:0 0 auto">{{ s.token }} · {{ s.px }}</span>
+</div>
+</sc-for>
+</div>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Минимальный кегль 11px и ни пункта мельче — аудит нашёл на основной странице 9px и 10px, они запрещены.</p>
+</div>
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<h3 style="margin:0 0 14px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Интерлиньяж — только коэффициенты</h3>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ leadings }}" as="l" hint-placeholder-count="4">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding-bottom:10px;border-bottom:1px solid #F2ECF7">
+<span style="font-size:13px;line-height:{{ l.value }};color:#4A4157;max-width:38ch">{{ l.sample }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178;text-align:right;flex:0 0 auto">{{ l.value }}</span>
+</div>
+</sc-for>
+</div>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Пиксельный интерлиньяж не переживает смену кегля: при 26/34 заголовок ломается на 480px, при 26/1.4 — нет.</p>
+</div>
+</div>
+
+<div class="pd-2" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px">
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<h3 style="margin:0 0 14px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Радиусы — ровно пять</h3>
+<div style="display:flex;flex-wrap:wrap;gap:12px">
+<sc-for list="{{ radii }}" as="r" hint-placeholder-count="5">
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+<span style="width:64px;height:56px;display:block;background:#F4EAFE;border:1px solid #DDC4FA;border-radius:{{ r.value }}"></span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">{{ r.value }}</span>
+</div>
+</sc-for>
+</div>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">14 — карточка, 10 — поле и вложенный блок, 6 — плашка-подсветка, 999 — pill, 50% — аватар.</p>
+</div>
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<h3 style="margin:0 0 14px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Тени — ровно три формулы</h3>
+<div style="display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ shadows }}" as="s" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:14px">
+<span style="width:72px;height:48px;flex:0 0 72px;display:block;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px;box-shadow:{{ s.value }}"></span>
+<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<span style="font-size:13px;line-height:1.4;font-weight:600;color:#16121C">{{ s.name }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178;word-break:break-word">{{ s.value }}</span>
+</span>
+</div>
+</sc-for>
+</div>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Четвёртой формулы нет: объём даёт градиент плашки, а не новая тень. Аудит нашёл 30 формул — так расходятся страницы.</p>
+</div>
+</div>
+
+<h3 style="margin:32px 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Сетка и размеры</h3>
+<div class="pd-4" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+<sc-for list="{{ metrics }}" as="m" hint-placeholder-count="8">
+<div style="border:1px solid #EAE3F2;border-radius:10px;padding:14px;background:#FFFFFF;display:flex;flex-direction:column;gap:6px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:17px;line-height:1.24;color:#16121C;font-variant-numeric:tabular-nums">{{ m.value }}</span>
+<span style="font-size:12px;line-height:1.5;color:#4A4157">{{ m.name }}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section id="frames" data-screen-label="02 Каркасы" class="pd-pad" style="max-width:1220px;margin:64px auto 0;padding:0 30px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #EAE3F2">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Раздел 02</span>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C">Каркасы</h2>
+</div>
+<span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto">Два каркаса: воздушный сайт и плотный рабочий интерфейс</span>
+</div>
+
+<h3 style="margin:0 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Каркас сайта · контейнер 1220</h3>
+<div class="pd-scroll" style="border:1px solid #EAE3F2;border-radius:14px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<div style="min-width:720px;padding:20px 22px;display:flex;flex-direction:column;gap:12px">
+<div style="border:1px solid #DDC4FA;background:#F4EAFE;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+<span style="font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#5E17B8">шапка · высота 72 · паддинг 24/30</span>
+<span style="background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 20px;font-size:12px;line-height:1.4;font-weight:600">Оставить заявку</span>
+</div>
+<div style="border:1px dashed #DDC4FA;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">моно-лейбл</span>
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<span style="font-family:'Onest',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:500;color:#16121C">Заголовок с <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px">сиреневой подсветкой</span></span>
+<span style="font-size:12px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:4px;border-bottom:1px solid #EAE3F2">ремарка справа с чертой</span>
+</div>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">ритм между секциями 96 · внутри подблока 48</span>
+</div>
+<div style="border:1px solid #EAE3F2;border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<span style="font-size:12px;line-height:1.5;color:#4A4157">© 2016–2026 ProDisser · [РЕКВИЗИТ: юридическое лицо] · [РЕКВИЗИТ: ИНН]</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">подвал · паддинг 72/30/32</span>
+</div>
+</div>
+</div>
+<p style="margin:12px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Ремарка справа несёт черту снизу — без неё правая колонка шапки секции повисает в воздухе и читается как оборванная строка.</p>
+
+<h3 style="margin:32px 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Каркас рабочего интерфейса · рабочая область 1440</h3>
+<div class="pd-scroll" style="border:1px solid #EAE3F2;border-radius:14px;overflow:hidden;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<div style="min-width:860px">
+<div style="height:56px;background:#16121C;display:flex;align-items:center;gap:16px;padding:0 16px">
+<span style="font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:700;color:#FFFFFF">PRODISSER</span>
+<span style="flex:1 1 auto;height:32px;border-radius:10px;background:#FFFFFF;display:flex;align-items:center;padding:0 12px;font-size:12px;line-height:1.4;color:#6B6178">Поиск по заказам, клиентам и материалам</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#FFFFFF">Владелец</span>
+</div>
+<div style="display:flex;min-height:220px">
+<div style="width:56px;flex:0 0 56px;background:#FFFFFF;border-right:1px solid #EAE3F2;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0">
+<sc-for list="{{ railIcons }}" as="r" hint-placeholder-count="5">
+<span aria-hidden="true" style="width:32px;height:32px;border-radius:10px;background:#F8F5FC;display:flex;align-items:center;justify-content:center"><span style="width:16px;height:16px;display:block;background:#4A4157;-webkit-mask:{{ r.mask }};mask:{{ r.mask }}"></span></span>
+</sc-for>
+</div>
+<sc-if value="{{ sidebarOpen }}" hint-placeholder-val="{{ true }}">
+<div style="width:232px;flex:0 0 232px;background:#FFFFFF;border-right:1px solid #EAE3F2;padding:12px 12px;display:flex;flex-direction:column;gap:2px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178;padding:8px 12px">Владелец</span>
+<sc-for list="{{ sidebar }}" as="s" hint-placeholder-count="7">
+<span style="border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.4;font-weight:{{ s.weight }};color:{{ s.color }};background:{{ s.bg }}">{{ s.label }}</span>
+</sc-for>
+</div>
+</sc-if>
+<div style="flex:1 1 auto;background:#F8F5FC;padding:16px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px">
+<span style="font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Заказы</span>
+<button type="button" onClick="{{ toggleSidebar }}" style="appearance:none;cursor:pointer;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:999px;padding:8px 16px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#4A4157" style-hover="border-color:#7B2BE0;color:#7B2BE0">{{ sidebarLabel }}</button>
+</div>
+<div style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;height:132px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">рабочая область · фон #F8F5FC · карточки поднятые</div>
+</div>
+</div>
+</div>
+</div>
+<p style="margin:12px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Сайдбар сворачивается в рельс 56, а не исчезает: иконки остаются на месте, поэтому мышечная память куратора не сбрасывается при переключении.</p>
+<p style="margin:8px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Ряд фильтров всегда одной строкой под заголовком экрана. В модальном окне фильтр не виден вместе с результатом — оператор перестаёт понимать, почему в таблице пусто.</p>
+
+<div class="pd-3" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px">
+<sc-for list="{{ roles }}" as="r" hint-placeholder-count="3">
+<div style="border:1px solid #EAE3F2;border-radius:10px;padding:14px;background:#FFFFFF;display:flex;flex-direction:column;gap:6px">
+<span style="font-size:13px;line-height:1.4;font-weight:600;color:#16121C">{{ r.role }}</span>
+<span style="font-size:12px;line-height:1.5;color:#4A4157">{{ r.sections }}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section id="components" data-screen-label="03 Компоненты" class="pd-pad" style="max-width:1220px;margin:64px auto 0;padding:0 30px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #EAE3F2">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Раздел 03</span>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C">Компоненты</h2>
+</div>
+<span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto">Шесть на сайте, тринадцать в рабочем интерфейсе</span>
+</div>
+
+<span style="display:inline-block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0;margin-bottom:16px">Ветвь · Сайт</span>
+
+<div style="display:flex;flex-direction:column;gap:24px">
+
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0;margin-bottom:14px">01 · Шапка секции</span>
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Стоимость</span>
+<span style="font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:34ch">Цена работы складывается из <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px">трёх ключевых факторов</span></span>
+</div>
+<span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Точная смета — после разбора материала</span>
+</div>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Подсветка стоит на ключевой мысли, а не на названии бренда — читатель ищет глазами, что ему обещают, а не кто обещает.</p>
+</div>
+
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0;margin-bottom:14px">02 · Плашка метрики</span>
+<div class="pd-3" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+<sc-for list="{{ metricPlates }}" as="m" hint-placeholder-count="3">
+<div style="background:{{ m.bg }};border-radius:14px;padding:16px;min-height:128px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;box-shadow:0 6px 14px rgba(38,38,46,.07),0 1px 2px rgba(38,38,46,.05)">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;color:{{ m.fg }};font-variant-numeric:tabular-nums">{{ m.value }}</span>
+<span style="font-size:13px;line-height:1.5;color:{{ m.fg }}">{{ m.note }}</span>
+</div>
+</sc-for>
+</div>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Объём разрешён только здесь и на панелях CTA: когда приподняты все элементы, иерархии нет ни у одного.</p>
+</div>
+
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0;margin-bottom:14px">03 · Карточка направления</span>
+<div class="pd-3" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+<sc-for list="{{ routes }}" as="r" hint-placeholder-count="3">
+<span style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;overflow:hidden;box-shadow:inset 0 -3px 0 {{ r.edge }},0 1px 2px rgba(38,38,46,.05)">
+<span style="display:block;height:96px;background:{{ r.bg }}"></span>
+<span style="display:flex;flex-direction:column;gap:12px;padding:16px;flex:1 1 auto">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:{{ r.ink }}">{{ r.label }}</span>
+<span style="font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">{{ r.title }}</span>
+<span style="margin-top:auto;padding-top:12px;border-top:1px solid #F2ECF7;display:flex;align-items:center;justify-content:space-between;gap:12px">
+<span style="font-size:12px;line-height:1.5;color:#6B6178">{{ r.who }}</span>
+<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:#7B2BE0;-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span>
+</span>
+</span>
+</span>
+</sc-for>
+</div>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Кромка снизу чередуется сирень → мята → серый: три одинаковые карточки в ряд иначе сливаются в один прямоугольник.</p>
+</div>
+
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0;margin-bottom:14px">04 · Карточка условия и гарантии</span>
+<div class="pd-3" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+<sc-for list="{{ guarantees }}" as="g" hint-placeholder-count="3">
+<article style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 {{ g.edge }},0 1px 2px rgba(38,38,46,.05)">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:{{ g.ink }}">{{ g.doc }}</span>
+<h4 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">{{ g.title }}</h4>
+<p style="margin:0;font-size:13px;line-height:1.6;color:#4A4157">{{ g.text }}</p>
+</article>
+</sc-for>
+</div>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Моно-лейбл называет носитель обязательства — гарантия без документа читается аудиторией с научной подготовкой как тон, а не как условие.</p>
+</div>
+
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0;margin-bottom:14px">05 · Аккордеон вопроса</span>
+<div style="display:flex;flex-direction:column;gap:12px;max-width:70ch">
+<div style="background:#FFFFFF;border:1px solid #DDC4FA;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<span style="display:flex;align-items:center;justify-content:space-between;gap:20px;background:#DDC4FA;padding:16px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:#16121C">Когда платить?<span aria-hidden="true" style="width:16px;height:2px;flex:0 0 16px;background:#16121C;border-radius:999px"></span></span>
+<p style="margin:0;padding:14px 20px 18px;font-size:13px;line-height:1.6;color:#4A4157">Не вперёд за всю работу. Каждый этап вы принимаете отдельно, следующий оплачиваете только после этого.</p>
+</div>
+<button type="button" style="appearance:none;border:1px solid #EAE3F2;background:#FFFFFF;cursor:pointer;width:100%;text-align:left;padding:16px 20px;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:#16121C;box-shadow:0 1px 2px rgba(38,38,46,.05);transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0">Что с конфиденциальностью?<span aria-hidden="true" style="position:relative;width:16px;height:16px;flex:0 0 16px"><span style="position:absolute;left:0;top:7px;width:16px;height:2px;background:#6B6178;border-radius:999px"></span><span style="position:absolute;left:7px;top:0;width:2px;height:16px;background:#6B6178;border-radius:999px"></span></span></button>
+</div>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Открытый вопрос лежит на подсветке #DDC4FA, а не на белом с тенью: подсветка держит связь заголовка с ответом при прокрутке длинного списка.</p>
+</div>
+
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0;margin-bottom:14px">06 · Форма заявки</span>
+<form onSubmit="{{ submitDemo }}" style="max-width:420px;display:flex;flex-direction:column;gap:16px">
+<div role="group" aria-label="Способ связи" style="display:inline-flex;gap:4px;padding:4px;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start">
+<sc-for list="{{ contactTabs }}" as="c" hint-placeholder-count="2">
+<sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:12px;line-height:1.4;font-weight:600">{{ c.label }}</button>
+</sc-if>
+<sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#6B6178;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:12px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
+</sc-if>
+</sc-for>
+</div>
+<input type="{{ contactType }}" name="contact" autocomplete="{{ contactAuto }}" placeholder="{{ contactPlaceholder }}" aria-label="{{ contactPlaceholder }}" required="" style="width:100%;box-sizing:border-box;height:48px;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:13px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0">
+<label for="ds-consent" style="display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="ds-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю согласие на обработку персональных данных</span></label>
+<button type="submit" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:13px;font-weight:600;padding:14px 30px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Оставить заявку</button>
+<sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+<div role="status" style="display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #5FE6B6;border-radius:10px;padding:12px 16px">
+<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:#0E4E3C;-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
+<span style="font-size:13px;line-height:1.5;color:#0E4E3C">Заявка принята — свяжемся, чтобы согласовать время консультации.</span>
+</div>
+</sc-if>
+</form>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Чекбокс согласия не предзаполнен: по 152-ФЗ предзаполненная галочка согласием не считается, а фраза «нажимая на кнопку» не оставляет следа согласия.</p>
+</div>
+</div>
+
+<span style="display:inline-block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#0E4E3C;margin:32px 0 16px">Ветвь · Рабочий интерфейс</span>
+
+<div style="background:#F8F5FC;border:1px solid #EAE3F2;border-radius:14px;padding:20px">
+<div style="display:flex;flex-direction:column;gap:20px">
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0">07 · Карточка</span>
+<div class="pd-2" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+<div style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<span style="display:block;font-size:13px;line-height:1.4;font-weight:600;color:#16121C;margin-bottom:6px">Базовый вариант</span>
+<span style="font-size:12px;line-height:1.5;color:#4A4157">Заголовок, содержимое, паддинг 16/18, радиус 14.</span>
+</div>
+<div style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px rgba(38,38,46,.05);display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-size:13px;line-height:1.4;font-weight:600;color:#16121C">С действием справа</span>
+<span style="font-size:12px;line-height:1.5;color:#4A4157">Действие выключено вправо и не конкурирует с заголовком.</span>
+</span>
+<button type="button" style="appearance:none;cursor:pointer;flex:0 0 auto;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:999px;padding:6px 14px;font-size:12px;line-height:1.4;font-weight:600;color:#7B2BE0;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0">Открыть</button>
+</div>
+</div>
+<p style="margin:0;font-size:12px;line-height:1.5;color:#6B6178">Действие живёт в шапке карточки, а не под текстом — иначе при длинном содержимом кнопка уезжает за пределы первого экрана.</p>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0">08 · Головная карточка денег</span>
+<div style="background:linear-gradient(180deg,#DEC6FB 0%,#CFAEF7 100%);border-radius:14px;padding:20px 22px;box-shadow:0 6px 14px rgba(38,38,46,.07),0 1px 2px rgba(38,38,46,.05)">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#16121C;margin-bottom:14px">Деньги · август 2026</span>
+<div class="pd-4" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+<sc-for list="{{ moneyHead }}" as="m" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;text-align:right">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:17px;line-height:1.24;color:#16121C;font-variant-numeric:tabular-nums">{{ m.sum }}</span>
+<span style="font-size:12px;line-height:1.5;color:#16121C">{{ m.label }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+<p style="margin:0;font-size:12px;line-height:1.5;color:#6B6178">Единственный объёмный элемент рабочего интерфейса: владелец открывает панель ради этих четырёх чисел, и они обязаны читаться раньше таблицы.</p>
+</div>
+
+<div class="pd-split" style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0">09 · Карточка графика</span>
+<div style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px rgba(38,38,46,.05);display:flex;gap:20px;flex-wrap:wrap">
+<div style="flex:1 1 240px;min-width:0;display:flex;align-items:flex-end;gap:8px;height:132px">
+<sc-for list="{{ chart }}" as="c" hint-placeholder-count="6">
+<span style="flex:1 1 0;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;height:100%">
+<span style="display:block;height:{{ c.inH }};background:#7B2BE0;border-radius:6px 6px 0 0"></span>
+<span style="display:block;height:{{ c.outH }};background:#5FE6B6;border-radius:0 0 6px 6px"></span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178;text-align:center">{{ c.month }}</span>
+</span>
+</sc-for>
+</div>
+<div style="flex:0 0 auto;display:flex;flex-direction:column;gap:10px">
+<span style="display:flex;align-items:center;gap:8px;font-size:12px;line-height:1.5;color:#4A4157"><span style="width:10px;height:10px;border-radius:6px;background:#7B2BE0;display:block"></span>Поступления</span>
+<span style="display:flex;align-items:center;gap:8px;font-size:12px;line-height:1.5;color:#4A4157"><span style="width:10px;height:10px;border-radius:6px;background:#5FE6B6;display:block"></span>Выплаты</span>
+</div>
+</div>
+<p style="margin:0;font-size:12px;line-height:1.5;color:#6B6178">Легенда — список сбоку, а не подписи на столбцах: подписи внутри графика первыми ломаются на 480px.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0">10 · Стат-плитка</span>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+<sc-for list="{{ statTiles }}" as="s" hint-placeholder-count="4">
+<div style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:17px;line-height:1.24;color:#16121C;font-variant-numeric:tabular-nums">{{ s.value }}</span>
+<span style="font-size:12px;line-height:1.5;color:#6B6178">{{ s.label }}</span>
+</div>
+</sc-for>
+</div>
+<p style="margin:0;font-size:12px;line-height:1.5;color:#6B6178">Подпись плитки не красится в цвет статуса: цветная подпись читается как кликабельная и оператор пытается по ней нажать.</p>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0">11 · Таблица заказов</span>
+<div class="pd-scroll" style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<table style="min-width:860px;width:100%;border-collapse:collapse;font-size:12px;line-height:1.5">
+<thead>
+<tr style="border-bottom:1px solid #EAE3F2">
+<sc-for list="{{ tableHead }}" as="th" hint-placeholder-count="7">
+<th scope="col" style="padding:12px 14px;text-align:{{ th.align }};font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#6B6178;font-weight:400;white-space:nowrap">{{ th.label }}</th>
+</sc-for>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{ orders }}" as="o" hint-placeholder-count="4">
+<tr style="border-bottom:1px solid #F2ECF7">
+<td style="padding:14px;color:#16121C;white-space:nowrap">{{ o.client }}</td>
+<td style="padding:14px;color:#4A4157;white-space:nowrap">{{ o.type }}</td>
+<td style="padding:14px;color:#4A4157;white-space:nowrap">{{ o.curator }}</td>
+<td style="padding:14px;white-space:nowrap"><span style="background:{{ o.statusBg }};color:{{ o.statusFg }};border-radius:999px;padding:5px 10px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase">{{ o.status }}</span></td>
+<td style="padding:14px;text-align:right;font-family:'JetBrains Mono','SFMono-Regular',monospace;color:#16121C;font-variant-numeric:tabular-nums;white-space:nowrap">{{ o.sum }}</td>
+<td style="padding:14px;text-align:right;font-family:'JetBrains Mono','SFMono-Regular',monospace;color:#4A4157;font-variant-numeric:tabular-nums;white-space:nowrap">{{ o.paid }}</td>
+<td style="padding:14px;text-align:right;font-family:'JetBrains Mono','SFMono-Regular',monospace;color:#4A4157;font-variant-numeric:tabular-nums;white-space:nowrap">{{ o.due }}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<p style="margin:0;font-size:12px;line-height:1.5;color:#6B6178">Суммы моноширинные и выключены вправо: разряды выстраиваются в столбец, и порядок величины виден без чтения цифр.</p>
+</div>
+
+<div class="pd-split" style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0">12 · Ряд фильтров и пагинация</span>
+<div style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:14px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+<span style="border:1px solid #EAE3F2;border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;color:#4A4157;background:#FFFFFF;white-space:nowrap">{{ f.label }}</span>
+</sc-for>
+<span style="margin-left:auto;display:flex;align-items:center;gap:8px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178;font-variant-numeric:tabular-nums">1—24 из 312</span>
+<span style="width:32px;height:32px;border:1px solid #EAE3F2;border-radius:999px;display:flex;align-items:center;justify-content:center"><span aria-hidden="true" style="width:14px;height:14px;display:block;background:#7B2BE0;-webkit-mask:{{ arrowLeft }};mask:{{ arrowLeft }}"></span></span>
+<span style="width:32px;height:32px;border:1px solid #EAE3F2;border-radius:999px;display:flex;align-items:center;justify-content:center"><span aria-hidden="true" style="width:14px;height:14px;display:block;background:#7B2BE0;-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
+</span>
+</div>
+<p style="margin:0;font-size:12px;line-height:1.5;color:#6B6178">Счётчик «1—24 из 312» стоит рядом со стрелками, а не над таблицей — оператор понимает, сколько ещё листать, в момент нажатия.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0">13 · Табы со счётчиками</span>
+<div style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:8px;display:flex;flex-wrap:wrap;gap:4px;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+<span style="border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:600;color:{{ t.fg }};background:{{ t.bg }};white-space:nowrap">{{ t.label }}</span>
+</sc-for>
+</div>
+<p style="margin:0;font-size:12px;line-height:1.5;color:#6B6178">Счётчик — часть подписи таба, а не отдельная плашка: отдельная плашка на активном табе даёт два фона друг на друге и теряет контраст.</p>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;color:#7B2BE0">14 · Карточка заказа в сетке · 15 · Панель раскрытого заказа</span>
+<div class="pd-3" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+<sc-for list="{{ orderCards }}" as="o" hint-placeholder-count="3">
+<button type="button" aria-expanded="{{ o.expanded }}" onClick="{{ o.toggle }}" style="appearance:none;cursor:pointer;text-align:left;background:#FFFFFF;border:1px solid {{ o.border }};border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(38,38,46,.05);transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0">
+<span style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<span style="font-size:13px;line-height:1.4;font-weight:600;color:#16121C">{{ o.client }}</span>
+<span style="font-size:12px;line-height:1.5;color:#6B6178">{{ o.type }}</span>
+</span>
+<span style="flex:0 0 auto;background:{{ o.statusBg }};color:{{ o.statusFg }};border-radius:999px;padding:5px 10px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase">{{ o.status }}</span>
+</span>
+<span style="display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid #F2ECF7">
+<span style="display:flex;justify-content:space-between;gap:12px;font-size:12px;line-height:1.5;color:#4A4157"><span>Куратор</span><span style="color:#16121C">{{ o.curator }}</span></span>
+<span style="display:flex;justify-content:space-between;gap:12px;font-size:12px;line-height:1.5;color:#4A4157"><span>Срок</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;color:#16121C;font-variant-numeric:tabular-nums">{{ o.deadline }}</span></span>
+<span style="display:flex;justify-content:space-between;gap:12px;font-size:12px;line-height:1.5;color:#4A4157"><span>Сумма · долг</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;color:#16121C;font-variant-numeric:tabular-nums">{{ o.sum }} · {{ o.due }}</span></span>
+</span>
+</button>
+</sc-for>
+</div>
+<sc-if value="{{ hasOpenOrder }}" hint-placeholder-val="{{ false }}">
+<div style="background:#FFFFFF;border:1px solid #DDC4FA;border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;gap:20px;box-shadow:0 6px 14px rgba(38,38,46,.07),0 1px 2px rgba(38,38,46,.05)">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">Заказ {{ openOrder.code }}</span>
+<span style="font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">{{ openOrder.client }} · {{ openOrder.type }}</span>
+<span style="font-size:12px;line-height:1.6;color:#4A4157;max-width:72ch">{{ openOrder.task }}</span>
+</div>
+<span style="flex:0 0 auto;display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:17px;line-height:1.24;color:#16121C;font-variant-numeric:tabular-nums">{{ openOrder.sum }}</span>
+<span style="font-size:12px;line-height:1.5;color:#6B6178">остаток {{ openOrder.due }}</span>
+</span>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">16 · Полоса этапов</span>
+<div class="pd-scroll">
+<div style="min-width:620px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px">
+<sc-for list="{{ stages }}" as="s" hint-placeholder-count="6">
+<span style="display:flex;flex-direction:column;gap:6px">
+<span style="height:3px;border-radius:999px;background:{{ s.bar }};display:block"></span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:{{ s.numColor }}">{{ s.num }}</span>
+<span style="font-size:12px;line-height:1.5;font-weight:600;color:{{ s.titleColor }}">{{ s.title }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase;color:{{ s.statusColor }}">{{ s.status }}</span>
+</span>
+</sc-for>
+</div>
+</div>
+<p style="margin:0;font-size:12px;line-height:1.5;color:#6B6178">Пройденное, текущее и предстоящее различаются цветом текста и полосы. Прозрачность запрещена: она снижает контраст ниже порога и делает предстоящие этапы нечитаемыми.</p>
+</div>
+
+<div class="pd-2" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">17 · Проектная команда</span>
+<sc-for list="{{ crew }}" as="c" hint-placeholder-count="4">
+<div style="border:1px solid #EAE3F2;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+<span aria-hidden="true" style="width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:{{ c.bg }};display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:{{ c.fg }}">{{ c.initials }}</span>
+<span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+<span style="font-size:13px;line-height:1.4;font-weight:600;color:#16121C">{{ c.name }}</span>
+<span style="font-size:12px;line-height:1.5;color:#6B6178">{{ c.role }} · {{ c.load }}</span>
+</span>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Материалы · 19 · Загрузка</span>
+<sc-for list="{{ materials }}" as="m" hint-placeholder-count="2">
+<div style="border:1px solid #EAE3F2;border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+<span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+<span style="font-size:13px;line-height:1.4;font-weight:600;color:#16121C">{{ m.file }}</span>
+<span style="font-size:12px;line-height:1.5;color:#6B6178">{{ m.version }} · {{ m.who }} · {{ m.date }}</span>
+</span>
+<span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">{{ m.size }}</span>
+</div>
+</sc-for>
+<div style="border:1px dashed #DDC4FA;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;background:#F4EAFE">
+<span style="font-size:12px;line-height:1.5;color:#4A4157">Загрузить материал: файл, номер версии, комментарий. Автор загрузки подставляется системой.</span>
+<span style="align-self:flex-start;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 18px;font-size:12px;line-height:1.4;font-weight:600">Выбрать файл</span>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">18 · История платежей</span>
+<div class="pd-scroll">
+<div style="min-width:620px;display:flex;flex-direction:column;gap:6px">
+<sc-for list="{{ payments }}" as="p" hint-placeholder-count="4">
+<div style="border:1px solid #EAE3F2;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:14px">
+<span style="flex:0 0 96px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178;font-variant-numeric:tabular-nums">{{ p.date }}</span>
+<span style="flex:0 0 auto;background:{{ p.bg }};color:{{ p.fg }};border-radius:999px;padding:5px 10px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">{{ p.status }}</span>
+<span style="flex:1 1 auto;min-width:0;font-size:12px;line-height:1.5;color:#4A4157">{{ p.note }}</span>
+<span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.4;color:{{ p.sumColor }};font-variant-numeric:tabular-nums;text-align:right">{{ p.sum }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+<p style="margin:0;font-size:12px;line-height:1.5;color:#6B6178">Направление платежа закодировано знаком суммы и цветом статуса одновременно — только цветом нельзя, дальтоник не отличит поступление от выплаты.</p>
+</div>
+</div>
+</sc-if>
+<p style="margin:0;font-size:12px;line-height:1.5;color:#6B6178">Карточка и панель связаны состоянием: клик раскрывает заказ, повторный сворачивает. Панель открывается под сеткой, а не в модальном окне — оператор видит соседние заказы и не теряет контекст очереди.</p>
+</div>
+
+</div>
+</div>
+</section>
+
+<section id="states" data-screen-label="04 Состояния" class="pd-pad" style="max-width:1220px;margin:64px auto 0;padding:0 30px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #EAE3F2">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Раздел 04</span>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C">Состояния</h2>
+</div>
+<span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto">По три состояния у таблицы, сетки карточек и списка</span>
+</div>
+
+<div class="pd-3" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+<sc-for list="{{ blockStates }}" as="b" hint-placeholder-count="3">
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:18px 20px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05);display:flex;flex-direction:column;gap:14px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">{{ b.name }}</span>
+<div style="border:1px solid #EAE3F2;border-radius:10px;padding:14px;background:#F8F5FC;display:flex;flex-direction:column;gap:8px">
+<span style="font-size:13px;line-height:1.4;font-weight:600;color:#16121C">Пусто</span>
+<span style="font-size:12px;line-height:1.5;color:#4A4157">{{ b.empty }}</span>
+<span style="align-self:flex-start;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 16px;font-size:12px;line-height:1.4;font-weight:600">Сбросить фильтры</span>
+</div>
+<div style="border:1px solid #EAE3F2;border-radius:10px;padding:14px;background:#FFFFFF;display:flex;flex-direction:column;gap:8px">
+<span style="font-size:13px;line-height:1.4;font-weight:600;color:#16121C">Загрузка</span>
+<span style="display:block;height:12px;border-radius:6px;background:#F4EAFE"></span>
+<span style="display:block;height:12px;width:72%;border-radius:6px;background:#F4EAFE"></span>
+<span style="display:block;height:12px;width:48%;border-radius:6px;background:#F4EAFE"></span>
+</div>
+<div style="border:1px solid #FAE7E5;border-radius:10px;padding:14px;background:#FAE7E5;display:flex;flex-direction:column;gap:8px">
+<span style="font-size:13px;line-height:1.4;font-weight:600;color:#8E2C22">Ошибка</span>
+<span style="font-size:12px;line-height:1.5;color:#8E2C22">{{ b.error }}</span>
+<span style="align-self:flex-start;background:#FFFFFF;border:1px solid #8E2C22;color:#8E2C22;border-radius:999px;padding:8px 16px;font-size:12px;line-height:1.4;font-weight:600">Повторить</span>
+</div>
+</div>
+</sc-for>
+</div>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Пустое состояние называет применённые фильтры и число записей в выгрузке. «Ничего не найдено» без причины заставляет оператора перебирать фильтры вслепую.</p>
+
+<h3 style="margin:32px 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Кнопки</h3>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+<button type="button" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:12px 24px;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="background:#16121C">Обычная · наведите и нажмите</button>
+<button type="button" disabled="{{ true }}" style="appearance:none;border:1px solid #EAE3F2;cursor:not-allowed;background:#F8F5FC;color:#6B6178;border-radius:999px;padding:12px 24px;font-size:13px;line-height:1.4;font-weight:600">Недоступна</button>
+<span style="font-size:12px;line-height:1.5;color:#6B6178;max-width:40ch">Недоступная кнопка не гасится прозрачностью — она получает свой фон и цвет из токенов.</span>
+</div>
+
+<h3 style="margin:32px 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Поля</h3>
+<div class="pd-3" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+<label style="display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.5;color:#6B6178">Обычное и фокус
+<input type="text" placeholder="Фамилия и инициалы" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:13px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0"></label>
+<label style="display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.5;color:#6B6178">Недоступно
+<input type="text" value="Заказ закрыт" disabled="{{ true }}" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:13px;color:#6B6178;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:10px"></label>
+<label style="display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.5;color:#8E2C22">Ошибка ввода
+<input type="text" value="7700000000" aria-invalid="true" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;color:#16121C;background:#FFFFFF;border:1px solid #8E2C22;border-radius:10px">
+<span style="font-size:12px;line-height:1.5;color:#8E2C22">ИНН не проходит проверку контрольного разряда</span></label>
+</div>
+<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Фокус — outline 2px #7B2BE0 с отступом 2px и всегда отличается от наведения: при навигации с клавиатуры наведение не наступает, и без отдельного фокуса пользователь теряет каретку.</p>
+</section>
+
+<section id="data" data-screen-label="05 Данные" class="pd-pad" style="max-width:1220px;margin:64px auto 0;padding:0 30px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #EAE3F2">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Раздел 05</span>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C">Данные для примеров</h2>
+</div>
+<span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto">Предельные значения, на которых проверяется вёрстка</span>
+</div>
+
+<div class="pd-2" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:18px 20px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05);display:flex;flex-direction:column;gap:12px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">ФИО · предел 44 символа</span>
+<span style="font-size:13px;line-height:1.4;color:#16121C">Нгуен Тхи Хоанг Ань Мин Куанг Фыонг Ле Тхань</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">44 симв. · переносится, не обрезается</span>
+<span style="font-size:13px;line-height:1.4;color:#16121C;padding-top:8px;border-top:1px solid #F2ECF7">Ли Ч.</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">5 симв. · колонка не схлопывается</span>
+</div>
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:18px 20px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05);display:flex;flex-direction:column;gap:12px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">Тема работы · до 444 символов</span>
+<span style="font-size:13px;line-height:1.6;color:#4A4157">{{ longTopic }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">В карточке заказа тема сворачивается до двух строк, в панели раскрытого заказа показывается целиком.</span>
+</div>
+</div>
+
+<h3 style="margin:24px 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Типы работ · одиннадцать</h3>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{ workTypes }}" as="w" hint-placeholder-count="11">
+<span style="border:1px solid #EAE3F2;border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;color:#4A4157;background:#FFFFFF">{{ w.label }}</span>
+</sc-for>
+</div>
+
+<div class="pd-2" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:24px">
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:18px 20px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0;margin-bottom:12px">Суммы · от 5 000 до 600 000 ₽</span>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ sums }}" as="s" hint-placeholder-count="4">
+<span style="display:flex;justify-content:space-between;gap:16px;font-size:12px;line-height:1.5;color:#4A4157;padding-bottom:8px;border-bottom:1px solid #F2ECF7"><span>{{ s.label }}</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;color:#16121C;font-variant-numeric:tabular-nums;text-align:right">{{ s.value }}</span></span>
+</sc-for>
+</div>
+</div>
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:18px 20px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0;margin-bottom:12px">Даты</span>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ dates }}" as="d" hint-placeholder-count="3">
+<span style="display:flex;justify-content:space-between;gap:16px;font-size:12px;line-height:1.5;color:#4A4157;padding-bottom:8px;border-bottom:1px solid #F2ECF7"><span>{{ d.label }}</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;color:#16121C;font-variant-numeric:tabular-nums">{{ d.value }}</span></span>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div style="border:1px solid #EAE3F2;border-radius:14px;padding:18px 20px;background:#F8F5FC;margin-top:16px">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178;margin-bottom:12px">Каких полей в системе нет</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{ absentFields }}" as="a" hint-placeholder-count="6">
+<span style="border:1px solid #EAE3F2;border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;color:#6B6178;background:#FFFFFF">{{ a.label }}</span>
+</sc-for>
+</div>
+<p style="margin:12px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Список закрывает частый сценарий: верстальщик придумывает «рейтинг куратора» или «оценку работы», экран уходит в разработку, и поле оказывается нечем наполнить.</p>
+</div>
+</section>
+
+<section id="acceptance" data-screen-label="06 Приёмка" class="pd-pad" style="max-width:1220px;margin:64px auto 96px;padding:0 30px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #EAE3F2">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Раздел 06</span>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C">Приёмка</h2>
+</div>
+<span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto">Факты с числами, а не галочки</span>
+</div>
+<div class="pd-scroll" style="border:1px solid #EAE3F2;border-radius:14px;background:#FFFFFF;box-shadow:0 1px 2px rgba(38,38,46,.05)">
+<table style="min-width:620px;width:100%;border-collapse:collapse;font-size:13px;line-height:1.5">
+<thead>
+<tr style="border-bottom:1px solid #EAE3F2">
+<th scope="col" style="padding:12px 16px;text-align:left;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#6B6178;font-weight:400">Критерий</th>
+<th scope="col" style="padding:12px 16px;text-align:right;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#6B6178;font-weight:400">Факт</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{ acceptance }}" as="a" hint-placeholder-count="10">
+<tr style="border-bottom:1px solid #F2ECF7">
+<td style="padding:12px 16px;color:#4A4157">{{ a.name }}</td>
+<td style="padding:12px 16px;text-align:right;font-family:'JetBrains Mono','SFMono-Regular',monospace;color:#16121C;font-variant-numeric:tabular-nums;white-space:nowrap">{{ a.value }}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<div style="border:1px solid #5FE6B6;background:#E6F9F1;border-radius:14px;padding:18px 20px;margin-top:16px">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#0E4E3C;margin-bottom:8px">Значения вне токенов</span>
+<p style="margin:0;font-size:13px;line-height:1.6;color:#0E4E3C">Список пуст. Каждый цвет, кегль, радиус, тень и отступ документа объявлены в разделе 01. Если новый экран требует значения, которого здесь нет, оно сначала добавляется в раздел 01 и только потом в вёрстку.</p>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
+class Component extends DCLogic {
+  state = { sidebarOpen: true, contact: 0, sent: false, openOrder: 0 };
+  mask(i){ return "url('./assets/icons/" + i + ".svg') center/contain no-repeat"; }
+  renderVals(){
+    const rub = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0') + '\u00A0₽';
+    const order = (label, bg, fg) => ({ label, bg, fg });
+    const orderStatuses = [
+      order('Заявка', '#F4EAFE', '#5E17B8'),
+      order('ТЗ согласовано', '#EDE1FC', '#1F5AA8'),
+      order('В работе', '#E1F8EE', '#0E4E3C'),
+      order('На приёмке', '#FDF3E0', '#7A5312'),
+      order('Правки', '#FBEDE7', '#8A3D22'),
+      order('Сдано', '#E6F9F1', '#14663F'),
+      order('Просрочено', '#FAE7E5', '#8E2C22')
+    ];
+    const moneyStatuses = [
+      order('Поступило', '#E6F9F1', '#14663F'),
+      order('Ожидается', '#F4EAFE', '#5E17B8'),
+      order('Просрочено', '#FAE7E5', '#8E2C22'),
+      order('Выплачено исполнителю', '#F4EFF8', '#4A4157')
+    ];
+    const st = i => orderStatuses[i];
+    const ordersRaw = [
+      ['Нгуен Тхи Хоанг Ань Мин Куанг Фыонг Ле Тхань', 'Кандидатская', 'Соколов А. В.', 2, 240000, 120000],
+      ['Ли Ч.', 'Научная статья', 'Ильина М. П.', 5, 38000, 0],
+      ['Ковалёва Е. Н.', 'Докторская', 'Громов Д. С.', 3, 600000, 180000],
+      ['Абдуллаев Р. Т.', 'НИОКР', 'Соколов А. В.', 6, 415000, 415000]
+    ];
+    const orders = ordersRaw.map(([client, type, curator, si, sum, due]) => ({
+      client, type, curator,
+      status: st(si).label, statusBg: st(si).bg, statusFg: st(si).fg,
+      sum: rub(sum), paid: rub(sum - due), due: rub(due)
+    }));
+    const cardsRaw = [
+      ['PD-2041', 'Ковалёва Е. Н.', 'Докторская диссертация', 'Громов Д. С.', '14.11.2026', 600000, 180000, 3,
+       'Перестроить логику доказательства в третьей главе: гипотеза не выводится из постановки задачи. Согласовать структуру с требованиями диссовета и подготовить автора к вопросам оппонентов.'],
+      ['PD-2042', 'Нгуен Тхи Хоанг Ань Мин Куанг Фыонг Ле Тхань', 'Кандидатская диссертация', 'Соколов А. В.', '02.03.2027', 240000, 120000, 2,
+       'Сопровождение иностранного аспиранта: терминология, стилистика русского научного текста, подготовка устного доклада и репетиция ответов на вопросы совета.'],
+      ['PD-2043', 'Абдуллаев Р. Т.', 'НИОКР для бизнеса', 'Соколов А. В.', '30.09.2026', 415000, 415000, 6,
+       'Отчёт по НИОКР и техническая документация. Проверка соответствия отраслевым требованиям, оформление приложений и обоснование результатов.']
+    ];
+    const openIdx = this.state.openOrder;
+    const orderCards = cardsRaw.map(([code, client, type, curator, deadline, sum, due, si], i) => ({
+      code, client, type, curator, deadline,
+      sum: rub(sum), due: rub(due),
+      status: st(si).label, statusBg: st(si).bg, statusFg: st(si).fg,
+      border: i === openIdx ? '#DDC4FA' : '#EAE3F2',
+      expanded: i === openIdx ? 'true' : 'false',
+      toggle: () => this.setState({ openOrder: this.state.openOrder === i ? -1 : i })
+    }));
+    const oc = cardsRaw[openIdx];
+    const openOrder = oc ? {
+      code: oc[0], client: oc[1], type: oc[2], task: oc[8],
+      sum: rub(oc[5]), due: rub(oc[6])
+    } : {};
+    const stageAt = 3;
+    const stages = ['Заявка', 'Консультация', 'ТЗ и договор', 'Работа по этапам', 'Приёмка', 'Подготовка к защите'].map((title, i) => ({
+      title, num: '0' + (i + 1),
+      bar: i <= stageAt ? '#7B2BE0' : '#EAE3F2',
+      numColor: i <= stageAt ? '#7B2BE0' : '#6B6178',
+      titleColor: i <= stageAt ? '#16121C' : '#6B6178',
+      statusColor: i < stageAt ? '#7B2BE0' : (i === stageAt ? '#16121C' : '#6B6178'),
+      status: i < stageAt ? 'Принят' : (i === stageAt ? 'В работе' : 'Впереди')
+    }));
+    const contact = this.state.contact;
+    return {
+      nav: [
+        ['01 Токены', '#tokens'], ['02 Каркасы', '#frames'], ['03 Компоненты', '#components'],
+        ['04 Состояния', '#states'], ['05 Данные', '#data'], ['06 Приёмка', '#acceptance']
+      ].map(([label, href]) => ({ label, href })),
+      surfaces: [
+        ['Рабочая область', 'surface-app', '#F8F5FC'],
+        ['Страница сайта', 'surface-site', '#FFFFFF'],
+        ['Карточка', 'surface-card', '#FFFFFF'],
+        ['Таблица', 'surface-table', '#FFFFFF'],
+        ['Граница', 'border', '#EAE3F2'],
+        ['Разделитель', 'divider', '#F2ECF7'],
+        ['Инверсная', 'surface-inverse', '#16121C']
+      ].map(([name, token, value]) => ({ name, token, value })),
+      inks: [
+        ['Основной', 'ink', '#16121C', '#FFFFFF', 'Заголовки, суммы, значения'],
+        ['Вторичный', 'ink-secondary', '#4A4157', '#FFFFFF', 'Основной текст, описания'],
+        ['Приглушённый', 'ink-muted', '#6B6178', '#FFFFFF', 'Светлее не бывает, порог 4.5:1'],
+        ['Инверсный', 'ink-inverse', '#FFFFFF', '#16121C', 'Текст на тёмной поверхности']
+      ].map(([name, token, value, on, note]) => ({ name, token, value, on, note })),
+      accents: [
+        ['Сирень', 'accent', '#7B2BE0', 'Ссылки, активные состояния, фокус'],
+        ['Сирень нажатие', 'accent-press', '#5E17B8', 'Нажатие и посещённая ссылка'],
+        ['Подсветка', 'accent-mark', '#DDC4FA', 'Плашка на ключевой мысли'],
+        ['Подложка', 'accent-tint', '#F4EAFE', 'Фон вложенного блока'],
+        ['Мята', 'mint', '#3DDCA0', 'Плашки и чипы, не текст'],
+        ['Мята светлая', 'mint-soft', '#5FE6B6', 'Плашки и границы'],
+        ['Мята тёмная', 'mint-ink', '#0E4E3C', 'Текст на мяте и диаграммы'],
+        ['Чёрный', 'button', '#16121C', 'Pill-кнопки, топ-бар']
+      ].map(([name, token, value, note]) => ({ name, token, value, note })),
+      orderStatuses, moneyStatuses,
+      sizes: [
+        ['28px', 'size-1', 'Заголовок документа'],
+        ['22px', 'size-2', 'Заголовок раздела'],
+        ['17px', 'size-3', 'Подзаголовок и крупное число'],
+        ['15px', 'size-4', 'Заголовок карточки'],
+        ['13px', 'size-5', 'Основной текст'],
+        ['12px', 'size-6', 'Плотный текст интерфейса'],
+        ['11px', 'size-7', 'Моно-лейбл, минимум']
+      ].map(([px, token, sample]) => ({ px, token, sample })),
+      leadings: [
+        ['1.24', 'Заголовки и числа: строки стоят плотно, блок читается как один объект.'],
+        ['1.4', 'Подзаголовки и подписи в две строки.'],
+        ['1.5', 'Интерфейсный текст: списки, ячейки, подписи полей.'],
+        ['1.6', 'Абзацы длиннее трёх строк на публичных страницах.']
+      ].map(([value, sample]) => ({ value, sample })),
+      radii: ['14px', '10px', '6px', '999px', '50%'].map(value => ({ value })),
+      shadows: [
+        ['Уровень 0 · без тени', 'none'],
+        ['Уровень 1 · карточка', '0 1px 2px rgba(38,38,46,.05)'],
+        ['Уровень 2 · поднятая', '0 6px 14px rgba(38,38,46,.07), 0 1px 2px rgba(38,38,46,.05)']
+      ].map(([name, value]) => ({ name, value })),
+      metrics: [
+        ['8', 'Шаг сетки'], ['1220', 'Контейнер сайта'], ['1440', 'Рабочая область'],
+        ['48', 'Высота строки таблицы'], ['56', 'Рельс'], ['232', 'Сайдбар'],
+        ['56', 'Топ-бар'], ['96', 'Ритм между секциями']
+      ].map(([value, name]) => ({ value, name })),
+      railIcons: ['clipboard-list', 'users', 'file-text', 'calendar-days', 'award'].map(i => ({ mask: this.mask(i) })),
+      sidebar: ['Заказы', 'Клиенты', 'Материалы', 'Деньги', 'Платежи', 'Команда', 'Кураторы'].map((label, i) => ({
+        label,
+        bg: i === 0 ? '#F4EAFE' : 'transparent',
+        color: i === 0 ? '#5E17B8' : '#4A4157',
+        weight: i === 0 ? 600 : 500
+      })),
+      sidebarOpen: this.state.sidebarOpen,
+      sidebarLabel: this.state.sidebarOpen ? 'Свернуть в рельс' : 'Развернуть сайдбар',
+      toggleSidebar: () => this.setState({ sidebarOpen: !this.state.sidebarOpen }),
+      roles: [
+        ['Владелец', 'Заказы · Клиенты · Материалы · Деньги · Платежи · Команда · Кураторы'],
+        ['Куратор', 'Заказы (назначенные) · Материалы · Команда проекта'],
+        ['Клиент', 'Свои заказы · Материалы · Платежи по своим заказам']
+      ].map(([role, sections]) => ({ role, sections })),
+      metricPlates: [
+        ['linear-gradient(180deg,#DEC6FB 0%,#CFAEF7 100%)', '#16121C', 'По этапам', 'план, приёмка и смета зафиксированы в договоре'],
+        ['linear-gradient(180deg,#7BEDC6 0%,#5FE6B6 100%)', '#0E4E3C', 'Команда', 'куратор, методолог, редактор и менеджер'],
+        ['linear-gradient(180deg,#F8F5FC 0%,#F2ECF7 100%)', '#16121C', '2016', 'год начала работы сервиса']
+      ].map(([bg, fg, value, note]) => ({ bg, fg, value, note })),
+      routes: [
+        ['#7B2BE0', '#DDC4FA', '#7B2BE0', 'Научная степень', 'Довести диссертацию до защиты', 'Аспирантам и соискателям'],
+        ['#3DDCA0', '#5FE6B6', '#0E4E3C', 'Квалификационная работа', 'Сдать диплом и опубликовать статью', 'Студентам и специалистам'],
+        ['#BFB4CE', '#F2ECF7', '#4A4157', 'Наука для бизнеса', 'Защитить разработку и получить грант', 'Компаниям и коллективам']
+      ].map(([edge, bg, ink, label, title, who]) => ({ edge, bg, ink, label, title, who })),
+      guarantees: [
+        ['#7B2BE0', '#7B2BE0', 'Договор об оказании услуг', 'Объём и сроки зафиксированы письменно', 'В договоре перечислены этапы, состав работ и дата сдачи. Объём меняется дополнительным соглашением.'],
+        ['#3DDCA0', '#0E4E3C', 'Возврат по заявлению', 'Этап не сдан в срок — оплата возвращается', 'Возврат касается конкретного этапа и оформляется заявлением. Решение диссовета не гарантируем.'],
+        ['#BFB4CE', '#4A4157', 'Соглашение о неразглашении', 'Материалы не выходят за пределы команды', 'NDA подписывают куратор, редактор и менеджер. Тема и текст не уходят третьим лицам.']
+      ].map(([edge, ink, doc, title, text]) => ({ edge, ink, doc, title, text })),
+      contactTabs: ['E-mail', 'Телефон'].map((label, i) => ({
+        label, active: i === contact, inactive: i !== contact,
+        pick: () => this.setState({ contact: i })
+      })),
+      contactType: contact === 0 ? 'email' : 'tel',
+      contactAuto: contact === 0 ? 'email' : 'tel',
+      contactPlaceholder: contact === 0 ? 'Ваш e-mail' : 'Ваш телефон',
+      sent: this.state.sent,
+      submitDemo: e => { e.preventDefault(); this.setState({ sent: true }); },
+      moneyHead: [
+        ['Поступило за август', 1284000], ['Ожидается', 640000],
+        ['Просрочено', 95000], ['К выплате исполнителям', 412000]
+      ].map(([label, n]) => ({ label, sum: rub(n) })),
+      chart: [
+        ['Мар', 62, 22], ['Апр', 74, 28], ['Май', 58, 24],
+        ['Июн', 88, 34], ['Июл', 70, 30], ['Авг', 94, 32]
+      ].map(([month, a, b]) => ({ month, inH: a + '%', outH: b + '%' })),
+      statTiles: [
+        ['312', 'Заказов в работе'], ['48', 'На приёмке'],
+        ['7', 'Просрочено'], ['24', 'Кураторов занято']
+      ].map(([value, label]) => ({ value, label })),
+      tableHead: [
+        ['Клиент', 'left'], ['Тип работы', 'left'], ['Куратор', 'left'], ['Статус', 'left'],
+        ['Сумма', 'right'], ['Оплачено', 'right'], ['Долг', 'right']
+      ].map(([label, align]) => ({ label, align })),
+      orders,
+      filters: ['Статус: В работе', 'Тип: Кандидатская', 'Куратор: любой', 'Срок: до 31.12.2026'].map(label => ({ label })),
+      tabs: ['Все 312', 'В работе 186', 'На приёмке 48', 'Просрочено 7'].map((label, i) => ({
+        label,
+        bg: i === 0 ? '#16121C' : 'transparent',
+        fg: i === 0 ? '#FFFFFF' : '#4A4157'
+      })),
+      orderCards, openOrder, stages,
+      hasOpenOrder: openIdx >= 0,
+      crew: [
+        ['ГД', 'Громов Д. С.', 'Куратор, д. х. н.', '4 заказа в работе', '#F4EAFE', '#5E17B8'],
+        ['ИМ', 'Ильина М. П.', 'Научный редактор', '9 заказов в работе', '#E6F9F1', '#0E4E3C'],
+        ['ПА', 'Панова А. К.', 'Методолог', '5 заказов в работе', '#F4EAFE', '#5E17B8'],
+        ['ТС', 'Титов С. В.', 'Менеджер проекта', '17 заказов в работе', '#E6F9F1', '#0E4E3C']
+      ].map(([initials, name, role, load, bg, fg]) => ({ initials, name, role, load, bg, fg })),
+      materials: [
+        ['Глава_3_черновик.docx', 'версия 4', 'Ковалёва Е. Н.', '02.08.2026', '1,4 МБ'],
+        ['Замечания_куратора.pdf', 'версия 1', 'Громов Д. С.', '05.08.2026', '340 КБ']
+      ].map(([file, version, who, date, size]) => ({ file, version, who, date, size })),
+      payments: [
+        ['12.06.2026', 0, 'Этап 1 · методологический разбор', 180000, '#14663F'],
+        ['21.07.2026', 0, 'Этап 2 · научная редактура глав', 240000, '#14663F'],
+        ['30.08.2026', 1, 'Этап 3 · оформление и библиография', 120000, '#5E17B8'],
+        ['05.08.2026', 3, 'Выплата куратору за этап 2', 96000, '#4A4157']
+      ].map(([date, si, note, n, sumColor]) => ({
+        date, note, sum: rub(n), sumColor,
+        bg: moneyStatuses[si].bg, fg: moneyStatuses[si].fg, status: moneyStatuses[si].label
+      })),
+      blockStates: [
+        ['Таблица заказов', 'Фильтры: статус «Просрочено», тип «Докторская», срок до 31.12.2026. В выгрузке 312 записей, под условия не подошла ни одна.', 'Не удалось загрузить заказы: сервер не ответил за 30 секунд.'],
+        ['Сетка карточек', 'Выбран куратор «Панова А. К.» и статус «Сдано». За выбранный период у неё 5 заказов, но все в работе.', 'Список заказов не загрузился. Проверьте соединение и повторите.'],
+        ['Список материалов', 'К заказу PD-2043 материалы ещё не прикреплены. Первую версию загружает автор или куратор.', 'Файлы не загрузились: хранилище недоступно.']
+      ].map(([name, empty, error]) => ({ name, empty, error })),
+      longTopic: 'Разработка и экспериментальное обоснование методики повышения эксплуатационной надёжности элементов теплоэнергетического оборудования на основе комплексного анализа деградационных процессов в условиях переменных термомеханических нагрузок с учётом влияния коррозионной среды и разработкой рекомендаций по продлению остаточного ресурса энергетических установок средней мощности.',
+      workTypes: ['Кандидатская', 'Докторская', 'Магистерская', 'Диплом', 'Статья', 'Монография', 'Патент', 'НИОКР', 'Грант', 'Бизнес-план', 'Прикладное исследование'].map(label => ({ label })),
+      sums: [
+        ['Минимум · научная статья', rub(5000)],
+        ['Медиана · кандидатская', rub(240000)],
+        ['Максимум · докторская', rub(600000)],
+        ['Долг по заказу PD-2041', rub(180000)]
+      ].map(([label, value]) => ({ label, value })),
+      dates: [
+        ['Срок сдачи', '14.11.2026'], ['Дата платежа', '30.08.2026'], ['Загрузка материала', '05.08.2026']
+      ].map(([label, value]) => ({ label, value })),
+      absentFields: ['Рейтинг куратора', 'Оценка работы клиентом', 'Процент готовности', 'Приоритет заказа', 'Тег заказа', 'Комментарий владельца'].map(label => ({ label })),
+      acceptance: [
+        ['Формул тени', '3'],
+        ['Радиусов', '5'],
+        ['Кеглей', '7'],
+        ['Минимальный кегль', '11px'],
+        ['Компонентов', '19'],
+        ['Цветов вне токенов', '0'],
+        ['Блоков с тремя состояниями', '3 из 3'],
+        ['Интерлиньяж коэффициентами', '100%'],
+        ['Минимальный контраст текста', '4.6:1'],
+        ['Плашек без текстовой подписи', '0']
+      ].map(([name, value]) => ({ name, value })),
+      arrowRight: this.mask('arrow-right'),
+      arrowLeft: this.mask('arrow-left'),
+      checkMask: this.mask('check')
+    };
+  }
+}
+</script>
+</body>
+</html>
