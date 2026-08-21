@@ -18,6 +18,13 @@ const mono = JetBrains_Mono({
   display: 'swap',
 });
 
+/**
+ * Демонстрационный стенд закрыт от поисковиков. Иначе временный адрес
+ * попадает в выдачу, перебивает будущий боевой и разводит посетителей
+ * по двум разным сайтам. Включается переменной DEMO_STAND=1.
+ */
+const demoStand = process.env.NEXT_PUBLIC_DEMO_STAND === '1';
+
 export const metadata: Metadata = {
   metadataBase: process.env.NEXT_PUBLIC_SITE_URL
     ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
@@ -25,7 +32,7 @@ export const metadata: Metadata = {
   applicationName: 'ProDisser',
   authors: [{ name: 'ООО «РУСДРОН»' }],
   openGraph: { siteName: 'ProDisser', locale: 'ru_RU', type: 'website' },
-  robots: { index: true, follow: true },
+  robots: demoStand ? { index: false, follow: false } : { index: true, follow: true },
 };
 
 export const viewport: Viewport = {

@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',          // самодостаточная сборка для контейнера на российском VPS
+  // Самодостаточная сборка нужна контейнеру на своём сервере: он запускает
+  // .next/standalone/server.js. На Vercel сервера нет — там страницы и
+  // маршруты раскладываются по функциям платформы, и standalone только
+  // ломает раскладку. VERCEL=1 выставляет сама платформа.
+  output: process.env.VERCEL ? undefined : 'standalone',
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {
