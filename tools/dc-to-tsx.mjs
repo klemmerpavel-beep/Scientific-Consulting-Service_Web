@@ -267,6 +267,25 @@ function convert(html, ctx) {
       stack.push('sc-if');
       continue;
     }
+    if (tag === 'image-slot') {
+      const a = Object.fromEntries(parseAttrs(attrsSrc));
+      const id = a.id || '';
+      const style = a.style ? styleToObject(a.style) : '{}';
+      const cls = a.class ? ` className=${JSON.stringify(a.class)}` : '';
+      const parts = [
+        `slotId=${JSON.stringify(id)}`,
+        `shape=${JSON.stringify(a.shape === 'circle' ? 'circle' : 'rect')}`,
+        `fit=${JSON.stringify(a.fit === 'contain' ? 'contain' : 'cover')}`,
+        `alt=${JSON.stringify(a['data-alt'] || a.placeholder || 'Фотография')}`,
+        `placeholder=${JSON.stringify(a.placeholder || 'Фото')}`,
+        `priority={ABOVE_THE_FOLD.has(${JSON.stringify(id)})}`,
+        `style={${style}}`,
+      ];
+      out += `<PhotoSlot${cls} ${parts.join(' ')} />`;
+      const close = s_indexOfClose(html, i);
+      i = close;
+      continue;
+    }
     if (tag === 'dc-import') {
       problems.push(`${ctx}: <dc-import> требует ручного переноса: ${tagSrc.slice(0, 90)}`);
       i = html.indexOf('</dc-import>', i);
@@ -287,6 +306,12 @@ function convert(html, ctx) {
 
   if (stack.length) problems.push(`${ctx}: незакрытые теги: ${stack.join(', ')}`);
   return out;
+}
+
+/** Пропустить закрывающий </image-slot>, если он идёт следом */
+function s_indexOfClose(html, from) {
+  const m = /^\s*<\/image-slot>/.exec(html.slice(from));
+  return m ? from + m[0].length : from;
 }
 
 /** Конец тега с учётом кавычек */
@@ -351,6 +376,8 @@ const file = `// @ts-nocheck — логика перенесена из маке
 // Правки вносятся в макет и переносятся заново, а не здесь.
 import React from 'react';
 import { submitLead } from '../../lib/submit-lead';
+import PhotoSlot from '../PhotoSlot';
+import { ABOVE_THE_FOLD } from '../photos';
 
 const css = \`
 ${styles.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')}

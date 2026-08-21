@@ -4,6 +4,8 @@
 // Правки вносятся в макет и переносятся заново, а не здесь.
 import React from 'react';
 import { submitLead } from '../../lib/submit-lead';
+import PhotoSlot from '../PhotoSlot';
+import { ABOVE_THE_FOLD } from '../photos';
 
 const css = `
 body{margin:0;background:#FFFFFF}a{color:#7B2BE0;text-decoration:none}a:hover{color:#5E17B8}*:focus-visible{outline:2px solid #7B2BE0;outline-offset:2px}.pd-skip{position:absolute;left:-9999px;top:0;z-index:9;background:#16121C;color:#FFFFFF;padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}.pd-skip:focus{left:0;color:#FFFFFF}.doc-layout{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:48px;align-items:start}.doc-toc{position:sticky;top:24px}.doc-toc-btn{display:none}.doc-toc-list{display:flex;flex-direction:column}.doc-toc-list[hidden]{display:none}
