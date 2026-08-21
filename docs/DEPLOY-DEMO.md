@@ -68,6 +68,18 @@ DIRECT_URL="<прямая строка>" npx prisma migrate status
 
 Должно ответить `Database schema is up to date!`.
 
+**Без командной строки.** У Supabase есть окно SQL — тогда схему можно
+вставить туда. Готовый текст печатает:
+
+```bash
+cd app && npm ci && npm run schema:sql > schema.sql
+```
+
+Содержимое `schema.sql` целиком вставить в Supabase → SQL Editor → Run.
+Скрипт собирает текст из тех же миграций, что и `migrate deploy`, и
+дописывает отметку о применении — без неё Prisma при следующем
+развёртывании решит, что база пустая, и попробует создать таблицы заново.
+
 ### 3 · Проект на Vercel
 
 vercel.com → Add New → Project → Import Git Repository →
