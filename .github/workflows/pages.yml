@@ -37,11 +37,12 @@ jobs:
 
       - run: npm ci
 
+      # Pages включаются один раз вручную: Settings → Pages →
+      # Build and deployment → Source: GitHub Actions. Создать их отсюда
+      # нельзя — у токена рабочего процесса нет такого права.
       - name: Настроить Pages
         id: pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Собрать витрину
         run: npm run build:preview

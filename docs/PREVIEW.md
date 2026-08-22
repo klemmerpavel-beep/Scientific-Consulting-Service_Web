@@ -47,7 +47,14 @@ PREVIEW_BASE_PATH=/Scientific-Consulting-Service_Web npm run build:preview
    Jekyll, а тот пропускает папки с подчёркиванием, и вместе с `_next`
    исчезают все стили и скрипты.
 
-Публикуется само при каждом изменении `main` — `.github/workflows/pages.yml`.
+Публикуется само при каждом изменении `main` —
+`.github/workflows/pages.yml`.
+
+**Один раз нужно включить Pages вручную:** Settings → Pages → Build and
+deployment → Source → **GitHub Actions**. Создать их из рабочего процесса
+нельзя: у его токена нет такого права, попытка отвечает
+`Resource not accessible by integration`. После включения процесс
+проходит сам и дальше вмешательства не требует.
 
 ## Что проверено
 
