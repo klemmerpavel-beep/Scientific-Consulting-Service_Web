@@ -1,0 +1,65 @@
+name: Витрина проекта
+
+# Витрина — семь страниц со всеми переходами и без сервера: заявки не
+# отправляются, базы нет, персональные данные никуда не уходят. Нужна,
+# чтобы показать проект по ссылке. Рабочий сайт разворачивается отдельно,
+# на российской площадке — docs/DEPLOY.md.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Одновременно идёт одна публикация; начатую не прерываем.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      - name: Настроить Pages
+        id: pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Собрать витрину
+        run: npm run build:preview
+        env:
+          # Сайт лежит в подпапке домена по имени репозитория — отсюда
+          # префикс у всех внутренних ссылок и адресов ресурсов.
+          PREVIEW_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -33,7 +33,7 @@ npm run dev                   # http://localhost:3000
 ```
 
 Развёртывание на сервере — `docs/DEPLOY.md`.
-Демонстрационный стенд на Vercel — `docs/DEPLOY-DEMO.md`.
+Витрина проекта для показа — `docs/PREVIEW.md`.
 
 ## Состав репозитория
 

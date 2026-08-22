@@ -91,6 +91,19 @@ export async function submitLead(
     return { ok: false, message: '', fieldErrors: {} };
   }
 
+  // Витрина проекта: страницы выложены статикой, сервера за ними нет.
+  // Форма проверяется по-настоящему, но отправлять заявку некуда — честнее
+  // сказать это прямо, чем показать «Заявка принята» и потерять человека.
+  if (process.env.NEXT_PUBLIC_PREVIEW === '1') {
+    return {
+      ok: false,
+      message:
+        'Это витрина проекта: страницы показаны без сервера, заявка никуда не отправляется. '
+        + 'На рабочем сайте она сохраняется в базу и уходит ответственному.',
+      fieldErrors: {},
+    };
+  }
+
   const payload = collect(form, source, formName);
 
   let res: Response;

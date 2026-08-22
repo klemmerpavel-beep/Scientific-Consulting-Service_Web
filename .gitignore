@@ -2,6 +2,7 @@
 node_modules/
 .next/
 out/
+.preview-aside/
 dist/
 build/
 *.tsbuildinfo

@@ -10,7 +10,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
-    "schema:sql": "node scripts/schema-sql.mjs"
+    "schema:sql": "node scripts/schema-sql.mjs",
+    "build:preview": "node scripts/build-preview.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
