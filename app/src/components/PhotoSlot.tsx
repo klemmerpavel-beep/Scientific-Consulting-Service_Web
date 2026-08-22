@@ -12,11 +12,11 @@ import { PHOTOS } from './photos';
  *
  * Здесь слот ведёт себя честно в обоих состояниях: есть файл — показывает
  * снимок, нет файла — показывает подписанную заглушку, по которой видно,
- * какой именно портрет сюда встанет. Заглушка не выглядит поломкой и не
- * притворяется фотографией.
+ * какой именно портрет сюда встанет.
  *
- * Соответствие «слот → файл» живёт в `photos.ts`: добавить снимок значит
- * положить файл в `public/photos` и вписать одну строку.
+ * Круглые портреты кадрируются штатным `cover`. Прямоугольные слоты, где
+ * человек стоит в полный рост, кадрируются по измерениям снимка — правило
+ * и причина описаны в `photos.ts`.
  */
 
 type Props = {
@@ -47,7 +47,7 @@ export default function PhotoSlot({
   className,
   style,
 }: Props) {
-  const photo = PHOTOS[slotId];
+  const slot = PHOTOS[slotId];
   const radius = shape === 'circle' ? '50%' : '10px';
 
   const box: React.CSSProperties = {
@@ -57,7 +57,7 @@ export default function PhotoSlot({
     overflow: 'hidden',
   };
 
-  if (!photo) {
+  if (!slot) {
     // Заглушка: подписана, не кликается, скрыта от чтения с экрана —
     // название файла посетителю ничего не говорит.
     return (
@@ -72,14 +72,12 @@ export default function PhotoSlot({
           textAlign: 'center',
           padding: 10,
           // Подложка не закрашивается: по канону цветной круг или полоса
-          // под портретом видны и в пустом состоянии. Своя заливка их
-          // перекрывала и обесцвечивала первый экран.
+          // под портретом видны и в пустом состоянии.
           background: 'transparent',
           border: '1px dashed rgba(22,18,28,.22)',
           fontSize: 12,
           lineHeight: 1.5,
           // Подпись читается на всех фактических подложках проекта.
-          // #4A4157 давал 4.28 на лаванде «Аспирантам» (#C79AF3) — мало.
           color: '#3A3247',
         }}
       >
@@ -88,34 +86,50 @@ export default function PhotoSlot({
     );
   }
 
-  // Полосы карточек направлений: фигура входит снизу, голова у верхней
-  // кромки. Снимки пришли в разных пропорциях, и `cover` резал их
-  // по-разному — от 31 % у одного до 2 % у другого, отчего люди выходили
-  // разного размера. Здесь размер задаётся явно множителем `scale`:
-  // высота фигуры равна высоте слота, умноженной на него.
-  const figure = fit === 'contain' && photo.scale !== undefined;
+  const { photo, frame } = slot;
 
-  if (figure) {
+  const common = {
+    className,
+    src: photo.src,
+    alt,
+    width: photo.width,
+    height: photo.height,
+    loading: (priority ? 'eager' : 'lazy') as 'eager' | 'lazy',
+    fetchPriority: (priority ? 'high' : 'auto') as 'high' | 'auto',
+    decoding: 'async' as const,
+  };
+
+  if (frame) {
+    // Масштаб задаётся требуемой шириной головы: в соседних карточках лица
+    // выходят одного размера независимо от крупности исходников.
+    const k = frame.headW / photo.headW;
+    const drawnW = photo.width * k;
+    const drawnH = photo.height * k;
+
+    // Центр головы сводится с центром слота. Сдвиг постоянный в пикселях,
+    // поэтому не разъезжается при изменении ширины слота.
+    const shiftX = drawnW / 2 - photo.headCx * k;
+
+    // Сверху — заданный воздух над макушкой; либо низ снимка ложится
+    // на нижнюю кромку слота.
+    const vertical =
+      frame.anchor === 'top'
+        ? { top: `${(frame.headroom ?? 0) - photo.figTop * k}px` }
+        : { bottom: 0 };
+
     return (
       <span style={{ ...box, display: 'block', position: 'relative' }}>
         <img
-          className={className}
-          src={photo.src}
-          alt={alt}
-          width={photo.width}
-          height={photo.height}
-          loading={priority ? 'eager' : 'lazy'}
-          fetchPriority={priority ? 'high' : 'auto'}
-          decoding="async"
+          {...common}
           style={{
             display: 'block',
             position: 'absolute',
             left: '50%',
-            top: `${photo.offsetY ?? 0}%`,
-            transform: 'translateX(-50%)',
-            width: 'auto',
-            height: `${(photo.scale ?? 1) * 100}%`,
-            objectFit: 'contain',
+            ...vertical,
+            transform: `translateX(calc(-50% + ${shiftX.toFixed(1)}px))`,
+            width: `${drawnW.toFixed(1)}px`,
+            height: `${drawnH.toFixed(1)}px`,
+            maxWidth: 'none',
           }}
         />
       </span>
@@ -124,14 +138,7 @@ export default function PhotoSlot({
 
   return (
     <img
-      className={className}
-      src={photo.src}
-      alt={alt}
-      width={photo.width}
-      height={photo.height}
-      loading={priority ? 'eager' : 'lazy'}
-      fetchPriority={priority ? 'high' : 'auto'}
-      decoding="async"
+      {...common}
       style={{
         ...box,
         display: 'block',

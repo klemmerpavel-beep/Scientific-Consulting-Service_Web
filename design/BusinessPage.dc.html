@@ -37,7 +37,7 @@
 @keyframes bp-marquee-l{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes bp-marquee-r{from{transform:translateX(-50%)}to{transform:translateX(0)}}.bp-ticker:hover .bp-run,.bp-ticker:focus-within .bp-run{animation-play-state:paused}
 
 
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}</style>
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}@media (max-width:1024px){.bp-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.bp-foot{grid-template-columns:minmax(0,1fr)!important}}</style>
 </helmet>
 <div style="position:relative;background:#FFFFFF;color:#16121C;font-family:'Onest','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
 
@@ -515,29 +515,30 @@
 
 </main>
 
-<footer id="contacts" style="position:relative;z-index:1;margin-top:64px;padding-top:64px;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(250,250,253,.7) 26%,#F9F5FC 58%,#F7F2FB 100%);overflow:hidden">
-<div class="bp-pad" style="position:relative;max-width:1220px;margin:0 auto;padding:48px 30px 40px;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.8fr) minmax(0,.9fr);gap:40px;align-items:start">
+<footer id="contacts" style="position:relative;z-index:1;margin-top:96px;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(250,250,253,.7) 26%,#F9F5FC 58%,#F7F2FB 100%);overflow:hidden">
+<div class="bp-foot bp-pad" style="position:relative;max-width:1220px;margin:0 auto;padding:48px 30px 40px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,.85fr) minmax(0,.85fr) minmax(0,.9fr);gap:40px;align-items:start">
 <div style="display:flex;flex-direction:column;gap:16px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:28px;line-height:1.24;font-weight:700;letter-spacing:-.014em"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></span>
 <p style="margin:0;font-size:14px;line-height:1.6;color:#4A4157;max-width:42ch">Научный консалтинг для компаний: НИОКР и отчётность, интеллектуальная собственность, гранты, обоснование внедрения.</p>
+<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Реквизиты</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.5;letter-spacing:.02em;color:#6B6178">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span></div>
 </div>
-<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#16121C">Другие направления</span>
-<a href="./main.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Аспирантам и соискателям</a>
-<a href="./students.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Студентам и специалистам</a>
+<a href="./main.html" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Аспирантам и соискателям</a>
+<a href="./students.html" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Студентам и специалистам</a>
 </div>
-<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#16121C">Меню</span>
-<a href="#trl" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Уровень готовности</a>
-<a href="#packs" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Пять предложений</a>
-<a href="#catalog" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Каталог работ</a>
-<a href="#rights" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Права на результат</a>
-<a href="./index.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Другие направления</a>
+<a href="#trl" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Уровень готовности</a>
+<a href="#packs" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Пять предложений</a>
+<a href="#catalog" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Каталог работ</a>
+<a href="#rights" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Права на результат</a>
+<a href="./index.html" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Другие направления</a>
 </div>
-<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#16121C">Контакты</span>
-<span style="font-size:17px;line-height:1.4;font-weight:500;color:#16121C">8-000-000-00-00</span>
-<a href="mailto:info.prodisser@gmail.com" style="font-size:15px;line-height:1.4;color:#4A4157" style-hover="color:#7B2BE0">info.prodisser@gmail.com</a>
+<span style="display:flex;align-items:center;gap:10px;font-size:17px;line-height:24px;font-weight:500;color:#16121C"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/phone.svg') center/contain no-repeat;mask:url('./assets/icons/phone.svg') center/contain no-repeat"></span> 8-000-000-00-00</span>
+<a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:15px;line-height:22px;color:#4A4157" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/mail.svg') center/contain no-repeat;mask:url('./assets/icons/mail.svg') center/contain no-repeat"></span>info.prodisser@gmail.com</a>
 </div>
 </div>
 <div class="bp-pad" style="position:relative;max-width:1220px;margin:0 auto;padding:0 30px 32px;display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap">
