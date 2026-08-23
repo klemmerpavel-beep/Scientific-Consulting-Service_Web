@@ -36,9 +36,9 @@
 .pd-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .pd-request{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 @media (max-width:1024px){.pd-usp{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.pd-orbit>.pd-ring,.pd-orbit>.pd-dot,.pd-orbit>.pd-core{display:none!important}.pd-orbit>.pd-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}}
-@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-problem>.pd-arrow{transform:rotate(90deg);margin:0 auto}.pd-services,.pd-cost,.pd-needs,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);min-width:220px}.pd-nav[hidden]{display:none}.pd-burger{display:inline-flex}}
+.pd-nav{display:flex;align-items:center;gap:28px;flex-wrap:wrap}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-problem>.pd-arrow{transform:rotate(90deg);margin:0 auto}.pd-services,.pd-cost,.pd-needs,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);min-width:220px}.pd-nav[hidden]{display:none}.pd-burger{display:inline-flex}}
 @media (max-width:768px){.pd-metrics,.pd-usp,.pd-services,.pd-cost,.pd-needs{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-@media (max-width:480px){.pd-hero,.pd-metrics,.pd-problem,.pd-usp,.pd-services,.pd-team,.pd-cost,.pd-needs,.pd-faq,.pd-request,.pd-foot{grid-template-columns:minmax(0,1fr)!important}.pd-metrics,.pd-services,.pd-cost,.pd-needs,.pd-usp,.pd-foot,.pd-orbit{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px;padding-right:20px}}@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}</style>
+@media (max-width:480px){.pd-hero,.pd-metrics,.pd-problem,.pd-usp,.pd-services,.pd-team,.pd-cost,.pd-needs,.pd-faq,.pd-request,.pd-foot{grid-template-columns:minmax(0,1fr)!important}.pd-metrics,.pd-services,.pd-cost,.pd-needs,.pd-usp,.pd-foot,.pd-orbit{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px;padding-right:20px}}@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}@media (max-width:768px){.pd-heroart{justify-content:flex-start!important;gap:28px!important}.pd-facea{max-width:184px!important}.pd-facea-c{width:184px!important;height:184px!important}.pd-faceb{max-width:132px!important;padding-top:76px!important}.pd-faceb-c{width:132px!important;height:132px!important}}@media (max-width:430px){.pd-facea{max-width:150px!important}.pd-facea-c{width:150px!important;height:150px!important}.pd-faceb{max-width:108px!important;padding-top:58px!important}.pd-faceb-c{width:108px!important;height:108px!important}}</style>
 </helmet>
 <div style="position:relative;min-height:100vh;background:#FFFFFF;color:#16121C;font-family:'Onest','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
 <div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none">
@@ -68,7 +68,7 @@
 </div>
 
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
-<header class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
+<header class="pd-pad" style="position:relative;z-index:5;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
 <a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;text-decoration:none;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 200ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(221,196,250,.45)" style-active="background:rgba(221,196,250,.62)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
 <div style="position:relative;display:flex;align-items:center;gap:16px">
 <button type="button" class="pd-burger" aria-expanded="{{ navOpenAttr }}" aria-controls="pd-nav" aria-label="Меню разделов" onClick="{{ toggleNav }}" style="appearance:none;cursor:pointer;flex:0 0 44px;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:10px;background:#FFFFFF;align-items:center;justify-content:center;flex-direction:column;gap:4px">
@@ -76,7 +76,7 @@
 <span aria-hidden="true" style="width:18px;height:2px;background:#16121C;border-radius:2px;display:block"></span>
 <span aria-hidden="true" style="width:18px;height:2px;background:#16121C;border-radius:2px;display:block"></span>
 </button>
-<nav id="pd-nav" class="pd-nav" hidden="{{ navHidden }}" aria-label="Разделы сайта" style="display:flex;align-items:center;gap:28px;flex-wrap:wrap">
+<nav id="pd-nav" class="pd-nav" hidden="{{ navHidden }}" aria-label="Разделы сайта">
 <a href="#services" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:20px;font-weight:500;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Направления</a>
 <a href="#process" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:20px;font-weight:500;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Как мы работаем</a>
 <a href="#cost" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:20px;font-weight:500;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Стоимость</a>
@@ -113,12 +113,18 @@
 </div>
 </div>
 </div>
-<div class="pd-heroart" style="position:relative;min-height:420px">
-<div style="position:absolute;left:4%;top:0;width:168px;height:168px;border-radius:50%;background:#C79AF3;overflow:hidden;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05)">
-<image-slot id="mp-photo-1" shape="circle" data-alt="Куратор проекта — кандидат наук вашего направления" placeholder="Фото куратора" style="width:168px;height:168px"></image-slot>
+<div class="pd-heroart" style="position:relative;min-height:380px;display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding:4px 8px 0 2%">
+<div class="pd-facea" style="display:flex;flex-direction:column;gap:10px;max-width:clamp(150px,15.5vw,208px);align-items:center;text-align:center">
+<span class="pd-facea-c" style="width:clamp(150px,15.5vw,208px);height:clamp(150px,15.5vw,208px);border-radius:50%;background:#C79AF3;overflow:hidden;display:block;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05)">
+<image-slot id="mp-photo-1" shape="circle" data-alt="Куратор проекта — кандидат наук вашего направления" placeholder="Фото куратора" style="width:100%;height:100%"></image-slot>
+</span>
+<span style="font-size:13px;line-height:1.5;color:#6B6178">Куратор проекта — кандидат наук вашего направления</span>
 </div>
-<div style="position:absolute;right:8px;top:132px;width:112px;height:112px;border-radius:50%;background:#4FD9A6;overflow:hidden;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05)">
-<image-slot id="mp-photo-2" shape="circle" data-alt="Научный редактор проекта" placeholder="Фото редактора" style="width:112px;height:112px"></image-slot>
+<div class="pd-faceb" style="display:flex;flex-direction:column;gap:10px;max-width:clamp(110px,11.3vw,152px);padding-top:clamp(48px,10.4vw,150px);align-items:center;text-align:center">
+<span class="pd-faceb-c" style="width:clamp(110px,11.3vw,152px);height:clamp(110px,11.3vw,152px);border-radius:50%;background:#4FD9A6;overflow:hidden;display:block;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05)">
+<image-slot id="mp-photo-2" shape="circle" data-alt="Научный редактор проекта" placeholder="Фото редактора" style="width:100%;height:100%"></image-slot>
+</span>
+<span style="font-size:13px;line-height:1.5;color:#6B6178">Научный редактор проекта</span>
 </div>
 </div>
 </div>
@@ -331,10 +337,10 @@
 <a href="#request" style="align-self:flex-start;display:inline-flex;align-items:center;gap:12px;background:#16121C;color:#FFFFFF;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:16px 32px;border-radius:999px;box-shadow:0 8px 20px rgba(22,18,28,.18);transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2A2233;color:#FFFFFF">Обсудить проект<span aria-hidden="true" style="width:15px;height:15px;display:block;background:#FFFFFF;-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span></a>
 </div>
 <div class="pd-orbit" style="justify-self:stretch;position:relative;width:100%;aspect-ratio:648.388 / 650">
-<div style="position:absolute;left:0;top:0;width:98.482%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(221,196,250,.45) 0%,rgba(198,202,246,.12) 58%,rgba(255,255,255,0) 74%)"></div>
-<div class="pd-ring" style="position:absolute;left:18.969%;top:19.385%;width:60.547%;height:61.231%;border-radius:50%;border:1px dashed #DDC4FA;box-sizing:border-box"></div>
-<div class="pd-ring" style="position:absolute;left:12.747%;top:13.077%;width:73.142%;height:74.000%;border-radius:50%;border:1px dashed #E5D3F7;box-sizing:border-box"></div>
-<div class="pd-ring" style="position:absolute;left:7.284%;top:7.385%;width:84.067%;height:85.231%;border-radius:50%;border:1px dashed #EAEAF4;box-sizing:border-box"></div>
+<div aria-hidden="true" style="position:absolute;left:0;top:0;width:98.482%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(221,196,250,.45) 0%,rgba(198,202,246,.12) 58%,rgba(255,255,255,0) 74%)"></div>
+<div class="pd-ring" aria-hidden="true" style="position:absolute;left:18.969%;top:19.385%;width:60.547%;height:61.231%;border-radius:50%;border:1px dashed #DDC4FA;box-sizing:border-box"></div>
+<div class="pd-ring" aria-hidden="true" style="position:absolute;left:12.747%;top:13.077%;width:73.142%;height:74.000%;border-radius:50%;border:1px dashed #E5D3F7;box-sizing:border-box"></div>
+<div class="pd-ring" aria-hidden="true" style="position:absolute;left:7.284%;top:7.385%;width:84.067%;height:85.231%;border-radius:50%;border:1px dashed #EAEAF4;box-sizing:border-box"></div>
 <div class="pd-core" style="position:absolute;left:34.559%;top:35.026%;width:29.531%;height:30.101%;border-radius:50%;background:linear-gradient(180deg,#E6E8FB,#DADDF7);overflow:hidden;display:flex;align-items:center;justify-content:center">
 <div style="width:76%;display:flex;flex-direction:column;gap:8px;align-items:center">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">Заказчик</span>
@@ -423,13 +429,11 @@
 </div>
 <div class="pd-faq" style="gap:40px;align-items:stretch">
 <div style="display:flex;flex-direction:column;gap:32px">
-<div style="flex:1 1 auto;min-height:260px;background:rgba(255,255,255,.92);border:1px solid #EEE7F4;border-radius:14px;display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr);align-items:stretch;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05)">
-<div style="position:relative;min-height:260px;display:flex;align-items:stretch">
-<div style="position:absolute;left:-38px;right:-20px;top:-56px;bottom:-16px">
-<image-slot id="mp-faq-photo" shape="rect" fit="contain" transparent="" data-alt="Куратор проекта готов ответить на вопросы" placeholder="Фото: куратор проекта" style="position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 22px 30px rgba(22,18,28,.22)) drop-shadow(0 4px 8px rgba(22,18,28,.1))"></image-slot>
+<div style="flex:1 1 auto;min-height:260px;background:rgba(255,255,255,.92);border:1px solid #EEE7F4;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05)">
+<div style="position:relative;flex:1 1 auto;min-height:200px;background:linear-gradient(180deg,#F6F1FB 0%,#FFFFFF 100%)">
+<image-slot id="mp-faq-photo" shape="rect" fit="contain" transparent="" data-alt="Куратор проекта готов ответить на вопросы" placeholder="Фото: куратор проекта" style="position:absolute;inset:0;width:100%;height:100%"></image-slot>
 </div>
-</div>
-<div style="padding:20px 24px 22px;display:flex;flex-direction:column;justify-content:center;gap:10px">
+<div style="padding:18px 24px 22px;display:flex;flex-direction:column;gap:10px;border-top:1px solid #F2ECF7">
 <h3 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:16px;line-height:23px;font-weight:600;color:#120E19">Не нашли ответ на свой вопрос?</h3>
 <p style="margin:0;font-size:13px;line-height:21px;color:#584A6B;max-width:44ch">Напишите или позвоните. Расскажем, как устроена работа, сколько занимает и что входит в стоимость.</p>
 <div style="margin-top:8px;display:flex;flex-direction:column;gap:2px">
@@ -574,6 +578,13 @@ class Component extends DCLogic {
       this.setState({ planPages: pages });
     };
     this.measure();
+    // Разделы в шапке: на широком экране они видны всегда, и атрибут
+    // `hidden` там неуместен — читалка пропустила бы навигацию целиком.
+    // Ниже 768 панель открывается кнопкой — там же появляется сама кнопка.
+    this.wide = window.matchMedia('(min-width:769px)');
+    this.syncNav = () => this.setState({ navOpen: this.wide.matches });
+    this.syncNav();
+    this.wide.addEventListener('change', this.syncNav);
     this.onResize = () => {
       if (this.raf) return;
       this.raf = requestAnimationFrame(() => { this.raf = 0; this.measure(); this.forceUpdate(); });
@@ -582,6 +593,7 @@ class Component extends DCLogic {
     this.forceUpdate();
   }
   componentWillUnmount(){
+    if (this.wide) this.wide.removeEventListener('change', this.syncNav);
     window.removeEventListener('resize', this.onResize);
     if (this.raf) cancelAnimationFrame(this.raf);
   }

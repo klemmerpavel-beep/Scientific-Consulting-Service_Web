@@ -71,9 +71,24 @@ export type Photo = {
  */
 export type Framing =
   /** По голове: одинаковый размер лиц, фигура уходит вниз за кромку */
-  | { by: 'head'; headW: number; anchor: 'top' | 'bottom'; headroom?: number }
-  /** По фигуре: одинаковая высота фигуры и центрирование её целиком */
-  | { by: 'figure'; figureH: number; top: number };
+  | {
+      by: 'head';
+      headW: number;
+      anchor: 'top' | 'bottom';
+      headroom?: number;
+    }
+  /**
+   * По фигуре: фигура занимает заданную долю высоты слота и центрируется
+   * целиком. Доли, а не пиксели: слот на узком экране сжимается, и
+   * пиксельные значения разъезжались бы.
+   */
+  | {
+      by: 'figure';
+      /** Высота фигуры в процентах высоты слота */
+      figureHPct: number;
+      /** Отступ от верхней кромки слота до макушки, в процентах его высоты */
+      topPct: number;
+    };
 
 export type Slot = { photo: Photo; frame?: Framing };
 
@@ -111,13 +126,16 @@ const BUSINESS: Photo = {
  * и ни одна не выходит за ширину плашки. Ниже — обрезается подложкой,
  * как и задумано: фигура входит в карточку снизу.
  */
-const ROUTE: Framing = { by: 'figure', figureH: 325, top: 30 };
+const ROUTE: Framing = { by: 'figure', figureHPct: 91.5, topPct: 8.5 };
 
 /**
  * Блоки «Вопросы» и «Заявка»: фигура опирается на нижнюю кромку карточки.
  * Голова крупнее, чем в карточках направлений, — слот там заметно больше,
  * и мелкая фигура терялась бы в белом поле.
  */
+/** Крупная карточка «Заявка»: фигура почти во всю высоту, стоит на кромке */
+const CARD_FULL: Framing = { by: 'figure', figureHPct: 94, topPct: 5 };
+
 const CARD: Framing = { by: 'head', headW: 112, anchor: 'bottom' };
 const CARD_NARROW: Framing = { by: 'head', headW: 80, anchor: 'bottom' };
 
@@ -132,8 +150,8 @@ export const PHOTOS: Record<string, Slot> = {
   // ——— Аспирантам ———
   'mp-photo-1': { photo: CURATOR },     // круг 168px
   'mp-photo-2': { photo: EDITOR },      // круг 112px
-  'mp-request-photo': { photo: STUDENT, frame: CARD },
-  'mp-faq-photo': { photo: POSTGRAD, frame: CARD_NARROW },
+  'mp-request-photo': { photo: STUDENT, frame: CARD_FULL },
+  'mp-faq-photo': { photo: POSTGRAD, frame: CARD_FULL },
 
   // ——— Студентам ———
   'sp-stud-1': { photo: STUDENT },      // круг 178px
