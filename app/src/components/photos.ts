@@ -129,15 +129,15 @@ const BUSINESS: Photo = {
 const ROUTE: Framing = { by: 'figure', figureHPct: 91.5, topPct: 8.5 };
 
 /**
- * Блоки «Вопросы» и «Заявка»: фигура опирается на нижнюю кромку карточки.
- * Голова крупнее, чем в карточках направлений, — слот там заметно больше,
- * и мелкая фигура терялась бы в белом поле.
+ * Блоки «Вопросы» и «Заявка»: фигура занимает почти всю высоту карточки
+ * и центрируется целиком. Доли, а не пиксели, — слот на узком экране
+ * сжимается вместе с фигурой.
+ *
+ * Кадрирование по ширине головы (`by: 'head'`) здесь не годится: у
+ * снимков разная крупность, и при одинаковой голове студентка выходила
+ * втрое мельче аспиранта — в карточке оставалось 240 px пустоты.
  */
-/** Крупная карточка «Заявка»: фигура почти во всю высоту, стоит на кромке */
 const CARD_FULL: Framing = { by: 'figure', figureHPct: 94, topPct: 5 };
-
-const CARD: Framing = { by: 'head', headW: 112, anchor: 'bottom' };
-const CARD_NARROW: Framing = { by: 'head', headW: 80, anchor: 'bottom' };
 
 export const PHOTOS: Record<string, Slot> = {
   // ——— Посадочная: расстановка из исходной сборки ———
@@ -154,10 +154,10 @@ export const PHOTOS: Record<string, Slot> = {
   'mp-faq-photo': { photo: POSTGRAD, frame: CARD_FULL },
 
   // ——— Студентам ———
-  'sp-stud-1': { photo: STUDENT },      // круг 178px
-  'sp-stud-2': { photo: EDITOR },       // круг 122px
-  'sp-request-photo': { photo: POSTGRAD, frame: CARD },
-  'sp-faq-photo': { photo: BUSINESS, frame: CARD_NARROW },
+  'sp-stud-1': { photo: CURATOR },      // круг до 224px — куратор проекта
+  'sp-stud-2': { photo: EDITOR },       // круг до 162px — научный редактор
+  'sp-request-photo': { photo: STUDENT, frame: CARD_FULL },
+  'sp-faq-photo': { photo: BUSINESS, frame: CARD_FULL },
 
   // ——— Бизнесу ———
   'bp-photo-1': { photo: BUSINESS },    // круг 178px
