@@ -27,10 +27,7 @@
 .sp-cta{white-space:nowrap}
 .sp-hero{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr)}
 .sp-support{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-.sp-tune{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,320px)}
-.sp-sum{display:grid;grid-template-columns:minmax(0,.72fr) minmax(0,.72fr) minmax(0,1.56fr)}
-.sp-week,.sp-weekhead{display:grid;grid-template-columns:96px minmax(0,1fr) minmax(0,1fr)}
-.sp-inline{display:none}
+.sp-duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .sp-offer{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
 .sp-cost{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-req{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
@@ -40,10 +37,10 @@
 .sp-norm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .sp-after{display:flex}
 @media (max-width:1024px){.sp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.sp-orbit>.sp-ring,.sp-orbit>.sp-dot,.sp-orbit>.sp-core{display:none!important}.sp-orbit>.sp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.sp-offer{grid-template-columns:repeat(2,minmax(0,1fr))}.sp-cost{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:768px){.sp-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.sp-hero,.sp-tune,.sp-req,.sp-norm,.sp-faq,.sp-team{grid-template-columns:minmax(0,1fr)}.sp-after{grid-template-columns:minmax(0,1fr)}.sp-nav{position:absolute;right:0;top:64px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:10px 14px;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);min-width:220px}.sp-nav[hidden]{display:none}.sp-burger{display:inline-flex}.sp-art{order:-1}.sp-week{grid-template-columns:minmax(0,1fr)}.sp-weekhead{display:none}.sp-inline{display:block}.sp-div{border-left:0!important;padding-left:0!important}.sp-sum{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:768px){.sp-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.sp-hero,.sp-req,.sp-norm,.sp-faq,.sp-team,.sp-duo{grid-template-columns:minmax(0,1fr)}.sp-after{grid-template-columns:minmax(0,1fr)}.sp-nav{position:absolute;right:0;top:64px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:10px 14px;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);min-width:220px}.sp-nav[hidden]{display:none}.sp-burger{display:inline-flex}.sp-art{order:-1}.sp-div{border-left:0!important;padding-left:0!important}}
 @media (max-width:768px){.sp-offer,.sp-cost,.sp-steps{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media (max-width:430px){.sp-head{gap:12px!important}.sp-logo{font-size:22px!important}.sp-cta{padding:12px 16px!important;font-size:12px!important}}
-@media (max-width:480px){.sp-hero,.sp-support,.sp-tune,.sp-sum,.sp-week,.sp-offer,.sp-cost,.sp-req,.sp-team,.sp-faq,.sp-steps,.sp-norm,.sp-after{grid-template-columns:minmax(0,1fr)!important}.sp-pad{padding-left:20px!important;padding-right:20px!important}.sp-offer,.sp-cost,.sp-support,.sp-orbit,.sp-steps{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:480px){.sp-hero,.sp-support,.sp-duo,.sp-offer,.sp-cost,.sp-req,.sp-team,.sp-faq,.sp-steps,.sp-norm,.sp-after{grid-template-columns:minmax(0,1fr)!important}.sp-pad{padding-left:20px!important;padding-right:20px!important}.sp-offer,.sp-cost,.sp-support,.sp-orbit,.sp-steps{grid-template-columns:minmax(0,1fr)}}
 @keyframes pd-marquee-l{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes pd-marquee-r{from{transform:translateX(-50%)}to{transform:translateX(0)}}.pd-ticker:hover .pd-run,.pd-ticker:focus-within .pd-run{animation-play-state:paused}
 
 
@@ -109,7 +106,7 @@
 <span aria-hidden="true" style="width:18px;height:2px;background:#16121C;border-radius:2px;display:block"></span>
 </button>
 <nav id="sp-nav" class="sp-nav" hidden="{{ navHidden }}" aria-label="Разделы страницы">
-<a href="#route" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Маршрут до защиты</a>
+<a href="#route" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Этапы работы</a>
 <a href="#norm" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Нормоконтроль</a>
 <a href="#cost" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Смета</a>
 </nav>
@@ -119,11 +116,11 @@
 
 <main id="main">
 
-<section class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:64px 30px 48px">
+<section class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:64px 30px clamp(56px,5vw,72px)">
 <div class="sp-hero" style="gap:40px;align-items:start">
 <div style="min-width:0">
 <span style="display:inline-block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178;margin-bottom:24px">Студентам, магистрантам и специалистам</span>
-<h1 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:clamp(30px,3vw,42px);line-height:1.2;font-weight:500;letter-spacing:-.018em;color:#16121C;max-width:23ch;text-wrap:pretty">Диплом под методичку вашей кафедры — <span style="background:#DDC4FA;border-radius:6px;padding:2px 10px;box-decoration-break:clone;-webkit-box-decoration-break:clone">с планом на каждую неделю</span> до защиты</h1>
+<h1 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:clamp(30px,3vw,42px);line-height:1.2;font-weight:500;letter-spacing:-.018em;color:#16121C;max-width:22ch;text-wrap:balance">Диплом, собранный <span style="background:#DDC4FA;border-radius:6px;padding:2px 10px;box-decoration-break:clone;-webkit-box-decoration-break:clone">под требования вашей кафедры</span></h1>
 <p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#4A4157;max-width:48ch">Кандидат или доктор наук вашего направления за 20 минут разберёт работу и честно скажет, что успеваем к вашей дате. Дальше — редактура вашего текста, оформление по ГОСТ и репетиция защиты. Оплата — по этапам, консультация бесплатна.</p>
 
 <form onSubmit="{{ submitTop }}" style="margin:32px 0 0;max-width:420px;display:flex;flex-wrap:wrap;align-items:center;gap:12px">
@@ -175,7 +172,7 @@
 </div>
 </div>
 
-<div class="sp-support" style="gap:12px;margin-top:44px">
+<div class="sp-support" style="gap:12px;margin-top:clamp(48px,4.5vw,64px)">
 <sc-for list="{{ supports }}" as="s" hint-placeholder-count="3">
 <div style="border:{{ s.brd }};border-radius:14px;padding:18px 20px;background:{{ s.bg }};box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:{{ s.ink }}">{{ s.label }}</span>
@@ -185,7 +182,7 @@
 </div>
 </section>
 
-<section aria-label="Услуги" class="pd-ticker" style="position:relative;z-index:1;margin:88px 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
+<section aria-label="Услуги" class="pd-ticker" style="position:relative;z-index:1;margin:clamp(80px,7vw,112px) 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
 <div style="display:flex;width:max-content;gap:52px;padding-right:52px;animation:pd-marquee-l 42s linear infinite" class="pd-run">
 <sc-for list="{{ tickerA }}" as="t" hint-placeholder-count="12">
 <span aria-hidden="{{ t.dup }}" style="font-family:'Onest',Arial,sans-serif;font-size:17px;line-height:24px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:#4A4157;white-space:nowrap">{{ t.text }}</span>
@@ -199,18 +196,17 @@
 </section>
 
 
-<section id="route" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:64px auto 0;padding:0 30px;scroll-margin-top:24px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
+<section id="route" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Обратный отсчёт</span>
-<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:34ch;text-wrap:pretty">Два ответа — и вы видите <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">свой план до защиты</span></h2>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Этапы работы</span>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:30ch;text-wrap:balance">Выберите, где вы сейчас, — и увидите свои <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">этапы до защиты</span></h2>
 </div>
-<span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Считается прямо на странице, без заявки</span>
+<span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Выберите свой случай — этапы обновятся</span>
 </div>
 
-<div class="sp-tune" style="gap:12px;align-items:stretch;margin-bottom:12px">
 <div style="border:1px solid #EAE3F2;border-radius:14px;background:#FFFFFF;padding:16px 18px;box-shadow:0 1px 2px rgba(22,18,28,.05);display:flex;flex-direction:column;gap:12px">
-<span id="sp-step1" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">Шаг 1 · Где вы сейчас</span>
+<span id="sp-step1" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">Где вы сейчас</span>
 <div role="group" aria-labelledby="sp-step1" style="display:flex;flex-wrap:wrap;gap:8px">
 <sc-for list="{{ situations }}" as="s" hint-placeholder-count="4">
 <sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}">
@@ -222,75 +218,51 @@
 </sc-for>
 </div>
 </div>
-<div style="border:1px solid #EAE3F2;border-radius:14px;background:#FFFFFF;padding:16px 18px;box-shadow:0 1px 2px rgba(22,18,28,.05);display:flex;flex-direction:column;gap:12px">
-<label for="sp-date" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">Шаг 2 · Дата защиты</label>
-<input id="sp-date" name="defense" type="date" value="{{ dateValue }}" min="{{ dateMin }}" onChange="{{ onDate }}" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0">
-<span style="font-size:12px;line-height:1.5;color:#6B6178">Точной даты ещё нет — поставьте примерную, пересчитаем</span>
-</div>
+
+<div role="status" style="margin-top:12px;border:1px solid #EAE3F2;border-radius:14px;background:#F8F5FC;padding:14px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px">
+<span style="display:inline-flex;align-items:center;gap:8px;min-width:0">
+<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:#5E17B8;-webkit-mask:{{ routeMask }};mask:{{ routeMask }}"></span>
+<span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#16121C">{{ routeSummary }}</span>
+</span>
+<span style="font-size:13px;line-height:1.5;color:#4A4157;min-width:0">{{ routeNote }}</span>
 </div>
 
-<div class="sp-sum" style="gap:12px;margin-bottom:24px">
-<div style="border:1px solid #EAE3F2;border-radius:14px;background:#F8F5FC;padding:14px 18px;display:flex;flex-direction:column;gap:6px">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Маршрут целиком</span>
-<span style="display:flex;align-items:baseline;gap:6px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:26px;line-height:1.2;color:#16121C;font-variant-numeric:tabular-nums">{{ sumPlanNum }}</span><span style="font-size:13px;line-height:1.5;color:#4A4157">{{ sumPlanWord }}</span></span>
-</div>
-<div style="border:1px solid #EAE3F2;border-radius:14px;background:#F8F5FC;padding:14px 18px;display:flex;flex-direction:column;gap:6px">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">До защиты</span>
-<span style="display:flex;align-items:baseline;gap:6px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:26px;line-height:1.2;color:#16121C;font-variant-numeric:tabular-nums">{{ sumLeftNum }}</span><span style="font-size:13px;line-height:1.5;color:#4A4157">{{ sumLeftWord }}</span></span>
-</div>
-<div role="status" style="border:1px solid {{ statusEdge }};background:{{ statusBg }};border-radius:14px;padding:14px 18px;display:flex;gap:12px;align-items:flex-start">
-<span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;margin-top:2px;background:{{ statusInk }};-webkit-mask:{{ statusMask }};mask:{{ statusMask }}"></span>
-<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
-<span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:{{ statusInk }}">{{ statusTitle }}</span>
-<span style="font-size:13px;line-height:1.5;color:{{ statusInk }}">{{ statusText }}</span>
+<div style="margin-top:16px;display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ stages }}" as="s" hint-placeholder-count="5">
+<div style="border:1px solid #EAE3F2;border-radius:14px;background:#FFFFFF;box-shadow:0 1px 2px rgba(22,18,28,.05);padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+<span style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+<span style="width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:{{ s.badgeBg }};display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;font-weight:600;color:{{ s.ink }}">{{ s.num }}</span>
+<span style="font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C;min-width:0">{{ s.title }}</span>
+<span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.04em;color:#4A4157;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:999px;padding:6px 12px;white-space:nowrap">{{ s.term }}</span>
 </span>
-</div>
-</div>
-
-<div class="sp-weekhead" style="gap:16px;padding:0 16px 8px">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Неделя</span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Что делаете вы</span>
-<span class="sp-div" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178;padding-left:20px">Что делаем мы</span>
-</div>
-<div style="display:flex;flex-direction:column;gap:8px">
-<sc-for list="{{ planShown }}" as="w" hint-placeholder-count="4">
-<div class="sp-week" style="gap:16px;border:1px solid #EAE3F2;border-radius:14px;padding:14px 16px;background:#FFFFFF;box-shadow:0 1px 2px rgba(22,18,28,.05)">
-<span style="display:flex;align-items:center;gap:10px">
-<span aria-hidden="true" style="width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:{{ w.badgeBg }};display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;font-weight:600;color:{{ w.ink }}">{{ w.num }}</span>
-<span style="display:flex;flex-direction:column;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.5;letter-spacing:.04em;color:#6B6178"><span class="sp-inline" style="text-transform:uppercase;letter-spacing:.06em;color:#4A4157">{{ w.week }}</span><span>{{ w.dates }}</span></span>
-</span>
+<span class="sp-duo" style="gap:16px">
 <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
-<span class="sp-inline" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Вы</span>
-<span style="font-size:13px;line-height:1.5;color:#16121C">{{ w.author }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Вы</span>
+<span style="font-size:13px;line-height:1.5;color:#16121C">{{ s.author }}</span>
 </span>
 <span class="sp-div" style="display:flex;flex-direction:column;gap:4px;min-width:0;border-left:1px solid #F2ECF7;padding-left:20px">
-<span class="sp-inline" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Мы</span>
-<span style="font-size:13px;line-height:1.5;color:#4A4157">{{ w.team }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Мы</span>
+<span style="font-size:13px;line-height:1.5;color:#4A4157">{{ s.team }}</span>
+</span>
 </span>
 </div>
 </sc-for>
-<sc-if value="{{ planHasMore }}" hint-placeholder-val="{{ true }}">
-<button type="button" onClick="{{ togglePlan }}" aria-expanded="{{ planOpen }}" style="appearance:none;border:1px dashed #DDC4FA;cursor:pointer;background:#FFFFFF;border-radius:14px;min-height:52px;padding:12px 22px;display:flex;align-items:center;justify-content:center;gap:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0;background:#F8F5FC">
-<span style="font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:#5E17B8">{{ planToggleLabel }}</span>
-<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:#5E17B8;-webkit-mask:{{ planToggleMask }};mask:{{ planToggleMask }}"></span>
-</button>
-</sc-if>
 </div>
 
 <div style="margin-top:16px;border:1px solid #EAE3F2;border-radius:14px;background:#F8F5FC;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
 <span style="display:flex;flex-direction:column;gap:6px;min-width:0;max-width:68ch">
-<span style="font-size:13px;line-height:1.6;color:#4A4157">{{ planNote }}</span>
-<span style="font-size:13px;line-height:1.6;color:#6B6178">Каждый этап заканчивается приёмкой: следующий оплачивается только после неё. Точные даты фиксируем в договоре после разбора работы.</span>
+<span style="font-size:13px;line-height:1.6;color:#4A4157">Каждый этап заканчивается приёмкой: следующий оплачивается только после неё.</span>
+<span style="font-size:13px;line-height:1.6;color:#6B6178">Сроки этапов ориентировочные: точные даты фиксируем в договоре после разбора работы.</span>
 </span>
 <a href="#request" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;background:#16121C;color:#FFFFFF;font-size:13px;font-weight:600;padding:14px 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2A2233;color:#FFFFFF">Обсудить мой срок<span aria-hidden="true" style="width:14px;height:14px;display:block;background:#FFFFFF;-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
 </section>
 
-<section class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:64px auto 0;padding:0 30px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
+<section class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Состав работ</span>
-<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:32ch">Что берём в работу: <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px">диплом, ВКР, магистерская</span></h2>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:26ch;text-wrap:balance">Что берём в работу: <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">диплом, ВКР, магистерская</span></h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Разбираем, редактируем и оформляем ваш текст</span>
 </div>
@@ -329,11 +301,11 @@
 </section>
 
 
-<section id="cost" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:64px auto 0;padding:0 30px;scroll-margin-top:24px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
+<section id="cost" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Смета</span>
-<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:32ch">Из чего складывается <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px">смета на диплом</span></h2>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:32ch;text-wrap:balance">Из чего складывается <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">смета на диплом</span></h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Считаем после того, как посмотрим работу</span>
 </div>
@@ -392,7 +364,7 @@
 </div>
 </section>
 
-<section class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:64px auto 0;padding:0 30px">
+<section class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
 <div class="sp-team" style="gap:40px;align-items:center">
 <div style="display:flex;flex-direction:column;gap:24px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Команда</span>
@@ -464,11 +436,11 @@
 </div></section>
 
 
-<section id="faq" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:64px auto 0;padding:0 30px;scroll-margin-top:24px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
+<section id="faq" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Вопросы</span>
-<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:36ch">Вопросы о защите, кафедре и <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px">научном руководителе</span></h2>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:36ch;text-wrap:balance">Вопросы о защите, кафедре и <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">научном руководителе</span></h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Отвечаем так же на консультации</span>
 </div>
@@ -508,11 +480,11 @@
 </div>
 </section>
 
-<section id="request" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:64px auto 0;padding:0 30px;scroll-margin-top:24px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
+<section id="request" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Заявка</span>
-<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:32ch">Пришлите тему и срок — <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px">оценим объём работ</span></h2>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:32ch;text-wrap:balance">Пришлите тему и срок — <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">оценим объём работ</span></h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Отвечаем Пн—Пт, 10:00—19:00</span>
 </div>
@@ -585,7 +557,7 @@
 
 </main>
 
-<footer id="contacts" style="position:relative;z-index:1;margin-top:96px;padding-top:0;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(250,250,253,.7) 26%,#F9F5FC 58%,#F7F2FB 100%);overflow:hidden;scroll-margin-top:24px">
+<footer id="contacts" style="position:relative;z-index:1;margin-top:clamp(88px,8vw,128px);padding-top:0;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(250,250,253,.7) 26%,#F9F5FC 58%,#F7F2FB 100%);overflow:hidden;scroll-margin-top:24px">
 <div class="pd-foot pd-pad" style="position:relative;max-width:1220px;margin:0 auto;padding:48px 30px 40px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,.85fr) minmax(0,.85fr) minmax(0,.9fr);gap:40px;align-items:start">
 <div style="display:flex;flex-direction:column;gap:20px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:30px;line-height:32px;font-weight:700;letter-spacing:-.014em"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></span>
@@ -627,7 +599,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { date: '', situation: 1, open: -1, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false, planOpen: false, navOpen: false };
+  state = { situation: 1, open: -1, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false, navOpen: false };
   componentDidMount(){
     this.onResize = () => {
       if (this.raf) return;
@@ -650,121 +622,60 @@ class Component extends DCLogic {
   renderVals(){
     const edges = ['#7B2BE0', '#3DDCA0', '#BFB4CE'];
     const inks = ['#7B2BE0', '#0E4E3C', '#4A4157'];
-    const fmt = d => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0');
 
-    // Четвёртый элемент ситуации — строка, в которую сжимается середина
-    // маршрута, когда срок короче полного состава работ.
+    // Ситуация студента задаёт свой набор этапов. Конкретных дат на
+    // странице нет: сроки этапов ориентировочные, точные фиксируются
+    // в договоре после разбора работы.
     const situationData = [
-      ['Ещё не начинал', 10, [
-        ['Соберёте методичку кафедры, тему и требования научного руководителя', 'Разберём задание и составим план по главам'],
-        ['Напишете введение и первую главу по плану', 'Проверим постановку задачи и логику плана'],
-        ['Соберёте источники и материал второй главы', 'Разберём подбор литературы и корректность ссылок'],
-        ['Напишете вторую главу', 'Отредактируем текст и выправим терминологию'],
-        ['Напишете практическую часть', 'Проверим расчёты, таблицы и рисунки'],
-        ['Соберёте выводы по главам', 'Сверим выводы с задачами введения'],
-        ['Соберёте работу целиком', 'Приведём оформление к ГОСТ 7.32 и методичке'],
-        ['Отдадите работу научному руководителю', 'Разберём замечания и составим план правок'],
-        ['Внесёте правки', 'Проверим текст перед нормоконтролем'],
-        ['Защитите работу', 'Подготовим доклад и репетируем вопросы комиссии']
-      ], ['Пишете текст по плану — темп задаём под вашу дату', 'Ведём по главам и правим на ходу, не дожидаясь готовой работы']],
-      ['Черновик есть, работа встала', 6, [
-        ['Пришлёте черновик и методичку', 'Разберём, где работа встала, и назовём объём правок'],
-        ['Перепишете проблемные разделы', 'Отредактируем структуру и выводы по главам'],
-        ['Дополните практическую часть', 'Проверим расчёты, таблицы и приложения'],
-        ['Соберёте работу целиком', 'Приведём оформление к ГОСТ 7.32 и методичке'],
-        ['Отдадите работу научному руководителю', 'Разберём замечания и составим план правок'],
-        ['Защитите работу', 'Подготовим доклад и репетируем вопросы комиссии']
-      ], ['Дорабатываете проблемные разделы', 'Редактируем главы по мере готовности, не ждём всю работу']],
-      ['Работу вернули на доработку', 3, [
-        ['Пришлёте работу и лист замечаний', 'Разберём каждое замечание и назовём срок правок'],
-        ['Внесёте правки по содержанию', 'Выправим оформление, ссылки и список литературы'],
-        ['Сдадите работу повторно', 'Подготовим доклад и репетируем вопросы комиссии']
-      ], ['Вносите правки по листу замечаний', 'Проверяем каждый пункт замечаний и оформление']],
-      ['До защиты меньше месяца', 2, [
-        ['Пришлёте работу в текущем виде', 'Проверим по чек-листу нормоконтроля за один день'],
-        ['Внесёте правки по списку', 'Выправим оформление и подготовим доклад к защите']
-      ], ['Вносите правки по списку', 'Выправляем оформление и готовим доклад']]
+      ['Ещё не начинал', 'около 10 недель',
+        'Начинаем с плана по главам: дальше вы пишете по нему, а мы правим текст по мере готовности, не дожидаясь всей работы.', [
+        ['Разбор задания и план', '2–3 дня', 'Присылаете тему, методичку кафедры и требования руководителя', 'Разбираем задание и собираем план по главам'],
+        ['Введение и первая глава', '2 недели', 'Пишете текст по плану', 'Проверяем постановку задачи, логику и подбор источников'],
+        ['Основная и практическая части', '4 недели', 'Пишете главы и собираете материал', 'Редактируем текст, проверяем расчёты, таблицы и рисунки'],
+        ['Сборка и оформление', '2 недели', 'Собираете работу целиком', 'Приводим оформление к ГОСТ 7.32 и методичке кафедры'],
+        ['Замечания и защита', '1–2 недели', 'Отдаёте работу научному руководителю', 'Разбираем замечания, готовим доклад и вопросы комиссии']
+      ]],
+      ['Черновик есть, работа встала', 'около 6 недель',
+        'Сначала находим, где работа встала, и называем объём правок: переписывать всё заново обычно не нужно.', [
+        ['Разбор черновика', '1–2 дня', 'Присылаете черновик и методичку', 'Находим, где работа встала, и называем объём правок'],
+        ['Проблемные разделы', '2 недели', 'Переписываете разделы по плану правок', 'Редактируем структуру и выводы по главам'],
+        ['Практическая часть', '2 недели', 'Дополняете расчёты и приложения', 'Проверяем расчёты, таблицы и приложения'],
+        ['Сборка и оформление', '1 неделя', 'Собираете работу целиком', 'Приводим оформление к ГОСТ 7.32 и методичке кафедры'],
+        ['Замечания и защита', '1 неделя', 'Отдаёте работу научному руководителю', 'Разбираем замечания и готовим доклад']
+      ]],
+      ['Работу вернули на доработку', 'около 3 недель',
+        'Работаем по вашему листу замечаний: разбираем каждый пункт и проверяем, что он закрыт.', [
+        ['Разбор замечаний', '1 день', 'Присылаете работу и лист замечаний', 'Разбираем каждый пункт и называем срок правок'],
+        ['Правки по содержанию', '1–2 недели', 'Вносите правки по списку', 'Ведём по пунктам и проверяем формулировки и выводы'],
+        ['Оформление и ссылки', '3–5 дней', 'Присылаете готовый текст', 'Выправляем оформление, ссылки и список литературы'],
+        ['Повторная сдача', '3 дня', 'Сдаёте работу заново', 'Готовим доклад и репетируем вопросы комиссии']
+      ]],
+      ['До защиты меньше месяца', 'около 2 недель',
+        'Смотрим работу за один день и прямо говорим, что успеваем сделать качественно к вашей дате, а что нет.', [
+        ['Разбор за один день', '1 день', 'Присылаете работу в том виде, в каком она есть', 'Смотрим по чек-листу нормоконтроля и честно называем, что успеваем'],
+        ['Правки по списку', '1 неделя', 'Вносите правки по списку', 'Ведём по пунктам и отвечаем в тот же рабочий день'],
+        ['Оформление', '2–3 дня', 'Присылаете финальный текст', 'Выправляем оформление по методичке кафедры'],
+        ['Доклад к защите', '2 дня', 'Репетируете выступление', 'Собираем доклад и ответы на вопросы комиссии']
+      ]]
     ];
 
     const sIdx = this.state.situation;
-    const [, needWeeks, steps, squeeze] = situationData[sIdx];
+    const [, routeTerm, routeNote, steps] = situationData[sIdx];
 
-    let weeksLeft = null;
-    const raw = this.state.date;
-    if (raw) {
-      const target = new Date(raw + 'T00:00:00');
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const days = Math.round((target - today) / 86400000);
-      weeksLeft = Math.max(0, Math.floor(days / 7));
-    }
-
-    const tight = weeksLeft !== null && weeksLeft < needWeeks;
-    // Меньше недели — ничего сжимать уже нечего, остаётся честный разбор.
-    const rush = [['Пришлёте работу в том виде, в каком она есть',
-      'Посмотрим за один день и прямо скажем, что успеваем к вашей дате']];
-    // Две недели и меньше полного маршрута: разбор и работа под ведением.
-    // Строку про защиту сюда не ставим — обещать её в такой срок нельзя.
-    const shown = !tight ? steps
-      : (weeksLeft <= 1 ? rush
-        : (weeksLeft === 2 ? [steps[0], squeeze]
-          : [steps[0], squeeze].concat(steps.slice(-(weeksLeft - 2)))));
-
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const badges = ['#EFE2FD', '#DFF7EE', '#F2EEF7'];
-    const plan = shown.map(([author, team], i) => {
-      const a = new Date(start.getTime() + i * 7 * 86400000);
-      const b = new Date(a.getTime() + 6 * 86400000);
-      return {
-        num: String(i + 1),
-        week: 'Неделя ' + (i + 1),
-        dates: fmt(a) + '—' + fmt(b),
-        author, team,
-        ink: inks[i % 3], badgeBg: badges[i % 3]
-      };
-    });
-
-    // Слово «неделя» склоняется по числу: 1 неделя, 3 недели, 11 недель.
-    const weekWord = n => {
+    // «Этап» склоняется по числу: 1 этап, 3 этапа, 5 этапов.
+    const stepWord = n => {
       const t = n % 100, u = n % 10;
-      if (t >= 11 && t <= 14) return 'недель';
-      if (u === 1) return 'неделя';
-      if (u >= 2 && u <= 4) return 'недели';
-      return 'недель';
+      if (t >= 11 && t <= 14) return 'этапов';
+      if (u === 1) return 'этап';
+      if (u >= 2 && u <= 4) return 'этапа';
+      return 'этапов';
     };
-
-    // Длинный маршрут — десять строк подряд, читать который никто не станет.
-    // Показываем первые четыре недели, остальные разворачиваются по кнопке.
-    const PLAN_PREVIEW = 4;
-    const planOpen = this.state.planOpen;
-    const planHasMore = plan.length > PLAN_PREVIEW;
-    const planShown = (planOpen || !planHasMore) ? plan : plan.slice(0, PLAN_PREVIEW);
-    const planToggleLabel = planOpen
-      ? 'Свернуть маршрут'
-      : 'Показать ещё ' + (plan.length - PLAN_PREVIEW) + ' ' + weekWord(plan.length - PLAN_PREVIEW);
-
-    const planNote = weeksLeft === null
-      ? 'Пока показан маршрут по умолчанию для выбранной ситуации — укажите дату защиты, и он пересчитается под ваш срок.'
-      : (tight
-        ? 'Полный маршрут занимает ' + needWeeks + ' ' + weekWord(needWeeks) + ', а до защиты меньше. Оставили работы, которые успеваем сделать качественно: снимаем всё, что не влияет на допуск, и держим оформление и доклад. Полный объём в такой срок обещать не станем.'
-        : 'Срок позволяет пройти маршрут целиком, с запасом на замечания научного руководителя.');
-
-    // Третья плашка итога — единственное место, где сказано, успеваем или нет.
-    const status = weeksLeft === null
-      ? { title: 'Укажите дату защиты', text: 'Посчитаем, что успеваем сделать качественно к вашему сроку.',
-          bg: '#F8F5FC', edge: '#EAE3F2', ink: '#4A4157', mask: this.mask('calendar-days') }
-      : (tight
-        ? { title: 'Срок короче маршрута', text: 'Ниже — сокращённый состав работ. Скажем прямо, что успеваем.',
-            bg: '#FAE7E5', edge: '#F0C9C3', ink: '#8E2C22', mask: this.mask('clock') }
-        : { title: 'Успеваем целиком', text: 'Есть запас на замечания научного руководителя.',
-            bg: '#E6F9F1', edge: '#5FE6B6', ink: '#0E4E3C', mask: this.mask('check') });
-
-    const today0 = new Date();
-    today0.setHours(0, 0, 0, 0);
-    const dateMin = today0.getFullYear() + '-'
-      + String(today0.getMonth() + 1).padStart(2, '0') + '-'
-      + String(today0.getDate()).padStart(2, '0');
+    const badges = ['#EFE2FD', '#DFF7EE', '#F2EEF7'];
+    const stages = steps.map(([title, term, author, team], i) => ({
+      num: String(i + 1), title, term, author, team,
+      ink: inks[i % 3], badgeBg: badges[i % 3]
+    }));
+    const routeSummary = stages.length + ' ' + stepWord(stages.length) + ', ' + routeTerm;
 
     const faqData = [
       ['С чего начинается работа?', 'С бесплатной консультации на 20 минут. Куратор смотрит вашу работу и методичку, называет объём правок и реальный срок. После этого присылаем смету — решение остаётся за вами.'],
@@ -777,7 +688,6 @@ class Component extends DCLogic {
     ];
 
     return {
-      dateValue: this.state.date,
       ...(() => {
         const t = (key, sel) => ['E-mail', 'Телефон'].map((label, i) => ({
           label, active: i === sel, inactive: i !== sel,
@@ -792,20 +702,10 @@ class Component extends DCLogic {
           contactPlaceholderBottom: b === 0 ? 'Ваш e-mail' : 'Ваш телефон'
         };
       })(),
-      onDate: e => this.setState({ date: e.target.value }),
-
       navHidden: this.state.navOpen ? undefined : true,
       navOpenAttr: this.state.navOpen ? 'true' : 'false',
       toggleNav: () => this.setState(s => ({ navOpen: !s.navOpen })),
-      dateMin, planNote, planShown, planHasMore, planOpen, planToggleLabel,
-      planToggleMask: this.mask(planOpen ? 'arrow-left' : 'arrow-down'),
-      togglePlan: () => this.setState({ planOpen: !this.state.planOpen }),
-      sumPlanNum: String(needWeeks),
-      sumPlanWord: weekWord(needWeeks),
-      sumLeftNum: weeksLeft === null ? '—' : String(weeksLeft),
-      sumLeftWord: weeksLeft === null ? 'дата не указана' : weekWord(weeksLeft),
-      statusTitle: status.title, statusText: status.text,
-      statusBg: status.bg, statusEdge: status.edge, statusInk: status.ink, statusMask: status.mask,
+      stages, routeSummary, routeNote, routeMask: this.mask('clock'),
       situations: situationData.map(([label], i) => ({
         label, active: i === sIdx, inactive: i !== sIdx,
         pick: () => this.setState({ situation: i })
@@ -878,7 +778,7 @@ class Component extends DCLogic {
       normOpenAttr: this.state.normOpen ? 'true' : 'false',
       normMask: this.mask(this.state.normOpen ? 'arrow-left' : 'arrow-down'),
       toggleNorm: () => this.setState(s => ({ normOpen: !s.normOpen })),
-      terms: ['До защиты меньше месяца', '1—2 месяца', '2—3 месяца', 'Больше трёх месяцев', 'Срок пока не назначен'].map(label => ({ label })),
+      terms: ['Срок пока не назначен', 'До защиты меньше месяца', '1—2 месяца', '2—3 месяца', 'Больше трёх месяцев'].map(label => ({ label })),
       afterSteps: [
         ['Смотрим работу', 'Куратор по вашей специальности читает текст и методичку.'],
         ['Звоним на 20 минут', 'Называем объём правок и говорим, что успеваем к вашей дате.'],
