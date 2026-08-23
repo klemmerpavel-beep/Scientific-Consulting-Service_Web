@@ -34,10 +34,25 @@ function rateLimited(ip: string): boolean {
   return recent.length > RATE_LIMIT;
 }
 
+/**
+ * Адрес заявителя. Порядок источников намеренный.
+ *
+ * X-Forwarded-For приходит от клиента и лишь дополняется прокси, поэтому
+ * первый элемент списка задаёт сам отправитель: по нему легко обойти
+ * ограничение частоты и записать в журнал согласий чужой адрес. X-Real-IP
+ * наш nginx выставляет из $remote_addr и затирает клиентское значение —
+ * ему верить можно. Если его нет, берём последний элемент списка: его
+ * дописал ближайший прокси, и подделать его клиент не может.
+ */
 function clientIp(req: NextRequest): string {
+  const real = req.headers.get('x-real-ip')?.trim();
+  if (real) return real;
   const fwd = req.headers.get('x-forwarded-for');
-  if (fwd) return fwd.split(',')[0].trim();
-  return req.headers.get('x-real-ip') ?? 'unknown';
+  if (fwd) {
+    const hops = fwd.split(',').map((h) => h.trim()).filter(Boolean);
+    if (hops.length) return hops[hops.length - 1];
+  }
+  return 'unknown';
 }
 
 export async function POST(req: NextRequest) {

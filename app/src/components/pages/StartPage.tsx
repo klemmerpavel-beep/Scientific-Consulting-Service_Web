@@ -21,7 +21,7 @@ html,body{margin:0;background:#FFFFFF!important;min-height:100%}a{color:#7B2BE0;
 @media (max-width:1024px){.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.pd-hero,.pd-cta{grid-template-columns:minmax(0,1fr)}.pd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-card{flex:0 0 clamp(260px,72vw,320px)}}
 @media (max-width:768px){.pd-metrics,.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-@media (max-width:480px){.pd-hero,.pd-metrics,.pd-routes,.pd-cta{grid-template-columns:minmax(0,1fr)!important}.pd-routes,.pd-metrics{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px;padding-right:20px}.pd-card{flex:0 0 86vw}}
+@media (max-width:480px){.pd-hero,.pd-metrics,.pd-routes,.pd-cta{grid-template-columns:minmax(0,1fr)!important}.pd-routes,.pd-metrics{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}.pd-card{flex:0 0 86vw}}
 .x1:hover{background:rgba(221,196,250,.45)}
 .x2:active{background:rgba(221,196,250,.62)}
 .x3:hover{background:#2A2233;color:#FFFFFF}

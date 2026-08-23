@@ -100,53 +100,21 @@ export default function PhotoSlot({
   };
 
   if (frame) {
-    if (frame.by === 'figure') {
-      // Всё считается долями от слота, а не пикселями: слот на узком экране
-      // сжимается, и пиксельные значения разъезжались бы.
-      //
-      // `figShown` — какую часть фигуры показывать. Нужна там, где человек
-      // снят длиннее остальных.
-      const shown = photo.figShown ?? photo.figH;
+    // Всё считается долями от слота, а не пикселями: слот на узком экране
+    // сжимается, и пиксельные значения разъезжались бы.
+    //
+    // `figShown` — какую часть фигуры показывать. Нужна там, где человек
+    // снят длиннее остальных.
+    const shown = photo.figShown ?? photo.figH;
 
-      // Высота снимка как доля высоты слота: чтобы фигура заняла заданную
-      // долю, весь кадр должен быть во столько же раз выше.
-      const heightPct = (frame.figureHPct * photo.height) / shown;
+    // Высота снимка как доля высоты слота: чтобы фигура заняла заданную
+    // долю, весь кадр должен быть во столько же раз выше.
+    const heightPct = (frame.figureHPct * photo.height) / shown;
 
-      // Сдвиги считаются в процентах от собственного размера снимка —
-      // проценты в `transform` отсчитываются именно от него.
-      const shiftXPct = (0.5 - photo.figCx / photo.width) * 100;
-      const shiftYPct = -(photo.figTop / photo.height) * 100;
-
-      return (
-        <span style={{ ...box, display: 'block', position: 'relative' }}>
-          <img
-            {...common}
-            style={{
-              display: 'block',
-              position: 'absolute',
-              left: '50%',
-              top: `${frame.topPct}%`,
-              height: `${heightPct.toFixed(2)}%`,
-              width: 'auto',
-              maxWidth: 'none',
-              transform: `translate(calc(-50% + ${shiftXPct.toFixed(2)}%), ${shiftYPct.toFixed(2)}%)`,
-            }}
-          />
-        </span>
-      );
-    }
-
-    // По голове: масштаб задаётся требуемой шириной головы, с центром слота
-    // сводится центр головы. Лица в соседних карточках выходят одного
-    // размера; фигура при этом уходит за кромку и обрезается.
-    const k = frame.headW / photo.headW;
-    const drawnW = photo.width * k;
-    const drawnH = photo.height * k;
-    const shiftX = drawnW / 2 - photo.headCx * k;
-    const vertical =
-      frame.anchor === 'top'
-        ? { top: `${((frame.headroom ?? 0) - photo.figTop * k).toFixed(1)}px` }
-        : { bottom: 0 };
+    // Сдвиги считаются в процентах от собственного размера снимка —
+    // проценты в `transform` отсчитываются именно от него.
+    const shiftXPct = (0.5 - photo.figCx / photo.width) * 100;
+    const shiftYPct = -(photo.figTop / photo.height) * 100;
 
     return (
       <span style={{ ...box, display: 'block', position: 'relative' }}>
@@ -156,11 +124,11 @@ export default function PhotoSlot({
             display: 'block',
             position: 'absolute',
             left: '50%',
-            ...vertical,
-            transform: `translateX(calc(-50% + ${shiftX.toFixed(1)}px))`,
-            width: `${drawnW.toFixed(1)}px`,
-            height: `${drawnH.toFixed(1)}px`,
+            top: `${frame.topPct}%`,
+            height: `${heightPct.toFixed(2)}%`,
+            width: 'auto',
             maxWidth: 'none',
+            transform: `translate(calc(-50% + ${shiftXPct.toFixed(2)}%), ${shiftYPct.toFixed(2)}%)`,
           }}
         />
       </span>

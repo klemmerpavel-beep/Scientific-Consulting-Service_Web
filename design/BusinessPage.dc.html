@@ -19,7 +19,9 @@
 <helmet>
 <script src="./ds-base.js"></script>
 <script src="./image-slot.js"></script>
-<style>body{margin:0;background:#FFFFFF}a{color:#7B2BE0;text-decoration:none}a:hover{color:#5E17B8}*:focus-visible{outline:2px solid #7B2BE0;outline-offset:2px}input[type=checkbox]{accent-color:#7B2BE0}
+<style>
+.bp-nav{display:flex;align-items:center;gap:24px}
+.bp-burger{display:none}body{margin:0;background:#FFFFFF}a{color:#7B2BE0;text-decoration:none}a:hover{color:#5E17B8}*:focus-visible{outline:2px solid #7B2BE0;outline-offset:2px}input[type=checkbox]{accent-color:#7B2BE0}
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;background:#16121C;color:#FFFFFF;padding:12px 20px;border-radius:0 0 10px 0;font-size:13px;font-weight:600}
 .pd-skip:focus{left:0;color:#FFFFFF}
 .bp-scroll{overflow-x:auto;overscroll-behavior-x:contain;scroll-behavior:smooth}
@@ -31,9 +33,9 @@
 .bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
 .bp-support{display:grid;grid-template-columns:minmax(0,1fr)}
 @media (max-width:1024px){.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-trl{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-cat{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team{grid-template-columns:minmax(0,1fr)}.bp-nav{display:none}.bp-pack{grid-column:span 6!important}}
+@media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team{grid-template-columns:minmax(0,1fr)}.bp-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);min-width:220px}.bp-nav[hidden]{display:none}.bp-burger{display:inline-flex}.bp-pack{grid-column:span 6!important}}
 @media (max-width:768px){.bp-trl,.bp-cat,.bp-reasons{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-@media (max-width:480px){.bp-hero,.bp-team,.bp-trl,.bp-cat,.bp-rights,.bp-req,.bp-reasons,.bp-support{grid-template-columns:minmax(0,1fr)!important}.bp-pad{padding-left:20px;padding-right:20px}.bp-reasons,.bp-orbit{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:480px){.bp-hero,.bp-team,.bp-trl,.bp-cat,.bp-rights,.bp-req,.bp-reasons,.bp-support{grid-template-columns:minmax(0,1fr)!important}.bp-pad{padding-left:20px!important;padding-right:20px!important}.bp-reasons,.bp-orbit{grid-template-columns:minmax(0,1fr)}}
 @keyframes bp-marquee-l{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes bp-marquee-r{from{transform:translateX(-50%)}to{transform:translateX(0)}}.bp-ticker:hover .bp-run,.bp-ticker:focus-within .bp-run{animation-play-state:paused}
 
 
@@ -70,10 +72,15 @@
 
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
 
-<header class="bp-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
+<header class="bp-pad" style="position:relative;z-index:5;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
 <a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-family:'Onest',Arial,sans-serif;font-size:28px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 200ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(221,196,250,.45)" style-active="background:rgba(221,196,250,.62)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
 <div style="display:flex;align-items:center;gap:24px">
-<nav class="bp-nav" aria-label="Разделы страницы" style="display:flex;align-items:center;gap:24px">
+<button type="button" class="bp-burger" aria-expanded="{{ navOpenAttr }}" aria-controls="bp-nav" aria-label="Меню разделов" onClick="{{ toggleNav }}" style="appearance:none;cursor:pointer;flex:0 0 44px;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:10px;background:#FFFFFF;align-items:center;justify-content:center;flex-direction:column;gap:4px">
+<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:#16121C"></span>
+<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:#16121C"></span>
+<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:#16121C"></span>
+</button>
+<nav id="bp-nav" class="bp-nav" hidden="{{ navHidden }}" aria-label="Разделы страницы">
 <a href="#trl" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Уровень готовности</a>
 <a href="#catalog" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Каталог работ</a>
 <a href="#rights" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Права на результат</a>
@@ -169,7 +176,7 @@
 <div class="bp-team" style="gap:40px;align-items:center">
 <div style="display:flex;flex-direction:column;gap:24px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Команда</span>
-<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:24ch;text-wrap:pretty">Над задачей работает <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">проектная команда, а не один подрядчик</span></h2>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:24ch;text-wrap:pretty">Над задачей работает проектная команда, а не один подрядчик</h2>
 <p style="margin:0;font-size:15px;line-height:25px;color:#4A4157;max-width:40ch">За проектом закреплены четверо: менеджер, отраслевой эксперт, методолог и научный редактор. Исполнителей на стороне не ищем.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:18px;letter-spacing:.06em;color:#7B2BE0;flex:0 0 auto">С 2016</span><span style="font-size:13px;line-height:20px;color:#584A6B">научный коллектив ведёт НИОКР и заявки по всей России</span></div>
@@ -239,7 +246,7 @@
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Уровень готовности технологии</span>
-<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch">На каком уровне разработка и <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px">какие документы получаются на выходе</span></h2>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch">На каком уровне разработка и какие документы получаются на выходе</h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Выберите свой уровень — покажем состав работ и документы</span>
 </div>
@@ -344,7 +351,7 @@
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Каталог работ</span>
-<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch">Полный каталог: <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px">семь направлений, 52 позиции</span></h2>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch">Полный каталог: семь направлений, 52 позиции</h2>
 </div>
 <button type="button" onClick="{{ toggleAll }}" style="appearance:none;cursor:pointer;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:999px;padding:10px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:#16121C;margin-left:auto;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0">{{ catalogToggleLabel }}</button>
 </div>
@@ -393,7 +400,7 @@
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Как устроена работа</span>
-<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch">Шесть механизмов, <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px">закреплённых договором и приёмкой</span></h2>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch">Шесть механизмов, закреплённых договором и приёмкой</h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Под каждым механизмом — носитель обязательства</span>
 </div>
@@ -426,7 +433,7 @@
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Права и конфиденциальность</span>
-<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch">Кому принадлежит результат <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px">и что происходит с материалами</span></h2>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch">Кому принадлежит результат и что происходит с материалами</h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Права на результат остаются у вашей компании</span>
 </div>
@@ -444,7 +451,7 @@
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Заявка</span>
-<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch">Опишите разработку — <span style="background:#DDC4FA;border-radius:6px;padding:2px 8px">разберём задачу и посчитаем смету</span></h2>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch">Опишите разработку — разберём задачу и посчитаем смету</h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Ответим в рабочий день и пришлём NDA</span>
 </div>
@@ -507,7 +514,7 @@
 <sc-for list="{{ askFor }}" as="a" hint-placeholder-count="4">
 <span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:#7B2BE0"></span><span style="font-size:13px;line-height:1.5;color:#4A4157">{{ a.text }}</span></span>
 </sc-for>
-<p style="margin:6px 0 0;padding-top:12px;border-top:1px solid #F2ECF7;font-size:13px;line-height:1.6;color:#16121C">Соглашение о неразглашении подписываем до содержательного обсуждения задачи.</p>
+<p style="margin:6px 0 0;padding-top:12px;border-top:1px solid #F2ECF7;font-size:13px;line-height:1.6;color:#16121C">Задачу обсуждаем только после подписанного NDA.</p>
 </div>
 </div>
 </div>
@@ -563,7 +570,7 @@
    — стандарт оформления отчёта о НИР (номер редакции ГОСТ 7.32 на дату сборки);
    — сроки ведомственных процедур регистрации охранных документов. */
 class Component extends DCLogic {
-  state = { trl: 5, open: { 0: true }, allOpen: false, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, highlight: null, reasonPage: 0, reasonPages: 1 };
+  state = { trl: 5, open: { 0: true }, allOpen: false, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, highlight: null, reasonPage: 0, reasonPages: 1, navOpen: false };
   goReason(dir){
     const t = document.querySelector('[data-carousel="reasons"]');
     if (!t) return;
@@ -584,10 +591,17 @@ class Component extends DCLogic {
       this.raf = requestAnimationFrame(() => { this.raf = 0; this.measure(); this.forceUpdate(); });
     };
     window.addEventListener('resize', this.onResize);
+    // На широком экране меню всегда развёрнуто: иначе атрибут hidden
+    // остаётся на видимом <nav>, и программа чтения с экрана его минует.
+    this.wide = window.matchMedia('(min-width:769px)');
+    this.syncNav = () => this.setState({ navOpen: this.wide.matches });
+    this.syncNav();
+    this.wide.addEventListener('change', this.syncNav);
   }
   componentWillUnmount(){
     window.removeEventListener('resize', this.onResize);
     if (this.raf) cancelAnimationFrame(this.raf);
+    if (this.wide) this.wide.removeEventListener('change', this.syncNav);
   }
   renderVals(){
     const edges = ['#7B2BE0', '#3DDCA0', '#BFB4CE'];
@@ -606,12 +620,12 @@ class Component extends DCLogic {
         'Документ, собранный под требования заказчика и под налоговый учёт.'],
       ['pack-3', '03', 'Заявка на грант или субсидию', 'от 3 недель', 2, '15px',
         'Есть проект и конкурс с дедлайном.',
-        'Подбираем программу под стадию и отрасль, упаковываем заявку под требования конкурса. Считаем бюджет и готовим команду к защите.',
+        'Подбираем программу под стадию и отрасль, упаковываем заявку под требования конкурса. Считаем бюджет и разбираем с командой вопросы экспертного совета.',
         [['Заявка по форме конкурса', ''], ['Финансово-экономическое обоснование', 'по форме конкурса'], ['Дорожная карта и план коммерциализации', 'по форме конкурса'], ['Презентация и разбор вопросов совета', 'к дате защиты']],
         'Чтобы заявку не вернули по формальным основаниям.'],
       ['pack-4', '04', 'Разработка в нематериальный актив', 'от 4 недель', 2, '15px',
         'Результат получен, его нужно защитить и поставить на баланс.',
-        'Строим патентный ландшафт, проверяем свободу использования, готовим заявку на охранный документ. Оформляем режим коммерческой тайны и служебные результаты.',
+        'Строим патентный ландшафт, проверяем свободу использования, оформляем заявку на охранный документ. Вводим режим коммерческой тайны и служебные результаты.',
         [['Патентный ландшафт и заключение', 'по итогам поиска'], ['Заявка на изобретение или полезную модель', 'гл. 72 ГК РФ'], ['Заявка на программу для ЭВМ или базу данных', 'ст. 1262 ГК РФ'], ['Документы по коммерческой тайне', '98-ФЗ'], ['Документы для постановки прав на баланс', 'ФСБУ 14/2022']],
         'Превратить разработку из расхода в актив.'],
       ['pack-5', '05', 'Рынок и решение о внедрении', 'от 3 недель', 2, '15px',
@@ -653,17 +667,17 @@ class Component extends DCLogic {
         ['Гранты на разработку.', 'Учёт расходов на НИОКР с коэффициентом 2, п. 7 ст. 262 НК РФ.'],
         '', 'pack-2', '02 · НИОКР под сдачу'],
       [5, 'Испытания', 'Макет проверен в условиях, приближенных к рабочим.', false,
-        ['Разрабатываем программу и методику испытаний.', 'Готовим заявку на охранный документ по полученному результату.'],
+        ['Разрабатываем программу и методику испытаний.', 'Оформляем заявку на охранный документ по полученному результату.'],
         [['Программа и методика испытаний', 'ГОСТ Р 15.301'], ['Протоколы испытаний', 'по программе'], ['Заявка на изобретение или полезную модель', 'гл. 72 ГК РФ']],
         ['Программы поддержки разработки.', 'Учёт расходов на НИОКР с коэффициентом 2, п. 7 ст. 262 НК РФ.'],
         '', 'pack-2', '02 · НИОКР под сдачу'],
       [6, 'Прототип', 'Испытан прототип в реальных условиях эксплуатации.', false,
-        ['Готовим заявку на грант или субсидию под требования конкурса.', 'Считаем бюджет и финансово-экономическое обоснование.'],
+        ['Оформляем заявку на грант или субсидию под требования конкурса.', 'Считаем бюджет и финансово-экономическое обоснование.'],
         [['Заявка по форме конкурса', ''], ['Финансово-экономическое обоснование', 'по форме конкурса'], ['Дорожная карта проекта', 'по форме конкурса']],
         ['Конкурсы на коммерциализацию.', 'Субсидии на внедрение.'],
         '', 'pack-3', '03 · Заявка на грант или субсидию'],
       [7, 'Демонстрация', 'Опытный образец продемонстрирован заказчику или на площадке.', false,
-        ['Оформляем права: патент, программа для ЭВМ, коммерческая тайна.', 'Готовим документы для постановки прав на баланс.'],
+        ['Оформляем права: патент, программа для ЭВМ, коммерческая тайна.', 'Собираем документы для постановки прав на баланс.'],
         [['Заявка на охранный документ', 'гл. 72 ГК РФ'], ['Свидетельство на программу для ЭВМ', 'ст. 1262 ГК РФ'], ['Документы по коммерческой тайне', '98-ФЗ'], ['Документы для учёта НМА', 'ФСБУ 14/2022']],
         ['Программы масштабирования.', 'Постановка НМА на баланс как источник капитализации.'],
         '', 'pack-4', '04 · Разработка в нематериальный актив'],
@@ -673,7 +687,7 @@ class Component extends DCLogic {
         ['Инвестиционное финансирование по обоснованию.', 'Программы поддержки серийного освоения.'],
         '', 'pack-5', '05 · Рынок и решение о внедрении'],
       [9, 'Серия', 'Технология освоена в серийном производстве. Серийную документацию ведёт предприятие.', false,
-        ['Оцениваем объём рынка и готовим решение о масштабировании.', 'Готовим публикации и доклады по результатам работ.'],
+        ['Оцениваем объём рынка и собираем данные для решения о масштабировании.', 'Пишем статьи и доклады по результатам работ.'],
         [['Аналитический отчёт по рынку', 'вторичные источники'], ['Оценка экономического эффекта', 'расчёт'], ['Научная статья по результатам', 'требования журнала']],
         ['Собственные средства и инвестиции.', 'Учёт расходов на развитие продукта, п. 7 ст. 262 НК РФ.'],
         '', 'pack-5', '05 · Рынок и решение о внедрении']
@@ -707,10 +721,10 @@ class Component extends DCLogic {
     const catalogMeta = [
       ['Ведём работу по этапам и готовим отчётность под требования заказчика и налогового учёта.', 'Комиссия заказчика, налоговый орган', 'ГОСТ 15.101 · ГОСТ Р 15.301 · ПП РФ № 327'],
       ['Оформляем права на результат и готовим документы для постановки актива на баланс.', 'Роспатент, бухгалтерия компании', 'гл. 72 ГК РФ · ст. 1262 ГК РФ · 98-ФЗ'],
-      ['Упаковываем проект под требования конкретного конкурса и готовим команду к защите.', 'Фонд, ведомство, экспертный совет', 'по форме конкурса'],
+      ['Упаковываем проект под требования конкретного конкурса и репетируем защиту с командой.', 'Фонд, ведомство, экспертный совет', 'по форме конкурса'],
       ['Считаем экономику проекта и собираем обоснование для инвестора или банка.', 'Инвестор, банк, налоговый орган', 'п. 7 ст. 262 НК РФ'],
       ['Собираем данные для решения о внедрении: рынок, конкуренты, барьеры.', 'Совет директоров, инвестиционный комитет', 'ГОСТ Р 58048-2017'],
-      ['Готовим публикации по результатам работ для отраслевой репутации компании.', 'Редакция журнала, оргкомитет конференции', 'требования издания'],
+      ['Доводим результаты работ до статьи в журнале и доклада на отраслевой площадке.', 'Редакция журнала, оргкомитет конференции', 'требования издания'],
       ['Ставим внутренний процесс НИОКР и сопровождаем научную функцию компании.', 'Руководство компании', 'внутренние регламенты']
     ];
     const catalogData = [
@@ -742,6 +756,9 @@ class Component extends DCLogic {
     });
 
     return {
+      navHidden: this.state.navOpen ? undefined : true,
+      navOpenAttr: this.state.navOpen ? 'true' : 'false',
+      toggleNav: () => this.setState(s => ({ navOpen: !s.navOpen })),
       needs: ['Техзадание и патентная чистота', 'НИОКР под сдачу', 'Заявка на грант или субсидию', 'Разработка в нематериальный актив', 'Рынок и решение о внедрении', 'Патентный поиск и охранные документы', 'Обоснование расходов на НИОКР', 'Ещё не определились — нужна консультация'].map(label => ({ label })),
       supports: [
         ['NDA до обсуждения', 'Соглашение о неразглашении подписываем до того, как вы опишете задачу.', 'linear-gradient(152deg,#E0CBFB 0%,#CBA6F7 100%)', '#16121C', '#3A3247'],

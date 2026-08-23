@@ -84,8 +84,12 @@ function valueExpr(raw) {
   const holes = [...raw.matchAll(/\{\{\s*([^}]+?)\s*\}\}/g)];
   if (holes.length === 0) return JSON.stringify(raw);
   if (holes.length === 1 && holes[0][0] === raw.trim()) return holeExpr(holes[0][1]);
-  const tpl = raw.replace(/`/g, '\\`').replace(/\{\{\s*([^}]+?)\s*\}\}/g,
-    (_, h) => '${' + holeExpr(h) + '}');
+  // Обратная кавычка и ${ в тексте макета закрыли бы шаблонную строку
+  // раньше времени: экранируем оба до подстановки дыр.
+  const tpl = raw
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${')
+    .replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, h) => '${' + holeExpr(h) + '}');
   return '`' + tpl + '`';
 }
 

@@ -34,6 +34,14 @@ function fields(lead: Lead): [string, string][] {
   return rows.filter((r): r is [string, string] => Boolean(r[1] && r[1].trim()));
 }
 
+/**
+ * Значение, попадающее в заголовок письма. Перевод строки внутри такого
+ * значения — приём подмены заголовков: за ним можно дописать свои Bcc или
+ * Content-Type. Библиотека кодирует заголовки сама, но полагаться на это
+ * в единственном месте, куда приходит чужой текст, не стоит.
+ */
+const header = (s: string) => s.replace(/[\r\n]+/g, ' ').trim();
+
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -99,6 +107,12 @@ async function sendMail(lead: Lead, id: string): Promise<DeliveryResult> {
   try {
     const transport = nodemailer.createTransport({
       host,
+      // Без ограничения времени зависший SMTP держал бы открытым и запрос
+      // заявителя: доставка идёт до ответа страницы. Срок тот же, что у
+      // Telegram, — восемь секунд.
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 8000,
       port: Number(process.env.SMTP_PORT ?? 465),
       secure: process.env.SMTP_SECURE !== 'false',
       auth: process.env.SMTP_USER
@@ -108,8 +122,10 @@ async function sendMail(lead: Lead, id: string): Promise<DeliveryResult> {
     await transport.sendMail({
       from: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? to,
       to,
-      replyTo: lead.contactKind === 'email' ? lead.contact : undefined,
-      subject: `Заявка · ${SOURCE_NAMES[lead.source] ?? lead.source}${lead.name ? ` · ${lead.name}` : ''}`,
+      replyTo: lead.contactKind === 'email' ? header(lead.contact) : undefined,
+      subject: header(
+        `Заявка · ${SOURCE_NAMES[lead.source] ?? lead.source}${lead.name ? ` · ${lead.name}` : ''}`,
+      ),
       html,
     });
     return { channel: 'email', ok: true };
