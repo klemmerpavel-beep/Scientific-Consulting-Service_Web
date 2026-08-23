@@ -28,6 +28,20 @@ ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
+# ------------------------------------------------------------------ миграции
+# Отдельный слой для наката схемы. В рабочем образе Next оставляет только те
+# модули, которые требует server.js: командной строки prisma там нет, и
+# `npx prisma` полез бы за ней в реестр npm прямо на сервере — во время
+# развёртывания, неизвестной версией. Здесь лежат и полные зависимости,
+# и каталог prisma с миграциями.
+FROM node:22-alpine AS migrator
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json prisma.config.ts ./
+COPY prisma ./prisma
+CMD ["npx", "--no-install", "prisma", "migrate", "deploy"]
+
 # ------------------------------------------------------------------- рабочий
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -43,10 +57,6 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-# Схема и миграции нужны в образе: накат делается при развёртывании
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 
 USER nextjs
 EXPOSE 3000

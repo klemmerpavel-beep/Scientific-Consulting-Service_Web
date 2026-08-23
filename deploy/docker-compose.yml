@@ -57,15 +57,13 @@ services:
   migrate:
     build:
       context: ../app
-      args:
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      target: migrator
     profiles: ['migrate']
     depends_on:
       db:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-prodisser}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-prodisser}
-    command: ['npx', 'prisma', 'migrate', 'deploy']
 
 volumes:
   db-data:
