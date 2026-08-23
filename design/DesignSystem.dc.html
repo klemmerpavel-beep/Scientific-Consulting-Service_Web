@@ -18,6 +18,14 @@
 @media (max-width:1024px){.pd-4{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.pd-2,.pd-3,.pd-4,.pd-split{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:480px){.pd-pad{padding-left:20px!important;padding-right:20px!important}.pd-7{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
+   поэтому приглушение объявлено важным. */
+button[disabled]{opacity:.55!important;cursor:progress!important}
+/* Подтверждение и ошибка появляются плавно, а не возникают рывком.
+   Правило срабатывает при вставке элемента, поэтому блоки, которые уже
+   на странице, ничего не переигрывают при обновлении содержимого. */
+@keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+[role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}</style>
 </helmet>
 <div style="position:relative;background:#FFFFFF;color:#16121C;font-family:'Onest','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
@@ -29,7 +37,7 @@
 <p style="margin:16px 0 0;font-size:15px;line-height:1.6;color:#4A4157;max-width:64ch">Единый источник правды для шести поверхностей сервиса: посадочная страница, страница для аспирантов, страницы студентов и бизнеса, личный кабинет клиента и админ-панель. Ядро токенов общее, ветви две — воздушный «Сайт» и плотный «Рабочий интерфейс». Значение, которого нет в разделе 01, верстать запрещено.</p>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:24px">
 <sc-for list="{{ nav }}" as="n" hint-placeholder-count="6">
-<a href="{{ n.href }}" style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:999px;padding:8px 16px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#4A4157" style-hover="border-color:#7B2BE0;color:#7B2BE0">{{ n.label }}</a>
+<a href="{{ n.href }}" style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:999px;padding:8px 16px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0;color:#7B2BE0" style-active="transform:scale(.97)">{{ n.label }}</a>
 </sc-for>
 </div>
 </header>
@@ -230,7 +238,7 @@
 <div style="flex:1 1 auto;background:#F8F5FC;padding:16px">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Заказы</span>
-<button type="button" onClick="{{ toggleSidebar }}" style="appearance:none;cursor:pointer;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:999px;padding:8px 16px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#4A4157" style-hover="border-color:#7B2BE0;color:#7B2BE0">{{ sidebarLabel }}</button>
+<button type="button" onClick="{{ toggleSidebar }}" style="appearance:none;cursor:pointer;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:999px;padding:8px 16px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0;color:#7B2BE0" style-active="transform:scale(.97)">{{ sidebarLabel }}</button>
 </div>
 <div style="background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;height:132px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;color:#6B6178">рабочая область · фон #F8F5FC · карточки поднятые</div>
 </div>
@@ -329,7 +337,7 @@
 <span style="display:flex;align-items:center;justify-content:space-between;gap:20px;background:#DDC4FA;padding:16px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:#16121C">Когда платить?<span aria-hidden="true" style="width:16px;height:2px;flex:0 0 16px;background:#16121C;border-radius:999px"></span></span>
 <p style="margin:0;padding:14px 20px 18px;font-size:13px;line-height:1.6;color:#4A4157">Не вперёд за всю работу. Каждый этап вы принимаете отдельно, следующий оплачиваете только после этого.</p>
 </div>
-<button type="button" style="appearance:none;border:1px solid #EAE3F2;background:#FFFFFF;cursor:pointer;width:100%;text-align:left;padding:16px 20px;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:#16121C;box-shadow:0 1px 2px rgba(38,38,46,.05);transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0">Что с конфиденциальностью?<span aria-hidden="true" style="position:relative;width:16px;height:16px;flex:0 0 16px"><span style="position:absolute;left:0;top:7px;width:16px;height:2px;background:#6B6178;border-radius:999px"></span><span style="position:absolute;left:7px;top:0;width:2px;height:16px;background:#6B6178;border-radius:999px"></span></span></button>
+<button type="button" style="appearance:none;border:1px solid #EAE3F2;background:#FFFFFF;cursor:pointer;width:100%;text-align:left;padding:16px 20px;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:#16121C;box-shadow:0 1px 2px rgba(38,38,46,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="opacity:.82">Что с конфиденциальностью?<span aria-hidden="true" style="position:relative;width:16px;height:16px;flex:0 0 16px"><span style="position:absolute;left:0;top:7px;width:16px;height:2px;background:#6B6178;border-radius:999px"></span><span style="position:absolute;left:7px;top:0;width:2px;height:16px;background:#6B6178;border-radius:999px"></span></span></button>
 </div>
 <p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#6B6178">Открытый вопрос лежит на подсветке #DDC4FA, а не на белом с тенью: подсветка держит связь заголовка с ответом при прокрутке длинного списка.</p>
 </div>
@@ -340,16 +348,16 @@
 <div role="group" aria-label="Способ связи" style="display:inline-flex;gap:4px;padding:4px;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start">
 <sc-for list="{{ contactTabs }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:12px;line-height:1.4;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:12px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#6B6178;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:12px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#6B6178;border-radius:999px;padding:8px 20px;font-family:'Onest',Arial,sans-serif;font-size:12px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C" style-active="transform:scale(.97)">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
-<input type="{{ contactType }}" name="contact" autocomplete="{{ contactAuto }}" placeholder="{{ contactPlaceholder }}" aria-label="{{ contactPlaceholder }}" required="" style="width:100%;box-sizing:border-box;height:48px;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:13px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0">
+<input type="{{ contactType }}" name="contact" autocomplete="{{ contactAuto }}" placeholder="{{ contactPlaceholder }}" aria-label="{{ contactPlaceholder }}" required="" style="width:100%;box-sizing:border-box;height:48px;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:13px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)">
 <label for="ds-consent" style="display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="ds-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю согласие на обработку персональных данных</span></label>
-<button type="submit" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:13px;font-weight:600;padding:14px 30px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Оставить заявку</button>
+<button type="submit" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:13px;font-weight:600;padding:14px 30px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">Оставить заявку</button>
 <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
 <div role="status" style="display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #5FE6B6;border-radius:10px;padding:12px 16px">
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:#0E4E3C;-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
@@ -378,7 +386,7 @@
 <span style="font-size:13px;line-height:1.4;font-weight:600;color:#16121C">С действием справа</span>
 <span style="font-size:12px;line-height:1.5;color:#4A4157">Действие выключено вправо и не конкурирует с заголовком.</span>
 </span>
-<button type="button" style="appearance:none;cursor:pointer;flex:0 0 auto;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:999px;padding:6px 14px;font-size:12px;line-height:1.4;font-weight:600;color:#7B2BE0;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0">Открыть</button>
+<button type="button" style="appearance:none;cursor:pointer;flex:0 0 auto;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:999px;padding:6px 14px;font-size:12px;line-height:1.4;font-weight:600;color:#7B2BE0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)">Открыть</button>
 </div>
 </div>
 <p style="margin:0;font-size:12px;line-height:1.5;color:#6B6178">Действие живёт в шапке карточки, а не под текстом — иначе при длинном содержимом кнопка уезжает за пределы первого экрана.</p>
@@ -640,7 +648,7 @@
 <h3 style="margin:32px 0 12px;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Поля</h3>
 <div class="pd-3" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
 <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.5;color:#6B6178">Обычное и фокус
-<input type="text" placeholder="Фамилия и инициалы" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:13px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0"></label>
+<input type="text" placeholder="Фамилия и инициалы" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:13px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)"></label>
 <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.5;color:#6B6178">Недоступно
 <input type="text" value="Заказ закрыт" disabled="{{ true }}" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:13px;color:#6B6178;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:10px"></label>
 <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.5;color:#8E2C22">Ошибка ввода

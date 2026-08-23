@@ -41,6 +41,14 @@
 @keyframes bp-marquee-l{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes bp-marquee-r{from{transform:translateX(-50%)}to{transform:translateX(0)}}.bp-ticker:hover .bp-run,.bp-ticker:focus-within .bp-run{animation-play-state:paused}
 
 
+/* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
+   поэтому приглушение объявлено важным. */
+button[disabled]{opacity:.55!important;cursor:progress!important}
+/* Подтверждение и ошибка появляются плавно, а не возникают рывком.
+   Правило срабатывает при вставке элемента, поэтому блоки, которые уже
+   на странице, ничего не переигрывают при обновлении содержимого. */
+@keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+[role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}@media (max-width:1024px){.bp-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.bp-foot{grid-template-columns:minmax(0,1fr)!important}}</style>
 </helmet>
 <div style="position:relative;background:#FFFFFF;color:#16121C;font-family:'Onest','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
@@ -75,20 +83,20 @@
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
 
 <header class="bp-pad bp-head" style="position:relative;z-index:5;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
-<a href="./index.html" class="bp-logo" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-family:'Onest',Arial,sans-serif;font-size:28px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 200ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(221,196,250,.45)" style-active="background:rgba(221,196,250,.62)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
+<a href="./index.html" class="bp-logo" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-family:'Onest',Arial,sans-serif;font-size:28px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(221,196,250,.45)" style-active="background:rgba(221,196,250,.62)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
 <div class="bp-head" style="display:flex;align-items:center;gap:24px">
-<button type="button" class="bp-burger" aria-expanded="{{ navOpenAttr }}" aria-controls="bp-nav" aria-label="Меню разделов" onClick="{{ toggleNav }}" style="appearance:none;cursor:pointer;flex:0 0 44px;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:10px;background:#FFFFFF;align-items:center;justify-content:center;flex-direction:column;gap:4px">
+<button type="button" class="bp-burger" aria-expanded="{{ navOpenAttr }}" aria-controls="bp-nav" aria-label="Меню разделов" onClick="{{ toggleNav }}" style="appearance:none;cursor:pointer;flex:0 0 44px;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:10px;background:#FFFFFF;align-items:center;justify-content:center;flex-direction:column;gap:4px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)">
 <span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:#16121C"></span>
 <span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:#16121C"></span>
 <span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:#16121C"></span>
 </button>
 <nav id="bp-nav" class="bp-nav" hidden="{{ navHidden }}" aria-label="Разделы страницы">
-<a href="#trl" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Уровень готовности</a>
-<a href="#packs" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Пять пакетов</a>
-<a href="#catalog" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Каталог работ</a>
-<a href="#rights" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157" style-hover="color:#16121C">Права на результат</a>
+<a href="#trl" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Уровень готовности</a>
+<a href="#packs" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Пять пакетов</a>
+<a href="#catalog" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Каталог работ</a>
+<a href="#rights" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Права на результат</a>
 </nav>
-<a href="#request" class="bp-cta" style="display:inline-flex;align-items:center;background:#16121C;color:#FFFFFF;font-size:13px;font-weight:600;padding:12px 24px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2A2233;color:#FFFFFF">Оставить заявку</a>
+<a href="#request" class="bp-cta" style="display:inline-flex;align-items:center;background:#16121C;color:#FFFFFF;font-size:13px;font-weight:600;padding:12px 24px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2A2233;color:#FFFFFF" style-active="transform:scale(.97)">Оставить заявку</a>
 </div>
 </header>
 
@@ -106,22 +114,22 @@
 <div role="group" aria-label="Способ связи для заявки" style="display:inline-flex;gap:4px;padding:4px;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start;justify-self:start;flex:0 0 auto;grid-column:span 2">
 <sc-for list="{{ contactTabsTop }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C" style-active="transform:scale(.97)">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
-<input name="name" type="text" autocomplete="name" required="{{ true }}" placeholder="ФИО" aria-label="ФИО" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0">
-<input name="contact" type="{{ contactTypeTop }}" autocomplete="{{ contactAutoTop }}" required="{{ true }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0">
-<select name="need" aria-label="Что нужно" style="grid-column:span 2;height:48px;box-sizing:border-box;padding:0 12px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0">
+<input name="name" type="text" autocomplete="name" required="{{ true }}" placeholder="ФИО" aria-label="ФИО" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)">
+<input name="contact" type="{{ contactTypeTop }}" autocomplete="{{ contactAutoTop }}" required="{{ true }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)">
+<select name="need" aria-label="Что нужно" style="grid-column:span 2;height:48px;box-sizing:border-box;padding:0 12px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)">
 <sc-for list="{{ needs }}" as="n" hint-placeholder-count="5">
 <option value="{{ n.label }}">{{ n.label }}</option>
 </sc-for>
 </select>
-<label for="bp-consent-top" style="grid-column:span 2;display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="bp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
-<button type="submit" disabled="{{ pending }}" style="grid-column:span 2;justify-self:start;appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Оставить заявку</button>
+<label for="bp-consent-top" style="grid-column:span 2;display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="bp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
+<button type="submit" disabled="{{ pending }}" style="grid-column:span 2;justify-self:start;appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">Оставить заявку</button>
 <sc-if value="{{ sentTop }}" hint-placeholder-val="{{ false }}">
 <div role="status" style="grid-column:span 2;display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #5FE6B6;border-radius:10px;padding:12px 16px">
 <span style="font-size:13px;line-height:1.5;color:#0E4E3C">Заявка принята. Ответим в рабочее время, Пн—Пт 10:00—19:00.</span>
@@ -257,7 +265,7 @@
 <div class="bp-scroll" style="margin-bottom:20px">
 <div role="group" aria-label="Уровень готовности технологии" style="min-width:760px;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:8px">
 <sc-for list="{{ trlScale }}" as="t" hint-placeholder-count="9">
-<button type="button" aria-pressed="{{ t.pressed }}" aria-label="{{ t.aria }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;padding:0;text-align:left;display:flex;flex-direction:column;gap:8px">
+<button type="button" aria-pressed="{{ t.pressed }}" aria-label="{{ t.aria }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;padding:0;text-align:left;display:flex;flex-direction:column;gap:8px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#DDC4FA;box-shadow:0 10px 20px rgba(22,18,28,.09)" style-active="transform:translateY(1px)">
 <span style="height:4px;border-radius:999px;background:{{ t.bar }};display:block;transition:background 200ms cubic-bezier(.2,0,.2,1)"></span>
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:17px;line-height:1.24;color:{{ t.numColor }};font-variant-numeric:tabular-nums">{{ t.num }}</span>
 <span style="font-size:12px;line-height:1.4;font-weight:600;color:{{ t.titleColor }}">{{ t.short }}</span>
@@ -302,7 +310,7 @@
 </div>
 </div>
 
-<button type="button" onClick="{{ trl.goPack }}" style="margin-top:18px;appearance:none;cursor:pointer;width:100%;text-align:left;border:1px solid #DDC4FA;background:#F4EAFE;border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0">
+<button type="button" onClick="{{ trl.goPack }}" style="margin-top:18px;appearance:none;cursor:pointer;width:100%;text-align:left;border:1px solid #DDC4FA;background:#F4EAFE;border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="opacity:.82">
 <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">Подходящее предложение</span>
 <span style="font-size:14px;line-height:1.4;font-weight:600;color:#16121C">{{ trl.packLabel }}</span>
@@ -356,12 +364,12 @@
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Каталог работ</span>
 <h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch;text-wrap:balance">Полный каталог: семь направлений, 52 позиции</h2>
 </div>
-<button type="button" onClick="{{ toggleAll }}" style="appearance:none;cursor:pointer;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:999px;padding:10px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:#16121C;margin-left:auto;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0">{{ catalogToggleLabel }}</button>
+<button type="button" onClick="{{ toggleAll }}" style="appearance:none;cursor:pointer;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:999px;padding:10px 20px;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:#16121C;margin-left:auto;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)">{{ catalogToggleLabel }}</button>
 </div>
 <div style="display:flex;flex-direction:column;gap:10px">
 <sc-for list="{{ catalog }}" as="g" hint-placeholder-count="7">
 <div style="border:1px solid #EAE3F2;border-radius:14px;background:#FFFFFF;box-shadow:0 1px 2px rgba(22,18,28,.05);overflow:hidden">
-<button type="button" aria-expanded="{{ g.expanded }}" onClick="{{ g.toggle }}" style="appearance:none;cursor:pointer;width:100%;text-align:left;border:0;background:{{ g.headBg }};padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+<button type="button" aria-expanded="{{ g.expanded }}" onClick="{{ g.toggle }}" style="appearance:none;cursor:pointer;width:100%;text-align:left;border:0;background:{{ g.headBg }};padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:box-shadow 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:inset 3px 0 0 #7B2BE0" style-active="opacity:.82">
 <span style="display:flex;align-items:baseline;gap:14px;min-width:0">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;color:#7B2BE0;flex:0 0 auto">{{ g.num }}</span>
 <span style="font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">{{ g.title }}</span>
@@ -390,7 +398,7 @@
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid #EAE3F2">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#6B6178">{{ g.norm }}</span>
-<a href="#request" style="display:inline-flex;align-items:center;min-height:44px;gap:8px;font-size:13px;line-height:1.4;font-weight:600;color:#7B2BE0" style-hover="color:#5E17B8">Обсудить это направление<span aria-hidden="true" style="width:14px;height:14px;display:block;background:#7B2BE0;-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
+<a href="#request" style="display:inline-flex;align-items:center;min-height:44px;gap:8px;font-size:13px;line-height:1.4;font-weight:600;color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">Обсудить это направление<span aria-hidden="true" style="width:14px;height:14px;display:block;background:#7B2BE0;-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
 </div>
 </sc-if>
@@ -425,8 +433,8 @@
 <div style="height:100%;border-radius:999px;background:#7B2BE0;transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ reasonScale }}"></div>
 </div>
 <div style="display:flex;gap:10px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущие механизмы" onClick="{{ prevReason }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
-<button type="button" aria-label="Следующие механизмы" onClick="{{ nextReason }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Предыдущие механизмы" onClick="{{ prevReason }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Следующие механизмы" onClick="{{ nextReason }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
 </div>
 </div>
 </section>
@@ -462,31 +470,31 @@
 <form onSubmit="{{ submitMain }}" style="border:1px solid #EAE3F2;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(22,18,28,.05);display:flex;flex-direction:column;gap:12px">
 <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
 <label for="bp-org" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Организация
-<input id="bp-org" name="organization" type="text" autocomplete="organization" required="{{ true }}" placeholder="Название компании" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0"></label>
+<input id="bp-org" name="organization" type="text" autocomplete="organization" required="{{ true }}" placeholder="Название компании" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)"></label>
 <label for="bp-person" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Контактное лицо
-<input id="bp-person" name="name" type="text" autocomplete="name" required="{{ true }}" placeholder="Имя и должность" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0"></label>
+<input id="bp-person" name="name" type="text" autocomplete="name" required="{{ true }}" placeholder="Имя и должность" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)"></label>
 <div role="group" aria-label="Способ связи для сметы" style="display:inline-flex;gap:4px;padding:4px;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start;flex:0 0 auto">
 <sc-for list="{{ contactTabsBottom }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#615670;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C" style-active="transform:scale(.97)">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
 <label for="bp-contact" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Контакт для связи
-<input id="bp-contact" name="contact" type="{{ contactTypeBottom }}" autocomplete="{{ contactAutoBottom }}" required="{{ true }}" placeholder="{{ contactPlaceholderBottom }}" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0"></label>
+<input id="bp-contact" name="contact" type="{{ contactTypeBottom }}" autocomplete="{{ contactAutoBottom }}" required="{{ true }}" placeholder="{{ contactPlaceholderBottom }}" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)"></label>
 <label for="bp-need" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Что нужно
-<select id="bp-need" name="need" style="height:48px;box-sizing:border-box;padding:0 12px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0">
+<select id="bp-need" name="need" style="height:48px;box-sizing:border-box;padding:0 12px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)">
 <sc-for list="{{ needs }}" as="n" hint-placeholder-count="5">
 <option value="{{ n.label }}">{{ n.label }}</option>
 </sc-for>
 </select></label>
 <label for="bp-term" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Срок или дедлайн конкурса
-<input id="bp-term" name="deadline" type="text" autocomplete="off" placeholder="Например: подача до 30 ноября" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px" style-focus="border-color:#7B2BE0"></label>
-<label for="bp-consent" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="bp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
-<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;margin-top:10px;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Отправить заявку</button>
+<input id="bp-term" name="deadline" type="text" autocomplete="off" placeholder="Например: подача до 30 ноября" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Onest',Arial,sans-serif;font-size:14px;color:#16121C;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)"></label>
+<label for="bp-consent" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="bp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
+<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;margin-top:10px;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">Отправить заявку</button>
 <sc-if value="{{ sentMain }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="-1" style="display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #5FE6B6;border-radius:10px;padding:12px 16px">
 <span style="font-size:13px;line-height:1.5;color:#0E4E3C">Заявка принята. Пришлём NDA и предложим время установочной сессии.</span>
@@ -534,26 +542,26 @@
 </div>
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#16121C">Другие направления</span>
-<a href="./main.html" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Аспирантам и соискателям</a>
-<a href="./students.html" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Студентам и специалистам</a>
+<a href="./main.html" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Аспирантам и соискателям</a>
+<a href="./students.html" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Студентам и специалистам</a>
 </div>
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#16121C">Меню</span>
-<a href="#trl" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Уровень готовности</a>
-<a href="#packs" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Пять пакетов</a>
-<a href="#catalog" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Каталог работ</a>
-<a href="#rights" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Права на результат</a>
-<a href="./index.html" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178" style-hover="color:#16121C">Другие направления</a>
+<a href="#trl" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Уровень готовности</a>
+<a href="#packs" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Пять пакетов</a>
+<a href="#catalog" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Каталог работ</a>
+<a href="#rights" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Права на результат</a>
+<a href="./index.html" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Другие направления</a>
 </div>
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#16121C">Контакты</span>
-<a href="tel:+74954564323" style="display:flex;align-items:center;gap:10px;font-size:17px;line-height:24px;font-weight:500;color:#16121C;text-decoration:none" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/phone.svg') center/contain no-repeat;mask:url('./assets/icons/phone.svg') center/contain no-repeat"></span> +7 495 456 43 23</a>
-<a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:15px;line-height:22px;color:#4A4157" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/mail.svg') center/contain no-repeat;mask:url('./assets/icons/mail.svg') center/contain no-repeat"></span>info.prodisser@gmail.com</a>
+<a href="tel:+74954564323" style="display:flex;align-items:center;gap:10px;font-size:17px;line-height:24px;font-weight:500;color:#16121C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/phone.svg') center/contain no-repeat;mask:url('./assets/icons/phone.svg') center/contain no-repeat"></span> +7 495 456 43 23</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:15px;line-height:22px;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/mail.svg') center/contain no-repeat;mask:url('./assets/icons/mail.svg') center/contain no-repeat"></span>info.prodisser@gmail.com</a>
 </div>
 </div>
 <div class="bp-pad" style="position:relative;max-width:1220px;margin:0 auto;padding:0 30px 32px;display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap">
 <span style="font-size:12px;line-height:1.5;color:#6B6178">© 2026 ProDisser — Научный Консалтинг</span>
-<span style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;line-height:1.5"><a href="./offer.html" style="color:#6B6178" style-hover="color:#7B2BE0">Публичная оферта</a><a href="./privacy.html" style="color:#6B6178" style-hover="color:#7B2BE0">Политика конфиденциальности</a><a href="./consent.html" style="color:#6B6178" style-hover="color:#7B2BE0">Обработка персональных данных</a></span>
+<span style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;line-height:1.5"><a href="./offer.html" style="color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0">Публичная оферта</a><a href="./privacy.html" style="color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0">Политика конфиденциальности</a><a href="./consent.html" style="color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0">Обработка персональных данных</a></span>
 </div>
 </footer>
 </div>

@@ -365,8 +365,19 @@ hoverRules = new Map(); hoverSeq = 0; loopVars = []; idxNames = []; usedRoots.cl
 const jsx = convert(tpl.trim(), path.basename(inFile));
 
 // таблица стилей: правила из helmet + классы взаимодействия
+// Базовое оформление в макетах живёт в атрибуте style, а он сильнее любого
+// класса. Без !important правила наведения и нажатия не срабатывали вовсе:
+// вся страница выглядела живой в исходнике и была неподвижной в браузере.
+const important = (css) =>
+  css
+    .split(';')
+    .map((d) => d.trim())
+    .filter(Boolean)
+    .map((d) => (/!important\s*$/.test(d) ? d : `${d} !important`))
+    .join(';');
+
 const interactionCss = [...hoverRules.entries()]
-  .map(([cls, { kind, css }]) => `.${cls}:${kind === 'active' ? 'active' : kind === 'focus' ? 'focus-visible' : 'hover'}{${css}}`)
+  .map(([cls, { kind, css }]) => `.${cls}:${kind === 'active' ? 'active' : kind === 'focus' ? 'focus-visible' : 'hover'}{${important(css)}}`)
   .join('\n');
 
 const logicBody = logic

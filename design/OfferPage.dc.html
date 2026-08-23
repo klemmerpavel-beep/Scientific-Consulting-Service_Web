@@ -23,13 +23,21 @@
 @media (max-width:768px){.doc-layout{grid-template-columns:minmax(0,1fr)}.doc-toc{position:static}.doc-toc-btn{display:flex}}
 @media (max-width:480px){.doc-pad{padding-left:20px!important;padding-right:20px!important}}
 @media print{.doc-toc-list[hidden]{display:flex!important}.doc-toc,.doc-head,.doc-foot,.pd-skip{display:none!important}.doc-layout{grid-template-columns:minmax(0,1fr)!important;gap:0!important}body{background:#FFFFFF}main{max-width:none!important;padding:0!important}h1{font-size:20pt}h2{font-size:13pt;page-break-after:avoid}p,li{font-size:11pt;line-height:1.5}.doc-print{display:block!important}}.doc-print{display:none}
+/* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
+   поэтому приглушение объявлено важным. */
+button[disabled]{opacity:.55!important;cursor:progress!important}
+/* Подтверждение и ошибка появляются плавно, а не возникают рывком.
+   Правило срабатывает при вставке элемента, поэтому блоки, которые уже
+   на странице, ничего не переигрывают при обновлении содержимого. */
+@keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+[role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}</style>
 </helmet>
 <div style="position:relative;background:#FFFFFF;color:#16121C;font-family:'Onest','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased">
 <a class="pd-skip" href="#main">Перейти к тексту документа</a>
 
 <header class="doc-head doc-pad" style="max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap">
-<a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-size:28px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 200ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(198,202,246,.3)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
+<a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-size:28px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(198,202,246,.3)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Проект документа</span>
 </header>
 
@@ -40,10 +48,10 @@
 
 <div class="doc-layout doc-pad" style="max-width:1220px;margin:32px auto 0;padding:0 30px">
 <nav class="doc-toc" aria-label="Оглавление документа">
-<button type="button" class="doc-toc-btn" onClick="{{ toggleToc }}" aria-expanded="{{ tocExpanded }}" aria-controls="toc-list" style="appearance:none;cursor:pointer;width:100%;align-items:center;justify-content:space-between;gap:16px;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:10px;padding:14px 18px;font-family:'Onest',Arial,sans-serif;font-size:14px;font-weight:600;color:#16121C;margin-bottom:12px">Оглавление<span aria-hidden="true" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;color:#7B2BE0">{{ tocMark }}</span></button>
+<button type="button" class="doc-toc-btn" onClick="{{ toggleToc }}" aria-expanded="{{ tocExpanded }}" aria-controls="toc-list" style="appearance:none;cursor:pointer;width:100%;align-items:center;justify-content:space-between;gap:16px;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:10px;padding:14px 18px;font-family:'Onest',Arial,sans-serif;font-size:14px;font-weight:600;color:#16121C;margin-bottom:12px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#DDC4FA" style-active="opacity:.82">Оглавление<span aria-hidden="true" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;color:#7B2BE0">{{ tocMark }}</span></button>
 <ol id="toc-list" class="doc-toc-list" hidden="{{ tocHidden }}" style="margin:0;padding:0;list-style:none;gap:2px;border-left:1px solid #EAE3F2">
 <sc-for list="{{ toc }}" as="t" hint-placeholder-count="16">
-<li><a href="{{ t.href }}" style="display:flex;gap:10px;padding:7px 14px;font-size:14px;line-height:1.4;color:#4A4157;border-left:2px solid transparent;margin-left:-1px" style-hover="color:#16121C;border-left-color:#7B2BE0"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;color:#6B6178;padding-top:2px;flex:0 0 auto">{{ t.num }}</span><span>{{ t.title }}</span></a></li>
+<li><a href="{{ t.href }}" style="display:flex;gap:10px;padding:7px 14px;font-size:14px;line-height:1.4;color:#4A4157;border-left:2px solid transparent;margin-left:-1px;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C;border-left-color:#7B2BE0"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;color:#6B6178;padding-top:2px;flex:0 0 auto">{{ t.num }}</span><span>{{ t.title }}</span></a></li>
 </sc-for>
 </ol>
 </nav>
@@ -68,9 +76,9 @@
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.5;letter-spacing:.02em">109451, г. Москва, вн. тер. г. муниципальный округ Марьино, б-р Перервинский, д. 27, к. 1, помещ. 10н</span>
 </div>
 <div style="display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.4">
-<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:36px;color:#4A4157" style-hover="color:#7B2BE0">Политика обработки персональных данных</a>
-<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:36px;color:#4A4157" style-hover="color:#7B2BE0">Согласие на обработку персональных данных</a>
-<a href="./index.html" style="display:inline-flex;align-items:center;min-height:36px;color:#4A4157" style-hover="color:#7B2BE0">На главную</a>
+<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:36px;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0">Политика обработки персональных данных</a>
+<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:36px;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0">Согласие на обработку персональных данных</a>
+<a href="./index.html" style="display:inline-flex;align-items:center;min-height:36px;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0">На главную</a>
 </div>
 </div>
 </footer>

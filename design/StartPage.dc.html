@@ -21,6 +21,14 @@
 <script src="./image-slot.js"></script>
 <style>html,body{margin:0;background:#FFFFFF!important;min-height:100%}a{color:#7B2BE0;text-decoration:none}a:hover{color:#5E17B8}*:focus-visible{outline:2px solid #7B2BE0;outline-offset:2px}input[type=checkbox]{accent-color:#7B2BE0}
 
+/* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
+   поэтому приглушение объявлено важным. */
+button[disabled]{opacity:.55!important;cursor:progress!important}
+/* Подтверждение и ошибка появляются плавно, а не возникают рывком.
+   Правило срабатывает при вставке элемента, поэтому блоки, которые уже
+   на странице, ничего не переигрывают при обновлении содержимого. */
+@keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+[role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;background:#16121C;color:#FFFFFF;padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}
 .pd-skip:focus{left:0;color:#FFFFFF}
@@ -55,9 +63,9 @@
 
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
 <header class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
-<a href="#main" onClick="{{ toTop }}" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;text-decoration:none;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 200ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(221,196,250,.45)" style-active="background:rgba(221,196,250,.62)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
+<a href="#main" onClick="{{ toTop }}" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;text-decoration:none;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(221,196,250,.45)" style-active="background:rgba(221,196,250,.62)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
 <span style="display:flex;align-items:center;gap:28px;flex:0 0 auto">
-<a href="#request" style="display:inline-flex;align-items:center;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2A2233;color:#FFFFFF">Оставить заявку</a>
+<a href="#request" style="display:inline-flex;align-items:center;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2A2233;color:#FFFFFF" style-active="transform:scale(.97)">Оставить заявку</a>
 </span>
 </header>
 
@@ -76,18 +84,18 @@
 <div role="group" aria-label="Способ связи для консультации" style="display:inline-flex;gap:4px;padding:4px;background:#F4F4F8;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start">
 <sc-for list="{{ contactTabsTop }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#6B6178;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#6B6178;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FFFFFF;color:#16121C" style-active="transform:scale(.97)">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
-<input type="{{ contactTypeTop }}" name="contact" autocomplete="{{ contactAutoTop }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" required="{{ true }}" style="width:100%;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Onest',Arial,sans-serif;font-size:15px;color:#16121C;background:#FFFFFF;border:1px solid #E6DEEF;border-radius:10px" style-focus="border-color:#7B2BE0">
-<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:16px 36px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Оставить заявку</button>
+<input type="{{ contactTypeTop }}" name="contact" autocomplete="{{ contactAutoTop }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" required="{{ true }}" style="width:100%;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Onest',Arial,sans-serif;font-size:15px;color:#16121C;background:#FFFFFF;border:1px solid #E6DEEF;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)">
+<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:16px 36px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">Оставить заявку</button>
 <div style="margin-top:14px;display:flex;flex-direction:column;gap:2px">
-<label for="sp-privacy" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-privacy" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
-<label for="sp-terms" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-terms" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:#7B2BE0" style-hover="color:#5E17B8">оферту</a> и <a href="./privacy.html" style="color:#7B2BE0" style-hover="color:#5E17B8">политику</a></span></label>
+<label for="sp-privacy" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-privacy" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
+<label for="sp-terms" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-terms" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">оферту</a> и <a href="./privacy.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">политику</a></span></label>
 </div>
 </form>
 <sc-if value="{{ sentTop }}" hint-placeholder-val="{{ false }}">
@@ -144,7 +152,7 @@
 <span style="font-size:13px;line-height:1.6;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Выберите ситуацию — покажем состав работ и сроки</span>
 </div>
 <div class="pd-routes" style="gap:16px;align-items:stretch">
-<a href="./main.html" style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #ECE5F3;border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 #7B2BE0,0 1px 2px rgba(22,18,28,.05)">
+<a href="./main.html" style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #ECE5F3;border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 #7B2BE0,0 1px 2px rgba(22,18,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#DDC4FA;box-shadow:0 10px 20px rgba(22,18,28,.09)" style-active="transform:translateY(1px)">
 <span class="pd-routebg" style="display:block;height:355px;background:#DDC4FA;transition:background 220ms cubic-bezier(.2,0,.2,1)">
 <span style="display:block;width:100%;height:355px">
 <image-slot id="sp-route-1" shape="rect" fit="contain" transparent="" data-alt="Аспирант готовит диссертацию к защите" placeholder="Фото: аспирант" style="width:100%;height:355px"></image-slot>
@@ -159,7 +167,7 @@
 </span>
 </span>
 </a>
-<a href="./students.html" style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #ECE5F3;border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 #3DDCA0,0 1px 2px rgba(22,18,28,.05)">
+<a href="./students.html" style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #ECE5F3;border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 #3DDCA0,0 1px 2px rgba(22,18,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#DDC4FA;box-shadow:0 10px 20px rgba(22,18,28,.09)" style-active="transform:translateY(1px)">
 <span class="pd-routebg" style="display:block;height:355px;background:#5FE6B6;transition:background 220ms cubic-bezier(.2,0,.2,1)">
 <span style="display:block;width:100%;height:355px">
 <image-slot id="sp-route-2b" shape="rect" fit="contain" transparent="" data-alt="Студент работает над дипломом и научной статьёй" placeholder="Фото: студент" style="width:100%;height:355px"></image-slot>
@@ -174,7 +182,7 @@
 </span>
 </span>
 </a>
-<a href="./business.html" style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #ECE5F3;border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 #BFB4CE,0 1px 2px rgba(22,18,28,.05)">
+<a href="./business.html" style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #ECE5F3;border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 #BFB4CE,0 1px 2px rgba(22,18,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#DDC4FA;box-shadow:0 10px 20px rgba(22,18,28,.09)" style-active="transform:translateY(1px)">
 <span class="pd-routebg" style="display:block;height:355px;background:#EFE9F5;transition:background 220ms cubic-bezier(.2,0,.2,1)">
 <span style="display:block;width:100%;height:355px">
 <image-slot id="sp-route-3" shape="rect" fit="contain" transparent="" data-alt="Научный коллектив компании обсуждает разработку" placeholder="Фото: команда" style="width:100%;height:355px"></image-slot>
@@ -240,8 +248,8 @@
 <div style="height:100%;border-radius:999px;background:#7B2BE0;transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ scopeScale }}"></div>
 </div>
 <div style="display:flex;gap:10px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущие карточки" onClick="{{ prevScope }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
-<button type="button" aria-label="Следующие карточки" onClick="{{ nextScope }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Предыдущие карточки" onClick="{{ prevScope }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Следующие карточки" onClick="{{ nextScope }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
 </div>
 </div>
 </section>
@@ -288,8 +296,8 @@
 <div style="height:100%;border-radius:999px;background:#7B2BE0;transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ grtScale }}"></div>
 </div>
 <div style="display:flex;gap:10px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущие гарантии" onClick="{{ prevGrt }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
-<button type="button" aria-label="Следующие гарантии" onClick="{{ nextGrt }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Предыдущие гарантии" onClick="{{ prevGrt }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
+<button type="button" aria-label="Следующие гарантии" onClick="{{ nextGrt }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
 </div>
 </div>
 </section>
@@ -324,19 +332,19 @@
 <div role="group" aria-label="Способ связи для заявки" style="display:inline-flex;gap:4px;padding:4px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:999px;align-self:flex-start;flex:0 0 auto">
 <sc-for list="{{ contactTabsBottom }}" as="c" hint-placeholder-count="2">
 <sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600">{{ c.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">{{ c.label }}</button>
 </sc-if>
 <sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#6B6178;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#F4F4F8;color:#16121C">{{ c.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:#6B6178;border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Onest',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#F4F4F8;color:#16121C" style-active="transform:scale(.97)">{{ c.label }}</button>
 </sc-if>
 </sc-for>
 </div>
 <input type="hidden" name="direction" value="{{ direction }}">
-<input type="{{ contactTypeBottom }}" name="contact" autocomplete="{{ contactAutoBottom }}" placeholder="{{ contactPlaceholderBottom }}" aria-label="{{ contactPlaceholderBottom }}" required="{{ true }}" style="flex:1 1 260px;min-width:0;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Onest',Arial,sans-serif;font-size:15px;color:#16121C;background:#FFFFFF;border:1px solid #E6DEEF;border-radius:10px" style-focus="border-color:#7B2BE0">
-<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 34px;height:56px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440">Отправить заявку</button>
+<input type="{{ contactTypeBottom }}" name="contact" autocomplete="{{ contactAutoBottom }}" placeholder="{{ contactPlaceholderBottom }}" aria-label="{{ contactPlaceholderBottom }}" required="{{ true }}" style="flex:1 1 260px;min-width:0;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Onest',Arial,sans-serif;font-size:15px;color:#16121C;background:#FFFFFF;border:1px solid #E6DEEF;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)">
+<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 34px;height:56px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">Отправить заявку</button>
 <div style="display:flex;flex-direction:column;gap:2px">
-<label for="sp-privacy-2" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-privacy-2" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
-<label for="sp-terms-2" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-terms-2" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:#7B2BE0" style-hover="color:#5E17B8">оферту</a> и <a href="./privacy.html" style="color:#7B2BE0" style-hover="color:#5E17B8">политику</a></span></label>
+<label for="sp-privacy-2" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-privacy-2" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
+<label for="sp-terms-2" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-terms-2" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">оферту</a> и <a href="./privacy.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">политику</a></span></label>
 </div>
 </form>
 <sc-if value="{{ sentBottom }}" hint-placeholder-val="{{ false }}">
@@ -362,14 +370,14 @@
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.5;letter-spacing:.02em;color:#6B6178">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
 </div>
 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-<a href="tel:+74954564323" style="font-size:15px;font-weight:500;color:#16121C;text-decoration:none" style-hover="color:#7B2BE0">+7 495 456 43 23</a>
-<a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:36px;font-size:13px;line-height:1.5;color:#6B6178" style-hover="color:#4A4157">info.prodisser@gmail.com</a>
+<a href="tel:+74954564323" style="font-size:15px;font-weight:500;color:#16121C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0">+7 495 456 43 23</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:36px;font-size:13px;line-height:1.5;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#4A4157">info.prodisser@gmail.com</a>
 </div>
 </div>
 <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:20px;padding-top:18px;border-top:1px solid #F2ECF7">
-<a href="./offer.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:13px;line-height:1.5;color:#6B6178" style-hover="color:#7B2BE0">Публичная оферта</a>
-<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:13px;line-height:1.5;color:#6B6178" style-hover="color:#7B2BE0">Политика конфиденциальности</a>
-<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:13px;line-height:1.5;color:#6B6178" style-hover="color:#7B2BE0">Обработка персональных данных</a>
+<a href="./offer.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:13px;line-height:1.5;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0">Публичная оферта</a>
+<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:13px;line-height:1.5;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0">Политика конфиденциальности</a>
+<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:36px;font-size:13px;line-height:1.5;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0">Обработка персональных данных</a>
 </div>
 </footer>
 </div>
