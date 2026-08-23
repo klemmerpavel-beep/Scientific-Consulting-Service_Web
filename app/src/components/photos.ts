@@ -38,6 +38,18 @@ export type Photo = {
   height: number;
   /** Верх фигуры в пикселях оригинала */
   figTop: number;
+  /** Высота фигуры в пикселях оригинала */
+  figH: number;
+  /** Горизонтальный центр фигуры в пикселях оригинала */
+  figCx: number;
+  /**
+   * Какую часть фигуры показывать, если слот кадрируется по фигуре.
+   * Нужна там, где человек снят длиннее остальных: аспирант помещается
+   * в кадр по бёдра, студентка — по пояс. Без ограничения при равной
+   * высоте фигур его голова выходит в полтора раза мельче.
+   * По умолчанию — вся фигура.
+   */
+  figShown?: number;
   /** Ширина головы с плечами в пикселях оригинала */
   headW: number;
   /** Горизонтальный центр головы в пикселях оригинала */
@@ -57,34 +69,33 @@ export type Photo = {
  * `bottom`: низ снимка совпадает с нижней кромкой слота — так стоят фигуры
  * в блоках «Вопросы» и «Заявка», где человек опирается на дно карточки.
  */
-export type Framing = {
-  headW: number;
-  anchor: 'top' | 'bottom';
-  /** Воздух над головой в пикселях. Только при anchor: 'top' */
-  headroom?: number;
-};
+export type Framing =
+  /** По голове: одинаковый размер лиц, фигура уходит вниз за кромку */
+  | { by: 'head'; headW: number; anchor: 'top' | 'bottom'; headroom?: number }
+  /** По фигуре: одинаковая высота фигуры и центрирование её целиком */
+  | { by: 'figure'; figureH: number; top: number };
 
 export type Slot = { photo: Photo; frame?: Framing };
 
 const CURATOR: Photo = {
   src: '/photos/curator.webp', width: 380, height: 290,
-  figTop: 11, headW: 146, headCx: 190.5, position: 'center 30%',
+  figTop: 11, figH: 279, figCx: 206.5, headW: 146, headCx: 190.5, position: 'center 30%',
 };
 const EDITOR: Photo = {
   src: '/photos/editor.webp', width: 171, height: 149,
-  figTop: 5, headW: 57, headCx: 82, position: 'center 28%',
+  figTop: 5, figH: 144, figCx: 84.5, headW: 57, headCx: 82, position: 'center 28%',
 };
 const POSTGRAD: Photo = {
   src: '/photos/postgrad.webp', width: 572, height: 784,
-  figTop: 3, headW: 161, headCx: 282, position: 'center top',
+  figTop: 3, figH: 781, figShown: 531, figCx: 303.5, headW: 161, headCx: 282, position: 'center top',
 };
 const STUDENT: Photo = {
   src: '/photos/student.webp', width: 652, height: 682,
-  figTop: 10, headW: 214, headCx: 407.5, position: 'center top',
+  figTop: 10, figH: 672, figCx: 320.5, headW: 214, headCx: 407.5, position: 'center top',
 };
 const BUSINESS: Photo = {
   src: '/photos/business.webp', width: 549, height: 549,
-  figTop: 20, headW: 151, headCx: 275, position: 'center top',
+  figTop: 20, figH: 529, figCx: 246.5, headW: 151, headCx: 275, position: 'center top',
 };
 
 /**
@@ -100,15 +111,15 @@ const BUSINESS: Photo = {
  * и ни одна не выходит за ширину плашки. Ниже — обрезается подложкой,
  * как и задумано: фигура входит в карточку снизу.
  */
-const ROUTE: Framing = { headW: 103, anchor: 'top', headroom: 30 };
+const ROUTE: Framing = { by: 'figure', figureH: 325, top: 30 };
 
 /**
  * Блоки «Вопросы» и «Заявка»: фигура опирается на нижнюю кромку карточки.
  * Голова крупнее, чем в карточках направлений, — слот там заметно больше,
  * и мелкая фигура терялась бы в белом поле.
  */
-const CARD: Framing = { headW: 112, anchor: 'bottom' };
-const CARD_NARROW: Framing = { headW: 80, anchor: 'bottom' };
+const CARD: Framing = { by: 'head', headW: 112, anchor: 'bottom' };
+const CARD_NARROW: Framing = { by: 'head', headW: 80, anchor: 'bottom' };
 
 export const PHOTOS: Record<string, Slot> = {
   // ——— Посадочная: расстановка из исходной сборки ———

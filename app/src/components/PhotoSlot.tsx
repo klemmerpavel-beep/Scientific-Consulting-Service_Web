@@ -100,22 +100,33 @@ export default function PhotoSlot({
   };
 
   if (frame) {
-    // Масштаб задаётся требуемой шириной головы: в соседних карточках лица
-    // выходят одного размера независимо от крупности исходников.
-    const k = frame.headW / photo.headW;
+    // Два способа кадрирования, оба считаются из измерений снимка.
+    //
+    // `head` — масштаб задаётся требуемой шириной головы, а сводится с
+    // центром слота центр головы. Лица в соседних карточках выходят одного
+    // размера; фигура при этом уходит вниз за кромку и обрезается.
+    //
+    // `figure` — фигура занимает заданную высоту и центрируется целиком.
+    // Все снимки занимают в карточке одну и ту же область.
+    const k =
+      frame.by === 'head'
+        ? frame.headW / photo.headW
+        : frame.figureH / (photo.figShown ?? photo.figH);
+
     const drawnW = photo.width * k;
     const drawnH = photo.height * k;
 
-    // Центр головы сводится с центром слота. Сдвиг постоянный в пикселях,
-    // поэтому не разъезжается при изменении ширины слота.
-    const shiftX = drawnW / 2 - photo.headCx * k;
+    // Сдвиг постоянный в пикселях, поэтому не разъезжается при изменении
+    // ширины слота.
+    const anchorCx = frame.by === 'head' ? photo.headCx : photo.figCx;
+    const shiftX = drawnW / 2 - anchorCx * k;
 
-    // Сверху — заданный воздух над макушкой; либо низ снимка ложится
-    // на нижнюю кромку слота.
     const vertical =
-      frame.anchor === 'top'
-        ? { top: `${(frame.headroom ?? 0) - photo.figTop * k}px` }
-        : { bottom: 0 };
+      frame.by === 'figure'
+        ? { top: `${(frame.top - photo.figTop * k).toFixed(1)}px` }
+        : frame.anchor === 'top'
+          ? { top: `${((frame.headroom ?? 0) - photo.figTop * k).toFixed(1)}px` }
+          : { bottom: 0 };
 
     return (
       <span style={{ ...box, display: 'block', position: 'relative' }}>
