@@ -28,8 +28,7 @@
 .sp-hero{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr)}
 .sp-support{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-.sp-plan>.sp-step:first-child{border-top:0}
-.sp-plan>.sp-step:last-child>span:first-child>span:first-child{display:none}
+@media (max-width:560px){.sp-tname{display:none}.sp-track{padding:14px 8px!important}.sp-track button{min-height:44px!important;justify-content:center}}
 .sp-offer{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
 .sp-cost{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-req{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
@@ -237,23 +236,48 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-size:13px;line-height:1.5;color:#4A4157;min-width:0">{{ routeNote }}</span>
 </div>
 
-<div class="sp-plan" style="margin-top:16px;border:1px solid #EAE3F2;border-radius:14px;background:#FFFFFF;box-shadow:0 1px 2px rgba(22,18,28,.05);overflow:hidden">
+<div style="margin-top:16px;border:1px solid #EAE3F2;border-radius:14px;background:#FFFFFF;box-shadow:0 1px 2px rgba(22,18,28,.05);overflow:hidden">
+<div class="sp-track" role="group" aria-label="Этапы маршрута" style="display:flex;align-items:stretch;padding:18px 12px 14px">
 <sc-for list="{{ stages }}" as="s" hint-placeholder-count="5">
-<div class="sp-step" style="display:grid;grid-template-columns:44px minmax(0,1fr);align-items:start;gap:0 14px;padding:14px 20px 14px 16px;border-top:1px solid #F2ECF7">
-<span aria-hidden="true" style="grid-row:1 / span 2;position:relative;display:flex;justify-content:center;align-self:stretch">
-<span style="position:absolute;top:26px;bottom:-14px;width:1px;background:{{ s.thread }}"></span>
-<span style="position:relative;width:26px;height:26px;flex:0 0 26px;border-radius:50%;background:{{ s.badgeBg }};display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600;color:{{ s.ink }}">{{ s.num }}</span>
+<sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}">
+<button type="button" aria-pressed="true" aria-label="{{ s.aria }}" onClick="{{ s.pick }}" style="appearance:none;border:0;background:transparent;cursor:pointer;flex:1 1 0;min-width:0;padding:0 4px;display:flex;flex-direction:column;align-items:center;gap:8px">
+<span aria-hidden="true" style="display:flex;align-items:center;width:100%">
+<span style="flex:1 1 auto;height:1px;background:{{ s.railL }}"></span>
+<span style="flex:0 0 30px;width:30px;height:30px;border-radius:50%;background:#16121C;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600;box-shadow:0 0 0 4px #FFFFFF,0 0 0 5px #DDC4FA">{{ s.num }}</span>
+<span style="flex:1 1 auto;height:1px;background:{{ s.railR }}"></span>
 </span>
-<span style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0">
-<span style="font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.5;font-weight:600;color:#16121C">{{ s.title }}</span>
-<span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.5;letter-spacing:.04em;color:#6B6178;white-space:nowrap">{{ s.term }}</span>
+<span class="sp-tname" style="font-family:'Onest',Arial,sans-serif;font-size:12px;line-height:1.35;font-weight:600;color:#16121C;text-align:center;text-wrap:balance">{{ s.title }}</span>
+</button>
+</sc-if>
+<sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}">
+<button type="button" aria-pressed="false" aria-label="{{ s.aria }}" onClick="{{ s.pick }}" style="appearance:none;border:0;background:transparent;cursor:pointer;flex:1 1 0;min-width:0;padding:0 4px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="opacity:.72" style-active="opacity:.55">
+<span aria-hidden="true" style="display:flex;align-items:center;width:100%">
+<span style="flex:1 1 auto;height:1px;background:{{ s.railL }}"></span>
+<span style="flex:0 0 30px;width:30px;height:30px;border-radius:50%;background:{{ s.badgeBg }};color:{{ s.ink }};display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600">{{ s.num }}</span>
+<span style="flex:1 1 auto;height:1px;background:{{ s.railR }}"></span>
 </span>
-<span class="sp-duo" style="gap:4px 24px;margin-top:2px">
-<span style="font-size:13px;line-height:1.5;color:#16121C;min-width:0"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Вы&nbsp;&nbsp;</span>{{ s.author }}</span>
-<span style="font-size:13px;line-height:1.5;color:#4A4157;min-width:0"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Мы&nbsp;&nbsp;</span>{{ s.team }}</span>
+<span class="sp-tname" style="font-family:'Onest',Arial,sans-serif;font-size:12px;line-height:1.35;font-weight:500;color:#6B6178;text-align:center;text-wrap:balance">{{ s.title }}</span>
+</button>
+</sc-if>
+</sc-for>
+</div>
+<div aria-live="polite" style="border-top:1px solid #F2ECF7;background:#FCFAFE;padding:18px 22px;display:flex;flex-direction:column;gap:12px">
+<span style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:#7B2BE0">Этап {{ stepNum }} из {{ stepOf }}</span>
+<span style="font-family:'Onest',Arial,sans-serif;font-size:16px;line-height:1.4;font-weight:600;color:#16121C">{{ stepTitle }}</span>
+<span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.5;letter-spacing:.04em;color:#4A4157;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:999px;padding:6px 12px;white-space:nowrap">{{ stepTerm }}</span>
+</span>
+<span class="sp-duo" style="gap:10px 28px">
+<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Вы</span>
+<span style="font-size:14px;line-height:1.55;color:#16121C">{{ stepAuthor }}</span>
+</span>
+<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Мы</span>
+<span style="font-size:14px;line-height:1.55;color:#4A4157">{{ stepTeam }}</span>
+</span>
 </span>
 </div>
-</sc-for>
 </div>
 
 <div style="margin-top:16px;border:1px solid #EAE3F2;border-radius:14px;background:#F8F5FC;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
@@ -590,9 +614,10 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#16121C">Контакты</span>
 <a href="tel:+74954564323" style="display:flex;align-items:center;gap:10px;font-size:17px;line-height:24px;font-weight:500;color:#16121C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:{{ phoneMask }};mask:{{ phoneMask }}"></span> +7 495 456 43 23</a>
 <a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:15px;line-height:22px;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
-<span style="margin-top:10px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Мы в сети</span>
-<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;min-height:44px;gap:10px;font-size:14px;line-height:1.5;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/external-link.svg') center/contain no-repeat;mask:url('./assets/icons/external-link.svg') center/contain no-repeat"></span>Телеграм</a>
-<a href="https://www.instagram.com/prodisseralltime" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;min-height:44px;gap:10px;font-size:14px;line-height:1.5;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/external-link.svg') center/contain no-repeat;mask:url('./assets/icons/external-link.svg') center/contain no-repeat"></span>Инстаграм</a>
+<span style="margin-top:12px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Мы в сети</span>
+<span style="display:flex;align-items:center;gap:10px;margin-top:2px">
+<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid #EAE3F2;border-radius:12px;background:#FFFFFF;transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0;background:#F8F5FC" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
+</span>
 </div>
 </div>
 <div style="position:relative;max-width:1220px;margin:0 auto;padding:0 30px 34px;display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap">
@@ -608,7 +633,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { situation: 1, open: -1, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false, navOpen: false };
+  state = { situation: 1, step: 0, open: -1, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false, navOpen: false };
   componentDidMount(){
     this.onResize = () => {
       if (this.raf) return;
@@ -640,8 +665,8 @@ class Component extends DCLogic {
         'Начинаем с плана по главам: дальше вы пишете по нему, а мы правим текст по мере готовности, не дожидаясь всей работы.', [
         ['Разбор задания и план', '2–3 дня', 'Присылаете тему, задание руководителя и методичку кафедры', 'Разбираем задание и собираем план по главам'],
         ['Введение и первая глава', '2 недели', 'Пишете текст по плану', 'Проверяем постановку задачи, логику и подбор источников'],
-        ['Основная и практическая части', '4 недели', 'Пишете главы и собираете материал', 'Редактируем текст, проверяем расчёты, таблицы и рисунки'],
-        ['Сборка и оформление', '2 недели', 'Собираете работу целиком', 'Приводим оформление к ГОСТ 7.32 и методичке кафедры'],
+        ['Основная и практическая части', '4 недели', 'Пишете главы и собираете материал', 'Ведём научную редактуру и сверяем расчёты с таблицами и рисунками'],
+        ['Сборка и оформление', '2 недели', 'Собираете работу целиком', 'Доводим оформление до ГОСТ 7.32 и требований кафедры'],
         ['Замечания и защита', '1–2 недели', 'Отдаёте работу научному руководителю', 'Отвечаем на замечания руководителя и ставим доклад к защите']
       ]],
       ['Черновик есть, работа встала', 'около 6 недель',
@@ -682,11 +707,20 @@ class Component extends DCLogic {
     const badges = ['#EFE2FD', '#DFF7EE', '#F2EEF7'];
     // Нить между номерами: тот же цвет, что у кружка следующего этапа —
     // взгляд идёт по ней сверху вниз, как по календарному плану.
-    const threads = ['#E4D2FB', '#CDEFE1', '#EAE3F2'];
+    // Рельс между кружками: у первого нет левого отрезка, у последнего
+    // правого — иначе линия висит в воздухе по краям.
+    const RAIL = '#EAE3F2';
+    const step = Math.min(this.state.step, steps.length - 1);
     const stages = steps.map(([title, term, author, team], i) => ({
       num: String(i + 1), title, term, author, team,
-      ink: inks[i % 3], badgeBg: badges[i % 3], thread: threads[i % 3]
+      aria: 'Этап ' + (i + 1) + ': ' + title,
+      ink: inks[i % 3], badgeBg: badges[i % 3],
+      railL: i === 0 ? 'transparent' : RAIL,
+      railR: i === steps.length - 1 ? 'transparent' : RAIL,
+      active: i === step, inactive: i !== step,
+      pick: () => this.setState({ step: i })
     }));
+    const [stepTitle, stepTerm, stepAuthor, stepTeam] = steps[step];
     const routeSummary = stages.length + ' ' + stepWord(stages.length) + ', ' + routeTerm;
 
     const faqData = [
@@ -718,9 +752,11 @@ class Component extends DCLogic {
       navOpenAttr: this.state.navOpen ? 'true' : 'false',
       toggleNav: () => this.setState(s => ({ navOpen: !s.navOpen })),
       stages, routeSummary, routeNote, routeMask: this.mask('clock'),
+      stepNum: String(step + 1), stepOf: String(steps.length),
+      stepTitle, stepTerm, stepAuthor, stepTeam,
       situations: situationData.map(([label], i) => ({
         label, active: i === sIdx, inactive: i !== sIdx,
-        pick: () => this.setState({ situation: i })
+        pick: () => this.setState({ situation: i, step: 0 })
       })),
       supports: [
         ['Куратор со степенью', 'Работу смотрит кандидат или доктор наук вашего направления, а не менеджер.', 'linear-gradient(152deg,#E0CBFB 0%,#CBA6F7 100%)', '#16121C', '#3A3247'],
