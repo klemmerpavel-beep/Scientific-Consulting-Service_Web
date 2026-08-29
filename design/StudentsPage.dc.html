@@ -28,6 +28,8 @@
 .sp-hero{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr)}
 .sp-support{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.sp-plan>.sp-step:first-child{border-top:0}
+.sp-plan>.sp-step:last-child>span:first-child>span:first-child{display:none}
 .sp-offer{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
 .sp-cost{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-req{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
@@ -235,23 +237,20 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-size:13px;line-height:1.5;color:#4A4157;min-width:0">{{ routeNote }}</span>
 </div>
 
-<div style="margin-top:16px;display:flex;flex-direction:column;gap:10px">
+<div class="sp-plan" style="margin-top:16px;border:1px solid #EAE3F2;border-radius:14px;background:#FFFFFF;box-shadow:0 1px 2px rgba(22,18,28,.05);overflow:hidden">
 <sc-for list="{{ stages }}" as="s" hint-placeholder-count="5">
-<div style="border:1px solid #EAE3F2;border-radius:14px;background:#FFFFFF;box-shadow:0 1px 2px rgba(22,18,28,.05);padding:16px 18px;display:flex;flex-direction:column;gap:12px">
-<span style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-<span style="width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:{{ s.badgeBg }};display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;font-weight:600;color:{{ s.ink }}">{{ s.num }}</span>
-<span style="font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C;min-width:0">{{ s.title }}</span>
-<span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.04em;color:#4A4157;background:#F8F5FC;border:1px solid #EAE3F2;border-radius:999px;padding:6px 12px;white-space:nowrap">{{ s.term }}</span>
+<div class="sp-step" style="display:grid;grid-template-columns:44px minmax(0,1fr);align-items:start;gap:0 14px;padding:14px 20px 14px 16px;border-top:1px solid #F2ECF7">
+<span aria-hidden="true" style="grid-row:1 / span 2;position:relative;display:flex;justify-content:center;align-self:stretch">
+<span style="position:absolute;top:26px;bottom:-14px;width:1px;background:{{ s.thread }}"></span>
+<span style="position:relative;width:26px;height:26px;flex:0 0 26px;border-radius:50%;background:{{ s.badgeBg }};display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600;color:{{ s.ink }}">{{ s.num }}</span>
 </span>
-<span class="sp-duo" style="gap:16px">
-<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Вы</span>
-<span style="font-size:13px;line-height:1.5;color:#16121C">{{ s.author }}</span>
+<span style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0">
+<span style="font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.5;font-weight:600;color:#16121C">{{ s.title }}</span>
+<span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.5;letter-spacing:.04em;color:#6B6178;white-space:nowrap">{{ s.term }}</span>
 </span>
-<span class="sp-div" style="display:flex;flex-direction:column;gap:4px;min-width:0;border-left:1px solid #F2ECF7;padding-left:20px">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Мы</span>
-<span style="font-size:13px;line-height:1.5;color:#4A4157">{{ s.team }}</span>
-</span>
+<span class="sp-duo" style="gap:4px 24px;margin-top:2px">
+<span style="font-size:13px;line-height:1.5;color:#16121C;min-width:0"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Вы&nbsp;&nbsp;</span>{{ s.author }}</span>
+<span style="font-size:13px;line-height:1.5;color:#4A4157;min-width:0"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Мы&nbsp;&nbsp;</span>{{ s.team }}</span>
 </span>
 </div>
 </sc-for>
@@ -591,6 +590,9 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#16121C">Контакты</span>
 <a href="tel:+74954564323" style="display:flex;align-items:center;gap:10px;font-size:17px;line-height:24px;font-weight:500;color:#16121C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:{{ phoneMask }};mask:{{ phoneMask }}"></span> +7 495 456 43 23</a>
 <a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:15px;line-height:22px;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#7B2BE0;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
+<span style="margin-top:10px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Мы в сети</span>
+<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;min-height:44px;gap:10px;font-size:14px;line-height:1.5;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/external-link.svg') center/contain no-repeat;mask:url('./assets/icons/external-link.svg') center/contain no-repeat"></span>Телеграм</a>
+<a href="https://www.instagram.com/prodisseralltime" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;min-height:44px;gap:10px;font-size:14px;line-height:1.5;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/external-link.svg') center/contain no-repeat;mask:url('./assets/icons/external-link.svg') center/contain no-repeat"></span>Инстаграм</a>
 </div>
 </div>
 <div style="position:relative;max-width:1220px;margin:0 auto;padding:0 30px 34px;display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap">
@@ -678,9 +680,12 @@ class Component extends DCLogic {
       return 'этапов';
     };
     const badges = ['#EFE2FD', '#DFF7EE', '#F2EEF7'];
+    // Нить между номерами: тот же цвет, что у кружка следующего этапа —
+    // взгляд идёт по ней сверху вниз, как по календарному плану.
+    const threads = ['#E4D2FB', '#CDEFE1', '#EAE3F2'];
     const stages = steps.map(([title, term, author, team], i) => ({
       num: String(i + 1), title, term, author, team,
-      ink: inks[i % 3], badgeBg: badges[i % 3]
+      ink: inks[i % 3], badgeBg: badges[i % 3], thread: threads[i % 3]
     }));
     const routeSummary = stages.length + ' ' + stepWord(stages.length) + ', ' + routeTerm;
 

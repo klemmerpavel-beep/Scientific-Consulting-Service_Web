@@ -135,7 +135,7 @@ export const PHOTOS: Record<string, Slot> = {
   // ——— Бизнесу ———
   'bp-photo-1': { photo: BUSINESS },    // круг 178px
   'bp-photo-2': { photo: CURATOR },     // круг 122px
-  'bp-faq-photo': { photo: EDITOR, frame: CARD_FULL },
+  'bp-faq-photo': { photo: BUSINESS },   // круг 72px — снимок редактора мельче слота
 };
 
 /** Слоты первого экрана: грузятся сразу, а не по мере прокрутки */
