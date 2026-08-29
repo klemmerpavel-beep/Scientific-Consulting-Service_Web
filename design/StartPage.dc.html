@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ProDisser — научное сопровождение аспирантов, соискателей и докторантов</title>
+<title>ProDisser — научное сопровождение аспирантов, студентов и компаний</title>
 <meta name="description" content="Методологический разбор, научная редактура, оформление по ГОСТ и подготовка к защите. Куратор с учёной степенью, этапы с приёмкой, договор. Первичная консультация бесплатно.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ProDisser">
 <meta property="og:locale" content="ru_RU">
-<meta property="og:title" content="ProDisser — научное сопровождение аспирантов, соискателей и докторантов">
+<meta property="og:title" content="ProDisser — научное сопровождение аспирантов, студентов и компаний">
 <meta property="og:description" content="Методологический разбор, научная редактура, оформление по ГОСТ и подготовка к защите. Куратор с учёной степенью, этапы с приёмкой, договор. Первичная консультация бесплатно.">
 <meta name="twitter:card" content="summary_large_image">
 <script src="./support.js"></script>
@@ -19,7 +19,9 @@
 <helmet>
 <script src="./ds-base.js"></script>
 <script src="./image-slot.js"></script>
-<style>html,body{margin:0;background:#FFFFFF!important;min-height:100%}a{color:#7B2BE0;text-decoration:none}a:hover{color:#5E17B8}*:focus-visible{outline:2px solid #7B2BE0;outline-offset:2px}input[type=checkbox]{accent-color:#7B2BE0}
+<style>
+.pd-nav{display:flex;align-items:center;gap:24px}
+.pd-burger{display:none}html,body{margin:0;background:#FFFFFF!important;min-height:100%}a{color:#7B2BE0;text-decoration:none}a:hover{color:#5E17B8}*:focus-visible{outline:2px solid #7B2BE0;outline-offset:2px}input[type=checkbox]{accent-color:#7B2BE0}
 
 /* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
    поэтому приглушение объявлено важным. */
@@ -38,7 +40,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 .pd-cta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-routes a:hover .pd-routebg,.pd-routes a:focus-visible .pd-routebg{background:transparent!important}
 @media (max-width:1024px){.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:768px){.pd-hero,.pd-cta{grid-template-columns:minmax(0,1fr)}.pd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-card{flex:0 0 clamp(260px,72vw,320px)}}
+@media (max-width:768px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:10px 14px;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);min-width:220px}.pd-nav[hidden]{display:none}.pd-burger{display:inline-flex}.pd-hero,.pd-cta{grid-template-columns:minmax(0,1fr)}.pd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-card{flex:0 0 clamp(260px,72vw,320px)}}
 @media (max-width:768px){.pd-metrics,.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media (max-width:480px){.pd-hero,.pd-metrics,.pd-routes,.pd-cta{grid-template-columns:minmax(0,1fr)!important}.pd-routes,.pd-metrics{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}.pd-card{flex:0 0 86vw}}</style>
 </helmet>
@@ -62,9 +64,19 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
-<header class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
+<header class="pd-pad" style="position:relative;z-index:5;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
 <a href="#main" onClick="{{ toTop }}" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;text-decoration:none;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(221,196,250,.45)" style-active="background:rgba(221,196,250,.62)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
-<span style="display:flex;align-items:center;gap:28px;flex:0 0 auto">
+<span class="pd-head" style="display:flex;align-items:center;gap:28px;flex:0 0 auto">
+<button type="button" class="pd-burger" aria-expanded="{{ navOpenAttr }}" aria-controls="pd-nav" aria-label="Меню направлений" onClick="{{ toggleNav }}" style="appearance:none;cursor:pointer;flex:0 0 44px;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:10px;background:#FFFFFF;align-items:center;justify-content:center;flex-direction:column;gap:4px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)">
+<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:#16121C"></span>
+<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:#16121C"></span>
+<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:#16121C"></span>
+</button>
+<nav id="pd-nav" class="pd-nav" hidden="{{ navHidden }}" aria-label="Направления работы">
+<a href="./main.html" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Аспирантам</a>
+<a href="./students.html" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Студентам</a>
+<a href="./business.html" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Компаниям</a>
+</nav>
 <a href="#request" style="display:inline-flex;align-items:center;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2A2233;color:#FFFFFF" style-active="transform:scale(.97)">Оставить заявку</a>
 </span>
 </header>
@@ -74,7 +86,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <div class="pd-hero" style="gap:40px;align-items:start">
 <div style="min-width:0">
 <h1 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:clamp(28px,2.8vw,40px);line-height:1.24;font-weight:400;letter-spacing:-.015em;color:#16121C;text-wrap:pretty;max-width:19ch">
-<span style="display:block"><span style="background:#DDC4FA;border-radius:6px;padding:2px 10px;margin-left:-10px;box-decoration-break:clone;-webkit-box-decoration-break:clone">ProDisser</span> — научное сопровождение</span>аспирантов, соискателей и докторантов
+<span style="display:block"><span style="background:#DDC4FA;border-radius:6px;padding:2px 10px;margin-left:-10px;box-decoration-break:clone;-webkit-box-decoration-break:clone">ProDisser</span> — научное сопровождение</span>аспирантов, студентов и компаний
 </h1>
 <p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#4A4157;max-width:46ch">{{ lead }}</p>
 <h2 style="margin:32px 0 0;font-family:'Onest',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:500;color:#16121C">Записаться на первичную консультацию</h2>
@@ -92,11 +104,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </sc-for>
 </div>
 <input type="{{ contactTypeTop }}" name="contact" autocomplete="{{ contactAutoTop }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" required="{{ true }}" style="width:100%;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Onest',Arial,sans-serif;font-size:15px;color:#16121C;background:#FFFFFF;border:1px solid #E6DEEF;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)">
-<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:16px 36px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">Оставить заявку</button>
-<div style="margin-top:14px;display:flex;flex-direction:column;gap:2px">
+<div style="display:flex;flex-direction:column;gap:2px">
 <label for="sp-privacy" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-privacy" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
 <label for="sp-terms" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#6B6178;cursor:pointer"><input id="sp-terms" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">оферту</a> и <a href="./privacy.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">политику</a></span></label>
 </div>
+<button type="submit" disabled="{{ pending }}" style="margin-top:16px;appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:16px 36px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">Оставить заявку</button>
 </form>
 <sc-if value="{{ sentTop }}" hint-placeholder-val="{{ false }}">
 <div role="status" style="margin-top:16px;max-width:344px;display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #B2E8D3;border-radius:10px;padding:12px 16px">
@@ -341,11 +353,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <input type="hidden" name="direction" value="{{ direction }}">
 <input type="{{ contactTypeBottom }}" name="contact" autocomplete="{{ contactAutoBottom }}" placeholder="{{ contactPlaceholderBottom }}" aria-label="{{ contactPlaceholderBottom }}" required="{{ true }}" style="flex:1 1 260px;min-width:0;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Onest',Arial,sans-serif;font-size:15px;color:#16121C;background:#FFFFFF;border:1px solid #E6DEEF;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#7B2BE0;box-shadow:0 0 0 3px rgba(123,43,224,.14)">
-<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 34px;height:56px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">Отправить заявку</button>
 <div style="display:flex;flex-direction:column;gap:2px">
 <label for="sp-privacy-2" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-privacy-2" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">согласие на обработку персональных данных</a></span></label>
 <label for="sp-terms-2" style="display:flex;min-height:28px;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:#4A4157;cursor:pointer"><input id="sp-terms-2" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:2px 0 0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">оферту</a> и <a href="./privacy.html" style="color:#7B2BE0;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#5E17B8">политику</a></span></label>
 </div>
+<button type="submit" disabled="{{ pending }}" style="margin-top:16px;appearance:none;border:0;cursor:pointer;background:#16121C;color:#FFFFFF;font-family:'Onest',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 34px;height:56px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#2E2440" style-active="transform:scale(.97)">Отправить заявку</button>
 </form>
 <sc-if value="{{ sentBottom }}" hint-placeholder-val="{{ false }}">
 <div role="status" style="display:flex;gap:8px;align-items:flex-start;background:#FFFFFF;border:1px solid #B2E8D3;border-radius:10px;padding:12px 16px">
@@ -384,7 +396,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;leadVariant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Замечания диссовета&quot;,&quot;Срыв сроков по главам&quot;,&quot;Подготовка к защите&quot;],&quot;default&quot;:&quot;Подготовка к защите&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Текст hero&quot;},&quot;showPortraits&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Текст hero&quot;}}">
 class Component extends DCLogic {
-  state = { sentTop: false, sentBottom: false, contactTop: 0, contactBottom: 0, direction: 'Научная степень', scopePage: 0, grtPage: 0, scopePages: 1, grtPages: 1, scopeFill: 1, grtFill: 1 };
+  state = { sentTop: false, sentBottom: false, contactTop: 0, contactBottom: 0, direction: 'Научная степень', scopePage: 0, grtPage: 0, scopePages: 1, grtPages: 1, scopeFill: 1, grtFill: 1, navOpen: false };
   componentDidMount(){
     this.measure = () => {
       const count = n => {
@@ -401,9 +413,19 @@ class Component extends DCLogic {
       this.raf = requestAnimationFrame(() => { this.raf = 0; this.measure(); });
     };
     window.addEventListener('resize', this.onResize);
+    this.syncWide();
+  }
+  syncWide(){
+    // На широком экране меню всегда развёрнуто: иначе атрибут hidden
+    // остаётся на видимом <nav>, и программа чтения с экрана его минует.
+    this.wide = window.matchMedia('(min-width:769px)');
+    this.syncNav = () => this.setState({ navOpen: this.wide.matches });
+    this.syncNav();
+    this.wide.addEventListener('change', this.syncNav);
   }
   componentWillUnmount(){
     window.removeEventListener('resize', this.onResize);
+    if (this.wide) this.wide.removeEventListener('change', this.syncNav);
     if (this.raf) cancelAnimationFrame(this.raf);
   }
   track(name, key, fillKey){
@@ -427,12 +449,6 @@ class Component extends DCLogic {
     this.track(name, key, name === 'grt' ? 'grtFill' : 'scopeFill');
   }
   renderVals(){
-    const leads = {
-      'Замечания диссовета': 'Подключаемся, когда по работе уже есть замечания. Разбираем методологию и логику доказательства. Приводим оформление к ГОСТ и регламенту вашего диссовета. Текст пишет автор — мы отвечаем за экспертизу.',
-      'Срыв сроков по главам': 'Подключаемся на любой главе: раскладываем работу на этапы с датами, ведём научную редактуру и держим приёмку. Исследование остаётся авторским — мы отвечаем за план работы и качество разбора.',
-      'Подготовка к защите': 'Подключаемся перед защитой: сверяем работу с ГОСТ и требованиями совета, готовим доклад и репетируем вопросы оппонентов. Отвечает на них автор — мы готовим его к разговору по существу.'
-    };
-    const key = this.props.leadVariant in leads ? this.props.leadVariant : 'Замечания диссовета';
     const tabs = (which, sel) => ['E-mail', 'Телефон'].map((label, i) => ({
       label, active: i === sel, inactive: i !== sel,
       pick: () => this.setState({ [which]: i })
@@ -440,6 +456,9 @@ class Component extends DCLogic {
     const top = this.state.contactTop;
     const bottom = this.state.contactBottom;
     return {
+      navHidden: this.state.navOpen ? undefined : true,
+      navOpenAttr: this.state.navOpen ? 'true' : 'false',
+      toggleNav: () => this.setState(s => ({ navOpen: !s.navOpen })),
       direction: this.state.direction,
       contactTabsTop: tabs('contactTop', top),
       contactTabsBottom: tabs('contactBottom', bottom),
@@ -465,7 +484,7 @@ class Component extends DCLogic {
       prevScope: () => this.goTrack('scope', 'scopePage', 'scopePages', -1),
       nextScope: () => this.goTrack('scope', 'scopePage', 'scopePages', 1),
       onScopeScroll: () => this.track('scope', 'scopePage', 'scopeFill'),
-      lead: leads[key],
+      lead: 'Работаем с текстом и разработкой автора: разбираем методологию, ведём научную редактуру и приводим оформление к требованиям того, кто принимает работу, — диссовета, кафедры или фонда. Автор остаётся автором, за экспертизу отвечаем мы.',
       showPortraits: this.props.showPortraits ?? true,
       sentTop: this.state.sentTop,
       sentBottom: this.state.sentBottom,

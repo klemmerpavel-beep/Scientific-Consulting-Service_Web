@@ -36,3 +36,43 @@ input[type='checkbox'] { accent-color: #7B2BE0; }
     scroll-behavior: auto !important;
   }
 }
+
+/* --------------------------------------------------------------- движение */
+
+/* Переход по якорям идёт плавно. Правило уменьшенного движения ниже его
+   отменяет — оно объявлено важным и стоит последним. */
+html { scroll-behavior: smooth; }
+
+/* Появление раздела при прокрутке.
+   Скрытие включается только там, где выполнились сценарии (класс pd-js) и
+   только при разрешённом движении: без сценариев и при просьбе уменьшить
+   движение содержимое видно сразу. Прятать текст ради эффекта нельзя. */
+@media (prefers-reduced-motion: no-preference) {
+  .pd-js .pd-rise { opacity: 0; transform: translateY(14px); }
+  .pd-js .pd-rise.pd-in { opacity: 1; transform: none; }
+  .pd-js .pd-rise {
+    transition: opacity 520ms cubic-bezier(.2,0,.2,1), transform 520ms cubic-bezier(.2,0,.2,1);
+  }
+  /* Карточки ряда выходят по очереди — задержку ставит сценарий */
+  .pd-js .pd-rise .pd-rise-kid { opacity: 0; transform: translateY(10px); }
+  .pd-js .pd-rise.pd-in .pd-rise-kid { opacity: 1; transform: none; }
+  .pd-js .pd-rise .pd-rise-kid {
+    transition: opacity 460ms cubic-bezier(.2,0,.2,1), transform 460ms cubic-bezier(.2,0,.2,1);
+  }
+}
+
+/* Сколько документа прочитано. Волосяная линия в цвет разделителей —
+   это указатель, а не украшение. */
+.pd-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 2px;
+  z-index: 40;
+  background: #7B2BE0;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+  will-change: transform;
+}
+
+@media print { .pd-progress { display: none; } }

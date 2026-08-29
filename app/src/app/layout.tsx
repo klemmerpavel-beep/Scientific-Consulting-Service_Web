@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Onest, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+import SiteMotion from '../components/SiteMotion';
 
 // Шрифты забираются при сборке и отдаются с нашего же домена:
 // внешних запросов со страниц быть не должно.
@@ -44,7 +45,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru" className={`${onest.variable} ${mono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <SiteMotion />
+      </body>
     </html>
   );
 }

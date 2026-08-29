@@ -29,15 +29,17 @@
 .bp-hero{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr)}
 .bp-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
 .bp-trl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.bp-why{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .bp-cat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .bp-rights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.bp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
 .bp-support{display:grid;grid-template-columns:minmax(0,1fr)}
-@media (max-width:1024px){.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-trl{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-cat{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team{grid-template-columns:minmax(0,1fr)}.bp-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);min-width:220px}.bp-nav[hidden]{display:none}.bp-burger{display:inline-flex}.bp-pack{grid-column:span 6!important}}
+@media (max-width:1024px){.bp-why{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-trl{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-cat{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq{grid-template-columns:minmax(0,1fr)}.bp-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05);min-width:220px}.bp-nav[hidden]{display:none}.bp-burger{display:inline-flex}.bp-pack{grid-column:span 6!important}}
 @media (max-width:768px){.bp-trl,.bp-cat,.bp-reasons{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media (max-width:430px){.bp-head{gap:12px!important}.bp-logo{font-size:22px!important}.bp-cta{padding:12px 16px!important;font-size:12px!important}}
-@media (max-width:480px){.bp-hero,.bp-team,.bp-trl,.bp-cat,.bp-rights,.bp-req,.bp-reasons,.bp-support{grid-template-columns:minmax(0,1fr)!important}.bp-pad{padding-left:20px!important;padding-right:20px!important}.bp-reasons,.bp-orbit{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:480px){.bp-why{grid-template-columns:minmax(0,1fr)!important}.bp-hero,.bp-team,.bp-trl,.bp-cat,.bp-rights,.bp-req,.bp-reasons,.bp-support{grid-template-columns:minmax(0,1fr)!important}.bp-pad{padding-left:20px!important;padding-right:20px!important}.bp-reasons,.bp-orbit{grid-template-columns:minmax(0,1fr)}}
 @keyframes bp-marquee-l{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes bp-marquee-r{from{transform:translateX(-50%)}to{transform:translateX(0)}}.bp-ticker:hover .bp-run,.bp-ticker:focus-within .bp-run{animation-play-state:paused}
 
 
@@ -415,9 +417,9 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Под каждым механизмом — носитель обязательства</span>
 </div>
-<div data-carousel="reasons" tabindex="0" role="group" aria-label="Механизмы работы — прокрутите стрелками" onScroll="{{ onReasonScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;align-items:stretch;padding:8px 2px;margin:-8px -2px">
+<div class="bp-why" style="gap:16px;align-items:stretch">
 <sc-for list="{{ reasons }}" as="r" hint-placeholder-count="6">
-<article style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 32px) / 3),400px);box-sizing:border-box;border:1px solid #EAE3F2;border-radius:14px;padding:18px 20px;background:#FFFFFF;box-shadow:inset 0 -3px 0 {{ r.edge }},0 1px 2px rgba(22,18,28,.05);display:flex;flex-direction:column;gap:12px">
+<article style="box-sizing:border-box;border:1px solid #EAE3F2;border-radius:14px;padding:18px 20px;background:#FFFFFF;box-shadow:inset 0 -3px 0 {{ r.edge }},0 1px 2px rgba(22,18,28,.05);display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;color:{{ r.ink }}">{{ r.num }}</span>
 <span aria-hidden="true" style="width:44px;height:44px;flex:0 0 44px;display:block;background-image:{{ r.art }};background-size:contain;background-position:center;background-repeat:no-repeat"></span>
@@ -427,15 +429,6 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <p style="margin:auto 0 0;padding-top:12px;border-top:1px solid #F2ECF7;font-size:12px;line-height:1.5;color:#6B6178">Носитель: {{ r.proof }}</p>
 </article>
 </sc-for>
-</div>
-<div style="display:flex;align-items:center;gap:24px;margin-top:20px">
-<div style="flex:1 1 auto;height:4px;border-radius:999px;background:#EFE8F6;overflow:hidden">
-<div style="height:100%;border-radius:999px;background:#7B2BE0;transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ reasonScale }}"></div>
-</div>
-<div style="display:flex;gap:10px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущие механизмы" onClick="{{ prevReason }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
-<button type="button" aria-label="Следующие механизмы" onClick="{{ nextReason }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid #EAE3F2;border-radius:999px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
-</div>
 </div>
 </section>
 
@@ -455,6 +448,50 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-size:13px;line-height:1.6;color:#4A4157">{{ r.text }}</span>
 </div>
 </sc-for>
+</div>
+</section>
+
+<section id="faq" class="bp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Вопросы</span>
+<h2 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#16121C;max-width:38ch;text-wrap:balance">Вопросы о договоре, приёмке и правах на результат</h2>
+</div>
+<span style="font-size:13px;line-height:1.5;color:#6B6178;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #EAE3F2">Отвечаем так же на установочной сессии</span>
+</div>
+<div class="bp-faq" style="gap:40px;align-items:stretch">
+<div style="flex:1 1 auto;min-height:340px;background:#FFFFFF;border:1px solid #EAE3F2;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 6px 14px rgba(22,18,28,.06),0 1px 2px rgba(22,18,28,.05)">
+<div style="position:relative;flex:1 1 auto;min-height:288px;background:linear-gradient(180deg,#F6F1FB 0%,#FFFFFF 100%)">
+<image-slot id="bp-faq-photo" shape="rect" fit="contain" transparent="" data-alt="Научный редактор проекта" placeholder="Фото: научный редактор" style="position:absolute;inset:0;width:100%;height:100%"></image-slot>
+</div>
+<div style="padding:18px 24px 22px;border-top:1px solid #F2ECF7;display:flex;flex-direction:column;gap:10px">
+<h3 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#16121C">Вопрос не из списка?</h3>
+<p style="margin:0;font-size:13px;line-height:1.6;color:#4A4157;max-width:44ch">Напишите или позвоните. NDA пришлём до того, как вы начнёте описывать задачу.</p>
+<div style="margin-top:8px;display:flex;flex-direction:column;gap:2px">
+<a href="tel:+74954564323" style="display:flex;align-items:center;gap:10px;font-size:15px;line-height:1.4;font-weight:600;color:#16121C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/phone.svg') center/contain no-repeat;mask:url('./assets/icons/phone.svg') center/contain no-repeat"></span> +7 495 456 43 23</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:14px;line-height:1.5;color:#4A4157;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#7B2BE0"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#7B2BE0;-webkit-mask:url('./assets/icons/mail.svg') center/contain no-repeat;mask:url('./assets/icons/mail.svg') center/contain no-repeat"></span>info.prodisser@gmail.com</a>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ faq }}" as="f" hint-placeholder-count="6">
+<sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+<div style="background:#FFFFFF;border:1px solid #DDC4FA;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(22,18,28,.05)">
+<button type="button" onClick="{{ f.toggle }}" aria-expanded="true" style="appearance:none;border:0;background:#DDC4FA;cursor:pointer;width:100%;text-align:left;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#16121C;transition:background 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#CDAEF7" style-active="opacity:.82">
+<span>{{ f.q }}</span>
+<span aria-hidden="true" style="width:16px;height:2px;flex:0 0 16px;background:#16121C;border-radius:999px"></span>
+</button>
+<p style="margin:0;padding:14px 20px 18px;font-size:13px;line-height:1.6;color:#4A4157">{{ f.a }}</p>
+</div>
+</sc-if>
+<sc-if value="{{ f.closed }}" hint-placeholder-val="{{ true }}">
+<button type="button" onClick="{{ f.toggle }}" aria-expanded="false" style="appearance:none;border:1px solid #EAE3F2;background:#FFFFFF;cursor:pointer;width:100%;text-align:left;padding:16px 20px;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Onest',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#16121C;box-shadow:0 1px 2px rgba(22,18,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#7B2BE0" style-active="opacity:.82">
+<span>{{ f.q }}</span>
+<span aria-hidden="true" style="position:relative;width:16px;height:16px;flex:0 0 16px"><span style="position:absolute;left:0;top:7px;width:16px;height:2px;background:#6B6178;border-radius:999px"></span><span style="position:absolute;left:7px;top:0;width:2px;height:16px;background:#6B6178;border-radius:999px"></span></span>
+</button>
+</sc-if>
+</sc-for>
+</div>
 </div>
 </section>
 
@@ -551,6 +588,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <a href="#packs" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Пять пакетов</a>
 <a href="#catalog" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Каталог работ</a>
 <a href="#rights" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Права на результат</a>
+<a href="#faq" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Вопросы</a>
 <a href="./index.html" style="display:inline-flex;align-items:center;min-height:28px;font-size:14px;line-height:1.4;color:#6B6178;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#16121C">Другие направления</a>
 </div>
 <div style="display:flex;flex-direction:column;gap:10px">
@@ -581,25 +619,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
    — стандарт оформления отчёта о НИР (номер редакции ГОСТ 7.32 на дату сборки);
    — сроки ведомственных процедур регистрации охранных документов. */
 class Component extends DCLogic {
-  state = { trl: 5, open: { 0: true }, allOpen: false, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, highlight: null, reasonPage: 0, reasonPages: 1, navOpen: false };
-  goReason(dir){
-    const t = document.querySelector('[data-carousel="reasons"]');
-    if (!t) return;
-    const pages = Math.max(1, Math.round(t.scrollWidth / Math.max(t.clientWidth, 1)));
-    const p = Math.min(pages - 1, Math.max(0, this.state.reasonPage + dir));
-    t.scrollLeft = p * t.clientWidth;
-    this.setState({ reasonPage: p, reasonPages: pages });
-  }
+  state = { trl: 5, open: { 0: true }, allOpen: false, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, highlight: null, faqOpen: -1, navOpen: false };
   componentDidMount(){
-    this.measure = () => {
-      const t = document.querySelector('[data-carousel="reasons"]');
-      const pages = t ? Math.max(1, Math.round(t.scrollWidth / Math.max(t.clientWidth, 1))) : 1;
-      this.setState({ reasonPages: pages });
-    };
-    this.measure();
     this.onResize = () => {
       if (this.raf) return;
-      this.raf = requestAnimationFrame(() => { this.raf = 0; this.measure(); this.forceUpdate(); });
+      this.raf = requestAnimationFrame(() => { this.raf = 0; this.forceUpdate(); });
     };
     window.addEventListener('resize', this.onResize);
     // На широком экране меню всегда развёрнуто: иначе атрибут hidden
@@ -816,15 +840,25 @@ class Component extends DCLogic {
         num, title, text, proof, edge: edges[i % 3], ink: inks[i % 3],
         art: "url('./assets/art/" + ['utp-receiver', 'utp-patent', 'utp-rights', 'utp-expert', 'utp-stage', 'utp-scope'][i] + ".svg')"
       })),
-      reasonScale: 'scaleX(' + Math.min(1, (this.state.reasonPage + 1) / Math.max(1, this.state.reasonPages)) + ')',
-      prevReason: () => this.goReason(-1),
-      nextReason: () => this.goReason(1),
-      onReasonScroll: () => {
-        const t = document.querySelector('[data-carousel="reasons"]');
-        if (!t) return;
-        const p = Math.round(t.scrollLeft / Math.max(t.clientWidth, 1));
-        if (p !== this.state.reasonPage) this.setState({ reasonPage: p });
-      },
+      faq: [
+        ['С чего начинается работа?',
+         'С подписанного NDA — задачу обсуждаем только после него. Дальше установочная сессия на сорок минут: разбираем разработку, её стадию и получателя документа: фонд, комиссию заказчика, ведомство или налоговый орган. Смета и календарный план считаются после разбора материалов, до согласования Задания работы не начинаются.'],
+        ['Кто заключает договор и что в нём фиксируется?',
+         'Договор заключается с ООО «РУСДРОН»; ProDisser — коммерческое обозначение. В Задании к договору фиксируются состав работ, требования получателя документа, календарный план и стоимость по этапам. Изменение объёма, сроков или стоимости оформляется дополнительным соглашением, а не сообщением в переписке.'],
+        ['Что будет, если документ не примут?',
+         'Предмет договора — соответствие документа требованиям получателя на дату подачи. Само решение принимают фонд, комиссия или ведомство по своему усмотрению, и его мы не обещаем. Замечания в пределах согласованного объёма отрабатываем без доплаты. Если этап не сдан в срок, оплата за него возвращается по вашему заявлению.'],
+        ['Кому принадлежат права на результат?',
+         'Исключительные права на всё, что создано в проекте, переходят вашей компании с подписанием акта по этапу. Заявителем и правообладателем по заявкам на охранные документы выступаете вы: мы готовим документы и сопровождаем подачу, не становясь правообладателем. Материалы проекта не используются в других работах и не публикуются как примеры.'],
+        ['Как считается смета и когда платить?',
+         'Стоимость складывается из состава работ и стадии готовности разработки, поэтому считается после разбора материалов — цен на сайте нет. Оплата идёт по этапам: следующий оплачивается после приёмки предыдущего. Вперёд за всю работу платить не нужно.'],
+        ['Подойдут ли документы для учёта расходов на НИОКР?',
+         'Комплект под учёт собираем: отчёт по ГОСТ 7.32, акты сдачи-приёмки этапов, регистрационную и информационную карту НИОКТР. Решение о применении коэффициента по п. 7 ст. 262 НК РФ принимает налоговый орган — мы отвечаем за состав и оформление документов, а не за его решение.']
+      ].map(([q, a], i) => ({
+        q, a,
+        open: this.state.faqOpen === i,
+        closed: this.state.faqOpen !== i,
+        toggle: () => this.setState(s => ({ faqOpen: s.faqOpen === i ? -1 : i }))
+      })),
       rights: [
         ['Исключительные права', 'Права на результаты интеллектуальной деятельности переходят заказчику. Условие закреплено пунктом договора об отчуждении прав.'],
         ['Кто подписывает NDA', 'Соглашение о неразглашении подписывает каждый участник проектной команды до получения доступа к материалам.'],
