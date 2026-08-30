@@ -63,7 +63,8 @@ npx prisma migrate deploy
 npm run dev                   # http://localhost:3000
 ```
 
-Развёртывание на сервере — `docs/DEPLOY.md`.
+Покупка хостинга и публикация по шагам — `docs/HOSTING.md`.
+Технические подробности развёртывания — `docs/DEPLOY.md`.
 Витрина проекта для показа — `docs/PREVIEW.md`.
 
 ## Состав репозитория
