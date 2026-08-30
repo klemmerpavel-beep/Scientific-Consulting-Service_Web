@@ -7,7 +7,7 @@ import { z } from 'zod';
  * Версия текста согласия хранится вместе с заявкой: через год после подачи
  * нужно уметь показать, с чем именно согласился заявитель.
  */
-export const CONSENT_VERSION = '2026-08-21';
+export const CONSENT_VERSION = '2026-08-30';
 
 /** Страницы, с которых приходят заявки */
 export const SOURCES = ['landing', 'postgrad', 'students', 'business'] as const;
@@ -37,6 +37,9 @@ export const leadSchema = z
     consent: z.literal(true, {
       message: 'Без согласия на обработку персональных данных заявку принять нельзя',
     }),
+    // Форм с этими отметками на сайте нет: заявка не является акцептом оферты
+    // (оферта, п. 4.2), рекламное согласие не собирается. Поля оставлены, чтобы
+    // отправка старой закешированной страницы не отклонялась разбором.
     terms: z.boolean().default(false),
     marketing: z.boolean().default(false),
 

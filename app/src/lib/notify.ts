@@ -2,10 +2,20 @@ import nodemailer from 'nodemailer';
 import type { Lead } from './lead-schema';
 
 /**
- * Доставка заявки ответственному. Каналов два — Telegram и почта, — и они
- * дублируют друг друга намеренно: заявка уже сохранена в базе, доставка лишь
- * ускоряет ответ. Поэтому отказ канала никогда не роняет приём заявки; он
- * записывается в журнал доставок и виден в админ-панели.
+ * Доставка заявки ответственному. Каналов два, и они делают разное.
+ *
+ * Почта несёт содержание заявки. Ящик и сервер — российские, это обычное
+ * поручение обработки, о котором сказано в разделе 8 Политики.
+ *
+ * Telegram несёт только сигнал: страница, форма, время и номер заявки.
+ * Персональных данных в нём нет намеренно. Мессенджер работает на серверах
+ * за пределами России, и передача туда имени, телефона или темы работы была
+ * бы трансграничной передачей — а Политика (раздел 9) прямо говорит, что
+ * Оператор её не осуществляет. Сигнал без имени и контакта никого не
+ * определяет, поэтому персональными данными не является.
+ *
+ * Заявка в любом случае уже сохранена в базе: отказ канала не роняет приём,
+ * он записывается в журнал доставок.
  */
 
 export type DeliveryResult = { channel: string; ok: boolean; error?: string };
@@ -47,6 +57,17 @@ const escapeHtml = (s: string) =>
 
 // ------------------------------------------------------------------ Telegram
 
+/** Время по Москве: сигнал читают с телефона, часовой пояс сервера не важен */
+function moscowTime(): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    timeZone: 'Europe/Moscow',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date()) + ' МСК';
+}
+
 async function sendTelegram(lead: Lead, id: string): Promise<DeliveryResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chat = process.env.TELEGRAM_CHAT_ID;
@@ -55,7 +76,11 @@ async function sendTelegram(lead: Lead, id: string): Promise<DeliveryResult> {
   const body = [
     '<b>Новая заявка</b>',
     '',
-    ...fields(lead).map(([k, v]) => `<b>${escapeHtml(k)}:</b> ${escapeHtml(v)}`),
+    `<b>Страница:</b> ${escapeHtml(SOURCE_NAMES[lead.source] ?? lead.source)}`,
+    `<b>Форма:</b> ${escapeHtml(lead.form)}`,
+    `<b>Поступила:</b> ${escapeHtml(moscowTime())}`,
+    '',
+    'Содержание заявки — в почте и в базе.',
     '',
     `<code>${escapeHtml(id)}</code>`,
   ].join('\n');
