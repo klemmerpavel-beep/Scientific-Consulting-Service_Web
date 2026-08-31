@@ -13,6 +13,7 @@
 | `deploy/docker-compose.yml` | приложение, база и разовый накат миграций |
 | `deploy/.env.deploy.example` | образец окружения — скопировать в `deploy/.env` |
 | `deploy/nginx.conf` | обратный прокси, перенаправления, сертификат |
+| `deploy/nginx-bootstrap.conf` | временный узел на время выпуска сертификата |
 | `deploy/backup.sh` | ежедневная копия базы, хранение 30 дней |
 | `deploy/retention.sh` | удаление заявок с истёкшим сроком хранения |
 | `app/src/app/api/health/route.ts` | проверка живости: отвечает 503, если база недоступна |
@@ -158,15 +159,36 @@ Open Graph, `robots.txt` и карта сайта вычисляются из н
 `docker compose` передаёт значение в сборку сам, но при ручной сборке образа
 нужен `--build-arg NEXT_PUBLIC_SITE_URL=https://prodisser.ru`.
 
-Обратный прокси и сертификат:
+Обратный прокси и сертификат. **Порядок важен и не переставляется:**
+в `deploy/nginx.conf` прописаны пути к сертификату, которого до первого
+выпуска не существует, и nginx с такой настройкой не стартует
+(`[emerg] cannot load certificate`). А certbot, чтобы выдать сертификат,
+должен получить ответ по `http://prodisser.ru/.well-known/acme-challenge/…`,
+то есть nginx уже должен работать. Круг разрывает временная настройка
+`deploy/nginx-bootstrap.conf`: только порт 80 и каталог проверки.
 
 ```bash
-apt install nginx certbot python3-certbot-nginx
+apt install -y nginx certbot
+mkdir -p /var/www/certbot
+
+# 1. Временный узел: только проверка владения доменом
+rm -f /etc/nginx/sites-enabled/default
+cp deploy/nginx-bootstrap.conf /etc/nginx/sites-available/prodisser
+ln -sf /etc/nginx/sites-available/prodisser /etc/nginx/sites-enabled/prodisser
+nginx -t && systemctl restart nginx
+
+# 2. Сертификат. Именно --webroot: certbot не трогает нашу настройку,
+#    и продление через 90 дней проходит само.
+certbot certonly --webroot -w /var/www/certbot \
+  -d prodisser.ru -d www.prodisser.ru \
+  --agree-tos -m info@prodisser.ru --no-eff-email
+
+# 3. Рабочая настройка
 cp deploy/nginx.conf /etc/nginx/sites-available/prodisser
-ln -s /etc/nginx/sites-available/prodisser /etc/nginx/sites-enabled/
-certbot --nginx -d prodisser.ru -d www.prodisser.ru
 nginx -t && systemctl reload nginx
 ```
+
+Пошагово, с проверками после каждого действия — `docs/HOSTING.md`, шаг 8.
 
 Резервные копии и срок хранения заявок:
 
