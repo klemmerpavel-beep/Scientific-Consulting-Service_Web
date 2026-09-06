@@ -17,6 +17,11 @@
  * Точка привязки задаётся по вертикали и смещена вверх от середины: при
  * обрезке сохраняется лицо, а не нижняя часть кадра.
  *
+ * Решением Р-60 три снимка маршрутов переведены в документальную манеру:
+ * плёночное зерно, естественный свет, человек занят делом и в объектив не
+ * смотрит. Для круглого слота «Отраслевой эксперт» из того же кадра вырезан
+ * крупный план — общий план в круге 178px не читается.
+ *
  * Изображения синтезированы и не изображают конкретных людей — на них не
  * распространяется требование письменного согласия по решению Р-08. Модель,
  * промпты и запрет на выдачу таких снимков за фотографии сотрудников
@@ -41,13 +46,18 @@ const EDITOR: Photo = {
   src: '/photos/editor.webp', width: 340, height: 340, position: 'center 38%',
 };
 const POSTGRAD: Photo = {
-  src: '/photos/postgrad.webp', width: 760, height: 760, position: 'center 34%',
+  src: '/photos/postgrad.webp', width: 760, height: 760, position: 'center 20%',
 };
 const STUDENT: Photo = {
-  src: '/photos/student.webp', width: 760, height: 760, position: 'center 34%',
+  src: '/photos/student.webp', width: 760, height: 760, position: 'center 45%',
 };
 const BUSINESS: Photo = {
-  src: '/photos/business.webp', width: 760, height: 760, position: 'center 40%',
+  src: '/photos/business.webp', width: 760, height: 760, position: 'center 62%',
+};
+// Отраслевой эксперт: тот же кадр, что и BUSINESS, взятый крупным планом.
+// В круг 178px общий план кабинета не читается — лицо в нём мельче подписи.
+const EXPERT: Photo = {
+  src: '/photos/expert.webp', width: 480, height: 480, position: 'center 40%',
 };
 
 export const PHOTOS: Record<string, Slot> = {
@@ -71,9 +81,9 @@ export const PHOTOS: Record<string, Slot> = {
   'sp-faq-photo': { photo: BUSINESS },
 
   // ——— Бизнесу ———
-  'bp-photo-1': { photo: BUSINESS },    // круг 178px
+  'bp-photo-1': { photo: EXPERT },      // круг 178px
   'bp-photo-2': { photo: CURATOR },     // круг 122px
-  'bp-faq-photo': { photo: BUSINESS },  // круг 72px
+  'bp-faq-photo': { photo: CURATOR },   // круг 72px — подпись «Куратор проекта»
 };
 
 /** Слоты первого экрана: грузятся сразу, а не по мере прокрутки */

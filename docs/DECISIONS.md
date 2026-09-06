@@ -1150,3 +1150,108 @@ CDN и файлов шрифтов в репозитории нет.
 политику» совпадают в пиксель (739 и 739), высота первого экрана
 уменьшилась с 937 до 822 пикселей.
 
+
+
+## Р-60 · Снимки маршрутов переведены в репортаж (принято 06.09.2026)
+
+**Решение: три снимка в карточках «С чего начнём вашу работу»
+перегенерированы в документальной манере; из кадра «бизнес» вырезан
+крупный план для круглого слота на странице «Бизнесу».**
+
+Прежняя серия (Р-53, Р-58) читалась как порождение генеративной модели:
+студийный ровный свет, вычищенная кожа, симметричная композиция, взгляд
+в объектив, стерильный фон без следов работы. На сайте научного
+консалтинга такой кадр обесценивает остальное — если снимок очевидно
+синтетический, посетитель переносит это подозрение на цифры и сроки.
+
+Что изменено в постановке задачи модели. Вместо портрета «в интерьере»
+запрошен репортажный кадр: 35-мм плёнка, зерно, только естественный свет
+из окна, приглушённый цвет, ретуши нет, кожа с неровностями. Человек
+занят делом и снят в три четверти со спины или сбоку, в объектив не
+смотрит и не улыбается. В кадре рабочий беспорядок — реактивы, кабели,
+листы на стене, бумажный стакан. Композиция намеренно смещена от центра,
+глубина резкости малая, кадрирование неидеальное.
+
+Соответствие карточек аудитории (требование заказчика — «профили точнее
+указать людей на картинках»):
+- «Довести диссертацию до защиты» — аспирант у лабораторного стола с
+  тетрадью записей;
+- «Сдать диплом и опубликовать статью» — студентка в читальном зале над
+  разложенными распечатками;
+- «Защитить разработку и получить грант» — инженер сорока лет у стены с
+  чертежами в проектном бюро.
+
+Модель — `nano_banana_2` (Higgsfield), соотношение 1:1, выдача приведена
+к 760×760 WebP, качество 50. Полные тексты запросов:
+
+```
+Candid reportage photograph, shot on 35mm film, Kodak Portra, visible film
+grain, natural window light only, no studio lighting, no retouching, natural
+uneven skin texture, muted desaturated colours. A postgraduate researcher in
+his late twenties stands at a cluttered laboratory bench, three-quarter turned
+away from the lens, looking down at an open notebook he is annotating with a
+pen. He wears a worn grey sweater over a shirt. Real working clutter: reagent
+bottles, a rack of pipettes, coffee mug, cables, printed pages taped to the
+wall. Slightly off-centre composition, shallow focus, imperfect framing,
+documentary feel. No eye contact with camera, no smile, no text, no logos
+```
+
+```
+Candid reportage photograph, shot on 35mm film, Kodak Portra, visible film
+grain, natural window light only, no studio lighting, no retouching, natural
+uneven skin texture, muted desaturated colours. A university student in her
+early twenties sits at a library desk seen slightly from the side, leaning
+over printed pages spread in front of her, one hand marking a line with a
+pencil, laptop half closed beside a paper cup. Bookshelves and other students
+out of focus behind. Slightly off-centre composition, shallow focus, imperfect
+framing, documentary feel. No eye contact with camera, no smile, no text, no
+logos
+```
+
+```
+Candid reportage photograph, shot on 35mm film, Kodak Portra, visible film
+grain, natural window light only, no studio lighting, no retouching, natural
+uneven skin texture, muted desaturated colours. A project engineer in his
+forties stands at a wall of pinned technical drawings in a working design
+office, turned three-quarters away from the lens, studying a detail on a
+drawing with a pen in his hand. Rolled sheets, a cluttered desk with monitors
+behind him, dark jacket over an open-collar shirt. Slightly off-centre
+composition, shallow focus, imperfect framing, documentary feel. No eye
+contact with camera, no smile, no text, no logos
+```
+
+**Крупный план для круглого слота.** Репортажный общий план в круге 178px
+на странице «Бизнесу» не читается: лицо в нём мельче подписи «Отраслевой
+эксперт со степенью». Из кадра `business.webp` вырезан фрагмент
+(166, 34)—(599, 467) и сохранён отдельным файлом `expert.webp` 480×480.
+Это тот же человек в той же обстановке, поэтому карточка «Наука для
+бизнеса» на посадочной и портрет эксперта на профильной странице читаются
+как один и тот же специалист.
+
+**Попутно исправлено соответствие слота подписи.** Слот `bp-faq-photo`
+подписан «Куратор проекта», а получал снимок эксперта; теперь получает
+`curator.webp`.
+
+Точки кадрирования пересчитаны под новую композицию: `postgrad` — 20 %,
+`student` — 45 %, `business` — 62 %, `expert` — 40 %. В квадратных слотах
+(круги) точка не влияет: исходник и слот одного соотношения.
+
+Запрет Р-53 сохраняется: снимки синтезированы, конкретных людей не
+изображают и не выдаются за фотографии сотрудников.
+
+**Панели «Стандарт качества» и «Оставьте заявку» уменьшены по высоте.**
+Требование заказчика — минус тридцать процентов. Вертикальные внутренние
+отступы 18 → 16px, шаг между заголовком и абзацем 10 → 8px, отступ формы
+сверху 8 → 6px, шаг внутри формы 12 → 8px. Замер: 549 → 388 пикселей,
+минус 29 %. Состав полей, порядок, валидация и тексты галочек согласия не
+тронуты — журнал согласий по 152-ФЗ не затрагивается.
+
+**Подвал уплотнён.** Три равные колонки заменены тремя строками: контакты
+и телеграм, правовые ссылки и реквизиты, копирайт. Высота 297 → 203
+пикселя, минус 32 %. Ниже 768px строки складываются в столбец. Цели
+нажатия 44px сохранены.
+
+Проверено после правок: ноль нарушений axe и контраста на семи страницах,
+ноль ошибок консоли и ответов 4xx/5xx, заявки со всех четырёх форм
+доходят до базы с верным `source`, перенос макетов воспроизводим. Высота
+посадочной 3071 → 3053 пикселя.
