@@ -39,10 +39,10 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 .pd-routes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-cta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-routes a:hover .pd-routebg,.pd-routes a:focus-visible .pd-routebg{background:transparent!important}
-@media (max-width:1024px){.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1024px){.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:10px 14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none}.pd-burger{display:inline-flex}.pd-hero,.pd-cta{grid-template-columns:minmax(0,1fr)}.pd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-card{flex:0 0 clamp(260px,72vw,320px)}}
 @media (max-width:768px){.pd-metrics,.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-@media (max-width:640px){.pd-headcta{font-size:13px!important;padding:10px 18px!important}.pd-head{gap:12px!important}}@media (max-width:480px){.pd-hero,.pd-metrics,.pd-routes,.pd-cta,.pd-foot{grid-template-columns:minmax(0,1fr)!important}.pd-routes,.pd-metrics{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}.pd-card{flex:0 0 86vw}.pd-headcta{display:none!important}}</style>
+@media (max-width:640px){.pd-headcta{font-size:13px!important;padding:10px 18px!important}.pd-head{gap:12px!important}}@media (max-width:480px){.pd-hero,.pd-metrics,.pd-routes,.pd-cta{grid-template-columns:minmax(0,1fr)!important}.pd-routes,.pd-metrics{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}.pd-card{flex:0 0 86vw}.pd-headcta{display:none!important}}</style>
 </helmet>
 <div style="position:relative;min-height:100vh;background:#FFFFFF;color:#14161C;font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip;min-height:0">
 <div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none">
@@ -90,11 +90,9 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="display:block"><span style="background:#D8E4F3;border-radius:6px;padding:2px 10px;margin-left:-10px;box-decoration-break:clone;-webkit-box-decoration-break:clone">ProDisser</span> — научное сопровождение</span>аспирантов, студентов и компаний
 </h1>
 <p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#3D4450;max-width:52ch">{{ lead }}</p>
-<div style="margin:20px 0 0;padding-left:16px;border-left:2px solid #D8E4F3;max-width:52ch">
-<p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450">Предмет договора — соответствие требованиям на дату подачи. Решение диссовета, редакции или фонда не обещаем.</p>
-</div>
-<h2 style="margin:32px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:19px;line-height:1.4;font-weight:500;color:#14161C">Записаться на первичную консультацию</h2>
-<p style="margin:8px 0 0;font-size:13px;line-height:1.6;color:#5C6474;max-width:44ch">20 минут, не оплачивается. Назовём объём работ и порядок сметы до договора.</p>
+
+<h2 style="margin:28px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:19px;line-height:1.4;font-weight:500;color:#14161C">Записаться на первичную консультацию</h2>
+
 <form style="margin:16px 0 0;max-width:344px;display:flex;flex-direction:column;gap:16px" onSubmit="{{ submitTop }}">
 <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
 <div role="group" aria-label="Способ связи для консультации" style="display:inline-flex;gap:4px;padding:4px;background:#F1F3F6;border:1px solid #E3E7EC;border-radius:999px;align-self:flex-start">
@@ -323,30 +321,30 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 
 <section id="request" class="pd-pad" style="max-width:1220px;margin:0 auto;padding:96px 30px 0;position:relative;z-index:1;scroll-margin-top:24px">
 <div class="pd-cta" style="gap:24px;align-items:stretch">
-<div style="background:#0D2B52;border-radius:14px;padding:32px 40px;display:flex;align-items:stretch">
-<div style="display:flex;flex-direction:column;justify-content:center;gap:28px;width:100%">
-<div style="display:flex;flex-direction:column;gap:20px">
+<div style="background:#0D2B52;border-radius:14px;padding:16px 26px;display:flex;align-items:stretch">
+<div style="display:flex;flex-direction:column;justify-content:center;gap:20px;width:100%">
+<div style="display:flex;flex-direction:column;gap:14px">
 <div style="display:flex;align-items:center;gap:12px">
-<span aria-hidden="true" style="width:38px;height:38px;flex:0 0 38px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#FFFFFF"><span style="width:20px;height:20px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/shield-check.svg') center/contain no-repeat;mask:url('./assets/icons/shield-check.svg') center/contain no-repeat"></span></span>
+<span aria-hidden="true" style="width:32px;height:32px;flex:0 0 32px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#FFFFFF"><span style="width:20px;height:20px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/shield-check.svg') center/contain no-repeat;mask:url('./assets/icons/shield-check.svg') center/contain no-repeat"></span></span>
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#B4C9E5">Стандарт качества ProDisser</span>
 </div>
-<p style="margin:0;font-size:17px;line-height:1.5;color:#FFFFFF;max-width:46ch">Исследование ведёт автор, а мы работаем рядом как научный руководитель. Разбираем логику работы и приводим её к требованиям ГОСТ и диссовета. Готовим автора к защите. Каждый этап проверяют куратор и научный редактор. Вы видите, что изменено и почему.</p>
+<p style="margin:0;font-size:15px;line-height:1.6;color:#FFFFFF;max-width:52ch">Исследование ведёт автор. Мы разбираем логику работы, приводим её к требованиям ГОСТ и диссовета и готовим к защите. Каждый этап проверяют куратор и научный редактор.</p>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px">
-<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:8px 16px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Методология</span>
-<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:8px 16px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Научная редактура</span>
-<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:8px 16px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Оформление по ГОСТ</span>
-<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:8px 16px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Подготовка к защите</span>
-<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:8px 16px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Публикации и патенты</span>
-<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:8px 16px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Гранты и заявки</span>
+<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:6px 14px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Методология</span>
+<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:6px 14px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Научная редактура</span>
+<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:6px 14px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Оформление по ГОСТ</span>
+<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:6px 14px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Подготовка к защите</span>
+<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:6px 14px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Публикации и патенты</span>
+<span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:6px 14px;font-size:13px;line-height:1.4;font-weight:500;color:#FFFFFF">Гранты и заявки</span>
 </div>
 </div>
 </div>
-<div style="background:#ECF1F8;border:1px solid #D0DDEE;box-sizing:border-box;border-radius:14px;padding:40px 40px;display:flex;flex-direction:column;justify-content:center;gap:16px">
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:28px;line-height:1.4;font-weight:400;letter-spacing:-.015em;color:#14161C">Оставьте заявку</h2>
-<p style="margin:0;font-size:15px;line-height:1.6;color:#3D4450">Первичная консультация не оплачивается и включает предварительную оценку работы: объём, сроки и порядок сметы вы узнаёте до договора</p>
-<p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450">Отвечает менеджер проекта, Пн—Пт 10:00—19:00. Он предложит время консультации с куратором вашего направления.</p>
-<form style="margin-top:16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center" onSubmit="{{ submitBottom }}">
+<div style="background:#ECF1F8;border:1px solid #D0DDEE;box-sizing:border-box;border-radius:14px;padding:16px 26px;display:flex;flex-direction:column;justify-content:center;gap:8px">
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:#14161C">Оставьте заявку</h2>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#3D4450;max-width:52ch">Консультация не оплачивается: назовём объём работ, сроки и порядок сметы до договора. Отвечает менеджер проекта, Пн—Пт 10:00—19:00.</p>
+
+<form style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center" onSubmit="{{ submitBottom }}">
 <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
 <div role="group" aria-label="Способ связи для заявки" style="display:inline-flex;gap:4px;padding:4px;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:999px;align-self:flex-start;flex:0 0 auto">
 <sc-for list="{{ contactTabsBottom }}" as="c" hint-placeholder-count="2">
@@ -382,28 +380,27 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </section>
 </main>
 
-<footer class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:56px 30px 28px">
-<div class="pd-foot" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;align-items:start;padding-bottom:20px;border-bottom:1px solid #EFF1F4">
-<div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Контакты</span>
+<footer class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:48px 30px 24px">
+<div class="pd-foot" style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid #EFF1F4">
+<span style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;min-width:0">
 <a href="tel:+74954564323" style="display:inline-flex;align-items:center;min-height:44px;font-size:15px;font-weight:500;color:#14161C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">+7 495 456 43 23</a>
 <a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#3D4450">info.prodisser@gmail.com</a>
+</span>
+<span style="display:flex;align-items:center;gap:12px;min-width:0">
+<span style="font-size:13px;line-height:1.5;color:#5C6474">Пишите в телеграм — отвечаем в рабочее время</span>
+<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid #E3E7EC;border-radius:12px;background:#FFFFFF;transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#14417A;background:#F6F7F9" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
+</span>
 </div>
-<div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Документы</span>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
+<span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
 <a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Публичная оферта</a>
 <a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Политика конфиденциальности</a>
 <a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Обработка персональных данных</a>
-</div>
-<div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Мы в сети</span>
-<span style="display:flex;align-items:center;gap:10px;min-height:44px"><a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid #E3E7EC;border-radius:12px;background:#FFFFFF;transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#14417A;background:#F6F7F9" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a></span>
-<span style="font-size:13px;line-height:1.5;color:#5C6474">Пишите в телеграм — отвечаем в рабочее время</span>
-</div>
-</div>
-<div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;padding-top:16px">
-<span style="font-size:13px;line-height:1.6;color:#5C6474">© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
+</span>
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.02em;color:#5C6474">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
+</div>
+<div style="padding-top:8px">
+<span style="font-size:13px;line-height:1.6;color:#5C6474">© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
 </div>
 </footer>
 </div>
