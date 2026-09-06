@@ -233,7 +233,12 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <ol class="pd-usp" style="list-style:none;margin:0;padding:0;gap:0 48px">
 <sc-for list="{{ usp }}" as="u" hint-placeholder-count="4">
 <li style="display:flex;gap:18px;padding:22px 0 24px;border-top:1px solid #E3E7EC">
-<span aria-hidden="true" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;flex:0 0 auto;font-size:17px;line-height:1.4;letter-spacing:.02em;color:#14417A;font-variant-numeric:tabular-nums">{{ u.num }}</span>
+<span aria-hidden="true" style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px">
+<span style="width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:#ECF1F8;display:flex;align-items:center;justify-content:center">
+<span style="width:21px;height:21px;display:block;background:#14417A;-webkit-mask:{{ u.icon }};mask:{{ u.icon }}"></span>
+</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:14px;line-height:1.4;letter-spacing:.02em;color:#5C6474;font-variant-numeric:tabular-nums">{{ u.num }}</span>
+</span>
 <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:#14161C;max-width:30ch">{{ u.title }}</h3>
 <p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450;max-width:52ch">{{ u.text }}</p>
@@ -716,12 +721,13 @@ class Component extends DCLogic {
       }
     }));
     const usp = [
-      ['award', 'Куратор со степенью по вашей специальности', 'Специалист с учёной степенью в вашей области разбирает методологию, показывает слабые места аргументации и готовит к вопросам оппонентов.', 'Профиль куратора и его публикации вы видите до договора'],
-      ['file-text', 'Соответствие требованиям ВАК и ГОСТ', 'Структура, оформление, библиография и ссылочный аппарат проверяются по ГОСТ Р 7.0.11—2011 и требованиям вашего диссовета.', 'Чек-лист из 74 пунктов — доступен до начала работы'],
-      ['library-big', 'Языковая и терминологическая поддержка', 'Научная редактура на русском, перевод для англоязычных журналов, сопровождение иностранных аспирантов вплоть до выступления на защите.', 'Отдельное направление — иностранные аспиранты российских вузов'],
-      ['calendar-days', 'Прозрачный процесс вместо переписки', 'Договор с зафиксированным объёмом и сроками, этапы с приёмкой, отчёт и акт по каждому этапу с комментариями эксперта.', 'Оплата по этапам — за следующий блок после приёмки предыдущего']
+      ['pd-degree', 'Куратор со степенью по вашей специальности', 'Специалист с учёной степенью в вашей области разбирает методологию, показывает слабые места аргументации и готовит к вопросам оппонентов.', 'Профиль куратора и его публикации вы видите до договора'],
+      ['pd-gost', 'Соответствие требованиям ВАК и ГОСТ', 'Структура, оформление, библиография и ссылочный аппарат проверяются по ГОСТ Р 7.0.11—2011 и требованиям вашего диссовета.', 'Чек-лист из 74 пунктов — доступен до начала работы'],
+      ['pd-editing', 'Языковая и терминологическая поддержка', 'Научная редактура на русском, перевод для англоязычных журналов, сопровождение иностранных аспирантов вплоть до выступления на защите.', 'Отдельное направление — иностранные аспиранты российских вузов'],
+      ['pd-stages', 'Прозрачный процесс вместо переписки', 'Договор с зафиксированным объёмом и сроками, этапы с приёмкой, отчёт и акт по каждому этапу с комментариями эксперта.', 'Оплата по этапам — за следующий блок после приёмки предыдущего']
     ].map(([icon, title, text, proof], i) => ({
-      title, text, proof, num: '0' + (i + 1)
+      title, text, proof, num: '0' + (i + 1),
+      icon: "url('./assets/icons/" + icon + ".svg') center/contain no-repeat"
     }));
     const rowA = ['Кандидатские диссертации', 'Докторские диссертации', 'Научные статьи', 'Монографии', 'Магистерские диссертации', 'Публикации в рецензируемых журналах'];
     const rowB = ['Патентование', 'НИОКР для бизнеса', 'Гранты и заявки', 'Подготовка к защите', 'Оформление по ГОСТ', 'Научная редактура'];
