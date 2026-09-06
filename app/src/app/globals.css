@@ -9,25 +9,29 @@ html, body {
 }
 
 body {
-  font-family: var(--font-onest), 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-sans), 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Макеты обращаются к семействам по имени — связываем их с загруженными */
+/* Макеты обращаются к семействам по имени ('Literata', 'Inter',
+   'JetBrains Mono'). next/font регистрирует их под теми же именами,
+   поэтому отдельного связывания не требуется. Переменные оставлены
+   для слоёв приложения, которые не переносятся из макетов. */
 :root {
-  --onest: var(--font-onest);
-  --jetbrains: var(--font-mono);
+  --pd-serif: var(--font-serif);
+  --pd-sans: var(--font-sans);
+  --pd-mono: var(--font-mono);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 
 *:focus-visible {
-  outline: 2px solid #7B2BE0;
+  outline: 2px solid #14417A;
   outline-offset: 2px;
 }
 
-input[type='checkbox'] { accent-color: #7B2BE0; }
+input[type='checkbox'] { accent-color: #14417A; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -68,7 +72,7 @@ html { scroll-behavior: smooth; }
   inset: 0 0 auto 0;
   height: 2px;
   z-index: 40;
-  background: #7B2BE0;
+  background: #14417A;
   transform: scaleX(0);
   transform-origin: 0 50%;
   pointer-events: none;
