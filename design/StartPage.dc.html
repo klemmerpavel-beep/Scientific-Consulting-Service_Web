@@ -39,10 +39,10 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 .pd-routes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-cta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-routes a:hover .pd-routebg,.pd-routes a:focus-visible .pd-routebg{background:transparent!important}
-@media (max-width:1024px){.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1024px){.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:10px 14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none}.pd-burger{display:inline-flex}.pd-hero,.pd-cta{grid-template-columns:minmax(0,1fr)}.pd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-card{flex:0 0 clamp(260px,72vw,320px)}}
 @media (max-width:768px){.pd-metrics,.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-@media (max-width:640px){.pd-headcta{font-size:13px!important;padding:10px 18px!important}.pd-head{gap:12px!important}}@media (max-width:480px){.pd-hero,.pd-metrics,.pd-routes,.pd-cta{grid-template-columns:minmax(0,1fr)!important}.pd-routes,.pd-metrics{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}.pd-card{flex:0 0 86vw}.pd-headcta{display:none!important}}</style>
+@media (max-width:640px){.pd-headcta{font-size:13px!important;padding:10px 18px!important}.pd-head{gap:12px!important}}@media (max-width:480px){.pd-hero,.pd-metrics,.pd-routes,.pd-cta,.pd-foot{grid-template-columns:minmax(0,1fr)!important}.pd-routes,.pd-metrics{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}.pd-card{flex:0 0 86vw}.pd-headcta{display:none!important}}</style>
 </helmet>
 <div style="position:relative;min-height:100vh;background:#FFFFFF;color:#14161C;font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip;min-height:0">
 <div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none">
@@ -83,18 +83,18 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 
 <main id="main">
 <section class="pd-pad" style="max-width:1220px;margin:0 auto;padding:56px 30px 0;position:relative;z-index:1">
-<div class="pd-hero" style="gap:40px;align-items:start">
+<div class="pd-hero" style="gap:40px;align-items:stretch">
 <div style="min-width:0">
-<span style="display:inline-block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474;margin-bottom:20px">Экспертиза и научное сопровождение исследований</span>
+
 <h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(30px,3vw,44px);line-height:1.24;font-weight:400;letter-spacing:-.012em;color:#14161C;text-wrap:pretty;max-width:20ch">
 <span style="display:block"><span style="background:#D8E4F3;border-radius:6px;padding:2px 10px;margin-left:-10px;box-decoration-break:clone;-webkit-box-decoration-break:clone">ProDisser</span> — научное сопровождение</span>аспирантов, студентов и компаний
 </h1>
 <p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#3D4450;max-width:52ch">{{ lead }}</p>
 <div style="margin:20px 0 0;padding-left:16px;border-left:2px solid #D8E4F3;max-width:52ch">
-<p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450">Предмет договора — соответствие работы требованиям того, кто её принимает, на дату подачи. Решение диссовета, кафедры, редакции или фонда мы не обещаем и в договор не выносим.</p>
+<p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450">Предмет договора — соответствие требованиям на дату подачи. Решение диссовета, редакции или фонда не обещаем.</p>
 </div>
 <h2 style="margin:32px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:19px;line-height:1.4;font-weight:500;color:#14161C">Записаться на первичную консультацию</h2>
-<p style="margin:8px 0 0;font-size:13px;line-height:1.6;color:#5C6474;max-width:44ch">Консультация занимает 20 минут и не оплачивается. По её итогам называем объём работ и порядок сметы — до договора и до оплаты.</p>
+<p style="margin:8px 0 0;font-size:13px;line-height:1.6;color:#5C6474;max-width:44ch">20 минут, не оплачивается. Назовём объём работ и порядок сметы до договора.</p>
 <form style="margin:16px 0 0;max-width:344px;display:flex;flex-direction:column;gap:16px" onSubmit="{{ submitTop }}">
 <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
 <div role="group" aria-label="Способ связи для консультации" style="display:inline-flex;gap:4px;padding:4px;background:#F1F3F6;border:1px solid #E3E7EC;border-radius:999px;align-self:flex-start">
@@ -127,11 +127,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </sc-if>
 </div>
 
-<div style="min-width:0;display:flex;flex-direction:column;gap:24px">
+<div style="min-width:0;display:flex;flex-direction:column;gap:24px;padding-bottom:83px">
 <sc-if value="{{ showPortraits }}" hint-placeholder-val="{{ true }}">
 
 </sc-if>
-<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding-top:8px">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-top:auto">
 <div style="display:flex;flex-direction:column;gap:2px;max-width:190px;align-items:center;text-align:center">
 <span style="width:190px;height:190px;border-radius:50%;background:#D8E4F3;overflow:hidden;display:block">
 <image-slot id="sp-avatar-1" shape="circle" data-alt="Куратор проекта — кандидат наук вашего научного направления" placeholder="Фото куратора" style="width:190px;height:190px"></image-slot>
@@ -144,7 +144,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 
 </div>
 
-</div><div class="pd-metrics" style="gap:12px;margin-top:88px">
+</div><div class="pd-metrics" style="gap:12px;margin-top:auto">
 <a href="./business.html#catalog" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#0D2B52;border:1px solid #0D2B52;border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#0A2145;border-color:#0A2145" style-active="background:#081A38">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:#FFFFFF">52 позиции</span>
 <span style="font-size:13px;line-height:1.5;color:#CFDDEE">в семи направлениях работ — каталог открыт целиком, без заявки</span>
@@ -225,41 +225,41 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-size:13px;line-height:1.6;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Каждое условие проверяется до подписания договора</span>
 </div>
 <div data-carousel="scope" tabindex="0" role="group" aria-label="Что входит в сопровождение — прокрутите стрелками" onScroll="{{ onScopeScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;align-items:stretch;padding:8px 2px;margin:-8px -2px">
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:17px;line-height:1.4;letter-spacing:.02em;color:#14417A">01</span>
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:15px;line-height:1.4;letter-spacing:.02em;color:#14417A">01</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">Куратор со степенью по вашей специальности</h3>
 <p style="margin:0;font-size:13px;line-height:1.5;color:#3D4450">С вами работает кандидат или доктор наук по вашей специальности. Он разбирает методологию и показывает слабые места аргументации. Он же готовит вас к вопросам оппонентов.</p>
-<p style="margin:auto 0 0;padding-top:16px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Профиль куратора и список его публикаций вы получаете до договора.</p>
+<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Профиль куратора и список его публикаций вы получаете до договора.</p>
 </article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:17px;line-height:1.4;letter-spacing:.02em;color:#14417A">02</span>
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:15px;line-height:1.4;letter-spacing:.02em;color:#14417A">02</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">Оформление под требования вашего диссовета</h3>
 <p style="margin:0;font-size:13px;line-height:1.5;color:#3D4450">Структуру, библиографию и ссылочный аппарат сверяем с ГОСТ Р 7.0.11—2011. Затем — с регламентом совета, где вы защищаетесь.</p>
-<p style="margin:auto 0 0;padding-top:16px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Чек-лист из 74 пунктов открыт до начала работы — по нему вы проверяете нас.</p>
+<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Чек-лист из 74 пунктов открыт до начала работы — по нему вы проверяете нас.</p>
 </article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #C4CAD4,0 1px 2px rgba(20,22,28,.05)">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:17px;line-height:1.4;letter-spacing:.02em;color:#14417A">03</span>
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #C4CAD4,0 1px 2px rgba(20,22,28,.05)">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:15px;line-height:1.4;letter-spacing:.02em;color:#14417A">03</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">Научная редактура и языковая поддержка</h3>
 <p style="margin:0;font-size:13px;line-height:1.5;color:#3D4450">Редактируем русский текст и переводим статьи для англоязычных журналов. Отдельно ведём терминологию и устное выступление.</p>
-<p style="margin:auto 0 0;padding-top:16px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Сопровождаем иностранных соискателей российских вузов.</p>
+<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Сопровождаем иностранных соискателей российских вузов.</p>
 </article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:17px;line-height:1.4;letter-spacing:.02em;color:#14417A">04</span>
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:15px;line-height:1.4;letter-spacing:.02em;color:#14417A">04</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">Этапы с приёмкой вместо переписки в мессенджере</h3>
 <p style="margin:0;font-size:13px;line-height:1.5;color:#3D4450">Объём и сроки закреплены в договоре, работа разбита на этапы. По каждому этапу вы получаете отчёт и акт приёмки.</p>
-<p style="margin:auto 0 0;padding-top:16px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Вперёд за всю работу платить не нужно: следующий этап открывается приёмкой предыдущего.</p>
+<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Вперёд за всю работу платить не нужно: следующий этап открывается приёмкой предыдущего.</p>
 </article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:17px;line-height:1.4;letter-spacing:.02em;color:#14417A">05</span>
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:15px;line-height:1.4;letter-spacing:.02em;color:#14417A">05</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">Проектная команда под вашу задачу</h3>
 <p style="margin:0;font-size:13px;line-height:1.5;color:#3D4450">Под работу собираем команду: куратор по специальности, научный редактор, методолог и менеджер проекта. Каждый отвечает за свой участок.</p>
-<p style="margin:auto 0 0;padding-top:16px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Состав команды и зоны ответственности вы видите до старта работы.</p>
+<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Состав команды и зоны ответственности вы видите до старта работы.</p>
 </article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #C4CAD4,0 1px 2px rgba(20,22,28,.05)">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:17px;line-height:1.4;letter-spacing:.02em;color:#14417A">06</span>
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #C4CAD4,0 1px 2px rgba(20,22,28,.05)">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:15px;line-height:1.4;letter-spacing:.02em;color:#14417A">06</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">Понятно, на каком этапе работа</h3>
 <p style="margin:0;font-size:13px;line-height:1.5;color:#3D4450">После каждого этапа приходит отчёт: что сделано и что дальше. Версии файлов и комментарии эксперта лежат в общей папке проекта.</p>
-<p style="margin:auto 0 0;padding-top:16px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Вопросы по этапу разбираем с куратором на созвоне, решения фиксируем письменно.</p>
+<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.5;color:#14161C">Вопросы по этапу разбираем с куратором на созвоне, решения фиксируем письменно.</p>
 </article>
 </div>
 <div style="display:flex;align-items:center;gap:24px;margin-top:24px">
@@ -279,32 +279,32 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-size:13px;line-height:1.6;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Каждое обязательство можно прочитать до оплаты</span>
 </div>
 <div data-carousel="grt" tabindex="0" role="group" aria-label="Гарантии и документы — прокрутите стрелками" onScroll="{{ onGrtScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;align-items:stretch;padding:8px 2px;margin:-8px -2px">
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Договор об оказании услуг</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:#14161C">Объём, сроки и порядок приёмки зафиксированы письменно</h3>
 <p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450">В договоре зафиксированы этапы, состав работ, требования к результату и дата сдачи. Объём меняем дополнительным соглашением, а не сообщением в чате.</p>
 </article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Возврат по заявлению</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:#14161C">Этап не сдан в срок — оплата за него возвращается</h3>
 <p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450">Возврат касается конкретного этапа и оформляется заявлением. Решение диссовета мы не гарантируем и в договор не выносим. Работу оцениваем до оплаты, на консультации.</p>
 </article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #C4CAD4,0 1px 2px rgba(20,22,28,.05)">
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #C4CAD4,0 1px 2px rgba(20,22,28,.05)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Соглашение о неразглашении</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:#14161C">Материалы не выходят за пределы проектной команды</h3>
 <p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450">NDA подписывают куратор, научный редактор и менеджер проекта. Тема, текст и данные не уходят третьим лицам. В других работах мы их не используем.</p>
 </article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Техническое задание</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:#14161C">Смета считается после разбора материала</h3>
 <p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450">Цену называем не по прайсу, а по объёму вашей работы. Смета фиксируется в договоре. Объём меняется только дополнительным соглашением, которое подписываете вы.</p>
 </article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #14417A,0 1px 2px rgba(20,22,28,.05)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">График этапов</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:#14161C">Оплата — за следующий этап после приёмки</h3>
 <p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450">Вы не платите за всю работу вперёд. Каждый этап принимаете отдельно. Не устроил результат — следующий этап не оплачивается.</p>
 </article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:24px 24px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 -3px 0 #C4CAD4,0 1px 2px rgba(20,22,28,.05)">
+<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 #C4CAD4,0 1px 2px rgba(20,22,28,.05)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#3D4450">Регламент правок</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:#14161C">Правки в рамках этапа входят в стоимость</h3>
 <p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450">Замечания по сданному этапу отрабатываем без доплаты в рамках согласованного объёма. Срок ответа на правку — в договоре.</p>
@@ -382,25 +382,28 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </section>
 </main>
 
-<footer class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:96px 30px 32px">
-<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;font-size:13px;line-height:1.6;color:#5C6474">
-<div style="display:flex;flex-direction:column;gap:8px;max-width:56ch">
-<span>© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.02em;color:#5C6474">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
-</div>
-<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+<footer class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:56px 30px 28px">
+<div class="pd-foot" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;align-items:start;padding-bottom:20px;border-bottom:1px solid #EFF1F4">
+<div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Контакты</span>
 <a href="tel:+74954564323" style="display:inline-flex;align-items:center;min-height:44px;font-size:15px;font-weight:500;color:#14161C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">+7 495 456 43 23</a>
 <a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#3D4450">info.prodisser@gmail.com</a>
-<span style="margin-top:12px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Мы в сети</span>
-<span style="display:flex;align-items:center;gap:10px;margin-top:2px">
-<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid #E3E7EC;border-radius:12px;background:#FFFFFF;transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#14417A;background:#F6F7F9" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
-</span>
 </div>
-</div>
-<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:20px;padding-top:18px;border-top:1px solid #EFF1F4">
+<div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Документы</span>
 <a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Публичная оферта</a>
 <a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Политика конфиденциальности</a>
 <a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Обработка персональных данных</a>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Мы в сети</span>
+<span style="display:flex;align-items:center;gap:10px;min-height:44px"><a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid #E3E7EC;border-radius:12px;background:#FFFFFF;transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#14417A;background:#F6F7F9" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a></span>
+<span style="font-size:13px;line-height:1.5;color:#5C6474">Пишите в телеграм — отвечаем в рабочее время</span>
+</div>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;padding-top:16px">
+<span style="font-size:13px;line-height:1.6;color:#5C6474">© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.02em;color:#5C6474">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
 </div>
 </footer>
 </div>
@@ -495,7 +498,7 @@ class Component extends DCLogic {
       prevScope: () => this.goTrack('scope', 'scopePage', 'scopePages', -1),
       nextScope: () => this.goTrack('scope', 'scopePage', 'scopePages', 1),
       onScopeScroll: () => this.track('scope', 'scopePage', 'scopeFill'),
-      lead: 'Разбираем методологию, ведём научную редактуру, готовим оформление по действующим стандартам и репетируем защиту. Текст и разработка остаются авторскими: за содержание отвечает автор, за экспертизу и формальную часть — мы.',
+      lead: 'Разбираем методологию, ведём научную редактуру, оформляем по действующим стандартам и готовим к защите. Автором работы остаётесь вы.',
       showPortraits: this.props.showPortraits ?? true,
       sentTop: this.state.sentTop,
       sentBottom: this.state.sentBottom,
