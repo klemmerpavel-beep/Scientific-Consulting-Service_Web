@@ -1,14 +1,25 @@
 import type { Metadata, Viewport } from 'next';
-import { Onest, JetBrains_Mono } from 'next/font/google';
+import { Literata, Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import SiteMotion from '../components/SiteMotion';
 
 // Шрифты забираются при сборке и отдаются с нашего же домена:
 // внешних запросов со страниц быть не должно.
-const onest = Onest({
+//
+// Антиква в заголовках, гротеск в тексте, моноширинный в лейблах —
+// решение Р-52. Обе основные гарнитуры берутся с полной кириллицей:
+// без неё заголовок распадается на подставленные системные глифы.
+const literata = Literata({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '600'],
+  variable: '--font-serif',
+  display: 'swap',
+});
+
+const inter = Inter({
   subsets: ['latin', 'cyrillic'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-onest',
+  variable: '--font-sans',
   display: 'swap',
 });
 
@@ -44,7 +55,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={`${onest.variable} ${mono.variable}`}>
+    <html lang="ru" className={`${literata.variable} ${inter.variable} ${mono.variable}`}>
       <body>
         {children}
         <SiteMotion />

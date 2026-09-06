@@ -11,33 +11,47 @@
 <helmet>
 <title>Публичная оферта ProDisser — договор оказания услуг научного сопровождения</title>
 <meta name="description" content="Публичная оферта ООО «РУСДРОН» (ProDisser): предмет договора, порядок расчётов по этапам, приёмка, конфиденциальность и интеллектуальные права.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ProDisser">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Публичная оферта ProDisser — договор оказания услуг научного сопровождения">
+<meta property="og:description" content="Публичная оферта ООО «РУСДРОН» (ProDisser): предмет договора, порядок расчётов по этапам, приёмка, конфиденциальность и интеллектуальные права.">
+<meta name="twitter:card" content="summary_large_image">
 <script src="./ds-base.js"></script>
-<style>body{margin:0;background:#FFFFFF}a{color:#7B2BE0;text-decoration:none}a:hover{color:#5E17B8}*:focus-visible{outline:2px solid #7B2BE0;outline-offset:2px}.pd-skip{position:absolute;left:-9999px;top:0;z-index:9;background:#16121C;color:#FFFFFF;padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}.pd-skip:focus{left:0;color:#FFFFFF}.doc-layout{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:48px;align-items:start}.doc-toc{position:sticky;top:24px}.doc-toc-btn{display:none}.doc-toc-list{display:flex;flex-direction:column}.doc-toc-list[hidden]{display:none}
+<style>body{margin:0;background:#FFFFFF}a{color:#14417A;text-decoration:none}a:hover{color:#0F3260}*:focus-visible{outline:2px solid #14417A;outline-offset:2px}.pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:#14161C;color:#FFFFFF;padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}.pd-skip:focus{left:0;color:#FFFFFF}.doc-layout{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:48px;align-items:start}.doc-toc{position:sticky;top:24px}.doc-toc-btn{display:none}.doc-toc-list{display:flex;flex-direction:column}.doc-toc-list[hidden]{display:none}
 @media (max-width:1024px){.doc-layout{grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:32px}}
 @media (max-width:768px){.doc-layout{grid-template-columns:minmax(0,1fr)}.doc-toc{position:static}.doc-toc-btn{display:flex}}
-@media (max-width:480px){.doc-pad{padding-left:20px;padding-right:20px}}
+@media (max-width:480px){.doc-pad{padding-left:20px!important;padding-right:20px!important}}
 @media print{.doc-toc-list[hidden]{display:flex!important}.doc-toc,.doc-head,.doc-foot,.pd-skip{display:none!important}.doc-layout{grid-template-columns:minmax(0,1fr)!important;gap:0!important}body{background:#FFFFFF}main{max-width:none!important;padding:0!important}h1{font-size:20pt}h2{font-size:13pt;page-break-after:avoid}p,li{font-size:11pt;line-height:1.5}.doc-print{display:block!important}}.doc-print{display:none}
+/* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
+   поэтому приглушение объявлено важным. */
+button[disabled]{opacity:.55!important;cursor:progress!important}
+/* Подтверждение и ошибка появляются плавно, а не возникают рывком.
+   Правило срабатывает при вставке элемента, поэтому блоки, которые уже
+   на странице, ничего не переигрывают при обновлении содержимого. */
+@keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+[role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}</style>
 </helmet>
-<div style="position:relative;background:#FFFFFF;color:#16121C;font-family:'Onest','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased">
+<div style="position:relative;background:#FFFFFF;color:#14161C;font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased">
 <a class="pd-skip" href="#main">Перейти к тексту документа</a>
 
 <header class="doc-head doc-pad" style="max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap">
-<a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-size:28px;line-height:1.24;font-weight:700;letter-spacing:-.012em;transition:background 200ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(198,202,246,.3)"><span style="color:#7B2BE0">PRO</span><span style="color:#16121C">DISSER</span></a>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#6B6178">Проект документа</span>
+<a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:27px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(180,201,229,.34)"><span style="color:#14417A">PRO</span><span style="color:#14161C">DISSER</span></a>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Проект документа</span>
 </header>
 
-<div class="doc-pad" style="max-width:1220px;margin:0 auto;padding:40px 30px 0">
-<h1 style="margin:0;font-family:'Onest',Arial,sans-serif;font-size:28px;line-height:1.24;font-weight:500;letter-spacing:-.015em;color:#16121C;max-width:24ch">Публичная оферта о заключении договора возмездного оказания услуг</h1>
-<p class="doc-print" style="margin:8px 0 0;font-size:13px;line-height:1.5;color:#16121C">ООО «РУСДРОН», ОГРН 1257700248860, ИНН 9723254250, КПП 772301001. Коммерческое обозначение — ProDisser.</p>
+<div class="doc-pad" role="region" aria-labelledby="doc-title" style="max-width:1220px;margin:0 auto;padding:40px 30px 0">
+<h1 id="doc-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:28px;line-height:1.24;font-weight:500;letter-spacing:-.015em;color:#14161C;max-width:24ch">Публичная оферта о заключении договора возмездного оказания услуг</h1>
+<p class="doc-print" style="margin:8px 0 0;font-size:13px;line-height:1.5;color:#14161C">ООО «РУСДРОН», ОГРН 1257700248860, ИНН 9723254250, КПП 772301001. Коммерческое обозначение — ProDisser.</p>
 </div>
 
 <div class="doc-layout doc-pad" style="max-width:1220px;margin:32px auto 0;padding:0 30px">
 <nav class="doc-toc" aria-label="Оглавление документа">
-<button type="button" class="doc-toc-btn" onClick="{{ toggleToc }}" aria-expanded="{{ tocExpanded }}" aria-controls="toc-list" style="appearance:none;cursor:pointer;width:100%;align-items:center;justify-content:space-between;gap:16px;border:1px solid #EAE3F2;background:#FFFFFF;border-radius:10px;padding:14px 18px;font-family:'Onest',Arial,sans-serif;font-size:14px;font-weight:600;color:#16121C;margin-bottom:12px">Оглавление<span aria-hidden="true" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;color:#7B2BE0">{{ tocMark }}</span></button>
-<ol id="toc-list" class="doc-toc-list" hidden="{{ tocHidden }}" style="margin:0;padding:0;list-style:none;gap:2px;border-left:1px solid #EAE3F2">
+<button type="button" class="doc-toc-btn" onClick="{{ toggleToc }}" aria-expanded="{{ tocExpanded }}" aria-controls="toc-list" style="appearance:none;cursor:pointer;width:100%;align-items:center;justify-content:space-between;gap:16px;border:1px solid #E3E7EC;background:#FFFFFF;border-radius:10px;padding:14px 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:#14161C;margin-bottom:12px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#D8E4F3" style-active="opacity:.82">Оглавление<span aria-hidden="true" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;color:#14417A">{{ tocMark }}</span></button>
+<ol id="toc-list" class="doc-toc-list" hidden="{{ tocHidden }}" style="margin:0;padding:0;list-style:none;gap:2px;border-left:1px solid #E3E7EC">
 <sc-for list="{{ toc }}" as="t" hint-placeholder-count="16">
-<li><a href="{{ t.href }}" style="display:flex;gap:10px;padding:7px 14px;font-size:14px;line-height:1.4;color:#4A4157;border-left:2px solid transparent;margin-left:-1px" style-hover="color:#16121C;border-left-color:#7B2BE0"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;color:#6B6178;padding-top:2px;flex:0 0 auto">{{ t.num }}</span><span>{{ t.title }}</span></a></li>
+<li><a href="{{ t.href }}" style="display:flex;align-items:center;min-height:44px;gap:10px;padding:7px 14px;font-size:14px;line-height:1.4;color:#3D4450;border-left:2px solid transparent;margin-left:-1px;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C;border-left-color:#14417A"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;color:#5C6474;padding-top:2px;flex:0 0 auto">{{ t.num }}</span><span>{{ t.title }}</span></a></li>
 </sc-for>
 </ol>
 </nav>
@@ -45,9 +59,9 @@
 <main id="main" style="min-width:0;max-width:72ch">
 <sc-for list="{{ sections }}" as="s" hint-placeholder-count="16">
 <section id="{{ s.id }}" style="scroll-margin-top:24px;padding-bottom:32px">
-<h2 style="margin:0 0 14px;font-family:'Onest',Arial,sans-serif;font-size:19px;line-height:1.4;font-weight:600;letter-spacing:-.01em;color:#16121C;display:flex;gap:12px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:14px;color:#7B2BE0;flex:0 0 auto;padding-top:2px">{{ s.num }}</span><span>{{ s.title }}</span></h2>
+<h2 style="margin:0 0 14px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:19px;line-height:1.4;font-weight:600;letter-spacing:-.01em;color:#14161C;display:flex;gap:12px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:14px;color:#14417A;flex:0 0 auto;padding-top:2px">{{ s.num }}</span><span>{{ s.title }}</span></h2>
 <sc-for list="{{ s.items }}" as="p" hint-placeholder-count="6">
-<p style="margin:0 0 10px;display:flex;gap:12px;font-size:15px;line-height:1.6;color:#16121C"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;color:#6B6178;flex:0 0 auto;padding-top:2px;font-variant-numeric:tabular-nums">{{ p.num }}</span><span>{{ p.text }}</span></p>
+<p style="margin:0 0 10px;display:flex;gap:12px;font-size:15px;line-height:1.6;color:#14161C"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;color:#5C6474;flex:0 0 auto;padding-top:2px;font-variant-numeric:tabular-nums">{{ p.num }}</span><span>{{ p.text }}</span></p>
 </sc-for>
 </section>
 </sc-for>
@@ -55,16 +69,16 @@
 </div>
 
 <footer class="doc-foot doc-pad" style="max-width:1220px;margin:32px auto 0;padding:0 30px 40px">
-<div style="border-top:1px solid #EAE3F2;padding-top:24px;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap">
-<div style="display:flex;flex-direction:column;gap:6px;max-width:60ch;font-size:13px;line-height:1.6;color:#6B6178">
-<span style="color:#16121C">ООО «РУСДРОН» · коммерческое обозначение ProDisser</span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.5;letter-spacing:.02em">ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:11px;line-height:1.5;letter-spacing:.02em">109451, г. Москва, вн. тер. г. муниципальный округ Марьино, б-р Перервинский, д. 27, к. 1, помещ. 10н</span>
+<div style="border-top:1px solid #E3E7EC;padding-top:24px;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:6px;max-width:60ch;font-size:13px;line-height:1.6;color:#5C6474">
+<span style="color:#14161C">ООО «РУСДРОН» · коммерческое обозначение ProDisser</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.02em">ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.02em">109451, г. Москва, вн. тер. г. муниципальный округ Марьино, б-р Перервинский, д. 27, к. 1, помещ. 10н</span>
 </div>
 <div style="display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.4">
-<a href="./privacy.html" style="color:#4A4157" style-hover="color:#7B2BE0">Политика обработки персональных данных</a>
-<a href="./consent.html" style="color:#4A4157" style-hover="color:#7B2BE0">Согласие на обработку персональных данных</a>
-<a href="./index.html" style="color:#4A4157" style-hover="color:#7B2BE0">На главную</a>
+<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;color:#3D4450;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Политика обработки персональных данных</a>
+<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;color:#3D4450;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Согласие на обработку персональных данных</a>
+<a href="./index.html" style="display:inline-flex;align-items:center;min-height:44px;color:#3D4450;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">На главную</a>
 </div>
 </div>
 </footer>
@@ -125,13 +139,15 @@ class Component extends DCLogic {
  ]],
  ['force','Обстоятельства непреодолимой силы', ['Стороны освобождаются от ответственности за неисполнение обязательств, если оно вызвано обстоятельствами непреодолимой силы: стихийными бедствиями, военными действиями, актами органов власти, делающими исполнение невозможным.','Сторона, для которой наступили такие обстоятельства, уведомляет другую Сторону в течение пяти рабочих дней с момента их наступления.','Если обстоятельства действуют более двух месяцев, каждая Сторона вправе отказаться от договора с проведением расчётов за фактически оказанные Услуги.'
  ]],
- ['disputes','Порядок разрешения споров', ['До обращения в суд Сторона направляет другой Стороне письменную претензию.','Претензия направляется по адресу Исполнителя, указанному в разделе 16, либо по адресу электронной почты info.prodisser@gmail.com.','Срок рассмотрения претензии и направления ответа составляет со дня её получения.','Споры с Заказчиком-потребителем рассматриваются в суде в соответствии с правилами подсудности, установленными законодательством о защите прав потребителей.','Споры с Заказчиком — юридическим лицом или индивидуальным предпринимателем рассматриваются в Арбитражном суде города Москвы.'
+ ['disputes','Порядок разрешения споров', ['До обращения в суд Сторона направляет другой Стороне письменную претензию.','Претензия направляется по адресу Исполнителя, указанному в разделе 16, либо по адресу электронной почты info.prodisser@gmail.com.','Срок рассмотрения претензии и направления ответа составляет десять рабочих дней со дня её получения.','Споры с Заказчиком-потребителем рассматриваются в суде в соответствии с правилами подсудности, установленными законодательством о защите прав потребителей.','Споры с Заказчиком — юридическим лицом или индивидуальным предпринимателем рассматриваются в Арбитражном суде города Москвы.'
  ]],
  ['change','Изменение и расторжение договора', ['Заказчик-потребитель вправе отказаться от исполнения договора в любое время при условии оплаты Исполнителю фактически понесённых расходов, связанных с исполнением обязательств по договору.','Исполнитель вправе отказаться от исполнения договора при условии полного возмещения Заказчику убытков в случаях, предусмотренных законодательством.','Исполнитель вправе отказаться от исполнения договора, если Заказчик требует совершения действий, противоречащих разделу 3 настоящей оферты.','При отказе от договора Стороны производят расчёты за принятые Этапы. Оплата за Этапы, не начатые исполнением, возвращается Заказчику.','Изменение условий договора оформляется дополнительным соглашением.'
  ]],
  ['validity','Срок действия оферты и порядок её изменения', ['Оферта действует с даты её размещения на Сайте и до размещения новой редакции либо до её отзыва Исполнителем.','Исполнитель вправе изменить оферту. Новая редакция размещается на Сайте с указанием даты редакции и даты вступления в силу.','К договорам, заключённым до вступления в силу новой редакции, применяется редакция, действовавшая на дату Акцепта, если Стороны не согласовали иное.','Заказчики, состоящие в договорных отношениях с Исполнителем, уведомляются об изменении оферты по адресу электронной почты, указанному в Заявке, не позднее чем за десять календарных дней до вступления изменений в силу.'
  ]],
  ['details','Реквизиты Исполнителя', ['Полное наименование: Общество с ограниченной ответственностью «РУСДРОН».','Сокращённое наименование: ООО «РУСДРОН». Коммерческое обозначение: ProDisser.','ОГРН 1257700248860. ИНН 9723254250. КПП 772301001. Дата регистрации: 02.06.2025.','Юридический адрес: 109451, г. Москва, вн. тер. г. муниципальный округ Марьино, б-р Перервинский, д. 27, к. 1, помещ. 10н.','Почтовый адрес для корреспонденции совпадает с юридическим адресом.','Банковские реквизиты сообщаются Заказчику при выставлении счёта.','Адрес электронной почты: info.prodisser@gmail.com.','Оферта подписана уполномоченным лицом Исполнителя.'
+ ]],
+ ['edition','Дата редакции', ['Редакция от 21 августа 2026 года, версия 1.0.','Оферта действует с даты её размещения на Сайте.','К договору применяется редакция, действовавшая на дату Акцепта. Исполнитель сохраняет ранее действовавшие редакции и предоставляет их Заказчику по запросу.'
  ]]
  ];
  const sections = S.map(([id, title, items], i) => ({

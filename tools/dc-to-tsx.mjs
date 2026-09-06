@@ -168,9 +168,13 @@ function renderAttrs(attrs, ctx) {
 
     if (rawValue === null) { out.push(`${reactName}={true}`); continue; }
 
-    // href на файлы сборки -> маршруты приложения
+    // href на файлы сборки -> маршруты приложения; якорь сохраняется
     let value = rawValue;
-    if (name === 'href' && ROUTES[value]) value = ROUTES[value];
+    if (name === 'href') {
+      const hash = value.indexOf('#');
+      const file = hash < 0 ? value : value.slice(0, hash);
+      if (ROUTES[file]) value = ROUTES[file] + (hash < 0 ? '' : value.slice(hash));
+    }
 
     // события: onClick="{{ f }}"
     if (/^on[A-Z]/.test(rawName)) {

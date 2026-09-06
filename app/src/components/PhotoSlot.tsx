@@ -14,9 +14,9 @@ import { PHOTOS } from './photos';
  * снимок, нет файла — показывает подписанную заглушку, по которой видно,
  * какой именно портрет сюда встанет.
  *
- * Круглые портреты кадрируются штатным `cover`. Прямоугольные слоты, где
- * человек стоит в полный рост, кадрируются по измерениям снимка — правило
- * и причина описаны в `photos.ts`.
+ * Все слоты кадрируются штатным `object-fit` с точкой привязки из
+ * `photos.ts`: снимки полнокадровые, вырезанных по контуру фигур больше
+ * нет, поэтому отдельной геометрии под них не требуется.
  */
 
 type Props = {
@@ -86,7 +86,7 @@ export default function PhotoSlot({
     );
   }
 
-  const { photo, frame } = slot;
+  const { photo } = slot;
 
   const common = {
     className,
@@ -99,42 +99,6 @@ export default function PhotoSlot({
     decoding: 'async' as const,
   };
 
-  if (frame) {
-    // Всё считается долями от слота, а не пикселями: слот на узком экране
-    // сжимается, и пиксельные значения разъезжались бы.
-    //
-    // `figShown` — какую часть фигуры показывать. Нужна там, где человек
-    // снят длиннее остальных.
-    const shown = photo.figShown ?? photo.figH;
-
-    // Высота снимка как доля высоты слота: чтобы фигура заняла заданную
-    // долю, весь кадр должен быть во столько же раз выше.
-    const heightPct = (frame.figureHPct * photo.height) / shown;
-
-    // Сдвиги считаются в процентах от собственного размера снимка —
-    // проценты в `transform` отсчитываются именно от него.
-    const shiftXPct = (0.5 - photo.figCx / photo.width) * 100;
-    const shiftYPct = -(photo.figTop / photo.height) * 100;
-
-    return (
-      <span style={{ ...box, display: 'block', position: 'relative' }}>
-        <img
-          {...common}
-          style={{
-            display: 'block',
-            position: 'absolute',
-            left: '50%',
-            top: `${frame.topPct}%`,
-            height: `${heightPct.toFixed(2)}%`,
-            width: 'auto',
-            maxWidth: 'none',
-            transform: `translate(calc(-50% + ${shiftXPct.toFixed(2)}%), ${shiftYPct.toFixed(2)}%)`,
-          }}
-        />
-      </span>
-    );
-  }
-
   return (
     <img
       {...common}
@@ -144,9 +108,9 @@ export default function PhotoSlot({
         width: '100%',
         height: '100%',
         objectFit: fit,
-        // Люди на снимках стоят по центру, но кадрируются сверху:
-        // при обрезке важнее сохранить лицо, а не ноги.
-        objectPosition: photo.position ?? (shape === 'circle' ? 'center top' : 'center 20%'),
+        // Точка привязки смещена вверх от середины кадра: при обрезке
+        // важнее сохранить лицо, а не нижнюю часть снимка.
+        objectPosition: photo.position,
       }}
     />
   );
