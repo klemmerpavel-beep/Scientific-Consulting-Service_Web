@@ -31,7 +31,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:#14161C;color:#FFFFFF;padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}
 .pd-skip:focus{left:0;color:#FFFFFF}
-.pd-ticker:hover .pd-run,.pd-ticker:focus-within .pd-run{animation-play-state:paused}
+.pd-ticker:hover .pd-run,.pd-ticker:focus-within .pd-run{animation-play-state:paused!important}
 .pd-burger{display:none}
 .pd-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -141,7 +141,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 </section>
 
-<section aria-label="Услуги" class="pd-ticker" style="position:relative;z-index:1;margin:88px 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
+<section aria-label="Услуги — бегущая строка, останавливается при наведении и фокусе" tabindex="0" class="pd-ticker" style="position:relative;z-index:1;margin:88px 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
 <div style="display:flex;width:max-content;gap:52px;padding-right:52px;animation:pd-marquee-l 42s linear infinite" class="pd-run">
 <sc-for list="{{ tickerA }}" as="t" hint-placeholder-count="12">
 <span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:24px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:#3D4450;white-space:nowrap">{{ t.text }}</span>

@@ -43,7 +43,11 @@ export const metadata: Metadata = {
     : undefined,
   applicationName: 'ProDisser',
   authors: [{ name: 'ООО «РУСДРОН»' }],
+  // Обложка объявлена в каждой странице, а не здесь: Next заменяет
+  // родительский блок openGraph целиком, и картинка из макета отсюда до
+  // страниц не доходила бы. Описатель — `components/og-cover.ts`.
   openGraph: { siteName: 'ProDisser', locale: 'ru_RU', type: 'website' },
+  twitter: { card: 'summary_large_image' },
   robots: demoStand ? { index: false, follow: false } : { index: true, follow: true },
 };
 
