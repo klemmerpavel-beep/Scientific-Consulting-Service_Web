@@ -230,9 +230,9 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Четыре принципа, закреплённые договором</span>
 </div>
-<ol class="pd-usp" style="list-style:none;margin:0;padding:0;gap:0 48px">
+<ol class="pd-usp" style="list-style:none;margin:0;padding:0;gap:16px">
 <sc-for list="{{ usp }}" as="u" hint-placeholder-count="4">
-<li style="display:flex;gap:18px;padding:22px 0 24px;border-top:1px solid #E3E7EC">
+<li style="display:flex;gap:18px;box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:20px 22px 22px;box-shadow:0 1px 2px rgba(20,22,28,.05)">
 <span aria-hidden="true" style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px">
 <span style="width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:#ECF1F8;display:flex;align-items:center;justify-content:center">
 <span style="width:21px;height:21px;display:block;background:#14417A;-webkit-mask:{{ u.icon }};mask:{{ u.icon }}"></span>
@@ -258,6 +258,27 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <div class="pd-services" style="gap:16px">
 <sc-for list="{{ offerTop }}" as="o" hint-placeholder-count="3">
+<article style="background:rgba(255,255,255,.92);border:1px solid #E3E7EC;border-radius:14px;padding:20px 22px 22px;min-height:232px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:#B4C9E5">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
+<div style="display:flex;align-items:center;gap:10px">
+<span aria-hidden="true" style="width:20px;height:20px;flex:0 0 20px;display:block;background:#14417A;-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:21px;font-weight:600;color:#14161C">{{ o.title }}</h3>
+</div>
+<span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#5C6474;-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
+</div>
+<p style="margin:0;font-size:13px;line-height:20px;color:#3D4450">{{ o.text }}</p>
+<div style="margin-top:auto;height:104px;border-radius:10px;background:#F6F7F9;display:flex;align-items:center;justify-content:center;overflow:hidden">
+<span aria-hidden="true" style="display:block;width:100%;height:100%;background-image:{{ o.art }};background-size:cover;background-position:center;background-repeat:no-repeat"></span>
+</div>
+<div style="display:flex;align-items:center;gap:8px">
+<span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;display:block;background:#5C6474;-webkit-mask:{{ clockMask }};mask:{{ clockMask }}"></span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.04em;color:#5C6474">{{ o.term }}</span>
+</div>
+</article>
+</sc-for>
+</div>
+<div class="pd-services" style="gap:16px;margin-top:16px">
+<sc-for list="{{ offerMid }}" as="o" hint-placeholder-count="3">
 <article style="background:rgba(255,255,255,.92);border:1px solid #E3E7EC;border-radius:14px;padding:20px 22px 22px;min-height:232px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:#B4C9E5">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
 <div style="display:flex;align-items:center;gap:10px">
@@ -326,15 +347,6 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </article>
 </sc-for>
 </div>
-<h3 style="margin:44px 0 18px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:19px;line-height:27px;font-weight:600;letter-spacing:-.01em;color:#14161C">Что прислать, чтобы мы посчитали смету</h3>
-<ol style="list-style:none;margin:0;padding:0;max-width:72ch;border-top:1px solid #E3E7EC">
-<sc-for list="{{ costNeeds }}" as="n" hint-placeholder-count="4">
-<li style="display:flex;gap:16px;align-items:baseline;padding:14px 0;border-bottom:1px solid #EFF1F4">
-<span aria-hidden="true" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;flex:0 0 auto;font-size:12px;line-height:1.5;letter-spacing:.04em;color:#14417A;font-variant-numeric:tabular-nums">{{ n.num }}</span>
-<span style="font-size:14px;line-height:1.6;color:#3D4450;min-width:0">{{ n.text }}</span>
-</li>
-</sc-for>
-</ol>
 </section>
 
 <section id="process" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:96px auto 0;padding:0 30px;scroll-margin-top:24px">
@@ -554,45 +566,33 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 
 </main>
 
-<footer id="contacts" style="position:relative;z-index:1;margin-top:96px;padding-top:0;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(250,251,252,.7) 26%,#FAFBFC 58%,#F6F7F9 100%);overflow:hidden;scroll-margin-top:24px">
-<span aria-hidden="true" style="position:absolute;left:50%;bottom:-14px;transform:translateX(-50%);font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(72px,8.4vw,120px);line-height:.8;font-weight:600;letter-spacing:.004em;color:#F6F7F9;white-space:nowrap;user-select:none">PRODISSER</span>
-<div class="pd-foot pd-pad" style="position:relative;max-width:1220px;margin:0 auto;padding:48px 30px 40px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,.85fr) minmax(0,.85fr) minmax(0,.9fr);gap:40px;align-items:start">
-<div style="display:flex;flex-direction:column;gap:20px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:30px;line-height:32px;font-weight:700;letter-spacing:-.014em"><span style="color:#14417A">PRO</span><span style="color:#14161C">DISSER</span></span>
-<p style="margin:0;font-size:14px;line-height:23px;color:#3D4450;max-width:42ch">Научный консалтинг и сопровождение исследований. Кандидатские, докторские, магистерские работы, публикации, НИОКР и гранты.</p>
-<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Реквизиты</span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.02em;color:#5C6474">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
-</div>
-</div>
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#14161C">Другие направления</span>
-<a href="./students.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.4;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Студентам и специалистам</a>
-<a href="./business.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.4;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Компаниям и коллективам</a>
-</div>
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#14161C">Меню</span>
-<a href="#services" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:20px;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Направления работы</a>
-<a href="#process" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:20px;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Схема работы</a>
-<a href="#faq" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:20px;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Вопросы</a>
-</div>
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#14161C">Контакты</span>
-<a href="tel:+74954564323" style="display:flex;align-items:center;min-height:44px;gap:10px;font-size:17px;line-height:24px;font-weight:500;color:#14161C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#14417A;-webkit-mask:{{ phoneMask }};mask:{{ phoneMask }}"></span> +7 495 456 43 23</a>
-<a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:15px;line-height:22px;color:#3D4450;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#14417A;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
-<span style="margin-top:12px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Мы в сети</span>
-<span style="display:flex;align-items:center;gap:10px;margin-top:2px">
+<footer id="contacts" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:96px auto 0;padding:48px 30px 24px;scroll-margin-top:24px">
+<div class="pd-foot" style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid #EFF1F4">
+<span style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;min-width:0">
+<a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:0 -10px;border-radius:10px;text-decoration:none;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:21px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:#14417A">PRO</span><span style="color:#14161C">DISSER</span></a>
+<a href="tel:+74954564323" style="display:inline-flex;align-items:center;min-height:44px;font-size:15px;font-weight:500;color:#14161C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">+7 495 456 43 23</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#3D4450">info.prodisser@gmail.com</a>
+</span>
+<span style="display:flex;align-items:center;gap:12px;min-width:0">
+<span style="font-size:13px;line-height:1.5;color:#5C6474">Пишите в телеграм — отвечаем в рабочее время</span>
 <a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid #E3E7EC;border-radius:12px;background:#FFFFFF;transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#14417A;background:#F6F7F9" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
 </span>
 </div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
+<span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
+<a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Публичная оферта</a>
+<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Политика конфиденциальности</a>
+<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Обработка персональных данных</a>
+</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.02em;color:#5C6474">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
 </div>
-<div style="position:relative;max-width:1220px;margin:0 auto;padding:0 30px 34px;display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap">
-<span style="font-size:12px;line-height:19px;color:#5C6474">© 2026 ProDisser — Научный Консалтинг</span>
-<div style="display:flex;gap:18px;flex-wrap:wrap">
-<a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:12px;line-height:19px;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Публичная оферта</a>
-<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:12px;line-height:19px;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Политика конфиденциальности</a>
-<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:12px;line-height:19px;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Обработка персональных данных</a>
-</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:8px">
+<span style="font-size:13px;line-height:1.6;color:#5C6474">© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
+<span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Другие направления</span>
+<a href="./students.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Студентам и специалистам</a>
+<a href="./business.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Компаниям и коллективам</a>
+</span>
 </div>
 </footer>
 </div>
@@ -740,7 +740,18 @@ class Component extends DCLogic {
       title, text, term,
       art: "url('./assets/art/" + ['svc-dissertation.webp', 'svc-doctoral.webp', 'svc-articles.webp'][i] + "')"
     }));
-    const offerAll = ['Магистерские диссертации', 'Монографии', 'Патентование', 'НИОКР для бизнеса', 'Гранты и заявки', 'Отчёты по практике и НИР', 'Публикации в рецензируемых журналах', 'Перевод статей на английский', 'Подготовка к предзащите', 'Рецензии и отзывы оппонентов', 'Статистическая обработка данных', 'Подбор журнала и подготовка статьи к подаче в индексируемые издания', 'Оформление списка литературы по ГОСТ', 'Автореферат диссертации', 'Доклад и презентация к защите', 'Научная редактура и вычитка', 'Проверка на заимствования и корректная цитируемость', 'Сопровождение иностранных аспирантов', 'Регистрация программ для ЭВМ и баз данных', 'Экспертиза технической документации', 'Обоснование научной новизны', 'Планирование эксперимента', 'Апробация на конференциях'];
+    // Второй ряд — такие же карточки с натюрмортом, как в первом: три
+    // направления, за которыми аспиранты приходят следом за диссертацией.
+    // Монографии остаются в полном перечне и на передний план не выносятся.
+    const offerMid = [
+      ['Магистерские диссертации', 'Работа с научным аппаратом магистерской: логика глав, эксперимент, защита на кафедре.', 'от 1 месяца'],
+      ['Гранты и заявки', 'Заявки в научные фонды: обоснование новизны, план работ, смета и отчётность по этапам.', 'от 21 дня'],
+      ['Подготовка к предзащите', 'Доклад, презентация, ответы на вопросы диссовета и разбор замечаний оппонентов.', 'от 10 дней']
+    ].map(([title, text, term], i) => ({
+      title, text, term,
+      art: "url('./assets/art/" + ['svc-diploma.webp', 'svc-grants.webp', 'svc-defense.webp'][i] + "')"
+    }));
+    const offerAll = ['Патентование', 'НИОКР для бизнеса', 'Отчёты по практике и НИР', 'Публикации в рецензируемых журналах', 'Автореферат диссертации', 'Монографии', 'Перевод статей на английский', 'Рецензии и отзывы оппонентов', 'Статистическая обработка данных', 'Подбор журнала и подготовка статьи к подаче в индексируемые издания', 'Оформление списка литературы по ГОСТ', 'Доклад и презентация к защите', 'Научная редактура и вычитка', 'Проверка на заимствования и корректная цитируемость', 'Сопровождение иностранных аспирантов', 'Регистрация программ для ЭВМ и баз данных', 'Экспертиза технической документации', 'Обоснование научной новизны', 'Планирование эксперимента', 'Апробация на конференциях'];
     const offerOpen = this.state.offerOpen;
     const offerRest = (offerOpen ? offerAll : offerAll.slice(0, 5)).map(title => ({ title }));
     const costFactors = [
@@ -751,12 +762,6 @@ class Component extends DCLogic {
       title, text, num: '0' + (i + 1),
       chip: '#14417A',
     }));
-    const costNeeds = [
-      'Шифр специальности и тема научно-исследовательской работы.',
-      'План по главам, методические рекомендации вуза или научного руководителя.',
-      'Черновики уже готовых разделов исследования, если они есть.',
-      'Другие материалы: публикации, дополнительные требования диссовета.'
-    ].map((text, i) => ({ text, num: '0' + (i + 1) }));
     // Сроки — единственная величина сметы, которую можно назвать до разбора
     // материала. Денежные значения не публикуются, пока нет утверждённого
     // прайса: цифра без источника — это обещание, а не факт.
@@ -768,7 +773,7 @@ class Component extends DCLogic {
       ['Научная статья в рецензируемый журнал', 'от 14 дней']
     ].map(([title, term], i) => ({ title, term, zebra: i % 2 ? '#FAFBFC' : '#FFFFFF' }));
     return {
-      steps, faq, pains, track, usp, gains, offerTop, offerRest, stepScale, costFactors, costNeeds, termRows,
+      steps, faq, pains, track, usp, gains, offerTop, offerMid, offerRest, stepScale, costFactors, termRows,
       contactTabs: ['E-mail', 'Телефон'].map((label, i) => ({
         label, active: i === this.state.contact, inactive: i !== this.state.contact,
         pick: () => this.setState({ contact: i })
