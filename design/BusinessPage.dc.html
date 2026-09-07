@@ -269,12 +269,12 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Сроки и смета фиксируются календарным планом после разбора материала</span>
 </div>
-<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;align-items:stretch">
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;align-items:start">
 <sc-for list="{{ packs }}" as="p" hint-placeholder-count="5">
 <article id="{{ p.anchor }}" class="bp-pack" style="grid-column:span {{ p.span }};scroll-margin-top:24px;border:1px solid {{ p.border }};border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:inset 0 -3px 0 {{ p.edge }},0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;justify-content:flex-start;gap:14px">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
 <span style="display:flex;flex-direction:column;gap:6px;min-width:0">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;color:{{ p.ink }}">{{ p.num }}</span>
+<span style="display:flex;align-items:center;gap:9px"><span aria-hidden="true" style="width:20px;height:20px;flex:0 0 20px;display:block;background:{{ p.ink }};-webkit-mask:{{ p.icon }};mask:{{ p.icon }}"></span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;color:{{ p.ink }}">{{ p.num }}</span></span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:{{ p.titleSize }};line-height:1.4;font-weight:600;color:#14161C">{{ p.title }}</h3>
 </span>
 <span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:#5C6474;text-align:right">{{ p.term }}</span>
@@ -695,8 +695,13 @@ class Component extends DCLogic {
         'Решение «внедрять или нет» с цифрами, а не с ощущением.']
     ];
     const packSpans = { 'pack-1': 4, 'pack-2': 2, 'pack-3': 3, 'pack-4': 3, 'pack-5': 6 };
+    // Пиктограммы пакетов идут в порядке packData: техзадание и патентный
+    // поиск, работа по этапам с приёмкой, заявка по форме конкурса, права на
+    // разработку, рынок и решение о внедрении. Набор pd-* — решения Р-61, Р-64.
+    const packIcons = ['pd-patsearch', 'pd-stages', 'pd-grant', 'pd-asset', 'pd-market'];
     const packs = packData.map(([anchor, num, title, term, span, titleSize, who, what, docs, why], i) => ({
       anchor, num, title, term, titleSize, who, what, why,
+      icon: "url('./assets/icons/" + packIcons[i] + ".svg') center/contain no-repeat",
       span: packSpans[anchor] || span,
       docs: docs.map(([name, norm]) => ({ name, norm })),
       edge: edges[i % 3], ink: inks[i % 3],
