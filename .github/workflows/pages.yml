@@ -50,6 +50,9 @@ jobs:
           # Сайт лежит в подпапке домена по имени репозитория — отсюда
           # префикс у всех внутренних ссылок и адресов ресурсов.
           PREVIEW_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # Без адреса Next подставляет в og:image localhost и в статику
+          # уезжает нерабочая ссылка на картинку превью.
+          NEXT_PUBLIC_SITE_URL: ${{ steps.pages.outputs.base_url }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
