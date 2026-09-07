@@ -240,7 +240,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:14px;line-height:1.4;letter-spacing:.02em;color:#5C6474;font-variant-numeric:tabular-nums">{{ u.num }}</span>
 </span>
 <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:#14161C;max-width:30ch">{{ u.title }}</h3>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:#14161C;max-width:30ch;text-wrap:balance">{{ u.title }}</h3>
 <p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450;max-width:52ch">{{ u.text }}</p>
 <p style="margin:6px 0 0;padding-left:14px;border-left:2px solid #D8E4F3;font-size:12px;line-height:1.5;color:#5C6474;max-width:50ch">{{ u.proof }}</p>
 </div>
@@ -253,7 +253,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Услуги</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Ведём работу <span style="background:#D8E4F3;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">от первой главы до защиты</span></h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:38ch;text-wrap:pretty">Ведём работу <span style="background:#D8E4F3;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">от первой главы до защиты</span></h2>
 </div>
 </div>
 <div class="pd-services" style="gap:16px">
@@ -313,7 +313,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.4;color:#14417A;flex:0 0 auto;text-align:right;font-variant-numeric:tabular-nums">{{ t.term }}</span>
 </div>
 </sc-for>
-<p style="margin:0;padding:14px 20px;font-size:13px;line-height:1.6;color:#5C6474">Срок считается от подписания договора и разбит на этапы. Смета фиксируется в договоре и меняется только дополнительным соглашением, которое подписываете вы.</p>
+<p style="margin:0;padding:14px 20px;font-size:13px;line-height:1.6;color:#5C6474;max-width:82ch">Срок считается от подписания договора и разбит на этапы. Смета фиксируется в договоре и меняется только дополнительным соглашением, которое подписываете вы.</p>
 </div>
 <div class="pd-cost" style="gap:16px">
 <sc-for list="{{ costFactors }}" as="c" hint-placeholder-count="3">
@@ -376,7 +376,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <div class="pd-team" style="gap:40px;align-items:center">
 <div style="display:flex;flex-direction:column;gap:24px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Команда</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:24ch;text-wrap:pretty">Вы работаете не с отдельным человеком, а с системой экспертизы</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:24ch;text-wrap:balance">Вы работаете не с отдельным человеком, а с системой экспертизы</h2>
 <p style="margin:0;font-size:15px;line-height:25px;color:#3D4450;max-width:40ch">Над проектом работает постоянная команда: менеджер, профильный эксперт, методолог и научный редактор. Исполнителей под задачу не подбираем на стороне.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:18px;letter-spacing:.06em;color:#14417A;flex:0 0 auto">С 2016</span><span style="font-size:13px;line-height:20px;color:#3D4450">научный коллектив ведёт проекты по всей России и СНГ</span></div>
@@ -404,7 +404,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.5;text-align:center;color:#3D4450">Ставите задачу и принимаете этапы</span>
 </div>
 </div>
-<div class="pd-crew" style="position:absolute;left:4.396%;top:14.154%;width:31.26%;min-width:186px;height:138px;box-sizing:border-box;border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:#B4C9E5">
+<div class="pd-crew" style="position:absolute;left:4.396%;top:14.154%;width:31.26%;min-width:186px;min-height:138px;box-sizing:border-box;border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:#B4C9E5">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#14417A"><span style="width:14px;height:14px;display:block;background:#FFFFFF;-webkit-mask:{{ crewMask }};mask:{{ crewMask }}"></span></span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Менеджер</span>
@@ -412,7 +412,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#3D4450">Держит сроки и отвечает на вопросы в рабочее время.</span>
 </div>
-<div class="pd-crew" style="position:absolute;left:55.677%;top:7.077%;width:31.26%;min-width:186px;height:138px;box-sizing:border-box;border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:#B4C9E5">
+<div class="pd-crew" style="position:absolute;left:55.677%;top:7.077%;width:31.26%;min-width:186px;min-height:138px;box-sizing:border-box;border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:#B4C9E5">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#14417A"><span style="width:14px;height:14px;display:block;background:#FFFFFF;-webkit-mask:{{ methodMask }};mask:{{ methodMask }}"></span></span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Методолог</span>
@@ -420,7 +420,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#3D4450">Выстраивает структуру исследования и методологическую основу работы.</span>
 </div>
-<div class="pd-crew" style="position:absolute;left:0.617%;top:63.385%;width:31.26%;min-width:186px;height:138px;box-sizing:border-box;border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:#B4C9E5">
+<div class="pd-crew" style="position:absolute;left:0.617%;top:63.385%;width:31.26%;min-width:186px;min-height:138px;box-sizing:border-box;border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:#B4C9E5">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#14417A"><span style="width:14px;height:14px;display:block;background:#FFFFFF;-webkit-mask:{{ editorMask }};mask:{{ editorMask }}"></span></span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Научный редактор</span>
@@ -428,7 +428,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#3D4450">Проверяет логику изложения, оформление и соответствие требованиям.</span>
 </div>
-<div class="pd-crew" style="position:absolute;left:55.677%;top:68.923%;width:31.26%;min-width:186px;height:138px;box-sizing:border-box;border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:#B4C9E5">
+<div class="pd-crew" style="position:absolute;left:55.677%;top:68.923%;width:31.26%;min-width:186px;min-height:138px;box-sizing:border-box;border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:#B4C9E5">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#14417A"><span style="width:14px;height:14px;display:block;background:#FFFFFF;-webkit-mask:{{ expertMask }};mask:{{ expertMask }}"></span></span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Эксперт по специальности</span>
