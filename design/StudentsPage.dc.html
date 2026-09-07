@@ -28,6 +28,10 @@
 .sp-hero{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr)}
 .sp-support{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.sp-route{display:grid;grid-template-columns:minmax(0,.4fr) minmax(0,.6fr);height:448px}
+.sp-rl{border-right:1px solid #EFF1F4}
+@media (max-width:1024px){.sp-route{grid-template-columns:minmax(0,1fr);height:auto}.sp-rl{border-right:0;border-bottom:1px solid #EFF1F4}}
+@media (max-width:560px){.sp-seg-t{display:none}}
 .sp-offer{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-cost{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-req{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
@@ -364,7 +368,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 </div>
 
-<div role="status" style="margin-top:12px;border:1px solid #E3E7EC;border-radius:14px;background:#F6F7F9;padding:14px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px">
+<div role="status" style="margin-top:12px;border:1px solid #E3E7EC;border-radius:14px;background:#F6F7F9;padding:14px 18px;box-sizing:border-box;min-height:76px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px">
 <span style="display:inline-flex;align-items:center;gap:8px;min-width:0">
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:#0F3260;-webkit-mask:{{ routeMask }};mask:{{ routeMask }}"></span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#14161C">{{ routeSummary }}</span>
@@ -373,21 +377,45 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 
 <div style="margin-top:16px;border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;box-shadow:0 1px 2px rgba(20,22,28,.05);overflow:hidden">
-<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 20px;background:#F6F7F9">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 20px;background:#F6F7F9;border-bottom:1px solid #EFF1F4">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Шаг 2 · Этапы до защиты</span>
-<span style="font-size:13px;line-height:1.5;color:#5C6474">Раскройте этап — увидите, что делаете вы и что делаем мы</span>
+<span style="font-size:13px;line-height:1.5;color:#5C6474">Полоса показывает долю срока; выберите этап — справа состав работ</span>
 </div>
-<ol aria-live="polite" style="list-style:none;margin:0;padding:0">
+
+<div style="padding:16px 20px 14px;border-bottom:1px solid #EFF1F4">
+<div aria-hidden="true" style="display:flex;gap:3px">
 <sc-for list="{{ stages }}" as="s" hint-placeholder-count="5">
+<sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}"><span style="flex:{{ s.flex }} 1 0;min-width:0;height:34px;border-radius:8px;background:#14161C;display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="sp-seg-t" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.02em;color:#FFFFFF;white-space:nowrap">{{ s.num }}</span></span></sc-if>
+<sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}"><span style="flex:{{ s.flex }} 1 0;min-width:0;height:34px;border-radius:8px;background:#ECF1F8;display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="sp-seg-t" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.02em;color:#14417A;white-space:nowrap">{{ s.num }}</span></span></sc-if>
+</sc-for>
+</div>
+<div aria-hidden="true" style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:8px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:#5C6474">Разбор работы</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:#3D4450">{{ routeTerm }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:#5C6474">Защита</span>
+</div>
+</div>
+
+<div class="sp-route">
+<ol class="sp-rl" aria-label="Этапы маршрута" style="list-style:none;margin:0;padding:10px;display:flex;flex-direction:column;gap:2px;overflow:auto">
+<sc-for list="{{ stages }}" as="s" hint-placeholder-count="5">
+<sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}"><li><button type="button" aria-pressed="true" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:44px;border-radius:10px;background:#ECF1F8"><span aria-hidden="true" style="flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:#14161C;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600">{{ s.num }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.35;font-weight:600;color:#14161C">{{ s.title }}</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:#14417A">{{ s.term }}</span></span></button></li></sc-if>
+<sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}"><li><button type="button" aria-pressed="false" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:44px;border-radius:10px;background:transparent;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FAFBFC" style-active="background:#F6F7F9"><span aria-hidden="true" style="flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:#F1F3F6;color:#5C6474;display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600">{{ s.num }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.35;font-weight:500;color:#3D4450">{{ s.title }}</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:#5C6474">{{ s.term }}</span></span></button></li></sc-if>
+</sc-for>
+</ol>
+<div aria-live="polite" style="padding:18px 22px 20px;overflow:auto">
+<sc-for list="{{ stages }}" as="s" hint-placeholder-count="1">
 <sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}">
-<li style="border-top:1px solid #EFF1F4;background:#FAFBFC">
-<button type="button" aria-expanded="true" onClick="{{ s.pick }}" style="appearance:none;border:0;background:transparent;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 20px;min-height:44px">
-<span aria-hidden="true" style="flex:0 0 30px;width:30px;height:30px;border-radius:50%;background:#14161C;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600">{{ s.num }}</span>
-<span style="flex:1 1 200px;min-width:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">{{ s.title }}</span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.04em;color:#3D4450;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:999px;padding:6px 12px;white-space:nowrap">{{ s.term }}</span>
-<span aria-hidden="true" style="margin-left:auto;width:16px;height:2px;flex:0 0 16px;background:#14161C;border-radius:999px"></span>
-</button>
-<div class="sp-duo" style="gap:10px 28px;padding:0 20px 18px 64px">
+<div style="display:flex;flex-direction:column;gap:12px;height:100%">
+<span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Этап {{ s.num }} из {{ s.of }}</span>
+<sc-if value="{{ s.isKey }}" hint-placeholder-val="{{ true }}">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase;color:#14417A;background:#D8E4F3;border-radius:999px;padding:5px 11px">Ключевой этап</span>
+</sc-if>
+<span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.04em;color:#3D4450;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:999px;padding:6px 12px;white-space:nowrap">{{ s.term }}</span>
+</span>
+<h3 style="margin:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.35;font-weight:600;color:#14161C">{{ s.title }}</h3>
+<div class="sp-duo" style="gap:10px 24px">
 <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Вы</span>
 <span style="font-size:14px;line-height:1.55;color:#14161C">{{ s.author }}</span>
@@ -397,20 +425,29 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-size:14px;line-height:1.55;color:#3D4450">{{ s.team }}</span>
 </span>
 </div>
+<div style="background:#F6F7F9;border:1px solid #E3E7EC;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Что входит в этап</span>
+<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
+<sc-for list="{{ s.works }}" as="w" hint-placeholder-count="4">
+<li style="display:flex;align-items:flex-start;gap:9px">
+<span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;margin-top:3px;display:block;background:#14417A;-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
+<span style="font-size:13px;line-height:1.5;color:#3D4450">{{ w.text }}</span>
 </li>
-</sc-if>
-<sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}">
-<li style="border-top:1px solid #EFF1F4">
-<button type="button" aria-expanded="false" onClick="{{ s.pick }}" style="appearance:none;border:0;background:transparent;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 20px;min-height:44px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FAFBFC" style-active="background:#F6F7F9">
-<span aria-hidden="true" style="flex:0 0 30px;width:30px;height:30px;border-radius:50%;background:#ECF1F8;color:#14417A;display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600">{{ s.num }}</span>
-<span style="flex:1 1 200px;min-width:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:500;color:#3D4450">{{ s.title }}</span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.04em;color:#5C6474;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:999px;padding:6px 12px;white-space:nowrap">{{ s.term }}</span>
-<span aria-hidden="true" style="margin-left:auto;position:relative;width:16px;height:16px;flex:0 0 16px"><span style="position:absolute;left:0;top:7px;width:16px;height:2px;background:#5C6474;border-radius:999px"></span><span style="position:absolute;left:7px;top:0;width:2px;height:16px;background:#5C6474;border-radius:999px"></span></span>
-</button>
-</li>
+</sc-for>
+</ul>
+</div>
+<div style="margin-top:auto;display:flex;align-items:flex-start;gap:9px;padding-top:12px;border-top:1px solid #EFF1F4">
+<span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;margin-top:3px;display:block;background:#0E4E3C;-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
+<span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Результат этапа</span>
+<span style="font-size:13px;line-height:1.5;color:#14161C">{{ s.result }}</span>
+</span>
+</div>
+</div>
 </sc-if>
 </sc-for>
-</ol>
+</div>
+</div>
 </div>
 
 <div style="margin-top:16px;border:1px solid #E3E7EC;border-radius:14px;background:#F6F7F9;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
@@ -675,36 +712,162 @@ class Component extends DCLogic {
     // Ситуация студента задаёт свой набор этапов. Конкретных дат на
     // странице нет: сроки этапов ориентировочные, точные фиксируются
     // в договоре после разбора работы.
+    // Ситуация студента задаёт свой набор этапов. Каждый этап несёт срок
+    // прописью, длительность в днях (по ней строится полоса долей срока)
+    // и, у ключевых этапов, состав работ. Конкретных дат на странице нет:
+    // сроки ориентировочные, точные фиксируются в договоре после разбора.
+    // Ситуация студента задаёт свой набор этапов. Каждый этап несёт срок
+    // прописью, длительность в днях (по ней строится полоса долей срока),
+    // результат на выходе и — у ключевых этапов — состав работ. Конкретных
+    // дат нет: сроки ориентировочные, точные фиксируются в договоре.
+    // Ситуация студента задаёт свой набор этапов. Каждый этап несёт срок
+    // прописью, длительность в днях (по ней строится полоса долей срока),
+    // состав работ, результат на выходе и признак ключевого этапа — того,
+    // на который приходится основной объём. Конкретных дат нет: сроки
+    // ориентировочные, точные фиксируются в договоре после разбора работы.
     const situationData = [
       ['Ещё не начинал', 'около 10 недель',
         'Работа начинается с плана по главам. Дальше вы пишете по нему, а редактура идёт по мере готовности разделов — не дожидаясь всего текста.', [
-        ['Разбор задания и план', '2–3 дня', 'Присылаете тему, задание руководителя и методичку кафедры', 'Разбираем задание и собираем план по главам'],
-        ['Введение и первая глава', '2 недели', 'Пишете текст по плану', 'Проверяем постановку задачи, логику и подбор источников'],
-        ['Основная и практическая части', '4 недели', 'Пишете главы и собираете материал', 'Ведём научную редактуру и сверяем расчёты с таблицами и рисунками'],
-        ['Сборка и оформление', '2 недели', 'Собираете работу целиком', 'Доводим оформление до ГОСТ 7.32 и требований кафедры'],
-        ['Замечания и защита', '1–2 недели', 'Отдаёте работу научному руководителю', 'Отвечаем на замечания руководителя и ставим доклад к защите']
+        ['Разбор задания и план', '2–3 дня', 3, false,
+          'Присылаете тему, задание руководителя и методичку кафедры',
+          'Разбираем задание и собираем план по главам', [
+          'Разбор задания руководителя и требований методички',
+          'Постановка цели, задач и границ исследования',
+          'План по главам с объёмом и очерёдностью разделов'
+          ],
+          'План по главам с объёмом и сроком каждого раздела'],
+        ['Введение и первая глава', '2 недели', 14, true,
+          'Пишете текст по плану', 'Проверяем постановку задачи, логику и подбор источников', [
+          'Проверка актуальности, цели и задач на соответствие теме',
+          'Разбор объекта и предмета исследования, границ работы',
+          'Оценка полноты обзора источников и корректности ссылок',
+          'Замечания к первой главе с формулировками для правки'
+          ],
+          'Введение и первая глава, готовые к показу руководителю'],
+        ['Основная и практическая части', '4 недели', 28, true,
+          'Пишете главы и собираете материал', 'Ведём научную редактуру и сверяем расчёты с таблицами и рисунками', [
+          'Научная редактура текста без изменения авторских выводов',
+          'Сверка расчётов, таблиц и рисунков между собой и с текстом',
+          'Проверка методики и обоснования выбранных методов',
+          'Промежуточная приёмка по каждой готовой главе'
+          ],
+          'Основная и практическая части, сведённые с расчётами'],
+        ['Сборка и оформление', '2 недели', 14, false,
+          'Собираете работу целиком', 'Доводим оформление до ГОСТ 7.32 и требований кафедры', [
+          'Сборка разделов в единый документ с оглавлением',
+          'Оформление по ГОСТ 7.32 и методичке кафедры',
+          'Проверка нумерации, ссылок на таблицы, рисунки и приложения'
+          ],
+          'Работа, собранная и оформленная по ГОСТ 7.32'],
+        ['Замечания и защита', '1–2 недели', 10, false,
+          'Отдаёте работу научному руководителю', 'Отрабатываем замечания руководителя и ставим доклад к защите', [
+          'Разбор замечаний научного руководителя по пунктам',
+          'Доклад на регламент защиты и презентация к нему',
+          'Разбор вопросов, которые задаёт комиссия'
+          ],
+          'Закрытые замечания, доклад и презентация к защите']
       ]],
       ['Черновик есть, работа встала', 'около 6 недель',
         'Сначала определяем, на каком разделе работа остановилась, и называем объём правок. Полная переработка текста требуется редко.', [
-        ['Разбор черновика', '1–2 дня', 'Присылаете черновик и методичку', 'Определяем, на каком разделе остановилась работа, и называем объём правок'],
-        ['Проблемные разделы', '2 недели', 'Переписываете разделы по плану правок', 'Редактируем структуру и выводы по главам'],
-        ['Практическая часть', '2 недели', 'Дополняете расчёты и приложения', 'Пересчитываем таблицы и сводим приложения с текстом'],
-        ['Сборка и оформление', '1 неделя', 'Собираете работу целиком', 'Сверяем нумерацию, ссылки и список литературы с методичкой'],
-        ['Замечания и защита', '1 неделя', 'Отдаёте работу научному руководителю', 'Отрабатываем замечания руководителя и готовим доклад']
+        ['Разбор черновика', '1–2 дня', 2, false,
+          'Присылаете черновик и методичку', 'Определяем, на каком разделе остановилась работа, и называем объём правок', [
+          'Чтение черновика и требований кафедры к работе',
+          'Определение раздела, на котором работа остановилась',
+          'Перечень правок с оценкой объёма и срока'
+          ],
+          'Перечень правок с оценкой объёма и срока'],
+        ['Проблемные разделы', '2 недели', 14, true,
+          'Переписываете разделы по плану правок', 'Редактируем структуру и выводы по главам', [
+          'Перестройка структуры глав под задачи исследования',
+          'Правка выводов по главам и согласование их с введением',
+          'Замена источников, устаревших или не относящихся к теме',
+          'План правок с приоритетом: что критично для допуска'
+          ],
+          'Переработанные разделы с согласованными выводами'],
+        ['Практическая часть', '2 недели', 14, true,
+          'Дополняете расчёты и приложения', 'Пересчитываем таблицы и сводим приложения с текстом', [
+          'Пересчёт таблиц и проверка исходных данных',
+          'Сведение приложений с текстом, нумерацией и ссылками',
+          'Проверка выводов на соответствие полученным результатам'
+          ],
+          'Практическая часть с пересчитанными таблицами'],
+        ['Сборка и оформление', '1 неделя', 7, false,
+          'Собираете работу целиком', 'Сверяем нумерацию, ссылки и список литературы с методичкой', [
+          'Сведение разделов и оглавления в один документ',
+          'Сверка нумерации, ссылок и списка литературы с методичкой',
+          'Проверка таблиц, рисунков и приложений'
+          ],
+          'Работа, сведённая по нумерации, ссылкам и литературе'],
+        ['Замечания и защита', '1 неделя', 7, false,
+          'Отдаёте работу научному руководителю', 'Отрабатываем замечания руководителя и готовим доклад', [
+          'Разбор замечаний руководителя по пунктам',
+          'Правки по замечаниям в согласованном объёме',
+          'Доклад к защите и репетиция ответов на вопросы'
+          ],
+          'Закрытые замечания и доклад к защите']
       ]],
       ['Работу вернули на доработку', 'около 3 недель',
         'Работаем по листу замечаний по порядку: пункт считается закрытым только после правки по существу.', [
-        ['Разбор замечаний', '1 день', 'Присылаете работу и лист замечаний', 'Разбираем каждый пункт и называем срок правок'],
-        ['Правки по содержанию', '1–2 недели', 'Вносите правки по списку', 'Ведём правки по пунктам, проверяем формулировки и выводы'],
-        ['Оформление и ссылки', '3–5 дней', 'Присылаете готовый текст', 'Выправляем оформление, ссылки и список литературы'],
-        ['Повторная сдача', '3 дня', 'Сдаёте работу заново', 'Ставим доклад и прогоняем вопросы комиссии']
+        ['Разбор замечаний', '1 день', 1, false,
+          'Присылаете работу и лист замечаний', 'Разбираем каждый пункт и называем срок правок', [
+          'Разбор листа замечаний по пунктам',
+          'Оценка объёма правок по каждому пункту',
+          'Срок правок и очерёдность работ'
+          ],
+          'Разбор листа замечаний со сроком по каждому пункту'],
+        ['Правки по содержанию', '1–2 недели', 10, true,
+          'Вносите правки по списку', 'Ведём правки по пунктам, проверяем формулировки и выводы', [
+          'Разбор каждого пункта замечаний с формулировкой правки',
+          'Правка спорных формулировок, выводов и обоснований',
+          'Проверка, что закрытый пункт не порождает новых замечаний',
+          'Отметка о закрытии по каждому пункту листа'
+          ],
+          'Закрытые пункты замечаний с отметкой по каждому'],
+        ['Оформление и ссылки', '3–5 дней', 4, true,
+          'Присылаете готовый текст', 'Выправляем оформление, ссылки и список литературы', [
+          'Оформление по ГОСТ 7.32 и методичке кафедры',
+          'Проверка ссылочного аппарата и корректности цитирования',
+          'Приведение списка литературы к требованиям, снятие дублей'
+          ],
+          'Оформление, ссылки и список литературы по требованиям'],
+        ['Повторная сдача', '3 дня', 3, false,
+          'Сдаёте работу заново', 'Ставим доклад и прогоняем вопросы комиссии', [
+          'Финальная сверка работы с листом замечаний',
+          'Доклад к защите и презентация к нему',
+          'Разбор вопросов комиссии по спорным местам'
+          ],
+          'Работа, сданная повторно, и доклад к защите']
       ]],
       ['До защиты меньше месяца', 'около 2 недель',
         'Работа разбирается за один день: называем объём, который успеваем выполнить к вашей дате без потери качества.', [
-        ['Разбор за один день', '1 день', 'Присылаете работу в том виде, в каком она есть', 'Проверяем по чек-листу нормоконтроля и называем выполнимый объём'],
-        ['Правки по списку', '1 неделя', 'Вносите правки по списку', 'Ведём правки по пунктам, отвечаем в тот же рабочий день'],
-        ['Оформление', '2–3 дня', 'Присылаете последнюю версию', 'Выправляем оформление по методичке кафедры'],
-        ['Доклад к защите', '2 дня', 'Репетируете выступление', 'Готовим доклад и разбираем вопросы комиссии']
+        ['Разбор за один день', '1 день', 1, true,
+          'Присылаете работу в том виде, в каком она есть', 'Проверяем по чек-листу нормоконтроля и называем выполнимый объём', [
+          'Проверка работы по чек-листу нормоконтроля',
+          'Оценка стадии готовности каждого раздела',
+          'Перечень работ, выполнимых к дате защиты, и того, что не успеваем'
+          ],
+          'Перечень работ, выполнимых к дате защиты'],
+        ['Правки по списку', '1 неделя', 7, true,
+          'Вносите правки по списку', 'Ведём правки по пунктам, отвечаем в тот же рабочий день', [
+          'Правки по пунктам в порядке приоритета для допуска',
+          'Научная редактура разделов, вызывающих вопросы кафедры',
+          'Ответ в тот же рабочий день по каждому присланному фрагменту'
+          ],
+          'Правки по приоритетным пунктам для допуска'],
+        ['Оформление', '2–3 дня', 3, false,
+          'Присылаете последнюю версию', 'Выправляем оформление по методичке кафедры', [
+          'Оформление по методичке кафедры и ГОСТ 7.32',
+          'Проверка нумерации, ссылок и списка литературы',
+          'Финальная вычитка текста перед сдачей'
+          ],
+          'Оформление, приведённое к методичке кафедры'],
+        ['Доклад к защите', '2 дня', 2, false,
+          'Репетируете выступление', 'Готовим доклад и разбираем вопросы комиссии', [
+          'Доклад, уложенный в регламент выступления',
+          'Презентация с ключевыми результатами работы',
+          'Разбор вопросов, которые задаёт комиссия'
+          ],
+          'Доклад и разобранные вопросы комиссии']
       ]]
     ];
 
@@ -719,12 +882,15 @@ class Component extends DCLogic {
       if (u >= 2 && u <= 4) return 'этапа';
       return 'этапов';
     };
-    // Этапы — раскрывающийся перечень: виден весь маршрут целиком, а не
-    // один выбранный шаг. Открыт всегда ровно один этап, поэтому высота
-    // блока не скачет при переключении.
+    // Этапы показываются целиком: слева перечень, справа состав выбранного.
+    // Высота блока задана в CSS и не меняется при переключении, поэтому
+    // страница не дёргается ни при смене ситуации, ни при выборе этапа.
     const step = Math.min(this.state.step, steps.length - 1);
-    const stages = steps.map(([title, term, author, team], i) => ({
-      num: String(i + 1), title, term, author, team,
+    const stages = steps.map(([title, term, days, key, author, team, works, result], i) => ({
+      num: String(i + 1), of: String(steps.length), title, term, author, team, result,
+      flex: String(days),
+      isKey: key,
+      works: works.map(text => ({ text })),
       active: i === step, inactive: i !== step,
       pick: () => this.setState({ step: i })
     }));
@@ -758,7 +924,7 @@ class Component extends DCLogic {
       navHidden: this.state.navOpen ? undefined : true,
       navOpenAttr: this.state.navOpen ? 'true' : 'false',
       toggleNav: () => this.setState(s => ({ navOpen: !s.navOpen })),
-      stages, routeSummary, routeNote, routeMask: this.mask('clock'),
+      stages, routeSummary, routeNote, routeTerm, routeMask: this.mask('clock'),
       situations: situationData.map(([label], i) => ({
         label, active: i === sIdx, inactive: i !== sIdx,
         pick: () => this.setState({ situation: i, step: 0 })
