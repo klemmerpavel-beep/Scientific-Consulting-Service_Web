@@ -35,9 +35,8 @@
 .bp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
 .bp-support{display:grid;grid-template-columns:minmax(0,1fr)}
-@media (max-width:1024px){.bp-why{grid-template-columns:minmax(0,1fr)}.bp-why-h{display:none}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-trl{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-cat{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-why{grid-template-columns:minmax(0,1fr)}.bp-why-h{display:none}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-trl{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-cat{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq{grid-template-columns:minmax(0,1fr)}.bp-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.bp-nav[hidden]{display:none}.bp-burger{display:inline-flex}.bp-pack{grid-column:span 6!important}}
-@media (max-width:768px){.bp-trl,.bp-cat,}
 @media (max-width:430px){.bp-head{gap:12px!important}.bp-logo{font-size:22px!important}.bp-cta{padding:12px 16px!important;font-size:12px!important}}
 @media (max-width:480px){.bp-why{grid-template-columns:minmax(0,1fr)!important}.bp-hero,.bp-team,.bp-trl,.bp-cat,.bp-rights,.bp-req,.bp-support{grid-template-columns:minmax(0,1fr)!important}.bp-pad{padding-left:20px!important;padding-right:20px!important}.bp-orbit{grid-template-columns:minmax(0,1fr)}}
 @keyframes bp-marquee-l{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes bp-marquee-r{from{transform:translateX(-50%)}to{transform:translateX(0)}}.bp-ticker:hover .bp-run,.bp-ticker:focus-within .bp-run{animation-play-state:paused!important}
@@ -51,7 +50,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
    на странице, ничего не переигрывают при обновлении содержимого. */
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 [role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}@media (max-width:1024px){.bp-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.bp-foot{grid-template-columns:minmax(0,1fr)!important}}</style>
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}</style>
 </helmet>
 <div style="position:relative;background:#FFFFFF;color:#14161C;font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
 
@@ -111,7 +110,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3vw,40px);line-height:1.4;font-weight:500;letter-spacing:-.015em;color:#14161C;max-width:22ch;text-wrap:balance">Оформить разработку по требованиям <span style="background:#D8E4F3;border-radius:6px;padding:0 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">приёмки, гранта и патента</span></h1>
 <p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#3D4450;max-width:52ch">Превращаем разработку в документ, который проходит приёмку, и в актив, который принадлежит вам.</p>
 
-<form onSubmit="{{ submitTop }}" style="margin:56px 0 0;max-width:520px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+<form onSubmit="{{ submitTop }}" style="margin:36px 0 0;max-width:520px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
 <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
 <div role="group" aria-label="Способ связи для заявки" style="display:inline-flex;gap:4px;padding:4px;background:#F6F7F9;border:1px solid #E3E7EC;border-radius:999px;align-self:flex-start;justify-self:start;flex:0 0 auto;grid-column:span 2">
 <sc-for list="{{ contactTabsTop }}" as="c" hint-placeholder-count="2">
@@ -160,18 +159,18 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-size:13px;line-height:1.5;color:#5C6474">Куратор проекта</span>
 </div>
 </div>
-<div class="bp-support" style="gap:12px;padding-top:24px">
-<a href="#catalog" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#0D2B52;border:1px solid #0D2B52;border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#0A2145;border-color:#0A2145" style-active="background:#081A38">
+<div class="bp-support" style="gap:12px;padding-top:8px">
+<a href="#catalog" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#0D2B52;border:1px solid #0D2B52;border-radius:14px;padding:16px;min-height:116px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#0A2145;border-color:#0A2145" style-active="background:#081A38">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:#FFFFFF">52 позиции</span>
 <span style="font-size:13px;line-height:1.5;color:#CFDDEE">в семи направлениях — каталог открыт целиком, без заявки</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#B4C9E5">Каталог работ<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:#B4C9E5;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
-<a href="#trl" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#ECF1F8;border:1px solid #D0DDEE;border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#D8E4F3;border-color:#B4C9E5" style-active="background:#D0DDEE">
+<a href="#trl" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#ECF1F8;border:1px solid #D0DDEE;border-radius:14px;padding:16px;min-height:116px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#D8E4F3;border-color:#B4C9E5" style-active="background:#D0DDEE">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:#14161C">9 уровней</span>
 <span style="font-size:13px;line-height:1.5;color:#3D4450">готовности технологии по ГОСТ Р 58048-2017</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Шкала УГТ<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
-<a href="#packs" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:16px;min-height:132px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FAFBFC;border-color:#B4C9E5" style-active="background:#F6F7F9">
+<a href="#packs" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:16px;min-height:116px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FAFBFC;border-color:#B4C9E5" style-active="background:#F6F7F9">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:#14161C">5 пакетов</span>
 <span style="font-size:13px;line-height:1.5;color:#3D4450">от техзадания до постановки прав на баланс</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Предложения и сроки<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
@@ -269,9 +268,9 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Сроки и смета фиксируются календарным планом после разбора материала</span>
 </div>
-<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;align-items:start">
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px">
 <sc-for list="{{ packs }}" as="p" hint-placeholder-count="5">
-<article id="{{ p.anchor }}" class="bp-pack" style="grid-column:span {{ p.span }};scroll-margin-top:24px;border:1px solid {{ p.border }};border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:inset 0 -3px 0 {{ p.edge }},0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;justify-content:flex-start;gap:14px">
+<article id="{{ p.anchor }}" class="bp-pack" style="grid-column:span {{ p.span }};scroll-margin-top:24px;border:1px solid {{ p.border }};border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:inset 0 -3px 0 {{ p.edge }},0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:14px">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
 <span style="display:flex;flex-direction:column;gap:6px;min-width:0">
 <span style="display:flex;align-items:center;gap:9px"><span aria-hidden="true" style="width:20px;height:20px;flex:0 0 20px;display:block;background:{{ p.ink }};-webkit-mask:{{ p.icon }};mask:{{ p.icon }}"></span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;color:{{ p.ink }}">{{ p.num }}</span></span>
@@ -591,40 +590,33 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 
 </main>
 
-<footer id="contacts" style="position:relative;z-index:1;margin-top:clamp(88px,8vw,128px);background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(250,251,252,.7) 26%,#FAFBFC 58%,#F6F7F9 100%);overflow:hidden">
-<div class="bp-foot bp-pad" style="position:relative;max-width:1220px;margin:0 auto;padding:48px 30px 40px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,.85fr) minmax(0,.85fr) minmax(0,.9fr);gap:40px;align-items:start">
-<div style="display:flex;flex-direction:column;gap:16px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:28px;line-height:1.24;font-weight:700;letter-spacing:-.014em"><span style="color:#14417A">PRO</span><span style="color:#14161C">DISSER</span></span>
-<p style="margin:0;font-size:14px;line-height:1.6;color:#3D4450;max-width:42ch">Научный консалтинг для компаний: НИОКР и отчётность, интеллектуальная собственность, гранты, обоснование внедрения.</p>
-<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Реквизиты</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.02em;color:#5C6474">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span></div>
-</div>
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#14161C">Другие направления</span>
-<a href="./main.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.4;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Аспирантам и соискателям</a>
-<a href="./students.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.4;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Студентам и специалистам</a>
-</div>
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#14161C">Меню</span>
-<a href="#trl" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.4;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Уровень готовности</a>
-<a href="#packs" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.4;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Пять пакетов</a>
-<a href="#catalog" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.4;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Каталог работ</a>
-<a href="#rights" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.4;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Права на результат</a>
-<a href="#faq" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.4;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Вопросы</a>
-<a href="./index.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.4;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14161C">Другие направления</a>
-</div>
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#14161C">Контакты</span>
-<a href="tel:+74954564323" style="display:flex;align-items:center;min-height:44px;gap:10px;font-size:17px;line-height:24px;font-weight:500;color:#14161C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/phone.svg') center/contain no-repeat;mask:url('./assets/icons/phone.svg') center/contain no-repeat"></span> +7 495 456 43 23</a>
-<a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:15px;line-height:22px;color:#3D4450;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A"><span aria-hidden="true" style="width:19px;height:19px;flex:0 0 19px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/mail.svg') center/contain no-repeat;mask:url('./assets/icons/mail.svg') center/contain no-repeat"></span>info.prodisser@gmail.com</a>
-<span style="margin-top:12px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Мы в сети</span>
-<span style="display:flex;align-items:center;gap:10px;margin-top:2px">
+<footer id="contacts" class="bp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(88px,8vw,128px) auto 0;padding:48px 30px 24px;scroll-margin-top:24px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid #EFF1F4">
+<span style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;min-width:0">
+<a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:0 -10px;border-radius:10px;text-decoration:none;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:21px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:#14417A">PRO</span><span style="color:#14161C">DISSER</span></a>
+<a href="tel:+74954564323" style="display:inline-flex;align-items:center;min-height:44px;font-size:15px;font-weight:500;color:#14161C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">+7 495 456 43 23</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#3D4450">info.prodisser@gmail.com</a>
+</span>
+<span style="display:flex;align-items:center;gap:12px;min-width:0">
+<span style="font-size:13px;line-height:1.5;color:#5C6474">Пишите в телеграм — отвечаем в рабочее время</span>
 <a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid #E3E7EC;border-radius:12px;background:#FFFFFF;transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#14417A;background:#F6F7F9" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
 </span>
 </div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
+<span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
+<a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Публичная оферта</a>
+<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Политика конфиденциальности</a>
+<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Обработка персональных данных</a>
+</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.02em;color:#5C6474">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
 </div>
-<div class="bp-pad" style="position:relative;max-width:1220px;margin:0 auto;padding:0 30px 32px;display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap">
-<span style="font-size:12px;line-height:1.5;color:#5C6474">© 2026 ProDisser — Научный Консалтинг</span>
-<span style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:12px;line-height:1.5"><a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Публичная оферта</a><a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Политика конфиденциальности</a><a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Обработка персональных данных</a></span>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:8px">
+<span style="font-size:13px;line-height:1.6;color:#5C6474">© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
+<span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Другие направления</span>
+<a href="./main.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Аспирантам и соискателям</a>
+<a href="./students.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Студентам и специалистам</a>
+</span>
 </div>
 </footer>
 </div>
@@ -694,7 +686,7 @@ class Component extends DCLogic {
         [['Аналитический отчёт по рынку', 'вторичные источники'], ['Технологический бенчмаркинг', 'открытые данные'], ['Обзор нормативных барьеров', 'действующие требования'], ['Технико-экономическое обоснование', 'расчёт эффекта']],
         'Решение «внедрять или нет» с цифрами, а не с ощущением.']
     ];
-    const packSpans = { 'pack-1': 4, 'pack-2': 2, 'pack-3': 3, 'pack-4': 3, 'pack-5': 6 };
+    const packSpans = { 'pack-1': 2, 'pack-2': 2, 'pack-3': 2, 'pack-4': 3, 'pack-5': 3 };
     // Пиктограммы пакетов идут в порядке packData: техзадание и патентный
     // поиск, работа по этапам с приёмкой, заявка по форме конкурса, права на
     // разработку, рынок и решение о внедрении. Набор pd-* — решения Р-61, Р-64.
