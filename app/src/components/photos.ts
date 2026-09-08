@@ -54,6 +54,13 @@ const STUDENT: Photo = {
 const BUSINESS: Photo = {
   src: '/photos/business.webp', width: 760, height: 760, position: 'center 62%',
 };
+// Преподаватель у доски: приветливый кадр в аудитории для блока вопросов
+// на странице «Студентам» (решение Р-73). Единственный снимок серии, где
+// человек смотрит в объектив и улыбается: блок зовёт задать вопрос, и
+// отстранённая манера остальных кадров ему противоречит.
+const LECTURER: Photo = {
+  src: '/photos/lecturer.webp', width: 760, height: 760, position: 'center 30%',
+};
 // Отраслевой эксперт: тот же кадр, что и BUSINESS, взятый крупным планом.
 // В круг 178px общий план кабинета не читается — лицо в нём мельче подписи.
 const EXPERT: Photo = {
@@ -78,7 +85,7 @@ export const PHOTOS: Record<string, Slot> = {
   'sp-stud-1': { photo: CURATOR },      // круг до 224px — куратор проекта
   'sp-stud-2': { photo: EDITOR },       // круг до 162px — научный редактор
   'sp-request-photo': { photo: STUDENT },
-  'sp-faq-photo': { photo: BUSINESS },
+  'sp-faq-photo': { photo: LECTURER },
 
   // ——— Бизнесу ———
   'bp-photo-1': { photo: EXPERT },      // круг 178px
