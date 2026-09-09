@@ -29,27 +29,23 @@
 .bp-hero{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr)}
 .bp-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
 .bp-trl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-.bp-mech{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-/* Пять карточек пакетов держат одну высоту независимо от ряда и числа
-   документов: полоса натюрморта фиксирована 96 пикселями и не тянется. */
-.bp-pack{min-height:734px}
-@media (max-width:768px){.bp-pack{min-height:0}}
-/* Шесть карточек механизмов держат одну высоту: строка «чем закреплено»
-   раскрывается внутри карточки, и без резерва сетка прыгала бы на каждый клик. */
-.bp-mechcard{min-height:382px}
+.bp-mech{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr}
+/* Полоса натюрморта фиксирована 96 пикселями и не тянется вместе с
+   карточкой; равную высоту пяти карточек даёт сетка, а не заданное число. */
+/* Шесть карточек механизмов равны по высоте, но высоту задаёт содержимое:
+   `grid-auto-rows: 1fr` тянет ряды до самой высокой карточки, а не до
+   заранее заданного числа. Прежний резерв под раскрытую строку «чем
+   закреплено» оставлял в карточках с коротким текстом до 40 % пустоты. */
 .bp-proof{animation:bp-proof 200ms cubic-bezier(.2,0,.2,1) both}
 @keyframes bp-proof{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.bp-proof{animation:none}}
 .bp-cat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-/* Раскрытое направление держит одну высоту у всех семи: в каталоге от 1 до
-   15 позиций, и без этого строка «Научная функция» была втрое ниже НИОКР. */
-.bp-catbody{min-height:460px}
-@media (max-width:1024px){.bp-catbody{min-height:0}}
-.bp-rights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+
+.bp-rights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr}
 .bp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
 .bp-support{display:grid;grid-template-columns:minmax(0,1fr)}
-@media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-trl{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-mech{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-mechcard{min-height:0}}
+@media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-trl{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-mech{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq,.bp-mech{grid-template-columns:minmax(0,1fr)}.bp-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.bp-nav[hidden]{display:none}.bp-burger{display:inline-flex}.bp-pack{grid-column:span 6!important}}
 @media (max-width:430px){.bp-head{gap:12px!important}.bp-logo{font-size:22px!important}.bp-cta{padding:12px 16px!important;font-size:12px!important}}
 @media (max-width:480px){.bp-hero,.bp-team,.bp-trl,.bp-cat,.bp-rights,.bp-req,.bp-support{grid-template-columns:minmax(0,1fr)!important}.bp-pad{padding-left:20px!important;padding-right:20px!important}.bp-orbit{grid-template-columns:minmax(0,1fr)}}
@@ -299,7 +295,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Сроки и смета фиксируются календарным планом после разбора материала</span>
 </div>
-<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px">
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:1fr;gap:16px">
 <sc-for list="{{ packs }}" as="p" hint-placeholder-count="5">
 <article id="{{ p.anchor }}" class="bp-pack" style="grid-column:span {{ p.span }};scroll-margin-top:24px;border:1px solid {{ p.border }};border-radius:14px;background:#FFFFFF;box-shadow:inset 0 -3px 0 {{ p.edge }},0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;overflow:hidden">
 <span aria-hidden="true" style="display:block;height:96px;flex:0 0 96px;border-bottom:1px solid #EFF1F4;background:#F6F7F9 {{ p.art }};background-size:cover;background-position:center"></span>
@@ -495,12 +491,18 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Права на результат остаются у вашей компании</span>
 </div>
-<div class="bp-rights" style="gap:0 40px;border:1px solid #E3E7EC;border-radius:14px;background:#F6F7F9;padding:20px 24px">
+<div class="bp-rights" style="gap:16px">
 <sc-for list="{{ rights }}" as="r" hint-placeholder-count="6">
-<div style="display:flex;flex-direction:column;gap:6px;padding:14px 0;border-bottom:1px solid #E3E7EC">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">{{ r.label }}</span>
-<span style="font-size:13px;line-height:1.6;color:#3D4450">{{ r.text }}</span>
+<article style="display:flex;flex-direction:column;gap:12px;box-sizing:border-box;background:{{ r.bg }};border:1px solid {{ r.border }};border-radius:14px;padding:20px 22px 22px;box-shadow:inset 0 -3px 0 {{ r.edge }},0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#B4C9E5">
+<div style="display:flex;align-items:center;gap:12px">
+<span aria-hidden="true" style="width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:{{ r.iconBg }};display:flex;align-items:center;justify-content:center">
+<span style="width:21px;height:21px;display:block;background:{{ r.ink }};-webkit-mask:{{ r.icon }};mask:{{ r.icon }}"></span>
+</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.05em;color:{{ r.ink }};font-variant-numeric:tabular-nums">{{ r.num }}</span>
 </div>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:{{ r.title }}">{{ r.label }}</h3>
+<p style="margin:0;font-size:13px;line-height:1.6;color:{{ r.body }}">{{ r.text }}</p>
+</article>
 </sc-for>
 </div>
 </section>
@@ -987,13 +989,28 @@ class Component extends DCLogic {
         toggle: () => this.setState(s => ({ faqOpen: s.faqOpen === i ? -1 : i }))
       })),
       rights: [
-        ['Исключительные права', 'Права на результаты интеллектуальной деятельности переходят заказчику. Условие закреплено пунктом договора об отчуждении прав.'],
-        ['Кто подписывает NDA', 'Соглашение о неразглашении подписывает каждый участник проектной команды до получения доступа к материалам.'],
-        ['Материалы после проекта', 'По акту передаём материалы и удаляем рабочие копии. Срок хранения и порядок удаления записаны в договоре.'],
-        ['На кого оформляется охранный документ', 'Заявитель и правообладатель — ваша компания. Мы готовим документы и сопровождаем подачу, не выступая правообладателем.'],
-        ['Повторное использование', 'Материалы проекта не используются в других работах и не показываются как пример. Публичных кейсов у нас нет.'],
-        ['Служебные результаты', 'Помогаем оформить положение о служебных результатах, уведомления авторов и приказы внутри вашей компании.']
-      ].map(([label, text]) => ({ label, text })),
+        ['Исключительные права', 'Права на результаты интеллектуальной деятельности переходят заказчику. Условие закреплено пунктом договора об отчуждении прав.', 'pd-asset'],
+        ['Кто подписывает NDA', 'Соглашение о неразглашении подписывает каждый участник проектной команды до получения доступа к материалам.', 'pd-nda'],
+        ['Материалы после проекта', 'По акту передаём материалы и удаляем рабочие копии. Срок хранения и порядок удаления записаны в договоре.', 'pd-contract'],
+        ['На кого оформляется охранный документ', 'Заявитель и правообладатель — ваша компания. Мы готовим документы и сопровождаем подачу, не выступая правообладателем.', 'award'],
+        ['Повторное использование', 'Материалы проекта не используются в других работах и не показываются как пример. Публичных кейсов у нас нет.', 'shield'],
+        ['Служебные результаты', 'Помогаем оформить положение о служебных результатах, уведомления авторов и приказы внутри вашей компании.', 'pd-team']
+      ].map(([label, text, icon], i) => {
+        // Первая карточка акцентная — тем же приёмом, что первая плашка на
+        // первом экране: разница задаётся плотностью и рамкой, не градиентом.
+        const lead = i === 0;
+        return {
+          label, text, num: '0' + (i + 1),
+          icon: "url('./assets/icons/" + icon + ".svg') center/contain no-repeat",
+          bg: lead ? '#0D2B52' : '#FFFFFF',
+          border: lead ? '#0D2B52' : '#E3E7EC',
+          edge: lead ? '#14417A' : ['#D8E4F3', '#B4C9E5', '#EDF2F8'][i % 3],
+          iconBg: lead ? 'rgba(255,255,255,.14)' : '#ECF1F8',
+          ink: lead ? '#FFFFFF' : '#14417A',
+          title: lead ? '#FFFFFF' : '#14161C',
+          body: lead ? '#D8E4F3' : '#3D4450'
+        };
+      }),
       afterSteps: [
         ['01', 'Присылаем NDA', 'Подписываем соглашение до содержательного обсуждения задачи.'],
         ['02', 'Установочная сессия', '40 минут: разбираем разработку, стадию и получателя документа.'],
