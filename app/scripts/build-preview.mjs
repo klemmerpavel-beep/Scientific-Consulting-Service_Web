@@ -85,6 +85,12 @@ function prefixInternalLinks() {
   const routes = ['main', 'students', 'business', 'offer', 'privacy', 'consent'];
   const rules = [
     ...routes.flatMap((r) => [
+      // Ссылка с якорем идёт первой: правило без якоря ищет закрывающую
+      // кавычку сразу после маршрута и такую ссылку не находит, поэтому
+      // «52 позиции», «6 этапов» и «с 2016» на посадочной уходили в корень
+      // домена и давали 404 (решение Р-82).
+      [`href="/${r}#`, `href="${basePath}/${r}/#`],
+      [`"/${r}#`, `"${basePath}/${r}/#`],
       [`href="/${r}"`, `href="${basePath}/${r}/"`],
       [`"/${r}"`, `"${basePath}/${r}/"`],
     ]),
