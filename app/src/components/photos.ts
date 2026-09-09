@@ -61,10 +61,11 @@ const BUSINESS: Photo = {
 const LECTURER: Photo = {
   src: '/photos/lecturer.webp', width: 760, height: 760, position: 'center 30%',
 };
-// Отраслевой эксперт: тот же кадр, что и BUSINESS, взятый крупным планом.
-// В круг 178px общий план кабинета не читается — лицо в нём мельче подписи.
+// Отраслевой эксперт: студийный портрет той же серии, что CURATOR и EDITOR.
+// Репортажный кадр в кабинете рядом с ними читался как чужая съёмка, а в
+// круге 178px общий план к тому же давал лицо мельче подписи.
 const EXPERT: Photo = {
-  src: '/photos/expert.webp', width: 480, height: 480, position: 'center 40%',
+  src: '/photos/expert.webp', width: 480, height: 480, position: 'center 38%',
 };
 
 export const PHOTOS: Record<string, Slot> = {
