@@ -141,7 +141,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 </section>
 
-<section aria-label="Услуги — бегущая строка, останавливается при наведении и фокусе" tabindex="0" class="pd-ticker" style="position:relative;z-index:1;margin:88px 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
+<section aria-label="Услуги — бегущая строка, останавливается при наведении и фокусе" tabindex="0" class="pd-ticker" style="position:relative;z-index:1;margin:clamp(80px,7vw,112px) 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
 <div style="display:flex;width:max-content;gap:52px;padding-right:52px;animation:pd-marquee-l 42s linear infinite" class="pd-run">
 <sc-for list="{{ tickerA }}" as="t" hint-placeholder-count="12">
 <span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:24px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:#3D4450;white-space:nowrap">{{ t.text }}</span>
@@ -154,11 +154,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 </section>
 
-<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:96px auto 0;padding:0 30px">
+<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Проблема</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Незавершённая диссертация держит в напряжении годами</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Незавершённая диссертация держит в напряжении годами</h2>
 </div>
 </div>
 <p style="margin:0;font-size:15px;line-height:25px;color:#3D4450;max-width:60ch">Замечания копятся, сроки уходят, а плана нет. <strong style="font-weight:600;color:#14161C">План, сроки и приёмку берём на себя</strong> — вы сосредоточены на исследовании и выходите к защите подготовленным.</p>
@@ -222,11 +222,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 </section>
 
-<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:96px auto 0;padding:0 30px">
+<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Преимущества</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Почему с нами работают</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Почему с нами работают</h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Четыре принципа, закреплённые договором</span>
 </div>
@@ -249,11 +249,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </ol>
 </section>
 
-<section id="services" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:96px auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="services" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Услуги</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:38ch;text-wrap:pretty">Ведём работу <span style="background:#D8E4F3;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">от первой главы до защиты</span></h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:38ch;text-wrap:pretty">Ведём работу <span style="background:#D8E4F3;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">от первой главы до защиты</span></h2>
 </div>
 </div>
 <div class="pd-services" style="gap:16px">
@@ -315,11 +315,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 </section>
 
-<section id="cost" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:96px auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="cost" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Стоимость</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Из чего складывается смета и когда вы узнаёте сумму</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Из чего складывается смета и когда вы узнаёте сумму</h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Сумму называем на консультации, до договора и до оплаты</span>
 </div>
@@ -349,11 +349,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 </section>
 
-<section id="process" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:96px auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="process" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Этапы</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Понятный план работы с первого дня и прозрачность на каждом этапе</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Понятный план работы с первого дня и прозрачность на каждом этапе</h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Шесть этапов с промежуточной приёмкой</span>
 </div>
@@ -384,11 +384,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 </section>
 
-<section id="team" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:96px auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="team" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div class="pd-team" style="gap:40px;align-items:center">
 <div style="display:flex;flex-direction:column;gap:24px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Команда</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:24ch;text-wrap:balance">Вы работаете не с отдельным человеком, а с системой экспертизы</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:24ch;text-wrap:balance">Вы работаете не с отдельным человеком, а с системой экспертизы</h2>
 <p style="margin:0;font-size:15px;line-height:25px;color:#3D4450;max-width:40ch">Над проектом работает постоянная команда: менеджер, профильный эксперт, методолог и научный редактор. Исполнителей под задачу не подбираем на стороне.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:18px;letter-spacing:.06em;color:#14417A;flex:0 0 auto">С 2016</span><span style="font-size:13px;line-height:20px;color:#3D4450">научный коллектив ведёт проекты по всей России и СНГ</span></div>
@@ -457,11 +457,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 
 
 
-<section id="faq" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:96px auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="faq" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Вопросы</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Прозрачные условия без мелкого шрифта</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Прозрачные условия без мелкого шрифта</h2>
 </div>
 </div>
 <div class="pd-faq" style="gap:40px;align-items:stretch">
@@ -502,11 +502,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 </section>
 
-<section id="request" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:96px auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="request" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Заявка</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:26px;line-height:34px;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Подберём формат сопровождения под уровень работы и сроки защиты</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:34ch;text-wrap:pretty">Подберём формат сопровождения под уровень работы и сроки защиты</h2>
 </div>
 <span style="font-size:13px;line-height:1.5;color:#5C6474;white-space:nowrap;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Ответим в рабочее время и предложим время консультации</span>
 </div>
@@ -566,7 +566,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 
 </main>
 
-<footer id="contacts" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:96px auto 0;padding:48px 30px 24px;scroll-margin-top:24px">
+<footer id="contacts" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(88px,8vw,128px) auto 0;padding:48px 30px 24px;scroll-margin-top:24px">
 <div class="pd-foot" style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid #EFF1F4">
 <span style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;min-width:0">
 <a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:0 -10px;border-radius:10px;text-decoration:none;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:21px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:#14417A">PRO</span><span style="color:#14161C">DISSER</span></a>
