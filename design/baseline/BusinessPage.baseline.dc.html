@@ -29,7 +29,7 @@
 .bp-hero{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr)}
 .bp-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
 .bp-trl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-.bp-why{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.bp-why{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,1fr)}
 .bp-cat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .bp-rights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .bp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
@@ -255,7 +255,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Подходящее предложение</span>
 <span style="font-size:14px;line-height:1.4;font-weight:600;color:#14161C">{{ trl.packLabel }}</span>
 </span>
-<span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#14417A">перейти к карточке</span>
+<span style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;font-size:13px;line-height:1.4;font-weight:600;color:#14417A">Перейти к пакету<span aria-hidden="true" style="width:14px;height:14px;display:block;background:#14417A;-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
 </button>
 </div>
 </section>
@@ -292,7 +292,10 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:6px;border-bottom:1px solid #EFF1F4"><span style="font-size:13px;line-height:1.5;color:#14161C;min-width:0">{{ d.name }}</span><span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474;text-align:right">{{ d.norm }}</span></span>
 </sc-for>
 </div>
-<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid #EFF1F4;font-size:12px;line-height:1.5;color:#5C6474">{{ p.why }}</p>
+<div style="margin:auto 0 0;padding-top:12px;border-top:1px solid #EFF1F4;display:flex;flex-direction:column;align-items:flex-start;gap:4px">
+<p style="margin:0;font-size:12px;line-height:1.5;color:#5C6474;min-width:0">{{ p.why }}</p>
+<a href="#request" aria-label="{{ p.cta }}" style="flex:0 0 auto;display:inline-flex;align-items:center;min-height:44px;gap:8px;font-size:13px;line-height:1.4;font-weight:600;color:#14417A;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#0F3260">Обсудить пакет<span aria-hidden="true" style="width:14px;height:14px;display:block;background:#14417A;-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
+</div>
 </article>
 </sc-for>
 </div>
@@ -366,10 +369,10 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;flex:0 0 auto;font-size:12px;line-height:1.5;letter-spacing:.04em;color:#14417A;font-variant-numeric:tabular-nums">{{ r.num }}</span>
 <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">{{ r.title }}</h3>
-<p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450;max-width:52ch">{{ r.text }}</p>
+<p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450;max-width:60ch">{{ r.text }}</p>
 </div>
 </div>
-<p style="margin:0;padding-left:14px;border-left:2px solid #D8E4F3;font-size:12px;line-height:1.6;color:#5C6474;max-width:44ch;align-self:center">{{ r.proof }}</p>
+<p style="margin:0;padding-left:14px;border-left:2px solid #D8E4F3;font-size:12px;line-height:1.6;color:#5C6474;max-width:46ch;align-self:start">{{ r.proof }}</p>
 </div>
 </sc-for>
 </div>
@@ -473,24 +476,17 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Отвечаем так же на установочной сессии</span>
 </div>
 <div class="bp-faq" style="gap:40px;align-items:stretch">
-<div style="align-self:start;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:22px 24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<div style="display:flex;align-items:center;gap:14px">
-<span style="width:72px;height:72px;flex:0 0 72px;border-radius:50%;background:#D8E4F3;overflow:hidden;display:block">
-<image-slot id="bp-faq-photo" shape="circle" data-alt="Куратор проекта" placeholder="Фото: куратор" style="width:100%;height:100%"></image-slot>
-</span>
-<span style="display:flex;flex-direction:column;gap:2px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">Куратор проекта</span>
-<span style="font-size:13px;line-height:1.5;color:#5C6474">отвечает в рабочее время</span>
-</span>
+<div style="flex:1 1 auto;min-height:340px;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<div style="position:relative;flex:1 1 auto;min-height:288px;background:#F6F7F9">
+<image-slot id="bp-faq-photo" shape="rect" fit="cover" data-alt="Инженер у стены с чертежами разработки" placeholder="Фото: инженер у чертежей" style="position:absolute;inset:0;width:100%;height:100%"></image-slot>
 </div>
-<div style="height:1px;background:#EFF1F4"></div>
-<div style="display:flex;flex-direction:column;gap:8px">
+<div style="padding:18px 24px 22px;border-top:1px solid #EFF1F4;display:flex;flex-direction:column;gap:10px">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">Вопрос не из списка?</h3>
-<p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450;max-width:40ch">Напишите или позвоните. NDA пришлём до того, как вы начнёте описывать задачу.</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:2px">
+<p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450;max-width:44ch">Напишите или позвоните. NDA пришлём до того, как вы начнёте описывать задачу.</p>
+<div style="margin-top:8px;display:flex;flex-direction:column;gap:2px">
 <a href="tel:+74954564323" style="display:flex;align-items:center;min-height:44px;gap:10px;font-size:15px;line-height:1.4;font-weight:600;color:#14161C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/phone.svg') center/contain no-repeat;mask:url('./assets/icons/phone.svg') center/contain no-repeat"></span> +7 495 456 43 23</a>
 <a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:14px;line-height:1.5;color:#3D4450;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/mail.svg') center/contain no-repeat;mask:url('./assets/icons/mail.svg') center/contain no-repeat"></span>info.prodisser@gmail.com</a>
+</div>
 </div>
 </div>
 <div style="display:flex;flex-direction:column;gap:10px">
@@ -693,6 +689,9 @@ class Component extends DCLogic {
     const packIcons = ['pd-patsearch', 'pd-stages', 'pd-grant', 'pd-asset', 'pd-market'];
     const packs = packData.map(([anchor, num, title, term, span, titleSize, who, what, docs, why], i) => ({
       anchor, num, title, term, titleSize, who, what, why,
+      // Пять ссылок «Обсудить пакет» ведут в одну форму, поэтому у каждой свой
+      // aria-label: без него скринридер читает пять одинаковых ссылок подряд.
+      cta: 'Обсудить пакет «' + title + '»',
       icon: "url('./assets/icons/" + packIcons[i] + ".svg') center/contain no-repeat",
       span: packSpans[anchor] || span,
       docs: docs.map(([name, norm]) => ({ name, norm })),
