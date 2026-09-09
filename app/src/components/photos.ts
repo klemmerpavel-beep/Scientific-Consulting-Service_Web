@@ -61,6 +61,12 @@ const BUSINESS: Photo = {
 const LECTURER: Photo = {
   src: '/photos/lecturer.webp', width: 760, height: 760, position: 'center 30%',
 };
+// Блок вопросов на «Компаниям»: руководитель проекта с чертежами и папками
+// у рабочего стола. Кадр репортажный, как LECTURER на «Студентам»: в блоке
+// вопросов на всех трёх профильных страницах стоит сцена, а не портрет.
+const BLUEPRINTS: Photo = {
+  src: '/photos/blueprints.webp', width: 620, height: 620, position: 'center 56%',
+};
 // Отраслевой эксперт: студийный портрет той же серии, что CURATOR и EDITOR.
 // Репортажный кадр в кабинете рядом с ними читался как чужая съёмка, а в
 // круге 178px общий план к тому же давал лицо мельче подписи.
@@ -91,7 +97,7 @@ export const PHOTOS: Record<string, Slot> = {
   // ——— Бизнесу ———
   'bp-photo-1': { photo: EXPERT },      // круг 178px
   'bp-photo-2': { photo: CURATOR },     // круг 122px
-  'bp-faq-photo': { photo: BUSINESS },  // кадр во всю карточку, как на двух других профильных
+  'bp-faq-photo': { photo: BLUEPRINTS }, // кадр во всю карточку, как на двух других профильных
 };
 
 /** Слоты первого экрана: грузятся сразу, а не по мере прокрутки */
