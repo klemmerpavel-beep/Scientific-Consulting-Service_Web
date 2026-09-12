@@ -24,7 +24,7 @@
    означает правку в сотнях мест. Роли токенов — docs/DESIGN-SYSTEM.md,
    раздел 2. Цвета внутри атрибутов SVG остаются литералами: var() в
    презентационном атрибуте не работает. */
-:root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;--pd-ink-inverse:#FFFFFF;--pd-border:#E3E7EC;--pd-divider:#EFF1F4;--pd-surface-quiet:#F6F7F9;--pd-edge-neutral:#C4CAD4;--pd-accent:#14417A;--pd-accent-press:#0F3260;--pd-accent-deep:#0D2B52;--pd-accent-mark:#D8E4F3;--pd-accent-edge:#B4C9E5;--pd-accent-tint:#ECF1F8;--pd-button-hover:#262A33;--pd-accent-hover:#0A2145;--pd-accent-active:#081A38;--pd-ok-bg:#E6F9F1;--pd-ok-ink:#0E4E3C;--pd-err-bg:#FAE7E5;--pd-err-border:#F0C9C3;--pd-err-ink:#8E2C22}
+:root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;--pd-ink-inverse:#FFFFFF;--pd-border:#E3E7EC;--pd-divider:#EFF1F4;--pd-surface-quiet:#F6F7F9;--pd-edge-neutral:#C4CAD4;--pd-accent:#14417A;--pd-accent-press:#0F3260;--pd-accent-deep:#0D2B52;--pd-accent-mark:#D8E4F3;--pd-accent-edge:#B4C9E5;--pd-accent-tint:#ECF1F8;--pd-button-hover:#262A33;--pd-accent-hover:#0A2145;--pd-accent-active:#081A38;--pd-ok-bg:#E6F9F1;--pd-ok-ink:#0E4E3C;--pd-err-bg:#FAE7E5;--pd-err-border:#F0C9C3;--pd-err-ink:#8E2C22;--pd-ok-border:#C5EEDD;--pd-accent-soft:#2A63B4;--pd-art-line:#E5EBF2;--pd-art-mark:#D3DEEC;--pd-art-dot:#D8DEE6}
 body{margin:0;background:var(--pd-ink-inverse) !important}body a,body a:hover{text-decoration:none}body a{color:var(--pd-accent)}body a:hover{color:var(--pd-accent-press)}*:focus-visible{outline:2px solid var(--pd-accent);outline-offset:2px}input[type=checkbox]{accent-color:var(--pd-accent)}@keyframes pd-marquee-l{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes pd-marquee-r{from{transform:translateX(-50%)}to{transform:translateX(0)}}
 
 /* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
@@ -85,7 +85,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <circle cx="470" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="96" r="4" fill="#D8E4F3"></circle>
 </svg>
-<div style="position:absolute;left:0;right:0;top:0;height:1180px;background-image:radial-gradient(#D8DEE6 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
+<div style="position:absolute;left:0;right:0;top:0;height:1180px;background-image:radial-gradient(var(--pd-art-dot) 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
 
 </div>
 
@@ -123,15 +123,15 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="pd-metrics" style="gap:12px;margin-top:32px">
 <a href="#services" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-hover);border-color:var(--pd-accent-hover)" style-active="background:var(--pd-accent-active)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink-inverse)">26 позиций</span>
-<span style="font-size:14px;line-height:1.5;color:#CFDDEE">в перечне работ: три направления и полный список</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-accent-edge)">в перечне работ: три направления и полный список</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Что берём в работу<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent-edge);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
-<a href="#process" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid #D0DDEE;border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark);border-color:var(--pd-accent)" style-active="background:#D0DDEE">
+<a href="#process" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark);border-color:var(--pd-accent)" style-active="background:var(--pd-accent-mark)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">6 этапов</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">план работы, каждый этап закрывается актом приёмки</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Как устроена работа<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
-<a href="#team" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FAFBFC;border-color:var(--pd-accent)" style-active="background:var(--pd-surface-quiet)">
+<a href="#team" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet);border-color:var(--pd-accent)" style-active="background:var(--pd-surface-quiet)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">с 2016</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">научный коллектив ведёт исследования по всей России</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Проектная команда<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
@@ -146,7 +146,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Куратор проекта — кандидат наук вашего направления</span>
 </div>
 <div class="pd-faceb" style="display:flex;flex-direction:column;gap:10px;max-width:clamp(110px,11.3vw,152px);padding-top:clamp(48px,10.4vw,150px);align-items:center;text-align:center">
-<span class="pd-faceb-c" style="width:clamp(110px,11.3vw,152px);height:clamp(110px,11.3vw,152px);border-radius:50%;background:#2A63B4;overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<span class="pd-faceb-c" style="width:clamp(110px,11.3vw,152px);height:clamp(110px,11.3vw,152px);border-radius:50%;background:var(--pd-accent-soft);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <image-slot id="mp-photo-2" shape="circle" data-alt="Научный редактор проекта" placeholder="Фото редактора" style="width:100%;height:100%"></image-slot>
 </span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Научный редактор проекта</span>
@@ -185,7 +185,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="position:relative;width:100%;max-width:440px;height:410px">
 <sc-for list="{{ pains }}" as="p" hint-placeholder-count="7">
 <span style="position:absolute;left:{{ p.x }};top:{{ p.y }};transform:rotate({{ p.rot }});background:var(--pd-ink-inverse);border:1px solid var(--pd-err-border);border-radius:999px;padding:8px 16px 8px 11px;display:inline-flex;align-items:center;gap:9px;white-space:nowrap;font-size:12px;line-height:17px;font-weight:500;color:var(--pd-err-ink)">
-<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:#B4564B;-webkit-mask:{{ p.mask }};mask:{{ p.mask }}"></span>{{ p.text }}
+<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:var(--pd-err-ink);-webkit-mask:{{ p.mask }};mask:{{ p.mask }}"></span>{{ p.text }}
 </span>
 </sc-for>
 </div>
@@ -381,7 +381,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <p style="margin:0;font-size:14px;line-height:21px;color:var(--pd-ink-secondary)">{{ p.text }}</p>
 <div style="margin-top:auto;padding-top:14px;border-top:1px solid var(--pd-divider);display:flex;flex-wrap:wrap;gap:6px">
 <sc-for list="{{ p.tags }}" as="tag" hint-placeholder-count="3">
-<span style="background:#F1F3F6;border:1px solid var(--pd-border);border-radius:999px;padding:5px 11px;font-size:13px;line-height:1.5;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap">{{ tag.text }}</span>
+<span style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;padding:5px 11px;font-size:13px;line-height:1.5;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap">{{ tag.text }}</span>
 </sc-for>
 </div>
 </article>
@@ -421,7 +421,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="pd-orbit" style="justify-self:stretch;position:relative;width:100%;aspect-ratio:648.388 / 650">
 <div aria-hidden="true" style="position:absolute;left:0;top:0;width:98.482%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(216,228,243,.62) 0%,rgba(180,201,229,.16) 58%,rgba(255,255,255,0) 74%)"></div>
 <div class="pd-ring" aria-hidden="true" style="position:absolute;left:18.969%;top:19.385%;width:60.547%;height:61.231%;border-radius:50%;border:1px dashed var(--pd-accent-mark);box-sizing:border-box"></div>
-<div class="pd-ring" aria-hidden="true" style="position:absolute;left:12.747%;top:13.077%;width:73.142%;height:74.000%;border-radius:50%;border:1px dashed #D3DEEC;box-sizing:border-box"></div>
+<div class="pd-ring" aria-hidden="true" style="position:absolute;left:12.747%;top:13.077%;width:73.142%;height:74.000%;border-radius:50%;border:1px dashed var(--pd-art-mark);box-sizing:border-box"></div>
 <div class="pd-ring" aria-hidden="true" style="position:absolute;left:7.284%;top:7.385%;width:84.067%;height:85.231%;border-radius:50%;border:1px dashed var(--pd-border);box-sizing:border-box"></div>
 <div class="pd-core" style="position:absolute;left:34.559%;top:35.026%;width:29.531%;height:30.101%;border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:flex;align-items:center;justify-content:center">
 <div style="width:76%;display:flex;flex-direction:column;gap:8px;align-items:center">
@@ -575,7 +575,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <label for="mp-consent" style="margin:6px 0 0;display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
 <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
-<div role="status" tabindex="-1" data-sent="request" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid #5FE6B6;border-radius:10px;padding:12px 16px">
+<div role="status" tabindex="-1" data-sent="request" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:var(--pd-ok-ink);-webkit-mask:{{ checkPlainMask }};mask:{{ checkPlainMask }}"></span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята — свяжемся, чтобы согласовать время консультации.</span>
 </div>
@@ -736,7 +736,7 @@ class Component extends DCLogic {
       title,
       num: '0' + (i + 1),
       selected: i === trackAt ? 'true' : 'false',
-      bar: i <= trackAt ? 'var(--pd-accent)' : '#DDE2E9',
+      bar: i <= trackAt ? 'var(--pd-accent)' : 'var(--pd-border)',
       titleColor: i <= trackAt ? 'var(--pd-ink)' : 'var(--pd-ink-muted)',
       numColor: i <= trackAt ? 'var(--pd-accent)' : 'var(--pd-ink-muted)',
       color: i < trackAt ? 'var(--pd-accent)' : (i === trackAt ? 'var(--pd-ink)' : 'var(--pd-ink-muted)'),
@@ -799,7 +799,7 @@ class Component extends DCLogic {
       ['Магистерская диссертация', 'от 1 месяца'],
       ['Автореферат и доклад к защите', 'от 10 дней'],
       ['Научная статья в рецензируемый журнал', 'от 14 дней']
-    ].map(([title, term], i) => ({ title, term, zebra: i % 2 ? '#FAFBFC' : 'var(--pd-ink-inverse)' }));
+    ].map(([title, term], i) => ({ title, term, zebra: i % 2 ? 'var(--pd-surface-quiet)' : 'var(--pd-ink-inverse)' }));
     return {
       steps, faq, pains, track, usp, gains, offerTop, offerMid, offerRest, stepScale, costFactors, termRows,
       contactTabs: ['E-mail', 'Телефон'].map((label, i) => ({
