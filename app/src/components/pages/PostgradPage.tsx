@@ -52,13 +52,13 @@ input::placeholder,textarea::placeholder{color:#5C6474;opacity:1}
 .x6:hover{background:#262A33 !important;color:#FFFFFF !important}
 .x7:hover{background:#0A2145 !important;border-color:#0A2145 !important}
 .x8:active{background:#081A38 !important}
-.x9:hover{background:#D8E4F3 !important;border-color:#B4C9E5 !important}
+.x9:hover{background:#D8E4F3 !important;border-color:#14417A !important}
 .xa:active{background:#D0DDEE !important}
-.xb:hover{background:#FAFBFC !important;border-color:#B4C9E5 !important}
+.xb:hover{background:#FAFBFC !important;border-color:#14417A !important}
 .xc:active{background:#F6F7F9 !important}
-.xd:hover{border-color:#D8E4F3 !important;box-shadow:0 10px 20px rgba(20,22,28,.09) !important}
+.xd:hover{border-color:#14417A !important;box-shadow:0 10px 20px rgba(20,22,28,.09) !important}
 .xe:active{transform:translateY(1px) !important}
-.xf:hover{box-shadow:0 10px 20px rgba(20,22,28,.09) !important;border-color:#B4C9E5 !important}
+.xf:hover{box-shadow:0 10px 20px rgba(20,22,28,.09) !important;border-color:#14417A !important}
 .xg:hover{background:#262A33 !important}
 .xh:active{opacity:.82 !important}
 .xi:hover{color:#14417A !important}
