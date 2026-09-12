@@ -45,11 +45,11 @@ input::placeholder,textarea::placeholder{color:#5C6474;opacity:1}
 .xa:hover{color:#0F3260 !important}
 .xb:hover{background:#0A2145 !important;border-color:#0A2145 !important}
 .xc:active{background:#081A38 !important}
-.xd:hover{background:#D8E4F3 !important;border-color:#B4C9E5 !important}
+.xd:hover{background:#D8E4F3 !important;border-color:#14417A !important}
 .xe:active{background:#D0DDEE !important}
-.xf:hover{background:#FAFBFC !important;border-color:#B4C9E5 !important}
+.xf:hover{background:#FAFBFC !important;border-color:#14417A !important}
 .xg:active{background:#F6F7F9 !important}
-.xh:hover{border-color:#D8E4F3 !important;box-shadow:0 10px 20px rgba(20,22,28,.09) !important}
+.xh:hover{border-color:#14417A !important;box-shadow:0 10px 20px rgba(20,22,28,.09) !important}
 .xi:active{transform:translateY(1px) !important}
 .xj:hover{background:#F1F3F6 !important;color:#14161C !important}
 .xk:hover{color:#14417A !important}
