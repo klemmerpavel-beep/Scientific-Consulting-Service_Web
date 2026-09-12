@@ -27,8 +27,7 @@
    презентационном атрибуте не работает. */
 :root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;--pd-ink-inverse:#FFFFFF;--pd-border:#E3E7EC;--pd-divider:#EFF1F4;--pd-surface-quiet:#F6F7F9;--pd-edge-neutral:#C4CAD4;--pd-accent:#14417A;--pd-accent-press:#0F3260;--pd-accent-deep:#0D2B52;--pd-accent-mark:#D8E4F3;--pd-accent-edge:#B4C9E5;--pd-accent-tint:#ECF1F8;--pd-button-hover:#262A33;--pd-accent-hover:#0A2145;--pd-accent-active:#081A38;--pd-ok-bg:#E6F9F1;--pd-ok-ink:#0E4E3C;--pd-err-bg:#FAE7E5;--pd-err-border:#F0C9C3;--pd-err-ink:#8E2C22;--pd-ok-border:#C5EEDD;--pd-accent-soft:#2A63B4;--pd-art-line:#E5EBF2;--pd-art-mark:#D3DEEC;--pd-art-dot:#D8DEE6}
 
-.pd-nav{display:flex;align-items:center;gap:24px}
-.pd-burger{display:none}html,body{margin:0;background:var(--pd-ink-inverse)!important;min-height:100%}a{color:var(--pd-accent);text-decoration:none}a:hover{color:var(--pd-accent-press)}*:focus-visible{outline:2px solid var(--pd-accent);outline-offset:2px}input[type=checkbox]{accent-color:var(--pd-accent)}
+html,body{margin:0;background:var(--pd-ink-inverse)!important;min-height:100%}a{color:var(--pd-accent);text-decoration:none}a:hover{color:var(--pd-accent-press)}*:focus-visible{outline:2px solid var(--pd-accent);outline-offset:2px}input[type=checkbox]{accent-color:var(--pd-accent)}
 
 /* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
    поэтому приглушение объявлено важным. */
@@ -49,9 +48,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-cta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-routes a:hover .pd-routebg,.pd-routes a:focus-visible .pd-routebg{background:transparent!important}
 @media (max-width:1024px){.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:768px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px 14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none}.pd-burger{display:inline-flex}.pd-hero,.pd-cta{grid-template-columns:minmax(0,1fr)}.pd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-card{flex:0 0 clamp(260px,72vw,320px)}}
+@media (max-width:768px){.pd-hero,.pd-cta{grid-template-columns:minmax(0,1fr)}.pd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-card{flex:0 0 clamp(260px,72vw,320px)}}
 @media (max-width:768px){.pd-metrics,.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-@media (max-width:640px){.pd-headcta{font-size:13px!important;padding:10px 18px!important}.pd-head{gap:12px!important}}@media (max-width:480px){.pd-hero,.pd-metrics,.pd-routes,.pd-cta{grid-template-columns:minmax(0,1fr)!important}.pd-routes,.pd-metrics{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}.pd-card{flex:0 0 86vw}.pd-headcta{display:none!important}}</style>
+@media (max-width:640px){.pd-headcta{font-size:13px!important;padding:10px 18px!important}.pd-head{gap:12px!important}}@media (max-width:480px){.pd-hero,.pd-metrics,.pd-routes,.pd-cta{grid-template-columns:minmax(0,1fr)!important}.pd-routes,.pd-metrics{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}.pd-card{flex:0 0 86vw}.pd-cabinet{display:none!important}}</style>
 </helmet>
 <div style="position:relative;min-height:100vh;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip;min-height:0">
 <div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none">
@@ -76,16 +75,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <header class="pd-pad" style="position:relative;z-index:5;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
 <a href="#main" onClick="{{ toTop }}" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;text-decoration:none;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:23px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:var(--pd-accent)">PRO</span><span style="color:var(--pd-ink)">DISSER</span></a>
 <span class="pd-head" style="display:flex;align-items:center;gap:28px;flex:0 0 auto">
-<button type="button" class="pd-burger" aria-expanded="{{ navOpenAttr }}" aria-controls="pd-nav" aria-label="Меню направлений" onClick="{{ toggleNav }}" style="appearance:none;cursor:pointer;flex:0 0 44px;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);align-items:center;justify-content:center;flex-direction:column;gap:4px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)">
-<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:999px;background:var(--pd-ink)"></span>
-<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:999px;background:var(--pd-ink)"></span>
-<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:999px;background:var(--pd-ink)"></span>
-</button>
-<nav id="pd-nav" class="pd-nav" hidden="{{ navHidden }}" aria-label="Направления работы">
-<a href="./main.html" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Аспирантам</a>
-<a href="./students.html" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Студентам</a>
-<a href="./business.html" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Компаниям</a>
-</nav>
+<button type="button" class="pd-cabinet" disabled="{{ true }}" aria-disabled="true" title="Раздел готовится" style="appearance:none;cursor:not-allowed;display:inline-flex;align-items:center;min-height:44px;background:transparent;border:1px solid var(--pd-border);color:var(--pd-ink-muted);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 22px;border-radius:999px">Личный кабинет</button>
 <a class="pd-headcta" href="#request" style="display:inline-flex;align-items:center;min-height:44px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a>
 </span>
 </header>
@@ -173,7 +163,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section aria-label="Услуги всех направлений — бегущая строка, останавливается при наведении и фокусе" tabindex="0" class="pd-ticker" style="position:relative;z-index:1;margin:clamp(80px,7vw,112px) 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
+<section aria-label="Услуги всех направлений — бегущая строка, останавливается при наведении и фокусе" tabindex="0" class="pd-ticker" style="position:relative;z-index:1;margin:clamp(88px,7.7vw,124px) 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
 <div style="display:flex;width:max-content;gap:52px;padding-right:52px;animation:pd-marquee-l 52s linear infinite" class="pd-run">
 <sc-for list="{{ tickerA }}" as="t" hint-placeholder-count="16">
 <span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
@@ -186,7 +176,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:56px auto 0;padding:0 30px">
+<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:62px auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">С чего начнём вашу работу</h2>
 <span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Выберите ситуацию — покажем состав работ и сроки</span>
@@ -240,7 +230,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:64px auto 0;padding:0 30px">
+<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:70px auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Что входит в сопровождение</h2>
 <span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Каждое условие проверяется до подписания договора</span>
@@ -294,7 +284,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:56px auto 0;padding:0 30px">
+<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:62px auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Гарантии и документы, которые их держат</h2>
 <span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Каждое обязательство можно прочитать до оплаты</span>
@@ -342,7 +332,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section id="request" class="pd-pad" style="max-width:1220px;margin:0 auto;padding:96px 30px 0;position:relative;z-index:1;scroll-margin-top:24px">
+<section id="request" class="pd-pad" style="max-width:1220px;margin:0 auto;padding:106px 30px 0;position:relative;z-index:1;scroll-margin-top:24px">
 <div class="pd-cta" style="gap:24px;align-items:stretch">
 <div style="background:var(--pd-accent-deep);border-radius:14px;padding:16px 26px;display:flex;align-items:stretch">
 <div style="display:flex;flex-direction:column;justify-content:center;gap:20px;width:100%">
@@ -404,7 +394,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </section>
 </main>
 
-<footer class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:48px 30px 24px">
+<footer class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:52px 30px 24px">
 <div class="pd-foot" style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--pd-divider)">
 <span style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;min-width:0">
 <a href="#main" onClick="{{ toTop }}" aria-label="ProDisser — наверх страницы" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:0 -10px;border-radius:10px;text-decoration:none;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:21px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:var(--pd-accent)">PRO</span><span style="color:var(--pd-ink)">DISSER</span></a>
@@ -432,7 +422,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;leadVariant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Замечания диссовета&quot;,&quot;Срыв сроков по главам&quot;,&quot;Подготовка к защите&quot;],&quot;default&quot;:&quot;Подготовка к защите&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Текст hero&quot;},&quot;showPortraits&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Текст hero&quot;}}">
 class Component extends DCLogic {
-  state = { sentTop: false, sentBottom: false, contactTop: 0, contactBottom: 0, direction: 'Научная степень', scopePage: 0, grtPage: 0, scopePages: 1, grtPages: 1, scopeFill: 1, grtFill: 1, navOpen: false };
+  state = { sentTop: false, sentBottom: false, contactTop: 0, contactBottom: 0, direction: 'Научная степень', scopePage: 0, grtPage: 0, scopePages: 1, grtPages: 1, scopeFill: 1, grtFill: 1, };
   componentDidMount(){
     this.measure = () => {
       const count = n => {
@@ -449,19 +439,9 @@ class Component extends DCLogic {
       this.raf = requestAnimationFrame(() => { this.raf = 0; this.measure(); });
     };
     window.addEventListener('resize', this.onResize);
-    this.syncWide();
-  }
-  syncWide(){
-    // На широком экране меню всегда развёрнуто: иначе атрибут hidden
-    // остаётся на видимом <nav>, и программа чтения с экрана его минует.
-    this.wide = window.matchMedia('(min-width:769px)');
-    this.syncNav = () => this.setState({ navOpen: this.wide.matches });
-    this.syncNav();
-    this.wide.addEventListener('change', this.syncNav);
   }
   componentWillUnmount(){
     window.removeEventListener('resize', this.onResize);
-    if (this.wide) this.wide.removeEventListener('change', this.syncNav);
     if (this.raf) cancelAnimationFrame(this.raf);
   }
   track(name, key, fillKey){
@@ -507,9 +487,6 @@ class Component extends DCLogic {
     }));
     return {
       tickerA: ticker(rowA), tickerB: ticker(rowB),
-      navHidden: this.state.navOpen ? undefined : true,
-      navOpenAttr: this.state.navOpen ? 'true' : 'false',
-      toggleNav: () => this.setState(s => ({ navOpen: !s.navOpen })),
       direction: this.state.direction,
       contactTabsTop: tabs('contactTop', top),
       contactTabsBottom: tabs('contactBottom', bottom),
