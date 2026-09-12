@@ -685,7 +685,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:44ch">Отзывы обезличены: указаны роль и направление, без имён и названий вузов.</p>
 </div>
-<div class="pd-revstage" role="group" aria-roledescription="карусель" aria-label="Отзывы клиентов" style="position:relative;height:268px;margin-top:28px;overflow:hidden">
+<div class="pd-revstage" role="group" aria-roledescription="карусель" aria-label="Отзывы клиентов" style="position:relative;height:268px;margin-top:28px">
 <sc-for list="{{ reviews }}" as="r" hint-placeholder-count="5">
 <article aria-hidden="{{ r.hidden }}" style="position:absolute;left:50%;top:8px;width:min(430px,84vw);height:236px;margin-left:calc(min(430px,84vw) / -2);box-sizing:border-box;display:flex;flex-direction:column;gap:14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:transform 420ms cubic-bezier(.2,0,.2,1),filter 420ms cubic-bezier(.2,0,.2,1),opacity 420ms cubic-bezier(.2,0,.2,1);transform:{{ r.tf }};filter:{{ r.fl }};opacity:{{ r.op }};z-index:{{ r.z }};pointer-events:{{ r.pe }}">
 <div style="display:flex;align-items:center;gap:12px">
