@@ -54,7 +54,7 @@ jobs:
           # уезжает нерабочая ссылка на картинку превью.
           NEXT_PUBLIC_SITE_URL: ${{ steps.pages.outputs.base_url }}
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: app/out
 
