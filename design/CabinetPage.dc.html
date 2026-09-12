@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="ProDisser — личный кабинет" description="Заглушка раздела: кабинет готовится. Страница закрыта от индексации." -->
+<helmet>
+<title>Личный кабинет — ProDisser</title>
+<meta name="description" content="Личный кабинет ProDisser: раздел готовится. Заявку можно оставить на страницах направлений или написать в телеграм.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ProDisser">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Личный кабинет — ProDisser">
+<meta property="og:description" content="Раздел готовится.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="robots" content="noindex, nofollow">
+<script src="./ds-base.js"></script>
+<style>
+/* Токены палитры. Значения здесь, а не в каждом объявлении: страница
+   держит около 1700 упоминаний цвета, и смена одного оттенка иначе
+   означает правку в сотнях мест. Роли токенов — docs/DESIGN-SYSTEM.md,
+   раздел 2. Цвета внутри атрибутов SVG остаются литералами: var() в
+   презентационном атрибуте не работает. */
+:root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;--pd-ink-inverse:#FFFFFF;--pd-border:#E3E7EC;--pd-divider:#EFF1F4;--pd-surface-quiet:#F6F7F9;--pd-edge-neutral:#C4CAD4;--pd-accent:#14417A;--pd-accent-press:#0F3260;--pd-accent-deep:#0D2B52;--pd-accent-mark:#D8E4F3;--pd-accent-edge:#B4C9E5;--pd-accent-tint:#ECF1F8;--pd-button-hover:#262A33;--pd-accent-hover:#0A2145;--pd-accent-active:#081A38;--pd-ok-bg:#E6F9F1;--pd-ok-ink:#0E4E3C;--pd-err-bg:#FAE7E5;--pd-err-border:#F0C9C3;--pd-err-ink:#8E2C22;--pd-ok-border:#C5EEDD;--pd-accent-soft:#2A63B4;--pd-art-line:#E5EBF2;--pd-art-mark:#D3DEEC;--pd-art-dot:#D8DEE6}
+body{margin:0;background:var(--pd-ink-inverse)}a{color:var(--pd-accent);text-decoration:none}a:hover{color:var(--pd-accent-press)}*:focus-visible{outline:2px solid var(--pd-accent);outline-offset:2px}.pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}.pd-skip:focus{left:0;color:var(--pd-ink-inverse)}.doc-layout{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:48px;align-items:start}.doc-toc{position:sticky;top:24px}.doc-toc-btn{display:none}.doc-toc-list{display:flex;flex-direction:column}.doc-toc-list[hidden]{display:none}
+@media (max-width:1024px){.doc-layout{grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:32px}}
+@media (max-width:768px){.doc-layout{grid-template-columns:minmax(0,1fr)}.doc-toc{position:static}.doc-toc-btn{display:flex}}
+@media (max-width:480px){.doc-pad{padding-left:20px!important;padding-right:20px!important}}
+@media print{.doc-toc-list[hidden]{display:flex!important}.doc-toc,.doc-head,.doc-foot,.pd-skip{display:none!important}.doc-layout{grid-template-columns:minmax(0,1fr)!important;gap:0!important}body{background:var(--pd-ink-inverse)}main{max-width:none!important;padding:0!important}h1{font-size:20pt}h2{font-size:13pt;page-break-after:avoid}p,li{font-size:11pt;line-height:1.5}.doc-print{display:block!important}}.doc-print{display:none}
+/* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
+   поэтому приглушение объявлено важным. */
+button[disabled]{opacity:.7!important;cursor:progress!important}
+input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
+/* Подтверждение и ошибка появляются плавно, а не возникают рывком.
+   Правило срабатывает при вставке элемента, поэтому блоки, которые уже
+   на странице, ничего не переигрывают при обновлении содержимого. */
+@keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+[role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}</style>
+</helmet>
+<div style="position:relative;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased">
+<a class="pd-skip" href="#main">Перейти к тексту документа</a>
+<header class="doc-head doc-pad" style="max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:27px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(180,201,229,.34)"><span style="color:var(--pd-accent)">PRO</span><span style="color:var(--pd-ink)">DISSER</span></a>
+</header>
+<main id="main" class="doc-pad" style="max-width:1220px;margin:0 auto;padding:clamp(72px,10vw,140px) 30px clamp(72px,10vw,140px)">
+<div style="max-width:52ch">
+<span style="display:block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Личный кабинет</span>
+<h1 style="margin:12px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:28px;line-height:1.24;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Раздел готовится</h1>
+<p style="margin:20px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary)">В кабинете будут видны состояние заявки, этапы работы и акты приёмки. Пока его нет, о ходе работы сообщает менеджер проекта.</p>
+<p style="margin:16px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary)">Оставить заявку и задать вопрос можно уже сейчас.</p>
+<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:28px">
+<a href="./index.html" style="display:inline-flex;align-items:center;min-height:44px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">На главную</a>
+<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;min-height:44px;background:transparent;border:1px solid var(--pd-border);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 22px;border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)">Написать в телеграм</a>
+</div>
+</div>
+</main>
+<footer class="doc-foot doc-pad" style="max-width:1220px;margin:32px auto 0;padding:0 30px 40px">
+<div style="border-top:1px solid var(--pd-border);padding-top:24px;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:6px;max-width:60ch;font-size:14px;line-height:1.6;color:var(--pd-ink-muted)">
+<span style="color:var(--pd-ink)">ООО «РУСДРОН» · коммерческое обозначение ProDisser</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.02em">ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.02em">109451, г. Москва, вн. тер. г. муниципальный округ Марьино, б-р Перервинский, д. 27, к. 1, помещ. 10н</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.4">
+<a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Публичная оферта</a>
+<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Политика обработки персональных данных</a>
+<a href="./index.html" style="display:inline-flex;align-items:center;min-height:44px;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">На главную</a>
+</div>
+</div>
+</footer>
+</div>
+</x-dc>
+</body>
+</html>

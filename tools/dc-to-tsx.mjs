@@ -30,6 +30,7 @@ const ROUTES = {
   './index.html': '/', './main.html': '/main', './students.html': '/students',
   './business.html': '/business', './offer.html': '/offer',
   './privacy.html': '/privacy', './consent.html': '/consent',
+  './cabinet.html': '/cabinet',
 };
 
 const ATTR_MAP = { class: 'className', for: 'htmlFor', autocomplete: 'autoComplete',
