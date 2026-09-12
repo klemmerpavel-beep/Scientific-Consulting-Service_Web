@@ -38,6 +38,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
    Правило срабатывает при вставке элемента, поэтому блоки, которые уже
    на странице, ничего не переигрывают при обновлении содержимого. */
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes pd-marquee-l{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes pd-marquee-r{from{transform:translateX(-50%)}to{transform:translateX(0)}}.pd-ticker:hover .pd-run,.pd-ticker:focus-within .pd-run{animation-play-state:paused!important}
 [role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}
@@ -169,6 +170,19 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </a>
 </div>
 </div>
+</div>
+</section>
+
+<section aria-label="Услуги всех направлений — бегущая строка, останавливается при наведении и фокусе" tabindex="0" class="pd-ticker" style="position:relative;z-index:1;margin:clamp(80px,7vw,112px) 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
+<div style="display:flex;width:max-content;gap:52px;padding-right:52px;animation:pd-marquee-l 52s linear infinite" class="pd-run">
+<sc-for list="{{ tickerA }}" as="t" hint-placeholder-count="16">
+<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
+</sc-for>
+</div>
+<div style="display:flex;width:max-content;gap:52px;padding-right:52px;margin-top:16px;animation:pd-marquee-r 58s linear infinite" class="pd-run">
+<sc-for list="{{ tickerB }}" as="t" hint-placeholder-count="16">
+<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
+</sc-for>
 </div>
 </section>
 
@@ -477,7 +491,22 @@ class Component extends DCLogic {
     }));
     const top = this.state.contactTop;
     const bottom = this.state.contactBottom;
+    // Посадочная обращается ко всем трём направлениям сразу (Р-44), поэтому
+    // в строке они идут вперемешку, а не блоками: иначе первая половина
+    // читается как список для аспирантов, вторая — для бизнеса.
+    const rowA = ['Кандидатские диссертации', 'Дипломные работы', 'Техническое задание',
+      'Научные статьи', 'Отчёты по практике', 'Патентный ландшафт',
+      'Докторские диссертации', 'НИОКР под сдачу'];
+    const rowB = ['Магистерские диссертации', 'Гранты и субсидии', 'Научная редактура',
+      'Заявка на изобретение', 'Оформление по ГОСТ', 'Подготовка к защите',
+      'Программа для ЭВМ', 'Монографии'];
+    // Список удваивается: вторая половина повторяет первую и уезжает ровно
+    // на её длину, поэтому шов не виден. Дубль скрыт от чтения вслух.
+    const ticker = items => items.concat(items).map((text, i) => ({
+      text, dup: i >= items.length ? 'true' : undefined
+    }));
     return {
+      tickerA: ticker(rowA), tickerB: ticker(rowB),
       navHidden: this.state.navOpen ? undefined : true,
       navOpenAttr: this.state.navOpen ? 'true' : 'false',
       toggleNav: () => this.setState(s => ({ navOpen: !s.navOpen })),
@@ -506,7 +535,7 @@ class Component extends DCLogic {
       prevScope: () => this.goTrack('scope', 'scopePage', 'scopePages', -1),
       nextScope: () => this.goTrack('scope', 'scopePage', 'scopePages', 1),
       onScopeScroll: () => this.track('scope', 'scopePage', 'scopeFill'),
-      lead: 'Разбираем методологию, ведём научную редактуру, оформляем по действующим стандартам и готовим к защите. Автором работы остаётесь вы.',
+      lead: 'Разбираем методологию, ведём научную редактуру и готовим к защите — автором работы остаётесь вы.',
       showPortraits: this.props.showPortraits ?? true,
       sentTop: this.state.sentTop,
       sentBottom: this.state.sentBottom,
