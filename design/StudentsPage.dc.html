@@ -50,7 +50,8 @@
 
 /* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
    поэтому приглушение объявлено важным. */
-button[disabled]{opacity:.55!important;cursor:progress!important}
+button[disabled]{opacity:.7!important;cursor:progress!important}
+input::placeholder,textarea::placeholder{color:#5C6474;opacity:1}
 /* Подтверждение и ошибка появляются плавно, а не возникают рывком.
    Правило срабатывает при вставке элемента, поэтому блоки, которые уже
    на странице, ничего не переигрывают при обновлении содержимого. */
@@ -155,17 +156,17 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </sc-for>
 </div>
 <input id="sp-contact" name="contact" type="{{ contactTypeTop }}" autocomplete="{{ contactAutoTop }}" required="{{ true }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" style="flex:1 1 220px;min-width:0;box-sizing:border-box;height:48px;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#14161C;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#14417A;box-shadow:0 0 0 3px rgba(20,65,122,.16)">
-<label for="sp-consent-top" style="flex:1 1 100%;display:flex;min-height:36px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#5C6474;cursor:pointer"><input id="sp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#14417A;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#0F3260">согласие на обработку персональных данных</a></span></label>
+<label for="sp-consent-top" style="flex:1 1 100%;display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:#5C6474;cursor:pointer"><input id="sp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#14417A;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#0F3260">согласие на обработку персональных данных</a></span></label>
 <button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;background:#14161C;color:#FFFFFF;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#262A33" style-active="transform:scale(.97)">Оставить заявку</button>
 <sc-if value="{{ sentTop }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="{{ -1 }}" data-sent="top" style="flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #D8E4F3;border-radius:10px;padding:12px 16px">
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:#0E4E3C;-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
-<span style="font-size:13px;line-height:1.5;color:#0E4E3C">Заявка принята. Ответим в рабочее время, Пн—Пт 10:00—19:00.</span>
+<span style="font-size:14px;line-height:1.5;color:#0E4E3C">Заявка принята. Ответим в рабочее время, Пн—Пт 10:00—19:00.</span>
 </div>
 </sc-if>
 <sc-if value="{{ errorTop }}" hint-placeholder-val="{{ false }}">
 <div role="alert" style="flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;background:#FAE7E5;border:1px solid #F0C9C3;border-radius:10px;padding:12px 16px">
-<span style="font-size:13px;line-height:1.5;color:#8E2C22">{{ errorTop }}</span>
+<span style="font-size:14px;line-height:1.5;color:#8E2C22">{{ errorTop }}</span>
 </div>
 </sc-if>
 </form>
@@ -179,13 +180,13 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span class="sp-facea-c" style="width:clamp(152px,16.4vw,224px);height:clamp(152px,16.4vw,224px);border-radius:50%;background:#D8E4F3;overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <image-slot id="sp-stud-1" shape="circle" data-alt="Куратор проекта — кандидат наук" placeholder="Фото: куратор" style="width:100%;height:100%"></image-slot>
 </span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">Куратор со степенью<br><span style="color:#5C6474">по вашей специальности</span></span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">Куратор со степенью<br><span style="color:#5C6474">по вашей специальности</span></span>
 </div>
 <div class="sp-faceb" style="display:flex;flex-direction:column;gap:10px;max-width:clamp(112px,11.9vw,162px);padding-top:clamp(52px,10.8vw,152px);align-items:center;text-align:center">
 <span class="sp-faceb-c" style="width:clamp(112px,11.9vw,162px);height:clamp(112px,11.9vw,162px);border-radius:50%;background:#D8E4F3;overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <image-slot id="sp-stud-2" shape="circle" data-alt="Научный редактор проверяет текст работы" placeholder="Фото: редактор" style="width:100%;height:100%"></image-slot>
 </span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">Научный редактор<br><span style="color:#5C6474">и нормоконтроль</span></span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">Научный редактор<br><span style="color:#5C6474">и нормоконтроль</span></span>
 </div>
 </div>
 </div>
@@ -194,17 +195,17 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <div class="sp-support" style="gap:12px;margin-top:clamp(48px,4.5vw,64px)">
 <a href="#works" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#0D2B52;border:1px solid #0D2B52;border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#0A2145;border-color:#0A2145" style-active="background:#081A38">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:#FFFFFF">23 позиции</span>
-<span style="font-size:13px;line-height:1.5;color:#CFDDEE">в перечне работ: шесть основных направлений и полный список</span>
+<span style="font-size:14px;line-height:1.5;color:#CFDDEE">в перечне работ: шесть основных направлений и полный список</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#B4C9E5">Что берём в работу<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:#B4C9E5;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a href="#cost" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#ECF1F8;border:1px solid #D0DDEE;border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#D8E4F3;border-color:#B4C9E5" style-active="background:#D0DDEE">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:#14161C">7 причин</span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">по которым нормоконтроль возвращает работу с кафедры</span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">по которым нормоконтроль возвращает работу с кафедры</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Смета и нормоконтроль<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a href="#route" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:16px;min-height:132px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FAFBFC;border-color:#B4C9E5" style-active="background:#F6F7F9">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:#14161C">4 ситуации</span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">маршрут этапов пересобирается под стадию вашей работы</span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">маршрут этапов пересобирается под стадию вашей работы</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Этапы до защиты<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 </div>
@@ -239,7 +240,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:21px;font-weight:600;color:#14161C">{{ o.title }}</h3>
 </div>
 </div>
-<p style="margin:0;font-size:13px;line-height:20px;color:#3D4450">{{ o.text }}</p>
+<p style="margin:0;font-size:14px;line-height:21px;color:#3D4450">{{ o.text }}</p>
 <div style="margin-top:auto;height:104px;border-radius:10px;background:#F6F7F9;display:flex;align-items:center;justify-content:center;overflow:hidden">
 <span aria-hidden="true" style="display:block;width:100%;height:100%;background-image:{{ o.art }};background-size:cover;background-position:center;background-repeat:no-repeat"></span>
 </div>
@@ -259,7 +260,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:21px;font-weight:600;color:#14161C">{{ o.title }}</h3>
 </div>
 </div>
-<p style="margin:0;font-size:13px;line-height:20px;color:#3D4450">{{ o.text }}</p>
+<p style="margin:0;font-size:14px;line-height:21px;color:#3D4450">{{ o.text }}</p>
 <div style="margin-top:auto;height:104px;border-radius:10px;background:#F6F7F9;display:flex;align-items:center;justify-content:center;overflow:hidden">
 <span aria-hidden="true" style="display:block;width:100%;height:100%;background-image:{{ o.art }};background-size:cover;background-position:center;background-repeat:no-repeat"></span>
 </div>
@@ -294,14 +295,14 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Смета</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:32ch;text-wrap:balance">Из чего складывается смета на диплом</h2>
 </div>
-<span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Считаем после того, как посмотрим работу</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Считаем после того, как посмотрим работу</span>
 </div>
 <div class="sp-cost" style="gap:12px">
 <sc-for list="{{ priceFactors }}" as="p" hint-placeholder-count="3">
 <article style="border:1px solid #E3E7EC;border-radius:14px;padding:16px 18px;background:#FFFFFF;box-shadow:inset 0 -3px 0 {{ p.edge }},0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:{{ p.ink }}">{{ p.num }}</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">{{ p.title }}</h3>
-<p style="margin:0;font-size:13px;line-height:1.5;color:#3D4450">{{ p.text }}</p>
+<p style="margin:0;font-size:14px;line-height:1.5;color:#3D4450">{{ p.text }}</p>
 </article>
 </sc-for>
 </div>
@@ -312,7 +313,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <sc-for list="{{ askFor }}" as="a" hint-placeholder-count="4">
 <span style="display:flex;gap:10px;align-items:flex-start">
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;display:block;background:#14417A;-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">{{ a.text }}</span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">{{ a.text }}</span>
 </span>
 </sc-for>
 </div>
@@ -320,7 +321,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <div style="background:#0D2B52;border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;gap:12px;justify-content:center">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#B4C9E5">Консультация 20 минут · не оплачивается</span>
 <p style="margin:0;font-size:16px;line-height:1.5;color:#FFFFFF;max-width:44ch">Читаем работу, называем объём правок и срок. После этого считаем смету — до договора и до оплаты.</p>
-<p style="margin:0;font-size:13px;line-height:1.6;color:#CFDDEE;max-width:46ch">Оплата по этапам. Следующий этап оплачивается после приёмки предыдущего, вперёд за всю работу платить не нужно.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#CFDDEE;max-width:46ch">Оплата по этапам. Следующий этап оплачивается после приёмки предыдущего, вперёд за всю работу платить не нужно.</p>
 </div>
 </div>
 <div id="norm" style="margin-top:16px;scroll-margin-top:24px">
@@ -340,7 +341,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.05em;color:#14417A;padding-top:2px">{{ n.num }}</span>
 <span style="display:flex;flex-direction:column;gap:6px;min-width:0">
 <span style="font-size:13px;line-height:1.4;font-weight:600;color:#14161C">{{ n.cause }}</span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">{{ n.fix }}</span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">{{ n.fix }}</span>
 </span>
 </div>
 </sc-for>
@@ -357,7 +358,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Этапы работы</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:30ch;text-wrap:balance">Этапы под вашу стадию работы: <span style="background:#D8E4F3;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">от разбора до защиты</span></h2>
 </div>
-<span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Шаг 1 — стадия, шаг 2 — этапы</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Шаг 1 — стадия, шаг 2 — этапы</span>
 </div>
 
 <div style="border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;padding:16px 18px;box-shadow:0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:12px">
@@ -379,13 +380,13 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:#0F3260;-webkit-mask:{{ routeMask }};mask:{{ routeMask }}"></span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:#14161C">{{ routeSummary }}</span>
 </span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450;min-width:0;max-width:72ch">{{ routeNote }}</span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450;min-width:0;max-width:72ch">{{ routeNote }}</span>
 </div>
 
 <div style="margin-top:16px;border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;box-shadow:0 1px 2px rgba(20,22,28,.05);overflow:hidden">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 20px;background:#F6F7F9;border-bottom:1px solid #EFF1F4">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Шаг 2 · Этапы до защиты</span>
-<span style="font-size:13px;line-height:1.5;color:#5C6474">Полоса показывает долю срока; выберите этап — справа состав работ</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474">Полоса показывает долю срока; выберите этап — справа состав работ</span>
 </div>
 
 <div style="padding:16px 20px 14px;border-bottom:1px solid #EFF1F4">
@@ -414,11 +415,11 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}">
 <div style="display:flex;flex-direction:column;gap:12px;height:100%">
 <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Этап {{ s.num }} из {{ s.of }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Этап {{ s.num }} из {{ s.of }}</span>
 <sc-if value="{{ s.isKey }}" hint-placeholder-val="{{ true }}">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase;color:#14417A;background:#D8E4F3;border-radius:999px;padding:5px 11px">Ключевой этап</span>
 </sc-if>
-<span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.04em;color:#3D4450;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:999px;padding:6px 12px;white-space:nowrap">{{ s.term }}</span>
+<span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.04em;color:#3D4450;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:999px;padding:6px 12px;white-space:nowrap">{{ s.term }}</span>
 </span>
 <h3 style="margin:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.35;font-weight:600;color:#14161C">{{ s.title }}</h3>
 <div class="sp-duo" style="gap:10px 24px">
@@ -437,7 +438,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <sc-for list="{{ s.works }}" as="w" hint-placeholder-count="4">
 <li style="display:flex;align-items:flex-start;gap:9px">
 <span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;margin-top:3px;display:block;background:#14417A;-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">{{ w.text }}</span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">{{ w.text }}</span>
 </li>
 </sc-for>
 </ul>
@@ -446,7 +447,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;margin-top:3px;display:block;background:#0E4E3C;-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
 <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Результат этапа</span>
-<span style="font-size:13px;line-height:1.5;color:#14161C">{{ s.result }}</span>
+<span style="font-size:14px;line-height:1.5;color:#14161C">{{ s.result }}</span>
 </span>
 </div>
 </div>
@@ -458,8 +459,8 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 
 <div style="margin-top:16px;border:1px solid #E3E7EC;border-radius:14px;background:#F6F7F9;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
 <span style="display:flex;flex-direction:column;gap:6px;min-width:0;max-width:68ch">
-<span style="font-size:13px;line-height:1.6;color:#3D4450">Каждый этап заканчивается приёмкой: следующий оплачивается только после неё.</span>
-<span style="font-size:13px;line-height:1.6;color:#5C6474">Сроки этапов ориентировочные: точные даты фиксируем в договоре после разбора работы.</span>
+<span style="font-size:14px;line-height:1.6;color:#3D4450">Каждый этап заканчивается приёмкой: следующий оплачивается только после неё.</span>
+<span style="font-size:14px;line-height:1.6;color:#5C6474">Сроки этапов ориентировочные: точные даты фиксируем в договоре после разбора работы.</span>
 </span>
 <a href="#request" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;background:#14161C;color:#FFFFFF;font-size:13px;font-weight:600;padding:14px 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#262A33;color:#FFFFFF" style-active="transform:scale(.97)">Обсудить мой срок<span aria-hidden="true" style="width:14px;height:14px;display:block;background:#FFFFFF;-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
@@ -472,8 +473,8 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:24ch;text-wrap:balance">Над дипломом работает команда, а не один исполнитель</h2>
 <p style="margin:0;font-size:16px;line-height:26px;color:#3D4450;max-width:40ch">Над работой закреплены четверо: менеджер, куратор по специальности, методолог и научный редактор. Исполнителей на стороне не ищем.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
-<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:18px;letter-spacing:.06em;color:#14417A;flex:0 0 auto">С 2016</span><span style="font-size:13px;line-height:20px;color:#3D4450">научный коллектив сопровождает дипломы и ВКР по всей России</span></div>
-<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:18px;letter-spacing:.06em;color:#14417A;flex:0 0 auto">04</span><span style="font-size:13px;line-height:20px;color:#3D4450">специалиста закрепляем за работой до самой защиты</span></div>
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:19px;letter-spacing:.06em;color:#14417A;flex:0 0 auto">С 2016</span><span style="font-size:14px;line-height:21px;color:#3D4450">научный коллектив сопровождает дипломы и ВКР по всей России</span></div>
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:19px;letter-spacing:.06em;color:#14417A;flex:0 0 auto">04</span><span style="font-size:14px;line-height:21px;color:#3D4450">специалиста закрепляем за работой до самой защиты</span></div>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px">
 <span style="background:#FFFFFF;border:1px solid #E3E7EC;border-radius:999px;padding:7px 14px;font-size:12px;line-height:16px;font-weight:500;color:#14161C">Методология</span>
@@ -494,7 +495,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <div style="width:76%;display:flex;flex-direction:column;gap:8px;align-items:center">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Заказчик</span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:26px;line-height:30px;font-weight:500;letter-spacing:-.02em;text-align:center;color:#14161C">Вы</span>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.5;text-align:center;color:#3D4450">Пишете работу и принимаете этапы</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;text-align:center;color:#3D4450">Пишете работу и принимаете этапы</span>
 </div>
 </div>
 <div class="sp-crew" style="position:absolute;left:4.396%;top:14.154%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -505,7 +506,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Менеджер</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474">01</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#3D4450">Держит сроки и отвечает на вопросы в рабочее время.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:#3D4450">Держит сроки и отвечает на вопросы в рабочее время.</span>
 </div>
 </div>
 <div class="sp-crew" style="position:absolute;left:55.677%;top:7.077%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -516,7 +517,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Методолог</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474">02</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#3D4450">Выстраивает структуру работы и план по главам.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:#3D4450">Выстраивает структуру работы и план по главам.</span>
 </div>
 </div>
 <div class="sp-crew" style="position:absolute;left:0.617%;top:63.385%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -527,7 +528,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Научный редактор</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474">03</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#3D4450">Отвечает за логику глав, оформление и нормоконтроль.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:#3D4450">Отвечает за логику глав, оформление и нормоконтроль.</span>
 </div>
 </div>
 <div class="sp-crew" style="position:absolute;left:55.677%;top:68.923%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -538,7 +539,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Куратор по специальности</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474">04</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#3D4450">Разбирает тему с автором и помогает собрать содержание глав.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:#3D4450">Разбирает тему с автором и помогает собрать содержание глав.</span>
 </div>
 </div>
 <div class="sp-dot" style="position:absolute;left:23.307%;top:31.308%;width:15px;height:15px;border-radius:50%;background:#14417A;display:flex;align-items:center;justify-content:center"><span style="width:4.4px;height:4.4px;border-radius:50%;background:#FFFFFF;display:block"></span></div>
@@ -555,7 +556,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Вопросы</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:36ch;text-wrap:balance">Вопросы о защите, кафедре и научном руководителе</h2>
 </div>
-<span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Отвечаем так же на консультации</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Отвечаем так же на консультации</span>
 </div>
 <div class="sp-faq" style="gap:40px;align-items:stretch">
 <div style="flex:1 1 auto;min-height:340px;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
@@ -564,7 +565,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <div style="padding:18px 24px 22px;border-top:1px solid #EFF1F4;display:flex;flex-direction:column;gap:10px">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">Не нашли ответ на свой вопрос?</h3>
-<p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450;max-width:44ch">Напишите или позвоните. Разберём состав работ и назовём срок, выполнимый к вашей дате.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#3D4450;max-width:44ch">Напишите или позвоните. Разберём состав работ и назовём срок, выполнимый к вашей дате.</p>
 <div style="margin-top:8px;display:flex;flex-direction:column;gap:2px">
 <a href="tel:+74954564323" style="display:flex;align-items:center;min-height:44px;gap:10px;font-size:15px;line-height:1.4;font-weight:600;color:#14161C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#14417A;-webkit-mask:{{ phoneMask }};mask:{{ phoneMask }}"></span> +7 495 456 43 23</a>
 <a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:14px;line-height:1.5;color:#3D4450;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#14417A;-webkit-mask:{{ mailMask }};mask:{{ mailMask }}"></span>info.prodisser@gmail.com</a>
@@ -579,7 +580,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span>{{ f.q }}</span>
 <span aria-hidden="true" style="width:16px;height:2px;flex:0 0 16px;background:#14161C;border-radius:999px"></span>
 </button>
-<p style="margin:0;padding:14px 20px 18px;font-size:13px;line-height:1.6;color:#3D4450">{{ f.a }}</p>
+<p style="margin:0;padding:14px 20px 18px;font-size:14px;line-height:1.6;color:#3D4450">{{ f.a }}</p>
 </div>
 </sc-if>
 <sc-if value="{{ f.closed }}" hint-placeholder-val="{{ true }}">
@@ -599,7 +600,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Заявка</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:32ch;text-wrap:balance">Пришлите тему и срок — оценим объём работ</h2>
 </div>
-<span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Отвечаем Пн—Пт, 10:00—19:00</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Отвечаем Пн—Пт, 10:00—19:00</span>
 </div>
 <div class="sp-req" style="gap:16px;align-items:stretch">
 <form onSubmit="{{ submitMain }}" style="border:1px solid #E3E7EC;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:12px">
@@ -628,17 +629,17 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <label for="rq-contact" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Контакт для связи
 <input id="rq-contact" name="contact" type="{{ contactTypeBottom }}" autocomplete="{{ contactAutoBottom }}" required="{{ true }}" placeholder="{{ contactPlaceholderBottom }}" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#14161C;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#14417A;box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
-<label for="rq-consent" style="display:flex;min-height:36px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#5C6474;cursor:pointer"><input id="rq-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#14417A;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#0F3260">согласие на обработку персональных данных</a></span></label>
+<label for="rq-consent" style="display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:#5C6474;cursor:pointer"><input id="rq-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#14417A;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#0F3260">согласие на обработку персональных данных</a></span></label>
 <button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:#14161C;color:#FFFFFF;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#262A33" style-active="transform:scale(.97)">Отправить заявку</button>
 <sc-if value="{{ sentMain }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="-1" data-sent="main" style="display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #D8E4F3;border-radius:10px;padding:12px 16px">
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:#0E4E3C;-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
-<span style="font-size:13px;line-height:1.5;color:#0E4E3C">Заявка принята. Ответим в рабочее время и предложим время консультации.</span>
+<span style="font-size:14px;line-height:1.5;color:#0E4E3C">Заявка принята. Ответим в рабочее время и предложим время консультации.</span>
 </div>
 </sc-if>
 <sc-if value="{{ errorMain }}" hint-placeholder-val="{{ false }}">
 <div role="alert" style="display:flex;gap:8px;align-items:flex-start;background:#FAE7E5;border:1px solid #F0C9C3;border-radius:10px;padding:12px 16px">
-<span style="font-size:13px;line-height:1.5;color:#8E2C22">{{ errorMain }}</span>
+<span style="font-size:14px;line-height:1.5;color:#8E2C22">{{ errorMain }}</span>
 </div>
 </sc-if>
 </form>
@@ -659,7 +660,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.05em;color:#14417A;padding-top:2px">{{ s.num }}</span>
 <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
 <span style="font-size:13px;line-height:1.4;font-weight:600;color:#14161C">{{ s.title }}</span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">{{ s.text }}</span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">{{ s.text }}</span>
 </span>
 </div>
 </sc-for>
@@ -675,27 +676,27 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;min-width:0">
 <a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:0 -10px;border-radius:10px;text-decoration:none;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:21px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:#14417A">PRO</span><span style="color:#14161C">DISSER</span></a>
 <a href="tel:+74954564323" style="display:inline-flex;align-items:center;min-height:44px;font-size:15px;font-weight:500;color:#14161C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">+7 495 456 43 23</a>
-<a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#3D4450">info.prodisser@gmail.com</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#3D4450">info.prodisser@gmail.com</a>
 </span>
 <span style="display:flex;align-items:center;gap:12px;min-width:0">
-<span style="font-size:13px;line-height:1.5;color:#5C6474">Пишите в телеграм — отвечаем в рабочее время</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474">Пишите в телеграм — отвечаем в рабочее время</span>
 <a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid #E3E7EC;border-radius:12px;background:#FFFFFF;transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#14417A;background:#F6F7F9" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
 </span>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
 <span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
-<a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Публичная оферта</a>
-<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Политика конфиденциальности</a>
-<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Обработка персональных данных</a>
+<a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Публичная оферта</a>
+<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Политика конфиденциальности</a>
+<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Обработка персональных данных</a>
 </span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.02em;color:#5C6474">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.02em;color:#5C6474">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:8px">
-<span style="font-size:13px;line-height:1.6;color:#5C6474">© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
+<span style="font-size:14px;line-height:1.6;color:#5C6474">© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
 <span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Другие направления</span>
-<a href="./main.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Аспирантам и соискателям</a>
-<a href="./business.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Компаниям и коллективам</a>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Другие направления</span>
+<a href="./main.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Аспирантам и соискателям</a>
+<a href="./business.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Компаниям и коллективам</a>
 </span>
 </div>
 </footer>

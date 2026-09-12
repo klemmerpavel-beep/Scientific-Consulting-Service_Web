@@ -20,7 +20,8 @@
 @media (max-width:480px){.pd-pad{padding-left:20px!important;padding-right:20px!important}.pd-7{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
    поэтому приглушение объявлено важным. */
-button[disabled]{opacity:.55!important;cursor:progress!important}
+button[disabled]{opacity:.7!important;cursor:progress!important}
+input::placeholder,textarea::placeholder{color:#5C6474;opacity:1}
 /* Подтверждение и ошибка появляются плавно, а не возникают рывком.
    Правило срабатывает при вставке элемента, поэтому блоки, которые уже
    на странице, ничего не переигрывают при обновлении содержимого. */
