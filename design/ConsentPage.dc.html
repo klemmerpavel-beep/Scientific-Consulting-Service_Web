@@ -32,7 +32,7 @@ input::placeholder,textarea::placeholder{color:#5C6474;opacity:1}
    на странице, ничего не переигрывают при обновлении содержимого. */
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 [role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}</style>
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}</style>
 </helmet>
 <div style="position:relative;background:#FFFFFF;color:#14161C;font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased">
 <a class="pd-skip" href="#main">Перейти к тексту документа</a>

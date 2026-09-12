@@ -22,7 +22,7 @@ input::placeholder,textarea::placeholder{color:#5C6474;opacity:1}
    на странице, ничего не переигрывают при обновлении содержимого. */
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 [role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .x1:hover{background:rgba(180,201,229,.34) !important}
 .x2:hover{border-color:#D8E4F3 !important}
 .x3:active{opacity:.82 !important}
