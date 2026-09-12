@@ -1,0 +1,90 @@
+Copyright (c) 2026 ООО «РУСДРОН» (ProDisser). Все права защищены.
+Copyright (c) 2026 OOO RUSDRON (ProDisser). All rights reserved.
+
+================================================================================
+УСЛОВИЯ ИСПОЛЬЗОВАНИЯ (русский текст имеет преимущественную силу)
+================================================================================
+
+Исходный код, макеты, тексты, изображения и документация настоящего
+репозитория открыты для просмотра и изучения. Это не делает их свободным
+программным обеспечением.
+
+РАЗРЕШАЕТСЯ без отдельного согласия правообладателя:
+
+  1. Просматривать, читать и изучать содержимое репозитория.
+  2. Создавать локальную копию для ознакомления и проверки работоспособности.
+  3. Цитировать фрагменты кода в объёме, оправданном целью цитирования, со
+     ссылкой на источник.
+  4. Сообщать об ошибках и уязвимостях в порядке, описанном в SECURITY.md.
+
+НЕ РАЗРЕШАЕТСЯ без предварительного письменного согласия правообладателя:
+
+  1. Использовать содержимое репозитория или его часть в собственных
+     продуктах, услугах и проектах, в том числе некоммерческих.
+  2. Копировать, распространять, публиковать и доводить до всеобщего
+     сведения содержимое репозитория или его часть.
+  3. Создавать производные произведения, включая переработку макетов,
+     оформления и текстов.
+  4. Использовать обозначение «ProDisser», фирменный стиль, палитру и
+     шрифтовые решения проекта для обозначения сторонних продуктов и услуг.
+
+ОТДЕЛЬНО. Тексты публичной оферты, политики обработки персональных данных и
+согласия на обработку персональных данных (`design/OfferPage.dc.html`,
+`design/PrivacyPage.dc.html`, `design/ConsentPage.dc.html` и порождённые из
+них компоненты) — юридические документы конкретного юридического лица. Их
+копирование и использование другим лицом не только нарушает настоящие
+условия, но и создаёт риск для самого копирующего: документы содержат
+реквизиты, обязательства и сведения, относящиеся исключительно к
+ООО «РУСДРОН».
+
+ПРАВА ТРЕТЬИХ ЛИЦ. В репозитории использованы материалы под собственными
+лицензиями. Их перечень и условия — в файле NOTICE. Настоящие условия на них
+не распространяются.
+
+ОТСУТСТВИЕ ГАРАНТИЙ. Содержимое предоставляется «как есть», без каких-либо
+гарантий, явных или подразумеваемых, включая гарантии пригодности для
+определённой цели. Правообладатель не несёт ответственности за любой ущерб,
+возникший в связи с использованием содержимого.
+
+За разрешением на использование обращайтесь: info.prodisser@gmail.com.
+
+================================================================================
+TERMS OF USE (English translation; the Russian text prevails)
+================================================================================
+
+The source code, layouts, texts, images and documentation in this repository
+are available for reading and study. This does not make them free or
+open-source software.
+
+PERMITTED without separate consent of the rights holder:
+
+  1. Viewing, reading and studying the contents of the repository.
+  2. Making a local copy for review and verification.
+  3. Quoting fragments of the code to the extent justified by the purpose of
+     the quotation, with attribution.
+  4. Reporting bugs and vulnerabilities as described in SECURITY.md.
+
+NOT PERMITTED without prior written consent of the rights holder:
+
+  1. Using the contents of the repository, in whole or in part, in your own
+     products, services or projects, including non-commercial ones.
+  2. Copying, distributing, publishing or making the contents available to
+     the public, in whole or in part.
+  3. Creating derivative works, including reworking of layouts, visual
+     design and texts.
+  4. Using the "ProDisser" name, visual identity, colour palette or
+     typographic decisions to designate third-party products or services.
+
+SEPARATELY. The public offer, the personal data processing policy and the
+consent to personal data processing are legal documents of a specific legal
+entity. Copying them exposes the copier to risk: they contain company
+details and obligations that apply solely to OOO RUSDRON.
+
+THIRD-PARTY RIGHTS. This repository includes third-party material under its
+own licences, listed in the NOTICE file. These terms do not apply to it.
+
+NO WARRANTY. The contents are provided "as is", without warranty of any kind,
+express or implied, including warranties of fitness for a particular purpose.
+The rights holder is not liable for any damage arising from their use.
+
+For permission to use, contact: info.prodisser@gmail.com

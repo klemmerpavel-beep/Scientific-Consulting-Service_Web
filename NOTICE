@@ -1,0 +1,108 @@
+Материалы третьих лиц, использованные в проекте ProDisser
+Third-party material used in the ProDisser project
+
+Условия использования самого проекта — в файле LICENSE. Перечисленное ниже
+принадлежит другим правообладателям и распространяется на их условиях;
+условия LICENSE на эти материалы не распространяются.
+
+================================================================================
+1. ЗНАЧКИ LUCIDE
+================================================================================
+
+Двадцать шесть значков общего назначения в каталогах
+`app/public/assets/icons/` и `design/assets/icons/` основаны на наборе Lucide
+(https://lucide.dev). Толщина штриха изменена на 1.5 для согласования с
+насыщенностью текста; изменение является переработкой, допускаемой обеими
+лицензиями ниже.
+
+Шестнадцать значков с префиксом `pd-` — собственная разработка проекта и
+подпадают под условия LICENSE, а не настоящего раздела.
+
+--------------------------------------------------------------------------------
+1.1. Значки под лицензией MIT (производные от проекта Feather)
+
+Девять из использованных значков входят в перечень Feather, приведённый в
+лицензии Lucide: arrow-down, arrow-left, arrow-right, check, clock,
+external-link, frown, help-circle, x-circle.
+
+The MIT License (MIT)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+1.2. Остальные значки Lucide — лицензия ISC
+
+Семнадцать значков: award, calendar-days, clipboard-list, file-text,
+flask-conical, mail, message-circle, pencil-line, phone, refresh-cw, scale,
+send, shield, shield-check, square-check, star, users.
+
+ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+================================================================================
+2. ШРИФТЫ
+================================================================================
+
+Файлы шрифтов в репозитории не хранятся: гарнитуры подключаются на этапе
+сборки через `next/font/google` и попадают только в собранный сайт.
+
+  Literata      — SIL Open Font License 1.1, © Type Network
+  Inter         — SIL Open Font License 1.1, © The Inter Project Authors
+  JetBrains Mono — SIL Open Font License 1.1, © JetBrains s.r.o.
+
+Лицензия OFL допускает встраивание шрифтов в веб-страницы. Полные тексты —
+на страницах гарнитур в каталоге Google Fonts.
+
+================================================================================
+3. ЗАВИСИМОСТИ
+================================================================================
+
+Пакеты npm, перечисленные в `app/package.json`, распространяются на условиях
+собственных лицензий их правообладателей и в репозитории не хранятся —
+устанавливаются командой `npm ci` из реестра. Перечень с версиями и
+лицензиями получается командой:
+
+  cd app && npm ls --all --long | grep -i license
+
+================================================================================
+4. ИЗОБРАЖЕНИЯ
+================================================================================
+
+Изображения в `app/public/photos/`, `app/public/assets/art/` и
+`app/public/assets/crew/` созданы средствами генеративных моделей по заказу
+ООО «РУСДРОН» (решения Р-53, Р-69, Р-70, Р-78 в журнале решений). Права на
+них заявляются правообладателем проекта; условия — в файле LICENSE.
+
+Изображения людей синтезированы и не изображают конкретных лиц. Подпись под
+каждым — только роль, без имени.
