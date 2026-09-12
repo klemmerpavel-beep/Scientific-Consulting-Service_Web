@@ -31,7 +31,7 @@
  * зафиксированы решением Р-53.
  */
 
-export type Photo = {
+type Photo = {
   src: string;
   /** Размеры файла: без них браузер не резервирует место под снимок */
   width: number;
@@ -40,7 +40,7 @@ export type Photo = {
   position: string;
 };
 
-export type Slot = { photo: Photo };
+type Slot = { photo: Photo };
 
 const CURATOR: Photo = {
   src: '/photos/curator.webp', width: 480, height: 480, position: 'center 38%',

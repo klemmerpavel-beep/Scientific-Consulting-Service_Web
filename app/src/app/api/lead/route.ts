@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../lib/db';
 import { deliver } from '../../../lib/notify';
-import { CONSENT_VERSION, leadSchema, looksAutomated } from '../../../lib/lead-schema';
+import { CONSENT_VERSION, RATE_LIMIT_MESSAGE, leadSchema, looksAutomated } from '../../../lib/lead-schema';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
   if (rateLimited(ip)) {
     return NextResponse.json(
-      { ok: false, message: 'Слишком много попыток подряд. Подождите минуту и отправьте снова.' },
+      { ok: false, message: RATE_LIMIT_MESSAGE },
       { status: 429 },
     );
   }

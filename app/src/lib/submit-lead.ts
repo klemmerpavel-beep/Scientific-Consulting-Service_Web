@@ -1,6 +1,6 @@
 'use client';
 
-import { FIELD_LABELS } from './lead-schema';
+import { FIELD_LABELS, RATE_LIMIT_MESSAGE } from './lead-schema';
 
 /**
  * Отправка заявки из формы, перенесённой из макета.
@@ -10,14 +10,6 @@ import { FIELD_LABELS } from './lead-schema';
  * оборачивается — данные собираются прямо из формы по атрибутам name, поэтому
  * добавление поля в макет не требует правок здесь.
  */
-
-export type SubmitState = {
-  pending: boolean;
-  error: string | null;
-  fieldErrors: Record<string, string>;
-};
-
-export const emptyState: SubmitState = { pending: false, error: null, fieldErrors: {} };
 
 /**
  * Момент, когда страница ожила в браузере. Разница до отправки отличает
@@ -121,9 +113,15 @@ export async function submitLead(
     };
   }
 
-  let body: any = null;
+  type LeadResponse = {
+    ok?: boolean;
+    id?: string;
+    message?: string;
+    errors?: Record<string, string>;
+  };
+  let body: LeadResponse | null = null;
   try {
-    body = await res.json();
+    body = (await res.json()) as LeadResponse;
   } catch {
     /* тело может быть пустым — сообщение соберём по коду ответа */
   }
@@ -146,7 +144,7 @@ export async function submitLead(
       listed ||
       body?.message ||
       (res.status === 429
-        ? 'Слишком много попыток подряд. Подождите минуту.'
+        ? RATE_LIMIT_MESSAGE
         : 'Не удалось отправить заявку. Попробуйте ещё раз или напишите нам на почту.'),
     fieldErrors,
   };

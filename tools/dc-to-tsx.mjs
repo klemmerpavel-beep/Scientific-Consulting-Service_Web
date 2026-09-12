@@ -164,7 +164,7 @@ function renderAttrs(attrs, ctx) {
     if (name === 'class') { className = rawValue || ''; continue; }
 
     const reactName = ATTR_MAP[name] || ATTR_MAP[rawName] ||
-      (/^(data-|aria-)/.test(name) ? rawName : (rawName.includes('-') ? rawName : rawName));
+      rawName;
 
     if (rawValue === null) { out.push(`${reactName}={true}`); continue; }
 
@@ -364,7 +364,6 @@ if (!inFile || !outFile || !componentName) {
 
 const src = fs.readFileSync(inFile, 'utf8');
 const { tpl, styles, logic, head } = parseDc(src);
-hoverRules = new Map(); hoverSeq = 0; loopVars = []; idxNames = []; usedRoots.clear();
 
 const jsx = convert(tpl.trim(), path.basename(inFile));
 

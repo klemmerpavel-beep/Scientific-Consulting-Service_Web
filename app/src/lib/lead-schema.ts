@@ -9,8 +9,17 @@ import { z } from 'zod';
  */
 export const CONSENT_VERSION = '2026-08-21';
 
+/**
+ * Сообщение об ограничении частоты. Живёт рядом со схемой, потому что его
+ * показывают оба конца: сервер отдаёт его в ответе 429, клиент подставляет,
+ * если тело ответа не прочиталось. Две редакции одного текста в двух файлах
+ * расходились при первой же правке.
+ */
+export const RATE_LIMIT_MESSAGE =
+  'Слишком много попыток подряд. Подождите минуту и отправьте снова.';
+
 /** Страницы, с которых приходят заявки */
-export const SOURCES = ['landing', 'postgrad', 'students', 'business'] as const;
+const SOURCES = ['landing', 'postgrad', 'students', 'business'] as const;
 
 const trimmed = (max: number) => z.string().trim().max(max);
 

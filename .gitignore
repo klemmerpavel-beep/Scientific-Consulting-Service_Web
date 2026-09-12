@@ -17,9 +17,32 @@ app/src/generated/
 .env.*
 !*.example
 
+# Резервные копии базы. backup.sh кладёт сюда дампы таблицы заявок, то есть
+# персональные данные заявителей. Каталог должен существовать в репозитории
+# (иначе docker-compose не смонтирует том), но его содержимое не должно
+# попасть в историю ни при каком `git add`.
+deploy/backups/*
+!deploy/backups/.gitkeep
+
 # Служебное
 *.log
 .DS_Store
+Thumbs.db
 shots/
 appshots/
 tools/vendor/
+
+# Каталог с именем undefined появляется, когда в путь записи подставляется
+# неопределённая переменная. Это всегда мусор.
+undefined/
+
+# Локальные настройки редакторов и отчёты инструментов
+.vscode/
+.idea/
+*.swp
+coverage/
+playwright-report/
+test-results/
+*.bak
+*.orig
+*.tmp
