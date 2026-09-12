@@ -1,8 +1,7 @@
 import type { MetadataRoute } from 'next';
+import { siteUrl } from '../lib/site-url';
 
 export const dynamic = 'force-dynamic';
-
-const base = () => process.env.NEXT_PUBLIC_SITE_URL;
 
 export default function robots(): MetadataRoute.Robots {
   // Демонстрационный стенд закрывается целиком: временный адрес не должен
@@ -11,8 +10,9 @@ export default function robots(): MetadataRoute.Robots {
     return { rules: [{ userAgent: '*', disallow: '/' }] };
   }
 
+  const base = siteUrl();
   return {
     rules: [{ userAgent: '*', allow: '/', disallow: ['/api/'] }],
-    sitemap: base() ? `${base()}/sitemap.xml` : undefined,
+    sitemap: base ? `${base}/sitemap.xml` : undefined,
   };
 }

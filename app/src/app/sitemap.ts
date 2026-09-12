@@ -1,8 +1,7 @@
 import type { MetadataRoute } from 'next';
+import { siteUrl } from '../lib/site-url';
 
 export const dynamic = 'force-dynamic';
-
-const base = () => process.env.NEXT_PUBLIC_SITE_URL ?? '';
 
 // Правовые документы в карте сайта нужны: на них ссылаются формы,
 // и поисковику полезно видеть, что условия опубликованы.
@@ -17,9 +16,14 @@ const PAGES: { path: string; priority: number }[] = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
+  const base = siteUrl();
+  // Без адреса сайта карту составить нечем: относительные ссылки делают
+  // sitemap.xml недействительным целиком. Пустая карта честнее битой.
+  if (!base) return [];
+
   const now = new Date();
   return PAGES.map(({ path, priority }) => ({
-    url: `${base()}${path}`,
+    url: `${base}${path === '/' ? '/' : path}`,
     lastModified: now,
     changeFrequency: priority === 1 ? 'weekly' : 'monthly',
     priority,

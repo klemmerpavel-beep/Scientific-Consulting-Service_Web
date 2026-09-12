@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { siteUrl } from '../lib/site-url';
 import { Literata, Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import SiteMotion from '../components/SiteMotion';
@@ -38,8 +39,8 @@ const mono = JetBrains_Mono({
 const demoStand = process.env.NEXT_PUBLIC_DEMO_STAND === '1';
 
 export const metadata: Metadata = {
-  metadataBase: process.env.NEXT_PUBLIC_SITE_URL
-    ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
+  metadataBase: siteUrl()
+    ? new URL(siteUrl() as string)
     : undefined,
   applicationName: 'ProDisser',
   authors: [{ name: 'ООО «РУСДРОН»' }],

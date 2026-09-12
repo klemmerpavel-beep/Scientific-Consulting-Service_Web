@@ -8,7 +8,7 @@ import type { Lead } from './lead-schema';
  * записывается в журнал доставок и виден в админ-панели.
  */
 
-export type DeliveryResult = { channel: string; ok: boolean; error?: string };
+type DeliveryResult = { channel: string; ok: boolean; error?: string };
 
 const SOURCE_NAMES: Record<string, string> = {
   landing: 'Посадочная',

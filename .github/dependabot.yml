@@ -1,0 +1,26 @@
+# Обновления зависимостей приходят запросом на слияние, а не находятся
+# вручную при проверке перед выпуском. Проверка Р-88 нашла критическую
+# уязвимость Next и четыре высоких в nodemailer, накопившиеся за три недели;
+# здесь такие обновления приходят сами.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /app
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Мелкие обновления одной пачкой: пять запросов в неделю на патчи
+      # никто читать не станет.
+      patch-and-minor:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "Зависимости"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "Действия CI"

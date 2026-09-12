@@ -5,6 +5,15 @@ on:
     branches: [main]
   pull_request:
 
+# Задача только собирает проект и сверяет диффы — записывать ей нечего.
+permissions:
+  contents: read
+
+# Быстрые пуши в ветку не должны копить параллельные прогоны.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -53,3 +62,13 @@ jobs:
           done
           git diff --exit-code -- app/src/components/pages \
             || { echo "::error::Сгенерированные компоненты разошлись с макетами. Правьте макет и переносите заново."; exit 1; }
+
+      # Иконки и иллюстрации лежат в двух местах: макеты берут их из
+      # design/assets, приложение — из app/public/assets. Каталоги
+      # синхронизируются вручную, поэтому расхождение ловим здесь, а не
+      # на боевой странице с пустым квадратом вместо картинки.
+      - name: Наборы ассетов синхронны
+        working-directory: .
+        run: |
+          diff -r design/assets app/public/assets \
+            || { echo "::error::design/assets и app/public/assets разошлись. Синхронизируйте каталоги."; exit 1; }

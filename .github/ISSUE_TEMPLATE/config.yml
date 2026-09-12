@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Сообщение об уязвимости
+    url: https://github.com/klemmerpavel-beep/Scientific-Consulting-Service_Web/blob/main/SECURITY.md
+    about: Уязвимости не публикуются в задачах — порядок описан в SECURITY.md
