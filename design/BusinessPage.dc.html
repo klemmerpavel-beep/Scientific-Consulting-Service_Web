@@ -217,6 +217,19 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
+<section aria-label="Направления работ — бегущая строка, останавливается при наведении и фокусе" tabindex="0" class="bp-ticker" style="position:relative;z-index:1;margin:clamp(80px,7vw,112px) 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
+<div class="bp-run" style="display:flex;width:max-content;gap:52px;padding-right:52px;animation:bp-marquee-l 46s linear infinite">
+<sc-for list="{{ tickerA }}" as="t" hint-placeholder-count="12">
+<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
+</sc-for>
+</div>
+<div class="bp-run" style="display:flex;width:max-content;gap:52px;padding-right:52px;margin-top:16px;animation:bp-marquee-r 52s linear infinite">
+<sc-for list="{{ tickerB }}" as="t" hint-placeholder-count="12">
+<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
+</sc-for>
+</div>
+</section>
+
 <section class="bp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
 <div class="bp-team" style="gap:40px;align-items:center">
 <div style="display:flex;flex-direction:column;gap:24px">
@@ -298,19 +311,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="bp-dot" style="position:absolute;left:71.581%;top:68.000%;width:15px;height:15px;border-radius:50%;background:var(--pd-accent);display:flex;align-items:center;justify-content:center"><span style="width:4.4px;height:4.4px;border-radius:50%;background:var(--pd-ink-inverse);display:block"></span></div>
 </div>
 </div></section>
-
-<section aria-label="Направления работ — бегущая строка, останавливается при наведении и фокусе" tabindex="0" class="bp-ticker" style="position:relative;z-index:1;margin:clamp(80px,7vw,112px) 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
-<div class="bp-run" style="display:flex;width:max-content;gap:52px;padding-right:52px;animation:bp-marquee-l 46s linear infinite">
-<sc-for list="{{ tickerA }}" as="t" hint-placeholder-count="12">
-<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
-</sc-for>
-</div>
-<div class="bp-run" style="display:flex;width:max-content;gap:52px;padding-right:52px;margin-top:16px;animation:bp-marquee-r 52s linear infinite">
-<sc-for list="{{ tickerB }}" as="t" hint-placeholder-count="12">
-<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
-</sc-for>
-</div>
-</section>
 
 <section id="trl" class="bp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
