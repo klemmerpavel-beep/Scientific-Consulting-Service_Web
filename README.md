@@ -23,7 +23,9 @@
 | Сообщение об уязвимости | [SECURITY.md](SECURITY.md) |
 | Размещение на сервере | [docs/DEPLOY.md](docs/DEPLOY.md) |
 | План работ | [docs/PLAN.md](docs/PLAN.md) |
-| Журнал решений | [docs/DECISIONS.md](docs/DECISIONS.md) |
+| Свод решений | [docs/DECISIONS-SUMMARY.md](docs/DECISIONS-SUMMARY.md) |
+| Полный журнал решений | [docs/DECISIONS.md](docs/DECISIONS.md) |
+| Покупка хостинга и запуск | [docs/HOSTING.md](docs/HOSTING.md) |
 
 ## Состояние
 
@@ -170,6 +172,8 @@ design/         макеты Claude Design — источник вида и по
 deploy/         развёртывание: compose, прокси, резервные копии
 docs/           решения, план работ, дизайн-система, размещение
   DESIGN-SYSTEM.md   действующая дизайн-система и её долг
+  DECISIONS-SUMMARY.md  свод решений по существу
+  HOSTING.md         покупка хостинга и запуск, шаг за шагом
   briefs/            задания на дизайн кабинета и админ-панели
 tools/          dc-to-tsx.mjs — перенос макетов в код
 ```
