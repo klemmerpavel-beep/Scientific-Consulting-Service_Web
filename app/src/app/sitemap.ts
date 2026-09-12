@@ -16,6 +16,11 @@ const PAGES: { path: string; priority: number }[] = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
+  // Демонстрационный стенд закрыт в robots.txt целиком; карта, которая при
+  // этом перечисляет его страницы, противоречит запрету и подсказывает
+  // роботу адреса, которые тот не должен обходить.
+  if (process.env.NEXT_PUBLIC_DEMO_STAND === '1') return [];
+
   const base = siteUrl();
   // Без адреса сайта карту составить нечем: относительные ссылки делают
   // sitemap.xml недействительным целиком. Пустая карта честнее битой.
