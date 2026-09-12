@@ -25,7 +25,7 @@
    означает правку в сотнях мест. Роли токенов — docs/DESIGN-SYSTEM.md,
    раздел 2. Цвета внутри атрибутов SVG остаются литералами: var() в
    презентационном атрибуте не работает. */
-:root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;--pd-ink-inverse:#FFFFFF;--pd-border:#E3E7EC;--pd-divider:#EFF1F4;--pd-surface-quiet:#F6F7F9;--pd-edge-neutral:#C4CAD4;--pd-accent:#14417A;--pd-accent-press:#0F3260;--pd-accent-deep:#0D2B52;--pd-accent-mark:#D8E4F3;--pd-accent-edge:#B4C9E5;--pd-accent-tint:#ECF1F8;--pd-button-hover:#262A33;--pd-accent-hover:#0A2145;--pd-accent-active:#081A38;--pd-ok-bg:#E6F9F1;--pd-ok-ink:#0E4E3C;--pd-err-bg:#FAE7E5;--pd-err-border:#F0C9C3;--pd-err-ink:#8E2C22}
+:root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;--pd-ink-inverse:#FFFFFF;--pd-border:#E3E7EC;--pd-divider:#EFF1F4;--pd-surface-quiet:#F6F7F9;--pd-edge-neutral:#C4CAD4;--pd-accent:#14417A;--pd-accent-press:#0F3260;--pd-accent-deep:#0D2B52;--pd-accent-mark:#D8E4F3;--pd-accent-edge:#B4C9E5;--pd-accent-tint:#ECF1F8;--pd-button-hover:#262A33;--pd-accent-hover:#0A2145;--pd-accent-active:#081A38;--pd-ok-bg:#E6F9F1;--pd-ok-ink:#0E4E3C;--pd-err-bg:#FAE7E5;--pd-err-border:#F0C9C3;--pd-err-ink:#8E2C22;--pd-ok-border:#C5EEDD;--pd-accent-soft:#2A63B4;--pd-art-line:#E5EBF2;--pd-art-mark:#D3DEEC;--pd-art-dot:#D8DEE6}
 
 .bp-nav{display:flex;align-items:center;gap:24px}
 .bp-burger{display:none}
@@ -113,9 +113,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <circle cx="470" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="96" r="4" fill="#D8E4F3"></circle>
 </svg>
-<div style="position:absolute;left:0;right:0;top:0;height:1100px;background-image:radial-gradient(#D8DEE6 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
-<div style="position:absolute;top:0;bottom:0;left:max(30px,calc(50% - 610px + 30px));width:1px;background:#E5EBF2"></div>
-<div style="position:absolute;top:0;bottom:0;right:max(30px,calc(50% - 610px + 30px));width:1px;background:#E5EBF2"></div>
+<div style="position:absolute;left:0;right:0;top:0;height:1100px;background-image:radial-gradient(var(--pd-art-dot) 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
+<div style="position:absolute;top:0;bottom:0;left:max(30px,calc(50% - 610px + 30px));width:1px;background:var(--pd-art-line)"></div>
+<div style="position:absolute;top:0;bottom:0;right:max(30px,calc(50% - 610px + 30px));width:1px;background:var(--pd-art-line)"></div>
 </div>
 
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
@@ -169,7 +169,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <label for="bp-consent-top" style="grid-column:span 2;display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="bp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
 <button type="submit" disabled="{{ pending }}" style="grid-column:span 2;justify-self:start;appearance:none;border:0;cursor:pointer;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Оставить заявку</button>
 <sc-if value="{{ sentTop }}" hint-placeholder-val="{{ false }}">
-<div role="status" tabindex="{{ -1 }}" data-sent="top" style="grid-column:span 2;display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-accent-mark);border-radius:10px;padding:12px 16px">
+<div role="status" tabindex="{{ -1 }}" data-sent="top" style="grid-column:span 2;display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята. Ответим в рабочее время, Пн—Пт 10:00—19:00.</span>
 </div>
 </sc-if>
@@ -199,15 +199,15 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="bp-support" style="gap:12px;padding-top:8px">
 <a href="#catalog" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:16px;min-height:116px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-hover);border-color:var(--pd-accent-hover)" style-active="background:var(--pd-accent-active)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink-inverse)">52 позиции</span>
-<span style="font-size:14px;line-height:1.5;color:#CFDDEE">в семи направлениях — каталог открыт целиком, без заявки</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-accent-edge)">в семи направлениях — каталог открыт целиком, без заявки</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Каталог работ<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent-edge);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
-<a href="#trl" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid #D0DDEE;border-radius:14px;padding:16px;min-height:116px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark);border-color:var(--pd-accent)" style-active="background:#D0DDEE">
+<a href="#trl" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:16px;min-height:116px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark);border-color:var(--pd-accent)" style-active="background:var(--pd-accent-mark)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">9 уровней</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">готовности технологии по ГОСТ Р 58048-2017</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Шкала УГТ<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
-<a href="#packs" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:116px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FAFBFC;border-color:var(--pd-accent)" style-active="background:var(--pd-surface-quiet)">
+<a href="#packs" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:116px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet);border-color:var(--pd-accent)" style-active="background:var(--pd-surface-quiet)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">5 пакетов</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">от техзадания до постановки прав на баланс</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Предложения и сроки<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
@@ -239,7 +239,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="bp-orbit" style="justify-self:stretch;position:relative;width:100%;aspect-ratio:648.388 / 650">
 <div style="position:absolute;left:0;top:0;width:98.482%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(216,228,243,.62) 0%,rgba(180,201,229,.16) 58%,rgba(255,255,255,0) 74%)"></div>
 <div class="bp-ring" style="position:absolute;left:18.969%;top:19.385%;width:60.547%;height:61.231%;border-radius:50%;border:1px dashed var(--pd-accent-mark);box-sizing:border-box"></div>
-<div class="bp-ring" style="position:absolute;left:12.747%;top:13.077%;width:73.142%;height:74.000%;border-radius:50%;border:1px dashed #D3DEEC;box-sizing:border-box"></div>
+<div class="bp-ring" style="position:absolute;left:12.747%;top:13.077%;width:73.142%;height:74.000%;border-radius:50%;border:1px dashed var(--pd-art-mark);box-sizing:border-box"></div>
 <div class="bp-ring" style="position:absolute;left:7.284%;top:7.385%;width:84.067%;height:85.231%;border-radius:50%;border:1px dashed var(--pd-border);box-sizing:border-box"></div>
 <div class="bp-core" style="position:absolute;left:34.559%;top:35.026%;width:29.531%;height:30.101%;border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:flex;align-items:center;justify-content:center">
 <div style="width:76%;display:flex;flex-direction:column;gap:8px;align-items:center">
@@ -615,7 +615,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <label for="bp-consent" style="display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="bp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
 <button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;margin-top:10px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Отправить заявку</button>
 <sc-if value="{{ sentMain }}" hint-placeholder-val="{{ false }}">
-<div role="status" tabindex="-1" data-sent="main" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-accent-mark);border-radius:10px;padding:12px 16px">
+<div role="status" tabindex="-1" data-sent="main" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята. Пришлём NDA и предложим время установочной сессии.</span>
 </div>
 </sc-if>
@@ -875,7 +875,7 @@ class Component extends DCLogic {
       titleColor: num === sel ? 'var(--pd-ink)' : 'var(--pd-ink-muted)',
       // Точка на дорожке: пройденные уровни залиты акцентом, выбранный
       // получает кольцо, будущие остаются серыми.
-      dot: num < sel ? 'var(--pd-accent)' : num === sel ? 'var(--pd-ink-inverse)' : '#DDE2E9',
+      dot: num < sel ? 'var(--pd-accent)' : num === sel ? 'var(--pd-ink-inverse)' : 'var(--pd-border)',
       dotRing: num === sel ? '3px solid var(--pd-accent)' : '0',
       dotSize: num === sel ? '14px' : '10px',
       // Центр точки садится на дорожку: она проходит на 23,5 пикселя от верха
@@ -1044,7 +1044,7 @@ class Component extends DCLogic {
           icon: "url('./assets/icons/" + icon + ".svg') center/contain no-repeat",
           bg: lead ? 'var(--pd-accent-deep)' : 'var(--pd-ink-inverse)',
           border: lead ? 'var(--pd-accent-deep)' : 'var(--pd-border)',
-          edge: lead ? 'var(--pd-accent)' : ['var(--pd-accent-mark)', 'var(--pd-accent-edge)', '#EDF2F8'][i % 3],
+          edge: lead ? 'var(--pd-accent)' : ['var(--pd-accent-mark)', 'var(--pd-accent-edge)', 'var(--pd-accent-tint)'][i % 3],
           iconBg: lead ? 'rgba(255,255,255,.14)' : 'var(--pd-accent-tint)',
           ink: lead ? 'var(--pd-ink-inverse)' : 'var(--pd-accent)',
           title: lead ? 'var(--pd-ink-inverse)' : 'var(--pd-ink)',
