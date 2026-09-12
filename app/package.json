@@ -16,7 +16,7 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "dotenv": "^17.4.2",
-    "next": "^15.5.25",
+    "next": "^16.3.4",
     "nodemailer": "^10.0.9",
     "pg": "^8.23.0",
     "prisma": "^7.10.0",
