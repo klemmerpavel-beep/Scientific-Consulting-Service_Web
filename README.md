@@ -11,7 +11,7 @@
 — семь страниц со всеми переходами, без сервера: заявки не отправляются,
 персональные данные не сохраняются.
 
-> Website of a Russian academic-consulting service. Next.js 15 + React 19,
+> Website of a Russian academic-consulting service. Next.js 16 + React 19,
 > Prisma 7 + PostgreSQL. Pages are generated from `design/*.dc.html` layouts
 > by `tools/dc-to-tsx.mjs` and must not be edited by hand — see
 > [CONTRIBUTING.md](CONTRIBUTING.md). Documentation is in Russian.
@@ -72,7 +72,7 @@
 `accepted/photos-2026-09-09`. **Страница «Аспирантам» принята 09.09.2026** —
 решение Р-85; закреплена веткой `accepted/postgrad-2026-09-09`. Приняты все
 четыре содержательные страницы; правовые остаются в состоянии «Проект
-документа» до согласования юристом. Путь работ: решения Р-51…Р-91 в
+документа» до согласования юристом. Путь работ: решения Р-51…Р-92 в
 `docs/DECISIONS.md`, дальнейшая работа — `docs/PLAN.md`.
 
 **Проверено на текущем состоянии** (09.09.2026, правки А9). Семь страниц на
@@ -160,7 +160,7 @@ npm run build:preview # статическая витрина
 ## Состав репозитория
 
 ```
-app/            приложение Next.js 15 + React 19
+app/            приложение Next.js 16 + React 19
   src/app/           маршруты, приём заявок, проверка живости
   src/components/    страницы, перенесённые из макетов
   src/lib/           разбор заявки, база, доставка
