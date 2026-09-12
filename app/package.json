@@ -13,23 +13,23 @@
     "build:preview": "node scripts/build-preview.mjs"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.9.1",
-    "@prisma/client": "^7.9.1",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
     "dotenv": "^17.4.2",
     "next": "^15.5.25",
     "nodemailer": "^10.0.9",
     "pg": "^8.23.0",
-    "prisma": "^7.9.1",
+    "prisma": "^7.10.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.5.0",
     "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.23.1",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
+    "@types/react-dom": "^19.2.7",
     "typescript": "^6.0.3"
   },
   "overrides": {
