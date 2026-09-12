@@ -11,7 +11,6 @@
 | `MainPage.dc.html` | аспирантам, соискателям и молодым учёным | `/main`, компонент `PostgradPage` |
 | `StudentsPage.dc.html` | студентам, магистрантам и специалистам | `/students` |
 | `BusinessPage.dc.html` | бизнесу и стартап-командам (НИОКР, ИС, гранты) | `/business` |
-| `DesignSystem.dc.html` | справочник дизайн-системы, **в публикацию не идёт** | — |
 | `OfferPage.dc.html` | публичная оферта, 16 разделов | `/offer` |
 | `PrivacyPage.dc.html` | политика обработки персональных данных, 15 разделов | `/privacy` |
 | `ConsentPage.dc.html` | согласие на обработку персональных данных, 10 разделов | `/consent` |

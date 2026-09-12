@@ -76,9 +76,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <a href="#main" onClick="{{ toTop }}" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;text-decoration:none;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:23px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:var(--pd-accent)">PRO</span><span style="color:var(--pd-ink)">DISSER</span></a>
 <span class="pd-head" style="display:flex;align-items:center;gap:28px;flex:0 0 auto">
 <button type="button" class="pd-burger" aria-expanded="{{ navOpenAttr }}" aria-controls="pd-nav" aria-label="Меню направлений" onClick="{{ toggleNav }}" style="appearance:none;cursor:pointer;flex:0 0 44px;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);align-items:center;justify-content:center;flex-direction:column;gap:4px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)">
-<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:var(--pd-ink)"></span>
-<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:var(--pd-ink)"></span>
-<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:1px;background:var(--pd-ink)"></span>
+<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:999px;background:var(--pd-ink)"></span>
+<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:999px;background:var(--pd-ink)"></span>
+<span aria-hidden="true" style="display:block;width:18px;height:2px;border-radius:999px;background:var(--pd-ink)"></span>
 </button>
 <nav id="pd-nav" class="pd-nav" hidden="{{ navHidden }}" aria-label="Направления работы">
 <a href="./main.html" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Аспирантам</a>
@@ -99,7 +99,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </h1>
 <p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">{{ lead }}</p>
 
-<h2 style="margin:28px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:19px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Записаться на первичную консультацию</h2>
+<h2 style="margin:28px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Записаться на первичную консультацию</h2>
 
 <form style="margin:16px 0 0;max-width:392px;display:flex;flex-direction:column;gap:16px" onSubmit="{{ submitTop }}">
 <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
@@ -113,8 +113,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-if>
 </sc-for>
 </div>
-<input type="text" name="name" autocomplete="name" required="{{ true }}" placeholder="Ваше имя" aria-label="Ваше имя" style="width:100%;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
-<input type="{{ contactTypeTop }}" name="contact" autocomplete="{{ contactAutoTop }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" required="{{ true }}" style="width:100%;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
+<label for="sp-name-top" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Ваше имя
+<input id="sp-name-top" type="text" name="name" autocomplete="name" required="{{ true }}" style="width:100%;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
+<label for="sp-contact-top" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Контакт для связи
+<input id="sp-contact-top" type="{{ contactTypeTop }}" name="contact" autocomplete="{{ contactAutoTop }}" placeholder="{{ contactPlaceholderTop }}" required="{{ true }}" style="width:100%;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
 <div style="display:flex;flex-direction:column;gap:0">
 <label for="sp-privacy" style="display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="sp-privacy" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
 <label for="sp-terms" style="display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="sp-terms" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оферту</a> и <a href="./privacy.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">политику</a></span></label>
@@ -134,7 +136,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-if>
 </div>
 
-<div style="min-width:0;display:flex;flex-direction:column;gap:24px;padding-bottom:67px">
+<div style="min-width:0;display:flex;flex-direction:column;gap:24px;padding-bottom:68px">
 <sc-if value="{{ showPortraits }}" hint-placeholder-val="{{ true }}">
 
 </sc-if>
@@ -144,7 +146,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <image-slot id="sp-avatar-1" shape="circle" data-alt="Куратор проекта — кандидат наук вашего научного направления" placeholder="Фото куратора" style="width:190px;height:190px"></image-slot>
 </span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Куратор проекта — кандидат наук вашего направления</span>
-</div><div style="display:flex;flex-direction:column;gap:2px;max-width:130px;padding-top:123px;align-items:center;text-align:center">
+</div><div style="display:flex;flex-direction:column;gap:2px;max-width:130px;padding-top:124px;align-items:center;text-align:center">
 <span style="width:130px;height:130px;border-radius:50%;background:var(--pd-art-line);overflow:hidden;display:block">
 <image-slot id="sp-avatar-2c" shape="circle" data-alt="Научный редактор проекта" placeholder="Фото редактора" style="width:130px;height:130px"></image-slot>
 </span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Научный редактор проекта</span>
@@ -174,7 +176,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 
 <section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:56px auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink)">С чего начнём вашу работу</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">С чего начнём вашу работу</h2>
 <span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Выберите ситуацию — покажем состав работ и сроки</span>
 </div>
 <div class="pd-routes" style="gap:16px;align-items:stretch">
@@ -228,7 +230,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 
 <section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:64px auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink)">Что входит в сопровождение</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Что входит в сопровождение</h2>
 <span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Каждое условие проверяется до подписания договора</span>
 </div>
 <div data-carousel="scope" tabindex="0" role="group" aria-label="Что входит в сопровождение — прокрутите стрелками" onScroll="{{ onScopeScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;align-items:stretch;padding:8px 2px;margin:-8px -2px">
@@ -282,7 +284,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 
 <section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:56px auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink)">Гарантии и документы, которые их держат</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Гарантии и документы, которые их держат</h2>
 <span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Каждое обязательство можно прочитать до оплаты</span>
 </div>
 <div data-carousel="grt" tabindex="0" role="group" aria-label="Гарантии и документы — прокрутите стрелками" onScroll="{{ onGrtScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;align-items:stretch;padding:8px 2px;margin:-8px -2px">
@@ -366,8 +368,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-for>
 </div>
 <input type="hidden" name="direction" value="{{ direction }}">
-<input type="text" name="name" autocomplete="name" required="{{ true }}" placeholder="Ваше имя" aria-label="Ваше имя" style="flex:1 1 260px;min-width:0;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
-<input type="{{ contactTypeBottom }}" name="contact" autocomplete="{{ contactAutoBottom }}" placeholder="{{ contactPlaceholderBottom }}" aria-label="{{ contactPlaceholderBottom }}" required="{{ true }}" style="flex:1 1 260px;min-width:0;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
+<label for="sp-name-bottom" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Ваше имя
+<input id="sp-name-bottom" type="text" name="name" autocomplete="name" required="{{ true }}" style="flex:1 1 260px;min-width:0;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
+<label for="sp-contact-bottom" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Контакт для связи
+<input id="sp-contact-bottom" type="{{ contactTypeBottom }}" name="contact" autocomplete="{{ contactAutoBottom }}" placeholder="{{ contactPlaceholderBottom }}" required="{{ true }}" style="flex:1 1 260px;min-width:0;box-sizing:border-box;height:56px;padding:0 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
 <div style="display:flex;flex-direction:column;gap:0">
 <label for="sp-privacy-2" style="display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary);cursor:pointer"><input id="sp-privacy-2" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
 <label for="sp-terms-2" style="display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary);cursor:pointer"><input id="sp-terms-2" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оферту</a> и <a href="./privacy.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">политику</a></span></label>
@@ -399,7 +403,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </span>
 <span style="display:flex;align-items:center;gap:12px;min-width:0">
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Пишите в телеграм — отвечаем в рабочее время</span>
-<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:12px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
+<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
 </span>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
