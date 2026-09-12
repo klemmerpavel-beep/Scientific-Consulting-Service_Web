@@ -127,9 +127,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:27px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" class="sp-logo" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:var(--pd-accent)">PRO</span><span style="color:var(--pd-ink)">DISSER</span></a>
 <div style="position:relative;display:flex;align-items:center;gap:16px">
 <button type="button" class="sp-burger" aria-expanded="{{ navOpenAttr }}" aria-controls="sp-nav" aria-label="Меню разделов" onClick="{{ toggleNav }}" style="appearance:none;cursor:pointer;flex:0 0 44px;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);align-items:center;justify-content:center;flex-direction:column;gap:4px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)">
-<span aria-hidden="true" style="width:18px;height:2px;background:var(--pd-ink);border-radius:2px;display:block"></span>
-<span aria-hidden="true" style="width:18px;height:2px;background:var(--pd-ink);border-radius:2px;display:block"></span>
-<span aria-hidden="true" style="width:18px;height:2px;background:var(--pd-ink);border-radius:2px;display:block"></span>
+<span aria-hidden="true" style="width:18px;height:2px;background:var(--pd-ink);border-radius:999px;display:block"></span>
+<span aria-hidden="true" style="width:18px;height:2px;background:var(--pd-ink);border-radius:999px;display:block"></span>
+<span aria-hidden="true" style="width:18px;height:2px;background:var(--pd-ink);border-radius:999px;display:block"></span>
 </button>
 <nav id="sp-nav" class="sp-nav" hidden="{{ navHidden }}" aria-label="Разделы страницы">
 <a href="#works" style="display:inline-flex;align-items:center;height:46px;font-size:13px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Состав работ</a>
@@ -222,12 +222,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <section aria-label="Услуги — бегущая строка, останавливается при наведении и фокусе" tabindex="0" class="pd-ticker" style="position:relative;z-index:1;margin:clamp(80px,7vw,112px) 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
 <div style="display:flex;width:max-content;gap:52px;padding-right:52px;animation:pd-marquee-l 42s linear infinite" class="pd-run">
 <sc-for list="{{ tickerA }}" as="t" hint-placeholder-count="12">
-<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:24px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
+<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
 </sc-for>
 </div>
 <div style="display:flex;width:max-content;gap:52px;padding-right:52px;margin-top:16px;animation:pd-marquee-r 46s linear infinite" class="pd-run">
 <sc-for list="{{ tickerB }}" as="t" hint-placeholder-count="12">
-<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:24px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
+<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
 </sc-for>
 </div>
 </section>
@@ -245,16 +245,16 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
 <div style="display:flex;align-items:center;gap:10px">
 <span aria-hidden="true" style="width:20px;height:20px;flex:0 0 20px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:21px;font-weight:600;color:var(--pd-ink)">{{ o.title }}</h3>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ o.title }}</h3>
 </div>
 </div>
-<p style="margin:0;font-size:14px;line-height:21px;color:var(--pd-ink-secondary)">{{ o.text }}</p>
+<p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ o.text }}</p>
 <div style="margin-top:auto;height:104px;border-radius:10px;background:var(--pd-surface-quiet);display:flex;align-items:center;justify-content:center;overflow:hidden">
 <span aria-hidden="true" style="display:block;width:100%;height:100%;background-image:{{ o.art }};background-size:cover;background-position:center;background-repeat:no-repeat"></span>
 </div>
 <div style="display:flex;align-items:center;gap:8px">
 <span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ clockMask }};mask:{{ clockMask }}"></span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.04em;color:var(--pd-ink-muted)">{{ o.term }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-ink-muted)">{{ o.term }}</span>
 </div>
 </article>
 </sc-for>
@@ -265,16 +265,16 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
 <div style="display:flex;align-items:center;gap:10px">
 <span aria-hidden="true" style="width:20px;height:20px;flex:0 0 20px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:21px;font-weight:600;color:var(--pd-ink)">{{ o.title }}</h3>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ o.title }}</h3>
 </div>
 </div>
-<p style="margin:0;font-size:14px;line-height:21px;color:var(--pd-ink-secondary)">{{ o.text }}</p>
+<p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ o.text }}</p>
 <div style="margin-top:auto;height:104px;border-radius:10px;background:var(--pd-surface-quiet);display:flex;align-items:center;justify-content:center;overflow:hidden">
 <span aria-hidden="true" style="display:block;width:100%;height:100%;background-image:{{ o.art }};background-size:cover;background-position:center;background-repeat:no-repeat"></span>
 </div>
 <div style="display:flex;align-items:center;gap:8px">
 <span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ clockMask }};mask:{{ clockMask }}"></span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.04em;color:var(--pd-ink-muted)">{{ o.term }}</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-ink-muted)">{{ o.term }}</span>
 </div>
 </article>
 </sc-for>
@@ -284,13 +284,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <a href="#request" style="background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
 <span style="display:flex;align-items:center;gap:10px;min-width:0">
 <span aria-hidden="true" style="width:20px;height:20px;flex:0 0 20px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:var(--pd-ink)">{{ o.title }}</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ o.title }}</span>
 </span>
 <span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span>
 </a>
 </sc-for>
 <button type="button" onClick="{{ toggleOffer }}" aria-expanded="{{ offerOpen }}" style="appearance:none;border:0;cursor:pointer;background:var(--pd-ink);border-radius:14px;padding:16px 24px;display:flex;align-items:center;justify-content:center;gap:12px;transition:background 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="opacity:.82">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-inverse)">{{ offerToggleLabel }}</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-inverse)">{{ offerToggleLabel }}</span>
 <span aria-hidden="true" style="width:17px;height:17px;flex:0 0 17px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ offerToggleMask }};mask:{{ offerToggleMask }}"></span>
 </button>
 </div>
@@ -398,10 +398,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 
 <div style="padding:16px 20px 14px;border-bottom:1px solid var(--pd-divider)">
-<div aria-hidden="true" style="display:flex;gap:3px">
+<div aria-hidden="true" style="display:flex;gap:4px">
 <sc-for list="{{ stages }}" as="s" hint-placeholder-count="5">
-<sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}"><span style="flex:{{ s.flex }} 1 0;min-width:0;height:34px;border-radius:8px;background:var(--pd-ink);display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="sp-seg-t" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.02em;color:var(--pd-ink-inverse);white-space:nowrap">{{ s.num }}</span></span></sc-if>
-<sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}"><span style="flex:{{ s.flex }} 1 0;min-width:0;height:34px;border-radius:8px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="sp-seg-t" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.02em;color:var(--pd-accent);white-space:nowrap">{{ s.num }}</span></span></sc-if>
+<sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}"><span style="flex:{{ s.flex }} 1 0;min-width:0;height:34px;border-radius:10px;background:var(--pd-ink);display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="sp-seg-t" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.02em;color:var(--pd-ink-inverse);white-space:nowrap">{{ s.num }}</span></span></sc-if>
+<sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}"><span style="flex:{{ s.flex }} 1 0;min-width:0;height:34px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="sp-seg-t" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.02em;color:var(--pd-accent);white-space:nowrap">{{ s.num }}</span></span></sc-if>
 </sc-for>
 </div>
 <div aria-hidden="true" style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:8px">
@@ -414,8 +414,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="sp-route">
 <ol class="sp-rl" aria-label="Этапы маршрута" style="list-style:none;margin:0;padding:10px;display:flex;flex-direction:column;gap:2px;overflow:auto">
 <sc-for list="{{ stages }}" as="s" hint-placeholder-count="5">
-<sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}"><li><button type="button" aria-pressed="true" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:44px;border-radius:10px;background:var(--pd-accent-tint)"><span aria-hidden="true" style="flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:var(--pd-ink);color:var(--pd-ink-inverse);display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600">{{ s.num }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.35;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-accent)">{{ s.term }}</span></span></button></li></sc-if>
-<sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}"><li><button type="button" aria-pressed="false" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:44px;border-radius:10px;background:transparent;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)"><span aria-hidden="true" style="flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:var(--pd-surface-quiet);color:var(--pd-ink-muted);display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600">{{ s.num }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.35;font-weight:500;color:var(--pd-ink-secondary)">{{ s.title }}</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-ink-muted)">{{ s.term }}</span></span></button></li></sc-if>
+<sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}"><li><button type="button" aria-pressed="true" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:44px;border-radius:10px;background:var(--pd-accent-tint)"><span aria-hidden="true" style="flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:var(--pd-ink);color:var(--pd-ink-inverse);display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600">{{ s.num }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-accent)">{{ s.term }}</span></span></button></li></sc-if>
+<sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}"><li><button type="button" aria-pressed="false" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:44px;border-radius:10px;background:transparent;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)"><span aria-hidden="true" style="flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:var(--pd-surface-quiet);color:var(--pd-ink-muted);display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;font-weight:600">{{ s.num }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary)">{{ s.title }}</span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-ink-muted)">{{ s.term }}</span></span></button></li></sc-if>
 </sc-for>
 </ol>
 <div aria-live="polite" style="padding:18px 22px 20px;overflow:auto">
@@ -425,34 +425,34 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Этап {{ s.num }} из {{ s.of }}</span>
 <sc-if value="{{ s.isKey }}" hint-placeholder-val="{{ true }}">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase;color:var(--pd-accent);background:var(--pd-accent-mark);border-radius:999px;padding:5px 11px">Ключевой этап</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase;color:var(--pd-accent);background:var(--pd-accent-mark);border-radius:999px;padding:6px 12px">Ключевой этап</span>
 </sc-if>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.04em;color:var(--pd-ink-secondary);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:6px 12px;white-space:nowrap">{{ s.term }}</span>
 </span>
-<h3 style="margin:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.35;font-weight:600;color:var(--pd-ink)">{{ s.title }}</h3>
+<h3 style="margin:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</h3>
 <div class="sp-duo" style="gap:10px 24px">
 <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Вы</span>
-<span style="font-size:14px;line-height:1.55;color:var(--pd-ink)">{{ s.author }}</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink)">{{ s.author }}</span>
 </span>
 <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Мы</span>
-<span style="font-size:14px;line-height:1.55;color:var(--pd-ink-secondary)">{{ s.team }}</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ s.team }}</span>
 </span>
 </div>
-<div style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+<div style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Что входит в этап</span>
 <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
 <sc-for list="{{ s.works }}" as="w" hint-placeholder-count="4">
-<li style="display:flex;align-items:flex-start;gap:9px">
-<span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;margin-top:3px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
+<li style="display:flex;align-items:flex-start;gap:10px">
+<span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;margin-top:4px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ w.text }}</span>
 </li>
 </sc-for>
 </ul>
 </div>
-<div style="margin-top:auto;display:flex;align-items:flex-start;gap:9px;padding-top:12px;border-top:1px solid var(--pd-divider)">
-<span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;margin-top:3px;display:block;background:var(--pd-ok-ink);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
+<div style="margin-top:auto;display:flex;align-items:flex-start;gap:10px;padding-top:12px;border-top:1px solid var(--pd-divider)">
+<span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;margin-top:4px;display:block;background:var(--pd-ok-ink);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
 <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Результат этапа</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink)">{{ s.result }}</span>
@@ -477,20 +477,20 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <section class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
 <div class="sp-team" style="gap:40px;align-items:center">
 <div style="display:flex;flex-direction:column;gap:24px">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Команда</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Команда</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:24ch;text-wrap:balance">Над дипломом работает команда, а не один исполнитель</h2>
-<p style="margin:0;font-size:16px;line-height:26px;color:var(--pd-ink-secondary);max-width:40ch">Над работой закреплены четверо: менеджер, куратор по специальности, методолог и научный редактор. Исполнителей на стороне не ищем.</p>
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:40ch">Над работой закреплены четверо: менеджер, куратор по специальности, методолог и научный редактор. Исполнителей на стороне не ищем.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
-<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:19px;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">С 2016</span><span style="font-size:14px;line-height:21px;color:var(--pd-ink-secondary)">научный коллектив сопровождает дипломы и ВКР по всей России</span></div>
-<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:19px;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">04</span><span style="font-size:14px;line-height:21px;color:var(--pd-ink-secondary)">специалиста закрепляем за работой до самой защиты</span></div>
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">С 2016</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">научный коллектив сопровождает дипломы и ВКР по всей России</span></div>
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">04</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">специалиста закрепляем за работой до самой защиты</span></div>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px">
-<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:7px 14px;font-size:12px;line-height:16px;font-weight:500;color:var(--pd-ink)">Методология</span>
-<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:7px 14px;font-size:12px;line-height:16px;font-weight:500;color:var(--pd-ink)">Научная редактура</span>
-<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:7px 14px;font-size:12px;line-height:16px;font-weight:500;color:var(--pd-ink)">Оформление по ГОСТ</span>
-<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:7px 14px;font-size:12px;line-height:16px;font-weight:500;color:var(--pd-ink)">Подготовка к защите</span>
-<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:7px 14px;font-size:12px;line-height:16px;font-weight:500;color:var(--pd-ink)">Нормоконтроль</span>
-<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:7px 14px;font-size:12px;line-height:16px;font-weight:500;color:var(--pd-ink)">Доклад и презентация</span>
+<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Методология</span>
+<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Научная редактура</span>
+<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Оформление по ГОСТ</span>
+<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Подготовка к защите</span>
+<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Нормоконтроль</span>
+<span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Доклад и презентация</span>
 </div>
 <a href="#request" style="align-self:flex-start;display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:16px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Обсудить работу<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
@@ -502,7 +502,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="sp-core" style="position:absolute;left:34.559%;top:35.026%;width:29.531%;height:30.101%;border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:flex;align-items:center;justify-content:center">
 <div style="width:76%;display:flex;flex-direction:column;gap:8px;align-items:center">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Заказчик</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:26px;line-height:30px;font-weight:500;letter-spacing:-.02em;text-align:center;color:var(--pd-ink)">Вы</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:26px;line-height:1.24;font-weight:500;letter-spacing:-.02em;text-align:center;color:var(--pd-ink)">Вы</span>
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;text-align:center;color:var(--pd-ink-secondary)">Пишете работу и принимаете этапы</span>
 </div>
 </div>
@@ -511,10 +511,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="sp-crewcard" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--pd-accent)"><span style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ crewMask }};mask:{{ crewMask }}"></span></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:var(--pd-ink)">Менеджер</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Менеджер</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">01</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:var(--pd-ink-secondary)">Держит сроки и отвечает на вопросы в рабочее время.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Держит сроки и отвечает на вопросы в рабочее время.</span>
 </div>
 </div>
 <div class="sp-crew" style="position:absolute;left:55.677%;top:7.077%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -522,10 +522,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="sp-crewcard" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--pd-accent)"><span style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ methodMask }};mask:{{ methodMask }}"></span></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:var(--pd-ink)">Методолог</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Методолог</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">02</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:var(--pd-ink-secondary)">Выстраивает структуру работы и план по главам.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Выстраивает структуру работы и план по главам.</span>
 </div>
 </div>
 <div class="sp-crew" style="position:absolute;left:0.617%;top:63.385%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -533,10 +533,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="sp-crewcard" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--pd-accent)"><span style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ editorMask }};mask:{{ editorMask }}"></span></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:var(--pd-ink)">Научный редактор</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Научный редактор</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">03</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:var(--pd-ink-secondary)">Отвечает за логику глав, оформление и нормоконтроль.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Отвечает за логику глав, оформление и нормоконтроль.</span>
 </div>
 </div>
 <div class="sp-crew" style="position:absolute;left:55.677%;top:68.923%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -544,10 +544,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="sp-crewcard" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--pd-accent)"><span style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ expertMask }};mask:{{ expertMask }}"></span></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:var(--pd-ink)">Куратор по специальности</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Куратор по специальности</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">04</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:var(--pd-ink-secondary)">Разбирает тему с автором и помогает собрать содержание глав.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Разбирает тему с автором и помогает собрать содержание глав.</span>
 </div>
 </div>
 <div class="sp-dot" style="position:absolute;left:23.307%;top:31.308%;width:15px;height:15px;border-radius:50%;background:var(--pd-accent);display:flex;align-items:center;justify-content:center"><span style="width:4.4px;height:4.4px;border-radius:50%;background:var(--pd-ink-inverse);display:block"></span></div>
@@ -594,7 +594,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <sc-if value="{{ f.closed }}" hint-placeholder-val="{{ true }}">
 <button type="button" onClick="{{ f.toggle }}" aria-expanded="false" style="appearance:none;border:1px solid var(--pd-border);background:var(--pd-ink-inverse);cursor:pointer;width:100%;text-align:left;padding:16px 20px;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);box-shadow:0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="opacity:.82">
 <span>{{ f.q }}</span>
-<span aria-hidden="true" style="position:relative;width:16px;height:16px;flex:0 0 16px"><span style="position:absolute;left:0;top:7px;width:16px;height:2px;background:var(--pd-ink-muted);border-radius:999px"></span><span style="position:absolute;left:7px;top:0;width:2px;height:16px;background:var(--pd-ink-muted);border-radius:999px"></span></span>
+<span aria-hidden="true" style="position:relative;width:16px;height:16px;flex:0 0 16px"><span style="position:absolute;left:0;top:8px;width:16px;height:2px;background:var(--pd-ink-muted);border-radius:999px"></span><span style="position:absolute;left:8px;top:0;width:2px;height:16px;background:var(--pd-ink-muted);border-radius:999px"></span></span>
 </button>
 </sc-if>
 </sc-for>
@@ -688,7 +688,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </span>
 <span style="display:flex;align-items:center;gap:12px;min-width:0">
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Пишите в телеграм — отвечаем в рабочее время</span>
-<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:12px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
+<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
 </span>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
