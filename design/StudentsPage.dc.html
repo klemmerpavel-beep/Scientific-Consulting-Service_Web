@@ -699,11 +699,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </article>
 </sc-for>
 </div>
-<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:20px">
+<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:20px">
 <button type="button" onClick="{{ revPrev }}" aria-label="Предыдущий отзыв" style="appearance:none;cursor:pointer;width:44px;height:44px;flex:0 0 44px;display:inline-flex;align-items:center;justify-content:center;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.94)">
 <span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span>
 </button>
-<span aria-live="polite" style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;color:var(--pd-ink-muted);min-width:64px;text-align:center">{{ revCounter }}</span>
+<span aria-live="polite" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">{{ revCounter }}</span>
 <button type="button" onClick="{{ revNext }}" aria-label="Следующий отзыв" style="appearance:none;cursor:pointer;width:44px;height:44px;flex:0 0 44px;display:inline-flex;align-items:center;justify-content:center;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.94)">
 <span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span>
 </button>
@@ -974,15 +974,15 @@ class Component extends DCLogic {
     // от клиентов. Публиковать их как реальные отзывы нельзя (ст. 5 ФЗ
     // «О рекламе»). Подписи обезличены: роль и область, без имён (Р-53).
     const REVIEWS = [
-      { photo: 'adviser', role: 'Выпускница бакалавриата', field: 'Логистика',
+      { photo: 'av-1', role: 'Выпускница бакалавриата', field: 'Логистика',
         text: 'Тему сузили до одного предприятия, и сразу стало понятно, что считать. Защитилась на отлично.' },
-      { photo: 'postgrad', role: 'Студент специалитета', field: 'Машиностроение',
+      { photo: 'av-2', role: 'Студент специалитета', field: 'Машиностроение',
         text: 'Нормоконтроль заворачивал работу дважды. Оформили по ГОСТ за два дня — с третьего раза приняли без замечаний.' },
-      { photo: 'business', role: 'Магистрант', field: 'Маркетинг',
+      { photo: 'av-3', role: 'Магистрант', field: 'Маркетинг',
         text: 'Помогли с обработкой опроса: до этого я не понимал, какие критерии применять и как показать значимость.' },
-      { photo: 'expert', role: 'Студент заочного отделения', field: 'Информационные системы',
+      { photo: 'av-4', role: 'Студент заочного отделения', field: 'Информационные системы',
         text: 'Отчёт по практике горел, оставалось четыре дня. Уложились, руководитель принял без правок.' },
-      { photo: 'blueprints', role: 'Магистрант', field: 'Государственное управление',
+      { photo: 'av-5', role: 'Магистрант', field: 'Государственное управление',
         text: 'Доклад и презентацию собрали из моего же текста. На защите говорил своими словами, а не читал с листа.' }
     ];
     const revN = REVIEWS.length;
@@ -994,8 +994,11 @@ class Component extends DCLogic {
       const a = Math.abs(d);
       return {
         ...r,
-        photo: './assets/people/' + r.photo + '.webp',
-        tf: 'translateX(' + d * 72 + '%) scale(' + (a === 0 ? 1 : a === 1 ? 0.88 : 0.76) + ')',
+        photo: './assets/avatars/' + r.photo + '.svg',
+        // Смещение подобрано так, чтобы дальняя карточка заходила за край
+        // сцены, но оставалась видимой примерно на две трети.
+        tf: 'translateX(' + (d < 0 ? -1 : 1) * (a === 0 ? 0 : a === 1 ? 62 : 112) + '%) '
+            + 'scale(' + (a === 0 ? 1 : a === 1 ? 0.88 : 0.76) + ')',
         fl: a === 0 ? 'none' : a === 1 ? 'blur(2.5px)' : 'blur(5px)',
         op: '1',
         z: String(3 - a),
@@ -1004,7 +1007,7 @@ class Component extends DCLogic {
       };
     });
     return {
-      reviews, revCounter: (revAt + 1) + ' / ' + revN,
+      reviews, revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
       revPrev: () => this.setState(s => ({ revAt: (s.revAt - 1 + revN) % revN })),
       revNext: () => this.setState(s => ({ revAt: (s.revAt + 1) % revN })),
       ...(() => {
