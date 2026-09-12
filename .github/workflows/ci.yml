@@ -63,7 +63,7 @@ jobs:
           for t in "StartPage:StartPage:landing" "MainPage:PostgradPage:postgrad" \
                    "StudentsPage:StudentsPage:students" "BusinessPage:BusinessPage:business" \
                    "OfferPage:OfferPage:landing" "PrivacyPage:PrivacyPage:landing" \
-                   "ConsentPage:ConsentPage:landing"; do
+                   "ConsentPage:ConsentPage:landing" "CabinetPage:CabinetPage:landing"; do
             IFS=: read -r src name source <<< "$t"
             node tools/dc-to-tsx.mjs "design/$src.dc.html" \
               "app/src/components/pages/$name.tsx" "$name" "$source"

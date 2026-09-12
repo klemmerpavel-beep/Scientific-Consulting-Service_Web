@@ -89,7 +89,7 @@ try {
 function prefixInternalLinks() {
   if (!basePath) return;
 
-  const routes = ['main', 'students', 'business', 'offer', 'privacy', 'consent'];
+  const routes = ['main', 'students', 'business', 'offer', 'privacy', 'consent', 'cabinet'];
   const rules = [
     ...routes.flatMap((r) => [
       // Ссылка с якорем идёт первой: правило без якоря ищет закрывающую
