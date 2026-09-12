@@ -53,7 +53,14 @@ const nextConfig = {
         images: { unoptimized: true },
         trailingSlash: true,
       }
-    : { output: 'standalone' }),
+    : {
+        output: 'standalone',
+        // Оптимизатор изображений не используется: страницы перенесены из
+        // макетов и ставят снимки обычным тегом img. Включённым он всё
+        // равно открывает наружу /_next/image и пропускает файлы через
+        // sharp — лишняя поверхность без единого потребителя. Выключаем.
+        images: { unoptimized: true },
+      }),
 
   poweredByHeader: false,
   reactStrictMode: true,

@@ -42,6 +42,24 @@ function fields(lead: Lead): [string, string][] {
  */
 const header = (s: string) => s.replace(/[\r\n]+/g, ' ').trim();
 
+/**
+ * Текст ошибки уходит в журнал доставок и оттуда — в админ-панель. Сообщение
+ * сетевого отказа умеет включать адрес запроса, а в адресе Telegram лежит
+ * токен бота; сообщение SMTP умеет включать строку авторизации. Секреты в
+ * базе и на экране оператора — это уже утечка, поэтому вырезаем их до записи.
+ */
+function hideSecrets(text: string): string {
+  let out = text;
+  for (const secret of [
+    process.env.TELEGRAM_BOT_TOKEN,
+    process.env.SMTP_PASSWORD,
+    process.env.TELEGRAM_CHAT_ID,
+  ]) {
+    if (secret && secret.length >= 8) out = out.split(secret).join('***');
+  }
+  return out.replace(/bot\d+:[A-Za-z0-9_-]{20,}/g, 'bot***');
+}
+
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -73,11 +91,11 @@ async function sendTelegram(lead: Lead, id: string): Promise<DeliveryResult> {
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) {
-      return { channel: 'telegram', ok: false, error: `${res.status} ${await res.text()}`.slice(0, 500) };
+      return { channel: 'telegram', ok: false, error: hideSecrets(`${res.status} ${await res.text()}`).slice(0, 500) };
     }
     return { channel: 'telegram', ok: true };
   } catch (e) {
-    return { channel: 'telegram', ok: false, error: String(e).slice(0, 500) };
+    return { channel: 'telegram', ok: false, error: hideSecrets(String(e)).slice(0, 500) };
   }
 }
 
@@ -130,7 +148,7 @@ async function sendMail(lead: Lead, id: string): Promise<DeliveryResult> {
     });
     return { channel: 'email', ok: true };
   } catch (e) {
-    return { channel: 'email', ok: false, error: String(e).slice(0, 500) };
+    return { channel: 'email', ok: false, error: hideSecrets(String(e)).slice(0, 500) };
   }
 }
 

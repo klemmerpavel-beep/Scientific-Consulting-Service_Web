@@ -67,7 +67,8 @@
 
 /* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
    поэтому приглушение объявлено важным. */
-button[disabled]{opacity:.55!important;cursor:progress!important}
+button[disabled]{opacity:.7!important;cursor:progress!important}
+input::placeholder,textarea::placeholder{color:#5C6474;opacity:1}
 /* Подтверждение и ошибка появляются плавно, а не возникают рывком.
    Правило срабатывает при вставке элемента, поэтому блоки, которые уже
    на странице, ничего не переигрывают при обновлении содержимого. */
@@ -158,16 +159,16 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <option value="{{ n.label }}">{{ n.label }}</option>
 </sc-for>
 </select>
-<label for="bp-consent-top" style="grid-column:span 2;display:flex;min-height:36px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#5C6474;cursor:pointer"><input id="bp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#14417A;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#0F3260">согласие на обработку персональных данных</a></span></label>
+<label for="bp-consent-top" style="grid-column:span 2;display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:#5C6474;cursor:pointer"><input id="bp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#14417A;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#0F3260">согласие на обработку персональных данных</a></span></label>
 <button type="submit" disabled="{{ pending }}" style="grid-column:span 2;justify-self:start;appearance:none;border:0;cursor:pointer;background:#14161C;color:#FFFFFF;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#262A33" style-active="transform:scale(.97)">Оставить заявку</button>
 <sc-if value="{{ sentTop }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="{{ -1 }}" data-sent="top" style="grid-column:span 2;display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #D8E4F3;border-radius:10px;padding:12px 16px">
-<span style="font-size:13px;line-height:1.5;color:#0E4E3C">Заявка принята. Ответим в рабочее время, Пн—Пт 10:00—19:00.</span>
+<span style="font-size:14px;line-height:1.5;color:#0E4E3C">Заявка принята. Ответим в рабочее время, Пн—Пт 10:00—19:00.</span>
 </div>
 </sc-if>
 <sc-if value="{{ errorTop }}" hint-placeholder-val="{{ false }}">
 <div role="alert" style="grid-column:span 2;display:flex;gap:8px;align-items:flex-start;background:#FAE7E5;border:1px solid #F0C9C3;border-radius:10px;padding:12px 16px">
-<span style="font-size:13px;line-height:1.5;color:#8E2C22">{{ errorTop }}</span>
+<span style="font-size:14px;line-height:1.5;color:#8E2C22">{{ errorTop }}</span>
 </div>
 </sc-if>
 </form>
@@ -179,29 +180,29 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="width:178px;height:178px;border-radius:50%;background:#D8E4F3;overflow:hidden;display:block">
 <image-slot id="bp-photo-1" shape="circle" data-alt="Отраслевой эксперт разбирает разработку" placeholder="Фото: эксперт" style="width:178px;height:178px"></image-slot>
 </span>
-<span style="font-size:13px;line-height:1.5;color:#5C6474">Отраслевой эксперт со степенью</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474">Отраслевой эксперт со степенью</span>
 </div>
 <div style="display:flex;flex-direction:column;gap:2px;max-width:122px;padding-top:96px;align-items:center;text-align:center">
 <span style="width:122px;height:122px;border-radius:50%;background:#D8E4F3;overflow:hidden;display:block">
 <image-slot id="bp-photo-2" shape="circle" data-alt="Куратор проекта ведёт приёмку этапов" placeholder="Фото: куратор" style="width:122px;height:122px"></image-slot>
 </span>
-<span style="font-size:13px;line-height:1.5;color:#5C6474">Куратор проекта</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474">Куратор проекта</span>
 </div>
 </div>
 <div class="bp-support" style="gap:12px;padding-top:8px">
 <a href="#catalog" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#0D2B52;border:1px solid #0D2B52;border-radius:14px;padding:16px;min-height:116px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#0A2145;border-color:#0A2145" style-active="background:#081A38">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:#FFFFFF">52 позиции</span>
-<span style="font-size:13px;line-height:1.5;color:#CFDDEE">в семи направлениях — каталог открыт целиком, без заявки</span>
+<span style="font-size:14px;line-height:1.5;color:#CFDDEE">в семи направлениях — каталог открыт целиком, без заявки</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#B4C9E5">Каталог работ<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:#B4C9E5;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a href="#trl" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#ECF1F8;border:1px solid #D0DDEE;border-radius:14px;padding:16px;min-height:116px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#D8E4F3;border-color:#B4C9E5" style-active="background:#D0DDEE">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:#14161C">9 уровней</span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">готовности технологии по ГОСТ Р 58048-2017</span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">готовности технологии по ГОСТ Р 58048-2017</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Шкала УГТ<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a href="#packs" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:16px;min-height:116px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#FAFBFC;border-color:#B4C9E5" style-active="background:#F6F7F9">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:#14161C">5 пакетов</span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">от техзадания до постановки прав на баланс</span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">от техзадания до постановки прав на баланс</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Предложения и сроки<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 </div>
@@ -228,7 +229,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Уровень готовности технологии</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:38ch;text-wrap:balance">На каком уровне разработка и какие документы получаются на выходе</h2>
 </div>
-<span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Выберите свой уровень — покажем состав работ и документы</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Выберите свой уровень — покажем состав работ и документы</span>
 </div>
 
 <div class="bp-scroll" style="margin-bottom:20px">
@@ -258,26 +259,26 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 
 <div role="status" style="border:1px solid {{ trl.noteBorder }};background:{{ trl.noteBg }};border-radius:10px;padding:12px 16px;margin-bottom:16px;min-height:64px;box-sizing:border-box;display:flex;flex-direction:column;gap:4px;justify-content:center">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:{{ trl.noteInk }}">{{ trl.noteLabel }}</span>
-<span style="font-size:13px;line-height:1.5;color:{{ trl.noteText }};max-width:88ch">{{ trl.note }}</span>
+<span style="font-size:14px;line-height:1.5;color:{{ trl.noteText }};max-width:72ch">{{ trl.note }}</span>
 </div>
 
 <div class="bp-trl" style="gap:16px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474;padding-bottom:8px;border-bottom:1px solid #E3E7EC">Что делаем на этом уровне</span>
 <sc-for list="{{ trl.can }}" as="c" hint-placeholder-count="3">
-<span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:#14417A"></span><span style="font-size:13px;line-height:1.5;color:#3D4450">{{ c.text }}</span></span>
+<span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:#14417A"></span><span style="font-size:14px;line-height:1.5;color:#3D4450">{{ c.text }}</span></span>
 </sc-for>
 </div>
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474;padding-bottom:8px;border-bottom:1px solid #E3E7EC">Документы на выходе</span>
 <sc-for list="{{ trl.docs }}" as="d" hint-placeholder-count="3">
-<span style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:1px solid #EFF1F4"><span style="font-size:13px;line-height:1.5;color:#14161C;min-width:0">{{ d.name }}</span><span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474;text-align:right">{{ d.norm }}</span></span>
+<span style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:1px solid #EFF1F4"><span style="font-size:14px;line-height:1.5;color:#14161C;min-width:0">{{ d.name }}</span><span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474;text-align:right">{{ d.norm }}</span></span>
 </sc-for>
 </div>
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474;padding-bottom:8px;border-bottom:1px solid #E3E7EC">Финансирование</span>
 <sc-for list="{{ trl.money }}" as="m" hint-placeholder-count="2">
-<span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:#14417A"></span><span style="font-size:13px;line-height:1.5;color:#3D4450">{{ m.text }}</span></span>
+<span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:#14417A"></span><span style="font-size:14px;line-height:1.5;color:#3D4450">{{ m.text }}</span></span>
 </sc-for>
 </div>
 </div>
@@ -299,7 +300,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Предложения</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:30ch;text-wrap:balance">Пять пакетов: от техзадания <span style="background:#D8E4F3;border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">до постановки прав на баланс</span></h2>
 </div>
-<span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Сроки и смета фиксируются календарным планом после разбора материала</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Сроки и смета фиксируются календарным планом после разбора материала</span>
 </div>
 <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:1fr;gap:16px">
 <sc-for list="{{ packs }}" as="p" hint-placeholder-count="5">
@@ -315,20 +316,20 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <div style="display:flex;flex-direction:column;gap:4px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#5C6474">Для кого</span>
-<span style="font-size:13px;line-height:1.5;color:#14161C">{{ p.who }}</span>
+<span style="font-size:14px;line-height:1.5;color:#14161C">{{ p.who }}</span>
 </div>
 <div style="display:flex;flex-direction:column;gap:4px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#5C6474">Что делаем</span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">{{ p.what }}</span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">{{ p.what }}</span>
 </div>
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#5C6474">Документы на выходе</span>
 <sc-for list="{{ p.docs }}" as="d" hint-placeholder-count="4">
-<span style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:6px;border-bottom:1px solid #EFF1F4"><span style="font-size:13px;line-height:1.5;color:#14161C;min-width:0">{{ d.name }}</span><span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474;text-align:right">{{ d.norm }}</span></span>
+<span style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:6px;border-bottom:1px solid #EFF1F4"><span style="font-size:14px;line-height:1.5;color:#14161C;min-width:0">{{ d.name }}</span><span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474;text-align:right">{{ d.norm }}</span></span>
 </sc-for>
 </div>
 <div style="margin:auto 0 0;padding-top:12px;border-top:1px solid #EFF1F4;display:flex;flex-direction:column;align-items:flex-start;gap:4px">
-<p style="margin:0;font-size:12px;line-height:1.5;color:#5C6474;min-width:0">{{ p.why }}</p>
+<p style="margin:0;font-size:13px;line-height:1.5;color:#5C6474;min-width:0">{{ p.why }}</p>
 <a href="#request" aria-label="{{ p.cta }}" style="flex:0 0 auto;display:inline-flex;align-items:center;min-height:44px;gap:8px;font-size:13px;line-height:1.4;font-weight:600;color:#14417A;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#0F3260">Обсудить пакет<span aria-hidden="true" style="width:14px;height:14px;display:block;background:#14417A;-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
 </div>
@@ -362,17 +363,17 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <sc-if value="{{ g.open }}" hint-placeholder-val="{{ true }}">
 <div class="bp-catbody" style="padding:16px 20px 20px;display:flex;flex-direction:column;gap:16px">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap">
-<span style="font-size:13px;line-height:1.6;color:#3D4450;max-width:66ch">{{ g.lead }}</span>
+<span style="font-size:14px;line-height:1.6;color:#3D4450;max-width:66ch">{{ g.lead }}</span>
 <span style="flex:0 0 auto;display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#5C6474">Получатель документа</span>
-<span style="font-size:13px;line-height:1.5;font-weight:600;color:#14161C">{{ g.receiver }}</span>
+<span style="font-size:14px;line-height:1.5;font-weight:600;color:#14161C">{{ g.receiver }}</span>
 </span>
 </div>
 <div class="bp-cat" style="gap:0 32px;align-content:start;flex:1 1 auto">
 <sc-for list="{{ g.items }}" as="i" hint-placeholder-count="8">
 <span style="display:flex;align-items:baseline;gap:12px;padding:9px 0;border-bottom:1px solid #EFF1F4">
 <span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:{{ i.numColor }};font-variant-numeric:tabular-nums">{{ i.num }}</span>
-<span style="font-size:13px;line-height:1.5;color:#14161C;min-width:0">{{ i.text }}</span>
+<span style="font-size:14px;line-height:1.5;color:#14161C;min-width:0">{{ i.text }}</span>
 </span>
 </sc-for>
 </div>
@@ -393,7 +394,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Как устроена работа</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:38ch;text-wrap:balance">Шесть механизмов, закреплённых договором и приёмкой</h2>
 </div>
-<span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Под каждым механизмом — носитель обязательства</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Под каждым механизмом — носитель обязательства</span>
 </div>
 <div class="bp-mech" style="gap:16px">
 <sc-for list="{{ reasons }}" as="r" hint-placeholder-count="6">
@@ -403,7 +404,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;color:#14417A;font-variant-numeric:tabular-nums">{{ r.num }}</span>
 </div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">{{ r.title }}</h3>
-<p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450">{{ r.text }}</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#3D4450">{{ r.text }}</p>
 <div style="margin:auto 0 0;padding-top:12px;border-top:1px solid #EFF1F4">
 <button type="button" aria-expanded="{{ r.proofExpanded }}" aria-label="{{ r.proofAria }}" onClick="{{ r.proofToggle }}" style="appearance:none;border:0;background:transparent;cursor:pointer;padding:0;width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#14417A;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#0F3260">
 <span>Чем закреплено</span>
@@ -426,8 +427,8 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:24ch;text-wrap:pretty">Над задачей работает проектная команда, а не один подрядчик</h2>
 <p style="margin:0;font-size:16px;line-height:26px;color:#3D4450;max-width:40ch">За проектом закреплены четверо: менеджер, отраслевой эксперт, методолог и научный редактор. Исполнителей на стороне не ищем.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
-<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:18px;letter-spacing:.06em;color:#14417A;flex:0 0 auto">С 2016</span><span style="font-size:13px;line-height:20px;color:#3D4450">научный коллектив ведёт НИОКР и заявки по всей России</span></div>
-<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:18px;letter-spacing:.06em;color:#14417A;flex:0 0 auto">Четыре</span><span style="font-size:13px;line-height:20px;color:#3D4450">специалиста закрепляем за проектом до сдачи результата</span></div>
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:19px;letter-spacing:.06em;color:#14417A;flex:0 0 auto">С 2016</span><span style="font-size:14px;line-height:21px;color:#3D4450">научный коллектив ведёт НИОКР и заявки по всей России</span></div>
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:19px;letter-spacing:.06em;color:#14417A;flex:0 0 auto">Четыре</span><span style="font-size:14px;line-height:21px;color:#3D4450">специалиста закрепляем за проектом до сдачи результата</span></div>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px">
 <span style="background:#FFFFFF;border:1px solid #E3E7EC;border-radius:999px;padding:7px 14px;font-size:12px;line-height:16px;font-weight:500;color:#14161C">НИОКР и отчётность</span>
@@ -447,7 +448,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <div style="width:76%;display:flex;flex-direction:column;gap:8px;align-items:center">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#14417A">Заказчик</span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:26px;line-height:30px;font-weight:500;letter-spacing:-.02em;text-align:center;color:#14161C">Вы</span>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.5;text-align:center;color:#3D4450">Ставите задачу и принимаете этапы</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;text-align:center;color:#3D4450">Ставите задачу и принимаете этапы</span>
 </div>
 </div>
 <div class="bp-crew" style="position:absolute;left:4.396%;top:14.154%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -458,7 +459,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Менеджер</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474">01</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#3D4450">Держит календарный план и ведёт приёмку этапов.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:#3D4450">Держит календарный план и ведёт приёмку этапов.</span>
 </div>
 </div>
 <div class="bp-crew" style="position:absolute;left:55.677%;top:7.077%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -469,7 +470,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Методолог</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474">02</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#3D4450">Выстраивает структуру исследования и программу испытаний.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:#3D4450">Выстраивает структуру исследования и программу испытаний.</span>
 </div>
 </div>
 <div class="bp-crew" style="position:absolute;left:0.617%;top:63.385%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -480,7 +481,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Научный редактор</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474">03</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#3D4450">Проверяет логику, оформление и соответствие требованиям получателя.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:#3D4450">Проверяет логику, оформление и соответствие требованиям получателя.</span>
 </div>
 </div>
 <div class="bp-crew" style="position:absolute;left:55.677%;top:68.923%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -491,7 +492,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;font-weight:600;color:#14161C">Эксперт по специальности</span>
 <span style="margin-left:auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#5C6474">04</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:18px;color:#3D4450">Ведёт содержательную часть: расчёты, эксперимент, обоснование.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:19px;color:#3D4450">Ведёт содержательную часть: расчёты, эксперимент, обоснование.</span>
 </div>
 </div>
 <div class="bp-dot" style="position:absolute;left:23.307%;top:31.308%;width:15px;height:15px;border-radius:50%;background:#14417A;display:flex;align-items:center;justify-content:center"><span style="width:4.4px;height:4.4px;border-radius:50%;background:#FFFFFF;display:block"></span></div>
@@ -507,7 +508,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Права и конфиденциальность</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:38ch;text-wrap:balance">Кому принадлежит результат и что происходит с материалами</h2>
 </div>
-<span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Права на результат остаются у вашей компании</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Права на результат остаются у вашей компании</span>
 </div>
 <div class="bp-rights" style="gap:16px">
 <sc-for list="{{ rights }}" as="r" hint-placeholder-count="6">
@@ -519,7 +520,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.05em;color:{{ r.ink }};font-variant-numeric:tabular-nums">{{ r.num }}</span>
 </div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:{{ r.title }}">{{ r.label }}</h3>
-<p style="margin:0;font-size:13px;line-height:1.6;color:{{ r.body }}">{{ r.text }}</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:{{ r.body }}">{{ r.text }}</p>
 </article>
 </sc-for>
 </div>
@@ -531,7 +532,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Вопросы</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:38ch;text-wrap:balance">Вопросы о договоре, приёмке и правах на результат</h2>
 </div>
-<span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Отвечаем так же на установочной сессии</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Отвечаем так же на установочной сессии</span>
 </div>
 <div class="bp-faq" style="gap:40px;align-items:stretch">
 <div style="flex:1 1 auto;min-height:340px;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
@@ -540,7 +541,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </div>
 <div style="padding:18px 24px 22px;border-top:1px solid #EFF1F4;display:flex;flex-direction:column;gap:10px">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">Вопрос не из списка?</h3>
-<p style="margin:0;font-size:13px;line-height:1.6;color:#3D4450;max-width:44ch">Напишите или позвоните. NDA пришлём до того, как вы начнёте описывать задачу.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#3D4450;max-width:44ch">Напишите или позвоните. NDA пришлём до того, как вы начнёте описывать задачу.</p>
 <div style="margin-top:8px;display:flex;flex-direction:column;gap:2px">
 <a href="tel:+74954564323" style="display:flex;align-items:center;min-height:44px;gap:10px;font-size:15px;line-height:1.4;font-weight:600;color:#14161C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/phone.svg') center/contain no-repeat;mask:url('./assets/icons/phone.svg') center/contain no-repeat"></span> +7 495 456 43 23</a>
 <a href="mailto:info.prodisser@gmail.com" style="display:flex;min-height:44px;align-items:center;gap:10px;font-size:14px;line-height:1.5;color:#3D4450;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/mail.svg') center/contain no-repeat;mask:url('./assets/icons/mail.svg') center/contain no-repeat"></span>info.prodisser@gmail.com</a>
@@ -555,7 +556,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span>{{ f.q }}</span>
 <span aria-hidden="true" style="width:16px;height:2px;flex:0 0 16px;background:#14161C;border-radius:999px"></span>
 </button>
-<p style="margin:0;padding:14px 20px 18px;font-size:13px;line-height:1.6;color:#3D4450">{{ f.a }}</p>
+<p style="margin:0;padding:14px 20px 18px;font-size:14px;line-height:1.6;color:#3D4450">{{ f.a }}</p>
 </div>
 </sc-if>
 <sc-if value="{{ f.closed }}" hint-placeholder-val="{{ true }}">
@@ -575,7 +576,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Заявка</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:#14161C;max-width:38ch;text-wrap:balance">Опишите разработку — разберём задачу и посчитаем смету</h2>
 </div>
-<span style="font-size:13px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Ответим в рабочий день и пришлём NDA</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid #E3E7EC">Ответим в рабочий день и пришлём NDA</span>
 </div>
 <div class="bp-req" style="gap:16px;align-items:stretch">
 <form onSubmit="{{ submitMain }}" style="border:1px solid #E3E7EC;border-radius:14px;padding:20px 22px;background:#FFFFFF;box-shadow:0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:12px">
@@ -604,16 +605,16 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 </select></label>
 <label for="bp-term" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Срок или дедлайн конкурса
 <input id="bp-term" name="deadline" type="text" autocomplete="off" placeholder="Например: подача до 30 ноября" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#14161C;background:#FFFFFF;border:1px solid #E3E7EC;border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:#14417A;box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
-<label for="bp-consent" style="display:flex;min-height:36px;align-items:center;gap:8px;font-size:13px;line-height:1.5;color:#5C6474;cursor:pointer"><input id="bp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#14417A;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#0F3260">согласие на обработку персональных данных</a></span></label>
+<label for="bp-consent" style="display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:#5C6474;cursor:pointer"><input id="bp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:#14417A;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#0F3260">согласие на обработку персональных данных</a></span></label>
 <button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;margin-top:10px;background:#14161C;color:#FFFFFF;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:#262A33" style-active="transform:scale(.97)">Отправить заявку</button>
 <sc-if value="{{ sentMain }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="-1" data-sent="main" style="display:flex;gap:8px;align-items:flex-start;background:#E6F9F1;border:1px solid #D8E4F3;border-radius:10px;padding:12px 16px">
-<span style="font-size:13px;line-height:1.5;color:#0E4E3C">Заявка принята. Пришлём NDA и предложим время установочной сессии.</span>
+<span style="font-size:14px;line-height:1.5;color:#0E4E3C">Заявка принята. Пришлём NDA и предложим время установочной сессии.</span>
 </div>
 </sc-if>
 <sc-if value="{{ errorMain }}" hint-placeholder-val="{{ false }}">
 <div role="alert" style="display:flex;gap:8px;align-items:flex-start;background:#FAE7E5;border:1px solid #F0C9C3;border-radius:10px;padding:12px 16px">
-<span style="font-size:13px;line-height:1.5;color:#8E2C22">{{ errorMain }}</span>
+<span style="font-size:14px;line-height:1.5;color:#8E2C22">{{ errorMain }}</span>
 </div>
 </sc-if>
 </form>
@@ -625,7 +626,7 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="flex:0 0 auto;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;color:#14417A;padding-top:2px">{{ s.num }}</span>
 <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
 <span style="font-size:13px;line-height:1.4;font-weight:600;color:#14161C">{{ s.title }}</span>
-<span style="font-size:13px;line-height:1.5;color:#3D4450">{{ s.text }}</span>
+<span style="font-size:14px;line-height:1.5;color:#3D4450">{{ s.text }}</span>
 </span>
 </div>
 </sc-for>
@@ -634,9 +635,9 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <div style="flex:1 1 auto;border:1px solid #E3E7EC;border-radius:14px;background:#FFFFFF;padding:18px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(20,22,28,.05)">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:#14161C">Что прислать для сметы</h3>
 <sc-for list="{{ askFor }}" as="a" hint-placeholder-count="4">
-<span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:#14417A"></span><span style="font-size:13px;line-height:1.5;color:#3D4450">{{ a.text }}</span></span>
+<span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:#14417A"></span><span style="font-size:14px;line-height:1.5;color:#3D4450">{{ a.text }}</span></span>
 </sc-for>
-<p style="margin:6px 0 0;padding-top:12px;border-top:1px solid #EFF1F4;font-size:13px;line-height:1.6;color:#14161C">Задачу обсуждаем только после подписанного NDA.</p>
+<p style="margin:6px 0 0;padding-top:12px;border-top:1px solid #EFF1F4;font-size:14px;line-height:1.6;color:#14161C">Задачу обсуждаем только после подписанного NDA.</p>
 </div>
 </div>
 </div>
@@ -649,27 +650,27 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
 <span style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;min-width:0">
 <a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:0 -10px;border-radius:10px;text-decoration:none;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:21px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:#14417A">PRO</span><span style="color:#14161C">DISSER</span></a>
 <a href="tel:+74954564323" style="display:inline-flex;align-items:center;min-height:44px;font-size:15px;font-weight:500;color:#14161C;text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">+7 495 456 43 23</a>
-<a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#3D4450">info.prodisser@gmail.com</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#3D4450">info.prodisser@gmail.com</a>
 </span>
 <span style="display:flex;align-items:center;gap:12px;min-width:0">
-<span style="font-size:13px;line-height:1.5;color:#5C6474">Пишите в телеграм — отвечаем в рабочее время</span>
+<span style="font-size:14px;line-height:1.5;color:#5C6474">Пишите в телеграм — отвечаем в рабочее время</span>
 <a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid #E3E7EC;border-radius:12px;background:#FFFFFF;transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:#14417A;background:#F6F7F9" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:#14417A;-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
 </span>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
 <span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
-<a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Публичная оферта</a>
-<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Политика конфиденциальности</a>
-<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Обработка персональных данных</a>
+<a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Публичная оферта</a>
+<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Политика конфиденциальности</a>
+<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Обработка персональных данных</a>
 </span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.02em;color:#5C6474">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.02em;color:#5C6474">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:8px">
-<span style="font-size:13px;line-height:1.6;color:#5C6474">© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
+<span style="font-size:14px;line-height:1.6;color:#5C6474">© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
 <span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Другие направления</span>
-<a href="./main.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Аспирантам и соискателям</a>
-<a href="./students.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:13px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Студентам и специалистам</a>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:#5C6474">Другие направления</span>
+<a href="./main.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Аспирантам и соискателям</a>
+<a href="./students.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:#5C6474;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:#14417A">Студентам и специалистам</a>
 </span>
 </div>
 </footer>
@@ -685,9 +686,23 @@ button[disabled]{opacity:.55!important;cursor:progress!important}
    — Государственный учёт НИОКТР: ЕГИСУ НИОКТР, постановление Правительства РФ от 12.04.2013 № 327;
      регистрационная карта (РК) подаётся в 30-дневный срок после начала работ, ИКРБС — после
      завершения; оператор ЦИТИС, портал rosrid.ru (research.hse.ru, etu.ru, citis.ru).
+   Годы редакций стандартов сверены 12 сентября 2026 (docs.cntd.ru, base.garant.ru,
+   consultant.ru, protect.gost.ru):
+   — ГОСТ 7.32-2017 «СИБИД. Отчёт о научно-исследовательской работе. Структура и правила
+     оформления», приказ Росстандарта от 24.10.2017 № 1494-ст, взамен ГОСТ 7.32-2001;
+   — ГОСТ Р 15.101-2021 «СРПП. Порядок выполнения научно-исследовательских работ», приказ
+     Росстандарта от 24.08.2021 № 784-ст, введён 01.11.2021 взамен ГОСТ 15.101-98. Ссылка на
+     редакцию 98 года была недействующей;
+   — ГОСТ Р 15.011-2024 «Интеллектуальная собственность. Патентные исследования. Содержание и
+     порядок проведения», приказ Росстандарта от 13.02.2024 № 208-ст, введён 01.03.2024 взамен
+     ГОСТ Р 15.011-96. Стандарт сменил и наименование, и область: с СРПП на интеллектуальную
+     собственность;
+   — ГОСТ Р 15.301-2016 «СРПП. Продукция производственно-технического назначения. Порядок
+     разработки и постановки продукции на производство», приказ Росстандарта от 31.10.2016
+     № 1567-ст, действует;
+   — ГОСТ Р 58048-2017 замены не имеет, проверено повторно.
    Помечено маркером и НЕ подставлено по памяти:
    — конкретные наименования и условия действующих программ фондов поддержки;
-   — стандарт оформления отчёта о НИР (номер редакции ГОСТ 7.32 на дату сборки);
    — сроки ведомственных процедур регистрации охранных документов. */
 class Component extends DCLogic {
   state = { trl: 5, open: { 0: true }, allOpen: false, mech: {}, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, highlight: null, faqOpen: -1, navOpen: false };
@@ -717,12 +732,12 @@ class Component extends DCLogic {
       ['pack-1', '01', 'Техзадание и патентная чистота', 'от 3 недель', 4, '17px',
         'Есть идея или лабораторный результат, работы ещё не начаты.',
         'Разбираем задачу с отраслевым экспертом, ведём предварительный патентно-информационный поиск, формулируем техническое задание. Считаем календарный план и смету НИОКР.',
-        [['Техническое задание на НИОКР', 'ГОСТ 15.101'], ['Отчёт о патентном поиске', 'ГОСТ Р 15.011'], ['Календарный план и смета', 'приложение к договору'], ['Заключение о патентной чистоте направления', 'по итогам поиска']],
+        [['Техническое задание на НИОКР', 'ГОСТ Р 15.101-2021'], ['Отчёт о патентном поиске', 'ГОСТ Р 15.011-2024'], ['Календарный план и смета', 'приложение к договору'], ['Заключение о патентной чистоте направления', 'по итогам поиска']],
         'Не финансировать разработку того, что уже запатентовано.'],
       ['pack-2', '02', 'НИОКР под сдачу', 'от 2 месяцев', 4, '17px',
         'Работы идут или начинаются, результат нужно сдать заказчику или комиссии.',
         'Ведём работу по этапам, разрабатываем методику и программу испытаний, обрабатываем данные. Готовим отчётность и сопровождаем приёмку.',
-        [['Отчёт о научно-исследовательской работе', 'ГОСТ 7.32'], ['Программа и методика испытаний', 'ГОСТ Р 15.301'], ['Акты сдачи-приёмки этапов', 'по договору'], ['Комплект для учёта НИОКТР', 'ПП РФ № 327'], ['Обоснование расходов на НИОКР', 'п. 7 ст. 262 НК РФ']],
+        [['Отчёт о научно-исследовательской работе', 'ГОСТ 7.32-2017'], ['Программа и методика испытаний', 'ГОСТ Р 15.301-2016'], ['Акты сдачи-приёмки этапов', 'по договору'], ['Комплект для учёта НИОКТР', 'ПП РФ № 327'], ['Обоснование расходов на НИОКР', 'п. 7 ст. 262 НК РФ']],
         'Документ, собранный под требования заказчика и под налоговый учёт.'],
       ['pack-3', '03', 'Заявка на грант или субсидию', 'от 3 недель', 2, '15px',
         'Есть проект и конкурс с дедлайном.',
@@ -767,7 +782,7 @@ class Component extends DCLogic {
         title: 'Сформулирован физический принцип, публикаций и расчётов пока нет.',
         note: 'Инструменты поддержки внедрения и налоговый учёт НИОКР на этом уровне недоступны: сначала нужно подтвердить принцип и зафиксировать результат документом.', noteKind: 'early',
         can: ['Формулируем научную задачу и проверяем принципиальную осуществимость.', 'Ищем аналоги в научной литературе и патентных базах.'],
-        docs: [['Аналитический обзор литературы', 'по теме'], ['Предварительный патентный поиск', 'ГОСТ Р 15.011']],
+        docs: [['Аналитический обзор литературы', 'по теме'], ['Предварительный патентный поиск', 'ГОСТ Р 15.011-2024']],
         money: ['Собственные средства компании.', 'Гранты на поисковые исследования.'],
         pack: 'pack-1', packLabel: '01 · Техзадание и патентная чистота'
       },
@@ -776,7 +791,7 @@ class Component extends DCLogic {
         title: 'Сформулирована концепция применения, расчёты предварительные.',
         note: 'Для внедренческих программ рано: нет экспериментального подтверждения. Раньше нужно получить лабораторные данные.', noteKind: 'early',
         can: ['Описываем область применения и ограничения технологии.', 'Проводим патентный поиск по направлению.'],
-        docs: [['Концепция технического решения', 'внутренний документ'], ['Отчёт о патентном поиске', 'ГОСТ Р 15.011']],
+        docs: [['Концепция технического решения', 'внутренний документ'], ['Отчёт о патентном поиске', 'ГОСТ Р 15.011-2024']],
         money: ['Собственные средства компании.', 'Посевные программы фондов.'],
         pack: 'pack-1', packLabel: '01 · Техзадание и патентная чистота'
       },
@@ -785,7 +800,7 @@ class Component extends DCLogic {
         title: 'Получено лабораторное подтверждение ключевых функций.',
         note: 'Документацию этого уровня ведём полностью — от технического задания до приёмки этапов.', noteKind: 'full',
         can: ['Формулируем техническое задание на НИОКР.', 'Планируем эксперимент и разрабатываем методику исследования.'],
-        docs: [['Техническое задание на НИОКР', 'ГОСТ 15.101'], ['Методика исследования', 'внутренний документ'], ['Календарный план и смета', 'приложение к договору']],
+        docs: [['Техническое задание на НИОКР', 'ГОСТ Р 15.101-2021'], ['Методика исследования', 'внутренний документ'], ['Календарный план и смета', 'приложение к договору']],
         money: ['Гранты на прикладные исследования.', 'Повышающий коэффициент к расходам на НИОКР из перечня, п. 7 ст. 262 НК РФ.'],
         pack: 'pack-1', packLabel: '01 · Техзадание и патентная чистота'
       },
@@ -794,7 +809,7 @@ class Component extends DCLogic {
         title: 'Работает лабораторный макет, компоненты проверены по отдельности.',
         note: 'Документацию этого уровня ведём полностью — от технического задания до приёмки этапов.', noteKind: 'full',
         can: ['Ведём НИОКР по этапам с промежуточной приёмкой.', 'Обрабатываем экспериментальные данные и строим расчётное обоснование.'],
-        docs: [['Отчёт о научно-исследовательской работе', 'ГОСТ 7.32'], ['Акты сдачи-приёмки этапов', 'по договору'], ['Регистрационная карта НИОКТР', 'ПП РФ № 327']],
+        docs: [['Отчёт о научно-исследовательской работе', 'ГОСТ 7.32-2017'], ['Акты сдачи-приёмки этапов', 'по договору'], ['Регистрационная карта НИОКТР', 'ПП РФ № 327']],
         money: ['Гранты на разработку.', 'Учёт расходов на НИОКР с коэффициентом 2, п. 7 ст. 262 НК РФ.'],
         pack: 'pack-2', packLabel: '02 · НИОКР под сдачу'
       },
@@ -803,7 +818,7 @@ class Component extends DCLogic {
         title: 'Макет проверен в условиях, приближенных к рабочим.',
         note: 'Документацию этого уровня ведём полностью — от программы испытаний до заявки на охранный документ.', noteKind: 'full',
         can: ['Разрабатываем программу и методику испытаний.', 'Оформляем заявку на охранный документ по полученному результату.'],
-        docs: [['Программа и методика испытаний', 'ГОСТ Р 15.301'], ['Протоколы испытаний', 'по программе'], ['Заявка на изобретение или полезную модель', 'гл. 72 ГК РФ']],
+        docs: [['Программа и методика испытаний', 'ГОСТ Р 15.301-2016'], ['Протоколы испытаний', 'по программе'], ['Заявка на изобретение или полезную модель', 'гл. 72 ГК РФ']],
         money: ['Программы поддержки разработки.', 'Учёт расходов на НИОКР с коэффициентом 2, п. 7 ст. 262 НК РФ.'],
         pack: 'pack-2', packLabel: '02 · НИОКР под сдачу'
       },
@@ -893,7 +908,7 @@ class Component extends DCLogic {
     };
 
     const catalogMeta = [
-      ['Ведём работу по этапам и готовим отчётность под требования заказчика и налогового учёта.', 'Комиссия заказчика, налоговый орган', 'ГОСТ 15.101 · ГОСТ Р 15.301 · ПП РФ № 327'],
+      ['Ведём работу по этапам и готовим отчётность под требования заказчика и налогового учёта.', 'Комиссия заказчика, налоговый орган', 'ГОСТ Р 15.101-2021 · ГОСТ Р 15.301-2016 · ПП РФ № 327'],
       ['Оформляем права на результат и готовим документы для постановки актива на баланс.', 'Роспатент, бухгалтерия компании', 'гл. 72 ГК РФ · ст. 1262 ГК РФ · 98-ФЗ'],
       ['Упаковываем проект под требования конкретного конкурса и репетируем защиту с командой.', 'Фонд, ведомство, экспертный совет', 'по форме конкурса'],
       ['Считаем экономику проекта и собираем обоснование для инвестора или банка.', 'Инвестор, банк, налоговый орган', 'п. 7 ст. 262 НК РФ'],
@@ -999,7 +1014,7 @@ class Component extends DCLogic {
         ['Как считается смета и когда платить?',
          'Стоимость складывается из состава работ и стадии готовности разработки, поэтому считается после разбора материалов — цен на сайте нет. Оплата идёт по этапам: следующий оплачивается после приёмки предыдущего. Вперёд за всю работу платить не нужно.'],
         ['Подойдут ли документы для учёта расходов на НИОКР?',
-         'Комплект под учёт собираем: отчёт по ГОСТ 7.32, акты сдачи-приёмки этапов, регистрационную и информационную карту НИОКТР. Решение о применении коэффициента по п. 7 ст. 262 НК РФ принимает налоговый орган — мы отвечаем за состав и оформление документов, а не за его решение.']
+         'Комплект под учёт собираем: отчёт по ГОСТ 7.32-2017, акты сдачи-приёмки этапов, регистрационную и информационную карту НИОКТР. Решение о применении коэффициента по п. 7 ст. 262 НК РФ принимает налоговый орган — мы отвечаем за состав и оформление документов, а не за его решение.']
       ].map(([q, a], i) => ({
         q, a,
         open: this.state.faqOpen === i,
