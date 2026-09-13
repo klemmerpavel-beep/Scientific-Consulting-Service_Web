@@ -47,6 +47,7 @@ function collect(form: HTMLFormElement, source: string, formName: string) {
     consent: data.get('consent') !== null,
     terms: data.get('terms') !== null,
     marketing: data.get('marketing') !== null,
+    publish: data.get('publish') !== null,
     company_website: str('company_website') ?? '',
     elapsed: Date.now() - pageShownAt,
   };

@@ -45,10 +45,12 @@ try {
   const rows = await prisma.lead.findMany({
     where: { form: 'review' },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, createdAt: true, source: true, name: true, message: true, status: true, notes: true },
+    select: { id: true, createdAt: true, source: true, name: true, message: true, publishAllowed: true, status: true, notes: true },
   });
 
-  const head = ['Дата', 'Страница', 'Кто', 'Отзыв', 'Состояние', 'Заметки', 'Идентификатор'];
+  // Столбец «Можно публиковать» — первое, по чему сортируют реестр: отзыв без
+  // разрешения опубликовать нельзя, спросить автора негде (Р-114).
+  const head = ['Дата', 'Страница', 'Кто', 'Отзыв', 'Можно публиковать', 'Состояние', 'Заметки', 'Идентификатор'];
   const lines = [head.map(cell).join(',')];
   for (const r of rows) {
     lines.push([
@@ -56,6 +58,7 @@ try {
       SOURCE_LABEL[r.source] ?? r.source,
       r.name ?? '',
       r.message ?? '',
+      r.publishAllowed ? 'да' : 'нет',
       r.status ?? '',
       r.notes ?? '',
       r.id,

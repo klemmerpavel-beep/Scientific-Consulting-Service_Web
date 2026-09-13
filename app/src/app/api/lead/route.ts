@@ -112,6 +112,7 @@ export async function POST(req: NextRequest) {
         consentVersion: CONSENT_VERSION,
         termsAccepted: lead.terms,
         marketingOptIn: lead.marketing,
+        publishAllowed: lead.publish,
         ip,
         userAgent: req.headers.get('user-agent')?.slice(0, 512) ?? null,
         status: automated ? 'SPAM' : 'NEW',

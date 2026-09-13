@@ -38,6 +38,11 @@ model Lead {
   consentVersion  String
   termsAccepted   Boolean  @default(false)
   marketingOptIn  Boolean  @default(false)
+  /// Разрешение автора отзыва на публикацию его текста на Сайте. Только для
+  /// формы отзыва: она не собирает ни имени, ни контакта, поэтому спросить
+  /// разрешение задним числом негде — либо оно дано сразу, либо отзыв
+  /// остаётся внутренним сигналом (решение Р-114).
+  publishAllowed  Boolean  @default(false)
 
   /// Доказательства для проверки регулятором
   ip        String?
