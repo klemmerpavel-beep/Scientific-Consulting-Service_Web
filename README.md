@@ -18,6 +18,7 @@
 
 | | |
 |---|---|
+| **Порядок открытия: кто что делает** | [docs/RELEASE.md](docs/RELEASE.md) |
 | Как вносить правки | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Дизайн-система | [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) |
 | Сообщение об уязвимости | [SECURITY.md](SECURITY.md) |
