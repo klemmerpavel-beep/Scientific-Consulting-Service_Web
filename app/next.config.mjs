@@ -28,18 +28,27 @@ const basePath = preview ? (process.env.PREVIEW_BASE_PATH ?? '') : '';
  * статики. Ни в одну страницу не попадает текст, полученный от посетителя,
  * поэтому вставить свой сценарий через содержимое некуда.
  */
+/**
+ * Счётчик посещаемости требует четырёх послаблений разом: чужой сценарий,
+ * его пиксель, его запросы и его кадр синхронизации. Послабления выдаются
+ * только когда счётчик действительно включён — по заданному номеру. Пока
+ * номера нет, политика остаётся закрытой полностью, и «подготовленный к
+ * аналитике» сайт ничем не отличается от сайта без аналитики.
+ */
+const metrika = process.env.NEXT_PUBLIC_METRIKA_ID ? ' https://mc.yandex.ru' : '';
+
 const CSP = [
   "default-src 'self'",
   "base-uri 'none'",
   "object-src 'none'",
-  "frame-src 'none'",
+  metrika ? `frame-src${metrika}` : "frame-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "img-src 'self' data:",
+  `img-src 'self' data:${metrika}`,
   "font-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline'",
-  "connect-src 'self'",
+  `script-src 'self' 'unsafe-inline'${metrika}`,
+  `connect-src 'self'${metrika}`,
   'upgrade-insecure-requests',
 ].join('; ');
 
