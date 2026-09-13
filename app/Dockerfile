@@ -4,7 +4,12 @@
 # ---------------------------------------------------------------- зависимости
 FROM node:22-alpine AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
+# Схема базы копируется вместе с манифестами, до установки: в package.json
+# есть postinstall с `prisma generate`, а Prisma 7 без схемы не просто молчит,
+# а завершает установку с ошибкой. Без этих двух строк образ не собирается
+# вовсе — на чистой машине, где нет кэша слоёв (решение Р-118).
+COPY package.json package-lock.json prisma.config.ts ./
+COPY prisma ./prisma
 RUN npm ci
 
 # --------------------------------------------------------------------- сборка
