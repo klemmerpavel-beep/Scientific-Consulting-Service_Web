@@ -32,7 +32,9 @@ export const leadSchema = z
     form: trimmed(32).default('request'),
 
     contactKind: z.enum(['email', 'phone']),
-    contact: trimmed(160).min(1, 'Оставьте e-mail или телефон — иначе мы не сможем ответить'),
+    // Пустым остаётся только у отзыва: там контакт не спрашивают вовсе.
+    // Для заявки пустое значение отклоняется ниже, в superRefine.
+    contact: trimmed(160),
 
     name: trimmed(120).optional(),
     organization: trimmed(200).optional(),
@@ -43,9 +45,10 @@ export const leadSchema = z
     direction: trimmed(160).optional(),
     message: trimmed(4000).optional(),
 
-    consent: z.literal(true, {
-      message: 'Без согласия на обработку персональных данных заявку принять нельзя',
-    }),
+    // Отметка согласия обязательна везде, кроме формы отзыва: та не
+    // собирает ни имени, ни контакта, то есть персональных данных в ней
+    // нет и согласие по ст. 9 152-ФЗ не требуется. Проверка — в superRefine.
+    consent: z.boolean().default(false),
     terms: z.boolean().default(false),
     marketing: z.boolean().default(false),
 
@@ -61,6 +64,31 @@ export const leadSchema = z
     elapsed: z.coerce.number().int().nonnegative().optional(),
   })
   .superRefine((v, ctx) => {
+    // Отзыв — особая форма: в ней только роль автора и текст. Контакта и
+    // отметки согласия в ней нет намеренно (решение Р-110), поэтому
+    // требовать их нельзя; взамен обязателен сам текст отзыва.
+    if (v.form === 'review') {
+      if (!v.message) {
+        ctx.addIssue({ code: 'custom', path: ['message'], message: 'Напишите отзыв — без текста отправлять нечего' });
+      }
+      return;
+    }
+    if (v.consent !== true) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['consent'],
+        message: 'Без согласия на обработку персональных данных заявку принять нельзя',
+      });
+      return;
+    }
+    if (!v.contact) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['contact'],
+        message: 'Оставьте e-mail или телефон — иначе мы не сможем ответить',
+      });
+      return;
+    }
     if (v.contactKind === 'email') {
       const ok = z.string().email().safeParse(v.contact).success;
       if (!ok) {

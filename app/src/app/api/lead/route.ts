@@ -96,7 +96,11 @@ export async function POST(req: NextRequest) {
         form: lead.form,
         name: lead.name || null,
         contactKind: lead.contactKind,
-        contact: lead.contact,
+        // Отзыв не собирает контакт: форма его не спрашивает, и если
+        // значение всё же пришло — прислал его не человек. Пишем пусто,
+        // иначе через эту форму можно было бы собрать контакт в обход
+        // отметки согласия, которой у отзыва нет (Р-110).
+        contact: lead.form === 'review' ? '' : lead.contact,
         organization: lead.organization || null,
         topic: lead.topic || null,
         speciality: lead.speciality || null,
