@@ -25,6 +25,12 @@ RUN npx prisma generate
 ARG NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 
+# Номер счётчика посещаемости. Пустой по умолчанию: без него со страниц
+# не уходит ни одного внешнего запроса. Подставляется при сборке, потому
+# что переменные NEXT_PUBLIC_* вшиваются в разметку, а не читаются в работе.
+ARG NEXT_PUBLIC_METRIKA_ID=""
+ENV NEXT_PUBLIC_METRIKA_ID=$NEXT_PUBLIC_METRIKA_ID
+
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
