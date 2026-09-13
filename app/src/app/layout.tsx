@@ -4,6 +4,7 @@ import { Literata, Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import SiteMotion from '../components/SiteMotion';
 import Metrika from '../components/Metrika';
+import OrgSchema from '../components/OrgSchema';
 
 // Шрифты забираются при сборке и отдаются с нашего же домена:
 // внешних запросов со страниц быть не должно.
@@ -66,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <SiteMotion />
         <Metrika />
+        <OrgSchema />
       </body>
     </html>
   );
