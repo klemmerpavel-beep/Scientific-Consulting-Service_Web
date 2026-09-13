@@ -46,3 +46,7 @@ test-results/
 *.bak
 *.orig
 *.tmp
+
+# Выгрузки отзывов: файл ведётся на диске заказчика, не в репозитории
+deploy/exports/*
+!deploy/exports/.gitkeep

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
     "schema:sql": "node scripts/schema-sql.mjs",
-    "build:preview": "node scripts/build-preview.mjs"
+    "build:preview": "node scripts/build-preview.mjs",
+    "reviews:export": "node scripts/export-reviews.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
