@@ -23,9 +23,17 @@ KEEP_MONTHS=12
 SQL_COUNT="SELECT count(*) FROM \"Lead\" WHERE \"status\" <> 'CONTRACTED' AND \"createdAt\" < now() - interval '$KEEP_MONTHS months';"
 SQL_DELETE="DELETE FROM \"Lead\" WHERE \"status\" <> 'CONTRACTED' AND \"createdAt\" < now() - interval '$KEEP_MONTHS months';"
 
+# Запрос уходит в psql через ввод, а не параметром -c. Через -c он проходил
+# три уровня кавычек — оболочка хоста, оболочка контейнера, psql, — и двойные
+# кавычки вокруг "Lead" терялись по дороге. PostgreSQL приводил имя без кавычек
+# к нижнему регистру и не находил таблицу: `relation "lead" does not exist`.
+# Prisma создаёт таблицы с заглавной буквы, поэтому кавычки обязательны, а
+# единственный надёжный способ их довезти — ввод (решение Р-120).
 run() {
   docker compose --env-file "$DIR/.env" -f "$DIR/docker-compose.yml" exec -T db \
-    sh -c "psql -q -A -t -v ON_ERROR_STOP=1 -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -c \"$1\""
+    sh -c 'psql -q -A -t -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<SQL
+$1
+SQL
 }
 
 DUE=$(run "$SQL_COUNT" | tr -d '[:space:]')
