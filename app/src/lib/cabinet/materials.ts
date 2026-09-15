@@ -1,0 +1,209 @@
+import { prisma } from '../db.ts';
+import { ensure, scopeComments, type Actor } from './access.ts';
+import { record } from './audit.ts';
+import { projectRef } from './projects.ts';
+import { materialKey, sha256, storage } from './storage.ts';
+
+/**
+ * Материалы и их версии.
+ *
+ * Версия неизменяема: замены содержимого нет, повторная загрузка порождает
+ * следующий номер. Клиент видит один материал с историей v1 → v2 → v3, а не
+ * три отдельных файла, и к каждой версии привязаны свои комментарии — видно,
+ * что именно изменилось и почему.
+ */
+
+/** Предел размера одной версии. Материалы кабинета — документы, не архивы. */
+export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+
+export interface UploadInput {
+  readonly projectId: string;
+  readonly stageId?: string | null;
+  /** Существующий материал: загрузка следующей версии. */
+  readonly materialId?: string | null;
+  readonly title?: string;
+  readonly originalName: string;
+  readonly contentType: string;
+  readonly body: Buffer;
+}
+
+export async function uploadVersion(actor: Actor, input: UploadInput, ip?: string | null) {
+  const ref = await projectRef(input.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'MATERIAL_UPLOAD', ref);
+
+  if (input.body.byteLength === 0) throw new Error('Пустой файл не принимается');
+  if (input.body.byteLength > MAX_UPLOAD_BYTES) {
+    throw new Error(`Файл больше допустимых ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ`);
+  }
+
+  // Номер версии вычисляется и занимается в одной транзакции; от гонки
+  // защищает уникальность пары «материал — номер» на стороне базы.
+  const { version, material } = await prisma.$transaction(async (tx) => {
+    const existing =
+      input.materialId == null
+        ? null
+        : await tx.material.findUnique({ where: { id: input.materialId } });
+
+    const target =
+      existing ??
+      (await tx.material.create({
+        data: {
+          projectId: input.projectId,
+          stageId: input.stageId ?? null,
+          title: (input.title ?? input.originalName).trim(),
+          createdById: actor.id,
+        },
+      }));
+
+    const last = await tx.materialVersion.findFirst({
+      where: { materialId: target.id },
+      orderBy: { number: 'desc' },
+      select: { number: true },
+    });
+    const number = (last?.number ?? 0) + 1;
+
+    const created = await tx.materialVersion.create({
+      data: {
+        materialId: target.id,
+        number,
+        storageKey: materialKey(input.projectId, target.id, number, input.originalName),
+        originalName: input.originalName.slice(0, 300),
+        sizeBytes: BigInt(input.body.byteLength),
+        sha256: sha256(input.body),
+        contentType: input.contentType.slice(0, 128),
+        uploadedById: actor.id,
+      },
+    });
+
+    await tx.projectEvent.create({
+      data: {
+        projectId: input.projectId,
+        actorId: actor.id,
+        kind: 'VERSION_UPLOADED',
+        payload: { materialId: target.id, version: number },
+      },
+    });
+
+    return { version: created, material: target };
+  });
+
+  // Байты пишутся после строки: объект без строки — мусор, который видно
+  // сверкой, а строка без объекта была бы обещанием файла, которого нет.
+  await storage().put(version.storageKey, input.body, input.contentType);
+
+  await prisma.fileAccessLog.create({
+    data: { versionId: version.id, userId: actor.id, action: 'UPLOAD', ip: ip ?? null },
+  });
+  await record(actor, {
+    action: 'VERSION_UPLOADED',
+    objectType: 'MaterialVersion',
+    objectId: version.id,
+    projectId: input.projectId,
+    payload: { material: material.id, version: version.number },
+    ip,
+  });
+
+  return version;
+}
+
+/**
+ * Выдать содержимое версии. Единственный путь к байтам: сначала разрешение,
+ * затем запись в журнал доступа, и только потом чтение из хранилища.
+ */
+export async function readVersion(actor: Actor, versionId: string, ip?: string | null) {
+  const version = await prisma.materialVersion.findUnique({
+    where: { id: versionId },
+    include: {
+      material: {
+        include: {
+          project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
+        },
+      },
+    },
+  });
+  if (version === null) return null;
+  if (version.purgedAt !== null) return null;
+  ensure(actor, 'MATERIAL_VIEW', version.material.project);
+
+  await prisma.fileAccessLog.create({
+    data: { versionId, userId: actor.id, action: 'DOWNLOAD', ip: ip ?? null },
+  });
+
+  return {
+    body: await storage().get(version.storageKey),
+    originalName: version.originalName,
+    contentType: version.contentType,
+  };
+}
+
+/**
+ * Комментарий к версии. Комментарий эксперта клиенту не виден до публикации
+ * менеджером; комментарий менеджера и руководителя публикуется сразу.
+ */
+export async function addComment(actor: Actor, versionId: string, body: string) {
+  const version = await prisma.materialVersion.findUnique({
+    where: { id: versionId },
+    include: {
+      material: {
+        include: {
+          project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
+        },
+      },
+    },
+  });
+  if (version === null) throw new Error('Версия не найдена');
+  ensure(actor, 'COMMENT_CREATE', version.material.project);
+
+  const text = body.trim();
+  if (text.length === 0) throw new Error('Пустой комментарий не сохраняется');
+
+  const published = actor.role === 'MANAGER' || actor.role === 'HEAD';
+  return prisma.versionComment.create({
+    data: {
+      versionId,
+      authorId: actor.id,
+      body: text,
+      moderationStatus: published ? 'PUBLISHED' : 'PENDING',
+      moderatedById: published ? actor.id : null,
+      moderatedAt: published ? new Date() : null,
+      publishedAt: published ? new Date() : null,
+    },
+  });
+}
+
+export async function moderateComment(
+  actor: Actor,
+  commentId: string,
+  decision: 'PUBLISHED' | 'REJECTED',
+  note?: string | null,
+) {
+  ensure(actor, 'COMMENT_MODERATE');
+  const now = new Date();
+  const comment = await prisma.versionComment.update({
+    where: { id: commentId },
+    data: {
+      moderationStatus: decision,
+      moderatedById: actor.id,
+      moderatedAt: now,
+      moderationNote: note ?? null,
+      publishedAt: decision === 'PUBLISHED' ? now : null,
+    },
+  });
+  await record(actor, {
+    action: decision === 'PUBLISHED' ? 'COMMENT_PUBLISHED' : 'COMMENT_REJECTED',
+    objectType: 'VersionComment',
+    objectId: commentId,
+  });
+  return comment;
+}
+
+/** Комментарии, видимые этой роли. Сужение выборки, а не скрытие в разметке. */
+export async function listComments(actor: Actor, versionId: string) {
+  const scope = scopeComments(actor);
+  if (scope === null) return [];
+  return prisma.versionComment.findMany({
+    where: { versionId, ...scope },
+    orderBy: { createdAt: 'asc' },
+  });
+}
