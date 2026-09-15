@@ -40,7 +40,7 @@ function fields(lead: Lead): [string, string][] {
  * Content-Type. Библиотека кодирует заголовки сама, но полагаться на это
  * в единственном месте, куда приходит чужой текст, не стоит.
  */
-const header = (s: string) => s.replace(/[\r\n]+/g, ' ').trim();
+export const header = (s: string) => s.replace(/[\r\n]+/g, ' ').trim();
 
 /**
  * Текст ошибки уходит в журнал доставок и оттуда — в админ-панель. Сообщение
@@ -48,7 +48,7 @@ const header = (s: string) => s.replace(/[\r\n]+/g, ' ').trim();
  * токен бота; сообщение SMTP умеет включать строку авторизации. Секреты в
  * базе и на экране оператора — это уже утечка, поэтому вырезаем их до записи.
  */
-function hideSecrets(text: string): string {
+export function hideSecrets(text: string): string {
   let out = text;
   for (const secret of [
     process.env.TELEGRAM_BOT_TOKEN,
