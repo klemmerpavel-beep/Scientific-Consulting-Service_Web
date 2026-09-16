@@ -17,12 +17,33 @@ import { materialKey, sha256, storage } from './storage.ts';
 /** Предел размера одной версии. Материалы кабинета — документы, не архивы. */
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 
+/**
+ * Вид материала. Рабочие материалы этапа и закрывающие документы живут
+ * одной сущностью: у них общая история версий, общий журнал доступа и
+ * общая выдача байтов. Различается привязка — материал этапа висит на
+ * этапе, договор на договоре, счёт и акт на транше.
+ */
+export type MaterialKind = 'STAGE_MATERIAL' | 'CONTRACT' | 'INVOICE' | 'ACT' | 'OTHER';
+
+export const MATERIAL_KIND_LABEL: Record<MaterialKind, string> = {
+  STAGE_MATERIAL: 'материал работы',
+  CONTRACT: 'договор',
+  INVOICE: 'счёт',
+  ACT: 'акт',
+  OTHER: 'документ',
+};
+
 export interface UploadInput {
   readonly projectId: string;
   readonly stageId?: string | null;
   /** Существующий материал: загрузка следующей версии. */
   readonly materialId?: string | null;
   readonly title?: string;
+  readonly kind?: MaterialKind;
+  /** Договор, к которому относится файл договора. */
+  readonly contractId?: string | null;
+  /** Транш, к которому относятся счёт и акт. */
+  readonly trancheId?: string | null;
   readonly originalName: string;
   readonly contentType: string;
   readonly body: Buffer;
@@ -31,7 +52,12 @@ export interface UploadInput {
 export async function uploadVersion(actor: Actor, input: UploadInput, ip?: string | null) {
   const ref = await projectRef(input.projectId);
   if (ref === null) throw new Error('Проект не найден');
-  ensure(actor, 'MATERIAL_UPLOAD', ref);
+
+  // Закрывающие документы — часть финансового контура, а не производства:
+  // договор, счёт и акт заводит тот же, кто ведёт деньги. Иначе клиент мог
+  // бы приложить свой «акт» к чужому траншу.
+  const kind = input.kind ?? 'STAGE_MATERIAL';
+  ensure(actor, kind === 'STAGE_MATERIAL' ? 'MATERIAL_UPLOAD' : 'PAYMENT_EDIT', ref);
 
   if (input.body.byteLength === 0) throw new Error('Пустой файл не принимается');
   if (input.body.byteLength > MAX_UPLOAD_BYTES) {
@@ -52,6 +78,9 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
         data: {
           projectId: input.projectId,
           stageId: input.stageId ?? null,
+          kind,
+          contractId: input.contractId ?? null,
+          trancheId: input.trancheId ?? null,
           title: (input.title ?? input.originalName).trim(),
           createdById: actor.id,
         },

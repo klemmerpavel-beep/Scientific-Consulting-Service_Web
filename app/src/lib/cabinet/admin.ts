@@ -268,3 +268,69 @@ export async function listColorMap(actor: Actor) {
   ensure(actor, 'DIRECTORY_EDIT');
   return prisma.importColorMap.findMany({ orderBy: { argb: 'asc' } });
 }
+
+// ─────────────────────────── Шаблоны этапов ─────────────────────────────────
+
+/**
+ * Шаблон этапов по типу сопровождения.
+ *
+ * Применяется при одобрении заявки и копирует строки в этапы проекта:
+ * правка шаблона задним числом живые проекты не переписывает. Иначе
+ * изменение методики меняло бы план работ у тех, кто уже в работе.
+ */
+export async function listStageTemplates(actor: Actor) {
+  ensure(actor, 'DIRECTORY_EDIT');
+  return prisma.stageTemplate.findMany({
+    orderBy: [{ serviceTypeId: 'asc' }, { position: 'asc' }],
+    include: { serviceType: { select: { id: true, code: true, name: true } } },
+  });
+}
+
+export interface StageTemplateInput {
+  readonly serviceTypeId: string;
+  readonly title: string;
+  readonly position: number;
+  readonly durationDays?: number | null;
+}
+
+export async function saveStageTemplateItem(actor: Actor, input: StageTemplateInput) {
+  ensure(actor, 'DIRECTORY_EDIT');
+  const title = input.title.trim();
+  if (title.length === 0) throw new Error('Название этапа не указано');
+  if (!Number.isInteger(input.position) || input.position < 1) {
+    throw new Error('Порядковый номер этапа — целое число, начиная с единицы');
+  }
+
+  const item = await prisma.stageTemplate.upsert({
+    where: {
+      serviceTypeId_position: { serviceTypeId: input.serviceTypeId, position: input.position },
+    },
+    create: {
+      serviceTypeId: input.serviceTypeId,
+      title,
+      position: input.position,
+      durationDays: input.durationDays ?? null,
+    },
+    update: { title, durationDays: input.durationDays ?? null },
+    select: { id: true },
+  });
+
+  await record(actor, {
+    action: 'STAGE_TEMPLATE_SAVED',
+    objectType: 'StageTemplate',
+    objectId: item.id,
+    payload: { serviceTypeId: input.serviceTypeId, position: input.position, title },
+  });
+  return item;
+}
+
+export async function removeStageTemplateItem(actor: Actor, id: string) {
+  ensure(actor, 'DIRECTORY_EDIT');
+  const item = await prisma.stageTemplate.delete({ where: { id }, select: { title: true } });
+  await record(actor, {
+    action: 'STAGE_TEMPLATE_REMOVED',
+    objectType: 'StageTemplate',
+    objectId: id,
+    payload: { title: item.title },
+  });
+}

@@ -6,7 +6,12 @@ import { prisma } from '../../lib/db';
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { ensure } from '../../lib/cabinet/access';
 import { requestLoginLink, unbindTelegram } from '../../lib/cabinet/auth';
-import { addComment, moderateComment, uploadVersion } from '../../lib/cabinet/materials';
+import {
+  addComment,
+  moderateComment,
+  uploadVersion,
+  type MaterialKind,
+} from '../../lib/cabinet/materials';
 import { sendMessage } from '../../lib/cabinet/messages';
 import {
   addPayout,
@@ -20,7 +25,9 @@ import {
   addAlias,
   createUser,
   removeAlias,
+  removeStageTemplateItem,
   saveServiceType,
+  saveStageTemplateItem,
   setUserRole,
   setUserStatus,
   signExpertNda,
@@ -462,5 +469,88 @@ export async function attachAlias(form: FormData): Promise<void> {
 export async function detachAlias(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   await removeAlias(actor, String(form.get('aliasId') ?? ''));
+  redirect('/cabinet/manage/directory');
+}
+
+/**
+ * Загрузка закрывающего документа. Договор привязывается к договору, счёт
+ * и акт — к траншу: иначе в перечне лежала бы стопка файлов без указания,
+ * какой платёж каким актом закрыт.
+ */
+export async function uploadFinanceDocument(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const file = form.get('file');
+  if (!(file instanceof File) || file.size === 0) {
+    redirect(`/cabinet/projects/${code}/payments?error=empty`);
+  }
+  const kind = String(form.get('kind') ?? 'OTHER') as MaterialKind;
+  const trancheId = String(form.get('trancheId') ?? '') || null;
+
+  await uploadVersion(
+    actor,
+    {
+      projectId: String(form.get('projectId') ?? ''),
+      kind,
+      contractId: trancheId === null ? String(form.get('contractId') ?? '') || null : null,
+      trancheId,
+      title: String(form.get('title') ?? '') || undefined,
+      originalName: file.name,
+      contentType: file.type || 'application/octet-stream',
+      body: Buffer.from(await file.arrayBuffer()),
+    },
+    await requestIp(),
+  );
+  redirect(`/cabinet/projects/${code}/payments`);
+}
+
+/**
+ * Загрузка материала с экрана материалов работы. От `uploadMaterial`
+ * отличается только тем, куда возвращает: там экран этапа, здесь перечень
+ * материалов, и материал может не иметь этапа вовсе.
+ */
+export async function addMaterialVersion(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const file = form.get('file');
+  const back = String(form.get('back') ?? '/cabinet/projects');
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error('Файл не выбран');
+  }
+  await uploadVersion(
+    actor,
+    {
+      projectId: String(form.get('projectId') ?? ''),
+      stageId: String(form.get('stageId') ?? '') || null,
+      materialId: String(form.get('materialId') ?? '') || null,
+      title: String(form.get('title') ?? '') || undefined,
+      originalName: file.name,
+      contentType: file.type || 'application/octet-stream',
+      body: Buffer.from(await file.arrayBuffer()),
+    },
+    await requestIp(),
+  );
+  redirect(back);
+}
+
+export async function saveStageTemplate(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const durationRaw = String(form.get('durationDays') ?? '').trim();
+  try {
+    await saveStageTemplateItem(actor, {
+      serviceTypeId: String(form.get('serviceTypeId') ?? ''),
+      title: String(form.get('title') ?? ''),
+      position: Number(String(form.get('position') ?? '')),
+      durationDays: durationRaw.length === 0 ? null : Number(durationRaw),
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось сохранить этап шаблона';
+    redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/directory');
+}
+
+export async function dropStageTemplate(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await removeStageTemplateItem(actor, String(form.get('id') ?? ''));
   redirect('/cabinet/manage/directory');
 }

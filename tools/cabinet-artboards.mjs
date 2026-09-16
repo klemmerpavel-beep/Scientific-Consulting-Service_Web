@@ -21,7 +21,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from '/var/tmp/pwtest/node_modules/playwright-core/index.mjs';
 
@@ -53,18 +53,39 @@ const BOARDS = [
   { file: '02-projects', role: 'client', path: '/cabinet/projects', title: 'Мои работы', about: 'Блок «сейчас от вас требуется» — композиционный центр экрана; ниже перечень работ с состоянием и сроком.' },
   { file: '03-project', role: 'client', path: '__project__', title: 'Проект', about: 'Трекер этапов, лента событий, участники. Контактов участников в разметке нет: их нет и в объекте, переданном компоненту.' },
   { file: '04-stage', role: 'client', path: '__stage__', title: 'Этап и материалы', about: 'Версии с автором, датой и размером; опубликованные комментарии; согласование этапа клиентом.' },
-  { file: '05-messages', role: 'client', path: '__messages__', title: 'Переписка', about: 'Единственный канал — с менеджером. Сообщение с телефоном помечено детектором, но не заблокировано.' },
-  { file: '06-payments', role: 'client', path: '__payments__', title: 'Счета и документы', about: 'Договор, транши с состоянием оплаты, документы. Начислений эксперту и маржи на экране клиента нет.' },
-  { file: '07-request', role: 'client', path: '/cabinet/request', title: 'Новая заявка', about: 'Заявка из кабинета пишется тем же маршрутом, что и заявка с сайта; состав полей заморожен журналом согласий.' },
-  { file: '08-states', role: 'client', path: '/cabinet/projects/PD-0000-000', title: 'Состояния', about: 'Работа не найдена: состояние называет причину и следующий шаг, а не сообщает «здесь пусто». Тем же экраном отвечает обращение к чужому проекту — существование чужой работы не подтверждается.' },
-  { file: '09-queue', role: 'manager', path: '/cabinet/manage', title: 'Очередь заявок', about: 'Модерация заявок и светофор по срокам: что сорвано, что сорвётся, где работа стоит из-за клиента.' },
-  { file: '10-import', role: 'head', path: '__import__', title: 'Перенос книги заказов', about: 'Отчёт предпросмотра: итоги, замечания по классам с номерами строк, расхождения цвета с текстом, совпадения ФИО.' },
-  { file: '11-analytics', role: 'head', path: '/cabinet/manage/analytics', title: 'Аналитика', about: 'Плитки, три автоматических вывода и графики собственной вёрстки на шкале синего из токенов сайта.' },
-  { file: '12-audit', role: 'head', path: '/cabinet/manage/audit', title: 'Журнал действий', about: 'Фильтры по периоду, действующему лицу, виду действия и коду проекта; выгрузка в CSV записывается в журнал.' },
+  { file: '05-materials', role: 'client', path: '__materials__', title: 'Материалы работы', about: 'Все материалы работы в одном перечне, включая не привязанные к этапу: версии с автором, размером и датой. Закрывающие документы сюда не попадают — их место на экране оплат.' },
+  { file: '06-messages', role: 'client', path: '__messages__', title: 'Переписка', about: 'Единственный канал — с менеджером. Сообщение с телефоном помечено детектором, но не заблокировано.' },
+  { file: '07-payments', role: 'client', path: '__payments__', title: 'Счета и документы', about: 'Договор, транши с состоянием оплаты, документы. Начислений эксперту и маржи на экране клиента нет.' },
+  { file: '08-request', role: 'client', path: '/cabinet/request', title: 'Новая заявка', about: 'Заявка из кабинета пишется тем же маршрутом, что и заявка с сайта; состав полей заморожен журналом согласий.' },
+  { file: '09-states', role: 'client', path: '/cabinet/projects/PD-0000-000', title: 'Состояния', about: 'Работа не найдена: состояние называет причину и следующий шаг, а не сообщает «здесь пусто». Тем же экраном отвечает обращение к чужому проекту — существование чужой работы не подтверждается.' },
+  { file: '10-queue', role: 'manager', path: '/cabinet/manage', title: 'Очередь заявок', about: 'Модерация заявок и светофор по срокам: что сорвано, что сорвётся, где работа стоит из-за клиента.' },
+  { file: '11-import', role: 'head', path: '__import__', title: 'Перенос книги заказов', about: 'Отчёт предпросмотра: итоги, замечания по классам с номерами строк, расхождения цвета с текстом, совпадения ФИО.' },
+  { file: '12-analytics', role: 'head', path: '/cabinet/manage/analytics', title: 'Аналитика', about: 'Плитки, три автоматических вывода и графики собственной вёрстки на шкале синего из токенов сайта.' },
+  { file: '13-audit', role: 'head', path: '/cabinet/manage/audit', title: 'Журнал действий', about: 'Фильтры по периоду, действующему лицу, виду действия и коду проекта; выгрузка в CSV записывается в журнал.' },
 ];
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Собрать приложение, если рабочей сборки нет.
+ *
+ * `npm run build:preview` удаляет каталог `.next` целиком — после сборки
+ * витрины самостоятельного сервера не остаётся, и снимок падал бы с
+ * невнятным «модуль не найден».
+ */
+async function ensureBuild(env) {
+  if (existsSync(path.join(APP, '.next', 'standalone', 'server.js'))) return;
+  console.log('Рабочей сборки нет — собираю (npm run build)…');
+  await new Promise((resolve, reject) => {
+    const build = spawn('npm', ['run', 'build'], {
+      cwd: APP,
+      env: { ...process.env, ...env },
+      stdio: ['ignore', 'ignore', 'inherit'],
+    });
+    build.on('exit', (code) => (code === 0 ? resolve() : reject(new Error('Сборка отказала'))));
+  });
 }
 
 /** Поднять рабочую сборку на базе артбордов. */
@@ -209,6 +230,7 @@ async function main() {
   });
   const { links } = JSON.parse(out.trim().split('\n').at(-1));
 
+  await ensureBuild(env);
   const server = await startServer(env);
   const browser = await chromium.launch({ executablePath: BROWSER, args: ['--no-sandbox'] });
   mkdirSync(OUT, { recursive: true });
@@ -240,6 +262,7 @@ async function main() {
     const resolved = {
       __project__: projectHref,
       __stage__: stageHref,
+      __materials__: `${projectHref}/materials`,
       __messages__: `${projectHref}/messages`,
       __payments__: `${projectHref}/payments`,
       __import__: batchHref,

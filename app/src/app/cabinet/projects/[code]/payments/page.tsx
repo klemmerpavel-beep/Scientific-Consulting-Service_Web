@@ -11,9 +11,11 @@ import {
   Mono,
   Text,
   formatDate,
+  formatSize,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
 import { projectMoney } from '../../../../../lib/cabinet/finance';
+import { MATERIAL_KIND_LABEL, type MaterialKind } from '../../../../../lib/cabinet/materials';
 import { formatAmount, STATUS_LABEL, type TrancheStatus } from '../../../../../lib/cabinet/money';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
@@ -24,6 +26,7 @@ import {
   changeTrancheStatus,
   payPayout,
   saveProjectContract,
+  uploadFinanceDocument,
 } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -64,7 +67,15 @@ export default async function PaymentsScreen({
     prisma.contract.findUnique({
       where: { projectId: project.id },
       include: {
-        tranches: { orderBy: { plannedDate: 'asc' } },
+        tranches: {
+          orderBy: { plannedDate: 'asc' },
+          include: {
+            documents: {
+              where: { deletedAt: null },
+              include: { versions: { orderBy: { number: 'desc' }, take: 1 } },
+            },
+          },
+        },
         documents: { where: { deletedAt: null }, include: { versions: { orderBy: { number: 'desc' }, take: 1 } } },
       },
     }),
@@ -235,6 +246,69 @@ export default async function PaymentsScreen({
                           <Button tone="quiet">Отметить оплату</Button>
                         </form>
                       ) : null}
+
+                      <div style={{ flexBasis: '100%' }}>
+                        {tranche.documents.length === 0 ? null : (
+                          <ul
+                            style={{
+                              margin: '4px 0 0',
+                              padding: 0,
+                              listStyle: 'none',
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 12,
+                            }}
+                          >
+                            {tranche.documents.map((document) => (
+                              <li key={document.id} style={{ fontFamily: SANS, fontSize: 14 }}>
+                                {document.versions[0] === undefined ? (
+                                  document.title
+                                ) : (
+                                  <a href={`/cabinet/files/${document.versions[0].id}`}>
+                                    {MATERIAL_KIND_LABEL[document.kind as MaterialKind]}:{' '}
+                                    {document.title}
+                                  </a>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
+                        {mayEdit ? (
+                          <form
+                            action={uploadFinanceDocument}
+                            style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}
+                          >
+                            <input type="hidden" name="projectId" value={project.id} />
+                            <input type="hidden" name="code" value={project.code} />
+                            <input type="hidden" name="trancheId" value={tranche.id} />
+                            <select
+                              name="kind"
+                              aria-label="Вид документа"
+                              defaultValue="INVOICE"
+                              style={{
+                                minHeight: 44,
+                                padding: '0 12px',
+                                borderRadius: 10,
+                                border: '1px solid var(--pd-edge-neutral)',
+                                fontFamily: SANS,
+                                fontSize: 16,
+                              }}
+                            >
+                              <option value="INVOICE">счёт</option>
+                              <option value="ACT">акт</option>
+                            </select>
+                            <input
+                              type="file"
+                              name="file"
+                              required
+                              aria-label="Файл документа"
+                              style={{ fontFamily: SANS, fontSize: 15 }}
+                            />
+                            <Button tone="quiet">Приложить</Button>
+                          </form>
+                        ) : null}
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -266,10 +340,15 @@ export default async function PaymentsScreen({
             </Card>
           </section>
 
-          {contract.documents.length === 0 ? null : (
-            <section style={{ marginBottom: 20 }}>
-              <Mono>Документы</Mono>
-              <Card style={{ marginTop: 12 }}>
+          <section style={{ marginBottom: 20 }}>
+            <Mono>Документы по договору</Mono>
+            <Card style={{ marginTop: 12 }}>
+              {contract.documents.length === 0 ? (
+                <Text muted>
+                  Файл договора пока не приложен. Счета и акты прикладываются к траншам — так
+                  видно, какой платёж каким документом закрыт.
+                </Text>
+              ) : (
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 12 }}>
                   {contract.documents.map((document) => (
                     <li key={document.id}>
@@ -277,15 +356,50 @@ export default async function PaymentsScreen({
                         {document.versions[0] === undefined ? (
                           document.title
                         ) : (
-                          <a href={`/cabinet/files/${document.versions[0].id}`}>{document.title}</a>
+                          <a href={`/cabinet/files/${document.versions[0].id}`}>
+                            {MATERIAL_KIND_LABEL[document.kind as MaterialKind]}: {document.title}
+                          </a>
                         )}
+                      </Text>
+                      <Text muted size={13}>
+                        {document.versions[0] === undefined
+                          ? 'файл не загружен'
+                          : `${formatSize(document.versions[0].sizeBytes)} · ${formatDate(document.versions[0].uploadedAt)}`}
                       </Text>
                     </li>
                   ))}
                 </ul>
-              </Card>
-            </section>
-          )}
+              )}
+
+              {mayEdit ? (
+                <form
+                  action={uploadFinanceDocument}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: 16,
+                    alignItems: 'end',
+                    marginTop: 20,
+                    paddingTop: 20,
+                    borderTop: '1px solid var(--pd-divider)',
+                  }}
+                >
+                  <input type="hidden" name="projectId" value={project.id} />
+                  <input type="hidden" name="code" value={project.code} />
+                  <input type="hidden" name="contractId" value={contract.id} />
+                  <input type="hidden" name="kind" value="CONTRACT" />
+                  <Field label="Название" name="title" placeholder="Договор № Д-2026-001" />
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Файл</span>
+                    <input type="file" name="file" required style={{ fontFamily: SANS, fontSize: 15 }} />
+                  </label>
+                  <div>
+                    <Button tone="quiet">Приложить договор</Button>
+                  </div>
+                </form>
+              ) : null}
+            </Card>
+          </section>
 
           {maySeeEconomy ? (
             <section>

@@ -4,10 +4,10 @@ import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
 import { Button, Card, Chip, Field, Heading, Mono, Notice, Text } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
-import { listColorMap, listServiceTypes } from '../../../../lib/cabinet/admin';
+import { listColorMap, listServiceTypes, listStageTemplates } from '../../../../lib/cabinet/admin';
 import { formatAmount } from '../../../../lib/cabinet/money';
 import { currentActor } from '../../../../lib/cabinet/session';
-import { attachAlias, detachAlias, saveType } from '../../actions';
+import { attachAlias, detachAlias, dropStageTemplate, saveStageTemplate, saveType } from '../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,7 +51,11 @@ export default async function DirectoryScreen({
   if (!can(actor, 'DIRECTORY_EDIT')) redirect('/cabinet/projects');
 
   const flags = await searchParams;
-  const [types, colors] = await Promise.all([listServiceTypes(actor), listColorMap(actor)]);
+  const [types, colors, templates] = await Promise.all([
+    listServiceTypes(actor),
+    listColorMap(actor),
+    listStageTemplates(actor),
+  ]);
 
   return (
     <Shell actor={actor} current="/cabinet/manage/directory">
@@ -165,6 +169,92 @@ export default async function DirectoryScreen({
             ))}
           </tbody>
         </table>
+      </Card>
+
+      <Heading level={2} style={{ marginBottom: 8 }}>
+        Шаблоны этапов
+      </Heading>
+      <Text muted style={{ marginBottom: 12 }}>
+        Шаблон применяется при одобрении заявки и копирует строки в этапы проекта. Правка шаблона
+        задним числом живые проекты не переписывает: иначе изменение методики меняло бы план работ
+        у тех, кто уже в работе.
+      </Text>
+      <Card style={{ padding: 0, overflowX: 'auto', marginBottom: 20 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+          <thead>
+            <tr>
+              <th style={head} scope="col">Тип сопровождения</th>
+              <th style={head} scope="col">№</th>
+              <th style={head} scope="col">Этап</th>
+              <th style={head} scope="col">Длительность</th>
+              <th style={head} scope="col">Действие</th>
+            </tr>
+          </thead>
+          <tbody>
+            {templates.length === 0 ? (
+              <tr>
+                <td style={cell} colSpan={5}>
+                  Шаблонов нет. Пока их нет, менеджер заводит этапы вручную при одобрении заявки.
+                </td>
+              </tr>
+            ) : (
+              templates.map((item) => (
+                <tr key={item.id}>
+                  <td style={cell}>{item.serviceType.name}</td>
+                  <td style={cell}>{item.position}</td>
+                  <td style={cell}>{item.title}</td>
+                  <td style={cell}>
+                    {item.durationDays === null ? '—' : `${item.durationDays} дн.`}
+                  </td>
+                  <td style={cell}>
+                    <form action={dropStageTemplate}>
+                      <input type="hidden" name="id" value={item.id} />
+                      <Button type="submit" tone="quiet">
+                        Убрать
+                      </Button>
+                    </form>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </Card>
+
+      <Card style={{ marginBottom: 32 }}>
+        <Heading level={3} style={{ marginBottom: 12 }}>
+          Добавить этап в шаблон
+        </Heading>
+        <form
+          action={saveStageTemplate}
+          style={{
+            display: 'grid',
+            gap: 16,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+            alignItems: 'end',
+          }}
+        >
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Тип сопровождения</span>
+            <select name="serviceTypeId" required style={field}>
+              {types.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Field label="Порядковый номер" name="position" required placeholder="1" />
+          <Field label="Название этапа" name="title" required placeholder="Постановка задачи" />
+          <Field label="Длительность, дней" name="durationDays" placeholder="необязательно" />
+          <div>
+            <Button type="submit">Сохранить</Button>
+          </div>
+        </form>
+        <Text muted size={13} style={{ marginTop: 12 }}>
+          Этап с тем же номером в пределах типа перезаписывается — так правится название, не ломая
+          порядок.
+        </Text>
       </Card>
 
       <Heading level={2} style={{ marginBottom: 12 }}>
