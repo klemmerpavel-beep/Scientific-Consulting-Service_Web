@@ -15,6 +15,7 @@ import {
   type StageStateKey,
 } from '../../../components/cabinet/ui';
 import { SANS } from '../../../components/cabinet/tokens';
+import { unreadByProject } from '../../../lib/cabinet/messages';
 import { listProjects, pendingActions } from '../../../lib/cabinet/queries';
 import { currentActor } from '../../../lib/cabinet/session';
 
@@ -25,7 +26,10 @@ export default async function ProjectsScreen() {
   if (actor === null) redirect('/cabinet');
 
   const [projects, pending] = await Promise.all([listProjects(actor), pendingActions(actor)]);
+  const unread = await unreadByProject(actor, projects.map((p) => p.id));
   const forClient = actor.role === 'CLIENT';
+  // Эксперт в канал переписки не входит, поэтому перехода к нему не видит.
+  const mayWrite = actor.role !== 'EXPERT';
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -148,14 +152,35 @@ export default async function ProjectsScreen() {
                 }))}
               />
 
-              <Text muted size={13} style={{ marginTop: 16 }}>
-                {project.stages.filter((s) => s.state === 'DONE').length} из{' '}
-                {project.stages.length}{' '}
-                {plural(project.stages.length, 'этапа', 'этапов', 'этапов')} завершено
-                {project.stages.some((s) => s.state === 'AWAITING_CLIENT')
-                  ? ` · есть этап в состоянии «${STAGE_STATE_LABEL.AWAITING_CLIENT}»`
-                  : ''}
-              </Text>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 16,
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  marginTop: 16,
+                }}
+              >
+                <Text muted size={13}>
+                  {project.stages.filter((s) => s.state === 'DONE').length} из{' '}
+                  {project.stages.length}{' '}
+                  {plural(project.stages.length, 'этапа', 'этапов', 'этапов')} завершено
+                  {project.stages.some((s) => s.state === 'AWAITING_CLIENT')
+                    ? ` · есть этап в состоянии «${STAGE_STATE_LABEL.AWAITING_CLIENT}»`
+                    : ''}
+                </Text>
+                {mayWrite ? (
+                  <a
+                    href={`/cabinet/projects/${project.code}/messages`}
+                    style={{ marginLeft: 'auto', fontFamily: SANS, fontSize: 14 }}
+                  >
+                    Переписка с менеджером
+                    {(unread.get(project.id) ?? 0) > 0
+                      ? ` · ${unread.get(project.id)} новых`
+                      : ''}
+                  </a>
+                ) : null}
+              </div>
             </Card>
           ))}
         </ul>

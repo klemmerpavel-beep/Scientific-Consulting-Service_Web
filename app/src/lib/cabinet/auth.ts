@@ -73,6 +73,7 @@ export async function requestLoginLink(
         selector: token.selector,
         verifierHash: digest(token.verifier),
         userId: user.id,
+        purpose: 'LOGIN',
         expiresAt: new Date(Date.now() + TOKEN_TTL_MINUTES * 60 * 1000),
         requestIp: ip,
       },
@@ -123,6 +124,7 @@ export async function consumeLoginToken(
 
   const token = await prisma.loginToken.findUnique({ where: { selector: parsed.selector } });
   if (token === null) return null;
+  if (token.purpose !== 'LOGIN') return null;
   if (token.usedAt !== null) return null;
   if (token.expiresAt.getTime() < Date.now()) return null;
   if (!sameDigest(token.verifierHash, digest(parsed.verifier))) return null;
@@ -225,4 +227,71 @@ export async function revokeAllSessions(userId: string): Promise<void> {
       data: { usedAt: new Date() },
     }),
   ]);
+}
+
+/**
+ * Ссылка привязки Telegram. Устроена как ссылка входа, но с другим
+ * назначением: перейдя по ней в браузере, войти нельзя, а погасив её в боте,
+ * нельзя получить сессию. Разделение здесь не формальность — ссылка уходит
+ * в мессенджер, где её видит и пересылает кто угодно.
+ */
+export async function createTelegramBindLink(userId: string): Promise<string | null> {
+  const bot = process.env.TELEGRAM_BOT_USERNAME;
+  if (!bot) return null;
+  const token = createRawToken();
+  await prisma.loginToken.create({
+    data: {
+      selector: token.selector,
+      verifierHash: digest(token.verifier),
+      userId,
+      purpose: 'BIND_TELEGRAM',
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      requestIp: 'cabinet',
+    },
+  });
+  return `https://t.me/${bot}?start=${token.value}`;
+}
+
+/**
+ * Погашение метки привязки. Возвращает признак успеха, но наружу он не
+ * уходит: бот на неизвестную метку не отвечает ничем.
+ */
+export async function bindTelegram(value: string, chatId: string): Promise<boolean> {
+  const parsed = splitToken(value);
+  if (parsed === null) return false;
+
+  const token = await prisma.loginToken.findUnique({ where: { selector: parsed.selector } });
+  if (token === null) return false;
+  if (token.purpose !== 'BIND_TELEGRAM') return false;
+  if (token.usedAt !== null) return false;
+  if (token.expiresAt.getTime() < Date.now()) return false;
+  if (!sameDigest(token.verifierHash, digest(parsed.verifier))) return false;
+
+  const consumed = await prisma.loginToken.updateMany({
+    where: { id: token.id, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+  if (consumed.count !== 1) return false;
+
+  // Один аккаунт Telegram — одна учётная запись: привязка у прежнего
+  // владельца снимается, иначе уведомления уходили бы двоим.
+  await prisma.$transaction([
+    prisma.user.updateMany({
+      where: { telegramChatId: chatId, id: { not: token.userId } },
+      data: { telegramChatId: null, notifyTelegram: false },
+    }),
+    prisma.user.update({
+      where: { id: token.userId },
+      data: { telegramChatId: chatId, notifyTelegram: true },
+    }),
+  ]);
+  return true;
+}
+
+/** Снять привязку по требованию пользователя. */
+export async function unbindTelegram(userId: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { telegramChatId: null, notifyTelegram: false },
+  });
 }

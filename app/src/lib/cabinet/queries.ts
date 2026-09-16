@@ -1,5 +1,6 @@
+import type { StageState } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
-import { ensure, scopeComments, scopeMaterials, scopeProjects, type Actor } from './access.ts';
+import { can, ensure, scopeComments, scopeMaterials, scopeProjects, type Actor } from './access.ts';
 
 /**
  * Выборки экранов кабинета. Каждая строится через ограничение из модуля
@@ -118,4 +119,92 @@ export async function experts() {
     orderBy: { fullName: 'asc' },
     include: { expertProfile: { select: { specialization: true, ndaSignedAt: true } } },
   });
+}
+
+/**
+ * Светофор по срокам. Три полосы, и каждая отвечает на свой вопрос: что уже
+ * сорвано, что сорвётся на этой неделе и где работа стоит из-за клиента
+ * дольше двух недель. Последняя полоса нужна отдельно: просрочки там может
+ * ещё не быть, а проект уже фактически не движется.
+ */
+export async function trafficLight(actor: Actor) {
+  ensure(actor, 'REGISTRY_VIEW');
+  const now = new Date();
+  const inWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+  const include = {
+    project: { select: { code: true, title: true, client: { select: { fullName: true } } } },
+  } as const;
+  // Незакрытые этапы: завершённые в светофор не попадают по определению.
+  const live = {
+    in: ['NOT_STARTED', 'IN_PROGRESS', 'AWAITING_CLIENT', 'IN_APPROVAL'] as StageState[],
+  };
+
+  const [overdue, soon, stalled] = await Promise.all([
+    prisma.stage.findMany({
+      where: { state: live, dueOn: { lt: now } },
+      orderBy: { dueOn: 'asc' },
+      include,
+    }),
+    prisma.stage.findMany({
+      where: { state: live, dueOn: { gte: now, lte: inWeek } },
+      orderBy: { dueOn: 'asc' },
+      include,
+    }),
+    prisma.stage.findMany({
+      where: { state: 'AWAITING_CLIENT', awaitingClientSince: { lt: twoWeeksAgo } },
+      orderBy: { awaitingClientSince: 'asc' },
+      include,
+    }),
+  ]);
+
+  return { overdue, soon, stalled };
+}
+
+/** Реестр клиентов. Контакты отдаются только ролям, которым они положены. */
+export async function clientRegistry(actor: Actor) {
+  ensure(actor, 'REGISTRY_VIEW');
+  const rows = await prisma.clientProfile.findMany({
+    where: { erasedAt: null },
+    orderBy: { fullName: 'asc' },
+    include: {
+      projects: { select: { id: true, status: true } },
+      user: { select: { lastLoginAt: true } },
+    },
+  });
+  const contacts = can(actor, 'CONTACTS_VIEW');
+  return rows.map((row) => ({
+    id: row.id,
+    fullName: row.fullName,
+    university: row.university,
+    speciality: row.speciality,
+    projects: row.projects.length,
+    active: row.projects.filter((p) => p.status === 'ACTIVE').length,
+    lastLoginAt: row.user?.lastLoginAt ?? null,
+    // Контакты не «скрываются на экране», а не попадают в объект вовсе.
+    ...(contacts ? { email: row.email, phone: row.phone } : {}),
+  }));
+}
+
+/** Реестр экспертов с их загрузкой. */
+export async function expertRegistry(actor: Actor) {
+  ensure(actor, 'REGISTRY_VIEW');
+  const rows = await prisma.user.findMany({
+    where: { role: 'EXPERT', status: 'ACTIVE' },
+    orderBy: { fullName: 'asc' },
+    include: {
+      expertProfile: true,
+      expertProjects: { select: { id: true, status: true } },
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    fullName: row.fullName,
+    degree: row.expertProfile?.degree ?? null,
+    specialization: row.expertProfile?.specialization ?? null,
+    ndaSignedAt: row.expertProfile?.ndaSignedAt ?? null,
+    active: row.expertProjects.filter((p) => p.status === 'ACTIVE').length,
+    total: row.expertProjects.length,
+  }));
 }

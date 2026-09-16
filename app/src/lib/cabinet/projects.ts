@@ -1,6 +1,7 @@
 import { prisma } from '../db.ts';
 import { ensure, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
+import { enqueue } from './outbox.ts';
 
 /**
  * Производственный контур: модерация заявки, проект, этапы.
@@ -332,6 +333,36 @@ export async function setStageState(
         payload: { stageId, from, to },
       },
     });
+
+    // Уведомление ставится здесь же, в одной транзакции с переводом этапа:
+    // недоступная почта не должна откатывать работу, а потерянное
+    // уведомление оставило бы клиента в неведении, что от него ждут файл.
+    if (to === 'AWAITING_CLIENT' || to === 'IN_APPROVAL') {
+      const project = await tx.project.findUnique({
+        where: { id: stage.projectId },
+        select: { code: true, title: true, client: { select: { userId: true } } },
+      });
+      const userId = project?.client.userId ?? null;
+      if (userId !== null) {
+        const awaiting = to === 'AWAITING_CLIENT';
+        await enqueue(tx, {
+          userId,
+          projectId: stage.projectId,
+          eventKind: awaiting ? 'STAGE_AWAITING_CLIENT' : 'STAGE_IN_APPROVAL',
+          subject: awaiting
+            ? `Этап «${stage.title}» ждёт ваших материалов`
+            : `Этап «${stage.title}» готов к согласованию`,
+          body:
+            `Проект ${project?.code} — ${project?.title}.\n` +
+            (awaiting
+              ? `${(reason ?? '').trim()}\n`
+              : 'Посмотрите последнюю версию материалов и комментарии к ней.\n') +
+            'Открыть этап можно в личном кабинете.',
+          dedupKey: `stage:${stageId}:${to.toLowerCase()}:${now.toISOString().slice(0, 16)}`,
+        });
+      }
+    }
+
     return updated;
   });
 }

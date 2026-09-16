@@ -176,13 +176,22 @@ model User {
 /// Одноразовая ссылка входа. В ссылку уходят обе части: selector.verifier.
 /// Селектор даёт индексный поиск, верификатор сравнивается за постоянное
 /// время. Сам верификатор в базе не хранится никогда.
+enum TokenPurpose {
+  LOGIN
+  BIND_TELEGRAM
+}
+
 model LoginToken {
-  id           String   @id @default(cuid())
-  selector     String   @unique
+  id           String       @id @default(cuid())
+  selector     String       @unique
   verifierHash String
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Назначение токена. Ссылка входа и ссылка привязки Telegram устроены
+  /// одинаково, но взаимозаменяемы быть не должны: перейдя по ссылке
+  /// привязки в браузере, войти нельзя.
+  purpose      TokenPurpose @default(LOGIN)
+  createdAt    DateTime     @default(now())
   expiresAt    DateTime
   usedAt       DateTime?
   requestIp    String?

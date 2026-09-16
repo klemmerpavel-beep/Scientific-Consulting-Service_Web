@@ -14,6 +14,7 @@ import {
   type StageStateKey,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
+import { unreadCount } from '../../../../lib/cabinet/messages';
 import { projectByCode } from '../../../../lib/cabinet/queries';
 import { experts } from '../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../lib/cabinet/session';
@@ -51,6 +52,8 @@ export default async function ProjectScreen({
   const mayEdit = can(actor, 'STAGE_EDIT', ref);
   const mayAssign = can(actor, 'PROJECT_ASSIGN_EXPERT', ref);
   const maySeeContacts = can(actor, 'CONTACTS_VIEW', ref);
+  const mayWrite = can(actor, 'MESSAGE_READ', ref);
+  const unread = mayWrite ? await unreadCount(actor, project.id) : 0;
   const expertList = mayAssign ? await experts() : [];
 
   return (
@@ -151,9 +154,16 @@ export default async function ProjectScreen({
             <Text size={14} style={{ marginBottom: 4 }}>
               <strong>{project.manager.fullName}</strong>
             </Text>
-            <Text muted size={13} style={{ marginBottom: 16 }}>
+            <Text muted size={13} style={{ marginBottom: mayWrite ? 10 : 16 }}>
               менеджер проекта
             </Text>
+            {mayWrite ? (
+              <Text size={14} style={{ marginBottom: 16 }}>
+                <a href={`/cabinet/projects/${project.code}/messages`}>
+                  Переписка{unread > 0 ? ` · ${unread} новых` : ''}
+                </a>
+              </Text>
+            ) : null}
 
             {project.expert === null ? (
               <Text muted size={14}>

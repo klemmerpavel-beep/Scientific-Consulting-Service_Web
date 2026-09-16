@@ -39,18 +39,21 @@ export interface NavItem {
 }
 
 export function navFor(actor: Actor): NavItem[] {
+  const settings: NavItem = { href: '/cabinet/settings', label: 'Уведомления' };
   if (actor.role === 'CLIENT') {
     return [
       { href: '/cabinet/projects', label: 'Мои работы' },
       { href: '/cabinet/request', label: 'Новая заявка' },
+      settings,
     ];
   }
   if (actor.role === 'EXPERT') {
-    return [{ href: '/cabinet/projects', label: 'Назначенные работы' }];
+    return [{ href: '/cabinet/projects', label: 'Назначенные работы' }, settings];
   }
   return [
     { href: '/cabinet/manage', label: 'Очередь заявок' },
     { href: '/cabinet/projects', label: 'Проекты' },
+    settings,
   ];
 }
 

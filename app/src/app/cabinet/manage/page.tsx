@@ -13,7 +13,7 @@ import {
   formatDate,
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
-import { leadQueue, serviceTypes } from '../../../lib/cabinet/queries';
+import { leadQueue, serviceTypes, trafficLight } from '../../../lib/cabinet/queries';
 import { currentActor } from '../../../lib/cabinet/session';
 import { moderateLead } from '../actions';
 
@@ -32,10 +32,92 @@ export default async function ManageQueue() {
   if (actor === null) redirect('/cabinet');
   if (!can(actor, 'REQUEST_MODERATE')) redirect('/cabinet/projects');
 
-  const [leads, types] = await Promise.all([leadQueue(actor), serviceTypes()]);
+  const [leads, types, light] = await Promise.all([
+    leadQueue(actor),
+    serviceTypes(),
+    trafficLight(actor),
+  ]);
+
+  const lanes = [
+    {
+      key: 'overdue',
+      title: 'Просрочены',
+      tone: 'warn' as const,
+      rows: light.overdue,
+      hint: 'Срок этапа прошёл, а этап не закрыт.',
+    },
+    {
+      key: 'soon',
+      title: 'Срок в пределах недели',
+      tone: 'accent' as const,
+      rows: light.soon,
+      hint: 'Ещё не сорвано, но резерва уже нет.',
+    },
+    {
+      key: 'stalled',
+      title: 'Ждут клиента дольше двух недель',
+      tone: 'neutral' as const,
+      rows: light.stalled,
+      hint: 'Просрочки может не быть, а работа стоит.',
+    },
+  ];
 
   return (
     <Shell actor={actor} current="/cabinet/manage">
+      <section style={{ marginBottom: 36 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
+          <Mono>Сроки</Mono>
+          <a href="/cabinet/manage/registry" style={{ marginLeft: 'auto', fontSize: 14 }}>
+            Реестры клиентов и экспертов
+          </a>
+        </div>
+
+        <div
+          className="cab-two"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0,1fr))',
+            gap: 16,
+            marginTop: 12,
+          }}
+        >
+          {lanes.map((lane) => (
+            <Card key={lane.key}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
+                <Chip tone={lane.rows.length === 0 ? 'ok' : lane.tone}>{lane.rows.length}</Chip>
+                <Heading level={3}>{lane.title}</Heading>
+              </div>
+              {lane.rows.length === 0 ? (
+                <Text muted size={13}>
+                  {lane.hint}
+                </Text>
+              ) : (
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+                  {lane.rows.slice(0, 5).map((stage) => (
+                    <li key={stage.id}>
+                      <Text size={14}>
+                        <a href={`/cabinet/stages/${stage.id}`}>{stage.title}</a>
+                      </Text>
+                      <Text muted size={13}>
+                        {stage.project.code} · {stage.project.client.fullName}
+                        {stage.dueOn === null ? '' : ` · срок ${formatDate(stage.dueOn)}`}
+                      </Text>
+                    </li>
+                  ))}
+                  {lane.rows.length > 5 ? (
+                    <li>
+                      <Text muted size={13}>
+                        и ещё {lane.rows.length - 5}
+                      </Text>
+                    </li>
+                  ) : null}
+                </ul>
+              )}
+            </Card>
+          ))}
+        </div>
+      </section>
+
       <Mono>Очередь заявок</Mono>
       <Heading level={1} style={{ margin: '12px 0 8px' }}>
         Заявки на рассмотрении

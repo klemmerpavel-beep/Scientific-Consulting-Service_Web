@@ -1,6 +1,7 @@
 import { prisma } from '../db.ts';
 import { ensure, scopeComments, type Actor } from './access.ts';
 import { record } from './audit.ts';
+import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
 import { materialKey, sha256, storage } from './storage.ts';
 
@@ -95,6 +96,37 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   await prisma.fileAccessLog.create({
     data: { versionId: version.id, userId: actor.id, action: 'UPLOAD', ip: ip ?? null },
   });
+
+  // О новой версии узнаёт вторая сторона: загрузивший и так знает, что сделал.
+  const project = await prisma.project.findUnique({
+    where: { id: input.projectId },
+    select: {
+      code: true,
+      title: true,
+      managerId: true,
+      expertId: true,
+      client: { select: { userId: true } },
+    },
+  });
+  if (project !== null) {
+    const recipients = new Set(
+      [project.client.userId, project.managerId, project.expertId].filter(
+        (id): id is string => id !== null && id !== actor.id,
+      ),
+    );
+    for (const userId of recipients) {
+      await enqueue(prisma, {
+        userId,
+        projectId: input.projectId,
+        eventKind: 'VERSION_UPLOADED',
+        subject: `Новая версия материала: ${material.title}`,
+        body:
+          `Проект ${project.code} — ${project.title}.\n` +
+          `Загружена версия v${version.number}. Открыть можно в личном кабинете.`,
+        dedupKey: `version:${version.id}:uploaded:${userId}`,
+      });
+    }
+  }
   await record(actor, {
     action: 'VERSION_UPLOADED',
     objectType: 'MaterialVersion',
@@ -195,6 +227,41 @@ export async function moderateComment(
     objectType: 'VersionComment',
     objectId: commentId,
   });
+
+  if (decision === 'PUBLISHED') {
+    const context = await prisma.versionComment.findUnique({
+      where: { id: commentId },
+      select: {
+        version: {
+          select: {
+            material: {
+              select: {
+                title: true,
+                project: {
+                  select: { id: true, code: true, title: true, client: { select: { userId: true } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    const project = context?.version.material.project;
+    const userId = project?.client.userId ?? null;
+    if (project !== undefined && userId !== null) {
+      await enqueue(prisma, {
+        userId,
+        projectId: project.id,
+        eventKind: 'EXPERT_COMMENT_PUBLISHED',
+        subject: 'Эксперт оставил замечание по материалу',
+        body:
+          `Проект ${project.code} — ${project.title}.\n` +
+          `Материал «${context?.version.material.title}». Замечание видно в кабинете.`,
+        dedupKey: `comment:${commentId}:published`,
+      });
+    }
+  }
+
   return comment;
 }
 

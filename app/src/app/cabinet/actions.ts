@@ -2,9 +2,13 @@
 
 import { redirect } from 'next/navigation';
 
+import { prisma } from '../../lib/db';
+import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { ensure } from '../../lib/cabinet/access';
-import { requestLoginLink } from '../../lib/cabinet/auth';
+import { requestLoginLink, unbindTelegram } from '../../lib/cabinet/auth';
 import { addComment, moderateComment, uploadVersion } from '../../lib/cabinet/materials';
+import { sendMessage } from '../../lib/cabinet/messages';
+import { enqueue } from '../../lib/cabinet/outbox';
 import { addStage, approveLead, assignExpert, declineLead, setStageState } from '../../lib/cabinet/projects';
 import { currentActor, requestIp } from '../../lib/cabinet/session';
 
@@ -130,4 +134,94 @@ export async function decideOnComment(form: FormData): Promise<void> {
   const decision = String(form.get('decision') ?? '') === 'publish' ? 'PUBLISHED' : 'REJECTED';
   await moderateComment(actor, commentId, decision);
   redirect(`/cabinet/stages/${stageId}`);
+}
+
+/**
+ * Заявка, поданная клиентом изнутри кабинета. Пишется в ту же таблицу, что и
+ * обращение с сайта: отдельной сущности «заявка» в системе нет, и очередь
+ * модерации у менеджера одна.
+ *
+ * Публичная схема валидации при этом не используется: состав её полей
+ * заморожен, на нём держится журнал согласий сайта (CONTRIBUTING.md). Здесь
+ * заявитель уже известен по сессии, согласие принято при первом входе, и
+ * спрашивать контакт заново незачем.
+ */
+export async function submitCabinetRequest(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  ensure(actor, 'REQUEST_CREATE');
+
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: actor.id },
+    select: { email: true, fullName: true, consentVersion: true },
+  });
+
+  const topic = String(form.get('topic') ?? '').trim();
+  if (topic.length === 0) throw new Error('Тема работы не указана');
+
+  const lead = await prisma.lead.create({
+    data: {
+      source: 'cabinet',
+      form: 'request',
+      name: user.fullName,
+      contactKind: 'email',
+      contact: user.email,
+      topic,
+      need: String(form.get('need') ?? '').trim() || null,
+      deadline: String(form.get('deadline') ?? '').trim() || null,
+      message: String(form.get('message') ?? '').trim() || null,
+      // Согласие принято при первом входе в кабинет; редакция текста
+      // хранится вместе с заявкой, как и у обращений с сайта.
+      consentGiven: true,
+      consentVersion: user.consentVersion ?? CONSENT_VERSION,
+      termsAccepted: true,
+      ip: await requestIp(),
+    },
+  });
+
+  // Менеджеры узнают о заявке из кабинета через очередь. Обращения с сайта
+  // идут другим путём — их доставляет уже работающий `notify.ts`, и второе
+  // уведомление о том же было бы дублем.
+  const managers = await prisma.user.findMany({
+    where: { role: { in: ['MANAGER', 'HEAD'] }, status: 'ACTIVE' },
+    select: { id: true },
+  });
+  for (const manager of managers) {
+    await enqueue(prisma, {
+      userId: manager.id,
+      eventKind: 'REQUEST_CREATED',
+      subject: 'Новая заявка из кабинета',
+      body: `${user.fullName}: ${topic}\nЗаявка ждёт в очереди модерации.`,
+      dedupKey: `lead:${lead.id}:created:${manager.id}`,
+    });
+  }
+
+  redirect('/cabinet/request?sent=1');
+}
+
+/** Отправка сообщения в канал «клиент — менеджер». */
+export async function postMessage(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const projectId = String(form.get('projectId') ?? '');
+  const code = String(form.get('code') ?? '');
+  await sendMessage(actor, projectId, String(form.get('body') ?? ''));
+  redirect(`/cabinet/projects/${code}/messages`);
+}
+
+/** Каналы уведомлений. Выбор за получателем, а не за системой. */
+export async function saveNotificationChannels(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await prisma.user.update({
+    where: { id: actor.id },
+    data: {
+      notifyEmail: form.get('notifyEmail') === 'on',
+      notifyTelegram: form.get('notifyTelegram') === 'on',
+    },
+  });
+  redirect('/cabinet/settings?saved=1');
+}
+
+export async function dropTelegram(): Promise<void> {
+  const actor = await actorOrRedirect();
+  await unbindTelegram(actor.id);
+  redirect('/cabinet/settings?saved=1');
 }

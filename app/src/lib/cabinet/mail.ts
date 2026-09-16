@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 
-import { header, hideSecrets } from '../notify';
+import { header, hideSecrets } from '../notify.ts';
 
 /**
  * Отправка письма участнику кабинета. От доставки заявок (`notify.ts`)
