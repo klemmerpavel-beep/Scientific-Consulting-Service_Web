@@ -62,6 +62,7 @@ export function navFor(actor: Actor): NavItem[] {
   // разделы не показываются.
   if (actor.role === 'HEAD') {
     staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
+    staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
     staff.push({ href: '/cabinet/manage/import', label: 'Импорт' });
   }
   return [...staff, settings];
