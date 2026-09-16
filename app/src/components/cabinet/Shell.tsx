@@ -48,13 +48,19 @@ export function navFor(actor: Actor): NavItem[] {
     ];
   }
   if (actor.role === 'EXPERT') {
-    return [{ href: '/cabinet/projects', label: 'Назначенные работы' }, settings];
+    return [
+      { href: '/cabinet/projects', label: 'Назначенные работы' },
+      { href: '/cabinet/payout', label: 'Вознаграждение' },
+      settings,
+    ];
   }
-  return [
+  const staff: NavItem[] = [
     { href: '/cabinet/manage', label: 'Очередь заявок' },
     { href: '/cabinet/projects', label: 'Проекты' },
-    settings,
   ];
+  // Финансовый контур ведёт руководитель: менеджеру этот раздел не показывается.
+  if (actor.role === 'HEAD') staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
+  return [...staff, settings];
 }
 
 export default function Shell({

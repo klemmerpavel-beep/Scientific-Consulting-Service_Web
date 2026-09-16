@@ -1,0 +1,123 @@
+import { redirect } from 'next/navigation';
+
+import Shell from '../../../../components/cabinet/Shell';
+import { SANS } from '../../../../components/cabinet/tokens';
+import { Card, Heading, Mono, Text } from '../../../../components/cabinet/ui';
+import { can } from '../../../../lib/cabinet/access';
+import { financeSummary } from '../../../../lib/cabinet/finance';
+import { formatAmount } from '../../../../lib/cabinet/money';
+import { currentActor } from '../../../../lib/cabinet/session';
+
+export const dynamic = 'force-dynamic';
+
+const cell: React.CSSProperties = {
+  padding: '10px 14px',
+  borderBottom: '1px solid var(--pd-divider)',
+  fontFamily: SANS,
+  fontSize: 14,
+  color: 'var(--pd-ink-secondary)',
+  textAlign: 'left',
+  verticalAlign: 'top',
+};
+
+const num: React.CSSProperties = { ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
+const head: React.CSSProperties = {
+  ...cell,
+  fontWeight: 500,
+  color: 'var(--pd-ink)',
+  background: 'var(--pd-surface-quiet)',
+  whiteSpace: 'nowrap',
+};
+
+export default async function FinanceScreen() {
+  const actor = await currentActor();
+  if (actor === null) redirect('/cabinet');
+  // Финансовый контур ведёт руководитель: менеджер не видит ни начислений,
+  // ни маржи (PD-LK-FUNC-002, п. 3.2).
+  if (!can(actor, 'MARGIN_VIEW')) redirect('/cabinet/projects');
+
+  const { rows, totals } = await financeSummary(actor);
+
+  const tiles = [
+    { label: 'Законтрактовано', value: totals.contracted },
+    { label: 'Получено', value: totals.received },
+    { label: 'К получению', value: totals.awaiting },
+    { label: 'Потери', value: totals.lost },
+    { label: 'Маржа', value: totals.margin },
+  ];
+
+  return (
+    <Shell actor={actor} current="/cabinet/manage/finance">
+      <Mono>Деньги практики</Mono>
+      <Heading level={1} style={{ margin: '12px 0 8px' }}>
+        Договоры и расчёты
+      </Heading>
+      <Text muted style={{ marginBottom: 24 }}>
+        Величины считаются по данным системы. Маржа — сумма договора за вычетом начислений
+        эксперту; у исторических проектов, где исполнитель не указан, она равна сумме договора.
+      </Text>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 16,
+          marginBottom: 28,
+        }}
+      >
+        {tiles.map((tile) => (
+          <Card key={tile.label}>
+            <Mono>{tile.label}</Mono>
+            <Text
+              size={22}
+              style={{ marginTop: 8, color: 'var(--pd-ink)', fontVariantNumeric: 'tabular-nums' }}
+            >
+              {formatAmount(tile.value)}
+            </Text>
+          </Card>
+        ))}
+      </div>
+
+      <Card style={{ padding: 0, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+          <thead>
+            <tr>
+              <th style={head}>Проект</th>
+              <th style={head}>Клиент</th>
+              <th style={{ ...head, textAlign: 'right' }}>Договор</th>
+              <th style={{ ...head, textAlign: 'right' }}>Получено</th>
+              <th style={{ ...head, textAlign: 'right' }}>К получению</th>
+              <th style={{ ...head, textAlign: 'right' }}>Начислено</th>
+              <th style={{ ...head, textAlign: 'right' }}>Маржа</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td style={cell} colSpan={7}>
+                  Договоров пока нет.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.projectId}>
+                  <td style={cell}>
+                    <a href={`/cabinet/projects/${row.code}/payments`}>{row.code}</a>
+                    <br />
+                    {row.title}
+                  </td>
+                  <td style={cell}>{row.client}</td>
+                  <td style={num}>{formatAmount(row.contracted)}</td>
+                  <td style={num}>{formatAmount(row.received)}</td>
+                  <td style={num}>{formatAmount(row.awaiting)}</td>
+                  <td style={num}>{formatAmount(row.accrued)}</td>
+                  <td style={num}>{formatAmount(row.margin)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </Card>
+    </Shell>
+  );
+}

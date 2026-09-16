@@ -8,6 +8,14 @@ import { ensure } from '../../lib/cabinet/access';
 import { requestLoginLink, unbindTelegram } from '../../lib/cabinet/auth';
 import { addComment, moderateComment, uploadVersion } from '../../lib/cabinet/materials';
 import { sendMessage } from '../../lib/cabinet/messages';
+import {
+  addPayout,
+  addTranche,
+  markPayoutPaid,
+  saveContract,
+  setTrancheStatus,
+} from '../../lib/cabinet/finance';
+import { parseAmount, type TrancheStatus } from '../../lib/cabinet/money';
 import { enqueue } from '../../lib/cabinet/outbox';
 import { addStage, approveLead, assignExpert, declineLead, setStageState } from '../../lib/cabinet/projects';
 import { currentActor, requestIp } from '../../lib/cabinet/session';
@@ -224,4 +232,69 @@ export async function dropTelegram(): Promise<void> {
   const actor = await actorOrRedirect();
   await unbindTelegram(actor.id);
   redirect('/cabinet/settings?saved=1');
+}
+
+/** Дата из поля формы. Пустое значение — это отсутствие даты, а не «сегодня». */
+function dateOrNull(value: FormDataEntryValue | null): Date | null {
+  const raw = String(value ?? '').trim();
+  if (raw.length === 0) return null;
+  const date = new Date(`${raw}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export async function saveProjectContract(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const projectId = String(form.get('projectId') ?? '');
+  const code = String(form.get('code') ?? '');
+  await saveContract(actor, {
+    projectId,
+    number: String(form.get('number') ?? ''),
+    signedOn: dateOrNull(form.get('signedOn')),
+    totalAmount: parseAmount(String(form.get('totalAmount') ?? '')),
+  });
+  redirect(`/cabinet/projects/${code}/payments`);
+}
+
+export async function addContractTranche(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  await addTranche(actor, {
+    contractId: String(form.get('contractId') ?? ''),
+    title: String(form.get('title') ?? ''),
+    amount: parseAmount(String(form.get('amount') ?? '')),
+    plannedDate: dateOrNull(form.get('plannedDate')),
+  });
+  redirect(`/cabinet/projects/${code}/payments`);
+}
+
+export async function changeTrancheStatus(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  await setTrancheStatus(
+    actor,
+    String(form.get('trancheId') ?? ''),
+    String(form.get('status') ?? '') as TrancheStatus,
+    dateOrNull(form.get('paidOn')),
+  );
+  redirect(`/cabinet/projects/${code}/payments`);
+}
+
+export async function accruePayout(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  await addPayout(actor, {
+    projectId: String(form.get('projectId') ?? ''),
+    amount: parseAmount(String(form.get('amount') ?? '')),
+    comment: String(form.get('comment') ?? '') || null,
+  });
+  redirect(`/cabinet/projects/${code}/payments`);
+}
+
+export async function payPayout(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const paidOn = dateOrNull(form.get('paidOn'));
+  if (paidOn === null) throw new Error('Для выплаты нужна дата');
+  await markPayoutPaid(actor, String(form.get('payoutId') ?? ''), paidOn);
+  redirect(`/cabinet/projects/${code}/payments`);
 }
