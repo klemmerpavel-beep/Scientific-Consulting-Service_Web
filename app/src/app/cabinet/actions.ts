@@ -16,6 +16,16 @@ import {
   setTrancheStatus,
 } from '../../lib/cabinet/finance';
 import { parseAmount, type TrancheStatus } from '../../lib/cabinet/money';
+import {
+  addAlias,
+  createUser,
+  removeAlias,
+  saveServiceType,
+  setUserRole,
+  setUserStatus,
+  signExpertNda,
+  type Role,
+} from '../../lib/cabinet/admin';
 import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
@@ -366,4 +376,91 @@ export async function executeErasureRequest(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   await executeErasure(actor, String(form.get('requestId') ?? ''));
   redirect('/cabinet/manage/erasure?done=1');
+}
+
+// ─────────────────────────── Учётные записи ─────────────────────────────────
+
+/**
+ * Завести учётную запись. Ссылку входа человек запрашивает сам: письмо,
+ * отправленное без его действия, — рассылка, а не вход.
+ */
+export async function inviteUser(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  try {
+    await createUser(actor, {
+      email: String(form.get('email') ?? ''),
+      fullName: String(form.get('fullName') ?? ''),
+      role: String(form.get('role') ?? 'EXPERT') as Role,
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось завести запись';
+    redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/users?created=1');
+}
+
+export async function changeUserRole(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  try {
+    await setUserRole(actor, String(form.get('userId') ?? ''), String(form.get('role') ?? '') as Role);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось сменить роль';
+    redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/users');
+}
+
+export async function changeUserStatus(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const status = String(form.get('status') ?? '') === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE';
+  try {
+    await setUserStatus(actor, String(form.get('userId') ?? ''), status);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось изменить состояние';
+    redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/users');
+}
+
+export async function updateExpertNda(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await signExpertNda(actor, String(form.get('userId') ?? ''), dateOrNull(form.get('signedOn')));
+  redirect('/cabinet/manage/users');
+}
+
+// ─────────────────────────── Справочники ────────────────────────────────────
+
+export async function saveType(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const rawPrice = String(form.get('basePrice') ?? '').trim();
+  const rawOrder = String(form.get('sortOrder') ?? '').trim();
+  try {
+    await saveServiceType(actor, {
+      code: String(form.get('code') ?? ''),
+      name: String(form.get('name') ?? ''),
+      basePrice: rawPrice.length === 0 ? null : parseAmount(rawPrice),
+      sortOrder: rawOrder.length === 0 ? undefined : Number(rawOrder),
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось сохранить позицию';
+    redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/directory');
+}
+
+export async function attachAlias(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  try {
+    await addAlias(actor, String(form.get('serviceTypeId') ?? ''), String(form.get('alias') ?? ''));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось привязать написание';
+    redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/directory');
+}
+
+export async function detachAlias(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await removeAlias(actor, String(form.get('aliasId') ?? ''));
+  redirect('/cabinet/manage/directory');
 }
