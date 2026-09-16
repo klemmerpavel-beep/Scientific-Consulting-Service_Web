@@ -37,7 +37,22 @@ fi
 
 mv "$TMP" "$OUT"
 
+# Материалы кабинета лежат файлами на диске, а не в базе: дамп их не
+# содержит. Восстановление одной базы дало бы работающий кабинет с пустыми
+# карточками — ссылки на версии есть, файлов нет. Каталог архивируется той же
+# меткой времени, чтобы дамп и материалы восстанавливались парой.
+FILES="$DIR/backups/storage_$STAMP.tar.gz"
+# Метка .gitkeep за материалы не считается: она есть в репозитории всегда,
+# и без этой оговорки архив снимался бы каждую ночь с пустого каталога.
+CONTENT=$(ls -A "$DIR/storage" 2>/dev/null | grep -v '^\.gitkeep$' || true)
+if [ -d "$DIR/storage" ] && [ -n "$CONTENT" ]; then
+  tar -czf "$FILES.part" -C "$DIR" storage
+  mv "$FILES.part" "$FILES"
+  echo "$(date -Is) материалы кабинета: $(basename "$FILES"), $(wc -c < "$FILES") байт"
+fi
+
 # Старые копии удаляются только после того, как новая легла на диск.
 find "$DIR/backups" -name 'prodisser_*.sql.gz' -mtime "+$KEEP_DAYS" -delete
+find "$DIR/backups" -name 'storage_*.tar.gz' -mtime "+$KEEP_DAYS" -delete
 
 echo "$(date -Is) копия готова: $(basename "$OUT"), $SIZE байт до сжатия"
