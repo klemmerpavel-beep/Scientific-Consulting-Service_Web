@@ -36,11 +36,22 @@ export const FORBIDDEN: readonly RegExp[] = [
   /обход\s+антиплагиат/iu,
 ];
 
+/**
+ * Построчная оговорка. Запрещён оборот в тексте, а не само слово в коде:
+ * правило свода исторических написаний обязано узнавать «рерайт», иначе
+ * строка книги заказов останется неразобранной. Оговорка ставится в той же
+ * строке, видна в разборе изменений и требует причины рядом; на тексты,
+ * показываемые клиенту или эксперту, она не распространяется — те лежат
+ * в разметке экранов и в шаблонах писем, где оговорке взяться неоткуда.
+ */
+const EXEMPTION = /текст-гуард: не текст интерфейса/u;
+
 /** Проверить один текст. Возвращает найденные обороты, а не только признак. */
 export function findForbidden(text: string, where = 'текст'): ForbiddenHit[] {
   const hits: ForbiddenHit[] = [];
   const lines = text.split('\n');
   lines.forEach((line, index) => {
+    if (EXEMPTION.test(line)) return;
     for (const pattern of FORBIDDEN) {
       const match = line.match(pattern);
       if (match !== null) {
