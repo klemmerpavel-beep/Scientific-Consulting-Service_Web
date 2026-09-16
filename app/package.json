@@ -16,7 +16,8 @@
     "reviews:export": "node scripts/export-reviews.mjs",
     "leads:export": "node scripts/export-leads.mjs",
     "seed:cabinet": "node --env-file=.env scripts/seed-cabinet.ts",
-    "issue:link": "node --env-file=.env scripts/issue-link.ts"
+    "issue:link": "node --env-file=.env scripts/issue-link.ts",
+    "grant:role": "node --env-file=.env scripts/grant-role.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
