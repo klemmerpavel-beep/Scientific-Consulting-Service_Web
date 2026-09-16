@@ -86,6 +86,13 @@ jobs:
         working-directory: .
         run: docker build -f app/Dockerfile --build-arg NEXT_PUBLIC_SITE_URL=https://prodisser.ru app
 
+      # Слой разовых средств собирается отдельно: рабочий образ его не
+      # включает, а без проверки выгрузки и заведение учётной записи отказали
+      # бы на сервере в тот момент, когда они понадобились (решение Р-132).
+      - name: Сборка слоя разовых средств
+        working-directory: .
+        run: docker build -f app/Dockerfile --target tools --build-arg NEXT_PUBLIC_SITE_URL=https://prodisser.ru app
+
       # Иконки и иллюстрации лежат в двух местах: макеты берут их из
       # design/assets, приложение — из app/public/assets. Каталоги
       # синхронизируются вручную, поэтому расхождение ловим здесь, а не

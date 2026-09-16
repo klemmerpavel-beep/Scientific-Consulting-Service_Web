@@ -268,9 +268,14 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
 в CSV — его открывает любая таблица, облачная или настольная.
 
 ```bash
-docker compose -f deploy/docker-compose.yml exec web \
-  node scripts/export-reviews.mjs --stdout > reviews.csv
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
+  --profile tools run --rm tools scripts/export-reviews.mjs --stdout > reviews.csv
 ```
+
+Запуск идёт не в рабочем контейнере, а отдельным разовым: в рабочий образ
+не попадают ни исходники, ни каталог `scripts` — так задумано, и `exec web`
+такую команду не выполнит. Профиль `tools` поднимает образ со всем нужным на
+один запуск и гасит его (решение Р-132).
 
 Локально, без контейнера: `cd app && npm run reviews:export` — файл ложится
 в `deploy/exports/reviews.csv`.
@@ -307,8 +312,8 @@ docker compose -f deploy/docker-compose.yml exec web \
 SQL, есть такая же выгрузка в CSV:
 
 ```bash
-docker compose -f deploy/docker-compose.yml exec web \
-  node scripts/export-leads.mjs --stdout > leads.csv
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
+  --profile tools run --rm tools scripts/export-leads.mjs --stdout > leads.csv
 ```
 
 Локально, без контейнера: `cd app && npm run leads:export` — файл ложится в
@@ -365,8 +370,8 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
 и до боевой базы не допускается. Первая запись заводится на сервере:
 
 ```bash
-docker compose --env-file deploy/.env -f deploy/docker-compose.yml exec web \
-  node --env-file=/app/.env scripts/grant-role.ts info@prodisser.ru HEAD "Фамилия Имя Отчество"
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
+  --profile tools run --rm tools scripts/grant-role.ts info@prodisser.ru HEAD "Фамилия Имя Отчество"
 ```
 
 Скрипт печатает ссылку входа — она действует час и срабатывает один раз.
