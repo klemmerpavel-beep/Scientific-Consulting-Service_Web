@@ -15,6 +15,7 @@
     "build:preview": "node scripts/build-preview.mjs",
     "reviews:export": "node scripts/export-reviews.mjs",
     "seed:cabinet": "node --env-file=.env scripts/seed-cabinet.ts",
+    "seed:reference": "node --env-file=.env scripts/seed-reference.ts",
     "issue:link": "node --env-file=.env scripts/issue-link.ts"
   },
   "dependencies": {
