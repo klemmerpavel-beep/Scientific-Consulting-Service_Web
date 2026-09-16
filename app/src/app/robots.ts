@@ -12,7 +12,9 @@ export default function robots(): MetadataRoute.Robots {
 
   const base = siteUrl();
   return {
-    rules: [{ userAgent: '*', allow: '/', disallow: ['/api/'] }],
+    // Кабинет закрыт вторым рубежом: мета-тег `noindex` стоит в разметке
+    // раздела, но робот, читающий только robots.txt, о нём не узнает.
+    rules: [{ userAgent: '*', allow: '/', disallow: ['/api/', '/cabinet/'] }],
     sitemap: base ? `${base}/sitemap.xml` : undefined,
   };
 }

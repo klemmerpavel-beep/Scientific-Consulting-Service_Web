@@ -6,11 +6,15 @@
  * никуда не уходят. Нужна, чтобы показать проект по ссылке, пока рабочая
  * площадка не выбрана.
  *
- * Статический вывод Next не умеет три вещи, которые есть в проекте:
- * обработчик заявки (POST), robots.txt и sitemap.xml — все три считаются
- * серверными. На время сборки они убираются в сторону и возвращаются
- * обратно в любом случае, включая падение сборки. Взамен убранного
- * robots.ts витрине дописывается статический robots.txt с Disallow: /.
+ * Статический вывод Next не умеет четырёх вещей, которые есть в проекте:
+ * обработчик заявки (POST), robots.txt, sitemap.xml и весь кабинет — они
+ * серверные по существу. Кабинет держит сессии, базу и одноразовые ссылки
+ * входа; статической витрине он не нужен и в неё не собирается. На время
+ * сборки всё это убирается в сторону и возвращается обратно в любом
+ * случае, включая падение сборки. Взамен убранного robots.ts витрине
+ * дописывается статический robots.txt с Disallow: /, а взамен кабинета —
+ * страница-заглушка: кнопка «Личный кабинет» есть на каждой странице, и
+ * вести её в никуда хуже, чем объяснить.
  *
  *   PREVIEW_BASE_PATH=/имя-репозитория node scripts/build-preview.mjs
  */
@@ -70,6 +74,8 @@ try {
   // вовсе. Робот, который читает только его, увидел бы стенд открытым.
   writeFileSync(path.join('out', 'robots.txt'), 'User-agent: *\nDisallow: /\n');
 
+  writeCabinetStub();
+
   prefixInternalLinks();
 
   console.log('\nВитрина собрана в app/out');
@@ -78,6 +84,51 @@ try {
   rmSync(shelf, { recursive: true, force: true });
 }
 
+
+/**
+ * Страница-заглушка кабинета. Витрина работает без сервера, а кабинет без
+ * него не существует: вход по одноразовой ссылке, серверные сессии и база.
+ * Пишется до `prefixInternalLinks`, чтобы её собственные ссылки получили
+ * префикс подпапки наравне с остальными.
+ */
+function writeCabinetStub() {
+  mkdirSync(path.join('out', 'cabinet'), { recursive: true });
+  const html = `<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Личный кабинет — ProDisser</title>
+<style>
+  :root { --pd-accent:#14417A; --pd-ink:#14161C; --pd-ink-muted:#5C6473; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:24px; background:#fff; color:var(--pd-ink);
+    font-family:'Inter','Helvetica Neue',Arial,sans-serif; }
+  main { max-width:560px; }
+  h1 { font-family:'Literata',Georgia,'Times New Roman',serif; font-weight:400;
+    font-size:clamp(26px,3vw,36px); line-height:1.24; margin:0 0 16px; }
+  p { font-size:16px; line-height:1.6; color:var(--pd-ink-muted); margin:0 0 16px; }
+  a { display:inline-flex; align-items:center; min-height:44px; padding:0 22px;
+    border:1px solid var(--pd-ink); border-radius:999px; color:var(--pd-ink);
+    text-decoration:none; font-weight:600; font-size:15px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Личный кабинет работает на сервере</h1>
+  <p>Витрина показывает страницы сайта без сервера и без базы данных. Кабинет устроен иначе:
+  вход по одноразовой ссылке, серверные сессии, материалы и переписка — всё это требует
+  работающего приложения, поэтому в витрину кабинет не собирается.</p>
+  <p>Кабинет доступен на рабочей площадке по адресу <b>/cabinet</b>.</p>
+  <a href="/main">К страницам сайта</a>
+</main>
+</body>
+</html>
+`;
+  writeFileSync(path.join('out', 'cabinet', 'index.html'), html);
+  console.log('Кабинет в витрину не собирается — записана страница-заглушка');
+}
 
 /**
  * Дописывает префикс подпапки к внутренним ссылкам.

@@ -6,8 +6,36 @@ import { prisma } from '../../lib/db';
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { ensure } from '../../lib/cabinet/access';
 import { requestLoginLink, unbindTelegram } from '../../lib/cabinet/auth';
-import { addComment, moderateComment, uploadVersion } from '../../lib/cabinet/materials';
+import {
+  addComment,
+  moderateComment,
+  uploadVersion,
+  type MaterialKind,
+} from '../../lib/cabinet/materials';
 import { sendMessage } from '../../lib/cabinet/messages';
+import {
+  addPayout,
+  addTranche,
+  markPayoutPaid,
+  saveContract,
+  setTrancheStatus,
+} from '../../lib/cabinet/finance';
+import { parseAmount, type TrancheStatus } from '../../lib/cabinet/money';
+import {
+  addAlias,
+  createUser,
+  removeAlias,
+  removeStageTemplateItem,
+  saveServiceType,
+  saveStageTemplateItem,
+  setUserRole,
+  setUserStatus,
+  signExpertNda,
+  type Role,
+} from '../../lib/cabinet/admin';
+import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
+import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
+import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue } from '../../lib/cabinet/outbox';
 import { addStage, approveLead, assignExpert, declineLead, setStageState } from '../../lib/cabinet/projects';
 import { currentActor, requestIp } from '../../lib/cabinet/session';
@@ -224,4 +252,305 @@ export async function dropTelegram(): Promise<void> {
   const actor = await actorOrRedirect();
   await unbindTelegram(actor.id);
   redirect('/cabinet/settings?saved=1');
+}
+
+/** Дата из поля формы. Пустое значение — это отсутствие даты, а не «сегодня». */
+function dateOrNull(value: FormDataEntryValue | null): Date | null {
+  const raw = String(value ?? '').trim();
+  if (raw.length === 0) return null;
+  const date = new Date(`${raw}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export async function saveProjectContract(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const projectId = String(form.get('projectId') ?? '');
+  const code = String(form.get('code') ?? '');
+  await saveContract(actor, {
+    projectId,
+    number: String(form.get('number') ?? ''),
+    signedOn: dateOrNull(form.get('signedOn')),
+    totalAmount: parseAmount(String(form.get('totalAmount') ?? '')),
+  });
+  redirect(`/cabinet/projects/${code}/payments`);
+}
+
+export async function addContractTranche(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  await addTranche(actor, {
+    contractId: String(form.get('contractId') ?? ''),
+    title: String(form.get('title') ?? ''),
+    amount: parseAmount(String(form.get('amount') ?? '')),
+    plannedDate: dateOrNull(form.get('plannedDate')),
+  });
+  redirect(`/cabinet/projects/${code}/payments`);
+}
+
+export async function changeTrancheStatus(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  await setTrancheStatus(
+    actor,
+    String(form.get('trancheId') ?? ''),
+    String(form.get('status') ?? '') as TrancheStatus,
+    dateOrNull(form.get('paidOn')),
+  );
+  redirect(`/cabinet/projects/${code}/payments`);
+}
+
+export async function accruePayout(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  await addPayout(actor, {
+    projectId: String(form.get('projectId') ?? ''),
+    amount: parseAmount(String(form.get('amount') ?? '')),
+    comment: String(form.get('comment') ?? '') || null,
+  });
+  redirect(`/cabinet/projects/${code}/payments`);
+}
+
+export async function payPayout(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const paidOn = dateOrNull(form.get('paidOn'));
+  if (paidOn === null) throw new Error('Для выплаты нужна дата');
+  await markPayoutPaid(actor, String(form.get('payoutId') ?? ''), paidOn);
+  redirect(`/cabinet/projects/${code}/payments`);
+}
+
+/**
+ * Загрузка книги заказов. Файл разбирается и записывается загрузкой, но
+ * ни одного проекта не создаётся: дальше руководитель читает отчёт.
+ */
+export async function uploadOrderBook(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const file = form.get('book');
+  if (!(file instanceof File) || file.size === 0) {
+    redirect('/cabinet/manage/import?error=empty');
+  }
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  let batchId: string;
+  try {
+    const preview = await previewBook(actor, { fileName: file.name, bytes });
+    batchId = preview.batchId;
+  } catch (error) {
+    // Разбор отказал по понятной причине — она и показывается, без следа стека.
+    const code = error instanceof ImportError ? error.code : 'UNSUPPORTED';
+    redirect(`/cabinet/manage/import?error=${code}`);
+  }
+  redirect(`/cabinet/manage/import/${batchId}`);
+}
+
+export async function applyOrderBook(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const batchId = String(form.get('batchId') ?? '');
+  const managerId = String(form.get('managerId') ?? '');
+  const excludeRows = String(form.get('excludeRows') ?? '')
+    .split(/[\s,]+/)
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+
+  await applyBatch(actor, batchId, { managerId, excludeRows });
+  redirect(`/cabinet/manage/import/${batchId}?applied=1`);
+}
+
+export async function mergeClientCards(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const batchId = String(form.get('batchId') ?? '');
+  await mergeClients(
+    actor,
+    String(form.get('sourceId') ?? ''),
+    String(form.get('targetId') ?? ''),
+  );
+  redirect(`/cabinet/manage/import/${batchId}?merged=1`);
+}
+
+/** Принять требование субъекта об удалении данных. Исполнение — отдельным действием. */
+export async function openErasureRequest(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const scope = String(form.get('scope') ?? 'PERSONAL_DATA_AND_FILES');
+  await requestErasure(
+    actor,
+    String(form.get('clientId') ?? ''),
+    scope === 'PERSONAL_DATA' ? 'PERSONAL_DATA' : 'PERSONAL_DATA_AND_FILES',
+  );
+  redirect('/cabinet/manage/erasure');
+}
+
+export async function executeErasureRequest(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await executeErasure(actor, String(form.get('requestId') ?? ''));
+  redirect('/cabinet/manage/erasure?done=1');
+}
+
+// ─────────────────────────── Учётные записи ─────────────────────────────────
+
+/**
+ * Завести учётную запись. Ссылку входа человек запрашивает сам: письмо,
+ * отправленное без его действия, — рассылка, а не вход.
+ */
+export async function inviteUser(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  try {
+    await createUser(actor, {
+      email: String(form.get('email') ?? ''),
+      fullName: String(form.get('fullName') ?? ''),
+      role: String(form.get('role') ?? 'EXPERT') as Role,
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось завести запись';
+    redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/users?created=1');
+}
+
+export async function changeUserRole(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  try {
+    await setUserRole(actor, String(form.get('userId') ?? ''), String(form.get('role') ?? '') as Role);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось сменить роль';
+    redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/users');
+}
+
+export async function changeUserStatus(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const status = String(form.get('status') ?? '') === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE';
+  try {
+    await setUserStatus(actor, String(form.get('userId') ?? ''), status);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось изменить состояние';
+    redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/users');
+}
+
+export async function updateExpertNda(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await signExpertNda(actor, String(form.get('userId') ?? ''), dateOrNull(form.get('signedOn')));
+  redirect('/cabinet/manage/users');
+}
+
+// ─────────────────────────── Справочники ────────────────────────────────────
+
+export async function saveType(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const rawPrice = String(form.get('basePrice') ?? '').trim();
+  const rawOrder = String(form.get('sortOrder') ?? '').trim();
+  try {
+    await saveServiceType(actor, {
+      code: String(form.get('code') ?? ''),
+      name: String(form.get('name') ?? ''),
+      basePrice: rawPrice.length === 0 ? null : parseAmount(rawPrice),
+      sortOrder: rawOrder.length === 0 ? undefined : Number(rawOrder),
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось сохранить позицию';
+    redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/directory');
+}
+
+export async function attachAlias(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  try {
+    await addAlias(actor, String(form.get('serviceTypeId') ?? ''), String(form.get('alias') ?? ''));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось привязать написание';
+    redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/directory');
+}
+
+export async function detachAlias(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await removeAlias(actor, String(form.get('aliasId') ?? ''));
+  redirect('/cabinet/manage/directory');
+}
+
+/**
+ * Загрузка закрывающего документа. Договор привязывается к договору, счёт
+ * и акт — к траншу: иначе в перечне лежала бы стопка файлов без указания,
+ * какой платёж каким актом закрыт.
+ */
+export async function uploadFinanceDocument(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const file = form.get('file');
+  if (!(file instanceof File) || file.size === 0) {
+    redirect(`/cabinet/projects/${code}/payments?error=empty`);
+  }
+  const kind = String(form.get('kind') ?? 'OTHER') as MaterialKind;
+  const trancheId = String(form.get('trancheId') ?? '') || null;
+
+  await uploadVersion(
+    actor,
+    {
+      projectId: String(form.get('projectId') ?? ''),
+      kind,
+      contractId: trancheId === null ? String(form.get('contractId') ?? '') || null : null,
+      trancheId,
+      title: String(form.get('title') ?? '') || undefined,
+      originalName: file.name,
+      contentType: file.type || 'application/octet-stream',
+      body: Buffer.from(await file.arrayBuffer()),
+    },
+    await requestIp(),
+  );
+  redirect(`/cabinet/projects/${code}/payments`);
+}
+
+/**
+ * Загрузка материала с экрана материалов работы. От `uploadMaterial`
+ * отличается только тем, куда возвращает: там экран этапа, здесь перечень
+ * материалов, и материал может не иметь этапа вовсе.
+ */
+export async function addMaterialVersion(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const file = form.get('file');
+  const back = String(form.get('back') ?? '/cabinet/projects');
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error('Файл не выбран');
+  }
+  await uploadVersion(
+    actor,
+    {
+      projectId: String(form.get('projectId') ?? ''),
+      stageId: String(form.get('stageId') ?? '') || null,
+      materialId: String(form.get('materialId') ?? '') || null,
+      title: String(form.get('title') ?? '') || undefined,
+      originalName: file.name,
+      contentType: file.type || 'application/octet-stream',
+      body: Buffer.from(await file.arrayBuffer()),
+    },
+    await requestIp(),
+  );
+  redirect(back);
+}
+
+export async function saveStageTemplate(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const durationRaw = String(form.get('durationDays') ?? '').trim();
+  try {
+    await saveStageTemplateItem(actor, {
+      serviceTypeId: String(form.get('serviceTypeId') ?? ''),
+      title: String(form.get('title') ?? ''),
+      position: Number(String(form.get('position') ?? '')),
+      durationDays: durationRaw.length === 0 ? null : Number(durationRaw),
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Не удалось сохранить этап шаблона';
+    redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
+  }
+  redirect('/cabinet/manage/directory');
+}
+
+export async function dropStageTemplate(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await removeStageTemplateItem(actor, String(form.get('id') ?? ''));
+  redirect('/cabinet/manage/directory');
 }

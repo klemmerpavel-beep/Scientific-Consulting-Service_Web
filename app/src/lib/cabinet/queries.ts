@@ -77,6 +77,50 @@ export async function stageById(actor: Actor, stageId: string) {
 }
 
 /**
+ * Материалы проекта целиком, включая не привязанные к этапу.
+ *
+ * Экран этапа показывает только его материалы, и файл, приложенный к
+ * проекту в обход этапов, оставался бы недостижимым: строка в базе есть,
+ * дойти до неё нельзя. Закрывающие документы сюда не попадают — они живут
+ * на экране оплат при договоре и траншах, где видно, какой платёж каким
+ * документом закрыт.
+ */
+export async function projectMaterials(actor: Actor, code: string) {
+  const scope = scopeProjects(actor);
+  if (scope === null) return null;
+  const materialScope = scopeMaterials(actor) ?? {};
+  const commentScope = scopeComments(actor) ?? {};
+
+  return prisma.project.findFirst({
+    where: { code, ...scope },
+    select: {
+      id: true,
+      code: true,
+      title: true,
+      clientId: true,
+      managerId: true,
+      expertId: true,
+      stages: { orderBy: { position: 'asc' }, select: { id: true, position: true, title: true } },
+      materials: {
+        where: { ...materialScope, kind: 'STAGE_MATERIAL' },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          stage: { select: { id: true, position: true, title: true } },
+          createdBy: { select: { fullName: true, role: true } },
+          versions: {
+            orderBy: { number: 'desc' },
+            include: {
+              uploadedBy: { select: { fullName: true, role: true } },
+              comments: { where: commentScope, select: { id: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+/**
  * Блок «сейчас от вас требуется» — композиционный центр главного экрана.
  * Собирается из состояний этапов: ожидание материалов от клиента и этапы,
  * ждущие его согласования. Основная потеря календарного времени в проектах

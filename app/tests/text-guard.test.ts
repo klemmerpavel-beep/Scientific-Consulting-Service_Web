@@ -49,6 +49,20 @@ describe('законные обороты проверку проходят', ()
   }
 });
 
+describe('построчная оговорка', () => {
+  it('снимает срабатывание только на своей строке', () => {
+    const source = [
+      "const rule = /рерайт/iu; // текст-гуард: не текст интерфейса — свод написаний книги",
+      'const caption = "Рерайт статьи со скидкой";',
+    ].join('\n');
+    const hits = findForbidden(source, 'образец');
+    assert.deepEqual(
+      hits.map((hit) => hit.line),
+      [2],
+    );
+  });
+});
+
 function collect(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     const full = path.join(dir, entry);

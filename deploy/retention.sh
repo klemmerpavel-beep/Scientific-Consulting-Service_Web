@@ -52,3 +52,18 @@ fi
 
 run "$SQL_DELETE" > /dev/null
 echo "$(date -Is) удалено заявок с истёкшим сроком хранения: $DUE"
+
+# ── Кабинет: погашенные ссылки входа и отработавшие сессии ────────────────
+#
+# Ссылка входа живёт 15 минут, сессия — свой срок. Строки, переставшие
+# что-либо открывать, хранить незачем: это идентификаторы пользователей
+# без всякой цели обработки. Журналы действий и доступа к файлам здесь не
+# трогаются — у них своя задача и свой срок.
+SQL_TOKENS="DELETE FROM \"LoginToken\" WHERE \"expiresAt\" < now() - interval '30 days';"
+SQL_SESSIONS="DELETE FROM \"Session\" WHERE \"expiresAt\" < now() - interval '90 days' OR (\"revokedAt\" IS NOT NULL AND \"revokedAt\" < now() - interval '90 days');"
+SQL_ATTEMPTS="DELETE FROM \"LoginAttempt\" WHERE \"occurredAt\" < now() - interval '90 days';"
+
+run "$SQL_TOKENS" > /dev/null
+run "$SQL_SESSIONS" > /dev/null
+run "$SQL_ATTEMPTS" > /dev/null
+echo "$(date -Is) кабинет: погашенные ссылки, истёкшие сессии и попытки входа старше срока удалены"

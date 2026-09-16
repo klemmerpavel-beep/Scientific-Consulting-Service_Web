@@ -48,13 +48,28 @@ export function navFor(actor: Actor): NavItem[] {
     ];
   }
   if (actor.role === 'EXPERT') {
-    return [{ href: '/cabinet/projects', label: 'Назначенные работы' }, settings];
+    return [
+      { href: '/cabinet/projects', label: 'Назначенные работы' },
+      { href: '/cabinet/payout', label: 'Вознаграждение' },
+      settings,
+    ];
   }
-  return [
+  const staff: NavItem[] = [
     { href: '/cabinet/manage', label: 'Очередь заявок' },
     { href: '/cabinet/projects', label: 'Проекты' },
-    settings,
   ];
+  // Финансовый контур и перенос истории ведёт руководитель: менеджеру эти
+  // разделы не показываются.
+  if (actor.role === 'HEAD') {
+    staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
+    staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
+    staff.push({ href: '/cabinet/manage/import', label: 'Импорт' });
+    staff.push({ href: '/cabinet/manage/audit', label: 'Журналы' });
+    staff.push({ href: '/cabinet/manage/erasure', label: 'ФЗ-152' });
+    staff.push({ href: '/cabinet/manage/users', label: 'Пользователи' });
+    staff.push({ href: '/cabinet/manage/directory', label: 'Справочники' });
+  }
+  return [...staff, settings];
 }
 
 export default function Shell({

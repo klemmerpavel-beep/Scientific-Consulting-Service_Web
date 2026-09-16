@@ -158,10 +158,18 @@ export default async function ProjectScreen({
               менеджер проекта
             </Text>
             {mayWrite ? (
-              <Text size={14} style={{ marginBottom: 16 }}>
+              <Text size={14} style={{ marginBottom: 8 }}>
                 <a href={`/cabinet/projects/${project.code}/messages`}>
                   Переписка{unread > 0 ? ` · ${unread} новых` : ''}
                 </a>
+              </Text>
+            ) : null}
+            <Text size={14} style={{ marginBottom: 8 }}>
+              <a href={`/cabinet/projects/${project.code}/materials`}>Материалы работы</a>
+            </Text>
+            {can(actor, 'CONTRACT_VIEW', ref) ? (
+              <Text size={14} style={{ marginBottom: 16 }}>
+                <a href={`/cabinet/projects/${project.code}/payments`}>Оплаты и документы</a>
               </Text>
             ) : null}
 
