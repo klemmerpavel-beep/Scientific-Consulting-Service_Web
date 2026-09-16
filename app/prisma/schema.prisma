@@ -51,6 +51,15 @@ model Lead {
   status    LeadStatus @default(NEW)
   notes     String?    @db.Text
 
+  /// Причина отказа, показываемая заявителю в кабинете. Отдельно от notes:
+  /// notes — внутренняя пометка менеджера и наружу не выходит.
+  declineReason String? @db.Text
+
+  /// Проект, в который развёрнута одобренная заявка. Заявка не удаляется
+  /// никогда — одобренная получает ссылку, отклонённая остаётся с причиной.
+  projectId String?  @unique
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
   deliveries Delivery[]
 
   @@index([createdAt])
@@ -82,4 +91,777 @@ model Delivery {
 
   @@index([leadId])
   @@index([ok])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Личный кабинет ProDisser
+//
+// Закрытый контур: клиент, эксперт, менеджер, руководитель. Решение Р-122.
+//
+// Три сквозных правила этого раздела:
+//   1. Деньги хранятся в копейках целым числом (BigInt). Тип с плавающей
+//      точкой к деньгам не применяется нигде.
+//   2. Версии материалов неизменяемы: строки только вставляются и читаются.
+//   3. Персональные данные клиента сведены к минимуму ч. 1 ст. 5 152-ФЗ:
+//      ФИО, адрес, телефон, вуз, специальность. Канал привлечения не ведётся.
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum UserRole {
+  CLIENT
+  EXPERT
+  MANAGER
+  HEAD
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  /// Данные субъекта обезличены по его требованию. Вход невозможен.
+  ERASED
+}
+
+/// Учётная запись. Отделена от карточки клиента намеренно: импорт исторических
+/// данных порождает клиентов, у которых входа в систему нет и может не быть.
+model User {
+  id        String     @id @default(cuid())
+  /// Идентификатор входа. Хранится в нижнем регистре без пробелов.
+  email     String     @unique
+  fullName  String
+  role      UserRole
+  status    UserStatus @default(ACTIVE)
+
+  /// Контакты. Модуль прав отдаёт их только менеджеру и руководителю.
+  phone          String?
+  telegramChatId String? @unique
+
+  notifyEmail    Boolean @default(true)
+  notifyTelegram Boolean @default(false)
+
+  /// Согласие на обработку ПДн, принятое при первом входе в кабинет.
+  /// Редакция текста хранится отдельно — тексты пересматриваются.
+  consentAcceptedAt DateTime?
+  consentVersion    String?
+
+  createdAt   DateTime  @default(now())
+  lastLoginAt DateTime?
+  erasedAt    DateTime?
+
+  clientProfile ClientProfile?
+  expertProfile ExpertProfile?
+
+  sessions    Session[]
+  loginTokens LoginToken[]
+
+  managedProjects Project[] @relation("ProjectManager")
+  expertProjects  Project[] @relation("ProjectExpert")
+  expertStages    Stage[]   @relation("StageExpert")
+
+  stageChanges      StageStateChange[]
+  projectEvents     ProjectEvent[]
+  createdMaterials  Material[]
+  uploadedVersions  MaterialVersion[]
+  authoredComments  VersionComment[]    @relation("CommentAuthor")
+  moderatedComments VersionComment[]    @relation("CommentModerator")
+  fileAccess        FileAccessLog[]
+  messages          Message[]
+  payouts           ExpertPayout[]
+  notifications     NotificationOutbox[]
+  auditEvents       AuditEvent[]
+  importBatches     ImportBatch[]
+  erasureApprovals  ErasureRequest[]
+
+  @@index([role, status])
+}
+
+/// Одноразовая ссылка входа. В ссылку уходят обе части: selector.verifier.
+/// Селектор даёт индексный поиск, верификатор сравнивается за постоянное
+/// время. Сам верификатор в базе не хранится никогда.
+enum TokenPurpose {
+  LOGIN
+  BIND_TELEGRAM
+}
+
+model LoginToken {
+  id           String       @id @default(cuid())
+  selector     String       @unique
+  verifierHash String
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Назначение токена. Ссылка входа и ссылка привязки Telegram устроены
+  /// одинаково, но взаимозаменяемы быть не должны: перейдя по ссылке
+  /// привязки в браузере, войти нельзя.
+  purpose      TokenPurpose @default(LOGIN)
+  createdAt    DateTime     @default(now())
+  expiresAt    DateTime
+  usedAt       DateTime?
+  requestIp    String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Попытка запросить ссылку. Ограничение частоты считается по этой таблице:
+/// 5 запросов на адрес и 20 с одного IP в час.
+model LoginAttempt {
+  id              String   @id @default(cuid())
+  emailNormalized String
+  ip              String
+  occurredAt      DateTime @default(now())
+  /// sent | rate_limited | unknown_email — исход не раскрывается заявителю
+  outcome         String
+
+  @@index([emailNormalized, occurredAt])
+  @@index([ip, occurredAt])
+}
+
+/// Серверная сессия. Хранится на сервере, а не в подписанном токене:
+/// нужен мгновенный отзыв при обезличивании субъекта и при смене роли.
+model Session {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  ip         String?
+  userAgent  String?   @db.Text
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Карточка клиента. Состав полей ограничен минимумом 152-ФЗ.
+model ClientProfile {
+  id     String  @id @default(cuid())
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  fullName String
+  /// ФИО в нижнем регистре со схлопнутыми пробелами. Индекс неуникальный:
+  /// дубли в исторических данных выявляются, а не блокируются при импорте.
+  normalizedName String
+
+  phone      String?
+  email      String?
+  university String?
+  speciality String?
+  notes      String? @db.Text
+
+  /// Заполняется при ручном сведении дублей после импорта.
+  mergedIntoId String?
+  mergedInto   ClientProfile?  @relation("ClientMerge", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  mergedFrom   ClientProfile[] @relation("ClientMerge")
+
+  createdAt DateTime  @default(now())
+  erasedAt  DateTime?
+
+  projects        Project[]
+  erasureRequests ErasureRequest[]
+
+  @@index([normalizedName])
+  @@index([erasedAt])
+}
+
+/// Карточка эксперта. Регалии видны всем участникам проекта, в отличие от
+/// контактов в User.
+model ExpertProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  degree         String?
+  academicTitle  String?
+  position       String?
+  specialization String?
+  university     String?
+
+  /// Подсказка по умолчанию для начисления. Само вознаграждение вводится
+  /// суммой вручную по каждому проекту или этапу.
+  defaultPayout BigInt?
+
+  /// Договор поручения обработки ПДн (ч. 3 ст. 6 152-ФЗ). Без него модуль
+  /// прав не выдаёт эксперту доступ к материалам клиента.
+  ndaSignedAt DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────────── Справочники ─────────────────────────────────
+
+/// Тип сопровождения. Наполняется позициями, выведенными из истории заказов.
+model ServiceType {
+  id        String  @id @default(cuid())
+  code      String  @unique
+  name      String
+  basePrice BigInt?
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  aliases        ServiceTypeAlias[]
+  stageTemplates StageTemplate[]
+  projects       Project[]
+}
+
+/// Историческое написание типа работы. Сводит разнобой исходного файла
+/// к позициям справочника; пополняется руководителем при импорте.
+model ServiceTypeAlias {
+  id            String      @id @default(cuid())
+  alias         String      @unique
+  serviceTypeId String
+  serviceType   ServiceType @relation(fields: [serviceTypeId], references: [id], onDelete: Cascade)
+}
+
+/// Шаблон этапа по типу сопровождения. Применение к проекту необязательно
+/// и копирует строки в Stage: изменение шаблона живые проекты не переписывает.
+model StageTemplate {
+  id            String      @id @default(cuid())
+  serviceTypeId String
+  serviceType   ServiceType @relation(fields: [serviceTypeId], references: [id], onDelete: Cascade)
+  title         String
+  position      Int
+  durationDays  Int?
+  isActive      Boolean     @default(true)
+
+  @@unique([serviceTypeId, position])
+}
+
+/// Соответствие заливки ячейки состоянию заказа. Палитра исходного файла
+/// не нормирована, поэтому задаётся руководителем, а не зашита в код.
+model ImportColorMap {
+  argb        String  @id
+  mapsTo      String
+  description String?
+}
+
+/// Счётчик кодов проектов по годам. Выдача — транзакционным инкрементом:
+/// два менеджера, одобряющих заявки одновременно, не получат один код.
+model ProjectCodeCounter {
+  year       Int @id
+  lastNumber Int @default(0)
+}
+
+// ──────────────────────────── Производство ─────────────────────────────────
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectSource {
+  WEB
+  IMPORT
+}
+
+/// Проект сопровождения. Единица работы, создаваемая после одобрения заявки.
+model Project {
+  id   String @id @default(cuid())
+  /// Формат PD-ГГГГ-ННН. Выдаётся ProjectCodeCounter.
+  code String @unique
+
+  clientId String
+  client   ClientProfile @relation(fields: [clientId], references: [id])
+
+  serviceTypeId String
+  serviceType   ServiceType @relation(fields: [serviceTypeId], references: [id])
+
+  title String
+  topic String? @db.Text
+
+  managerId String
+  manager   User   @relation("ProjectManager", fields: [managerId], references: [id])
+
+  expertId String?
+  expert   User?   @relation("ProjectExpert", fields: [expertId], references: [id], onDelete: SetNull)
+  /// Текст исполнителя из импортированной строки, если он не сопоставлен
+  /// с учётной записью. Такие проекты дают маржу, равную сумме договора.
+  expertNameRaw String?
+
+  status ProjectStatus @default(ACTIVE)
+  source ProjectSource @default(WEB)
+
+  startedOn DateTime?
+  dueOn     DateTime?
+  closedOn  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lead          Lead?
+  stages        Stage[]
+  materials     Material[]
+  messages      Message[]
+  events        ProjectEvent[]
+  contract      Contract?
+  payouts       ExpertPayout[]
+  notifications NotificationOutbox[]
+  importRows    ImportRow[]
+
+  @@index([status, dueOn])
+  @@index([clientId])
+  @@index([expertId])
+  @@index([managerId])
+}
+
+/// Состояние этапа. Перечень закрыт: свободный ввод состояния исключён типом
+/// поля, потому что на состоянии держатся уведомления, фильтры, расчёт
+/// просрочек и аналитика.
+enum StageState {
+  NOT_STARTED
+  IN_PROGRESS
+  AWAITING_CLIENT
+  IN_APPROVAL
+  DONE
+}
+
+/// Этап проекта. Название — свободный текст менеджера, состояние — из перечня.
+model Stage {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  position Int
+  title    String
+  state    StageState @default(NOT_STARTED)
+
+  dueOn DateTime?
+  /// Причина остановки открытым текстом: «ждём протокол испытаний;
+  /// после загрузки — два рабочих дня работы эксперта».
+  blockedReason String? @db.Text
+
+  expertId String?
+  expert   User?   @relation("StageExpert", fields: [expertId], references: [id], onDelete: SetNull)
+
+  /// Момент перехода в «ждём клиента». Питает светофор «ждёт клиента
+  /// дольше 14 дней» у менеджера.
+  awaitingClientSince DateTime?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  changes   StageStateChange[]
+  materials Material[]
+  payouts   ExpertPayout[]
+
+  @@unique([projectId, position])
+  @@index([state, dueOn])
+}
+
+/// История переходов состояния. Нужна аналитике длительностей и служит
+/// источником событий уведомлений. Согласование этапа клиентом — это
+/// переход IN_APPROVAL → DONE с автором-клиентом.
+model StageStateChange {
+  id        String      @id @default(cuid())
+  stageId   String
+  stage     Stage       @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  fromState StageState?
+  toState   StageState
+  actorId   String?
+  actor     User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  reason    String?     @db.Text
+  createdAt DateTime    @default(now())
+
+  @@index([stageId, createdAt])
+}
+
+/// Лента событий проекта. Показывается клиенту с авторством и временем.
+model ProjectEvent {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  kind      String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt])
+}
+
+// ───────────────────────────── Материалы ───────────────────────────────────
+
+enum MaterialKind {
+  STAGE_MATERIAL
+  CONTRACT
+  INVOICE
+  ACT
+  OTHER
+}
+
+/// Материал проекта. Клиент видит один материал с историей версий,
+/// а не три отдельных файла.
+model Material {
+  id        String       @id @default(cuid())
+  kind      MaterialKind @default(STAGE_MATERIAL)
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  stageId String?
+  stage   Stage?  @relation(fields: [stageId], references: [id], onDelete: SetNull)
+
+  /// Привязка закрывающих документов. Файл договора висит на договоре,
+  /// счёт и акт — на транше.
+  contractId String?
+  contract   Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  trancheId  String?
+  tranche    Tranche?  @relation(fields: [trancheId], references: [id], onDelete: SetNull)
+
+  title       String
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  /// Мягкое удаление. Объекты в хранилище при этом сохраняются: физическое
+  /// удаление возможно только процедурой обезличивания.
+  deletedAt DateTime?
+
+  versions MaterialVersion[]
+
+  @@index([projectId, deletedAt])
+  @@index([stageId])
+}
+
+/// Версия материала. Строки только вставляются и читаются — функций
+/// обновления и удаления в слое доступа к данным нет.
+model MaterialVersion {
+  id         String   @id @default(cuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  number Int
+  /// Ключ объекта: projects/{id}/materials/{id}/v{n}/{uuid}. Исходное имя
+  /// файла в ключ не попадает — оно может содержать ФИО.
+  storageKey   String  @unique
+  originalName String
+  sizeBytes    BigInt
+  sha256       String
+  contentType  String
+
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  uploadedAt   DateTime @default(now())
+
+  /// Объект удалён из хранилища при исполнении требования субъекта.
+  /// Строка остаётся ради связности истории версий.
+  purgedAt DateTime?
+
+  comments   VersionComment[]
+  accessLog  FileAccessLog[]
+
+  @@unique([materialId, number])
+  @@index([materialId])
+}
+
+enum ModerationStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+/// Комментарий привязан к версии, а не к файлу: клиент видит, что именно
+/// изменилось в этой версии и почему.
+model VersionComment {
+  id        String          @id @default(cuid())
+  versionId String
+  version   MaterialVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation("CommentAuthor", fields: [authorId], references: [id])
+  body     String @db.Text
+
+  /// Комментарий эксперта создаётся со статусом PENDING и клиенту невидим
+  /// до публикации менеджером. Комментарий менеджера публикуется сразу.
+  moderationStatus ModerationStatus @default(PENDING)
+  moderatedById    String?
+  moderatedBy      User?            @relation("CommentModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+  moderatedAt      DateTime?
+  moderationNote   String?          @db.Text
+  publishedAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([versionId])
+  @@index([moderationStatus, createdAt])
+}
+
+enum FileAccessAction {
+  UPLOAD
+  PRESIGN
+  DOWNLOAD
+  PURGE
+}
+
+/// Журнал доступа к файлам. Требование п. 7.1 брифа и ст. 19 152-ФЗ.
+/// Выделен из общего журнала действий: у него иной объём и иной срок хранения.
+model FileAccessLog {
+  id        String           @id @default(cuid())
+  versionId String
+  version   MaterialVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    FileAccessAction
+  ip        String?
+  userAgent String?          @db.Text
+  occurredAt DateTime        @default(now())
+
+  @@index([versionId, occurredAt])
+  @@index([userId, occurredAt])
+}
+
+// ───────────────────────────── Переписка ───────────────────────────────────
+
+/// Сообщение в канале «клиент — менеджер». Канал один: эксперт высказывается
+/// комментариями к версиям после модерации. Во внешние каналы переписка
+/// не дублируется.
+model Message {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+  body     String @db.Text
+
+  /// Сработал детектор телефона, адреса почты или @username. Не блокирует
+  /// отправку, а помечает сообщение для менеджера.
+  containsContactHint Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  @@index([projectId, createdAt])
+}
+
+// ───────────────────────────── Финансы ─────────────────────────────────────
+
+enum TrancheStatus {
+  PLANNED
+  INVOICED
+  PAID
+  WRITTEN_OFF
+}
+
+enum PayoutStatus {
+  ACCRUED
+  PAID
+}
+
+/// Договор. Механики предоплаченного баланса нет: оплата отражается траншами.
+model Contract {
+  id        String  @id @default(cuid())
+  projectId String  @unique
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  number      String    @unique
+  signedOn    DateTime?
+  /// Сумма договора в копейках.
+  totalAmount BigInt
+
+  createdAt DateTime @default(now())
+
+  tranches  Tranche[]
+  documents Material[]
+}
+
+/// Транш по договору. Плановая позиция со статусом; дата фактического
+/// поступления необязательна — у исторических строк её нет.
+model Tranche {
+  id         String   @id @default(cuid())
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  title       String
+  amount      BigInt
+  plannedDate DateTime?
+  status      TrancheStatus @default(PLANNED)
+  paidOn      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Material[]
+
+  @@index([status, plannedDate])
+}
+
+/// Начисление эксперту. Сумма вводится вручную по этапу или по проекту.
+/// Маржа не хранится: она считается как сумма договора за вычетом начислений.
+model ExpertPayout {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  stageId String?
+  stage   Stage?  @relation(fields: [stageId], references: [id], onDelete: SetNull)
+
+  expertId String?
+  expert   User?   @relation(fields: [expertId], references: [id], onDelete: SetNull)
+
+  amount  BigInt
+  status  PayoutStatus @default(ACCRUED)
+  paidOn  DateTime?
+  comment String?      @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([expertId, status])
+}
+
+// ──────────────────── Уведомления, журналы, импорт ─────────────────────────
+
+enum NotificationChannel {
+  EMAIL
+  TELEGRAM
+}
+
+enum NotificationState {
+  PENDING
+  SENT
+  FAILED
+}
+
+/// Очередь исходящих уведомлений. Строка пишется в той же транзакции, что и
+/// само изменение: отказ почты или Telegram не откатывает бизнес-операцию,
+/// а недоставленное уведомление видно руководителю.
+model NotificationOutbox {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  channel   NotificationChannel
+  eventKind String
+  subject   String
+  body      String              @db.Text
+  /// Ключ дедупликации вида stage:<id>:awaiting_client:2026-09-15.
+  /// Делает повторную постановку идемпотентной.
+  dedupKey  String              @unique
+
+  state       NotificationState @default(PENDING)
+  attempts    Int               @default(0)
+  lastError   String?           @db.Text
+  scheduledAt DateTime          @default(now())
+  sentAt      DateTime?
+  createdAt   DateTime          @default(now())
+
+  @@index([state, scheduledAt])
+}
+
+/// Журнал действий. Запись выполняется явным вызовом в сервисном слое:
+/// неявная запись через события ORM даёт шум и теряет бизнес-смысл действия.
+model AuditEvent {
+  id         String   @id @default(cuid())
+  occurredAt DateTime @default(now())
+
+  actorId   String?
+  actor     User?     @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorRole UserRole?
+  actorIp   String?
+
+  action     String
+  objectType String
+  objectId   String?
+  projectId  String?
+  /// Изменённые поля в виде «было/стало». Персональные данные сверх
+  /// необходимого сюда не пишутся.
+  payload Json?
+
+  @@index([occurredAt])
+  @@index([objectType, objectId])
+  @@index([actorId, occurredAt])
+  @@index([projectId, occurredAt])
+}
+
+enum ErasureScope {
+  PERSONAL_DATA
+  PERSONAL_DATA_AND_FILES
+}
+
+/// Требование субъекта об удалении данных (ст. 14 и ст. 21 152-ФЗ).
+/// Модель смешанная: первичные учётные документы сохраняются.
+model ErasureRequest {
+  id       String        @id @default(cuid())
+  clientId String
+  client   ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  requestedAt  DateTime     @default(now())
+  approvedById String?
+  approvedBy   User?        @relation(fields: [approvedById], references: [id], onDelete: SetNull)
+  executedAt   DateTime?
+  scope        ErasureScope @default(PERSONAL_DATA)
+  /// Отчёт об исполнении: затронутые таблицы, число строк, удалённые объекты.
+  report Json?
+
+  @@index([clientId])
+}
+
+enum ImportBatchState {
+  PARSED
+  PREVIEWED
+  APPLIED
+  CANCELLED
+}
+
+enum ImportRowSeverity {
+  OK
+  WARNING
+  ERROR
+}
+
+enum ImportRowAction {
+  CREATE
+  UPDATE
+  SKIP
+}
+
+/// Загрузка книги заказов. Применение возможно только после предпросмотра.
+model ImportBatch {
+  id       String @id @default(cuid())
+  fileName String
+  sha256   String
+
+  uploadedById String
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+
+  state     ImportBatchState @default(PARSED)
+  stats     Json?
+  createdAt DateTime         @default(now())
+  appliedAt DateTime?
+
+  rows ImportRow[]
+}
+
+/// Строка загрузки. Исходные значения ячеек сохраняются целиком, включая код
+/// заливки: разбор остаётся воспроизводимым и оспоримым.
+model ImportRow {
+  id        String      @id @default(cuid())
+  batchId   String
+  batch     ImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  rowNumber Int
+
+  raw    Json
+  parsed Json?
+  /// Естественный ключ строки: дата, ФИО, тип работы, сумма. Заменяет код
+  /// заказа, которого в исходном файле нет.
+  signature String?
+
+  severity ImportRowSeverity @default(OK)
+  errors   Json?
+  action   ImportRowAction   @default(CREATE)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([batchId, rowNumber])
+  @@index([signature])
 }

@@ -10,6 +10,10 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // Тесты запускаются встроенным `node --test`, который резолвит модули
+    // сам и требует расширения в пути. Сборке это ничего не меняет:
+    // флаг допустим только вместе с `noEmit`, который уже стоит.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

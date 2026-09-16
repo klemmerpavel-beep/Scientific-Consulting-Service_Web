@@ -1,0 +1,210 @@
+import type { StageState } from '../../generated/prisma/client.js';
+import { prisma } from '../db.ts';
+import { can, ensure, scopeComments, scopeMaterials, scopeProjects, type Actor } from './access.ts';
+
+/**
+ * Выборки экранов кабинета. Каждая строится через ограничение из модуля
+ * прав: правило «эксперт видит только назначенные проекты» невозможно
+ * забыть в отдельно написанном перечне, потому что перечня, минующего
+ * `scope*`, здесь просто нет.
+ */
+
+export async function listProjects(actor: Actor) {
+  const scope = scopeProjects(actor);
+  if (scope === null) return [];
+  return prisma.project.findMany({
+    where: scope,
+    orderBy: [{ status: 'asc' }, { dueOn: 'asc' }],
+    include: {
+      serviceType: { select: { name: true } },
+      client: { select: { fullName: true } },
+      stages: { orderBy: { position: 'asc' } },
+    },
+  });
+}
+
+export async function projectByCode(actor: Actor, code: string) {
+  const scope = scopeProjects(actor);
+  if (scope === null) return null;
+  return prisma.project.findFirst({
+    where: { code, ...scope },
+    include: {
+      serviceType: true,
+      client: true,
+      manager: { select: { id: true, fullName: true } },
+      expert: {
+        select: { id: true, fullName: true, expertProfile: true },
+      },
+      stages: { orderBy: { position: 'asc' } },
+      events: {
+        orderBy: { createdAt: 'desc' },
+        take: 12,
+        include: { actor: { select: { fullName: true, role: true } } },
+      },
+    },
+  });
+}
+
+export async function stageById(actor: Actor, stageId: string) {
+  const scope = scopeProjects(actor);
+  if (scope === null) return null;
+  const materialScope = scopeMaterials(actor) ?? {};
+  const commentScope = scopeComments(actor) ?? {};
+  return prisma.stage.findFirst({
+    where: { id: stageId, project: scope },
+    include: {
+      project: { select: { id: true, code: true, title: true, clientId: true, managerId: true, expertId: true } },
+      expert: { select: { fullName: true, expertProfile: { select: { degree: true } } } },
+      materials: {
+        where: materialScope,
+        orderBy: { createdAt: 'asc' },
+        include: {
+          versions: {
+            orderBy: { number: 'desc' },
+            include: {
+              uploadedBy: { select: { fullName: true, role: true } },
+              comments: {
+                where: commentScope,
+                orderBy: { createdAt: 'asc' },
+                include: { author: { select: { fullName: true, role: true } } },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Блок «сейчас от вас требуется» — композиционный центр главного экрана.
+ * Собирается из состояний этапов: ожидание материалов от клиента и этапы,
+ * ждущие его согласования. Основная потеря календарного времени в проектах
+ * приходится именно на эти два состояния.
+ */
+export async function pendingActions(actor: Actor) {
+  const scope = scopeProjects(actor);
+  if (scope === null) return [];
+  const stages = await prisma.stage.findMany({
+    where: {
+      project: scope,
+      state: { in: ['AWAITING_CLIENT', 'IN_APPROVAL'] },
+    },
+    orderBy: [{ dueOn: 'asc' }, { awaitingClientSince: 'asc' }],
+    include: { project: { select: { code: true, title: true } } },
+  });
+  return stages;
+}
+
+/** Очередь заявок для менеджера и руководителя. */
+export async function leadQueue(actor: Actor) {
+  ensure(actor, 'REQUEST_MODERATE');
+  return prisma.lead.findMany({
+    where: { status: { in: ['NEW', 'IN_PROGRESS'] }, projectId: null },
+    orderBy: { createdAt: 'asc' },
+    take: 50,
+  });
+}
+
+export async function serviceTypes() {
+  return prisma.serviceType.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+  });
+}
+
+export async function experts() {
+  return prisma.user.findMany({
+    where: { role: 'EXPERT', status: 'ACTIVE' },
+    orderBy: { fullName: 'asc' },
+    include: { expertProfile: { select: { specialization: true, ndaSignedAt: true } } },
+  });
+}
+
+/**
+ * Светофор по срокам. Три полосы, и каждая отвечает на свой вопрос: что уже
+ * сорвано, что сорвётся на этой неделе и где работа стоит из-за клиента
+ * дольше двух недель. Последняя полоса нужна отдельно: просрочки там может
+ * ещё не быть, а проект уже фактически не движется.
+ */
+export async function trafficLight(actor: Actor) {
+  ensure(actor, 'REGISTRY_VIEW');
+  const now = new Date();
+  const inWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+  const include = {
+    project: { select: { code: true, title: true, client: { select: { fullName: true } } } },
+  } as const;
+  // Незакрытые этапы: завершённые в светофор не попадают по определению.
+  const live = {
+    in: ['NOT_STARTED', 'IN_PROGRESS', 'AWAITING_CLIENT', 'IN_APPROVAL'] as StageState[],
+  };
+
+  const [overdue, soon, stalled] = await Promise.all([
+    prisma.stage.findMany({
+      where: { state: live, dueOn: { lt: now } },
+      orderBy: { dueOn: 'asc' },
+      include,
+    }),
+    prisma.stage.findMany({
+      where: { state: live, dueOn: { gte: now, lte: inWeek } },
+      orderBy: { dueOn: 'asc' },
+      include,
+    }),
+    prisma.stage.findMany({
+      where: { state: 'AWAITING_CLIENT', awaitingClientSince: { lt: twoWeeksAgo } },
+      orderBy: { awaitingClientSince: 'asc' },
+      include,
+    }),
+  ]);
+
+  return { overdue, soon, stalled };
+}
+
+/** Реестр клиентов. Контакты отдаются только ролям, которым они положены. */
+export async function clientRegistry(actor: Actor) {
+  ensure(actor, 'REGISTRY_VIEW');
+  const rows = await prisma.clientProfile.findMany({
+    where: { erasedAt: null },
+    orderBy: { fullName: 'asc' },
+    include: {
+      projects: { select: { id: true, status: true } },
+      user: { select: { lastLoginAt: true } },
+    },
+  });
+  const contacts = can(actor, 'CONTACTS_VIEW');
+  return rows.map((row) => ({
+    id: row.id,
+    fullName: row.fullName,
+    university: row.university,
+    speciality: row.speciality,
+    projects: row.projects.length,
+    active: row.projects.filter((p) => p.status === 'ACTIVE').length,
+    lastLoginAt: row.user?.lastLoginAt ?? null,
+    // Контакты не «скрываются на экране», а не попадают в объект вовсе.
+    ...(contacts ? { email: row.email, phone: row.phone } : {}),
+  }));
+}
+
+/** Реестр экспертов с их загрузкой. */
+export async function expertRegistry(actor: Actor) {
+  ensure(actor, 'REGISTRY_VIEW');
+  const rows = await prisma.user.findMany({
+    where: { role: 'EXPERT', status: 'ACTIVE' },
+    orderBy: { fullName: 'asc' },
+    include: {
+      expertProfile: true,
+      expertProjects: { select: { id: true, status: true } },
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    fullName: row.fullName,
+    degree: row.expertProfile?.degree ?? null,
+    specialization: row.expertProfile?.specialization ?? null,
+    ndaSignedAt: row.expertProfile?.ndaSignedAt ?? null,
+    active: row.expertProjects.filter((p) => p.status === 'ACTIVE').length,
+    total: row.expertProjects.length,
+  }));
+}
