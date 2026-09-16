@@ -13,7 +13,9 @@
     "postinstall": "prisma generate",
     "schema:sql": "node scripts/schema-sql.mjs",
     "build:preview": "node scripts/build-preview.mjs",
-    "reviews:export": "node scripts/export-reviews.mjs"
+    "reviews:export": "node scripts/export-reviews.mjs",
+    "seed:cabinet": "node --env-file=.env scripts/seed-cabinet.ts",
+    "issue:link": "node --env-file=.env scripts/issue-link.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
