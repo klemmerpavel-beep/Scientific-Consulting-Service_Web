@@ -16,6 +16,7 @@ import {
   setTrancheStatus,
 } from '../../lib/cabinet/finance';
 import { parseAmount, type TrancheStatus } from '../../lib/cabinet/money';
+import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue } from '../../lib/cabinet/outbox';
@@ -347,4 +348,22 @@ export async function mergeClientCards(form: FormData): Promise<void> {
     String(form.get('targetId') ?? ''),
   );
   redirect(`/cabinet/manage/import/${batchId}?merged=1`);
+}
+
+/** Принять требование субъекта об удалении данных. Исполнение — отдельным действием. */
+export async function openErasureRequest(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const scope = String(form.get('scope') ?? 'PERSONAL_DATA_AND_FILES');
+  await requestErasure(
+    actor,
+    String(form.get('clientId') ?? ''),
+    scope === 'PERSONAL_DATA' ? 'PERSONAL_DATA' : 'PERSONAL_DATA_AND_FILES',
+  );
+  redirect('/cabinet/manage/erasure');
+}
+
+export async function executeErasureRequest(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await executeErasure(actor, String(form.get('requestId') ?? ''));
+  redirect('/cabinet/manage/erasure?done=1');
 }

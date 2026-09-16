@@ -64,6 +64,8 @@ export function navFor(actor: Actor): NavItem[] {
     staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
     staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
     staff.push({ href: '/cabinet/manage/import', label: 'Импорт' });
+    staff.push({ href: '/cabinet/manage/audit', label: 'Журналы' });
+    staff.push({ href: '/cabinet/manage/erasure', label: 'ФЗ-152' });
   }
   return [...staff, settings];
 }
