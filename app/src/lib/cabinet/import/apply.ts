@@ -534,7 +534,7 @@ export async function applyBatch(
         const status = PROJECT_STATUS[parsed.status];
 
         // Карточка клиента: учётная запись при переносе не заводится
-        // (решение Р-129) — историческим клиентам вход не открывается,
+        // (решение Р-131) — историческим клиентам вход не открывается,
         // и рассылки им не уходят.
         let clientId = clients.get(parsed.normalizedName);
         if (clientId === undefined) {
