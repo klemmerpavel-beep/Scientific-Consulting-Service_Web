@@ -16,6 +16,8 @@ import {
   setTrancheStatus,
 } from '../../lib/cabinet/finance';
 import { parseAmount, type TrancheStatus } from '../../lib/cabinet/money';
+import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
+import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue } from '../../lib/cabinet/outbox';
 import { addStage, approveLead, assignExpert, declineLead, setStageState } from '../../lib/cabinet/projects';
 import { currentActor, requestIp } from '../../lib/cabinet/session';
@@ -297,4 +299,52 @@ export async function payPayout(form: FormData): Promise<void> {
   if (paidOn === null) throw new Error('Для выплаты нужна дата');
   await markPayoutPaid(actor, String(form.get('payoutId') ?? ''), paidOn);
   redirect(`/cabinet/projects/${code}/payments`);
+}
+
+/**
+ * Загрузка книги заказов. Файл разбирается и записывается загрузкой, но
+ * ни одного проекта не создаётся: дальше руководитель читает отчёт.
+ */
+export async function uploadOrderBook(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const file = form.get('book');
+  if (!(file instanceof File) || file.size === 0) {
+    redirect('/cabinet/manage/import?error=empty');
+  }
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  let batchId: string;
+  try {
+    const preview = await previewBook(actor, { fileName: file.name, bytes });
+    batchId = preview.batchId;
+  } catch (error) {
+    // Разбор отказал по понятной причине — она и показывается, без следа стека.
+    const code = error instanceof ImportError ? error.code : 'UNSUPPORTED';
+    redirect(`/cabinet/manage/import?error=${code}`);
+  }
+  redirect(`/cabinet/manage/import/${batchId}`);
+}
+
+export async function applyOrderBook(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const batchId = String(form.get('batchId') ?? '');
+  const managerId = String(form.get('managerId') ?? '');
+  const excludeRows = String(form.get('excludeRows') ?? '')
+    .split(/[\s,]+/)
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+
+  await applyBatch(actor, batchId, { managerId, excludeRows });
+  redirect(`/cabinet/manage/import/${batchId}?applied=1`);
+}
+
+export async function mergeClientCards(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const batchId = String(form.get('batchId') ?? '');
+  await mergeClients(
+    actor,
+    String(form.get('sourceId') ?? ''),
+    String(form.get('targetId') ?? ''),
+  );
+  redirect(`/cabinet/manage/import/${batchId}?merged=1`);
 }

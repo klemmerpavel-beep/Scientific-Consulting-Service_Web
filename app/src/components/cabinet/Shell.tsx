@@ -58,8 +58,12 @@ export function navFor(actor: Actor): NavItem[] {
     { href: '/cabinet/manage', label: 'Очередь заявок' },
     { href: '/cabinet/projects', label: 'Проекты' },
   ];
-  // Финансовый контур ведёт руководитель: менеджеру этот раздел не показывается.
-  if (actor.role === 'HEAD') staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
+  // Финансовый контур и перенос истории ведёт руководитель: менеджеру эти
+  // разделы не показываются.
+  if (actor.role === 'HEAD') {
+    staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
+    staff.push({ href: '/cabinet/manage/import', label: 'Импорт' });
+  }
   return [...staff, settings];
 }
 

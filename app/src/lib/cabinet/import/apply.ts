@@ -56,6 +56,7 @@ export interface PreviewRow {
   readonly paid: bigint;
   readonly status: LegacyStatus;
   readonly statusLabel: string;
+  readonly rawStatus: string;
   readonly fill: string | null;
   readonly issues: readonly { code: IssueCode; label: string; note: string }[];
   /** Код проекта, если строка уже перенесена прежней загрузкой. */
@@ -74,6 +75,8 @@ export interface Preview {
   readonly batchId: string;
   readonly fileName: string;
   readonly sheet: string;
+  readonly state: 'PARSED' | 'PREVIEWED' | 'APPLIED' | 'CANCELLED';
+  readonly createdAt: Date;
   readonly rows: readonly PreviewRow[];
   readonly totals: { readonly cost: bigint; readonly paid: bigint };
   readonly issueCounts: Readonly<Record<IssueCode, number>>;
@@ -98,6 +101,83 @@ function differs(row: ParsedRow, previous: { parsed: unknown }): boolean {
     before.paid !== row.paid.toString() ||
     before.status !== row.status
   );
+}
+
+/**
+ * Свести строки в отчёт. Вынесено отдельно, потому что отчёт собирается
+ * дважды: сразу после разбора и при повторном открытии уже сохранённой
+ * загрузки. Две отдельные сборки разошлись бы в первый же месяц.
+ */
+async function assemble(
+  rows: readonly PreviewRow[],
+): Promise<
+  Pick<
+    Preview,
+    'totals' | 'issueCounts' | 'conflicts' | 'duplicates' | 'unresolvedTypes' | 'counts'
+  >
+> {
+  const issueCounts = Object.fromEntries(
+    (Object.keys(ISSUE_LABEL) as IssueCode[]).map((code) => [
+      code,
+      rows.reduce(
+        (sum, row) => sum + row.issues.filter((issue) => issue.code === code).length,
+        0,
+      ),
+    ]),
+  ) as Record<IssueCode, number>;
+
+  const conflicts = rows
+    .filter((row) => row.issues.some((issue) => issue.code === 'STATUS_FILL_CONFLICT'))
+    .map((row) => ({ rowNumber: row.rowNumber, text: row.rawStatus, fill: row.fill }));
+
+  const byName = new Map<string, { spellings: Set<string>; rowNumbers: number[] }>();
+  for (const row of rows) {
+    const key = normalizeName(row.customer);
+    const group = byName.get(key) ?? { spellings: new Set<string>(), rowNumbers: [] };
+    group.spellings.add(row.customer);
+    group.rowNumbers.push(row.rowNumber);
+    byName.set(key, group);
+  }
+  const existing = await prisma.clientProfile.findMany({
+    where: { normalizedName: { in: [...byName.keys()] }, erasedAt: null, mergedIntoId: null },
+    select: { id: true, normalizedName: true },
+  });
+  const existingByName = new Map(existing.map((client) => [client.normalizedName, client.id]));
+
+  const duplicates: DuplicateGroup[] = [...byName.entries()]
+    .filter(([, group]) => group.rowNumbers.length > 1)
+    .map(([normalizedName, group]) => ({
+      normalizedName,
+      spellings: [...group.spellings],
+      rowNumbers: group.rowNumbers,
+      existingClientId: existingByName.get(normalizedName) ?? null,
+    }));
+
+  const unresolved = new Map<string, number[]>();
+  for (const row of rows) {
+    if (row.typeCode !== null || row.rawType.length === 0) continue;
+    const list = unresolved.get(row.rawType) ?? [];
+    list.push(row.rowNumber);
+    unresolved.set(row.rawType, list);
+  }
+
+  const counts: Record<RowAction, number> = { CREATE: 0, UPDATE: 0, SKIP: 0 };
+  for (const row of rows) counts[row.action] += 1;
+
+  return {
+    totals: {
+      cost: rows.reduce((sum, row) => sum + row.cost, 0n),
+      paid: rows.reduce((sum, row) => sum + row.paid, 0n),
+    },
+    issueCounts,
+    conflicts,
+    duplicates,
+    unresolvedTypes: [...unresolved.entries()].map(([spelling, rowNumbers]) => ({
+      spelling,
+      rowNumbers,
+    })),
+    counts,
+  };
 }
 
 export interface PreviewInput {
@@ -150,6 +230,7 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
       paid: row.paid,
       status: row.status,
       statusLabel: STATUS_LABEL[row.status],
+      rawStatus: row.rawStatus,
       fill: row.fill,
       issues: row.issues.map((issue) => ({
         code: issue.code,
@@ -212,62 +293,119 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
     select: { id: true },
   });
 
-  // Однофамильцы: показываются группами, сводятся вручную после переноса.
-  const byName = new Map<string, { spellings: Set<string>; rowNumbers: number[] }>();
-  for (const row of book.rows) {
-    const group = byName.get(row.normalizedName) ?? { spellings: new Set(), rowNumbers: [] };
-    group.spellings.add(row.customer);
-    group.rowNumbers.push(row.rowNumber);
-    byName.set(row.normalizedName, group);
-  }
-  const existing = await prisma.clientProfile.findMany({
-    where: { normalizedName: { in: [...byName.keys()] }, erasedAt: null, mergedIntoId: null },
-    select: { id: true, normalizedName: true },
-  });
-  const existingByName = new Map(existing.map((client) => [client.normalizedName, client.id]));
-
-  const duplicates: DuplicateGroup[] = [...byName.entries()]
-    .filter(([, group]) => group.rowNumbers.length > 1)
-    .map(([normalizedName, group]) => ({
-      normalizedName,
-      spellings: [...group.spellings],
-      rowNumbers: group.rowNumbers,
-      existingClientId: existingByName.get(normalizedName) ?? null,
-    }));
-
-  const unresolved = new Map<string, number[]>();
-  for (const row of book.rows) {
-    if (row.typeCode !== null || row.rawType.length === 0) continue;
-    const list = unresolved.get(row.rawType) ?? [];
-    list.push(row.rowNumber);
-    unresolved.set(row.rawType, list);
-  }
-
-  const counts: Record<RowAction, number> = { CREATE: 0, UPDATE: 0, SKIP: 0 };
-  for (const row of rows) counts[row.action] += 1;
+  const report = await assemble(rows);
 
   await record(actor, {
     action: 'IMPORT_PREVIEWED',
     objectType: 'ImportBatch',
     objectId: batch.id,
-    payload: { fileName: input.fileName, rows: rows.length, counts },
+    payload: { fileName: input.fileName, rows: rows.length, counts: report.counts },
   });
 
   return {
     batchId: batch.id,
     fileName: input.fileName,
     sheet: book.sheet,
+    state: 'PREVIEWED',
+    createdAt: new Date(),
     rows,
-    totals: book.totals,
-    issueCounts: book.issueCounts,
-    conflicts: book.conflicts,
-    duplicates,
-    unresolvedTypes: [...unresolved.entries()].map(([spelling, rowNumbers]) => ({
-      spelling,
-      rowNumbers,
-    })),
-    counts,
+    ...report,
   };
+}
+
+/** Прочитать сохранённую загрузку. Отчёт открывается повторно как есть. */
+export async function loadBatch(actor: Actor, batchId: string): Promise<Preview | null> {
+  ensure(actor, 'IMPORT_RUN');
+
+  const batch = await prisma.importBatch.findUnique({
+    where: { id: batchId },
+    select: { id: true, fileName: true, state: true, createdAt: true, stats: true },
+  });
+  if (batch === null) return null;
+
+  const stored = await prisma.importRow.findMany({
+    where: { batchId },
+    orderBy: { rowNumber: 'asc' },
+    select: {
+      rowNumber: true,
+      signature: true,
+      raw: true,
+      parsed: true,
+      errors: true,
+      severity: true,
+      action: true,
+      project: { select: { code: true } },
+    },
+  });
+
+  const rows: PreviewRow[] = stored.map((row) => {
+    const raw = row.raw as {
+      customer: string;
+      type: string;
+      description: string;
+      status: string;
+      fill: string | null;
+    };
+    const parsed = row.parsed as {
+      typeCode: string | null;
+      orderDate: string | null;
+      deadline: string | null;
+      cost: string;
+      paid: string;
+      status: LegacyStatus;
+    } | null;
+    const status = parsed?.status ?? 'IN_WORK';
+    return {
+      rowNumber: row.rowNumber,
+      signature: row.signature ?? '',
+      action: row.action,
+      severity: row.severity,
+      customer: raw.customer,
+      rawType: raw.type,
+      typeCode: parsed?.typeCode ?? null,
+      topic: raw.description,
+      orderDate: parsed?.orderDate == null ? null : new Date(parsed.orderDate),
+      deadline: parsed?.deadline == null ? null : new Date(parsed.deadline),
+      cost: BigInt(parsed?.cost ?? '0'),
+      paid: BigInt(parsed?.paid ?? '0'),
+      status,
+      statusLabel: STATUS_LABEL[status],
+      rawStatus: raw.status,
+      fill: raw.fill,
+      issues: (row.errors ?? []) as unknown as PreviewRow['issues'],
+      existingCode: row.project?.code ?? null,
+    };
+  });
+
+  const sheet = (batch.stats as { sheet?: string } | null)?.sheet ?? '';
+  return {
+    batchId: batch.id,
+    fileName: batch.fileName,
+    sheet,
+    state: batch.state,
+    createdAt: batch.createdAt,
+    rows,
+    ...(await assemble(rows)),
+  };
+}
+
+/** Последние загрузки — история переносов на экране импорта. */
+export async function listBatches(actor: Actor, limit = 20) {
+  ensure(actor, 'IMPORT_RUN');
+  return prisma.importBatch.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    select: {
+      id: true,
+      fileName: true,
+      state: true,
+      createdAt: true,
+      appliedAt: true,
+      stats: true,
+      uploadedBy: { select: { fullName: true } },
+      _count: { select: { rows: true } },
+    },
+  });
 }
 
 export interface ApplyInput {
