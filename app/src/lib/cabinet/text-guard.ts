@@ -1,0 +1,61 @@
+/**
+ * Запрещённые формулировки.
+ *
+ * Компания не пишет работы за клиента, и интерфейсные тексты — такой же
+ * документ, как оферта: формулировка, читаемая как «напишем за вас»,
+ * является дефектом (ФЗ-38, ст. 5; правило проекта из design/HANDOFF.md).
+ *
+ * Перечень намеренно узкий. Широкий ловил бы законные обороты вроде
+ * «работа эксперта» и приучал бы обходить проверку, а не соблюдать правило.
+ */
+
+export interface ForbiddenHit {
+  readonly phrase: string;
+  readonly where: string;
+  readonly line: number;
+  readonly sample: string;
+}
+
+/**
+ * Каждая позиция — оборот, который нельзя показать ни клиенту, ни эксперту.
+ *
+ * Границы слова заданы просмотром назад и вперёд, а не `\b`: в JavaScript
+ * граница слова опирается на латиницу, и перед кириллическим словом она
+ * не срабатывает вовсе.
+ */
+export const FORBIDDEN: readonly RegExp[] = [
+  /напиш[еуи]м\s+(?:вам|за\s+вас)/iu,
+  /написание\s+(?:работ|диссертац|диплом|статьи)/iu,
+  /(?<!\p{L})под\s+ключ(?!\p{L})/iu,
+  /(?<!\p{L})рерайт/iu,
+  /заказать\s+(?:работу|диссертац|диплом|статью)/iu,
+  /выполним\s+(?:работу|диссертац|диплом)/iu,
+  /сделаем\s+(?:работу|диссертац|диплом)\s+за\s+вас/iu,
+  /гарант(?:ия|ируем)\s+защит/iu,
+  /повышение\s+(?:уникальности|оригинальности)\s+текста/iu,
+  /обход\s+антиплагиат/iu,
+];
+
+/** Проверить один текст. Возвращает найденные обороты, а не только признак. */
+export function findForbidden(text: string, where = 'текст'): ForbiddenHit[] {
+  const hits: ForbiddenHit[] = [];
+  const lines = text.split('\n');
+  lines.forEach((line, index) => {
+    for (const pattern of FORBIDDEN) {
+      const match = line.match(pattern);
+      if (match !== null) {
+        hits.push({
+          phrase: match[0],
+          where,
+          line: index + 1,
+          sample: line.trim().slice(0, 160),
+        });
+      }
+    }
+  });
+  return hits;
+}
+
+export function hasForbidden(text: string): boolean {
+  return FORBIDDEN.some((pattern) => pattern.test(text));
+}
