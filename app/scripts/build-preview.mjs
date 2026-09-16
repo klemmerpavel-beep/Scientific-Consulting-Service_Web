@@ -32,6 +32,11 @@ const aside = [
   ['src/app/api', `${shelf}/api`],
   ['src/app/robots.ts', `${shelf}/robots.ts`],
   ['src/app/sitemap.ts', `${shelf}/sitemap.ts`],
+  // Кабинет убирается целиком: он весь серверный — вход по одноразовой
+  // ссылке, обработчики, запросы к базе. В статическом выводе такой раздел
+  // не собирается вовсе, и сборка витрины падала на `/cabinet/enter/[token]`
+  // с «Failed to collect page data». Раньше на этом месте лежала страница из
+  // макета, и вопрос не возникал.
   ['src/app/cabinet', `${shelf}/cabinet`],
 ];
 
@@ -141,7 +146,9 @@ function writeCabinetStub() {
 function prefixInternalLinks() {
   if (!basePath) return;
 
-  const routes = ['main', 'students', 'business', 'offer', 'privacy', 'consent', 'cabinet'];
+  // Кабинета в витрине нет (см. список убираемого выше), поэтому его нет и
+  // здесь: ссылка на него с посадочной ведёт в «страницу не найдена» стенда.
+  const routes = ['main', 'students', 'business', 'offer', 'privacy', 'consent'];
   const rules = [
     ...routes.flatMap((r) => [
       // Ссылка с якорем идёт первой: правило без якоря ищет закрывающую

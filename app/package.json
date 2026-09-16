@@ -14,6 +14,7 @@
     "schema:sql": "node scripts/schema-sql.mjs",
     "build:preview": "node scripts/build-preview.mjs",
     "reviews:export": "node scripts/export-reviews.mjs",
+    "leads:export": "node scripts/export-leads.mjs",
     "seed:cabinet": "node --env-file=.env scripts/seed-cabinet.ts",
     "seed:reference": "node --env-file=.env scripts/seed-reference.ts",
     "seed:artboards": "node scripts/seed-artboards.ts",

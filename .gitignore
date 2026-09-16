@@ -24,6 +24,11 @@ app/src/generated/
 deploy/backups/*
 !deploy/backups/.gitkeep
 
+# Материалы кабинета: файлы работ, персональные данные. Каталог существует
+# в репозитории пустым — в него монтируется том контейнера.
+deploy/storage/*
+!deploy/storage/.gitkeep
+
 # Служебное
 *.log
 .DS_Store

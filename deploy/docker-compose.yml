@@ -49,6 +49,20 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
       LEAD_MAIL_TO: ${LEAD_MAIL_TO:-}
+      # Личный кабинет. Секрет свёрток обязателен: без него кабинет отвечает
+      # ошибкой на каждый запрос, а раздел доступен по ссылке с посадочной —
+      # молчаливая пятисотка хуже, чем отказ развернуть с понятным текстом.
+      # Значение получается одной командой: openssl rand -base64 48
+      SESSION_SECRET: ${SESSION_SECRET:?секрет кабинета обязателен, не короче 32 знаков}
+      CABINET_STORAGE_DIR: ${CABINET_STORAGE_DIR:-/app/storage}
+      CABINET_CRON_SECRET: ${CABINET_CRON_SECRET:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+    volumes:
+      # Материалы кабинета лежат на хосте, а не внутри контейнера: при
+      # пересборке образа содержимое контейнера теряется целиком, а это
+      # файлы работ. Каталог на хосте виден резервному копированию.
+      - ./storage:/app/storage
     # Наружу приложение не смотрит: перед ним обратный прокси хоста
     ports:
       - '127.0.0.1:3000:3000'
