@@ -80,5 +80,30 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-prodisser}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-prodisser}
 
+  # Разовые средства: выгрузки в таблицу, заведение учётной записи кабинета.
+  # В рабочем образе их нет — туда не попадают ни исходники, ни каталог
+  # scripts. Сервис поднимается на один запуск и гаснет (решение Р-132).
+  #
+  #   docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
+  #     --profile tools run --rm tools scripts/export-leads.mjs --stdout > leads.csv
+  tools:
+    build:
+      context: ../app
+      target: tools
+    profiles: ['tools']
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-prodisser}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-prodisser}
+      # Адрес нужен для ссылок входа в кабинет: они печатаются целиком.
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      SESSION_SECRET: ${SESSION_SECRET:?секрет кабинета обязателен, не короче 32 знаков}
+      CABINET_STORAGE_DIR: ${CABINET_STORAGE_DIR:-/app/storage}
+    volumes:
+      # Тот же каталог материалов и каталог выгрузок, что у приложения.
+      - ./storage:/app/storage
+      - ./exports:/app/exports
+
 volumes:
   db-data:
