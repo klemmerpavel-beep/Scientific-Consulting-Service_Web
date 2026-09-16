@@ -176,7 +176,13 @@ export default async function ManageQueue() {
                   alignItems: 'start',
                 }}
               >
-                <form action={moderateLead} style={{ display: 'grid', gap: 16 }}>
+                {/* minmax(0,1fr): колонка по содержимому растягивалась под самый
+                    длинный вариант в списке типов, и на экране уже 420 px форма
+                    вылезала за край страницы (решение Р-130). */}
+                <form
+                  action={moderateLead}
+                  style={{ display: 'grid', gap: 16, gridTemplateColumns: 'minmax(0,1fr)' }}
+                >
                   <input type="hidden" name="leadId" value={lead.id} />
                   <input type="hidden" name="decision" value="approve" />
                   <Field
@@ -197,6 +203,11 @@ export default async function ManageQueue() {
                         borderRadius: 10,
                         border: '1px solid var(--pd-edge-neutral)',
                         background: 'var(--pd-ink-inverse)',
+                        // Список выбора сам по себе не сжимается ниже своего
+                        // самого длинного варианта: ширину задаём явно.
+                        width: '100%',
+                        maxWidth: '100%',
+                        boxSizing: 'border-box',
                       }}
                     >
                       {types.map((type) => (
@@ -215,7 +226,10 @@ export default async function ManageQueue() {
                   </div>
                 </form>
 
-                <form action={moderateLead} style={{ display: 'grid', gap: 16 }}>
+                <form
+                  action={moderateLead}
+                  style={{ display: 'grid', gap: 16, gridTemplateColumns: 'minmax(0,1fr)' }}
+                >
                   <input type="hidden" name="leadId" value={lead.id} />
                   <input type="hidden" name="decision" value="decline" />
                   <Field
