@@ -9,7 +9,9 @@
 **Витрина проекта:**
 [klemmerpavel-beep.github.io/Scientific-Consulting-Service_Web](https://klemmerpavel-beep.github.io/Scientific-Consulting-Service_Web/)
 — семь страниц со всеми переходами, без сервера: заявки не отправляются,
-персональные данные не сохраняются.
+персональные данные не сохраняются. Там же
+[экраны личного кабинета](https://klemmerpavel-beep.github.io/Scientific-Consulting-Service_Web/cabinet/artboards/)
+— тринадцать снимков работающих экранов с вымышленными данными.
 
 > Website of a Russian academic-consulting service. Next.js 16 + React 19,
 > Prisma 7 + PostgreSQL. Pages are generated from `design/*.dc.html` layouts
