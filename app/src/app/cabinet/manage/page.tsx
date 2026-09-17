@@ -9,20 +9,48 @@ import {
   Field,
   Heading,
   Mono,
+  STAGE_STATE_LABEL,
   Text,
   Tile,
   Tiles,
   formatDate,
-  plural,
+  type StageStateKey,
 } from '../../../components/cabinet/ui';
+import { MONO, SANS } from '../../../components/cabinet/tokens';
 import { can } from '../../../lib/cabinet/access';
-import { formatAmount } from '../../../lib/cabinet/money';
+import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
 import { leadQueue, serviceTypes, trafficLight } from '../../../lib/cabinet/queries';
 import { currentActor } from '../../../lib/cabinet/session';
-import { OVERHEAD_PERCENT, practiceSummary } from '../../../lib/cabinet/summary';
+import { OVERHEAD_PERCENT, activeWorks, practiceSummary } from '../../../lib/cabinet/summary';
 import { moderateLead } from '../actions';
 
 export const dynamic = 'force-dynamic';
+
+const cell: React.CSSProperties = {
+  padding: '12px 16px',
+  borderBottom: '1px solid var(--pd-divider)',
+  fontFamily: SANS,
+  fontSize: 14,
+  lineHeight: 1.5,
+  color: 'var(--pd-ink-secondary)',
+  textAlign: 'left',
+  verticalAlign: 'top',
+};
+
+const num: React.CSSProperties = {
+  ...cell,
+  textAlign: 'right',
+  fontVariantNumeric: 'tabular-nums',
+  whiteSpace: 'nowrap',
+};
+
+const head: React.CSSProperties = {
+  ...cell,
+  fontWeight: 500,
+  color: 'var(--pd-ink)',
+  background: 'var(--pd-surface-quiet)',
+  whiteSpace: 'nowrap',
+};
 
 const SOURCE_LABEL: Record<string, string> = {
   landing: 'Посадочная',
@@ -45,133 +73,83 @@ export default async function ManageQueue() {
 
   // Сводка — это деньги практики, и её видит только тот, кому открыта маржа.
   const summary = can(actor, 'MARGIN_VIEW') ? await practiceSummary(actor) : null;
-
-  const lanes = [
-    {
-      key: 'overdue',
-      title: 'Просрочены',
-      tone: 'warn' as const,
-      rows: light.overdue,
-      hint: 'Срок этапа прошёл, а этап не закрыт.',
-    },
-    {
-      key: 'soon',
-      title: 'Срок в пределах недели',
-      tone: 'accent' as const,
-      rows: light.soon,
-      hint: 'Ещё не сорвано, но резерва уже нет.',
-    },
-    {
-      key: 'stalled',
-      title: 'Ждут клиента дольше двух недель',
-      tone: 'neutral' as const,
-      rows: light.stalled,
-      hint: 'Просрочки может не быть, а работа стоит.',
-    },
-  ];
+  const works = summary === null ? [] : await activeWorks(actor);
 
   return (
     <Shell actor={actor} current="/cabinet/manage">
       {summary === null ? null : (
         <section style={{ marginBottom: 36 }}>
-          <Mono>Практика на сегодня</Mono>
-          <Heading level={1} style={{ margin: '12px 0 16px' }}>
-            Сводка
-          </Heading>
+          <Heading level={1} style={{ margin: '0 0 20px' }}>Практика</Heading>
           <Tiles>
-            <Tile
-              label="Заказов"
-              value={String(summary.orders)}
-              note={`${summary.active} ${plural(summary.active, 'в работе', 'в работе', 'в работе')}, остальные закрыты или остановлены`}
-            />
-            <Tile
-              label="Выручка"
-              value={formatAmount(summary.received)}
-              note={`получено по оплаченным траншам; законтрактовано ${formatAmount(summary.contracted)}`}
-            />
+            <Tile label="Заказов" value={String(summary.orders)} note={`${summary.active} в работе`} />
+            <Tile label="Выручка" value={formatAmount(summary.received)} note="получено" />
             <Tile
               label="Прибыль"
               value={formatAmount(summary.profit)}
-              note={
-                summary.payouts === 0n
-                  ? `поступления за вычетом ${OVERHEAD_PERCENT} % накладных расходов; вознаграждение сторонним исполнителям не заведено`
-                  : `поступления за вычетом начислений исполнителям (${formatAmount(summary.payouts)}) и ${OVERHEAD_PERCENT} % накладных расходов`
-              }
+              note={`выручка минус ${OVERHEAD_PERCENT} % расходов`}
             />
-            <Tile
-              label="К получению"
-              value={formatAmount(summary.outstanding)}
-              note="выставлено и запланировано, но не оплачено"
-            />
+            <Tile label="К получению" value={formatAmount(summary.outstanding)} note="не оплачено" />
           </Tiles>
         </section>
       )}
 
-      <section style={{ marginBottom: 36 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
-          <Mono>Сроки</Mono>
-          <a href="/cabinet/manage/registry" style={{ marginLeft: 'auto', fontSize: 14 }}>
-            Реестры клиентов и экспертов
-          </a>
-        </div>
+      {works.length === 0 ? null : (
+        <section style={{ marginBottom: 36 }}>
+          <Heading level={2} style={{ marginBottom: 12 }}>Сейчас в работе</Heading>
+          <Card style={{ padding: 0, overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+              <thead>
+                <tr>
+                  <th style={head} scope="col">Работа</th>
+                  <th style={head} scope="col">Этап</th>
+                  <th style={head} scope="col">Срок</th>
+                  <th style={{ ...head, textAlign: 'right' }} scope="col">Договор, ₽</th>
+                  <th style={{ ...head, textAlign: 'right' }} scope="col">Оплачено, ₽</th>
+                  <th style={{ ...head, textAlign: 'right' }} scope="col">Остаток, ₽</th>
+                </tr>
+              </thead>
+              <tbody>
+                {works.map((work) => (
+                  <tr key={work.code}>
+                    <td style={cell}>
+                      <a href={`/cabinet/projects/${work.code}`}>{work.title}</a>
+                      <div style={{ fontFamily: MONO, fontSize: 12, color: 'var(--pd-ink-muted)' }}>
+                        {work.code} · {work.client}
+                      </div>
+                    </td>
+                    <td style={cell}>
+                      {work.stage ?? '—'}
+                      {work.stageState === null ? null : (
+                        <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                          {STAGE_STATE_LABEL[work.stageState as StageStateKey]}
+                        </div>
+                      )}
+                    </td>
+                    <td style={cell}>{formatDate(work.dueOn) ?? '—'}</td>
+                    <td style={num}>{formatPlain(work.contracted)}</td>
+                    <td style={num}>{formatPlain(work.received)}</td>
+                    <td style={{ ...num, color: work.outstanding > 0n ? 'var(--pd-ink)' : undefined }}>
+                      {work.outstanding > 0n ? formatPlain(work.outstanding) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+          {light.overdue.length + light.stalled.length === 0 ? null : (
+            <Text muted size={14} style={{ marginTop: 12 }}>
+              Требуют вмешательства: просрочено этапов — {light.overdue.length}, ждут клиента дольше
+              двух недель — {light.stalled.length}.{' '}
+              <a href="/cabinet/manage/registry">Реестры</a>
+            </Text>
+          )}
+        </section>
+      )}
 
-        <div
-          className="cab-two"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0,1fr))',
-            gap: 16,
-            marginTop: 12,
-          }}
-        >
-          {lanes.map((lane) => (
-            <Card key={lane.key}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
-                <Chip tone={lane.rows.length === 0 ? 'ok' : lane.tone}>{lane.rows.length}</Chip>
-                <Heading level={3}>{lane.title}</Heading>
-              </div>
-              {lane.rows.length === 0 ? (
-                <Text muted size={13}>
-                  {lane.hint}
-                </Text>
-              ) : (
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
-                  {lane.rows.slice(0, 5).map((stage) => (
-                    <li key={stage.id}>
-                      <Text size={14}>
-                        <a href={`/cabinet/stages/${stage.id}`}>{stage.title}</a>
-                      </Text>
-                      <Text muted size={13}>
-                        {stage.project.code} · {stage.project.client.fullName}
-                        {stage.dueOn === null ? '' : ` · срок ${formatDate(stage.dueOn)}`}
-                      </Text>
-                    </li>
-                  ))}
-                  {lane.rows.length > 5 ? (
-                    <li>
-                      <Text muted size={13}>
-                        и ещё {lane.rows.length - 5}
-                      </Text>
-                    </li>
-                  ) : null}
-                </ul>
-              )}
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <Mono>Очередь заявок</Mono>
-      <Heading level={2} style={{ margin: '12px 0 8px', fontSize: 26 }}>
-        Заявки на рассмотрении
-      </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
-        Одобренная заявка разворачивается в проект и получает код. Отклонённая остаётся в системе
-        с причиной, которую видит заявитель. Заявки не удаляются.
-      </Text>
+      <Heading level={2} style={{ marginBottom: 12 }}>Заявки на рассмотрении</Heading>
 
       {leads.length === 0 ? (
-        <Empty title="Очередь пуста">Новые обращения с сайта появятся здесь.</Empty>
+        <Empty title="Новых заявок нет" />
       ) : (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
           {leads.map((lead) => (

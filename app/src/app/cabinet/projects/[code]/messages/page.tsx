@@ -71,10 +71,6 @@ export default async function MessagesScreen({
         <Heading level={1} style={{ margin: '12px 0 8px' }}>
           {project.title}
         </Heading>
-        <Text muted style={{ marginBottom: 24 }}>
-          Вопросы по работе задаются здесь. Переписка остаётся в кабинете и после завершения
-          работы; ответ приходит в кабинет и уведомлением на почту.
-        </Text>
 
         <Card>
           {messages.length === 0 ? (

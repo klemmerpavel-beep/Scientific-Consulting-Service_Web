@@ -42,6 +42,71 @@ export interface PracticeSummary {
   readonly profit: bigint;
 }
 
+/** Работа, идущая прямо сейчас: то, чем практика занята. */
+export interface ActiveWork {
+  readonly code: string;
+  readonly title: string;
+  readonly client: string;
+  readonly dueOn: Date | null;
+  readonly contracted: bigint;
+  readonly received: bigint;
+  readonly outstanding: bigint;
+  readonly stage: string | null;
+  readonly stageState: string | null;
+}
+
+/**
+ * Перечень действующих работ.
+ *
+ * Руководителю нужен не архив, а то, что в работе: сколько осталось
+ * получить и на каком этапе каждая. Сортировка по сроку — ближайший
+ * сверху; работы без срока уходят вниз.
+ */
+export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
+  ensure(actor, 'MARGIN_VIEW');
+  const scope = scopeProjects(actor);
+
+  const projects = await prisma.project.findMany({
+    where: { ...(scope ?? {}), status: 'ACTIVE' },
+    select: {
+      code: true,
+      title: true,
+      dueOn: true,
+      client: { select: { fullName: true } },
+      contract: { select: { totalAmount: true, tranches: { select: { amount: true, status: true } } } },
+      stages: { orderBy: { position: 'asc' }, select: { title: true, state: true } },
+    },
+  });
+
+  const rows = projects.map((project) => {
+    const tranches = project.contract?.tranches ?? [];
+    const received = tranches
+      .filter((tranche) => tranche.status === 'PAID')
+      .reduce((acc, tranche) => acc + tranche.amount, 0n);
+    const contracted = project.contract?.totalAmount ?? 0n;
+    const current = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
+    return {
+      code: project.code,
+      title: project.title,
+      client: project.client.fullName,
+      dueOn: project.dueOn,
+      contracted,
+      received,
+      // Переплату в задолженность не записываем: остаток не бывает
+      // отрицательным (то же правило, что в финансовом контуре).
+      outstanding: contracted > received ? contracted - received : 0n,
+      stage: current?.title ?? null,
+      stageState: current?.state ?? null,
+    };
+  });
+
+  return rows.sort((a, b) => {
+    if (a.dueOn === null) return b.dueOn === null ? 0 : 1;
+    if (b.dueOn === null) return -1;
+    return a.dueOn.getTime() - b.dueOn.getTime();
+  });
+}
+
 export async function practiceSummary(actor: Actor): Promise<PracticeSummary> {
   ensure(actor, 'MARGIN_VIEW');
 

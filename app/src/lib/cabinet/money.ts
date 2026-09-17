@@ -33,6 +33,17 @@ export function parseAmount(raw: string): bigint {
 }
 
 /** Сумма в рублях для показа: «240 000 ₽», «1 250,50 ₽». */
+/**
+ * Сумма без знака рубля — для колонки таблицы, где знак вынесен в шапку.
+ *
+ * Повторять «₽» в каждой ячейке значит мешать глазу сравнивать разряды:
+ * ради этого числа и выстраивают в колонку.
+ */
+export function formatPlain(kopecks: bigint | number | null | undefined): string {
+  const full = formatAmount(kopecks);
+  return full === '—' ? full : full.replace(/\s*₽$/u, '');
+}
+
 export function formatAmount(kopecks: bigint | number | null | undefined): string {
   if (kopecks === null || kopecks === undefined) return '—';
   const value = typeof kopecks === 'bigint' ? kopecks : BigInt(Math.round(kopecks));

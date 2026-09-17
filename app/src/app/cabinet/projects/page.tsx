@@ -34,15 +34,9 @@ export default async function ProjectsScreen() {
     <Shell actor={actor} current="/cabinet/projects">
       {/* Композиционный центр экрана: не список работ, а перечень действий.
           Основная потеря календарного времени — ожидание материалов. */}
-      <Mono>{forClient ? 'Мои работы' : 'Проекты'}</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        {forClient ? 'Проекты сопровождения' : 'Проекты практики'}
+      <Heading level={1} style={{ margin: '0 0 24px' }}>
+        {forClient ? 'Мои работы' : 'Работы практики'}
       </Heading>
-      <Text muted style={{ marginBottom: 28 }}>
-        {forClient
-          ? 'Здесь видно, на каком этапе каждая работа и что требуется от вас.'
-          : 'Работы практики: состояние этапов, сроки и переписка.'}
-      </Text>
 
       {pending.length === 0 ? null : (
         <section style={{ marginBottom: 32 }}>
@@ -107,11 +101,7 @@ export default async function ProjectsScreen() {
       )}
 
       {projects.length === 0 ? (
-        <Empty title="Проектов пока нет">
-          {forClient
-            ? 'Как только заявка будет одобрена, проект появится здесь вместе с планом этапов.'
-            : 'Одобрите заявку в очереди — проект появится здесь.'}
-        </Empty>
+        <Empty title={forClient ? 'Работ пока нет' : 'Проектов пока нет'} />
       ) : (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
           {projects.map((project) => (
