@@ -366,6 +366,11 @@ node tools/cabinet-artboards.mjs
 `app/scripts/seed-artboards.ts`. Гарнитуры объявлены стеком и файлами не
 сопровождаются — то же соглашение, что и у макетов сайта.
 
+Артборды выложены в витрине проекта и открываются по ссылке без сервера:
+`…github.io/Scientific-Consulting-Service_Web/cabinet/artboards/`. Выкладку
+делает `app/scripts/preview-artboards.mjs` при сборке витрины (Р-138);
+исходники в `design/cabinet/` при этом не правятся.
+
 ## Interactions & Behavior
 - **Единая кривая** `cubic-bezier(.2,0,.2,1)`, длительности 180–260ms. Других нет.
 - **Hover карточек** — только цвет рамки. Подъём, масштаб и смена тени запрещены.

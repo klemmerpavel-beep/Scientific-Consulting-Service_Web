@@ -14,7 +14,8 @@
  * случае, включая падение сборки. Взамен убранного robots.ts витрине
  * дописывается статический robots.txt с Disallow: /, а взамен кабинета —
  * страница-заглушка: кнопка «Личный кабинет» есть на каждой странице, и
- * вести её в никуда хуже, чем объяснить.
+ * вести её в никуда хуже, чем объяснить. Облик самого раздела показывают
+ * артборды — снимки работающих экранов; их выкладывает `preview-artboards`.
  *
  *   PREVIEW_BASE_PATH=/имя-репозитория node scripts/build-preview.mjs
  */
@@ -22,6 +23,8 @@ import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+
+import { writeCabinetArtboards } from './preview-artboards.mjs';
 
 // Прятать внутри src/app нельзя: Next обходит всю папку и считает
 // маршрутом даже каталог, начинающийся с точки. Убираем за пределы дерева.
@@ -75,6 +78,7 @@ try {
   writeFileSync(path.join('out', 'robots.txt'), 'User-agent: *\nDisallow: /\n');
 
   writeCabinetStub();
+  writeCabinetArtboards();
 
   prefixInternalLinks();
 
@@ -109,9 +113,10 @@ function writeCabinetStub() {
   h1 { font-family:'Literata',Georgia,'Times New Roman',serif; font-weight:400;
     font-size:clamp(26px,3vw,36px); line-height:1.24; margin:0 0 16px; }
   p { font-size:16px; line-height:1.6; color:var(--pd-ink-muted); margin:0 0 16px; }
-  a { display:inline-flex; align-items:center; min-height:44px; padding:0 22px;
+  a { display:inline-flex; align-items:center; min-height:44px; padding:0 22px; margin:0 8px 8px 0;
     border:1px solid var(--pd-ink); border-radius:999px; color:var(--pd-ink);
     text-decoration:none; font-weight:600; font-size:15px; }
+  a.lead { border-color:var(--pd-accent); background:var(--pd-accent); color:#fff; }
 </style>
 </head>
 <body>
@@ -120,7 +125,11 @@ function writeCabinetStub() {
   <p>Витрина показывает страницы сайта без сервера и без базы данных. Кабинет устроен иначе:
   вход по одноразовой ссылке, серверные сессии, материалы и переписка — всё это требует
   работающего приложения, поэтому в витрину кабинет не собирается.</p>
-  <p>Кабинет доступен на рабочей площадке по адресу <b>/cabinet</b>.</p>
+  <p>Посмотреть облик раздела можно по снимкам настоящих экранов: тринадцать артбордов с
+  вымышленными данными, снятые с работающего приложения. Формы на них не отправляются,
+  переходы работают в пределах набора.</p>
+  <p>Сам кабинет доступен на рабочей площадке по адресу <b>/cabinet</b>.</p>
+  <a class="lead" href="artboards/">Экраны кабинета</a>
   <a href="/main">К страницам сайта</a>
 </main>
 </body>
