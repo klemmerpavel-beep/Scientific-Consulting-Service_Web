@@ -27,15 +27,18 @@ function Wordmark() {
   return (
     <a
       href="/"
+      className="cab-wordmark"
+      aria-label="ProDisser — на главную"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
+        minHeight: 44,
         flex: '0 0 auto',
         padding: '6px 10px',
         margin: '0 -10px',
         borderRadius: 10,
         fontFamily: SERIF,
-        fontSize: 21,
+        fontSize: 23,
         lineHeight: 1.24,
         fontWeight: 600,
         letterSpacing: '.005em',
@@ -53,6 +56,17 @@ export interface NavItem {
   readonly label: string;
 }
 
+/**
+ * Разделы роли.
+ *
+ * На этой стадии кабинет показывается двумя плашками — клиент и
+ * руководитель (решение Р-140). Разделы служебного контура — перенос книги
+ * заказов, журналы, исполнение требований об удалении, пользователи,
+ * справочники, вознаграждение эксперта — из навигации убраны: они рабочие,
+ * маршруты отвечают по прямой ссылке, но внимания на этой стадии не
+ * занимают. Роли EXPERT и MANAGER остаются в матрице прав и в схеме; в
+ * навигации их пункты не появляются.
+ */
 export function navFor(actor: Actor): NavItem[] {
   const settings: NavItem = { href: '/cabinet/settings', label: 'Уведомления' };
   if (actor.role === 'CLIENT') {
@@ -70,19 +84,12 @@ export function navFor(actor: Actor): NavItem[] {
     ];
   }
   const staff: NavItem[] = [
-    { href: '/cabinet/manage', label: 'Очередь заявок' },
-    { href: '/cabinet/projects', label: 'Проекты' },
+    { href: '/cabinet/manage', label: 'Сводка' },
+    { href: '/cabinet/projects', label: 'Работы' },
   ];
-  // Финансовый контур и перенос истории ведёт руководитель: менеджеру эти
-  // разделы не показываются.
   if (actor.role === 'HEAD') {
     staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
     staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
-    staff.push({ href: '/cabinet/manage/import', label: 'Импорт' });
-    staff.push({ href: '/cabinet/manage/audit', label: 'Журналы' });
-    staff.push({ href: '/cabinet/manage/erasure', label: 'ФЗ-152' });
-    staff.push({ href: '/cabinet/manage/users', label: 'Пользователи' });
-    staff.push({ href: '/cabinet/manage/directory', label: 'Справочники' });
   }
   return [...staff, settings];
 }
@@ -115,7 +122,7 @@ export default function Shell({
             boxSizing: 'border-box',
             maxWidth: CONTAINER,
             margin: '0 auto',
-            padding: `18px ${GUTTER}px`,
+            padding: `24px ${GUTTER}px`,
             display: 'flex',
             alignItems: 'center',
             gap: 24,
@@ -230,7 +237,9 @@ export default function Shell({
             color: 'var(--pd-ink-muted)',
           }}
         >
-          <span>ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250</span>
+          {/* Реквизиты общества стоят в подвале сайта, где они и требуются
+              законом. В закрытом разделе человек уже знает, с кем работает,
+              и строка занимает место без пользы. */}
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 20 }}>
             <a href="/offer">Оферта</a>
             <a href="/privacy">Политика обработки данных</a>

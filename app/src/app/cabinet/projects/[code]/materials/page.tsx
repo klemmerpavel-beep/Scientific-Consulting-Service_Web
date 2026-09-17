@@ -25,7 +25,7 @@ export const dynamic = 'force-dynamic';
 const ROLE_LABEL: Record<string, string> = {
   CLIENT: 'клиент',
   EXPERT: 'эксперт',
-  MANAGER: 'менеджер',
+  MANAGER: 'куратор',
   HEAD: 'руководитель',
 };
 
@@ -69,7 +69,7 @@ export default async function ProjectMaterialsScreen({
         <Empty title="Материалов пока нет">
           {mayUpload
             ? 'Первый файл можно приложить формой ниже: он появится здесь и у остальных участников работы.'
-            : 'Как только эксперт или менеджер приложит первый файл, он появится здесь.'}
+            : 'Как только куратор приложит первый файл, он появится здесь.'}
         </Empty>
       ) : (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>

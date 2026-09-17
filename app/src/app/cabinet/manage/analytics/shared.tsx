@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import AnalyticsTabs from '../../../../components/cabinet/AnalyticsTabs';
 import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
-import { Card, Heading, Mono, Text } from '../../../../components/cabinet/ui';
+import { Card, Heading, Mono, Text, Tile, Tiles } from '../../../../components/cabinet/ui';
 import { can, type Actor } from '../../../../lib/cabinet/access';
 import { loadRows } from '../../../../lib/cabinet/analytics/data';
 import type { ProjectRow } from '../../../../lib/cabinet/analytics/metrics';
@@ -79,36 +79,8 @@ export const head: React.CSSProperties = {
 };
 
 /** Плитка величины. Под каждой — пояснение, откуда число взялось. */
-export function Tile({ label, value, note }: { label: string; value: string; note?: string }) {
-  return (
-    <Card>
-      <Mono>{label}</Mono>
-      <Text size={22} style={{ marginTop: 8, color: 'var(--pd-ink)', fontVariantNumeric: 'tabular-nums' }}>
-        {value}
-      </Text>
-      {note === undefined ? null : (
-        <Text muted size={13} style={{ marginTop: 6 }}>
-          {note}
-        </Text>
-      )}
-    </Card>
-  );
-}
-
-export function Tiles({ children }: { children: ReactNode }) {
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-        gap: 16,
-        marginBottom: 28,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+// Плитки живут в общем модуле оформления; вкладки берут их отсюда.
+export { Tile, Tiles };
 
 /** Карточка графика: заголовок, сам график, под ним — пояснение расчёта. */
 export function ChartCard({

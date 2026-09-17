@@ -46,8 +46,8 @@ export function Card({
         background: 'var(--pd-ink-inverse)',
         border: '1px solid var(--pd-border)',
         borderRadius: RADIUS.card,
-        boxShadow: SHADOW.level1,
-        padding: '20px 22px',
+        boxShadow: SHADOW.level2,
+        padding: '18px 20px 20px',
         ...style,
       }}
     >
@@ -65,15 +65,18 @@ export function Heading({
   level?: 1 | 2 | 3;
   style?: CSSProperties;
 }) {
-  const sizes = { 1: 'clamp(28px,2.8vw,40px)', 2: 21, 3: 17 } as const;
+  // Кегли и начертания — из таблицы дизайн-системы, раздел 3.2. Заголовок
+  // раздела равен 22 px на всех страницах сайта (решение Р-99), и кабинет
+  // не исключение; h3 набирается плотнее и жирнее — 600 при 1.4.
+  const sizes = { 1: 'clamp(28px,2.8vw,40px)', 2: 22, 3: 17 } as const;
   const Tag = (`h${level}` as unknown) as 'h1';
   return (
     <Tag
       style={{
         fontFamily: SERIF,
-        fontWeight: 500,
+        fontWeight: level === 3 ? 600 : 500,
         fontSize: sizes[level],
-        lineHeight: 1.24,
+        lineHeight: level === 3 ? 1.4 : 1.24,
         letterSpacing: level === 1 ? '-.015em' : '-.012em',
         color: 'var(--pd-ink)',
         ...style,
@@ -101,7 +104,9 @@ export function Text({
         margin: 0,
         fontFamily: SANS,
         fontSize: size,
-        lineHeight: 1.6,
+        // Плотный текст интерфейса набирается плотнее: 1.6 в системе
+        // закреплён за сплошным текстом от 15 px, мелкому он не положен.
+        lineHeight: size >= 15 ? 1.6 : 1.5,
         color: muted ? 'var(--pd-ink-muted)' : 'var(--pd-ink-secondary)',
         ...style,
       }}
@@ -151,7 +156,7 @@ export function Chip({
         display: 'inline-flex',
         alignItems: 'center',
         gap: 6,
-        padding: '6px 12px',
+        padding: '8px 14px',
         borderRadius: RADIUS.pill,
         fontFamily: mono ? MONO : SANS,
         fontSize: mono ? 12 : 13,
@@ -177,7 +182,7 @@ const BUTTON_BASE: CSSProperties = {
   borderRadius: RADIUS.pill,
   fontFamily: SANS,
   fontSize: 15,
-  fontWeight: 500,
+  fontWeight: 600,
   lineHeight: 1.4,
   cursor: 'pointer',
   border: '1px solid transparent',
@@ -247,7 +252,7 @@ export function Field({
   const control: CSSProperties = {
     boxSizing: 'border-box',
     width: '100%',
-    minHeight: 44,
+    minHeight: 48,
     padding: '12px 14px',
     borderRadius: RADIUS.field,
     border: '1px solid var(--pd-edge-neutral)',
@@ -257,34 +262,30 @@ export function Field({
     fontSize: 16,
     lineHeight: 1.5,
   };
+  // Подсказка лежит вне подписи и связывается с полем отдельно. Пока она
+  // стояла внутри `<label>`, доступным именем поля становилась склейка:
+  // «Электронная почта Тот адрес, который вы указывали при обращении.»
+  const hintId = hint === undefined ? undefined : `${name}-hint`;
+  const shared = { name, required, placeholder, defaultValue, 'aria-describedby': hintId };
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500, color: 'var(--pd-ink)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <label
+        htmlFor={name}
+        style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500, color: 'var(--pd-ink)' }}
+      >
         {label}
-      </span>
+      </label>
       {multiline ? (
-        <textarea
-          name={name}
-          required={required}
-          placeholder={placeholder}
-          defaultValue={defaultValue}
-          rows={4}
-          style={{ ...control, resize: 'vertical' }}
-        />
+        <textarea id={name} {...shared} rows={4} style={{ ...control, resize: 'vertical' }} />
       ) : (
-        <input
-          name={name}
-          type={type}
-          required={required}
-          placeholder={placeholder}
-          defaultValue={defaultValue}
-          style={control}
-        />
+        <input id={name} type={type} {...shared} style={control} />
       )}
       {hint === undefined ? null : (
-        <span style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>{hint}</span>
+        <span id={hintId} style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+          {hint}
+        </span>
       )}
-    </label>
+    </div>
   );
 }
 
@@ -318,6 +319,47 @@ export function Notice({
 }
 
 /** Пустое состояние. Отдельный вид: пустой список без объяснения читается как сбой. */
+/**
+ * Плитка величины: подпись, число, пояснение расчёта.
+ *
+ * Жила в `manage/analytics/shared.tsx` и понадобилась сводке руководителя.
+ * Держать две одинаковые плитки в разных файлах — верный способ получить
+ * два разных кегля числа через месяц.
+ */
+export function Tile({ label, value, note }: { label: string; value: string; note?: string }) {
+  return (
+    <Card>
+      <Mono>{label}</Mono>
+      <Text
+        size={22}
+        style={{ marginTop: 8, color: 'var(--pd-ink)', fontVariantNumeric: 'tabular-nums' }}
+      >
+        {value}
+      </Text>
+      {note === undefined ? null : (
+        <Text muted size={13} style={{ marginTop: 6 }}>
+          {note}
+        </Text>
+      )}
+    </Card>
+  );
+}
+
+export function Tiles({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+        gap: 16,
+        marginBottom: 28,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <Card style={{ textAlign: 'center', padding: '40px 24px' }}>
@@ -366,10 +408,248 @@ export interface StepItem {
   readonly href?: string;
 }
 
+/**
+ * Ход работы в перечне: сколько этапов позади и что происходит сейчас.
+ *
+ * В карточке перечня нужен ответ, а не трекер: раньше здесь стояла полоса
+ * на шесть колонок, из которой состояние читалось цветом и только на
+ * широком экране.
+ */
+export function Progress({
+  done,
+  total,
+  current,
+}: {
+  done: number;
+  total: number;
+  current: { title: string; state: StageStateKey } | null;
+}) {
+  const share = total === 0 ? 0 : Math.round((done / total) * 100);
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      <span
+        style={{
+          display: 'flex',
+          gap: 10,
+          flexWrap: 'wrap',
+          alignItems: 'baseline',
+          fontFamily: SANS,
+          fontSize: 15,
+          lineHeight: 1.5,
+          color: 'var(--pd-ink)',
+        }}
+      >
+        {current === null ? (
+          total === 0 ? (
+            <span>План работы ещё составляется</span>
+          ) : (
+            <span>Все этапы завершены</span>
+          )
+        ) : (
+          <>
+            <strong style={{ fontWeight: 600 }}>{STAGE_STATE_LABEL[current.state]}</strong>
+            <span style={{ color: 'var(--pd-ink-secondary)' }}>{current.title}</span>
+          </>
+        )}
+      </span>
+      <span
+        aria-hidden="true"
+        style={{
+          display: 'block',
+          height: 6,
+          borderRadius: RADIUS.mark,
+          background: 'var(--pd-divider)',
+          overflow: 'hidden',
+        }}
+      >
+        <span
+          style={{
+            display: 'block',
+            width: `${share}%`,
+            height: '100%',
+            background: 'var(--pd-accent)',
+          }}
+        />
+      </span>
+      <span style={{ fontFamily: SANS, fontSize: 13, lineHeight: 1.5, color: 'var(--pd-ink-muted)' }}>
+        {total === 0
+          ? 'Этапы появятся после согласования плана'
+          : `${done} из ${total} ${plural(total, 'этапа', 'этапов', 'этапов')} завершено`}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Состояние работы одной строкой.
+ *
+ * Первое, что должен увидеть клиент: где работа сейчас и что требуется от
+ * него. Раньше ответ собирался из трёх мест экрана — полосы этапов, ленты
+ * событий и блока «кто ведёт проект», — и на телефоне не собирался вовсе.
+ */
+export function StatusLine({
+  state,
+  title,
+  dueOn,
+  action,
+}: {
+  state: StageStateKey | null;
+  title: string | null;
+  dueOn?: string | null;
+  action?: string | null;
+}) {
+  const waiting = state === 'AWAITING_CLIENT' || state === 'IN_APPROVAL';
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gap: 6,
+        padding: '16px 20px',
+        borderRadius: RADIUS.card,
+        border: `1px solid ${waiting ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
+        background: waiting ? 'var(--pd-accent-tint)' : 'var(--pd-ink-inverse)',
+      }}
+    >
+      <span
+        style={{
+          fontFamily: SANS,
+          fontSize: 17,
+          fontWeight: 600,
+          lineHeight: 1.4,
+          color: 'var(--pd-ink)',
+        }}
+      >
+        {state === null || title === null
+          ? 'План работы ещё составляется'
+          : `${STAGE_STATE_LABEL[state]}: ${title}`}
+      </span>
+      <span style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5, color: 'var(--pd-ink-secondary)' }}>
+        {action ?? 'Сейчас от вас ничего не требуется — работа идёт.'}
+        {dueOn ? ` Срок этапа — ${dueOn}.` : ''}
+      </span>
+    </div>
+  );
+}
+
+export interface RoadmapItem extends StepItem {
+  readonly note?: string | null;
+  readonly done?: boolean;
+}
+
+/**
+ * Дорожная карта работы: этапы сверху вниз.
+ *
+ * Горизонтальная полоса на шесть колонок читалась только на большом экране
+ * и передавала состояние почти одним цветом. Вертикальный порядок держит
+ * тот же смысл на любой ширине, называет состояние словом и показывает
+ * причину остановки там же, где она возникла.
+ */
+export function Roadmap({ items }: { items: readonly RoadmapItem[] }) {
+  if (items.length === 0) {
+    return (
+      <Text muted>
+        Этапы ещё не заведены. Куратор добавит их, как только план работы будет согласован.
+      </Text>
+    );
+  }
+  return (
+    <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 0 }}>
+      {items.map((item, index) => (
+        <li
+          key={item.id}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '28px minmax(0,1fr)',
+            gap: 14,
+            paddingBottom: index === items.length - 1 ? 0 : 18,
+            borderLeft: index === items.length - 1 ? 'none' : '1px solid var(--pd-divider)',
+            marginLeft: 13,
+            paddingLeft: 13,
+            position: 'relative',
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              left: -14,
+              top: 0,
+              width: 26,
+              height: 26,
+              borderRadius: '50%',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: item.state === 'DONE' ? 'var(--pd-ok-ink)' : 'var(--pd-ink-inverse)',
+              border: `1px solid ${STAGE_BAR[item.state]}`,
+              color: item.state === 'DONE' ? 'var(--pd-ink-inverse)' : 'var(--pd-ink-muted)',
+              fontFamily: MONO,
+              fontSize: 12,
+            }}
+          >
+            {item.state === 'DONE' ? '✓' : index + 1}
+          </span>
+          <span style={{ gridColumn: '2' }}>
+            <span style={{ display: 'block' }}>
+              {item.href === undefined ? (
+                <span
+                  style={{
+                    fontFamily: SANS,
+                    fontSize: 16,
+                    fontWeight: 500,
+                    lineHeight: 1.4,
+                    color: 'var(--pd-ink)',
+                  }}
+                >
+                  {item.title}
+                </span>
+              ) : (
+                <a className="cab-mark" href={item.href} style={{ fontSize: 16, fontWeight: 500 }}>
+                  {item.title}
+                </a>
+              )}
+            </span>
+            <span
+              style={{
+                display: 'block',
+                fontFamily: SANS,
+                fontSize: 14,
+                lineHeight: 1.5,
+                color: 'var(--pd-ink-muted)',
+              }}
+            >
+              {STAGE_STATE_LABEL[item.state]}
+              {item.dueOn ? ` · срок ${item.dueOn}` : ''}
+            </span>
+            {item.note === null || item.note === undefined ? null : (
+              <span
+                style={{
+                  display: 'block',
+                  marginTop: 6,
+                  padding: '10px 14px',
+                  borderRadius: RADIUS.field,
+                  background: 'var(--pd-err-bg)',
+                  border: '1px solid var(--pd-err-border)',
+                  fontFamily: SANS,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  color: 'var(--pd-err-ink)',
+                }}
+              >
+                {item.note}
+              </span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 /** Трекер этапов. Композиция взята из согласованного прототипа кабинета. */
 export function Stepper({ items }: { items: readonly StepItem[] }) {
   if (items.length === 0) {
-    return <Text muted>Этапы ещё не заведены — менеджер добавит их после согласования плана.</Text>;
+    return <Text muted>Этапы ещё не заведены — куратор добавит их после согласования плана.</Text>;
   }
   return (
     <ol
@@ -388,7 +668,7 @@ export function Stepper({ items }: { items: readonly StepItem[] }) {
           <div
             style={{
               height: 4,
-              borderRadius: 4,
+              borderRadius: RADIUS.mark,
               background: STAGE_BAR[item.state],
               marginBottom: 10,
             }}
