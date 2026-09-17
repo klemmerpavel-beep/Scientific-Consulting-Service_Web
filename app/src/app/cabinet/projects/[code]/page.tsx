@@ -119,12 +119,14 @@ export default async function ProjectScreen({
       </div>
 
       <section style={{ marginTop: 32 }}>
-        <Heading level={2}>Ход работы</Heading>
-        <Text muted size={14} style={{ margin: '6px 0 12px' }}>
-          {stages.length === 0
-            ? 'План работы согласуется — этапы появятся здесь.'
-            : `${done} из ${stages.length} ${plural(stages.length, 'этапа', 'этапов', 'этапов')} завершено. Название этапа открывает материалы и замечания по нему.`}
-        </Text>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
+          <Heading level={2}>Ход работы</Heading>
+          {stages.length === 0 ? null : (
+            <Text muted size={14}>
+              {done} из {stages.length} {plural(stages.length, 'этапа', 'этапов', 'этапов')}
+            </Text>
+          )}
+        </div>
         <Card>
           <Roadmap items={roadmap} />
 
@@ -169,10 +171,7 @@ export default async function ProjectScreen({
         }}
       >
         <section>
-          <Heading level={2}>Что уже сделано</Heading>
-          <Text muted size={14} style={{ margin: '6px 0 12px' }}>
-            Последние события по работе: кто и что сделал.
-          </Text>
+          <Heading level={2} style={{ marginBottom: 12 }}>События</Heading>
           <Card>
             {events.length === 0 ? (
               <Text muted>Событий пока нет.</Text>
@@ -196,10 +195,7 @@ export default async function ProjectScreen({
         </section>
 
         <section>
-          <Heading level={2}>Связь и материалы</Heading>
-          <Text muted size={14} style={{ margin: '6px 0 12px' }}>
-            Вопрос по работе задаётся здесь — ответ придёт в кабинет и на почту.
-          </Text>
+          <Heading level={2} style={{ marginBottom: 12 }}>Куратор</Heading>
           <Card>
             <Text size={14} style={{ marginBottom: 4 }}>
               <strong>{project.manager.fullName}</strong>
