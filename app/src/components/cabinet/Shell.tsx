@@ -16,19 +16,34 @@ const ROLE_LABEL: Record<Actor['role'], string> = {
   HEAD: 'Руководитель',
 };
 
+/**
+ * Логотип — тот же, что в шапке сайта: `PRO` акцентным синим, `DISSER`
+ * основным цветом текста, Literata 600, кегль 21. Кабинет раньше показывал
+ * его наоборот, и раздел читался как чужой продукт под похожим именем.
+ * Написание логотипа задаётся макетами сайта (`design/*.dc.html`,
+ * блок `.sp-logo`); здесь оно повторено, а не придумано заново.
+ */
 function Wordmark() {
   return (
     <a
       href="/"
       style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        flex: '0 0 auto',
+        padding: '6px 10px',
+        margin: '0 -10px',
+        borderRadius: 10,
         fontFamily: SERIF,
         fontSize: 21,
-        fontWeight: 500,
+        lineHeight: 1.24,
+        fontWeight: 600,
         letterSpacing: '.005em',
-        color: 'var(--pd-ink)',
+        textDecoration: 'none',
       }}
     >
-      PRO<span style={{ color: 'var(--pd-accent)' }}>DISSER</span>
+      <span style={{ color: 'var(--pd-accent)' }}>PRO</span>
+      <span style={{ color: 'var(--pd-ink)' }}>DISSER</span>
     </a>
   );
 }

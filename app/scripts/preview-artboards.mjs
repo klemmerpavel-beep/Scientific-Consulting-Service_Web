@@ -15,11 +15,29 @@
  * страницы сайта (`/`, `/offer`, `/privacy`) внутри артбордов получают
  * префикс подпапки наравне с остальными.
  */
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const SOURCE = path.join('..', 'design', 'cabinet');
 const TARGET = path.join('out', 'cabinet', 'artboards');
+const PROTOTYPE = path.join('..', 'design', 'cabinet-prototype');
+
+/**
+ * Прототип кабинета: связанный обход экранов.
+ *
+ * Артборд показывает композицию одного экрана, и по набору артбордов
+ * сценарий не пройти. Прототип снят тем же способом, но обходом по
+ * ссылкам: переходы между экранами сохранены, дерево разложено по ролям.
+ * Собирается `node tools/cabinet-prototype.mjs` и лежит в репозитории
+ * готовым — у сборки витрины нет ни базы, ни браузера (решение Р-139).
+ */
+export function writeCabinetPrototype() {
+  cpSync(PROTOTYPE, path.join('out', 'cabinet'), { recursive: true });
+  const screens = readdirSync(PROTOTYPE, { recursive: true }).filter(
+    (name) => String(name).endsWith('index.html'),
+  ).length;
+  console.log(`Прототип кабинета в витрине: ${screens} экранов`);
+}
 
 /**
  * Перечень артбордов — тот же, что в `design/HANDOFF.md`, раздел 12.
