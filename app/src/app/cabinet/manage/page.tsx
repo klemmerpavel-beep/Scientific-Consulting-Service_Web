@@ -10,11 +10,16 @@ import {
   Heading,
   Mono,
   Text,
+  Tile,
+  Tiles,
   formatDate,
+  plural,
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
+import { formatAmount } from '../../../lib/cabinet/money';
 import { leadQueue, serviceTypes, trafficLight } from '../../../lib/cabinet/queries';
 import { currentActor } from '../../../lib/cabinet/session';
+import { OVERHEAD_PERCENT, practiceSummary } from '../../../lib/cabinet/summary';
 import { moderateLead } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -37,6 +42,9 @@ export default async function ManageQueue() {
     serviceTypes(),
     trafficLight(actor),
   ]);
+
+  // Сводка — это деньги практики, и её видит только тот, кому открыта маржа.
+  const summary = can(actor, 'MARGIN_VIEW') ? await practiceSummary(actor) : null;
 
   const lanes = [
     {
@@ -64,6 +72,41 @@ export default async function ManageQueue() {
 
   return (
     <Shell actor={actor} current="/cabinet/manage">
+      {summary === null ? null : (
+        <section style={{ marginBottom: 36 }}>
+          <Mono>Практика на сегодня</Mono>
+          <Heading level={1} style={{ margin: '12px 0 16px' }}>
+            Сводка
+          </Heading>
+          <Tiles>
+            <Tile
+              label="Заказов"
+              value={String(summary.orders)}
+              note={`${summary.active} ${plural(summary.active, 'в работе', 'в работе', 'в работе')}, остальные закрыты или остановлены`}
+            />
+            <Tile
+              label="Выручка"
+              value={formatAmount(summary.received)}
+              note={`получено по оплаченным траншам; законтрактовано ${formatAmount(summary.contracted)}`}
+            />
+            <Tile
+              label="Прибыль"
+              value={formatAmount(summary.profit)}
+              note={
+                summary.payouts === 0n
+                  ? `поступления за вычетом ${OVERHEAD_PERCENT} % накладных расходов; вознаграждение сторонним исполнителям не заведено`
+                  : `поступления за вычетом начислений исполнителям (${formatAmount(summary.payouts)}) и ${OVERHEAD_PERCENT} % накладных расходов`
+              }
+            />
+            <Tile
+              label="К получению"
+              value={formatAmount(summary.outstanding)}
+              note="выставлено и запланировано, но не оплачено"
+            />
+          </Tiles>
+        </section>
+      )}
+
       <section style={{ marginBottom: 36 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
           <Mono>Сроки</Mono>
@@ -119,7 +162,7 @@ export default async function ManageQueue() {
       </section>
 
       <Mono>Очередь заявок</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
+      <Heading level={2} style={{ margin: '12px 0 8px', fontSize: 26 }}>
         Заявки на рассмотрении
       </Heading>
       <Text muted style={{ marginBottom: 24 }}>

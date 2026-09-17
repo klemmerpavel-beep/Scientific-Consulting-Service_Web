@@ -23,7 +23,7 @@ export const dynamic = 'force-dynamic';
 const ROLE_LABEL: Record<string, string> = {
   CLIENT: 'клиент',
   EXPERT: 'эксперт',
-  MANAGER: 'менеджер',
+  MANAGER: 'куратор',
   HEAD: 'руководитель',
 };
 
@@ -67,13 +67,13 @@ export default async function MessagesScreen({
           </a>
         </div>
 
-        <Mono style={{ display: 'block', marginTop: 16 }}>Переписка с менеджером</Mono>
+        <Mono style={{ display: 'block', marginTop: 16 }}>Переписка с куратором</Mono>
         <Heading level={1} style={{ margin: '12px 0 8px' }}>
           {project.title}
         </Heading>
         <Text muted style={{ marginBottom: 24 }}>
-          Переписка ведётся внутри кабинета и остаётся в проекте после его завершения. Эксперт
-          в этот канал не входит — его замечания приходят комментариями к версиям материалов.
+          Вопросы по работе задаются здесь. Переписка остаётся в кабинете и после завершения
+          работы; ответ приходит в кабинет и уведомлением на почту.
         </Text>
 
         <Card>

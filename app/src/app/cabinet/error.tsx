@@ -1,5 +1,7 @@
 'use client';
 
+import { MONO, SANS, SERIF } from '../../components/cabinet/tokens';
+
 /**
  * Сбой на экране кабинета. Подробности ошибки наружу не выводятся: в них
  * попадают адреса, идентификаторы и куски запросов. Пользователю нужен
@@ -17,18 +19,18 @@ export default function CabinetError({ reset }: { error: Error; reset: () => voi
         maxWidth: 560,
         margin: '0 auto',
         padding: 'clamp(48px,8vw,96px) 30px',
-        fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif",
-        color: '#14161C',
+        fontFamily: SANS,
+        color: 'var(--pd-ink)',
       }}
     >
       <p
         style={{
           margin: '0 0 12px',
-          fontFamily: "'JetBrains Mono','SFMono-Regular',monospace",
+          fontFamily: MONO,
           fontSize: 12,
           letterSpacing: '.06em',
           textTransform: 'uppercase',
-          color: '#5C6474',
+          color: 'var(--pd-ink-muted)',
         }}
       >
         Сбой
@@ -36,7 +38,7 @@ export default function CabinetError({ reset }: { error: Error; reset: () => voi
       <h1
         style={{
           margin: '0 0 16px',
-          fontFamily: "'Literata', Georgia, serif",
+          fontFamily: SERIF,
           fontSize: 28,
           fontWeight: 500,
           lineHeight: 1.24,
@@ -44,7 +46,7 @@ export default function CabinetError({ reset }: { error: Error; reset: () => voi
       >
         Не удалось показать раздел
       </h1>
-      <p style={{ margin: '0 0 24px', fontSize: 15, lineHeight: 1.6, color: '#3D4450' }}>
+      <p style={{ margin: '0 0 24px', fontSize: 15, lineHeight: 1.6, color: 'var(--pd-ink-secondary)' }}>
         Данные не пострадали: кабинет ничего не сохраняет наполовину. Попробуйте открыть раздел
         снова, а если повторится — напишите менеджеру проекта.
       </p>
@@ -56,8 +58,8 @@ export default function CabinetError({ reset }: { error: Error; reset: () => voi
           padding: '0 20px',
           borderRadius: 999,
           border: 0,
-          background: '#14417A',
-          color: '#FFFFFF',
+          background: 'var(--pd-accent)',
+          color: 'var(--pd-ink-inverse)',
           fontFamily: 'inherit',
           fontSize: 15,
           fontWeight: 500,

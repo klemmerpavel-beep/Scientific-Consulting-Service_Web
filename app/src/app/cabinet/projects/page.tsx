@@ -7,8 +7,7 @@ import {
   Empty,
   Heading,
   Mono,
-  STAGE_STATE_LABEL,
-  Stepper,
+  Progress,
   plural,
   Text,
   formatDate,
@@ -35,9 +34,21 @@ export default async function ProjectsScreen() {
     <Shell actor={actor} current="/cabinet/projects">
       {/* Композиционный центр экрана: не список работ, а перечень действий.
           Основная потеря календарного времени — ожидание материалов. */}
+      <Mono>{forClient ? 'Мои работы' : 'Проекты'}</Mono>
+      <Heading level={1} style={{ margin: '12px 0 8px' }}>
+        {forClient ? 'Проекты сопровождения' : 'Проекты практики'}
+      </Heading>
+      <Text muted style={{ marginBottom: 28 }}>
+        {forClient
+          ? 'Здесь видно, на каком этапе каждая работа и что требуется от вас.'
+          : 'Работы практики: состояние этапов, сроки и переписка.'}
+      </Text>
+
       {pending.length === 0 ? null : (
         <section style={{ marginBottom: 32 }}>
-          <Mono>{forClient ? 'Сейчас от вас требуется' : 'Требует внимания'}</Mono>
+          <Heading level={2} style={{ marginBottom: 12 }}>
+            {forClient ? 'Сейчас от вас требуется' : 'Требует внимания'}
+          </Heading>
           <Card style={{ marginTop: 12, borderColor: 'var(--pd-accent-edge)' }}>
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
               {pending.map((stage) => (
@@ -95,11 +106,6 @@ export default async function ProjectsScreen() {
         </section>
       )}
 
-      <Mono>{forClient ? 'Мои работы' : 'Проекты'}</Mono>
-      <Heading level={1} style={{ margin: '12px 0 24px' }}>
-        {forClient ? 'Проекты сопровождения' : 'Проекты практики'}
-      </Heading>
-
       {projects.length === 0 ? (
         <Empty title="Проектов пока нет">
           {forClient
@@ -133,23 +139,23 @@ export default async function ProjectsScreen() {
                 )}
               </div>
 
-              <Heading level={2} style={{ marginBottom: 16 }}>
-                <a
-                  href={`/cabinet/projects/${project.code}`}
-                  style={{ color: 'var(--pd-ink)' }}
-                >
+              <Heading level={3} style={{ marginBottom: 10, fontSize: 20 }}>
+                <a href={`/cabinet/projects/${project.code}`} style={{ color: 'var(--pd-ink)' }}>
                   {project.title}
                 </a>
               </Heading>
 
-              <Stepper
-                items={project.stages.map((stage) => ({
-                  id: stage.id,
-                  title: stage.title,
-                  state: stage.state as StageStateKey,
-                  dueOn: formatDate(stage.dueOn),
-                  href: `/cabinet/stages/${stage.id}`,
-                }))}
+              {/* Состояние работы называется словом и стоит в карточке
+                  перечня: чтобы понять, где работа, открывать её не нужно. */}
+              <Progress
+                done={project.stages.filter((s) => s.state === 'DONE').length}
+                total={project.stages.length}
+                current={(() => {
+                  const stage = project.stages.find((s) => s.state !== 'DONE');
+                  return stage === undefined
+                    ? null
+                    : { title: stage.title, state: stage.state as StageStateKey };
+                })()}
               />
 
               <div
@@ -158,23 +164,19 @@ export default async function ProjectsScreen() {
                   gap: 16,
                   alignItems: 'center',
                   flexWrap: 'wrap',
-                  marginTop: 16,
+                  marginTop: 14,
                 }}
               >
-                <Text muted size={13}>
-                  {project.stages.filter((s) => s.state === 'DONE').length} из{' '}
-                  {project.stages.length}{' '}
-                  {plural(project.stages.length, 'этапа', 'этапов', 'этапов')} завершено
-                  {project.stages.some((s) => s.state === 'AWAITING_CLIENT')
-                    ? ` · есть этап в состоянии «${STAGE_STATE_LABEL.AWAITING_CLIENT}»`
-                    : ''}
-                </Text>
+                <a className="cab-mark" href={`/cabinet/projects/${project.code}`}>
+                  {forClient ? 'Открыть работу' : 'Открыть проект'}
+                </a>
                 {mayWrite ? (
                   <a
+                    className="cab-mark"
                     href={`/cabinet/projects/${project.code}/messages`}
-                    style={{ marginLeft: 'auto', fontFamily: SANS, fontSize: 14 }}
+                    style={{ marginLeft: 'auto' }}
                   >
-                    Переписка с менеджером
+                    {forClient ? 'Написать куратору' : 'Переписка'}
                     {(unread.get(project.id) ?? 0) > 0
                       ? ` · ${unread.get(project.id)} новых`
                       : ''}
