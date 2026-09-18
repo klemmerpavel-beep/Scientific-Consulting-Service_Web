@@ -27,6 +27,13 @@ export default async function ProjectsScreen() {
   const [projects, pending] = await Promise.all([listProjects(actor), pendingActions(actor)]);
   const unread = await unreadByProject(actor, projects.map((p) => p.id));
   const forClient = actor.role === 'CLIENT';
+  const forExpert = actor.role === 'EXPERT';
+  // Без подписанного договора поручения обработки персональных данных
+  // эксперт не получает доступа к материалам клиента (ч. 3 ст. 6 152-ФЗ):
+  // выборка отдаёт пусто. Пустой перечень читается как «работ нет», и
+  // человек ждёт назначения, которого уже дождался, — причину надо назвать
+  // (решение Р-150).
+  const awaitingNda = forExpert && actor.expertNdaSignedAt === null;
   // Эксперт в канал переписки не входит, поэтому перехода к нему не видит.
   const mayWrite = actor.role !== 'EXPERT';
 
@@ -35,7 +42,7 @@ export default async function ProjectsScreen() {
       {/* Композиционный центр экрана: не список работ, а перечень действий.
           Основная потеря календарного времени — ожидание материалов. */}
       <Heading level={1} style={{ margin: '0 0 24px' }}>
-        {forClient ? 'Мои работы' : 'Работы практики'}
+        {forClient ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы практики'}
       </Heading>
 
       {pending.length === 0 ? null : (
@@ -100,8 +107,17 @@ export default async function ProjectsScreen() {
         </section>
       )}
 
-      {projects.length === 0 ? (
-        <Empty title={forClient ? 'Работ пока нет' : 'Проектов пока нет'} />
+      {awaitingNda ? (
+        <Empty title="Доступ к материалам ещё не открыт">
+          Он открывается после подписания договора поручения обработки персональных данных.
+          Напишите руководителю практики — отметка ставится в кабинете.
+        </Empty>
+      ) : projects.length === 0 ? (
+        <Empty
+          title={
+            forClient ? 'Работ пока нет' : forExpert ? 'Назначений пока нет' : 'Проектов пока нет'
+          }
+        />
       ) : (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
           {projects.map((project) => (
@@ -163,7 +179,9 @@ export default async function ProjectsScreen() {
                 }}
               >
                 <a className="cab-mark" href={`/cabinet/projects/${project.code}`}>
-                  {forClient ? 'Открыть работу' : 'Открыть проект'}
+                  {/* Кабинет называет это работой во всех ролях: два слова
+                      об одном заставляли бы читать дважды. */}
+                  Открыть работу
                 </a>
                 {mayWrite ? (
                   <a
