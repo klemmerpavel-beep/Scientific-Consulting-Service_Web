@@ -289,6 +289,102 @@ export function Field({
   );
 }
 
+/**
+ * Ячейки таблицы — один набор на кабинет.
+ *
+ * Объект с этими же значениями был скопирован в девять экранов и уже
+ * разошёлся: где-то `10px 14px`, где-то `10px 12px`. Таблицы кабинета
+ * из-за этого свёрстаны с разной плотностью.
+ */
+export const TABLE_CELL: CSSProperties = {
+  padding: '12px 16px',
+  borderBottom: '1px solid var(--pd-divider)',
+  fontFamily: SANS,
+  fontSize: 14,
+  lineHeight: 1.5,
+  color: 'var(--pd-ink-secondary)',
+  textAlign: 'left',
+  verticalAlign: 'top',
+};
+
+/** Колонка чисел: выравнивание по разряду и моноширинные цифры. */
+export const TABLE_NUM: CSSProperties = {
+  ...TABLE_CELL,
+  textAlign: 'right',
+  fontVariantNumeric: 'tabular-nums',
+  whiteSpace: 'nowrap',
+};
+
+export const TABLE_HEAD: CSSProperties = {
+  ...TABLE_CELL,
+  fontWeight: 500,
+  color: 'var(--pd-ink)',
+  background: 'var(--pd-surface-quiet)',
+  whiteSpace: 'nowrap',
+};
+
+/**
+ * Выпадающий список с подписью.
+ *
+ * Инлайновых `<select>` в кабинете набралось десять, и часть из них шла
+ * без `fontSize`: Safari на телефоне увеличивает вьюпорт, когда поле
+ * мельче 16 px, — ровно тот отказ, который запрещает решение Р-86.
+ */
+export function Select({
+  label,
+  name,
+  defaultValue,
+  required = false,
+  hint,
+  children,
+}: {
+  label: string;
+  name: string;
+  defaultValue?: string;
+  required?: boolean;
+  hint?: string;
+  children: ReactNode;
+}) {
+  const hintId = hint === undefined ? undefined : `${name}-hint`;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <label
+        htmlFor={name}
+        style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500, color: 'var(--pd-ink)' }}
+      >
+        {label}
+      </label>
+      <select
+        id={name}
+        name={name}
+        required={required}
+        defaultValue={defaultValue}
+        aria-describedby={hintId}
+        style={{
+          boxSizing: 'border-box',
+          width: '100%',
+          minHeight: 48,
+          padding: '12px 14px',
+          borderRadius: RADIUS.field,
+          border: '1px solid var(--pd-edge-neutral)',
+          background: 'var(--pd-ink-inverse)',
+          color: 'var(--pd-ink)',
+          fontFamily: SANS,
+          fontSize: 16,
+          lineHeight: 1.5,
+        }}
+      >
+        {children}
+      </select>
+      {hint === undefined ? null : (
+        <span id={hintId} style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+          {hint}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function Notice({
   children,
   tone = 'ok',

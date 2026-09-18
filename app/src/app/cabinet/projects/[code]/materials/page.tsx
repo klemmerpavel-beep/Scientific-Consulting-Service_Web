@@ -10,6 +10,7 @@ import {
   Field,
   Heading,
   Mono,
+  Select,
   Text,
   formatDate,
   formatSize,
@@ -51,7 +52,7 @@ export default async function ProjectMaterialsScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
-      <a href={`/cabinet/projects/${project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
+      <a className="cab-mark" href={`/cabinet/projects/${project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
         {project.code}
       </a>
 
@@ -186,30 +187,14 @@ export default async function ProjectMaterialsScreen({
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="back" value={`/cabinet/projects/${project.code}/materials`} />
             <Field label="Название" name="title" placeholder="Черновик главы 2" />
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Этап</span>
-              <select
-                name="stageId"
-                defaultValue=""
-                style={{
-                  minHeight: 44,
-                  padding: '0 12px',
-                  borderRadius: 10,
-                  border: '1px solid var(--pd-edge-neutral)',
-                  fontFamily: SANS,
-                  fontSize: 16,
-                  background: 'var(--pd-ink-inverse)',
-                  color: 'var(--pd-ink)',
-                }}
-              >
-                <option value="">без привязки к этапу</option>
-                {project.stages.map((stage) => (
-                  <option key={stage.id} value={stage.id}>
-                    {stage.position}. {stage.title}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Select label="Этап" name="stageId" defaultValue="">
+              <option value="">без привязки к этапу</option>
+              {project.stages.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.position}. {stage.title}
+                </option>
+              ))}
+            </Select>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Файл</span>
               <input type="file" name="file" required style={{ fontFamily: SANS, fontSize: 15 }} />

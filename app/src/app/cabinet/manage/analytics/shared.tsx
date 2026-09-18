@@ -4,7 +4,17 @@ import type { ReactNode } from 'react';
 import AnalyticsTabs from '../../../../components/cabinet/AnalyticsTabs';
 import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
-import { Card, Heading, Mono, Text, Tile, Tiles } from '../../../../components/cabinet/ui';
+import {
+  Card,
+  Heading,
+  Mono,
+  TABLE_CELL,
+  TABLE_HEAD,
+  TABLE_NUM,
+  Text,
+  Tile,
+  Tiles,
+} from '../../../../components/cabinet/ui';
 import { can, type Actor } from '../../../../lib/cabinet/access';
 import { loadRows } from '../../../../lib/cabinet/analytics/data';
 import type { ProjectRow } from '../../../../lib/cabinet/analytics/metrics';
@@ -53,34 +63,12 @@ export function Frame({
   );
 }
 
-export const cell: React.CSSProperties = {
-  padding: '10px 14px',
-  borderBottom: '1px solid var(--pd-divider)',
-  fontFamily: SANS,
-  fontSize: 14,
-  color: 'var(--pd-ink-secondary)',
-  textAlign: 'left',
-  verticalAlign: 'top',
-};
-
-export const num: React.CSSProperties = {
-  ...cell,
-  textAlign: 'right',
-  fontVariantNumeric: 'tabular-nums',
-  whiteSpace: 'nowrap',
-};
-
-export const head: React.CSSProperties = {
-  ...cell,
-  fontWeight: 500,
-  color: 'var(--pd-ink)',
-  background: 'var(--pd-surface-quiet)',
-  whiteSpace: 'nowrap',
-};
-
-/** Плитка величины. Под каждой — пояснение, откуда число взялось. */
 // Плитки живут в общем модуле оформления; вкладки берут их отсюда.
 export { Tile, Tiles };
+
+// Стили таблиц живут в общем модуле оформления; вкладки берут их отсюда
+// под прежними именами.
+export { TABLE_CELL as cell, TABLE_HEAD as head, TABLE_NUM as num };
 
 /** Карточка графика: заголовок, сам график, под ним — пояснение расчёта. */
 export function ChartCard({

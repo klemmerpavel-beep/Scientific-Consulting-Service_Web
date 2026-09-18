@@ -2,7 +2,10 @@ import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
-import { Button, Card, Chip, Empty, Heading, Mono, Notice, Text, formatDate } from '../../../../components/cabinet/ui';
+import { Button, Card, Chip, Empty, Heading, Mono, Notice, Text, formatDate,
+  TABLE_CELL,
+  TABLE_HEAD,
+} from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { listBatches } from '../../../../lib/cabinet/import/apply';
 import { formatAmount } from '../../../../lib/cabinet/money';
@@ -25,24 +28,6 @@ const STATE_LABEL: Record<string, string> = {
   PREVIEWED: 'предпросмотр',
   APPLIED: 'зафиксирована',
   CANCELLED: 'отменена',
-};
-
-const cell: React.CSSProperties = {
-  padding: '10px 14px',
-  borderBottom: '1px solid var(--pd-divider)',
-  fontFamily: SANS,
-  fontSize: 14,
-  color: 'var(--pd-ink-secondary)',
-  textAlign: 'left',
-  verticalAlign: 'top',
-};
-
-const head: React.CSSProperties = {
-  ...cell,
-  fontWeight: 500,
-  color: 'var(--pd-ink)',
-  background: 'var(--pd-surface-quiet)',
-  whiteSpace: 'nowrap',
 };
 
 export default async function ImportScreen({
@@ -129,24 +114,24 @@ export default async function ImportScreen({
       ) : (
         <Card style={{ padding: 0, overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
-            <caption style={{ ...cell, captionSide: 'top', borderBottom: 'none' }}>
+            <caption style={{ ...TABLE_CELL, captionSide: 'top', borderBottom: 'none' }}>
               История переносов: отчёт каждой загрузки открывается повторно.
             </caption>
             <thead>
               <tr>
-                <th style={head} scope="col">
+                <th style={TABLE_HEAD} scope="col">
                   Файл
                 </th>
-                <th style={head} scope="col">
+                <th style={TABLE_HEAD} scope="col">
                   Загружена
                 </th>
-                <th style={head} scope="col">
+                <th style={TABLE_HEAD} scope="col">
                   Состояние
                 </th>
-                <th style={head} scope="col">
+                <th style={TABLE_HEAD} scope="col">
                   Строк
                 </th>
-                <th style={head} scope="col">
+                <th style={TABLE_HEAD} scope="col">
                   Суммы
                 </th>
               </tr>
@@ -156,20 +141,20 @@ export default async function ImportScreen({
                 const stats = (batch.stats ?? {}) as { cost?: string; paid?: string };
                 return (
                   <tr key={batch.id}>
-                    <td style={cell}>
+                    <td style={TABLE_CELL}>
                       <a href={`/cabinet/manage/import/${batch.id}`}>{batch.fileName}</a>
                       <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
                         {batch.uploadedBy.fullName}
                       </div>
                     </td>
-                    <td style={cell}>{formatDate(batch.createdAt)}</td>
-                    <td style={cell}>
+                    <td style={TABLE_CELL}>{formatDate(batch.createdAt)}</td>
+                    <td style={TABLE_CELL}>
                       <Chip tone={batch.state === 'APPLIED' ? 'ok' : 'neutral'}>
                         {STATE_LABEL[batch.state] ?? batch.state}
                       </Chip>
                     </td>
-                    <td style={cell}>{batch._count.rows}</td>
-                    <td style={cell}>
+                    <td style={TABLE_CELL}>{batch._count.rows}</td>
+                    <td style={TABLE_CELL}>
                       {stats.cost === undefined
                         ? '—'
                         : `${formatAmount(BigInt(stats.cost))} / ${formatAmount(
