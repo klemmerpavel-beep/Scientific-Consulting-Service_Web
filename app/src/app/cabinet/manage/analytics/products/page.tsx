@@ -49,6 +49,7 @@ export default async function AnalyticsProducts() {
             note="Рядом с каждой позицией в таблице — медиана: при малом числе заказов она устойчивее среднего."
           >
             <RankChart
+              labelWidth={280}
               title="Средний чек по позициям"
               data={list.map((product) => ({
                 label: product.typeName,

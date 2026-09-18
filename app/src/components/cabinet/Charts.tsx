@@ -176,6 +176,22 @@ export function RankChart({
   const max = Math.max(1, ...data.map((item) => item.value));
   const iw = W - labelWidth - padR;
 
+  /**
+   * Подпись не должна уходить за левый край.
+   *
+   * Подписи выключены вправо по границе колонки, и длинное название
+   * позиции («Сопровождение выпускной квалификационной работы») уезжало
+   * влево за пределы картинки: первые слова просто срезались, и строка
+   * начиналась с середины. Ширину текста в SVG не измерить, поэтому она
+   * оценивается по числу знаков — при кегле 12 знак кириллицы занимает
+   * около 6,8 px. Что не поместилось, заменяется многоточием; полное
+   * название остаётся в подсказке и в таблице под графиком.
+   */
+  const fit = (label: string): string => {
+    const room = Math.max(6, Math.floor((labelWidth - 14) / 6.8));
+    return label.length <= room ? label : `${label.slice(0, room - 1).trimEnd()}…`;
+  };
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
       fontFamily={SANS} role="img" aria-label={title}>
@@ -186,7 +202,7 @@ export function RankChart({
           <g key={`${item.label}-${index}`}>
             <title>{`${item.label}: ${format(item.value)}`}</title>
             <text x={labelWidth - 10} y={y + rowH / 2 + 4} textAnchor="end" fontSize={12} fill={INK}>
-              {item.label}
+              {fit(item.label)}
             </text>
             <rect x={labelWidth} y={y + 6} width={iw} height={rowH - 14} rx={(rowH - 14) / 2} fill={GRID} />
             <rect
