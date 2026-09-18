@@ -87,6 +87,8 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   PROJECT_VIEW: [true, true, true, true],
   PROJECT_EDIT: [false, false, true, true],
   PROJECT_ASSIGN_EXPERT: [false, false, true, true],
+  // Раздача работ между кураторами — только руководителю (Р-149).
+  PROJECT_SET_MANAGER: [false, false, false, true],
   STAGE_EDIT: [false, false, true, true],
   STAGE_SET_STATE: [false, false, true, true],
   STAGE_APPROVE: [true, false, true, true],
@@ -192,13 +194,17 @@ describe('ограничение выборки', () => {
     assert.deepEqual(scopeProjects(expert), { expertId: 'e1' });
   });
 
-  it('менеджер и руководитель не ограничены', () => {
-    assert.deepEqual(scopeProjects(manager), {});
+  it('менеджер ограничен своими работами, руководитель не ограничен', () => {
+    // Менеджер ведёт свои работы, а не всю практику (решение Р-149).
+    assert.deepEqual(scopeProjects(manager), { managerId: 'm1' });
     assert.deepEqual(scopeProjects(head), {});
   });
 
   it('удалённые материалы скрыты от всех, кроме руководителя', () => {
-    assert.deepEqual(scopeMaterials(manager), { deletedAt: null });
+    assert.deepEqual(scopeMaterials(manager), {
+      deletedAt: null,
+      project: { managerId: 'm1' },
+    });
     assert.deepEqual(scopeMaterials(head), {});
     assert.deepEqual(scopeMaterials(client), {
       deletedAt: null,

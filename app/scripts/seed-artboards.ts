@@ -213,6 +213,11 @@ async function main() {
     const year = startedOn.getUTCFullYear();
     const code = `PD-${year}-${String(index + 1).padStart(3, '0')}`;
 
+    // Часть работ ведёт руководитель сам, остальные — менеджер: иначе у
+    // третьей роли перечень совпадал бы с перечнем руководителя, и
+    // разграничение в прототипе было бы не видно (решение Р-149).
+    const curatorId = index % 3 === 0 ? head.id : manager.id;
+
     const project = await prisma.project.upsert({
       where: { code },
       create: {
@@ -221,7 +226,7 @@ async function main() {
         serviceTypeId: typeIds.get(row.type)!,
         title: TYPES.find((type) => type[0] === row.type)![1],
         topic: row.topic,
-        managerId: manager.id,
+        managerId: curatorId,
         expertId: index % 3 === 0 ? expertUser.id : null,
         status: row.status,
         source: index % 4 === 0 ? 'IMPORT' : 'WEB',
@@ -229,7 +234,9 @@ async function main() {
         dueOn,
         closedOn,
       },
-      update: {},
+      // Куратор переназначается при каждом наполнении: правка распределения
+      // в этом файле должна доезжать до снимка.
+      update: { managerId: curatorId },
       select: { id: true },
     });
     projectIds.push(project.id);

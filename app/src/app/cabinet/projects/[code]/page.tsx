@@ -9,6 +9,7 @@ import {
   Heading,
   Mono,
   Roadmap,
+  Select,
   StatusLine,
   Text,
   Thread,
@@ -20,9 +21,9 @@ import {
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
-import { experts, projectByCode } from '../../../../lib/cabinet/queries';
+import { curators, experts, projectByCode } from '../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../lib/cabinet/session';
-import { createStage, postMessage, setExpert } from '../../actions';
+import { createStage, postMessage, setExpert, setManager } from '../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,7 @@ export const dynamic = 'force-dynamic';
  */
 const EVENT_LABEL: Record<string, string> = {
   PROJECT_CREATED: 'Работа принята в сопровождение',
+  MANAGER_ASSIGNED: 'Работу принял другой куратор',
   EXPERT_ASSIGNED: 'Назначен исполнитель',
   STAGE_STATE_CHANGED: 'Этап сменил состояние',
   VERSION_UPLOADED: 'Приложена новая версия материала',
@@ -79,6 +81,9 @@ export default async function ProjectScreen({
   // здесь не помечается — отметку ставит открытие самой переписки.
   const thread = mayWrite ? (await listMessages(actor, project.id)).slice(-3) : [];
   const expertList = mayAssign ? await experts() : [];
+  // Передать работу другому куратору может только руководитель (Р-149).
+  const maySetManager = can(actor, 'PROJECT_SET_MANAGER', ref);
+  const curatorList = maySetManager ? await curators() : [];
 
   const stages = project.stages;
   const done = stages.filter((stage) => stage.state === 'DONE').length;
@@ -264,6 +269,36 @@ export default async function ProjectScreen({
                 </a>
               ) : null}
             </div>
+
+            {maySetManager ? (
+              <form
+                action={setManager}
+                style={{
+                  display: 'grid',
+                  gap: 12,
+                  marginTop: 16,
+                  paddingTop: 16,
+                  borderTop: '1px solid var(--pd-divider)',
+                }}
+              >
+                <input type="hidden" name="projectId" value={project.id} />
+                <input type="hidden" name="code" value={project.code} />
+                <Select
+                  label="Передать работу"
+                  name="managerId"
+                  defaultValue={project.managerId}
+                  hint="Клиент увидит смену куратора: меняется тот, кому он пишет."
+                >
+                  {curatorList.map((curator) => (
+                    <option key={curator.id} value={curator.id}>
+                      {curator.fullName}
+                      {curator.role === 'HEAD' ? ' — руководитель' : ''}
+                    </option>
+                  ))}
+                </Select>
+                <Button tone="quiet">Сохранить куратора</Button>
+              </form>
+            ) : null}
 
             {forClient ? null : (
               <div

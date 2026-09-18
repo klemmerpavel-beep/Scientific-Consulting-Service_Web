@@ -222,6 +222,45 @@ export async function assignExpert(actor: Actor, projectId: string, expertId: st
   return project;
 }
 
+/**
+ * Сменить куратора работы.
+ *
+ * Куратором становится тот, кто одобрил заявку, и до сих пор изменить это
+ * было нечем: работа оставалась за первым, кто до неё дошёл. Руководитель
+ * передаёт её другому — клиент видит смену в ленте событий, потому что
+ * меняется тот, кому он пишет.
+ */
+export async function assignManager(actor: Actor, projectId: string, managerId: string) {
+  const ref = await projectRef(projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'PROJECT_SET_MANAGER', ref);
+
+  // Куратором может быть только действующий сотрудник практики: иначе
+  // работа ушла бы к клиенту или к приостановленной учётной записи.
+  const target = await prisma.user.findFirst({
+    where: { id: managerId, status: 'ACTIVE', role: { in: ['MANAGER', 'HEAD'] } },
+    select: { id: true },
+  });
+  if (target === null) throw new Error('Куратором может быть менеджер или руководитель');
+
+  const project = await prisma.$transaction(async (tx) => {
+    const updated = await tx.project.update({ where: { id: projectId }, data: { managerId } });
+    await tx.projectEvent.create({
+      data: { projectId, actorId: actor.id, kind: 'MANAGER_ASSIGNED', payload: { managerId } },
+    });
+    return updated;
+  });
+
+  await record(actor, {
+    action: 'MANAGER_ASSIGNED',
+    objectType: 'Project',
+    objectId: projectId,
+    projectId,
+    payload: { from: ref.managerId, to: managerId },
+  });
+  return project;
+}
+
 export interface AddStageInput {
   readonly projectId: string;
   readonly title: string;

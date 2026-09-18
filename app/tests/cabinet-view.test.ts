@@ -37,7 +37,7 @@ describe('зелёный и красный — только исход дейс�
   // Пара ok/err живёт в блоке подтверждения и блоке ошибки; в снимках
   // прототипа таких блоков нет, поэтому её применений быть не должно
   // (решение Р-146). Объявление токенов в таблице — не применение.
-  for (const folder of ['client', 'head']) {
+  for (const folder of ['client', 'manager', 'head']) {
     for (const file of screens(folder)) {
       it(path.relative(PROTOTYPE, file), () => {
         const html = readFileSync(file, 'utf8');
@@ -56,7 +56,7 @@ describe('уровни заголовков не пропускаются', () =
   // h3 читается как потерянный раздел: пользователь клавиатуры не понимает,
   // куда делся уровень. Кегль при этом может быть любым — в кабинете
   // уровень и ступень кегля разведены (решение Р-148).
-  for (const folder of ['client', 'head']) {
+  for (const folder of ['client', 'manager', 'head']) {
     for (const file of screens(folder)) {
       it(path.relative(PROTOTYPE, file), () => {
         const html = readFileSync(file, 'utf8');
@@ -78,7 +78,7 @@ describe('каждое поле подписано', () => {
   // Подпись в placeholder исчезает при первом же символе, и человек теряет
   // смысл поля; читалке она не заменяет метку вовсе. Метка либо связана
   // через `for`, либо оборачивает поле, либо задана `aria-label`.
-  for (const folder of ['client', 'head']) {
+  for (const folder of ['client', 'manager', 'head']) {
     for (const file of screens(folder)) {
       it(path.relative(PROTOTYPE, file), () => {
         const html = readFileSync(file, 'utf8');

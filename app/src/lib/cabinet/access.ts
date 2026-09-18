@@ -52,6 +52,7 @@ export const ACTIONS = [
   'PROJECT_VIEW',
   'PROJECT_EDIT',
   'PROJECT_ASSIGN_EXPERT',
+  'PROJECT_SET_MANAGER',
   'STAGE_EDIT',
   'STAGE_SET_STATE',
   'STAGE_APPROVE',
@@ -179,6 +180,10 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
       return staff;
 
     // ── Только руководитель ───────────────────────────────────────────────
+    // Раздача работ между кураторами — распоряжение практикой, а не
+    // ведение своей работы: менеджер не передаёт работы ни себе, ни
+    // другому (решение Р-149).
+    case 'PROJECT_SET_MANAGER':
     case 'ANALYTICS_VIEW':
     case 'AUDIT_VIEW':
     case 'IMPORT_RUN':
@@ -214,7 +219,10 @@ export function scopeProjects(actor: Actor): Record<string, unknown> | null {
       return actor.clientProfileId === null ? null : { clientId: actor.clientProfileId };
     case 'EXPERT':
       return actor.expertNdaSignedAt === null ? null : { expertId: actor.id };
+    // Менеджер ведёт свои работы, а не всю практику: он видит те, где
+    // назначен куратором (решение Р-149). Руководитель видит всё.
     case 'MANAGER':
+      return { managerId: actor.id };
     case 'HEAD':
       return {};
   }

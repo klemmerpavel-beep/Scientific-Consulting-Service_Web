@@ -23,6 +23,7 @@ import {
 import { MONO, SANS } from '../../../components/cabinet/tokens';
 import { can } from '../../../lib/cabinet/access';
 import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
+import { unreadInbox } from '../../../lib/cabinet/messages';
 import { leadQueue, serviceTypes, trafficLight } from '../../../lib/cabinet/queries';
 import { currentActor } from '../../../lib/cabinet/session';
 import { OVERHEAD_PERCENT, activeWorks, practiceSummary } from '../../../lib/cabinet/summary';
@@ -52,6 +53,38 @@ export default async function ManageQueue() {
   // Сводка — это деньги практики, и её видит только тот, кому открыта маржа.
   const summary = can(actor, 'MARGIN_VIEW') ? await practiceSummary(actor) : null;
   const works = summary === null ? [] : await activeWorks(actor);
+  const unread = await unreadInbox(actor);
+
+  // «Требует внимания» — то, что нельзя оставить как есть: сорванный срок,
+  // работа, которая ждёт клиента дольше двух недель, и непрочитанное
+  // сообщение. У менеджера это главный экран целиком, у руководителя —
+  // раздел под сводкой (решение Р-149).
+  const attention = [
+    ...light.overdue.map((stage) => ({
+      key: `overdue-${stage.id}`,
+      what: 'Сорван срок этапа',
+      detail: `${stage.title} · ${stage.project.code} · ${stage.project.client.fullName}`,
+      when: stage.dueOn === null ? null : `срок ${formatDate(stage.dueOn)}`,
+      href: `/cabinet/stages/${stage.id}`,
+    })),
+    ...light.stalled.map((stage) => ({
+      key: `stalled-${stage.id}`,
+      what: 'Ждёт клиента дольше двух недель',
+      detail: `${stage.title} · ${stage.project.code} · ${stage.project.client.fullName}`,
+      when:
+        stage.awaitingClientSince === null
+          ? null
+          : `с ${formatDate(stage.awaitingClientSince)}`,
+      href: `/cabinet/stages/${stage.id}`,
+    })),
+    ...unread.map((row) => ({
+      key: `unread-${row.code}`,
+      what: `Непрочитанных сообщений: ${row.count}`,
+      detail: `${row.title} · ${row.code}`,
+      when: null,
+      href: `/cabinet/projects/${row.code}/messages`,
+    })),
+  ];
 
   return (
     <Shell actor={actor} current="/cabinet/manage">
@@ -114,15 +147,52 @@ export default async function ManageQueue() {
               </tbody>
             </table>
           </Card>
-          {light.overdue.length + light.stalled.length === 0 ? null : (
-            <Text muted size={14} style={{ marginTop: 12 }}>
-              Требуют вмешательства: просрочено этапов — {light.overdue.length}, ждут клиента дольше
-              двух недель — {light.stalled.length}.{' '}
-              <a href="/cabinet/manage/registry">Реестры</a>
-            </Text>
-          )}
         </section>
       )}
+
+      <section style={{ marginBottom: 36 }}>
+        {summary === null ? (
+          <Heading level={1} style={{ margin: '0 0 20px' }}>Требует внимания</Heading>
+        ) : (
+          <Heading level={2} style={{ marginBottom: 12 }}>Требует внимания</Heading>
+        )}
+        {attention.length === 0 ? (
+          <Card>
+            <Text muted>Сейчас ничего не требует вмешательства.</Text>
+          </Card>
+        ) : (
+          <Card>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
+              {attention.map((row) => (
+                <li
+                  key={row.key}
+                  style={{
+                    display: 'flex',
+                    gap: 16,
+                    alignItems: 'baseline',
+                    flexWrap: 'wrap',
+                    borderBottom: '1px solid var(--pd-divider)',
+                    paddingBottom: 14,
+                  }}
+                >
+                  <div style={{ flex: '1 1 420px', minWidth: 0 }}>
+                    <Text size={15}>
+                      <strong style={{ fontWeight: 600 }}>{row.what}</strong>
+                    </Text>
+                    <Text muted size={13} style={{ marginTop: 2 }}>
+                      {row.detail}
+                      {row.when === null ? '' : ` · ${row.when}`}
+                    </Text>
+                  </div>
+                  <a className="cab-mark" href={row.href}>
+                    Открыть
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+      </section>
 
       <Heading level={2} style={{ marginBottom: 12 }}>Заявки на рассмотрении</Heading>
 
