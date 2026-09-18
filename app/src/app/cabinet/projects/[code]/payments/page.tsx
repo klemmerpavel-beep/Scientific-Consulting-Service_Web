@@ -31,11 +31,16 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const TONE: Record<TrancheStatus, 'ok' | 'accent' | 'neutral' | 'warn'> = {
-  PAID: 'ok',
-  INVOICED: 'accent',
+/**
+ * Тон чипа транша. Оплаченный выделен акцентом, остальные спокойны:
+ * зелёный и красный дизайн-система держит за исходом действия, а статус
+ * транша исходом не является (решение Р-146). Статус назван словом.
+ */
+const TONE: Record<TrancheStatus, 'accent' | 'neutral'> = {
+  PAID: 'accent',
+  INVOICED: 'neutral',
   PLANNED: 'neutral',
-  WRITTEN_OFF: 'warn',
+  WRITTEN_OFF: 'neutral',
 };
 
 export default async function PaymentsScreen({
@@ -103,17 +108,10 @@ export default async function PaymentsScreen({
       <Heading level={1} style={{ margin: '12px 0 8px' }}>
         {project.title}
       </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
-        Оплата идёт траншами по договору. Предоплаченного баланса в кабинете нет: каждая сумма
-        привязана к договору и закрывающим документам.
-      </Text>
 
       {contract === null || money === null ? (
         <Card>
-          <Text muted>
-            Договор ещё не заведён. Как только он появится, здесь будут видны суммы, сроки и
-            закрывающие документы.
-          </Text>
+          <Text muted>Договор ещё не заведён.</Text>
         </Card>
       ) : (
         <>
@@ -141,7 +139,7 @@ export default async function PaymentsScreen({
               </div>
               <div>
                 <Mono>Получено</Mono>
-                <Text size={20} style={{ marginTop: 6, color: 'var(--pd-ok-ink)' }}>
+                <Text size={20} style={{ marginTop: 6, color: 'var(--pd-ink)' }}>
                   {formatAmount(money.received)}
                 </Text>
               </div>
@@ -174,7 +172,7 @@ export default async function PaymentsScreen({
                 style={{
                   width: `${Math.min(progress, 100)}%`,
                   height: '100%',
-                  background: 'var(--pd-ok-ink)',
+                  background: 'var(--pd-accent)',
                 }}
               />
             </div>
@@ -434,7 +432,7 @@ export default async function PaymentsScreen({
                             </Text>
                           )}
                         </div>
-                        <Chip tone={payout.status === 'PAID' ? 'ok' : 'neutral'}>
+                        <Chip>
                           {payout.status === 'PAID'
                             ? `выплачено ${formatDate(payout.paidOn)}`
                             : 'начислено'}

@@ -137,10 +137,10 @@ export default async function ErasureScreen({
                     </td>
                     <td style={TABLE_CELL}>
                       {request.executedAt === null ? (
-                        <Chip tone="warn">ожидает исполнения</Chip>
+                        <Chip>ожидает исполнения</Chip>
                       ) : (
                         <>
-                          <Chip tone="ok">исполнено</Chip>
+                          <Chip>исполнено</Chip>
                           <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)', marginTop: 4 }}>
                             {formatMoment(request.executedAt)}
                             {request.approvedBy === null ? null : ` · ${request.approvedBy.fullName}`}

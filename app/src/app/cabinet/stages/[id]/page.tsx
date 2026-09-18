@@ -60,9 +60,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
         <a className="cab-mark" href={`/cabinet/projects/${stage.project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
           {stage.project.code}
         </a>
-        <Chip tone={state === 'AWAITING_CLIENT' ? 'warn' : state === 'DONE' ? 'ok' : 'accent'}>
-          {STAGE_STATE_LABEL[state]}
-        </Chip>
+        <Chip tone="accent">{STAGE_STATE_LABEL[state]}</Chip>
         {stage.dueOn === null ? null : <Chip>срок — {formatDate(stage.dueOn)}</Chip>}
       </div>
 
@@ -80,7 +78,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
 
       {stage.blockedReason === null ? null : (
         <div style={{ marginBottom: 24 }}>
-          <Notice tone="error" role="status">
+          <Notice tone="quiet" role="status">
             {stage.blockedReason}
           </Notice>
         </div>
@@ -296,8 +294,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                 <input type="file" name="file" required />
               </label>
               <Text muted size={13}>
-                Каждая загрузка сохраняется отдельной версией. Прежние версии остаются доступными —
-                история не переписывается.
+                Каждая загрузка сохраняется отдельной версией: прежние остаются доступными.
               </Text>
               <div>
                 <Button>Загрузить</Button>

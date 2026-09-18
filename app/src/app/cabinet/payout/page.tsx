@@ -81,7 +81,7 @@ export default async function PayoutScreen() {
                     {row.comment === null ? '' : ` · ${row.comment}`}
                   </Text>
                 </div>
-                <Chip tone={row.status === 'PAID' ? 'ok' : 'neutral'}>
+                <Chip tone={row.status === 'PAID' ? 'accent' : 'neutral'}>
                   {row.status === 'PAID' ? `выплачено ${formatDate(row.paidOn)}` : 'начислено'}
                 </Chip>
                 <Text size={16} style={{ fontVariantNumeric: 'tabular-nums' }}>

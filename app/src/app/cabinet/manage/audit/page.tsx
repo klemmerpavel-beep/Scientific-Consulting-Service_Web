@@ -193,7 +193,7 @@ export default async function AuditScreen({
                     <td style={TABLE_CELL}>{formatMoment(event.occurredAt)}</td>
                     <td style={TABLE_CELL}>{event.user?.fullName ?? '—'}</td>
                     <td style={TABLE_CELL}>
-                      <Chip tone={event.action === 'PURGE' ? 'warn' : 'neutral'}>
+                      <Chip tone={event.action === 'PURGE' ? 'accent' : 'neutral'}>
                         {FILE_ACTION_LABEL[event.action] ?? event.action}
                       </Chip>
                     </td>

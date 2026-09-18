@@ -116,8 +116,17 @@ export function Text({
   );
 }
 
-export type ChipTone = 'neutral' | 'accent' | 'ok' | 'warn';
+export type ChipTone = 'neutral' | 'accent';
 
+/**
+ * Тона чипа. Их два, и оба — из шкалы сайта.
+ *
+ * Зелёный и красный из чипов убраны решением Р-146: дизайн-система держит
+ * эту пару за исходом действия (блок подтверждения и блок ошибки), а в
+ * кабинете она разошлась по срокам, статусам и подписям — экран от этого
+ * пестрел, а настоящая ошибка переставала выделяться. Состояние называется
+ * словом; заливка его не дублирует.
+ */
 const CHIP_TONES: Record<ChipTone, CSSProperties> = {
   neutral: {
     background: 'var(--pd-surface-quiet)',
@@ -128,16 +137,6 @@ const CHIP_TONES: Record<ChipTone, CSSProperties> = {
     background: 'var(--pd-accent-tint)',
     color: 'var(--pd-accent)',
     border: '1px solid var(--pd-accent-edge)',
-  },
-  ok: {
-    background: 'var(--pd-ok-bg)',
-    color: 'var(--pd-ok-ink)',
-    border: '1px solid var(--pd-ok-border)',
-  },
-  warn: {
-    background: 'var(--pd-err-bg)',
-    color: 'var(--pd-err-ink)',
-    border: '1px solid var(--pd-err-border)',
   },
 };
 
@@ -385,7 +384,7 @@ export function Thread({
                   {formatDate(message.createdAt)}
                 </Text>
                 {flagContacts && message.containsContactHint ? (
-                  <Chip tone="warn">похоже на передачу контактов</Chip>
+                  <Chip>похоже на передачу контактов</Chip>
                 ) : null}
               </div>
             </div>
@@ -492,25 +491,45 @@ export function Select({
   );
 }
 
+/**
+ * Блок исхода действия.
+ *
+ * Зелёный и красный дизайн-система держит за исходом: получилось или не
+ * получилось. Состояние работы — не исход, поэтому причина остановки этапа
+ * и предупреждения витрин выводятся спокойным тоном (решение Р-146).
+ */
 export function Notice({
   children,
   tone = 'ok',
   role = 'status',
 }: {
   children: ReactNode;
-  tone?: 'ok' | 'error';
+  tone?: 'ok' | 'error' | 'quiet';
   role?: 'status' | 'alert';
 }) {
-  const ok = tone === 'ok';
+  const paint =
+    tone === 'ok'
+      ? { background: 'var(--pd-ok-bg)', border: 'var(--pd-ok-border)', color: 'var(--pd-ok-ink)' }
+      : tone === 'error'
+        ? {
+            background: 'var(--pd-err-bg)',
+            border: 'var(--pd-err-border)',
+            color: 'var(--pd-err-ink)',
+          }
+        : {
+            background: 'var(--pd-surface-quiet)',
+            border: 'var(--pd-border)',
+            color: 'var(--pd-ink-secondary)',
+          };
   return (
     <div
       role={role}
       style={{
         padding: '14px 16px',
         borderRadius: RADIUS.field,
-        background: ok ? 'var(--pd-ok-bg)' : 'var(--pd-err-bg)',
-        border: `1px solid ${ok ? 'var(--pd-ok-border)' : 'var(--pd-err-border)'}`,
-        color: ok ? 'var(--pd-ok-ink)' : 'var(--pd-err-ink)',
+        background: paint.background,
+        border: `1px solid ${paint.border}`,
+        color: paint.color,
         fontFamily: SANS,
         fontSize: 15,
         lineHeight: 1.6,
@@ -594,13 +613,18 @@ export const STAGE_STATE_LABEL = {
 
 export type StageStateKey = keyof typeof STAGE_STATE_LABEL;
 
-/** Цвет полосы этапа. Различие состояний — цветом и подписью, не прозрачностью. */
-const STAGE_BAR: Record<StageStateKey, string> = {
-  NOT_STARTED: 'var(--pd-border)',
+/**
+ * Отметка этапа. Цвет несёт одно различие — начат этап или нет; само
+ * состояние стоит рядом словом. Светофор из красного, зелёного и двух
+ * синих снят решением Р-146: пять цветов на одной полосе читались как
+ * пестрота, а не как порядок работ.
+ */
+const STAGE_MARK: Record<StageStateKey, string> = {
+  NOT_STARTED: 'var(--pd-edge-neutral)',
   IN_PROGRESS: 'var(--pd-accent)',
-  AWAITING_CLIENT: 'var(--pd-err-ink)',
-  IN_APPROVAL: 'var(--pd-accent-soft)',
-  DONE: 'var(--pd-ok-ink)',
+  AWAITING_CLIENT: 'var(--pd-accent)',
+  IN_APPROVAL: 'var(--pd-accent)',
+  DONE: 'var(--pd-accent-deep)',
 };
 
 export interface StepItem {
@@ -750,9 +774,7 @@ export interface RoadmapItem extends StepItem {
 export function Roadmap({ items }: { items: readonly RoadmapItem[] }) {
   if (items.length === 0) {
     return (
-      <Text muted>
-        Этапы ещё не заведены. Куратор добавит их, как только план работы будет согласован.
-      </Text>
+      <Text muted>Этапы ещё не заведены — куратор добавит их после согласования плана.</Text>
     );
   }
   return (
@@ -783,8 +805,8 @@ export function Roadmap({ items }: { items: readonly RoadmapItem[] }) {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: item.state === 'DONE' ? 'var(--pd-ok-ink)' : 'var(--pd-ink-inverse)',
-              border: `1px solid ${STAGE_BAR[item.state]}`,
+              background: item.state === 'DONE' ? 'var(--pd-accent-deep)' : 'var(--pd-ink-inverse)',
+              border: `1px solid ${STAGE_MARK[item.state]}`,
               color: item.state === 'DONE' ? 'var(--pd-ink-inverse)' : 'var(--pd-ink-muted)',
               fontFamily: MONO,
               fontSize: 12,
@@ -831,74 +853,17 @@ export function Roadmap({ items }: { items: readonly RoadmapItem[] }) {
                   marginTop: 6,
                   padding: '10px 14px',
                   borderRadius: RADIUS.field,
-                  background: 'var(--pd-err-bg)',
-                  border: '1px solid var(--pd-err-border)',
+                  background: 'var(--pd-surface-quiet)',
+                  border: '1px solid var(--pd-border)',
                   fontFamily: SANS,
                   fontSize: 14,
                   lineHeight: 1.5,
-                  color: 'var(--pd-err-ink)',
+                  color: 'var(--pd-ink-secondary)',
                 }}
               >
                 {item.note}
               </span>
             )}
-          </span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-/** Трекер этапов. Композиция взята из согласованного прототипа кабинета. */
-export function Stepper({ items }: { items: readonly StepItem[] }) {
-  if (items.length === 0) {
-    return <Text muted>Этапы ещё не заведены — куратор добавит их после согласования плана.</Text>;
-  }
-  return (
-    <ol
-      style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${Math.min(items.length, 6)}, minmax(140px, 1fr))`,
-        gap: 12,
-        margin: 0,
-        padding: 0,
-        listStyle: 'none',
-        overflowX: 'auto',
-      }}
-    >
-      {items.map((item) => (
-        <li key={item.id} style={{ minWidth: 140 }}>
-          <div
-            style={{
-              height: 4,
-              borderRadius: RADIUS.mark,
-              background: STAGE_BAR[item.state],
-              marginBottom: 10,
-            }}
-          />
-          <span
-            style={{
-              display: 'block',
-              fontFamily: SANS,
-              fontSize: 14,
-              fontWeight: 500,
-              lineHeight: 1.4,
-              color: 'var(--pd-ink)',
-            }}
-          >
-            {item.href === undefined ? item.title : <a href={item.href}>{item.title}</a>}
-          </span>
-          <span
-            style={{
-              display: 'block',
-              marginTop: 4,
-              fontFamily: SANS,
-              fontSize: 13,
-              color: 'var(--pd-ink-muted)',
-            }}
-          >
-            {STAGE_STATE_LABEL[item.state]}
-            {item.dueOn ? ` · срок ${item.dueOn}` : ''}
           </span>
         </li>
       ))}

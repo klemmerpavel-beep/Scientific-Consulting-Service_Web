@@ -276,7 +276,7 @@ export default async function ImportBatchScreen({
                 <td style={TABLE_CELL}>
                   {row.rawType}
                   {row.typeCode === null ? (
-                    <div style={{ fontSize: 13, color: 'var(--pd-err-ink)' }}>не сведено</div>
+                    <div style={{ fontSize: 13, color: 'var(--pd-ink-secondary)' }}>не сведено</div>
                   ) : null}
                 </td>
                 <td style={TABLE_CELL}>{formatDate(row.deadline) ?? '—'}</td>
@@ -291,11 +291,7 @@ export default async function ImportBatchScreen({
                   )}
                 </td>
                 <td style={TABLE_CELL}>
-                  <Chip
-                    tone={
-                      row.action === 'SKIP' ? 'neutral' : row.severity === 'ERROR' ? 'warn' : 'accent'
-                    }
-                  >
+                  <Chip tone={row.action === 'SKIP' ? 'neutral' : 'accent'}>
                     {ACTION_LABEL[row.action]}
                   </Chip>
                   {row.existingCode === null ? null : (

@@ -149,7 +149,7 @@ export default async function ImportScreen({
                     </td>
                     <td style={TABLE_CELL}>{formatDate(batch.createdAt)}</td>
                     <td style={TABLE_CELL}>
-                      <Chip tone={batch.state === 'APPLIED' ? 'ok' : 'neutral'}>
+                      <Chip tone={batch.state === 'APPLIED' ? 'accent' : 'neutral'}>
                         {STATE_LABEL[batch.state] ?? batch.state}
                       </Chip>
                     </td>

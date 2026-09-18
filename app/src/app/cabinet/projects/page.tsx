@@ -72,7 +72,7 @@ export default async function ProjectsScreen() {
                   </div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     {stage.dueOn === null ? null : (
-                      <Chip tone="warn">до {formatDate(stage.dueOn)}</Chip>
+                      <Chip>до {formatDate(stage.dueOn)}</Chip>
                     )}
                     <a
                       href={`/cabinet/stages/${stage.id}`}

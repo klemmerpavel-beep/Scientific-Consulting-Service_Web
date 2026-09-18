@@ -143,7 +143,7 @@ export default async function ManageQueue() {
               >
                 <Chip tone="accent">{SOURCE_LABEL[lead.source] ?? lead.source}</Chip>
                 <Chip mono>{formatDate(lead.createdAt)}</Chip>
-                {lead.consentGiven ? <Chip tone="ok">согласие получено</Chip> : null}
+                {lead.consentGiven ? <Chip>согласие получено</Chip> : null}
               </div>
 
               <Heading level={2} style={{ marginBottom: 8 }}>

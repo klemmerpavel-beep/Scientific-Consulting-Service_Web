@@ -141,7 +141,7 @@ export default async function UsersScreen({
                     ) : null}
                   </td>
                   <td style={TABLE_CELL}>
-                    <Chip tone={user.status === 'ACTIVE' ? 'ok' : user.status === 'ERASED' ? 'neutral' : 'warn'}>
+                    <Chip tone={user.status === 'ACTIVE' ? 'accent' : 'neutral'}>
                       {STATUS_LABEL[user.status as keyof typeof STATUS_LABEL]}
                     </Chip>
                     {self || erased ? null : (
@@ -183,7 +183,7 @@ export default async function UsersScreen({
                       </form>
                     )}
                     {user.expertProfile !== null && user.expertProfile.ndaSignedAt === null ? (
-                      <div style={{ fontSize: 13, color: 'var(--pd-err-ink)', marginTop: 4 }}>
+                      <div style={{ fontSize: 13, color: 'var(--pd-ink-secondary)', marginTop: 4 }}>
                         без договора доступ к материалам клиента не выдаётся
                       </div>
                     ) : null}
