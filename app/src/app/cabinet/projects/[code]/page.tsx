@@ -103,7 +103,11 @@ export default async function ProjectScreen({
     <Shell actor={actor} current="/cabinet/projects">
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <Chip mono>{project.code}</Chip>
-        <Chip tone="accent">{project.serviceType.name}</Chip>
+        {/* Тип работы часто и есть её название — у всего, что перенесено из
+            книги заказов. Печатать его дважды подряд незачем. */}
+        {project.title === project.serviceType.name ? null : (
+          <Chip tone="accent">{project.serviceType.name}</Chip>
+        )}
         {project.dueOn === null ? null : <Chip>срок — {formatDate(project.dueOn)}</Chip>}
       </div>
 
@@ -229,7 +233,9 @@ export default async function ProjectScreen({
                     <Text size={14}>{EVENT_LABEL[event.kind] ?? event.kind}</Text>
                     <Text muted size={13} style={{ marginTop: 2 }}>
                       {formatDate(event.createdAt)}
-                      {event.actor === null ? '' : ` · ${authorName(event.actor, actor)}`}
+                      {event.actor === null
+                        ? ''
+                        : ` · ${authorName(event.actor, actor, event.actorId ?? undefined)}`}
                     </Text>
                   </li>
                 ))}

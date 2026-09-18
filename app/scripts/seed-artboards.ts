@@ -413,14 +413,16 @@ async function main() {
     select: { id: true },
   });
   if (version !== null) {
-    const comments = await prisma.versionComment.count({ where: { versionId: version.id } });
-    if (comments === 0) {
+    // Замечания, как и переписка, переписываются заново: правка текста здесь
+    // должна доезжать до снимка, а не упираться в уже созданные строки.
+    await prisma.versionComment.deleteMany({ where: { versionId: version.id } });
+    {
       await prisma.versionComment.createMany({
         data: [
           {
             versionId: version.id,
             authorId: manager.id,
-            body: 'Принято в работу. Эксперт смотрит методическую часть.',
+            body: 'Принято в работу. Методическую часть смотрим отдельно.',
             moderationStatus: 'PUBLISHED',
             publishedAt: day(11),
           },
@@ -435,14 +437,17 @@ async function main() {
     }
   }
 
-  const messages = await prisma.message.count({ where: { projectId: showcase } });
-  if (messages === 0) {
+  // Переписка переписывается заново при каждом наполнении: при проверке
+  // «создать, если пусто» правка текста в этом файле не доезжала до снимка —
+  // строки уже были, и снимок показывал старую редакцию.
+  await prisma.message.deleteMany({ where: { projectId: showcase } });
+  {
     await prisma.message.createMany({
       data: [
         {
           projectId: showcase,
           authorId: manager.id,
-          body: 'Добрый день. Замечания эксперта по главе 2 будут завтра, план не сдвигается.',
+          body: 'Добрый день. Замечания по главе 2 будут завтра, план не сдвигается.',
           createdAt: day(3),
           readAt: day(3),
         },

@@ -21,7 +21,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from '/var/tmp/pwtest/node_modules/playwright-core/index.mjs';
 
@@ -100,9 +100,32 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Сборка должна быть новее исходников.
+ *
+ * Раньше проверялось лишь её наличие, и снимок молча делался с прежней
+ * сборки: правка экрана в код попадала, а в артборд — нет. Это ровно тот
+ * случай, ради которого снимок и заведён, поэтому сборка пересобирается,
+ * как только любой файл под `src` или `scripts` оказался свежее.
+ */
+function buildIsStale() {
+  const server = path.join(APP, '.next', 'standalone', 'server.js');
+  if (!existsSync(server)) return true;
+  const built = statSync(server).mtimeMs;
+  for (const folder of ['src', 'scripts']) {
+    const root = path.join(APP, folder);
+    if (!existsSync(root)) continue;
+    for (const entry of readdirSync(root, { recursive: true, withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      if (statSync(path.join(entry.parentPath, entry.name)).mtimeMs > built) return true;
+    }
+  }
+  return false;
+}
+
 async function ensureBuild(env) {
-  if (existsSync(path.join(APP, '.next', 'standalone', 'server.js'))) return;
-  console.log('Рабочей сборки нет — собираю (npm run build)…');
+  if (!buildIsStale()) return;
+  console.log('Сборка старше исходников — собираю (npm run build)…');
   await new Promise((resolve, reject) => {
     const build = spawn('npm', ['run', 'build'], {
       cwd: APP,
