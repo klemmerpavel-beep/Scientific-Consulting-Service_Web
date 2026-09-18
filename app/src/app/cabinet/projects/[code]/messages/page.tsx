@@ -8,7 +8,6 @@ import {
   Chip,
   Field,
   Heading,
-  Mono,
   Text,
   formatDate,
 } from '../../../../../components/cabinet/ui';
@@ -68,14 +67,13 @@ export default async function MessagesScreen({
           </a>
         </div>
 
-        <Mono style={{ display: 'block', marginTop: 16 }}>Переписка с куратором</Mono>
-        <Heading level={1} style={{ margin: '12px 0 8px' }}>
-          {project.title}
+        <Heading level={1} style={{ margin: '16px 0 24px' }}>
+          Переписка: {project.title}
         </Heading>
 
         <Card>
           {messages.length === 0 ? (
-            <Text muted>Сообщений пока нет. Напишите первым.</Text>
+            <Text muted>Сообщений пока нет.</Text>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 18 }}>
               {messages.map((message) => {
