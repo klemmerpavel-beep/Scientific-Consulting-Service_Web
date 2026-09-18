@@ -29,6 +29,11 @@ deploy/backups/*
 deploy/storage/*
 !deploy/storage/.gitkeep
 
+# Отметка последнего успешного выката и блокировка от двух выкатов разом:
+# состояние конкретной машины, в репозитории им делать нечего.
+deploy/.deployed
+deploy/.update.lock
+
 # Служебное
 *.log
 .DS_Store

@@ -35,9 +35,21 @@ BEFORE=$(git rev-parse --short HEAD)
 git fetch --prune origin main
 AFTER=$(git rev-parse --short FETCH_HEAD)
 
-if [ "$BEFORE" = "$AFTER" ]; then
+# Сверяется не то, что лежит в рабочей копии, а то, что реально доехало до
+# работающего контейнера. Иначе выкат, упавший после `git reset` — например,
+# на нехватке переменной окружения, — оставлял бы сервер с новым кодом и
+# старым контейнером, а следующий запуск отвечал бы «обновление не требуется»
+# и ничего не делал. Отметка ставится только после успешной проверки здоровья.
+DEPLOYED=""
+[ -f "$DIR/.deployed" ] && DEPLOYED=$(cat "$DIR/.deployed")
+
+if [ "$BEFORE" = "$AFTER" ] && [ "$DEPLOYED" = "$AFTER" ]; then
   say "обновление не требуется: на сервере уже $BEFORE"
   exit 0
+fi
+
+if [ "$BEFORE" = "$AFTER" ] && [ "$DEPLOYED" != "$AFTER" ]; then
+  say "код уже $AFTER, но до контейнера он не доехал — повторяю выкат"
 fi
 
 # На сервере правок не ведут (это записано в порядке работ), поэтому ветка
@@ -86,6 +98,7 @@ while [ "$i" -le "$TRIES" ]; do
 done
 
 if [ "$ok" -eq 1 ]; then
+  printf '%s\n' "$AFTER" > "$DIR/.deployed"
   say "готово: версия $AFTER отвечает"
   exit 0
 fi
@@ -97,6 +110,7 @@ if [ -n "$PREV_IMAGE" ] && [ -n "$IMAGE_TAG" ]; then
   docker tag "$PREV_IMAGE" "$IMAGE_TAG"
   $COMPOSE up -d --no-build web
   git reset --hard "$BEFORE"
+  printf '%s\n' "$BEFORE" > "$DIR/.deployed"
   say "откат выполнен: снова $BEFORE. Схема базы осталась новой — см. шапку скрипта"
 else
   say "откатывать нечего: прежний образ не найден"
