@@ -61,6 +61,7 @@ export default async function MessagesScreen({
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <a
             href={`/cabinet/projects/${project.code}`}
+            className="cab-mark"
             style={{ fontFamily: MONO, fontSize: 12 }}
           >
             {project.code}

@@ -1,8 +1,11 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
-import { SANS } from '../../../../components/cabinet/tokens';
-import { Button, Card, Chip, Field, Heading, Mono, Notice, Text } from '../../../../components/cabinet/ui';
+import { MONO, SANS } from '../../../../components/cabinet/tokens';
+import { Button, Card, Chip, Field, Heading, Mono, Notice, Select, Text,
+  TABLE_CELL,
+  TABLE_HEAD,
+} from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { listColorMap, listServiceTypes, listStageTemplates } from '../../../../lib/cabinet/admin';
 import { formatAmount } from '../../../../lib/cabinet/money';
@@ -10,24 +13,6 @@ import { currentActor } from '../../../../lib/cabinet/session';
 import { attachAlias, detachAlias, dropStageTemplate, saveStageTemplate, saveType } from '../../actions';
 
 export const dynamic = 'force-dynamic';
-
-const cell: React.CSSProperties = {
-  padding: '10px 14px',
-  borderBottom: '1px solid var(--pd-divider)',
-  fontFamily: SANS,
-  fontSize: 14,
-  color: 'var(--pd-ink-secondary)',
-  textAlign: 'left',
-  verticalAlign: 'top',
-};
-
-const head: React.CSSProperties = {
-  ...cell,
-  fontWeight: 500,
-  color: 'var(--pd-ink)',
-  background: 'var(--pd-surface-quiet)',
-  whiteSpace: 'nowrap',
-};
 
 const field: React.CSSProperties = {
   boxSizing: 'border-box',
@@ -96,31 +81,31 @@ export default async function DirectoryScreen({
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
           <thead>
             <tr>
-              <th style={head} scope="col">Позиция</th>
-              <th style={head} scope="col">Проектов</th>
-              <th style={head} scope="col">Базовая цена</th>
-              <th style={head} scope="col">Исторические написания</th>
+              <th style={TABLE_HEAD} scope="col">Позиция</th>
+              <th style={TABLE_HEAD} scope="col">Проектов</th>
+              <th style={TABLE_HEAD} scope="col">Базовая цена</th>
+              <th style={TABLE_HEAD} scope="col">Исторические написания</th>
             </tr>
           </thead>
           <tbody>
             {types.map((type) => (
               <tr key={type.id}>
-                <td style={cell}>
+                <td style={TABLE_CELL}>
                   {type.name}
-                  <div style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                  <div style={{ fontFamily: MONO, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
                     {type.code}
                   </div>
                   {type.isActive ? null : <Chip tone="neutral">не действует</Chip>}
                 </td>
-                <td style={cell}>{type._count.projects}</td>
-                <td style={cell}>
+                <td style={TABLE_CELL}>{type._count.projects}</td>
+                <td style={TABLE_CELL}>
                   {type.basePrice === null ? (
                     <span style={{ color: 'var(--pd-ink-muted)' }}>не задана</span>
                   ) : (
                     formatAmount(type.basePrice)
                   )}
                 </td>
-                <td style={cell}>
+                <td style={TABLE_CELL}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                     {type.aliases.length === 0 ? (
                       <span style={{ color: 'var(--pd-ink-muted)' }}>нет</span>
@@ -130,6 +115,7 @@ export default async function DirectoryScreen({
                           <input type="hidden" name="aliasId" value={alias.id} />
                           <button
                             type="submit"
+                            aria-label={`Убрать написание «${alias.alias}»`}
                             title="Убрать написание"
                             style={{
                               display: 'inline-flex',
@@ -157,6 +143,7 @@ export default async function DirectoryScreen({
                     <input
                       name="alias"
                       placeholder="написание из книги"
+                      aria-label={`Добавить историческое написание для позиции «${type.name}»`}
                       style={{ ...field, minWidth: 200 }}
                       required
                     />
@@ -183,30 +170,30 @@ export default async function DirectoryScreen({
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
           <thead>
             <tr>
-              <th style={head} scope="col">Тип сопровождения</th>
-              <th style={head} scope="col">№</th>
-              <th style={head} scope="col">Этап</th>
-              <th style={head} scope="col">Длительность</th>
-              <th style={head} scope="col">Действие</th>
+              <th style={TABLE_HEAD} scope="col">Тип сопровождения</th>
+              <th style={TABLE_HEAD} scope="col">№</th>
+              <th style={TABLE_HEAD} scope="col">Этап</th>
+              <th style={TABLE_HEAD} scope="col">Длительность</th>
+              <th style={TABLE_HEAD} scope="col">Действие</th>
             </tr>
           </thead>
           <tbody>
             {templates.length === 0 ? (
               <tr>
-                <td style={cell} colSpan={5}>
+                <td style={TABLE_CELL} colSpan={5}>
                   Шаблонов нет. Пока их нет, менеджер заводит этапы вручную при одобрении заявки.
                 </td>
               </tr>
             ) : (
               templates.map((item) => (
                 <tr key={item.id}>
-                  <td style={cell}>{item.serviceType.name}</td>
-                  <td style={cell}>{item.position}</td>
-                  <td style={cell}>{item.title}</td>
-                  <td style={cell}>
+                  <td style={TABLE_CELL}>{item.serviceType.name}</td>
+                  <td style={TABLE_CELL}>{item.position}</td>
+                  <td style={TABLE_CELL}>{item.title}</td>
+                  <td style={TABLE_CELL}>
                     {item.durationDays === null ? '—' : `${item.durationDays} дн.`}
                   </td>
-                  <td style={cell}>
+                  <td style={TABLE_CELL}>
                     <form action={dropStageTemplate}>
                       <input type="hidden" name="id" value={item.id} />
                       <Button type="submit" tone="quiet">
@@ -234,16 +221,13 @@ export default async function DirectoryScreen({
             alignItems: 'end',
           }}
         >
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Тип сопровождения</span>
-            <select name="serviceTypeId" required style={field}>
-              {types.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select label="Тип сопровождения" name="serviceTypeId" required>
+            {types.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.name}
+              </option>
+            ))}
+          </Select>
           <Field label="Порядковый номер" name="position" required placeholder="1" />
           <Field label="Название этапа" name="title" required placeholder="Постановка задачи" />
           <Field label="Длительность, дней" name="durationDays" placeholder="необязательно" />
@@ -268,15 +252,15 @@ export default async function DirectoryScreen({
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
           <thead>
             <tr>
-              <th style={head} scope="col">Цвет</th>
-              <th style={head} scope="col">Код</th>
-              <th style={head} scope="col">Значение</th>
+              <th style={TABLE_HEAD} scope="col">Цвет</th>
+              <th style={TABLE_HEAD} scope="col">Код</th>
+              <th style={TABLE_HEAD} scope="col">Значение</th>
             </tr>
           </thead>
           <tbody>
             {colors.map((color) => (
               <tr key={color.argb}>
-                <td style={cell}>
+                <td style={TABLE_CELL}>
                   <span
                     aria-hidden="true"
                     style={{
@@ -289,8 +273,8 @@ export default async function DirectoryScreen({
                     }}
                   />
                 </td>
-                <td style={{ ...cell, fontFamily: 'monospace' }}>{color.argb}</td>
-                <td style={cell}>{color.description ?? color.mapsTo}</td>
+                <td style={{ ...TABLE_CELL, fontFamily: MONO }}>{color.argb}</td>
+                <td style={TABLE_CELL}>{color.description ?? color.mapsTo}</td>
               </tr>
             ))}
           </tbody>

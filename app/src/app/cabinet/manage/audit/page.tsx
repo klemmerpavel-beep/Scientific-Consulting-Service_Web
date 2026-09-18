@@ -2,7 +2,10 @@ import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
-import { BUTTON_QUIET, Card, Chip, Empty, Heading, Mono, Text } from '../../../../components/cabinet/ui';
+import { BUTTON_QUIET, Card, Chip, Empty, Heading, Mono, Text,
+  TABLE_CELL,
+  TABLE_HEAD,
+} from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import {
   auditEvents,
@@ -20,24 +23,6 @@ const FILE_ACTION_LABEL: Record<string, string> = {
   PRESIGN: 'выдача ссылки',
   DOWNLOAD: 'скачивание',
   PURGE: 'изъятие',
-};
-
-const cell: React.CSSProperties = {
-  padding: '10px 14px',
-  borderBottom: '1px solid var(--pd-divider)',
-  fontFamily: SANS,
-  fontSize: 14,
-  color: 'var(--pd-ink-secondary)',
-  textAlign: 'left',
-  verticalAlign: 'top',
-};
-
-const head: React.CSSProperties = {
-  ...cell,
-  fontWeight: 500,
-  color: 'var(--pd-ink)',
-  background: 'var(--pd-surface-quiet)',
-  whiteSpace: 'nowrap',
 };
 
 const field: React.CSSProperties = {
@@ -194,32 +179,32 @@ export default async function AuditScreen({
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
               <thead>
                 <tr>
-                  <th style={head} scope="col">Когда</th>
-                  <th style={head} scope="col">Кто</th>
-                  <th style={head} scope="col">Действие</th>
-                  <th style={head} scope="col">Проект</th>
-                  <th style={head} scope="col">Файл</th>
-                  <th style={head} scope="col">Адрес</th>
+                  <th style={TABLE_HEAD} scope="col">Когда</th>
+                  <th style={TABLE_HEAD} scope="col">Кто</th>
+                  <th style={TABLE_HEAD} scope="col">Действие</th>
+                  <th style={TABLE_HEAD} scope="col">Проект</th>
+                  <th style={TABLE_HEAD} scope="col">Файл</th>
+                  <th style={TABLE_HEAD} scope="col">Адрес</th>
                 </tr>
               </thead>
               <tbody>
                 {accesses.map((event) => (
                   <tr key={event.id}>
-                    <td style={cell}>{formatMoment(event.occurredAt)}</td>
-                    <td style={cell}>{event.user?.fullName ?? '—'}</td>
-                    <td style={cell}>
+                    <td style={TABLE_CELL}>{formatMoment(event.occurredAt)}</td>
+                    <td style={TABLE_CELL}>{event.user?.fullName ?? '—'}</td>
+                    <td style={TABLE_CELL}>
                       <Chip tone={event.action === 'PURGE' ? 'warn' : 'neutral'}>
                         {FILE_ACTION_LABEL[event.action] ?? event.action}
                       </Chip>
                     </td>
-                    <td style={cell}>{event.version.material.project.code}</td>
-                    <td style={cell}>
+                    <td style={TABLE_CELL}>{event.version.material.project.code}</td>
+                    <td style={TABLE_CELL}>
                       {event.version.material.title}
                       <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
                         версия {event.version.number} · {event.version.originalName}
                       </div>
                     </td>
-                    <td style={cell}>{event.ip ?? '—'}</td>
+                    <td style={TABLE_CELL}>{event.ip ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -233,27 +218,27 @@ export default async function AuditScreen({
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
             <thead>
               <tr>
-                <th style={head} scope="col">Когда</th>
-                <th style={head} scope="col">Кто</th>
-                <th style={head} scope="col">Действие</th>
-                <th style={head} scope="col">Объект</th>
-                <th style={head} scope="col">Подробности</th>
+                <th style={TABLE_HEAD} scope="col">Когда</th>
+                <th style={TABLE_HEAD} scope="col">Кто</th>
+                <th style={TABLE_HEAD} scope="col">Действие</th>
+                <th style={TABLE_HEAD} scope="col">Объект</th>
+                <th style={TABLE_HEAD} scope="col">Подробности</th>
               </tr>
             </thead>
             <tbody>
               {events.map((event) => (
                 <tr key={event.id}>
-                  <td style={cell}>{formatMoment(event.occurredAt)}</td>
-                  <td style={cell}>
+                  <td style={TABLE_CELL}>{formatMoment(event.occurredAt)}</td>
+                  <td style={TABLE_CELL}>
                     {event.actor?.fullName ?? 'система'}
                     <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{event.actorRole ?? ''}</div>
                   </td>
-                  <td style={cell}>{event.action}</td>
-                  <td style={cell}>
+                  <td style={TABLE_CELL}>{event.action}</td>
+                  <td style={TABLE_CELL}>
                     {event.objectType}
                     <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{event.objectId ?? ''}</div>
                   </td>
-                  <td style={{ ...cell, maxWidth: 320, wordBreak: 'break-word' }}>
+                  <td style={{ ...TABLE_CELL, maxWidth: 320, wordBreak: 'break-word' }}>
                     {event.payload === null ? '—' : JSON.stringify(event.payload)}
                   </td>
                 </tr>

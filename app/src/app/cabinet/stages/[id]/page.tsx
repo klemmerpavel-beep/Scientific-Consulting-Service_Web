@@ -56,7 +56,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
   return (
     <Shell actor={actor} current="/cabinet/projects">
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <a href={`/cabinet/projects/${stage.project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
+        <a className="cab-mark" href={`/cabinet/projects/${stage.project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
           {stage.project.code}
         </a>
         <Chip tone={state === 'AWAITING_CLIENT' ? 'warn' : state === 'DONE' ? 'ok' : 'accent'}>

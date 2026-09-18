@@ -10,11 +10,15 @@ import {
   Heading,
   Mono,
   STAGE_STATE_LABEL,
+  Select,
   Text,
   Tile,
   Tiles,
   formatDate,
   type StageStateKey,
+  TABLE_CELL,
+  TABLE_HEAD,
+  TABLE_NUM,
 } from '../../../components/cabinet/ui';
 import { MONO, SANS } from '../../../components/cabinet/tokens';
 import { can } from '../../../lib/cabinet/access';
@@ -25,32 +29,6 @@ import { OVERHEAD_PERCENT, activeWorks, practiceSummary } from '../../../lib/cab
 import { moderateLead } from '../actions';
 
 export const dynamic = 'force-dynamic';
-
-const cell: React.CSSProperties = {
-  padding: '12px 16px',
-  borderBottom: '1px solid var(--pd-divider)',
-  fontFamily: SANS,
-  fontSize: 14,
-  lineHeight: 1.5,
-  color: 'var(--pd-ink-secondary)',
-  textAlign: 'left',
-  verticalAlign: 'top',
-};
-
-const num: React.CSSProperties = {
-  ...cell,
-  textAlign: 'right',
-  fontVariantNumeric: 'tabular-nums',
-  whiteSpace: 'nowrap',
-};
-
-const head: React.CSSProperties = {
-  ...cell,
-  fontWeight: 500,
-  color: 'var(--pd-ink)',
-  background: 'var(--pd-surface-quiet)',
-  whiteSpace: 'nowrap',
-};
 
 const SOURCE_LABEL: Record<string, string> = {
   landing: 'Посадочная',
@@ -100,24 +78,24 @@ export default async function ManageQueue() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>
                 <tr>
-                  <th style={head} scope="col">Работа</th>
-                  <th style={head} scope="col">Этап</th>
-                  <th style={head} scope="col">Срок</th>
-                  <th style={{ ...head, textAlign: 'right' }} scope="col">Договор, ₽</th>
-                  <th style={{ ...head, textAlign: 'right' }} scope="col">Оплачено, ₽</th>
-                  <th style={{ ...head, textAlign: 'right' }} scope="col">Остаток, ₽</th>
+                  <th style={TABLE_HEAD} scope="col">Работа</th>
+                  <th style={TABLE_HEAD} scope="col">Этап</th>
+                  <th style={TABLE_HEAD} scope="col">Срок</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Договор, ₽</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Оплачено, ₽</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Остаток, ₽</th>
                 </tr>
               </thead>
               <tbody>
                 {works.map((work) => (
                   <tr key={work.code}>
-                    <td style={cell}>
+                    <td style={TABLE_CELL}>
                       <a href={`/cabinet/projects/${work.code}`}>{work.title}</a>
                       <div style={{ fontFamily: MONO, fontSize: 12, color: 'var(--pd-ink-muted)' }}>
                         {work.code} · {work.client}
                       </div>
                     </td>
-                    <td style={cell}>
+                    <td style={TABLE_CELL}>
                       {work.stage ?? '—'}
                       {work.stageState === null ? null : (
                         <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
@@ -125,10 +103,10 @@ export default async function ManageQueue() {
                         </div>
                       )}
                     </td>
-                    <td style={cell}>{formatDate(work.dueOn) ?? '—'}</td>
-                    <td style={num}>{formatPlain(work.contracted)}</td>
-                    <td style={num}>{formatPlain(work.received)}</td>
-                    <td style={{ ...num, color: work.outstanding > 0n ? 'var(--pd-ink)' : undefined }}>
+                    <td style={TABLE_CELL}>{formatDate(work.dueOn) ?? '—'}</td>
+                    <td style={TABLE_NUM}>{formatPlain(work.contracted)}</td>
+                    <td style={TABLE_NUM}>{formatPlain(work.received)}</td>
+                    <td style={{ ...TABLE_NUM, color: work.outstanding > 0n ? 'var(--pd-ink)' : undefined }}>
                       {work.outstanding > 0n ? formatPlain(work.outstanding) : '—'}
                     </td>
                   </tr>
@@ -213,31 +191,13 @@ export default async function ManageQueue() {
                     defaultValue={lead.topic ?? ''}
                     placeholder="Сопровождение кандидатской диссертации"
                   />
-                  <label style={{ display: 'grid', gap: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 500 }}>Тип сопровождения</span>
-                    <select
-                      name="serviceTypeId"
-                      required
-                      style={{
-                        minHeight: 44,
-                        padding: '10px 12px',
-                        borderRadius: 10,
-                        border: '1px solid var(--pd-edge-neutral)',
-                        background: 'var(--pd-ink-inverse)',
-                        // Список выбора сам по себе не сжимается ниже своего
-                        // самого длинного варианта: ширину задаём явно.
-                        width: '100%',
-                        maxWidth: '100%',
-                        boxSizing: 'border-box',
-                      }}
-                    >
-                      {types.map((type) => (
-                        <option key={type.id} value={type.id}>
-                          {type.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <Select label="Тип сопровождения" name="serviceTypeId" required>
+                    {types.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </Select>
                   <label style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                     <input type="checkbox" name="applyTemplate" style={{ width: 18, height: 18 }} />
                     <span style={{ fontSize: 14 }}>Применить шаблон этапов этого типа</span>

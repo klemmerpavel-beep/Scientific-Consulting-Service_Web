@@ -95,7 +95,7 @@ export default async function PaymentsScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
-      <a href={`/cabinet/projects/${project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
+      <a className="cab-mark" href={`/cabinet/projects/${project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
         {project.code}
       </a>
 
