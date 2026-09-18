@@ -23,13 +23,6 @@ import { addMaterialVersion } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
 
-const ROLE_LABEL: Record<string, string> = {
-  CLIENT: 'клиент',
-  EXPERT: 'эксперт',
-  MANAGER: 'куратор',
-  HEAD: 'руководитель',
-};
-
 export default async function ProjectMaterialsScreen({
   params,
 }: {

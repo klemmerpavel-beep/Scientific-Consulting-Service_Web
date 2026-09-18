@@ -25,7 +25,7 @@ export default async function AnalyticsOverview() {
       actor={actor}
       current="/cabinet/manage/analytics"
       title="Обзор практики"
-      lead="Величины считаются по данным системы на момент открытия страницы. Ни одна не введена вручную и не взята из внешнего источника."
+      lead="Величины считаются по данным системы: ни одна не введена вручную."
     >
       {rows.length === 0 ? (
         <Empty title="Считать нечего">

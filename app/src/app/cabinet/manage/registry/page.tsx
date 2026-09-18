@@ -111,9 +111,9 @@ export default async function RegistryScreen() {
                     <td style={TABLE_CELL}>{expert.specialization ?? '—'}</td>
                     <td style={TABLE_CELL}>
                       {expert.ndaSignedAt === null ? (
-                        <Chip tone="warn">не подписан</Chip>
+                        <Chip>не подписан</Chip>
                       ) : (
-                        <Chip tone="ok">{formatDate(expert.ndaSignedAt)}</Chip>
+                        <Chip>подписан {formatDate(expert.ndaSignedAt)}</Chip>
                       )}
                     </td>
                     <td style={TABLE_CELL}>
