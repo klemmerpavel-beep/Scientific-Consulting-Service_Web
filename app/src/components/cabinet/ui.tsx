@@ -679,30 +679,36 @@ export function Progress({
           </>
         )}
       </span>
-      <span
-        aria-hidden="true"
-        style={{
-          display: 'block',
-          height: 6,
-          borderRadius: RADIUS.mark,
-          background: 'var(--pd-divider)',
-          overflow: 'hidden',
-        }}
-      >
+      {/* Пока этапов нет, полоса рисовала пустую рамку: заполнять её нечем,
+          а смысла в ней столько же, сколько в пустом месте. */}
+      {total === 0 ? null : (
         <span
+          aria-hidden="true"
           style={{
             display: 'block',
-            width: `${share}%`,
-            height: '100%',
-            background: 'var(--pd-accent)',
+            height: 6,
+            borderRadius: RADIUS.mark,
+            background: 'var(--pd-divider)',
+            overflow: 'hidden',
           }}
-        />
-      </span>
-      <span style={{ fontFamily: SANS, fontSize: 13, lineHeight: 1.5, color: 'var(--pd-ink-muted)' }}>
-        {total === 0
-          ? 'Этапы появятся после согласования плана'
-          : `${done} из ${total} ${plural(total, 'этапа', 'этапов', 'этапов')} завершено`}
-      </span>
+        >
+          <span
+            style={{
+              display: 'block',
+              width: `${share}%`,
+              height: '100%',
+              background: 'var(--pd-accent)',
+            }}
+          />
+        </span>
+      )}
+      {/* Пока этапов нет, строка выше уже сказала это словами; вторая
+          формулировка того же ничего не добавляла. */}
+      {total === 0 ? null : (
+        <span style={{ fontFamily: SANS, fontSize: 13, lineHeight: 1.5, color: 'var(--pd-ink-muted)' }}>
+          {done} из {total} {plural(total, 'этапа', 'этапов', 'этапов')} завершено
+        </span>
+      )}
     </div>
   );
 }

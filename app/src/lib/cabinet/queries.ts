@@ -39,7 +39,7 @@ export async function projectByCode(actor: Actor, code: string) {
       events: {
         orderBy: { createdAt: 'desc' },
         take: 12,
-        include: { actor: { select: { fullName: true, role: true } } },
+        include: { actor: { select: { id: true, fullName: true, role: true } } },
       },
     },
   });

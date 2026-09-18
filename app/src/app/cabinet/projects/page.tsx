@@ -115,7 +115,12 @@ export default async function ProjectsScreen() {
                   marginBottom: 12,
                 }}
               >
-                <Chip tone="accent">{project.serviceType.name}</Chip>
+                {/* Тип не дублируется чипом, когда он же стоит заголовком
+                    карточки: у всего, что перенесено из книги заказов, это
+                    одна и та же строка. */}
+                {project.title === project.serviceType.name ? null : (
+                  <Chip tone="accent">{project.serviceType.name}</Chip>
+                )}
                 <Chip mono>{project.code}</Chip>
                 {project.dueOn === null ? null : (
                   <Text muted size={14}>
