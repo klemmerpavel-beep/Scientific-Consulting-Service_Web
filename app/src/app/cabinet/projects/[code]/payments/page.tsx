@@ -7,6 +7,9 @@ import {
   Card,
   Chip,
   Field,
+  Form,
+  FormActions,
+  FormRow,
   Heading,
   Mono,
   Text,
@@ -496,24 +499,18 @@ export default async function PaymentsScreen({
           <Heading level={3} style={{ marginBottom: 12 }}>
             Завести договор
           </Heading>
-          <form
-            action={saveProjectContract}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-              gap: 16,
-              alignItems: 'end',
-            }}
-          >
+          <Form action={saveProjectContract}>
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="code" value={project.code} />
-            <Field label="Номер" name="number" required placeholder="14-2026" />
-            <Field label="Дата подписания" name="signedOn" type="date" />
-            <Field label="Сумма договора" name="totalAmount" required placeholder="600 000" />
-            <div>
+            <FormRow>
+              <Field label="Номер" name="number" required placeholder="14-2026" />
+              <Field label="Дата подписания" name="signedOn" type="date" />
+              <Field label="Сумма договора" name="totalAmount" required placeholder="600 000" />
+            </FormRow>
+            <FormActions>
               <Button>Сохранить</Button>
-            </div>
-          </form>
+            </FormActions>
+          </Form>
         </Card>
       ) : null}
     </Shell>

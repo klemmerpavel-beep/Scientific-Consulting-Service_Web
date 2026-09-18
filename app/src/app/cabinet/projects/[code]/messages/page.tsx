@@ -6,6 +6,8 @@ import {
   Button,
   Card,
   Field,
+  Form,
+  FormActions,
   Heading,
   Thread,
 } from '../../../../../components/cabinet/ui';
@@ -65,11 +67,9 @@ export default async function MessagesScreen({
         <Card>
           <Thread messages={messages} viewer={actor} flagContacts={mayModerate} />
 
-          <form
+          <Form
             action={postMessage}
             style={{
-              display: 'grid',
-              gap: 12,
               marginTop: 24,
               paddingTop: 20,
               borderTop: '1px solid var(--pd-divider)',
@@ -78,10 +78,10 @@ export default async function MessagesScreen({
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="code" value={project.code} />
             <Field label="Сообщение" name="body" multiline required />
-            <div>
+            <FormActions>
               <Button>Отправить</Button>
-            </div>
-          </form>
+            </FormActions>
+          </Form>
         </Card>
       </div>
     </Shell>

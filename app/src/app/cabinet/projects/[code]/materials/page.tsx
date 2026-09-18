@@ -8,6 +8,10 @@ import {
   Chip,
   Empty,
   Field,
+  FileField,
+  Form,
+  FormActions,
+  FormRow,
   Heading,
   Select,
   Text,
@@ -115,13 +119,9 @@ export default async function ProjectMaterialsScreen({
                 </ul>
 
                 {mayUpload ? (
-                  <form
+                  <Form
                     action={addMaterialVersion}
                     style={{
-                      display: 'flex',
-                      gap: 12,
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
                       marginTop: 16,
                       paddingTop: 16,
                       borderTop: '1px solid var(--pd-divider)',
@@ -130,15 +130,15 @@ export default async function ProjectMaterialsScreen({
                     <input type="hidden" name="projectId" value={project.id} />
                     <input type="hidden" name="materialId" value={material.id} />
                     <input type="hidden" name="back" value={`/cabinet/projects/${project.code}/materials`} />
-                    <input
-                      type="file"
-                      name="file"
+                    <FileField
+                      label={`Новая версия материала «${material.title}»`}
+                      name={`file-${material.id}`}
                       required
-                      aria-label={`Новая версия материала «${material.title}»`}
-                      style={{ fontFamily: SANS, fontSize: 15 }}
                     />
-                    <Button tone="quiet">Загрузить следующую версию</Button>
-                  </form>
+                    <FormActions>
+                      <Button tone="quiet">Загрузить следующую версию</Button>
+                    </FormActions>
+                  </Form>
                 ) : null}
               </Card>
             </li>
@@ -149,34 +149,25 @@ export default async function ProjectMaterialsScreen({
       {mayUpload ? (
         <Card style={{ marginTop: 28 }}>
           <Heading level={2} style={{ marginBottom: 16 }}>Приложить материал</Heading>
-          <form
-            action={addMaterialVersion}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: 16,
-              alignItems: 'end',
-            }}
-          >
+          <Form action={addMaterialVersion}>
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="back" value={`/cabinet/projects/${project.code}/materials`} />
-            <Field label="Название" name="title" placeholder="Черновик главы 2" />
-            <Select label="Этап" name="stageId" defaultValue="">
-              <option value="">без привязки к этапу</option>
-              {project.stages.map((stage) => (
-                <option key={stage.id} value={stage.id}>
-                  {stage.position}. {stage.title}
-                </option>
-              ))}
-            </Select>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Файл</span>
-              <input type="file" name="file" required style={{ fontFamily: SANS, fontSize: 15 }} />
-            </label>
-            <div>
+            <FormRow>
+              <Field label="Название" name="title" placeholder="Черновик главы 2" />
+              <Select label="Этап" name="stageId" defaultValue="">
+                <option value="">без привязки к этапу</option>
+                {project.stages.map((stage) => (
+                  <option key={stage.id} value={stage.id}>
+                    {stage.position}. {stage.title}
+                  </option>
+                ))}
+              </Select>
+              <FileField label="Файл" name="file" required />
+            </FormRow>
+            <FormActions>
               <Button>Приложить</Button>
-            </div>
-          </form>
+            </FormActions>
+          </Form>
         </Card>
       ) : null}
     </Shell>

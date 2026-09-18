@@ -7,6 +7,8 @@ import {
   Chip,
   Empty,
   Field,
+  Form,
+  FormActions,
   Heading,
   Mono,
   STAGE_STATE_LABEL,
@@ -237,21 +239,22 @@ export default async function ManageQueue() {
                 className="cab-two"
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr)',
+                  // Две равные колонки: решение об одобрении и решение об
+                  // отказе равнозначны, и разная ширина делала форму
+                  // перекошенной. Колонки тянутся на одну высоту, поэтому
+                  // кнопки внизу встают на одну линию.
+                  gridTemplateColumns: 'repeat(2, minmax(0,1fr))',
                   gap: 24,
                   marginTop: 20,
                   paddingTop: 20,
                   borderTop: '1px solid var(--pd-divider)',
-                  alignItems: 'start',
+                  alignItems: 'stretch',
                 }}
               >
                 {/* minmax(0,1fr): колонка по содержимому растягивалась под самый
                     длинный вариант в списке типов, и на экране уже 420 px форма
                     вылезала за край страницы (решение Р-130). */}
-                <form
-                  action={moderateLead}
-                  style={{ display: 'grid', gap: 16, gridTemplateColumns: 'minmax(0,1fr)' }}
-                >
+                <Form action={moderateLead}>
                   <input type="hidden" name="leadId" value={lead.id} />
                   <input type="hidden" name="decision" value="approve" />
                   <Field
@@ -268,19 +271,18 @@ export default async function ManageQueue() {
                       </option>
                     ))}
                   </Select>
-                  <label style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <label
+                    style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44 }}
+                  >
                     <input type="checkbox" name="applyTemplate" style={{ width: 18, height: 18 }} />
                     <span style={{ fontSize: 14 }}>Применить шаблон этапов этого типа</span>
                   </label>
-                  <div>
+                  <FormActions>
                     <Button>Одобрить и создать проект</Button>
-                  </div>
-                </form>
+                  </FormActions>
+                </Form>
 
-                <form
-                  action={moderateLead}
-                  style={{ display: 'grid', gap: 16, gridTemplateColumns: 'minmax(0,1fr)' }}
-                >
+                <Form action={moderateLead}>
                   <input type="hidden" name="leadId" value={lead.id} />
                   <input type="hidden" name="decision" value="decline" />
                   <Field
@@ -290,10 +292,10 @@ export default async function ManageQueue() {
                     multiline
                     hint="Причину видит заявитель, поэтому она пишется человеческим языком."
                   />
-                  <div>
+                  <FormActions>
                     <Button tone="quiet">Отклонить</Button>
-                  </div>
-                </form>
+                  </FormActions>
+                </Form>
               </div>
             </Card>
           ))}

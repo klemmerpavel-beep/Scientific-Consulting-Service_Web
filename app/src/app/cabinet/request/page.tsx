@@ -1,7 +1,18 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
-import { Button, Card, Field, Heading, Mono, Notice, Text } from '../../../components/cabinet/ui';
+import {
+  Button,
+  Card,
+  Field,
+  Form,
+  FormActions,
+  Heading,
+  Mono,
+  Notice,
+  Select,
+  Text,
+} from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { serviceTypes } from '../../../lib/cabinet/queries';
 import { currentActor } from '../../../lib/cabinet/session';
@@ -35,28 +46,15 @@ export default async function NewRequestScreen({
 
         {params.sent === undefined ? (
           <Card>
-            <form action={submitCabinetRequest} style={{ display: 'grid', gap: 20 }}>
-              <label style={{ display: 'grid', gap: 8 }}>
-                <span style={{ fontSize: 14, fontWeight: 500 }}>Тип сопровождения</span>
-                <select
-                  name="need"
-                  style={{
-                    minHeight: 44,
-                    padding: '10px 12px',
-                    borderRadius: 10,
-                    border: '1px solid var(--pd-edge-neutral)',
-                    background: 'var(--pd-ink-inverse)',
-                    fontSize: 16,
-                  }}
-                >
-                  <option value="">— уточню при разговоре —</option>
-                  {types.map((type) => (
-                    <option key={type.id} value={type.name}>
-                      {type.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            <Form action={submitCabinetRequest}>
+              <Select label="Тип сопровождения" name="need">
+                <option value="">— уточню при разговоре —</option>
+                {types.map((type) => (
+                  <option key={type.id} value={type.name}>
+                    {type.name}
+                  </option>
+                ))}
+              </Select>
 
               <Field
                 label="Тема работы"
@@ -79,10 +77,10 @@ export default async function NewRequestScreen({
                 hint="Коротко о задаче, о том, что уже сделано, и о требованиях кафедры или журнала."
               />
 
-              <div>
+              <FormActions>
                 <Button>Отправить заявку</Button>
-              </div>
-            </form>
+              </FormActions>
+            </Form>
           </Card>
         ) : (
           <>
