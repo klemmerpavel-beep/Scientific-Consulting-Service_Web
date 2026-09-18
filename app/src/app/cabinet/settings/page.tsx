@@ -89,7 +89,7 @@ export default async function SettingsScreen({
         </Card>
 
         <Card>
-          <Heading level={3} style={{ marginBottom: 12 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Telegram
           </Heading>
           {bound ? (

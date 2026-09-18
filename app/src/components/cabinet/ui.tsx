@@ -56,28 +56,40 @@ export function Card({
   );
 }
 
+/**
+ * Заголовок раздела.
+ *
+ * `level` — это уровень в разметке, по которому читалка строит навигацию,
+ * а `size` — ступень кегля. Обычно они совпадают, но не всегда: заголовок
+ * карточки внутри раздела должен набираться мелко и при этом не пропускать
+ * уровень. Пропуск (h1 сразу к h3) для читалки выглядит как потерянный
+ * раздел, поэтому уровень и кегль разведены.
+ */
 export function Heading({
   children,
   level = 2,
+  size,
   style,
 }: {
   children: ReactNode;
   level?: 1 | 2 | 3;
+  size?: 1 | 2 | 3;
   style?: CSSProperties;
 }) {
   // Кегли и начертания — из таблицы дизайн-системы, раздел 3.2. Заголовок
   // раздела равен 22 px на всех страницах сайта (решение Р-99), и кабинет
-  // не исключение; h3 набирается плотнее и жирнее — 600 при 1.4.
+  // не исключение; третья ступень набирается плотнее и жирнее — 600 при 1.4.
   const sizes = { 1: 'clamp(28px,2.8vw,40px)', 2: 22, 3: 17 } as const;
+  const step = size ?? level;
   const Tag = (`h${level}` as unknown) as 'h1';
   return (
     <Tag
       style={{
         fontFamily: SERIF,
-        fontWeight: level === 3 ? 600 : 500,
-        fontSize: sizes[level],
-        lineHeight: level === 3 ? 1.4 : 1.24,
-        letterSpacing: level === 1 ? '-.015em' : '-.012em',
+        fontWeight: step === 3 ? 600 : 500,
+        fontSize: sizes[step],
+        lineHeight: step === 3 ? 1.4 : 1.24,
+        letterSpacing: step === 1 ? '-.015em' : '-.012em',
         color: 'var(--pd-ink)',
         ...style,
       }}
@@ -170,63 +182,12 @@ export function Chip({
   );
 }
 
-/** Цель нажатия не меньше 44 px — правило дизайн-системы сайта. */
-const BUTTON_BASE: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 8,
-  minHeight: 44,
-  padding: '0 20px',
-  borderRadius: RADIUS.pill,
-  fontFamily: SANS,
-  fontSize: 15,
-  fontWeight: 600,
-  lineHeight: 1.4,
-  cursor: 'pointer',
-  border: '1px solid transparent',
-};
-
-export const BUTTON_PRIMARY: CSSProperties = {
-  ...BUTTON_BASE,
-  background: 'var(--pd-accent)',
-  color: 'var(--pd-ink-inverse)',
-};
-
-export const BUTTON_QUIET: CSSProperties = {
-  ...BUTTON_BASE,
-  background: 'var(--pd-ink-inverse)',
-  color: 'var(--pd-ink-secondary)',
-  borderColor: 'var(--pd-edge-neutral)',
-};
-
-export function Button({
-  children,
-  tone = 'primary',
-  type = 'submit',
-  name,
-  value,
-  style,
-}: {
-  children: ReactNode;
-  tone?: 'primary' | 'quiet';
-  type?: 'submit' | 'button';
-  name?: string;
-  value?: string;
-  style?: CSSProperties;
-}) {
-  return (
-    <button
-      type={type}
-      name={name}
-      value={value}
-      className={`cab-btn ${tone === 'primary' ? 'cab-btn-primary' : 'cab-btn-quiet'}`}
-      style={{ ...(tone === 'primary' ? BUTTON_PRIMARY : BUTTON_QUIET), ...style }}
-    >
-      {children}
-    </button>
-  );
-}
+/**
+ * Кнопка вынесена в отдельный модуль: она единственная работает на стороне
+ * браузера, потому что гасит себя на время отправки. Реэкспорт оставлен,
+ * чтобы экраны по-прежнему брали всё оформление из одного места.
+ */
+export { BUTTON_PRIMARY, BUTTON_QUIET, Button } from './Button.tsx';
 
 /** Поле ввода. Кегль не меньше 16 px: иначе Safari на телефоне масштабирует. */
 export function Field({
@@ -585,7 +546,7 @@ export function Tiles({ children }: { children: ReactNode }) {
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <Card style={{ textAlign: 'center', padding: '40px 24px' }}>
-      <Heading level={3} style={{ marginBottom: 8 }}>
+      <Heading level={2} size={3} style={{ marginBottom: 8 }}>
         {title}
       </Heading>
       {children === undefined ? null : <Text muted>{children}</Text>}

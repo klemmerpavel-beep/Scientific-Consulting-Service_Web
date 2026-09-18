@@ -99,26 +99,56 @@ export function BarChart({
   const bw = Math.min(64, (iw - gap * (n - 1)) / n);
   const x0 = pad.l + (iw - (bw * n + gap * (n - 1))) / 2;
 
+  /**
+   * Прореживание подписей.
+   *
+   * При двух десятках столбцов подписи месяцев сливались в сплошную строку
+   * («фев 24мар 24апр 24»), а числа над соседними столбцами наезжали друг
+   * на друга. Подпись месяца занимает около 46 px при кегле 12, число —
+   * около 54. Если шаг столбца меньше, показывается каждая k-я подпись;
+   * отсчёт ведётся от последнего столбца, поэтому свежий месяц подписан
+   * всегда, а расстановка остаётся равномерной. Значения остальных
+   * столбцов не теряются: они в подсказке и в таблице под графиком.
+   */
+  const step = bw + gap;
+  const everyLabel = Math.max(1, Math.ceil(46 / step));
+  const everyValue = Math.max(1, Math.ceil(54 / step));
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
       fontFamily={SANS} role="img" aria-label={title}>
       <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} format={format} />
+      {/* Столбцы рисуются первыми, подписи — следом: иначе соседний столбец
+          ложится поверх уже написанного числа и срезает его («175 ть»). */}
+      {data.map((item, index) => {
+        const x = x0 + index * (bw + gap);
+        const h = max > 0 ? (item.value / max) * ih : 0;
+        return (
+          <g key={`bar-${item.label}-${index}`}>
+            <title>{`${item.label}: ${format(item.value)}`}</title>
+            <path
+              d={topRoundedBar(x, pad.t + ih - h, bw, Math.max(0, h), 5)}
+              fill={item.color ?? seriesColor(1)}
+            />
+          </g>
+        );
+      })}
       {data.map((item, index) => {
         const x = x0 + index * (bw + gap);
         const h = max > 0 ? (item.value / max) * ih : 0;
         const y = pad.t + ih - h;
         return (
-          <g key={`${item.label}-${index}`}>
-            <title>{`${item.label}: ${format(item.value)}`}</title>
-            <path d={topRoundedBar(x, y, bw, Math.max(0, h), 5)} fill={item.color ?? seriesColor(1)} />
-            {item.value === 0 ? null : (
+          <g key={`label-${item.label}-${index}`}>
+            {item.value === 0 || (n - 1 - index) % everyValue !== 0 ? null : (
               <text x={x + bw / 2} y={y - 6} textAnchor="middle" fontSize={12} fontWeight={500} fill={INK}>
                 {format(item.value)}
               </text>
             )}
-            <text x={x + bw / 2} y={H - 12} textAnchor="middle" fontSize={12} fill={MUTED}>
-              {item.label}
-            </text>
+            {(n - 1 - index) % everyLabel === 0 ? (
+              <text x={x + bw / 2} y={H - 12} textAnchor="middle" fontSize={12} fill={MUTED}>
+                {item.label}
+              </text>
+            ) : null}
           </g>
         );
       })}

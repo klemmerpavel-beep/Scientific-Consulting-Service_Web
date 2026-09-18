@@ -50,3 +50,55 @@ describe('зелёный и красный — только исход дейс�
     }
   }
 });
+
+describe('уровни заголовков не пропускаются', () => {
+  // Читалка строит по заголовкам оглавление экрана. Переход с h1 сразу на
+  // h3 читается как потерянный раздел: пользователь клавиатуры не понимает,
+  // куда делся уровень. Кегль при этом может быть любым — в кабинете
+  // уровень и ступень кегля разведены (решение Р-148).
+  for (const folder of ['client', 'head']) {
+    for (const file of screens(folder)) {
+      it(path.relative(PROTOTYPE, file), () => {
+        const html = readFileSync(file, 'utf8');
+        const levels = [...html.matchAll(/<h([1-6])[ >]/gu)].map((m) => Number(m[1]));
+        let previous = 0;
+        for (const level of levels) {
+          assert.ok(
+            previous === 0 || level <= previous + 1,
+            `после h${previous} идёт h${level}: уровень пропущен`,
+          );
+          previous = level;
+        }
+      });
+    }
+  }
+});
+
+describe('каждое поле подписано', () => {
+  // Подпись в placeholder исчезает при первом же символе, и человек теряет
+  // смысл поля; читалке она не заменяет метку вовсе. Метка либо связана
+  // через `for`, либо оборачивает поле, либо задана `aria-label`.
+  for (const folder of ['client', 'head']) {
+    for (const file of screens(folder)) {
+      it(path.relative(PROTOTYPE, file), () => {
+        const html = readFileSync(file, 'utf8');
+        const forIds = new Set(
+          [...html.matchAll(/<label[^>]*\bfor="([^"]+)"/gu)].map((m) => m[1]),
+        );
+        const wraps = [...html.matchAll(/<label\b[^>]*>[\s\S]*?<\/label>/gu)].map(
+          (m) => [m.index, m.index + m[0].length] as const,
+        );
+        for (const field of html.matchAll(/<(input|select|textarea)\b([^>]*)>/gu)) {
+          const attrs = field[2];
+          if (/type="(hidden|submit)"/u.test(attrs)) continue;
+          const id = /\bid="([^"]+)"/u.exec(attrs)?.[1];
+          const wrapped = wraps.some(([from, to]) => field.index > from && field.index < to);
+          assert.ok(
+            wrapped || (id !== undefined && forIds.has(id)) || attrs.includes('aria-label'),
+            `поле без подписи: ${field[0].slice(0, 80)}`,
+          );
+        }
+      });
+    }
+  }
+});

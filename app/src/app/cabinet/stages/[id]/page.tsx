@@ -86,7 +86,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
 
       {mayApprove ? (
         <Card style={{ marginBottom: 24, borderColor: 'var(--pd-accent-edge)' }}>
-          <Heading level={3} style={{ marginBottom: 8 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 8 }}>
             Этап ждёт вашего согласования
           </Heading>
           <Text style={{ marginBottom: 16 }}>
