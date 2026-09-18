@@ -7,6 +7,9 @@ import {
   Card,
   Chip,
   Field,
+  FileField,
+  Form,
+  FormActions,
   Heading,
   Mono,
   Notice,
@@ -105,26 +108,22 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
           <Heading level={2} style={{ marginBottom: 12 }}>Состояние этапа</Heading>
           <div style={{ display: 'grid', gap: 16, marginTop: 12 }}>
             {NEXT_STATES[state].map((next) => (
-              <form
-                key={next}
-                action={changeStageState}
-                style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}
-              >
+              <Form key={next} action={changeStageState}>
                 <input type="hidden" name="stageId" value={stage.id} />
                 <input type="hidden" name="state" value={next} />
                 {next === 'AWAITING_CLIENT' ? (
-                  <div style={{ flex: '1 1 360px' }}>
-                    <Field
-                      label="Причина остановки"
-                      name="reason"
-                      required
-                      placeholder="Ждём протокол испытаний; после загрузки — два рабочих дня на расчёт"
-                      hint="Причину читает клиент: от неё зависит, что и когда он пришлёт."
-                    />
-                  </div>
+                  <Field
+                    label="Причина остановки"
+                    name="reason"
+                    required
+                    placeholder="Ждём протокол испытаний; после загрузки — два рабочих дня на расчёт"
+                    hint="Причину читает клиент: от неё зависит, что и когда он пришлёт."
+                  />
                 ) : null}
-                <Button tone="quiet">Перевести в «{STAGE_STATE_LABEL[next]}»</Button>
-              </form>
+                <FormActions>
+                  <Button tone="quiet">Перевести в «{STAGE_STATE_LABEL[next]}»</Button>
+                </FormActions>
+              </Form>
             ))}
           </div>
         </Card>
@@ -229,31 +228,24 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                       )}
 
                       {index === 0 ? (
-                        <form
-                          action={commentOnVersion}
-                          style={{ display: 'grid', gap: 12, marginTop: 14 }}
-                        >
+                        <Form action={commentOnVersion} style={{ marginTop: 14 }}>
                           <input type="hidden" name="versionId" value={version.id} />
                           <input type="hidden" name="stageId" value={stage.id} />
                           <Field label="Комментарий к текущей версии" name="body" multiline required />
-                          <div>
+                          <FormActions>
                             <Button tone="quiet">Оставить комментарий</Button>
-                          </div>
-                        </form>
+                          </FormActions>
+                        </Form>
                       ) : null}
                     </li>
                   ))}
                 </ul>
 
                 {mayUpload ? (
-                  <form
+                  <Form
                     action={uploadMaterial}
                     encType="multipart/form-data"
                     style={{
-                      display: 'flex',
-                      gap: 12,
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
                       marginTop: 20,
                       paddingTop: 16,
                       borderTop: '1px solid var(--pd-divider)',
@@ -262,14 +254,11 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                     <input type="hidden" name="projectId" value={stage.project.id} />
                     <input type="hidden" name="stageId" value={stage.id} />
                     <input type="hidden" name="materialId" value={material.id} />
-                    <label style={{ display: 'grid', gap: 8 }}>
-                      <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>
-                        Файл следующей версии
-                      </span>
-                      <input type="file" name="file" required />
-                    </label>
-                    <Button tone="quiet">Загрузить следующую версию</Button>
-                  </form>
+                    <FileField label="Файл следующей версии" name="file" required />
+                    <FormActions>
+                      <Button tone="quiet">Загрузить следующую версию</Button>
+                    </FormActions>
+                  </Form>
                 ) : null}
               </Card>
             ))}
@@ -281,25 +270,20 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
             <Heading level={3} style={{ marginBottom: 12 }}>
               Новый материал
             </Heading>
-            <form
-              action={uploadMaterial}
-              encType="multipart/form-data"
-              style={{ display: 'grid', gap: 16 }}
-            >
+            <Form action={uploadMaterial} encType="multipart/form-data">
               <input type="hidden" name="projectId" value={stage.project.id} />
               <input type="hidden" name="stageId" value={stage.id} />
               <Field label="Название" name="title" placeholder="Протокол испытаний" />
-              <label style={{ display: 'grid', gap: 8 }}>
-                <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Файл</span>
-                <input type="file" name="file" required />
-              </label>
-              <Text muted size={13}>
-                Каждая загрузка сохраняется отдельной версией: прежние остаются доступными.
-              </Text>
-              <div>
+              <FileField
+                label="Файл"
+                name="file"
+                required
+                hint="Каждая загрузка сохраняется отдельной версией: прежние остаются доступными."
+              />
+              <FormActions>
                 <Button>Загрузить</Button>
-              </div>
-            </form>
+              </FormActions>
+            </Form>
           </Card>
         ) : null}
       </section>

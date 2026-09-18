@@ -6,6 +6,8 @@ import {
   Card,
   Chip,
   Field,
+  Form,
+  FormActions,
   Heading,
   Mono,
   Roadmap,
@@ -146,13 +148,9 @@ export default async function ProjectScreen({
           <Roadmap items={roadmap} />
 
           {mayEdit ? (
-            <form
+            <Form
               action={createStage}
               style={{
-                display: 'flex',
-                gap: 12,
-                alignItems: 'flex-end',
-                flexWrap: 'wrap',
                 marginTop: 24,
                 paddingTop: 20,
                 borderTop: '1px solid var(--pd-divider)',
@@ -160,17 +158,17 @@ export default async function ProjectScreen({
             >
               <input type="hidden" name="projectId" value={project.id} />
               <input type="hidden" name="code" value={project.code} />
-              <div style={{ flex: '1 1 320px' }}>
-                <Field
-                  label="Новый этап"
-                  name="title"
-                  required
-                  placeholder="Глава 2. Модель отказов лимитирующих узлов"
-                  hint="Название свободное; состояние выбирается на экране этапа из пяти."
-                />
-              </div>
-              <Button tone="quiet">Добавить этап</Button>
-            </form>
+              <Field
+                label="Новый этап"
+                name="title"
+                required
+                placeholder="Глава 2. Модель отказов лимитирующих узлов"
+                hint="Название свободное; состояние выбирается на экране этапа из пяти."
+              />
+              <FormActions>
+                <Button tone="quiet">Добавить этап</Button>
+              </FormActions>
+            </Form>
           ) : null}
         </Card>
       </section>
@@ -190,11 +188,9 @@ export default async function ProjectScreen({
               flagContacts={can(actor, 'COMMENT_MODERATE', ref)}
               empty={forClient ? 'Переписки пока нет — напишите куратору.' : 'Переписки пока нет.'}
             />
-            <form
+            <Form
               action={postMessage}
               style={{
-                display: 'grid',
-                gap: 12,
                 marginTop: 20,
                 paddingTop: 20,
                 borderTop: '1px solid var(--pd-divider)',
@@ -205,10 +201,10 @@ export default async function ProjectScreen({
               {/* Отправив отсюда, человек остаётся на карточке работы. */}
               <input type="hidden" name="back" value="project" />
               <Field label="Сообщение" name="body" multiline required />
-              <div>
+              <FormActions>
                 <Button>Отправить</Button>
-              </div>
-            </form>
+              </FormActions>
+            </Form>
           </Card>
         </section>
       ) : null}
@@ -271,11 +267,9 @@ export default async function ProjectScreen({
             </div>
 
             {maySetManager ? (
-              <form
+              <Form
                 action={setManager}
                 style={{
-                  display: 'grid',
-                  gap: 12,
                   marginTop: 16,
                   paddingTop: 16,
                   borderTop: '1px solid var(--pd-divider)',
@@ -296,8 +290,10 @@ export default async function ProjectScreen({
                     </option>
                   ))}
                 </Select>
-                <Button tone="quiet">Сохранить куратора</Button>
-              </form>
+                <FormActions>
+                  <Button tone="quiet">Сохранить куратора</Button>
+                </FormActions>
+              </Form>
             ) : null}
 
             {forClient ? null : (
@@ -326,11 +322,9 @@ export default async function ProjectScreen({
             )}
 
             {mayAssign ? (
-              <form
+              <Form
                 action={setExpert}
                 style={{
-                  display: 'grid',
-                  gap: 12,
                   marginTop: 16,
                   paddingTop: 16,
                   borderTop: '1px solid var(--pd-divider)',
@@ -338,23 +332,14 @@ export default async function ProjectScreen({
               >
                 <input type="hidden" name="projectId" value={project.id} />
                 <input type="hidden" name="code" value={project.code} />
-                <label htmlFor="expertId" style={{ fontSize: 14, fontWeight: 500 }}>
-                  Назначить исполнителя
-                </label>
-                <select
-                  id="expertId"
+                {/* Свой `select` с чуть иными отступами стоял рядом с общим
+                    компонентом выбора — разнобой ровно того рода, ради
+                    которого строй формы и заведён (Р-151). */}
+                <Select
+                  label="Назначить исполнителя"
                   name="expertId"
                   defaultValue={project.expertId ?? ''}
-                  style={{
-                    boxSizing: 'border-box',
-                    minHeight: 48,
-                    padding: '12px 14px',
-                    borderRadius: 10,
-                    border: '1px solid var(--pd-edge-neutral)',
-                    background: 'var(--pd-ink-inverse)',
-                    color: 'var(--pd-ink)',
-                    fontSize: 16,
-                  }}
+                  hint="Без договора поручения обработки персональных данных исполнитель не получит доступа к материалам клиента, даже будучи назначенным."
                 >
                   <option value="">— не назначен —</option>
                   {expertList.map((expert) => (
@@ -366,13 +351,11 @@ export default async function ProjectScreen({
                         : ''}
                     </option>
                   ))}
-                </select>
-                <Text muted size={13}>
-                  Без договора поручения обработки персональных данных исполнитель не получит
-                  доступа к материалам клиента, даже будучи назначенным.
-                </Text>
-                <Button tone="quiet">Сохранить</Button>
-              </form>
+                </Select>
+                <FormActions>
+                  <Button tone="quiet">Сохранить</Button>
+                </FormActions>
+              </Form>
             ) : null}
 
             {maySeeContacts ? (

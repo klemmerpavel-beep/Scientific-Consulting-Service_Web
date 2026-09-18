@@ -150,11 +150,19 @@ export default async function ProjectsScreen() {
                 )}
               </div>
 
-              <Heading level={3} style={{ marginBottom: 10, fontSize: 20 }}>
+              <Heading level={3} style={{ marginBottom: 6, fontSize: 20 }}>
                 <a href={`/cabinet/projects/${project.code}`} style={{ color: 'var(--pd-ink)' }}>
                   {project.title}
                 </a>
               </Heading>
+
+              {/* Короткое описание заказа: у перенесённых работ заголовок —
+                  это тип сопровождения, и без темы карточки неразличимы. */}
+              {project.topic === null || project.topic === project.title ? null : (
+                <Text muted size={14} style={{ marginBottom: 10 }}>
+                  {project.topic}
+                </Text>
+              )}
 
               {/* Состояние работы называется словом и стоит в карточке
                   перечня: чтобы понять, где работа, открывать её не нужно. */}

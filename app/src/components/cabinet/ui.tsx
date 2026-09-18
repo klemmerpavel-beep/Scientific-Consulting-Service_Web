@@ -268,6 +268,120 @@ export function authorName(
 }
 
 /**
+ * Строй формы — один на кабинет.
+ *
+ * Формы писались по мере появления экранов, и разнобой копился: расстояние
+ * между полями 8, 12, 16 или 20 px; сетка полей то `minmax(180px,1fr)`, то
+ * `minmax(200px,1fr)`; кнопка то прижата к полям, то отбита. На соседних
+ * карточках это читается как небрежность, а в двух колонках — как перекос
+ * (решение Р-151).
+ *
+ * `Form` — колонка полей с единым шагом; `FormRow` — ряд полей, который
+ * сам переносится на узком экране; `FormActions` — блок действий, прижатый
+ * к низу, чтобы кнопки соседних форм стояли на одной линии.
+ */
+const FORM_GAP = 16;
+
+export function Form({
+  action,
+  encType,
+  children,
+  style,
+}: {
+  action?: (form: FormData) => void | Promise<void>;
+  encType?: string;
+  children: ReactNode;
+  style?: CSSProperties;
+}) {
+  return (
+    <form
+      action={action}
+      encType={encType}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: FORM_GAP,
+        height: '100%',
+        ...style,
+      }}
+    >
+      {children}
+    </form>
+  );
+}
+
+/**
+ * Поле выбора файла.
+ *
+ * Своя связка подписи и `input[type=file]` стояла на трёх экранах в трёх
+ * написаниях: где-то подпись сеткой с отступом 8, где-то строкой без него.
+ * Вид кнопки выбора задан общими стилями кабинета, здесь — только подпись
+ * и связь с полем.
+ */
+export function FileField({
+  label,
+  name,
+  required = false,
+  hint,
+}: {
+  label: string;
+  name: string;
+  required?: boolean;
+  hint?: string;
+}) {
+  const hintId = hint === undefined ? undefined : `${name}-hint`;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <label
+        htmlFor={name}
+        style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500, color: 'var(--pd-ink)' }}
+      >
+        {label}
+      </label>
+      <input id={name} type="file" name={name} required={required} aria-describedby={hintId} />
+      {hint === undefined ? null : (
+        <span id={hintId} style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+          {hint}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function FormRow({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: FORM_GAP,
+        alignItems: 'end',
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function FormActions({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  return (
+    <div
+      style={{
+        marginTop: 'auto',
+        display: 'flex',
+        gap: 12,
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
  * Лента переписки одного канала.
  *
  * Разметка сообщений была написана на экране переписки и понадобилась
@@ -638,6 +752,21 @@ export function Progress({
             <strong style={{ fontWeight: 600 }}>{STAGE_STATE_LABEL[current.state]}</strong>
             <span style={{ color: 'var(--pd-ink-secondary)' }}>{current.title}</span>
           </>
+        )}
+        {/* Доля названа числом: полоса показывает её вид, а прочитать
+            выполнение заказа человек должен, не измеряя глазом. */}
+        {total === 0 ? null : (
+          <span
+            style={{
+              marginLeft: 'auto',
+              fontFamily: MONO,
+              fontSize: 13,
+              fontVariantNumeric: 'tabular-nums',
+              color: 'var(--pd-ink-secondary)',
+            }}
+          >
+            {share} %
+          </span>
         )}
       </span>
       {/* Пока этапов нет, полоса рисовала пустую рамку: заполнять её нечем,
