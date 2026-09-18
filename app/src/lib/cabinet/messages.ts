@@ -1,5 +1,5 @@
 import { prisma } from '../db.ts';
-import { ensure, type Actor } from './access.ts';
+import { ensure, scopeProjects, type Actor } from './access.ts';
 import { hasContacts } from './contacts.ts';
 import { projectRef } from './projects.ts';
 
@@ -64,6 +64,45 @@ export async function unreadByProject(
     _count: { _all: true },
   });
   return new Map(rows.map((row) => [row.projectId, row._count._all]));
+}
+
+/**
+ * Непрочитанное по всем видимым работам — для экрана «Требует внимания».
+ *
+ * Отличается от `unreadByProject` тем, что перечень работ не передаётся
+ * снаружи, а берётся из выборки прав: менеджеру попадают только его
+ * работы, руководителю — все (решение Р-149).
+ */
+export async function unreadInbox(
+  actor: Actor,
+): Promise<{ code: string; title: string; count: number }[]> {
+  const scope = scopeProjects(actor);
+  if (scope === null) return [];
+  const rows = await prisma.message.groupBy({
+    by: ['projectId'],
+    where: {
+      readAt: null,
+      authorId: { not: actor.id },
+      ...(Object.keys(scope).length === 0 ? {} : { project: scope }),
+    },
+    _count: { _all: true },
+  });
+  if (rows.length === 0) return [];
+
+  const projects = await prisma.project.findMany({
+    where: { id: { in: rows.map((row) => row.projectId) } },
+    select: { id: true, code: true, title: true },
+  });
+  const byId = new Map(projects.map((project) => [project.id, project]));
+
+  return rows
+    .flatMap((row) => {
+      const project = byId.get(row.projectId);
+      return project === undefined
+        ? []
+        : [{ code: project.code, title: project.title, count: row._count._all }];
+    })
+    .sort((a, b) => b.count - a.count);
 }
 
 export async function markRead(actor: Actor, projectId: string): Promise<void> {

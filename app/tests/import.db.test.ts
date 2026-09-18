@@ -153,14 +153,16 @@ describe('перенос книги заказов', { skip: !enabled }, async (
   });
 
   it('предпросмотр показывает отчёт и не создаёт проектов', async () => {
-    const before = await prisma.project.count();
+    // Счёт ведётся по работам этой проверки: проверки идут параллельно.
+    const mine = { managerId: ids.manager };
+    const before = await prisma.project.count({ where: mine });
     const preview = await previewBook(actor(ids.head, 'HEAD'), {
       fileName: `книга-${stamp}.xlsx`,
       bytes: book(),
     });
     batches.push(preview.batchId);
 
-    assert.equal(await prisma.project.count(), before, 'предпросмотр создал проект');
+    assert.equal(await prisma.project.count({ where: mine }), before, 'предпросмотр создал проект');
     assert.equal(preview.rows.length, 4);
     assert.equal(preview.counts.CREATE, 4);
     assert.equal(preview.totals.cost, 47_500_000n);
@@ -235,7 +237,10 @@ describe('перенос книги заказов', { skip: !enabled }, async (
   });
 
   it('повторная загрузка того же файла не создаёт ни одного проекта', async () => {
-    const before = await prisma.project.count();
+    // Считаются работы этой проверки, а не все в базе: проверки идут
+    // параллельно, и общий счётчик ловил бы чужие записи.
+    const mine = { managerId: ids.manager };
+    const before = await prisma.project.count({ where: mine });
 
     const preview = await previewBook(actor(ids.head, 'HEAD'), {
       fileName: `книга-${stamp}-3.xlsx`,
@@ -254,7 +259,7 @@ describe('перенос книги заказов', { skip: !enabled }, async (
       managerId: ids.manager,
     });
     assert.equal(report.created, 0);
-    assert.equal(await prisma.project.count(), before);
+    assert.equal(await prisma.project.count({ where: mine }), before);
   });
 
   it('зафиксированная загрузка второй раз не фиксируется', async () => {

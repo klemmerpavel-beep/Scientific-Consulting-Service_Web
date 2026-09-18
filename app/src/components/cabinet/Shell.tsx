@@ -83,8 +83,11 @@ export function navFor(actor: Actor): NavItem[] {
       settings,
     ];
   }
+  // Главный экран у ролей разный по существу: руководителю — сводка
+  // практики с деньгами, менеджеру — то, что требует вмешательства по его
+  // работам (решение Р-149). Маршрут один, название честное для каждой.
   const staff: NavItem[] = [
-    { href: '/cabinet/manage', label: 'Сводка' },
+    { href: '/cabinet/manage', label: actor.role === 'HEAD' ? 'Сводка' : 'Требует внимания' },
     { href: '/cabinet/projects', label: 'Работы' },
   ];
   if (actor.role === 'HEAD') {

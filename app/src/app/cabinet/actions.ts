@@ -37,7 +37,14 @@ import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue } from '../../lib/cabinet/outbox';
-import { addStage, approveLead, assignExpert, declineLead, setStageState } from '../../lib/cabinet/projects';
+import {
+  addStage,
+  approveLead,
+  assignExpert,
+  assignManager,
+  declineLead,
+  setStageState,
+} from '../../lib/cabinet/projects';
 import { currentActor, requestIp } from '../../lib/cabinet/session';
 
 /**
@@ -147,6 +154,15 @@ export async function setExpert(form: FormData): Promise<void> {
   const code = String(form.get('code') ?? '');
   const expertId = String(form.get('expertId') ?? '');
   await assignExpert(actor, projectId, expertId || null);
+  redirect(`/cabinet/projects/${code}`);
+}
+
+/** Смена куратора работы. Доступна руководителю. */
+export async function setManager(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const projectId = String(form.get('projectId') ?? '');
+  const code = String(form.get('code') ?? '');
+  await assignManager(actor, projectId, String(form.get('managerId') ?? ''));
   redirect(`/cabinet/projects/${code}`);
 }
 
