@@ -226,13 +226,25 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
   redirect('/cabinet/request?sent=1');
 }
 
-/** Отправка сообщения в канал «клиент — менеджер». */
+/**
+ * Отправка сообщения в канал «клиент — менеджер».
+ *
+ * Отправить можно с двух экранов: из переписки целиком и коротким блоком
+ * на карточке работы. Возвращать человека надо туда, откуда он писал, —
+ * поле `back` говорит куда. Значение не подставляется в адрес: иначе форма
+ * стала бы способом увести пользователя на чужой узел.
+ */
 export async function postMessage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
   await sendMessage(actor, projectId, String(form.get('body') ?? ''));
-  redirect(`/cabinet/projects/${code}/messages`);
+  const back = String(form.get('back') ?? '');
+  redirect(
+    back === 'project'
+      ? `/cabinet/projects/${code}`
+      : `/cabinet/projects/${code}/messages`,
+  );
 }
 
 /** Каналы уведомлений. Выбор за получателем, а не за системой. */

@@ -1,15 +1,13 @@
 import { notFound, redirect } from 'next/navigation';
 
 import Shell from '../../../../../components/cabinet/Shell';
-import { MONO, SANS } from '../../../../../components/cabinet/tokens';
+import { MONO } from '../../../../../components/cabinet/tokens';
 import {
   Button,
   Card,
-  Chip,
   Field,
   Heading,
-  Text,
-  formatDate,
+  Thread,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
 import { listMessages, markRead } from '../../../../../lib/cabinet/messages';
@@ -18,13 +16,6 @@ import { currentActor } from '../../../../../lib/cabinet/session';
 import { postMessage } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
-
-const ROLE_LABEL: Record<string, string> = {
-  CLIENT: 'клиент',
-  EXPERT: 'эксперт',
-  MANAGER: 'куратор',
-  HEAD: 'руководитель',
-};
 
 export default async function MessagesScreen({
   params,
@@ -72,58 +63,7 @@ export default async function MessagesScreen({
         </Heading>
 
         <Card>
-          {messages.length === 0 ? (
-            <Text muted>Сообщений пока нет.</Text>
-          ) : (
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 18 }}>
-              {messages.map((message) => {
-                const mine = message.author.id === actor.id;
-                return (
-                  <li
-                    key={message.id}
-                    style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}
-                  >
-                    <div style={{ maxWidth: '78%' }}>
-                      <div
-                        style={{
-                          padding: '12px 16px',
-                          borderRadius: 14,
-                          background: mine ? 'var(--pd-accent-tint)' : 'var(--pd-surface-quiet)',
-                          border: `1px solid ${mine ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
-                          fontFamily: SANS,
-                          fontSize: 15,
-                          lineHeight: 1.6,
-                          color: 'var(--pd-ink)',
-                          whiteSpace: 'pre-wrap',
-                        }}
-                      >
-                        {message.body}
-                      </div>
-                      <div
-                        style={{
-                          marginTop: 6,
-                          display: 'flex',
-                          gap: 8,
-                          alignItems: 'center',
-                          justifyContent: mine ? 'flex-end' : 'flex-start',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <Text muted size={13}>
-                          {mine ? 'Вы' : message.author.fullName} ·{' '}
-                          {ROLE_LABEL[message.author.role] ?? message.author.role} ·{' '}
-                          {formatDate(message.createdAt)}
-                        </Text>
-                        {mayModerate && message.containsContactHint ? (
-                          <Chip tone="warn">похоже на передачу контактов</Chip>
-                        ) : null}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <Thread messages={messages} viewer={actor} flagContacts={mayModerate} />
 
           <form
             action={postMessage}

@@ -11,6 +11,7 @@ import {
   Roadmap,
   StatusLine,
   Text,
+  Thread,
   authorName,
   formatDate,
   plural,
@@ -18,10 +19,10 @@ import {
   type StageStateKey,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
-import { unreadCount } from '../../../../lib/cabinet/messages';
+import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import { experts, projectByCode } from '../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../lib/cabinet/session';
-import { createStage, setExpert } from '../../actions';
+import { createStage, postMessage, setExpert } from '../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,6 +74,10 @@ export default async function ProjectScreen({
   const maySeeContacts = can(actor, 'CONTACTS_VIEW', ref);
   const mayWrite = can(actor, 'MESSAGE_READ', ref);
   const unread = mayWrite ? await unreadCount(actor, project.id) : 0;
+  // Короткий разговор виден прямо на карточке работы: уходить за ним на
+  // отдельный экран, чтобы прочитать три строки, незачем. Прочитанным он
+  // здесь не помечается — отметку ставит открытие самой переписки.
+  const thread = mayWrite ? (await listMessages(actor, project.id)).slice(-3) : [];
   const expertList = mayAssign ? await experts() : [];
 
   const stages = project.stages;
@@ -161,6 +166,44 @@ export default async function ProjectScreen({
         </Card>
       </section>
 
+      {mayWrite ? (
+        <section style={{ marginTop: 32 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
+            <Heading level={2}>{forClient ? 'Переписка с куратором' : 'Переписка с клиентом'}</Heading>
+            <a className="cab-mark" href={`/cabinet/projects/${project.code}/messages`}>
+              Вся переписка{unread > 0 ? ` · ${unread} новых` : ''}
+            </a>
+          </div>
+          <Card>
+            <Thread
+              messages={thread}
+              viewer={actor}
+              flagContacts={can(actor, 'COMMENT_MODERATE', ref)}
+              empty={forClient ? 'Переписки пока нет — напишите куратору.' : 'Переписки пока нет.'}
+            />
+            <form
+              action={postMessage}
+              style={{
+                display: 'grid',
+                gap: 12,
+                marginTop: 20,
+                paddingTop: 20,
+                borderTop: '1px solid var(--pd-divider)',
+              }}
+            >
+              <input type="hidden" name="projectId" value={project.id} />
+              <input type="hidden" name="code" value={project.code} />
+              {/* Отправив отсюда, человек остаётся на карточке работы. */}
+              <input type="hidden" name="back" value="project" />
+              <Field label="Сообщение" name="body" multiline required />
+              <div>
+                <Button>Отправить</Button>
+              </div>
+            </form>
+          </Card>
+        </section>
+      ) : null}
+
       <div
         className="cab-two"
         style={{
@@ -206,11 +249,6 @@ export default async function ProjectScreen({
             </Text>
 
             <div style={{ display: 'grid', gap: 4 }}>
-              {mayWrite ? (
-                <a className="cab-mark" href={`/cabinet/projects/${project.code}/messages`}>
-                  Написать куратору{unread > 0 ? ` · ${unread} новых` : ''}
-                </a>
-              ) : null}
               <a className="cab-mark" href={`/cabinet/projects/${project.code}/materials`}>
                 Материалы работы
               </a>

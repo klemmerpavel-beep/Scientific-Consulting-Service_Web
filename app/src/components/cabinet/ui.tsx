@@ -308,6 +308,95 @@ export function authorName(
 }
 
 /**
+ * Лента переписки одного канала.
+ *
+ * Разметка сообщений была написана на экране переписки и понадобилась
+ * второй раз — коротким блоком на карточке работы. Второго написания не
+ * заводится: оба места берут эту ленту, а различаются числом показанных
+ * сообщений и тем, показывается ли пометка о передаче контактов.
+ */
+export interface ThreadMessage {
+  readonly id: string;
+  readonly body: string;
+  readonly createdAt: Date;
+  readonly containsContactHint: boolean;
+  readonly author: { id: string; fullName: string; role: string };
+}
+
+/** Кем подписано сообщение: роль словом, а не кодом перечисления. */
+const ROLE_LABEL: Record<string, string> = {
+  CLIENT: 'клиент',
+  EXPERT: 'эксперт',
+  MANAGER: 'куратор',
+  HEAD: 'руководитель',
+};
+
+export function Thread({
+  messages,
+  viewer,
+  flagContacts = false,
+  empty = 'Сообщений пока нет.',
+}: {
+  messages: readonly ThreadMessage[];
+  viewer: { id: string; role: string };
+  flagContacts?: boolean;
+  empty?: string;
+}) {
+  if (messages.length === 0) return <Text muted>{empty}</Text>;
+
+  return (
+    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 18 }}>
+      {messages.map((message) => {
+        const mine = message.author.id === viewer.id;
+        return (
+          <li
+            key={message.id}
+            style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}
+          >
+            <div style={{ maxWidth: '78%' }}>
+              <div
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: 14,
+                  background: mine ? 'var(--pd-accent-tint)' : 'var(--pd-surface-quiet)',
+                  border: `1px solid ${mine ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
+                  fontFamily: SANS,
+                  fontSize: 15,
+                  lineHeight: 1.6,
+                  color: 'var(--pd-ink)',
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
+                {message.body}
+              </div>
+              <div
+                style={{
+                  marginTop: 6,
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'center',
+                  justifyContent: mine ? 'flex-end' : 'flex-start',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <Text muted size={13}>
+                  {authorName(message.author, viewer, message.author.id)} ·{' '}
+                  {ROLE_LABEL[message.author.role] ?? message.author.role} ·{' '}
+                  {formatDate(message.createdAt)}
+                </Text>
+                {flagContacts && message.containsContactHint ? (
+                  <Chip tone="warn">похоже на передачу контактов</Chip>
+                ) : null}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
  * Ячейки таблицы — один набор на кабинет.
  *
  * Объект с этими же значениями был скопирован в девять экранов и уже
