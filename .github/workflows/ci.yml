@@ -93,6 +93,16 @@ jobs:
         working-directory: .
         run: docker build -f app/Dockerfile --target tools --build-arg NEXT_PUBLIC_SITE_URL=https://prodisser.ru app
 
+      # Скрипты развёртывания не участвуют в сборке и не проверяются ничем
+      # иным: ошибка в них выясняется на боевом сервере в тот момент, когда
+      # скрипт понадобился. Разбор оболочкой ловит хотя бы опечатки.
+      - name: Скрипты развёртывания разбираются
+        working-directory: .
+        run: |
+          for f in deploy/*.sh; do
+            sh -n "$f" || { echo "::error::Синтаксическая ошибка в $f"; exit 1; }
+          done
+
       # Иконки и иллюстрации лежат в двух местах: макеты берут их из
       # design/assets, приложение — из app/public/assets. Каталоги
       # синхронизируются вручную, поэтому расхождение ловим здесь, а не

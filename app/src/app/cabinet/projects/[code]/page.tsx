@@ -334,7 +334,7 @@ export default async function ProjectScreen({
                 <input type="hidden" name="code" value={project.code} />
                 {/* Свой `select` с чуть иными отступами стоял рядом с общим
                     компонентом выбора — разнобой ровно того рода, ради
-                    которого строй формы и заведён (Р-151). */}
+                    которого строй формы и заведён (Р-152). */}
                 <Select
                   label="Назначить исполнителя"
                   name="expertId"

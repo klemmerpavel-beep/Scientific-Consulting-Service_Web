@@ -1,0 +1,83 @@
+# Выкат на боевой сервер. Запускается сам после зелёной проверки на main и
+# вручную кнопкой на странице Actions.
+#
+# Вся работа делается скриптом на сервере (deploy/update.sh): здесь только
+# подключение по ssh. Так обновление можно повторить руками, не разбирая
+# конвейер, и так шаги выката лежат в репозитории рядом с остальными
+# скриптами развёртывания, а не в описании задачи.
+
+name: Выкат на боевой сервер
+
+on:
+  workflow_run:
+    workflows: ['Сборка и проверки']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# Два выката разом ломали бы друг друга. Начатый не прерывается: прервать
+# его на середине пересборки хуже, чем дождаться.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # Выкат идёт только после успешной проверки. Кнопка запускает его и без
+    # неё — на случай, когда надо поднять сервер после сбоя площадки.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Настройки заданы
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          KEY: ${{ secrets.DEPLOY_KEY }}
+          KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          missing=''
+          [ -n "$HOST" ] || missing="$missing DEPLOY_HOST"
+          [ -n "$USER" ] || missing="$missing DEPLOY_USER"
+          [ -n "$KEY" ] || missing="$missing DEPLOY_KEY"
+          [ -n "$KNOWN" ] || missing="$missing DEPLOY_KNOWN_HOSTS"
+          if [ -n "$missing" ]; then
+            echo "::error::Не заданы секреты репозитория:$missing. Порядок — docs/DEPLOY.md, раздел 5г."
+            exit 1
+          fi
+
+      - name: Ключ и отпечаток сервера
+        env:
+          KEY: ${{ secrets.DEPLOY_KEY }}
+          KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          # Отпечаток сервера берётся из секрета, а не принимается на веру при
+          # первом подключении: иначе подмена узла прошла бы незамеченной.
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
+          printf '%s\n' "$KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+
+      - name: Обновление сервера
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 "$USER@$HOST" \
+            'sudo -n /opt/prodisser/deploy/update.sh'
+
+      - name: Сайт отвечает снаружи
+        run: |
+          # Проверка изнутри сервера уже прошла в скрипте. Здесь проверяется
+          # то, чего скрипт видеть не может: что сайт доступен через nginx с
+          # настоящим сертификатом, а не только на петле.
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://prodisser.ru/api/health)
+          echo "внешняя проверка: $code"
+          [ "$code" = "200" ] || { echo "::error::Сайт снаружи отвечает $code"; exit 1; }
