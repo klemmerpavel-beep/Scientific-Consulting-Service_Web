@@ -54,6 +54,7 @@ export default async function AnalyticsProjects() {
               note="Показаны только позиции, где медиана достигнута. Там, где завершённых работ мало, кривая до половины не опускается, и медианы не существует — такую позицию столбцом не изобразить, не соврав."
             >
               <RankChart
+                labelWidth={280}
                 title="Медиана срока по позициям"
                 data={withMedian.map((row) => ({ label: row.typeName, value: row.estimate.median! }))}
                 format={(value) => `${compactNumber(value)} дн.`}

@@ -17,6 +17,9 @@
  * Запуск: DATABASE_URL=…/prodisser_artboards npm run seed:artboards
  */
 
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { prisma } from '../src/lib/db.ts';
 import { createRawToken, digest } from '../src/lib/cabinet/token.ts';
 import { previewBook } from '../src/lib/cabinet/import/apply.ts';
@@ -27,21 +30,33 @@ const DOMAIN = 'artboard.example';
 const GREEN = 'FF00B050';
 const RED = 'FFFF0000';
 
-/** Вымышленные заказчики. Совпадения с настоящими клиентами практики нет. */
-const CLIENTS = [
-  'Астахова Вера Николаевна',
-  'Белов Радислав Игоревич',
-  'Ветрова Аглая Германовна',
-  'Тихомиров Глеб Русланович',
-  'Дьяченко Ирина Леонидовна',
-  'Ермаков Станислав Юрьевич',
-  'Жукова Полина Андреевна',
-  'Зимин Кирилл Максимович',
-  'Ильина Наталья Борисовна',
-  'Кравцов Роман Витальевич',
-  'Лазарева Екатерина Олеговна',
-  'Мартынов Денис Сергеевич',
-] as const;
+/**
+ * Заказы берутся из обезличенного свода книги (`scripts/data/book.json`).
+ *
+ * Показывать заказчику вымышленную практику бессмысленно: ему нужно видеть
+ * свои работы, свои сроки и свои деньги. Настоящая книга в репозиторий не
+ * попадает — свод собирает `tools/anonymize-book.mjs`: суммы, сроки, типы
+ * и состояния настоящие, имена заменены, темы обобщены (решение Р-141).
+ */
+interface BookOrder {
+  readonly orderedOn: string;
+  readonly client: string;
+  readonly typeCode: string;
+  readonly typeName: string;
+  readonly topic: string;
+  readonly dueOn: string | null;
+  readonly cost: number;
+  readonly paid: number;
+  readonly state: 'ACTIVE' | 'STOPPED' | 'COMPLETED';
+  readonly statusRaw: string | null;
+}
+
+const BOOK = JSON.parse(
+  readFileSync(path.join(import.meta.dirname, 'data', 'book.json'), 'utf8'),
+) as { orders: BookOrder[] };
+
+/** Заказчики в порядке первого появления в книге. */
+const CLIENTS = [...new Set(BOOK.orders.map((order) => order.client))] as const;
 
 const TYPES = [
   ['dissertation', 'Сопровождение диссертационного исследования', 10],
@@ -50,16 +65,6 @@ const TYPES = [
   ['research', 'НИР, НИОКР и отчётные материалы', 40],
   ['article', 'Научные публикации и патентные материалы', 50],
   ['diploma', 'Сопровождение выпускной квалификационной работы', 60],
-] as const;
-
-/** Темы работ — нейтральные и узнаваемые, без отсылок к настоящим заказам. */
-const TOPICS = [
-  'Методы повышения устойчивости вычислений на сверхпроводниковых кубитах',
-  'Диагностика режимов работы карьерного транспорта по вибрационным данным',
-  'Модель распределения нагрузки в распределённых системах хранения',
-  'Оценка энергоэффективности систем оборотного водоснабжения',
-  'Алгоритмы восстановления сигнала при неполных измерениях',
-  'Управление рисками научно-технических проектов в условиях неопределённости',
 ] as const;
 
 /**
@@ -140,6 +145,13 @@ async function main() {
   // Двенадцать заказчиков, двадцать пять работ за два года: столько нужно,
   // чтобы витрины аналитики показывали не заглушки, а числа — сезонность,
   // сегменты, концентрацию и разброс чека.
+  // Показательный клиент — заказчик самой крупной действующей работы:
+  // кабинет открывается на том, что идёт сейчас, а не на архиве.
+  const showcaseOrder = BOOK.orders
+    .filter((order) => order.state === 'ACTIVE')
+    .sort((a, b) => b.cost - a.cost)[0]!;
+  const showcaseClient = CLIENTS.indexOf(showcaseOrder.client);
+
   const clientIds: string[] = [];
   for (const [index, fullName] of CLIENTS.entries()) {
     const client = await prisma.clientProfile.upsert({
@@ -164,7 +176,7 @@ async function main() {
     update: {},
   });
   await prisma.clientProfile.update({
-    where: { id: clientIds[0]! },
+    where: { id: clientIds[showcaseClient]! },
     data: { userId: clientUser.id },
   });
 
@@ -175,44 +187,36 @@ async function main() {
   });
 
   /** Разброс работ по месяцам, типам и суммам — основа витрин аналитики. */
-  const PLAN: readonly {
-    client: number;
-    type: string;
-    cost: number;
-    paid: number;
-    startedDaysAgo: number;
-    durationDays: number;
-    status: 'ACTIVE' | 'PAUSED' | 'COMPLETED';
-  }[] = [
-    { client: 0, type: 'dissertation', cost: 240_000, paid: 120_000, startedDaysAgo: 120, durationDays: 180, status: 'ACTIVE' },
-    { client: 0, type: 'article', cost: 45_000, paid: 45_000, startedDaysAgo: 420, durationDays: 60, status: 'COMPLETED' },
-    { client: 1, type: 'postgrad', cost: 90_000, paid: 90_000, startedDaysAgo: 300, durationDays: 90, status: 'COMPLETED' },
-    { client: 1, type: 'dissertation', cost: 300_000, paid: 150_000, startedDaysAgo: 60, durationDays: 240, status: 'ACTIVE' },
-    { client: 2, type: 'diploma', cost: 35_000, paid: 35_000, startedDaysAgo: 520, durationDays: 45, status: 'COMPLETED' },
-    { client: 3, type: 'consulting', cost: 200_000, paid: 50_000, startedDaysAgo: 260, durationDays: 150, status: 'PAUSED' },
-    { client: 4, type: 'research', cost: 150_000, paid: 150_000, startedDaysAgo: 380, durationDays: 120, status: 'COMPLETED' },
-    { client: 5, type: 'article', cost: 25_000, paid: 25_000, startedDaysAgo: 200, durationDays: 30, status: 'COMPLETED' },
-    { client: 5, type: 'article', cost: 120_000, paid: 60_000, startedDaysAgo: 90, durationDays: 90, status: 'ACTIVE' },
-    { client: 6, type: 'dissertation', cost: 260_000, paid: 260_000, startedDaysAgo: 610, durationDays: 300, status: 'COMPLETED' },
-    { client: 7, type: 'postgrad', cost: 80_000, paid: 40_000, startedDaysAgo: 45, durationDays: 90, status: 'ACTIVE' },
-    { client: 8, type: 'research', cost: 180_000, paid: 180_000, startedDaysAgo: 470, durationDays: 150, status: 'COMPLETED' },
-    { client: 9, type: 'diploma', cost: 40_000, paid: 0, startedDaysAgo: 30, durationDays: 60, status: 'ACTIVE' },
-    { client: 10, type: 'consulting', cost: 220_000, paid: 110_000, startedDaysAgo: 150, durationDays: 210, status: 'ACTIVE' },
-    { client: 11, type: 'dissertation', cost: 280_000, paid: 280_000, startedDaysAgo: 700, durationDays: 330, status: 'COMPLETED' },
-    { client: 2, type: 'research', cost: 95_000, paid: 45_000, startedDaysAgo: 340, durationDays: 120, status: 'PAUSED' },
-    { client: 3, type: 'article', cost: 30_000, paid: 30_000, startedDaysAgo: 510, durationDays: 40, status: 'COMPLETED' },
-    { client: 4, type: 'diploma', cost: 38_000, paid: 38_000, startedDaysAgo: 250, durationDays: 50, status: 'COMPLETED' },
-    { client: 6, type: 'postgrad', cost: 85_000, paid: 85_000, startedDaysAgo: 180, durationDays: 90, status: 'COMPLETED' },
-    { client: 8, type: 'consulting', cost: 190_000, paid: 95_000, startedDaysAgo: 75, durationDays: 180, status: 'ACTIVE' },
-  ];
+  /**
+   * План работ — это книга заказов. Порядок сохраняется: код проекта
+   * выдаётся по году заказа, как и при настоящем переносе.
+   */
+  const PLAN = BOOK.orders.map((order) => ({
+    client: CLIENTS.indexOf(order.client),
+    type: order.typeCode,
+    topic: order.topic,
+    cost: order.cost,
+    paid: order.paid,
+    orderedOn: new Date(`${order.orderedOn}T09:00:00Z`),
+    dueOn: order.dueOn === null ? null : new Date(`${order.dueOn}T09:00:00Z`),
+    status:
+      order.state === 'ACTIVE' ? ('ACTIVE' as const)
+      : order.state === 'STOPPED' ? ('PAUSED' as const)
+      : ('COMPLETED' as const),
+  }));
 
   const projectIds: string[] = [];
   for (const [index, row] of PLAN.entries()) {
-    const startedOn = day(row.startedDaysAgo);
-    const dueOn = new Date(startedOn.getTime() + row.durationDays * 86_400_000);
+    const startedOn = row.orderedOn;
+    const dueOn = row.dueOn ?? new Date(startedOn.getTime() + 120 * 86_400_000);
     const closedOn = row.status === 'COMPLETED' ? dueOn : null;
     const year = startedOn.getUTCFullYear();
     const code = `PD-${year}-${String(index + 1).padStart(3, '0')}`;
+
+    // Часть работ ведёт руководитель сам, остальные — менеджер: иначе у
+    // третьей роли перечень совпадал бы с перечнем руководителя, и
+    // разграничение в прототипе было бы не видно (решение Р-149).
+    const curatorId = index % 3 === 0 ? head.id : manager.id;
 
     const project = await prisma.project.upsert({
       where: { code },
@@ -221,8 +225,8 @@ async function main() {
         clientId: clientIds[row.client]!,
         serviceTypeId: typeIds.get(row.type)!,
         title: TYPES.find((type) => type[0] === row.type)![1],
-        topic: TOPICS[index % TOPICS.length]!,
-        managerId: manager.id,
+        topic: row.topic,
+        managerId: curatorId,
         expertId: index % 3 === 0 ? expertUser.id : null,
         status: row.status,
         source: index % 4 === 0 ? 'IMPORT' : 'WEB',
@@ -230,7 +234,9 @@ async function main() {
         dueOn,
         closedOn,
       },
-      update: {},
+      // Куратор переназначается при каждом наполнении: правка распределения
+      // в этом файле должна доезжать до снимка.
+      update: { managerId: curatorId },
       select: { id: true },
     });
     projectIds.push(project.id);
@@ -281,20 +287,81 @@ async function main() {
           expertId: expertUser.id,
           amount: money(Math.round(row.cost * 0.35)),
           status: index % 2 === 0 ? 'PAID' : 'ACCRUED',
-          paidOn: index % 2 === 0 ? day(row.startedDaysAgo - 10) : null,
+          paidOn: index % 2 === 0 ? dueOn : null,
         },
       });
     }
   }
 
   // ── Показательный проект клиента: этапы, материалы, переписка ────────────
-  const showcase = projectIds[0]!;
+  /**
+   * Этапы действующих работ.
+   *
+   * В книге заказов этапов нет — там одна строка на заказ. План работ
+   * разворачивается по типу сопровождения: это то, что менеджер завёл бы
+   * руками при одобрении заявки, и то, ради чего клиент открывает кабинет.
+   * Доля пройденного берётся от доли оплаты: чем больше внесено, тем
+   * дальше работа.
+   */
+  const STAGE_PLAN: Record<string, readonly string[]> = {
+    dissertation: [
+      'Постановка задачи и план исследования',
+      'Обзор источников и методика',
+      'Расчётная часть: первая редакция',
+      'Апробация: статья и конференция',
+      'Подготовка к предзащите',
+    ],
+    article: ['Структура и черновик', 'Расчёты и иллюстрации', 'Редактура и подача в журнал'],
+    postgrad: ['План на семестр', 'Реферативная часть', 'Сдача и проверка'],
+    research: ['Программа работ', 'Эксперимент и обработка', 'Отчёт и презентация'],
+    consulting: ['Разбор задачи', 'Рекомендации', 'Сопровождение до защиты'],
+    diploma: ['План и введение', 'Основная часть', 'Нормоконтроль и защита'],
+  };
+
+  for (const [index, row] of PLAN.entries()) {
+    if (row.status !== 'ACTIVE') continue;
+    const projectId = projectIds[index]!;
+    const titles = STAGE_PLAN[row.type] ?? STAGE_PLAN.consulting!;
+    const paidShare = row.cost === 0 ? 0 : row.paid / row.cost;
+    // Завершёнными считаются этапы, покрытые оплатой; следующий — текущий.
+    const doneCount = Math.min(titles.length - 1, Math.floor(paidShare * titles.length));
+    const dueOn = row.dueOn ?? new Date(row.orderedOn.getTime() + 120 * 86_400_000);
+    const span = (dueOn.getTime() - row.orderedOn.getTime()) / titles.length;
+
+    for (const [position, title] of titles.entries()) {
+      const state =
+        position < doneCount ? ('DONE' as const)
+        : position === doneCount ? (index % 3 === 0 ? ('AWAITING_CLIENT' as const) : ('IN_PROGRESS' as const))
+        : ('NOT_STARTED' as const);
+      const stageDue = new Date(row.orderedOn.getTime() + span * (position + 1));
+      await prisma.stage.upsert({
+        where: { projectId_position: { projectId, position: position + 1 } },
+        create: {
+          projectId,
+          position: position + 1,
+          title,
+          state,
+          dueOn: stageDue,
+          startedAt: state === 'NOT_STARTED' ? null : new Date(row.orderedOn.getTime() + span * position),
+          completedAt: state === 'DONE' ? stageDue : null,
+          awaitingClientSince: state === 'AWAITING_CLIENT' ? day(9) : null,
+          blockedReason:
+            state === 'AWAITING_CLIENT'
+              ? 'Ждём исходные данные по разделу: без них расчёт продолжить нельзя.'
+              : null,
+        },
+        update: {},
+      });
+    }
+  }
+
+  const showcase = projectIds[BOOK.orders.indexOf(showcaseOrder)]!;
   const stageRows = [
-    { title: 'Постановка задачи и план работы', state: 'DONE' as const, offset: 100 },
-    { title: 'Обзор источников и методика', state: 'DONE' as const, offset: 70 },
+    { title: 'Постановка задачи и план исследования', state: 'DONE' as const, offset: 150 },
+    { title: 'Обзор источников и методика', state: 'DONE' as const, offset: 100 },
     { title: 'Расчётная часть: первая редакция', state: 'IN_APPROVAL' as const, offset: 20 },
-    { title: 'Апробация и публикации', state: 'AWAITING_CLIENT' as const, offset: 10 },
-    { title: 'Подготовка к предзащите', state: 'NOT_STARTED' as const, offset: 0 },
+    { title: 'Апробация: статья и конференция', state: 'AWAITING_CLIENT' as const, offset: 10 },
+    { title: 'Подготовка к предзащите', state: 'NOT_STARTED' as const, offset: -30 },
   ];
   const stageIds: string[] = [];
   for (const [position, stage] of stageRows.entries()) {
@@ -353,14 +420,16 @@ async function main() {
     select: { id: true },
   });
   if (version !== null) {
-    const comments = await prisma.versionComment.count({ where: { versionId: version.id } });
-    if (comments === 0) {
+    // Замечания, как и переписка, переписываются заново: правка текста здесь
+    // должна доезжать до снимка, а не упираться в уже созданные строки.
+    await prisma.versionComment.deleteMany({ where: { versionId: version.id } });
+    {
       await prisma.versionComment.createMany({
         data: [
           {
             versionId: version.id,
             authorId: manager.id,
-            body: 'Принято в работу. Эксперт смотрит методическую часть.',
+            body: 'Принято в работу. Методическую часть смотрим отдельно.',
             moderationStatus: 'PUBLISHED',
             publishedAt: day(11),
           },
@@ -375,14 +444,17 @@ async function main() {
     }
   }
 
-  const messages = await prisma.message.count({ where: { projectId: showcase } });
-  if (messages === 0) {
+  // Переписка переписывается заново при каждом наполнении: при проверке
+  // «создать, если пусто» правка текста в этом файле не доезжала до снимка —
+  // строки уже были, и снимок показывал старую редакцию.
+  await prisma.message.deleteMany({ where: { projectId: showcase } });
+  {
     await prisma.message.createMany({
       data: [
         {
           projectId: showcase,
           authorId: manager.id,
-          body: 'Добрый день. Замечания эксперта по главе 2 будут завтра, план не сдвигается.',
+          body: 'Добрый день. Замечания по главе 2 будут завтра, план не сдвигается.',
           createdAt: day(3),
           readAt: day(3),
         },

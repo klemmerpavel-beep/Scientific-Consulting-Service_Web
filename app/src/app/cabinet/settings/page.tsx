@@ -45,9 +45,8 @@ export default async function SettingsScreen({
           Как сообщать о ходе работы
         </Heading>
         <Text style={{ marginBottom: 24 }}>
-          Уведомления приходят о том, что требует действия: этап ждёт материалов, материал готов
-          к согласованию, эксперт оставил замечание, приближается срок. Переписка из кабинета
-          наружу не пересылается — её содержание остаётся внутри контура.
+          Уведомления приходят о том, что требует действия: этап ждёт материалов, материал готов к
+          согласованию, приближается срок. Содержание переписки наружу не пересылается.
         </Text>
 
         {params.saved === undefined ? null : (
@@ -90,7 +89,7 @@ export default async function SettingsScreen({
         </Card>
 
         <Card>
-          <Heading level={3} style={{ marginBottom: 12 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Telegram
           </Heading>
           {bound ? (

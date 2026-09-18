@@ -7,8 +7,7 @@ import {
   Empty,
   Heading,
   Mono,
-  STAGE_STATE_LABEL,
-  Stepper,
+  Progress,
   plural,
   Text,
   formatDate,
@@ -28,6 +27,13 @@ export default async function ProjectsScreen() {
   const [projects, pending] = await Promise.all([listProjects(actor), pendingActions(actor)]);
   const unread = await unreadByProject(actor, projects.map((p) => p.id));
   const forClient = actor.role === 'CLIENT';
+  const forExpert = actor.role === 'EXPERT';
+  // Без подписанного договора поручения обработки персональных данных
+  // эксперт не получает доступа к материалам клиента (ч. 3 ст. 6 152-ФЗ):
+  // выборка отдаёт пусто. Пустой перечень читается как «работ нет», и
+  // человек ждёт назначения, которого уже дождался, — причину надо назвать
+  // (решение Р-150).
+  const awaitingNda = forExpert && actor.expertNdaSignedAt === null;
   // Эксперт в канал переписки не входит, поэтому перехода к нему не видит.
   const mayWrite = actor.role !== 'EXPERT';
 
@@ -35,9 +41,15 @@ export default async function ProjectsScreen() {
     <Shell actor={actor} current="/cabinet/projects">
       {/* Композиционный центр экрана: не список работ, а перечень действий.
           Основная потеря календарного времени — ожидание материалов. */}
+      <Heading level={1} style={{ margin: '0 0 24px' }}>
+        {forClient ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы практики'}
+      </Heading>
+
       {pending.length === 0 ? null : (
         <section style={{ marginBottom: 32 }}>
-          <Mono>{forClient ? 'Сейчас от вас требуется' : 'Требует внимания'}</Mono>
+          <Heading level={2} style={{ marginBottom: 12 }}>
+            {forClient ? 'Сейчас от вас требуется' : 'Требует внимания'}
+          </Heading>
           <Card style={{ marginTop: 12, borderColor: 'var(--pd-accent-edge)' }}>
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
               {pending.map((stage) => (
@@ -67,7 +79,7 @@ export default async function ProjectsScreen() {
                   </div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     {stage.dueOn === null ? null : (
-                      <Chip tone="warn">до {formatDate(stage.dueOn)}</Chip>
+                      <Chip>до {formatDate(stage.dueOn)}</Chip>
                     )}
                     <a
                       href={`/cabinet/stages/${stage.id}`}
@@ -95,17 +107,17 @@ export default async function ProjectsScreen() {
         </section>
       )}
 
-      <Mono>{forClient ? 'Мои работы' : 'Проекты'}</Mono>
-      <Heading level={1} style={{ margin: '12px 0 24px' }}>
-        {forClient ? 'Проекты сопровождения' : 'Проекты практики'}
-      </Heading>
-
-      {projects.length === 0 ? (
-        <Empty title="Проектов пока нет">
-          {forClient
-            ? 'Как только заявка будет одобрена, проект появится здесь вместе с планом этапов.'
-            : 'Одобрите заявку в очереди — проект появится здесь.'}
+      {awaitingNda ? (
+        <Empty title="Доступ к материалам ещё не открыт">
+          Он открывается после подписания договора поручения обработки персональных данных.
+          Напишите руководителю практики — отметка ставится в кабинете.
         </Empty>
+      ) : projects.length === 0 ? (
+        <Empty
+          title={
+            forClient ? 'Работ пока нет' : forExpert ? 'Назначений пока нет' : 'Проектов пока нет'
+          }
+        />
       ) : (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
           {projects.map((project) => (
@@ -119,7 +131,12 @@ export default async function ProjectsScreen() {
                   marginBottom: 12,
                 }}
               >
-                <Chip tone="accent">{project.serviceType.name}</Chip>
+                {/* Тип не дублируется чипом, когда он же стоит заголовком
+                    карточки: у всего, что перенесено из книги заказов, это
+                    одна и та же строка. */}
+                {project.title === project.serviceType.name ? null : (
+                  <Chip tone="accent">{project.serviceType.name}</Chip>
+                )}
                 <Chip mono>{project.code}</Chip>
                 {project.dueOn === null ? null : (
                   <Text muted size={14}>
@@ -133,23 +150,23 @@ export default async function ProjectsScreen() {
                 )}
               </div>
 
-              <Heading level={2} style={{ marginBottom: 16 }}>
-                <a
-                  href={`/cabinet/projects/${project.code}`}
-                  style={{ color: 'var(--pd-ink)' }}
-                >
+              <Heading level={3} style={{ marginBottom: 10, fontSize: 20 }}>
+                <a href={`/cabinet/projects/${project.code}`} style={{ color: 'var(--pd-ink)' }}>
                   {project.title}
                 </a>
               </Heading>
 
-              <Stepper
-                items={project.stages.map((stage) => ({
-                  id: stage.id,
-                  title: stage.title,
-                  state: stage.state as StageStateKey,
-                  dueOn: formatDate(stage.dueOn),
-                  href: `/cabinet/stages/${stage.id}`,
-                }))}
+              {/* Состояние работы называется словом и стоит в карточке
+                  перечня: чтобы понять, где работа, открывать её не нужно. */}
+              <Progress
+                done={project.stages.filter((s) => s.state === 'DONE').length}
+                total={project.stages.length}
+                current={(() => {
+                  const stage = project.stages.find((s) => s.state !== 'DONE');
+                  return stage === undefined
+                    ? null
+                    : { title: stage.title, state: stage.state as StageStateKey };
+                })()}
               />
 
               <div
@@ -158,23 +175,21 @@ export default async function ProjectsScreen() {
                   gap: 16,
                   alignItems: 'center',
                   flexWrap: 'wrap',
-                  marginTop: 16,
+                  marginTop: 14,
                 }}
               >
-                <Text muted size={13}>
-                  {project.stages.filter((s) => s.state === 'DONE').length} из{' '}
-                  {project.stages.length}{' '}
-                  {plural(project.stages.length, 'этапа', 'этапов', 'этапов')} завершено
-                  {project.stages.some((s) => s.state === 'AWAITING_CLIENT')
-                    ? ` · есть этап в состоянии «${STAGE_STATE_LABEL.AWAITING_CLIENT}»`
-                    : ''}
-                </Text>
+                <a className="cab-mark" href={`/cabinet/projects/${project.code}`}>
+                  {/* Кабинет называет это работой во всех ролях: два слова
+                      об одном заставляли бы читать дважды. */}
+                  Открыть работу
+                </a>
                 {mayWrite ? (
                   <a
+                    className="cab-mark"
                     href={`/cabinet/projects/${project.code}/messages`}
-                    style={{ marginLeft: 'auto', fontFamily: SANS, fontSize: 14 }}
+                    style={{ marginLeft: 'auto' }}
                   >
-                    Переписка с менеджером
+                    {forClient ? 'Написать куратору' : 'Переписка'}
                     {(unread.get(project.id) ?? 0) > 0
                       ? ` · ${unread.get(project.id)} новых`
                       : ''}

@@ -54,9 +54,7 @@ export default async function PayoutScreen() {
       </div>
 
       {rows.length === 0 ? (
-        <Empty title="Начислений пока нет">
-          Вознаграждение появится здесь, как только руководитель начислит его по этапу или проекту.
-        </Empty>
+        <Empty title="Начислений пока нет">Появятся, когда практика начислит их по этапу или работе.</Empty>
       ) : (
         <Card>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
@@ -81,7 +79,7 @@ export default async function PayoutScreen() {
                     {row.comment === null ? '' : ` · ${row.comment}`}
                   </Text>
                 </div>
-                <Chip tone={row.status === 'PAID' ? 'ok' : 'neutral'}>
+                <Chip tone={row.status === 'PAID' ? 'accent' : 'neutral'}>
                   {row.status === 'PAID' ? `выплачено ${formatDate(row.paidOn)}` : 'начислено'}
                 </Chip>
                 <Text size={16} style={{ fontVariantNumeric: 'tabular-nums' }}>

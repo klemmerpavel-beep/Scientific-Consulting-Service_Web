@@ -41,7 +41,7 @@ export default async function AnalyticsLosses() {
           </Tiles>
 
           <div style={{ marginBottom: 28 }}>
-            <Notice tone="error" role="status">
+            <Notice tone="quiet" role="status">
               Расчётная величина — {formatAmount(report.total)} — получена из данных системы и
               воспроизводима построчно. Бриф называет {formatAmount(BRIEF_LOSSES)}; ту же величину,
               что и расчёт, независимо даёт автотест панели учёта. Источник расхождения не установлен,

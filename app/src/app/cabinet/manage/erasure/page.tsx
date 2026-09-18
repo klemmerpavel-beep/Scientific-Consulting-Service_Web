@@ -2,7 +2,10 @@ import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
-import { Button, Card, Chip, Empty, Heading, Mono, Notice, Text, plural } from '../../../../components/cabinet/ui';
+import { Button, Card, Chip, Empty, Heading, Mono, Notice, Text, plural,
+  TABLE_CELL,
+  TABLE_HEAD,
+} from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { erasableClients, listErasureRequests } from '../../../../lib/cabinet/erasure';
 import { formatMoment } from '../../../../lib/cabinet/journals';
@@ -11,24 +14,6 @@ import { currentActor } from '../../../../lib/cabinet/session';
 import { executeErasureRequest, openErasureRequest } from '../../actions';
 
 export const dynamic = 'force-dynamic';
-
-const cell: React.CSSProperties = {
-  padding: '10px 14px',
-  borderBottom: '1px solid var(--pd-divider)',
-  fontFamily: SANS,
-  fontSize: 14,
-  color: 'var(--pd-ink-secondary)',
-  textAlign: 'left',
-  verticalAlign: 'top',
-};
-
-const head: React.CSSProperties = {
-  ...cell,
-  fontWeight: 500,
-  color: 'var(--pd-ink)',
-  background: 'var(--pd-surface-quiet)',
-  whiteSpace: 'nowrap',
-};
 
 const field: React.CSSProperties = {
   boxSizing: 'border-box',
@@ -132,12 +117,12 @@ export default async function ErasureScreen({
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
             <thead>
               <tr>
-                <th style={head} scope="col">Принято</th>
-                <th style={head} scope="col">Карточка</th>
-                <th style={head} scope="col">Объём</th>
-                <th style={head} scope="col">Состояние</th>
-                <th style={head} scope="col">Отчёт</th>
-                <th style={head} scope="col">Действие</th>
+                <th style={TABLE_HEAD} scope="col">Принято</th>
+                <th style={TABLE_HEAD} scope="col">Карточка</th>
+                <th style={TABLE_HEAD} scope="col">Объём</th>
+                <th style={TABLE_HEAD} scope="col">Состояние</th>
+                <th style={TABLE_HEAD} scope="col">Отчёт</th>
+                <th style={TABLE_HEAD} scope="col">Действие</th>
               </tr>
             </thead>
             <tbody>
@@ -145,17 +130,17 @@ export default async function ErasureScreen({
                 const report = (request.report ?? {}) as Report;
                 return (
                   <tr key={request.id}>
-                    <td style={cell}>{formatMoment(request.requestedAt)}</td>
-                    <td style={cell}>{request.client.fullName}</td>
-                    <td style={cell}>
+                    <td style={TABLE_CELL}>{formatMoment(request.requestedAt)}</td>
+                    <td style={TABLE_CELL}>{request.client.fullName}</td>
+                    <td style={TABLE_CELL}>
                       {request.scope === 'PERSONAL_DATA_AND_FILES' ? 'данные и файлы' : 'только данные'}
                     </td>
-                    <td style={cell}>
+                    <td style={TABLE_CELL}>
                       {request.executedAt === null ? (
-                        <Chip tone="warn">ожидает исполнения</Chip>
+                        <Chip>ожидает исполнения</Chip>
                       ) : (
                         <>
-                          <Chip tone="ok">исполнено</Chip>
+                          <Chip>исполнено</Chip>
                           <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)', marginTop: 4 }}>
                             {formatMoment(request.executedAt)}
                             {request.approvedBy === null ? null : ` · ${request.approvedBy.fullName}`}
@@ -163,7 +148,7 @@ export default async function ErasureScreen({
                         </>
                       )}
                     </td>
-                    <td style={cell}>
+                    <td style={TABLE_CELL}>
                       {request.executedAt === null ? (
                         '—'
                       ) : (
@@ -182,7 +167,7 @@ export default async function ErasureScreen({
                         </>
                       )}
                     </td>
-                    <td style={cell}>
+                    <td style={TABLE_CELL}>
                       {request.executedAt !== null ? (
                         '—'
                       ) : (

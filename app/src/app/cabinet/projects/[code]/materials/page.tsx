@@ -9,9 +9,10 @@ import {
   Empty,
   Field,
   Heading,
-  Mono,
+  Select,
   Text,
   formatDate,
+  authorName,
   formatSize,
   plural,
 } from '../../../../../components/cabinet/ui';
@@ -21,13 +22,6 @@ import { currentActor } from '../../../../../lib/cabinet/session';
 import { addMaterialVersion } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
-
-const ROLE_LABEL: Record<string, string> = {
-  CLIENT: 'клиент',
-  EXPERT: 'эксперт',
-  MANAGER: 'менеджер',
-  HEAD: 'руководитель',
-};
 
 export default async function ProjectMaterialsScreen({
   params,
@@ -51,26 +45,16 @@ export default async function ProjectMaterialsScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
-      <a href={`/cabinet/projects/${project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
+      <a className="cab-mark" href={`/cabinet/projects/${project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
         {project.code}
       </a>
 
-      <Mono style={{ display: 'block', marginTop: 16 }}>Материалы работы</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        {project.title}
+      <Heading level={1} style={{ margin: '16px 0 24px' }}>
+        Материалы: {project.title}
       </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
-        Все материалы работы в одном перечне, включая не привязанные к этапу. Версии неизменяемы:
-        новая редакция добавляется следующей версией, прежняя остаётся доступной. Договор, счета и
-        акты лежат отдельно — на экране оплат, при договоре и траншах.
-      </Text>
 
       {project.materials.length === 0 ? (
-        <Empty title="Материалов пока нет">
-          {mayUpload
-            ? 'Первый файл можно приложить формой ниже: он появится здесь и у остальных участников работы.'
-            : 'Как только эксперт или менеджер приложит первый файл, он появится здесь.'}
-        </Empty>
+        <Empty title="Материалов пока нет" />
       ) : (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
           {project.materials.map((material) => (
@@ -119,10 +103,7 @@ export default async function ProjectMaterialsScreen({
                       <a href={`/cabinet/files/${version.id}`}>{version.originalName}</a>
                       <span>{formatSize(version.sizeBytes)}</span>
                       <span>{formatDate(version.uploadedAt)}</span>
-                      <span>
-                        {version.uploadedBy.fullName} ·{' '}
-                        {ROLE_LABEL[version.uploadedBy.role] ?? version.uploadedBy.role}
-                      </span>
+                      <span>{authorName(version.uploadedBy, actor, version.uploadedById)}</span>
                       {version.comments.length === 0 ? null : (
                         <span>
                           {version.comments.length}{' '}
@@ -167,13 +148,7 @@ export default async function ProjectMaterialsScreen({
 
       {mayUpload ? (
         <Card style={{ marginTop: 28 }}>
-          <Heading level={2} style={{ marginBottom: 8 }}>
-            Приложить новый материал
-          </Heading>
-          <Text muted style={{ marginBottom: 16 }}>
-            Материал можно привязать к этапу — тогда он появится и на экране этапа, — либо оставить
-            при работе целиком.
-          </Text>
+          <Heading level={2} style={{ marginBottom: 16 }}>Приложить материал</Heading>
           <form
             action={addMaterialVersion}
             style={{
@@ -186,30 +161,14 @@ export default async function ProjectMaterialsScreen({
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="back" value={`/cabinet/projects/${project.code}/materials`} />
             <Field label="Название" name="title" placeholder="Черновик главы 2" />
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Этап</span>
-              <select
-                name="stageId"
-                defaultValue=""
-                style={{
-                  minHeight: 44,
-                  padding: '0 12px',
-                  borderRadius: 10,
-                  border: '1px solid var(--pd-edge-neutral)',
-                  fontFamily: SANS,
-                  fontSize: 16,
-                  background: 'var(--pd-ink-inverse)',
-                  color: 'var(--pd-ink)',
-                }}
-              >
-                <option value="">без привязки к этапу</option>
-                {project.stages.map((stage) => (
-                  <option key={stage.id} value={stage.id}>
-                    {stage.position}. {stage.title}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Select label="Этап" name="stageId" defaultValue="">
+              <option value="">без привязки к этапу</option>
+              {project.stages.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.position}. {stage.title}
+                </option>
+              ))}
+            </Select>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Файл</span>
               <input type="file" name="file" required style={{ fontFamily: SANS, fontSize: 15 }} />

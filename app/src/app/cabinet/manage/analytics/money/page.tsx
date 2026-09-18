@@ -122,7 +122,7 @@ export default async function AnalyticsMoney() {
                         {formatDate(debt.dueOn) ?? '—'}
                         {debt.overdueDays !== null && debt.overdueDays > 0 ? (
                           <div style={{ marginTop: 4 }}>
-                            <Chip tone="warn">просрочка {debt.overdueDays} дн.</Chip>
+                            <Chip>просрочка {debt.overdueDays} дн.</Chip>
                           </div>
                         ) : null}
                       </td>

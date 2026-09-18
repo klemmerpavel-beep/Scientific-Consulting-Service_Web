@@ -60,7 +60,7 @@ function Axis({
               strokeWidth={1}
               strokeDasharray={index === count ? undefined : '1 3'}
             />
-            <text x={padL - 7} y={y + 3.5} textAnchor="end" fontSize={9.5} fill={MUTED}>
+            <text x={padL - 7} y={y + 3.5} textAnchor="end" fontSize={12} fill={MUTED}>
               {format(value)}
             </text>
           </g>
@@ -99,26 +99,56 @@ export function BarChart({
   const bw = Math.min(64, (iw - gap * (n - 1)) / n);
   const x0 = pad.l + (iw - (bw * n + gap * (n - 1))) / 2;
 
+  /**
+   * Прореживание подписей.
+   *
+   * При двух десятках столбцов подписи месяцев сливались в сплошную строку
+   * («фев 24мар 24апр 24»), а числа над соседними столбцами наезжали друг
+   * на друга. Подпись месяца занимает около 46 px при кегле 12, число —
+   * около 54. Если шаг столбца меньше, показывается каждая k-я подпись;
+   * отсчёт ведётся от последнего столбца, поэтому свежий месяц подписан
+   * всегда, а расстановка остаётся равномерной. Значения остальных
+   * столбцов не теряются: они в подсказке и в таблице под графиком.
+   */
+  const step = bw + gap;
+  const everyLabel = Math.max(1, Math.ceil(46 / step));
+  const everyValue = Math.max(1, Math.ceil(54 / step));
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
       fontFamily={SANS} role="img" aria-label={title}>
       <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} format={format} />
+      {/* Столбцы рисуются первыми, подписи — следом: иначе соседний столбец
+          ложится поверх уже написанного числа и срезает его («175 ть»). */}
+      {data.map((item, index) => {
+        const x = x0 + index * (bw + gap);
+        const h = max > 0 ? (item.value / max) * ih : 0;
+        return (
+          <g key={`bar-${item.label}-${index}`}>
+            <title>{`${item.label}: ${format(item.value)}`}</title>
+            <path
+              d={topRoundedBar(x, pad.t + ih - h, bw, Math.max(0, h), 5)}
+              fill={item.color ?? seriesColor(1)}
+            />
+          </g>
+        );
+      })}
       {data.map((item, index) => {
         const x = x0 + index * (bw + gap);
         const h = max > 0 ? (item.value / max) * ih : 0;
         const y = pad.t + ih - h;
         return (
-          <g key={`${item.label}-${index}`}>
-            <title>{`${item.label}: ${format(item.value)}`}</title>
-            <path d={topRoundedBar(x, y, bw, Math.max(0, h), 5)} fill={item.color ?? seriesColor(1)} />
-            {item.value === 0 ? null : (
-              <text x={x + bw / 2} y={y - 6} textAnchor="middle" fontSize={10.5} fontWeight={500} fill={INK}>
+          <g key={`label-${item.label}-${index}`}>
+            {item.value === 0 || (n - 1 - index) % everyValue !== 0 ? null : (
+              <text x={x + bw / 2} y={y - 6} textAnchor="middle" fontSize={12} fontWeight={500} fill={INK}>
                 {format(item.value)}
               </text>
             )}
-            <text x={x + bw / 2} y={H - 12} textAnchor="middle" fontSize={9.5} fill={MUTED}>
-              {item.label}
-            </text>
+            {(n - 1 - index) % everyLabel === 0 ? (
+              <text x={x + bw / 2} y={H - 12} textAnchor="middle" fontSize={12} fill={MUTED}>
+                {item.label}
+              </text>
+            ) : null}
           </g>
         );
       })}
@@ -146,6 +176,22 @@ export function RankChart({
   const max = Math.max(1, ...data.map((item) => item.value));
   const iw = W - labelWidth - padR;
 
+  /**
+   * Подпись не должна уходить за левый край.
+   *
+   * Подписи выключены вправо по границе колонки, и длинное название
+   * позиции («Сопровождение выпускной квалификационной работы») уезжало
+   * влево за пределы картинки: первые слова просто срезались, и строка
+   * начиналась с середины. Ширину текста в SVG не измерить, поэтому она
+   * оценивается по числу знаков — при кегле 12 знак кириллицы занимает
+   * около 6,8 px. Что не поместилось, заменяется многоточием; полное
+   * название остаётся в подсказке и в таблице под графиком.
+   */
+  const fit = (label: string): string => {
+    const room = Math.max(6, Math.floor((labelWidth - 14) / 6.8));
+    return label.length <= room ? label : `${label.slice(0, room - 1).trimEnd()}…`;
+  };
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
       fontFamily={SANS} role="img" aria-label={title}>
@@ -155,8 +201,8 @@ export function RankChart({
         return (
           <g key={`${item.label}-${index}`}>
             <title>{`${item.label}: ${format(item.value)}`}</title>
-            <text x={labelWidth - 10} y={y + rowH / 2 + 4} textAnchor="end" fontSize={11} fill={INK}>
-              {item.label}
+            <text x={labelWidth - 10} y={y + rowH / 2 + 4} textAnchor="end" fontSize={12} fill={INK}>
+              {fit(item.label)}
             </text>
             <rect x={labelWidth} y={y + 6} width={iw} height={rowH - 14} rx={(rowH - 14) / 2} fill={GRID} />
             <rect
@@ -167,7 +213,7 @@ export function RankChart({
               rx={(rowH - 14) / 2}
               fill={item.color ?? seriesColor(1)}
             />
-            <text x={labelWidth + Math.max(4, width) + 8} y={y + rowH / 2 + 4} fontSize={11} fontWeight={500} fill={INK}>
+            <text x={labelWidth + Math.max(4, width) + 8} y={y + rowH / 2 + 4} fontSize={12} fontWeight={500} fill={INK}>
               {format(item.value)}
             </text>
           </g>
@@ -237,7 +283,7 @@ export function LineChart({
       })}
       {categories.map((category, index) =>
         index % step === 0 ? (
-          <text key={category} x={xAt(index)} y={H - 10} textAnchor="middle" fontSize={9.5} fill={MUTED}>
+          <text key={category} x={xAt(index)} y={H - 10} textAnchor="middle" fontSize={12} fill={MUTED}>
             {category}
           </text>
         ) : null,
@@ -295,14 +341,20 @@ export function DonutChart({
       ) : (
         <>
           {arcs.map(({ path, segment, index }) => (
-            <path key={segment.label} d={path} fill={segment.color ?? seriesColor(index)} stroke="var(--pd-ink-inverse)" strokeWidth={2}>
+            <path
+              key={segment.label}
+              d={path}
+              fill={segment.color ?? seriesColor(index)}
+              stroke="var(--pd-ink-inverse)"
+              strokeWidth={2}
+            >
               <title>{`${segment.label}: ${Math.round((segment.value / total) * 100)} %`}</title>
             </path>
           ))}
           <text x={cx} y={cy - 3} textAnchor="middle" fontSize={17} fontWeight={500} fill={INK}>
             {center}
           </text>
-          <text x={cx} y={cy + 16} textAnchor="middle" fontSize={10} fill={MUTED} fontFamily={MONO}>
+          <text x={cx} y={cy + 16} textAnchor="middle" fontSize={12} fill={MUTED} fontFamily={MONO}>
             {centerLabel}
           </text>
         </>
@@ -324,22 +376,38 @@ export function StackBar({ segments, title }: { segments: readonly Segment[]; ti
       <rect x={0} y={0} width={W} height={H} rx={H / 2} fill={GRID} />
       {segments.map((segment, index) => {
         const width = total > 0 ? (segment.value / total) * W : 0;
-        const rect =
+        const share = total > 0 ? Math.round((segment.value / total) * 100) : 0;
+        const left = x;
+        const piece =
           width <= 0 ? null : (
-            <rect
-              key={segment.label}
-              x={x}
-              y={0}
-              width={Math.max(0, width - 1.5)}
-              height={H}
-              rx={H / 2}
-              fill={segment.color ?? seriesColor(index)}
-            >
-              <title>{`${segment.label}: ${segment.value}`}</title>
-            </rect>
+            <g key={segment.label}>
+              <rect
+                x={left}
+                y={0}
+                width={Math.max(0, width - 1.5)}
+                height={H}
+                rx={H / 2}
+                fill={segment.color ?? seriesColor(index)}
+              >
+                <title>{`${segment.label}: ${segment.value}`}</title>
+              </rect>
+              {/* Доля подписана прямо в сегменте, где он вмещает подпись:
+                  иначе смысл держался бы на одной заливке. */}
+              {width < 46 ? null : (
+                <text
+                  x={left + width / 2}
+                  y={H / 2 + 4}
+                  textAnchor="middle"
+                  fontSize={12}
+                  fill={index % 4 === 2 ? INK : 'var(--pd-ink-inverse)'}
+                >
+                  {share} %
+                </text>
+              )}
+            </g>
           );
         x += width;
-        return rect;
+        return piece;
       })}
     </svg>
   );
@@ -356,7 +424,14 @@ export function Legend({ items }: { items: readonly { label: string; color: stri
         >
           <i
             aria-hidden="true"
-            style={{ width: 10, height: 10, borderRadius: 3, background: item.color, display: 'inline-block' }}
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 2,
+              background: item.color,
+              border: '1px solid var(--pd-edge-neutral)',
+              display: 'inline-block',
+            }}
           />
           {item.label}
           {item.value === undefined ? null : <b style={{ color: INK, fontWeight: 500 }}>{item.value}</b>}

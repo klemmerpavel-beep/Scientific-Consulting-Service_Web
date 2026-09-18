@@ -39,7 +39,7 @@ export async function projectByCode(actor: Actor, code: string) {
       events: {
         orderBy: { createdAt: 'desc' },
         take: 12,
-        include: { actor: { select: { fullName: true, role: true } } },
+        include: { actor: { select: { id: true, fullName: true, role: true } } },
       },
     },
   });
@@ -157,6 +157,15 @@ export async function serviceTypes() {
   });
 }
 
+/** Кому можно передать работу: действующие сотрудники практики. */
+export async function curators() {
+  return prisma.user.findMany({
+    where: { role: { in: ['MANAGER', 'HEAD'] }, status: 'ACTIVE' },
+    orderBy: { fullName: 'asc' },
+    select: { id: true, fullName: true, role: true },
+  });
+}
+
 export async function experts() {
   return prisma.user.findMany({
     where: { role: 'EXPERT', status: 'ACTIVE' },
@@ -173,6 +182,13 @@ export async function experts() {
  */
 export async function trafficLight(actor: Actor) {
   ensure(actor, 'REGISTRY_VIEW');
+  // Светофор строится через ту же выборку, что и перечень работ: иначе
+  // менеджер, видящий только свои работы, получал бы сроки всей практики
+  // (решение Р-149). Правило модуля прав — списки и реестры идут через
+  // `scope*`, а не через отдельное условие.
+  const scope = scopeProjects(actor);
+  if (scope === null) return { overdue: [], soon: [], stalled: [] };
+  const mine = Object.keys(scope).length === 0 ? {} : { project: scope };
   const now = new Date();
   const inWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
@@ -187,17 +203,17 @@ export async function trafficLight(actor: Actor) {
 
   const [overdue, soon, stalled] = await Promise.all([
     prisma.stage.findMany({
-      where: { state: live, dueOn: { lt: now } },
+      where: { ...mine, state: live, dueOn: { lt: now } },
       orderBy: { dueOn: 'asc' },
       include,
     }),
     prisma.stage.findMany({
-      where: { state: live, dueOn: { gte: now, lte: inWeek } },
+      where: { ...mine, state: live, dueOn: { gte: now, lte: inWeek } },
       orderBy: { dueOn: 'asc' },
       include,
     }),
     prisma.stage.findMany({
-      where: { state: 'AWAITING_CLIENT', awaitingClientSince: { lt: twoWeeksAgo } },
+      where: { ...mine, state: 'AWAITING_CLIENT', awaitingClientSince: { lt: twoWeeksAgo } },
       orderBy: { awaitingClientSince: 'asc' },
       include,
     }),
@@ -209,8 +225,13 @@ export async function trafficLight(actor: Actor) {
 /** Реестр клиентов. Контакты отдаются только ролям, которым они положены. */
 export async function clientRegistry(actor: Actor) {
   ensure(actor, 'REGISTRY_VIEW');
+  // Клиент попадает в реестр вместе со своей работой: менеджер видит тех,
+  // чьи работы ведёт, руководитель — всех (решение Р-149).
+  const scope = scopeProjects(actor);
+  if (scope === null) return [];
+  const mine = Object.keys(scope).length === 0 ? {} : { projects: { some: scope } };
   const rows = await prisma.clientProfile.findMany({
-    where: { erasedAt: null },
+    where: { ...mine, erasedAt: null },
     orderBy: { fullName: 'asc' },
     include: {
       projects: { select: { id: true, status: true } },

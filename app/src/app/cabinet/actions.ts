@@ -37,7 +37,14 @@ import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue } from '../../lib/cabinet/outbox';
-import { addStage, approveLead, assignExpert, declineLead, setStageState } from '../../lib/cabinet/projects';
+import {
+  addStage,
+  approveLead,
+  assignExpert,
+  assignManager,
+  declineLead,
+  setStageState,
+} from '../../lib/cabinet/projects';
 import { currentActor, requestIp } from '../../lib/cabinet/session';
 
 /**
@@ -150,6 +157,15 @@ export async function setExpert(form: FormData): Promise<void> {
   redirect(`/cabinet/projects/${code}`);
 }
 
+/** Смена куратора работы. Доступна руководителю. */
+export async function setManager(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const projectId = String(form.get('projectId') ?? '');
+  const code = String(form.get('code') ?? '');
+  await assignManager(actor, projectId, String(form.get('managerId') ?? ''));
+  redirect(`/cabinet/projects/${code}`);
+}
+
 /**
  * Публикация или отклонение комментария эксперта. До решения менеджера
  * комментарий клиенту не виден: выборка сужается в модуле прав, а не
@@ -226,13 +242,25 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
   redirect('/cabinet/request?sent=1');
 }
 
-/** Отправка сообщения в канал «клиент — менеджер». */
+/**
+ * Отправка сообщения в канал «клиент — менеджер».
+ *
+ * Отправить можно с двух экранов: из переписки целиком и коротким блоком
+ * на карточке работы. Возвращать человека надо туда, откуда он писал, —
+ * поле `back` говорит куда. Значение не подставляется в адрес: иначе форма
+ * стала бы способом увести пользователя на чужой узел.
+ */
 export async function postMessage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
   await sendMessage(actor, projectId, String(form.get('body') ?? ''));
-  redirect(`/cabinet/projects/${code}/messages`);
+  const back = String(form.get('back') ?? '');
+  redirect(
+    back === 'project'
+      ? `/cabinet/projects/${code}`
+      : `/cabinet/projects/${code}/messages`,
+  );
 }
 
 /** Каналы уведомлений. Выбор за получателем, а не за системой. */

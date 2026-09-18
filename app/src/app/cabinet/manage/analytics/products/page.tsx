@@ -36,7 +36,7 @@ export default async function AnalyticsProducts() {
 
           {scattered.length === 0 ? null : (
             <div style={{ marginBottom: 28 }}>
-              <Notice tone="error" role="status">
+              <Notice tone="quiet" role="status">
                 Цена по позициям {scattered.map((product) => product.typeName).join(', ')} назначается
                 по случаю: разброс чека выше 40 %. Прайс по ним из практики не выводится — его нужно
                 установить решением.
@@ -49,6 +49,7 @@ export default async function AnalyticsProducts() {
             note="Рядом с каждой позицией в таблице — медиана: при малом числе заказов она устойчивее среднего."
           >
             <RankChart
+              labelWidth={280}
               title="Средний чек по позициям"
               data={list.map((product) => ({
                 label: product.typeName,
@@ -87,7 +88,7 @@ export default async function AnalyticsProducts() {
                     <td style={num}>{formatAmount(product.max)}</td>
                     <td style={cell}>
                       {product.needsPriceList ? (
-                        <Chip tone="warn">{share(product.variation)}</Chip>
+                        <Chip>{share(product.variation)}</Chip>
                       ) : (
                         share(product.variation)
                       )}

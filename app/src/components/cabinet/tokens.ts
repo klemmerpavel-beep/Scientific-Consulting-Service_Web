@@ -26,7 +26,7 @@ export const SANS = "'Inter','Helvetica Neue',Arial,sans-serif";
 export const MONO = "'JetBrains Mono','SFMono-Regular',monospace";
 
 /** Радиусы. Набор закрыт: 6 — подсветка, 10 — поле, 14 — карточка, 999 — pill. */
-export const RADIUS = { field: 10, card: 14, pill: 999 } as const;
+export const RADIUS = { mark: 6, field: 10, card: 14, pill: 999 } as const;
 
 export const SHADOW = {
   level1: '0 1px 2px rgba(20,22,28,.05)',
@@ -58,21 +58,27 @@ a:hover{color:var(--pd-accent-press)}
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}
 .pd-skip:focus{left:0;color:var(--pd-ink-inverse)}
 .cab-nav a{color:var(--pd-ink-secondary)}
-.cab-nav a:hover{color:var(--pd-accent)}
+.cab-nav a:hover,.cab-nav a:focus-visible{color:var(--pd-accent)}
 .cab-nav a[aria-current="page"]{color:var(--pd-accent);box-shadow:inset 0 -2px 0 var(--pd-accent)}
-.cab-btn{transition:background 200ms ${EASING},border-color 200ms ${EASING},color 200ms ${EASING}}
-.cab-btn-primary:hover{background:var(--pd-accent-hover)}
+.cab-btn{transition:background 180ms ${EASING},border-color 180ms ${EASING},color 180ms ${EASING},transform 180ms ${EASING}}
+.cab-btn:active{transform:scale(.97)}
+.cab-btn-primary:hover,.cab-btn-primary:focus-visible{background:var(--pd-accent-hover)}
 .cab-btn-primary:active{background:var(--pd-accent-active)}
-.cab-btn-quiet:hover{border-color:var(--pd-accent);color:var(--pd-accent)}
-.cab-card{transition:box-shadow 200ms ${EASING}}
-.cab-link-card:hover{box-shadow:${SHADOW.hover}}
+.cab-btn-quiet:hover,.cab-btn-quiet:focus-visible{border-color:var(--pd-accent);color:var(--pd-accent)}
+.cab-card{transition:box-shadow 200ms ${EASING},border-color 200ms ${EASING}}
+.cab-link-card:hover,.cab-link-card:focus-within{box-shadow:${SHADOW.hover};border-color:var(--pd-accent-edge)}
+.cab-mark{display:inline-flex;align-items:center;min-height:44px}
+.cab-wordmark{transition:background 180ms ${EASING}}
+.cab-wordmark:hover{background:rgba(216,228,243,.62)}
+.cab-wordmark:active{background:rgba(216,228,243,.84)}
 input,textarea,select{font-family:${SANS};font-size:16px}
-input:focus,textarea:focus{box-shadow:${SHADOW.focus};border-color:var(--pd-accent)}
+input:focus,textarea:focus,select:focus{box-shadow:${SHADOW.focus};border-color:var(--pd-accent)}
+input[type="checkbox"],input[type="radio"]{accent-color:var(--pd-accent)}
 input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
-input[type="file"]{font-family:${SANS};font-size:15px;color:var(--pd-ink-secondary)}
-input[type="file"]::file-selector-button{min-height:44px;padding:0 18px;margin-right:14px;border-radius:999px;border:1px solid var(--pd-edge-neutral);background:var(--pd-ink-inverse);color:var(--pd-ink-secondary);font-family:${SANS};font-size:15px;cursor:pointer;transition:border-color 200ms ${EASING},color 200ms ${EASING}}
+input[type="file"]{font-family:${SANS};font-size:16px;color:var(--pd-ink-secondary)}
+input[type="file"]::file-selector-button{min-height:44px;padding:0 18px;margin-right:14px;border-radius:999px;border:1px solid var(--pd-edge-neutral);background:var(--pd-ink-inverse);color:var(--pd-ink-secondary);font-family:${SANS};font-size:15px;cursor:pointer;transition:border-color 180ms ${EASING},color 180ms ${EASING}}
 input[type="file"]::file-selector-button:hover{border-color:var(--pd-accent);color:var(--pd-accent)}
-button[disabled]{opacity:.7;cursor:progress}
+button[disabled]{opacity:.7!important;cursor:progress!important}
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 [role="status"],[role="alert"]{animation:pd-appear 220ms ${EASING}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

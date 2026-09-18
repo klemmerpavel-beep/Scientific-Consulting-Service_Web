@@ -9,12 +9,24 @@ import {
   Field,
   Heading,
   Mono,
+  STAGE_STATE_LABEL,
+  Select,
   Text,
+  Tile,
+  Tiles,
   formatDate,
+  type StageStateKey,
+  TABLE_CELL,
+  TABLE_HEAD,
+  TABLE_NUM,
 } from '../../../components/cabinet/ui';
+import { MONO, SANS } from '../../../components/cabinet/tokens';
 import { can } from '../../../lib/cabinet/access';
+import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
+import { unreadInbox } from '../../../lib/cabinet/messages';
 import { leadQueue, serviceTypes, trafficLight } from '../../../lib/cabinet/queries';
 import { currentActor } from '../../../lib/cabinet/session';
+import { OVERHEAD_PERCENT, activeWorks, practiceSummary } from '../../../lib/cabinet/summary';
 import { moderateLead } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -38,97 +50,154 @@ export default async function ManageQueue() {
     trafficLight(actor),
   ]);
 
-  const lanes = [
-    {
-      key: 'overdue',
-      title: 'Просрочены',
-      tone: 'warn' as const,
-      rows: light.overdue,
-      hint: 'Срок этапа прошёл, а этап не закрыт.',
-    },
-    {
-      key: 'soon',
-      title: 'Срок в пределах недели',
-      tone: 'accent' as const,
-      rows: light.soon,
-      hint: 'Ещё не сорвано, но резерва уже нет.',
-    },
-    {
-      key: 'stalled',
-      title: 'Ждут клиента дольше двух недель',
-      tone: 'neutral' as const,
-      rows: light.stalled,
-      hint: 'Просрочки может не быть, а работа стоит.',
-    },
+  // Сводка — это деньги практики, и её видит только тот, кому открыта маржа.
+  const summary = can(actor, 'MARGIN_VIEW') ? await practiceSummary(actor) : null;
+  const works = summary === null ? [] : await activeWorks(actor);
+  const unread = await unreadInbox(actor);
+
+  // «Требует внимания» — то, что нельзя оставить как есть: сорванный срок,
+  // работа, которая ждёт клиента дольше двух недель, и непрочитанное
+  // сообщение. У менеджера это главный экран целиком, у руководителя —
+  // раздел под сводкой (решение Р-149).
+  const attention = [
+    ...light.overdue.map((stage) => ({
+      key: `overdue-${stage.id}`,
+      what: 'Сорван срок этапа',
+      detail: `${stage.title} · ${stage.project.code} · ${stage.project.client.fullName}`,
+      when: stage.dueOn === null ? null : `срок ${formatDate(stage.dueOn)}`,
+      href: `/cabinet/stages/${stage.id}`,
+    })),
+    ...light.stalled.map((stage) => ({
+      key: `stalled-${stage.id}`,
+      what: 'Ждёт клиента дольше двух недель',
+      detail: `${stage.title} · ${stage.project.code} · ${stage.project.client.fullName}`,
+      when:
+        stage.awaitingClientSince === null
+          ? null
+          : `с ${formatDate(stage.awaitingClientSince)}`,
+      href: `/cabinet/stages/${stage.id}`,
+    })),
+    ...unread.map((row) => ({
+      key: `unread-${row.code}`,
+      what: `Непрочитанных сообщений: ${row.count}`,
+      detail: `${row.title} · ${row.code}`,
+      when: null,
+      href: `/cabinet/projects/${row.code}/messages`,
+    })),
   ];
 
   return (
     <Shell actor={actor} current="/cabinet/manage">
-      <section style={{ marginBottom: 36 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
-          <Mono>Сроки</Mono>
-          <a href="/cabinet/manage/registry" style={{ marginLeft: 'auto', fontSize: 14 }}>
-            Реестры клиентов и экспертов
-          </a>
-        </div>
+      {summary === null ? null : (
+        <section style={{ marginBottom: 36 }}>
+          <Heading level={1} style={{ margin: '0 0 20px' }}>Практика</Heading>
+          <Tiles>
+            <Tile label="Заказов" value={String(summary.orders)} note={`${summary.active} в работе`} />
+            <Tile label="Выручка" value={formatAmount(summary.received)} note="получено" />
+            <Tile
+              label="Прибыль"
+              value={formatAmount(summary.profit)}
+              note={`выручка минус ${OVERHEAD_PERCENT} % расходов`}
+            />
+            <Tile label="К получению" value={formatAmount(summary.outstanding)} note="не оплачено" />
+          </Tiles>
+        </section>
+      )}
 
-        <div
-          className="cab-two"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0,1fr))',
-            gap: 16,
-            marginTop: 12,
-          }}
-        >
-          {lanes.map((lane) => (
-            <Card key={lane.key}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
-                <Chip tone={lane.rows.length === 0 ? 'ok' : lane.tone}>{lane.rows.length}</Chip>
-                <Heading level={3}>{lane.title}</Heading>
-              </div>
-              {lane.rows.length === 0 ? (
-                <Text muted size={13}>
-                  {lane.hint}
-                </Text>
-              ) : (
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
-                  {lane.rows.slice(0, 5).map((stage) => (
-                    <li key={stage.id}>
-                      <Text size={14}>
-                        <a href={`/cabinet/stages/${stage.id}`}>{stage.title}</a>
-                      </Text>
-                      <Text muted size={13}>
-                        {stage.project.code} · {stage.project.client.fullName}
-                        {stage.dueOn === null ? '' : ` · срок ${formatDate(stage.dueOn)}`}
-                      </Text>
-                    </li>
-                  ))}
-                  {lane.rows.length > 5 ? (
-                    <li>
-                      <Text muted size={13}>
-                        и ещё {lane.rows.length - 5}
-                      </Text>
-                    </li>
-                  ) : null}
-                </ul>
-              )}
-            </Card>
-          ))}
-        </div>
+      {works.length === 0 ? null : (
+        <section style={{ marginBottom: 36 }}>
+          <Heading level={2} style={{ marginBottom: 12 }}>Сейчас в работе</Heading>
+          <Card style={{ padding: 0, overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+              <thead>
+                <tr>
+                  <th style={TABLE_HEAD} scope="col">Работа</th>
+                  <th style={TABLE_HEAD} scope="col">Этап</th>
+                  <th style={TABLE_HEAD} scope="col">Срок</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Договор, ₽</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Оплачено, ₽</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Остаток, ₽</th>
+                </tr>
+              </thead>
+              <tbody>
+                {works.map((work) => (
+                  <tr key={work.code}>
+                    <td style={TABLE_CELL}>
+                      <a href={`/cabinet/projects/${work.code}`}>{work.title}</a>
+                      <div style={{ fontFamily: MONO, fontSize: 12, color: 'var(--pd-ink-muted)' }}>
+                        {work.code} · {work.client}
+                      </div>
+                    </td>
+                    <td style={TABLE_CELL}>
+                      {work.stage ?? '—'}
+                      {work.stageState === null ? null : (
+                        <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                          {STAGE_STATE_LABEL[work.stageState as StageStateKey]}
+                        </div>
+                      )}
+                    </td>
+                    <td style={TABLE_CELL}>{formatDate(work.dueOn) ?? '—'}</td>
+                    <td style={TABLE_NUM}>{formatPlain(work.contracted)}</td>
+                    <td style={TABLE_NUM}>{formatPlain(work.received)}</td>
+                    <td style={{ ...TABLE_NUM, color: work.outstanding > 0n ? 'var(--pd-ink)' : undefined }}>
+                      {work.outstanding > 0n ? formatPlain(work.outstanding) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </section>
+      )}
+
+      <section style={{ marginBottom: 36 }}>
+        {summary === null ? (
+          <Heading level={1} style={{ margin: '0 0 20px' }}>Требует внимания</Heading>
+        ) : (
+          <Heading level={2} style={{ marginBottom: 12 }}>Требует внимания</Heading>
+        )}
+        {attention.length === 0 ? (
+          <Card>
+            <Text muted>Сейчас ничего не требует вмешательства.</Text>
+          </Card>
+        ) : (
+          <Card>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
+              {attention.map((row) => (
+                <li
+                  key={row.key}
+                  style={{
+                    display: 'flex',
+                    gap: 16,
+                    alignItems: 'baseline',
+                    flexWrap: 'wrap',
+                    borderBottom: '1px solid var(--pd-divider)',
+                    paddingBottom: 14,
+                  }}
+                >
+                  <div style={{ flex: '1 1 420px', minWidth: 0 }}>
+                    <Text size={15}>
+                      <strong style={{ fontWeight: 600 }}>{row.what}</strong>
+                    </Text>
+                    <Text muted size={13} style={{ marginTop: 2 }}>
+                      {row.detail}
+                      {row.when === null ? '' : ` · ${row.when}`}
+                    </Text>
+                  </div>
+                  <a className="cab-mark" href={row.href}>
+                    Открыть
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
       </section>
 
-      <Mono>Очередь заявок</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        Заявки на рассмотрении
-      </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
-        Одобренная заявка разворачивается в проект и получает код. Отклонённая остаётся в системе
-        с причиной, которую видит заявитель. Заявки не удаляются.
-      </Text>
+      <Heading level={2} style={{ marginBottom: 12 }}>Заявки на рассмотрении</Heading>
 
       {leads.length === 0 ? (
-        <Empty title="Очередь пуста">Новые обращения с сайта появятся здесь.</Empty>
+        <Empty title="Новых заявок нет" />
       ) : (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
           {leads.map((lead) => (
@@ -144,7 +213,7 @@ export default async function ManageQueue() {
               >
                 <Chip tone="accent">{SOURCE_LABEL[lead.source] ?? lead.source}</Chip>
                 <Chip mono>{formatDate(lead.createdAt)}</Chip>
-                {lead.consentGiven ? <Chip tone="ok">согласие получено</Chip> : null}
+                {lead.consentGiven ? <Chip>согласие получено</Chip> : null}
               </div>
 
               <Heading level={2} style={{ marginBottom: 8 }}>
@@ -192,31 +261,13 @@ export default async function ManageQueue() {
                     defaultValue={lead.topic ?? ''}
                     placeholder="Сопровождение кандидатской диссертации"
                   />
-                  <label style={{ display: 'grid', gap: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 500 }}>Тип сопровождения</span>
-                    <select
-                      name="serviceTypeId"
-                      required
-                      style={{
-                        minHeight: 44,
-                        padding: '10px 12px',
-                        borderRadius: 10,
-                        border: '1px solid var(--pd-edge-neutral)',
-                        background: 'var(--pd-ink-inverse)',
-                        // Список выбора сам по себе не сжимается ниже своего
-                        // самого длинного варианта: ширину задаём явно.
-                        width: '100%',
-                        maxWidth: '100%',
-                        boxSizing: 'border-box',
-                      }}
-                    >
-                      {types.map((type) => (
-                        <option key={type.id} value={type.id}>
-                          {type.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <Select label="Тип сопровождения" name="serviceTypeId" required>
+                    {types.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </Select>
                   <label style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                     <input type="checkbox" name="applyTemplate" style={{ width: 18, height: 18 }} />
                     <span style={{ fontSize: 14 }}>Применить шаблон этапов этого типа</span>

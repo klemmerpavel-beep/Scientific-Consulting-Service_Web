@@ -13,6 +13,9 @@ import {
   Text,
   formatDate,
   plural,
+  TABLE_CELL,
+  TABLE_HEAD,
+  TABLE_NUM,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
 import { prisma } from '../../../../../lib/db';
@@ -28,26 +31,6 @@ const ACTION_LABEL = {
   UPDATE: 'обновить',
   SKIP: 'уже перенесена',
 } as const;
-
-const cell: React.CSSProperties = {
-  padding: '10px 12px',
-  borderBottom: '1px solid var(--pd-divider)',
-  fontFamily: SANS,
-  fontSize: 14,
-  color: 'var(--pd-ink-secondary)',
-  textAlign: 'left',
-  verticalAlign: 'top',
-};
-
-const num: React.CSSProperties = { ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
-
-const head: React.CSSProperties = {
-  ...cell,
-  fontWeight: 500,
-  color: 'var(--pd-ink)',
-  background: 'var(--pd-surface-quiet)',
-  whiteSpace: 'nowrap',
-};
 
 export default async function ImportBatchScreen({
   params,
@@ -141,13 +124,13 @@ export default async function ImportBatchScreen({
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
             <thead>
               <tr>
-                <th style={head} scope="col">
+                <th style={TABLE_HEAD} scope="col">
                   Замечание
                 </th>
-                <th style={head} scope="col">
+                <th style={TABLE_HEAD} scope="col">
                   Строк
                 </th>
-                <th style={head} scope="col">
+                <th style={TABLE_HEAD} scope="col">
                   Номера строк книги
                 </th>
               </tr>
@@ -160,9 +143,9 @@ export default async function ImportBatchScreen({
                     .find((issue) => issue.code === code)?.label ?? code;
                 return (
                   <tr key={code}>
-                    <td style={cell}>{label}</td>
-                    <td style={num}>{count}</td>
-                    <td style={cell}>{rowsByIssue(code).join(', ')}</td>
+                    <td style={TABLE_CELL}>{label}</td>
+                    <td style={TABLE_NUM}>{count}</td>
+                    <td style={TABLE_CELL}>{rowsByIssue(code).join(', ')}</td>
                   </tr>
                 );
               })}
@@ -259,28 +242,28 @@ export default async function ImportBatchScreen({
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
           <thead>
             <tr>
-              <th style={head} scope="col">
+              <th style={TABLE_HEAD} scope="col">
                 №
               </th>
-              <th style={head} scope="col">
+              <th style={TABLE_HEAD} scope="col">
                 Заказчик
               </th>
-              <th style={head} scope="col">
+              <th style={TABLE_HEAD} scope="col">
                 Тип работы
               </th>
-              <th style={head} scope="col">
+              <th style={TABLE_HEAD} scope="col">
                 Срок
               </th>
-              <th style={head} scope="col">
+              <th style={TABLE_HEAD} scope="col">
                 Стоимость
               </th>
-              <th style={head} scope="col">
+              <th style={TABLE_HEAD} scope="col">
                 Оплачено
               </th>
-              <th style={head} scope="col">
+              <th style={TABLE_HEAD} scope="col">
                 Состояние
               </th>
-              <th style={head} scope="col">
+              <th style={TABLE_HEAD} scope="col">
                 Решение
               </th>
             </tr>
@@ -288,18 +271,18 @@ export default async function ImportBatchScreen({
           <tbody>
             {report.rows.map((row) => (
               <tr key={row.rowNumber}>
-                <td style={cell}>{row.rowNumber}</td>
-                <td style={cell}>{row.customer}</td>
-                <td style={cell}>
+                <td style={TABLE_CELL}>{row.rowNumber}</td>
+                <td style={TABLE_CELL}>{row.customer}</td>
+                <td style={TABLE_CELL}>
                   {row.rawType}
                   {row.typeCode === null ? (
-                    <div style={{ fontSize: 13, color: 'var(--pd-err-ink)' }}>не сведено</div>
+                    <div style={{ fontSize: 13, color: 'var(--pd-ink-secondary)' }}>не сведено</div>
                   ) : null}
                 </td>
-                <td style={cell}>{formatDate(row.deadline) ?? '—'}</td>
-                <td style={num}>{formatAmount(row.cost)}</td>
-                <td style={num}>{formatAmount(row.paid)}</td>
-                <td style={cell}>
+                <td style={TABLE_CELL}>{formatDate(row.deadline) ?? '—'}</td>
+                <td style={TABLE_NUM}>{formatAmount(row.cost)}</td>
+                <td style={TABLE_NUM}>{formatAmount(row.paid)}</td>
+                <td style={TABLE_CELL}>
                   {row.statusLabel}
                   {row.issues.length === 0 ? null : (
                     <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
@@ -307,12 +290,8 @@ export default async function ImportBatchScreen({
                     </div>
                   )}
                 </td>
-                <td style={cell}>
-                  <Chip
-                    tone={
-                      row.action === 'SKIP' ? 'neutral' : row.severity === 'ERROR' ? 'warn' : 'accent'
-                    }
-                  >
+                <td style={TABLE_CELL}>
+                  <Chip tone={row.action === 'SKIP' ? 'neutral' : 'accent'}>
                     {ACTION_LABEL[row.action]}
                   </Chip>
                   {row.existingCode === null ? null : (

@@ -13,6 +13,7 @@ import {
   STAGE_STATE_LABEL,
   Text,
   formatDate,
+  authorName,
   formatSize,
   type StageStateKey,
 } from '../../../../components/cabinet/ui';
@@ -56,12 +57,10 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
   return (
     <Shell actor={actor} current="/cabinet/projects">
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <a href={`/cabinet/projects/${stage.project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
+        <a className="cab-mark" href={`/cabinet/projects/${stage.project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
           {stage.project.code}
         </a>
-        <Chip tone={state === 'AWAITING_CLIENT' ? 'warn' : state === 'DONE' ? 'ok' : 'accent'}>
-          {STAGE_STATE_LABEL[state]}
-        </Chip>
+        <Chip tone="accent">{STAGE_STATE_LABEL[state]}</Chip>
         {stage.dueOn === null ? null : <Chip>срок — {formatDate(stage.dueOn)}</Chip>}
       </div>
 
@@ -70,12 +69,16 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
       </Heading>
       <Text muted style={{ marginBottom: 24 }}>
         {stage.project.title}
-        {stage.expert === null ? '' : ` · эксперт ${stage.expert.fullName}`}
+        {/* Состав привлечённых специалистов клиенту не показывается: для него
+            работу ведёт куратор (решение Р-140). */}
+        {stage.expert === null || actor.role === 'CLIENT'
+          ? ''
+          : ` · исполнитель ${stage.expert.fullName}`}
       </Text>
 
       {stage.blockedReason === null ? null : (
         <div style={{ marginBottom: 24 }}>
-          <Notice tone="error" role="status">
+          <Notice tone="quiet" role="status">
             {stage.blockedReason}
           </Notice>
         </div>
@@ -83,7 +86,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
 
       {mayApprove ? (
         <Card style={{ marginBottom: 24, borderColor: 'var(--pd-accent-edge)' }}>
-          <Heading level={3} style={{ marginBottom: 8 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 8 }}>
             Этап ждёт вашего согласования
           </Heading>
           <Text style={{ marginBottom: 16 }}>
@@ -99,7 +102,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
 
       {mayEdit && NEXT_STATES[state].length > 0 ? (
         <Card style={{ marginBottom: 24 }}>
-          <Mono>Состояние этапа</Mono>
+          <Heading level={2} style={{ marginBottom: 12 }}>Состояние этапа</Heading>
           <div style={{ display: 'grid', gap: 16, marginTop: 12 }}>
             {NEXT_STATES[state].map((next) => (
               <form
@@ -115,7 +118,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                       label="Причина остановки"
                       name="reason"
                       required
-                      placeholder="Ждём протокол испытаний; после загрузки — два рабочих дня работы эксперта"
+                      placeholder="Ждём протокол испытаний; после загрузки — два рабочих дня на расчёт"
                       hint="Причину читает клиент: от неё зависит, что и когда он пришлёт."
                     />
                   </div>
@@ -128,7 +131,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
       ) : null}
 
       <section>
-        <Mono>Материалы и версии</Mono>
+        <Heading level={2} style={{ marginBottom: 12 }}>Материалы и версии</Heading>
         {stage.materials.length === 0 ? (
           <Card style={{ marginTop: 12 }}>
             <Text muted>Материалов по этапу пока нет.</Text>
@@ -160,8 +163,8 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                       >
                         <Chip mono>v{version.number}</Chip>
                         <Text size={14}>
-                          {version.uploadedBy.fullName} · {formatDate(version.uploadedAt)} ·{' '}
-                          {formatSize(version.sizeBytes)}
+                          {authorName(version.uploadedBy, actor, version.uploadedById)} ·{' '}
+                          {formatDate(version.uploadedAt)} · {formatSize(version.sizeBytes)}
                         </Text>
                         <a
                           href={`/cabinet/files/${version.id}`}
@@ -198,7 +201,8 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                             <li key={comment.id}>
                               <Text size={14}>{comment.body}</Text>
                               <Text muted size={13} style={{ marginTop: 2 }}>
-                                {comment.author.fullName} · {formatDate(comment.createdAt)}
+                                {authorName(comment.author, actor, comment.authorId)} ·{' '}
+                                {formatDate(comment.createdAt)}
                                 {comment.moderationStatus === 'PENDING'
                                   ? ' · ожидает публикации'
                                   : ''}
@@ -290,8 +294,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                 <input type="file" name="file" required />
               </label>
               <Text muted size={13}>
-                Каждая загрузка сохраняется отдельной версией. Прежние версии остаются доступными —
-                история не переписывается.
+                Каждая загрузка сохраняется отдельной версией: прежние остаются доступными.
               </Text>
               <div>
                 <Button>Загрузить</Button>

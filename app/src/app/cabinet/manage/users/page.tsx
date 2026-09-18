@@ -2,7 +2,10 @@ import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
-import { Button, Card, Chip, Field, Heading, Mono, Notice, Text, formatDate } from '../../../../components/cabinet/ui';
+import { Button, Card, Chip, Field, Heading, Mono, Notice, Text, formatDate,
+  TABLE_CELL,
+  TABLE_HEAD,
+} from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { ROLE_LABEL, STATUS_LABEL, listUsers, type Role } from '../../../../lib/cabinet/admin';
 import { currentActor } from '../../../../lib/cabinet/session';
@@ -11,24 +14,6 @@ import { changeUserRole, changeUserStatus, inviteUser, updateExpertNda } from '.
 export const dynamic = 'force-dynamic';
 
 const ROLES: Role[] = ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'];
-
-const cell: React.CSSProperties = {
-  padding: '10px 14px',
-  borderBottom: '1px solid var(--pd-divider)',
-  fontFamily: SANS,
-  fontSize: 14,
-  color: 'var(--pd-ink-secondary)',
-  textAlign: 'left',
-  verticalAlign: 'top',
-};
-
-const head: React.CSSProperties = {
-  ...cell,
-  fontWeight: 500,
-  color: 'var(--pd-ink)',
-  background: 'var(--pd-surface-quiet)',
-  whiteSpace: 'nowrap',
-};
 
 const field: React.CSSProperties = {
   boxSizing: 'border-box',
@@ -109,11 +94,11 @@ export default async function UsersScreen({
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980 }}>
           <thead>
             <tr>
-              <th style={head} scope="col">Кто</th>
-              <th style={head} scope="col">Роль</th>
-              <th style={head} scope="col">Состояние</th>
-              <th style={head} scope="col">Последний вход</th>
-              <th style={head} scope="col">Договор поручения</th>
+              <th style={TABLE_HEAD} scope="col">Кто</th>
+              <th style={TABLE_HEAD} scope="col">Роль</th>
+              <th style={TABLE_HEAD} scope="col">Состояние</th>
+              <th style={TABLE_HEAD} scope="col">Последний вход</th>
+              <th style={TABLE_HEAD} scope="col">Договор поручения</th>
             </tr>
           </thead>
           <tbody>
@@ -122,17 +107,22 @@ export default async function UsersScreen({
               const erased = user.status === 'ERASED';
               return (
                 <tr key={user.id}>
-                  <td style={cell}>
+                  <td style={TABLE_CELL}>
                     {user.fullName}
                     <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{user.email}</div>
                   </td>
-                  <td style={cell}>
+                  <td style={TABLE_CELL}>
                     {self || erased ? (
                       ROLE_LABEL[user.role as Role]
                     ) : (
                       <form action={changeUserRole} style={{ display: 'flex', gap: 8 }}>
                         <input type="hidden" name="userId" value={user.id} />
-                        <select name="role" defaultValue={user.role} style={{ ...field, minWidth: 150 }}>
+                        <select
+                          name="role"
+                          defaultValue={user.role}
+                          aria-label={`Роль: ${user.fullName}`}
+                          style={{ ...field, minWidth: 150 }}
+                        >
                           {ROLES.map((role) => (
                             <option key={role} value={role}>
                               {ROLE_LABEL[role]}
@@ -150,8 +140,8 @@ export default async function UsersScreen({
                       </div>
                     ) : null}
                   </td>
-                  <td style={cell}>
-                    <Chip tone={user.status === 'ACTIVE' ? 'ok' : user.status === 'ERASED' ? 'neutral' : 'warn'}>
+                  <td style={TABLE_CELL}>
+                    <Chip tone={user.status === 'ACTIVE' ? 'accent' : 'neutral'}>
                       {STATUS_LABEL[user.status as keyof typeof STATUS_LABEL]}
                     </Chip>
                     {self || erased ? null : (
@@ -168,13 +158,13 @@ export default async function UsersScreen({
                       </form>
                     )}
                   </td>
-                  <td style={cell}>
+                  <td style={TABLE_CELL}>
                     {formatDate(user.lastLoginAt) ?? 'не входил'}
                     <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
                       сессий {user._count.sessions}
                     </div>
                   </td>
-                  <td style={cell}>
+                  <td style={TABLE_CELL}>
                     {user.expertProfile === null ? (
                       '—'
                     ) : (
@@ -183,6 +173,7 @@ export default async function UsersScreen({
                         <input
                           type="date"
                           name="signedOn"
+                          aria-label={`Дата подписания договора поручения: ${user.fullName}`}
                           defaultValue={user.expertProfile.ndaSignedAt?.toISOString().slice(0, 10) ?? ''}
                           style={{ ...field, minWidth: 160 }}
                         />
@@ -192,7 +183,7 @@ export default async function UsersScreen({
                       </form>
                     )}
                     {user.expertProfile !== null && user.expertProfile.ndaSignedAt === null ? (
-                      <div style={{ fontSize: 13, color: 'var(--pd-err-ink)', marginTop: 4 }}>
+                      <div style={{ fontSize: 13, color: 'var(--pd-ink-secondary)', marginTop: 4 }}>
                         без договора доступ к материалам клиента не выдаётся
                       </div>
                     ) : null}
