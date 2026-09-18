@@ -11,6 +11,7 @@ import {
   Roadmap,
   StatusLine,
   Text,
+  authorName,
   formatDate,
   plural,
   type RoadmapItem,
@@ -185,7 +186,7 @@ export default async function ProjectScreen({
                     <Text size={14}>{EVENT_LABEL[event.kind] ?? event.kind}</Text>
                     <Text muted size={13} style={{ marginTop: 2 }}>
                       {formatDate(event.createdAt)}
-                      {event.actor === null ? '' : ` · ${event.actor.fullName}`}
+                      {event.actor === null ? '' : ` · ${authorName(event.actor, actor)}`}
                     </Text>
                   </li>
                 ))}

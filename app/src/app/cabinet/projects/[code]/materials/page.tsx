@@ -9,10 +9,10 @@ import {
   Empty,
   Field,
   Heading,
-  Mono,
   Select,
   Text,
   formatDate,
+  authorName,
   formatSize,
   plural,
 } from '../../../../../components/cabinet/ui';
@@ -56,22 +56,12 @@ export default async function ProjectMaterialsScreen({
         {project.code}
       </a>
 
-      <Mono style={{ display: 'block', marginTop: 16 }}>Материалы работы</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        {project.title}
+      <Heading level={1} style={{ margin: '16px 0 24px' }}>
+        Материалы: {project.title}
       </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
-        Все материалы работы в одном перечне, включая не привязанные к этапу. Версии неизменяемы:
-        новая редакция добавляется следующей версией, прежняя остаётся доступной. Договор, счета и
-        акты лежат отдельно — на экране оплат, при договоре и траншах.
-      </Text>
 
       {project.materials.length === 0 ? (
-        <Empty title="Материалов пока нет">
-          {mayUpload
-            ? 'Первый файл можно приложить формой ниже: он появится здесь и у остальных участников работы.'
-            : 'Как только куратор приложит первый файл, он появится здесь.'}
-        </Empty>
+        <Empty title="Материалов пока нет" />
       ) : (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
           {project.materials.map((material) => (
@@ -120,10 +110,7 @@ export default async function ProjectMaterialsScreen({
                       <a href={`/cabinet/files/${version.id}`}>{version.originalName}</a>
                       <span>{formatSize(version.sizeBytes)}</span>
                       <span>{formatDate(version.uploadedAt)}</span>
-                      <span>
-                        {version.uploadedBy.fullName} ·{' '}
-                        {ROLE_LABEL[version.uploadedBy.role] ?? version.uploadedBy.role}
-                      </span>
+                      <span>{authorName(version.uploadedBy, actor, version.uploadedById)}</span>
                       {version.comments.length === 0 ? null : (
                         <span>
                           {version.comments.length}{' '}
@@ -168,13 +155,7 @@ export default async function ProjectMaterialsScreen({
 
       {mayUpload ? (
         <Card style={{ marginTop: 28 }}>
-          <Heading level={2} style={{ marginBottom: 8 }}>
-            Приложить новый материал
-          </Heading>
-          <Text muted style={{ marginBottom: 16 }}>
-            Материал можно привязать к этапу — тогда он появится и на экране этапа, — либо оставить
-            при работе целиком.
-          </Text>
+          <Heading level={2} style={{ marginBottom: 16 }}>Приложить материал</Heading>
           <form
             action={addMaterialVersion}
             style={{
