@@ -36,7 +36,7 @@ import {
 import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
-import { enqueue } from '../../lib/cabinet/outbox';
+import { enqueue, retryFailed } from '../../lib/cabinet/outbox';
 import {
   addStage,
   approveLead,
@@ -581,4 +581,14 @@ export async function dropStageTemplate(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   await removeStageTemplateItem(actor, String(form.get('id') ?? ''));
   redirect('/cabinet/manage/directory');
+}
+
+/**
+ * Вернуть недоставленное уведомление в очередь. Экран очереди служебный и
+ * открыт только руководителю; право проверяет сама служба.
+ */
+export async function retryNotification(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await retryFailed(actor, String(form.get('id') ?? ''), await requestIp());
+  redirect('/cabinet/manage/outbox');
 }
