@@ -14,6 +14,20 @@ import { describe, it } from 'node:test';
 
 const PROTOTYPE = path.join(import.meta.dirname, '..', '..', 'design', 'cabinet-prototype');
 
+/**
+ * Разметка экрана без обвязки прототипа.
+ *
+ * Сверху каждого снимка стоит полоса выбора роли — она принадлежит
+ * прототипу, а не кабинету, и с появлением четвёртой роли (Р-150) слово
+ * «Эксперт» оказалось на каждой странице, включая клиентские. Проверять
+ * надо экран, поэтому обвязка вырезается.
+ */
+function body(file: string): string {
+  return readFileSync(file, 'utf8')
+    .replace(/<div class="pt-bar">[\s\S]*?<\/div>/u, '')
+    .replace(/<div class="pt-entry">[\s\S]*?<\/div>\s*<\/div>\s*<p[\s\S]*?<\/div>/u, '');
+}
+
 function screens(folder: string): string[] {
   const root = path.join(PROTOTYPE, folder);
   return readdirSync(root, { recursive: true })
@@ -27,7 +41,7 @@ describe('клиент не видит исполнителя', () => {
   // автора, ни в тексте сообщения или замечания (решения Р-140, Р-143).
   for (const file of screens('client')) {
     it(path.relative(PROTOTYPE, file), () => {
-      const html = readFileSync(file, 'utf8');
+      const html = body(file);
       assert.equal(/эксперт/iu.test(html), false, 'на клиентском экране назван исполнитель');
     });
   }
@@ -37,10 +51,10 @@ describe('зелёный и красный — только исход дейс�
   // Пара ok/err живёт в блоке подтверждения и блоке ошибки; в снимках
   // прототипа таких блоков нет, поэтому её применений быть не должно
   // (решение Р-146). Объявление токенов в таблице — не применение.
-  for (const folder of ['client', 'manager', 'head']) {
+  for (const folder of ['client', 'expert', 'manager', 'head']) {
     for (const file of screens(folder)) {
       it(path.relative(PROTOTYPE, file), () => {
-        const html = readFileSync(file, 'utf8');
+        const html = body(file);
         assert.equal(
           /var\(--pd-(ok|err)-/u.test(html),
           false,
@@ -56,10 +70,10 @@ describe('уровни заголовков не пропускаются', () =
   // h3 читается как потерянный раздел: пользователь клавиатуры не понимает,
   // куда делся уровень. Кегль при этом может быть любым — в кабинете
   // уровень и ступень кегля разведены (решение Р-148).
-  for (const folder of ['client', 'manager', 'head']) {
+  for (const folder of ['client', 'expert', 'manager', 'head']) {
     for (const file of screens(folder)) {
       it(path.relative(PROTOTYPE, file), () => {
-        const html = readFileSync(file, 'utf8');
+        const html = body(file);
         const levels = [...html.matchAll(/<h([1-6])[ >]/gu)].map((m) => Number(m[1]));
         let previous = 0;
         for (const level of levels) {
@@ -78,10 +92,10 @@ describe('каждое поле подписано', () => {
   // Подпись в placeholder исчезает при первом же символе, и человек теряет
   // смысл поля; читалке она не заменяет метку вовсе. Метка либо связана
   // через `for`, либо оборачивает поле, либо задана `aria-label`.
-  for (const folder of ['client', 'manager', 'head']) {
+  for (const folder of ['client', 'expert', 'manager', 'head']) {
     for (const file of screens(folder)) {
       it(path.relative(PROTOTYPE, file), () => {
-        const html = readFileSync(file, 'utf8');
+        const html = body(file);
         const forIds = new Set(
           [...html.matchAll(/<label[^>]*\bfor="([^"]+)"/gu)].map((m) => m[1]),
         );
