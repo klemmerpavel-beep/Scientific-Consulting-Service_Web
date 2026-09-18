@@ -27,6 +27,7 @@ import { can } from '../../../lib/cabinet/access';
 import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
 import { unreadInbox } from '../../../lib/cabinet/messages';
 import { leadQueue, serviceTypes, trafficLight } from '../../../lib/cabinet/queries';
+import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { currentActor } from '../../../lib/cabinet/session';
 import { OVERHEAD_PERCENT, activeWorks, practiceSummary } from '../../../lib/cabinet/summary';
 import { moderateLead } from '../actions';
@@ -56,6 +57,10 @@ export default async function ManageQueue() {
   const summary = can(actor, 'MARGIN_VIEW') ? await practiceSummary(actor) : null;
   const works = summary === null ? [] : await activeWorks(actor);
   const unread = await unreadInbox(actor);
+  // Состояние очереди уведомлений видит только руководитель (решение Р-154):
+  // менеджеру служебная кухня не нужна, а недоставленное письмо — забота
+  // того, кто отвечает за практику целиком.
+  const outbox = can(actor, 'AUDIT_VIEW') ? await outboxDigest(actor) : null;
 
   // «Требует внимания» — то, что нельзя оставить как есть: сорванный срок,
   // работа, которая ждёт клиента дольше двух недель, и непрочитанное
@@ -86,6 +91,17 @@ export default async function ManageQueue() {
       when: null,
       href: `/cabinet/projects/${row.code}/messages`,
     })),
+    ...(outbox !== null && outbox.failed > 0
+      ? [
+          {
+            key: 'outbox',
+            what: `Уведомления не доставлены: ${outbox.failed}`,
+            detail: 'Письма и сообщения, не ушедшие после пяти попыток',
+            when: null,
+            href: '/cabinet/manage/outbox',
+          },
+        ]
+      : []),
   ];
 
   return (

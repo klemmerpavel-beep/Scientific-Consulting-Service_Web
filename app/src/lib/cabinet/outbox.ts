@@ -1,5 +1,7 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
+import { ensure, type Actor } from './access.ts';
+import { record } from './audit.ts';
 import { sendMailTo } from './mail.ts';
 import { escapeHtml } from './token.ts';
 
@@ -78,6 +80,17 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<void> {
 /** Сколько раз пробуем доставить, прежде чем признать отправку неудачной. */
 const MAX_ATTEMPTS = 5;
 
+/**
+ * Причина, которую отправители возвращают при незаданных настройках канала.
+ * Она отличается от настоящего отказа по существу: чинить нечего, пока
+ * ящик или бот не заведены, и попытки такой строке не наращиваются —
+ * иначе очередь перегорит до первой же настоящей отправки.
+ */
+export const CHANNEL_OFF = 'канал не настроен';
+
+/** Через сколько проверить строку, ждущую настройки канала. */
+const CHANNEL_OFF_DELAY_MS = 60 * 60 * 1000;
+
 export interface DispatchReport {
   readonly taken: number;
   readonly sent: number;
@@ -86,7 +99,7 @@ export interface DispatchReport {
 
 async function sendTelegram(chatId: string, text: string): Promise<{ ok: boolean; error?: string }> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) return { ok: false, error: 'канал не настроен' };
+  if (!token) return { ok: false, error: CHANNEL_OFF };
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
@@ -153,6 +166,21 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
       continue;
     }
 
+    // Ненастроенный канал не расходует попытки: строка ждёт настройки,
+    // а не перегорает. Отдельного состояния для этого не заводится —
+    // причина в `lastError` и так называет положение дел.
+    if (result.error === CHANNEL_OFF) {
+      await prisma.notificationOutbox.update({
+        where: { id: item.id },
+        data: {
+          lastError: CHANNEL_OFF,
+          scheduledAt: new Date(Date.now() + CHANNEL_OFF_DELAY_MS),
+        },
+      });
+      failed += 1;
+      continue;
+    }
+
     const attempts = item.attempts + 1;
     const giveUp = attempts >= MAX_ATTEMPTS;
     await prisma.notificationOutbox.update({
@@ -212,4 +240,116 @@ export async function enqueueDeadlineReminders(): Promise<number> {
     queued += 1;
   }
   return queued;
+}
+
+/**
+ * Состояние очереди для руководителя.
+ *
+ * Модуль в собственном заголовке обещает, что недоставленное видно, а не
+ * растворяется в журнале. Эта выборка и есть исполнение обещания: пока
+ * экрана не было, письмо, не ушедшее после пяти попыток, никто не видел.
+ */
+export interface OutboxFailure {
+  readonly id: string;
+  readonly channel: 'EMAIL' | 'TELEGRAM';
+  readonly eventKind: string;
+  readonly subject: string;
+  readonly recipient: string;
+  readonly projectCode: string | null;
+  readonly attempts: number;
+  readonly lastError: string | null;
+  readonly scheduledAt: Date;
+}
+
+export interface OutboxDigest {
+  readonly pending: number;
+  readonly sentLastDay: number;
+  readonly failed: number;
+  /** Ждут настройки канала: попытки им не наращиваются (см. `dispatch`). */
+  readonly waitingChannel: number;
+  readonly lastSentAt: Date | null;
+  readonly failures: readonly OutboxFailure[];
+}
+
+export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
+  // Очередь — служебная кухня практики: в ней видны адресаты по всем работам,
+  // поэтому право то же, что у журналов.
+  ensure(actor, 'AUDIT_VIEW');
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const [pending, sentLastDay, failed, waitingChannel, lastSent, failures] = await Promise.all([
+    prisma.notificationOutbox.count({ where: { state: 'PENDING' } }),
+    prisma.notificationOutbox.count({ where: { state: 'SENT', sentAt: { gte: dayAgo } } }),
+    prisma.notificationOutbox.count({ where: { state: 'FAILED' } }),
+    prisma.notificationOutbox.count({ where: { state: 'PENDING', lastError: CHANNEL_OFF } }),
+    prisma.notificationOutbox.findFirst({
+      where: { state: 'SENT' },
+      orderBy: { sentAt: 'desc' },
+      select: { sentAt: true },
+    }),
+    prisma.notificationOutbox.findMany({
+      where: { state: 'FAILED' },
+      orderBy: { scheduledAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        channel: true,
+        eventKind: true,
+        subject: true,
+        attempts: true,
+        lastError: true,
+        scheduledAt: true,
+        user: { select: { fullName: true } },
+        project: { select: { code: true } },
+      },
+    }),
+  ]);
+
+  return {
+    pending,
+    sentLastDay,
+    failed,
+    waitingChannel,
+    lastSentAt: lastSent?.sentAt ?? null,
+    failures: failures.map((row) => ({
+      id: row.id,
+      channel: row.channel,
+      eventKind: row.eventKind,
+      subject: row.subject,
+      // Адрес получателя в служебный перечень не выносится: для разбора
+      // достаточно имени, а адрес — персональные данные.
+      recipient: row.user.fullName,
+      projectCode: row.project?.code ?? null,
+      attempts: row.attempts,
+      lastError: row.lastError,
+      scheduledAt: row.scheduledAt,
+    })),
+  };
+}
+
+/**
+ * Вернуть отказавшую строку в очередь. Счётчик попыток обнуляется: причина
+ * отказа обычно устраняется снаружи (адрес исправлен, ящик настроен), и
+ * прежние пять попыток к новой отправке отношения не имеют.
+ */
+export async function retryFailed(actor: Actor, id: string, ip?: string | null): Promise<void> {
+  ensure(actor, 'AUDIT_VIEW');
+  const row = await prisma.notificationOutbox.findUnique({
+    where: { id },
+    select: { id: true, state: true, projectId: true, eventKind: true },
+  });
+  if (row === null || row.state !== 'FAILED') return;
+
+  await prisma.notificationOutbox.update({
+    where: { id: row.id },
+    data: { state: 'PENDING', attempts: 0, lastError: null, scheduledAt: new Date() },
+  });
+  await record(actor, {
+    action: 'OUTBOX_RETRY',
+    objectType: 'NotificationOutbox',
+    objectId: row.id,
+    projectId: row.projectId,
+    payload: { eventKind: row.eventKind },
+    ip,
+  });
 }

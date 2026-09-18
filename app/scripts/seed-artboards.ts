@@ -469,6 +469,52 @@ async function main() {
     });
   }
 
+  // ── Очередь уведомлений ─────────────────────────────────────────────────
+  // Прототип должен показывать экран состояния очереди не пустым: одна
+  // ушедшая строка, одна ждущая и одна недоставленная. Иначе ссылка на
+  // экран не появляется в «Требует внимания», и экран не попадает в снимок.
+  await prisma.notificationOutbox.deleteMany({ where: { userId: clientUser.id } });
+  await prisma.notificationOutbox.createMany({
+    data: [
+      {
+        userId: clientUser.id,
+        projectId: showcase,
+        channel: 'EMAIL',
+        eventKind: 'STAGE_IN_APPROVAL',
+        subject: 'Этап «Апробация: статья и конференция» ждёт согласования',
+        body: 'Ход работы виден в кабинете.',
+        dedupKey: `artboard:stage-approval:${showcase}`,
+        state: 'SENT',
+        attempts: 1,
+        sentAt: day(1),
+      },
+      {
+        userId: clientUser.id,
+        projectId: showcase,
+        channel: 'EMAIL',
+        eventKind: 'DEADLINE_IN_3_DAYS',
+        subject: 'Срок этапа «Расчёты и иллюстрации» подходит',
+        body: 'Ход работы виден в кабинете.',
+        dedupKey: `artboard:deadline:${showcase}`,
+        state: 'PENDING',
+        attempts: 0,
+        lastError: 'канал не настроен',
+      },
+      {
+        userId: clientUser.id,
+        projectId: showcase,
+        channel: 'TELEGRAM',
+        eventKind: 'VERSION_UPLOADED',
+        subject: 'Загружена новая версия материала',
+        body: 'Ход работы виден в кабинете.',
+        dedupKey: `artboard:version:${showcase}`,
+        state: 'FAILED',
+        attempts: 5,
+        lastError: 'привязка Telegram снята',
+      },
+    ],
+  });
+
   const events = await prisma.projectEvent.count({ where: { projectId: showcase } });
   if (events === 0) {
     await prisma.projectEvent.createMany({
