@@ -4,9 +4,12 @@ import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
 import {
   Button,
+  ButtonLink,
   Card,
   Chip,
   Empty,
+  Field,
+  Form,
   FormActions,
   FormRow,
   Heading,
@@ -92,56 +95,36 @@ export default async function AllLeadsScreen({
       {/* Метод get: фильтры остаются в адресе, страницу можно сохранить и
           прислать себе же. Для поиска это важнее, чем аккуратный адрес. */}
       <Card style={{ marginBottom: 24 }}>
-          <form method="get" action="/cabinet/manage/leads">
-            <FormRow>
-              <Select label="Страница сайта" name="source" defaultValue={filter.source}>
-                <option value="">Любая</option>
-                {Object.entries(SOURCE_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-              <Select label="Состояние" name="status" defaultValue={filter.status}>
-                <option value="">Любое</option>
-                {Object.entries(STATUS_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label
-                  htmlFor="query"
-                  style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500, color: 'var(--pd-ink)' }}
-                >
-                  Поиск
-                </label>
-                <input
-                  id="query"
-                  name="query"
-                  defaultValue={filter.query}
-                  placeholder="имя, почта, телефон, тема"
-                  style={{
-                    boxSizing: 'border-box',
-                    width: '100%',
-                    minHeight: 48,
-                    padding: '12px 14px',
-                    borderRadius: 10,
-                    border: '1px solid var(--pd-edge-neutral)',
-                    background: 'var(--pd-ink-inverse)',
-                    color: 'var(--pd-ink)',
-                    fontFamily: SANS,
-                    fontSize: 16,
-                  }}
-                />
-              </div>
-            </FormRow>
-            <FormActions>
-              <Button>Показать</Button>
-              <a href="/cabinet/manage/leads">Сбросить</a>
-            </FormActions>
-          </form>
+        <Form method="get">
+          <FormRow>
+            <Select label="Страница сайта" name="source" defaultValue={filter.source}>
+              <option value="">Любая</option>
+              {Object.entries(SOURCE_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+            <Select label="Состояние" name="status" defaultValue={filter.status}>
+              <option value="">Любое</option>
+              {Object.entries(STATUS_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+            <Field
+              label="Поиск"
+              name="query"
+              defaultValue={filter.query}
+              placeholder="имя, почта, телефон, тема"
+            />
+          </FormRow>
+          <FormActions>
+            <Button>Показать</Button>
+            <ButtonLink href="/cabinet/manage/leads">Сбросить</ButtonLink>
+          </FormActions>
+        </Form>
       </Card>
 
       <div
@@ -159,7 +142,7 @@ export default async function AllLeadsScreen({
             ? `, показаны с ${(list.page - 1) * LEAD_LIST_PAGE_SIZE + 1} по ${(list.page - 1) * LEAD_LIST_PAGE_SIZE + list.rows.length}`
             : ''}
         </Text>
-        {list.total > 0 ? <a href={exportHref}>Выгрузить в таблицу</a> : null}
+        {list.total > 0 ? <ButtonLink href={exportHref}>Выгрузить в таблицу</ButtonLink> : null}
       </div>
 
       {list.rows.length === 0 ? (
