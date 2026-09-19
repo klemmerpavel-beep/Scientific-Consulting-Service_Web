@@ -1,10 +1,21 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
-import { SANS } from '../../../../components/cabinet/tokens';
-import { Button, Card, Chip, Empty, Heading, Mono, Notice, Text, formatDate,
+import {
+  Button,
+  Card,
+  Chip,
+  Empty,
+  FileField,
+  Form,
+  FormActions,
+  Heading,
+  Mono,
+  Notice,
   TABLE_CELL,
   TABLE_HEAD,
+  Text,
+  formatDate,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { listBatches } from '../../../../lib/cabinet/import/apply';
@@ -67,40 +78,18 @@ export default async function ImportScreen({
         <Heading level={2} style={{ marginBottom: 12 }}>
           Загрузить книгу
         </Heading>
-        <form action={uploadOrderBook} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span
-              style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500, color: 'var(--pd-ink)' }}
-            >
-              Файл .xlsx
-            </span>
-            <input
-              type="file"
-              name="book"
-              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              required
-              style={{
-                boxSizing: 'border-box',
-                width: '100%',
-                minHeight: 44,
-                padding: '10px 14px',
-                borderRadius: 10,
-                border: '1px solid var(--pd-edge-neutral)',
-                background: 'var(--pd-ink-inverse)',
-                color: 'var(--pd-ink)',
-                fontFamily: SANS,
-                fontSize: 16,
-              }}
-            />
-            <span style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
-              Строка заголовка ищется по колонкам «Заказчик», «Тип работы», «Стоимость»,
-              «Оплачено»; пустые строки сверху разбору не мешают.
-            </span>
-          </label>
-          <div>
-            <Button type="submit">Разобрать и показать отчёт</Button>
-          </div>
-        </form>
+        <Form action={uploadOrderBook} encType="multipart/form-data">
+          <FileField
+            label="Файл .xlsx"
+            name="book"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            required
+            hint="Строка заголовка ищется по колонкам «Заказчик», «Тип работы», «Стоимость», «Оплачено»; пустые строки сверху разбору не мешают."
+          />
+          <FormActions>
+            <Button>Разобрать и показать отчёт</Button>
+          </FormActions>
+        </Form>
       </Card>
 
       <Heading level={2} style={{ marginBottom: 12 }}>

@@ -7,11 +7,13 @@ import {
   Card,
   Chip,
   Field,
+  FileField,
   Form,
   FormActions,
   FormRow,
   Heading,
   Mono,
+  Select,
   Text,
   formatDate,
   formatSize,
@@ -224,28 +226,21 @@ export default async function PaymentsScreen({
                       </Text>
 
                       {mayEdit && tranche.status !== 'PAID' ? (
-                        <form
-                          action={changeTrancheStatus}
-                          style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}
-                        >
+                        <Form action={changeTrancheStatus} inline>
                           <input type="hidden" name="trancheId" value={tranche.id} />
                           <input type="hidden" name="code" value={project.code} />
                           <input type="hidden" name="status" value="PAID" />
-                          <input
-                            type="date"
+                          <Field
+                            label={`Дата поступления: ${tranche.title}`}
+                            labelHidden
                             name="paidOn"
+                            type="date"
+                            scope={tranche.id}
                             required
-                            aria-label="Дата поступления"
-                            style={{
-                              minHeight: 44,
-                              padding: '0 12px',
-                              borderRadius: 10,
-                              border: '1px solid var(--pd-edge-neutral)',
-                              fontFamily: SANS,
-                            }}
+                            minWidth={170}
                           />
                           <Button tone="quiet">Отметить оплату</Button>
-                        </form>
+                        </Form>
                       ) : null}
 
                       <div style={{ flexBasis: '100%' }}>
@@ -276,38 +271,35 @@ export default async function PaymentsScreen({
                         )}
 
                         {mayEdit ? (
-                          <form
+                          <Form
                             action={uploadFinanceDocument}
-                            style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}
+                            encType="multipart/form-data"
+                            inline
+                            style={{ marginTop: 8 }}
                           >
                             <input type="hidden" name="projectId" value={project.id} />
                             <input type="hidden" name="code" value={project.code} />
                             <input type="hidden" name="trancheId" value={tranche.id} />
-                            <select
+                            <Select
+                              label={`Вид документа: ${tranche.title}`}
+                              labelHidden
                               name="kind"
-                              aria-label="Вид документа"
+                              scope={tranche.id}
                               defaultValue="INVOICE"
-                              style={{
-                                minHeight: 44,
-                                padding: '0 12px',
-                                borderRadius: 10,
-                                border: '1px solid var(--pd-edge-neutral)',
-                                fontFamily: SANS,
-                                fontSize: 16,
-                              }}
+                              minWidth={150}
                             >
                               <option value="INVOICE">счёт</option>
                               <option value="ACT">акт</option>
-                            </select>
-                            <input
-                              type="file"
+                            </Select>
+                            <FileField
+                              label={`Файл документа: ${tranche.title}`}
+                              labelHidden
                               name="file"
+                              scope={tranche.id}
                               required
-                              aria-label="Файл документа"
-                              style={{ fontFamily: SANS, fontSize: 15 }}
                             />
                             <Button tone="quiet">Приложить</Button>
-                          </form>
+                          </Form>
                         ) : null}
                       </div>
                     </li>
@@ -316,13 +308,9 @@ export default async function PaymentsScreen({
               )}
 
               {mayEdit ? (
-                <form
+                <Form
                   action={addContractTranche}
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                    gap: 16,
-                    alignItems: 'end',
                     marginTop: 20,
                     paddingTop: 20,
                     borderTop: '1px solid var(--pd-divider)',
@@ -330,13 +318,21 @@ export default async function PaymentsScreen({
                 >
                   <input type="hidden" name="contractId" value={contract.id} />
                   <input type="hidden" name="code" value={project.code} />
-                  <Field label="Назначение транша" name="title" required placeholder="Старт работ" />
-                  <Field label="Сумма" name="amount" required placeholder="240 000" />
-                  <Field label="Плановая дата" name="plannedDate" type="date" />
-                  <div>
+                  <FormRow>
+                    <Field
+                      label="Назначение транша"
+                      name="title"
+                      scope="tranche"
+                      required
+                      placeholder="Старт работ"
+                    />
+                    <Field label="Сумма" name="amount" scope="tranche" required placeholder="240 000" />
+                    <Field label="Плановая дата" name="plannedDate" scope="tranche" type="date" />
+                  </FormRow>
+                  <FormActions>
                     <Button tone="quiet">Добавить транш</Button>
-                  </div>
-                </form>
+                  </FormActions>
+                </Form>
               ) : null}
             </Card>
           </section>
@@ -373,13 +369,10 @@ export default async function PaymentsScreen({
               )}
 
               {mayEdit ? (
-                <form
+                <Form
                   action={uploadFinanceDocument}
+                  encType="multipart/form-data"
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: 16,
-                    alignItems: 'end',
                     marginTop: 20,
                     paddingTop: 20,
                     borderTop: '1px solid var(--pd-divider)',
@@ -389,15 +382,19 @@ export default async function PaymentsScreen({
                   <input type="hidden" name="code" value={project.code} />
                   <input type="hidden" name="contractId" value={contract.id} />
                   <input type="hidden" name="kind" value="CONTRACT" />
-                  <Field label="Название" name="title" placeholder="Договор № Д-2026-001" />
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Файл</span>
-                    <input type="file" name="file" required style={{ fontFamily: SANS, fontSize: 15 }} />
-                  </label>
-                  <div>
+                  <FormRow>
+                    <Field
+                      label="Название"
+                      name="title"
+                      scope="contract"
+                      placeholder="Договор № Д-2026-001"
+                    />
+                    <FileField label="Файл" name="file" scope="contract" required />
+                  </FormRow>
+                  <FormActions>
                     <Button tone="quiet">Приложить договор</Button>
-                  </div>
-                </form>
+                  </FormActions>
+                </Form>
               ) : null}
             </Card>
           </section>
@@ -444,37 +441,29 @@ export default async function PaymentsScreen({
                           {formatAmount(payout.amount)}
                         </Text>
                         {payout.status === 'PAID' ? null : (
-                          <form action={payPayout} style={{ display: 'flex', gap: 8 }}>
+                          <Form action={payPayout} inline>
                             <input type="hidden" name="payoutId" value={payout.id} />
                             <input type="hidden" name="code" value={project.code} />
-                            <input
-                              type="date"
+                            <Field
+                              label={`Дата выплаты: ${payout.expert?.fullName ?? 'начисление'}`}
+                              labelHidden
                               name="paidOn"
+                              type="date"
+                              scope={payout.id}
                               required
-                              aria-label="Дата выплаты"
-                              style={{
-                                minHeight: 44,
-                                padding: '0 12px',
-                                borderRadius: 10,
-                                border: '1px solid var(--pd-edge-neutral)',
-                                fontFamily: SANS,
-                              }}
+                              minWidth={170}
                             />
                             <Button tone="quiet">Отметить выплату</Button>
-                          </form>
+                          </Form>
                         )}
                       </li>
                     ))}
                   </ul>
                 )}
 
-                <form
+                <Form
                   action={accruePayout}
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                    gap: 16,
-                    alignItems: 'end',
                     marginTop: 20,
                     paddingTop: 20,
                     borderTop: '1px solid var(--pd-divider)',
@@ -482,12 +471,20 @@ export default async function PaymentsScreen({
                 >
                   <input type="hidden" name="projectId" value={project.id} />
                   <input type="hidden" name="code" value={project.code} />
-                  <Field label="Сумма начисления" name="amount" required placeholder="80 000" />
-                  <Field label="За что" name="comment" placeholder="Глава 2" />
-                  <div>
+                  <FormRow>
+                    <Field
+                      label="Сумма начисления"
+                      name="amount"
+                      scope="payout"
+                      required
+                      placeholder="80 000"
+                    />
+                    <Field label="За что" name="comment" scope="payout" placeholder="Глава 2" />
+                  </FormRow>
+                  <FormActions>
                     <Button tone="quiet">Начислить</Button>
-                  </div>
-                </form>
+                  </FormActions>
+                </Form>
               </Card>
             </section>
           ) : null}

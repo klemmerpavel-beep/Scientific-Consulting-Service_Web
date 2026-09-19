@@ -2,7 +2,17 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../components/cabinet/Shell';
-import { Button, Card, Field, Heading, Mono, Notice, Text } from '../../components/cabinet/ui';
+import {
+  Button,
+  Card,
+  Field,
+  Form,
+  FormActions,
+  Heading,
+  Mono,
+  Notice,
+  Text,
+} from '../../components/cabinet/ui';
 import { currentActor } from '../../lib/cabinet/session';
 import { requestLink } from './actions';
 
@@ -47,7 +57,7 @@ export default async function CabinetEntrance({
 
         {params.sent === undefined ? (
           <Card>
-            <form action={requestLink} style={{ display: 'grid', gap: 20 }}>
+            <Form action={requestLink}>
               <Field
                 label="Электронная почта"
                 name="email"
@@ -56,8 +66,10 @@ export default async function CabinetEntrance({
                 placeholder="you@example.ru"
                 hint="Тот адрес, который вы указывали при обращении."
               />
-              <Button>Прислать ссылку</Button>
-            </form>
+              <FormActions>
+                <Button>Прислать ссылку</Button>
+              </FormActions>
+            </Form>
           </Card>
         ) : (
           <Notice>

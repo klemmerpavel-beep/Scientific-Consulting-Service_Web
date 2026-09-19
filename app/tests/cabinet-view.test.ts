@@ -116,3 +116,25 @@ describe('каждое поле подписано', () => {
     }
   }
 });
+
+describe('идентификаторы на экране не повторяются', () => {
+  // Повтор — не косметика: `<label for>` ведёт к первому совпадению, и
+  // читалка называет не то поле, которое человек правит. Дубли заводились
+  // формой, повторённой в перечне: имя поля одно на все строки. Отсюда
+  // область в `Field`/`Select` (решение Р-158).
+  for (const folder of ['client', 'expert', 'manager', 'head']) {
+    for (const file of screens(folder)) {
+      it(path.relative(PROTOTYPE, file), () => {
+        const html = body(file);
+        const seen = new Set<string>();
+        const twice: string[] = [];
+        for (const match of html.matchAll(/\bid="([^"]+)"/gu)) {
+          const id = match[1];
+          if (seen.has(id)) twice.push(id);
+          seen.add(id);
+        }
+        assert.deepEqual(twice, [], `идентификатор встречается дважды: ${twice.join(', ')}`);
+      });
+    }
+  }
+});

@@ -1,8 +1,18 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
-import { SANS } from '../../../components/cabinet/tokens';
-import { Button, Card, Heading, Mono, Notice, Text } from '../../../components/cabinet/ui';
+import {
+  Button,
+  ButtonLink,
+  Card,
+  Checkbox,
+  Form,
+  FormActions,
+  Heading,
+  Mono,
+  Notice,
+  Text,
+} from '../../../components/cabinet/ui';
 import { createTelegramBindLink } from '../../../lib/cabinet/auth';
 import { currentActor } from '../../../lib/cabinet/session';
 import { prisma } from '../../../lib/db';
@@ -35,8 +45,6 @@ export default async function SettingsScreen({
   const bound = user.telegramChatId !== null;
   const bindLink = bound ? null : await createTelegramBindLink(actor.id);
 
-  const checkbox = { width: 18, height: 18 };
-
   return (
     <Shell actor={actor} current="/cabinet/settings">
       <div style={{ maxWidth: 680 }}>
@@ -56,36 +64,26 @@ export default async function SettingsScreen({
         )}
 
         <Card style={{ marginBottom: 20 }}>
-          <form action={saveNotificationChannels} style={{ display: 'grid', gap: 16 }}>
-            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <input
-                type="checkbox"
-                name="notifyEmail"
-                defaultChecked={user.notifyEmail}
-                style={checkbox}
-              />
-              <span style={{ fontFamily: SANS, fontSize: 15 }}>
-                Электронная почта — <strong>{user.email}</strong>
-              </span>
-            </label>
-
-            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <input
-                type="checkbox"
-                name="notifyTelegram"
-                defaultChecked={user.notifyTelegram}
-                disabled={!bound}
-                style={checkbox}
-              />
-              <span style={{ fontFamily: SANS, fontSize: 15 }}>
-                Telegram{bound ? '' : ' — сначала привяжите аккаунт'}
-              </span>
-            </label>
-
-            <div>
+          <Form action={saveNotificationChannels}>
+            <Checkbox
+              name="notifyEmail"
+              defaultChecked={user.notifyEmail}
+              label={
+                <>
+                  Электронная почта — <strong>{user.email}</strong>
+                </>
+              }
+            />
+            <Checkbox
+              name="notifyTelegram"
+              defaultChecked={user.notifyTelegram}
+              disabled={!bound}
+              label={`Telegram${bound ? '' : ' — сначала привяжите аккаунт'}`}
+            />
+            <FormActions>
               <Button>Сохранить</Button>
-            </div>
-          </form>
+            </FormActions>
+          </Form>
         </Card>
 
         <Card>
@@ -95,9 +93,9 @@ export default async function SettingsScreen({
           {bound ? (
             <>
               <Text style={{ marginBottom: 16 }}>Аккаунт привязан, уведомления доходят.</Text>
-              <form action={dropTelegram}>
+              <Form action={dropTelegram} inline>
                 <Button tone="quiet">Отвязать</Button>
-              </form>
+              </Form>
             </>
           ) : bindLink === null ? (
             <Text muted>
@@ -109,24 +107,9 @@ export default async function SettingsScreen({
                 Откройте ссылку и нажмите «Начать» — бот запомнит, куда присылать уведомления.
                 Ссылка действует час и срабатывает один раз; войти по ней в кабинет нельзя.
               </Text>
-              <a
-                href={bindLink}
-                className="cab-btn cab-btn-primary"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  minHeight: 44,
-                  padding: '0 20px',
-                  borderRadius: 999,
-                  background: 'var(--pd-accent)',
-                  color: 'var(--pd-ink-inverse)',
-                  fontFamily: SANS,
-                  fontSize: 15,
-                  fontWeight: 500,
-                }}
-              >
+              <ButtonLink href={bindLink} tone="primary">
                 Привязать Telegram
-              </a>
+              </ButtonLink>
             </>
           )}
         </Card>

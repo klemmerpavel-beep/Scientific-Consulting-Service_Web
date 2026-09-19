@@ -1,10 +1,21 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
-import { SANS } from '../../../../components/cabinet/tokens';
-import { Button, Card, Chip, Empty, Heading, Mono, Notice, Text, plural,
+import {
+  Button,
+  Card,
+  Chip,
+  Empty,
+  Form,
+  FormActions,
+  Heading,
+  Mono,
+  Notice,
+  Select,
   TABLE_CELL,
   TABLE_HEAD,
+  Text,
+  plural,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { erasableClients, listErasureRequests } from '../../../../lib/cabinet/erasure';
@@ -14,19 +25,6 @@ import { currentActor } from '../../../../lib/cabinet/session';
 import { executeErasureRequest, openErasureRequest } from '../../actions';
 
 export const dynamic = 'force-dynamic';
-
-const field: React.CSSProperties = {
-  boxSizing: 'border-box',
-  width: '100%',
-  minHeight: 44,
-  padding: '10px 14px',
-  borderRadius: 10,
-  border: '1px solid var(--pd-edge-neutral)',
-  background: 'var(--pd-ink-inverse)',
-  color: 'var(--pd-ink)',
-  fontFamily: SANS,
-  fontSize: 16,
-};
 
 interface Report {
   projects?: number;
@@ -78,31 +76,23 @@ export default async function ErasureScreen({
         <Heading level={2} style={{ marginBottom: 12 }}>
           Принять требование
         </Heading>
-        <form action={openErasureRequest} style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 560 }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Карточка клиента</span>
-            <select name="clientId" required style={field}>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.fullName} — {client._count.projects}{' '}
-                  {plural(client._count.projects, 'проект', 'проекта', 'проектов')}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Объём</span>
-            <select name="scope" defaultValue="PERSONAL_DATA_AND_FILES" style={field}>
-              <option value="PERSONAL_DATA_AND_FILES">Данные и файлы</option>
-              <option value="PERSONAL_DATA">Только данные, файлы сохранить</option>
-            </select>
-          </label>
-          <div>
-            <Button type="submit" tone="quiet">
-              Зарегистрировать требование
-            </Button>
-          </div>
-        </form>
+        <Form action={openErasureRequest} style={{ maxWidth: 560 }}>
+          <Select label="Карточка клиента" name="clientId" required>
+            {clients.map((client) => (
+              <option key={client.id} value={client.id}>
+                {client.fullName} — {client._count.projects}{' '}
+                {plural(client._count.projects, 'проект', 'проекта', 'проектов')}
+              </option>
+            ))}
+          </Select>
+          <Select label="Объём" name="scope" defaultValue="PERSONAL_DATA_AND_FILES">
+            <option value="PERSONAL_DATA_AND_FILES">Данные и файлы</option>
+            <option value="PERSONAL_DATA">Только данные, файлы сохранить</option>
+          </Select>
+          <FormActions>
+            <Button tone="quiet">Зарегистрировать требование</Button>
+          </FormActions>
+        </Form>
       </Card>
 
       <Heading level={2} style={{ marginBottom: 12 }}>
@@ -171,10 +161,10 @@ export default async function ErasureScreen({
                       {request.executedAt !== null ? (
                         '—'
                       ) : (
-                        <form action={executeErasureRequest}>
+                        <Form action={executeErasureRequest} inline>
                           <input type="hidden" name="requestId" value={request.id} />
-                          <Button type="submit">Исполнить</Button>
-                        </form>
+                          <Button>Исполнить</Button>
+                        </Form>
                       )}
                     </td>
                   </tr>
