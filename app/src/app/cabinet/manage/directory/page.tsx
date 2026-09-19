@@ -16,6 +16,7 @@ import {
   Select,
   TABLE_CELL,
   TABLE_HEAD,
+  TABLE_NUM,
   Text,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
@@ -115,7 +116,7 @@ export default async function DirectoryScreen({
                   </div>
                   {type.isActive ? null : <Chip tone="neutral">не действует</Chip>}
                 </td>
-                <td style={TABLE_CELL}>{type._count.projects}</td>
+                <td style={TABLE_NUM}>{type._count.projects}</td>
                 <td style={TABLE_CELL}>
                   {type.basePrice === null ? (
                     <span style={{ color: 'var(--pd-ink-muted)' }}>не задана</span>
@@ -243,7 +244,7 @@ export default async function DirectoryScreen({
             />
           </FormRow>
           <FormActions>
-            <Button>Сохранить</Button>
+            <Button tone="quiet">Сохранить</Button>
           </FormActions>
         </Form>
         <Text muted size={13} style={{ marginTop: 12 }}>

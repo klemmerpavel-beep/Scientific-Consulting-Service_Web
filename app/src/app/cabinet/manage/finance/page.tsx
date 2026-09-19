@@ -71,13 +71,13 @@ export default async function FinanceScreen() {
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
           <thead>
             <tr>
-              <th style={TABLE_HEAD}>Проект</th>
-              <th style={TABLE_HEAD}>Клиент</th>
-              <th style={{ ...TABLE_HEAD, textAlign: 'right' }}>Договор</th>
-              <th style={{ ...TABLE_HEAD, textAlign: 'right' }}>Получено</th>
-              <th style={{ ...TABLE_HEAD, textAlign: 'right' }}>К получению</th>
-              <th style={{ ...TABLE_HEAD, textAlign: 'right' }}>Начислено</th>
-              <th style={{ ...TABLE_HEAD, textAlign: 'right' }}>Маржа</th>
+              <th style={TABLE_HEAD} scope="col">Проект</th>
+              <th style={TABLE_HEAD} scope="col">Клиент</th>
+              <th scope="col" style={{ ...TABLE_HEAD, textAlign: 'right' }}>Договор</th>
+              <th scope="col" style={{ ...TABLE_HEAD, textAlign: 'right' }}>Получено</th>
+              <th scope="col" style={{ ...TABLE_HEAD, textAlign: 'right' }}>К получению</th>
+              <th scope="col" style={{ ...TABLE_HEAD, textAlign: 'right' }}>Начислено</th>
+              <th scope="col" style={{ ...TABLE_HEAD, textAlign: 'right' }}>Маржа</th>
             </tr>
           </thead>
           <tbody>

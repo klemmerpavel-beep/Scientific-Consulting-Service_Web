@@ -37,11 +37,11 @@ export default async function RegistryScreen() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={TABLE_HEAD}>Клиент</th>
-                <th style={TABLE_HEAD}>Вуз и специальность</th>
-                {'email' in (clients[0] ?? {}) ? <th style={TABLE_HEAD}>Контакты</th> : null}
-                <th style={TABLE_HEAD}>Проектов</th>
-                <th style={TABLE_HEAD}>Последний вход</th>
+                <th style={TABLE_HEAD} scope="col">Клиент</th>
+                <th style={TABLE_HEAD} scope="col">Вуз и специальность</th>
+                {'email' in (clients[0] ?? {}) ? <th style={TABLE_HEAD} scope="col">Контакты</th> : null}
+                <th style={TABLE_HEAD} scope="col">Проектов</th>
+                <th style={TABLE_HEAD} scope="col">Последний вход</th>
               </tr>
             </thead>
             <tbody>
@@ -88,10 +88,10 @@ export default async function RegistryScreen() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={TABLE_HEAD}>Эксперт</th>
-                <th style={TABLE_HEAD}>Специализация</th>
-                <th style={TABLE_HEAD}>Договор поручения</th>
-                <th style={TABLE_HEAD}>Загрузка</th>
+                <th style={TABLE_HEAD} scope="col">Эксперт</th>
+                <th style={TABLE_HEAD} scope="col">Специализация</th>
+                <th style={TABLE_HEAD} scope="col">Договор поручения</th>
+                <th style={TABLE_HEAD} scope="col">Загрузка</th>
               </tr>
             </thead>
             <tbody>

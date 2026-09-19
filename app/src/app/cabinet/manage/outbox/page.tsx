@@ -11,6 +11,7 @@ import {
   Mono,
   TABLE_CELL,
   TABLE_HEAD,
+  TABLE_NUM,
   Text,
   Tile,
   Tiles,
@@ -128,7 +129,7 @@ export default async function OutboxScreen() {
                   <td style={TABLE_CELL}>
                     <Chip>{CHANNEL_LABEL[row.channel] ?? row.channel}</Chip>
                   </td>
-                  <td style={TABLE_CELL}>{row.attempts}</td>
+                  <td style={TABLE_NUM}>{row.attempts}</td>
                   <td style={TABLE_CELL}>
                     <Text muted style={{ margin: 0 }}>
                       {row.lastError ?? 'причина не записана'}

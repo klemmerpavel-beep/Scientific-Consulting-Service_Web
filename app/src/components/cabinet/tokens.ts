@@ -106,6 +106,7 @@ ${ROOT_TOKENS}
 body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;flex-direction:column}
 main{flex:1}
 h1,h2,h3{text-wrap:balance;margin:0}
+h1,h2,h3,p,li,td,th,a,label,span{overflow-wrap:break-word}
 p,li{text-wrap:pretty}
 a{color:var(--pd-accent);text-decoration:none}
 a:hover{color:var(--pd-accent-press)}

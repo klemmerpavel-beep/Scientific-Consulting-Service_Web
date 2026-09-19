@@ -14,6 +14,7 @@ import {
   Notice,
   TABLE_CELL,
   TABLE_HEAD,
+  TABLE_NUM,
   Text,
   formatDate,
 } from '../../../../components/cabinet/ui';
@@ -142,7 +143,7 @@ export default async function ImportScreen({
                         {STATE_LABEL[batch.state] ?? batch.state}
                       </Chip>
                     </td>
-                    <td style={TABLE_CELL}>{batch._count.rows}</td>
+                    <td style={TABLE_NUM}>{batch._count.rows}</td>
                     <td style={TABLE_CELL}>
                       {stats.cost === undefined
                         ? '—'
