@@ -18,6 +18,7 @@ import {
   Tile,
   Tiles,
   formatDate,
+  plural,
   type StageStateKey,
   TABLE_CELL,
   TABLE_HEAD,
@@ -27,7 +28,7 @@ import { MONO, SANS } from '../../../components/cabinet/tokens';
 import { can } from '../../../lib/cabinet/access';
 import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
 import { unreadInbox } from '../../../lib/cabinet/messages';
-import { leadQueue, serviceTypes, trafficLight } from '../../../lib/cabinet/queries';
+import { LEAD_PAGE_SIZE, leadQueue, serviceTypes, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { currentActor } from '../../../lib/cabinet/session';
 import { OVERHEAD_PERCENT, activeWorks, practiceSummary } from '../../../lib/cabinet/summary';
@@ -43,16 +44,22 @@ const SOURCE_LABEL: Record<string, string> = {
   cabinet: 'Из кабинета',
 };
 
-export default async function ManageQueue() {
+export default async function ManageQueue({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
   if (!can(actor, 'REQUEST_MODERATE')) redirect('/cabinet/projects');
 
-  const [leads, types, light] = await Promise.all([
-    leadQueue(actor),
+  const requested = Number((await searchParams).page ?? '1');
+  const [queue, types, light] = await Promise.all([
+    leadQueue(actor, Number.isFinite(requested) ? requested : 1),
     serviceTypes(),
     trafficLight(actor),
   ]);
+  const leads = queue.rows;
 
   // Сводка — это деньги практики, и её видит только тот, кому открыта маржа.
   const summary = can(actor, 'MARGIN_VIEW') ? await practiceSummary(actor) : null;
@@ -213,7 +220,15 @@ export default async function ManageQueue() {
         )}
       </section>
 
-      <Heading level={2} style={{ marginBottom: 12 }}>Заявки на рассмотрении</Heading>
+      <Heading level={2} style={{ marginBottom: 4 }}>Заявки на рассмотрении</Heading>
+      {queue.total > 0 ? (
+        <Text muted style={{ marginBottom: 12 }}>
+          Всего {queue.total} {plural(queue.total, 'заявка', 'заявки', 'заявок')}, показаны с{' '}
+          {(queue.page - 1) * LEAD_PAGE_SIZE + 1} по{' '}
+          {(queue.page - 1) * LEAD_PAGE_SIZE + leads.length}. Первыми идут самые давние: очередь
+          разбирается с головы.
+        </Text>
+      ) : null}
 
       {leads.length === 0 ? (
         <Empty title="Новых заявок нет" />
@@ -315,6 +330,23 @@ export default async function ManageQueue() {
           ))}
         </ul>
       )}
+
+      {queue.pages > 1 ? (
+        <nav
+          aria-label="Страницы очереди"
+          style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 20 }}
+        >
+          {queue.page > 1 ? (
+            <a href={`/cabinet/manage?page=${queue.page - 1}`}>Предыдущие</a>
+          ) : null}
+          <Text muted style={{ margin: 0 }}>
+            Страница {queue.page} из {queue.pages}
+          </Text>
+          {queue.page < queue.pages ? (
+            <a href={`/cabinet/manage?page=${queue.page + 1}`}>Следующие</a>
+          ) : null}
+        </nav>
+      ) : null}
     </Shell>
   );
 }
