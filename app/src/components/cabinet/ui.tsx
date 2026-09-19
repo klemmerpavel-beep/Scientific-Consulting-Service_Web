@@ -1169,6 +1169,83 @@ export function Roadmap({ items }: { items: readonly RoadmapItem[] }) {
 }
 
 /**
+ * Шапка рабочего экрана — одной полосой.
+ *
+ * Четыре экрана — этап, материалы, переписка, оплаты — набирали её каждый
+ * по-своему: где-то крошка моноширинной ссылкой, где-то моно-метка, где-то
+ * заголовок в сорок пикселей и под ним подпись. Три яруса занимали до ста
+ * десяти пикселей и всякий раз выглядели иначе, а экран заказа рядом с
+ * ними уложился в семьдесят шесть (решения Р-169, Р-170).
+ *
+ * Порядок один: откуда пришли, название, чем оно занято, справа срок.
+ */
+export function ScreenHead({
+  backHref,
+  backLabel,
+  title,
+  chips,
+  note,
+  aside,
+}: {
+  /** Куда вернуться: код работы для экранов внутри неё. */
+  backHref?: string;
+  backLabel?: string;
+  title: string;
+  /** Состояние и прочие пометки рядом с названием. */
+  chips?: ReactNode;
+  /** Строка под названием: чему принадлежит экран. */
+  note?: string | null;
+  /** Правый край полосы: срок. */
+  aside?: string | null;
+}) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        {backHref === undefined ? null : (
+          <a
+            className="cab-mark"
+            href={backHref}
+            style={{ fontFamily: MONO, fontSize: 13, lineHeight: 1.4 }}
+          >
+            {backLabel ?? 'назад'}
+          </a>
+        )}
+        <Heading level={1} size={2}>
+          {title}
+        </Heading>
+        {chips}
+        {aside == null ? null : (
+          <span
+            style={{
+              marginLeft: 'auto',
+              fontFamily: MONO,
+              fontSize: 13,
+              lineHeight: 1.4,
+              color: 'var(--pd-ink-muted)',
+            }}
+          >
+            {aside}
+          </span>
+        )}
+      </div>
+      {note == null ? null : (
+        <p
+          style={{
+            margin: '8px 0 0',
+            fontFamily: SANS,
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: 'var(--pd-ink-muted)',
+          }}
+        >
+          {note}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
  * Панель экрана заказа: ряд колонок высотой по остатку окна.
  *
  * Экран заказа собирался лентой во всю ширину 1220 px: готовность, этапы,

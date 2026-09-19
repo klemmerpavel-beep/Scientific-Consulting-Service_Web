@@ -13,6 +13,7 @@ import {
   FormRow,
   Heading,
   Mono,
+  ScreenHead,
   Select,
   Text,
   formatDate,
@@ -105,14 +106,12 @@ export default async function PaymentsScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
-      <a className="cab-mark" href={`/cabinet/projects/${project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
-        {project.code}
-      </a>
-
-      <Mono style={{ display: 'block', marginTop: 16 }}>Оплаты и документы</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        {project.title}
-      </Heading>
+      <ScreenHead
+        backHref={`/cabinet/projects/${project.code}`}
+        backLabel={project.code}
+        title="Оплаты и документы"
+        note={project.title}
+      />
 
       {contract === null || money === null ? (
         <Card>
@@ -187,7 +186,7 @@ export default async function PaymentsScreen({
           </Card>
 
           <section style={{ marginBottom: 20 }}>
-            <Mono>Транши</Mono>
+            <Heading level={2} size={3}>Транши</Heading>
             <Card style={{ marginTop: 12 }}>
               {contract.tranches.length === 0 ? (
                 <Text muted>Транши ещё не заведены.</Text>
@@ -338,7 +337,7 @@ export default async function PaymentsScreen({
           </section>
 
           <section style={{ marginBottom: 20 }}>
-            <Mono>Документы по договору</Mono>
+            <Heading level={2} size={3}>Документы по договору</Heading>
             <Card style={{ marginTop: 12 }}>
               {contract.documents.length === 0 ? (
                 <Text muted>
@@ -401,7 +400,7 @@ export default async function PaymentsScreen({
 
           {maySeeEconomy ? (
             <section>
-              <Mono>Вознаграждение эксперта</Mono>
+              <Heading level={2} size={3}>Вознаграждение эксперта</Heading>
               <Card style={{ marginTop: 12 }}>
                 {payouts.length === 0 ? (
                   <Text muted>
