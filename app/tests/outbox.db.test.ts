@@ -170,3 +170,83 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
     await assert.rejects(() => retryFailed(manager(), row.id), AccessDenied);
   });
 });
+
+/**
+ * Доставка заявок с сайта: перечень показывает отказы по существу, отделяет
+ * их от незаданного канала и не выносит наружу контакт заявителя.
+ */
+describe('доставка заявок с сайта', { skip: !enabled }, async () => {
+  const { prisma } = await import('../src/lib/db.ts');
+  const { CHANNEL_OFF, leadDeliveryDigest } = await import('../src/lib/cabinet/outbox.ts');
+  const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
+
+  const stamp = Date.now();
+  let leadId = '';
+
+  const person = (role: 'MANAGER' | 'HEAD') => ({
+    id: `delivery-${role}-${stamp}`,
+    role,
+    status: 'ACTIVE' as const,
+    clientProfileId: null,
+    expertNdaSignedAt: null,
+  });
+
+  before(async () => {
+    const lead = await prisma.lead.create({
+      data: {
+        source: 'business',
+        form: 'request',
+        contactKind: 'email',
+        contact: `delivery-${stamp}@example.org`,
+        name: 'Заявитель',
+        topic: `Проверка доставки ${stamp}`,
+        consentGiven: true,
+        consentVersion: 'test',
+      },
+    });
+    leadId = lead.id;
+    await prisma.delivery.createMany({
+      data: [
+        { leadId, channel: 'telegram', ok: false, error: 'HTTP 502 от api.telegram.org' },
+        { leadId, channel: 'email', ok: false, error: CHANNEL_OFF },
+        { leadId, channel: 'email', ok: true, error: null },
+      ],
+    });
+  });
+
+  after(async () => {
+    await prisma.delivery.deleteMany({ where: { leadId } });
+    await prisma.lead.deleteMany({ where: { id: leadId } });
+    await prisma.$disconnect();
+  });
+
+  it('отказ по существу виден, незаданный канал сочтён отдельно', async () => {
+    const digest = await leadDeliveryDigest(person('HEAD'));
+    assert.ok(digest.failed >= 1, 'отказ не сочтён');
+    assert.ok(digest.channelOff >= 1, 'незаданный канал не сочтён');
+    assert.ok(digest.deliveredLastDay >= 1, 'удачная доставка не сочтена');
+    assert.ok(digest.lastOkAt !== null, 'время последней доставки не найдено');
+
+    const mine = digest.failures.find((row) => row.leadId === leadId);
+    assert.ok(mine !== undefined, 'отказавшая строка не попала в перечень');
+    assert.equal(mine.channel, 'telegram');
+    assert.equal(mine.leadSource, 'business');
+    assert.equal(mine.leadTopic, `Проверка доставки ${stamp}`);
+    // Незаданный канал в перечень отказов не попадает: чинить нечего.
+    assert.ok(
+      digest.failures.every((row) => row.error !== CHANNEL_OFF),
+      'строка «канал не настроен» попала в отказы',
+    );
+  });
+
+  it('контакт заявителя в перечень не выносится', async () => {
+    const digest = await leadDeliveryDigest(person('HEAD'));
+    const text = JSON.stringify(digest);
+    assert.ok(!text.includes(`delivery-${stamp}@example.org`), 'адрес заявителя виден в перечне');
+    assert.ok(!text.includes('Заявитель'), 'имя заявителя видно в перечне');
+  });
+
+  it('менеджеру перечень доставок недоступен', async () => {
+    await assert.rejects(() => leadDeliveryDigest(person('MANAGER')), AccessDenied);
+  });
+});
