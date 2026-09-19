@@ -251,6 +251,18 @@ export async function leadQueue(actor: Actor, page = 1) {
   return { rows, total, page: current, pages };
 }
 
+/**
+ * Одна заявка для разбора.
+ *
+ * Разобранные заявки тоже открываются: ссылка из журнала или из письма
+ * должна вести на что-то, а не в «не найдено». Что заявка уже разобрана,
+ * видно по её состоянию.
+ */
+export async function leadById(actor: Actor, id: string) {
+  ensure(actor, 'REQUEST_MODERATE');
+  return prisma.lead.findUnique({ where: { id } });
+}
+
 export async function serviceTypes() {
   return prisma.serviceType.findMany({
     where: { isActive: true },
