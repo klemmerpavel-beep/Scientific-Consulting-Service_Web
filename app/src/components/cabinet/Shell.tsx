@@ -105,10 +105,17 @@ export function navFor(actor: Actor): NavItem[] {
 export default function Shell({
   actor,
   current,
+  center = false,
   children,
 }: {
   actor: Actor | null;
   current?: string;
+  /**
+   * Содержимое стоит по центру оставшейся высоты. Нужно экрану входа: там
+   * одна форма, и прижатая к верху она читается обрывком страницы. Обычные
+   * экраны длиннее окна, и центрировать в них нечего (решение Р-166).
+   */
+  center?: boolean;
   children: ReactNode;
 }) {
   const items = actor === null ? [] : navFor(actor);
@@ -202,9 +209,13 @@ export default function Shell({
         className="cab-pad"
         style={{
           boxSizing: 'border-box',
+          width: '100%',
           maxWidth: CONTAINER,
           margin: '0 auto',
           padding: `clamp(32px,4vw,56px) ${GUTTER}px clamp(72px,7vw,112px)`,
+          ...(center
+            ? { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+            : {}),
         }}
       >
         {children}
