@@ -141,13 +141,35 @@ export async function pendingActions(actor: Actor) {
 }
 
 /** Очередь заявок для менеджера и руководителя. */
-export async function leadQueue(actor: Actor) {
+/** Сколько заявок показывается на одной странице очереди. */
+export const LEAD_PAGE_SIZE = 20;
+
+/**
+ * Очередь заявок постранично.
+ *
+ * Прежде выбирались первые пятьдесят и больше ничего: при четырёхстах с
+ * лишним обращениях, накопившихся с открытия сайта, остальные не были видны
+ * и об их существовании ничего не сообщалось. Теперь возвращается и общее
+ * число, и номер страницы — по ним экран говорит, сколько заявок всего и
+ * какие показаны (решение Р-157).
+ *
+ * Порядок — от старых к новым: очередь разбирается с головы, а не с хвоста.
+ */
+export async function leadQueue(actor: Actor, page = 1) {
   ensure(actor, 'REQUEST_MODERATE');
-  return prisma.lead.findMany({
-    where: { status: { in: ['NEW', 'IN_PROGRESS'] }, projectId: null },
+  const where = { status: { in: ['NEW' as const, 'IN_PROGRESS' as const] }, projectId: null };
+  const total = await prisma.lead.count({ where });
+  const pages = Math.max(1, Math.ceil(total / LEAD_PAGE_SIZE));
+  // Страница за пределами перечня — не ошибка: ссылку могли сохранить, а
+  // заявки за это время разобрать. Показывается последняя существующая.
+  const current = Math.min(Math.max(1, Math.trunc(page) || 1), pages);
+  const rows = await prisma.lead.findMany({
+    where,
     orderBy: { createdAt: 'asc' },
-    take: 50,
+    skip: (current - 1) * LEAD_PAGE_SIZE,
+    take: LEAD_PAGE_SIZE,
   });
+  return { rows, total, page: current, pages };
 }
 
 export async function serviceTypes() {
