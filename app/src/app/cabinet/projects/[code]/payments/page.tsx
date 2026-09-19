@@ -186,7 +186,7 @@ export default async function PaymentsScreen({
           </Card>
 
           <section style={{ marginBottom: 20 }}>
-            <Mono>Транши</Mono>
+            <Heading level={2} size={3}>Транши</Heading>
             <Card style={{ marginTop: 12 }}>
               {contract.tranches.length === 0 ? (
                 <Text muted>Транши ещё не заведены.</Text>
@@ -337,7 +337,7 @@ export default async function PaymentsScreen({
           </section>
 
           <section style={{ marginBottom: 20 }}>
-            <Mono>Документы по договору</Mono>
+            <Heading level={2} size={3}>Документы по договору</Heading>
             <Card style={{ marginTop: 12 }}>
               {contract.documents.length === 0 ? (
                 <Text muted>
@@ -400,7 +400,7 @@ export default async function PaymentsScreen({
 
           {maySeeEconomy ? (
             <section>
-              <Mono>Вознаграждение эксперта</Mono>
+              <Heading level={2} size={3}>Вознаграждение эксперта</Heading>
               <Card style={{ marginTop: 12 }}>
                 {payouts.length === 0 ? (
                   <Text muted>
