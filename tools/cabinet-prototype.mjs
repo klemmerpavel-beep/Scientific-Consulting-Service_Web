@@ -295,46 +295,18 @@ const BAR_CSS = `
 .pt-aside { margin-left:auto; text-decoration:underline !important; }
 `;
 
-/** Страница входа в прототип: настоящий экран входа плюс выбор роли. */
+/**
+ * Страница входа в прототип.
+ *
+ * Выбор роли стоит полосой сверху на каждом снимке, и второй такой же
+ * набор плашек под ней задваивал одно и то же. Здесь остаётся настоящий
+ * экран входа — как он выглядит в кабинете (решение Р-164).
+ */
 function entryPage(snapshotHtml) {
-  const roles = ROLES.map(
-    (role) =>
-      `<a class="pt-enter" href="${role.key}/${role.home.replace(/^\/cabinet\/?/u, '')}/">
-      <span class="pt-enter__role">${role.label}</span>
-      <span class="pt-enter__note">${ENTRY_NOTE[role.key]}</span>
-    </a>`,
-  ).join('\n      ');
-
-  return `<div class="pt-entry">
-    <p class="pt-entry__lead">Прототип: писем он не шлёт, поэтому ссылка входа заменена выбором роли.
-    Состав разделов и содержимое экранов у ролей разные — это матрица прав, а не оформление.</p>
-    <div class="pt-entry__roles">
-      ${roles}
-    </div>
-    <p class="pt-entry__note">Ниже — настоящий экран входа. Формы в прототипе не отправляются.</p>
-  </div>
-${snapshotHtml}`;
+  return snapshotHtml;
 }
 
-const ENTRY_NOTE = {
-  client: 'ход работы по этапам, материалы и переписка с куратором',
-  expert: 'назначенные работы, материалы и версии, собственное вознаграждение',
-  manager: 'свои работы, что требует вмешательства, заявки и переписка',
-  head: 'сводка практики, очередь заявок, сроки, деньги и аналитика',
-};
 
-const ENTRY_CSS = `
-.pt-entry { max-width:1220px; margin:0 auto; padding:40px 24px 8px;
-  font-family:'Inter','Helvetica Neue',Arial,sans-serif; }
-.pt-entry__lead { max-width:78ch; margin:0 0 20px; font-size:16px; line-height:1.65; color:#5C6473; }
-.pt-entry__roles { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
-.pt-enter { display:grid; gap:6px; align-content:start; padding:18px 20px; border-radius:14px;
-  border:1px solid #DDE2EA; text-decoration:none; color:#14161C; background:#fff; }
-.pt-enter:hover { border-color:#14417A; background:#F5F7FA; }
-.pt-enter__role { font-size:17px; font-weight:600; }
-.pt-enter__note { font-size:14px; line-height:1.55; color:#5C6473; }
-.pt-entry__note { margin:28px 0 0; font-size:14px; color:#5C6473; }
-`;
 
 function document_(body, depth) {
   const up = '../'.repeat(depth);
@@ -437,7 +409,7 @@ async function main() {
   // Таблицы стилей одни и те же на всех экранах: прототип отдаётся по сети,
   // и повторять их в каждом файле незачем — из мегабайтов вышли бы десятки.
   const sheet = [...styles].join('\n').replace(/@font-face\s*\{[^}]*\}/gu, '');
-  writeFileSync(path.join(OUT, 'prototype.css'), `${sheet}\n${BAR_CSS}\n${ENTRY_CSS}`);
+  writeFileSync(path.join(OUT, 'prototype.css'), `${sheet}\n${BAR_CSS}\n`);
 
   let written = 0;
   for (const [roleKey, tree] of trees) {

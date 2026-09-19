@@ -20,12 +20,11 @@ const PROTOTYPE = path.join(import.meta.dirname, '..', '..', 'design', 'cabinet-
  * Сверху каждого снимка стоит полоса выбора роли — она принадлежит
  * прототипу, а не кабинету, и с появлением четвёртой роли (Р-150) слово
  * «Эксперт» оказалось на каждой странице, включая клиентские. Проверять
- * надо экран, поэтому обвязка вырезается.
+ * надо экран, поэтому обвязка вырезается. Кроме полосы обвязки больше нет:
+ * плашки выбора роли на входной странице задваивали её и сняты (Р-164).
  */
 function body(file: string): string {
-  return readFileSync(file, 'utf8')
-    .replace(/<div class="pt-bar">[\s\S]*?<\/div>/u, '')
-    .replace(/<div class="pt-entry">[\s\S]*?<\/div>\s*<\/div>\s*<p[\s\S]*?<\/div>/u, '');
+  return readFileSync(file, 'utf8').replace(/<div class="pt-bar">[\s\S]*?<\/div>/u, '');
 }
 
 function screens(folder: string): string[] {

@@ -103,7 +103,8 @@ export const GUTTER = 30;
  */
 export const CABINET_CSS = `
 ${ROOT_TOKENS}
-body{margin:0;background:var(--pd-surface-quiet)}
+body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;flex-direction:column}
+main{flex:1}
 h1,h2,h3{text-wrap:balance;margin:0}
 p,li{text-wrap:pretty}
 a{color:var(--pd-accent);text-decoration:none}
