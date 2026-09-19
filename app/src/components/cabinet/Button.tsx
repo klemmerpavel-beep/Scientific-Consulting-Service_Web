@@ -3,7 +3,7 @@
 import { useFormStatus } from 'react-dom';
 import type { CSSProperties, ReactNode } from 'react';
 
-import { RADIUS, SANS } from './tokens.ts';
+import { BUTTON_CHIP, BUTTON_PRIMARY, BUTTON_QUIET } from './tokens.ts';
 
 /**
  * Кнопка кабинета.
@@ -19,35 +19,11 @@ import { RADIUS, SANS } from './tokens.ts';
  * некому.
  */
 
-/** Цель нажатия не меньше 44 px — правило дизайн-системы сайта. */
-const BUTTON_BASE: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 8,
-  minHeight: 44,
-  padding: '0 20px',
-  borderRadius: RADIUS.pill,
-  fontFamily: SANS,
-  fontSize: 15,
-  fontWeight: 600,
-  lineHeight: 1.4,
-  cursor: 'pointer',
-  border: '1px solid transparent',
-};
-
-export const BUTTON_PRIMARY: CSSProperties = {
-  ...BUTTON_BASE,
-  background: 'var(--pd-accent)',
-  color: 'var(--pd-ink-inverse)',
-};
-
-export const BUTTON_QUIET: CSSProperties = {
-  ...BUTTON_BASE,
-  background: 'var(--pd-ink-inverse)',
-  color: 'var(--pd-ink-secondary)',
-  border: '1px solid var(--pd-edge-neutral)',
-};
+const TONES = {
+  primary: BUTTON_PRIMARY,
+  quiet: BUTTON_QUIET,
+  chip: BUTTON_CHIP,
+} as const;
 
 export function Button({
   children,
@@ -58,7 +34,7 @@ export function Button({
   style,
 }: {
   children: ReactNode;
-  tone?: 'primary' | 'quiet';
+  tone?: 'primary' | 'quiet' | 'chip';
   type?: 'submit' | 'button';
   name?: string;
   value?: string;
@@ -77,7 +53,7 @@ export function Button({
       disabled={busy}
       aria-busy={busy}
       className={`cab-btn ${tone === 'primary' ? 'cab-btn-primary' : 'cab-btn-quiet'}`}
-      style={{ ...(tone === 'primary' ? BUTTON_PRIMARY : BUTTON_QUIET), ...style }}
+      style={{ ...TONES[tone], ...style }}
     >
       {children}
     </button>

@@ -1,10 +1,23 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
-import { SANS } from '../../../../components/cabinet/tokens';
-import { BUTTON_QUIET, Card, Chip, Empty, Heading, Mono, Text,
+import {
+  Button,
+  ButtonLink,
+  Card,
+  Chip,
+  Empty,
+  Field,
+  Form,
+  FormActions,
+  FormRow,
+  Heading,
+  Mono,
+  Select,
   TABLE_CELL,
   TABLE_HEAD,
+  Tabs,
+  Text,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import {
@@ -23,18 +36,6 @@ const FILE_ACTION_LABEL: Record<string, string> = {
   PRESIGN: 'выдача ссылки',
   DOWNLOAD: 'скачивание',
   PURGE: 'изъятие',
-};
-
-const field: React.CSSProperties = {
-  boxSizing: 'border-box',
-  minHeight: 44,
-  padding: '10px 14px',
-  borderRadius: 10,
-  border: '1px solid var(--pd-edge-neutral)',
-  background: 'var(--pd-ink-inverse)',
-  color: 'var(--pd-ink)',
-  fontFamily: SANS,
-  fontSize: 16,
 };
 
 function date(value: string | undefined): Date | null {
@@ -95,80 +96,48 @@ export default async function AuditScreen({
           : 'Кто и что изменил. Действующее лицо хранится идентификатором, содержимое — изменившимися полями: персональные данные сверх необходимого в журнал не пишутся.'}
       </Text>
 
-      <nav aria-label="Виды журналов" style={{ marginBottom: 20, display: 'flex', gap: 8 }}>
-        {[
+      <Tabs
+        label="Виды журналов"
+        items={[
           { href: '/cabinet/manage/audit', label: 'Действия', active: !files },
           { href: '/cabinet/manage/audit?kind=files', label: 'Доступ к файлам', active: files },
-        ].map((tab) => (
-          <a
-            key={tab.href}
-            href={tab.href}
-            aria-current={tab.active ? 'page' : undefined}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              minHeight: 44,
-              padding: '0 18px',
-              borderRadius: 999,
-              fontFamily: SANS,
-              fontSize: 15,
-              fontWeight: 500,
-              border: `1px solid ${tab.active ? 'var(--pd-accent)' : 'var(--pd-border)'}`,
-              background: tab.active ? 'var(--pd-accent-tint)' : 'var(--pd-ink-inverse)',
-              color: tab.active ? 'var(--pd-accent)' : 'var(--pd-ink-secondary)',
-            }}
-          >
-            {tab.label}
-          </a>
-        ))}
-      </nav>
+        ]}
+      />
 
       <Card style={{ marginBottom: 24 }}>
-        <form method="get" style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', alignItems: 'end' }}>
+        <Form method="get">
           {files ? <input type="hidden" name="kind" value="files" /> : null}
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>С даты</span>
-            <input type="date" name="from" defaultValue={query.from ?? ''} style={field} />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>По дату</span>
-            <input type="date" name="to" defaultValue={query.to ?? ''} style={field} />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Действующее лицо</span>
-            <select name="actorId" defaultValue={query.actorId ?? ''} style={field}>
+          <FormRow>
+            <Field label="С даты" name="from" type="date" defaultValue={query.from ?? ''} />
+            <Field label="По дату" name="to" type="date" defaultValue={query.to ?? ''} />
+            <Select label="Действующее лицо" name="actorId" defaultValue={query.actorId ?? ''}>
               <option value="">все</option>
               {actors.map((person) => (
                 <option key={person.id} value={person.id}>
                   {person.fullName}
                 </option>
               ))}
-            </select>
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Действие</span>
-            <select name="action" defaultValue={query.action ?? ''} style={field}>
+            </Select>
+            <Select label="Действие" name="action" defaultValue={query.action ?? ''}>
               <option value="">любое</option>
               {(files ? Object.keys(FILE_ACTION_LABEL) : actions).map((value) => (
                 <option key={value} value={value}>
                   {files ? FILE_ACTION_LABEL[value] : value}
                 </option>
               ))}
-            </select>
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Код проекта</span>
-            <input name="projectCode" defaultValue={query.projectCode ?? ''} placeholder="PD-2026-001" style={field} />
-          </label>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button type="submit" className="cab-btn cab-btn-primary" style={{ minHeight: 44, padding: '0 20px', borderRadius: 999, border: 'none', background: 'var(--pd-accent)', color: 'var(--pd-ink-inverse)', fontFamily: SANS, fontSize: 15, fontWeight: 500, cursor: 'pointer' }}>
-              Показать
-            </button>
-            <a href={exportHref} style={{ ...BUTTON_QUIET, textDecoration: 'none' }}>
-              Выгрузить CSV
-            </a>
-          </div>
-        </form>
+            </Select>
+            <Field
+              label="Код проекта"
+              name="projectCode"
+              defaultValue={query.projectCode ?? ''}
+              placeholder="PD-2026-001"
+            />
+          </FormRow>
+          <FormActions>
+            <Button>Показать</Button>
+            <ButtonLink href={exportHref}>Выгрузить CSV</ButtonLink>
+          </FormActions>
+        </Form>
       </Card>
 
       {files ? (

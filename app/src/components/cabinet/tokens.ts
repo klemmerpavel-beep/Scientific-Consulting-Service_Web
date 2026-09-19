@@ -9,6 +9,8 @@
  * только потом появляется здесь.
  */
 
+import type { CSSProperties } from 'react';
+
 /** Блок токенов, совпадающий с макетами сайта побайтно. */
 export const ROOT_TOKENS =
   ':root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;' +
@@ -37,6 +39,58 @@ export const SHADOW = {
 
 /** Единственная кривая движения в проекте. Длительности 180—260 мс. */
 export const EASING = 'cubic-bezier(.2,0,.2,1)';
+
+/**
+ * Оформление кнопки.
+ *
+ * Лежит в токенах, а не в `Button.tsx`: тот помечен `'use client'`, и всё,
+ * что из него берут, уезжает в браузер. Кнопке-ссылке и кнопке выхода в
+ * каркасе состояние отправки не нужно — им нужен только вид.
+ *
+ * Цель нажатия не меньше 44 px — правило дизайн-системы сайта.
+ */
+export const BUTTON_BASE: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  minHeight: 44,
+  padding: '0 20px',
+  borderRadius: RADIUS.pill,
+  fontFamily: SANS,
+  fontSize: 15,
+  fontWeight: 600,
+  lineHeight: 1.4,
+  cursor: 'pointer',
+  border: '1px solid transparent',
+};
+
+export const BUTTON_PRIMARY: CSSProperties = {
+  ...BUTTON_BASE,
+  background: 'var(--pd-accent)',
+  color: 'var(--pd-ink-inverse)',
+};
+
+export const BUTTON_QUIET: CSSProperties = {
+  ...BUTTON_BASE,
+  background: 'var(--pd-ink-inverse)',
+  color: 'var(--pd-ink-secondary)',
+  border: '1px solid var(--pd-edge-neutral)',
+};
+
+/**
+ * Кнопка размером с плашку: снятие написания в справочнике. По виду — чип,
+ * по существу — действие, поэтому цель нажатия остаётся полной.
+ */
+export const BUTTON_CHIP: CSSProperties = {
+  ...BUTTON_BASE,
+  padding: '0 14px',
+  fontSize: 13,
+  fontWeight: 500,
+  background: 'var(--pd-surface-quiet)',
+  color: 'var(--pd-ink-secondary)',
+  border: '1px solid var(--pd-border)',
+};
 
 /** Ширина рабочей колонки и поля, как на страницах сайта. */
 export const CONTAINER = 1220;

@@ -1,10 +1,22 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
-import { MONO, SANS } from '../../../../components/cabinet/tokens';
-import { Button, Card, Chip, Field, Heading, Mono, Notice, Select, Text,
+import { MONO } from '../../../../components/cabinet/tokens';
+import {
+  Button,
+  Card,
+  Chip,
+  Field,
+  Form,
+  FormActions,
+  FormRow,
+  Heading,
+  Mono,
+  Notice,
+  Select,
   TABLE_CELL,
   TABLE_HEAD,
+  Text,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { listColorMap, listServiceTypes, listStageTemplates } from '../../../../lib/cabinet/admin';
@@ -14,16 +26,14 @@ import { attachAlias, detachAlias, dropStageTemplate, saveStageTemplate, saveTyp
 
 export const dynamic = 'force-dynamic';
 
-const field: React.CSSProperties = {
-  boxSizing: 'border-box',
-  minHeight: 44,
-  padding: '8px 12px',
-  borderRadius: 10,
-  border: '1px solid var(--pd-edge-neutral)',
-  background: 'var(--pd-ink-inverse)',
-  color: 'var(--pd-ink)',
-  fontFamily: SANS,
-  fontSize: 16,
+/** Пояснение к кнопке-чипу: крестик читалке ничего не говорит. */
+const VISUALLY_HIDDEN_INLINE: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
 };
 
 export default async function DirectoryScreen({
@@ -66,15 +76,23 @@ export default async function DirectoryScreen({
         <Heading level={2} style={{ marginBottom: 12 }}>
           Добавить позицию
         </Heading>
-        <form action={saveType} style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', alignItems: 'end' }}>
-          <Field label="Код" name="code" required placeholder="translation" hint="Латиницей, без пробелов" />
-          <Field label="Название" name="name" required placeholder="Научный перевод" />
-          <Field label="Базовая цена" name="basePrice" placeholder="необязательно" />
-          <Field label="Порядок" name="sortOrder" placeholder="70" />
-          <div>
-            <Button type="submit">Сохранить</Button>
-          </div>
-        </form>
+        <Form action={saveType}>
+          <FormRow>
+            <Field
+              label="Код"
+              name="code"
+              required
+              placeholder="translation"
+              hint="Латиницей, без пробелов"
+            />
+            <Field label="Название" name="name" required placeholder="Научный перевод" />
+            <Field label="Базовая цена" name="basePrice" placeholder="необязательно" />
+            <Field label="Порядок" name="sortOrder" placeholder="70" />
+          </FormRow>
+          <FormActions>
+            <Button>Сохранить</Button>
+          </FormActions>
+        </Form>
       </Card>
 
       <Card style={{ padding: 0, overflowX: 'auto', marginBottom: 32 }}>
@@ -111,46 +129,30 @@ export default async function DirectoryScreen({
                       <span style={{ color: 'var(--pd-ink-muted)' }}>нет</span>
                     ) : (
                       type.aliases.map((alias) => (
-                        <form key={alias.id} action={detachAlias}>
+                        <Form key={alias.id} action={detachAlias} inline>
                           <input type="hidden" name="aliasId" value={alias.id} />
-                          <button
-                            type="submit"
-                            aria-label={`Убрать написание «${alias.alias}»`}
-                            title="Убрать написание"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              minHeight: 44,
-                              padding: '0 14px',
-                              borderRadius: 999,
-                              border: '1px solid var(--pd-border)',
-                              background: 'var(--pd-surface-quiet)',
-                              color: 'var(--pd-ink-secondary)',
-                              fontFamily: SANS,
-                              fontSize: 13,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {alias.alias} ✕
-                          </button>
-                        </form>
+                          <Button tone="chip">
+                            <span>{alias.alias}</span>
+                            <span aria-hidden="true">✕</span>
+                            <span style={VISUALLY_HIDDEN_INLINE}>— убрать написание</span>
+                          </Button>
+                        </Form>
                       ))
                     )}
                   </div>
-                  <form action={attachAlias} style={{ display: 'flex', gap: 8 }}>
+                  <Form action={attachAlias} inline>
                     <input type="hidden" name="serviceTypeId" value={type.id} />
-                    <input
+                    <Field
+                      label={`Историческое написание для позиции «${type.name}»`}
+                      labelHidden
                       name="alias"
+                      scope={type.id}
                       placeholder="написание из книги"
-                      aria-label={`Добавить историческое написание для позиции «${type.name}»`}
-                      style={{ ...field, minWidth: 200 }}
+                      minWidth={200}
                       required
                     />
-                    <Button type="submit" tone="quiet">
-                      Привязать
-                    </Button>
-                  </form>
+                    <Button tone="quiet">Привязать</Button>
+                  </Form>
                 </td>
               </tr>
             ))}
@@ -194,12 +196,10 @@ export default async function DirectoryScreen({
                     {item.durationDays === null ? '—' : `${item.durationDays} дн.`}
                   </td>
                   <td style={TABLE_CELL}>
-                    <form action={dropStageTemplate}>
+                    <Form action={dropStageTemplate} inline>
                       <input type="hidden" name="id" value={item.id} />
-                      <Button type="submit" tone="quiet">
-                        Убрать
-                      </Button>
-                    </form>
+                      <Button tone="quiet">Убрать</Button>
+                    </Form>
                   </td>
                 </tr>
               ))
@@ -212,29 +212,40 @@ export default async function DirectoryScreen({
         <Heading level={3} style={{ marginBottom: 12 }}>
           Добавить этап в шаблон
         </Heading>
-        <form
-          action={saveStageTemplate}
-          style={{
-            display: 'grid',
-            gap: 16,
-            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-            alignItems: 'end',
-          }}
-        >
-          <Select label="Тип сопровождения" name="serviceTypeId" required>
-            {types.map((type) => (
-              <option key={type.id} value={type.id}>
-                {type.name}
-              </option>
-            ))}
-          </Select>
-          <Field label="Порядковый номер" name="position" required placeholder="1" />
-          <Field label="Название этапа" name="title" required placeholder="Постановка задачи" />
-          <Field label="Длительность, дней" name="durationDays" placeholder="необязательно" />
-          <div>
-            <Button type="submit">Сохранить</Button>
-          </div>
-        </form>
+        <Form action={saveStageTemplate}>
+          <FormRow>
+            <Select label="Тип сопровождения" name="serviceTypeId" scope="template" required>
+              {types.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </Select>
+            <Field
+              label="Порядковый номер"
+              name="position"
+              scope="template"
+              required
+              placeholder="1"
+            />
+            <Field
+              label="Название этапа"
+              name="title"
+              scope="template"
+              required
+              placeholder="Постановка задачи"
+            />
+            <Field
+              label="Длительность, дней"
+              name="durationDays"
+              scope="template"
+              placeholder="необязательно"
+            />
+          </FormRow>
+          <FormActions>
+            <Button>Сохранить</Button>
+          </FormActions>
+        </Form>
         <Text muted size={13} style={{ marginTop: 12 }}>
           Этап с тем же номером в пределах типа перезаписывается — так правится название, не ломая
           порядок.

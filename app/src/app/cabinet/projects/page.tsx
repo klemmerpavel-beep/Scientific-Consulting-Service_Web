@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
 import {
+  ButtonLink,
   Card,
   Chip,
   Empty,
@@ -13,7 +14,6 @@ import {
   formatDate,
   type StageStateKey,
 } from '../../../components/cabinet/ui';
-import { SANS } from '../../../components/cabinet/tokens';
 import { unreadByProject } from '../../../lib/cabinet/messages';
 import { listProjects, pendingActions } from '../../../lib/cabinet/queries';
 import { currentActor } from '../../../lib/cabinet/session';
@@ -81,24 +81,9 @@ export default async function ProjectsScreen() {
                     {stage.dueOn === null ? null : (
                       <Chip>до {formatDate(stage.dueOn)}</Chip>
                     )}
-                    <a
-                      href={`/cabinet/stages/${stage.id}`}
-                      className="cab-btn cab-btn-primary"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        minHeight: 44,
-                        padding: '0 20px',
-                        borderRadius: 999,
-                        background: 'var(--pd-accent)',
-                        color: 'var(--pd-ink-inverse)',
-                        fontFamily: SANS,
-                        fontSize: 15,
-                        fontWeight: 500,
-                      }}
-                    >
+                    <ButtonLink href={`/cabinet/stages/${stage.id}`} tone="primary">
                       Открыть этап
-                    </a>
+                    </ButtonLink>
                   </div>
                 </li>
               ))}

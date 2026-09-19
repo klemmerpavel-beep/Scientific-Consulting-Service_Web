@@ -6,6 +6,7 @@ import {
   Card,
   Chip,
   Empty,
+  Form,
   Heading,
   Mono,
   TABLE_CELL,
@@ -122,10 +123,10 @@ export default async function OutboxScreen() {
                     </Text>
                   </td>
                   <td style={TABLE_CELL}>
-                    <form action={retryNotification}>
+                    <Form action={retryNotification} inline>
                       <input type="hidden" name="id" value={row.id} />
                       <Button tone="quiet">Отправить ещё раз</Button>
-                    </form>
+                    </Form>
                   </td>
                 </tr>
               ))}

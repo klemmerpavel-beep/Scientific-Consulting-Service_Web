@@ -1,9 +1,10 @@
 import { notFound, redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
-import { MONO, SANS } from '../../../../components/cabinet/tokens';
+import { MONO } from '../../../../components/cabinet/tokens';
 import {
   Button,
+  ButtonLink,
   Card,
   Chip,
   Field,
@@ -96,10 +97,10 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
             Посмотрите последнюю версию материалов и комментарии. После согласования этап
             закрывается, и работа переходит к следующему.
           </Text>
-          <form action={approveStage}>
+          <Form action={approveStage} inline>
             <input type="hidden" name="stageId" value={stage.id} />
             <Button>Согласовать этап</Button>
-          </form>
+          </Form>
         </Card>
       ) : null}
 
@@ -165,24 +166,9 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                           {authorName(version.uploadedBy, actor, version.uploadedById)} ·{' '}
                           {formatDate(version.uploadedAt)} · {formatSize(version.sizeBytes)}
                         </Text>
-                        <a
-                          href={`/cabinet/files/${version.id}`}
-                          className="cab-btn cab-btn-quiet"
-                          style={{
-                            marginLeft: 'auto',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            minHeight: 44,
-                            padding: '0 18px',
-                            borderRadius: 999,
-                            border: '1px solid var(--pd-edge-neutral)',
-                            fontFamily: SANS,
-                            fontSize: 15,
-                            color: 'var(--pd-ink-secondary)',
-                          }}
-                        >
-                          Скачать
-                        </a>
+                        <span style={{ marginLeft: 'auto' }}>
+                          <ButtonLink href={`/cabinet/files/${version.id}`}>Скачать</ButtonLink>
+                        </span>
                       </div>
 
                       {version.comments.length === 0 ? null : (
@@ -208,18 +194,18 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                               </Text>
                               {mayModerate && comment.moderationStatus === 'PENDING' ? (
                                 <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                                  <form action={decideOnComment}>
+                                  <Form action={decideOnComment} inline>
                                     <input type="hidden" name="commentId" value={comment.id} />
                                     <input type="hidden" name="stageId" value={stage.id} />
                                     <input type="hidden" name="decision" value="publish" />
                                     <Button tone="quiet">Опубликовать клиенту</Button>
-                                  </form>
-                                  <form action={decideOnComment}>
+                                  </Form>
+                                  <Form action={decideOnComment} inline>
                                     <input type="hidden" name="commentId" value={comment.id} />
                                     <input type="hidden" name="stageId" value={stage.id} />
                                     <input type="hidden" name="decision" value="reject" />
                                     <Button tone="quiet">Отклонить</Button>
-                                  </form>
+                                  </Form>
                                 </div>
                               ) : null}
                             </li>
@@ -231,7 +217,13 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                         <Form action={commentOnVersion} style={{ marginTop: 14 }}>
                           <input type="hidden" name="versionId" value={version.id} />
                           <input type="hidden" name="stageId" value={stage.id} />
-                          <Field label="Комментарий к текущей версии" name="body" multiline required />
+                          <Field
+                            label="Комментарий к текущей версии"
+                            name="body"
+                            scope={version.id}
+                            multiline
+                            required
+                          />
                           <FormActions>
                             <Button tone="quiet">Оставить комментарий</Button>
                           </FormActions>
@@ -254,7 +246,12 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                     <input type="hidden" name="projectId" value={stage.project.id} />
                     <input type="hidden" name="stageId" value={stage.id} />
                     <input type="hidden" name="materialId" value={material.id} />
-                    <FileField label="Файл следующей версии" name="file" required />
+                    <FileField
+                      label="Файл следующей версии"
+                      name="file"
+                      scope={material.id}
+                      required
+                    />
                     <FormActions>
                       <Button tone="quiet">Загрузить следующую версию</Button>
                     </FormActions>
@@ -273,10 +270,16 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
             <Form action={uploadMaterial} encType="multipart/form-data">
               <input type="hidden" name="projectId" value={stage.project.id} />
               <input type="hidden" name="stageId" value={stage.id} />
-              <Field label="Название" name="title" placeholder="Протокол испытаний" />
+              <Field
+                label="Название"
+                name="title"
+                scope="new-material"
+                placeholder="Протокол испытаний"
+              />
               <FileField
                 label="Файл"
                 name="file"
+                scope="new-material"
                 required
                 hint="Каждая загрузка сохраняется отдельной версией: прежние остаются доступными."
               />

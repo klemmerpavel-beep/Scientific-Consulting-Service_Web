@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Chip,
+  Checkbox,
   Empty,
   Field,
   Form,
@@ -276,23 +277,19 @@ export default async function ManageQueue() {
                   <Field
                     label="Название проекта"
                     name="title"
+                    scope={lead.id}
                     required
                     defaultValue={lead.topic ?? ''}
                     placeholder="Сопровождение кандидатской диссертации"
                   />
-                  <Select label="Тип сопровождения" name="serviceTypeId" required>
+                  <Select label="Тип сопровождения" name="serviceTypeId" scope={lead.id} required>
                     {types.map((type) => (
                       <option key={type.id} value={type.id}>
                         {type.name}
                       </option>
                     ))}
                   </Select>
-                  <label
-                    style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44 }}
-                  >
-                    <input type="checkbox" name="applyTemplate" style={{ width: 18, height: 18 }} />
-                    <span style={{ fontSize: 14 }}>Применить шаблон этапов этого типа</span>
-                  </label>
+                  <Checkbox name="applyTemplate" label="Применить шаблон этапов этого типа" />
                   <FormActions>
                     <Button>Одобрить и создать проект</Button>
                   </FormActions>
@@ -304,6 +301,7 @@ export default async function ManageQueue() {
                   <Field
                     label="Причина отказа"
                     name="reason"
+                    scope={lead.id}
                     required
                     multiline
                     hint="Причину видит заявитель, поэтому она пишется человеческим языком."
