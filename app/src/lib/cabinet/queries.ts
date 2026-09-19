@@ -295,3 +295,79 @@ export async function expertRegistry(actor: Actor) {
     total: row.expertProjects.length,
   }));
 }
+
+/** Сколько заявок показывается на странице перечня «Все заявки». */
+export const LEAD_LIST_PAGE_SIZE = 50;
+
+export interface LeadFilter {
+  /** Страница сайта: landing, postgrad, students, business, cabinet. */
+  readonly source?: string;
+  readonly status?: string;
+  /** Поиск по имени, контакту, организации и теме. */
+  readonly query?: string;
+  readonly page?: number;
+}
+
+/**
+ * Все заявки с фильтрами — в отличие от очереди, которая показывает только
+ * неразобранные.
+ *
+ * Раздел заменяет выгрузку во внешнее хранилище: смотреть обращения нужно
+ * целиком, а вывоз персональных данных к третьему лицу требует договора
+ * поручения обработки. Здесь данные не покидают сервер (решение Р-158).
+ */
+export async function leadList(actor: Actor, filter: LeadFilter = {}) {
+  ensure(actor, 'REQUEST_MODERATE');
+
+  const query = (filter.query ?? '').trim();
+  const where = {
+    // Отзывы приходят той же формой и лежат в той же таблице; в перечне
+    // обращений им не место — у них свой порядок работы (Р-111).
+    form: { not: 'review' },
+    ...(filter.source ? { source: filter.source } : {}),
+    ...(filter.status ? { status: filter.status as 'NEW' } : {}),
+    ...(query.length === 0
+      ? {}
+      : {
+          OR: [
+            { name: { contains: query, mode: 'insensitive' as const } },
+            { contact: { contains: query, mode: 'insensitive' as const } },
+            { organization: { contains: query, mode: 'insensitive' as const } },
+            { topic: { contains: query, mode: 'insensitive' as const } },
+          ],
+        }),
+  };
+
+  const total = await prisma.lead.count({ where });
+  const pages = Math.max(1, Math.ceil(total / LEAD_LIST_PAGE_SIZE));
+  const current = Math.min(Math.max(1, Math.trunc(filter.page ?? 1) || 1), pages);
+
+  const rows = await prisma.lead.findMany({
+    where,
+    // Здесь порядок обратный очереди: перечень просматривают сверху вниз,
+    // и наверху должно быть свежее.
+    orderBy: { createdAt: 'desc' },
+    skip: (current - 1) * LEAD_LIST_PAGE_SIZE,
+    take: LEAD_LIST_PAGE_SIZE,
+    select: {
+      id: true,
+      createdAt: true,
+      source: true,
+      form: true,
+      name: true,
+      contact: true,
+      contactKind: true,
+      organization: true,
+      topic: true,
+      need: true,
+      deadline: true,
+      message: true,
+      status: true,
+      projectId: true,
+      consentGiven: true,
+      marketingOptIn: true,
+    },
+  });
+
+  return { rows, total, page: current, pages };
+}
