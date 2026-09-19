@@ -79,6 +79,24 @@ const nextConfig = {
   ...(preview
     ? {}
     : {
+        /**
+         * Прототип кабинета лежит статикой в `public/cabinet-preview` и
+         * открывается по адресу `/cabinet-preview/` (решение Р-174).
+         *
+         * Next отдаёт файлы из `public` только по точному пути и каталожный
+         * адрес в `index.html` не разворачивает: без этих двух правил
+         * `/cabinet-preview/` дал бы «страница не найдена», а работал бы
+         * только `/cabinet-preview/index.html`. Правила разбираются после
+         * файловой системы, поэтому ни один настоящий файл копии ими не
+         * перекрывается.
+         */
+        async rewrites() {
+          return [
+            { source: '/cabinet-preview', destination: '/cabinet-preview/index.html' },
+            { source: '/cabinet-preview/:path*', destination: '/cabinet-preview/:path*/index.html' },
+          ];
+        },
+
         async headers() {
           return [
             {

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Экраны личного кабинета — ProDisser</title>
+<style>
+  :root { --pd-accent:#14417A; --pd-ink:#14161C; --pd-ink-muted:#5C6473;
+    --pd-border:#DDE2EA; --pd-surface-quiet:#F5F7FA; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#fff; color:var(--pd-ink); padding:48px 24px 72px;
+    font-family:'Inter','Helvetica Neue',Arial,sans-serif; }
+  main { max-width:1220px; margin:0 auto; }
+  .mono { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:12px;
+    letter-spacing:.08em; text-transform:uppercase; color:var(--pd-ink-muted); }
+  h1 { font-family:'Literata',Georgia,'Times New Roman',serif; font-weight:400;
+    font-size:clamp(28px,3.4vw,40px); line-height:1.2; margin:12px 0 16px; }
+  p { font-size:16px; line-height:1.65; color:var(--pd-ink-muted); margin:0 0 14px; max-width:78ch; }
+  ul { list-style:none; margin:32px 0 0; padding:0;
+    display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); }
+  li a { display:grid; gap:6px; align-content:start; height:100%; padding:20px;
+    border:1px solid var(--pd-border); border-radius:14px; text-decoration:none; color:inherit;
+    background:#fff; }
+  li a:hover { border-color:var(--pd-accent); background:var(--pd-surface-quiet); }
+  .num { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:12px; color:var(--pd-accent); }
+  .title { font-size:18px; font-weight:600; }
+  .note { font-size:14px; line-height:1.55; color:var(--pd-ink-muted); }
+  .back { display:inline-flex; align-items:center; min-height:44px; padding:0 22px; margin-top:36px;
+    border:1px solid var(--pd-ink); border-radius:999px; color:var(--pd-ink);
+    text-decoration:none; font-weight:600; font-size:15px; }
+</style>
+</head>
+<body>
+<main>
+  <span class="mono">Личный кабинет ProDisser</span>
+  <h1>Экраны кабинета — 13 снимков</h1>
+  <p>Кабинет работает на сервере: вход по одноразовой ссылке, серверные сессии, материалы и
+  переписка хранятся в базе. Витрина сервера не имеет, поэтому здесь лежат снимки настоящих
+  экранов, снятые с работающего приложения. Облик — тот же, что увидит пользователь.</p>
+  <p>Что на снимке не работает: формы ничего не отправляют, фильтры и сортировки неподвижны,
+  файлы не скачиваются. Переходы между экранами работают там, где нужный экран есть в этом
+  наборе; остальные ведут сюда. Люди, суммы и темы работ вымышлены.</p>
+  <ul>
+      <li>
+        <a href="01-enter.html">
+          <span class="num">01</span>
+          <span class="title">Вход</span>
+          <span class="note">Запрос одноразовой ссылки. Ответ одинаков для любого исхода: существование учётной записи по форме не выясняется.</span>
+        </a>
+      </li>
+      <li>
+        <a href="02-projects.html">
+          <span class="num">02</span>
+          <span class="title">Мои работы</span>
+          <span class="note">Блок «сейчас от вас требуется» — композиционный центр экрана; ниже перечень работ с состоянием и сроком.</span>
+        </a>
+      </li>
+      <li>
+        <a href="03-project.html">
+          <span class="num">03</span>
+          <span class="title">Проект</span>
+          <span class="note">Трекер этапов, лента событий, участники работы. Контактов клиента нет в разметке ни у кого, кроме менеджера и руководителя.</span>
+        </a>
+      </li>
+      <li>
+        <a href="04-stage.html">
+          <span class="num">04</span>
+          <span class="title">Этап и материалы</span>
+          <span class="note">Версии с автором, размером и датой; замечания; согласование этапа клиентом.</span>
+        </a>
+      </li>
+      <li>
+        <a href="05-materials.html">
+          <span class="num">05</span>
+          <span class="title">Материалы работы</span>
+          <span class="note">Все материалы в одном перечне, включая не привязанные к этапу.</span>
+        </a>
+      </li>
+      <li>
+        <a href="06-messages.html">
+          <span class="num">06</span>
+          <span class="title">Переписка</span>
+          <span class="note">Единственный канал — клиент и менеджер. Сообщение с телефоном или адресом помечается, но не блокируется.</span>
+        </a>
+      </li>
+      <li>
+        <a href="07-payments.html">
+          <span class="num">07</span>
+          <span class="title">Счета и документы</span>
+          <span class="note">Договор, транши, закрывающие документы. Ни маржи, ни начислений эксперту клиент не видит.</span>
+        </a>
+      </li>
+      <li>
+        <a href="08-request.html">
+          <span class="num">08</span>
+          <span class="title">Новая заявка</span>
+          <span class="note">Форма из кабинета. Состав полей тот же, что на сайте, и заморожен.</span>
+        </a>
+      </li>
+      <li>
+        <a href="09-states.html">
+          <span class="num">09</span>
+          <span class="title">Состояния</span>
+          <span class="note">«Работа не найдена»: причина и следующий шаг вместо пустого экрана.</span>
+        </a>
+      </li>
+      <li>
+        <a href="10-queue.html">
+          <span class="num">10</span>
+          <span class="title">Очередь заявок</span>
+          <span class="note">Модерация заявок и светофор по срокам у менеджера.</span>
+        </a>
+      </li>
+      <li>
+        <a href="11-import.html">
+          <span class="num">11</span>
+          <span class="title">Перенос книги заказов</span>
+          <span class="note">Отчёт предпросмотра: классы ошибок с номерами строк, расхождения «цвет против текста», группы однофамильцев.</span>
+        </a>
+      </li>
+      <li>
+        <a href="12-analytics.html">
+          <span class="num">12</span>
+          <span class="title">Аналитика практики</span>
+          <span class="note">Плитки, автоматические выводы и графики на шкале синего из таблицы токенов. Библиотека графиков не подключалась.</span>
+        </a>
+      </li>
+      <li>
+        <a href="13-audit.html">
+          <span class="num">13</span>
+          <span class="title">Журнал действий</span>
+          <span class="note">Фильтры по исполнителю, действию и сроку; выгрузка в таблицу.</span>
+        </a>
+      </li>
+  </ul>
+  <a class="back" href="../index.html">К страницам сайта</a>
+</main>
+</body>
+</html>
