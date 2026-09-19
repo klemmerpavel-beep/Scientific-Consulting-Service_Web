@@ -28,7 +28,7 @@ export const dynamic = 'force-dynamic';
 export default async function CabinetEntrance({
   searchParams,
 }: {
-  searchParams: Promise<{ sent?: string; error?: string }>;
+  searchParams: Promise<{ sent?: string; error?: string; channel?: string }>;
 }) {
   const actor = await currentActor();
   if (actor !== null) redirect('/cabinet/projects');
@@ -51,6 +51,15 @@ export default async function CabinetEntrance({
           <div style={{ marginBottom: 20 }}>
             <Notice tone="error" role="alert">
               Ссылка недействительна: её уже использовали или истёк срок. Запросите новую.
+            </Notice>
+          </div>
+        )}
+
+        {params.channel === undefined ? null : (
+          <div style={{ marginBottom: 20 }}>
+            <Notice tone="error" role="alert">
+              Вход по ссылке пока недоступен: почтовый канал практики не настроен, и письмо
+              отправить некуда. Напишите куратору работы — он откроет доступ другим способом.
             </Notice>
           </div>
         )}

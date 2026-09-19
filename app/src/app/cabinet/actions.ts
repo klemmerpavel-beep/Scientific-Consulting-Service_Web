@@ -67,11 +67,14 @@ async function actorOrRedirect() {
  */
 export async function requestLink(form: FormData): Promise<void> {
   const email = String(form.get('email') ?? '');
+  let outcome: Awaited<ReturnType<typeof requestLoginLink>> | null = null;
   if (email.trim().length > 0) {
-    await requestLoginLink(email, await requestIp());
+    outcome = await requestLoginLink(email, await requestIp());
   }
-  // Ответ один на все исходы, и страница не знает, какой он был.
-  redirect('/cabinet?sent=1');
+  // Ответ один на все исходы, кроме одного: ненастроенная почта — состояние
+  // системы, а не человека, и от адреса оно не зависит. Молчать о нём
+  // значило бы обещать письмо, которого не будет (решение Р-163).
+  redirect(outcome === 'channel_off' ? '/cabinet?channel=off' : '/cabinet?sent=1');
 }
 
 export async function approveStage(form: FormData): Promise<void> {
