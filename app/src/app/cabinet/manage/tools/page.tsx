@@ -21,6 +21,12 @@ export const dynamic = 'force-dynamic';
  */
 const TOOLS: readonly { href: string; title: string; note: string; action: Action }[] = [
   {
+    href: '/cabinet/manage/leads',
+    title: 'Все заявки',
+    note: 'Отбор по состоянию, направлению и сроку, поиск и выгрузка',
+    action: 'REQUEST_MODERATE',
+  },
+  {
     href: '/cabinet/manage/registry',
     title: 'Реестры',
     note: 'Клиенты и эксперты, сообщения с признаком передачи контактов',

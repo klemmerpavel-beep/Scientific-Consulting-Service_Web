@@ -1,8 +1,16 @@
 # Сборка приложения. Многоэтапная: в конечный образ не попадают ни исходники,
 # ни инструменты сборки, ни devDependencies — только то, что нужно для работы.
 
+# Базовый образ задаётся снаружи. Docker Hub считает обращения с одного адреса
+# и при их избытке отвечает «429 Too Many Requests» — сборка падала, хотя
+# ничего в проекте не менялось. Скрипт выката подтягивает образ заранее и
+# передаёт сюда локальную метку, поэтому сборка в реестр не ходит вовсе
+# (решение Р-160). Умолчание оставлено прежним: без скрипта образ собирается
+# так же, как собирался.
+ARG NODE_IMAGE=node:22-alpine
+
 # ---------------------------------------------------------------- зависимости
-FROM node:22-alpine AS deps
+FROM ${NODE_IMAGE} AS deps
 WORKDIR /app
 # Схема базы копируется вместе с манифестами, до установки: в package.json
 # есть postinstall с `prisma generate`, а Prisma 7 без схемы не просто молчит,
@@ -13,7 +21,7 @@ COPY prisma ./prisma
 RUN npm ci
 
 # --------------------------------------------------------------------- сборка
-FROM node:22-alpine AS builder
+FROM ${NODE_IMAGE} AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -45,7 +53,7 @@ RUN npm run build
 # `npx prisma` полез бы за ней в реестр npm прямо на сервере — во время
 # развёртывания, неизвестной версией. Здесь лежат и полные зависимости,
 # и каталог prisma с миграциями.
-FROM node:22-alpine AS migrator
+FROM ${NODE_IMAGE} AS migrator
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
@@ -74,7 +82,7 @@ ENV NODE_OPTIONS=--experimental-strip-types
 ENTRYPOINT ["node"]
 
 # ------------------------------------------------------------------- рабочий
-FROM node:22-alpine AS runner
+FROM ${NODE_IMAGE} AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

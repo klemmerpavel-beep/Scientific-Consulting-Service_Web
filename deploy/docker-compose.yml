@@ -33,6 +33,10 @@ services:
       args:
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?публичный адрес обязателен}
         NEXT_PUBLIC_METRIKA_ID: ${NEXT_PUBLIC_METRIKA_ID:-}
+        # Базовый образ. Скрипт выката подтягивает его заранее и подставляет
+        # сюда локальную метку, чтобы сборка не ходила в Docker Hub и не
+        # упиралась в его ограничение частоты (решение Р-160).
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-alpine}
     restart: unless-stopped
     depends_on:
       db:
@@ -73,6 +77,8 @@ services:
     build:
       context: ../app
       target: migrator
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-alpine}
     profiles: ['migrate']
     depends_on:
       db:
@@ -90,6 +96,8 @@ services:
     build:
       context: ../app
       target: tools
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-alpine}
     profiles: ['tools']
     depends_on:
       db:

@@ -72,6 +72,46 @@ if [ -n "$CONTAINER" ]; then
   IMAGE_TAG=$(docker inspect --format '{{index .Config.Image}}' "$CONTAINER")
 fi
 
+# Базовый образ подтягивается до сборки и отдельно от неё.
+#
+# Docker Hub считает обращения с одного адреса и при их избытке отвечает
+# «429 Too Many Requests». Четыре этапа сборки спрашивают у реестра один и тот
+# же образ, и любой отказ валил весь выкат — при том, что образ уже лежал на
+# сервере. Теперь он забирается один раз с повторами, помечается локально, и
+# сборка идёт от локальной метки: в реестр она не обращается вовсе.
+#
+# Если реестр недоступен, а образ уже помечен прошлым выкатом, сборка идёт на
+# нём. Это не «закрыть глаза на отказ»: обновляется приложение, а не версия
+# узла, и пересобрать на прежнем основании правильнее, чем не выкатить ничего.
+BASE_IMAGE=${BASE_IMAGE:-node:22-alpine}
+LOCAL_BASE="prodisser-base/node:22-alpine"
+
+say "подтягиваю базовый образ"
+pulled=0
+attempt=1
+while [ "$attempt" -le 4 ]; do
+  if docker pull "$BASE_IMAGE" > /dev/null 2>&1; then
+    pulled=1
+    break
+  fi
+  say "реестр не отдал образ (попытка $attempt из 4), жду"
+  sleep $((attempt * 15))
+  attempt=$((attempt + 1))
+done
+
+if [ "$pulled" = "1" ]; then
+  docker tag "$BASE_IMAGE" "$LOCAL_BASE"
+  say "базовый образ обновлён"
+elif docker image inspect "$LOCAL_BASE" > /dev/null 2>&1; then
+  say "реестр недоступен, собираю на образе от прошлого выката"
+else
+  say "ОТКАЗ: базовый образ недоступен и локальной копии нет"
+  exit 1
+fi
+
+NODE_IMAGE="$LOCAL_BASE"
+export NODE_IMAGE
+
 say "накатываю миграции"
 $COMPOSE --profile migrate run --rm migrate
 
