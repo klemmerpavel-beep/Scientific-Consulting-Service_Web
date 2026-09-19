@@ -230,7 +230,18 @@ async function crawl(page, role, stabilize) {
   // ними ушли из-под правил облика три экрана. Вкладка «Все» добавляется
   // явным маршрутом — обход срезает запрос у ссылок и сам бы туда не
   // попал (решение Р-171).
-  const plain = [normalize(role.home), '/cabinet/settings', '/cabinet/projects?state=all'];
+  const plain = [
+    normalize(role.home),
+    '/cabinet/settings',
+    // Вкладки набора: обход срезает запрос у ссылок и сам бы туда не
+    // попал, а без снимка вкладка выпадает из-под правил облика
+    // (решения Р-171, Р-173). Недоступные роли отсеиваются сами:
+    // маршрут, ответивший перенаправлением, в дерево не берётся.
+    '/cabinet/projects?state=all',
+    '/cabinet/manage/registry?tab=experts',
+    '/cabinet/manage/registry?tab=flagged',
+    '/cabinet/manage/finance?set=all',
+  ];
   const many = [];
   const seen = new Set(plain);
   const taken = new Map();
