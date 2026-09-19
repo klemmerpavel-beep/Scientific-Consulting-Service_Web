@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 
-import { MONO, RADIUS, SANS, SERIF, SHADOW } from './tokens.ts';
+import { BUTTON_PRIMARY, BUTTON_QUIET, MONO, RADIUS, SANS, SERIF, SHADOW } from './tokens.ts';
 
 /**
  * Составные части экранов кабинета. Пишутся вручную и типизированно —
@@ -34,14 +34,17 @@ export function Card({
   children,
   style,
   as: Tag = 'section',
+  link = false,
 }: {
   children: ReactNode;
   style?: CSSProperties;
   as?: 'section' | 'article' | 'div' | 'li';
+  /** Карточка целиком ведёт куда-то: подсвечивается при наведении и фокусе. */
+  link?: boolean;
 }) {
   return (
     <Tag
-      className="cab-card"
+      className={link ? 'cab-card cab-link-card' : 'cab-card'}
       style={{
         background: 'var(--pd-ink-inverse)',
         border: '1px solid var(--pd-border)',
@@ -187,9 +190,48 @@ export function Chip({
  * браузера, потому что гасит себя на время отправки. Реэкспорт оставлен,
  * чтобы экраны по-прежнему брали всё оформление из одного места.
  */
-export { BUTTON_PRIMARY, BUTTON_QUIET, Button } from './Button.tsx';
+export { Button } from './Button.tsx';
+export { BUTTON_PRIMARY, BUTTON_QUIET };
 
 /** Поле ввода. Кегль не меньше 16 px: иначе Safari на телефоне масштабирует. */
+/**
+ * Подпись, убранная с глаз, но оставшаяся в дереве.
+ *
+ * В строке таблицы видимая подпись у поля лишняя — её роль исполняет
+ * заголовок столбца. Убирать подпись вовсе нельзя: читалка назовёт поле
+ * «правка», а голосовое управление не найдёт его по имени. Поэтому подпись
+ * остаётся той же, только не занимает места.
+ */
+const VISUALLY_HIDDEN: CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+};
+
+const LABEL: CSSProperties = {
+  fontFamily: SANS,
+  fontSize: 14,
+  fontWeight: 500,
+  color: 'var(--pd-ink)',
+};
+
+/**
+ * Идентификатор поля.
+ *
+ * Пока он складывался из одного имени, форма, повторённая в перечне,
+ * давала столько одинаковых идентификаторов, сколько строк: подпись вела
+ * к первому полю, и читалка называла не то, что человек правит. Область
+ * (`scope`) — то, что уже уникально: строка перечня. Имена полей внутри
+ * формы различны по определению, поэтому пара «область и имя» не
+ * сталкивается.
+ */
+function fieldId(name: string, scope?: string): string {
+  return scope === undefined ? name : `${scope}-${name}`;
+}
+
 export function Field({
   label,
   name,
@@ -199,6 +241,9 @@ export function Field({
   defaultValue,
   hint,
   multiline = false,
+  scope,
+  labelHidden = false,
+  minWidth,
 }: {
   label: string;
   name: string;
@@ -208,6 +253,12 @@ export function Field({
   defaultValue?: string;
   hint?: string;
   multiline?: boolean;
+  /** Строка перечня, в которой стоит поле: от неё зависит идентификатор. */
+  scope?: string;
+  /** Подпись остаётся в дереве, но не занимает места: поле в строке таблицы. */
+  labelHidden?: boolean;
+  /** Единственный размер, зависящий от места: ширина поля в ряду. */
+  minWidth?: number;
 }) {
   const control: CSSProperties = {
     boxSizing: 'border-box',
@@ -225,20 +276,19 @@ export function Field({
   // Подсказка лежит вне подписи и связывается с полем отдельно. Пока она
   // стояла внутри `<label>`, доступным именем поля становилась склейка:
   // «Электронная почта Тот адрес, который вы указывали при обращении.»
-  const hintId = hint === undefined ? undefined : `${name}-hint`;
+  const id = fieldId(name, scope);
+  const hintId = hint === undefined ? undefined : `${id}-hint`;
   const shared = { name, required, placeholder, defaultValue, 'aria-describedby': hintId };
+  const box = minWidth === undefined ? control : { ...control, minWidth };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <label
-        htmlFor={name}
-        style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500, color: 'var(--pd-ink)' }}
-      >
+      <label htmlFor={id} style={labelHidden ? VISUALLY_HIDDEN : LABEL}>
         {label}
       </label>
       {multiline ? (
-        <textarea id={name} {...shared} rows={4} style={{ ...control, resize: 'vertical' }} />
+        <textarea id={id} {...shared} rows={4} style={{ ...box, resize: 'vertical' }} />
       ) : (
-        <input id={name} type={type} {...shared} style={control} />
+        <input id={id} type={type} {...shared} style={box} />
       )}
       {hint === undefined ? null : (
         <span id={hintId} style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
@@ -284,29 +334,146 @@ const FORM_GAP = 16;
 
 export function Form({
   action,
+  method,
   encType,
+  inline = false,
   children,
   style,
 }: {
   action?: (form: FormData) => void | Promise<void>;
+  /**
+   * Форма-фильтр отправляется адресом на свой же маршрут. Со `method` не
+   * сочетается серверное действие: одно исключает другое.
+   */
+  method?: 'get';
   encType?: string;
+  /**
+   * Форма внутри ячейки таблицы: ряд, а не колонка. Высота не растягивается
+   * на всю ячейку — иначе строка таблицы разъезжается.
+   */
+  inline?: boolean;
   children: ReactNode;
   style?: CSSProperties;
 }) {
+  const shape: CSSProperties = inline
+    ? { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'end' }
+    : { display: 'flex', flexDirection: 'column', gap: FORM_GAP, height: '100%' };
   return (
-    <form
-      action={action}
-      encType={encType}
+    <form action={action} method={method} encType={encType} style={{ ...shape, ...style }}>
+      {children}
+    </form>
+  );
+}
+
+/**
+ * Флажок.
+ *
+ * Подпись оборачивает поле, поэтому идентификатор не нужен вовсе — связь
+ * держится разметкой. Цель нажатия считается по подписи: сам квадратик
+ * 18×18 меньше нормы, и попасть в него на телефоне трудно.
+ */
+export function Checkbox({
+  label,
+  name,
+  defaultChecked = false,
+  disabled = false,
+}: {
+  label: ReactNode;
+  name: string;
+  defaultChecked?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <label
       style={{
         display: 'flex',
-        flexDirection: 'column',
-        gap: FORM_GAP,
-        height: '100%',
-        ...style,
+        gap: 10,
+        alignItems: 'center',
+        minHeight: 44,
+        fontFamily: SANS,
+        fontSize: 14,
+        color: 'var(--pd-ink)',
+      }}
+    >
+      <input
+        type="checkbox"
+        name={name}
+        defaultChecked={defaultChecked}
+        disabled={disabled}
+        style={{ width: 18, height: 18 }}
+      />
+      <span>{label}</span>
+    </label>
+  );
+}
+
+/**
+ * Ссылка, выглядящая кнопкой: выгрузка журнала, привязка Telegram, скачивание
+ * версии. Каждое из этих мест набирало вид кнопки заново по полтора десятка
+ * строк. Компонент серверный: состояния отправки у перехода нет.
+ */
+export function ButtonLink({
+  href,
+  children,
+  tone = 'quiet',
+  download = false,
+}: {
+  href: string;
+  children: ReactNode;
+  tone?: 'primary' | 'quiet';
+  download?: boolean;
+}) {
+  return (
+    <a
+      href={href}
+      download={download ? '' : undefined}
+      className={`cab-btn ${tone === 'primary' ? 'cab-btn-primary' : 'cab-btn-quiet'}`}
+      style={{
+        ...(tone === 'primary' ? BUTTON_PRIMARY : BUTTON_QUIET),
+        textDecoration: 'none',
       }}
     >
       {children}
-    </form>
+    </a>
+  );
+}
+
+/**
+ * Полоса вкладок раздела. Одна разметка стояла в двух написаниях: у
+ * аналитики и у журналов.
+ */
+export function Tabs({
+  label,
+  items,
+}: {
+  label: string;
+  items: readonly { href: string; label: string; active: boolean }[];
+}) {
+  return (
+    <nav aria-label={label} style={{ marginBottom: 20, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      {items.map((tab) => (
+        <a
+          key={tab.href}
+          href={tab.href}
+          aria-current={tab.active ? 'page' : undefined}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            minHeight: 44,
+            padding: '0 18px',
+            borderRadius: RADIUS.pill,
+            fontFamily: SANS,
+            fontSize: 15,
+            fontWeight: 500,
+            border: `1px solid ${tab.active ? 'var(--pd-accent)' : 'var(--pd-border)'}`,
+            background: tab.active ? 'var(--pd-accent-tint)' : 'var(--pd-ink-inverse)',
+            color: tab.active ? 'var(--pd-accent)' : 'var(--pd-ink-secondary)',
+          }}
+        >
+          {tab.label}
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -323,22 +490,34 @@ export function FileField({
   name,
   required = false,
   hint,
+  accept,
+  scope,
+  labelHidden = false,
 }: {
   label: string;
   name: string;
   required?: boolean;
   hint?: string;
+  /** Какие расширения предлагать в окне выбора: книга заказов — только `.xlsx`. */
+  accept?: string;
+  scope?: string;
+  labelHidden?: boolean;
 }) {
-  const hintId = hint === undefined ? undefined : `${name}-hint`;
+  const id = fieldId(name, scope);
+  const hintId = hint === undefined ? undefined : `${id}-hint`;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <label
-        htmlFor={name}
-        style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500, color: 'var(--pd-ink)' }}
-      >
+      <label htmlFor={id} style={labelHidden ? VISUALLY_HIDDEN : LABEL}>
         {label}
       </label>
-      <input id={name} type="file" name={name} required={required} aria-describedby={hintId} />
+      <input
+        id={id}
+        type="file"
+        name={name}
+        accept={accept}
+        required={required}
+        aria-describedby={hintId}
+      />
       {hint === undefined ? null : (
         <span id={hintId} style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
           {hint}
@@ -517,6 +696,9 @@ export function Select({
   defaultValue,
   required = false,
   hint,
+  scope,
+  labelHidden = false,
+  minWidth,
   children,
 }: {
   label: string;
@@ -524,19 +706,20 @@ export function Select({
   defaultValue?: string;
   required?: boolean;
   hint?: string;
+  scope?: string;
+  labelHidden?: boolean;
+  minWidth?: number;
   children: ReactNode;
 }) {
-  const hintId = hint === undefined ? undefined : `${name}-hint`;
+  const id = fieldId(name, scope);
+  const hintId = hint === undefined ? undefined : `${id}-hint`;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <label
-        htmlFor={name}
-        style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500, color: 'var(--pd-ink)' }}
-      >
+      <label htmlFor={id} style={labelHidden ? VISUALLY_HIDDEN : LABEL}>
         {label}
       </label>
       <select
-        id={name}
+        id={id}
         name={name}
         required={required}
         defaultValue={defaultValue}
@@ -545,6 +728,7 @@ export function Select({
           boxSizing: 'border-box',
           width: '100%',
           minHeight: 48,
+          minWidth,
           padding: '12px 14px',
           borderRadius: RADIUS.field,
           border: '1px solid var(--pd-edge-neutral)',

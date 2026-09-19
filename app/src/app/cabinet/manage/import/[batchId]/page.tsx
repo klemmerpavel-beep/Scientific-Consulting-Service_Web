@@ -7,9 +7,12 @@ import {
   Card,
   Chip,
   Field,
+  Form,
+  FormActions,
   Heading,
   Mono,
   Notice,
+  Select,
   Text,
   formatDate,
   plural,
@@ -320,50 +323,25 @@ export default async function ImportBatchScreen({
             Записывается вся книга одной транзакцией. Учётные записи историческим клиентам не
             заводятся: создаются только карточки, и рассылки по ним не уходят.
           </Text>
-          <form
-            action={applyOrderBook}
-            style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 520 }}
-          >
+          <Form action={applyOrderBook} style={{ maxWidth: 520 }}>
             <input type="hidden" name="batchId" value={report.batchId} />
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span
-                style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500, color: 'var(--pd-ink)' }}
-              >
-                Ведущий менеджер перенесённых проектов
-              </span>
-              <select
-                name="managerId"
-                required
-                style={{
-                  boxSizing: 'border-box',
-                  width: '100%',
-                  minHeight: 44,
-                  padding: '10px 14px',
-                  borderRadius: 10,
-                  border: '1px solid var(--pd-edge-neutral)',
-                  background: 'var(--pd-ink-inverse)',
-                  color: 'var(--pd-ink)',
-                  fontFamily: SANS,
-                  fontSize: 16,
-                }}
-              >
-                {managers.map((manager) => (
-                  <option key={manager.id} value={manager.id}>
-                    {manager.fullName}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Select label="Ведущий менеджер перенесённых проектов" name="managerId" required>
+              {managers.map((manager) => (
+                <option key={manager.id} value={manager.id}>
+                  {manager.fullName}
+                </option>
+              ))}
+            </Select>
             <Field
               label="Исключить строки"
               name="excludeRows"
               placeholder="например: 12, 31"
               hint="Номера строк книги через запятую. Пусто — переносятся все."
             />
-            <div>
-              <Button type="submit">Зафиксировать загрузку</Button>
-            </div>
-          </form>
+            <FormActions>
+              <Button>Зафиксировать загрузку</Button>
+            </FormActions>
+          </Form>
         </Card>
       )}
 
@@ -376,19 +354,14 @@ export default async function ImportBatchScreen({
             Сведение переводит проекты на основную карточку. Прежняя не удаляется: на неё
             ссылаются журналы и требования об удалении данных субъекта.
           </Text>
-          <form
-            action={mergeClientCards}
-            style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 520 }}
-          >
+          <Form action={mergeClientCards} style={{ maxWidth: 520 }}>
             <input type="hidden" name="batchId" value={report.batchId} />
             <Field label="Идентификатор карточки, которую сводим" name="sourceId" required />
             <Field label="Идентификатор основной карточки" name="targetId" required />
-            <div>
-              <Button type="submit" tone="quiet">
-                Свести
-              </Button>
-            </div>
-          </form>
+            <FormActions>
+              <Button tone="quiet">Свести</Button>
+            </FormActions>
+          </Form>
         </Card>
       )}
     </Shell>

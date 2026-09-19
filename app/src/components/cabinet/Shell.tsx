@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import type { Actor } from '../../lib/cabinet/access.ts';
-import { CONTAINER, GUTTER, MONO, SANS, SERIF } from './tokens.ts';
+import { BUTTON_QUIET, CONTAINER, GUTTER, MONO, SANS, SERIF } from './tokens.ts';
 
 /**
  * Каркас раздела: шапка с вордмарком и навигацией, рабочая область, подвал
@@ -59,13 +59,12 @@ export interface NavItem {
 /**
  * Разделы роли.
  *
- * На этой стадии кабинет показывается двумя плашками — клиент и
- * руководитель (решение Р-140). Разделы служебного контура — перенос книги
- * заказов, журналы, исполнение требований об удалении, пользователи,
- * справочники, вознаграждение эксперта — из навигации убраны: они рабочие,
- * маршруты отвечают по прямой ссылке, но внимания на этой стадии не
- * занимают. Роли EXPERT и MANAGER остаются в матрице прав и в схеме; в
- * навигации их пункты не появляются.
+ * Первый ряд навигации занят работой: у клиента — его работы, у штатных
+ * ролей — то, что требует вмешательства, работы, деньги и аналитика.
+ * Служебный контур в этот ряд не выносится (решение Р-140) и собран за
+ * одним пунктом «Управление» (решение Р-158): перенос книги заказов,
+ * журналы, очередь уведомлений, учётные записи, справочники, реестры,
+ * удаление данных субъекта.
  */
 export function navFor(actor: Actor): NavItem[] {
   const settings: NavItem = { href: '/cabinet/settings', label: 'Уведомления' };
@@ -94,6 +93,12 @@ export function navFor(actor: Actor): NavItem[] {
     staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
     staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
   }
+  // Служебный контур — реестры, учётные записи, справочники, перенос книги,
+  // журналы, очередь уведомлений, удаление данных — собран за одним пунктом
+  // (решение Р-158). В первый ряд эти разделы не выносятся по Р-140: они
+  // нужны изредка. Но и доступными только по набранному вручную адресу они
+  // быть не должны — о них тогда знает лишь тот, кто писал код.
+  staff.push({ href: '/cabinet/manage/tools', label: 'Управление' });
   return [...staff, settings];
 }
 
@@ -184,21 +189,7 @@ export default function Shell({
               >
                 {ROLE_LABEL[actor.role]}
               </span>
-              <button
-                type="submit"
-                className="cab-btn cab-btn-quiet"
-                style={{
-                  minHeight: 44,
-                  padding: '0 18px',
-                  borderRadius: 999,
-                  border: '1px solid var(--pd-edge-neutral)',
-                  background: 'var(--pd-ink-inverse)',
-                  color: 'var(--pd-ink-secondary)',
-                  fontFamily: SANS,
-                  fontSize: 15,
-                  cursor: 'pointer',
-                }}
-              >
+              <button type="submit" className="cab-btn cab-btn-quiet" style={BUTTON_QUIET}>
                 Выйти
               </button>
             </form>

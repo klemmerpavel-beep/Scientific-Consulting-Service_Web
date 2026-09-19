@@ -1,10 +1,22 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
-import { SANS } from '../../../../components/cabinet/tokens';
-import { Button, Card, Chip, Field, Heading, Mono, Notice, Text, formatDate,
+import {
+  Button,
+  Card,
+  Chip,
+  Field,
+  Form,
+  FormActions,
+  FormRow,
+  Heading,
+  Mono,
+  Notice,
+  Select,
   TABLE_CELL,
   TABLE_HEAD,
+  Text,
+  formatDate,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { ROLE_LABEL, STATUS_LABEL, listUsers, type Role } from '../../../../lib/cabinet/admin';
@@ -14,18 +26,6 @@ import { changeUserRole, changeUserStatus, inviteUser, updateExpertNda } from '.
 export const dynamic = 'force-dynamic';
 
 const ROLES: Role[] = ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'];
-
-const field: React.CSSProperties = {
-  boxSizing: 'border-box',
-  minHeight: 44,
-  padding: '8px 12px',
-  borderRadius: 10,
-  border: '1px solid var(--pd-edge-neutral)',
-  background: 'var(--pd-ink-inverse)',
-  color: 'var(--pd-ink)',
-  fontFamily: SANS,
-  fontSize: 16,
-};
 
 export default async function UsersScreen({
   searchParams,
@@ -71,23 +71,27 @@ export default async function UsersScreen({
         <Heading level={2} style={{ marginBottom: 12 }}>
           Завести учётную запись
         </Heading>
-        <form action={inviteUser} style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', alignItems: 'end' }}>
-          <Field label="Имя и отчество" name="fullName" required placeholder="Соловьёв Дмитрий Викторович" />
-          <Field label="Почта" name="email" type="email" required placeholder="expert@example.org" />
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 500 }}>Роль</span>
-            <select name="role" defaultValue="EXPERT" style={field}>
+        <Form action={inviteUser}>
+          <FormRow>
+            <Field
+              label="Имя и отчество"
+              name="fullName"
+              required
+              placeholder="Соловьёв Дмитрий Викторович"
+            />
+            <Field label="Почта" name="email" type="email" required placeholder="expert@example.org" />
+            <Select label="Роль" name="role" defaultValue="EXPERT">
               {ROLES.map((role) => (
                 <option key={role} value={role}>
                   {ROLE_LABEL[role]}
                 </option>
               ))}
-            </select>
-          </label>
-          <div>
-            <Button type="submit">Завести</Button>
-          </div>
-        </form>
+            </Select>
+          </FormRow>
+          <FormActions>
+            <Button>Завести</Button>
+          </FormActions>
+        </Form>
       </Card>
 
       <Card style={{ padding: 0, overflowX: 'auto' }}>
@@ -115,24 +119,24 @@ export default async function UsersScreen({
                     {self || erased ? (
                       ROLE_LABEL[user.role as Role]
                     ) : (
-                      <form action={changeUserRole} style={{ display: 'flex', gap: 8 }}>
+                      <Form action={changeUserRole} inline>
                         <input type="hidden" name="userId" value={user.id} />
-                        <select
+                        <Select
+                          label={`Роль: ${user.fullName}`}
+                          labelHidden
                           name="role"
+                          scope={user.id}
                           defaultValue={user.role}
-                          aria-label={`Роль: ${user.fullName}`}
-                          style={{ ...field, minWidth: 150 }}
+                          minWidth={150}
                         >
                           {ROLES.map((role) => (
                             <option key={role} value={role}>
                               {ROLE_LABEL[role]}
                             </option>
                           ))}
-                        </select>
-                        <Button type="submit" tone="quiet">
-                          Сменить
-                        </Button>
-                      </form>
+                        </Select>
+                        <Button tone="quiet">Сменить</Button>
+                      </Form>
                     )}
                     {self ? (
                       <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
@@ -145,17 +149,17 @@ export default async function UsersScreen({
                       {STATUS_LABEL[user.status as keyof typeof STATUS_LABEL]}
                     </Chip>
                     {self || erased ? null : (
-                      <form action={changeUserStatus} style={{ marginTop: 8 }}>
+                      <Form action={changeUserStatus} inline style={{ marginTop: 8 }}>
                         <input type="hidden" name="userId" value={user.id} />
                         <input
                           type="hidden"
                           name="status"
                           value={user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'}
                         />
-                        <Button type="submit" tone="quiet">
+                        <Button tone="quiet">
                           {user.status === 'ACTIVE' ? 'Приостановить' : 'Вернуть доступ'}
                         </Button>
-                      </form>
+                      </Form>
                     )}
                   </td>
                   <td style={TABLE_CELL}>
@@ -168,19 +172,21 @@ export default async function UsersScreen({
                     {user.expertProfile === null ? (
                       '—'
                     ) : (
-                      <form action={updateExpertNda} style={{ display: 'flex', gap: 8, alignItems: 'end' }}>
+                      <Form action={updateExpertNda} inline>
                         <input type="hidden" name="userId" value={user.id} />
-                        <input
-                          type="date"
+                        <Field
+                          label={`Дата подписания договора поручения: ${user.fullName}`}
+                          labelHidden
                           name="signedOn"
-                          aria-label={`Дата подписания договора поручения: ${user.fullName}`}
-                          defaultValue={user.expertProfile.ndaSignedAt?.toISOString().slice(0, 10) ?? ''}
-                          style={{ ...field, minWidth: 160 }}
+                          type="date"
+                          scope={user.id}
+                          defaultValue={
+                            user.expertProfile.ndaSignedAt?.toISOString().slice(0, 10) ?? ''
+                          }
+                          minWidth={160}
                         />
-                        <Button type="submit" tone="quiet">
-                          Сохранить
-                        </Button>
-                      </form>
+                        <Button tone="quiet">Сохранить</Button>
+                      </Form>
                     )}
                     {user.expertProfile !== null && user.expertProfile.ndaSignedAt === null ? (
                       <div style={{ fontSize: 13, color: 'var(--pd-ink-secondary)', marginTop: 4 }}>
