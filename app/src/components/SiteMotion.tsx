@@ -51,8 +51,13 @@ export default function SiteMotion() {
     const root = document.documentElement;
     root.classList.add('pd-js');
 
-    const isDocument = !!document.querySelector('.doc-layout');
-    const sections = isDocument
+    // Правовые страницы и панель кабинета движения не получают. У первых
+    // это сплошной текст с оглавлением, у второй — экран ровно в окно,
+    // который не прокручивается вовсе: показывать блоки по мере прокрутки
+    // там нечем, а полоса прогресса чтения показывала бы вечный ноль
+    // (решения Р-93, Р-169).
+    const still = !!document.querySelector('.doc-layout, .cab-board-main');
+    const sections = still
       ? []
       : Array.from(document.querySelectorAll<HTMLElement>('main > section')).slice(1);
 
@@ -67,7 +72,7 @@ export default function SiteMotion() {
     const bar = document.createElement('div');
     bar.className = 'pd-progress';
     bar.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(bar);
+    if (!document.querySelector('.cab-board-main')) document.body.appendChild(bar);
 
     const pending = new Set(sections);
 

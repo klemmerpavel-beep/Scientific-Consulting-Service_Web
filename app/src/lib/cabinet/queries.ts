@@ -19,6 +19,11 @@ export async function listProjects(actor: Actor) {
       serviceType: { select: { name: true } },
       client: { select: { fullName: true } },
       stages: { orderBy: { position: 'asc' } },
+      // Число материалов показывается прямо в плашке перечня: сколько по
+      // работе приложено, человек должен видеть, не заходя внутрь
+      // (решение Р-169). Счётчик идёт тем же запросом, второго обращения
+      // к базе не появляется.
+      _count: { select: { materials: true } },
     },
   });
 }

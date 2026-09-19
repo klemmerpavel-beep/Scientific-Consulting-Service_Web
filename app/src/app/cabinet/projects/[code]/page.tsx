@@ -1,29 +1,40 @@
 import { notFound, redirect } from 'next/navigation';
 
+import { MONO, SANS } from '../../../../components/cabinet/tokens';
 import Shell from '../../../../components/cabinet/Shell';
 import {
+  Board,
+  BoardColumn,
   Button,
-  Card,
+  ButtonLink,
   Chip,
+  Disclosure,
   Field,
   Form,
   FormActions,
   Heading,
+  MaterialList,
   Mono,
+  ProgressPanel,
   Roadmap,
   Select,
-  StatusLine,
   Text,
   Thread,
   authorName,
   formatDate,
-  plural,
+  formatSize,
+  type MaterialRow,
   type RoadmapItem,
   type StageStateKey,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
-import { curators, experts, projectByCode } from '../../../../lib/cabinet/queries';
+import {
+  curators,
+  experts,
+  projectByCode,
+  projectMaterials,
+} from '../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../lib/cabinet/session';
 import { createStage, postMessage, setExpert, setManager } from '../../actions';
 
@@ -52,6 +63,13 @@ const ACTION_BY_STATE: Partial<Record<StageStateKey, string>> = {
   IN_APPROVAL: 'Этап готов и ждёт вашего согласования: посмотрите материалы и подтвердите.',
 };
 
+/**
+ * Материалов в колонке видно столько, сколько помещается; остальные —
+ * прокруткой. Дюжины хватает: длиннее человек уходит на свой экран, где
+ * есть отбор по этапам и полная история версий.
+ */
+const MATERIALS_IN_COLUMN = 12;
+
 export default async function ProjectScreen({
   params,
 }: {
@@ -77,15 +95,20 @@ export default async function ProjectScreen({
   const mayAssign = can(actor, 'PROJECT_ASSIGN_EXPERT', ref);
   const maySeeContacts = can(actor, 'CONTACTS_VIEW', ref);
   const mayWrite = can(actor, 'MESSAGE_READ', ref);
+  const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref);
   const unread = mayWrite ? await unreadCount(actor, project.id) : 0;
-  // Короткий разговор виден прямо на карточке работы: уходить за ним на
+  // Короткий разговор виден прямо на экране заказа: уходить за ним на
   // отдельный экран, чтобы прочитать три строки, незачем. Прочитанным он
   // здесь не помечается — отметку ставит открытие самой переписки.
-  const thread = mayWrite ? (await listMessages(actor, project.id)).slice(-3) : [];
+  const thread = mayWrite ? (await listMessages(actor, project.id)).slice(-8) : [];
   const expertList = mayAssign ? await experts() : [];
   // Передать работу другому куратору может только руководитель (Р-149).
   const maySetManager = can(actor, 'PROJECT_SET_MANAGER', ref);
   const curatorList = maySetManager ? await curators() : [];
+  // Материалы берутся своей выборкой: она уже сужает и сами материалы, и
+  // замечания по матрице прав, а `projectByCode` служит ещё четырём
+  // экранам, и тянуть версии ради них было бы напрасной работой.
+  const withMaterials = await projectMaterials(actor, decodeURIComponent(code));
 
   const stages = project.stages;
   const done = stages.filter((stage) => stage.state === 'DONE').length;
@@ -102,293 +125,273 @@ export default async function ProjectScreen({
     note: stage.state === 'AWAITING_CLIENT' ? stage.blockedReason : null,
   }));
 
+  const materials: MaterialRow[] = (withMaterials?.materials ?? [])
+    .slice(0, MATERIALS_IN_COLUMN)
+    .map((material) => {
+      const latest = material.versions[0] ?? null;
+      return {
+        id: material.id,
+        title: material.title,
+        stageTitle: material.stage === null ? null : `этап ${material.stage.position}`,
+        versionNumber: latest?.number ?? null,
+        size: latest === null ? null : formatSize(latest.sizeBytes),
+        uploadedAt: latest === null ? null : formatDate(latest.uploadedAt),
+        comments: latest?.comments.length ?? 0,
+        href: latest === null ? null : `/cabinet/files/${latest.id}`,
+      };
+    });
+
   const events = project.events.filter(
     (event) => !forClient || !CLIENT_HIDDEN_EVENTS.has(event.kind),
   );
 
+  // Тип работы часто и есть её название — у всего, что перенесено из книги
+  // заказов; тема тоже нередко повторяет название другими словами. Ни то,
+  // ни другое не печатается дважды.
+  const facts = [
+    project.title === project.serviceType.name ? null : project.serviceType.name,
+    project.topic === project.title ? null : project.topic,
+    `куратор — ${project.manager.fullName}`,
+  ].filter((fact) => fact !== null);
+
   return (
-    <Shell actor={actor} current="/cabinet/projects">
+    <Shell actor={actor} current="/cabinet/projects" board>
+      {/* Шапка заказа — одной полосой. Прежде код, название и тема занимали
+          три яруса и 154 пикселя: на панели это четверть места, отведённого
+          колонкам (решение Р-169). */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <Chip mono>{project.code}</Chip>
-        {/* Тип работы часто и есть её название — у всего, что перенесено из
-            книги заказов. Печатать его дважды подряд незачем. */}
-        {project.title === project.serviceType.name ? null : (
-          <Chip tone="accent">{project.serviceType.name}</Chip>
+        <Heading level={1} size={2}>
+          {project.title}
+        </Heading>
+        {project.dueOn === null ? null : (
+          <span
+            style={{
+              marginLeft: 'auto',
+              fontFamily: MONO,
+              fontSize: 13,
+              lineHeight: 1.4,
+              color: 'var(--pd-ink-muted)',
+            }}
+          >
+            срок — {formatDate(project.dueOn)}
+          </span>
         )}
-        {project.dueOn === null ? null : <Chip>срок — {formatDate(project.dueOn)}</Chip>}
       </div>
+      {facts.length === 0 ? null : (
+        <p
+          style={{
+            margin: '8px 0 0',
+            fontFamily: SANS,
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: 'var(--pd-ink-muted)',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {facts.join(' · ')}
+        </p>
+      )}
 
-      <Heading level={1} style={{ margin: '16px 0 8px' }}>
-        {project.title}
-      </Heading>
-      {/* Ответ на главный вопрос клиента стоит первым и целиком: где работа
-          сейчас и что требуется от него. Собирать его из полосы этапов и
-          ленты событий человек не обязан.
-
-          Тема работы идёт следом, а не перед ним: она бывает длиной в
-          четыре сотни знаков, и на телефоне такая тема отжимала ответ за
-          нижний край экрана — человек видел, чем занята практика, но не
-          то, что требуется от него (решение Р-167). */}
-      <div style={{ marginTop: 20 }}>
-        <StatusLine
-          state={current === null ? null : (current.state as StageStateKey)}
-          title={current === null ? null : current.title}
-          dueOn={current === null ? null : formatDate(current.dueOn)}
+      <div style={{ marginTop: 16, marginBottom: 20 }}>
+        <ProgressPanel
+          done={done}
+          total={stages.length}
+          current={current === null ? null : { title: current.title, state: current.state as StageStateKey }}
+          stageDueOn={current === null ? null : formatDate(current.dueOn)}
+          projectDueOn={formatDate(project.dueOn)}
           action={action}
+          actionHref={current === null || action === null ? null : `/cabinet/stages/${current.id}`}
         />
       </div>
 
-      {project.topic === null ? null : (
-        <Text muted style={{ marginTop: 20 }}>
-          {project.topic}
-        </Text>
-      )}
-
-      <section style={{ marginTop: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
-          <Heading level={2}>Ход работы</Heading>
-          {stages.length === 0 ? null : (
-            <Text muted size={14}>
-              {done} из {stages.length} {plural(stages.length, 'этапа', 'этапов', 'этапов')}
-            </Text>
-          )}
-        </div>
-        <Card>
+      <Board columns={mayWrite ? 3 : 2}>
+        <BoardColumn title="План работ">
           <Roadmap items={roadmap} />
+        </BoardColumn>
 
-          {mayEdit ? (
-            <Form
-              action={createStage}
-              style={{
-                marginTop: 24,
-                paddingTop: 20,
-                borderTop: '1px solid var(--pd-divider)',
-              }}
-            >
-              <input type="hidden" name="projectId" value={project.id} />
-              <input type="hidden" name="code" value={project.code} />
-              <Field
-                label="Новый этап"
-                name="title"
-                required
-                placeholder="Глава 2. Модель отказов лимитирующих узлов"
-                hint="Название свободное; состояние выбирается на экране этапа из пяти."
-              />
-              <FormActions>
-                <Button tone="quiet">Добавить этап</Button>
-              </FormActions>
-            </Form>
-          ) : null}
-        </Card>
-      </section>
+        <BoardColumn
+          title="Материалы"
+          href={`/cabinet/projects/${project.code}/materials`}
+          hrefLabel="все версии"
+          footer={
+            mayUpload ? (
+              <ButtonLink href={`/cabinet/projects/${project.code}/materials`}>
+                Приложить материал
+              </ButtonLink>
+            ) : undefined
+          }
+        >
+          <MaterialList
+            items={materials}
+            empty={
+              mayUpload
+                ? 'Материалов пока нет — приложите первый.'
+                : 'Материалов пока нет.'
+            }
+          />
+        </BoardColumn>
 
-      {mayWrite ? (
-        <section style={{ marginTop: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
-            <Heading level={2}>{forClient ? 'Переписка с куратором' : 'Переписка с клиентом'}</Heading>
-            <a className="cab-mark" href={`/cabinet/projects/${project.code}/messages`}>
-              Вся переписка{unread > 0 ? ` · ${unread} новых` : ''}
-            </a>
-          </div>
-          <Card>
+        {mayWrite ? (
+          <BoardColumn
+            title={forClient ? 'Переписка с куратором' : 'Переписка с клиентом'}
+            href={`/cabinet/projects/${project.code}/messages`}
+            hrefLabel={unread > 0 ? `вся · ${unread} новых` : 'вся переписка'}
+            anchor="end"
+            footer={
+              <Form action={postMessage} inline>
+                <input type="hidden" name="projectId" value={project.id} />
+                <input type="hidden" name="code" value={project.code} />
+                {/* Отправив отсюда, человек остаётся на экране заказа. */}
+                <input type="hidden" name="back" value="project" />
+                <Field
+                  label="Сообщение"
+                  name="body"
+                  required
+                  labelHidden
+                  placeholder={forClient ? 'Написать куратору' : 'Написать клиенту'}
+                  minWidth={140}
+                />
+                <Button>Отправить</Button>
+              </Form>
+            }
+          >
             <Thread
+              dense
               messages={thread}
               viewer={actor}
               flagContacts={can(actor, 'COMMENT_MODERATE', ref)}
               empty={forClient ? 'Переписки пока нет — напишите куратору.' : 'Переписки пока нет.'}
             />
-            <Form
-              action={postMessage}
-              style={{
-                marginTop: 20,
-                paddingTop: 20,
-                borderTop: '1px solid var(--pd-divider)',
-              }}
-            >
-              <input type="hidden" name="projectId" value={project.id} />
-              <input type="hidden" name="code" value={project.code} />
-              {/* Отправив отсюда, человек остаётся на карточке работы. */}
-              <input type="hidden" name="back" value="project" />
-              <Field label="Сообщение" name="body" multiline required />
-              <FormActions>
-                <Button>Отправить</Button>
-              </FormActions>
-            </Form>
-          </Card>
-        </section>
-      ) : null}
+          </BoardColumn>
+        ) : null}
+      </Board>
 
-      <div
-        className="cab-two"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0,1.6fr) minmax(0,1fr)',
-          gap: 24,
-          marginTop: 32,
-          alignItems: 'start',
-        }}
-      >
-        <section>
-          <Heading level={2} style={{ marginBottom: 12 }}>События</Heading>
-          <Card>
-            {events.length === 0 ? (
-              <Text muted>Событий пока нет.</Text>
-            ) : (
-              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
-                {events.map((event) => (
-                  <li
-                    key={event.id}
-                    style={{ borderBottom: '1px solid var(--pd-divider)', paddingBottom: 14 }}
+      {/* Ниже — то, что нужно не каждый раз: история и служебные действия.
+          На виду они занимали пол-экрана, пересказывая этапы и переписку. */}
+      <div style={{ display: 'grid', gap: 10, marginTop: 20 }}>
+        <Disclosure title="История работы">
+          {events.length === 0 ? (
+            <Text muted>Событий пока нет.</Text>
+          ) : (
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+              {events.map((event) => (
+                <li key={event.id}>
+                  <Text size={14}>{EVENT_LABEL[event.kind] ?? event.kind}</Text>
+                  <Text muted size={13} style={{ marginTop: 2 }}>
+                    {formatDate(event.createdAt)}
+                    {event.actor === null
+                      ? ''
+                      : ` · ${authorName(event.actor, actor, event.actorId ?? undefined)}`}
+                  </Text>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Disclosure>
+
+        {mayEdit || mayAssign || maySetManager || maySeeContacts ? (
+          <Disclosure title="Управление работой">
+            <div style={{ display: 'grid', gap: 20 }}>
+              {mayEdit ? (
+                <Form action={createStage}>
+                  <input type="hidden" name="projectId" value={project.id} />
+                  <input type="hidden" name="code" value={project.code} />
+                  <Field
+                    label="Новый этап"
+                    name="title"
+                    required
+                    placeholder="Глава 2. Модель отказов лимитирующих узлов"
+                    hint="Название свободное; состояние выбирается на экране этапа из пяти."
+                  />
+                  <FormActions>
+                    <Button tone="quiet">Добавить этап</Button>
+                  </FormActions>
+                </Form>
+              ) : null}
+
+              {mayAssign ? (
+                <Form action={setExpert}>
+                  <input type="hidden" name="projectId" value={project.id} />
+                  <input type="hidden" name="code" value={project.code} />
+                  <Select
+                    label="Исполнитель"
+                    name="expertId"
+                    defaultValue={project.expertId ?? ''}
+                    hint="Без договора поручения обработки персональных данных исполнитель не получит доступа к материалам клиента, даже будучи назначенным."
                   >
-                    <Text size={14}>{EVENT_LABEL[event.kind] ?? event.kind}</Text>
-                    <Text muted size={13} style={{ marginTop: 2 }}>
-                      {formatDate(event.createdAt)}
-                      {event.actor === null
-                        ? ''
-                        : ` · ${authorName(event.actor, actor, event.actorId ?? undefined)}`}
+                    <option value="">— не назначен —</option>
+                    {expertList.map((expert) => (
+                      <option key={expert.id} value={expert.id}>
+                        {expert.fullName}
+                        {expert.expertProfile?.ndaSignedAt === null ||
+                        expert.expertProfile?.ndaSignedAt === undefined
+                          ? ' — без договора поручения'
+                          : ''}
+                      </option>
+                    ))}
+                  </Select>
+                  <FormActions>
+                    <Button tone="quiet">Сохранить исполнителя</Button>
+                  </FormActions>
+                </Form>
+              ) : null}
+
+              {maySetManager ? (
+                <Form action={setManager}>
+                  <input type="hidden" name="projectId" value={project.id} />
+                  <input type="hidden" name="code" value={project.code} />
+                  <Select
+                    label="Передать работу"
+                    name="managerId"
+                    defaultValue={project.managerId}
+                    hint="Клиент увидит смену куратора: меняется тот, кому он пишет."
+                  >
+                    {curatorList.map((curator) => (
+                      <option key={curator.id} value={curator.id}>
+                        {curator.fullName}
+                        {curator.role === 'HEAD' ? ' — руководитель' : ''}
+                      </option>
+                    ))}
+                  </Select>
+                  <FormActions>
+                    <Button tone="quiet">Сохранить куратора</Button>
+                  </FormActions>
+                </Form>
+              ) : null}
+
+              {maySeeContacts ? (
+                <div>
+                  <Mono>Клиент</Mono>
+                  <Text size={14} style={{ marginTop: 8 }}>
+                    {project.client.fullName}
+                  </Text>
+                  {project.client.email === null ? null : (
+                    <Text muted size={13}>
+                      {project.client.email}
                     </Text>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </section>
+                  )}
+                  {project.client.phone === null ? null : (
+                    <Text muted size={13}>
+                      {project.client.phone}
+                    </Text>
+                  )}
+                </div>
+              ) : null}
 
-        <section>
-          <Heading level={2} style={{ marginBottom: 12 }}>Куратор</Heading>
-          <Card>
-            <Text size={14} style={{ marginBottom: 4 }}>
-              <strong>{project.manager.fullName}</strong>
-            </Text>
-            <Text muted size={13} style={{ marginBottom: 12 }}>
-              куратор работы
-            </Text>
-
-            <div style={{ display: 'grid', gap: 4 }}>
-              <a className="cab-mark" href={`/cabinet/projects/${project.code}/materials`}>
-                Материалы работы
-              </a>
               {can(actor, 'CONTRACT_VIEW', ref) && !forClient ? (
-                <a className="cab-mark" href={`/cabinet/projects/${project.code}/payments`}>
-                  Оплаты и документы
-                </a>
+                <div>
+                  <ButtonLink href={`/cabinet/projects/${project.code}/payments`}>
+                    Оплаты и документы
+                  </ButtonLink>
+                </div>
               ) : null}
             </div>
-
-            {maySetManager ? (
-              <Form
-                action={setManager}
-                style={{
-                  marginTop: 16,
-                  paddingTop: 16,
-                  borderTop: '1px solid var(--pd-divider)',
-                }}
-              >
-                <input type="hidden" name="projectId" value={project.id} />
-                <input type="hidden" name="code" value={project.code} />
-                <Select
-                  label="Передать работу"
-                  name="managerId"
-                  defaultValue={project.managerId}
-                  hint="Клиент увидит смену куратора: меняется тот, кому он пишет."
-                >
-                  {curatorList.map((curator) => (
-                    <option key={curator.id} value={curator.id}>
-                      {curator.fullName}
-                      {curator.role === 'HEAD' ? ' — руководитель' : ''}
-                    </option>
-                  ))}
-                </Select>
-                <FormActions>
-                  <Button tone="quiet">Сохранить куратора</Button>
-                </FormActions>
-              </Form>
-            ) : null}
-
-            {forClient ? null : (
-              <div
-                style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--pd-divider)' }}
-              >
-                <Mono>Исполнитель</Mono>
-                {project.expert === null ? (
-                  <Text muted size={14} style={{ marginTop: 8 }}>
-                    Исполнитель ещё не назначен.
-                  </Text>
-                ) : (
-                  <>
-                    <Text size={14} style={{ margin: '8px 0 4px' }}>
-                      <strong>{project.expert.fullName}</strong>
-                    </Text>
-                    <Text muted size={13}>
-                      {project.expert.expertProfile?.degree ?? 'эксперт'}
-                      {project.expert.expertProfile?.specialization
-                        ? ` · ${project.expert.expertProfile.specialization}`
-                        : ''}
-                    </Text>
-                  </>
-                )}
-              </div>
-            )}
-
-            {mayAssign ? (
-              <Form
-                action={setExpert}
-                style={{
-                  marginTop: 16,
-                  paddingTop: 16,
-                  borderTop: '1px solid var(--pd-divider)',
-                }}
-              >
-                <input type="hidden" name="projectId" value={project.id} />
-                <input type="hidden" name="code" value={project.code} />
-                {/* Свой `select` с чуть иными отступами стоял рядом с общим
-                    компонентом выбора — разнобой ровно того рода, ради
-                    которого строй формы и заведён (Р-152). */}
-                <Select
-                  label="Назначить исполнителя"
-                  name="expertId"
-                  defaultValue={project.expertId ?? ''}
-                  hint="Без договора поручения обработки персональных данных исполнитель не получит доступа к материалам клиента, даже будучи назначенным."
-                >
-                  <option value="">— не назначен —</option>
-                  {expertList.map((expert) => (
-                    <option key={expert.id} value={expert.id}>
-                      {expert.fullName}
-                      {expert.expertProfile?.ndaSignedAt === null ||
-                      expert.expertProfile?.ndaSignedAt === undefined
-                        ? ' — без договора поручения'
-                        : ''}
-                    </option>
-                  ))}
-                </Select>
-                <FormActions>
-                  <Button tone="quiet">Сохранить</Button>
-                </FormActions>
-              </Form>
-            ) : null}
-
-            {maySeeContacts ? (
-              <div
-                style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--pd-divider)' }}
-              >
-                <Mono>Клиент</Mono>
-                <Text size={14} style={{ marginTop: 8 }}>
-                  {project.client.fullName}
-                </Text>
-                {project.client.email === null ? null : (
-                  <Text muted size={13}>
-                    {project.client.email}
-                  </Text>
-                )}
-                {project.client.phone === null ? null : (
-                  <Text muted size={13}>
-                    {project.client.phone}
-                  </Text>
-                )}
-              </div>
-            ) : null}
-          </Card>
-        </section>
+          </Disclosure>
+        ) : null}
       </div>
     </Shell>
   );

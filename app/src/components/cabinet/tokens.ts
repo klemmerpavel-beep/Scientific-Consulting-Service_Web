@@ -110,6 +110,7 @@ export const GUTTER = 30;
 export const CABINET_CSS = `
 ${ROOT_TOKENS}
 body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;flex-direction:column}
+body:has(main.cab-board-main){height:100dvh;overflow:hidden}
 main{flex:1}
 h1,h2,h3{text-wrap:balance;margin:0}
 h1,h2,h3,p,li,td,th,a,label,span{overflow-wrap:break-word}
@@ -142,9 +143,15 @@ input[type="file"]{font-family:${SANS};font-size:16px;color:var(--pd-ink-seconda
 input[type="file"]::file-selector-button{min-height:44px;padding:0 18px;margin-right:14px;border-radius:999px;border:1px solid var(--pd-edge-neutral);background:var(--pd-ink-inverse);color:var(--pd-ink-secondary);font-family:${SANS};font-size:15px;cursor:pointer;transition:border-color 180ms ${EASING},color 180ms ${EASING}}
 input[type="file"]::file-selector-button:hover{border-color:var(--pd-accent);color:var(--pd-accent)}
 button[disabled]{opacity:.7!important;cursor:progress!important}
+summary{cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+.cab-caret{flex:0 0 14px;transition:transform 180ms ${EASING}}
+details[open]>summary .cab-caret{transform:rotate(90deg)}
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 [role="status"],[role="alert"]{animation:pd-appear 220ms ${EASING}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
+@media (max-width:1024px){body:has(main.cab-board-main){height:auto!important;overflow:visible!important}.cab-board-main{display:block!important;overflow:visible!important;padding-bottom:clamp(72px,7vw,112px)!important}.cab-board{grid-template-columns:minmax(0,1fr)!important}.cab-board-body{max-height:none!important;overflow:visible!important}}
+@media (max-height:700px){body:has(main.cab-board-main){height:auto!important;overflow:visible!important}.cab-board-main{display:block!important;overflow:visible!important}.cab-board-body{max-height:none!important;overflow:visible!important}}
 `;
