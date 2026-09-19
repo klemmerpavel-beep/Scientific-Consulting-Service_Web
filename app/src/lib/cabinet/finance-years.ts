@@ -22,6 +22,18 @@ export interface YearRow {
   readonly revenueGap: bigint | null;
 }
 
+export interface YearlySummary {
+  readonly rows: readonly YearRow[];
+  /**
+   * Сколько поступлений отнесено к году по дате договора, а не по дате оплаты.
+   * В перенесённой книге заказов даты оплаты нет — она там не велась, — и без
+   * запасной даты вся историческая выручка выпала бы из сводки.
+   */
+  readonly datedByContract: number;
+  /** Поступления, у которых не нашлось ни одной даты: в сводку не попали. */
+  readonly undated: bigint;
+}
+
 /** Год даты в часовом поясе UTC: даты в базе хранятся в нём же. */
 function yearOf(date: Date): number {
   return date.getUTCFullYear();
@@ -31,16 +43,28 @@ function add(map: Map<number, bigint>, year: number, amount: bigint): void {
   map.set(year, (map.get(year) ?? 0n) + amount);
 }
 
-export async function yearlyRows(actor: Actor): Promise<YearRow[]> {
+export async function yearlyRows(actor: Actor): Promise<YearlySummary> {
   ensure(actor, 'MARGIN_VIEW');
 
   const [entered, tranches, payouts, projects] = await Promise.all([
     prisma.yearlyFinance.findMany({ orderBy: { year: 'desc' } }),
-    // Выручка года — оплаченные транши, отнесённые к дате оплаты, а не к дате
-    // договора: деньги приходят в тот год, когда пришли.
+    // Выручка года — оплаченные транши, отнесённые к дате оплаты: деньги
+    // приходят в тот год, когда пришли.
+    //
+    // У перенесённых из книги заказов поступлений даты оплаты нет: в книге её
+    // не вели, и подставлять выдуманную при переносе отказались намеренно
+    // (Р-133). Поэтому берётся запасная дата — договора, затем начала работы.
+    // Без неё вся историческая выручка выпала бы из сводки, и расхождение с
+    // введёнными величинами равнялось бы им целиком.
     prisma.tranche.findMany({
-      where: { status: 'PAID', paidOn: { not: null } },
-      select: { amount: true, paidOn: true },
+      where: { status: 'PAID' },
+      select: {
+        amount: true,
+        paidOn: true,
+        contract: {
+          select: { signedOn: true, project: { select: { startedOn: true } } },
+        },
+      },
     }),
     prisma.expertPayout.findMany({
       where: { status: 'PAID', paidOn: { not: null } },
@@ -56,7 +80,18 @@ export async function yearlyRows(actor: Actor): Promise<YearRow[]> {
   const costs = new Map<number, bigint>();
   const orders = new Map<number, number>();
 
-  for (const t of tranches) add(revenue, yearOf(t.paidOn!), t.amount);
+  let datedByContract = 0;
+  let undated = 0n;
+  for (const t of tranches) {
+    const fallback = t.contract.signedOn ?? t.contract.project.startedOn ?? null;
+    const date = t.paidOn ?? fallback;
+    if (date === null) {
+      undated += t.amount;
+      continue;
+    }
+    if (t.paidOn === null) datedByContract += 1;
+    add(revenue, yearOf(date), t.amount);
+  }
   for (const p of payouts) add(costs, yearOf(p.paidOn!), p.amount);
   for (const p of projects) {
     const year = yearOf(p.startedOn!);
@@ -74,7 +109,7 @@ export async function yearlyRows(actor: Actor): Promise<YearRow[]> {
 
   const byYear = new Map(entered.map((e) => [e.year, e]));
 
-  return [...years]
+  const rows = [...years]
     .sort((a, b) => b - a)
     .map((year) => {
       const own = byYear.get(year) ?? null;
@@ -100,6 +135,8 @@ export async function yearlyRows(actor: Actor): Promise<YearRow[]> {
         revenueGap: own === null ? null : own.revenue - countedRevenue,
       };
     });
+
+  return { rows, datedByContract, undated };
 }
 
 export interface YearInput {

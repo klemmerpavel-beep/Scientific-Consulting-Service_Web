@@ -13,6 +13,7 @@ import {
   Heading,
   Mono,
   Text,
+  plural,
   TABLE_CELL,
   TABLE_HEAD,
   TABLE_NUM,
@@ -37,7 +38,7 @@ export default async function FinanceYearsScreen() {
   if (actor === null) redirect('/cabinet');
   if (!can(actor, 'MARGIN_VIEW')) redirect('/cabinet/projects');
 
-  const rows = await yearlyRows(actor);
+  const { rows, datedByContract, undated } = await yearlyRows(actor);
   const editable = can(actor, 'PAYMENT_EDIT');
 
   return (
@@ -62,6 +63,9 @@ export default async function FinanceYearsScreen() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS }}>
             <caption style={{ ...TABLE_CELL, textAlign: 'left', color: 'var(--pd-ink-secondary)' }}>
               Суммы в рублях. Выручка года — оплаты, пришедшие в этом году.
+              {datedByContract > 0
+                ? ` Из них ${datedByContract} ${plural(datedByContract, 'поступление отнесено', 'поступления отнесены', 'поступлений отнесены')} к году по дате договора: в перенесённой книге заказов дата оплаты не велась.`
+                : ''}
             </caption>
             <thead>
               <tr>
@@ -94,6 +98,14 @@ export default async function FinanceYearsScreen() {
           </table>
         </Card>
       )}
+
+      {undated > 0n ? (
+        <Text muted style={{ marginBottom: 20 }}>
+          Поступления на {formatAmount(undated)} в сводку не вошли: у них нет ни даты оплаты, ни
+          даты договора, и отнести их к году не к чему. Проставьте дату договора на карточке
+          работы — суммы появятся в своём году.
+        </Text>
+      ) : null}
 
       {editable ? (
         <Card>
