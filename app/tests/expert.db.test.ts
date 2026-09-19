@@ -115,13 +115,13 @@ describe('контур эксперта', { skip: !enabled }, async () => {
 
   it('без договора поручения эксперт не получает ни одной работы', async () => {
     const actor = expert(ids.mine!, false);
-    assert.deepEqual(await queries.listProjects(actor), []);
+    assert.deepEqual((await queries.listProjects(actor)).rows, []);
     assert.equal(await queries.projectByCode(actor, ids.assignedCode!), null);
   });
 
   it('с договором виден только назначенный проект', async () => {
     const actor = expert(ids.mine!, true);
-    const codes = (await queries.listProjects(actor)).map((project) => project.code);
+    const codes = (await queries.listProjects(actor)).rows.map((project) => project.code);
     assert.deepEqual(codes, [ids.assignedCode]);
     assert.notEqual(await queries.projectByCode(actor, ids.assignedCode!), null);
     assert.equal(await queries.projectByCode(actor, ids.foreignCode!), null);

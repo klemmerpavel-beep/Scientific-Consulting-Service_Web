@@ -4,31 +4,74 @@ import Shell from '../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../components/cabinet/tokens';
 import {
   ButtonLink,
+  Button,
   Card,
   Chip,
+  Field,
+  Form,
   Empty,
   Heading,
   Mono,
   Progress,
+  Tabs,
   plural,
   Text,
   formatDate,
   type StageStateKey,
 } from '../../../components/cabinet/ui';
 import { unreadByProject } from '../../../lib/cabinet/messages';
-import { listProjects, pendingActions } from '../../../lib/cabinet/queries';
+import {
+  PROJECT_FILTER_FROM,
+  listProjects,
+  pendingActions,
+  type ProjectFilter,
+} from '../../../lib/cabinet/queries';
 import { currentActor } from '../../../lib/cabinet/session';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ProjectsScreen() {
+const FILTERS: readonly ProjectFilter[] = ['active', 'waiting', 'done', 'all'];
+
+const FILTER_LABEL: Record<ProjectFilter, string> = {
+  active: 'В работе',
+  waiting: 'Ждут',
+  done: 'Завершённые',
+  all: 'Все',
+};
+
+export default async function ProjectsScreen({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
 
-  const [projects, pending] = await Promise.all([listProjects(actor), pendingActions(actor)]);
+  const sp = await searchParams;
+  const query = sp.q ?? '';
+  const list = await listProjects(actor, {
+    // Набор по умолчанию выбирает сама выборка: он зависит от того,
+    // сколько работ у человека всего.
+    filter: FILTERS.includes(sp.state as ProjectFilter) ? (sp.state as ProjectFilter) : undefined,
+    query,
+    page: Number(sp.page) || 1,
+  });
+  const filter = list.filter;
+  const projects = list.rows;
+  const pending = await pendingActions(actor);
   const unread = await unreadByProject(actor, projects.map((p) => p.id));
   const forClient = actor.role === 'CLIENT';
   const forExpert = actor.role === 'EXPERT';
+  const showFilters = list.all > PROJECT_FILTER_FROM;
+  const href = (next: { state?: ProjectFilter; page?: number }) => {
+    const params = new URLSearchParams();
+    const state = next.state ?? filter;
+    if (state !== 'all') params.set('state', state);
+    if (query !== '') params.set('q', query);
+    if ((next.page ?? 1) > 1) params.set('page', String(next.page));
+    const tail = params.toString();
+    return tail === '' ? '/cabinet/projects' : `/cabinet/projects?${tail}`;
+  };
   // Без подписанного договора поручения обработки персональных данных
   // эксперт не получает доступа к материалам клиента (ч. 3 ст. 6 152-ФЗ):
   // выборка отдаёт пусто. Пустой перечень читается как «работ нет», и
@@ -46,6 +89,42 @@ export default async function ProjectsScreen() {
       <Heading level={1} style={{ margin: '0 0 24px' }}>
         {forClient ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы практики'}
       </Heading>
+
+      {showFilters ? (
+        <div
+          style={{
+            display: 'flex',
+            gap: 16,
+            alignItems: 'flex-end',
+            flexWrap: 'wrap',
+            marginBottom: 24,
+          }}
+        >
+          <Tabs
+            label="Отбор работ"
+            items={FILTERS.map((key) => ({
+              href: href({ state: key }),
+              label: key === 'waiting' ? (forClient ? 'Ждут меня' : 'Ждут клиента') : FILTER_LABEL[key],
+              active: key === filter,
+            }))}
+          />
+          {/* Поиск отправляется на свой же маршрут: состояние экрана целиком
+              лежит в адресе, и ссылку на отобранный перечень можно
+              сохранить или переслать. */}
+          <Form method="get" inline>
+            {filter === 'all' ? null : <input type="hidden" name="state" value={filter} />}
+            <Field
+              label="Поиск по работам"
+              name="q"
+              labelHidden
+              defaultValue={query}
+              placeholder={forClient ? 'Код или название' : 'Код, название или клиент'}
+              minWidth={200}
+            />
+            <Button tone="quiet">Найти</Button>
+          </Form>
+        </div>
+      ) : null}
 
       {pending.length === 0 ? null : (
         <section style={{ marginBottom: 32 }}>
@@ -100,11 +179,19 @@ export default async function ProjectsScreen() {
           Напишите руководителю практики — отметка ставится в кабинете.
         </Empty>
       ) : projects.length === 0 ? (
-        <Empty
-          title={
-            forClient ? 'Работ пока нет' : forExpert ? 'Назначений пока нет' : 'Проектов пока нет'
-          }
-        />
+        list.all === 0 ? (
+          <Empty
+            title={
+              forClient ? 'Работ пока нет' : forExpert ? 'Назначений пока нет' : 'Работ пока нет'
+            }
+          />
+        ) : (
+          // Отбор ничего не нашёл — это не то же самое, что «работ нет»:
+          // работы есть, просто не под этим условием.
+          <Empty title="Ничего не найдено">
+            Измените условия отбора или сбросьте их — работы никуда не делись.
+          </Empty>
+        )
       ) : (
         <ul
           style={{
@@ -224,6 +311,34 @@ export default async function ProjectsScreen() {
             );
           })}
         </ul>
+      )}
+
+      {list.pages <= 1 ? null : (
+        <nav
+          aria-label="Страницы перечня"
+          style={{
+            display: 'flex',
+            gap: 20,
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            marginTop: 24,
+          }}
+        >
+          {list.page > 1 ? (
+            <a className="cab-mark" href={href({ page: list.page - 1 })}>
+              Предыдущие
+            </a>
+          ) : null}
+          <Text muted size={14}>
+            Страница {list.page} из {list.pages} · всего {list.total}{' '}
+            {plural(list.total, 'работа', 'работы', 'работ')}
+          </Text>
+          {list.page < list.pages ? (
+            <a className="cab-mark" href={href({ page: list.page + 1 })}>
+              Следующие
+            </a>
+          ) : null}
+        </nav>
       )}
     </Shell>
   );

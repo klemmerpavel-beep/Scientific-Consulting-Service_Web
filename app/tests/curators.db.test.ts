@@ -110,8 +110,11 @@ describe('разграничение между кураторами', { skip: !
 
   it('менеджер видит свою работу и не видит чужую', async () => {
     const actor = staff(ids.mine!, 'MANAGER');
-    const list = await queries.listProjects(actor);
-    const codes = list.map((project) => project.code);
+    // Набор «все» и поиск по коду: проверка про разграничение, а не про
+    // отбор, а в базе стенда работ больше страницы (решение Р-171).
+    const own = (await queries.listProjects(actor, { filter: 'all', query: ids.ownCode! })).rows;
+    const alien = (await queries.listProjects(actor, { filter: 'all', query: ids.foreignCode! })).rows;
+    const codes = [...own, ...alien].map((project) => project.code);
     assert.ok(codes.includes(ids.ownCode!));
     assert.ok(!codes.includes(ids.foreignCode!));
     // Чужая работа по прямому адресу неотличима от несуществующей.
@@ -119,7 +122,14 @@ describe('разграничение между кураторами', { skip: !
   });
 
   it('руководитель видит обе работы', async () => {
-    const codes = (await queries.listProjects(staff(ids.boss!, 'HEAD'))).map((p) => p.code);
+    const boss = staff(ids.boss!, 'HEAD');
+    const codes = (
+      await Promise.all(
+        [ids.ownCode!, ids.foreignCode!].map((code) =>
+          queries.listProjects(boss, { filter: 'all', query: code }),
+        ),
+      )
+    ).flatMap((list) => list.rows.map((p) => p.code));
     assert.ok(codes.includes(ids.ownCode!));
     assert.ok(codes.includes(ids.foreignCode!));
   });
