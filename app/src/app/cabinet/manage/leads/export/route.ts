@@ -2,28 +2,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { AccessDenied, ensure } from '../../../../../lib/cabinet/access';
 import { record } from '../../../../../lib/cabinet/audit';
+import { leadSourceLabel, leadStatusLabel } from '../../../../../lib/cabinet/lead-labels';
 import { leadList } from '../../../../../lib/cabinet/queries';
 import { currentActor, requestIp } from '../../../../../lib/cabinet/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const SOURCE_LABEL: Record<string, string> = {
-  landing: 'Посадочная',
-  postgrad: 'Аспирантам',
-  students: 'Студентам',
-  business: 'Компаниям',
-  cabinet: 'Из кабинета',
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  NEW: 'Новая',
-  IN_PROGRESS: 'В работе',
-  CONSULTED: 'Консультация проведена',
-  CONTRACTED: 'Договор заключён',
-  DECLINED: 'Отказ',
-  SPAM: 'Спам',
-};
 
 /** Экранирование по RFC 4180: кавычки удваиваются, поле берётся в кавычки. */
 function cell(value: unknown): string {
@@ -90,7 +74,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       lines.push(
         [
           lead.createdAt.toISOString().slice(0, 16).replace('T', ' '),
-          SOURCE_LABEL[lead.source] ?? lead.source,
+          leadSourceLabel(lead.source),
           lead.form,
           lead.name ?? '',
           lead.contact,
@@ -102,7 +86,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           lead.message ?? '',
           lead.consentGiven ? 'да' : 'нет',
           lead.marketingOptIn ? 'да' : 'нет',
-          STATUS_LABEL[lead.status] ?? lead.status,
+          leadStatusLabel(lead.status),
           lead.projectId === null ? 'нет' : 'да',
         ].map(cell).join(','),
       );

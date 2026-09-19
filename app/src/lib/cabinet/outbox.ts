@@ -24,7 +24,8 @@ export type EventKind =
   | 'STAGE_IN_APPROVAL'
   | 'DEADLINE_IN_3_DAYS'
   | 'PAYMENT_STATUS_CHANGED'
-  | 'REQUEST_CREATED';
+  | 'REQUEST_CREATED'
+  | 'PROJECT_OPENED';
 
 export interface OutboxItem {
   readonly userId: string;
@@ -323,6 +324,99 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
       attempts: row.attempts,
       lastError: row.lastError,
       scheduledAt: row.scheduledAt,
+    })),
+  };
+}
+
+/**
+ * Доставка заявок с сайта — второй, более старый путь уведомлений.
+ *
+ * Обращение с сайта не проходит через эту очередь: маршрут приёма шлёт его
+ * в Telegram и на почту сразу, а исход записывает в `Delivery` (см.
+ * `src/lib/notify.ts`). Таблица велась с открытия сайта и не показывалась
+ * нигде: отказ канала был виден только тому, кто читает журнал контейнера.
+ * Отсюда и выборка — на одном экране с очередью кабинета, потому что
+ * вопрос у руководителя один: дошло ли до меня то, что пришло.
+ *
+ * Адрес и имя заявителя сюда не выносятся: для разбора отказа достаточно
+ * страницы, темы и времени, а состав сведений держится минимальным
+ * (ч. 5 ст. 5 152-ФЗ).
+ */
+export interface LeadDeliveryFailure {
+  readonly id: string;
+  readonly channel: string;
+  readonly error: string | null;
+  readonly createdAt: Date;
+  readonly leadId: string;
+  readonly leadSource: string;
+  readonly leadTopic: string | null;
+  readonly leadCreatedAt: Date;
+}
+
+export interface LeadDeliveryDigest {
+  /** Заявок с сайта за сутки — с чем сверяется число доставок. */
+  readonly leadsLastDay: number;
+  readonly deliveredLastDay: number;
+  readonly lastOkAt: Date | null;
+  /** Отказы за тридцать дней, кроме «канал не настроен». */
+  readonly failed: number;
+  /** Отказы за тридцать дней по причине незаданного канала. */
+  readonly channelOff: number;
+  readonly failures: readonly LeadDeliveryFailure[];
+}
+
+/** Глубина разбора: дальше месяца причина отказа уже не чинится. */
+const LEAD_DELIVERY_WINDOW_DAYS = 30;
+
+export async function leadDeliveryDigest(actor: Actor): Promise<LeadDeliveryDigest> {
+  // Право то же, что у очереди: перечень сквозной по всем обращениям.
+  ensure(actor, 'AUDIT_VIEW');
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const windowStart = new Date(Date.now() - LEAD_DELIVERY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+  // Причина «канал не настроен» ставится обоими отправителями до обращения
+  // к сети — это не отказ по существу, и считается она отдельно.
+  const broken = { ok: false, createdAt: { gte: windowStart }, NOT: { error: CHANNEL_OFF } };
+
+  const [leadsLastDay, deliveredLastDay, lastOk, failed, channelOff, failures] = await Promise.all([
+    prisma.lead.count({ where: { createdAt: { gte: dayAgo } } }),
+    prisma.delivery.count({ where: { ok: true, createdAt: { gte: dayAgo } } }),
+    prisma.delivery.findFirst({
+      where: { ok: true },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    }),
+    prisma.delivery.count({ where: broken }),
+    prisma.delivery.count({ where: { ok: false, createdAt: { gte: windowStart }, error: CHANNEL_OFF } }),
+    prisma.delivery.findMany({
+      where: broken,
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        channel: true,
+        error: true,
+        createdAt: true,
+        lead: { select: { id: true, source: true, topic: true, createdAt: true } },
+      },
+    }),
+  ]);
+
+  return {
+    leadsLastDay,
+    deliveredLastDay,
+    lastOkAt: lastOk?.createdAt ?? null,
+    failed,
+    channelOff,
+    failures: failures.map((row) => ({
+      id: row.id,
+      channel: row.channel,
+      error: row.error,
+      createdAt: row.createdAt,
+      leadId: row.lead.id,
+      leadSource: row.lead.source,
+      leadTopic: row.lead.topic,
+      leadCreatedAt: row.lead.createdAt,
     })),
   };
 }

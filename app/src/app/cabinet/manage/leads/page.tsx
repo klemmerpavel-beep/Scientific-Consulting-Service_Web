@@ -22,27 +22,16 @@ import {
   TABLE_HEAD,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
+import {
+  LEAD_SOURCE_LABEL,
+  LEAD_STATUS_LABEL,
+  leadSourceLabel,
+  leadStatusLabel,
+} from '../../../../lib/cabinet/lead-labels';
 import { LEAD_LIST_PAGE_SIZE, leadList } from '../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../lib/cabinet/session';
 
 export const dynamic = 'force-dynamic';
-
-const SOURCE_LABEL: Record<string, string> = {
-  landing: 'Посадочная',
-  postgrad: 'Аспирантам',
-  students: 'Студентам',
-  business: 'Компаниям',
-  cabinet: 'Из кабинета',
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  NEW: 'Новая',
-  IN_PROGRESS: 'В работе',
-  CONSULTED: 'Консультация',
-  CONTRACTED: 'Договор',
-  DECLINED: 'Отказ',
-  SPAM: 'Спам',
-};
 
 /** Адрес этой же страницы с другим номером: фильтры при листании сохраняются. */
 function pageHref(params: URLSearchParams, page: number): string {
@@ -99,7 +88,7 @@ export default async function AllLeadsScreen({
           <FormRow>
             <Select label="Страница сайта" name="source" defaultValue={filter.source}>
               <option value="">Любая</option>
-              {Object.entries(SOURCE_LABEL).map(([value, label]) => (
+              {Object.entries(LEAD_SOURCE_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
@@ -107,7 +96,7 @@ export default async function AllLeadsScreen({
             </Select>
             <Select label="Состояние" name="status" defaultValue={filter.status}>
               <option value="">Любое</option>
-              {Object.entries(STATUS_LABEL).map(([value, label]) => (
+              {Object.entries(LEAD_STATUS_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
@@ -166,13 +155,13 @@ export default async function AllLeadsScreen({
               {list.rows.map((lead) => (
                 <tr key={lead.id}>
                   <td style={TABLE_CELL}>{formatDate(lead.createdAt)}</td>
-                  <td style={TABLE_CELL}>{SOURCE_LABEL[lead.source] ?? lead.source}</td>
+                  <td style={TABLE_CELL}>{leadSourceLabel(lead.source)}</td>
                   <td style={TABLE_CELL}>{lead.name ?? '—'}</td>
                   <td style={TABLE_CELL}>{lead.contact}</td>
                   <td style={TABLE_CELL}>{lead.topic ?? lead.need ?? '—'}</td>
                   <td style={TABLE_CELL}>
                     <Chip tone={lead.projectId === null ? 'neutral' : 'accent'}>
-                      {STATUS_LABEL[lead.status] ?? lead.status}
+                      {leadStatusLabel(lead.status)}
                     </Chip>
                   </td>
                 </tr>

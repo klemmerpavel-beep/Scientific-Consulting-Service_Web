@@ -90,6 +90,9 @@ describe('сквозной контур', { skip: !enabled }, async () => {
       await prisma.lead.updateMany({ where: { id: ids.lead }, data: { projectId: null } });
       await prisma.project.deleteMany({ where: { id: ids.project } });
     }
+    await prisma.notificationOutbox.deleteMany({
+      where: { userId: { in: Object.values(ids).filter(Boolean) } },
+    });
     await prisma.lead.deleteMany({ where: { id: ids.lead } });
     await prisma.auditEvent.deleteMany({ where: { actorId: { in: Object.values(ids) } } });
     await prisma.clientProfile.deleteMany({ where: { email: clientEmail } });
@@ -124,6 +127,56 @@ describe('сквозной контур', { skip: !enabled }, async () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { email: clientEmail } });
     ids.client = user.id;
     assert.equal(user.role, 'CLIENT');
+
+    // Приглашение поставлено в очередь той же транзакцией: прежде запись
+    // заводилась молча и человек об этом не узнавал.
+    const invite = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { userId: user.id, eventKind: 'PROJECT_OPENED' },
+    });
+    assert.equal(invite.projectId, project.id);
+    assert.ok(invite.subject.includes(project.code), 'в теме нет кода работы');
+    assert.match(invite.body, /ссылка для входа/);
+    // Одноразовая ссылка живёт пятнадцать минут и к моменту прочтения была
+    // бы мертва — в письмо она не кладётся.
+    assert.ok(!invite.body.includes('/cabinet/enter/'), 'ссылка входа попала в письмо');
+  });
+
+  it('повторному клиенту приходит другое письмо: не приглашение, а новая работа', async () => {
+    const again = await prisma.lead.create({
+      data: {
+        source: 'postgrad',
+        form: 'request',
+        name: 'Руденко Иван Сергеевич',
+        contactKind: 'email',
+        contact: clientEmail,
+        topic: 'Вторая работа того же клиента',
+        consentGiven: true,
+        consentVersion: '2026-08-21',
+      },
+    });
+    const second = await projects.approveLead(staff(ids.manager, 'MANAGER'), {
+      leadId: again.id,
+      serviceTypeId: ids.serviceType,
+      managerId: ids.manager,
+      title: 'Сопровождение статьи',
+    });
+
+    const letter = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId: second.id, eventKind: 'PROJECT_OPENED' },
+    });
+    assert.ok(letter.subject.startsWith('Заведена новая работа'), letter.subject);
+    // Объяснение про вход в кабинет прежнему клиенту не повторяется.
+    assert.ok(!letter.body.includes('Пароль не нужен'), 'повторному клиенту шлётся приглашение');
+
+    // Учётная запись та же: второй пользователь на тот же адрес не заводится.
+    const users = await prisma.user.count({ where: { email: clientEmail } });
+    assert.equal(users, 1);
+
+    await prisma.notificationOutbox.deleteMany({ where: { projectId: second.id } });
+    await prisma.projectEvent.deleteMany({ where: { projectId: second.id } });
+    await prisma.lead.update({ where: { id: again.id }, data: { projectId: null } });
+    await prisma.project.delete({ where: { id: second.id } });
+    await prisma.lead.delete({ where: { id: again.id } });
   });
 
   it('повторное одобрение той же заявки отклоняется', async () => {
