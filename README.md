@@ -24,6 +24,7 @@
 | | |
 |---|---|
 | **Порядок открытия: кто что делает** | [docs/RELEASE.md](docs/RELEASE.md) |
+| **Кабинет: как им пользоваться** | [docs/GUIDE-CABINET.md](docs/GUIDE-CABINET.md) |
 | Как вносить правки | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Дизайн-система | [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) |
 | Сообщение об уязвимости | [SECURITY.md](SECURITY.md) |
