@@ -41,7 +41,7 @@ const BULLET: React.CSSProperties = {
   flex: '0 0 auto',
   width: 6,
   height: 6,
-  marginTop: 7,
+  marginTop: 8,
   borderRadius: '50%',
   background: 'var(--pd-accent)',
 };

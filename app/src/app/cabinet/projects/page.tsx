@@ -81,7 +81,7 @@ export default async function ProjectsScreen() {
                     {stage.dueOn === null ? null : (
                       <Chip>до {formatDate(stage.dueOn)}</Chip>
                     )}
-                    <ButtonLink href={`/cabinet/stages/${stage.id}`} tone="primary">
+                    <ButtonLink href={`/cabinet/stages/${stage.id}`}>
                       Открыть этап
                     </ButtonLink>
                   </div>

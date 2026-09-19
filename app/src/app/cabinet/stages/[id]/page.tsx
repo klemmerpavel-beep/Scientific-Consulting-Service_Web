@@ -284,7 +284,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                 hint="Каждая загрузка сохраняется отдельной версией: прежние остаются доступными."
               />
               <FormActions>
-                <Button>Загрузить</Button>
+                <Button tone="quiet">Загрузить</Button>
               </FormActions>
             </Form>
           </Card>

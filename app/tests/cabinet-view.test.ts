@@ -137,3 +137,59 @@ describe('идентификаторы на экране не повторяют
     }
   }
 });
+
+describe('облик держится в границах дизайн-системы', () => {
+  // Аудит по дизайн-системе (решение Р-165) прошёл по восьмидесяти четырём
+  // снимкам и нашёл расхождения, которых не видели прежние правила: радиус
+  // вне закрытого набора, знак-украшение вместо штрихового значка, столбец
+  // заголовков таблицы без области действия. Каждое из них теперь заперто.
+  const RADII = new Set(['6px', '10px', '14px', '999px', '50%']);
+  const LEADING = new Set(['1.24', '1.4', '1.5', '1.55', '1.6', '1.65']);
+  const SHADOWS = new Set([
+    '0 1px 2px rgba(20,22,28,.05)',
+    '0 6px 14px rgba(20,22,28,.06), 0 1px 2px rgba(20,22,28,.05)',
+    '0 10px 20px rgba(20,22,28,.09)',
+    '0 0 0 3px rgba(20,65,122,.16)',
+  ]);
+
+  for (const folder of ['client', 'expert', 'manager', 'head']) {
+    for (const file of screens(folder)) {
+      const name = path.relative(PROTOTYPE, file);
+
+      it(`${name}: радиус из закрытого набора`, () => {
+        for (const m of body(file).matchAll(/border-radius:\s*([^;"]+)/gu)) {
+          for (const part of m[1].trim().split(/\s+/)) {
+            assert.ok(RADII.has(part), `радиус вне набора: ${part}`);
+          }
+        }
+      });
+
+      it(`${name}: интерлиньяж коэффициентом из шкалы`, () => {
+        for (const m of body(file).matchAll(/line-height:\s*([^;"]+)/gu)) {
+          assert.ok(LEADING.has(m[1].trim()), `интерлиньяж вне шкалы: ${m[1].trim()}`);
+        }
+      });
+
+      it(`${name}: тень по одной из трёх формул`, () => {
+        for (const m of body(file).matchAll(/box-shadow:\s*([^"]+?)(?:;|")/gu)) {
+          assert.ok(SHADOWS.has(m[1].trim()), `тень вне набора: ${m[1].trim()}`);
+        }
+      });
+
+      it(`${name}: знаки штриховые, а не символы`, () => {
+        const text = body(file).replace(/<[^>]+>/gu, ' ');
+        assert.equal(
+          /[←-⇿☀-➿✓✔✖\u{1F300}-\u{1FAFF}]/u.test(text),
+          false,
+          'в тексте экрана знак-украшение вместо штрихового значка',
+        );
+      });
+
+      it(`${name}: заголовок столбца называет свою область`, () => {
+        for (const m of body(file).matchAll(/<th\b([^>]*)>/gu)) {
+          assert.ok(/scope="(col|row)"/u.test(m[1]), 'заголовок таблицы без области действия');
+        }
+      });
+    }
+  }
+});

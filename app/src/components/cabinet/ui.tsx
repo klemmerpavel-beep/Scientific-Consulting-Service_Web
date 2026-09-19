@@ -665,6 +665,10 @@ export const TABLE_CELL: CSSProperties = {
   color: 'var(--pd-ink-secondary)',
   textAlign: 'left',
   verticalAlign: 'top',
+  // Цифры в таблице стоят по разряду даже в смешанной ячейке вида
+  // «3 · 1 в работе»: пропорциональные знаки прыгают от строки к строке,
+  // и столбец читается лесенкой (решение Р-165). На буквы не влияет.
+  fontVariantNumeric: 'tabular-nums',
 };
 
 /** Колонка чисел: выравнивание по разряду и моноширинные цифры. */
@@ -1038,6 +1042,32 @@ export function StatusLine({
   );
 }
 
+/**
+ * Отметка завершённого этапа.
+ *
+ * Прежде здесь стоял знак ✓ текстом: он тянул начертание из гарнитуры,
+ * а правило облика запрещает символы-украшения — знаки в кабинете
+ * штриховые, толщина 1.5 (решение Р-165). Смысл несёт слово «Завершён»
+ * рядом, поэтому значок скрыт от читалки.
+ */
+function DoneMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
 export interface RoadmapItem extends StepItem {
   readonly note?: string | null;
   readonly done?: boolean;
@@ -1092,7 +1122,7 @@ export function Roadmap({ items }: { items: readonly RoadmapItem[] }) {
               fontSize: 12,
             }}
           >
-            {item.state === 'DONE' ? '✓' : index + 1}
+            {item.state === 'DONE' ? <DoneMark /> : index + 1}
           </span>
           <span style={{ gridColumn: '2' }}>
             <span style={{ display: 'block' }}>

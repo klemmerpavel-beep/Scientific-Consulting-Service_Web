@@ -427,7 +427,8 @@ export function Legend({ items }: { items: readonly { label: string; color: stri
             style={{
               width: 12,
               height: 12,
-              borderRadius: 2,
+              // Набор радиусов закрыт: 6 — подсветка, 10 — поле, 14 — карточка.
+              borderRadius: 6,
               background: item.color,
               border: '1px solid var(--pd-edge-neutral)',
               display: 'inline-block',
