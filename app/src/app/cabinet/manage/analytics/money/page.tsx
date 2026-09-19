@@ -5,8 +5,14 @@ import {
   compactMoney,
   compactNumber,
   seriesColor,
-} from '../../../../../components/cabinet/Charts';
-import { Card, Chip, Empty, Heading, Text, formatDate } from '../../../../../components/cabinet/ui';
+  } from '../../../../../components/cabinet/Charts'; import { Card,
+  Chip,
+  Empty,
+  Heading,
+  TableCard,
+  Text,
+  formatDate,
+} from '../../../../../components/cabinet/ui';
 import {
   byMonth,
   overview,
@@ -91,7 +97,7 @@ export default async function AnalyticsMoney() {
               <Text muted>Незакрытых остатков нет.</Text>
             </Card>
           ) : (
-            <Card style={{ padding: 0, overflowX: 'auto' }}>
+            <TableCard label="Дебиторская задолженность">
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
                 <caption style={{ ...cell, captionSide: 'top', borderBottom: 'none' }}>
                   Остаток считается по каждой работе отдельно: переплата по одному договору не
@@ -130,7 +136,7 @@ export default async function AnalyticsMoney() {
                   ))}
                 </tbody>
               </table>
-            </Card>
+            </TableCard>
           )}
         </>
       )}

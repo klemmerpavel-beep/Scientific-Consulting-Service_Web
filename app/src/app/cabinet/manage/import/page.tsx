@@ -1,8 +1,5 @@
-import { redirect } from 'next/navigation';
-
-import Shell from '../../../../components/cabinet/Shell';
 import {
-  Button,
+  redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import {   Button,
   Card,
   Chip,
   Empty,
@@ -14,6 +11,7 @@ import {
   Notice,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
   TABLE_NUM,
   Text,
   formatDate,
@@ -102,7 +100,7 @@ export default async function ImportScreen({
           Первая загрузка покажет отчёт со всеми расхождениями исходного файла.
         </Empty>
       ) : (
-        <Card style={{ padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Загрузки книги заказов">
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
             <caption style={{ ...TABLE_CELL, captionSide: 'top', borderBottom: 'none' }}>
               История переносов: отчёт каждой загрузки открывается повторно.
@@ -156,7 +154,7 @@ export default async function ImportScreen({
               })}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
     </Shell>
   );

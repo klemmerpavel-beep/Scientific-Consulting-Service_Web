@@ -1,9 +1,5 @@
-import { redirect } from 'next/navigation';
-
-import Shell from '../../../../../components/cabinet/Shell';
-import { SANS } from '../../../../../components/cabinet/tokens';
 import {
-  Button,
+  redirect } from 'next/navigation';  import Shell from '../../../../../components/cabinet/Shell'; import { SANS } from '../../../../../components/cabinet/tokens'; import {   Button,
   Card,
   Empty,
   Field,
@@ -16,6 +12,7 @@ import {
   plural,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
   TABLE_NUM,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
@@ -59,7 +56,7 @@ export default async function FinanceYearsScreen() {
           работам пройдут оплаты.
         </Empty>
       ) : (
-        <Card style={{ padding: 0, overflowX: 'auto', marginBottom: 28 }}>
+        <TableCard label="Итоги по годам" style={{ marginBottom: 28 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS }}>
             <caption style={{ ...TABLE_CELL, textAlign: 'left', color: 'var(--pd-ink-secondary)' }}>
               Суммы в рублях. Выручка года — оплаты, пришедшие в этом году.
@@ -96,7 +93,7 @@ export default async function FinanceYearsScreen() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       {undated > 0n ? (

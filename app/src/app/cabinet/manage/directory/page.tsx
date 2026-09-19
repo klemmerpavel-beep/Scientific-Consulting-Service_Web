@@ -1,9 +1,5 @@
-import { redirect } from 'next/navigation';
-
-import Shell from '../../../../components/cabinet/Shell';
-import { MONO } from '../../../../components/cabinet/tokens';
 import {
-  Button,
+  redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import { MONO } from '../../../../components/cabinet/tokens'; import {   Button,
   Card,
   Chip,
   Field,
@@ -16,6 +12,7 @@ import {
   Select,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
   TABLE_NUM,
   Text,
 } from '../../../../components/cabinet/ui';
@@ -96,7 +93,7 @@ export default async function DirectoryScreen({
         </Form>
       </Card>
 
-      <Card style={{ padding: 0, overflowX: 'auto', marginBottom: 32 }}>
+      <TableCard label="Типы сопровождения" style={{ marginBottom: 32 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
           <thead>
             <tr>
@@ -159,7 +156,7 @@ export default async function DirectoryScreen({
             ))}
           </tbody>
         </table>
-      </Card>
+      </TableCard>
 
       <Heading level={2} style={{ marginBottom: 8 }}>
         Шаблоны этапов
@@ -169,7 +166,7 @@ export default async function DirectoryScreen({
         задним числом живые проекты не переписывает: иначе изменение методики меняло бы план работ
         у тех, кто уже в работе.
       </Text>
-      <Card style={{ padding: 0, overflowX: 'auto', marginBottom: 20 }}>
+      <TableCard label="Шаблоны этапов" style={{ marginBottom: 20 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
           <thead>
             <tr>
@@ -207,7 +204,7 @@ export default async function DirectoryScreen({
             )}
           </tbody>
         </table>
-      </Card>
+      </TableCard>
 
       <Card style={{ marginBottom: 32 }}>
         <Heading level={3} style={{ marginBottom: 12 }}>
@@ -260,7 +257,7 @@ export default async function DirectoryScreen({
         Подсказка для предпросмотра, а не решение: состояние работы берётся по тексту статуса, а
         расхождение с цветом выводится отдельным перечнем.
       </Text>
-      <Card style={{ padding: 0, overflowX: 'auto' }}>
+      <TableCard label="Заливка книги заказов">
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
           <thead>
             <tr>
@@ -291,7 +288,7 @@ export default async function DirectoryScreen({
             ))}
           </tbody>
         </table>
-      </Card>
+      </TableCard>
     </Shell>
   );
 }

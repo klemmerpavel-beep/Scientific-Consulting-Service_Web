@@ -1,10 +1,13 @@
-import { redirect } from 'next/navigation';
-
-import Shell from '../../../../components/cabinet/Shell';
-import { SANS } from '../../../../components/cabinet/tokens';
-import { Card, Chip, Heading, Mono, Text, formatDate,
+import {
+  redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import { SANS } from '../../../../components/cabinet/tokens'; import { Card,
+  Chip,
+  Heading,
+  Mono,
+  Text,
+  formatDate,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { flaggedMessages } from '../../../../lib/cabinet/messages';
@@ -33,7 +36,7 @@ export default async function RegistryScreen() {
 
       <section style={{ marginBottom: 32 }}>
         <Mono>Клиенты</Mono>
-        <Card style={{ marginTop: 12, padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Клиенты" style={{ marginTop: 12 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -79,12 +82,12 @@ export default async function RegistryScreen() {
               )}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       </section>
 
       <section style={{ marginBottom: 32 }}>
         <Mono>Эксперты</Mono>
-        <Card style={{ marginTop: 12, padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Эксперты" style={{ marginTop: 12 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -124,7 +127,7 @@ export default async function RegistryScreen() {
               )}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
         <Text muted size={13} style={{ marginTop: 10 }}>
           Без подписанного договора поручения обработки персональных данных эксперт не получает
           доступа к материалам клиента, даже будучи назначенным на проект.

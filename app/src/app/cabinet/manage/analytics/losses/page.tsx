@@ -1,4 +1,11 @@
-import { Card, Empty, Heading, Notice, Text } from '../../../../../components/cabinet/ui';
+import {
+  Card,
+  Empty,
+  Heading,
+  Notice,
+  TableCard,
+  Text,
+} from '../../../../../components/cabinet/ui';
 import { losses, overview } from '../../../../../lib/cabinet/analytics/metrics';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { Frame, Tile, Tiles, analyticsScreen, cell, head, num } from '../shared';
@@ -57,7 +64,7 @@ export default async function AnalyticsLosses() {
               <Text muted>Остановленных работ с задолженностью нет.</Text>
             </Card>
           ) : (
-            <Card style={{ padding: 0, overflowX: 'auto' }}>
+            <TableCard label="Остановленные работы">
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
                 <thead>
                   <tr>
@@ -93,7 +100,7 @@ export default async function AnalyticsLosses() {
                   </tr>
                 </tfoot>
               </table>
-            </Card>
+            </TableCard>
           )}
         </>
       )}

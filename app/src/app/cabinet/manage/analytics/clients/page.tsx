@@ -1,5 +1,16 @@
-import { Legend, RankChart, StackBar, compactMoney, seriesColor } from '../../../../../components/cabinet/Charts';
-import { Card, Empty, Heading, Text, formatDate, plural } from '../../../../../components/cabinet/ui';
+import {
+  Legend,
+  RankChart,
+  StackBar,
+  compactMoney,
+  seriesColor } from '../../../../../components/cabinet/Charts'; import { Card,
+  Empty,
+  Heading,
+  TableCard,
+  Text,
+  formatDate,
+  plural,
+} from '../../../../../components/cabinet/ui';
 import { SEGMENT_LABEL, clients, type ClientSegment } from '../../../../../lib/cabinet/analytics/metrics';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from '../shared';
@@ -69,7 +80,7 @@ export default async function AnalyticsClients() {
           <Heading level={2} style={{ marginBottom: 12 }}>
             Клиенты
           </Heading>
-          <Card style={{ padding: 0, overflowX: 'auto' }}>
+          <TableCard label="Клиенты">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
               <thead>
                 <tr>
@@ -101,7 +112,7 @@ export default async function AnalyticsClients() {
                 ))}
               </tbody>
             </table>
-          </Card>
+          </TableCard>
         </>
       )}
     </Frame>

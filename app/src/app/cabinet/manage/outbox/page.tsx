@@ -1,8 +1,5 @@
-import { redirect } from 'next/navigation';
-
-import Shell from '../../../../components/cabinet/Shell';
 import {
-  Button,
+  redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import {   Button,
   Card,
   Chip,
   Empty,
@@ -11,6 +8,7 @@ import {
   Mono,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
   TABLE_NUM,
   Text,
   Tile,
@@ -103,7 +101,7 @@ export default async function OutboxScreen() {
             : undefined}
         </Empty>
       ) : (
-        <Card style={{ padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Недоставленные уведомления">
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
             <thead>
               <tr>
@@ -145,7 +143,7 @@ export default async function OutboxScreen() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       <Text muted style={{ marginTop: 20 }}>
@@ -198,7 +196,7 @@ export default async function OutboxScreen() {
           </Text>
         </Card>
       ) : (
-        <Card style={{ padding: 0, overflowX: 'auto', marginTop: 20 }}>
+        <TableCard label="Отказы по обращениям" style={{ marginTop: 20 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 780 }}>
             <thead>
               <tr>
@@ -230,7 +228,7 @@ export default async function OutboxScreen() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       <Text muted size={13} style={{ marginTop: 12 }}>

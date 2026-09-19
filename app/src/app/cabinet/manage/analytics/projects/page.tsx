@@ -1,5 +1,11 @@
-import { RankChart, compactNumber } from '../../../../../components/cabinet/Charts';
-import { Card, Empty, Heading, Text } from '../../../../../components/cabinet/ui';
+import {
+  RankChart,
+  compactNumber } from '../../../../../components/cabinet/Charts'; import { Card,
+  Empty,
+  Heading,
+  TableCard,
+  Text,
+} from '../../../../../components/cabinet/ui';
 import { cycles, overview } from '../../../../../lib/cabinet/analytics/metrics';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, cycleLabel, head, num, share } from '../shared';
 
@@ -65,7 +71,7 @@ export default async function AnalyticsProjects() {
           <Heading level={2} style={{ marginBottom: 12 }}>
             Сроки по позициям
           </Heading>
-          <Card style={{ padding: 0, overflowX: 'auto' }}>
+          <TableCard label="Сроки по позициям">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
               <caption style={{ ...cell, captionSide: 'top', borderBottom: 'none' }}>
                 «Более N дней» означает, что завершённых работ недостаточно для медианы: N — наибольший
@@ -90,7 +96,7 @@ export default async function AnalyticsProjects() {
                 ))}
               </tbody>
             </table>
-          </Card>
+          </TableCard>
         </>
       )}
     </Frame>

@@ -1,10 +1,11 @@
-import { redirect } from 'next/navigation';
-
-import Shell from '../../../../components/cabinet/Shell';
-import { SANS } from '../../../../components/cabinet/tokens';
-import { Card, Heading, Mono, Text,
+import {
+  redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import { SANS } from '../../../../components/cabinet/tokens'; import { Card,
+  Heading,
+  Mono,
+  Text,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
   TABLE_NUM,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
@@ -67,7 +68,7 @@ export default async function FinanceScreen() {
         ))}
       </div>
 
-      <Card style={{ padding: 0, overflowX: 'auto' }}>
+      <TableCard label="Деньги по работам">
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
           <thead>
             <tr>
@@ -106,7 +107,7 @@ export default async function FinanceScreen() {
             )}
           </tbody>
         </table>
-      </Card>
+      </TableCard>
     </Shell>
   );
 }

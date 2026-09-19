@@ -14,6 +14,7 @@ import {
   Select,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
   Text,
   plural,
 } from '../../../../components/cabinet/ui';
@@ -103,7 +104,7 @@ export default async function ErasureScreen({
           Здесь появятся требования субъектов и отчёты об их исполнении.
         </Empty>
       ) : (
-        <Card style={{ padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Требования субъектов">
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
             <thead>
               <tr>
@@ -172,7 +173,7 @@ export default async function ErasureScreen({
               })}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       <Text muted size={13} style={{ marginTop: 12 }}>

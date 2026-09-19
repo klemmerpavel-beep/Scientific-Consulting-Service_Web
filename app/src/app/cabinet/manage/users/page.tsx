@@ -15,6 +15,7 @@ import {
   Select,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
   Text,
   formatDate,
 } from '../../../../components/cabinet/ui';
@@ -94,7 +95,7 @@ export default async function UsersScreen({
         </Form>
       </Card>
 
-      <Card style={{ padding: 0, overflowX: 'auto' }}>
+      <TableCard label="Пользователи кабинета">
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980 }}>
           <thead>
             <tr>
@@ -199,7 +200,7 @@ export default async function UsersScreen({
             })}
           </tbody>
         </table>
-      </Card>
+      </TableCard>
     </Shell>
   );
 }
