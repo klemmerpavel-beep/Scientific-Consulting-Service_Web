@@ -20,6 +20,7 @@ import {
   saveContract,
   setTrancheStatus,
 } from '../../lib/cabinet/finance';
+import { saveYear } from '../../lib/cabinet/finance-years';
 import { parseAmount, type TrancheStatus } from '../../lib/cabinet/money';
 import {
   addAlias,
@@ -325,6 +326,18 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
     dateOrNull(form.get('paidOn')),
   );
   redirect(`/cabinet/projects/${code}/payments`);
+}
+
+export async function saveFinanceYear(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const note = String(form.get('note') ?? '').trim();
+  await saveYear(actor, {
+    year: Number(String(form.get('year') ?? '').trim()),
+    revenue: parseAmount(String(form.get('revenue') ?? '')),
+    costs: parseAmount(String(form.get('costs') ?? '')),
+    note: note.length === 0 ? null : note,
+  });
+  redirect('/cabinet/manage/finance/years');
 }
 
 export async function accruePayout(form: FormData): Promise<void> {

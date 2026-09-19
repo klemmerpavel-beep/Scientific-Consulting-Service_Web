@@ -18,12 +18,12 @@ model Lead {
   createdAt DateTime @default(now())
 
   /// Страница, с которой пришла заявка: landing, postgrad, students, business
-  source    String
+  source String
   /// Форма на странице: hero, request — на случай, если форм несколько
-  form      String
+  form   String
 
   name         String?
-  contactKind  String   // email | phone
+  contactKind  String // email | phone
   contact      String
   organization String?
   topic        String?
@@ -31,25 +31,25 @@ model Lead {
   need         String?
   deadline     String?
   direction    String?
-  message      String?  @db.Text
+  message      String? @db.Text
 
   /// Журнал согласий: что именно отметил заявитель и в какой редакции текста
-  consentGiven    Boolean
-  consentVersion  String
-  termsAccepted   Boolean  @default(false)
-  marketingOptIn  Boolean  @default(false)
+  consentGiven   Boolean
+  consentVersion String
+  termsAccepted  Boolean @default(false)
+  marketingOptIn Boolean @default(false)
   /// Разрешение автора отзыва на публикацию его текста на Сайте. Только для
   /// формы отзыва: она не собирает ни имени, ни контакта, поэтому спросить
   /// разрешение задним числом негде — либо оно дано сразу, либо отзыв
   /// остаётся внутренним сигналом (решение Р-114).
-  publishAllowed  Boolean  @default(false)
+  publishAllowed Boolean @default(false)
 
   /// Доказательства для проверки регулятором
   ip        String?
-  userAgent String?  @db.Text
+  userAgent String? @db.Text
 
-  status    LeadStatus @default(NEW)
-  notes     String?    @db.Text
+  status LeadStatus @default(NEW)
+  notes  String?    @db.Text
 
   /// Причина отказа, показываемая заявителю в кабинете. Отдельно от notes:
   /// notes — внутренняя пометка менеджера и наружу не выходит.
@@ -79,11 +79,11 @@ enum LeadStatus {
 /// Доставка заявки в канал. Заявка сохраняется всегда, доставка может не пройти —
 /// эта таблица показывает, что именно не дошло и почему.
 model Delivery {
-  id        String   @id @default(cuid())
-  leadId    String
-  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
-  channel   String   // telegram | email
+  channel   String // telegram | email
   ok        Boolean
   error     String?  @db.Text
   attempts  Int      @default(1)
@@ -123,12 +123,12 @@ enum UserStatus {
 /// Учётная запись. Отделена от карточки клиента намеренно: импорт исторических
 /// данных порождает клиентов, у которых входа в систему нет и может не быть.
 model User {
-  id        String     @id @default(cuid())
+  id       String     @id @default(cuid())
   /// Идентификатор входа. Хранится в нижнем регистре без пробелов.
-  email     String     @unique
-  fullName  String
-  role      UserRole
-  status    UserStatus @default(ACTIVE)
+  email    String     @unique
+  fullName String
+  role     UserRole
+  status   UserStatus @default(ACTIVE)
 
   /// Контакты. Модуль прав отдаёт их только менеджеру и руководителю.
   phone          String?
@@ -160,14 +160,15 @@ model User {
   projectEvents     ProjectEvent[]
   createdMaterials  Material[]
   uploadedVersions  MaterialVersion[]
-  authoredComments  VersionComment[]    @relation("CommentAuthor")
-  moderatedComments VersionComment[]    @relation("CommentModerator")
+  authoredComments  VersionComment[]     @relation("CommentAuthor")
+  moderatedComments VersionComment[]     @relation("CommentModerator")
   fileAccess        FileAccessLog[]
   messages          Message[]
   payouts           ExpertPayout[]
   notifications     NotificationOutbox[]
   auditEvents       AuditEvent[]
   importBatches     ImportBatch[]
+  yearlyFinance     YearlyFinance[]      @relation("YearlyFinanceAuthor")
   erasureApprovals  ErasureRequest[]
 
   @@index([role, status])
@@ -238,7 +239,7 @@ model ClientProfile {
   userId String? @unique
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  fullName String
+  fullName       String
   /// ФИО в нижнем регистре со схлопнутыми пробелами. Индекс неуникальный:
   /// дубли в исторических данных выявляются, а не блокируются при импорте.
   normalizedName String
@@ -374,8 +375,8 @@ model Project {
   managerId String
   manager   User   @relation("ProjectManager", fields: [managerId], references: [id])
 
-  expertId String?
-  expert   User?   @relation("ProjectExpert", fields: [expertId], references: [id], onDelete: SetNull)
+  expertId      String?
+  expert        User?   @relation("ProjectExpert", fields: [expertId], references: [id], onDelete: SetNull)
   /// Текст исполнителя из импортированной строки, если он не сопоставлен
   /// с учётной записью. Такие проекты дают маржу, равную сумме договора.
   expertNameRaw String?
@@ -427,10 +428,10 @@ model Stage {
   title    String
   state    StageState @default(NOT_STARTED)
 
-  dueOn DateTime?
+  dueOn         DateTime?
   /// Причина остановки открытым текстом: «ждём протокол испытаний;
   /// после загрузки — два рабочих дня работы эксперта».
-  blockedReason String? @db.Text
+  blockedReason String?   @db.Text
 
   expertId String?
   expert   User?   @relation("StageExpert", fields: [expertId], references: [id], onDelete: SetNull)
@@ -497,8 +498,8 @@ enum MaterialKind {
 /// Материал проекта. Клиент видит один материал с историей версий,
 /// а не три отдельных файла.
 model Material {
-  id        String       @id @default(cuid())
-  kind      MaterialKind @default(STAGE_MATERIAL)
+  id   String       @id @default(cuid())
+  kind MaterialKind @default(STAGE_MATERIAL)
 
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -515,11 +516,11 @@ model Material {
 
   title       String
   createdById String
-  createdBy   User     @relation(fields: [createdById], references: [id])
-  createdAt   DateTime @default(now())
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
   /// Мягкое удаление. Объекты в хранилище при этом сохраняются: физическое
   /// удаление возможно только процедурой обезличивания.
-  deletedAt DateTime?
+  deletedAt   DateTime?
 
   versions MaterialVersion[]
 
@@ -534,10 +535,10 @@ model MaterialVersion {
   materialId String
   material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
-  number Int
+  number       Int
   /// Ключ объекта: projects/{id}/materials/{id}/v{n}/{uuid}. Исходное имя
   /// файла в ключ не попадает — оно может содержать ФИО.
-  storageKey   String  @unique
+  storageKey   String @unique
   originalName String
   sizeBytes    BigInt
   sha256       String
@@ -551,8 +552,8 @@ model MaterialVersion {
   /// Строка остаётся ради связности истории версий.
   purgedAt DateTime?
 
-  comments   VersionComment[]
-  accessLog  FileAccessLog[]
+  comments  VersionComment[]
+  accessLog FileAccessLog[]
 
   @@unique([materialId, number])
   @@index([materialId])
@@ -600,15 +601,15 @@ enum FileAccessAction {
 /// Журнал доступа к файлам. Требование п. 7.1 брифа и ст. 19 152-ФЗ.
 /// Выделен из общего журнала действий: у него иной объём и иной срок хранения.
 model FileAccessLog {
-  id        String           @id @default(cuid())
-  versionId String
-  version   MaterialVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
-  userId    String?
-  user      User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action    FileAccessAction
-  ip        String?
-  userAgent String?          @db.Text
-  occurredAt DateTime        @default(now())
+  id         String           @id @default(cuid())
+  versionId  String
+  version    MaterialVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     FileAccessAction
+  ip         String?
+  userAgent  String?          @db.Text
+  occurredAt DateTime         @default(now())
 
   @@index([versionId, occurredAt])
   @@index([userId, occurredAt])
@@ -759,6 +760,35 @@ model NotificationOutbox {
 
 /// Журнал действий. Запись выполняется явным вызовом в сервисном слое:
 /// неявная запись через события ORM даёт шум и теряет бизнес-смысл действия.
+/// Годовой итог практики, введённый руководителем.
+///
+/// Рядом с ним кабинет считает свой итог из договоров и выплат, и обе
+/// величины показываются в одной строке. Пока история за прошлые годы ведётся
+/// в отдельной книге, а в кабинете накапливаются только новые работы, эти
+/// величины расходятся — и расхождение должно быть видно, а не спрятано за
+/// одним «итоговым» числом (решение Р-156).
+model YearlyFinance {
+  id   String @id @default(cuid())
+  /// Календарный год: 2019, 2020, … Единственный ключ, второй строки за год нет.
+  year Int    @unique
+
+  /// Выручка и расходы за год в копейках — той же мерой, что суммы договоров.
+  revenue BigInt
+  costs   BigInt
+
+  note String? @db.Text
+
+  /// Кто и когда вводил: величины вводятся руками, и спорную цифру нужно
+  /// уметь отнести к автору и дате.
+  updatedById String?
+  updatedBy   User?   @relation("YearlyFinanceAuthor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([year])
+}
+
 model AuditEvent {
   id         String   @id @default(cuid())
   occurredAt DateTime @default(now())
@@ -774,7 +804,7 @@ model AuditEvent {
   projectId  String?
   /// Изменённые поля в виде «было/стало». Персональные данные сверх
   /// необходимого сюда не пишутся.
-  payload Json?
+  payload    Json?
 
   @@index([occurredAt])
   @@index([objectType, objectId])
@@ -800,7 +830,7 @@ model ErasureRequest {
   executedAt   DateTime?
   scope        ErasureScope @default(PERSONAL_DATA)
   /// Отчёт об исполнении: затронутые таблицы, число строк, удалённые объекты.
-  report Json?
+  report       Json?
 
   @@index([clientId])
 }
@@ -849,8 +879,8 @@ model ImportRow {
   batch     ImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   rowNumber Int
 
-  raw    Json
-  parsed Json?
+  raw       Json
+  parsed    Json?
   /// Естественный ключ строки: дата, ФИО, тип работы, сумма. Заменяет код
   /// заказа, которого в исходном файле нет.
   signature String?
