@@ -121,11 +121,14 @@ export default async function ProjectScreen({
       <Heading level={1} style={{ margin: '16px 0 8px' }}>
         {project.title}
       </Heading>
-      {project.topic === null ? null : <Text style={{ marginBottom: 20 }}>{project.topic}</Text>}
-
       {/* Ответ на главный вопрос клиента стоит первым и целиком: где работа
           сейчас и что требуется от него. Собирать его из полосы этапов и
-          ленты событий человек не обязан. */}
+          ленты событий человек не обязан.
+
+          Тема работы идёт следом, а не перед ним: она бывает длиной в
+          четыре сотни знаков, и на телефоне такая тема отжимала ответ за
+          нижний край экрана — человек видел, чем занята практика, но не
+          то, что требуется от него (решение Р-167). */}
       <div style={{ marginTop: 20 }}>
         <StatusLine
           state={current === null ? null : (current.state as StageStateKey)}
@@ -134,6 +137,12 @@ export default async function ProjectScreen({
           action={action}
         />
       </div>
+
+      {project.topic === null ? null : (
+        <Text muted style={{ marginTop: 20 }}>
+          {project.topic}
+        </Text>
+      )}
 
       <section style={{ marginTop: 32 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
