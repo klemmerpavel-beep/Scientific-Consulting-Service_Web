@@ -85,6 +85,31 @@ describe('раскладка в окно объявлена одним экра�
   });
 });
 
+describe('шапка экрана собрана общей частью', () => {
+  // Экраны внутри работы — этап, материалы, переписка, оплаты — набирали
+  // шапку каждый по-своему: крошка то моноширинной ссылкой, то меткой,
+  // заголовок то в сорок пикселей, то в двадцать два. Три яруса занимали
+  // до ста десяти пикселей и всякий раз выглядели иначе (решение Р-170).
+  const inside = [
+    'stages/[id]/page.tsx',
+    'projects/[code]/materials/page.tsx',
+    'projects/[code]/messages/page.tsx',
+    'projects/[code]/payments/page.tsx',
+  ];
+
+  for (const name of inside) {
+    it(`${name}: шапка — ScreenHead`, () => {
+      const code = readFileSync(path.join(SCREENS, name), 'utf8');
+      assert.ok(/<ScreenHead\b/u.test(code), 'шапка набрана на экране, а не общей частью');
+      assert.equal(
+        /<Heading level=\{1\}/u.test(code),
+        false,
+        'на экране свой заголовок первого уровня помимо шапки',
+      );
+    });
+  }
+});
+
 describe('общие части остаются единственным местом вида', () => {
   it('разметка кнопки живёт в components/cabinet', () => {
     const owners = sources(COMPONENTS).filter((file) =>

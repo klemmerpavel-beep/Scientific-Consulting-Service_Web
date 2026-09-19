@@ -13,6 +13,7 @@ import {
   FormRow,
   Heading,
   Mono,
+  ScreenHead,
   Select,
   Text,
   formatDate,
@@ -105,14 +106,12 @@ export default async function PaymentsScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
-      <a className="cab-mark" href={`/cabinet/projects/${project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
-        {project.code}
-      </a>
-
-      <Mono style={{ display: 'block', marginTop: 16 }}>Оплаты и документы</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        {project.title}
-      </Heading>
+      <ScreenHead
+        backHref={`/cabinet/projects/${project.code}`}
+        backLabel={project.code}
+        title="Оплаты и документы"
+        note={project.title}
+      />
 
       {contract === null || money === null ? (
         <Card>

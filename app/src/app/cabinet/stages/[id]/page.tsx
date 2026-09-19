@@ -1,9 +1,6 @@
-import { notFound, redirect } from 'next/navigation';
-
-import Shell from '../../../../components/cabinet/Shell';
-import { MONO } from '../../../../components/cabinet/tokens';
 import {
-  Button,
+  notFound,
+  redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import { MONO } from '../../../../components/cabinet/tokens'; import {   Button,
   ButtonLink,
   Card,
   Chip,
@@ -14,6 +11,7 @@ import {
   Heading,
   Mono,
   Notice,
+  ScreenHead,
   STAGE_STATE_LABEL,
   Text,
   formatDate,
@@ -60,25 +58,21 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <a className="cab-mark" href={`/cabinet/projects/${stage.project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
-          {stage.project.code}
-        </a>
-        <Chip tone="accent">{STAGE_STATE_LABEL[state]}</Chip>
-        {stage.dueOn === null ? null : <Chip>срок — {formatDate(stage.dueOn)}</Chip>}
-      </div>
-
-      <Heading level={1} style={{ margin: '16px 0 8px' }}>
-        {stage.title}
-      </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
-        {stage.project.title}
-        {/* Состав привлечённых специалистов клиенту не показывается: для него
-            работу ведёт куратор (решение Р-140). */}
-        {stage.expert === null || actor.role === 'CLIENT'
-          ? ''
-          : ` · исполнитель ${stage.expert.fullName}`}
-      </Text>
+      <ScreenHead
+        backHref={`/cabinet/projects/${stage.project.code}`}
+        backLabel={stage.project.code}
+        title={stage.title}
+        chips={<Chip tone="accent">{STAGE_STATE_LABEL[state]}</Chip>}
+        note={
+          stage.project.title +
+          // Состав привлечённых специалистов клиенту не показывается: для
+          // него работу ведёт куратор (решение Р-140).
+          (stage.expert === null || actor.role === 'CLIENT'
+            ? ''
+            : ` · исполнитель ${stage.expert.fullName}`)
+        }
+        aside={stage.dueOn === null ? null : `срок — ${formatDate(stage.dueOn)}`}
+      />
 
       {stage.blockedReason === null ? null : (
         <div style={{ marginBottom: 24 }}>
@@ -106,26 +100,41 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
 
       {mayEdit && NEXT_STATES[state].length > 0 ? (
         <Card style={{ marginBottom: 24 }}>
-          <Heading level={2} style={{ marginBottom: 12 }}>Состояние этапа</Heading>
-          <div style={{ display: 'grid', gap: 16, marginTop: 12 }}>
-            {NEXT_STATES[state].map((next) => (
-              <Form key={next} action={changeStageState}>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+            Перевести этап
+          </Heading>
+          {/* Переход без поля — это одна кнопка, и такие переходы стоят
+              рядом: столбиком они читались как разные дела. Остановка
+              требует причины, которую читает клиент, и потому набирается
+              полной формой над ними (решение Р-170). */}
+          {NEXT_STATES[state]
+            .filter((next) => next === 'AWAITING_CLIENT')
+            .map((next) => (
+              <Form key={next} action={changeStageState} style={{ marginBottom: 16 }}>
                 <input type="hidden" name="stageId" value={stage.id} />
                 <input type="hidden" name="state" value={next} />
-                {next === 'AWAITING_CLIENT' ? (
-                  <Field
-                    label="Причина остановки"
-                    name="reason"
-                    required
-                    placeholder="Ждём протокол испытаний; после загрузки — два рабочих дня на расчёт"
-                    hint="Причину читает клиент: от неё зависит, что и когда он пришлёт."
-                  />
-                ) : null}
+                <Field
+                  label="Причина остановки"
+                  name="reason"
+                  required
+                  placeholder="Ждём протокол испытаний; после загрузки — два рабочих дня на расчёт"
+                  hint="Причину читает клиент: от неё зависит, что и когда он пришлёт."
+                />
                 <FormActions>
                   <Button tone="quiet">Перевести в «{STAGE_STATE_LABEL[next]}»</Button>
                 </FormActions>
               </Form>
             ))}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {NEXT_STATES[state]
+              .filter((next) => next !== 'AWAITING_CLIENT')
+              .map((next) => (
+                <Form key={next} action={changeStageState} inline>
+                  <input type="hidden" name="stageId" value={stage.id} />
+                  <input type="hidden" name="state" value={next} />
+                  <Button tone="quiet">Перевести в «{STAGE_STATE_LABEL[next]}»</Button>
+                </Form>
+              ))}
           </div>
         </Card>
       ) : null}
@@ -133,9 +142,11 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
       <section>
         <Heading level={2} style={{ marginBottom: 12 }}>Материалы и версии</Heading>
         {stage.materials.length === 0 ? (
-          <Card style={{ marginTop: 12 }}>
-            <Text muted>Материалов по этапу пока нет.</Text>
-          </Card>
+          <Text muted>
+            {mayUpload
+              ? 'Материалов по этапу пока нет — приложите первый.'
+              : 'Материалов по этапу пока нет.'}
+          </Text>
         ) : (
           <div style={{ display: 'grid', gap: 20, marginTop: 12 }}>
             {stage.materials.map((material) => (
