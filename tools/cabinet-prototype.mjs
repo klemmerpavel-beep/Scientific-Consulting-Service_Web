@@ -25,6 +25,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import path from 'node:path';
 import { chromium } from '/var/tmp/pwtest/node_modules/playwright-core/index.mjs';
 
+import { buildPortable } from './cabinet-portable.mjs';
+
 const ROOT = path.resolve(import.meta.dirname, '..');
 const APP = path.join(ROOT, 'app');
 const OUT = path.join(ROOT, 'design', 'cabinet-prototype');
@@ -457,6 +459,11 @@ async function main() {
   written += 1;
 
   console.log(`\nПрототип собран: ${written} экранов. Каталог: design/cabinet-prototype`);
+
+  // Копия для боевого сайта складывается тут же, а не отдельной командой:
+  // отдельную команду забывают, и по адресу `/cabinet-preview/` оставался
+  // бы прошлый облик кабинета (решение Р-174).
+  buildPortable(path.join(APP, 'public', 'cabinet-preview'));
 }
 
 main().catch((error) => {
