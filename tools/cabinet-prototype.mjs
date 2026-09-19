@@ -222,7 +222,12 @@ async function crawl(page, role, stabilize) {
   const pages = new Map();
   // Две очереди: неповторяющиеся маршруты разбираются раньше однотипных
   // записей, иначе перечень проектов съедает норму целиком.
-  const plain = [normalize(role.home), '/cabinet/settings'];
+  // Перечень работ получил отбор, и по умолчанию он показывает
+  // действующие: завершённые работы перестали находиться обходом, а с
+  // ними ушли из-под правил облика три экрана. Вкладка «Все» добавляется
+  // явным маршрутом — обход срезает запрос у ссылок и сам бы туда не
+  // попал (решение Р-171).
+  const plain = [normalize(role.home), '/cabinet/settings', '/cabinet/projects?state=all'];
   const many = [];
   const seen = new Set(plain);
   const taken = new Map();
@@ -240,7 +245,7 @@ async function crawl(page, role, stabilize) {
     // Отказ в доступе переводит к своим работам, страница «не найдено»
     // отвечает четырьмястами четырьмя. И то и другое в дерево не берём:
     // прототип показывает то, что роли действительно доступно.
-    if (response === null || response.status() >= 400 || landed !== route) continue;
+    if (response === null || response.status() >= 400 || landed !== route.split('?')[0]) continue;
 
     const { html, styles, links } = await snapshot(page);
     pages.set(route, { html, styles });
@@ -261,7 +266,9 @@ async function crawl(page, role, stabilize) {
 
 /** Путь файла прототипа для маршрута кабинета под ролью. */
 function fileFor(roleKey, route) {
-  const tail = route.replace(/^\/cabinet\/?/u, '');
+  // Маршрут с запросом кладётся отдельной папкой: «projects?state=all»
+  // становится «projects-state-all».
+  const tail = route.replace(/^\/cabinet\/?/u, '').replace(/[?=&]/gu, '-');
   return path.join(roleKey, tail, 'index.html');
 }
 

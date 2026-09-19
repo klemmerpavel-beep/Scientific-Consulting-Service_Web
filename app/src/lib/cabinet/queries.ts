@@ -9,12 +9,84 @@ import { can, ensure, scopeComments, scopeMaterials, scopeProjects, type Actor }
  * `scope*`, здесь просто нет.
  */
 
-export async function listProjects(actor: Actor) {
+/** Сколько работ показывается на одной странице перечня. */
+export const PROJECT_PAGE_SIZE = 20;
+
+/**
+ * С какого числа работ перечень получает отбор.
+ *
+ * У клиента работ две-три: вкладки и поиск добавили бы сотню пикселей и
+ * ничего не сообщили. У руководителя их пятьдесят пять, и без отбора
+ * перечень вырастал до шести экранов прокрутки (решение Р-171).
+ */
+export const PROJECT_FILTER_FROM = 8;
+
+/** Наборы перечня работ. Порядок тот же, что у вкладок на экране. */
+export type ProjectFilter = 'active' | 'waiting' | 'done' | 'all';
+
+/**
+ * Перечень работ с отбором, поиском и постраничностью.
+ *
+ * У руководителя работ пятьдесят пять — весь объём книги заказов, — и
+ * перечень вырастал до шести экранов прокрутки: чтобы найти работу, её
+ * приходилось искать глазами (решение Р-171). Отбор ложится поверх
+ * `scopeProjects`, то есть разграничение ролей остаётся на месте.
+ *
+ * Набор «ждут» — это этап в состоянии ожидания человека: клиенту он
+ * говорит «ждут меня», практике — «ждут клиента». Состояние одно, назван
+ * со стороны смотрящего.
+ */
+export async function listProjects(
+  actor: Actor,
+  { filter, query = '', page = 1 }: { filter?: ProjectFilter; query?: string; page?: number } = {},
+) {
   const scope = scopeProjects(actor);
-  if (scope === null) return [];
-  return prisma.project.findMany({
-    where: scope,
+  if (scope === null) {
+    return { rows: [], total: 0, page: 1, pages: 1, all: 0, filter: 'all' as ProjectFilter };
+  }
+
+  // Сколько работ всего — по этому числу решается и вид экрана, и набор
+  // по умолчанию. Пока работ немного, отбора нет вовсе и показываются
+  // все; когда их десятки, первым делом нужны действующие.
+  const all = await prisma.project.count({ where: scope });
+  const applied: ProjectFilter = filter ?? (all > PROJECT_FILTER_FROM ? 'active' : 'all');
+
+  const byFilter =
+    applied === 'active'
+      ? { status: 'ACTIVE' as const }
+      : applied === 'done'
+        ? { status: { in: ['COMPLETED' as const, 'CANCELLED' as const] } }
+        : applied === 'waiting'
+          ? { stages: { some: { state: { in: ['AWAITING_CLIENT' as const, 'IN_APPROVAL' as const] } } } }
+          : {};
+
+  const needle = query.trim();
+  const byQuery =
+    needle === ''
+      ? {}
+      : {
+          OR: [
+            { code: { contains: needle, mode: 'insensitive' as const } },
+            { title: { contains: needle, mode: 'insensitive' as const } },
+            { topic: { contains: needle, mode: 'insensitive' as const } },
+            // Клиент ищет среди своих работ, и фамилия там всегда его
+            // собственная: искать по ней нечего.
+            ...(actor.role === 'CLIENT'
+              ? []
+              : [{ client: { fullName: { contains: needle, mode: 'insensitive' as const } } }]),
+          ],
+        };
+
+  const where = { ...scope, ...byFilter, ...byQuery };
+  const total = await prisma.project.count({ where });
+  const pages = Math.max(1, Math.ceil(total / PROJECT_PAGE_SIZE));
+  const current = Math.min(Math.max(1, Math.trunc(page) || 1), pages);
+
+  const rows = await prisma.project.findMany({
+    where,
     orderBy: [{ status: 'asc' }, { dueOn: 'asc' }],
+    skip: (current - 1) * PROJECT_PAGE_SIZE,
+    take: PROJECT_PAGE_SIZE,
     include: {
       serviceType: { select: { name: true } },
       client: { select: { fullName: true } },
@@ -26,6 +98,8 @@ export async function listProjects(actor: Actor) {
       _count: { select: { materials: true } },
     },
   });
+
+  return { rows, total, page: current, pages, all, filter: applied };
 }
 
 export async function projectByCode(actor: Actor, code: string) {

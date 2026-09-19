@@ -220,6 +220,41 @@ describe('облик держится в границах дизайн-сист�
   }
 });
 
+describe('перечень работ отбирается, а не листается', () => {
+  /**
+   * У руководителя работ пятьдесят пять — весь объём книги заказов, — и
+   * перечень вырастал до шести экранов прокрутки. Отбор ложится поверх
+   * `scopeProjects`, то есть разграничение ролей не трогает (Р-171).
+   *
+   * Полоса отбора появляется не всегда: при трёх работах она добавила бы
+   * сотню пикселей и ничего не сообщила. Правило проверяет связь —
+   * плашек на странице много, значит полоса обязана быть.
+   */
+  const lists = ['client', 'expert', 'manager', 'head'].flatMap((folder) =>
+    screens(folder).filter((file) => /projects[^/\\]*[/\\]index\.html$/u.test(file)),
+  );
+
+  for (const file of lists) {
+    const name = path.relative(PROTOTYPE, file);
+    it(`${name}: при длинном перечне есть отбор`, () => {
+      const html = body(file).match(/<main\b[\s\S]*?<\/main>/u)?.[0] ?? '';
+      const cards = (html.match(/<li class="cab-card/gu) ?? []).length;
+      if (cards < 8) return;
+      assert.ok(
+        /aria-label="Отбор работ"/u.test(html),
+        `плашек ${cards}, а полосы отбора нет`,
+      );
+    });
+
+    it(`${name}: постраничность — цель нажатия 44 px`, () => {
+      const html = body(file).match(/<nav\b[^>]*aria-label="Страницы[\s\S]*?<\/nav>/u)?.[0] ?? '';
+      for (const m of html.matchAll(/<a\b([^>]*)>/gu)) {
+        assert.ok(/class="[^"]*cab-mark/u.test(m[1]), 'ссылка постраничности мельче цели нажатия');
+      }
+    });
+  }
+});
+
 describe('экран заказа помещается в окно', () => {
   /**
    * Заказчик потребовал одного: страница отдельного заказа не должна
