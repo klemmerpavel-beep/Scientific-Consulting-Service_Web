@@ -26,6 +26,7 @@ import {
 } from '../../../components/cabinet/ui';
 import { MONO, SANS } from '../../../components/cabinet/tokens';
 import { can } from '../../../lib/cabinet/access';
+import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
 import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
 import { unreadInbox } from '../../../lib/cabinet/messages';
 import { LEAD_PAGE_SIZE, leadQueue, serviceTypes, trafficLight } from '../../../lib/cabinet/queries';
@@ -35,14 +36,6 @@ import { OVERHEAD_PERCENT, activeWorks, practiceSummary } from '../../../lib/cab
 import { moderateLead } from '../actions';
 
 export const dynamic = 'force-dynamic';
-
-const SOURCE_LABEL: Record<string, string> = {
-  landing: 'Посадочная',
-  postgrad: 'Аспирантам',
-  students: 'Студентам',
-  business: 'Бизнесу',
-  cabinet: 'Из кабинета',
-};
 
 export default async function ManageQueue({
   searchParams,
@@ -245,7 +238,7 @@ export default async function ManageQueue({
                   marginBottom: 12,
                 }}
               >
-                <Chip tone="accent">{SOURCE_LABEL[lead.source] ?? lead.source}</Chip>
+                <Chip tone="accent">{leadSourceLabel(lead.source)}</Chip>
                 <Chip mono>{formatDate(lead.createdAt)}</Chip>
                 {lead.consentGiven ? <Chip>согласие получено</Chip> : null}
               </div>
