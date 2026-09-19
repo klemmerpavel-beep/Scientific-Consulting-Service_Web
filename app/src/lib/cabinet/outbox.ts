@@ -24,7 +24,8 @@ export type EventKind =
   | 'STAGE_IN_APPROVAL'
   | 'DEADLINE_IN_3_DAYS'
   | 'PAYMENT_STATUS_CHANGED'
-  | 'REQUEST_CREATED';
+  | 'REQUEST_CREATED'
+  | 'PROJECT_OPENED';
 
 export interface OutboxItem {
   readonly userId: string;

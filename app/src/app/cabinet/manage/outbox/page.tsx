@@ -37,6 +37,7 @@ const EVENT_LABEL: Record<string, string> = {
   DEADLINE_IN_3_DAYS: 'приближается срок',
   PAYMENT_STATUS_CHANGED: 'изменилась оплата',
   REQUEST_CREATED: 'новая заявка',
+  PROJECT_OPENED: 'работа заведена',
 };
 
 export default async function OutboxScreen() {

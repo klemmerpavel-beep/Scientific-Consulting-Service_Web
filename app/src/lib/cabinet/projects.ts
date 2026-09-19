@@ -2,6 +2,7 @@ import { prisma } from '../db.ts';
 import { ensure, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
 import { enqueue } from './outbox.ts';
+import { siteUrl } from '../site-url.ts';
 
 /**
  * Производственный контур: модерация заявки, проект, этапы.
@@ -73,7 +74,14 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
     // Учётная запись клиента заводится только при известном адресе почты:
     // вход в кабинет идёт по ссылке на почту, телефоном войти нельзя.
     let userId: string | null = null;
+    // Первое обращение отличается от повторного текстом письма: новому
+    // человеку объясняется, что у него вообще есть кабинет, прежнему —
+    // только что заведена ещё одна работа. Наличие записи проверяется до
+    // upsert: после него отличить созданную от найденной уже нельзя.
+    let firstTime = false;
     if (email !== null) {
+      const known = await tx.user.findUnique({ where: { email }, select: { id: true } });
+      firstTime = known === null;
       const user = await tx.user.upsert({
         where: { email },
         create: { email, fullName, role: 'CLIENT', phone },
@@ -149,6 +157,38 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
         payload: { code, leadId: lead.id },
       },
     });
+
+    // Клиент узнаёт об одобрении сам, а не после того, как о нём вспомнят.
+    // Прежде учётная запись заводилась молча: человек оставлял заявку и
+    // больше ничего не слышал, пока менеджер вручную не выдаст ссылку входа.
+    //
+    // Ссылка входа в письмо не кладётся намеренно. Она одноразовая и живёт
+    // пятнадцать минут (`token.ts`), а письмо ждёт ближайшей рассылки и
+    // может пролежать дольше: к моменту прочтения ссылка была бы мертва, и
+    // приглашение выглядело бы поломкой. Человек открывает кабинет сам и
+    // получает свежую ссылку на тот же адрес.
+    if (userId !== null) {
+      const base = siteUrl();
+      const entrance = base === null ? 'страница «Личный кабинет» на сайте' : `${base}/cabinet`;
+      await enqueue(tx, {
+        userId,
+        projectId: created.id,
+        eventKind: 'PROJECT_OPENED',
+        subject: firstTime
+          ? `Заявка принята: работа ${code}`
+          : `Заведена новая работа ${code}`,
+        body:
+          `${input.title}${created.topic === null ? '' : ` — ${created.topic}`}.\n` +
+          (firstTime
+            ? 'Ход работы, материалы и переписка с куратором собраны в личном кабинете.\n' +
+              `Откройте ${entrance} и укажите этот адрес почты — придёт ссылка для входа.\n` +
+              'Пароль не нужен: вход только по ссылке на почту.'
+            : `Работа добавлена в ваш личный кабинет: ${entrance}.`),
+        // Ключ по работе, а не по времени: одобрение происходит один раз, и
+        // второго приглашения по той же работе быть не должно.
+        dedupKey: `project:${created.id}:opened`,
+      });
+    }
 
     return created;
   });
