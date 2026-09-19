@@ -106,6 +106,7 @@ export default function Shell({
   actor,
   current,
   center = false,
+  board = false,
   children,
 }: {
   actor: Actor | null;
@@ -116,6 +117,19 @@ export default function Shell({
    * экраны длиннее окна, и центрировать в них нечего (решение Р-166).
    */
   center?: boolean;
+  /**
+   * Экран занимает ровно окно и не прокручивается: прокручиваются блоки
+   * внутри него (решение Р-169). Нужно экрану заказа, где человек должен
+   * видеть сразу готовность, план, материалы и переписку.
+   *
+   * Отступы `clamp` рассчитаны на страницу-ленту, где под последним блоком
+   * нужен воздух; панели он не нужен, и 101 пиксель снизу — это четверть
+   * места, отведённого колонкам. Поэтому на панели отступы ровные.
+   *
+   * `minHeight: 0` обязателен: без него потомок колонки-flex не сжимается
+   * ниже своего содержимого, и прокрутка уходит на страницу вместо блока.
+   */
+  board?: boolean;
   children: ReactNode;
 }) {
   const items = actor === null ? [] : navFor(actor);
@@ -206,15 +220,20 @@ export default function Shell({
 
       <main
         id="main"
-        className="cab-pad"
+        className={board ? 'cab-pad cab-board-main' : 'cab-pad'}
         style={{
           boxSizing: 'border-box',
           width: '100%',
           maxWidth: CONTAINER,
           margin: '0 auto',
-          padding: `clamp(32px,4vw,56px) ${GUTTER}px clamp(72px,7vw,112px)`,
+          padding: board
+            ? `24px ${GUTTER}px 24px`
+            : `clamp(32px,4vw,56px) ${GUTTER}px clamp(72px,7vw,112px)`,
           ...(center
             ? { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+            : {}),
+          ...(board
+            ? { display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }
             : {}),
         }}
       >

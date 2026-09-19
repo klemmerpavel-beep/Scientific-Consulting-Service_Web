@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
+import { MONO, SANS } from '../../../components/cabinet/tokens';
 import {
   ButtonLink,
   Card,
@@ -36,6 +37,7 @@ export default async function ProjectsScreen() {
   const awaitingNda = forExpert && actor.expertNdaSignedAt === null;
   // Эксперт в канал переписки не входит, поэтому перехода к нему не видит.
   const mayWrite = actor.role !== 'EXPERT';
+
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -104,93 +106,123 @@ export default async function ProjectsScreen() {
           }
         />
       ) : (
-        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
-          {projects.map((project) => (
-            <Card as="li" key={project.id} style={{ padding: '22px 24px' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 12,
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  marginBottom: 12,
-                }}
-              >
-                {/* Тип не дублируется чипом, когда он же стоит заголовком
-                    карточки: у всего, что перенесено из книги заказов, это
-                    одна и та же строка. */}
-                {project.title === project.serviceType.name ? null : (
-                  <Chip tone="accent">{project.serviceType.name}</Chip>
-                )}
-                <Chip mono>{project.code}</Chip>
-                {project.dueOn === null ? null : (
-                  <Text muted size={14}>
-                    срок — {formatDate(project.dueOn)}
-                  </Text>
-                )}
-                {forClient ? null : (
-                  <Text muted size={14}>
-                    {project.client.fullName}
-                  </Text>
-                )}
-              </div>
+        <ul
+          style={{
+            margin: 0,
+            padding: 0,
+            listStyle: 'none',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(440px,1fr))',
+            gap: 16,
+          }}
+        >
+          {projects.map((project) => {
+            const done = project.stages.filter((stage) => stage.state === 'DONE').length;
+            const currentStage = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
+            const newMessages = unread.get(project.id) ?? 0;
+            // Строка под шкалой отвечает на вопрос «что с этим заказом» без
+            // захода внутрь: сколько этапов сделано, сколько приложено
+            // материалов, есть ли непрочитанное (решение Р-169).
+            const facts = [
+              project.stages.length === 0
+                ? null
+                : `${done} из ${project.stages.length} ${plural(project.stages.length, 'этапа', 'этапов', 'этапов')}`,
+              project._count.materials === 0
+                ? null
+                : `${project._count.materials} ${plural(project._count.materials, 'материал', 'материала', 'материалов')}`,
+              newMessages === 0
+                ? null
+                : `${newMessages} ${plural(newMessages, 'новое сообщение', 'новых сообщения', 'новых сообщений')}`,
+              forClient ? null : project.client.fullName,
+            ].filter((fact) => fact !== null);
 
-              <Heading level={3} style={{ marginBottom: 6, fontSize: 20 }}>
-                <a href={`/cabinet/projects/${project.code}`} style={{ color: 'var(--pd-ink)' }}>
-                  {project.title}
-                </a>
-              </Heading>
+            return (
+              <Card as="li" key={project.id} link style={{ padding: '16px 20px 18px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    marginBottom: 8,
+                  }}
+                >
+                  <Chip mono>{project.code}</Chip>
+                  {/* Тип не дублируется чипом, когда он же стоит заголовком
+                      карточки: у всего, что перенесено из книги заказов, это
+                      одна и та же строка. */}
+                  {project.title === project.serviceType.name ? null : (
+                    <Chip tone="accent">{project.serviceType.name}</Chip>
+                  )}
+                  {project.stages.length === 0 ? <Chip>план не заведён</Chip> : null}
+                  {project.dueOn === null ? null : (
+                    <span
+                      style={{
+                        marginLeft: 'auto',
+                        fontFamily: MONO,
+                        fontSize: 13,
+                        lineHeight: 1.4,
+                        color: 'var(--pd-ink-muted)',
+                      }}
+                    >
+                      срок — {formatDate(project.dueOn)}
+                    </span>
+                  )}
+                </div>
 
-              {/* Короткое описание заказа: у перенесённых работ заголовок —
-                  это тип сопровождения, и без темы карточки неразличимы. */}
-              {project.topic === null || project.topic === project.title ? null : (
-                <Text muted size={14} style={{ marginBottom: 10 }}>
-                  {project.topic}
-                </Text>
-              )}
-
-              {/* Состояние работы называется словом и стоит в карточке
-                  перечня: чтобы понять, где работа, открывать её не нужно. */}
-              <Progress
-                done={project.stages.filter((s) => s.state === 'DONE').length}
-                total={project.stages.length}
-                current={(() => {
-                  const stage = project.stages.find((s) => s.state !== 'DONE');
-                  return stage === undefined
-                    ? null
-                    : { title: stage.title, state: stage.state as StageStateKey };
-                })()}
-              />
-
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 16,
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  marginTop: 14,
-                }}
-              >
-                <a className="cab-mark" href={`/cabinet/projects/${project.code}`}>
-                  {/* Кабинет называет это работой во всех ролях: два слова
-                      об одном заставляли бы читать дважды. */}
-                  Открыть работу
-                </a>
-                {mayWrite ? (
-                  <a
-                    className="cab-mark"
-                    href={`/cabinet/projects/${project.code}/messages`}
-                    style={{ marginLeft: 'auto' }}
-                  >
-                    {forClient ? 'Написать куратору' : 'Переписка'}
-                    {(unread.get(project.id) ?? 0) > 0
-                      ? ` · ${unread.get(project.id)} новых`
-                      : ''}
+                {/* Заголовок ведёт внутрь: отдельная строка «Открыть работу»
+                    под каждой плашкой стоила у эксперта восемьсот пикселей
+                    и вела туда же. */}
+                <Heading level={3} style={{ marginBottom: 4 }}>
+                  <a href={`/cabinet/projects/${project.code}`} style={{ color: 'var(--pd-ink)' }}>
+                    {project.title}
                   </a>
-                ) : null}
-              </div>
-            </Card>
-          ))}
+                </Heading>
+
+                {/* Короткое описание заказа: у перенесённых работ заголовок —
+                    это тип сопровождения, и без темы карточки неразличимы. */}
+                {/* Тема ограничена двумя строками: в наполнении она доходит
+                    до трёхсот пятидесяти знаков, и одна такая работа
+                    растягивала весь ряд плашек (решение Р-169). Целиком
+                    тема стоит на экране заказа. */}
+                {project.topic === null || project.topic === project.title ? null : (
+                  <p
+                    style={{
+                      margin: '0 0 10px',
+                      fontFamily: SANS,
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      color: 'var(--pd-ink-muted)',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {project.topic}
+                  </p>
+                )}
+
+                {/* Состояние работы называется словом и стоит в плашке:
+                    чтобы понять, где работа, открывать её не нужно. */}
+                <Progress
+                  done={done}
+                  total={project.stages.length}
+                  current={
+                    currentStage === null
+                      ? null
+                      : { title: currentStage.title, state: currentStage.state as StageStateKey }
+                  }
+                />
+
+                {facts.length === 0 ? null : (
+                  <Text muted size={13} style={{ marginTop: 10 }}>
+                    {facts.join(' · ')}
+                  </Text>
+                )}
+              </Card>
+            );
+          })}
         </ul>
       )}
     </Shell>

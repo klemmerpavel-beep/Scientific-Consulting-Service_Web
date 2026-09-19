@@ -628,16 +628,26 @@ export function Thread({
   viewer,
   flagContacts = false,
   empty = 'Сообщений пока нет.',
+  dense = false,
 }: {
   messages: readonly ThreadMessage[];
   viewer: { id: string; role: string };
   flagContacts?: boolean;
   empty?: string;
+  /**
+   * Переписка стоит колонкой панели, а не во всю ширину экрана.
+   *
+   * В колонке около 390 пикселей пузырь шириной 78 % оставляет от строки
+   * треть, и сообщение рвётся на пять строк вместо двух. В плотном режиме
+   * пузырь занимает ширину целиком; чьё сообщение — по-прежнему видно по
+   * заливке и подписи (решение Р-169).
+   */
+  dense?: boolean;
 }) {
   if (messages.length === 0) return <Text muted>{empty}</Text>;
 
   return (
-    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 18 }}>
+    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: dense ? 14 : 18 }}>
       {messages.map((message) => {
         const mine = message.author.id === viewer.id;
         return (
@@ -645,7 +655,7 @@ export function Thread({
             key={message.id}
             style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}
           >
-            <div style={{ maxWidth: '78%' }}>
+            <div style={{ maxWidth: dense ? '100%' : '78%', width: dense ? '100%' : undefined }}>
               <div
                 style={{
                   padding: '12px 16px',
@@ -953,7 +963,12 @@ export function Progress({
   total: number;
   current: { title: string; state: StageStateKey } | null;
 }) {
-  const share = total === 0 ? 0 : Math.round((done / total) * 100);
+  // Пока плана нет, полосе нечего показывать, а фраза «План работы ещё
+  // составляется» в перечне эксперта повторялась семнадцать раз подряд и
+  // занимала больше места, чем сообщала. Состояние работы без плана
+  // называет чип в плашке (решение Р-169).
+  if (total === 0) return null;
+  const share = Math.round((done / total) * 100);
   return (
     <div style={{ display: 'grid', gap: 8 }}>
       <span
@@ -969,11 +984,7 @@ export function Progress({
         }}
       >
         {current === null ? (
-          total === 0 ? (
-            <span>План работы ещё составляется</span>
-          ) : (
-            <span>Все этапы завершены</span>
-          )
+          <span>Все этапы завершены</span>
         ) : (
           <>
             <strong style={{ fontWeight: 600 }}>{STAGE_STATE_LABEL[current.state]}</strong>
@@ -982,100 +993,37 @@ export function Progress({
         )}
         {/* Доля названа числом: полоса показывает её вид, а прочитать
             выполнение заказа человек должен, не измеряя глазом. */}
-        {total === 0 ? null : (
-          <span
-            style={{
-              marginLeft: 'auto',
-              fontFamily: MONO,
-              fontSize: 13,
-              fontVariantNumeric: 'tabular-nums',
-              color: 'var(--pd-ink-secondary)',
-            }}
-          >
-            {share} %
-          </span>
-        )}
-      </span>
-      {/* Пока этапов нет, полоса рисовала пустую рамку: заполнять её нечем,
-          а смысла в ней столько же, сколько в пустом месте. */}
-      {total === 0 ? null : (
         <span
-          aria-hidden="true"
           style={{
-            display: 'block',
-            height: 6,
-            borderRadius: RADIUS.mark,
-            background: 'var(--pd-divider)',
-            overflow: 'hidden',
+            marginLeft: 'auto',
+            fontFamily: MONO,
+            fontSize: 13,
+            lineHeight: 1.4,
+            fontVariantNumeric: 'tabular-nums',
+            color: 'var(--pd-ink-secondary)',
           }}
         >
-          <span
-            style={{
-              display: 'block',
-              width: `${share}%`,
-              height: '100%',
-              background: 'var(--pd-accent)',
-            }}
-          />
+          {share} %
         </span>
-      )}
-      {/* Пока этапов нет, строка выше уже сказала это словами; вторая
-          формулировка того же ничего не добавляла. */}
-      {total === 0 ? null : (
-        <span style={{ fontFamily: SANS, fontSize: 13, lineHeight: 1.5, color: 'var(--pd-ink-muted)' }}>
-          {done} из {total} {plural(total, 'этапа', 'этапов', 'этапов')} завершено
-        </span>
-      )}
-    </div>
-  );
-}
-
-/**
- * Состояние работы одной строкой.
- *
- * Первое, что должен увидеть клиент: где работа сейчас и что требуется от
- * него. Раньше ответ собирался из трёх мест экрана — полосы этапов, ленты
- * событий и блока «кто ведёт проект», — и на телефоне не собирался вовсе.
- */
-export function StatusLine({
-  state,
-  title,
-  dueOn,
-  action,
-}: {
-  state: StageStateKey | null;
-  title: string | null;
-  dueOn?: string | null;
-  action?: string | null;
-}) {
-  const waiting = state === 'AWAITING_CLIENT' || state === 'IN_APPROVAL';
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gap: 6,
-        padding: '16px 20px',
-        borderRadius: RADIUS.card,
-        border: `1px solid ${waiting ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
-        background: waiting ? 'var(--pd-accent-tint)' : 'var(--pd-ink-inverse)',
-      }}
-    >
+      </span>
       <span
+        aria-hidden="true"
         style={{
-          fontFamily: SANS,
-          fontSize: 17,
-          fontWeight: 600,
-          lineHeight: 1.4,
-          color: 'var(--pd-ink)',
+          display: 'block',
+          height: 6,
+          borderRadius: RADIUS.mark,
+          background: 'var(--pd-divider)',
+          overflow: 'hidden',
         }}
       >
-        {state === null || title === null
-          ? 'План работы ещё составляется'
-          : `${STAGE_STATE_LABEL[state]}: ${title}`}
-      </span>
-      <span style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5, color: 'var(--pd-ink-secondary)' }}>
-        {action ?? 'Сейчас от вас ничего не требуется — работа идёт.'}
-        {dueOn ? ` Срок этапа — ${dueOn}.` : ''}
+        <span
+          style={{
+            display: 'block',
+            width: `${share}%`,
+            height: '100%',
+            background: 'var(--pd-accent)',
+          }}
+        />
       </span>
     </div>
   );
@@ -1217,6 +1165,437 @@ export function Roadmap({ items }: { items: readonly RoadmapItem[] }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+/**
+ * Панель экрана заказа: ряд колонок высотой по остатку окна.
+ *
+ * Экран заказа собирался лентой во всю ширину 1220 px: готовность, этапы,
+ * переписка и реквизиты шли друг под другом, правая половина экрана
+ * пустовала, а страница вырастала до двух с лишним экранов — материалов
+ * на ней не было вовсе. Заказчик потребовал обратного: всё главное сразу
+ * и без прокрутки страницы (решение Р-169).
+ *
+ * Высота держится цепочкой `flex` от `body` через `main` до тела колонки,
+ * и каждому звену нужен `minHeight: 0`: без него потомок колонки-flex не
+ * сжимается ниже своего содержимого, и прокрутка уходит на страницу.
+ *
+ * Ниже 1024 px панель становится обычной лентой — правило в `CABINET_CSS`.
+ */
+export function Board({ columns, children }: { columns: 2 | 3; children: ReactNode }) {
+  return (
+    <div
+      className="cab-board"
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'grid',
+        gridTemplateColumns: `repeat(${columns}, minmax(0,1fr))`,
+        gap: 20,
+        alignItems: 'stretch',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Колонка панели: несмещаемая шапка, прокручиваемое тело, место под форму.
+ *
+ * Тело обязано получать фокус и имя — иначе с клавиатуры до нижних записей
+ * не добраться; это то же требование, что у широких таблиц (решение Р-168).
+ */
+export function BoardColumn({
+  title,
+  href,
+  hrefLabel,
+  footer,
+  anchor = 'start',
+  children,
+}: {
+  title: string;
+  /** Полный перечень на своём экране: в колонке видно главное. */
+  href?: string;
+  hrefLabel?: string;
+  /** Форма отправки: стоит под телом и с ним не прокручивается. */
+  footer?: ReactNode;
+  /**
+   * `end` открывает колонку на последних записях. Нужно переписке: в
+   * ленте, открытой на первом сообщении, свежее оказывается за краем, и
+   * человек листает вниз каждый раз. Разворот колонки делает это
+   * разметкой, без клиентского кода.
+   */
+  anchor?: 'start' | 'end';
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className="cab-card"
+      style={{
+        background: 'var(--pd-ink-inverse)',
+        border: '1px solid var(--pd-border)',
+        borderRadius: RADIUS.card,
+        boxShadow: SHADOW.level2,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          padding: '4px 18px',
+          borderBottom: '1px solid var(--pd-divider)',
+        }}
+      >
+        <h2
+          style={{
+            fontFamily: SERIF,
+            fontWeight: 500,
+            fontSize: 17,
+            lineHeight: 1.4,
+            letterSpacing: '-.005em',
+            color: 'var(--pd-ink)',
+          }}
+        >
+          {title}
+        </h2>
+        {href === undefined ? null : (
+          <a className="cab-mark" href={href} style={{ fontFamily: SANS, fontSize: 14 }}>
+            {hrefLabel ?? 'весь список'}
+          </a>
+        )}
+      </div>
+      <div
+        className="cab-board-body"
+        role="region"
+        aria-label={title}
+        tabIndex={0}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          padding: '16px 18px',
+          ...(anchor === 'end' ? { display: 'flex', flexDirection: 'column-reverse' } : {}),
+        }}
+      >
+        {children}
+      </div>
+      {footer === undefined ? null : (
+        <div style={{ padding: '14px 18px', borderTop: '1px solid var(--pd-divider)' }}>
+          {footer}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Готовность работы — самый крупный блок экрана заказа.
+ *
+ * Отвечает на три вопроса сразу: сколько сделано, где работа сейчас и что
+ * требуется от человека. Прежде на это отвечали два блока — полоса доли в
+ * перечне и строка состояния на карточке, — а срок работы целиком не
+ * назывался нигде, кроме чипа в шапке (решение Р-169).
+ *
+ * Остаток дней до срока здесь не считается намеренно: он менялся бы день
+ * ото дня и ломал побайтную воспроизводимость снимков, на которой держится
+ * приёмка облика.
+ */
+export function ProgressPanel({
+  done,
+  total,
+  current,
+  stageDueOn,
+  projectDueOn,
+  action,
+  actionHref,
+  actionLabel,
+}: {
+  done: number;
+  total: number;
+  current: { title: string; state: StageStateKey } | null;
+  stageDueOn?: string | null;
+  projectDueOn?: string | null;
+  action?: string | null;
+  actionHref?: string | null;
+  actionLabel?: string;
+}) {
+  const share = total === 0 ? 0 : Math.round((done / total) * 100);
+  // Ожидание человека подсвечивается: это единственное состояние, в котором
+  // работа стоит из-за него, и оно не должно теряться среди прочих.
+  const waiting = current?.state === 'AWAITING_CLIENT' || current?.state === 'IN_APPROVAL';
+  return (
+    <section
+      style={{
+        display: 'grid',
+        gap: 12,
+        padding: '18px 22px',
+        borderRadius: RADIUS.card,
+        border: `1px solid ${waiting ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
+        background: waiting ? 'var(--pd-accent-tint)' : 'var(--pd-ink-inverse)',
+      }}
+    >
+      <div style={{ display: 'flex', gap: 16, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <span
+          style={{
+            fontFamily: SANS,
+            fontSize: 17,
+            fontWeight: 600,
+            lineHeight: 1.4,
+            color: 'var(--pd-ink)',
+          }}
+        >
+          {current === null
+            ? total === 0
+              ? 'План работы ещё составляется'
+              : 'Все этапы завершены'
+            : `${STAGE_STATE_LABEL[current.state]}: ${current.title}`}
+        </span>
+        {/* Доля названа числом: полоса показывает её вид, а прочитать
+            выполнение заказа человек должен, не измеряя глазом. */}
+        {total === 0 ? null : (
+          <span
+            style={{
+              marginLeft: 'auto',
+              fontFamily: MONO,
+              fontSize: 13,
+              lineHeight: 1.4,
+              fontVariantNumeric: 'tabular-nums',
+              color: 'var(--pd-ink-secondary)',
+            }}
+          >
+            {share} %
+          </span>
+        )}
+      </div>
+
+      {total === 0 ? null : (
+        <span
+          aria-hidden="true"
+          style={{
+            display: 'block',
+            height: 10,
+            borderRadius: RADIUS.mark,
+            background: 'var(--pd-divider)',
+            overflow: 'hidden',
+          }}
+        >
+          <span
+            style={{
+              display: 'block',
+              width: `${share}%`,
+              height: '100%',
+              background: 'var(--pd-accent)',
+            }}
+          />
+        </span>
+      )}
+
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span
+          style={{
+            fontFamily: SANS,
+            fontSize: 15,
+            lineHeight: 1.5,
+            color: 'var(--pd-ink-secondary)',
+          }}
+        >
+          {action ?? 'Сейчас от вас ничего не требуется — работа идёт.'}
+        </span>
+        {actionHref == null ? null : (
+          <ButtonLink href={actionHref} tone="primary">
+            {actionLabel ?? 'Открыть этап'}
+          </ButtonLink>
+        )}
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          gap: 20,
+          flexWrap: 'wrap',
+          fontFamily: SANS,
+          fontSize: 13,
+          lineHeight: 1.5,
+          color: 'var(--pd-ink-muted)',
+        }}
+      >
+        {total === 0 ? null : (
+          <span>
+            {done} из {total} {plural(total, 'этапа', 'этапов', 'этапов')} завершено
+          </span>
+        )}
+        {stageDueOn == null ? null : <span>срок этапа — {stageDueOn}</span>}
+        {projectDueOn == null ? null : <span>срок работы — {projectDueOn}</span>}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Свёртка: то, что нужно раз в жизни заказа, не занимает места постоянно.
+ *
+ * Собрана на `<details>`: своего состояния разметке не требуется, а
+ * клиентский компонент ради раскрытия утянул бы в браузер весь экран.
+ * Нативный маркер снят в `CABINET_CSS`, вместо него штриховой значок —
+ * знаки в кабинете не символьные (решение Р-165).
+ */
+export function Disclosure({
+  title,
+  children,
+  style,
+}: {
+  title: string;
+  children: ReactNode;
+  style?: CSSProperties;
+}) {
+  // Раскрытая свёртка не должна выталкивать панель за край окна, поэтому
+  // её тело ограничено по высоте и прокручивается внутри — а значит, как
+  // и колонка, получает фокус и имя (решения Р-168, Р-169).
+
+  return (
+    <details
+      style={{
+        background: 'var(--pd-ink-inverse)',
+        border: '1px solid var(--pd-border)',
+        borderRadius: RADIUS.card,
+        ...style,
+      }}
+    >
+      <summary
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          minHeight: 44,
+          padding: '0 18px',
+          fontFamily: SANS,
+          fontSize: 14,
+          fontWeight: 500,
+          lineHeight: 1.5,
+          color: 'var(--pd-ink-secondary)',
+        }}
+      >
+        <Caret />
+        {title}
+      </summary>
+      <div
+        className="cab-board-body"
+        role="region"
+        aria-label={title}
+        tabIndex={0}
+        style={{ maxHeight: 200, overflowY: 'auto', padding: '4px 18px 18px' }}
+      >
+        {children}
+      </div>
+    </details>
+  );
+}
+
+/** Уголок свёртки: поворачивается при раскрытии правилом `CABINET_CSS`. */
+function Caret() {
+  return (
+    <svg
+      className="cab-caret"
+      aria-hidden="true"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+export interface MaterialRow {
+  id: string;
+  title: string;
+  stageTitle: string | null;
+  versionNumber: number | null;
+  size: string | null;
+  uploadedAt: string | null;
+  comments: number;
+  href: string | null;
+}
+
+/**
+ * Материалы колонкой: название, последняя версия, вес, дата, замечания.
+ *
+ * Прежде материалов на экране заказа не было вовсе — за ними уходили на
+ * отдельный экран. Полный перечень версий остаётся там же: в колонке видно
+ * последнюю, а история версий нужна не каждый раз (решение Р-169).
+ */
+export function MaterialList({
+  items,
+  empty = 'Материалов пока нет.',
+}: {
+  items: readonly MaterialRow[];
+  empty?: string;
+}) {
+  if (items.length === 0) return <Text muted>{empty}</Text>;
+  return (
+    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
+      {items.map((item) => (
+        <li key={item.id} style={{ display: 'grid', gap: 4 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+            {item.versionNumber === null ? null : (
+              <span
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                  color: 'var(--pd-ink-muted)',
+                }}
+              >
+                v{item.versionNumber}
+              </span>
+            )}
+            {item.href === null ? (
+              <span
+                style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.5, color: 'var(--pd-ink)' }}
+              >
+                {item.title}
+              </span>
+            ) : (
+              <a href={item.href} style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.5 }}>
+                {item.title}
+              </a>
+            )}
+          </div>
+          <span
+            style={{
+              fontFamily: SANS,
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: 'var(--pd-ink-muted)',
+            }}
+          >
+            {[
+              item.stageTitle,
+              item.size,
+              item.uploadedAt,
+              item.comments === 0
+                ? null
+                : `${item.comments} ${plural(item.comments, 'замечание', 'замечания', 'замечаний')}`,
+            ]
+              .filter((part) => part !== null)
+              .join(' · ')}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
