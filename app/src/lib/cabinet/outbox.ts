@@ -2,6 +2,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
+import { telegramNote, type EventKind } from './events.ts';
 import { sendMailTo } from './mail.ts';
 import { escapeHtml } from './token.ts';
 
@@ -17,15 +18,8 @@ import { escapeHtml } from './token.ts';
  * Отправку выполняет отдельный маршрут, вызываемый по расписанию.
  */
 
-export type EventKind =
-  | 'STAGE_AWAITING_CLIENT'
-  | 'VERSION_UPLOADED'
-  | 'EXPERT_COMMENT_PUBLISHED'
-  | 'STAGE_IN_APPROVAL'
-  | 'DEADLINE_IN_3_DAYS'
-  | 'PAYMENT_STATUS_CHANGED'
-  | 'REQUEST_CREATED'
-  | 'PROJECT_OPENED';
+export type { EventKind } from './events.ts';
+export { EVENT_LABEL, eventLabel, telegramNote } from './events.ts';
 
 export interface OutboxItem {
   readonly userId: string;
@@ -144,7 +138,10 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     where: { state: 'PENDING', scheduledAt: { lte: new Date() } },
     orderBy: { scheduledAt: 'asc' },
     take: limit,
-    include: { user: { select: { email: true, telegramChatId: true } } },
+    include: {
+      user: { select: { email: true, telegramChatId: true } },
+      project: { select: { code: true } },
+    },
   });
 
   let sent = 0;
@@ -156,7 +153,10 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
         ? await sendMailTo(item.user.email, item.subject, letter(item.subject, item.body), item.body)
         : item.user.telegramChatId === null
           ? { ok: false, error: 'привязка Telegram снята' }
-          : await sendTelegram(item.user.telegramChatId, `${item.subject}\n\n${item.body}`);
+          : await sendTelegram(
+              item.user.telegramChatId,
+              telegramNote(item.eventKind, item.project?.code ?? null),
+            );
 
     if (result.ok) {
       await prisma.notificationOutbox.update({

@@ -65,18 +65,49 @@ const escapeHtml = (s: string) =>
 
 // ------------------------------------------------------------------ Telegram
 
+/**
+ * Сигнал о заявке — без её содержания.
+ *
+ * Серверы мессенджера за пределами России, и Политика прямо называет
+ * использование мессенджеров трансграничной передачей, обязуясь не прибегать
+ * к ней до подтверждения перечня сервисов и подачи уведомления. Имя, контакт
+ * и тема работы туда уйти не могут.
+ *
+ * Уходит ровно столько, чтобы человек понял: пришла заявка, пора смотреть.
+ * Страница и форма говорят, откуда она; время — когда; номер — что именно
+ * открывать в кабинете. Ни одно из этих значений не относится к субъекту:
+ * номер заявки не опознаёт человека без доступа к базе.
+ *
+ * Содержание заявки идёт на почту и лежит в кабинете — там, где ему место.
+ */
+export function telegramSignal(lead: Lead, id: string): string {
+  const base = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') ?? '';
+  const where = SOURCE_NAMES[lead.source] ?? lead.source;
+  const at = new Intl.DateTimeFormat('ru-RU', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'Europe/Moscow',
+  }).format(new Date());
+  return [
+    '<b>Новая заявка</b>',
+    '',
+    `<b>Страница:</b> ${escapeHtml(where)}`,
+    `<b>Форма:</b> ${escapeHtml(lead.form ?? 'request')}`,
+    `<b>Время:</b> ${escapeHtml(at)} МСК`,
+    '',
+    'Содержание — в кабинете, раздел «Все заявки»:',
+    base.length === 0 ? '/cabinet/manage/leads' : `${base}/cabinet/manage/leads`,
+    '',
+    `<code>${escapeHtml(id)}</code>`,
+  ].join('\n');
+}
+
 async function sendTelegram(lead: Lead, id: string): Promise<DeliveryResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chat = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chat) return { channel: 'telegram', ok: false, error: 'канал не настроен' };
 
-  const body = [
-    '<b>Новая заявка</b>',
-    '',
-    ...fields(lead).map(([k, v]) => `<b>${escapeHtml(k)}:</b> ${escapeHtml(v)}`),
-    '',
-    `<code>${escapeHtml(id)}</code>`,
-  ].join('\n');
+  const body = telegramSignal(lead, id);
 
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
