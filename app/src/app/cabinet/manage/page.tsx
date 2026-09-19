@@ -22,6 +22,7 @@ import {
   type StageStateKey,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
   TABLE_NUM,
 } from '../../../components/cabinet/ui';
 import { MONO, SANS } from '../../../components/cabinet/tokens';
@@ -126,7 +127,7 @@ export default async function ManageQueue({
       {works.length === 0 ? null : (
         <section style={{ marginBottom: 36 }}>
           <Heading level={2} style={{ marginBottom: 12 }}>Сейчас в работе</Heading>
-          <Card style={{ padding: 0, overflowX: 'auto' }}>
+          <TableCard label="Сейчас в работе">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>
                 <tr>
@@ -165,7 +166,7 @@ export default async function ManageQueue({
                 ))}
               </tbody>
             </table>
-          </Card>
+          </TableCard>
         </section>
       )}
 

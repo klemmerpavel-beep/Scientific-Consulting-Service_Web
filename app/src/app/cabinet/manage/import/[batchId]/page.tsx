@@ -1,9 +1,6 @@
-import { notFound, redirect } from 'next/navigation';
-
-import Shell from '../../../../../components/cabinet/Shell';
-import { SANS } from '../../../../../components/cabinet/tokens';
 import {
-  Button,
+  notFound,
+  redirect } from 'next/navigation';  import Shell from '../../../../../components/cabinet/Shell'; import { SANS } from '../../../../../components/cabinet/tokens'; import {   Button,
   Card,
   Chip,
   Field,
@@ -18,6 +15,7 @@ import {
   plural,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
   TABLE_NUM,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
@@ -123,7 +121,7 @@ export default async function ImportBatchScreen({
           <Text muted>Замечаний нет: книга разобрана без расхождений.</Text>
         </Card>
       ) : (
-        <Card style={{ marginBottom: 28, padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Замечания разбора" style={{ marginBottom: 28 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
             <thead>
               <tr>
@@ -154,7 +152,7 @@ export default async function ImportBatchScreen({
               })}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       <Heading level={2} style={{ marginBottom: 8 }}>
@@ -241,7 +239,7 @@ export default async function ImportBatchScreen({
       <Heading level={2} style={{ marginBottom: 12 }}>
         Строки книги
       </Heading>
-      <Card style={{ marginBottom: 28, padding: 0, overflowX: 'auto' }}>
+      <TableCard label="Строки книги" style={{ marginBottom: 28 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
           <thead>
             <tr>
@@ -307,7 +305,7 @@ export default async function ImportBatchScreen({
             ))}
           </tbody>
         </table>
-      </Card>
+      </TableCard>
 
       {applied ? (
         <Notice>

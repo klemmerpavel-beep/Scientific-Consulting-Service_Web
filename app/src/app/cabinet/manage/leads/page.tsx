@@ -1,9 +1,5 @@
-import { redirect } from 'next/navigation';
-
-import Shell from '../../../../components/cabinet/Shell';
-import { SANS } from '../../../../components/cabinet/tokens';
 import {
-  Button,
+  redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import { SANS } from '../../../../components/cabinet/tokens'; import {   Button,
   ButtonLink,
   Card,
   Chip,
@@ -20,6 +16,7 @@ import {
   plural,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import {
@@ -139,7 +136,7 @@ export default async function AllLeadsScreen({
           Измените условия отбора или сбросьте их — обращения никуда не делись.
         </Empty>
       ) : (
-        <Card style={{ padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Обращения">
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS }}>
             <thead>
               <tr>
@@ -168,7 +165,7 @@ export default async function AllLeadsScreen({
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       {list.pages > 1 ? (

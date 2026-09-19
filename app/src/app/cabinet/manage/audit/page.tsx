@@ -1,8 +1,5 @@
-import { redirect } from 'next/navigation';
-
-import Shell from '../../../../components/cabinet/Shell';
 import {
-  Button,
+  redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import {   Button,
   ButtonLink,
   Card,
   Chip,
@@ -16,6 +13,7 @@ import {
   Select,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
   Tabs,
   Text,
 } from '../../../../components/cabinet/ui';
@@ -144,7 +142,7 @@ export default async function AuditScreen({
         accesses.length === 0 ? (
           <Empty title="Записей нет">За выбранный период файлы не выдавались.</Empty>
         ) : (
-          <Card style={{ padding: 0, overflowX: 'auto' }}>
+          <TableCard label="Выдача файлов">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
               <thead>
                 <tr>
@@ -178,12 +176,12 @@ export default async function AuditScreen({
                 ))}
               </tbody>
             </table>
-          </Card>
+          </TableCard>
         )
       ) : events.length === 0 ? (
         <Empty title="Записей нет">За выбранный период действий не совершалось.</Empty>
       ) : (
-        <Card style={{ padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Действия в кабинете">
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
             <thead>
               <tr>
@@ -214,7 +212,7 @@ export default async function AuditScreen({
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       <Text muted size={13} style={{ marginTop: 12 }}>

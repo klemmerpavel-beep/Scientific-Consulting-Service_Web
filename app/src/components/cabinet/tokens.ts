@@ -100,6 +100,12 @@ export const GUTTER = 30;
  * Общие правила кабинета. Подключаются один раз в разметке раздела:
  * в каждом компоненте свой блок стилей означал бы десятки повторов одного
  * и того же и расхождение при первой же правке.
+ *
+ * Правило `p a` — про ссылку внутри сплошного текста: одним цветом она
+ * отличается недостаточно для тех, кто цвет различает хуже, и машинная
+ * проверка доступности назвала это прямо (Р-168). Образец подчёркивания
+ * взят со страницы 404 сайта. Ссылки-строки, ссылки-карточки и навигация
+ * абзацем не окружены, и правило их не касается.
  */
 export const CABINET_CSS = `
 ${ROOT_TOKENS}
@@ -110,6 +116,7 @@ h1,h2,h3,p,li,td,th,a,label,span{overflow-wrap:break-word}
 p,li{text-wrap:pretty}
 a{color:var(--pd-accent);text-decoration:none}
 a:hover{color:var(--pd-accent-press)}
+p a{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 *:focus-visible{outline:2px solid var(--pd-accent);outline-offset:2px}
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}
 .pd-skip:focus{left:0;color:var(--pd-ink-inverse)}

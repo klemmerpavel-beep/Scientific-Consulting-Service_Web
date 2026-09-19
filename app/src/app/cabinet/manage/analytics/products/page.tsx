@@ -1,5 +1,13 @@
-import { RankChart, compactMoney } from '../../../../../components/cabinet/Charts';
-import { Card, Chip, Empty, Heading, Notice, Text } from '../../../../../components/cabinet/ui';
+import {
+  RankChart,
+  compactMoney } from '../../../../../components/cabinet/Charts'; import { Card,
+  Chip,
+  Empty,
+  Heading,
+  Notice,
+  TableCard,
+  Text,
+} from '../../../../../components/cabinet/ui';
 import { products } from '../../../../../lib/cabinet/analytics/metrics';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from '../shared';
@@ -62,7 +70,7 @@ export default async function AnalyticsProducts() {
           <Heading level={2} style={{ marginBottom: 12 }}>
             Позиции
           </Heading>
-          <Card style={{ padding: 0, overflowX: 'auto' }}>
+          <TableCard label="Позиции">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
               <thead>
                 <tr>
@@ -97,7 +105,7 @@ export default async function AnalyticsProducts() {
                 ))}
               </tbody>
             </table>
-          </Card>
+          </TableCard>
           <Text muted size={13} style={{ marginTop: 12 }}>
             Разброс — отношение стандартного отклонения чека к среднему. Значение выше 40 % означает,
             что цена в пределах одной позиции различается кратно.
