@@ -9,9 +9,10 @@ import {
   Form,
   FormActions,
   Heading,
-  Mono,
   Notice,
+  ScreenHead,
   Text,
+  formatDate,
 } from '../../../components/cabinet/ui';
 import { createTelegramBindLink } from '../../../lib/cabinet/auth';
 import { currentActor } from '../../../lib/cabinet/session';
@@ -48,10 +49,7 @@ export default async function SettingsScreen({
   return (
     <Shell actor={actor} current="/cabinet/settings">
       <div style={{ maxWidth: 680 }}>
-        <Mono>Уведомления</Mono>
-        <Heading level={1} style={{ margin: '12px 0 12px' }}>
-          Как сообщать о ходе работы
-        </Heading>
+        <ScreenHead title="Как сообщать о ходе работы" />
         <Text style={{ marginBottom: 24 }}>
           Уведомления приходят о том, что требует действия: этап ждёт материалов, материал готов к
           согласованию, приближается срок. Содержание переписки наружу не пересылается.
@@ -117,8 +115,8 @@ export default async function SettingsScreen({
         {user.consentAcceptedAt === null ? null : (
           <Text muted size={13} style={{ marginTop: 24 }}>
             Согласие на обработку персональных данных принято{' '}
-            {user.consentAcceptedAt.toISOString().slice(0, 10)}. Отозвать его и потребовать
-            удаления данных можно письмом менеджеру.
+            {formatDate(user.consentAcceptedAt)}. Отозвать его и потребовать удаления данных
+            можно письмом менеджеру.
           </Text>
         )}
       </div>

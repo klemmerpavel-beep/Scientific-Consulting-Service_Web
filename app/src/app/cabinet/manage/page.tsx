@@ -1,41 +1,24 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
+import { SANS } from '../../../components/cabinet/tokens';
 import {
-  Button,
-  Card,
-  Chip,
-  Checkbox,
-  Empty,
-  Field,
-  Form,
-  FormActions,
-  Heading,
-  Mono,
-  STAGE_STATE_LABEL,
-  Select,
+  Board,
+  BoardColumn,
+  ScreenHead,
   Text,
   Tile,
   Tiles,
   formatDate,
-  plural,
-  type StageStateKey,
-  TABLE_CELL,
-  TABLE_HEAD,
-  TableCard,
-  TABLE_NUM,
 } from '../../../components/cabinet/ui';
-import { MONO, SANS } from '../../../components/cabinet/tokens';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
 import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
 import { unreadInbox } from '../../../lib/cabinet/messages';
-import { LEAD_PAGE_SIZE, leadQueue, serviceTypes, trafficLight } from '../../../lib/cabinet/queries';
+import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { currentActor } from '../../../lib/cabinet/session';
 import { OVERHEAD_PERCENT, activeWorks, practiceSummary } from '../../../lib/cabinet/summary';
-import { moderateLead } from '../actions';
-
 export const dynamic = 'force-dynamic';
 
 export default async function ManageQueue({
@@ -48,9 +31,10 @@ export default async function ManageQueue({
   if (!can(actor, 'REQUEST_MODERATE')) redirect('/cabinet/projects');
 
   const requested = Number((await searchParams).page ?? '1');
-  const [queue, types, light] = await Promise.all([
+  // Справочник типов сопровождения на сводке больше не нужен: формы
+  // одобрения уехали на экран заявки (решение Р-172).
+  const [queue, light] = await Promise.all([
     leadQueue(actor, Number.isFinite(requested) ? requested : 1),
-    serviceTypes(),
     trafficLight(actor),
   ]);
   const leads = queue.rows;
@@ -69,14 +53,14 @@ export default async function ManageQueue({
   // сообщение. У менеджера это главный экран целиком, у руководителя —
   // раздел под сводкой (решение Р-149).
   const attention = [
-    ...light.overdue.map((stage) => ({
+    ...light.overdue.map((stage: (typeof light.overdue)[number]) => ({
       key: `overdue-${stage.id}`,
       what: 'Сорван срок этапа',
       detail: `${stage.title} · ${stage.project.code} · ${stage.project.client.fullName}`,
       when: stage.dueOn === null ? null : `срок ${formatDate(stage.dueOn)}`,
       href: `/cabinet/stages/${stage.id}`,
     })),
-    ...light.stalled.map((stage) => ({
+    ...light.stalled.map((stage: (typeof light.stalled)[number]) => ({
       key: `stalled-${stage.id}`,
       what: 'Ждёт клиента дольше двух недель',
       detail: `${stage.title} · ${stage.project.code} · ${stage.project.client.fullName}`,
@@ -107,10 +91,17 @@ export default async function ManageQueue({
   ];
 
   return (
-    <Shell actor={actor} current="/cabinet/manage">
+    <Shell actor={actor} current="/cabinet/manage" board>
+      {/* Сводка — первый экран после входа обеих служебных ролей, и она
+          показывает всё главное сразу: что нельзя оставить как есть, что
+          в работе и что ждёт разбора. Прежде заголовок первого уровня
+          плавал — у руководителя «Практика», у менеджера «Требует
+          внимания», — и один блок был набран двумя способами
+          (решение Р-172). */}
+      <ScreenHead title={summary === null ? 'Работа на сегодня' : 'Практика'} />
+
       {summary === null ? null : (
-        <section style={{ marginBottom: 36 }}>
-          <Heading level={1} style={{ margin: '0 0 20px' }}>Практика</Heading>
+        <div style={{ marginBottom: 20 }}>
           <Tiles>
             <Tile label="Заказов" value={String(summary.orders)} note={`${summary.active} в работе`} />
             <Tile label="Выручка" value={formatAmount(summary.received)} note="получено" />
@@ -121,226 +112,87 @@ export default async function ManageQueue({
             />
             <Tile label="К получению" value={formatAmount(summary.outstanding)} note="не оплачено" />
           </Tiles>
-        </section>
+        </div>
       )}
 
-      {works.length === 0 ? null : (
-        <section style={{ marginBottom: 36 }}>
-          <Heading level={2} style={{ marginBottom: 12 }}>Сейчас в работе</Heading>
-          <TableCard label="Сейчас в работе">
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
-              <thead>
-                <tr>
-                  <th style={TABLE_HEAD} scope="col">Работа</th>
-                  <th style={TABLE_HEAD} scope="col">Этап</th>
-                  <th style={TABLE_HEAD} scope="col">Срок</th>
-                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Договор, ₽</th>
-                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Оплачено, ₽</th>
-                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Остаток, ₽</th>
-                </tr>
-              </thead>
-              <tbody>
-                {works.map((work) => (
-                  <tr key={work.code}>
-                    <td style={TABLE_CELL}>
-                      <a href={`/cabinet/projects/${work.code}`}>{work.title}</a>
-                      <div style={{ fontFamily: MONO, fontSize: 12, color: 'var(--pd-ink-muted)' }}>
-                        {work.code} · {work.client}
-                      </div>
-                    </td>
-                    <td style={TABLE_CELL}>
-                      {work.stage ?? '—'}
-                      {work.stageState === null ? null : (
-                        <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
-                          {STAGE_STATE_LABEL[work.stageState as StageStateKey]}
-                        </div>
-                      )}
-                    </td>
-                    <td style={TABLE_CELL}>{formatDate(work.dueOn) ?? '—'}</td>
-                    <td style={TABLE_NUM}>{formatPlain(work.contracted)}</td>
-                    <td style={TABLE_NUM}>{formatPlain(work.received)}</td>
-                    <td style={{ ...TABLE_NUM, color: work.outstanding > 0n ? 'var(--pd-ink)' : undefined }}>
-                      {work.outstanding > 0n ? formatPlain(work.outstanding) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableCard>
-        </section>
-      )}
-
-      <section style={{ marginBottom: 36 }}>
-        {summary === null ? (
-          <Heading level={1} style={{ margin: '0 0 20px' }}>Требует внимания</Heading>
-        ) : (
-          <Heading level={2} style={{ marginBottom: 12 }}>Требует внимания</Heading>
-        )}
-        {attention.length === 0 ? (
-          <Card>
+      <Board columns={works.length === 0 ? 2 : 3}>
+        <BoardColumn title="Требует внимания">
+          {attention.length === 0 ? (
             <Text muted>Сейчас ничего не требует вмешательства.</Text>
-          </Card>
-        ) : (
-          <Card>
+          ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
               {attention.map((row) => (
-                <li
-                  key={row.key}
-                  style={{
-                    display: 'flex',
-                    gap: 16,
-                    alignItems: 'baseline',
-                    flexWrap: 'wrap',
-                    borderBottom: '1px solid var(--pd-divider)',
-                    paddingBottom: 14,
-                  }}
-                >
-                  <div style={{ flex: '1 1 420px', minWidth: 0 }}>
-                    <Text size={15}>
-                      <strong style={{ fontWeight: 600 }}>{row.what}</strong>
-                    </Text>
-                    <Text muted size={13} style={{ marginTop: 2 }}>
-                      {row.detail}
-                      {row.when === null ? '' : ` · ${row.when}`}
-                    </Text>
-                  </div>
-                  <a className="cab-mark" href={row.href}>
-                    Открыть
+                <li key={row.key} style={{ display: 'grid', gap: 2 }}>
+                  {/* Ведёт сама запись: отдельная строка «Открыть» под
+                      каждой занимала 44 пикселя и вела туда же. */}
+                  <a
+                    href={row.href}
+                    style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}
+                  >
+                    {row.what}
                   </a>
+                  <Text muted size={13}>
+                    {row.detail}
+                    {row.when === null ? '' : ` · ${row.when}`}
+                  </Text>
                 </li>
               ))}
             </ul>
-          </Card>
+          )}
+        </BoardColumn>
+
+        {works.length === 0 ? null : (
+          <BoardColumn title="Сейчас в работе" href="/cabinet/projects" hrefLabel="все работы">
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
+              {works.map((work) => (
+                <li key={work.code} style={{ display: 'grid', gap: 2 }}>
+                  <a href={`/cabinet/projects/${work.code}`} style={{ fontFamily: SANS, fontSize: 14 }}>
+                    {work.title}
+                  </a>
+                  <Text muted size={13}>
+                    {work.code} · {work.client}
+                    {work.stage === null ? '' : ` · ${work.stage}`}
+                  </Text>
+                  <Text muted size={13}>
+                    {formatPlain(work.contracted)} ₽ по договору
+                    {work.outstanding > 0n
+                      ? ` · ${formatPlain(work.outstanding)} ₽ не оплачено`
+                      : ' · оплачено полностью'}
+                    {work.dueOn === null ? '' : ` · срок ${formatDate(work.dueOn)}`}
+                  </Text>
+                </li>
+              ))}
+            </ul>
+          </BoardColumn>
         )}
-      </section>
 
-      <Heading level={2} style={{ marginBottom: 4 }}>Заявки на рассмотрении</Heading>
-      {queue.total > 0 ? (
-        <Text muted style={{ marginBottom: 12 }}>
-          Всего {queue.total} {plural(queue.total, 'заявка', 'заявки', 'заявок')}, показаны с{' '}
-          {(queue.page - 1) * LEAD_PAGE_SIZE + 1} по{' '}
-          {(queue.page - 1) * LEAD_PAGE_SIZE + leads.length}. Первыми идут самые давние: очередь
-          разбирается с головы.
-        </Text>
-      ) : null}
-
-      {leads.length === 0 ? (
-        <Empty title="Новых заявок нет" />
-      ) : (
-        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
-          {leads.map((lead) => (
-            <Card as="li" key={lead.id}>
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 12,
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  marginBottom: 12,
-                }}
-              >
-                <Chip tone="accent">{leadSourceLabel(lead.source)}</Chip>
-                <Chip mono>{formatDate(lead.createdAt)}</Chip>
-                {lead.consentGiven ? <Chip>согласие получено</Chip> : null}
-              </div>
-
-              <Heading level={2} style={{ marginBottom: 8 }}>
-                {lead.name ?? 'Без имени'}
-              </Heading>
-              <Text size={14} style={{ marginBottom: 4 }}>
-                {lead.contactKind === 'email' ? 'Почта' : 'Телефон'}: {lead.contact}
-              </Text>
-              {lead.topic === null ? null : (
-                <Text size={14} style={{ marginBottom: 4 }}>
-                  Тема: {lead.topic}
-                </Text>
-              )}
-              {lead.message === null ? null : (
-                <Text muted size={14} style={{ marginBottom: 4 }}>
-                  {lead.message}
-                </Text>
-              )}
-
-              <div
-                className="cab-two"
-                style={{
-                  display: 'grid',
-                  // Две равные колонки: решение об одобрении и решение об
-                  // отказе равнозначны, и разная ширина делала форму
-                  // перекошенной. Колонки тянутся на одну высоту, поэтому
-                  // кнопки внизу встают на одну линию.
-                  gridTemplateColumns: 'repeat(2, minmax(0,1fr))',
-                  gap: 24,
-                  marginTop: 20,
-                  paddingTop: 20,
-                  borderTop: '1px solid var(--pd-divider)',
-                  alignItems: 'stretch',
-                }}
-              >
-                {/* minmax(0,1fr): колонка по содержимому растягивалась под самый
-                    длинный вариант в списке типов, и на экране уже 420 px форма
-                    вылезала за край страницы (решение Р-130). */}
-                <Form action={moderateLead}>
-                  <input type="hidden" name="leadId" value={lead.id} />
-                  <input type="hidden" name="decision" value="approve" />
-                  <Field
-                    label="Название проекта"
-                    name="title"
-                    scope={lead.id}
-                    required
-                    defaultValue={lead.topic ?? ''}
-                    placeholder="Сопровождение кандидатской диссертации"
-                  />
-                  <Select label="Тип сопровождения" name="serviceTypeId" scope={lead.id} required>
-                    {types.map((type) => (
-                      <option key={type.id} value={type.id}>
-                        {type.name}
-                      </option>
-                    ))}
-                  </Select>
-                  <Checkbox name="applyTemplate" label="Применить шаблон этапов этого типа" />
-                  <FormActions>
-                    <Button>Одобрить и создать проект</Button>
-                  </FormActions>
-                </Form>
-
-                <Form action={moderateLead}>
-                  <input type="hidden" name="leadId" value={lead.id} />
-                  <input type="hidden" name="decision" value="decline" />
-                  <Field
-                    label="Причина отказа"
-                    name="reason"
-                    scope={lead.id}
-                    required
-                    multiline
-                    hint="Причину видит заявитель, поэтому она пишется человеческим языком."
-                  />
-                  <FormActions>
-                    <Button tone="quiet">Отклонить</Button>
-                  </FormActions>
-                </Form>
-              </div>
-            </Card>
-          ))}
-        </ul>
-      )}
-
-      {queue.pages > 1 ? (
-        <nav
-          aria-label="Страницы очереди"
-          style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 20 }}
+        <BoardColumn
+          title="Заявки"
+          href={queue.total > 0 ? '/cabinet/manage/leads' : undefined}
+          hrefLabel="все обращения"
         >
-          {queue.page > 1 ? (
-            <a href={`/cabinet/manage?page=${queue.page - 1}`}>Предыдущие</a>
-          ) : null}
-          <Text muted style={{ margin: 0 }}>
-            Страница {queue.page} из {queue.pages}
-          </Text>
-          {queue.page < queue.pages ? (
-            <a href={`/cabinet/manage?page=${queue.page + 1}`}>Следующие</a>
-          ) : null}
-        </nav>
-      ) : null}
+          {leads.length === 0 ? (
+            <Text muted>Новых заявок нет.</Text>
+          ) : (
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
+              {leads.map((lead) => (
+                <li key={lead.id} style={{ display: 'grid', gap: 2 }}>
+                  <a
+                    href={`/cabinet/manage/leads/${lead.id}`}
+                    style={{ fontFamily: SANS, fontSize: 14 }}
+                  >
+                    {lead.name ?? 'Без имени'}
+                  </a>
+                  <Text muted size={13}>
+                    {leadSourceLabel(lead.source)} · {formatDate(lead.createdAt)}
+                    {lead.topic === null ? '' : ` · ${lead.topic}`}
+                  </Text>
+                </li>
+              ))}
+            </ul>
+          )}
+        </BoardColumn>
+      </Board>
     </Shell>
   );
 }

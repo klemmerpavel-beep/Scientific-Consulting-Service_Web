@@ -19,10 +19,23 @@ export const dynamic = 'force-dynamic';
 
 const SEGMENT_ORDER: ClientSegment[] = ['CORE', 'ACTIVE', 'DORMANT_VALUABLE', 'DORMANT_ONCE'];
 
-export default async function AnalyticsClients() {
+/** Сколько клиентов показывается на одной странице таблицы. */
+const PAGE_SIZE = 20;
+
+export default async function AnalyticsClients({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { actor, rows } = await analyticsScreen();
   const report = clients(rows, new Date());
   const top = report.clients.slice(0, 10);
+  // Таблица клиентов резалась на пятидесяти строках без объяснения: за
+  // полсотни первым человек не видел ничего и не знал, что там что-то
+  // есть. Теперь она листается, и число клиентов названо (решение Р-172).
+  const pages = Math.max(1, Math.ceil(report.clients.length / PAGE_SIZE));
+  const page = Math.min(Math.max(1, Number((await searchParams).page) || 1), pages);
+  const shown = report.clients.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <Frame
@@ -93,7 +106,7 @@ export default async function AnalyticsClients() {
                 </tr>
               </thead>
               <tbody>
-                {report.clients.slice(0, 50).map((client) => (
+                {shown.map((client) => (
                   <tr key={client.clientId}>
                     <td style={cell}>{client.name}</td>
                     <td style={cell}>{SEGMENT_LABEL[client.segment]}</td>
@@ -113,6 +126,37 @@ export default async function AnalyticsClients() {
               </tbody>
             </table>
           </TableCard>
+
+          {pages <= 1 ? null : (
+            <nav
+              aria-label="Страницы перечня клиентов"
+              style={{
+                display: 'flex',
+                gap: 20,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                marginTop: 20,
+              }}
+            >
+              {page > 1 ? (
+                <a
+                  className="cab-mark"
+                  href={`/cabinet/manage/analytics/clients${page - 1 > 1 ? `?page=${page - 1}` : ''}`}
+                >
+                  Предыдущие
+                </a>
+              ) : null}
+              <Text muted size={14}>
+                Страница {page} из {pages} · всего {report.clients.length}{' '}
+                {plural(report.clients.length, 'клиент', 'клиента', 'клиентов')}
+              </Text>
+              {page < pages ? (
+                <a className="cab-mark" href={`/cabinet/manage/analytics/clients?page=${page + 1}`}>
+                  Следующие
+                </a>
+              ) : null}
+            </nav>
+          )}
         </>
       )}
     </Frame>

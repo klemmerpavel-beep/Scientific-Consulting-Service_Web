@@ -72,15 +72,17 @@ describe('экраны кабинета не пишут разметку фор�
 
 describe('раскладка в окно объявлена одним экраном', () => {
   // Свойство `board` отдаёт экрану всю высоту окна и запирает прокрутку
-  // страницы. Оно рассчитано на экран заказа и проверено только на нём:
-  // на прокручиваемом экране оно срезало бы содержимое (решение Р-169).
-  it('свойство board стоит ровно на одном экране', () => {
+  // страницы. Оно рассчитано на экраны, где всё главное видно сразу, и
+  // проверено только на них: на прокручиваемом экране оно срезало бы
+  // содержимое (решения Р-169, Р-172). Перечень закрытый — третий экран
+  // потребует отдельного решения и пересчёта бюджета.
+  it('свойство board стоит на перечисленных экранах', () => {
     const owners = sources(SCREENS).filter((file) =>
       /<Shell[^>]*\sboard\b/su.test(readFileSync(file, 'utf8')),
     );
     assert.deepEqual(
-      owners.map((file) => path.relative(SCREENS, file)),
-      ['projects/[code]/page.tsx'],
+      owners.map((file) => path.relative(SCREENS, file)).sort(),
+      ['manage/page.tsx', 'projects/[code]/page.tsx'],
     );
   });
 });
@@ -95,6 +97,14 @@ describe('шапка экрана собрана общей частью', () =>
     'projects/[code]/materials/page.tsx',
     'projects/[code]/messages/page.tsx',
     'projects/[code]/payments/page.tsx',
+    // Ручная тройка «моно-метка + заголовок + абзац» стояла и здесь —
+    // ровно тот узор, ради которого общая часть и заведена (Р-172).
+    'payout/page.tsx',
+    'request/page.tsx',
+    'settings/page.tsx',
+    'manage/page.tsx',
+    'manage/finance/page.tsx',
+    'manage/leads/[id]/page.tsx',
   ];
 
   for (const name of inside) {

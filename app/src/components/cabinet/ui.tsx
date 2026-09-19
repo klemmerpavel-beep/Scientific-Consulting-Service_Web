@@ -258,6 +258,38 @@ const LABEL: CSSProperties = {
 };
 
 /**
+ * Подпись поля с пометкой обязательного.
+ *
+ * Обязательность жила только в атрибуте `required`: браузер ругался при
+ * отправке, но до неё обязательное и необязательное поля выглядели
+ * одинаково, и человек узнавал о разнице, уже потеряв время. Звёздочка
+ * помечает поле на виду, а словом — для читалки (решение Р-172).
+ */
+function FieldLabel({
+  id,
+  label,
+  required,
+  hidden,
+}: {
+  id: string;
+  label: string;
+  required: boolean;
+  hidden: boolean;
+}) {
+  return (
+    <label htmlFor={id} style={hidden ? VISUALLY_HIDDEN : LABEL}>
+      {label}
+      {required ? (
+        <>
+          <span aria-hidden="true" style={{ color: 'var(--pd-accent)' }}> *</span>
+          <span style={VISUALLY_HIDDEN}> — обязательное поле</span>
+        </>
+      ) : null}
+    </label>
+  );
+}
+
+/**
  * Идентификатор поля.
  *
  * Пока он складывался из одного имени, форма, повторённая в перечне,
@@ -321,9 +353,7 @@ export function Field({
   const box = minWidth === undefined ? control : { ...control, minWidth };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <label htmlFor={id} style={labelHidden ? VISUALLY_HIDDEN : LABEL}>
-        {label}
-      </label>
+      <FieldLabel id={id} label={label} required={required} hidden={labelHidden} />
       {multiline ? (
         <textarea id={id} {...shared} rows={4} style={{ ...box, resize: 'vertical' }} />
       ) : (
@@ -546,9 +576,7 @@ export function FileField({
   const hintId = hint === undefined ? undefined : `${id}-hint`;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <label htmlFor={id} style={labelHidden ? VISUALLY_HIDDEN : LABEL}>
-        {label}
-      </label>
+      <FieldLabel id={id} label={label} required={required} hidden={labelHidden} />
       <input
         id={id}
         type="file"
@@ -737,6 +765,18 @@ export const TABLE_HEAD: CSSProperties = {
 };
 
 /**
+ * Шапка числового столбца.
+ *
+ * `{...TABLE_HEAD, textAlign: 'right'}` повторялся на экранах денег,
+ * сводки и аналитики — по три-пять раз на таблицу. Числа выравниваются по
+ * разряду, и их шапка обязана стоять над ними (решение Р-172).
+ */
+export const TABLE_NUM_HEAD: CSSProperties = {
+  ...TABLE_HEAD,
+  textAlign: 'right',
+};
+
+/**
  * Выпадающий список с подписью.
  *
  * Инлайновых `<select>` в кабинете набралось десять, и часть из них шла
@@ -768,9 +808,7 @@ export function Select({
   const hintId = hint === undefined ? undefined : `${id}-hint`;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <label htmlFor={id} style={labelHidden ? VISUALLY_HIDDEN : LABEL}>
-        {label}
-      </label>
+      <FieldLabel id={id} label={label} required={required} hidden={labelHidden} />
       <select
         id={id}
         name={name}
