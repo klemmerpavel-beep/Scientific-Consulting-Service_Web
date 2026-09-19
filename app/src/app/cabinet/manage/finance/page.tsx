@@ -37,9 +37,13 @@ export default async function FinanceScreen() {
       <Heading level={1} style={{ margin: '12px 0 8px' }}>
         Договоры и расчёты
       </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
+      <Text muted style={{ marginBottom: 8 }}>
         Величины считаются по данным системы. Маржа — сумма договора за вычетом начислений
         эксперту; у исторических проектов, где исполнитель не указан, она равна сумме договора.
+      </Text>
+      <Text style={{ marginBottom: 24 }}>
+        <a href="/cabinet/manage/finance/years">Итоги по годам</a> — выручка и прибыль по годам:
+        введённые вами рядом с посчитанными кабинетом.
       </Text>
 
       <div
