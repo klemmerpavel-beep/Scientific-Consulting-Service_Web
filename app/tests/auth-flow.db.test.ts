@@ -116,14 +116,56 @@ describe('вход по одноразовой ссылке', { skip: !enabled }
   });
 
   it('неизвестный адрес и превышение частоты не различимы снаружи', async () => {
+    // Канал объявляется настроенным: иначе запрос кончается на первой же
+    // проверке и до разбора адреса не доходит.
     const unknown = `nobody-${Date.now()}@example.org`;
-    assert.equal(await auth.requestLoginLink(unknown, '10.0.0.1'), 'unknown_email');
-    for (let i = 0; i < 5; i += 1) {
-      await prisma.loginAttempt.create({
-        data: { emailNormalized: unknown, ip: '10.0.0.1', outcome: 'sent' },
-      });
+    process.env.SMTP_HOST = 'smtp.invalid';
+    try {
+      assert.equal(await auth.requestLoginLink(unknown, '10.0.0.1'), 'unknown_email');
+      for (let i = 0; i < 5; i += 1) {
+        await prisma.loginAttempt.create({
+          data: { emailNormalized: unknown, ip: '10.0.0.1', outcome: 'sent' },
+        });
+      }
+      assert.equal(await auth.requestLoginLink(unknown, '10.0.0.1'), 'rate_limited');
+    } finally {
+      delete process.env.SMTP_HOST;
+      await prisma.loginAttempt.deleteMany({ where: { emailNormalized: unknown } });
     }
-    assert.equal(await auth.requestLoginLink(unknown, '10.0.0.1'), 'rate_limited');
+  });
+
+  it('ненастроенная почта называется прямо, а не обещает письмо', async () => {
+    // Прежде исход был «отправлено» при любом положении дел: человек ждал
+    // письма, которого не существует, и считал, что перепутал адрес.
+    assert.equal(process.env.SMTP_HOST, undefined, 'канал в проверках задан');
+    assert.equal(await auth.requestLoginLink(email, '10.0.0.2'), 'channel_off');
+
+    const attempt = await prisma.loginAttempt.findFirst({
+      where: { emailNormalized: email },
+      orderBy: { occurredAt: 'desc' },
+    });
+    assert.equal(attempt?.outcome, 'channel_off');
+
+    // Ответ одинаков для любого адреса: о существовании учётной записи
+    // состояние канала не говорит ничего.
+    const unknown = `nobody-channel-${Date.now()}@example.org`;
+    assert.equal(await auth.requestLoginLink(unknown, '10.0.0.2'), 'channel_off');
     await prisma.loginAttempt.deleteMany({ where: { emailNormalized: unknown } });
+  });
+
+  it('неудачная отправка записывается как неудачная', async () => {
+    // Узел заведомо не отвечает, поэтому отправка не проходит. Наружу это
+    // по-прежнему «отправлено» — иначе отказ выдал бы, что адрес существует.
+    process.env.SMTP_HOST = 'smtp.invalid';
+    try {
+      assert.equal(await auth.requestLoginLink(email, '10.0.0.3'), 'sent');
+      const attempt = await prisma.loginAttempt.findFirst({
+        where: { emailNormalized: email, ip: '10.0.0.3' },
+        orderBy: { occurredAt: 'desc' },
+      });
+      assert.equal(attempt?.outcome, 'send_failed', 'в журнал легло «отправлено» без отправки');
+    } finally {
+      delete process.env.SMTP_HOST;
+    }
   });
 });
