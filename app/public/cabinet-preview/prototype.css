@@ -46,6 +46,8 @@ summary::-webkit-details-marker{display:none}
 .cab-caret{flex:0 0 14px;transition:transform 180ms cubic-bezier(.2,0,.2,1)}
 details[open]>summary .cab-caret{transform:rotate(90deg)}
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes cab-pulse{0%,100%{opacity:1}50%{opacity:.55}}
+.cab-skeleton{background:var(--pd-surface-quiet);border-radius:6px;animation:cab-pulse 1400ms cubic-bezier(.2,0,.2,1) infinite}
 [role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}

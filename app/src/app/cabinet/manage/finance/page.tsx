@@ -127,10 +127,16 @@ export default async function FinanceScreen({
             ) : (
               shown.map((row) => (
                 <tr key={row.projectId}>
+                  {/* Код и название одной строкой: двумя ярусами строка
+                      занимала 67 px, и двадцать строк давали полторы
+                      тысячи пикселей (решение Р-184). */}
                   <td style={TABLE_CELL}>
-                    <a href={`/cabinet/projects/${row.code}/payments`}>{row.code}</a>
-                    <br />
-                    {row.title}
+                    {/* Ссылкой служит вся строка, а не один код: ссылка
+                        посреди текста отличается только цветом, и
+                        проверка доступности законно против (Р-184). */}
+                    <a href={`/cabinet/projects/${row.code}/payments`}>
+                      {row.code} · {row.title}
+                    </a>
                   </td>
                   <td style={TABLE_CELL}>{row.client}</td>
                   <td style={TABLE_NUM}>{formatAmount(row.contracted)}</td>

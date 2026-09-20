@@ -123,7 +123,7 @@ export default async function RegistryScreen({
       {tab === 'clients' ? (
         <>
           <TableCard label="Клиенты">
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
               <thead>
                 <tr>
                   <th style={TABLE_HEAD} scope="col">Клиент</th>
@@ -139,7 +139,9 @@ export default async function RegistryScreen({
                 {shown.length === 0 ? (
                   <tr>
                     <td style={TABLE_CELL} colSpan={withContacts ? 5 : 4}>
-                      {clients.length === 0 ? 'Клиентов пока нет.' : 'Ничего не найдено.'}
+                      {clients.length === 0
+                        ? 'Клиентов пока нет.'
+                        : `Под поиском «${query}» ничего нет. Всего клиентов — ${clients.length}.`}
                     </td>
                   </tr>
                 ) : (
@@ -149,15 +151,12 @@ export default async function RegistryScreen({
                       <td style={TABLE_CELL}>
                         {[client.university, client.speciality].filter(Boolean).join(' · ') || '—'}
                       </td>
+                      {/* Почта и телефон одной строкой: двумя ярусами они
+                          давали строку в 67 px, и двадцать строк реестра
+                          занимали полторы тысячи пикселей (решение Р-184). */}
                       {'email' in client ? (
                         <td style={TABLE_CELL}>
-                          {client.email ?? '—'}
-                          {client.phone === null || client.phone === undefined ? null : (
-                            <>
-                              <br />
-                              {client.phone}
-                            </>
-                          )}
+                          {[client.email, client.phone].filter(Boolean).join(' · ') || '—'}
                         </td>
                       ) : null}
                       <td style={TABLE_CELL}>

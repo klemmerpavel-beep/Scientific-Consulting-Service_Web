@@ -138,7 +138,7 @@ export default async function DirectoryScreen({
                       )}
                     </td>
                     <td style={TABLE_CELL}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                         {type.aliases.length === 0 ? (
                           <span style={{ color: 'var(--pd-ink-muted)' }}>нет</span>
                         ) : (
@@ -154,23 +154,6 @@ export default async function DirectoryScreen({
                           ))
                         )}
                       </div>
-                      {/* Область идентификатора — строка перечня: без неё
-                          шесть форм дали бы шесть полей с одним `id`, и
-                          подпись вела бы к первому (Р-158). */}
-                      <Form action={attachAlias} inline>
-                        <input type="hidden" name="serviceTypeId" value={type.id} />
-                        <Field
-                          label={`Историческое написание для позиции «${type.name}»`}
-                          labelHidden
-                          name="alias"
-                          scope={type.id}
-                          placeholder="написание из книги"
-                          minWidth={200}
-                          dense
-                          required
-                        />
-                        <Button tone="quiet">Привязать</Button>
-                      </Form>
                     </td>
                   </tr>
                 ))}
@@ -182,6 +165,33 @@ export default async function DirectoryScreen({
             Базовые цены не заполнены: прайс не утверждён, а поле, заполненное догадкой, хуже
             пустого.
           </Text>
+
+          {/* Привязка написания стояла формой в каждой строке таблицы, и
+              строка вырастала до ста двух пикселей. Здесь форма одна, а
+              позиция выбирается списком (решение Р-184). */}
+          <Disclosure title="Привязать историческое написание" style={{ marginBottom: 12 }}>
+            <Form action={attachAlias}>
+              <FormRow>
+                <Select label="Позиция справочника" name="serviceTypeId" required>
+                  {types.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.name}
+                    </option>
+                  ))}
+                </Select>
+                <Field
+                  label="Написание из книги заказов"
+                  name="alias"
+                  required
+                  placeholder="Диссертция"
+                  hint="Так, как оно встречается в исходном файле, — с опечаткой, если она там есть."
+                />
+              </FormRow>
+              <FormActions>
+                <Button>Привязать</Button>
+              </FormActions>
+            </Form>
+          </Disclosure>
 
           <Disclosure title="Добавить позицию">
             <Form action={saveType}>

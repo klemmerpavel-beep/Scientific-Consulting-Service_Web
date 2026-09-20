@@ -516,6 +516,61 @@ export function ButtonLink({
 }
 
 /**
+ * Состояние загрузки экрана.
+ *
+ * Бриф требует от каждого экрана трёх состояний: пусто, загрузка, ошибка.
+ * Пустые состояния собраны на `Empty`, ошибка — на `error.tsx`, а
+ * загрузки не было ни одной: экраны кабинета серверные, и до прихода
+ * ответа человек видел пустое поле и не знал, идёт ли что-нибудь
+ * (решение Р-184).
+ *
+ * Скелет повторяет строй экрана, а не крутит колесо: место, которое
+ * займёт содержимое, видно сразу, и страница не прыгает при подстановке.
+ * Читалке он объявлен областью состояния — она произносит «загружается»,
+ * а не перечисляет пустые полосы.
+ */
+export function Loading({
+  head = true,
+  blocks = 2,
+  rows = 4,
+}: {
+  /** Полоса шапки экрана. */
+  head?: boolean;
+  /** Сколько карточек-заглушек поставить. */
+  blocks?: number;
+  /** Сколько строк в каждой. */
+  rows?: number;
+}) {
+  const bar = (width: string, height: number): CSSProperties => ({
+    width,
+    height,
+    display: 'block',
+  });
+  return (
+    <div role="status" aria-live="polite" aria-label="Экран загружается">
+      {head ? (
+        <div className="cab-head" style={{ marginBottom: 20, display: 'grid', gap: 10 }}>
+          <span className="cab-skeleton" style={bar('min(420px,60%)', 28)} />
+          <span className="cab-skeleton" style={bar('min(640px,80%)', 14)} />
+        </div>
+      ) : null}
+      {Array.from({ length: blocks }, (_, block) => (
+        <Card key={block} style={{ marginBottom: 16, display: 'grid', gap: 12 }}>
+          <span className="cab-skeleton" style={bar('min(280px,45%)', 18)} />
+          {Array.from({ length: rows }, (_, row) => (
+            <span
+              key={row}
+              className="cab-skeleton"
+              style={bar(row % 3 === 2 ? '55%' : row % 2 === 0 ? '100%' : '82%', 14)}
+            />
+          ))}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Раздел экрана без карточки: заголовок и содержимое прямо на поле.
  *
  * Такие разделы были набраны своей `<section>` на девяти экранах, и
@@ -1094,13 +1149,46 @@ export function Tiles({ children }: { children: ReactNode }) {
   );
 }
 
-export function Empty({ title, children }: { title: string; children?: ReactNode }) {
+export function Empty({
+  title,
+  children,
+  filters,
+  total,
+  resetHref,
+}: {
+  title: string;
+  children?: ReactNode;
+  /**
+   * Чем сейчас сужен перечень. Бриф требует, чтобы пустое состояние
+   * называло применённый отбор: «ничего не найдено» без этого выглядит
+   * как «записей нет вовсе», и человек ищет их заново (решение Р-184).
+   */
+  filters?: readonly string[];
+  /** Сколько записей до отбора: доказательство, что они есть. */
+  total?: number;
+  /** Куда ведёт сброс отбора. */
+  resetHref?: string;
+}) {
+  const named = filters?.filter((item) => item.length > 0) ?? [];
   return (
     <Card style={{ textAlign: 'center', padding: '40px 24px' }}>
       <Heading level={2} size={3} style={{ marginBottom: 8 }}>
         {title}
       </Heading>
       {children === undefined ? null : <Text muted>{children}</Text>}
+      {named.length === 0 ? null : (
+        <Text muted size={13} style={{ marginTop: 8 }}>
+          Отбор: {named.join(' · ')}
+          {total === undefined
+            ? ''
+            : `. Всего записей без отбора — ${total}`}
+        </Text>
+      )}
+      {resetHref === undefined ? null : (
+        <div style={{ marginTop: 16 }}>
+          <ButtonLink href={resetHref}>Сбросить отбор</ButtonLink>
+        </div>
+      )}
     </Card>
   );
 }
