@@ -105,6 +105,11 @@ describe('шапка экрана собрана общей частью', () =>
     'manage/page.tsx',
     'manage/finance/page.tsx',
     'manage/leads/[id]/page.tsx',
+    // Служебные экраны руководителя: реестры переведены давно, но в
+    // перечень не попали, справочники и отчёт переноса — решением Р-177.
+    'manage/registry/page.tsx',
+    'manage/directory/page.tsx',
+    'manage/import/[batchId]/page.tsx',
   ];
 
   for (const name of inside) {
