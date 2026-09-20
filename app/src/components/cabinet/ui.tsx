@@ -908,6 +908,64 @@ export function Notice({
   );
 }
 
+/**
+ * Длинная таблица: первые строки на виду, остаток — под свёрткой.
+ *
+ * Таблицы аналитики шли целиком: двадцать клиентов давали тысячу триста
+ * пикселей, а дебиторка была обрезана на сороковой строке молча — плитка
+ * выше честно называла полное число работ с остатком, и расхождение никак
+ * не объяснялось. Первых десяти строк довольно, чтобы увидеть главное:
+ * перечни отсортированы по убыванию величины. Остаток никуда не девается —
+ * он раскрывается на месте, без ухода на другой экран (решение Р-176).
+ *
+ * Строки передаются готовыми: у каждой таблицы свои колонки, и сводить их
+ * к общему описанию значило бы завести язык описания таблиц ради четырёх
+ * применений.
+ */
+export function LongTable({
+  label,
+  columns,
+  rows,
+  visible = 10,
+  minWidth = 720,
+  caption,
+}: {
+  label: string;
+  /** Строка заголовков: те же `<th scope="col">`, что и были. */
+  columns: ReactNode;
+  rows: readonly ReactNode[];
+  visible?: number;
+  minWidth?: number;
+  caption?: ReactNode;
+}) {
+  const shown = rows.slice(0, visible);
+  const rest = rows.slice(visible);
+  const style = { width: '100%', borderCollapse: 'collapse' as const, minWidth };
+
+  return (
+    <>
+      <TableCard label={label}>
+        <table style={style}>
+          {caption === undefined ? null : caption}
+          <thead>{columns}</thead>
+          <tbody>{shown}</tbody>
+        </table>
+      </TableCard>
+      {rest.length === 0 ? null : (
+        <Disclosure
+          title={`Ещё ${rest.length} ${plural(rest.length, 'строка', 'строки', 'строк')}`}
+          style={{ marginTop: 12 }}
+        >
+          <table style={style}>
+            <thead>{columns}</thead>
+            <tbody>{rest}</tbody>
+          </table>
+        </Disclosure>
+      )}
+    </>
+  );
+}
+
 /** Пустое состояние. Отдельный вид: пустой список без объяснения читается как сбой. */
 /**
  * Плитка величины: подпись, число, пояснение расчёта.
@@ -1672,6 +1730,33 @@ export function Disclosure({
 }
 
 /** Уголок свёртки: поворачивается при раскрытии правилом `CABINET_CSS`. */
+/**
+ * Значок снятия: тот же штриховой строй, что у отметки завершения.
+ *
+ * Прежде здесь стоял знак ✕ текстом — символ-украшение, который правило
+ * облика запрещает (Р-165). Правило молчало только потому, что наполнение
+ * артбордов не заводит исторических написаний и чип в снимок не попадал
+ * (решение Р-177). Смысл несёт подпись рядом, поэтому значок скрыт от
+ * читалки.
+ */
+export function DropMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
 function Caret() {
   return (
     <svg

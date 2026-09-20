@@ -243,6 +243,8 @@ async function crawl(page, role, stabilize) {
     '/cabinet/manage/registry?tab=experts',
     '/cabinet/manage/registry?tab=flagged',
     '/cabinet/manage/finance?set=all',
+    '/cabinet/manage/directory?tab=stages',
+    '/cabinet/manage/directory?tab=colors',
   ];
   const many = [];
   const seen = new Set(plain);
