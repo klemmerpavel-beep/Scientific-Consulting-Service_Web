@@ -13,6 +13,7 @@
 import { ensure, type Actor } from './access.ts';
 import { prisma } from '../db.ts';
 import { toCsv } from './csv.ts';
+import { actionCodes } from './journal-labels.ts';
 
 
 export interface JournalFilter {
@@ -120,15 +121,15 @@ export async function journalActors(actor: Actor) {
   });
 }
 
-/** Виды действий, встречающиеся в журнале, — для фильтра без ручного ввода. */
-export async function journalActions(actor: Actor): Promise<string[]> {
+/**
+ * Виды действий для отбора — из словаря названий, а не обходом журнала.
+ *
+ * Право проверяется по-прежнему: перечень действий говорит, что вообще
+ * умеет система, и посторонним он не нужен (решение Р-186).
+ */
+export function journalActions(actor: Actor): string[] {
   ensure(actor, 'AUDIT_VIEW');
-  const rows = await prisma.auditEvent.findMany({
-    distinct: ['action'],
-    select: { action: true },
-    orderBy: { action: 'asc' },
-  });
-  return rows.map((row) => row.action);
+  return actionCodes();
 }
 
 export { toCsv };

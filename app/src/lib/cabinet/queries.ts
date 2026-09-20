@@ -85,7 +85,10 @@ export async function listProjects(
 
   const rows = await prisma.project.findMany({
     where,
-    orderBy: [{ status: 'asc' }, { dueOn: 'asc' }],
+    // Последним ключом идёт код работы: при равных сроках порядок строк
+    // иначе задаёт база, и один и тот же перечень выглядит по-разному
+    // при каждом открытии (решение Р-186).
+    orderBy: [{ status: 'asc' }, { dueOn: 'asc' }, { code: 'asc' }],
     skip: (current - 1) * PROJECT_PAGE_SIZE,
     take: PROJECT_PAGE_SIZE,
     include: {
@@ -214,7 +217,7 @@ export async function pendingActions(actor: Actor) {
       project: scope,
       state: { in: ['AWAITING_CLIENT', 'IN_APPROVAL'] },
     },
-    orderBy: [{ dueOn: 'asc' }, { awaitingClientSince: 'asc' }],
+    orderBy: [{ dueOn: 'asc' }, { awaitingClientSince: 'asc' }, { id: 'asc' }],
     include: { project: { select: { code: true, title: true } } },
   });
   return stages;
