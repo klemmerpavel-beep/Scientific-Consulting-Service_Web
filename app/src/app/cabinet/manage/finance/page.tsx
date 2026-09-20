@@ -5,6 +5,8 @@ import {
   Card,
   Mono,
   ScreenHead,
+  Tile,
+  Tiles,
   Tabs,
   Text,
   TABLE_CELL,
@@ -74,26 +76,11 @@ export default async function FinanceScreen({
         введённые вами рядом с посчитанными кабинетом.
       </Text>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 16,
-          marginBottom: 28,
-        }}
-      >
+      <Tiles>
         {tiles.map((tile) => (
-          <Card key={tile.label}>
-            <Mono>{tile.label}</Mono>
-            <Text
-              size={22}
-              style={{ marginTop: 8, color: 'var(--pd-ink)', fontVariantNumeric: 'tabular-nums' }}
-            >
-              {formatAmount(tile.value)}
-            </Text>
-          </Card>
+          <Tile key={tile.label} label={tile.label} value={formatAmount(tile.value)} />
         ))}
-      </div>
+      </Tiles>
 
       <div style={{ marginBottom: 16 }}>
         <Tabs
