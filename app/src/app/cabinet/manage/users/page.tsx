@@ -10,8 +10,8 @@ import {
   FormActions,
   FormRow,
   Heading,
-  Mono,
   Notice,
+  ScreenHead,
   Select,
   TABLE_CELL,
   TABLE_HEAD,
@@ -42,15 +42,10 @@ export default async function UsersScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/manage/users">
-      <Mono>Учётные записи</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        Пользователи
-      </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
-        Роль назначается здесь и нигде больше: она не приходит с формы входа и не меняется самим
-        пользователем. При смене роли и при приостановке доступа все сессии отзываются — вкладка,
-        открытая до изменения, иначе доработала бы прежними правами.
-      </Text>
+      <ScreenHead
+        title="Пользователи"
+        note="Роль назначается здесь и нигде больше: она не приходит с формы входа и не меняется самим пользователем. При смене роли и при приостановке доступа все сессии отзываются."
+      />
 
       {flags.error === undefined ? null : (
         <div style={{ marginBottom: 20 }}>
@@ -173,6 +168,16 @@ export default async function UsersScreen({
                     {user.expertProfile === null ? (
                       '—'
                     ) : (
+                      <>
+                        {/* Сохранённая дата стоит русским написанием: в самом
+                            поле её формат задаёт браузер по настройкам
+                            системы, и «08/12/2025» читается двояко
+                            (решение Р-179). */}
+                        {user.expertProfile.ndaSignedAt === null ? null : (
+                          <div style={{ marginBottom: 8 }}>
+                            <Chip>подписан {formatDate(user.expertProfile.ndaSignedAt)}</Chip>
+                          </div>
+                        )}
                       <Form action={updateExpertNda} inline>
                         <input type="hidden" name="userId" value={user.id} />
                         <Field
@@ -188,6 +193,7 @@ export default async function UsersScreen({
                         />
                         <Button tone="quiet">Сохранить</Button>
                       </Form>
+                      </>
                     )}
                     {user.expertProfile !== null && user.expertProfile.ndaSignedAt === null ? (
                       <div style={{ fontSize: 13, color: 'var(--pd-ink-secondary)', marginTop: 4 }}>
