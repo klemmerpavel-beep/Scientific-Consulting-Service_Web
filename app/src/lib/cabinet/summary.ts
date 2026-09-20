@@ -119,6 +119,70 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
   });
 }
 
+/** Сколько работ в каждом состоянии и сколько из них со сроком в прошлом. */
+export interface LoadPoint {
+  readonly key: string;
+  readonly label: string;
+  readonly count: number;
+}
+
+/**
+ * Загрузка практики по состоянию текущего этапа.
+ *
+ * Плитки отвечают на вопрос «сколько денег», но не на вопрос «чем занята
+ * практика»: пять работ в согласовании и пять, ждущих клиента, — это
+ * разные положения дел при одной и той же выручке. Состояние берётся у
+ * первого незавершённого этапа: он и есть то, где работа стоит сейчас
+ * (решение Р-180).
+ */
+export async function stageLoad(
+  actor: Actor,
+  now: Date = new Date(),
+): Promise<{ points: LoadPoint[]; overdue: number; planless: number }> {
+  ensure(actor, 'PROJECT_VIEW');
+  const scope = scopeProjects(actor);
+
+  const projects = await prisma.project.findMany({
+    where: { ...(scope ?? {}), status: 'ACTIVE' },
+    select: {
+      stages: { orderBy: { position: 'asc' }, select: { state: true, dueOn: true } },
+    },
+  });
+
+  const counts = new Map<string, number>();
+  let overdue = 0;
+  let planless = 0;
+
+  for (const project of projects) {
+    const current = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
+    if (project.stages.length === 0) {
+      planless += 1;
+      continue;
+    }
+    const key = current?.state ?? 'DONE';
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+    if (current?.dueOn != null && current.dueOn < now) overdue += 1;
+  }
+
+  // Порядок — ход работы, а не убывание числа: перечень читается как
+  // путь от «не начат» до «на согласовании».
+  const ORDER: readonly { key: string; label: string }[] = [
+    { key: 'NOT_STARTED', label: 'Не начаты' },
+    { key: 'IN_PROGRESS', label: 'В работе' },
+    { key: 'AWAITING_CLIENT', label: 'Ждут клиента' },
+    { key: 'IN_APPROVAL', label: 'На согласовании' },
+    { key: 'DONE', label: 'Все этапы пройдены' },
+  ];
+
+  return {
+    points: ORDER.map((row) => ({ ...row, count: counts.get(row.key) ?? 0 })).filter(
+      (row) => row.count > 0,
+    ),
+    overdue,
+    planless,
+  };
+}
+
 export async function practiceSummary(actor: Actor): Promise<PracticeSummary> {
   ensure(actor, 'MARGIN_VIEW');
 

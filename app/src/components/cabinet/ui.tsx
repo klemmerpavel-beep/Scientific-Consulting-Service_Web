@@ -1403,8 +1403,6 @@ export function Board({
     <div
       className="cab-board"
       style={{
-        flex: 1,
-        minHeight: 0,
         display: 'grid',
         gridTemplateColumns: tracks,
         gap: 20,
@@ -1502,8 +1500,14 @@ export function BoardColumn({
         aria-label={title}
         tabIndex={0}
         style={{
-          flex: fit ? '0 1 auto' : 1,
-          minHeight: 0,
+          // Высота ограничена сверху, но не снизу: короткое содержимое
+          // видно целиком, длинное прокручивается внутри колонки. Прежде
+          // тело тянулось за остатком окна и при окне ниже девятисот
+          // пикселей ужималось до тридцати двух — полутора строк
+          // (решение Р-180).
+          flex: '0 1 auto',
+          minHeight: fit ? 0 : 200,
+          maxHeight: '70vh',
           overflowY: 'auto',
           padding: '16px 18px',
           ...(anchor === 'end' ? { display: 'flex', flexDirection: 'column-reverse' } : {}),
