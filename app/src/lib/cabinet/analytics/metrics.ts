@@ -317,7 +317,7 @@ export function receivables(rows: readonly ProjectRow[], controlDate: Date): Rec
           ? null
           : Math.round((controlDate.getTime() - row.dueOn.getTime()) / DAY),
     }))
-    .sort((a, b) => (b.debt > a.debt ? 1 : b.debt < a.debt ? -1 : 0));
+    .sort((a, b) => (b.debt > a.debt ? 1 : b.debt < a.debt ? -1 : a.code.localeCompare(b.code)));
 }
 
 // ─────────────────────────── Клиенты ────────────────────────────────────────
@@ -400,7 +400,12 @@ export function clients(rows: readonly ProjectRow[], controlDate: Date): Clients
     };
   });
 
-  list.sort((a, b) => (b.ltv > a.ltv ? 1 : b.ltv < a.ltv ? -1 : 0));
+  // Последним ключом идёт код клиента: при равных суммах порядок строк
+  // иначе задаёт база, и два прогона подряд дают разный перечень
+  // (решение Р-186).
+  list.sort((a, b) =>
+    b.ltv > a.ltv ? 1 : b.ltv < a.ltv ? -1 : a.clientId.localeCompare(b.clientId),
+  );
 
   const total = sum(list.map((client) => client.ltv));
   const top5 = sum(list.slice(0, 5).map((client) => client.ltv));
@@ -467,7 +472,7 @@ export function products(rows: readonly ProjectRow[]): ProductRow[] {
         needsPriceList: variation > 0.4,
       };
     })
-    .sort((a, b) => (b.total > a.total ? 1 : b.total < a.total ? -1 : 0));
+    .sort((a, b) => (b.total > a.total ? 1 : b.total < a.total ? -1 : a.typeCode.localeCompare(b.typeCode)));
 }
 
 // ─────────────────────────── Сроки ──────────────────────────────────────────
@@ -566,7 +571,7 @@ export function losses(rows: readonly ProjectRow[]): LossesReport {
         paid: row.paid,
         lost: row.cost - row.paid,
       }))
-      .sort((a, b) => (b.lost > a.lost ? 1 : b.lost < a.lost ? -1 : 0)),
+      .sort((a, b) => (b.lost > a.lost ? 1 : b.lost < a.lost ? -1 : a.code.localeCompare(b.code))),
     total: sum(stopped.map((row) => row.cost - row.paid)),
     stopped: rows.filter((row) => row.status === 'PAUSED').length,
     cancelled: rows.filter((row) => row.status === 'CANCELLED').length,

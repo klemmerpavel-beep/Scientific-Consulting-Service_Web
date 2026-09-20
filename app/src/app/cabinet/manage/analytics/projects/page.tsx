@@ -1,5 +1,11 @@
-import { RankChart, compactNumber } from '../../../../../components/cabinet/Charts';
-import { Card, Empty, Heading, Text } from '../../../../../components/cabinet/ui';
+import {
+  RankChart,
+  compactNumber } from '../../../../../components/cabinet/Charts'; import { Card,
+  Empty,
+  Heading,
+  TableCard,
+  Text,
+} from '../../../../../components/cabinet/ui';
 import { cycles, overview } from '../../../../../lib/cabinet/analytics/metrics';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, cycleLabel, head, num, share } from '../shared';
 
@@ -52,9 +58,28 @@ export default async function AnalyticsProjects() {
             <ChartCard
               title="Медиана срока по позициям"
               note="Показаны только позиции, где медиана достигнута. Там, где завершённых работ мало, кривая до половины не опускается, и медианы не существует — такую позицию столбцом не изобразить, не соврав."
+              numbers={
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={head} scope="col">Позиция</th>
+                      <th style={{ ...head, textAlign: 'right' }} scope="col">Медиана срока</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {withMedian.map((row) => (
+                      <tr key={row.typeCode}>
+                        <td style={cell}>{row.typeName}</td>
+                        <td style={num}>{row.estimate.median} дн.</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              }
             >
               <RankChart
-                labelWidth={280}
+                width={1120}
+                labelWidth={380}
                 title="Медиана срока по позициям"
                 data={withMedian.map((row) => ({ label: row.typeName, value: row.estimate.median! }))}
                 format={(value) => `${compactNumber(value)} дн.`}
@@ -65,7 +90,7 @@ export default async function AnalyticsProjects() {
           <Heading level={2} style={{ marginBottom: 12 }}>
             Сроки по позициям
           </Heading>
-          <Card style={{ padding: 0, overflowX: 'auto' }}>
+          <TableCard label="Сроки по позициям">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
               <caption style={{ ...cell, captionSide: 'top', borderBottom: 'none' }}>
                 «Более N дней» означает, что завершённых работ недостаточно для медианы: N — наибольший
@@ -90,7 +115,7 @@ export default async function AnalyticsProjects() {
                 ))}
               </tbody>
             </table>
-          </Card>
+          </TableCard>
         </>
       )}
     </Frame>

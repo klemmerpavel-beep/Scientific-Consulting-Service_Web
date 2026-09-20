@@ -6,22 +6,27 @@ import {
   Button,
   Card,
   Chip,
+  Disclosure,
   Field,
   Form,
   FormActions,
   Heading,
-  Mono,
+  LongTable,
   Notice,
+  ScreenHead,
   Select,
-  Text,
-  formatDate,
-  plural,
   TABLE_CELL,
   TABLE_HEAD,
   TABLE_NUM,
+  TableCard,
+  Text,
+  Tile,
+  Tiles,
+  formatDate,
+  plural,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
-import { prisma } from '../../../../../lib/db';
+import { curators } from '../../../../../lib/cabinet/queries';
 import { loadBatch } from '../../../../../lib/cabinet/import/apply';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { currentActor } from '../../../../../lib/cabinet/session';
@@ -52,17 +57,24 @@ export default async function ImportBatchScreen({
   if (report === null) notFound();
 
   const applied = report.state === 'APPLIED';
-  const managers = await prisma.user.findMany({
-    where: { role: { in: ['MANAGER', 'HEAD'] }, status: 'ACTIVE' },
-    select: { id: true, fullName: true },
-    orderBy: { fullName: 'asc' },
-  });
+  // Перечень кураторов существует общей выборкой: прежде то же условие
+  // стояло тремя независимыми копиями — здесь, в действиях и в
+  // `queries.ts` (решение Р-185).
+  const managers = await curators(actor);
 
   const issues = Object.entries(report.issueCounts).filter(([, count]) => count > 0);
-  const rowsByIssue = (code: string) =>
-    report.rows
-      .filter((row) => row.issues.some((issue) => issue.code === code))
-      .map((row) => row.rowNumber);
+
+  // Номера строк и человекочитаемое название собираются одним обходом:
+  // прежде перечень строился заново на каждый класс замечания, то есть
+  // книга обходилась столько раз, сколько классов (решение Р-177).
+  const byIssue = new Map<string, { label: string; rows: number[] }>();
+  for (const row of report.rows) {
+    for (const issue of row.issues) {
+      const seen = byIssue.get(issue.code) ?? { label: issue.label, rows: [] };
+      seen.rows.push(row.rowNumber);
+      byIssue.set(issue.code, seen);
+    }
+  }
 
   const tiles = [
     { label: 'Строк в книге', value: String(report.rows.length) },
@@ -73,15 +85,12 @@ export default async function ImportBatchScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/manage/import">
-      <Mono>Отчёт загрузки</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        {report.fileName}
-      </Heading>
-      <Text muted style={{ marginBottom: 20 }}>
-        Лист «{report.sheet}», загружена {formatDate(report.createdAt)}. К заведению{' '}
-        {report.counts.CREATE}, к обновлению {report.counts.UPDATE}, уже перенесено{' '}
-        {report.counts.SKIP}.
-      </Text>
+      <ScreenHead
+        backHref="/cabinet/manage/import"
+        backLabel="к загрузкам"
+        title={report.fileName}
+        note={`Лист «${report.sheet}», загружена ${formatDate(report.createdAt)}. К заведению ${report.counts.CREATE}, к обновлению ${report.counts.UPDATE}, уже перенесено ${report.counts.SKIP}.`}
+      />
 
       {flags.applied === undefined ? null : (
         <div style={{ marginBottom: 20 }}>
@@ -94,26 +103,13 @@ export default async function ImportBatchScreen({
         </div>
       )}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 16,
-          marginBottom: 28,
-        }}
-      >
+      {/* Плитка живёт общей частью: своя копия разошлась бы с прочими
+          по кеглю и весу числа при первой же правке (решение Р-177). */}
+      <Tiles>
         {tiles.map((tile) => (
-          <Card key={tile.label}>
-            <Mono>{tile.label}</Mono>
-            <Text
-              size={22}
-              style={{ marginTop: 8, color: 'var(--pd-ink)', fontVariantNumeric: 'tabular-nums' }}
-            >
-              {tile.value}
-            </Text>
-          </Card>
+          <Tile key={tile.label} label={tile.label} value={tile.value} />
         ))}
-      </div>
+      </Tiles>
 
       <Heading level={2} style={{ marginBottom: 12 }}>
         Замечания разбора
@@ -123,7 +119,7 @@ export default async function ImportBatchScreen({
           <Text muted>Замечаний нет: книга разобрана без расхождений.</Text>
         </Card>
       ) : (
-        <Card style={{ marginBottom: 28, padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Замечания разбора" style={{ marginBottom: 28 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
             <thead>
               <tr>
@@ -140,86 +136,85 @@ export default async function ImportBatchScreen({
             </thead>
             <tbody>
               {issues.map(([code, count]) => {
-                const label =
-                  report.rows
-                    .flatMap((row) => row.issues)
-                    .find((issue) => issue.code === code)?.label ?? code;
+                const seen = byIssue.get(code);
                 return (
                   <tr key={code}>
-                    <td style={TABLE_CELL}>{label}</td>
+                    <td style={TABLE_CELL}>{seen?.label ?? code}</td>
                     <td style={TABLE_NUM}>{count}</td>
-                    <td style={TABLE_CELL}>{rowsByIssue(code).join(', ')}</td>
+                    <td style={TABLE_CELL}>{(seen?.rows ?? []).join(', ')}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
-      <Heading level={2} style={{ marginBottom: 8 }}>
-        Цвет против текста
-      </Heading>
-      <Text muted style={{ marginBottom: 12 }}>
-        Состояние работы берётся по тексту статуса. Заливка сохранена и показана рядом: выбор
-        между «работа доведена» и «работа идёт» остаётся за руководителем.
-      </Text>
-      <Card style={{ marginBottom: 28 }}>
-        {report.conflicts.length === 0 ? (
-          <Text muted>Расхождений нет.</Text>
-        ) : (
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            {report.conflicts.map((conflict) => (
-              <li
-                key={conflict.rowNumber}
-                style={{ fontFamily: SANS, fontSize: 14, color: 'var(--pd-ink-secondary)' }}
-              >
-                Строка {conflict.rowNumber}: текст «{conflict.text}», заливка{' '}
-                {conflict.fill ?? 'нет'}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      {/* Три перечня ниже — разбор частностей: в них заходят, когда в
+          таблице замечаний увиделось расхождение. Раскрытыми они давали
+          треть высоты экрана, поэтому сомкнуты (решение Р-177). Таблица
+          замечаний выше остаётся на виду: из неё берутся номера строк для
+          поля «Исключить строки». */}
+      <div style={{ display: 'grid', gap: 12, marginBottom: 28 }}>
+        <Disclosure
+          title={`Цвет против текста: ${report.conflicts.length} ${plural(report.conflicts.length, 'расхождение', 'расхождения', 'расхождений')}`}
+        >
+          <Text muted size={13} style={{ marginBottom: 10 }}>
+            Состояние работы берётся по тексту статуса. Заливка сохранена и показана рядом: выбор
+            между «работа доведена» и «работа идёт» остаётся за руководителем.
+          </Text>
+          {report.conflicts.length === 0 ? (
+            <Text muted>Расхождений нет.</Text>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {report.conflicts.map((conflict) => (
+                <li
+                  key={conflict.rowNumber}
+                  style={{ fontFamily: SANS, fontSize: 14, color: 'var(--pd-ink-secondary)' }}
+                >
+                  Строка {conflict.rowNumber}: текст «{conflict.text}», заливка{' '}
+                  {conflict.fill ?? 'нет'}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Disclosure>
 
-      <Heading level={2} style={{ marginBottom: 8 }}>
-        Совпадения ФИО
-      </Heading>
-      <Text muted style={{ marginBottom: 12 }}>
-        Совпадение ФИО — не доказательство, что это один человек. Карточки заводятся по каждому
-        написанию, а сведение остаётся ручным действием.
-      </Text>
-      <Card style={{ marginBottom: 28 }}>
-        {report.duplicates.length === 0 ? (
-          <Text muted>Совпадений нет.</Text>
-        ) : (
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            {report.duplicates.map((group) => (
-              <li
-                key={group.normalizedName}
-                style={{
-                  fontFamily: SANS,
-                  fontSize: 14,
-                  color: 'var(--pd-ink-secondary)',
-                  marginBottom: 6,
-                }}
-              >
-                {group.spellings.join(' · ')} — {group.rowNumbers.length}{' '}
-                {plural(group.rowNumbers.length, 'строка', 'строки', 'строк')} (
-                {group.rowNumbers.join(', ')})
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+        <Disclosure
+          title={`Совпадения ФИО: ${report.duplicates.length} ${plural(report.duplicates.length, 'группа', 'группы', 'групп')}`}
+        >
+          <Text muted size={13} style={{ marginBottom: 10 }}>
+            Совпадение ФИО — не доказательство, что это один человек. Карточки заводятся по
+            каждому написанию, а сведение остаётся ручным действием.
+          </Text>
+          {report.duplicates.length === 0 ? (
+            <Text muted>Совпадений нет.</Text>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {report.duplicates.map((group) => (
+                <li
+                  key={group.normalizedName}
+                  style={{
+                    fontFamily: SANS,
+                    fontSize: 14,
+                    color: 'var(--pd-ink-secondary)',
+                    marginBottom: 6,
+                  }}
+                >
+                  {group.spellings.join(' · ')} — {group.rowNumbers.length}{' '}
+                  {plural(group.rowNumbers.length, 'строка', 'строки', 'строк')} (
+                  {group.rowNumbers.join(', ')})
+                </li>
+              ))}
+            </ul>
+          )}
+        </Disclosure>
 
-      {report.unresolvedTypes.length === 0 ? null : (
-        <>
-          <Heading level={2} style={{ marginBottom: 8 }}>
-            Не сведено к справочнику
-          </Heading>
-          <Card style={{ marginBottom: 28 }}>
-            <Text muted style={{ marginBottom: 12 }}>
+        {report.unresolvedTypes.length === 0 ? null : (
+          <Disclosure
+            title={`Не сведено к справочнику: ${report.unresolvedTypes.length} ${plural(report.unresolvedTypes.length, 'написание', 'написания', 'написаний')}`}
+          >
+            <Text muted size={13} style={{ marginBottom: 10 }}>
               Эти написания не отнесены ни к одной позиции справочника. Строки с ними при фиксации
               будут отклонены с указанием причины: заведите позицию или псевдоним и загрузите
               книгу заново.
@@ -234,80 +229,60 @@ export default async function ImportBatchScreen({
                 </li>
               ))}
             </ul>
-          </Card>
-        </>
-      )}
+          </Disclosure>
+        )}
+      </div>
 
       <Heading level={2} style={{ marginBottom: 12 }}>
         Строки книги
       </Heading>
-      <Card style={{ marginBottom: 28, padding: 0, overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
-          <thead>
+      {/* Первые десять строк на виду, остаток раскрывается на месте:
+          на настоящей книге в полсотни заказов таблица целиком давала
+          около шести тысяч пикселей (решение Р-177). Номера строк для
+          поля «Исключить строки» берутся из таблицы замечаний выше. */}
+      <div style={{ marginBottom: 28 }}>
+        <LongTable
+          label="Строки книги"
+          minWidth={880}
+          columns={
             <tr>
-              <th style={TABLE_HEAD} scope="col">
-                №
-              </th>
-              <th style={TABLE_HEAD} scope="col">
-                Заказчик
-              </th>
-              <th style={TABLE_HEAD} scope="col">
-                Тип работы
-              </th>
-              <th style={TABLE_HEAD} scope="col">
-                Срок
-              </th>
-              <th style={TABLE_HEAD} scope="col">
-                Стоимость
-              </th>
-              <th style={TABLE_HEAD} scope="col">
-                Оплачено
-              </th>
-              <th style={TABLE_HEAD} scope="col">
-                Состояние
-              </th>
-              <th style={TABLE_HEAD} scope="col">
-                Решение
-              </th>
+              <th style={TABLE_HEAD} scope="col">№</th>
+              <th style={TABLE_HEAD} scope="col">Заказчик</th>
+              <th style={TABLE_HEAD} scope="col">Тип работы</th>
+              <th style={TABLE_HEAD} scope="col">Срок</th>
+              <th style={TABLE_HEAD} scope="col">Стоимость</th>
+              <th style={TABLE_HEAD} scope="col">Оплачено</th>
+              <th style={TABLE_HEAD} scope="col">Состояние</th>
+              <th style={TABLE_HEAD} scope="col">Решение</th>
             </tr>
-          </thead>
-          <tbody>
-            {report.rows.map((row) => (
-              <tr key={row.rowNumber}>
-                <td style={TABLE_CELL}>{row.rowNumber}</td>
-                <td style={TABLE_CELL}>{row.customer}</td>
-                <td style={TABLE_CELL}>
-                  {row.rawType}
-                  {row.typeCode === null ? (
-                    <div style={{ fontSize: 13, color: 'var(--pd-ink-secondary)' }}>не сведено</div>
-                  ) : null}
-                </td>
-                <td style={TABLE_CELL}>{formatDate(row.deadline) ?? '—'}</td>
-                <td style={TABLE_NUM}>{formatAmount(row.cost)}</td>
-                <td style={TABLE_NUM}>{formatAmount(row.paid)}</td>
-                <td style={TABLE_CELL}>
-                  {row.statusLabel}
-                  {row.issues.length === 0 ? null : (
-                    <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
-                      {row.issues.map((issue) => issue.label).join('; ')}
-                    </div>
-                  )}
-                </td>
-                <td style={TABLE_CELL}>
-                  <Chip tone={row.action === 'SKIP' ? 'neutral' : 'accent'}>
-                    {ACTION_LABEL[row.action]}
-                  </Chip>
-                  {row.existingCode === null ? null : (
-                    <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
-                      {row.existingCode}
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+          }
+          rows={report.rows.map((row) => (
+            <tr key={row.rowNumber}>
+              <td style={TABLE_CELL}>{row.rowNumber}</td>
+              <td style={TABLE_CELL}>{row.customer}</td>
+              <td style={TABLE_CELL}>
+                {row.rawType}
+                {row.typeCode === null ? ' · не сведено' : ''}
+              </td>
+              <td style={TABLE_CELL}>{formatDate(row.deadline) ?? '—'}</td>
+              <td style={TABLE_NUM}>{formatAmount(row.cost)}</td>
+              <td style={TABLE_NUM}>{formatAmount(row.paid)}</td>
+              <td style={TABLE_CELL}>
+                {row.statusLabel}
+                {row.issues.length === 0
+                  ? ''
+                  : ` · ${row.issues.map((issue) => issue.label).join('; ')}`}
+              </td>
+              <td style={TABLE_CELL}>
+                <Chip tone={row.action === 'SKIP' ? 'neutral' : 'accent'}>
+                  {ACTION_LABEL[row.action]}
+                </Chip>
+                {row.existingCode === null ? '' : ` ${row.existingCode}`}
+              </td>
+            </tr>
+          ))}
+        />
+      </div>
 
       {applied ? (
         <Notice>

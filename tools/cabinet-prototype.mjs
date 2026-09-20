@@ -25,6 +25,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import path from 'node:path';
 import { chromium } from '/var/tmp/pwtest/node_modules/playwright-core/index.mjs';
 
+import { buildPortable } from './cabinet-portable.mjs';
+
 const ROOT = path.resolve(import.meta.dirname, '..');
 const APP = path.join(ROOT, 'app');
 const OUT = path.join(ROOT, 'design', 'cabinet-prototype');
@@ -85,6 +87,9 @@ const QUOTA = [
   [/^\/cabinet\/projects\/[^/]+\/payments$/u, 2],
   [/^\/cabinet\/stages\/[^/]+$/u, 5],
   [/^\/cabinet\/manage\/import\/[^/]+$/u, 1],
+  // Заявок в очереди двадцать на страницу, а образец разбора один: снимка
+  // двух хватает, чтобы показать и обращение с текстом, и без него.
+  [/^\/cabinet\/manage\/leads\/[^/]+$/u, 2],
 ];
 
 /** Образец маршрута: одиночные записи сводятся к одному ключу. */
@@ -202,10 +207,28 @@ async function snapshot(page) {
     for (const node of clone.querySelectorAll('script, link, style, next-route-announcer')) {
       node.remove();
     }
+    // Полосу прогресса чтения навешивает сценарий движения уже после
+    // отрисовки, и снимок заставал её то на месте, то нет: два прогона
+    // подряд расходились на случайных экранах. Движению в снимке места
+    // нет — в нём принимают облик (решение Р-186).
+    for (const node of clone.querySelectorAll('.pd-progress')) node.remove();
+    // Те же классы появления навешивает сценарий движения по мере
+    // прокрутки: снимок заставал блок то помеченным, то нет.
+    for (const node of clone.querySelectorAll('.pd-rise, .pd-in')) {
+      node.classList.remove('pd-rise', 'pd-in');
+      if (node.getAttribute('class') === '') node.removeAttribute('class');
+    }
     for (const node of clone.querySelectorAll('*')) {
       for (const attribute of [...node.attributes]) {
         if (/^data-(next|react|nimg|sentry)/i.test(attribute.name)) node.removeAttribute(attribute.name);
       }
+    }
+    // Скрытое поле серверного действия несёт хэш сборки: он меняется от
+    // любой правки кода, и снимок каждой формы переписывается заново.
+    // В разборе изменений это шум, закрывающий настоящие правки облика,
+    // а для приёмки хэш не значит ничего (решение Р-186).
+    for (const node of clone.querySelectorAll('input[name^="$ACTION_ID_"]')) {
+      node.setAttribute('name', '$ACTION_ID');
     }
     return clone.innerHTML;
   });
@@ -222,7 +245,25 @@ async function crawl(page, role, stabilize) {
   const pages = new Map();
   // Две очереди: неповторяющиеся маршруты разбираются раньше однотипных
   // записей, иначе перечень проектов съедает норму целиком.
-  const plain = [normalize(role.home), '/cabinet/settings'];
+  // Перечень работ получил отбор, и по умолчанию он показывает
+  // действующие: завершённые работы перестали находиться обходом, а с
+  // ними ушли из-под правил облика три экрана. Вкладка «Все» добавляется
+  // явным маршрутом — обход срезает запрос у ссылок и сам бы туда не
+  // попал (решение Р-171).
+  const plain = [
+    normalize(role.home),
+    '/cabinet/settings',
+    // Вкладки набора: обход срезает запрос у ссылок и сам бы туда не
+    // попал, а без снимка вкладка выпадает из-под правил облика
+    // (решения Р-171, Р-173). Недоступные роли отсеиваются сами:
+    // маршрут, ответивший перенаправлением, в дерево не берётся.
+    '/cabinet/projects?state=all',
+    '/cabinet/manage/registry?tab=experts',
+    '/cabinet/manage/registry?tab=flagged',
+    '/cabinet/manage/finance?set=all',
+    '/cabinet/manage/directory?tab=stages',
+    '/cabinet/manage/directory?tab=colors',
+  ];
   const many = [];
   const seen = new Set(plain);
   const taken = new Map();
@@ -240,7 +281,7 @@ async function crawl(page, role, stabilize) {
     // Отказ в доступе переводит к своим работам, страница «не найдено»
     // отвечает четырьмястами четырьмя. И то и другое в дерево не берём:
     // прототип показывает то, что роли действительно доступно.
-    if (response === null || response.status() >= 400 || landed !== route) continue;
+    if (response === null || response.status() >= 400 || landed !== route.split('?')[0]) continue;
 
     const { html, styles, links } = await snapshot(page);
     pages.set(route, { html, styles });
@@ -261,7 +302,9 @@ async function crawl(page, role, stabilize) {
 
 /** Путь файла прототипа для маршрута кабинета под ролью. */
 function fileFor(roleKey, route) {
-  const tail = route.replace(/^\/cabinet\/?/u, '');
+  // Маршрут с запросом кладётся отдельной папкой: «projects?state=all»
+  // становится «projects-state-all».
+  const tail = route.replace(/^\/cabinet\/?/u, '').replace(/[?=&]/gu, '-');
   return path.join(roleKey, tail, 'index.html');
 }
 
@@ -295,46 +338,18 @@ const BAR_CSS = `
 .pt-aside { margin-left:auto; text-decoration:underline !important; }
 `;
 
-/** Страница входа в прототип: настоящий экран входа плюс выбор роли. */
+/**
+ * Страница входа в прототип.
+ *
+ * Выбор роли стоит полосой сверху на каждом снимке, и второй такой же
+ * набор плашек под ней задваивал одно и то же. Здесь остаётся настоящий
+ * экран входа — как он выглядит в кабинете (решение Р-164).
+ */
 function entryPage(snapshotHtml) {
-  const roles = ROLES.map(
-    (role) =>
-      `<a class="pt-enter" href="${role.key}/${role.home.replace(/^\/cabinet\/?/u, '')}/">
-      <span class="pt-enter__role">${role.label}</span>
-      <span class="pt-enter__note">${ENTRY_NOTE[role.key]}</span>
-    </a>`,
-  ).join('\n      ');
-
-  return `<div class="pt-entry">
-    <p class="pt-entry__lead">Прототип: писем он не шлёт, поэтому ссылка входа заменена выбором роли.
-    Состав разделов и содержимое экранов у ролей разные — это матрица прав, а не оформление.</p>
-    <div class="pt-entry__roles">
-      ${roles}
-    </div>
-    <p class="pt-entry__note">Ниже — настоящий экран входа. Формы в прототипе не отправляются.</p>
-  </div>
-${snapshotHtml}`;
+  return snapshotHtml;
 }
 
-const ENTRY_NOTE = {
-  client: 'ход работы по этапам, материалы и переписка с куратором',
-  expert: 'назначенные работы, материалы и версии, собственное вознаграждение',
-  manager: 'свои работы, что требует вмешательства, заявки и переписка',
-  head: 'сводка практики, очередь заявок, сроки, деньги и аналитика',
-};
 
-const ENTRY_CSS = `
-.pt-entry { max-width:1220px; margin:0 auto; padding:40px 24px 8px;
-  font-family:'Inter','Helvetica Neue',Arial,sans-serif; }
-.pt-entry__lead { max-width:78ch; margin:0 0 20px; font-size:16px; line-height:1.65; color:#5C6473; }
-.pt-entry__roles { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
-.pt-enter { display:grid; gap:6px; align-content:start; padding:18px 20px; border-radius:14px;
-  border:1px solid #DDE2EA; text-decoration:none; color:#14161C; background:#fff; }
-.pt-enter:hover { border-color:#14417A; background:#F5F7FA; }
-.pt-enter__role { font-size:17px; font-weight:600; }
-.pt-enter__note { font-size:14px; line-height:1.55; color:#5C6473; }
-.pt-entry__note { margin:28px 0 0; font-size:14px; color:#5C6473; }
-`;
 
 function document_(body, depth) {
   const up = '../'.repeat(depth);
@@ -437,7 +452,7 @@ async function main() {
   // Таблицы стилей одни и те же на всех экранах: прототип отдаётся по сети,
   // и повторять их в каждом файле незачем — из мегабайтов вышли бы десятки.
   const sheet = [...styles].join('\n').replace(/@font-face\s*\{[^}]*\}/gu, '');
-  writeFileSync(path.join(OUT, 'prototype.css'), `${sheet}\n${BAR_CSS}\n${ENTRY_CSS}`);
+  writeFileSync(path.join(OUT, 'prototype.css'), `${sheet}\n${BAR_CSS}\n`);
 
   let written = 0;
   for (const [roleKey, tree] of trees) {
@@ -464,6 +479,11 @@ async function main() {
   written += 1;
 
   console.log(`\nПрототип собран: ${written} экранов. Каталог: design/cabinet-prototype`);
+
+  // Копия для боевого сайта складывается тут же, а не отдельной командой:
+  // отдельную команду забывают, и по адресу `/cabinet-preview/` оставался
+  // бы прошлый облик кабинета (решение Р-174).
+  buildPortable(path.join(APP, 'public', 'cabinet-preview'));
 }
 
 main().catch((error) => {

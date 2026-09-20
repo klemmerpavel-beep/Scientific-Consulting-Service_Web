@@ -27,10 +27,38 @@ export const STATUS_LABEL: Record<Status, string> = {
   ERASED: 'обезличена',
 };
 
-export async function listUsers(actor: Actor) {
+/** Сколько учётных записей показывается на одной странице. */
+export const USER_PAGE_SIZE = 20;
+
+export interface UserFilter {
+  readonly role?: Role;
+  readonly status?: 'ACTIVE' | 'SUSPENDED' | 'ERASED';
+  readonly page?: number;
+}
+
+/**
+ * Учётные записи постранично и с отбором.
+ *
+ * Прежде выбирались все без предела: пока в кабинете четыре человека,
+ * это незаметно, а на штате в полсотни экран превращался в ленту,
+ * которую нечем сузить (решение Р-183).
+ */
+export async function listUsers(actor: Actor, filter: UserFilter = {}) {
   ensure(actor, 'USER_MANAGE');
-  return prisma.user.findMany({
+  const where = {
+    ...(filter.role === undefined ? {} : { role: filter.role }),
+    ...(filter.status === undefined ? {} : { status: filter.status }),
+  };
+  const total = await prisma.user.count({ where });
+  const pages = Math.max(1, Math.ceil(total / USER_PAGE_SIZE));
+  // Страница за пределами перечня — не ошибка: ссылку могли сохранить, а
+  // отбор с тех пор сузить. Показывается последняя существующая.
+  const page = Math.min(Math.max(1, Math.trunc(filter.page ?? 1) || 1), pages);
+  const rows = await prisma.user.findMany({
+    where,
     orderBy: [{ role: 'asc' }, { fullName: 'asc' }],
+    skip: (page - 1) * USER_PAGE_SIZE,
+    take: USER_PAGE_SIZE,
     select: {
       id: true,
       email: true,
@@ -47,6 +75,7 @@ export async function listUsers(actor: Actor) {
       _count: { select: { sessions: true } },
     },
   });
+  return { rows, total, page, pages };
 }
 
 export interface CreateUserInput {
@@ -332,5 +361,41 @@ export async function removeStageTemplateItem(actor: Actor, id: string) {
     objectType: 'StageTemplate',
     objectId: id,
     payload: { title: item.title },
+  });
+}
+
+/**
+ * Настройки уведомлений текущего человека.
+ *
+ * Своя учётная запись — единственное, что здесь читается, и выборка
+ * ограничена ею по построению. Прежде экран настроек читал это своим
+ * запросом к базе (решение Р-185).
+ */
+export async function ownChannels(actor: Actor) {
+  return prisma.user.findUniqueOrThrow({
+    where: { id: actor.id },
+    select: {
+      email: true,
+      notifyEmail: true,
+      notifyTelegram: true,
+      telegramChatId: true,
+      consentAcceptedAt: true,
+    },
+  });
+}
+
+/**
+ * Каналы уведомлений: выбор за получателем, а не за системой.
+ *
+ * Правка ограничена своей учётной записью по построению — чужой
+ * идентификатор сюда не передаётся вовсе (решение Р-185).
+ */
+export async function saveOwnChannels(
+  actor: Actor,
+  channels: { email: boolean; telegram: boolean },
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: actor.id },
+    data: { notifyEmail: channels.email, notifyTelegram: channels.telegram },
   });
 }

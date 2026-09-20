@@ -12,6 +12,9 @@
 
 import { ensure, type Actor } from './access.ts';
 import { prisma } from '../db.ts';
+import { toCsv } from './csv.ts';
+import { actionCodes } from './journal-labels.ts';
+
 
 export interface JournalFilter {
   readonly from?: Date | null;
@@ -118,34 +121,18 @@ export async function journalActors(actor: Actor) {
   });
 }
 
-/** Виды действий, встречающиеся в журнале, — для фильтра без ручного ввода. */
-export async function journalActions(actor: Actor): Promise<string[]> {
+/**
+ * Виды действий для отбора — из словаря названий, а не обходом журнала.
+ *
+ * Право проверяется по-прежнему: перечень действий говорит, что вообще
+ * умеет система, и посторонним он не нужен (решение Р-186).
+ */
+export function journalActions(actor: Actor): string[] {
   ensure(actor, 'AUDIT_VIEW');
-  const rows = await prisma.auditEvent.findMany({
-    distinct: ['action'],
-    select: { action: true },
-    orderBy: { action: 'asc' },
-  });
-  return rows.map((row) => row.action);
+  return actionCodes();
 }
 
-/**
- * Выгрузка в CSV.
- *
- * Поле, начинающееся со знака равенства, плюса, минуса или собаки,
- * табличный редактор исполнит как формулу. Такие значения предваряются
- * апострофом: выгрузка журнала не должна становиться способом выполнить
- * что-то на машине проверяющего.
- */
-export function toCsv(rows: readonly (readonly string[])[]): string {
-  const escape = (value: string): string => {
-    const guarded = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
-    return `"${guarded.replace(/"/g, '""')}"`;
-  };
-  // Метка порядка байтов: без неё табличный редактор читает кириллицу
-  // в кодировке системы и показывает мусор.
-  return `﻿${rows.map((row) => row.map(escape).join(';')).join('\r\n')}\r\n`;
-}
+export { toCsv };
 
 export function formatMoment(value: Date): string {
   return value.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });

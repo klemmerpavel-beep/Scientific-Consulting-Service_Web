@@ -15,6 +15,17 @@ export interface MailResult {
   readonly error?: string;
 }
 
+/**
+ * Настроен ли канал почты.
+ *
+ * Состояние общее для всех: оно не зависит ни от адреса, ни от того, есть
+ * ли такая учётная запись. Поэтому спрашивать его можно до поиска человека
+ * в базе — и отвечать честно, ничего о нём не раскрывая.
+ */
+export function mailConfigured(): boolean {
+  return Boolean(process.env.SMTP_HOST);
+}
+
 /** Общие настройки транспорта. Сроки те же, что у доставки заявок. */
 function transport() {
   const host = process.env.SMTP_HOST;

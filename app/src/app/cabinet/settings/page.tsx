@@ -9,13 +9,15 @@ import {
   Form,
   FormActions,
   Heading,
-  Mono,
+  Narrow,
   Notice,
+  ScreenHead,
   Text,
+  formatDate,
 } from '../../../components/cabinet/ui';
 import { createTelegramBindLink } from '../../../lib/cabinet/auth';
+import { ownChannels } from '../../../lib/cabinet/admin';
 import { currentActor } from '../../../lib/cabinet/session';
-import { prisma } from '../../../lib/db';
 import { dropTelegram, saveNotificationChannels } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -30,16 +32,7 @@ export default async function SettingsScreen({
 
   const [params, user] = await Promise.all([
     searchParams,
-    prisma.user.findUniqueOrThrow({
-      where: { id: actor.id },
-      select: {
-        email: true,
-        notifyEmail: true,
-        notifyTelegram: true,
-        telegramChatId: true,
-        consentAcceptedAt: true,
-      },
-    }),
+    ownChannels(actor),
   ]);
 
   const bound = user.telegramChatId !== null;
@@ -47,11 +40,8 @@ export default async function SettingsScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/settings">
-      <div style={{ maxWidth: 680 }}>
-        <Mono>Уведомления</Mono>
-        <Heading level={1} style={{ margin: '12px 0 12px' }}>
-          Как сообщать о ходе работы
-        </Heading>
+      <Narrow width={680}>
+        <ScreenHead title="Как сообщать о ходе работы" />
         <Text style={{ marginBottom: 24 }}>
           Уведомления приходят о том, что требует действия: этап ждёт материалов, материал готов к
           согласованию, приближается срок. Содержание переписки наружу не пересылается.
@@ -117,11 +107,11 @@ export default async function SettingsScreen({
         {user.consentAcceptedAt === null ? null : (
           <Text muted size={13} style={{ marginTop: 24 }}>
             Согласие на обработку персональных данных принято{' '}
-            {user.consentAcceptedAt.toISOString().slice(0, 10)}. Отозвать его и потребовать
-            удаления данных можно письмом менеджеру.
+            {formatDate(user.consentAcceptedAt)}. Отозвать его и потребовать удаления данных
+            можно письмом менеджеру.
           </Text>
         )}
-      </div>
+      </Narrow>
     </Shell>
   );
 }

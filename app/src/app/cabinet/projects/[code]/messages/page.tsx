@@ -1,14 +1,14 @@
 import { notFound, redirect } from 'next/navigation';
 
 import Shell from '../../../../../components/cabinet/Shell';
-import { MONO } from '../../../../../components/cabinet/tokens';
 import {
   Button,
   Card,
   Field,
   Form,
   FormActions,
-  Heading,
+  Narrow,
+  ScreenHead,
   Thread,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
@@ -49,20 +49,13 @@ export default async function MessagesScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
-      <div style={{ maxWidth: 780 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <a
-            href={`/cabinet/projects/${project.code}`}
-            className="cab-mark"
-            style={{ fontFamily: MONO, fontSize: 12 }}
-          >
-            {project.code}
-          </a>
-        </div>
-
-        <Heading level={1} style={{ margin: '16px 0 24px' }}>
-          Переписка: {project.title}
-        </Heading>
+      <Narrow width={780}>
+        <ScreenHead
+          backHref={`/cabinet/projects/${project.code}`}
+          backLabel={project.code}
+          title="Переписка"
+          note={project.title}
+        />
 
         <Card>
           <Thread messages={messages} viewer={actor} flagContacts={mayModerate} />
@@ -83,7 +76,7 @@ export default async function MessagesScreen({
             </FormActions>
           </Form>
         </Card>
-      </div>
+      </Narrow>
     </Shell>
   );
 }

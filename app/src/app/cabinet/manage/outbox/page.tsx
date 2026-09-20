@@ -1,16 +1,15 @@
-import { redirect } from 'next/navigation';
-
-import Shell from '../../../../components/cabinet/Shell';
 import {
-  Button,
+  redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import {   Button,
   Card,
   Chip,
   Empty,
   Form,
   Heading,
-  Mono,
+  ScreenHead,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
+  TABLE_NUM,
   Text,
   Tile,
   Tiles,
@@ -44,16 +43,10 @@ export default async function OutboxScreen() {
 
   return (
     <Shell actor={actor} current="/cabinet/manage/outbox">
-      <Mono>Уведомления</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        Очередь отправки
-      </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
-        Два разных пути. Уведомления кабинета копятся в очереди и уходят рассылкой раз в минуту.
-        Обращения с сайта не ждут очереди: их отправляет сам приём заявки, а исход записывает
-        в журнал доставки — он ниже. Заявка сохраняется в любом случае, доставка лишь ускоряет
-        ответ.
-      </Text>
+      <ScreenHead
+        title="Очередь отправки"
+        note="Два разных пути. Уведомления кабинета копятся в очереди и уходят рассылкой раз в минуту. Обращения с сайта не ждут очереди: их отправляет сам приём заявки, а исход записывает в журнал доставки — он ниже."
+      />
 
       <Heading level={2} style={{ margin: '0 0 12px' }}>
         Уведомления кабинета
@@ -96,7 +89,7 @@ export default async function OutboxScreen() {
             : undefined}
         </Empty>
       ) : (
-        <Card style={{ padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Недоставленные уведомления">
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
             <thead>
               <tr>
@@ -122,7 +115,7 @@ export default async function OutboxScreen() {
                   <td style={TABLE_CELL}>
                     <Chip>{CHANNEL_LABEL[row.channel] ?? row.channel}</Chip>
                   </td>
-                  <td style={TABLE_CELL}>{row.attempts}</td>
+                  <td style={TABLE_NUM}>{row.attempts}</td>
                   <td style={TABLE_CELL}>
                     <Text muted style={{ margin: 0 }}>
                       {row.lastError ?? 'причина не записана'}
@@ -138,7 +131,7 @@ export default async function OutboxScreen() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       <Text muted style={{ marginTop: 20 }}>
@@ -191,7 +184,7 @@ export default async function OutboxScreen() {
           </Text>
         </Card>
       ) : (
-        <Card style={{ padding: 0, overflowX: 'auto', marginTop: 20 }}>
+        <TableCard label="Отказы по обращениям" style={{ marginTop: 20 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 780 }}>
             <thead>
               <tr>
@@ -223,7 +216,7 @@ export default async function OutboxScreen() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       <Text muted size={13} style={{ marginTop: 12 }}>

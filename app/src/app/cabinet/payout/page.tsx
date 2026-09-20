@@ -1,7 +1,19 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
-import { Card, Chip, Empty, Heading, Mono, Text, formatDate } from '../../../components/cabinet/ui';
+import { MONO } from '../../../components/cabinet/tokens';
+import {
+  Empty,
+  ScreenHead,
+  TABLE_CELL,
+  TABLE_HEAD,
+  TABLE_NUM,
+  TABLE_NUM_HEAD,
+  TableCard,
+  Tile,
+  Tiles,
+  formatDate,
+} from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { ownPayouts } from '../../../lib/cabinet/finance';
 import { formatAmount } from '../../../lib/cabinet/money';
@@ -23,72 +35,60 @@ export default async function PayoutScreen() {
 
   return (
     <Shell actor={actor} current="/cabinet/payout">
-      <Mono>Вознаграждение</Mono>
-      <Heading level={1} style={{ margin: '12px 0 24px' }}>
-        Начислено и выплачено
-      </Heading>
+      <ScreenHead
+        title="Начислено и выплачено"
+        note="Начисления ставит практика по этапу или работе целиком."
+      />
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        {[
-          { label: 'Начислено', value: accrued },
-          { label: 'Выплачено', value: paid },
-          { label: 'К выплате', value: accrued - paid },
-        ].map((tile) => (
-          <Card key={tile.label}>
-            <Mono>{tile.label}</Mono>
-            <Text
-              size={22}
-              style={{ marginTop: 8, color: 'var(--pd-ink)', fontVariantNumeric: 'tabular-nums' }}
-            >
-              {formatAmount(tile.value)}
-            </Text>
-          </Card>
-        ))}
-      </div>
+      {/* Плитка была переписана здесь вручную, и числа разошлись с общей
+          частью: 180 против 190 в минимальной ширине, 24 против 28 в
+          отступе (решение Р-172). */}
+      <Tiles>
+        <Tile label="Начислено" value={formatAmount(accrued)} />
+        <Tile label="Выплачено" value={formatAmount(paid)} />
+        <Tile label="К выплате" value={formatAmount(accrued - paid)} />
+      </Tiles>
 
       {rows.length === 0 ? (
         <Empty title="Начислений пока нет">Появятся, когда практика начислит их по этапу или работе.</Empty>
       ) : (
-        <Card>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
-            {rows.map((row) => (
-              <li
-                key={row.id}
-                style={{
-                  display: 'flex',
-                  gap: 16,
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  borderBottom: '1px solid var(--pd-divider)',
-                  paddingBottom: 14,
-                }}
-              >
-                <div style={{ flex: '1 1 260px' }}>
-                  <Text size={15} style={{ color: 'var(--pd-ink)' }}>
-                    {row.project.code} · {row.project.title}
-                  </Text>
-                  <Text muted size={13} style={{ marginTop: 2 }}>
-                    {row.stage?.title ?? 'по проекту в целом'}
-                    {row.comment === null ? '' : ` · ${row.comment}`}
-                  </Text>
-                </div>
-                <Chip tone={row.status === 'PAID' ? 'accent' : 'neutral'}>
-                  {row.status === 'PAID' ? `выплачено ${formatDate(row.paidOn)}` : 'начислено'}
-                </Chip>
-                <Text size={16} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {formatAmount(row.amount)}
-                </Text>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        // Суммы шли строкой во flex и друг под другом по разряду не
+        // вставали: сравнить их глазом было нельзя. Таблица ставит их в
+        // столбец, как на прочих денежных экранах.
+        <TableCard label="Начисления по работам">
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+            <thead>
+              <tr>
+                <th style={TABLE_HEAD} scope="col">Работа</th>
+                <th style={TABLE_HEAD} scope="col">За что</th>
+                <th style={TABLE_HEAD} scope="col">Состояние</th>
+                <th style={TABLE_NUM_HEAD} scope="col">Сумма, ₽</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td style={TABLE_CELL}>
+                    <a href={`/cabinet/projects/${row.project.code}`}>{row.project.title}</a>
+                    <div style={{ fontFamily: MONO, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                      {row.project.code}
+                    </div>
+                  </td>
+                  <td style={TABLE_CELL}>
+                    {row.stage?.title ?? 'по работе в целом'}
+                    {row.comment === null ? null : (
+                      <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{row.comment}</div>
+                    )}
+                  </td>
+                  <td style={TABLE_CELL}>
+                    {row.status === 'PAID' ? `выплачено ${formatDate(row.paidOn)}` : 'начислено'}
+                  </td>
+                  <td style={TABLE_NUM}>{formatAmount(row.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableCard>
       )}
     </Shell>
   );

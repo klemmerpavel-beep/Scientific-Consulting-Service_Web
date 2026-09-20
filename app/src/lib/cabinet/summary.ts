@@ -7,7 +7,7 @@
  * финансового контура; новое только сведение и ставка издержек.
  */
 
-import { ensure, type Actor } from './access.ts';
+import { can, ensure, type Actor } from './access.ts';
 import { financeSummary } from './finance.ts';
 import { prisma } from '../db.ts';
 import { scopeProjects } from './access.ts';
@@ -48,9 +48,14 @@ export interface ActiveWork {
   readonly title: string;
   readonly client: string;
   readonly dueOn: Date | null;
-  readonly contracted: bigint;
-  readonly received: bigint;
-  readonly outstanding: bigint;
+  /**
+   * Деньги стоят `null` у того, кому они не открыты. Поля нет в объекте по
+   * значению, а не по условию в разметке: показать нечего, даже если
+   * разметку перепишут (тот же порядок, что у `present*` в `access.ts`).
+   */
+  readonly contracted: bigint | null;
+  readonly received: bigint | null;
+  readonly outstanding: bigint | null;
   readonly stage: string | null;
   readonly stageState: string | null;
 }
@@ -58,12 +63,19 @@ export interface ActiveWork {
 /**
  * Перечень действующих работ.
  *
- * Руководителю нужен не архив, а то, что в работе: сколько осталось
- * получить и на каком этапе каждая. Сортировка по сроку — ближайший
- * сверху; работы без срока уходят вниз.
+ * Нужен не архив, а то, что в работе: на каком этапе каждая и когда срок.
+ * Сортировка по сроку — ближайший сверху; работы без срока уходят вниз.
+ *
+ * Выборку видят обе служебные роли, и каждая — своё: `scopeProjects`
+ * оставляет менеджеру работы, где он куратор (Р-149). Прежде перечень был
+ * закрыт правом на маржу целиком, и менеджеру главный экран показывал два
+ * блока на половину окна, а вторая половина пустовала (решение Р-175).
+ * Деньги по-прежнему за правом на маржу — но снимаются из строки, а не
+ * запирают перечень.
  */
 export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
-  ensure(actor, 'MARGIN_VIEW');
+  ensure(actor, 'PROJECT_VIEW');
+  const money = can(actor, 'MARGIN_VIEW');
   const scope = scopeProjects(actor);
 
   const projects = await prisma.project.findMany({
@@ -90,11 +102,11 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
       title: project.title,
       client: project.client.fullName,
       dueOn: project.dueOn,
-      contracted,
-      received,
+      contracted: money ? contracted : null,
+      received: money ? received : null,
       // Переплату в задолженность не записываем: остаток не бывает
       // отрицательным (то же правило, что в финансовом контуре).
-      outstanding: contracted > received ? contracted - received : 0n,
+      outstanding: money ? (contracted > received ? contracted - received : 0n) : null,
       stage: current?.title ?? null,
       stageState: current?.state ?? null,
     };
@@ -105,6 +117,111 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
     if (b.dueOn === null) return -1;
     return a.dueOn.getTime() - b.dueOn.getTime();
   });
+}
+
+/** Сколько работ в каждом состоянии и сколько из них со сроком в прошлом. */
+export interface LoadPoint {
+  readonly key: string;
+  readonly label: string;
+  readonly count: number;
+}
+
+/** Этап, срок которого наступает в ближайшие две недели. */
+export interface DueSoon {
+  readonly id: string;
+  readonly code: string;
+  readonly stage: string;
+  readonly client: string;
+  readonly dueOn: Date;
+}
+
+/**
+ * Окно ближайших сроков — две недели.
+ *
+ * Неделя коротка: при сроках, назначаемых по этапам в месяц, в окно
+ * попадает один-два этапа, и перечень не говорит ничего о месяце. Месяц
+ * длинен: в него попадает всё подряд, и срочное перестаёт отличаться от
+ * планового. Две недели — решение заказчика.
+ */
+const SOON_DAYS = 14;
+
+/**
+ * Загрузка практики по состоянию текущего этапа.
+ *
+ * Плитки отвечают на вопрос «сколько денег», но не на вопрос «чем занята
+ * практика»: пять работ в согласовании и пять, ждущих клиента, — это
+ * разные положения дел при одной и той же выручке. Состояние берётся у
+ * первого незавершённого этапа: он и есть то, где работа стоит сейчас
+ * (решение Р-180).
+ */
+export async function stageLoad(
+  actor: Actor,
+  now: Date = new Date(),
+): Promise<{ points: LoadPoint[]; overdue: number; planless: number; soon: DueSoon[] }> {
+  ensure(actor, 'PROJECT_VIEW');
+  const scope = scopeProjects(actor);
+
+  const projects = await prisma.project.findMany({
+    where: { ...(scope ?? {}), status: 'ACTIVE' },
+    select: {
+      code: true,
+      client: { select: { fullName: true } },
+      stages: {
+        orderBy: { position: 'asc' },
+        select: { id: true, title: true, state: true, dueOn: true },
+      },
+    },
+  });
+
+  const counts = new Map<string, number>();
+  const soon: DueSoon[] = [];
+  const horizon = new Date(now.getTime() + SOON_DAYS * 86_400_000);
+  let overdue = 0;
+  let planless = 0;
+
+  for (const project of projects) {
+    const current = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
+    if (project.stages.length === 0) {
+      planless += 1;
+      continue;
+    }
+    const key = current?.state ?? 'DONE';
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+    if (current?.dueOn != null && current.dueOn < now) overdue += 1;
+    // Срок ближайших двух недель берётся у того же текущего этапа: работа
+    // стоит на нём, и его срок — это и есть ближайшее обязательство.
+    // Просроченное сюда не попадает — оно названо выше отдельно.
+    if (current?.dueOn != null && current.dueOn >= now && current.dueOn <= horizon) {
+      soon.push({
+        id: current.id,
+        code: project.code,
+        stage: current.title,
+        client: project.client.fullName,
+        dueOn: current.dueOn,
+      });
+    }
+  }
+
+  soon.sort((a, b) => a.dueOn.getTime() - b.dueOn.getTime());
+
+  // Порядок — ход работы, а не убывание числа: перечень читается как
+  // путь от «не начат» до «на согласовании».
+  const ORDER: readonly { key: string; label: string }[] = [
+    { key: 'NOT_STARTED', label: 'Не начаты' },
+    { key: 'IN_PROGRESS', label: 'В работе' },
+    { key: 'AWAITING_CLIENT', label: 'Ждут клиента' },
+    { key: 'IN_APPROVAL', label: 'На согласовании' },
+    { key: 'DONE', label: 'Все этапы пройдены' },
+  ];
+
+  return {
+    points: ORDER.map((row) => ({ ...row, count: counts.get(row.key) ?? 0 })).filter(
+      (row) => row.count > 0,
+    ),
+    overdue,
+    planless,
+    soon,
+  };
 }
 
 export async function practiceSummary(actor: Actor): Promise<PracticeSummary> {

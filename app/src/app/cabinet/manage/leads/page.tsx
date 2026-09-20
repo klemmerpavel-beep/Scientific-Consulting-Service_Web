@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
 import {
+  Block,
   Button,
   ButtonLink,
   Card,
@@ -12,14 +13,14 @@ import {
   Form,
   FormActions,
   FormRow,
-  Heading,
-  Mono,
+  ScreenHead,
   Select,
   Text,
   formatDate,
   plural,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import {
@@ -71,19 +72,19 @@ export default async function AllLeadsScreen({
   const exportHref = `/cabinet/manage/leads/export${kept.toString() ? `?${kept.toString()}` : ''}`;
 
   return (
-    <Shell actor={actor} current="/cabinet/manage">
-      <Mono>Обращения</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        Все заявки
-      </Heading>
-      <Text muted style={{ marginBottom: 20 }}>
-        Обращения с сайта целиком, включая разобранные. Очередь на «Сводке» показывает только те,
-        что ждут решения. Отзывы сюда не попадают — у них свой порядок.
-      </Text>
+    <Shell actor={actor} current="/cabinet/manage/leads">
+      <ScreenHead
+        backHref="/cabinet/manage"
+        backLabel="к сводке"
+        title="Все заявки"
+        note="Обращения с сайта целиком, включая разобранные. Очередь на «Сводке» показывает только те, что ждут решения. Отзывы сюда не попадают — у них свой порядок."
+      />
 
       {/* Метод get: фильтры остаются в адресе, страницу можно сохранить и
           прислать себе же. Для поиска это важнее, чем аккуратный адрес. */}
-      <Card style={{ marginBottom: 24 }}>
+      {/* Отбор здесь из трёх полей и двух кнопок — это блок, а не полоса:
+          в полосу он встаёт столбиком и читается хуже (решение Р-183). */}
+      <Card style={{ marginBottom: 20 }}>
         <Form method="get">
           <FormRow>
             <Select label="Страница сайта" name="source" defaultValue={filter.source}>
@@ -116,7 +117,7 @@ export default async function AllLeadsScreen({
         </Form>
       </Card>
 
-      <div
+      <Block
         style={{
           display: 'flex',
           gap: 16,
@@ -124,6 +125,7 @@ export default async function AllLeadsScreen({
           flexWrap: 'wrap',
           marginBottom: 12,
         }}
+        as="div"
       >
         <Text style={{ margin: 0 }}>
           Найдено {list.total} {plural(list.total, 'заявка', 'заявки', 'заявок')}
@@ -132,14 +134,22 @@ export default async function AllLeadsScreen({
             : ''}
         </Text>
         {list.total > 0 ? <ButtonLink href={exportHref}>Выгрузить в таблицу</ButtonLink> : null}
-      </div>
+      </Block>
 
       {list.rows.length === 0 ? (
-        <Empty title="Ничего не найдено">
-          Измените условия отбора или сбросьте их — обращения никуда не делись.
+        <Empty
+          title="Ничего не найдено"
+          filters={[
+            filter.source ? `страница — ${LEAD_SOURCE_LABEL[filter.source] ?? filter.source}` : '',
+            filter.status ? `состояние — ${LEAD_STATUS_LABEL[filter.status] ?? filter.status}` : '',
+            filter.query ? `поиск — «${filter.query}»` : '',
+          ]}
+          resetHref="/cabinet/manage/leads"
+        >
+          Обращения никуда не делись — они не подошли под это условие.
         </Empty>
       ) : (
-        <Card style={{ padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Обращения">
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS }}>
             <thead>
               <tr>
@@ -156,7 +166,12 @@ export default async function AllLeadsScreen({
                 <tr key={lead.id}>
                   <td style={TABLE_CELL}>{formatDate(lead.createdAt)}</td>
                   <td style={TABLE_CELL}>{leadSourceLabel(lead.source)}</td>
-                  <td style={TABLE_CELL}>{lead.name ?? '—'}</td>
+                  {/* Имя ведёт на разбор: экран заявки заведён решением
+                      Р-172, но ссылки на него отсюда не было вовсе, и
+                      попасть туда можно было только со сводки (Р-183). */}
+                  <td style={TABLE_CELL}>
+                    <a href={`/cabinet/manage/leads/${lead.id}`}>{lead.name ?? 'Без имени'}</a>
+                  </td>
                   <td style={TABLE_CELL}>{lead.contact}</td>
                   <td style={TABLE_CELL}>{lead.topic ?? lead.need ?? '—'}</td>
                   <td style={TABLE_CELL}>
@@ -168,7 +183,7 @@ export default async function AllLeadsScreen({
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       {list.pages > 1 ? (
@@ -176,11 +191,19 @@ export default async function AllLeadsScreen({
           aria-label="Страницы перечня"
           style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 20 }}
         >
-          {list.page > 1 ? <a href={pageHref(kept, list.page - 1)}>Предыдущие</a> : null}
+          {list.page > 1 ? (
+            <a className="cab-mark" href={pageHref(kept, list.page - 1)}>
+              Предыдущие
+            </a>
+          ) : null}
           <Text muted style={{ margin: 0 }}>
             Страница {list.page} из {list.pages}
           </Text>
-          {list.page < list.pages ? <a href={pageHref(kept, list.page + 1)}>Следующие</a> : null}
+          {list.page < list.pages ? (
+            <a className="cab-mark" href={pageHref(kept, list.page + 1)}>
+              Следующие
+            </a>
+          ) : null}
         </nav>
       ) : null}
     </Shell>

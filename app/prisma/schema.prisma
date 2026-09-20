@@ -613,6 +613,10 @@ model FileAccessLog {
 
   @@index([versionId, occurredAt])
   @@index([userId, occurredAt])
+  /// Журнал доступа без отбора — свежие строки по всей таблице; составные
+  /// индексы выше на такую выборку не ложатся (решение Р-185).
+  @@index([occurredAt])
+  @@index([action, occurredAt])
 }
 
 // ───────────────────────────── Переписка ───────────────────────────────────
@@ -637,6 +641,12 @@ model Message {
   readAt    DateTime?
 
   @@index([projectId, createdAt])
+  /// Счётчик непрочитанного считается по работе и признаку прочтения:
+  /// без этого индекса он читает всю переписку работы (решение Р-185).
+  @@index([projectId, readAt])
+  /// Помеченные передачей контактов — сводка менеджера: полсотни свежих
+  /// строк из всей переписки практики.
+  @@index([containsContactHint, createdAt])
 }
 
 // ───────────────────────────── Финансы ─────────────────────────────────────
@@ -714,6 +724,8 @@ model ExpertPayout {
 
   @@index([projectId])
   @@index([expertId, status])
+  /// Итоги по годам берут выплаченное по всей практике, без эксперта.
+  @@index([status, paidOn])
 }
 
 // ──────────────────── Уведомления, журналы, импорт ─────────────────────────
@@ -756,6 +768,8 @@ model NotificationOutbox {
   createdAt   DateTime          @default(now())
 
   @@index([state, scheduledAt])
+  /// Сводка очереди: ушедшее за сутки и время последней отправки.
+  @@index([state, sentAt])
 }
 
 /// Журнал действий. Запись выполняется явным вызовом в сервисном слое:
@@ -785,8 +799,6 @@ model YearlyFinance {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([year])
 }
 
 model AuditEvent {

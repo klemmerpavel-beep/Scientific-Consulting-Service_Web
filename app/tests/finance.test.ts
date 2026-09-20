@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { formatAmount, parseAmount } from '../src/lib/cabinet/money.ts';
+import { formatAmount, formatRounded, parseAmount } from '../src/lib/cabinet/money.ts';
 
 describe('разбор введённой суммы', () => {
   const cases: [string, bigint][] = [
@@ -45,6 +45,17 @@ describe('показ суммы', () => {
 
   it('отсутствие суммы отличается от нуля', () => {
     assert.equal(formatAmount(null), '—');
+  });
+
+  it('величина, полученная делением, округляется до рубля', () => {
+    // Средний чек и медиана копеек не несут: они получены делением, и
+    // три лишних знака обещают точность, которой у них нет (Р-182).
+    assert.equal(formatRounded(9_601_851n), '96 019 ₽');
+    assert.equal(formatRounded(9_601_849n), '96 018 ₽');
+    assert.equal(formatRounded(9_601_850n), '96 019 ₽');
+    assert.equal(formatRounded(0n), '0 ₽');
+    assert.equal(formatRounded(-9_601_851n), '−96 019 ₽');
+    assert.equal(formatRounded(null), '—');
     assert.equal(formatAmount(0n), '0 ₽');
   });
 });

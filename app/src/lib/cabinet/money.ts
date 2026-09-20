@@ -44,6 +44,23 @@ export function formatPlain(kopecks: bigint | number | null | undefined): string
   return full === '—' ? full : full.replace(/\s*₽$/u, '');
 }
 
+/**
+ * Сумма, округлённая до рубля.
+ *
+ * Копейки честны там, где они есть в договоре, и лишние там, где величина
+ * получена делением: средний чек «96 018,51 ₽» обещает точность, которой
+ * у него нет, и удлиняет число на три знака (решение Р-182).
+ */
+export function formatRounded(kopecks: bigint | number | null | undefined): string {
+  if (kopecks === null || kopecks === undefined) return '—';
+  const value = typeof kopecks === 'bigint' ? kopecks : BigInt(Math.round(kopecks));
+  const negative = value < 0n;
+  const abs = negative ? -value : value;
+  // Половина рубля и выше округляется вверх — обычное правило округления.
+  const rubles = (abs + 50n) / 100n;
+  return formatAmount((negative ? -rubles : rubles) * 100n);
+}
+
 export function formatAmount(kopecks: bigint | number | null | undefined): string {
   if (kopecks === null || kopecks === undefined) return '—';
   const value = typeof kopecks === 'bigint' ? kopecks : BigInt(Math.round(kopecks));

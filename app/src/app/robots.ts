@@ -14,7 +14,12 @@ export default function robots(): MetadataRoute.Robots {
   return {
     // Кабинет закрыт вторым рубежом: мета-тег `noindex` стоит в разметке
     // раздела, но робот, читающий только robots.txt, о нём не узнает.
-    rules: [{ userAgent: '*', allow: '/', disallow: ['/api/', '/cabinet/'] }],
+    //
+    // `/cabinet-preview/` — прототип кабинета, открытый по ссылке для
+    // приёмки (решение Р-174). Правило `/cabinet/` его не покрывает: это
+    // другой путь. В выдаче ему делать нечего — снимки экранов перебили бы
+    // настоящие страницы сайта.
+    rules: [{ userAgent: '*', allow: '/', disallow: ['/api/', '/cabinet/', '/cabinet-preview/'] }],
     sitemap: base ? `${base}/sitemap.xml` : undefined,
   };
 }

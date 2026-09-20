@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import type { Actor } from '../../lib/cabinet/access.ts';
 import { BUTTON_QUIET, CONTAINER, GUTTER, MONO, SANS, SERIF } from './tokens.ts';
+import { activeItem, navFor, type NavItem } from '../../lib/cabinet/nav.ts';
 
 /**
  * Каркас раздела: шапка с вордмарком и навигацией, рабочая область, подвал
@@ -51,67 +52,45 @@ function Wordmark() {
   );
 }
 
-export interface NavItem {
-  readonly href: string;
-  readonly label: string;
-}
 
-/**
- * Разделы роли.
- *
- * Первый ряд навигации занят работой: у клиента — его работы, у штатных
- * ролей — то, что требует вмешательства, работы, деньги и аналитика.
- * Служебный контур в этот ряд не выносится (решение Р-140) и собран за
- * одним пунктом «Управление» (решение Р-158): перенос книги заказов,
- * журналы, очередь уведомлений, учётные записи, справочники, реестры,
- * удаление данных субъекта.
- */
-export function navFor(actor: Actor): NavItem[] {
-  const settings: NavItem = { href: '/cabinet/settings', label: 'Уведомления' };
-  if (actor.role === 'CLIENT') {
-    return [
-      { href: '/cabinet/projects', label: 'Мои работы' },
-      { href: '/cabinet/request', label: 'Новая заявка' },
-      settings,
-    ];
-  }
-  if (actor.role === 'EXPERT') {
-    return [
-      { href: '/cabinet/projects', label: 'Назначенные работы' },
-      { href: '/cabinet/payout', label: 'Вознаграждение' },
-      settings,
-    ];
-  }
-  // Главный экран у ролей разный по существу: руководителю — сводка
-  // практики с деньгами, менеджеру — то, что требует вмешательства по его
-  // работам (решение Р-149). Маршрут один, название честное для каждой.
-  const staff: NavItem[] = [
-    { href: '/cabinet/manage', label: actor.role === 'HEAD' ? 'Сводка' : 'Требует внимания' },
-    { href: '/cabinet/projects', label: 'Работы' },
-  ];
-  if (actor.role === 'HEAD') {
-    staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
-    staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
-  }
-  // Служебный контур — реестры, учётные записи, справочники, перенос книги,
-  // журналы, очередь уведомлений, удаление данных — собран за одним пунктом
-  // (решение Р-158). В первый ряд эти разделы не выносятся по Р-140: они
-  // нужны изредка. Но и доступными только по набранному вручную адресу они
-  // быть не должны — о них тогда знает лишь тот, кто писал код.
-  staff.push({ href: '/cabinet/manage/tools', label: 'Управление' });
-  return [...staff, settings];
-}
+export { navFor, activeItem };
+export type { NavItem };
 
 export default function Shell({
   actor,
   current,
+  center = false,
+  board = false,
   children,
 }: {
   actor: Actor | null;
   current?: string;
+  /**
+   * Содержимое стоит по центру оставшейся высоты. Нужно экрану входа: там
+   * одна форма, и прижатая к верху она читается обрывком страницы. Обычные
+   * экраны длиннее окна, и центрировать в них нечего (решение Р-166).
+   */
+  center?: boolean;
+  /**
+   * Панель: готовность, план, материалы и переписка стоят рядом, а не
+   * лентой (решение Р-169).
+   *
+   * Прежде панель занимала ровно окно и не прокручивалась вовсе. При окне
+   * ниже девятисот пикселей это ужимало колонки до нечитаемого — тело
+   * переписки выходило в тридцать два пикселя, полторы строки плана, — а
+   * форма отправки выдавливалась из карточки и налезала на свёртку под
+   * ней. Теперь высота колонки ограничена сверху, но не снизу: короткое
+   * содержимое видно целиком, длинное прокручивается внутри, а страница
+   * получает небольшую прокрутку (решение Р-180).
+   *
+   * Отступы `clamp` рассчитаны на страницу-ленту, где под последним блоком
+   * нужен воздух; панели столько не нужно, и на ней отступы ровнее.
+   */
+  board?: boolean;
   children: ReactNode;
 }) {
   const items = actor === null ? [] : navFor(actor);
+  const active = activeItem(items, current ?? '');
   return (
     <>
       <a className="pd-skip" href="#main">
@@ -155,7 +134,7 @@ export default function Shell({
                   <li key={item.href}>
                     <a
                       href={item.href}
-                      aria-current={current === item.href ? 'page' : undefined}
+                      aria-current={item.href === active ? 'page' : undefined}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -199,12 +178,19 @@ export default function Shell({
 
       <main
         id="main"
-        className="cab-pad"
+        className={board ? 'cab-pad cab-board-main' : 'cab-pad'}
         style={{
           boxSizing: 'border-box',
+          width: '100%',
           maxWidth: CONTAINER,
           margin: '0 auto',
-          padding: `clamp(32px,4vw,56px) ${GUTTER}px clamp(72px,7vw,112px)`,
+          padding: board
+            ? `24px ${GUTTER}px 40px`
+            : `clamp(32px,4vw,56px) ${GUTTER}px clamp(72px,7vw,112px)`,
+          ...(center
+            ? { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+            : {}),
+          ...(board ? { display: 'flex', flexDirection: 'column' } : {}),
         }}
       >
         {children}

@@ -12,14 +12,21 @@ import {
   FormActions,
   FormRow,
   Heading,
-  Mono,
+  ScreenHead,
   Select,
   TABLE_CELL,
   TABLE_HEAD,
+  TableCard,
   Tabs,
   Text,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
+import {
+  actionLabel,
+  detailsLabel,
+  objectLabel,
+  roleLabel,
+} from '../../../../lib/cabinet/journal-labels';
 import {
   auditEvents,
   fileAccessEvents,
@@ -86,15 +93,14 @@ export default async function AuditScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/manage/audit">
-      <Mono>Журналы</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        {files ? 'Доступ к файлам' : 'Журнал действий'}
-      </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
-        {files
-          ? 'Каждая выдача файла клиента отражена строкой: кто, что и когда получил. Журнал ведётся отдельно от журнала действий — он растёт быстрее и нужен при разборе утечки.'
-          : 'Кто и что изменил. Действующее лицо хранится идентификатором, содержимое — изменившимися полями: персональные данные сверх необходимого в журнал не пишутся.'}
-      </Text>
+      <ScreenHead
+        title={files ? 'Доступ к файлам' : 'Журнал действий'}
+        note={
+          files
+            ? 'Каждая выдача файла клиента отражена строкой: кто, что и когда получил. Журнал ведётся отдельно от журнала действий — он растёт быстрее и нужен при разборе утечки.'
+            : 'Кто и что изменил. Действующее лицо хранится идентификатором, содержимое — изменившимися полями: персональные данные сверх необходимого в журнал не пишутся.'
+        }
+      />
 
       <Tabs
         label="Виды журналов"
@@ -108,8 +114,23 @@ export default async function AuditScreen({
         <Form method="get">
           {files ? <input type="hidden" name="kind" value="files" /> : null}
           <FormRow>
-            <Field label="С даты" name="from" type="date" defaultValue={query.from ?? ''} />
-            <Field label="По дату" name="to" type="date" defaultValue={query.to ?? ''} />
+            {/* Формат даты в поле задаёт браузер по настройкам системы, и
+                сайт его не меняет: подпись называет ожидаемый порядок
+                частей, чтобы «05.09» не прочиталось как май (Р-179). */}
+            <Field
+              label="С даты"
+              name="from"
+              type="date"
+              defaultValue={query.from ?? ''}
+              hint="день, месяц, год"
+            />
+            <Field
+              label="По дату"
+              name="to"
+              type="date"
+              defaultValue={query.to ?? ''}
+              hint="день, месяц, год"
+            />
             <Select label="Действующее лицо" name="actorId" defaultValue={query.actorId ?? ''}>
               <option value="">все</option>
               {actors.map((person) => (
@@ -122,7 +143,7 @@ export default async function AuditScreen({
               <option value="">любое</option>
               {(files ? Object.keys(FILE_ACTION_LABEL) : actions).map((value) => (
                 <option key={value} value={value}>
-                  {files ? FILE_ACTION_LABEL[value] : value}
+                  {files ? FILE_ACTION_LABEL[value] : actionLabel(value)}
                 </option>
               ))}
             </Select>
@@ -144,7 +165,7 @@ export default async function AuditScreen({
         accesses.length === 0 ? (
           <Empty title="Записей нет">За выбранный период файлы не выдавались.</Empty>
         ) : (
-          <Card style={{ padding: 0, overflowX: 'auto' }}>
+          <TableCard label="Выдача файлов">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
               <thead>
                 <tr>
@@ -178,12 +199,12 @@ export default async function AuditScreen({
                 ))}
               </tbody>
             </table>
-          </Card>
+          </TableCard>
         )
       ) : events.length === 0 ? (
         <Empty title="Записей нет">За выбранный период действий не совершалось.</Empty>
       ) : (
-        <Card style={{ padding: 0, overflowX: 'auto' }}>
+        <TableCard label="Действия в кабинете">
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
             <thead>
               <tr>
@@ -200,21 +221,25 @@ export default async function AuditScreen({
                   <td style={TABLE_CELL}>{formatMoment(event.occurredAt)}</td>
                   <td style={TABLE_CELL}>
                     {event.actor?.fullName ?? 'система'}
-                    <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{event.actorRole ?? ''}</div>
+                    <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                      {event.actorRole === null ? '' : roleLabel(event.actorRole)}
+                    </div>
                   </td>
-                  <td style={TABLE_CELL}>{event.action}</td>
+                  {/* Машинный код остаётся в выгрузке CSV — там он по
+                      назначению; на экране стоит название (решение Р-179). */}
+                  <td style={TABLE_CELL}>{actionLabel(event.action)}</td>
                   <td style={TABLE_CELL}>
-                    {event.objectType}
+                    {objectLabel(event.objectType)}
                     <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{event.objectId ?? ''}</div>
                   </td>
                   <td style={{ ...TABLE_CELL, maxWidth: 320, wordBreak: 'break-word' }}>
-                    {event.payload === null ? '—' : JSON.stringify(event.payload)}
+                    {detailsLabel(event.payload)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       <Text muted size={13} style={{ marginTop: 12 }}>

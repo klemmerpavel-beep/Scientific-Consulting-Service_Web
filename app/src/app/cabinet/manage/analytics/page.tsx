@@ -1,10 +1,28 @@
-import { BarChart, DonutChart, Legend, compactMoney, seriesColor } from '../../../../components/cabinet/Charts';
+import {
+  BarChart,
+  DonutChart,
+  Legend,
+  compactMoney,
+  compactNumber,
+  seriesColor,
+} from '../../../../components/cabinet/Charts';
 import { Card, Empty, Heading, Text } from '../../../../components/cabinet/ui';
 import { byMonth, conclusions, overview, products } from '../../../../lib/cabinet/analytics/metrics';
-import { formatAmount } from '../../../../lib/cabinet/money';
-import { ChartCard, Frame, Tile, Tiles, analyticsScreen, share } from './shared';
+import { formatAmount, formatRounded } from '../../../../lib/cabinet/money';
+import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from './shared';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Доля типа в сумме договоров. Целые проценты, без ложной точности; доля
+ * меньше процента пишется словами — «0 %» читалось бы как «ничего», хотя
+ * сумма у такой позиции есть и стоит рядом.
+ */
+function donutShare(value: number, total: number): string {
+  if (total <= 0 || value <= 0) return '—';
+  const percent = (value / total) * 100;
+  return percent < 1 ? 'менее 1 %' : `${Math.round(percent)} %`;
+}
 
 export default async function AnalyticsOverview() {
   const { actor, rows } = await analyticsScreen();
@@ -38,7 +56,7 @@ export default async function AnalyticsOverview() {
             <Tile label="Законтрактовано" value={formatAmount(total.contracted)} note={`${total.projects} проектов, период ${period}`} />
             <Tile label="Получено" value={formatAmount(total.received)} note={`собрано ${share(total.collection)} по завершённым`} />
             <Tile label="Задолженность" value={formatAmount(total.outstanding)} note="остаток по каждой работе, не меньше нуля" />
-            <Tile label="Средний чек" value={formatAmount(total.averageCheck)} note={`клиентов ${total.clients}`} />
+            <Tile label="Средний чек" value={formatRounded(total.averageCheck)} note={`клиентов ${total.clients}`} />
           </Tiles>
 
           <Heading level={2} style={{ marginBottom: 12 }}>
@@ -64,11 +82,39 @@ export default async function AnalyticsOverview() {
           <ChartCard
             title="Законтрактовано по месяцам"
             note="По дате заказа. Месяц без заказов показан нулём, а не пропуском: разрыв читался бы как отсутствие данных."
+            numbers={
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={head} scope="col">Месяц</th>
+                    <th style={{ ...head, textAlign: 'right' }} scope="col">Заказов</th>
+                    <th style={{ ...head, textAlign: 'right' }} scope="col">Законтрактовано</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {months.map((month) => (
+                    <tr key={month.label}>
+                      <td style={cell}>{month.label}</td>
+                      <td style={num}>{month.orders}</td>
+                      <td style={num}>{formatAmount(month.contracted)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            }
           >
+            {/* Величина выражена тысячами рублей, и единица стоит в шкале:
+                подпись «570» вместо «570 тыс» втрое короче, и подписанными
+                оказываются все столбцы, а не каждый третий (решение Р-175). */}
             <BarChart
               title="Законтрактовано по месяцам"
-              data={months.map((month) => ({ label: month.label, value: Number(month.contracted) / 100 }))}
-              format={(value) => compactMoney(BigInt(Math.round(value * 100)))}
+              width={1160}
+              unit="тыс ₽"
+              data={months.map((month) => ({
+                label: month.label,
+                value: Number(month.contracted) / 100_000,
+              }))}
+              format={(value) => compactNumber(value, 0)}
             />
           </ChartCard>
 
@@ -79,18 +125,21 @@ export default async function AnalyticsOverview() {
                   title="Структура по типам сопровождения"
                   center={compactMoney(total.contracted)}
                   centerLabel="всего"
-                  segments={productRows.map((product) => ({
+                  segments={productRows.map((product, index) => ({
                     label: product.typeName,
                     value: Number(product.total),
+                    color: seriesColor(index),
                   }))}
                 />
               </div>
-              <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+              <div style={{ flex: '1 1 300px', minWidth: 0 }}>
                 <Legend
+                  column
                   items={productRows.map((product, index) => ({
                     label: product.typeName,
                     color: seriesColor(index),
                     value: formatAmount(product.total),
+                    share: donutShare(Number(product.total), Number(total.contracted)),
                   }))}
                 />
               </div>

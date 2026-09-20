@@ -16,6 +16,7 @@ import {
   donutArc,
   niceCeil,
   seriesColor,
+  seriesInkDark,
   smoothPath,
   ticks,
   topRoundedBar,
@@ -27,6 +28,15 @@ const MUTED = 'var(--pd-ink-muted)';
 const INK = 'var(--pd-ink)';
 
 const svgStyle: CSSProperties = { width: '100%', height: 'auto', display: 'block' };
+
+/** Маркер ряда в легенде. Набор радиусов закрыт: 6 — подсветка. */
+const swatch: CSSProperties = {
+  width: 12,
+  height: 12,
+  borderRadius: 6,
+  border: '1px solid var(--pd-edge-neutral)',
+  display: 'inline-block',
+};
 
 function Axis({
   padL,
@@ -82,13 +92,28 @@ export function BarChart({
   format = compactNumber,
   title,
   height = 260,
+  width = 720,
+  unit,
 }: {
   data: readonly BarDatum[];
   format?: (value: number) => string;
   title: string;
   height?: number;
+  /**
+   * Ширина поля рисунка. Рисунок растягивается по ширине карточки, и при
+   * поле 720 px в карточке шириной 1160 всё увеличивается в полтора раза:
+   * кегль 12 показывается как 19, а столбцов в ряду помещается в полтора
+   * раза меньше. На широкой карточке поле задаётся по месту (Р-175).
+   */
+  width?: number;
+  /**
+   * Единица величины. Вынесенная в шкалу, она укорачивает подпись над
+   * столбцом с «570 тыс» до «570» — и подписанными оказываются все
+   * столбцы, а не каждый третий.
+   */
+  unit?: string;
 }) {
-  const W = 720;
+  const W = width;
   const H = height;
   const pad = { t: 26, r: 14, b: 36, l: 52 };
   const iw = W - pad.l - pad.r;
@@ -112,12 +137,24 @@ export function BarChart({
    */
   const step = bw + gap;
   const everyLabel = Math.max(1, Math.ceil(46 / step));
-  const everyValue = Math.max(1, Math.ceil(54 / step));
+  // Ширина числа считается по самой длинной подписи ряда, а не берётся
+  // постоянной: «570» занимает втрое меньше «1 250 000 ₽», и мерить их
+  // одной меркой значит прореживать подписи там, где они помещаются все.
+  const valueWidth = Math.max(
+    16,
+    ...data.map((item) => (item.value === 0 ? 0 : format(item.value).length * 7 + 8)),
+  );
+  const everyValue = Math.max(1, Math.ceil(valueWidth / step));
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
       fontFamily={SANS} role="img" aria-label={title}>
       <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} format={format} />
+      {unit === undefined ? null : (
+        <text x={4} y={12} textAnchor="start" fontSize={12} fill={MUTED}>
+          {unit}
+        </text>
+      )}
       {/* Столбцы рисуются первыми, подписи — следом: иначе соседний столбец
           ложится поверх уже написанного числа и срезает его («175 ть»). */}
       {data.map((item, index) => {
@@ -162,13 +199,16 @@ export function RankChart({
   format = compactNumber,
   title,
   labelWidth = 200,
+  width = 720,
 }: {
   data: readonly BarDatum[];
   format?: (value: number) => string;
   title: string;
   labelWidth?: number;
+  /** Ширина поля рисунка; на широкой карточке задаётся по месту (Р-176). */
+  width?: number;
 }) {
-  const W = 720;
+  const W = width;
   const rowH = 30;
   const padR = 92;
   const top = 6;
@@ -236,14 +276,17 @@ export function LineChart({
   format = compactNumber,
   title,
   height = 280,
+  width = 720,
 }: {
   categories: readonly string[];
   series: readonly Series[];
   format?: (value: number) => string;
   title: string;
   height?: number;
+  /** Ширина поля рисунка; на широкой карточке задаётся по месту (Р-176). */
+  width?: number;
 }) {
-  const W = 720;
+  const W = width;
   const H = height;
   const pad = { t: 26, r: 16, b: 34, l: 52 };
   const iw = W - pad.l - pad.r;
@@ -252,8 +295,17 @@ export function LineChart({
   const xAt = (index: number): number =>
     pad.l + (categories.length <= 1 ? iw / 2 : (index / (categories.length - 1)) * iw);
   const yAt = (value: number): number => pad.t + ih - (value / max) * ih;
-  // Подписи месяцев на узком экране сливаются: показывается каждая n-я.
-  const step = Math.ceil(categories.length / 12);
+  /**
+   * Прореживание подписей — то же правило, что у столбчатой диаграммы.
+   *
+   * Прежде шаг задавался числом («не больше двенадцати подписей») и не
+   * зависел ни от ширины поля, ни от длины метки, а отсчёт вёлся от
+   * начала ряда: на тридцати двух месяцах подписанным оказывался каждый
+   * третий начиная с первого, и самый свежий месяц — тот, ради которого
+   * на график и смотрят, — оставался без подписи (решение Р-176).
+   */
+  const gapX = categories.length <= 1 ? iw : iw / (categories.length - 1);
+  const everyLabel = Math.max(1, Math.ceil(46 / gapX));
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
@@ -282,8 +334,18 @@ export function LineChart({
         );
       })}
       {categories.map((category, index) =>
-        index % step === 0 ? (
-          <text key={category} x={xAt(index)} y={H - 10} textAnchor="middle" fontSize={12} fill={MUTED}>
+        (categories.length - 1 - index) % everyLabel === 0 ? (
+          <text
+            key={`tick-${category}-${index}`}
+            x={xAt(index)}
+            y={H - 10}
+            /* Крайние подписи якорятся по краю поля: центрированная
+               подпись последней точки наполовину уходила за границу
+               рисунка и обрезалась («сен 2»). */
+            textAnchor={index === 0 ? 'start' : index === categories.length - 1 ? 'end' : 'middle'}
+            fontSize={12}
+            fill={MUTED}
+          >
             {category}
           </text>
         ) : null,
@@ -319,9 +381,14 @@ export function DonutChart({
   const total = segments.reduce((acc, segment) => acc + segment.value, 0);
 
   let angle = -Math.PI / 2;
+  // Цвет назначается по месту в исходном ряду, а не в отобранном: пока
+  // индекс считался после отбрасывания пустых секторов, первый же тип с
+  // нулевой суммой сдвигал цвета всех последующих относительно легенды
+  // (решение Р-175).
   const arcs = segments
-    .filter((segment) => segment.value > 0)
-    .map((segment, index) => {
+    .map((segment, index) => ({ segment, index }))
+    .filter(({ segment }) => segment.value > 0)
+    .map(({ segment, index }) => {
       const to = angle + (segment.value / total) * Math.PI * 2;
       const path = donutArc(cx, cy, outer, inner, angle, to);
       angle = to;
@@ -346,7 +413,7 @@ export function DonutChart({
               d={path}
               fill={segment.color ?? seriesColor(index)}
               stroke="var(--pd-ink-inverse)"
-              strokeWidth={2}
+              strokeWidth={1}
             >
               <title>{`${segment.label}: ${Math.round((segment.value / total) * 100)} %`}</title>
             </path>
@@ -364,8 +431,17 @@ export function DonutChart({
 }
 
 /** Полоса долей: сегменты клиентов, структура портфеля. */
-export function StackBar({ segments, title }: { segments: readonly Segment[]; title: string }) {
-  const W = 720;
+export function StackBar({
+  segments,
+  title,
+  width = 720,
+}: {
+  segments: readonly Segment[];
+  title: string;
+  /** Ширина поля рисунка; на широкой карточке задаётся по месту (Р-176). */
+  width?: number;
+}) {
+  const W = width;
   const H = 18;
   const total = segments.reduce((acc, segment) => acc + segment.value, 0);
   let x = 0;
@@ -399,7 +475,7 @@ export function StackBar({ segments, title }: { segments: readonly Segment[]; ti
                   y={H / 2 + 4}
                   textAnchor="middle"
                   fontSize={12}
-                  fill={index % 4 === 2 ? INK : 'var(--pd-ink-inverse)'}
+                  fill={seriesInkDark(index) ? INK : 'var(--pd-ink-inverse)'}
                 >
                   {share} %
                 </text>
@@ -413,8 +489,55 @@ export function StackBar({ segments, title }: { segments: readonly Segment[]; ti
   );
 }
 
-/** Подпись под графиком: цвет — ряд. */
-export function Legend({ items }: { items: readonly { label: string; color: string; value?: string }[] }) {
+/**
+ * Подпись под графиком: цвет — ряд.
+ *
+ * Два вида. Поток с переносом годится, когда подписей три-четыре и они
+ * короткие. Столбец (`column`) нужен кольцу: в потоке шесть длинных
+ * названий вставали в две колонки, порядок чтения рвался, и найти в них
+ * нужный тип было нельзя. В столбце порядок строгий — тот же, что у
+ * секторов, — а сумма и доля стоят столбиком и сравниваются по разряду.
+ * Легенда со значениями и есть текстовый дублёр кольца: доля больше не
+ * живёт в одной подсказке под мышью (решение Р-175).
+ */
+export function Legend({
+  items,
+  column = false,
+}: {
+  items: readonly { label: string; color: string; value?: string; share?: string }[];
+  column?: boolean;
+}) {
+  if (column) {
+    return (
+      <ul style={{ margin: '12px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+        {items.map((item) => (
+          <li
+            key={item.label}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '12px minmax(0,1fr) auto auto',
+              alignItems: 'baseline',
+              gap: 12,
+              fontFamily: SANS,
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: 'var(--pd-ink-secondary)',
+            }}
+          >
+            <i aria-hidden="true" style={{ ...swatch, background: item.color }} />
+            <span>{item.label}</span>
+            <span style={{ color: INK, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+              {item.value ?? ''}
+            </span>
+            <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 46, textAlign: 'right' }}>
+              {item.share ?? ''}
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 12 }}>
       {items.map((item) => (
@@ -422,17 +545,7 @@ export function Legend({ items }: { items: readonly { label: string; color: stri
           key={item.label}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-secondary)' }}
         >
-          <i
-            aria-hidden="true"
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: 2,
-              background: item.color,
-              border: '1px solid var(--pd-edge-neutral)',
-              display: 'inline-block',
-            }}
-          />
+          <i aria-hidden="true" style={{ ...swatch, background: item.color }} />
           {item.label}
           {item.value === undefined ? null : <b style={{ color: INK, fontWeight: 500 }}>{item.value}</b>}
         </span>

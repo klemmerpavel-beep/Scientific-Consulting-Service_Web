@@ -30,14 +30,35 @@ export { SESSION_COOKIE, SESSION_TTL_DAYS, TOKEN_TTL_MINUTES } from './token.ts'
  * Исход запроса ссылки. Наружу он не раскрывается: форма отвечает одинаково
  * и тому, чей адрес зарегистрирован, и тому, чей нет. Иначе форма входа
  * превращается в средство проверки, кто является клиентом практики.
+ *
+ * Исключение — `channel_off`: почта либо настроена, либо нет, и от адреса
+ * это не зависит. Молчать о нём хуже: человек ждал бы письма, которого не
+ * существует, и считал бы, что не помнит свой адрес (решение Р-163).
  */
-export type LoginRequestOutcome = 'sent' | 'rate_limited' | 'unknown_email' | 'not_active';
+export type LoginRequestOutcome =
+  | 'sent'
+  | 'rate_limited'
+  | 'unknown_email'
+  | 'not_active'
+  | 'channel_off';
 
 export async function requestLoginLink(
   rawEmail: string,
   ip: string,
 ): Promise<LoginRequestOutcome> {
   const email = normalizeEmail(rawEmail);
+
+  // Состояние канала спрашивается первым и до поиска человека в базе: так
+  // ответ одинаков для любого адреса и о существовании учётной записи не
+  // говорит ничего.
+  const { mailConfigured } = await import('./mail.ts');
+  if (!mailConfigured()) {
+    await prisma.loginAttempt.create({
+      data: { emailNormalized: email, ip, outcome: 'channel_off' },
+    });
+    return 'channel_off';
+  }
+
   const since = new Date(Date.now() - RATE_WINDOW_MS);
 
   const [byEmail, byIp] = await Promise.all([
@@ -67,30 +88,39 @@ export async function requestLoginLink(
   }
 
   const token = createRawToken();
-  await prisma.$transaction([
-    prisma.loginToken.create({
-      data: {
-        selector: token.selector,
-        verifierHash: digest(token.verifier),
-        userId: user.id,
-        purpose: 'LOGIN',
-        expiresAt: new Date(Date.now() + TOKEN_TTL_MINUTES * 60 * 1000),
-        requestIp: ip,
-      },
-    }),
-    prisma.loginAttempt.create({
-      data: { emailNormalized: email, ip, outcome: 'sent' },
-    }),
-  ]);
+  await prisma.loginToken.create({
+    data: {
+      selector: token.selector,
+      verifierHash: digest(token.verifier),
+      userId: user.id,
+      purpose: 'LOGIN',
+      expiresAt: new Date(Date.now() + TOKEN_TTL_MINUTES * 60 * 1000),
+      requestIp: ip,
+    },
+  });
 
-  await deliverLoginLink(user.email, user.fullName, token.value);
+  // Исход записывается по факту отправки, а не до неё. Прежде в журнал
+  // всегда ложилось «отправлено», и разобрать по нему, дошло ли письмо,
+  // было нельзя.
+  const delivered = await deliverLoginLink(user.email, user.fullName, token.value);
+  await prisma.loginAttempt.create({
+    data: { emailNormalized: email, ip, outcome: delivered ? 'sent' : 'send_failed' },
+  });
+
+  // Наружу отказ отправки не выносится: письмо не уходит только по
+  // существующему адресу, и отдельный ответ выдал бы, что такой адрес есть.
+  // Разбирается это по журналу попыток входа.
   return 'sent';
 }
 
-async function deliverLoginLink(email: string, fullName: string, tokenValue: string) {
+async function deliverLoginLink(
+  email: string,
+  fullName: string,
+  tokenValue: string,
+): Promise<boolean> {
   // Импорт отложен: модуль почты тянет nodemailer, а разбор токена и
   // ограничение частоты должны проверяться без него.
-  const { sendMailTo } = await import('./mail');
+  const { sendMailTo } = await import('./mail.ts');
   const link = loginLink(tokenValue);
   const html =
     `<div style="font:15px/1.6 'Helvetica Neue',Arial,sans-serif;color:#14161C">` +
@@ -106,7 +136,8 @@ async function deliverLoginLink(email: string, fullName: string, tokenValue: str
     `${fullName}, здравствуйте.\n\n` +
     `Ссылка для входа в личный кабинет ProDisser:\n${link}\n\n` +
     `Ссылка действует ${TOKEN_TTL_MINUTES} минут и срабатывает один раз.\n`;
-  await sendMailTo(email, 'Вход в личный кабинет ProDisser', html, text);
+  const result = await sendMailTo(email, 'Вход в личный кабинет ProDisser', html, text);
+  return result.ok;
 }
 
 /**

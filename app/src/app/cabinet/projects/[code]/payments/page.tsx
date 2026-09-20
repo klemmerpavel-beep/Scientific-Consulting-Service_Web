@@ -4,6 +4,7 @@ import Shell from '../../../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../../../components/cabinet/tokens';
 import {
   Button,
+  Block,
   Card,
   Chip,
   Field,
@@ -13,18 +14,18 @@ import {
   FormRow,
   Heading,
   Mono,
+  ScreenHead,
   Select,
   Text,
   formatDate,
   formatSize,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
-import { projectMoney } from '../../../../../lib/cabinet/finance';
+import { projectContract, projectMoney, projectPayouts } from '../../../../../lib/cabinet/finance';
 import { MATERIAL_KIND_LABEL, type MaterialKind } from '../../../../../lib/cabinet/materials';
 import { formatAmount, STATUS_LABEL, type TrancheStatus } from '../../../../../lib/cabinet/money';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
-import { prisma } from '../../../../../lib/db';
 import {
   accruePayout,
   addContractTranche,
@@ -72,30 +73,13 @@ export default async function PaymentsScreen({
   const mayEdit = can(actor, 'PAYMENT_EDIT', ref);
   const maySeeEconomy = can(actor, 'MARGIN_VIEW', ref);
 
+  // Экран не ходит в базу сам: и договор, и начисления читаются службами,
+  // которые сами спрашивают разрешение. Прежде условие доступа стояло
+  // здесь, а выборка знала о нём только понаслышке (решение Р-185).
   const [money, contract, payouts] = await Promise.all([
     projectMoney(actor, project.id),
-    prisma.contract.findUnique({
-      where: { projectId: project.id },
-      include: {
-        tranches: {
-          orderBy: { plannedDate: 'asc' },
-          include: {
-            documents: {
-              where: { deletedAt: null },
-              include: { versions: { orderBy: { number: 'desc' }, take: 1 } },
-            },
-          },
-        },
-        documents: { where: { deletedAt: null }, include: { versions: { orderBy: { number: 'desc' }, take: 1 } } },
-      },
-    }),
-    maySeeEconomy
-      ? prisma.expertPayout.findMany({
-          where: { projectId: project.id },
-          orderBy: { createdAt: 'desc' },
-          include: { expert: { select: { fullName: true } } },
-        })
-      : Promise.resolve([]),
+    projectContract(actor, project.id),
+    maySeeEconomy ? projectPayouts(actor, project.id) : Promise.resolve([]),
   ]);
 
   const progress =
@@ -105,14 +89,12 @@ export default async function PaymentsScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
-      <a className="cab-mark" href={`/cabinet/projects/${project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
-        {project.code}
-      </a>
-
-      <Mono style={{ display: 'block', marginTop: 16 }}>Оплаты и документы</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        {project.title}
-      </Heading>
+      <ScreenHead
+        backHref={`/cabinet/projects/${project.code}`}
+        backLabel={project.code}
+        title="Оплаты и документы"
+        note={project.title}
+      />
 
       {contract === null || money === null ? (
         <Card>
@@ -186,8 +168,8 @@ export default async function PaymentsScreen({
             </Text>
           </Card>
 
-          <section style={{ marginBottom: 20 }}>
-            <Mono>Транши</Mono>
+          <Block style={{ marginBottom: 20 }}>
+            <Heading level={2} size={3}>Транши</Heading>
             <Card style={{ marginTop: 12 }}>
               {contract.tranches.length === 0 ? (
                 <Text muted>Транши ещё не заведены.</Text>
@@ -335,10 +317,10 @@ export default async function PaymentsScreen({
                 </Form>
               ) : null}
             </Card>
-          </section>
+          </Block>
 
-          <section style={{ marginBottom: 20 }}>
-            <Mono>Документы по договору</Mono>
+          <Block style={{ marginBottom: 20 }}>
+            <Heading level={2} size={3}>Документы по договору</Heading>
             <Card style={{ marginTop: 12 }}>
               {contract.documents.length === 0 ? (
                 <Text muted>
@@ -397,11 +379,11 @@ export default async function PaymentsScreen({
                 </Form>
               ) : null}
             </Card>
-          </section>
+          </Block>
 
           {maySeeEconomy ? (
-            <section>
-              <Mono>Вознаграждение эксперта</Mono>
+            <Block>
+              <Heading level={2} size={3}>Вознаграждение эксперта</Heading>
               <Card style={{ marginTop: 12 }}>
                 {payouts.length === 0 ? (
                   <Text muted>
@@ -486,7 +468,7 @@ export default async function PaymentsScreen({
                   </FormActions>
                 </Form>
               </Card>
-            </section>
+            </Block>
           ) : null}
         </>
       )}

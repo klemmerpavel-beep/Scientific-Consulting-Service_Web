@@ -21,7 +21,11 @@ export const ROOT_TOKENS =
   '--pd-accent-hover:#0A2145;--pd-accent-active:#081A38;--pd-ok-bg:#E6F9F1;' +
   '--pd-ok-ink:#0E4E3C;--pd-err-bg:#FAE7E5;--pd-err-border:#F0C9C3;' +
   '--pd-err-ink:#8E2C22;--pd-ok-border:#C5EEDD;--pd-accent-soft:#2A63B4;' +
-  '--pd-art-line:#E5EBF2;--pd-art-mark:#D3DEEC;--pd-art-dot:#D8DEE6}';
+  '--pd-art-line:#E5EBF2;--pd-art-mark:#D3DEEC;--pd-art-dot:#D8DEE6;' +
+  // Две ступени сверх палитры сайта: шкала рядов графиков. Типов
+  // сопровождения шесть, а различимых ступеней было четыре — пятый
+  // сектор кольца повторял цвет первого (решение Р-175).
+  '--pd-series-mid:#5C8FD6;--pd-series-quiet:#98A2B3}';
 
 export const SERIF = "'Literata', Georgia, 'Times New Roman', serif";
 export const SANS = "'Inter','Helvetica Neue',Arial,sans-serif";
@@ -100,14 +104,26 @@ export const GUTTER = 30;
  * Общие правила кабинета. Подключаются один раз в разметке раздела:
  * в каждом компоненте свой блок стилей означал бы десятки повторов одного
  * и того же и расхождение при первой же правке.
+ *
+ * Правило `p a` — про ссылку внутри сплошного текста: одним цветом она
+ * отличается недостаточно для тех, кто цвет различает хуже, и машинная
+ * проверка доступности назвала это прямо (Р-168). Образец подчёркивания
+ * взят со страницы 404 сайта. Ссылки-строки, ссылки-карточки и навигация
+ * абзацем не окружены, и правило их не касается.
  */
 export const CABINET_CSS = `
 ${ROOT_TOKENS}
-body{margin:0;background:var(--pd-surface-quiet)}
+body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;flex-direction:column}
+/* Место под полосу прокрутки занято всегда: иначе содержимое колонки
+   дёргается вбок, когда записей становится больше высоты. */
+.cab-board-body{scrollbar-gutter:stable}
+main{flex:1}
 h1,h2,h3{text-wrap:balance;margin:0}
+h1,h2,h3,p,li,td,th,a,label,span{overflow-wrap:break-word}
 p,li{text-wrap:pretty}
 a{color:var(--pd-accent);text-decoration:none}
 a:hover{color:var(--pd-accent-press)}
+p a{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 *:focus-visible{outline:2px solid var(--pd-accent);outline-offset:2px}
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}
 .pd-skip:focus{left:0;color:var(--pd-ink-inverse)}
@@ -133,9 +149,16 @@ input[type="file"]{font-family:${SANS};font-size:16px;color:var(--pd-ink-seconda
 input[type="file"]::file-selector-button{min-height:44px;padding:0 18px;margin-right:14px;border-radius:999px;border:1px solid var(--pd-edge-neutral);background:var(--pd-ink-inverse);color:var(--pd-ink-secondary);font-family:${SANS};font-size:15px;cursor:pointer;transition:border-color 180ms ${EASING},color 180ms ${EASING}}
 input[type="file"]::file-selector-button:hover{border-color:var(--pd-accent);color:var(--pd-accent)}
 button[disabled]{opacity:.7!important;cursor:progress!important}
+summary{cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+.cab-caret{flex:0 0 14px;transition:transform 180ms ${EASING}}
+details[open]>summary .cab-caret{transform:rotate(90deg)}
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes cab-pulse{0%,100%{opacity:1}50%{opacity:.55}}
+.cab-skeleton{background:var(--pd-surface-quiet);border-radius:6px;animation:cab-pulse 1400ms ${EASING} infinite}
 [role="status"],[role="alert"]{animation:pd-appear 220ms ${EASING}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
+@media (max-width:1024px){.cab-board-main{display:block!important;overflow:visible!important;padding-bottom:clamp(72px,7vw,112px)!important}.cab-board{grid-template-columns:minmax(0,1fr)!important}.cab-board-body{max-height:none!important;overflow:visible!important}}
 `;

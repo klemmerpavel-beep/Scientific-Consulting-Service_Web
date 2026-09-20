@@ -28,7 +28,7 @@ export const dynamic = 'force-dynamic';
 export default async function CabinetEntrance({
   searchParams,
 }: {
-  searchParams: Promise<{ sent?: string; error?: string }>;
+  searchParams: Promise<{ sent?: string; error?: string; channel?: string }>;
 }) {
   const actor = await currentActor();
   if (actor !== null) redirect('/cabinet/projects');
@@ -36,21 +36,29 @@ export default async function CabinetEntrance({
   const params = await searchParams;
 
   return (
-    <Shell actor={null}>
-      <div style={{ maxWidth: 520, margin: '0 auto' }}>
+    <Shell actor={null} center>
+      <div style={{ width: '100%', maxWidth: 560 }}>
         <Mono>Личный кабинет</Mono>
         <Heading level={1} style={{ margin: '12px 0 16px' }}>
           Вход по ссылке
         </Heading>
         <Text style={{ marginBottom: 24 }}>
-          Пароля в кабинете нет. Укажите адрес, на который оформлено сопровождение, — придёт письмо
-          со ссылкой. Ссылка действует пятнадцать минут и срабатывает один раз.
+          Укажите адрес, на который оформлено сопровождение, — придёт письмо со ссылкой.
         </Text>
 
         {params.error === undefined ? null : (
           <div style={{ marginBottom: 20 }}>
             <Notice tone="error" role="alert">
               Ссылка недействительна: её уже использовали или истёк срок. Запросите новую.
+            </Notice>
+          </div>
+        )}
+
+        {params.channel === undefined ? null : (
+          <div style={{ marginBottom: 20 }}>
+            <Notice tone="error" role="alert">
+              Вход по ссылке пока недоступен: почтовый канал практики не настроен, и письмо
+              отправить некуда. Напишите куратору работы — он откроет доступ другим способом.
             </Notice>
           </div>
         )}
@@ -78,10 +86,6 @@ export default async function CabinetEntrance({
           </Notice>
         )}
 
-        <Text muted size={14} style={{ marginTop: 24 }}>
-          Не получается войти — напишите менеджеру проекта или на{' '}
-          <a href="mailto:info@prodisser.ru">info@prodisser.ru</a>.
-        </Text>
       </div>
     </Shell>
   );

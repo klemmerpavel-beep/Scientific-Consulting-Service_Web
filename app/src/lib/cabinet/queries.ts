@@ -1,5 +1,6 @@
 import type { StageState } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
+import { enqueue } from './outbox.ts';
 import { can, ensure, scopeComments, scopeMaterials, scopeProjects, type Actor } from './access.ts';
 
 /**
@@ -9,18 +10,100 @@ import { can, ensure, scopeComments, scopeMaterials, scopeProjects, type Actor }
  * `scope*`, здесь просто нет.
  */
 
-export async function listProjects(actor: Actor) {
+/** Сколько работ показывается на одной странице перечня. */
+export const PROJECT_PAGE_SIZE = 20;
+
+/**
+ * С какого числа работ перечень получает отбор.
+ *
+ * У клиента работ две-три: вкладки и поиск добавили бы сотню пикселей и
+ * ничего не сообщили. У руководителя их пятьдесят пять, и без отбора
+ * перечень вырастал до шести экранов прокрутки (решение Р-171).
+ */
+export const PROJECT_FILTER_FROM = 8;
+
+/** Наборы перечня работ. Порядок тот же, что у вкладок на экране. */
+export type ProjectFilter = 'active' | 'waiting' | 'done' | 'all';
+
+/**
+ * Перечень работ с отбором, поиском и постраничностью.
+ *
+ * У руководителя работ пятьдесят пять — весь объём книги заказов, — и
+ * перечень вырастал до шести экранов прокрутки: чтобы найти работу, её
+ * приходилось искать глазами (решение Р-171). Отбор ложится поверх
+ * `scopeProjects`, то есть разграничение ролей остаётся на месте.
+ *
+ * Набор «ждут» — это этап в состоянии ожидания человека: клиенту он
+ * говорит «ждут меня», практике — «ждут клиента». Состояние одно, назван
+ * со стороны смотрящего.
+ */
+export async function listProjects(
+  actor: Actor,
+  { filter, query = '', page = 1 }: { filter?: ProjectFilter; query?: string; page?: number } = {},
+) {
   const scope = scopeProjects(actor);
-  if (scope === null) return [];
-  return prisma.project.findMany({
-    where: scope,
-    orderBy: [{ status: 'asc' }, { dueOn: 'asc' }],
+  if (scope === null) {
+    return { rows: [], total: 0, page: 1, pages: 1, all: 0, filter: 'all' as ProjectFilter };
+  }
+
+  // Сколько работ всего — по этому числу решается и вид экрана, и набор
+  // по умолчанию. Пока работ немного, отбора нет вовсе и показываются
+  // все; когда их десятки, первым делом нужны действующие.
+  const all = await prisma.project.count({ where: scope });
+  const applied: ProjectFilter = filter ?? (all > PROJECT_FILTER_FROM ? 'active' : 'all');
+
+  const byFilter =
+    applied === 'active'
+      ? { status: 'ACTIVE' as const }
+      : applied === 'done'
+        ? { status: { in: ['COMPLETED' as const, 'CANCELLED' as const] } }
+        : applied === 'waiting'
+          ? { stages: { some: { state: { in: ['AWAITING_CLIENT' as const, 'IN_APPROVAL' as const] } } } }
+          : {};
+
+  const needle = query.trim();
+  const byQuery =
+    needle === ''
+      ? {}
+      : {
+          OR: [
+            { code: { contains: needle, mode: 'insensitive' as const } },
+            { title: { contains: needle, mode: 'insensitive' as const } },
+            { topic: { contains: needle, mode: 'insensitive' as const } },
+            // Клиент ищет среди своих работ, и фамилия там всегда его
+            // собственная: искать по ней нечего.
+            ...(actor.role === 'CLIENT'
+              ? []
+              : [{ client: { fullName: { contains: needle, mode: 'insensitive' as const } } }]),
+          ],
+        };
+
+  const where = { ...scope, ...byFilter, ...byQuery };
+  const total = await prisma.project.count({ where });
+  const pages = Math.max(1, Math.ceil(total / PROJECT_PAGE_SIZE));
+  const current = Math.min(Math.max(1, Math.trunc(page) || 1), pages);
+
+  const rows = await prisma.project.findMany({
+    where,
+    // Последним ключом идёт код работы: при равных сроках порядок строк
+    // иначе задаёт база, и один и тот же перечень выглядит по-разному
+    // при каждом открытии (решение Р-186).
+    orderBy: [{ status: 'asc' }, { dueOn: 'asc' }, { code: 'asc' }],
+    skip: (current - 1) * PROJECT_PAGE_SIZE,
+    take: PROJECT_PAGE_SIZE,
     include: {
       serviceType: { select: { name: true } },
       client: { select: { fullName: true } },
       stages: { orderBy: { position: 'asc' } },
+      // Число материалов показывается прямо в плашке перечня: сколько по
+      // работе приложено, человек должен видеть, не заходя внутрь
+      // (решение Р-169). Счётчик идёт тем же запросом, второго обращения
+      // к базе не появляется.
+      _count: { select: { materials: true } },
     },
   });
+
+  return { rows, total, page: current, pages, all, filter: applied };
 }
 
 export async function projectByCode(actor: Actor, code: string) {
@@ -134,7 +217,7 @@ export async function pendingActions(actor: Actor) {
       project: scope,
       state: { in: ['AWAITING_CLIENT', 'IN_APPROVAL'] },
     },
-    orderBy: [{ dueOn: 'asc' }, { awaitingClientSince: 'asc' }],
+    orderBy: [{ dueOn: 'asc' }, { awaitingClientSince: 'asc' }, { id: 'asc' }],
     include: { project: { select: { code: true, title: true } } },
   });
   return stages;
@@ -172,15 +255,50 @@ export async function leadQueue(actor: Actor, page = 1) {
   return { rows, total, page: current, pages };
 }
 
-export async function serviceTypes() {
+/**
+ * Одна заявка для разбора.
+ *
+ * Разобранные заявки тоже открываются: ссылка из журнала или из письма
+ * должна вести на что-то, а не в «не найдено». Что заявка уже разобрана,
+ * видно по её состоянию.
+ */
+export async function leadById(actor: Actor, id: string) {
+  ensure(actor, 'REQUEST_MODERATE');
+  return prisma.lead.findUnique({ where: { id } });
+}
+
+/**
+ * Справочник типов сопровождения для форм.
+ *
+ * Спрашивает действующее лицо, хотя видят его все вошедшие: правило
+ * модуля — выборка называет, кому она отдаётся, и проверяет это сама, а
+ * не полагается на то, что экран её не вызовет (решение Р-185). Прежде
+ * функция не принимала актора вовсе.
+ */
+export async function serviceTypes(actor: Actor) {
+  // Справочник нужен по обе стороны заявки: клиент выбирает тип, подавая
+  // её, менеджер — разбирая. Право на работу здесь не годится: у клиента
+  // оно выдаётся по конкретной работе, а справочник к работе не привязан
+  // (решение Р-185).
+  if (!can(actor, 'REQUEST_CREATE') && !can(actor, 'REQUEST_MODERATE')) {
+    ensure(actor, 'REQUEST_CREATE');
+  }
   return prisma.serviceType.findMany({
     where: { isActive: true },
     orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
   });
 }
 
-/** Кому можно передать работу: действующие сотрудники практики. */
-export async function curators() {
+/**
+ * Кому можно передать работу: действующие сотрудники практики.
+ *
+ * Отдаёт ФИО и роли, то есть состав практики, и потому закрыта правом на
+ * правку работы. Прежде проверки не было вовсе, и защитой служило лишь
+ * то, что экран прячет выбор куратора от того, кому он не положен
+ * (решение Р-185).
+ */
+export async function curators(actor: Actor) {
+  ensure(actor, 'PROJECT_EDIT');
   return prisma.user.findMany({
     where: { role: { in: ['MANAGER', 'HEAD'] }, status: 'ACTIVE' },
     orderBy: { fullName: 'asc' },
@@ -188,7 +306,15 @@ export async function curators() {
   });
 }
 
-export async function experts() {
+/**
+ * Эксперты для назначения: ФИО, специализация и дата договора поручения.
+ *
+ * Закрыта правом назначать исполнителя — состав привлечённых
+ * специалистов клиенту не показывается по решению Р-140, и выборка
+ * обязана держать это сама (решение Р-185).
+ */
+export async function experts(actor: Actor) {
+  ensure(actor, 'PROJECT_ASSIGN_EXPERT');
   return prisma.user.findMany({
     where: { role: 'EXPERT', status: 'ACTIVE' },
     orderBy: { fullName: 'asc' },
@@ -370,4 +496,79 @@ export async function leadList(actor: Actor, filter: LeadFilter = {}) {
   });
 
   return { rows, total, page: current, pages };
+}
+
+/** Что подставляется в заявку из кабинета: контакт и редакция согласия. */
+export interface RequestDraft {
+  readonly topic: string;
+  readonly need: string | null;
+  readonly deadline: string | null;
+  readonly message: string | null;
+  readonly ip: string;
+}
+
+/**
+ * Заявка, поданная изнутри кабинета.
+ *
+ * Собиралась серверным действием, которое само ходило в базу тремя
+ * запросами: учётная запись, создание заявки, перечень кураторов для
+ * уведомления. Действие — точка входа с формы, а не место для выборок;
+ * здесь оно одно, и оно доменное (решение Р-185).
+ *
+ * Контакт берётся из учётной записи, а не с формы: человек уже вошёл, и
+ * спрашивать его заново незачем — заодно подменить его нельзя.
+ */
+export async function createCabinetRequest(
+  actor: Actor,
+  draft: RequestDraft,
+  consentVersion: string,
+): Promise<{ id: string; authorName: string }> {
+  ensure(actor, 'REQUEST_CREATE');
+  if (draft.topic.length === 0) throw new Error('Тема работы не указана');
+
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: actor.id },
+    select: { email: true, fullName: true, consentVersion: true },
+  });
+
+  const lead = await prisma.lead.create({
+    data: {
+      source: 'cabinet',
+      form: 'request',
+      name: user.fullName,
+      contactKind: 'email',
+      contact: user.email,
+      topic: draft.topic,
+      need: draft.need,
+      deadline: draft.deadline,
+      message: draft.message,
+      // Согласие принято при первом входе в кабинет; редакция текста
+      // хранится вместе с заявкой, как и у обращений с сайта.
+      consentGiven: true,
+      consentVersion: user.consentVersion ?? consentVersion,
+      termsAccepted: true,
+      ip: draft.ip,
+    },
+  });
+
+  // Менеджеры узнают о заявке из очереди, и постановка идёт здесь же:
+  // событие кладётся рядом с самой заявкой, а не в действии экрана —
+  // так устроен весь контур уведомлений (решение Р-151). Обращения с
+  // сайта идут другим путём, и второе уведомление о том же было бы
+  // дублем.
+  const moderators = await prisma.user.findMany({
+    where: { role: { in: ['MANAGER', 'HEAD'] }, status: 'ACTIVE' },
+    select: { id: true },
+  });
+  for (const moderator of moderators) {
+    await enqueue(prisma, {
+      userId: moderator.id,
+      eventKind: 'REQUEST_CREATED',
+      subject: 'Новая заявка из кабинета',
+      body: `${user.fullName}: ${draft.topic}\nЗаявка ждёт в очереди модерации.`,
+      dedupKey: `lead:${lead.id}:created:${moderator.id}`,
+    });
+  }
+
+  return { id: lead.id, authorName: user.fullName };
 }

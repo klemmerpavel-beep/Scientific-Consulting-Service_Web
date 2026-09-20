@@ -13,10 +13,11 @@ import {
   FormActions,
   FormRow,
   Heading,
+  ScreenHead,
   Select,
   Text,
-  formatDate,
   authorName,
+  formatDate,
   formatSize,
   plural,
 } from '../../../../../components/cabinet/ui';
@@ -49,18 +50,17 @@ export default async function ProjectMaterialsScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
-      <a className="cab-mark" href={`/cabinet/projects/${project.code}`} style={{ fontFamily: MONO, fontSize: 12 }}>
-        {project.code}
-      </a>
-
-      <Heading level={1} style={{ margin: '16px 0 24px' }}>
-        Материалы: {project.title}
-      </Heading>
+      <ScreenHead
+        backHref={`/cabinet/projects/${project.code}`}
+        backLabel={project.code}
+        title="Материалы работы"
+        note={project.title}
+      />
 
       {project.materials.length === 0 ? (
         <Empty title="Материалов пока нет" />
       ) : (
-        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
+        <ul className="cab-block" style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
           {project.materials.map((material) => (
             <li key={material.id}>
               <Card>
