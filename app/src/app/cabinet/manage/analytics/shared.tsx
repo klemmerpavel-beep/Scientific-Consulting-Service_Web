@@ -12,9 +12,11 @@ import {
   TABLE_CELL,
   TABLE_HEAD,
   TABLE_NUM,
+  TableCard,
   Text,
   Tile,
   Tiles,
+  plural,
 } from '../../../../components/cabinet/ui';
 import { can, type Actor } from '../../../../lib/cabinet/access';
 import { loadRows } from '../../../../lib/cabinet/analytics/data';
@@ -110,6 +112,64 @@ export function ChartCard({
         </Disclosure>
       )}
     </Card>
+  );
+}
+
+/**
+ * Длинная таблица: первые строки на виду, остаток — под свёрткой.
+ *
+ * Таблицы аналитики шли целиком: двадцать клиентов давали тысячу триста
+ * пикселей, а дебиторка была обрезана на сороковой строке молча — плитка
+ * выше честно называла полное число работ с остатком, и расхождение никак
+ * не объяснялось. Первых десяти строк довольно, чтобы увидеть главное:
+ * перечни отсортированы по убыванию величины. Остаток никуда не девается —
+ * он раскрывается на месте, без ухода на другой экран (решение Р-176).
+ *
+ * Строки передаются готовыми: у каждой таблицы свои колонки, и сводить их
+ * к общему описанию значило бы завести язык описания таблиц ради четырёх
+ * применений.
+ */
+export function LongTable({
+  label,
+  columns,
+  rows,
+  visible = 10,
+  minWidth = 720,
+  caption,
+}: {
+  label: string;
+  /** Строка заголовков: те же `<th scope="col">`, что и были. */
+  columns: ReactNode;
+  rows: readonly ReactNode[];
+  visible?: number;
+  minWidth?: number;
+  caption?: ReactNode;
+}) {
+  const shown = rows.slice(0, visible);
+  const rest = rows.slice(visible);
+  const style = { width: '100%', borderCollapse: 'collapse' as const, minWidth };
+
+  return (
+    <>
+      <TableCard label={label}>
+        <table style={style}>
+          {caption === undefined ? null : caption}
+          <thead>{columns}</thead>
+          <tbody>{shown}</tbody>
+        </table>
+      </TableCard>
+      {rest.length === 0 ? null : (
+        <Disclosure
+          title={`Ещё ${rest.length} ${plural(rest.length, 'строка', 'строки', 'строк')}`}
+          style={{ marginTop: 12 }}
+        >
+          <table style={style}>
+            <thead>{columns}</thead>
+            <tbody>{rest}</tbody>
+          </table>
+        </Disclosure>
+      )}
+    </>
   );
 }
 

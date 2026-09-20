@@ -58,9 +58,28 @@ export default async function AnalyticsProjects() {
             <ChartCard
               title="Медиана срока по позициям"
               note="Показаны только позиции, где медиана достигнута. Там, где завершённых работ мало, кривая до половины не опускается, и медианы не существует — такую позицию столбцом не изобразить, не соврав."
+              numbers={
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={head} scope="col">Позиция</th>
+                      <th style={{ ...head, textAlign: 'right' }} scope="col">Медиана срока</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {withMedian.map((row) => (
+                      <tr key={row.typeCode}>
+                        <td style={cell}>{row.typeName}</td>
+                        <td style={num}>{row.estimate.median} дн.</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              }
             >
               <RankChart
-                labelWidth={280}
+                width={1120}
+                labelWidth={380}
                 title="Медиана срока по позициям"
                 data={withMedian.map((row) => ({ label: row.typeName, value: row.estimate.median! }))}
                 format={(value) => `${compactNumber(value)} дн.`}

@@ -199,13 +199,16 @@ export function RankChart({
   format = compactNumber,
   title,
   labelWidth = 200,
+  width = 720,
 }: {
   data: readonly BarDatum[];
   format?: (value: number) => string;
   title: string;
   labelWidth?: number;
+  /** Ширина поля рисунка; на широкой карточке задаётся по месту (Р-176). */
+  width?: number;
 }) {
-  const W = 720;
+  const W = width;
   const rowH = 30;
   const padR = 92;
   const top = 6;
@@ -273,14 +276,17 @@ export function LineChart({
   format = compactNumber,
   title,
   height = 280,
+  width = 720,
 }: {
   categories: readonly string[];
   series: readonly Series[];
   format?: (value: number) => string;
   title: string;
   height?: number;
+  /** Ширина поля рисунка; на широкой карточке задаётся по месту (Р-176). */
+  width?: number;
 }) {
-  const W = 720;
+  const W = width;
   const H = height;
   const pad = { t: 26, r: 16, b: 34, l: 52 };
   const iw = W - pad.l - pad.r;
@@ -289,8 +295,17 @@ export function LineChart({
   const xAt = (index: number): number =>
     pad.l + (categories.length <= 1 ? iw / 2 : (index / (categories.length - 1)) * iw);
   const yAt = (value: number): number => pad.t + ih - (value / max) * ih;
-  // Подписи месяцев на узком экране сливаются: показывается каждая n-я.
-  const step = Math.ceil(categories.length / 12);
+  /**
+   * Прореживание подписей — то же правило, что у столбчатой диаграммы.
+   *
+   * Прежде шаг задавался числом («не больше двенадцати подписей») и не
+   * зависел ни от ширины поля, ни от длины метки, а отсчёт вёлся от
+   * начала ряда: на тридцати двух месяцах подписанным оказывался каждый
+   * третий начиная с первого, и самый свежий месяц — тот, ради которого
+   * на график и смотрят, — оставался без подписи (решение Р-176).
+   */
+  const gapX = categories.length <= 1 ? iw : iw / (categories.length - 1);
+  const everyLabel = Math.max(1, Math.ceil(46 / gapX));
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
@@ -319,8 +334,18 @@ export function LineChart({
         );
       })}
       {categories.map((category, index) =>
-        index % step === 0 ? (
-          <text key={category} x={xAt(index)} y={H - 10} textAnchor="middle" fontSize={12} fill={MUTED}>
+        (categories.length - 1 - index) % everyLabel === 0 ? (
+          <text
+            key={`tick-${category}-${index}`}
+            x={xAt(index)}
+            y={H - 10}
+            /* Крайние подписи якорятся по краю поля: центрированная
+               подпись последней точки наполовину уходила за границу
+               рисунка и обрезалась («сен 2»). */
+            textAnchor={index === 0 ? 'start' : index === categories.length - 1 ? 'end' : 'middle'}
+            fontSize={12}
+            fill={MUTED}
+          >
             {category}
           </text>
         ) : null,
@@ -406,8 +431,17 @@ export function DonutChart({
 }
 
 /** Полоса долей: сегменты клиентов, структура портфеля. */
-export function StackBar({ segments, title }: { segments: readonly Segment[]; title: string }) {
-  const W = 720;
+export function StackBar({
+  segments,
+  title,
+  width = 720,
+}: {
+  segments: readonly Segment[];
+  title: string;
+  /** Ширина поля рисунка; на широкой карточке задаётся по месту (Р-176). */
+  width?: number;
+}) {
+  const W = width;
   const H = 18;
   const total = segments.reduce((acc, segment) => acc + segment.value, 0);
   let x = 0;

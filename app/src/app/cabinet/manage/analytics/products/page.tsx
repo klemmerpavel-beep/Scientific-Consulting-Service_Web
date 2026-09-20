@@ -1,6 +1,5 @@
+import { RankChart, compactMoney } from '../../../../../components/cabinet/Charts';
 import {
-  RankChart,
-  compactMoney } from '../../../../../components/cabinet/Charts'; import { Card,
   Chip,
   Empty,
   Heading,
@@ -55,9 +54,28 @@ export default async function AnalyticsProducts() {
           <ChartCard
             title="Средний чек по позициям"
             note="Рядом с каждой позицией в таблице — медиана: при малом числе заказов она устойчивее среднего."
+            numbers={
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={head} scope="col">Позиция</th>
+                    <th style={{ ...head, textAlign: 'right' }} scope="col">Средний чек</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((product) => (
+                    <tr key={product.typeCode}>
+                      <td style={cell}>{product.typeName}</td>
+                      <td style={num}>{formatAmount(product.averageCheck)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            }
           >
             <RankChart
-              labelWidth={280}
+              width={1120}
+              labelWidth={380}
               title="Средний чек по позициям"
               data={list.map((product) => ({
                 label: product.typeName,

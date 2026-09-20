@@ -31,10 +31,13 @@ import {
   type ProjectRow,
 } from '../src/lib/cabinet/analytics/metrics.ts';
 import {
+  SERIES_COLORS,
   compactMoney,
   compactNumber,
   donutArc,
   niceCeil,
+  seriesColor,
+  seriesInkDark,
   smoothPath,
   ticks,
   topRoundedBar,
@@ -399,6 +402,36 @@ describe('выводы обзора', () => {
       assert.ok(item.title.length > 0);
       assert.match(item.text, /\d/u, `вывод «${item.title}» не называет ни одной величины`);
     }
+  });
+});
+
+describe('шкала рядов', () => {
+  /**
+   * Шкала и набор светлых ступеней живут порознь: цвета в `SERIES_COLORS`,
+   * а знание о том, на каких из них подпись обязана быть тёмной, — в
+   * `seriesInkDark`. Пока это знание было записано числом («каждая
+   * третья»), оно молча разошлось бы со шкалой при первом же её
+   * изменении, и подпись на светлой заливке стала бы белой по белому
+   * (решение Р-176).
+   */
+  it('ступеней шесть и все различны', () => {
+    assert.equal(SERIES_COLORS.length, 6);
+    assert.equal(new Set(SERIES_COLORS).size, 6);
+  });
+
+  it('цвет повторяется только за пределами шкалы', () => {
+    assert.equal(seriesColor(0), seriesColor(6));
+    assert.notEqual(seriesColor(0), seriesColor(4));
+  });
+
+  it('тёмная подпись стоит на светлых ступенях', () => {
+    // Светлые — третья, четвёртая и шестая: два бледных синих и бледный
+    // нейтральный. На них белый текст не читается.
+    assert.deepEqual(
+      [0, 1, 2, 3, 4, 5].map((index) => seriesInkDark(index)),
+      [false, false, true, true, false, true],
+    );
+    assert.equal(seriesInkDark(8), seriesInkDark(2));
   });
 });
 
