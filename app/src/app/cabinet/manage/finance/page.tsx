@@ -7,6 +7,7 @@ import {
   ScreenHead,
   Tile,
   Tiles,
+  FilterBar,
   Tabs,
   Text,
   TABLE_CELL,
@@ -86,8 +87,9 @@ export default async function FinanceScreen({
         ))}
       </Tiles>
 
-      <div style={{ marginBottom: 16 }}>
+      <FilterBar>
         <Tabs
+          flush
           label="Отбор расчётов"
           items={[
             {
@@ -98,7 +100,7 @@ export default async function FinanceScreen({
             { href: href('all'), label: `Все работы · ${rows.length}`, active: all },
           ]}
         />
-      </div>
+      </FilterBar>
 
       <TableCard label="Деньги по работам">
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>

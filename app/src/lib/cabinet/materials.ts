@@ -1,5 +1,5 @@
 import { prisma } from '../db.ts';
-import { ensure, scopeComments, type Actor } from './access.ts';
+import { can, ensure, scopeComments, scopeProjects, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
@@ -302,4 +302,74 @@ export async function listComments(actor: Actor, versionId: string) {
     where: { versionId, ...scope },
     orderBy: { createdAt: 'asc' },
   });
+}
+
+/** Замечание, ждущее публикации: работа, этап и кто его оставил. */
+export interface PendingComment {
+  readonly stageId: string | null;
+  readonly projectCode: string;
+  readonly stageTitle: string;
+  readonly material: string;
+  readonly count: number;
+}
+
+/**
+ * Замечания экспертов, ждущие публикации.
+ *
+ * Замечание эксперта создаётся неопубликованным и клиенту не видно, пока
+ * менеджер его не пропустит. Кнопки публикации стоят внутри этапа, а
+ * очереди не было нигде: узнать о висящем замечании можно было, только
+ * открыв этап наугад (решение Р-183). Выборка идёт через `scopeProjects`,
+ * поэтому менеджер видит только свои работы.
+ *
+ * Считается по этапам: в блоке «Требует внимания» запись ведёт на этап,
+ * где замечание и публикуется.
+ */
+export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
+  if (!can(actor, 'COMMENT_MODERATE')) return [];
+  const scope = scopeProjects(actor);
+  if (scope === null) return [];
+
+  const rows = await prisma.versionComment.findMany({
+    where: {
+      moderationStatus: 'PENDING',
+      version: { material: { project: scope } },
+    },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      version: {
+        select: {
+          material: {
+            select: {
+              title: true,
+              stageId: true,
+              stage: { select: { id: true, title: true } },
+              project: { select: { code: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Замечания сводятся по этапу: три замечания к одной версии — это одно
+  // дело, а не три записи в перечне.
+  const byStage = new Map<string, PendingComment>();
+  for (const row of rows) {
+    const material = row.version.material;
+    const key = material.stage?.id ?? `material:${material.title}`;
+    const seen = byStage.get(key);
+    if (seen === undefined) {
+      byStage.set(key, {
+        stageId: material.stage?.id ?? null,
+        projectCode: material.project.code,
+        stageTitle: material.stage?.title ?? material.title,
+        material: material.title,
+        count: 1,
+      });
+    } else {
+      byStage.set(key, { ...seen, count: seen.count + 1 });
+    }
+  }
+  return [...byStage.values()];
 }

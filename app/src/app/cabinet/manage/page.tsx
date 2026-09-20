@@ -25,6 +25,7 @@ import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
 import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
 import { unreadInbox } from '../../../lib/cabinet/messages';
+import { pendingComments } from '../../../lib/cabinet/materials';
 import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { currentActor } from '../../../lib/cabinet/session';
@@ -70,6 +71,9 @@ export default async function ManageQueue({
   // появляются только при праве на маржу (решение Р-175).
   const works = await activeWorks(actor);
   const unread = await unreadInbox(actor);
+  // Замечание эксперта висит неопубликованным, пока его не пропустят, и
+  // клиенту не видно. Прежде о нём не говорил ни один экран (Р-183).
+  const moderation = await pendingComments(actor);
   // Состояние очереди уведомлений видит только руководитель (решение Р-154):
   // менеджеру служебная кухня не нужна, а недоставленное письмо — забота
   // того, кто отвечает за практику целиком.
@@ -133,6 +137,15 @@ export default async function ManageQueue({
       detail: null,
       todo: 'Ответить клиенту',
       href: `/cabinet/projects/${row.code}/messages`,
+    })),
+    ...moderation.map((row) => ({
+      key: `comment-${row.stageId ?? row.material}`,
+      title: `${row.stageTitle} · ${row.projectCode}`,
+      mark: `замечаний на модерации ${row.count}`,
+      urgent: false,
+      detail: row.material,
+      todo: 'Опубликовать или отклонить — до этого клиент их не видит',
+      href: row.stageId === null ? '/cabinet/projects' : `/cabinet/stages/${row.stageId}`,
     })),
     ...(outbox !== null && outbox.failed > 0
       ? [

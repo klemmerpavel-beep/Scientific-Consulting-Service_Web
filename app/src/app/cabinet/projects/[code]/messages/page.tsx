@@ -7,6 +7,7 @@ import {
   Field,
   Form,
   FormActions,
+  Narrow,
   ScreenHead,
   Thread,
 } from '../../../../../components/cabinet/ui';
@@ -48,7 +49,7 @@ export default async function MessagesScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
-      <div style={{ maxWidth: 780 }}>
+      <Narrow width={780}>
         <ScreenHead
           backHref={`/cabinet/projects/${project.code}`}
           backLabel={project.code}
@@ -75,7 +76,7 @@ export default async function MessagesScreen({
             </FormActions>
           </Form>
         </Card>
-      </div>
+      </Narrow>
     </Shell>
   );
 }

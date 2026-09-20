@@ -12,6 +12,8 @@
 
 import { ensure, type Actor } from './access.ts';
 import { prisma } from '../db.ts';
+import { toCsv } from './csv.ts';
+
 
 export interface JournalFilter {
   readonly from?: Date | null;
@@ -129,23 +131,7 @@ export async function journalActions(actor: Actor): Promise<string[]> {
   return rows.map((row) => row.action);
 }
 
-/**
- * Выгрузка в CSV.
- *
- * Поле, начинающееся со знака равенства, плюса, минуса или собаки,
- * табличный редактор исполнит как формулу. Такие значения предваряются
- * апострофом: выгрузка журнала не должна становиться способом выполнить
- * что-то на машине проверяющего.
- */
-export function toCsv(rows: readonly (readonly string[])[]): string {
-  const escape = (value: string): string => {
-    const guarded = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
-    return `"${guarded.replace(/"/g, '""')}"`;
-  };
-  // Метка порядка байтов: без неё табличный редактор читает кириллицу
-  // в кодировке системы и показывает мусор.
-  return `﻿${rows.map((row) => row.map(escape).join(';')).join('\r\n')}\r\n`;
-}
+export { toCsv };
 
 export function formatMoment(value: Date): string {
   return value.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });

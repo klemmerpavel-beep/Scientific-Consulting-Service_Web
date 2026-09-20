@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
-import { Card, Empty, Heading, Mono, Text } from '../../../../components/cabinet/ui';
+import { Card, Heading, ScreenHead, Text } from '../../../../components/cabinet/ui';
 import { can, type Action } from '../../../../lib/cabinet/access';
 import { currentActor } from '../../../../lib/cabinet/session';
 
@@ -79,27 +79,25 @@ export default async function ToolsScreen() {
 
   return (
     <Shell actor={actor} current="/cabinet/manage/tools">
-      <Mono>Управление</Mono>
-      <Heading level={1} style={{ margin: '12px 0 24px' }}>
-        Служебные разделы
-      </Heading>
+      <ScreenHead
+        title="Служебные разделы"
+        note="Кухня практики: справочники, журналы, перенос книги заказов и учётные записи. Каждой роли видно только то, что ей открыто."
+      />
 
-      {allowed.length === 0 ? (
-        <Empty title="Разделов нет" />
-      ) : (
-        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
-          {allowed.map((tool) => (
-            <Card as="li" key={tool.href} link>
-              <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-                <a href={tool.href}>{tool.title}</a>
-              </Heading>
-              <Text muted size={14}>
-                {tool.note}
-              </Text>
-            </Card>
-          ))}
-        </ul>
-      )}
+      {/* Ветки «разделов нет» здесь быть не может: выше стоит переход на
+          перечень работ, если не открыт ни один раздел (решение Р-183). */}
+      <ul className="cab-block" style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
+        {allowed.map((tool) => (
+          <Card as="li" key={tool.href} link>
+            <Heading level={2} size={3} style={{ marginBottom: 4 }}>
+              <a href={tool.href}>{tool.title}</a>
+            </Heading>
+            <Text muted size={14}>
+              {tool.note}
+            </Text>
+          </Card>
+        ))}
+      </ul>
     </Shell>
   );
 }

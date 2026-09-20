@@ -16,6 +16,7 @@ import {
   MaterialList,
   Mono,
   ProgressPanel,
+  ScreenTop,
   Roadmap,
   Select,
   Text,
@@ -159,7 +160,7 @@ export default async function ProjectScreen({
       {/* Шапка заказа — одной полосой. Прежде код, название и тема занимали
           три яруса и 154 пикселя: на панели это четверть места, отведённого
           колонкам (решение Р-169). */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <ScreenTop style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <Chip mono>{project.code}</Chip>
         <Heading level={1} size={2}>
           {project.title}
@@ -177,7 +178,7 @@ export default async function ProjectScreen({
             срок — {formatDate(project.dueOn)}
           </span>
         )}
-      </div>
+      </ScreenTop>
       {facts.length === 0 ? null : (
         <p
           style={{
@@ -196,8 +197,8 @@ export default async function ProjectScreen({
         </p>
       )}
 
-      <div style={{ marginTop: 16, marginBottom: 20 }}>
-        <ProgressPanel
+      <ProgressPanel
+          style={{ marginTop: 16, marginBottom: 20 }}
           done={done}
           total={stages.length}
           current={current === null ? null : { title: current.title, state: current.state as StageStateKey }}
@@ -206,7 +207,6 @@ export default async function ProjectScreen({
           action={action}
           actionHref={current === null || action === null ? null : `/cabinet/stages/${current.id}`}
         />
-      </div>
 
       <Board columns={mayWrite ? 3 : 2}>
         <BoardColumn title="План работ">
@@ -272,8 +272,7 @@ export default async function ProjectScreen({
 
       {/* Ниже — то, что нужно не каждый раз: история и служебные действия.
           На виду они занимали пол-экрана, пересказывая этапы и переписку. */}
-      <div style={{ display: 'grid', gap: 10, marginTop: 20 }}>
-        <Disclosure title="История работы">
+      <Disclosure title="История работы" style={{ marginTop: 20 }}>
           {events.length === 0 ? (
             <Text muted>Событий пока нет.</Text>
           ) : (
@@ -291,10 +290,10 @@ export default async function ProjectScreen({
               ))}
             </ul>
           )}
-        </Disclosure>
+      </Disclosure>
 
-        {mayEdit || mayAssign || maySetManager || maySeeContacts ? (
-          <Disclosure title="Управление работой">
+      {mayEdit || mayAssign || maySetManager || maySeeContacts ? (
+        <Disclosure title="Управление работой" style={{ marginTop: 10 }}>
             <div style={{ display: 'grid', gap: 20 }}>
               {mayEdit ? (
                 <Form action={createStage}>
@@ -390,9 +389,8 @@ export default async function ProjectScreen({
                 </div>
               ) : null}
             </div>
-          </Disclosure>
-        ) : null}
-      </div>
+        </Disclosure>
+      ) : null}
     </Shell>
   );
 }

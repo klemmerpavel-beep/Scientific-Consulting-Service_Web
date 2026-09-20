@@ -60,7 +60,7 @@ export default async function ProjectMaterialsScreen({
       {project.materials.length === 0 ? (
         <Empty title="Материалов пока нет" />
       ) : (
-        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
+        <ul className="cab-block" style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
           {project.materials.map((material) => (
             <li key={material.id}>
               <Card>

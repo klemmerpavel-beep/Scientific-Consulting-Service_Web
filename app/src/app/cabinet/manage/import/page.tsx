@@ -1,5 +1,8 @@
+import { redirect } from 'next/navigation';
+
+import Shell from '../../../../components/cabinet/Shell';
 import {
-  redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import {   Button,
+  Button,
   Card,
   Chip,
   Empty,
@@ -7,7 +10,8 @@ import {
   Form,
   FormActions,
   Heading,
-  Mono,
+  ScreenHead,
+  LongTable,
   Notice,
   TABLE_CELL,
   TABLE_HEAD,
@@ -55,15 +59,12 @@ export default async function ImportScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/manage/import">
-      <Mono>Перенос истории</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        Книга заказов
-      </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
-        Книга разбирается вместе с заливкой ячеек: статус работы в исходном файле закодирован
-        цветом. Ведущим признаком принят текст статуса, расхождения с цветом выводятся отдельным
-        перечнем. Ни один проект не заводится до того, как отчёт прочитан и фиксация подтверждена.
-      </Text>
+      <ScreenHead
+        backHref="/cabinet/manage/tools"
+        backLabel="к служебным разделам"
+        title="Книга заказов"
+        note="Книга разбирается вместе с заливкой ячеек: статус работы в исходном файле закодирован цветом. Ведущим признаком принят текст статуса, расхождения с цветом выводятся отдельным перечнем. Ни один проект не заводится до того, как отчёт прочитан и фиксация подтверждена."
+      />
 
       {error === undefined ? null : (
         <div style={{ marginBottom: 20 }}>
@@ -100,61 +101,51 @@ export default async function ImportScreen({
           Первая загрузка покажет отчёт со всеми расхождениями исходного файла.
         </Empty>
       ) : (
-        <TableCard label="Загрузки книги заказов">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+        <LongTable
+          label="Загрузки книги заказов"
+          minWidth={640}
+          caption={
             <caption style={{ ...TABLE_CELL, captionSide: 'top', borderBottom: 'none' }}>
               История переносов: отчёт каждой загрузки открывается повторно.
             </caption>
-            <thead>
-              <tr>
-                <th style={TABLE_HEAD} scope="col">
-                  Файл
-                </th>
-                <th style={TABLE_HEAD} scope="col">
-                  Загружена
-                </th>
-                <th style={TABLE_HEAD} scope="col">
-                  Состояние
-                </th>
-                <th style={TABLE_HEAD} scope="col">
-                  Строк
-                </th>
-                <th style={TABLE_HEAD} scope="col">
-                  Суммы
-                </th>
+          }
+          columns={
+            <tr>
+              <th style={TABLE_HEAD} scope="col">Файл</th>
+              <th style={TABLE_HEAD} scope="col">Загружена</th>
+              <th style={TABLE_HEAD} scope="col">Состояние</th>
+              <th style={TABLE_HEAD} scope="col">Строк</th>
+              <th style={TABLE_HEAD} scope="col">Суммы</th>
+            </tr>
+          }
+          rows={batches.map((batch) => {
+            const stats = (batch.stats ?? {}) as { cost?: string; paid?: string };
+            return (
+              <tr key={batch.id}>
+                <td style={TABLE_CELL}>
+                  <a href={`/cabinet/manage/import/${batch.id}`}>{batch.fileName}</a>
+                  <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                    {batch.uploadedBy.fullName}
+                  </div>
+                </td>
+                <td style={TABLE_CELL}>{formatDate(batch.createdAt)}</td>
+                <td style={TABLE_CELL}>
+                  <Chip tone={batch.state === 'APPLIED' ? 'accent' : 'neutral'}>
+                    {STATE_LABEL[batch.state] ?? batch.state}
+                  </Chip>
+                </td>
+                <td style={TABLE_NUM}>{batch._count.rows}</td>
+                <td style={TABLE_CELL}>
+                  {stats.cost === undefined
+                    ? '—'
+                    : `${formatAmount(BigInt(stats.cost))} / ${formatAmount(
+                        BigInt(stats.paid ?? '0'),
+                      )}`}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {batches.map((batch) => {
-                const stats = (batch.stats ?? {}) as { cost?: string; paid?: string };
-                return (
-                  <tr key={batch.id}>
-                    <td style={TABLE_CELL}>
-                      <a href={`/cabinet/manage/import/${batch.id}`}>{batch.fileName}</a>
-                      <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
-                        {batch.uploadedBy.fullName}
-                      </div>
-                    </td>
-                    <td style={TABLE_CELL}>{formatDate(batch.createdAt)}</td>
-                    <td style={TABLE_CELL}>
-                      <Chip tone={batch.state === 'APPLIED' ? 'accent' : 'neutral'}>
-                        {STATE_LABEL[batch.state] ?? batch.state}
-                      </Chip>
-                    </td>
-                    <td style={TABLE_NUM}>{batch._count.rows}</td>
-                    <td style={TABLE_CELL}>
-                      {stats.cost === undefined
-                        ? '—'
-                        : `${formatAmount(BigInt(stats.cost))} / ${formatAmount(
-                            BigInt(stats.paid ?? '0'),
-                          )}`}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </TableCard>
+            );
+          })}
+        />
       )}
     </Shell>
   );

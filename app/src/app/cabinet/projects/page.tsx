@@ -13,6 +13,9 @@ import {
   Heading,
   Mono,
   Progress,
+  ScreenTop,
+  Block,
+  FilterBar,
   Tabs,
   plural,
   Text,
@@ -99,20 +102,14 @@ export default async function ProjectsScreen({
     <Shell actor={actor} current="/cabinet/projects">
       {/* Композиционный центр экрана: не список работ, а перечень действий.
           Основная потеря календарного времени — ожидание материалов. */}
-      <Heading level={1} style={{ margin: '0 0 24px' }}>
-        {forClient ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы практики'}
-      </Heading>
+      <ScreenTop style={{ marginBottom: 24 }}>
+        <Heading level={1}>
+          {forClient ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы практики'}
+        </Heading>
+      </ScreenTop>
 
       {showFilters ? (
-        <div
-          style={{
-            display: 'flex',
-            gap: 16,
-            alignItems: 'flex-end',
-            flexWrap: 'wrap',
-            marginBottom: 24,
-          }}
-        >
+        <FilterBar>
           <Tabs
             flush
             label="Отбор работ"
@@ -138,11 +135,11 @@ export default async function ProjectsScreen({
             />
             <Button tone="quiet">Найти</Button>
           </Form>
-        </div>
+        </FilterBar>
       ) : null}
 
       {pending.length === 0 ? null : (
-        <section style={{ marginBottom: 32 }}>
+        <Block style={{ marginBottom: 32 }}>
           <Heading level={2} style={{ marginBottom: 12 }}>
             {forClient ? 'Сейчас от вас требуется' : 'Требует внимания'}
           </Heading>
@@ -185,7 +182,7 @@ export default async function ProjectsScreen({
               ))}
             </ul>
           </Card>
-        </section>
+        </Block>
       )}
 
       {awaitingNda ? (
@@ -209,6 +206,7 @@ export default async function ProjectsScreen({
         )
       ) : (
         <ul
+          className="cab-block"
           style={{
             margin: 0,
             padding: 0,
