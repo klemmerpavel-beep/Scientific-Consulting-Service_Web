@@ -61,7 +61,11 @@ export default async function FinanceScreen({
     { label: 'Законтрактовано', value: totals.contracted },
     { label: 'Получено', value: totals.received },
     { label: 'К получению', value: totals.awaiting },
-    { label: 'Потери', value: totals.lost },
+    // «Списано», а не «Потери»: здесь считаются транши со статусом
+    // списания, а вкладка аналитики «Потери» считает недополученное по
+    // остановленным работам. Две разные величины под одним словом на
+    // соседних экранах читались как одна (решение Р-182).
+    { label: 'Списано', value: totals.lost },
     { label: 'Маржа', value: totals.margin },
   ];
 

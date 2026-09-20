@@ -8,7 +8,7 @@ import {
   Text,
 } from '../../../../../components/cabinet/ui';
 import { products } from '../../../../../lib/cabinet/analytics/metrics';
-import { formatAmount } from '../../../../../lib/cabinet/money';
+import { formatAmount, formatRounded } from '../../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from '../shared';
 
 export const dynamic = 'force-dynamic';
@@ -66,7 +66,7 @@ export default async function AnalyticsProducts() {
                   {list.map((product) => (
                     <tr key={product.typeCode}>
                       <td style={cell}>{product.typeName}</td>
-                      <td style={num}>{formatAmount(product.averageCheck)}</td>
+                      <td style={num}>{formatRounded(product.averageCheck)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -108,7 +108,7 @@ export default async function AnalyticsProducts() {
                     <td style={cell}>{product.typeName}</td>
                     <td style={num}>{product.orders}</td>
                     <td style={num}>{formatAmount(product.total)}</td>
-                    <td style={num}>{formatAmount(product.averageCheck)}</td>
+                    <td style={num}>{formatRounded(product.averageCheck)}</td>
                     <td style={num}>{formatAmount(product.medianCheck)}</td>
                     <td style={num}>{formatAmount(product.min)}</td>
                     <td style={num}>{formatAmount(product.max)}</td>
