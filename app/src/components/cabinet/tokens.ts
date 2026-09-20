@@ -114,7 +114,6 @@ export const GUTTER = 30;
 export const CABINET_CSS = `
 ${ROOT_TOKENS}
 body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;flex-direction:column}
-body:has(main.cab-board-main){height:100dvh;overflow:hidden}
 /* Место под полосу прокрутки занято всегда: иначе содержимое колонки
    дёргается вбок, когда записей становится больше высоты. */
 .cab-board-body{scrollbar-gutter:stable}
@@ -159,6 +158,5 @@ details[open]>summary .cab-caret{transform:rotate(90deg)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
-@media (max-width:1024px){body:has(main.cab-board-main){height:auto!important;overflow:visible!important}.cab-board-main{display:block!important;overflow:visible!important;padding-bottom:clamp(72px,7vw,112px)!important}.cab-board{grid-template-columns:minmax(0,1fr)!important}.cab-board-body{max-height:none!important;overflow:visible!important}}
-@media (max-height:700px){body:has(main.cab-board-main){height:auto!important;overflow:visible!important}.cab-board-main{display:block!important;overflow:visible!important}.cab-board-body{max-height:none!important;overflow:visible!important}}
+@media (max-width:1024px){.cab-board-main{display:block!important;overflow:visible!important;padding-bottom:clamp(72px,7vw,112px)!important}.cab-board{grid-template-columns:minmax(0,1fr)!important}.cab-board-body{max-height:none!important;overflow:visible!important}}
 `;

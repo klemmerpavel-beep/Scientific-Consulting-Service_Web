@@ -2,14 +2,24 @@ import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
 import { SANS } from '../../../components/cabinet/tokens';
+import { BarChart, RankChart, compactNumber } from '../../../components/cabinet/Charts';
 import {
   Board,
   BoardColumn,
+  ButtonLink,
+  Card,
+  Chip,
+  Disclosure,
+  Heading,
   ScreenHead,
+  TABLE_CELL,
+  TABLE_HEAD,
+  TABLE_NUM,
   Text,
   Tile,
   Tiles,
   formatDate,
+  plural,
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
@@ -18,8 +28,22 @@ import { unreadInbox } from '../../../lib/cabinet/messages';
 import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { currentActor } from '../../../lib/cabinet/session';
-import { OVERHEAD_PERCENT, activeWorks, practiceSummary } from '../../../lib/cabinet/summary';
+import { byMonth } from '../../../lib/cabinet/analytics/metrics';
+import { loadRows } from '../../../lib/cabinet/analytics/data';
+import {
+  OVERHEAD_PERCENT,
+  activeWorks,
+  practiceSummary,
+  stageLoad,
+} from '../../../lib/cabinet/summary';
 export const dynamic = 'force-dynamic';
+
+/** Сколько дней прошло с назначенного срока; до срока — ничего. */
+function overdueDays(dueOn: Date | null): number | null {
+  if (dueOn === null) return null;
+  const days = Math.floor((Date.now() - dueOn.getTime()) / 86_400_000);
+  return days > 0 ? days : null;
+}
 
 export default async function ManageQueue({
   searchParams,
@@ -51,18 +75,39 @@ export default async function ManageQueue({
   // того, кто отвечает за практику целиком.
   const outbox = can(actor, 'AUDIT_VIEW') ? await outboxDigest(actor) : null;
 
+  // Дашборд собирается только руководителю: деньги практики и её загрузка
+  // целиком — его предмет, менеджеру на главной нужны свои дела
+  // (решение Р-180). Прокрутка здесь разрешена: витрину в окно не уложить,
+  // не отрезав от неё смысл.
+  const dashboard = can(actor, 'ANALYTICS_VIEW');
+  const months = dashboard ? byMonth(await loadRows(actor)).slice(-12) : [];
+  const load = dashboard ? await stageLoad(actor) : null;
+
   // «Требует внимания» — то, что нельзя оставить как есть: сорванный срок,
   // работа, которая ждёт клиента дольше двух недель, и непрочитанное
   // сообщение. У менеджера это главный экран целиком, у руководителя —
   // раздел под сводкой (решение Р-149).
+  // Каждая запись называет и то, что случилось, и то, что с этим делать:
+  // «Сорван срок» без следующего шага оставляет решение на угадывание
+  // (решение Р-180). Просрочка считается днями — дату пришлось бы держать
+  // в уме.
   const attention = [
-    ...light.overdue.map((stage: (typeof light.overdue)[number]) => ({
-      key: `overdue-${stage.id}`,
-      what: 'Сорван срок этапа',
-      detail: `${stage.title} · ${stage.project.code} · ${stage.project.client.fullName}`,
-      when: stage.dueOn === null ? null : `срок ${formatDate(stage.dueOn)}`,
-      href: `/cabinet/stages/${stage.id}`,
-    })),
+    ...light.overdue.map((stage: (typeof light.overdue)[number]) => {
+      const late = overdueDays(stage.dueOn);
+      return {
+        key: `overdue-${stage.id}`,
+        what: 'Сорван срок этапа',
+        detail: `${stage.title} · ${stage.project.code} · ${stage.project.client.fullName}`,
+        when:
+          late === null
+            ? stage.dueOn === null
+              ? null
+              : `срок ${formatDate(stage.dueOn)}`
+            : `просрочено ${late} ${plural(late, 'день', 'дня', 'дней')}`,
+        todo: 'Назначить новый срок или перевести этап',
+        href: `/cabinet/stages/${stage.id}`,
+      };
+    }),
     ...light.stalled.map((stage: (typeof light.stalled)[number]) => ({
       key: `stalled-${stage.id}`,
       what: 'Ждёт клиента дольше двух недель',
@@ -71,6 +116,7 @@ export default async function ManageQueue({
         stage.awaitingClientSince === null
           ? null
           : `с ${formatDate(stage.awaitingClientSince)}`,
+      todo: 'Напомнить клиенту о материалах',
       href: `/cabinet/stages/${stage.id}`,
     })),
     ...unread.map((row) => ({
@@ -78,6 +124,7 @@ export default async function ManageQueue({
       what: `Непрочитанных сообщений: ${row.count}`,
       detail: `${row.title} · ${row.code}`,
       when: null,
+      todo: 'Ответить клиенту',
       href: `/cabinet/projects/${row.code}/messages`,
     })),
     ...(outbox !== null && outbox.failed > 0
@@ -87,6 +134,7 @@ export default async function ManageQueue({
             what: `Уведомления не доставлены: ${outbox.failed}`,
             detail: 'Письма и сообщения, не ушедшие после пяти попыток',
             when: null,
+            todo: 'Разобрать очередь и отправить заново',
             href: '/cabinet/manage/outbox',
           },
         ]
@@ -118,12 +166,130 @@ export default async function ManageQueue({
         </div>
       )}
 
+      {/* Деньги и загрузка стоят рядом: плитки отвечают, сколько денег, а
+          эти два графика — когда они приходят и чем практика занята
+          сейчас. Порядок в загрузке — ход работы, а не убывание числа
+          (решение Р-180). */}
+      {load === null ? null : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(440px,1fr))',
+            gap: 20,
+            marginBottom: 24,
+          }}
+        >
+          <Card>
+            <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+              Деньги по месяцам
+            </Heading>
+            <BarChart
+              title="Поступления по месяцам"
+              width={560}
+              height={220}
+              unit="тыс ₽"
+              data={months.map((month) => ({
+                label: month.label,
+                value: Number(month.received) / 100_000,
+              }))}
+              format={(value) => compactNumber(value, 0)}
+            />
+            <Text muted size={13} style={{ marginTop: 10 }}>
+              Получено по месяцу заказа, последние двенадцать месяцев.
+            </Text>
+            <Disclosure title="Числа" style={{ marginTop: 12 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={TABLE_HEAD} scope="col">Месяц</th>
+                    <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Получено</th>
+                    <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Заказов</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {months.map((month) => (
+                    <tr key={month.key}>
+                      <td style={TABLE_CELL}>{month.label}</td>
+                      <td style={TABLE_NUM}>{formatAmount(month.received)}</td>
+                      <td style={TABLE_NUM}>{month.orders}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Disclosure>
+          </Card>
+
+          <Card>
+            <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+              Чем занята практика
+            </Heading>
+            {load.points.length === 0 ? (
+              <Text muted>Действующих работ нет.</Text>
+            ) : (
+              <RankChart
+                title="Работы по состоянию текущего этапа"
+                width={560}
+                labelWidth={220}
+                data={load.points.map((point) => ({ label: point.label, value: point.count }))}
+                format={(value) => String(Math.round(value))}
+              />
+            )}
+            <div
+              style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}
+            >
+              {load.overdue === 0 ? null : (
+                <Chip tone="accent">
+                  {load.overdue} {plural(load.overdue, 'работа', 'работы', 'работ')} со сроком в
+                  прошлом
+                </Chip>
+              )}
+              {load.planless === 0 ? null : (
+                <Chip>
+                  {load.planless} без плана работ
+                </Chip>
+              )}
+            </div>
+            <Text muted size={13} style={{ marginTop: 10 }}>
+              Состояние берётся у первого незавершённого этапа: он и есть то, где работа стоит
+              сейчас.
+            </Text>
+            {/* Числа стоят и текстом: график объявлен картинкой, и читалка
+                получает от него одно название (правило Р-176). */}
+            {load.points.length === 0 ? null : (
+              <Disclosure title="Числа" style={{ marginTop: 12 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={TABLE_HEAD} scope="col">Состояние</th>
+                      <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Работ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {load.points.map((point) => (
+                      <tr key={point.key}>
+                        <td style={TABLE_CELL}>{point.label}</td>
+                        <td style={TABLE_NUM}>{point.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Disclosure>
+            )}
+          </Card>
+        </div>
+      )}
+
       {/* Доли ширины неравные: у «Заявок» строка короткая, а в двух
           других колонках при равной трети рвались слова — «Подготовка / к
           предзащите» (решение Р-175). Колонки сжимаются по содержимому:
           прежде колонка с одной строкой держала пустое поле до низа окна. */}
       <Board columns={works.length === 0 ? 2 : 3} weights={works.length === 0 ? [1.3, 1] : [1.15, 1.15, 0.7]}>
-        <BoardColumn title="Требует внимания" fit>
+        <BoardColumn
+          title={
+            attention.length === 0 ? 'Требует внимания' : `Требует внимания · ${attention.length}`
+          }
+          fit
+        >
           {attention.length === 0 ? (
             <Text muted>Сейчас ничего не требует вмешательства.</Text>
           ) : (
@@ -142,6 +308,7 @@ export default async function ManageQueue({
                     {row.detail}
                     {row.when === null ? '' : ` · ${row.when}`}
                   </Text>
+                  {row.todo === null ? null : <Text size={13}>{row.todo}</Text>}
                 </li>
               ))}
             </ul>
@@ -150,7 +317,7 @@ export default async function ManageQueue({
 
         {works.length === 0 ? null : (
           <BoardColumn
-            title={summary === null ? 'Мои работы' : 'Сейчас в работе'}
+            title={`${summary === null ? 'Мои работы' : 'Сейчас в работе'} · ${works.length}`}
             href="/cabinet/projects"
             hrefLabel="все работы"
             fit
@@ -165,6 +332,17 @@ export default async function ManageQueue({
                     {work.code} · {work.client}
                     {work.stage === null ? '' : ` · ${work.stage}`}
                   </Text>
+                  {/* Просрочка названа днями, а не датой: «срок 1 сентября
+                      2025» требует считать в уме, «просрочено 384 дня» —
+                      нет (решение Р-180). */}
+                  {overdueDays(work.dueOn) === null ? null : (
+                    <Text size={13}>
+                      <Chip tone="accent">
+                        просрочено {overdueDays(work.dueOn)}{' '}
+                        {plural(overdueDays(work.dueOn)!, 'день', 'дня', 'дней')}
+                      </Chip>
+                    </Text>
+                  )}
                   <Text muted size={13}>
                     {work.contracted === null
                       ? work.dueOn === null
@@ -183,7 +361,7 @@ export default async function ManageQueue({
         )}
 
         <BoardColumn
-          title="Заявки"
+          title={queue.total === 0 ? 'Заявки' : `Заявки · ${queue.total}`}
           href={queue.total > 0 ? '/cabinet/manage/leads' : undefined}
           hrefLabel="все обращения"
           fit
@@ -192,11 +370,14 @@ export default async function ManageQueue({
             <Text muted>Новых заявок нет.</Text>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
+              {/* Контакт стоит в строке, а разбор начинается кнопкой:
+                  прежде за тем и другим приходилось заходить внутрь, а
+                  менеджер решает по заявке за секунды (решение Р-180). */}
               {leads.map((lead) => (
-                <li key={lead.id} style={{ display: 'grid', gap: 2 }}>
+                <li key={lead.id} style={{ display: 'grid', gap: 4 }}>
                   <a
                     href={`/cabinet/manage/leads/${lead.id}`}
-                    style={{ fontFamily: SANS, fontSize: 14 }}
+                    style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}
                   >
                     {lead.name ?? 'Без имени'}
                   </a>
@@ -204,6 +385,10 @@ export default async function ManageQueue({
                     {leadSourceLabel(lead.source)} · {formatDate(lead.createdAt)}
                     {lead.topic === null ? '' : ` · ${lead.topic}`}
                   </Text>
+                  <Text size={13}>{lead.contact}</Text>
+                  <div style={{ marginTop: 4 }}>
+                    <ButtonLink href={`/cabinet/manage/leads/${lead.id}`}>Разобрать</ButtonLink>
+                  </div>
                 </li>
               ))}
             </ul>
