@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 
+import { FilePick } from './FilePick.tsx';
 import { BUTTON_PRIMARY, BUTTON_QUIET, MONO, RADIUS, SANS, SERIF, SHADOW } from './tokens.ts';
 
 /**
@@ -595,14 +596,7 @@ export function FileField({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <FieldLabel id={id} label={label} required={required} hidden={labelHidden} />
-      <input
-        id={id}
-        type="file"
-        name={name}
-        accept={accept}
-        required={required}
-        aria-describedby={hintId}
-      />
+      <FilePick id={id} name={name} accept={accept} required={required} describedBy={hintId} />
       {hint === undefined ? null : (
         <span id={hintId} style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
           {hint}
