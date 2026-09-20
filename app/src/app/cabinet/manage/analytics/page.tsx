@@ -8,7 +8,7 @@ import {
 } from '../../../../components/cabinet/Charts';
 import { Card, Empty, Heading, Text } from '../../../../components/cabinet/ui';
 import { byMonth, conclusions, overview, products } from '../../../../lib/cabinet/analytics/metrics';
-import { formatAmount } from '../../../../lib/cabinet/money';
+import { formatAmount, formatRounded } from '../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from './shared';
 
 export const dynamic = 'force-dynamic';
@@ -56,7 +56,7 @@ export default async function AnalyticsOverview() {
             <Tile label="Законтрактовано" value={formatAmount(total.contracted)} note={`${total.projects} проектов, период ${period}`} />
             <Tile label="Получено" value={formatAmount(total.received)} note={`собрано ${share(total.collection)} по завершённым`} />
             <Tile label="Задолженность" value={formatAmount(total.outstanding)} note="остаток по каждой работе, не меньше нуля" />
-            <Tile label="Средний чек" value={formatAmount(total.averageCheck)} note={`клиентов ${total.clients}`} />
+            <Tile label="Средний чек" value={formatRounded(total.averageCheck)} note={`клиентов ${total.clients}`} />
           </Tiles>
 
           <Heading level={2} style={{ marginBottom: 12 }}>
