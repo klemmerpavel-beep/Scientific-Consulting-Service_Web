@@ -238,7 +238,7 @@ describe('перечень работ отбирается, а не листае
     const name = path.relative(PROTOTYPE, file);
     it(`${name}: при длинном перечне есть отбор`, () => {
       const html = body(file).match(/<main\b[\s\S]*?<\/main>/u)?.[0] ?? '';
-      const cards = (html.match(/<li class="cab-card/gu) ?? []).length;
+      const cards = (html.match(/<li class="[^"]*cab-card/gu) ?? []).length;
       // Граница та же, что у выборки: полоса появляется, когда работ
       // больше восьми (`PROJECT_FILTER_FROM`). Пока правило требовало её
       // начиная с восьми, снимок ровно с восемью работами валил проверку,
@@ -304,7 +304,7 @@ describe('график не остаётся единственным носит
       // Пока правило считало таблицы экрана целиком, вкладка «Деньги» с
       // двумя графиками и нулём чисел текстом проходила зелёной: внизу
       // стояла таблица совсем про другое (решение Р-176).
-      const cards = html.match(/<section class="cab-card"[\s\S]*?<\/section>/gu) ?? [];
+      const cards = html.match(/<section class="(?:[^"]*\s)?cab-card(?:\s[^"]*)?"[\s\S]*?<\/section>/gu) ?? [];
       const withChart = cards.filter((card) => /<svg[^>]*role="img"/u.test(card));
       assert.ok(withChart.length > 0, 'карточка с графиком не нашлась');
       for (const card of withChart) {
@@ -348,7 +348,7 @@ describe('экран заказа помещается в окно', () => {
       // к составу экрана отношения не имеет.
       const html = body(file).match(/<main\b[\s\S]*?<\/main>/u)?.[0] ?? '';
       assert.ok(html.length > 0, 'содержимое экрана не найдено');
-      assert.equal((html.match(/class="cab-board"/gu) ?? []).length, 1, 'панель не одна');
+      assert.equal((html.match(/class="(?:[^"]*\s)?cab-board(?:\s[^"]*)?"/gu) ?? []).length, 1, 'панель не одна');
       assert.equal((html.match(/<h1\b/gu) ?? []).length, 1, 'заголовков работы не один');
       // Формы внутри свёрток места не занимают: свёртка сомкнута, и это
       // проверено правилом выше. Считаются те, что стоят на виду, — их
@@ -391,9 +391,9 @@ describe('колонка сводки показывает столько, ск�
     const name = path.relative(PROTOTYPE, file);
     it(`${name}: счётчик колонки равен числу записей`, () => {
       const html = body(file).match(/<main\b[\s\S]*?<\/main>/u)?.[0] ?? '';
-      const board = html.match(/<div class="cab-board"[\s\S]*<\/div>/u)?.[0] ?? '';
+      const board = html.match(/<div class="(?:[^"]*\s)?cab-board(?:\s[^"]*)?"[\s\S]*<\/div>/u)?.[0] ?? '';
       assert.ok(board.length > 0, 'панель сводки не найдена');
-      const columns = board.match(/<section class="cab-card"[\s\S]*?<\/section>/gu) ?? [];
+      const columns = board.match(/<section class="(?:[^"]*\s)?cab-card(?:\s[^"]*)?"[\s\S]*?<\/section>/gu) ?? [];
       assert.ok(columns.length >= 2, `колонок в сводке: ${columns.length}`);
       let counted = 0;
       for (const column of columns) {
@@ -414,11 +414,96 @@ describe('колонка сводки показывает столько, ск�
     const name = path.relative(PROTOTYPE, file);
     it(`${name}: колонка сводки не прокручивается внутри себя`, () => {
       const html = body(file).match(/<main\b[\s\S]*?<\/main>/u)?.[0] ?? '';
-      const board = html.match(/<div class="cab-board"[\s\S]*<\/div>/u)?.[0] ?? '';
+      const board = html.match(/<div class="(?:[^"]*\s)?cab-board(?:\s[^"]*)?"[\s\S]*<\/div>/u)?.[0] ?? '';
       // Свёртки в колонках сводки не стоят, и `cab-board-body` здесь
       // принадлежит только телу колонки.
       const scrolled = (board.match(/class="cab-board-body"[^>]*tabindex="0"/gu) ?? []).length;
       assert.equal(scrolled, 0, `прокручиваемых колонок: ${scrolled}`);
+    });
+  }
+});
+
+describe('страница не перегружена блоками', () => {
+  /**
+   * Требование заказчика: страница любой роли, кроме руководителя, несёт
+   * не более пяти функциональных блоков. У руководителя предела нет —
+   * его витрины (дашборд, аналитика, деньги) по устройству шире.
+   *
+   * Блок — прямой ребёнок `main`, несущий содержимое: карточка, панель
+   * целиком, свёртка, группа плиток, блок готовности, перечень плашек.
+   * Не считаются шапка экрана, полоса отбора и постраничность: они
+   * управляют страницей, а не наполняют её. Панель из трёх колонок —
+   * один блок, сомкнутая свёртка — блок; и то и другое решено заказчиком
+   * (Р-183).
+   *
+   * Признак ставят общие части (`cab-block`, `cab-head`, `cab-filter`),
+   * поэтому экран о нём не помнит. Второе условие ловит блок, собранный
+   * мимо общих частей: такой ребёнок не имеет ни одного из признаков, и
+   * счёт перестал бы быть верным.
+   */
+  const LIMIT = 5;
+  const pages = ['client', 'expert', 'manager'].flatMap((folder) => screens(folder));
+
+  it('экраны ролей нашлись в снимках', () => {
+    assert.ok(pages.length >= 40, `экранов в снимках: ${pages.length}`);
+  });
+
+  /** Прямые дети `main` вместе с их классами. */
+  function children(file: string): { tag: string; cls: string }[] {
+    let html = body(file).match(/<main\b[^>]*>([\s\S]*)<\/main>/u)?.[1] ?? '';
+    // Узкая колонка содержимого ширины не меняет смысла: блоки лежат в
+    // ней, и считать надо их, а не обёртку.
+    const column = html.match(/<div class="cab-column"[^>]*>([\s\S]*)<\/div>/u);
+    if (column !== null) html = column[1] ?? html;
+    const out: { tag: string; cls: string }[] = [];
+    let depth = 0;
+    let start = -1;
+    const tagRe = /<(\/?)([a-z][a-z0-9]*)\b([^>]*)>/gu;
+    const VOID = new Set(['br', 'hr', 'img', 'input', 'meta', 'link', 'path', 'circle', 'rect', 'line', 'use', 'stop']);
+    let match: RegExpExecArray | null;
+    while ((match = tagRe.exec(html)) !== null) {
+      const [whole, slash, tag, attrs] = match;
+      if (VOID.has(tag) || whole.endsWith('/>')) continue;
+      if (slash === '') {
+        if (depth === 0) {
+          start = match.index;
+          out.push({ tag, cls: attrs.match(/class="([^"]*)"/u)?.[1] ?? '' });
+        }
+        depth += 1;
+      } else {
+        depth -= 1;
+        if (depth === 0) start = -1;
+      }
+    }
+    void start;
+    return out;
+  }
+
+  for (const file of pages) {
+    const name = path.relative(PROTOTYPE, file);
+    it(`${name}: блоков не больше пяти`, () => {
+      const kids = children(file);
+      assert.ok(kids.length > 0, 'содержимое экрана не найдено');
+      const blocks = kids.filter((kid) => / cab-block|^cab-block/u.test(` ${kid.cls}`));
+      assert.ok(
+        blocks.length <= LIMIT,
+        `блоков на экране: ${blocks.length} (предел ${LIMIT})`,
+      );
+    });
+
+    it(`${name}: каждый блок собран общей частью`, () => {
+      const kids = children(file);
+      const stray = kids.filter(
+        (kid) =>
+          kid.tag !== 'nav' &&
+          kid.tag !== 'p' &&
+          !/cab-block|cab-head|cab-filter/u.test(kid.cls),
+      );
+      assert.deepEqual(
+        stray.map((kid) => `<${kid.tag} class="${kid.cls}">`),
+        [],
+        'на экране есть блок мимо общих частей — счёт блоков перестал быть верным',
+      );
     });
   }
 });

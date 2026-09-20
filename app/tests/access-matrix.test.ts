@@ -26,6 +26,7 @@ import {
   type ProjectRef,
   type Role,
 } from '../src/lib/cabinet/access.ts';
+import { activeItem, navFor } from '../src/lib/cabinet/nav.ts';
 
 const NDA = new Date('2026-01-15T00:00:00Z');
 
@@ -288,5 +289,53 @@ describe('ensure', () => {
 describe('полнота матрицы', () => {
   it('каждое действие описано в таблице ожиданий', () => {
     assert.deepEqual(Object.keys(OWN).sort(), [...ACTIONS].sort());
+  });
+});
+
+describe('меню подсвечивает раздел, в котором человек находится', () => {
+  /**
+   * Сверка строгим равенством оставляла без подсветки шесть служебных
+   * экранов — их адресов в меню нет, — а реестры и заявки подсвечивали
+   * «Сводку». Теперь берётся самый длинный подходящий пункт, а служебный
+   * контур целиком подсвечивает «Управление» (решение Р-183).
+   */
+  const head: Actor = {
+    id: 'head-nav',
+    role: 'HEAD',
+    status: 'ACTIVE',
+    clientProfileId: null,
+    expertNdaSignedAt: null,
+  };
+  const items = navFor(head);
+
+  const cases: readonly [string, string][] = [
+    ['/cabinet/manage', '/cabinet/manage'],
+    ['/cabinet/manage/leads', '/cabinet/manage/tools'],
+    ['/cabinet/manage/registry', '/cabinet/manage/tools'],
+    ['/cabinet/manage/users', '/cabinet/manage/tools'],
+    ['/cabinet/manage/audit', '/cabinet/manage/tools'],
+    ['/cabinet/manage/erasure', '/cabinet/manage/tools'],
+    ['/cabinet/manage/import', '/cabinet/manage/tools'],
+    ['/cabinet/manage/outbox', '/cabinet/manage/tools'],
+    ['/cabinet/manage/directory', '/cabinet/manage/tools'],
+    ['/cabinet/manage/tools', '/cabinet/manage/tools'],
+    // Деньги и аналитика — свои пункты, и служебный контур их не
+    // перехватывает, хотя адреса начинаются одинаково.
+    ['/cabinet/manage/finance', '/cabinet/manage/finance'],
+    ['/cabinet/manage/finance/years', '/cabinet/manage/finance'],
+    ['/cabinet/manage/analytics', '/cabinet/manage/analytics'],
+    ['/cabinet/manage/analytics/money', '/cabinet/manage/analytics'],
+    ['/cabinet/projects', '/cabinet/projects'],
+    ['/cabinet/settings', '/cabinet/settings'],
+  ];
+
+  for (const [current, expected] of cases) {
+    it(`${current} → ${expected}`, () => {
+      assert.equal(activeItem(items, current), expected);
+    });
+  }
+
+  it('чужой адрес не подсвечивает ничего', () => {
+    assert.equal(activeItem(items, '/cabinet/enter/abc'), null);
   });
 });

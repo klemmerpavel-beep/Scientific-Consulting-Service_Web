@@ -11,6 +11,7 @@ import {
   TABLE_CELL,
   TABLE_HEAD,
   TableCard,
+  FilterBar,
   Tabs,
   Text,
   formatDate,
@@ -90,8 +91,12 @@ export default async function RegistryScreen({
         note="Клиенты, эксперты и сообщения с признаком передачи контактов."
       />
 
-      <div style={{ marginBottom: 16 }}>
+      {/* Вкладки и поиск стоят одной полосой: прежде они шли двумя
+          рядами, и поиск отрывался от раздела, к которому относится
+          (решение Р-183). */}
+      <FilterBar>
         <Tabs
+          flush
           label="Разделы реестра"
           items={[
             { href: href('clients'), label: 'Клиенты', active: tab === 'clients' },
@@ -99,27 +104,24 @@ export default async function RegistryScreen({
             { href: href('flagged'), label: 'Контакты в переписке', active: tab === 'flagged' },
           ]}
         />
-      </div>
+        {tab !== 'clients' || (clients.length <= PAGE_SIZE && query === '') ? null : (
+          <Form method="get" inline>
+            <Field
+              label="Поиск по клиентам"
+              name="q"
+              labelHidden
+              defaultValue={query}
+              placeholder="Фамилия, вуз или направление"
+              minWidth={220}
+              dense
+            />
+            <Button tone="quiet">Найти</Button>
+          </Form>
+        )}
+      </FilterBar>
 
       {tab === 'clients' ? (
         <>
-          {clients.length <= PAGE_SIZE && query === '' ? null : (
-            <div style={{ marginBottom: 16 }}>
-              <Form method="get" inline>
-                <Field
-                  label="Поиск по клиентам"
-                  name="q"
-                  labelHidden
-                  defaultValue={query}
-                  placeholder="Фамилия, вуз или направление"
-                  minWidth={220}
-                  dense
-                />
-                <Button tone="quiet">Найти</Button>
-              </Form>
-            </div>
-          )}
-
           <TableCard label="Клиенты">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>

@@ -9,6 +9,7 @@ import {
   Form,
   FormActions,
   Notice,
+  Narrow,
   ScreenHead,
   Select,
   Text,
@@ -33,7 +34,7 @@ export default async function NewRequestScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/request">
-      <div style={{ maxWidth: 680 }}>
+      <Narrow width={680}>
         <ScreenHead title="Обращение по новой работе" />
         <Text style={{ marginBottom: 24 }}>
           Заявка попадёт в ту же очередь, что и обращения с сайта. Менеджер рассмотрит её и либо
@@ -96,7 +97,7 @@ export default async function NewRequestScreen({
             </div>
           </>
         )}
-      </div>
+      </Narrow>
     </Shell>
   );
 }

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import type { Actor } from '../../lib/cabinet/access.ts';
 import { BUTTON_QUIET, CONTAINER, GUTTER, MONO, SANS, SERIF } from './tokens.ts';
+import { activeItem, navFor, type NavItem } from '../../lib/cabinet/nav.ts';
 
 /**
  * Каркас раздела: шапка с вордмарком и навигацией, рабочая область, подвал
@@ -51,56 +52,9 @@ function Wordmark() {
   );
 }
 
-export interface NavItem {
-  readonly href: string;
-  readonly label: string;
-}
 
-/**
- * Разделы роли.
- *
- * Первый ряд навигации занят работой: у клиента — его работы, у штатных
- * ролей — то, что требует вмешательства, работы, деньги и аналитика.
- * Служебный контур в этот ряд не выносится (решение Р-140) и собран за
- * одним пунктом «Управление» (решение Р-158): перенос книги заказов,
- * журналы, очередь уведомлений, учётные записи, справочники, реестры,
- * удаление данных субъекта.
- */
-export function navFor(actor: Actor): NavItem[] {
-  const settings: NavItem = { href: '/cabinet/settings', label: 'Уведомления' };
-  if (actor.role === 'CLIENT') {
-    return [
-      { href: '/cabinet/projects', label: 'Мои работы' },
-      { href: '/cabinet/request', label: 'Новая заявка' },
-      settings,
-    ];
-  }
-  if (actor.role === 'EXPERT') {
-    return [
-      { href: '/cabinet/projects', label: 'Назначенные работы' },
-      { href: '/cabinet/payout', label: 'Вознаграждение' },
-      settings,
-    ];
-  }
-  // Главный экран у ролей разный по существу: руководителю — сводка
-  // практики с деньгами, менеджеру — то, что требует вмешательства по его
-  // работам (решение Р-149). Маршрут один, название честное для каждой.
-  const staff: NavItem[] = [
-    { href: '/cabinet/manage', label: actor.role === 'HEAD' ? 'Сводка' : 'Требует внимания' },
-    { href: '/cabinet/projects', label: 'Работы' },
-  ];
-  if (actor.role === 'HEAD') {
-    staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
-    staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
-  }
-  // Служебный контур — реестры, учётные записи, справочники, перенос книги,
-  // журналы, очередь уведомлений, удаление данных — собран за одним пунктом
-  // (решение Р-158). В первый ряд эти разделы не выносятся по Р-140: они
-  // нужны изредка. Но и доступными только по набранному вручную адресу они
-  // быть не должны — о них тогда знает лишь тот, кто писал код.
-  staff.push({ href: '/cabinet/manage/tools', label: 'Управление' });
-  return [...staff, settings];
-}
+export { navFor, activeItem };
+export type { NavItem };
 
 export default function Shell({
   actor,
@@ -136,6 +90,7 @@ export default function Shell({
   children: ReactNode;
 }) {
   const items = actor === null ? [] : navFor(actor);
+  const active = activeItem(items, current ?? '');
   return (
     <>
       <a className="pd-skip" href="#main">
@@ -179,7 +134,7 @@ export default function Shell({
                   <li key={item.href}>
                     <a
                       href={item.href}
-                      aria-current={current === item.href ? 'page' : undefined}
+                      aria-current={item.href === active ? 'page' : undefined}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',

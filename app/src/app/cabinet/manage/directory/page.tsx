@@ -21,6 +21,7 @@ import {
   TABLE_HEAD,
   TABLE_NUM,
   TableCard,
+  FilterBar,
   Tabs,
   Text,
 } from '../../../../components/cabinet/ui';
@@ -86,8 +87,9 @@ export default async function DirectoryScreen({
         note="Позиция справочника — то, во что сводятся исторические написания при переносе книги заказов и на что опирается аналитика продуктов."
       />
 
-      <div style={{ marginBottom: 16 }}>
+      <FilterBar>
         <Tabs
+          flush
           label="Разделы справочников"
           items={[
             { href: href('types'), label: 'Типы сопровождения', active: tab === 'types' },
@@ -95,7 +97,7 @@ export default async function DirectoryScreen({
             { href: href('colors'), label: 'Заливка книги', active: tab === 'colors' },
           ]}
         />
-      </div>
+      </FilterBar>
 
       {sp.error === undefined ? null : (
         <div style={{ marginBottom: 20 }}>

@@ -259,11 +259,22 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
   };
 }
 
+/** Сколько последних требований показывается на экране. */
+export const ERASURE_SHOWN = 50;
+
+/**
+ * Последние требования субъектов и их общее число.
+ *
+ * Прежде выбирались пятьдесят и больше ничего: на пятьдесят первом
+ * требовании старые исчезали молча, и экран об этом не говорил
+ * (решение Р-183).
+ */
 export async function listErasureRequests(actor: Actor) {
   ensure(actor, 'ERASURE_EXECUTE');
-  return prisma.erasureRequest.findMany({
+  const total = await prisma.erasureRequest.count();
+  const rows = await prisma.erasureRequest.findMany({
     orderBy: { requestedAt: 'desc' },
-    take: 50,
+    take: ERASURE_SHOWN,
     select: {
       id: true,
       requestedAt: true,
@@ -274,6 +285,7 @@ export async function listErasureRequests(actor: Actor) {
       approvedBy: { select: { fullName: true } },
     },
   });
+  return { rows, total };
 }
 
 /** Карточки, по которым требование ещё не исполнено. */

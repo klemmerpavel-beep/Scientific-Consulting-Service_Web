@@ -9,6 +9,7 @@ import {
   Form,
   FormActions,
   Heading,
+  Narrow,
   Notice,
   ScreenHead,
   Text,
@@ -48,7 +49,7 @@ export default async function SettingsScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/settings">
-      <div style={{ maxWidth: 680 }}>
+      <Narrow width={680}>
         <ScreenHead title="Как сообщать о ходе работы" />
         <Text style={{ marginBottom: 24 }}>
           Уведомления приходят о том, что требует действия: этап ждёт материалов, материал готов к
@@ -119,7 +120,7 @@ export default async function SettingsScreen({
             можно письмом менеджеру.
           </Text>
         )}
-      </div>
+      </Narrow>
     </Shell>
   );
 }

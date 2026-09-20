@@ -113,6 +113,14 @@ describe('шапка экрана собрана общей частью', () =>
     'manage/users/page.tsx',
     'manage/audit/page.tsx',
     'manage/outbox/page.tsx',
+    // Пять экранов собирали шапку вручную и потому в перечень не
+    // попадали: правило проверяет только то, что в нём названо
+    // (решение Р-183).
+    'manage/leads/page.tsx',
+    'manage/erasure/page.tsx',
+    'manage/import/page.tsx',
+    'manage/finance/years/page.tsx',
+    'manage/tools/page.tsx',
   ];
 
   for (const name of inside) {

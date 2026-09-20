@@ -4,6 +4,7 @@ import Shell from '../../../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../../../components/cabinet/tokens';
 import {
   Button,
+  Block,
   Card,
   Chip,
   Field,
@@ -185,7 +186,7 @@ export default async function PaymentsScreen({
             </Text>
           </Card>
 
-          <section style={{ marginBottom: 20 }}>
+          <Block style={{ marginBottom: 20 }}>
             <Heading level={2} size={3}>Транши</Heading>
             <Card style={{ marginTop: 12 }}>
               {contract.tranches.length === 0 ? (
@@ -334,9 +335,9 @@ export default async function PaymentsScreen({
                 </Form>
               ) : null}
             </Card>
-          </section>
+          </Block>
 
-          <section style={{ marginBottom: 20 }}>
+          <Block style={{ marginBottom: 20 }}>
             <Heading level={2} size={3}>Документы по договору</Heading>
             <Card style={{ marginTop: 12 }}>
               {contract.documents.length === 0 ? (
@@ -396,10 +397,10 @@ export default async function PaymentsScreen({
                 </Form>
               ) : null}
             </Card>
-          </section>
+          </Block>
 
           {maySeeEconomy ? (
-            <section>
+            <Block>
               <Heading level={2} size={3}>Вознаграждение эксперта</Heading>
               <Card style={{ marginTop: 12 }}>
                 {payouts.length === 0 ? (
@@ -485,7 +486,7 @@ export default async function PaymentsScreen({
                   </FormActions>
                 </Form>
               </Card>
-            </section>
+            </Block>
           ) : null}
         </>
       )}

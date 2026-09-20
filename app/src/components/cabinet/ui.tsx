@@ -45,7 +45,7 @@ export function Card({
 }) {
   return (
     <Tag
-      className={link ? 'cab-card cab-link-card' : 'cab-card'}
+      className={link ? 'cab-block cab-card cab-link-card' : 'cab-block cab-card'}
       style={{
         background: 'var(--pd-ink-inverse)',
         border: '1px solid var(--pd-border)',
@@ -512,6 +512,86 @@ export function ButtonLink({
     >
       {children}
     </a>
+  );
+}
+
+/**
+ * Раздел экрана без карточки: заголовок и содержимое прямо на поле.
+ *
+ * Такие разделы были набраны своей `<section>` на девяти экранах, и
+ * правило о пяти блоках их не видело: признак блока ставят общие части,
+ * а тут общей части не было вовсе (Р-183).
+ */
+export function Block({
+  children,
+  style,
+  as: Tag = 'section',
+}: {
+  children: ReactNode;
+  style?: CSSProperties;
+  as?: 'section' | 'div' | 'ul';
+}) {
+  return (
+    <Tag className="cab-block" style={style}>
+      {children}
+    </Tag>
+  );
+}
+
+/**
+ * Узкая колонка содержимого.
+ *
+ * Четыре экрана — переписка, настройки, новая заявка, разбор заявки —
+ * ограничивали ширину своей обёрткой `maxWidth`. Обёртка ничего не
+ * значит по смыслу, но правило о пяти блоках видело только её и не
+ * добиралось до настоящих блоков внутри (Р-183).
+ */
+export function Narrow({ width = 780, children }: { width?: number; children: ReactNode }) {
+  return (
+    <div className="cab-column" style={{ maxWidth: width }}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Шапка экрана, собранная не общей частью.
+ *
+ * Экран заказа и перечень работ ставят свою шапку — с чипом кода и
+ * сроком у первого, с полосой отбора у второго, — и `ScreenHead` им не
+ * подходит. Обёртка даёт им тот же признак, что и общей шапке, чтобы
+ * правило о пяти блоках не считало их блоками (Р-183).
+ */
+export function ScreenTop({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  return (
+    <div className="cab-head" style={style}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Полоса отбора: вкладки слева, поиск и кнопки справа.
+ *
+ * Одно устройство было набрано своей вёрсткой на четырёх экранах —
+ * перечень работ, реестры, справочники, деньги, — и копии уже разошлись
+ * по отступам. Полоса блоком не считается: она управляет экраном, а не
+ * несёт содержимое, и правило о пяти блоках её не считает (Р-183).
+ */
+export function FilterBar({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="cab-filter"
+      style={{
+        display: 'flex',
+        gap: 16,
+        alignItems: 'flex-end',
+        flexWrap: 'wrap',
+        marginBottom: 24,
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -1001,6 +1081,7 @@ export function Tile({ label, value, note }: { label: string; value: string; not
 export function Tiles({ children }: { children: ReactNode }) {
   return (
     <div
+      className="cab-block"
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
@@ -1318,7 +1399,10 @@ export function ScreenHead({
   aside?: string | null;
 }) {
   return (
-    <div style={{ marginBottom: 20 }}>
+    // Шапка экрана блоком не считается: она называет страницу, а не
+    // несёт содержимое. Класс нужен правилу о пяти блоках, чтобы
+    // отличить шапку от блока, собранного мимо общих частей (Р-183).
+    <div className="cab-head" style={{ marginBottom: 20 }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         {backHref === undefined ? null : (
           <a
@@ -1401,7 +1485,7 @@ export function Board({
       : `repeat(${columns}, minmax(0,1fr))`;
   return (
     <div
-      className="cab-board"
+      className="cab-block cab-board"
       style={{
         display: 'grid',
         gridTemplateColumns: tracks,
@@ -1462,6 +1546,9 @@ export function BoardColumn({
   children: ReactNode;
 }) {
   return (
+    // Колонка носит `cab-card` ради оформления, но не `cab-block`:
+    // панель из трёх колонок читается как одно устройство экрана и
+    // считается одним блоком — решение заказчика (Р-183).
     <section
       className="cab-card"
       style={{
@@ -1561,6 +1648,7 @@ export function ProgressPanel({
   action,
   actionHref,
   actionLabel,
+  style,
 }: {
   done: number;
   total: number;
@@ -1570,6 +1658,7 @@ export function ProgressPanel({
   action?: string | null;
   actionHref?: string | null;
   actionLabel?: string;
+  style?: CSSProperties;
 }) {
   const share = total === 0 ? 0 : Math.round((done / total) * 100);
   // Ожидание человека подсвечивается: это единственное состояние, в котором
@@ -1577,6 +1666,7 @@ export function ProgressPanel({
   const waiting = current?.state === 'AWAITING_CLIENT' || current?.state === 'IN_APPROVAL';
   return (
     <section
+      className="cab-block"
       style={{
         display: 'grid',
         gap: 12,
@@ -1584,6 +1674,7 @@ export function ProgressPanel({
         borderRadius: RADIUS.card,
         border: `1px solid ${waiting ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
         background: waiting ? 'var(--pd-accent-tint)' : 'var(--pd-ink-inverse)',
+        ...style,
       }}
     >
       <div style={{ display: 'flex', gap: 16, alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -1705,7 +1796,11 @@ export function Disclosure({
   // и колонка, получает фокус и имя (решения Р-168, Р-169).
 
   return (
+    // Свёртка считается блоком, даже сомкнутая: пять свёрток подряд
+    // перегружают экран так же, как пять карточек — решение заказчика
+    // (Р-183).
     <details
+      className="cab-block"
       style={{
         background: 'var(--pd-ink-inverse)',
         border: '1px solid var(--pd-border)',

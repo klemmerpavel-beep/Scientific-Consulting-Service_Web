@@ -11,6 +11,7 @@ import {
   Form,
   FormActions,
   Heading,
+  Narrow,
   ScreenHead,
   Select,
   Text,
@@ -50,7 +51,7 @@ export default async function LeadScreen({
 
   return (
     <Shell actor={actor} current="/cabinet/manage">
-      <div style={{ maxWidth: 780 }}>
+      <Narrow width={780}>
         <ScreenHead
           backHref="/cabinet/manage"
           backLabel="к сводке"
@@ -127,7 +128,7 @@ export default async function LeadScreen({
             </FormActions>
           </Form>
         </Disclosure>
-      </div>
+      </Narrow>
     </Shell>
   );
 }

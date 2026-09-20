@@ -2,6 +2,7 @@ import {
   notFound,
   redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import { MONO } from '../../../../components/cabinet/tokens'; import {   Button,
   ButtonLink,
+  Block,
   Card,
   Chip,
   Disclosure,
@@ -76,11 +77,11 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
       />
 
       {stage.blockedReason === null ? null : (
-        <div style={{ marginBottom: 24 }}>
+        <Block as="div" style={{ marginBottom: 24 }}>
           <Notice tone="quiet" role="status">
             {stage.blockedReason}
           </Notice>
-        </div>
+        </Block>
       )}
 
       {mayApprove ? (
@@ -140,7 +141,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
         </Card>
       ) : null}
 
-      <section>
+      <Block>
         <Heading level={2} style={{ marginBottom: 12 }}>Материалы и версии</Heading>
         {stage.materials.length === 0 ? (
           <Text muted>
@@ -298,7 +299,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
             </Form>
           </Disclosure>
         ) : null}
-      </section>
+      </Block>
     </Shell>
   );
 }
