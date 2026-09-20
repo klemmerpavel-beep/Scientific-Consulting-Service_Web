@@ -108,7 +108,7 @@ export default async function FinanceYearsScreen() {
       ) : null}
 
       {editable ? (
-        <Card>
+        <Card style={{ marginTop: 28 }}>
           {/* Моно-метка над заголовком раздела ничего не добавляла:
               заголовок и так называет, что здесь делают (правило Р-141). */}
           <Heading level={2} style={{ marginBottom: 8 }}>
