@@ -137,8 +137,16 @@ export default async function AllLeadsScreen({
       </Block>
 
       {list.rows.length === 0 ? (
-        <Empty title="Ничего не найдено">
-          Измените условия отбора или сбросьте их — обращения никуда не делись.
+        <Empty
+          title="Ничего не найдено"
+          filters={[
+            filter.source ? `страница — ${LEAD_SOURCE_LABEL[filter.source] ?? filter.source}` : '',
+            filter.status ? `состояние — ${LEAD_STATUS_LABEL[filter.status] ?? filter.status}` : '',
+            filter.query ? `поиск — «${filter.query}»` : '',
+          ]}
+          resetHref="/cabinet/manage/leads"
+        >
+          Обращения никуда не делись — они не подошли под это условие.
         </Empty>
       ) : (
         <TableCard label="Обращения">

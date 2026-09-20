@@ -82,7 +82,14 @@ describe('раскладка в окно объявлена одним экра�
     );
     assert.deepEqual(
       owners.map((file) => path.relative(SCREENS, file)).sort(),
-      ['manage/page.tsx', 'projects/[code]/page.tsx'],
+      [
+        'manage/page.tsx',
+        // Экран загрузки панели обязан повторять её строй: иначе при
+        // загрузке раскладка подменяется лентой и прыгает при подстановке
+        // содержимого (решение Р-184).
+        'projects/[code]/loading.tsx',
+        'projects/[code]/page.tsx',
+      ],
     );
   });
 });

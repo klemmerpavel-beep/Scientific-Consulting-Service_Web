@@ -155,8 +155,15 @@ export default async function UsersScreen({
       </Text>
 
       {users.length === 0 ? (
-        <Empty title="Ничего не найдено">
-          Измените отбор или снимите его — учётные записи никуда не делись.
+        <Empty
+          title="Ничего не найдено"
+          filters={[
+            role === undefined ? '' : `роль — ${ROLE_LABEL[role]}`,
+            status === undefined ? '' : `состояние — ${STATUS_LABEL[status]}`,
+          ]}
+          resetHref="/cabinet/manage/users"
+        >
+          Учётные записи никуда не делись — они не подошли под это условие.
         </Empty>
       ) : (
       <TableCard label="Пользователи кабинета">

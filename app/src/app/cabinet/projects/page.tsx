@@ -200,8 +200,16 @@ export default async function ProjectsScreen({
         ) : (
           // Отбор ничего не нашёл — это не то же самое, что «работ нет»:
           // работы есть, просто не под этим условием.
-          <Empty title="Ничего не найдено">
-            Измените условия отбора или сбросьте их — работы никуда не делись.
+          <Empty
+            title="Ничего не найдено"
+            filters={[
+              filter === 'all' ? '' : `состояние — ${FILTER_LABEL[filter].toLowerCase()}`,
+              query === '' ? '' : `поиск — «${query}»`,
+            ]}
+            total={list.all}
+            resetHref="/cabinet/projects"
+          >
+            Работы никуда не делись — они не подошли под это условие.
           </Empty>
         )
       ) : (
