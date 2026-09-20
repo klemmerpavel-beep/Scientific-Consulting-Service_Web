@@ -6,6 +6,7 @@ import {
   Card,
   Checkbox,
   Chip,
+  Disclosure,
   Field,
   Form,
   FormActions,
@@ -106,10 +107,11 @@ export default async function LeadScreen({
           </Form>
         </Card>
 
-        <Card>
-          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
-            Отклонить
-          </Heading>
+        {/* Отказ — редкий исход, и поле причины на четыре строки занимало
+            треть экрана под формой, которой пользуются каждый раз. Под
+            свёрткой оно на виду не стоит, а раскрывается на месте
+            (решение Р-182). */}
+        <Disclosure title="Отклонить заявку">
           <Form action={moderateLead}>
             <input type="hidden" name="leadId" value={lead.id} />
             <input type="hidden" name="decision" value="decline" />
@@ -124,7 +126,7 @@ export default async function LeadScreen({
               <Button tone="quiet">Отклонить заявку</Button>
             </FormActions>
           </Form>
-        </Card>
+        </Disclosure>
       </div>
     </Shell>
   );
