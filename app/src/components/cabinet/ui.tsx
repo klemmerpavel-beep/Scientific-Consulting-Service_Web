@@ -315,6 +315,7 @@ export function Field({
   scope,
   labelHidden = false,
   minWidth,
+  dense = false,
 }: {
   label: string;
   name: string;
@@ -330,12 +331,18 @@ export function Field({
   labelHidden?: boolean;
   /** Единственный размер, зависящий от места: ширина поля в ряду. */
   minWidth?: number;
+  /**
+   * Поле в полосе отбора: высота 44 вместо 48, вровень с вкладками и
+   * кнопкой. Кегль остаётся 16 — при меньшем Safari на телефоне
+   * масштабирует вьюпорт (Р-86), поэтому высота снимается отступом.
+   */
+  dense?: boolean;
 }) {
   const control: CSSProperties = {
     boxSizing: 'border-box',
     width: '100%',
-    minHeight: 48,
-    padding: '12px 14px',
+    minHeight: dense ? 44 : 48,
+    padding: dense ? '10px 14px' : '12px 14px',
     borderRadius: RADIUS.field,
     border: '1px solid var(--pd-edge-neutral)',
     background: 'var(--pd-ink-inverse)',
@@ -514,12 +521,23 @@ export function ButtonLink({
 export function Tabs({
   label,
   items,
+  flush = false,
 }: {
   label: string;
   items: readonly { href: string; label: string; active: boolean }[];
+  /**
+   * Полоса стоит в ряду с другими частями отбора и свой нижний отступ не
+   * несёт. Пока отступ стоял всегда, ряд «вкладки — поиск — кнопка»
+   * выравнивался по низу вместе с ним, и вкладки оказывались на двадцать
+   * пикселей выше поля (решение Р-175).
+   */
+  flush?: boolean;
 }) {
   return (
-    <nav aria-label={label} style={{ marginBottom: 20, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+    <nav
+      aria-label={label}
+      style={{ marginBottom: flush ? 0 : 20, display: 'flex', gap: 8, flexWrap: 'wrap' }}
+    >
       {items.map((tab) => (
         <a
           key={tab.href}
@@ -902,9 +920,20 @@ export function Tile({ label, value, note }: { label: string; value: string; not
   return (
     <Card>
       <Mono>{label}</Mono>
+      {/* Число — главное в плитке, и оно обязано весить больше подписей
+          вокруг. Прежде вес не задавался вовсе, и «4 370 000 ₽» при кегле
+          22 читалось легче заголовка колонки под ним; интерлиньяж 1,6 на
+          однострочном числе добавлял к плитке девять лишних пикселей
+          (решение Р-175). */}
       <Text
         size={22}
-        style={{ marginTop: 8, color: 'var(--pd-ink)', fontVariantNumeric: 'tabular-nums' }}
+        style={{
+          marginTop: 8,
+          color: 'var(--pd-ink)',
+          fontWeight: 600,
+          lineHeight: 1.24,
+          fontVariantNumeric: 'tabular-nums',
+        }}
       >
         {value}
       </Text>
@@ -1298,7 +1327,26 @@ export function ScreenHead({
  *
  * Ниже 1024 px панель становится обычной лентой — правило в `CABINET_CSS`.
  */
-export function Board({ columns, children }: { columns: 2 | 3; children: ReactNode }) {
+export function Board({
+  columns,
+  weights,
+  children,
+}: {
+  columns: 2 | 3;
+  /**
+   * Доли ширины колонок. Пока колонки делились поровну, на сводке
+   * руководителя «Заявки» с одной строкой занимали ту же треть, что и
+   * перечень работ, и строки в двух других колонках рвались посреди слова:
+   * «Подготовка / к предзащите» (решение Р-175). Длина массива обязана
+   * совпадать с числом колонок, иначе доли не применяются.
+   */
+  weights?: readonly number[];
+  children: ReactNode;
+}) {
+  const tracks =
+    weights !== undefined && weights.length === columns
+      ? weights.map((weight) => `minmax(0,${weight}fr)`).join(' ')
+      : `repeat(${columns}, minmax(0,1fr))`;
   return (
     <div
       className="cab-board"
@@ -1306,7 +1354,7 @@ export function Board({ columns, children }: { columns: 2 | 3; children: ReactNo
         flex: 1,
         minHeight: 0,
         display: 'grid',
-        gridTemplateColumns: `repeat(${columns}, minmax(0,1fr))`,
+        gridTemplateColumns: tracks,
         gap: 20,
         alignItems: 'stretch',
       }}
@@ -1328,6 +1376,7 @@ export function BoardColumn({
   hrefLabel,
   footer,
   anchor = 'start',
+  fit = false,
   children,
 }: {
   title: string;
@@ -1343,6 +1392,13 @@ export function BoardColumn({
    * разметкой, без клиентского кода.
    */
   anchor?: 'start' | 'end';
+  /**
+   * Колонка занимает столько, сколько нужно содержимому, и прокручивается
+   * только когда его больше остатка окна. Без этого колонка с одной
+   * строкой («Новых заявок нет») держала белое поле до низа экрана: у
+   * менеджера пустовала половина окна (решение Р-175).
+   */
+  fit?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -1356,6 +1412,7 @@ export function BoardColumn({
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
+        ...(fit ? { alignSelf: 'start', maxHeight: '100%' } : {}),
       }}
     >
       <div
@@ -1365,7 +1422,7 @@ export function BoardColumn({
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          padding: '4px 18px',
+          padding: '10px 18px',
           borderBottom: '1px solid var(--pd-divider)',
         }}
       >
@@ -1393,7 +1450,7 @@ export function BoardColumn({
         aria-label={title}
         tabIndex={0}
         style={{
-          flex: 1,
+          flex: fit ? '0 1 auto' : 1,
           minHeight: 0,
           overflowY: 'auto',
           padding: '16px 18px',

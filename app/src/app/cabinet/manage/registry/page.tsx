@@ -113,6 +113,7 @@ export default async function RegistryScreen({
                   defaultValue={query}
                   placeholder="Фамилия, вуз или направление"
                   minWidth={220}
+                  dense
                 />
                 <Button tone="quiet">Найти</Button>
               </Form>

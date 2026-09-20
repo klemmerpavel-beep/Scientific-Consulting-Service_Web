@@ -21,7 +21,11 @@ export const ROOT_TOKENS =
   '--pd-accent-hover:#0A2145;--pd-accent-active:#081A38;--pd-ok-bg:#E6F9F1;' +
   '--pd-ok-ink:#0E4E3C;--pd-err-bg:#FAE7E5;--pd-err-border:#F0C9C3;' +
   '--pd-err-ink:#8E2C22;--pd-ok-border:#C5EEDD;--pd-accent-soft:#2A63B4;' +
-  '--pd-art-line:#E5EBF2;--pd-art-mark:#D3DEEC;--pd-art-dot:#D8DEE6}';
+  '--pd-art-line:#E5EBF2;--pd-art-mark:#D3DEEC;--pd-art-dot:#D8DEE6;' +
+  // Две ступени сверх палитры сайта: шкала рядов графиков. Типов
+  // сопровождения шесть, а различимых ступеней было четыре — пятый
+  // сектор кольца повторял цвет первого (решение Р-175).
+  '--pd-series-mid:#5C8FD6;--pd-series-quiet:#98A2B3}';
 
 export const SERIF = "'Literata', Georgia, 'Times New Roman', serif";
 export const SANS = "'Inter','Helvetica Neue',Arial,sans-serif";
@@ -111,6 +115,9 @@ export const CABINET_CSS = `
 ${ROOT_TOKENS}
 body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;flex-direction:column}
 body:has(main.cab-board-main){height:100dvh;overflow:hidden}
+/* Место под полосу прокрутки занято всегда: иначе содержимое колонки
+   дёргается вбок, когда записей становится больше высоты. */
+.cab-board-body{scrollbar-gutter:stable}
 main{flex:1}
 h1,h2,h3{text-wrap:balance;margin:0}
 h1,h2,h3,p,li,td,th,a,label,span{overflow-wrap:break-word}

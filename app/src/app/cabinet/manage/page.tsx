@@ -41,7 +41,10 @@ export default async function ManageQueue({
 
   // Сводка — это деньги практики, и её видит только тот, кому открыта маржа.
   const summary = can(actor, 'MARGIN_VIEW') ? await practiceSummary(actor) : null;
-  const works = summary === null ? [] : await activeWorks(actor);
+  // Перечень действующих работ видят обе служебные роли, и каждая — свои:
+  // менеджеру `scopeProjects` оставляет те, где он куратор. Деньги в строке
+  // появляются только при праве на маржу (решение Р-175).
+  const works = await activeWorks(actor);
   const unread = await unreadInbox(actor);
   // Состояние очереди уведомлений видит только руководитель (решение Р-154):
   // менеджеру служебная кухня не нужна, а недоставленное письмо — забота
@@ -101,7 +104,7 @@ export default async function ManageQueue({
       <ScreenHead title={summary === null ? 'Работа на сегодня' : 'Практика'} />
 
       {summary === null ? null : (
-        <div style={{ marginBottom: 20 }}>
+        <div>
           <Tiles>
             <Tile label="Заказов" value={String(summary.orders)} note={`${summary.active} в работе`} />
             <Tile label="Выручка" value={formatAmount(summary.received)} note="получено" />
@@ -115,8 +118,12 @@ export default async function ManageQueue({
         </div>
       )}
 
-      <Board columns={works.length === 0 ? 2 : 3}>
-        <BoardColumn title="Требует внимания">
+      {/* Доли ширины неравные: у «Заявок» строка короткая, а в двух
+          других колонках при равной трети рвались слова — «Подготовка / к
+          предзащите» (решение Р-175). Колонки сжимаются по содержимому:
+          прежде колонка с одной строкой держала пустое поле до низа окна. */}
+      <Board columns={works.length === 0 ? 2 : 3} weights={works.length === 0 ? [1.3, 1] : [1.15, 1.15, 0.7]}>
+        <BoardColumn title="Требует внимания" fit>
           {attention.length === 0 ? (
             <Text muted>Сейчас ничего не требует вмешательства.</Text>
           ) : (
@@ -142,7 +149,12 @@ export default async function ManageQueue({
         </BoardColumn>
 
         {works.length === 0 ? null : (
-          <BoardColumn title="Сейчас в работе" href="/cabinet/projects" hrefLabel="все работы">
+          <BoardColumn
+            title={summary === null ? 'Мои работы' : 'Сейчас в работе'}
+            href="/cabinet/projects"
+            hrefLabel="все работы"
+            fit
+          >
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
               {works.map((work) => (
                 <li key={work.code} style={{ display: 'grid', gap: 2 }}>
@@ -154,11 +166,15 @@ export default async function ManageQueue({
                     {work.stage === null ? '' : ` · ${work.stage}`}
                   </Text>
                   <Text muted size={13}>
-                    {formatPlain(work.contracted)} ₽ по договору
-                    {work.outstanding > 0n
-                      ? ` · ${formatPlain(work.outstanding)} ₽ не оплачено`
-                      : ' · оплачено полностью'}
-                    {work.dueOn === null ? '' : ` · срок ${formatDate(work.dueOn)}`}
+                    {work.contracted === null
+                      ? work.dueOn === null
+                        ? 'срок не назначен'
+                        : `срок ${formatDate(work.dueOn)}`
+                      : `${formatPlain(work.contracted)} ₽ по договору${
+                          work.outstanding !== null && work.outstanding > 0n
+                            ? ` · ${formatPlain(work.outstanding)} ₽ не оплачено`
+                            : ' · оплачено полностью'
+                        }${work.dueOn === null ? '' : ` · срок ${formatDate(work.dueOn)}`}`}
                   </Text>
                 </li>
               ))}
@@ -170,6 +186,7 @@ export default async function ManageQueue({
           title="Заявки"
           href={queue.total > 0 ? '/cabinet/manage/leads' : undefined}
           hrefLabel="все обращения"
+          fit
         >
           {leads.length === 0 ? (
             <Text muted>Новых заявок нет.</Text>

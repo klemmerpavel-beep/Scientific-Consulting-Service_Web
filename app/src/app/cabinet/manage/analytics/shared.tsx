@@ -6,6 +6,7 @@ import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
 import {
   Card,
+  Disclosure,
   Heading,
   Mono,
   TABLE_CELL,
@@ -70,14 +71,26 @@ export { Tile, Tiles };
 // под прежними именами.
 export { TABLE_CELL as cell, TABLE_HEAD as head, TABLE_NUM as num };
 
-/** Карточка графика: заголовок, сам график, под ним — пояснение расчёта. */
+/**
+ * Карточка графика: заголовок, сам график, под ним — пояснение расчёта и,
+ * при надобности, свёртка с числами.
+ *
+ * График объявлен картинкой (`role="img"`), и читалка получает от него
+ * только название: подсказки над столбцами до неё не доходят. Поэтому
+ * каждый вывод обязан существовать и текстом. Там, где числа не вынесены
+ * в легенду или в таблицу рядом, они кладутся сюда — свёрткой, чтобы не
+ * удлинять экран (решение Р-175).
+ */
 export function ChartCard({
   title,
   note,
+  numbers,
   children,
 }: {
   title: string;
   note?: string;
+  /** Те же значения текстом: таблица под свёрткой. */
+  numbers?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -90,6 +103,11 @@ export function ChartCard({
         <Text muted size={13} style={{ marginTop: 12 }}>
           {note}
         </Text>
+      )}
+      {numbers === undefined ? null : (
+        <Disclosure title="Числа" style={{ marginTop: 16 }}>
+          {numbers}
+        </Disclosure>
       )}
     </Card>
   );
