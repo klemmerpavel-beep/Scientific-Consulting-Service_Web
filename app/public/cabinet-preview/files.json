@@ -55,7 +55,7 @@
   "head/manage/finance-set-all/index.html",
   "head/manage/finance/index.html",
   "head/manage/finance/years/index.html",
-  "head/manage/import/id-15/index.html",
+  "head/manage/import/id-16/index.html",
   "head/manage/import/index.html",
   "head/manage/index.html",
   "head/manage/leads/id-14/index.html",
@@ -78,7 +78,7 @@
   "head/projects/PD-2026-048/index.html",
   "head/projects/index.html",
   "head/settings/index.html",
-  "head/stages/id-02/index.html",
+  "head/stages/id-01/index.html",
   "head/stages/id-06/index.html",
   "head/stages/id-11/index.html",
   "head/stages/id-12/index.html",
@@ -103,9 +103,9 @@
   "manager/projects/index.html",
   "manager/settings/index.html",
   "manager/stages/id-01/index.html",
-  "manager/stages/id-02/index.html",
   "manager/stages/id-11/index.html",
   "manager/stages/id-12/index.html",
   "manager/stages/id-13/index.html",
+  "manager/stages/id-15/index.html",
   "prototype.css"
 ]

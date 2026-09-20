@@ -58,11 +58,24 @@ export default async function ProjectsScreen({
   });
   const filter = list.filter;
   const projects = list.rows;
-  const pending = await pendingActions(actor);
+  const pendingAll = await pendingActions(actor);
   const unread = await unreadByProject(actor, projects.map((p) => p.id));
   const forClient = actor.role === 'CLIENT';
   const forExpert = actor.role === 'EXPERT';
   const showFilters = list.all > PROJECT_FILTER_FROM;
+  // Требуемое действие показывается там, где человек его ищет, — на самой
+  // работе. Пока блок «Требует внимания» перечислял этапы независимо от
+  // перечня, одна и та же работа стояла на экране дважды: строкой сверху и
+  // плашкой ниже, с тем же состоянием в шкале. Сверху остаётся только то,
+  // чего в перечне сейчас не видно: отсечённое отбором или ушедшее на
+  // другую страницу (решение Р-175).
+  const shown = new Set(projects.map((project) => project.code));
+  const onPage = new Map(
+    pendingAll
+      .filter((stage) => shown.has(stage.project.code))
+      .map((stage) => [stage.project.code, stage]),
+  );
+  const pending = pendingAll.filter((stage) => !shown.has(stage.project.code));
   const href = (next: { state?: ProjectFilter; page?: number }) => {
     const params = new URLSearchParams();
     const state = next.state ?? filter;
@@ -101,6 +114,7 @@ export default async function ProjectsScreen({
           }}
         >
           <Tabs
+            flush
             label="Отбор работ"
             items={FILTERS.map((key) => ({
               href: href({ state: key }),
@@ -120,6 +134,7 @@ export default async function ProjectsScreen({
               defaultValue={query}
               placeholder={forClient ? 'Код или название' : 'Код, название или клиент'}
               minWidth={200}
+              dense
             />
             <Button tone="quiet">Найти</Button>
           </Form>
@@ -199,7 +214,12 @@ export default async function ProjectsScreen({
             padding: 0,
             listStyle: 'none',
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(440px,1fr))',
+            // `auto-fill`, а не `auto-fit`: пустой трек сохраняется, и
+            // единственная найденная работа остаётся плашкой, а не
+            // растягивается баннером во всю ширину экрана. Минимум трека
+            // ограничен шириной окна — жёсткие 440 px давали
+            // горизонтальное переполнение на телефоне (решение Р-175).
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(440px,100%),1fr))',
             gap: 16,
           }}
         >
@@ -223,8 +243,18 @@ export default async function ProjectsScreen({
               forClient ? null : project.client.fullName,
             ].filter((fact) => fact !== null);
 
+            const waiting = onPage.get(project.code) ?? null;
+
             return (
-              <Card as="li" key={project.id} link style={{ padding: '16px 20px 18px' }}>
+              <Card
+                as="li"
+                key={project.id}
+                link
+                style={{
+                  padding: '16px 20px 18px',
+                  ...(waiting === null ? {} : { borderColor: 'var(--pd-accent-edge)' }),
+                }}
+              >
                 <div
                   style={{
                     display: 'flex',
@@ -260,7 +290,11 @@ export default async function ProjectsScreen({
                 {/* Заголовок ведёт внутрь: отдельная строка «Открыть работу»
                     под каждой плашкой стоила у эксперта восемьсот пикселей
                     и вела туда же. */}
-                <Heading level={3} style={{ marginBottom: 4 }}>
+                {/* Плашка — раздел перечня, и её заголовок второго уровня:
+                    блок «Требует внимания» появляется не всегда, и при его
+                    отсутствии третий уровень оказывался сразу после
+                    первого — пропуск, который ловит правило облика. */}
+                <Heading level={2} size={3} style={{ marginBottom: 4 }}>
                   <a href={`/cabinet/projects/${project.code}`} style={{ color: 'var(--pd-ink)' }}>
                     {project.title}
                   </a>
@@ -273,13 +307,11 @@ export default async function ProjectsScreen({
                     растягивала весь ряд плашек (решение Р-169). Целиком
                     тема стоит на экране заказа. */}
                 {project.topic === null || project.topic === project.title ? null : (
-                  <p
+                  <Text
+                    muted
+                    size={13}
                     style={{
                       margin: '0 0 10px',
-                      fontFamily: SANS,
-                      fontSize: 13,
-                      lineHeight: 1.5,
-                      color: 'var(--pd-ink-muted)',
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
                       WebkitBoxOrient: 'vertical',
@@ -287,7 +319,7 @@ export default async function ProjectsScreen({
                     }}
                   >
                     {project.topic}
-                  </p>
+                  </Text>
                 )}
 
                 {/* Состояние работы называется словом и стоит в плашке:
@@ -301,6 +333,20 @@ export default async function ProjectsScreen({
                       : { title: currentStage.title, state: currentStage.state as StageStateKey }
                   }
                 />
+
+                {/* Требуемое действие стоит на самой работе и ведёт прямо
+                    на этап: отдельной строкой сверху оно повторяло бы то,
+                    что и так видно в шкале (решение Р-175). */}
+                {waiting === null ? null : (
+                  <Text size={13} style={{ marginTop: 10 }}>
+                    <a href={`/cabinet/stages/${waiting.id}`}>
+                      {waiting.state === 'AWAITING_CLIENT'
+                        ? `Загрузить материалы: ${waiting.title}`
+                        : `Согласовать этап: ${waiting.title}`}
+                    </a>
+                    {waiting.dueOn === null ? '' : ` — до ${formatDate(waiting.dueOn)}`}
+                  </Text>
+                )}
 
                 {facts.length === 0 ? null : (
                   <Text muted size={13} style={{ marginTop: 10 }}>

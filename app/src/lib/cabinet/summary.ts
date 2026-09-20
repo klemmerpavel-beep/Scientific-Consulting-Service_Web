@@ -7,7 +7,7 @@
  * финансового контура; новое только сведение и ставка издержек.
  */
 
-import { ensure, type Actor } from './access.ts';
+import { can, ensure, type Actor } from './access.ts';
 import { financeSummary } from './finance.ts';
 import { prisma } from '../db.ts';
 import { scopeProjects } from './access.ts';
@@ -48,9 +48,14 @@ export interface ActiveWork {
   readonly title: string;
   readonly client: string;
   readonly dueOn: Date | null;
-  readonly contracted: bigint;
-  readonly received: bigint;
-  readonly outstanding: bigint;
+  /**
+   * Деньги стоят `null` у того, кому они не открыты. Поля нет в объекте по
+   * значению, а не по условию в разметке: показать нечего, даже если
+   * разметку перепишут (тот же порядок, что у `present*` в `access.ts`).
+   */
+  readonly contracted: bigint | null;
+  readonly received: bigint | null;
+  readonly outstanding: bigint | null;
   readonly stage: string | null;
   readonly stageState: string | null;
 }
@@ -58,12 +63,19 @@ export interface ActiveWork {
 /**
  * Перечень действующих работ.
  *
- * Руководителю нужен не архив, а то, что в работе: сколько осталось
- * получить и на каком этапе каждая. Сортировка по сроку — ближайший
- * сверху; работы без срока уходят вниз.
+ * Нужен не архив, а то, что в работе: на каком этапе каждая и когда срок.
+ * Сортировка по сроку — ближайший сверху; работы без срока уходят вниз.
+ *
+ * Выборку видят обе служебные роли, и каждая — своё: `scopeProjects`
+ * оставляет менеджеру работы, где он куратор (Р-149). Прежде перечень был
+ * закрыт правом на маржу целиком, и менеджеру главный экран показывал два
+ * блока на половину окна, а вторая половина пустовала (решение Р-175).
+ * Деньги по-прежнему за правом на маржу — но снимаются из строки, а не
+ * запирают перечень.
  */
 export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
-  ensure(actor, 'MARGIN_VIEW');
+  ensure(actor, 'PROJECT_VIEW');
+  const money = can(actor, 'MARGIN_VIEW');
   const scope = scopeProjects(actor);
 
   const projects = await prisma.project.findMany({
@@ -90,11 +102,11 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
       title: project.title,
       client: project.client.fullName,
       dueOn: project.dueOn,
-      contracted,
-      received,
+      contracted: money ? contracted : null,
+      received: money ? received : null,
       // Переплату в задолженность не записываем: остаток не бывает
       // отрицательным (то же правило, что в финансовом контуре).
-      outstanding: contracted > received ? contracted - received : 0n,
+      outstanding: money ? (contracted > received ? contracted - received : 0n) : null,
       stage: current?.title ?? null,
       stageState: current?.state ?? null,
     };
