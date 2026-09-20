@@ -126,6 +126,25 @@ export interface LoadPoint {
   readonly count: number;
 }
 
+/** Этап, срок которого наступает в ближайшие две недели. */
+export interface DueSoon {
+  readonly id: string;
+  readonly code: string;
+  readonly stage: string;
+  readonly client: string;
+  readonly dueOn: Date;
+}
+
+/**
+ * Окно ближайших сроков — две недели.
+ *
+ * Неделя коротка: при сроках, назначаемых по этапам в месяц, в окно
+ * попадает один-два этапа, и перечень не говорит ничего о месяце. Месяц
+ * длинен: в него попадает всё подряд, и срочное перестаёт отличаться от
+ * планового. Две недели — решение заказчика.
+ */
+const SOON_DAYS = 14;
+
 /**
  * Загрузка практики по состоянию текущего этапа.
  *
@@ -138,18 +157,25 @@ export interface LoadPoint {
 export async function stageLoad(
   actor: Actor,
   now: Date = new Date(),
-): Promise<{ points: LoadPoint[]; overdue: number; planless: number }> {
+): Promise<{ points: LoadPoint[]; overdue: number; planless: number; soon: DueSoon[] }> {
   ensure(actor, 'PROJECT_VIEW');
   const scope = scopeProjects(actor);
 
   const projects = await prisma.project.findMany({
     where: { ...(scope ?? {}), status: 'ACTIVE' },
     select: {
-      stages: { orderBy: { position: 'asc' }, select: { state: true, dueOn: true } },
+      code: true,
+      client: { select: { fullName: true } },
+      stages: {
+        orderBy: { position: 'asc' },
+        select: { id: true, title: true, state: true, dueOn: true },
+      },
     },
   });
 
   const counts = new Map<string, number>();
+  const soon: DueSoon[] = [];
+  const horizon = new Date(now.getTime() + SOON_DAYS * 86_400_000);
   let overdue = 0;
   let planless = 0;
 
@@ -162,7 +188,21 @@ export async function stageLoad(
     const key = current?.state ?? 'DONE';
     counts.set(key, (counts.get(key) ?? 0) + 1);
     if (current?.dueOn != null && current.dueOn < now) overdue += 1;
+    // Срок ближайших двух недель берётся у того же текущего этапа: работа
+    // стоит на нём, и его срок — это и есть ближайшее обязательство.
+    // Просроченное сюда не попадает — оно названо выше отдельно.
+    if (current?.dueOn != null && current.dueOn >= now && current.dueOn <= horizon) {
+      soon.push({
+        id: current.id,
+        code: project.code,
+        stage: current.title,
+        client: project.client.fullName,
+        dueOn: current.dueOn,
+      });
+    }
   }
+
+  soon.sort((a, b) => a.dueOn.getTime() - b.dueOn.getTime());
 
   // Порядок — ход работы, а не убывание числа: перечень читается как
   // путь от «не начат» до «на согласовании».
@@ -180,6 +220,7 @@ export async function stageLoad(
     ),
     overdue,
     planless,
+    soon,
   };
 }
 

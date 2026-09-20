@@ -359,3 +359,66 @@ describe('экран заказа помещается в окно', () => {
     });
   }
 });
+
+describe('колонка сводки показывает столько, сколько обещает', () => {
+  /**
+   * Заголовок колонки несёт счётчик — «Требует внимания · 6», — и он
+   * обязан совпадать с числом записей под ним. Прежде тело колонки
+   * обрывалось на семи десятых окна и последняя запись резалась пополам:
+   * счётчик обещал шесть, показаны были пять с половиной (решение Р-182).
+   *
+   * Проверяется по разметке: снимок снят с полной высоты страницы, и то,
+   * что в нём есть, человек увидит прокруткой. Обратный случай — записей
+   * больше, чем в счётчике, — тоже ошибка: он означал бы, что колонка
+   * показывает чужое.
+   */
+  const summaries = ['manager', 'head']
+    .map((folder) => path.join(PROTOTYPE, folder, 'manage', 'index.html'))
+    .filter((file) => {
+      try {
+        readFileSync(file);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+  it('сводки нашлись в снимках', () => {
+    assert.equal(summaries.length, 2, `сводок в снимках: ${summaries.length}`);
+  });
+
+  for (const file of summaries) {
+    const name = path.relative(PROTOTYPE, file);
+    it(`${name}: счётчик колонки равен числу записей`, () => {
+      const html = body(file).match(/<main\b[\s\S]*?<\/main>/u)?.[0] ?? '';
+      const board = html.match(/<div class="cab-board"[\s\S]*<\/div>/u)?.[0] ?? '';
+      assert.ok(board.length > 0, 'панель сводки не найдена');
+      const columns = board.match(/<section class="cab-card"[\s\S]*?<\/section>/gu) ?? [];
+      assert.ok(columns.length >= 2, `колонок в сводке: ${columns.length}`);
+      let counted = 0;
+      for (const column of columns) {
+        const title = column.match(/<h2[^>]*>([^<]*)<\/h2>/u)?.[1] ?? '';
+        const promised = title.match(/·\s*(\d+)\s*$/u);
+        if (promised === null) continue;
+        counted += 1;
+        // Записи колонки — прямые дети её перечня; вложенных перечней в
+        // колонках сводки нет.
+        const rows = (column.match(/<li\b/gu) ?? []).length;
+        assert.equal(rows, Number(promised[1]), `«${title}»: записей ${rows}`);
+      }
+      assert.ok(counted >= 1, 'ни одна колонка не несёт счётчика');
+    });
+  }
+
+  for (const file of summaries) {
+    const name = path.relative(PROTOTYPE, file);
+    it(`${name}: колонка сводки не прокручивается внутри себя`, () => {
+      const html = body(file).match(/<main\b[\s\S]*?<\/main>/u)?.[0] ?? '';
+      const board = html.match(/<div class="cab-board"[\s\S]*<\/div>/u)?.[0] ?? '';
+      // Свёртки в колонках сводки не стоят, и `cab-board-body` здесь
+      // принадлежит только телу колонки.
+      const scrolled = (board.match(/class="cab-board-body"[^>]*tabindex="0"/gu) ?? []).length;
+      assert.equal(scrolled, 0, `прокручиваемых колонок: ${scrolled}`);
+    });
+  }
+});

@@ -1427,6 +1427,7 @@ export function BoardColumn({
   footer,
   anchor = 'start',
   fit = false,
+  flow = false,
   children,
 }: {
   title: string;
@@ -1449,6 +1450,15 @@ export function BoardColumn({
    * менеджера пустовала половина окна (решение Р-175).
    */
   fit?: boolean;
+  /**
+   * Колонка идёт потоком: внутренней прокрутки нет, тело растёт по
+   * содержимому. Нужно сводке, где прокручивается сама страница: там
+   * предел в семь десятых окна резал последнюю запись пополам, и
+   * счётчик в заголовке обещал больше, чем колонка показывала
+   * (решение Р-182). На панели заказа, которая в окно уложена, колонки
+   * по-прежнему прокручиваются внутри себя.
+   */
+  flow?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -1496,9 +1506,9 @@ export function BoardColumn({
       </div>
       <div
         className="cab-board-body"
-        role="region"
-        aria-label={title}
-        tabIndex={0}
+        // Область, которая не прокручивается, не нуждается ни в фокусе,
+        // ни в имени: то и другое добавило бы лишний шаг обхода.
+        {...(flow ? {} : { role: 'region', 'aria-label': title, tabIndex: 0 })}
         style={{
           // Высота ограничена сверху, но не снизу: короткое содержимое
           // видно целиком, длинное прокручивается внутри колонки. Прежде
@@ -1507,8 +1517,9 @@ export function BoardColumn({
           // (решение Р-180).
           flex: '0 1 auto',
           minHeight: fit ? 0 : 200,
-          maxHeight: '70vh',
-          overflowY: 'auto',
+          ...(flow
+            ? { maxHeight: 'none', overflowY: 'visible' }
+            : { maxHeight: '70vh', overflowY: 'auto' }),
           padding: '16px 18px',
           ...(anchor === 'end' ? { display: 'flex', flexDirection: 'column-reverse' } : {}),
         }}
