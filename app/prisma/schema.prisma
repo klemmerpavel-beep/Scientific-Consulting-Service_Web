@@ -402,8 +402,6 @@ model Project {
   importRows    ImportRow[]
 
   @@index([status, dueOn])
-  /// Итоги по годам считают начатое за год по всей практике.
-  @@index([startedOn])
   @@index([clientId])
   @@index([expertId])
   @@index([managerId])
@@ -821,9 +819,6 @@ model AuditEvent {
   payload    Json?
 
   @@index([occurredAt])
-  /// Перечень видов действий для отбора: без индекса это обход всего
-  /// журнала ради двух десятков разных значений (решение Р-185).
-  @@index([action])
   @@index([objectType, objectId])
   @@index([actorId, occurredAt])
   @@index([projectId, occurredAt])

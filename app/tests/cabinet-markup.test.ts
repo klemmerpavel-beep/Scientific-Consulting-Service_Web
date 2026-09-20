@@ -19,10 +19,17 @@ import { describe, it } from 'node:test';
 const SCREENS = path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet');
 const COMPONENTS = path.join(import.meta.dirname, '..', 'src', 'components', 'cabinet');
 
-function sources(root: string): string[] {
+/**
+ * Файлы каталога. Разметка живёт в `.tsx`, предметная область — в `.ts`,
+ * и правилам слоёв нужны оба: перечень из одних `.tsx` делал проверку
+ * `lib/cabinet` пустой, то есть вечно зелёной (решение Р-186).
+ */
+function sources(root: string, ext: '.tsx' | '.ts' | 'both' = '.tsx'): string[] {
   return readdirSync(root, { recursive: true })
     .map(String)
-    .filter((name) => name.endsWith('.tsx'))
+    .filter((name) =>
+      ext === 'both' ? name.endsWith('.ts') || name.endsWith('.tsx') : name.endsWith(ext),
+    )
     .map((name) => path.join(root, name));
 }
 
@@ -164,7 +171,7 @@ describe('слои кабинета не смешиваются', () => {
    * касаются того, как написан код, а не того, что вышло на экран.
    */
   it('экран и серверное действие не обращаются к базе напрямую', () => {
-    const guilty = sources(SCREENS)
+    const guilty = sources(SCREENS, 'both')
       .filter((file) => /from\s+'[^']*lib\/db'/u.test(readFileSync(file, 'utf8')))
       .map((file) => path.relative(SCREENS, file));
     assert.deepEqual(
@@ -177,7 +184,7 @@ describe('слои кабинета не смешиваются', () => {
   it('предметная область не знает об оформлении и о каркасе', () => {
     const root = path.join(SCREENS, '..', '..', 'lib', 'cabinet');
     const guilty: string[] = [];
-    for (const file of sources(root)) {
+    for (const file of sources(root, 'both')) {
       const code = readFileSync(file, 'utf8');
       const name = path.relative(root, file);
       // Единственное исключение: сессия читает cookie запроса, и без
@@ -207,7 +214,7 @@ describe('слои кабинета не смешиваются', () => {
       'readiness.ts',
     ]);
     const guilty: string[] = [];
-    for (const file of sources(root)) {
+    for (const file of sources(root, 'both')) {
       const name = path.relative(root, file);
       if (allowed.has(name)) continue;
       const code = readFileSync(file, 'utf8');
@@ -215,5 +222,25 @@ describe('слои кабинета не смешиваются', () => {
       if (!/\bensure\(|\bcan\(|\bscope[A-Z]/u.test(code)) guilty.push(name);
     }
     assert.deepEqual(guilty, [], 'выборка читает данные, не спрашивая разрешения');
+  });
+
+  it('каждое записываемое действие названо в словаре журнала', async () => {
+    // Перечень действий для отбора берётся из словаря названий, а не
+    // обходом журнала. Значит код, записанный мимо словаря, пропал бы из
+    // отбора молча — и в журнале остался бы машинной строкой (Р-186).
+    const { actionCodes } = await import('../src/lib/cabinet/journal-labels.ts');
+    const known = new Set(actionCodes());
+    const root = path.join(SCREENS, '..', '..', 'lib', 'cabinet');
+    const unnamed = new Set<string>();
+    for (const file of [...sources(root, 'both'), ...sources(SCREENS)]) {
+      const code = readFileSync(file, 'utf8');
+      // Только записи в журнал: у `can` и `ensure` тем же словом названо
+      // право, и оно к словарю журнала отношения не имеет.
+      for (const call of code.matchAll(/\brecord\([\s\S]{0,400}?\}\)/gu)) {
+        const hit = /\baction:\s*'([A-Z][A-Z0-9_]+)'/u.exec(call[0]);
+        if (hit !== null && !known.has(hit[1]!)) unnamed.add(hit[1]!);
+      }
+    }
+    assert.deepEqual([...unnamed].sort(), [], 'действие пишется в журнал, но не названо по-русски');
   });
 });

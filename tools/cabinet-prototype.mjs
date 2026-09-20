@@ -207,10 +207,28 @@ async function snapshot(page) {
     for (const node of clone.querySelectorAll('script, link, style, next-route-announcer')) {
       node.remove();
     }
+    // Полосу прогресса чтения навешивает сценарий движения уже после
+    // отрисовки, и снимок заставал её то на месте, то нет: два прогона
+    // подряд расходились на случайных экранах. Движению в снимке места
+    // нет — в нём принимают облик (решение Р-186).
+    for (const node of clone.querySelectorAll('.pd-progress')) node.remove();
+    // Те же классы появления навешивает сценарий движения по мере
+    // прокрутки: снимок заставал блок то помеченным, то нет.
+    for (const node of clone.querySelectorAll('.pd-rise, .pd-in')) {
+      node.classList.remove('pd-rise', 'pd-in');
+      if (node.getAttribute('class') === '') node.removeAttribute('class');
+    }
     for (const node of clone.querySelectorAll('*')) {
       for (const attribute of [...node.attributes]) {
         if (/^data-(next|react|nimg|sentry)/i.test(attribute.name)) node.removeAttribute(attribute.name);
       }
+    }
+    // Скрытое поле серверного действия несёт хэш сборки: он меняется от
+    // любой правки кода, и снимок каждой формы переписывается заново.
+    // В разборе изменений это шум, закрывающий настоящие правки облика,
+    // а для приёмки хэш не значит ничего (решение Р-186).
+    for (const node of clone.querySelectorAll('input[name^="$ACTION_ID_"]')) {
+      node.setAttribute('name', '$ACTION_ID');
     }
     return clone.innerHTML;
   });

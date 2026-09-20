@@ -180,6 +180,18 @@ async function main() {
     data: { userId: clientUser.id },
   });
 
+  // Стенд задаёт исходное состояние целиком, включая сессии: обход
+  // прототипа входит под четырьмя ролями и оставляет по сессии за прогон,
+  // а экран учётных записей их считает. Без очистки снимок менялся от
+  // одного прогона к другому и переставал быть воспроизводимым
+  // (решение Р-186).
+  const staff = [head.id, manager.id, expertUser.id, clientUser.id];
+  await prisma.session.deleteMany({ where: { userId: { in: staff } } });
+  await prisma.loginToken.deleteMany({ where: { userId: { in: staff } } });
+  await prisma.loginAttempt.deleteMany({
+    where: { emailNormalized: { endsWith: `@${DOMAIN}` } },
+  });
+
   await prisma.projectCodeCounter.upsert({
     where: { year: 2026 },
     create: { year: 2026, lastNumber: 0 },

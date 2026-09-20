@@ -83,6 +83,19 @@ export function actionLabel(code: string): string {
   return ACTIONS[code] ?? code;
 }
 
+/**
+ * Виды действий для отбора журнала, по алфавиту названий.
+ *
+ * Прежде перечень собирался обходом всего журнала (`distinct` без
+ * ограничения числа строк): на сотне тысяч записей это чтение таблицы
+ * целиком ради двух десятков значений, и растёт оно вместе с журналом.
+ * Словарь знает те же коды — их пишет сервисный слой, и правило проверки
+ * следит, чтобы ни один не завёлся мимо словаря (решение Р-186).
+ */
+export function actionCodes(): string[] {
+  return Object.keys(ACTIONS).sort((a, b) => ACTIONS[a]!.localeCompare(ACTIONS[b]!, 'ru'));
+}
+
 export function objectLabel(code: string | null): string {
   if (code === null) return '—';
   return OBJECTS[code] ?? code;
