@@ -363,3 +363,39 @@ export async function removeStageTemplateItem(actor: Actor, id: string) {
     payload: { title: item.title },
   });
 }
+
+/**
+ * Настройки уведомлений текущего человека.
+ *
+ * Своя учётная запись — единственное, что здесь читается, и выборка
+ * ограничена ею по построению. Прежде экран настроек читал это своим
+ * запросом к базе (решение Р-185).
+ */
+export async function ownChannels(actor: Actor) {
+  return prisma.user.findUniqueOrThrow({
+    where: { id: actor.id },
+    select: {
+      email: true,
+      notifyEmail: true,
+      notifyTelegram: true,
+      telegramChatId: true,
+      consentAcceptedAt: true,
+    },
+  });
+}
+
+/**
+ * Каналы уведомлений: выбор за получателем, а не за системой.
+ *
+ * Правка ограничена своей учётной записью по построению — чужой
+ * идентификатор сюда не передаётся вовсе (решение Р-185).
+ */
+export async function saveOwnChannels(
+  actor: Actor,
+  channels: { email: boolean; telegram: boolean },
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: actor.id },
+    data: { notifyEmail: channels.email, notifyTelegram: channels.telegram },
+  });
+}

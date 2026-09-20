@@ -35,6 +35,27 @@ function screens(folder: string): string[] {
     .map((name) => path.join(root, name));
 }
 
+describe('ни один экран не упал', () => {
+  /**
+   * Снимок снимается обходом по ссылкам, и упавший экран отдаёт не пустую
+   * страницу, а `error.tsx` — «Не удалось показать раздел». Прежде это
+   * ловилось лишь косвенно: правило счёта блоков спотыкалось о чужую
+   * разметку. Теперь падение названо прямо (решение Р-185).
+   */
+  for (const folder of ['client', 'expert', 'manager', 'head']) {
+    for (const file of screens(folder)) {
+      it(path.relative(PROTOTYPE, file), () => {
+        const html = body(file);
+        assert.equal(
+          /Не удалось показать раздел/u.test(html),
+          false,
+          'экран отдал состояние ошибки — выборка за ним бросает исключение',
+        );
+      });
+    }
+  }
+});
+
 describe('клиент не видит исполнителя', () => {
   // Состав привлечённых специалистов клиенту не показывается: ни подписью
   // автора, ни в тексте сообщения или замечания (решения Р-140, Р-143).
@@ -506,4 +527,69 @@ describe('страница не перегружена блоками', () => {
       );
     });
   }
+});
+
+describe('карточки в ряду одного размера', () => {
+  /**
+   * Требование заказчика: карточки и блоки одного размера. Ряд из
+   * карточек разной высоты читается как сбой раскладки, а не как
+   * решение (решение Р-185).
+   *
+   * Проверяется по разметке: у сетки, где лежат карточки, не должно
+   * стоять выравнивания по началу — оно и делает высоту разной. Точная
+   * высота меряется в браузере при пересъёмке; здесь запирается то, чем
+   * она задаётся.
+   */
+  it('сетки карточек не выравниваются по началу', () => {
+    const root = path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet');
+    const guilty: string[] = [];
+    /**
+     * Объектный литерал, внутри которого стоит `gridTemplateColumns`:
+     * от его открывающей фигурной скобки до парной закрывающей.
+     * Выравнивание ищется только в нём — выравнивание соседней строки
+     * из чипов и кнопок к высоте карточек отношения не имеет.
+     */
+    const gridLiteral = (code: string, at: number): string => {
+      let depth = 0;
+      let open = -1;
+      for (let i = at; i >= 0; i -= 1) {
+        if (code[i] === '}') depth += 1;
+        else if (code[i] === '{') {
+          if (depth === 0) {
+            open = i;
+            break;
+          }
+          depth -= 1;
+        }
+      }
+      if (open < 0) return '';
+      depth = 0;
+      for (let i = open; i < code.length; i += 1) {
+        if (code[i] === '{') depth += 1;
+        else if (code[i] === '}') {
+          depth -= 1;
+          if (depth === 0) return code.slice(open, i + 1);
+        }
+      }
+      return code.slice(open);
+    };
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name.endsWith('.tsx')) {
+          const code = readFileSync(full, 'utf8');
+          for (const hit of code.matchAll(/gridTemplateColumns/gu)) {
+            // `alignItems: 'start'` на самой сетке карточек означает
+            // разную высоту в ряду.
+            if (/alignItems:\s*'(start|flex-start)'/u.test(gridLiteral(code, hit.index))) {
+              guilty.push(path.relative(root, full));
+            }
+          }
+        }
+      }
+    };
+    walk(root);
+    assert.deepEqual(guilty, [], 'сетка карточек выравнена по началу — высота в ряду разная');
+  });
 });

@@ -135,7 +135,90 @@ describe('удаление данных субъекта', { skip: !enabled }, a
       },
     });
 
+    // След за пределами карточки и переписки: он копился незамеченным,
+    // и затирание его не трогало (решение Р-185).
+    const stage = await prisma.stage.create({
+      data: {
+        projectId: project.id,
+        position: 1,
+        title: 'Глава 1 Смирнова О. П.',
+        blockedReason: 'Ждём справку из МГУ на имя Смирнова',
+      },
+    });
+    const comment = await prisma.versionComment.create({
+      data: {
+        versionId: version.id,
+        authorId: manager.id,
+        body: 'Олег Петрович, поправьте раздел 2',
+        moderationNote: 'проверено',
+        moderationStatus: 'PUBLISHED',
+      },
+    });
+    const event = await prisma.projectEvent.create({
+      data: {
+        projectId: project.id,
+        actorId: manager.id,
+        kind: 'PROJECT_CREATED',
+        payload: { client: 'Смирнов Олег Петрович' },
+      },
+    });
+    const lead = await prisma.lead.create({
+      data: {
+        source: 'landing',
+        form: 'hero',
+        name: 'Смирнов Олег Петрович',
+        contactKind: 'email',
+        contact: `era-client-${stamp}@example.org`,
+        organization: 'МГУ',
+        topic: 'Спиновые кубиты',
+        message: 'Прошу связаться',
+        consentGiven: true,
+        consentVersion: 'v1',
+        ip: '203.0.113.7',
+        userAgent: 'Mozilla/5.0',
+        projectId: project.id,
+      },
+    });
+    await prisma.loginAttempt.create({
+      data: {
+        emailNormalized: `era-client-${stamp}@example.org`,
+        ip: '203.0.113.7',
+        outcome: 'SENT',
+      },
+    });
+    const outbox = await prisma.notificationOutbox.create({
+      data: {
+        userId: clientUser.id,
+        projectId: project.id,
+        channel: 'EMAIL',
+        eventKind: 'STAGE_DONE',
+        subject: 'Смирнов О. П.: этап завершён',
+        body: 'Олег Петрович, этап завершён',
+        dedupKey: `era-outbox-${stamp}`,
+      },
+    });
+    const batch = await prisma.importBatch.create({
+      data: { fileName: 'книга.xlsx', sha256: 'a'.repeat(64), uploadedById: head.id },
+    });
+    const importRow = await prisma.importRow.create({
+      data: {
+        batchId: batch.id,
+        rowNumber: 7,
+        raw: { client: 'Смирнов Олег Петрович' },
+        parsed: { client: 'Смирнов Олег Петрович' },
+        signature: `2025-01-01|смирнов олег петрович|диссертация|300000`,
+        projectId: project.id,
+      },
+    });
+
     Object.assign(ids, {
+      stage: stage.id,
+      comment: comment.id,
+      event: event.id,
+      lead: lead.id,
+      outbox: outbox.id,
+      batch: batch.id,
+      importRow: importRow.id,
       head: head.id,
       manager: manager.id,
       clientUser: clientUser.id,
@@ -148,6 +231,16 @@ describe('удаление данных субъекта', { skip: !enabled }, a
   });
 
   after(async () => {
+    await prisma.importRow.deleteMany({ where: { batchId: ids.batch } });
+    await prisma.importBatch.deleteMany({ where: { id: ids.batch } });
+    await prisma.notificationOutbox.deleteMany({ where: { id: ids.outbox } });
+    await prisma.loginAttempt.deleteMany({
+      where: { emailNormalized: `era-client-${stamp}@example.org` },
+    });
+    await prisma.lead.deleteMany({ where: { id: ids.lead } });
+    await prisma.projectEvent.deleteMany({ where: { projectId: ids.project } });
+    await prisma.versionComment.deleteMany({ where: { versionId: ids.version } });
+    await prisma.stage.deleteMany({ where: { projectId: ids.project } });
     await prisma.fileAccessLog.deleteMany({ where: { versionId: ids.version } });
     await prisma.materialVersion.deleteMany({ where: { id: ids.version } });
     await prisma.material.deleteMany({ where: { id: ids.material } });
@@ -216,6 +309,48 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     assert.match(message?.body ?? '', /удалено/u);
     assert.equal(message?.containsContactHint, false);
     assert.ok(message !== null, 'строка сообщения удалена — переписка потеряла связность');
+  });
+
+  it('след за пределами карточки и переписки затёрт', async () => {
+    const stage = await prisma.stage.findUnique({ where: { id: ids.stage } });
+    assert.match(stage?.title ?? '', /удалено/u, 'название этапа писал человек — там фамилия');
+    assert.equal(stage?.blockedReason, null);
+
+    const material = await prisma.material.findUnique({ where: { id: ids.material } });
+    assert.match(material?.title ?? '', /удалено/u);
+
+    const comment = await prisma.versionComment.findUnique({ where: { id: ids.comment } });
+    assert.match(comment?.body ?? '', /удалено/u);
+    assert.equal(comment?.moderationNote, null);
+
+    const event = await prisma.projectEvent.findUnique({ where: { id: ids.event } });
+    assert.deepEqual(event?.payload, { erased: true }, 'в событии остались прежние значения полей');
+
+    const outbox = await prisma.notificationOutbox.findUnique({ where: { id: ids.outbox } });
+    assert.doesNotMatch(outbox?.subject ?? '', /Смирнов/u);
+    assert.doesNotMatch(outbox?.body ?? '', /Олег/u);
+
+    // Заявка не удаляется никогда: отметка согласия и её редакция —
+    // доказательство законности прошлой обработки.
+    const lead = await prisma.lead.findUnique({ where: { id: ids.lead } });
+    assert.ok(lead !== null, 'заявка удалена — журнал согласий потерян');
+    assert.equal(lead?.name, null);
+    assert.equal(lead?.organization, null);
+    assert.equal(lead?.topic, null);
+    assert.equal(lead?.ip, null);
+    assert.equal(lead?.userAgent, null);
+    assert.doesNotMatch(lead?.contact ?? '', /era-client/u);
+    assert.equal(lead?.consentGiven, true);
+    assert.equal(lead?.consentVersion, 'v1');
+
+    const attempts = await prisma.loginAttempt.count({
+      where: { emailNormalized: `era-client-${stamp}@example.org` },
+    });
+    assert.equal(attempts, 0, 'попытки входа с адресом субъекта остались');
+
+    const row = await prisma.importRow.findUnique({ where: { id: ids.importRow } });
+    assert.deepEqual(row?.raw, { erased: true }, 'в строке книги остались значения ячеек с ФИО');
+    assert.equal(row?.signature, null);
   });
 
   it('объект изъят из хранилища, строка версии осталась', async () => {

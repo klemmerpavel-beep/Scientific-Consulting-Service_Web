@@ -35,6 +35,12 @@ interface Report {
   objectsPurged?: number;
   objectsFailed?: number;
   sessionsRevoked?: number;
+  leads?: number;
+  loginAttempts?: number;
+  texts?: number;
+  events?: number;
+  notifications?: number;
+  importRows?: number;
   contracts?: number;
   contractTotal?: string;
 }
@@ -151,7 +157,7 @@ export default async function ErasureScreen({
                 <td style={TABLE_CELL}>
                   {request.executedAt === null
                     ? '—'
-                    : `проектов ${report.projects ?? 0} · сообщений ${report.messages ?? 0} · версий ${report.versions ?? 0} · объектов изъято ${report.objectsPurged ?? 0}`}
+                    : `проектов ${report.projects ?? 0} · сообщений ${report.messages ?? 0} · версий ${report.versions ?? 0} · объектов изъято ${report.objectsPurged ?? 0} · заявок ${report.leads ?? 0} · текстов ${report.texts ?? 0}`}
                 </td>
                 <td style={TABLE_CELL}>
                   {request.executedAt !== null ? (

@@ -1,5 +1,6 @@
 import type { StageState } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
+import { enqueue } from './outbox.ts';
 import { can, ensure, scopeComments, scopeMaterials, scopeProjects, type Actor } from './access.ts';
 
 /**
@@ -263,15 +264,38 @@ export async function leadById(actor: Actor, id: string) {
   return prisma.lead.findUnique({ where: { id } });
 }
 
-export async function serviceTypes() {
+/**
+ * Справочник типов сопровождения для форм.
+ *
+ * Спрашивает действующее лицо, хотя видят его все вошедшие: правило
+ * модуля — выборка называет, кому она отдаётся, и проверяет это сама, а
+ * не полагается на то, что экран её не вызовет (решение Р-185). Прежде
+ * функция не принимала актора вовсе.
+ */
+export async function serviceTypes(actor: Actor) {
+  // Справочник нужен по обе стороны заявки: клиент выбирает тип, подавая
+  // её, менеджер — разбирая. Право на работу здесь не годится: у клиента
+  // оно выдаётся по конкретной работе, а справочник к работе не привязан
+  // (решение Р-185).
+  if (!can(actor, 'REQUEST_CREATE') && !can(actor, 'REQUEST_MODERATE')) {
+    ensure(actor, 'REQUEST_CREATE');
+  }
   return prisma.serviceType.findMany({
     where: { isActive: true },
     orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
   });
 }
 
-/** Кому можно передать работу: действующие сотрудники практики. */
-export async function curators() {
+/**
+ * Кому можно передать работу: действующие сотрудники практики.
+ *
+ * Отдаёт ФИО и роли, то есть состав практики, и потому закрыта правом на
+ * правку работы. Прежде проверки не было вовсе, и защитой служило лишь
+ * то, что экран прячет выбор куратора от того, кому он не положен
+ * (решение Р-185).
+ */
+export async function curators(actor: Actor) {
+  ensure(actor, 'PROJECT_EDIT');
   return prisma.user.findMany({
     where: { role: { in: ['MANAGER', 'HEAD'] }, status: 'ACTIVE' },
     orderBy: { fullName: 'asc' },
@@ -279,7 +303,15 @@ export async function curators() {
   });
 }
 
-export async function experts() {
+/**
+ * Эксперты для назначения: ФИО, специализация и дата договора поручения.
+ *
+ * Закрыта правом назначать исполнителя — состав привлечённых
+ * специалистов клиенту не показывается по решению Р-140, и выборка
+ * обязана держать это сама (решение Р-185).
+ */
+export async function experts(actor: Actor) {
+  ensure(actor, 'PROJECT_ASSIGN_EXPERT');
   return prisma.user.findMany({
     where: { role: 'EXPERT', status: 'ACTIVE' },
     orderBy: { fullName: 'asc' },
@@ -461,4 +493,79 @@ export async function leadList(actor: Actor, filter: LeadFilter = {}) {
   });
 
   return { rows, total, page: current, pages };
+}
+
+/** Что подставляется в заявку из кабинета: контакт и редакция согласия. */
+export interface RequestDraft {
+  readonly topic: string;
+  readonly need: string | null;
+  readonly deadline: string | null;
+  readonly message: string | null;
+  readonly ip: string;
+}
+
+/**
+ * Заявка, поданная изнутри кабинета.
+ *
+ * Собиралась серверным действием, которое само ходило в базу тремя
+ * запросами: учётная запись, создание заявки, перечень кураторов для
+ * уведомления. Действие — точка входа с формы, а не место для выборок;
+ * здесь оно одно, и оно доменное (решение Р-185).
+ *
+ * Контакт берётся из учётной записи, а не с формы: человек уже вошёл, и
+ * спрашивать его заново незачем — заодно подменить его нельзя.
+ */
+export async function createCabinetRequest(
+  actor: Actor,
+  draft: RequestDraft,
+  consentVersion: string,
+): Promise<{ id: string; authorName: string }> {
+  ensure(actor, 'REQUEST_CREATE');
+  if (draft.topic.length === 0) throw new Error('Тема работы не указана');
+
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: actor.id },
+    select: { email: true, fullName: true, consentVersion: true },
+  });
+
+  const lead = await prisma.lead.create({
+    data: {
+      source: 'cabinet',
+      form: 'request',
+      name: user.fullName,
+      contactKind: 'email',
+      contact: user.email,
+      topic: draft.topic,
+      need: draft.need,
+      deadline: draft.deadline,
+      message: draft.message,
+      // Согласие принято при первом входе в кабинет; редакция текста
+      // хранится вместе с заявкой, как и у обращений с сайта.
+      consentGiven: true,
+      consentVersion: user.consentVersion ?? consentVersion,
+      termsAccepted: true,
+      ip: draft.ip,
+    },
+  });
+
+  // Менеджеры узнают о заявке из очереди, и постановка идёт здесь же:
+  // событие кладётся рядом с самой заявкой, а не в действии экрана —
+  // так устроен весь контур уведомлений (решение Р-151). Обращения с
+  // сайта идут другим путём, и второе уведомление о том же было бы
+  // дублем.
+  const moderators = await prisma.user.findMany({
+    where: { role: { in: ['MANAGER', 'HEAD'] }, status: 'ACTIVE' },
+    select: { id: true },
+  });
+  for (const moderator of moderators) {
+    await enqueue(prisma, {
+      userId: moderator.id,
+      eventKind: 'REQUEST_CREATED',
+      subject: 'Новая заявка из кабинета',
+      body: `${user.fullName}: ${draft.topic}\nЗаявка ждёт в очереди модерации.`,
+      dedupKey: `lead:${lead.id}:created:${moderator.id}`,
+    });
+  }
+
+  return { id: lead.id, authorName: user.fullName };
 }

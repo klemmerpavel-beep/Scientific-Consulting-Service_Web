@@ -334,3 +334,53 @@ export async function ownPayouts(actor: Actor) {
     paid: rows.filter((r) => r.status === 'PAID').reduce((acc, r) => acc + r.amount, 0n),
   };
 }
+
+/**
+ * Договор работы со всеми траншами и приложенными документами.
+ *
+ * Прежде экран оплат читал это своим запросом к базе, рядом с доменным
+ * `projectMoney` по тому же предмету: одно и то же читалось двумя путями,
+ * и условие доступа стояло на экране, а не в выборке (решение Р-185).
+ */
+export async function projectContract(actor: Actor, projectId: string) {
+  const ref = await projectRef(projectId);
+  if (ref === null) return null;
+  ensure(actor, 'CONTRACT_VIEW', ref);
+
+  return prisma.contract.findUnique({
+    where: { projectId },
+    include: {
+      tranches: {
+        orderBy: { plannedDate: 'asc' },
+        include: {
+          documents: {
+            where: { deletedAt: null },
+            include: { versions: { orderBy: { number: 'desc' }, take: 1 } },
+          },
+        },
+      },
+      documents: {
+        where: { deletedAt: null },
+        include: { versions: { orderBy: { number: 'desc' }, take: 1 } },
+      },
+    },
+  });
+}
+
+/**
+ * Начисления экспертам по работе.
+ *
+ * Закрыто правом на маржу: суммы вознаграждения — предмет руководителя
+ * (решение Р-140). Прежде условие стояло на экране (решение Р-185).
+ */
+export async function projectPayouts(actor: Actor, projectId: string) {
+  const ref = await projectRef(projectId);
+  if (ref === null) return [];
+  ensure(actor, 'MARGIN_VIEW', ref);
+
+  return prisma.expertPayout.findMany({
+    where: { projectId },
+    orderBy: { createdAt: 'desc' },
+    include: { expert: { select: { fullName: true } } },
+  });
+}

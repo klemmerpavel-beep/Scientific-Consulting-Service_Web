@@ -21,12 +21,11 @@ import {
   formatSize,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
-import { projectMoney } from '../../../../../lib/cabinet/finance';
+import { projectContract, projectMoney, projectPayouts } from '../../../../../lib/cabinet/finance';
 import { MATERIAL_KIND_LABEL, type MaterialKind } from '../../../../../lib/cabinet/materials';
 import { formatAmount, STATUS_LABEL, type TrancheStatus } from '../../../../../lib/cabinet/money';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
-import { prisma } from '../../../../../lib/db';
 import {
   accruePayout,
   addContractTranche,
@@ -74,30 +73,13 @@ export default async function PaymentsScreen({
   const mayEdit = can(actor, 'PAYMENT_EDIT', ref);
   const maySeeEconomy = can(actor, 'MARGIN_VIEW', ref);
 
+  // Экран не ходит в базу сам: и договор, и начисления читаются службами,
+  // которые сами спрашивают разрешение. Прежде условие доступа стояло
+  // здесь, а выборка знала о нём только понаслышке (решение Р-185).
   const [money, contract, payouts] = await Promise.all([
     projectMoney(actor, project.id),
-    prisma.contract.findUnique({
-      where: { projectId: project.id },
-      include: {
-        tranches: {
-          orderBy: { plannedDate: 'asc' },
-          include: {
-            documents: {
-              where: { deletedAt: null },
-              include: { versions: { orderBy: { number: 'desc' }, take: 1 } },
-            },
-          },
-        },
-        documents: { where: { deletedAt: null }, include: { versions: { orderBy: { number: 'desc' }, take: 1 } } },
-      },
-    }),
-    maySeeEconomy
-      ? prisma.expertPayout.findMany({
-          where: { projectId: project.id },
-          orderBy: { createdAt: 'desc' },
-          include: { expert: { select: { fullName: true } } },
-        })
-      : Promise.resolve([]),
+    projectContract(actor, project.id),
+    maySeeEconomy ? projectPayouts(actor, project.id) : Promise.resolve([]),
   ]);
 
   const progress =

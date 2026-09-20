@@ -151,3 +151,69 @@ describe('общие части остаются единственным мес
     assert.ok(owners.length > 0, 'вид кнопки не найден ни в одной общей части');
   });
 });
+
+describe('слои кабинета не смешиваются', () => {
+  /**
+   * Три слоя: маршруты и экраны (`app/cabinet`), предметная область
+   * (`lib/cabinet`), оформление (`components/cabinet`). Правила границ
+   * держались на договорённости, и к решению Р-185 граница «экран →
+   * база» была пробита в четырёх файлах: экран читал то же, что рядом
+   * читала служба, а условие доступа стояло на экране.
+   *
+   * Отсюда три запрета. Они проверяются по исходникам, потому что
+   * касаются того, как написан код, а не того, что вышло на экран.
+   */
+  it('экран и серверное действие не обращаются к базе напрямую', () => {
+    const guilty = sources(SCREENS)
+      .filter((file) => /from\s+'[^']*lib\/db'/u.test(readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SCREENS, file));
+    assert.deepEqual(
+      guilty,
+      [],
+      'выборка должна лежать в lib/cabinet и сама спрашивать разрешение',
+    );
+  });
+
+  it('предметная область не знает об оформлении и о каркасе', () => {
+    const root = path.join(SCREENS, '..', '..', 'lib', 'cabinet');
+    const guilty: string[] = [];
+    for (const file of sources(root)) {
+      const code = readFileSync(file, 'utf8');
+      const name = path.relative(root, file);
+      // Единственное исключение: сессия читает cookie запроса, и без
+      // `next/headers` этого не сделать.
+      if (name === 'session.ts') continue;
+      if (/from\s+'[^']*components\//u.test(code) || /from\s+'next\//u.test(code)) {
+        guilty.push(name);
+      }
+    }
+    assert.deepEqual(guilty, [], 'слой предметной области тянет за собой разметку');
+  });
+
+  it('выборка, читающая данные, спрашивает разрешение сама', () => {
+    // Функция, которая делает `prisma.<модель>.find*` и не упоминает ни
+    // `ensure`, ни `can`, ни `scope*`, закрыта только тем, что её никто
+    // не вызывает не оттуда. Это не защита (решение Р-185).
+    const root = path.join(SCREENS, '..', '..', 'lib', 'cabinet');
+    // Перечень закрытый: каждая из этих выборок закрыта не правом, и
+    // причина названа рядом. Новая такая функция потребует решения.
+    const allowed = new Set([
+      'auth.ts', // до появления действующего лица: вход, токены, сессии
+      'outbox.ts', // фоновая рассылка по расписанию, закрыта секретом маршрута
+      'projects.ts', // `projectRef` — помощник самого механизма прав
+      'import/apply.ts', // `assemble` — внутренний помощник разбора книги
+      'admin.ts', // `ownChannels` и `saveOwnChannels` — своя учётная запись
+      'queries.ts', // `moderatorIds` — идентификаторы для очереди, без данных
+      'readiness.ts',
+    ]);
+    const guilty: string[] = [];
+    for (const file of sources(root)) {
+      const name = path.relative(root, file);
+      if (allowed.has(name)) continue;
+      const code = readFileSync(file, 'utf8');
+      if (!/prisma\.[a-zA-Z]+\.(findMany|findFirst|findUnique|count|groupBy)/u.test(code)) continue;
+      if (!/\bensure\(|\bcan\(|\bscope[A-Z]/u.test(code)) guilty.push(name);
+    }
+    assert.deepEqual(guilty, [], 'выборка читает данные, не спрашивая разрешения');
+  });
+});

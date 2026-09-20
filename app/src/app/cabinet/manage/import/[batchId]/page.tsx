@@ -26,7 +26,7 @@ import {
   plural,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
-import { prisma } from '../../../../../lib/db';
+import { curators } from '../../../../../lib/cabinet/queries';
 import { loadBatch } from '../../../../../lib/cabinet/import/apply';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { currentActor } from '../../../../../lib/cabinet/session';
@@ -57,11 +57,10 @@ export default async function ImportBatchScreen({
   if (report === null) notFound();
 
   const applied = report.state === 'APPLIED';
-  const managers = await prisma.user.findMany({
-    where: { role: { in: ['MANAGER', 'HEAD'] }, status: 'ACTIVE' },
-    select: { id: true, fullName: true },
-    orderBy: { fullName: 'asc' },
-  });
+  // Перечень кураторов существует общей выборкой: прежде то же условие
+  // стояло тремя независимыми копиями — здесь, в действиях и в
+  // `queries.ts` (решение Р-185).
+  const managers = await curators(actor);
 
   const issues = Object.entries(report.issueCounts).filter(([, count]) => count > 0);
 

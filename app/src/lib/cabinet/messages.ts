@@ -47,8 +47,17 @@ export async function sendMessage(actor: Actor, projectId: string, body: string)
  * две стороны, и различать внутри стороны нечего.
  */
 export async function unreadCount(actor: Actor, projectId: string): Promise<number> {
+  // Принадлежность работы проверяется здесь, а не оставляется на совесть
+  // вызывающего: выборка обязана держать разграничение сама, иначе чужой
+  // код работы отдаёт число сообщений в чужом канале (решение Р-185).
+  const scope = scopeProjects(actor);
+  if (scope === null) return 0;
   return prisma.message.count({
-    where: { projectId, readAt: null, authorId: { not: actor.id } },
+    where: {
+      readAt: null,
+      authorId: { not: actor.id },
+      project: { id: projectId, ...scope },
+    },
   });
 }
 
@@ -58,9 +67,18 @@ export async function unreadByProject(
   projectIds: readonly string[],
 ): Promise<Map<string, number>> {
   if (projectIds.length === 0) return new Map();
+  // Перечень приходит снаружи, и сузить его — обязанность выборки: список
+  // может прийти откуда угодно, а разграничение живёт в одном месте
+  // (решение Р-185).
+  const scope = scopeProjects(actor);
+  if (scope === null) return new Map();
   const rows = await prisma.message.groupBy({
     by: ['projectId'],
-    where: { projectId: { in: [...projectIds] }, readAt: null, authorId: { not: actor.id } },
+    where: {
+      readAt: null,
+      authorId: { not: actor.id },
+      project: { id: { in: [...projectIds] }, ...scope },
+    },
     _count: { _all: true },
   });
   return new Map(rows.map((row) => [row.projectId, row._count._all]));
