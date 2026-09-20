@@ -112,6 +112,7 @@ describe('шапка экрана собрана общей частью', () =>
     'manage/import/[batchId]/page.tsx',
     'manage/users/page.tsx',
     'manage/audit/page.tsx',
+    'manage/outbox/page.tsx',
   ];
 
   for (const name of inside) {

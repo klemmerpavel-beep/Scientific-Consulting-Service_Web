@@ -5,7 +5,7 @@ import {
   Empty,
   Form,
   Heading,
-  Mono,
+  ScreenHead,
   TABLE_CELL,
   TABLE_HEAD,
   TableCard,
@@ -49,16 +49,10 @@ export default async function OutboxScreen() {
 
   return (
     <Shell actor={actor} current="/cabinet/manage/outbox">
-      <Mono>Уведомления</Mono>
-      <Heading level={1} style={{ margin: '12px 0 8px' }}>
-        Очередь отправки
-      </Heading>
-      <Text muted style={{ marginBottom: 24 }}>
-        Два разных пути. Уведомления кабинета копятся в очереди и уходят рассылкой раз в минуту.
-        Обращения с сайта не ждут очереди: их отправляет сам приём заявки, а исход записывает
-        в журнал доставки — он ниже. Заявка сохраняется в любом случае, доставка лишь ускоряет
-        ответ.
-      </Text>
+      <ScreenHead
+        title="Очередь отправки"
+        note="Два разных пути. Уведомления кабинета копятся в очереди и уходят рассылкой раз в минуту. Обращения с сайта не ждут очереди: их отправляет сам приём заявки, а исход записывает в журнал доставки — он ниже."
+      />
 
       <Heading level={2} style={{ margin: '0 0 12px' }}>
         Уведомления кабинета
