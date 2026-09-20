@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 
 import { FilePick } from './FilePick.tsx';
 import { BUTTON_PRIMARY, BUTTON_QUIET, MONO, RADIUS, SANS, SERIF, SHADOW } from './tokens.ts';
+import { STAGE_STATE_LABEL, type StageStateKey } from '../../lib/cabinet/stage-state';
 
 /**
  * Составные части экранов кабинета. Пишутся вручную и типизированно —
@@ -1203,15 +1204,7 @@ export function plural(count: number, one: string, few: string, many: string): s
   return many;
 }
 
-export const STAGE_STATE_LABEL = {
-  NOT_STARTED: 'Не начат',
-  IN_PROGRESS: 'В работе',
-  AWAITING_CLIENT: 'Ждём ваших данных',
-  IN_APPROVAL: 'На согласовании',
-  DONE: 'Завершён',
-} as const;
-
-export type StageStateKey = keyof typeof STAGE_STATE_LABEL;
+export { STAGE_STATE_LABEL, type StageStateKey };
 
 /**
  * Отметка этапа. Цвет несёт одно различие — начат этап или нет; само

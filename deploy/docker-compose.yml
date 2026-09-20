@@ -108,6 +108,12 @@ services:
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
       SESSION_SECRET: ${SESSION_SECRET:?секрет кабинета обязателен, не короче 32 знаков}
       CABINET_STORAGE_DIR: ${CABINET_STORAGE_DIR:-/app/storage}
+      # Зеркало на Яндекс Диске (Р-188). Пусто — выгрузка выключена.
+      YANDEX_DISK_USER: ${YANDEX_DISK_USER:-}
+      YANDEX_DISK_PASSWORD: ${YANDEX_DISK_PASSWORD:-}
+      YANDEX_DISK_FOLDER: ${YANDEX_DISK_FOLDER:-ProDisser}
+      YANDEX_DISK_SCOPE: ${YANDEX_DISK_SCOPE:-all}
+      YANDEX_DISK_WEBDAV: ${YANDEX_DISK_WEBDAV:-https://webdav.yandex.ru}
     volumes:
       # Тот же каталог материалов и каталог выгрузок, что у приложения.
       - ./storage:/app/storage

@@ -17,7 +17,12 @@ import {
 import { can } from '../../../../lib/cabinet/access';
 import { formatMoment } from '../../../../lib/cabinet/journals';
 import { leadSourceLabel } from '../../../../lib/cabinet/lead-labels';
-import { CHANNEL_OFF, leadDeliveryDigest, outboxDigest } from '../../../../lib/cabinet/outbox';
+import {
+  CHANNEL_OFF,
+  eventLabel,
+  leadDeliveryDigest,
+  outboxDigest,
+} from '../../../../lib/cabinet/outbox';
 import { currentActor } from '../../../../lib/cabinet/session';
 import { retryNotification } from '../../actions';
 
@@ -26,17 +31,6 @@ export const dynamic = 'force-dynamic';
 const CHANNEL_LABEL: Record<string, string> = {
   EMAIL: 'письмо',
   TELEGRAM: 'Telegram',
-};
-
-const EVENT_LABEL: Record<string, string> = {
-  STAGE_AWAITING_CLIENT: 'этап ждёт клиента',
-  VERSION_UPLOADED: 'загружена версия',
-  EXPERT_COMMENT_PUBLISHED: 'опубликовано замечание',
-  STAGE_IN_APPROVAL: 'этап на согласовании',
-  DEADLINE_IN_3_DAYS: 'приближается срок',
-  PAYMENT_STATUS_CHANGED: 'изменилась оплата',
-  REQUEST_CREATED: 'новая заявка',
-  PROJECT_OPENED: 'работа заведена',
 };
 
 export default async function OutboxScreen() {
@@ -111,7 +105,7 @@ export default async function OutboxScreen() {
               {digest.failures.map((row) => (
                 <tr key={row.id}>
                   <td style={TABLE_CELL}>
-                    {EVENT_LABEL[row.eventKind] ?? row.eventKind}
+                    {eventLabel(row.eventKind)}
                     <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
                       {row.subject}
                       {row.projectCode === null ? null : ` · ${row.projectCode}`}
