@@ -4,6 +4,7 @@ import {
   ButtonLink,
   Card,
   Chip,
+  Disclosure,
   Field,
   FileField,
   Form,
@@ -224,49 +225,49 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                         </ul>
                       )}
 
+                      {/* Поле комментария стояло раскрытым под свежей
+                          версией и занимало полтораста пикселей, хотя
+                          пишут в него изредка. Раскрывается по нажатию
+                          (решение Р-178). */}
                       {index === 0 ? (
-                        <Form action={commentOnVersion} style={{ marginTop: 14 }}>
-                          <input type="hidden" name="versionId" value={version.id} />
-                          <input type="hidden" name="stageId" value={stage.id} />
-                          <Field
-                            label="Комментарий к текущей версии"
-                            name="body"
-                            scope={version.id}
-                            multiline
-                            required
-                          />
-                          <FormActions>
-                            <Button tone="quiet">Оставить комментарий</Button>
-                          </FormActions>
-                        </Form>
+                        <Disclosure title="Оставить комментарий" style={{ marginTop: 14 }}>
+                          <Form action={commentOnVersion}>
+                            <input type="hidden" name="versionId" value={version.id} />
+                            <input type="hidden" name="stageId" value={stage.id} />
+                            <Field
+                              label="Комментарий к текущей версии"
+                              name="body"
+                              scope={version.id}
+                              multiline
+                              required
+                            />
+                            <FormActions>
+                              <Button tone="quiet">Отправить</Button>
+                            </FormActions>
+                          </Form>
+                        </Disclosure>
                       ) : null}
                     </li>
                   ))}
                 </ul>
 
                 {mayUpload ? (
-                  <Form
-                    action={uploadMaterial}
-                    encType="multipart/form-data"
-                    style={{
-                      marginTop: 20,
-                      paddingTop: 16,
-                      borderTop: '1px solid var(--pd-divider)',
-                    }}
-                  >
-                    <input type="hidden" name="projectId" value={stage.project.id} />
-                    <input type="hidden" name="stageId" value={stage.id} />
-                    <input type="hidden" name="materialId" value={material.id} />
-                    <FileField
-                      label="Файл следующей версии"
-                      name="file"
-                      scope={material.id}
-                      required
-                    />
-                    <FormActions>
-                      <Button tone="quiet">Загрузить следующую версию</Button>
-                    </FormActions>
-                  </Form>
+                  <Disclosure title="Загрузить следующую версию" style={{ marginTop: 20 }}>
+                    <Form action={uploadMaterial} encType="multipart/form-data">
+                      <input type="hidden" name="projectId" value={stage.project.id} />
+                      <input type="hidden" name="stageId" value={stage.id} />
+                      <input type="hidden" name="materialId" value={material.id} />
+                      <FileField
+                        label="Файл следующей версии"
+                        name="file"
+                        scope={material.id}
+                        required
+                      />
+                      <FormActions>
+                        <Button tone="quiet">Загрузить</Button>
+                      </FormActions>
+                    </Form>
+                  </Disclosure>
                 ) : null}
               </Card>
             ))}
@@ -274,10 +275,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
         )}
 
         {mayUpload ? (
-          <Card style={{ marginTop: 20 }}>
-            <Heading level={3} style={{ marginBottom: 12 }}>
-              Новый материал
-            </Heading>
+          <Disclosure title="Приложить новый материал" style={{ marginTop: 20 }}>
             <Form action={uploadMaterial} encType="multipart/form-data">
               <input type="hidden" name="projectId" value={stage.project.id} />
               <input type="hidden" name="stageId" value={stage.id} />
@@ -298,7 +296,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                 <Button tone="quiet">Загрузить</Button>
               </FormActions>
             </Form>
-          </Card>
+          </Disclosure>
         ) : null}
       </section>
     </Shell>
