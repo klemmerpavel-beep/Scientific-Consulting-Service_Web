@@ -14,7 +14,16 @@
  *   тема проекта (она пересказывает работу и косвенно опознаёт автора);
  *   имя файла, контрольная сумма и сам объект в хранилище;
  *   тела сообщений — строки остаются, чтобы переписка не рассыпалась;
- *   привязка Telegram и учётная запись, если она была.
+ *   привязка Telegram и учётная запись, если она была;
+ *   заявки этого лица: имя, контакт, организация, тема, адрес и браузер —
+ *     остаются только отметка согласия и её редакция, то есть
+ *     доказательство законности прошлой обработки;
+ *   попытки входа с его адресом — они хранятся ради защиты от перебора
+ *     и учётным документом не являются, поэтому удаляются целиком;
+ *   свободные тексты работы: названия материалов и этапов, причина
+ *     остановки, замечания к версиям и пометки модератора;
+ *   содержимое событий работы и тексты поставленных уведомлений;
+ *   строки книги заказов, из которых заведены его работы.
  *
  * Что сохраняется:
  *   код проекта, суммы договора и траншей, даты, состояния;
@@ -46,6 +55,14 @@ export interface ErasureReport {
   readonly sessionsRevoked: number;
   readonly tokensBurned: number;
   readonly userErased: boolean;
+  /// Затронутое за пределами карточки и переписки: заявки, попытки входа,
+  /// свободные тексты, события, уведомления и строки книги заказов.
+  readonly leads: number;
+  readonly loginAttempts: number;
+  readonly texts: number;
+  readonly events: number;
+  readonly notifications: number;
+  readonly importRows: number;
   /** Сохранённые учётные величины — доказательство, что деньги не тронуты. */
   readonly preserved: { readonly contracts: number; readonly contractTotal: string };
 }
@@ -92,11 +109,57 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
 
   const client = await prisma.clientProfile.findUnique({
     where: { id: request.clientId },
-    select: { id: true, userId: true, projects: { select: { id: true } } },
+    select: {
+      id: true,
+      userId: true,
+      // Контакты нужны до затирания: по ним находятся заявки этого лица,
+      // не привязанные ни к одной работе, и попытки входа (решение Р-185).
+      email: true,
+      phone: true,
+      user: { select: { email: true } },
+      projects: { select: { id: true } },
+    },
   });
   if (client === null) throw new Error('Карточка клиента не найдена');
 
   const projectIds = client.projects.map((project) => project.id);
+
+  /**
+   * Адреса и телефоны, по которым это лицо оставляло след. Учётной записи
+   * может не быть вовсе — историческим клиентам вход не открывается,
+   * — поэтому перечень собирается из всех известных значений.
+   */
+  const contacts = [client.email, client.phone, client.user?.email ?? null]
+    .filter((value): value is string => value !== null && value.trim().length > 0)
+    .map((value) => value.trim());
+  const emails = contacts
+    .filter((value) => value.includes('@'))
+    .map((value) => value.toLowerCase());
+
+  // Заявки: развёрнутые в работу и поданные с теми же контактами. Заявка
+  // не удаляется никогда — у неё остаётся отметка согласия (Р-122).
+  const leadIds = (
+    await prisma.lead.findMany({
+      where: {
+        OR: [
+          projectIds.length === 0 ? { id: '—нет такой заявки—' } : { projectId: { in: projectIds } },
+          contacts.length === 0 ? { id: '—нет такой заявки—' } : { contact: { in: contacts } },
+        ],
+      },
+      select: { id: true },
+    })
+  ).map((lead) => lead.id);
+
+  // Строки книги заказов, из которых заведены его работы.
+  const importRowIds =
+    projectIds.length === 0
+      ? []
+      : (
+          await prisma.importRow.findMany({
+            where: { projectId: { in: projectIds } },
+            select: { id: true },
+          })
+        ).map((row) => row.id);
 
   // Учётные величины фиксируются до затирания: отчёт должен показывать,
   // что суммы договоров не изменились.
@@ -156,6 +219,86 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
       data: { body: ERASED, containsContactHint: false },
     });
 
+    // Свободные тексты работы. Название материала и этапа пишет человек,
+    // и туда попадает и фамилия, и тема исследования; причина остановки
+    // и замечания к версиям — тем более (решение Р-185).
+    const materials = await tx.material.updateMany({
+      where: { projectId: { in: projectIds } },
+      data: { title: ERASED },
+    });
+    const stages = await tx.stage.updateMany({
+      where: { projectId: { in: projectIds } },
+      data: { title: ERASED, blockedReason: null },
+    });
+    const comments = await tx.versionComment.updateMany({
+      where: { version: { material: { projectId: { in: projectIds } } } },
+      data: { body: ERASED, moderationNote: null },
+    });
+
+    // Содержимое событий: в нём лежат прежние и новые значения полей,
+    // то есть те же имена и темы, только в другом виде.
+    const events = await tx.projectEvent.updateMany({
+      where: { projectId: { in: projectIds } },
+      data: { payload: { erased: true } },
+    });
+
+    // Поставленные уведомления: тема и тело письма называют человека по
+    // имени. Строка остаётся — по ней видно, что отправка была.
+    const notifications = await tx.notificationOutbox.updateMany({
+      where: {
+        OR: [
+          projectIds.length === 0
+            ? { id: '—нет такой строки—' }
+            : { projectId: { in: projectIds } },
+          client.userId === null ? { id: '—нет такой строки—' } : { userId: client.userId },
+        ],
+      },
+      data: { subject: ERASED, body: ERASED },
+    });
+
+    // Заявки: персональные поля затираются, отметка согласия и её
+    // редакция остаются доказательством законности прошлой обработки.
+    const leads =
+      leadIds.length === 0
+        ? { count: 0 }
+        : await tx.lead.updateMany({
+            where: { id: { in: leadIds } },
+            data: {
+              name: null,
+              contact: ERASED,
+              organization: null,
+              topic: null,
+              speciality: null,
+              need: null,
+              deadline: null,
+              direction: null,
+              message: null,
+              notes: null,
+              declineReason: null,
+              ip: null,
+              userAgent: null,
+            },
+          });
+
+    // Попытки входа хранятся ради ограничения частоты и учётным
+    // документом не являются — удаляются целиком.
+    const loginAttempts =
+      emails.length === 0
+        ? { count: 0 }
+        : await tx.loginAttempt.deleteMany({ where: { emailNormalized: { in: emails } } });
+
+    // Строки книги заказов: в raw лежат значения ячеек с ФИО, в signature —
+    // естественный ключ, собранный из них же. Ключ заменяется, и повторная
+    // загрузка той же книги заново эту работу не заведёт: она уже есть,
+    // а её данные стёрты по требованию субъекта.
+    const importRows =
+      importRowIds.length === 0
+        ? { count: 0 }
+        : await tx.importRow.updateMany({
+            where: { id: { in: importRowIds } },
+            data: { raw: { erased: true }, parsed: { erased: true }, signature: null },
+          });
+
     let purgedVersions = { count: 0 };
     if (request.scope === 'PERSONAL_DATA_AND_FILES') {
       purgedVersions = await tx.materialVersion.updateMany({
@@ -210,13 +353,31 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
           sessionsRevoked,
           tokensBurned,
           userErased,
+          leads: leads.count,
+          loginAttempts: loginAttempts.count,
+          texts: materials.count + stages.count + comments.count,
+          events: events.count,
+          notifications: notifications.count,
+          importRows: importRows.count,
           contracts: contracts.length,
           contractTotal: contractTotal.toString(),
         },
       },
     });
 
-    return { messages: messages.count, versions: purgedVersions.count, sessionsRevoked, tokensBurned, userErased };
+    return {
+      messages: messages.count,
+      versions: purgedVersions.count,
+      sessionsRevoked,
+      tokensBurned,
+      userErased,
+      leads: leads.count,
+      loginAttempts: loginAttempts.count,
+      texts: materials.count + stages.count + comments.count,
+      events: events.count,
+      notifications: notifications.count,
+      importRows: importRows.count,
+    };
   });
 
   // Запись в журнал доступа делается после транзакции и по каждому объекту:
@@ -255,6 +416,12 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     sessionsRevoked: result.sessionsRevoked,
     tokensBurned: result.tokensBurned,
     userErased: result.userErased,
+    leads: result.leads,
+    loginAttempts: result.loginAttempts,
+    texts: result.texts,
+    events: result.events,
+    notifications: result.notifications,
+    importRows: result.importRows,
     preserved: { contracts: contracts.length, contractTotal: contractTotal.toString() },
   };
 }

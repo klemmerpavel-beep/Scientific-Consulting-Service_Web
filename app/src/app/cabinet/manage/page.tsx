@@ -397,12 +397,15 @@ export default async function ManageQueue({
           других колонках при равной трети рвались слова — «Подготовка / к
           предзащите» (решение Р-175). Колонки сжимаются по содержимому:
           прежде колонка с одной строкой держала пустое поле до низа окна. */}
-      <Board columns={works.length === 0 ? 2 : 3} weights={works.length === 0 ? [1.3, 1] : [1.15, 1.15, 0.7]}>
+      {/* Колонки равной ширины и равной высоты: заказчик требует, чтобы
+          карточки и блоки были одного размера. Прежде доли были неравными
+          (1,15 / 1,15 / 0,7), а `fit` сжимал колонку по содержимому, и
+          разброс высоты доходил до семисот пикселей (решение Р-185). */}
+      <Board columns={works.length === 0 ? 2 : 3}>
         <BoardColumn
           title={
             attention.length === 0 ? 'Требует внимания' : `Требует внимания · ${attention.length}`
           }
-          fit
           flow
         >
           {attention.length === 0 ? (
@@ -442,7 +445,6 @@ export default async function ManageQueue({
             title={`${summary === null ? 'Мои работы' : 'Сейчас в работе'} · ${works.length}`}
             href="/cabinet/projects"
             hrefLabel="все работы"
-            fit
             flow
           >
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
@@ -495,7 +497,6 @@ export default async function ManageQueue({
           title={queue.total === 0 ? 'Заявки' : `Заявки · ${queue.total}`}
           href={queue.total > 0 ? '/cabinet/manage/leads' : undefined}
           hrefLabel="все обращения"
-          fit
           flow
         >
           {leads.length === 0 ? (

@@ -102,10 +102,10 @@ export default async function ProjectScreen({
   // отдельный экран, чтобы прочитать три строки, незачем. Прочитанным он
   // здесь не помечается — отметку ставит открытие самой переписки.
   const thread = mayWrite ? (await listMessages(actor, project.id)).slice(-8) : [];
-  const expertList = mayAssign ? await experts() : [];
+  const expertList = mayAssign ? await experts(actor) : [];
   // Передать работу другому куратору может только руководитель (Р-149).
   const maySetManager = can(actor, 'PROJECT_SET_MANAGER', ref);
-  const curatorList = maySetManager ? await curators() : [];
+  const curatorList = maySetManager ? await curators(actor) : [];
   // Материалы берутся своей выборкой: она уже сужает и сами материалы, и
   // замечания по матрице прав, а `projectByCode` служит ещё четырём
   // экранам, и тянуть версии ради них было бы напрасной работой.

@@ -16,8 +16,8 @@ import {
   formatDate,
 } from '../../../components/cabinet/ui';
 import { createTelegramBindLink } from '../../../lib/cabinet/auth';
+import { ownChannels } from '../../../lib/cabinet/admin';
 import { currentActor } from '../../../lib/cabinet/session';
-import { prisma } from '../../../lib/db';
 import { dropTelegram, saveNotificationChannels } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -32,16 +32,7 @@ export default async function SettingsScreen({
 
   const [params, user] = await Promise.all([
     searchParams,
-    prisma.user.findUniqueOrThrow({
-      where: { id: actor.id },
-      select: {
-        email: true,
-        notifyEmail: true,
-        notifyTelegram: true,
-        telegramChatId: true,
-        consentAcceptedAt: true,
-      },
-    }),
+    ownChannels(actor),
   ]);
 
   const bound = user.telegramChatId !== null;

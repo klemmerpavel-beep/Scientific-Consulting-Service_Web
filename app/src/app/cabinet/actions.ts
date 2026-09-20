@@ -2,7 +2,6 @@
 
 import { redirect } from 'next/navigation';
 
-import { prisma } from '../../lib/db';
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { ensure } from '../../lib/cabinet/access';
 import { requestLoginLink, unbindTelegram } from '../../lib/cabinet/auth';
@@ -29,12 +28,14 @@ import {
   removeStageTemplateItem,
   saveServiceType,
   saveStageTemplateItem,
+  saveOwnChannels,
   setUserRole,
   setUserStatus,
   signExpertNda,
   type Role,
 } from '../../lib/cabinet/admin';
 import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
+import { createCabinetRequest } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue, retryFailed } from '../../lib/cabinet/outbox';
@@ -196,52 +197,18 @@ export async function decideOnComment(form: FormData): Promise<void> {
  */
 export async function submitCabinetRequest(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  ensure(actor, 'REQUEST_CREATE');
 
-  const user = await prisma.user.findUniqueOrThrow({
-    where: { id: actor.id },
-    select: { email: true, fullName: true, consentVersion: true },
-  });
-
-  const topic = String(form.get('topic') ?? '').trim();
-  if (topic.length === 0) throw new Error('Тема работы не указана');
-
-  const lead = await prisma.lead.create({
-    data: {
-      source: 'cabinet',
-      form: 'request',
-      name: user.fullName,
-      contactKind: 'email',
-      contact: user.email,
-      topic,
+  await createCabinetRequest(
+    actor,
+    {
+      topic: String(form.get('topic') ?? '').trim(),
       need: String(form.get('need') ?? '').trim() || null,
       deadline: String(form.get('deadline') ?? '').trim() || null,
       message: String(form.get('message') ?? '').trim() || null,
-      // Согласие принято при первом входе в кабинет; редакция текста
-      // хранится вместе с заявкой, как и у обращений с сайта.
-      consentGiven: true,
-      consentVersion: user.consentVersion ?? CONSENT_VERSION,
-      termsAccepted: true,
       ip: await requestIp(),
     },
-  });
-
-  // Менеджеры узнают о заявке из кабинета через очередь. Обращения с сайта
-  // идут другим путём — их доставляет уже работающий `notify.ts`, и второе
-  // уведомление о том же было бы дублем.
-  const managers = await prisma.user.findMany({
-    where: { role: { in: ['MANAGER', 'HEAD'] }, status: 'ACTIVE' },
-    select: { id: true },
-  });
-  for (const manager of managers) {
-    await enqueue(prisma, {
-      userId: manager.id,
-      eventKind: 'REQUEST_CREATED',
-      subject: 'Новая заявка из кабинета',
-      body: `${user.fullName}: ${topic}\nЗаявка ждёт в очереди модерации.`,
-      dedupKey: `lead:${lead.id}:created:${manager.id}`,
-    });
-  }
+    CONSENT_VERSION,
+  );
 
   redirect('/cabinet/request?sent=1');
 }
@@ -270,12 +237,9 @@ export async function postMessage(form: FormData): Promise<void> {
 /** Каналы уведомлений. Выбор за получателем, а не за системой. */
 export async function saveNotificationChannels(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await prisma.user.update({
-    where: { id: actor.id },
-    data: {
-      notifyEmail: form.get('notifyEmail') === 'on',
-      notifyTelegram: form.get('notifyTelegram') === 'on',
-    },
+  await saveOwnChannels(actor, {
+    email: form.get('notifyEmail') === 'on',
+    telegram: form.get('notifyTelegram') === 'on',
   });
   redirect('/cabinet/settings?saved=1');
 }

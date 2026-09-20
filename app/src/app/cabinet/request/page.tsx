@@ -30,7 +30,7 @@ export default async function NewRequestScreen({
   if (actor === null) redirect('/cabinet');
   if (!can(actor, 'REQUEST_CREATE')) redirect('/cabinet/projects');
 
-  const [params, types] = await Promise.all([searchParams, serviceTypes()]);
+  const [params, types] = await Promise.all([searchParams, serviceTypes(actor)]);
 
   return (
     <Shell actor={actor} current="/cabinet/request">

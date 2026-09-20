@@ -46,7 +46,7 @@ export default async function LeadScreen({
   ensure(actor, 'REQUEST_MODERATE');
 
   const { id } = await params;
-  const [lead, types] = await Promise.all([leadById(actor, id), serviceTypes()]);
+  const [lead, types] = await Promise.all([leadById(actor, id), serviceTypes(actor)]);
   if (lead === null) notFound();
 
   return (

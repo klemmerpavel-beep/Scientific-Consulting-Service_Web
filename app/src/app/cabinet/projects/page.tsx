@@ -226,11 +226,10 @@ export default async function ProjectsScreen({
             // ограничен шириной окна — жёсткие 440 px давали
             // горизонтальное переполнение на телефоне (решение Р-175).
             gridTemplateColumns: 'repeat(auto-fill, minmax(min(440px,100%),1fr))',
-            // Плашка высока ровно настолько, сколько занимает её
-            // содержимое: при растяжении по самой высокой в ряду работа
-            // без плана держала полторы сотни пикселей белого поля
-            // (решение Р-182).
-            alignItems: 'start',
+            // Плашки в ряду одного размера — требование заказчика: ряд
+            // из карточек разной высоты читается как сбой раскладки
+            // (решение Р-185). Чтобы выровненная плашка не пустовала,
+            // строка фактов прижата к её низу.
             gap: 16,
           }}
         >
@@ -263,6 +262,8 @@ export default async function ProjectsScreen({
                 link
                 style={{
                   padding: '16px 20px 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
                   ...(waiting === null ? {} : { borderColor: 'var(--pd-accent-edge)' }),
                 }}
               >
@@ -370,11 +371,12 @@ export default async function ProjectsScreen({
                   </Text>
                 )}
 
-                {facts.length === 0 ? null : (
-                  <Text muted size={13} style={{ marginTop: 10 }}>
-                    {facts.join(' · ')}
-                  </Text>
-                )}
+                {/* Строка фактов прижата к низу: в ряду равной высоты
+                    она встаёт у всех плашек на одной линии, и ряд
+                    читается таблицей, а не лесенкой (решение Р-185). */}
+                <Text muted size={13} style={{ marginTop: 'auto', paddingTop: 10 }}>
+                  {facts.length === 0 ? '\u00A0' : facts.join(' · ')}
+                </Text>
               </Card>
             );
           })}
