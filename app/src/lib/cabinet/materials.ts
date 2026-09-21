@@ -307,7 +307,7 @@ export async function listComments(actor: Actor, versionId: string) {
 /** Замечание, ждущее публикации: работа, этап и кто его оставил. */
 export interface PendingComment {
   readonly stageId: string | null;
-  readonly projectCode: string;
+  readonly projectTitle: string;
   readonly stageTitle: string;
   readonly material: string;
   readonly count: number;
@@ -344,7 +344,7 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
               title: true,
               stageId: true,
               stage: { select: { id: true, title: true } },
-              project: { select: { code: true } },
+              project: { select: { title: true } },
             },
           },
         },
@@ -362,7 +362,7 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
     if (seen === undefined) {
       byStage.set(key, {
         stageId: material.stage?.id ?? null,
-        projectCode: material.project.code,
+        projectTitle: material.project.title,
         stageTitle: material.stage?.title ?? material.title,
         material: material.title,
         count: 1,

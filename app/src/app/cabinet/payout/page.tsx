@@ -70,9 +70,6 @@ export default async function PayoutScreen() {
                 <tr key={row.id}>
                   <td style={TABLE_CELL}>
                     <a href={`/cabinet/projects/${row.project.code}`}>{row.project.title}</a>
-                    <div style={{ fontFamily: MONO, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
-                      {row.project.code}
-                    </div>
                   </td>
                   <td style={TABLE_CELL}>
                     {row.stage?.title ?? 'по работе в целом'}

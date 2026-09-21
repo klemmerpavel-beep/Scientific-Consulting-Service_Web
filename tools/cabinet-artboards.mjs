@@ -167,6 +167,21 @@ async function snapshot(page, url) {
     for (const node of clone.querySelectorAll('script, link, style, next-route-announcer')) {
       node.remove();
     }
+    // Полосу прогресса чтения и классы появления навешивает сценарий
+    // движения уже после отрисовки, и снимок заставал их то на месте, то
+    // нет: два прогона подряд расходились на случайных артбордах. Ту же
+    // правку прототип получил решением Р-186, до артбордов она не
+    // доехала (решение Р-190).
+    for (const node of clone.querySelectorAll('.pd-progress')) node.remove();
+    for (const node of clone.querySelectorAll('.pd-rise, .pd-in')) {
+      node.classList.remove('pd-rise', 'pd-in');
+      if (node.getAttribute('class') === '') node.removeAttribute('class');
+    }
+    // Скрытое поле серверного действия несёт хэш сборки: он меняется от
+    // любой правки кода и переписывал бы снимок каждой формы заново.
+    for (const node of clone.querySelectorAll('input[name^="$ACTION_ID_"]')) {
+      node.setAttribute('name', '$ACTION_ID');
+    }
     // Служебные пометки React и Next: в артборде они шум.
     for (const node of clone.querySelectorAll('*')) {
       for (const attribute of [...node.attributes]) {

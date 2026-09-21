@@ -21,7 +21,8 @@ export interface JournalFilter {
   readonly to?: Date | null;
   readonly actorId?: string | null;
   readonly action?: string | null;
-  readonly projectCode?: string | null;
+  /** Отбор по работе: её название, а не код — код с экранов убран (Р-189). */
+  readonly projectTitle?: string | null;
   readonly limit?: number;
 }
 
@@ -40,15 +41,16 @@ function period(filter: JournalFilter): Record<string, Date> | undefined {
 export async function auditEvents(actor: Actor, filter: JournalFilter = {}) {
   ensure(actor, 'AUDIT_VIEW');
 
+  const needle = filter.projectTitle?.trim() ?? '';
   const projectId =
-    filter.projectCode == null || filter.projectCode.trim().length === 0
+    needle === ''
       ? undefined
       : ((
-          await prisma.project.findUnique({
-            where: { code: filter.projectCode.trim() },
+          await prisma.project.findFirst({
+            where: { title: { contains: needle, mode: 'insensitive' } },
             select: { id: true },
           })
-        )?.id ?? '—нет такого проекта—');
+        )?.id ?? '—нет такой работы—');
 
   return prisma.auditEvent.findMany({
     where: {
@@ -87,9 +89,15 @@ export async function fileAccessEvents(actor: Actor, filter: JournalFilter = {})
           ? undefined
           : (filter.action as 'UPLOAD' | 'PRESIGN' | 'DOWNLOAD' | 'PURGE'),
       version:
-        filter.projectCode == null || filter.projectCode.trim().length === 0
+        (filter.projectTitle?.trim() ?? '') === ''
           ? undefined
-          : { material: { project: { code: filter.projectCode.trim() } } },
+          : {
+              material: {
+                project: {
+                  title: { contains: filter.projectTitle!.trim(), mode: 'insensitive' as const },
+                },
+              },
+            },
     },
     orderBy: { occurredAt: 'desc' },
     take: Math.min(filter.limit ?? 200, MAX_ROWS),
@@ -104,7 +112,7 @@ export async function fileAccessEvents(actor: Actor, filter: JournalFilter = {})
           number: true,
           originalName: true,
           sizeBytes: true,
-          material: { select: { title: true, project: { select: { code: true } } } },
+          material: { select: { title: true, project: { select: { title: true } } } },
         },
       },
     },

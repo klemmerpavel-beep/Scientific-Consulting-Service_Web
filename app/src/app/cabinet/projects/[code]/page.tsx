@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 
-import { MONO, SANS } from '../../../../components/cabinet/tokens';
+import { MONO } from '../../../../components/cabinet/tokens';
 import Shell from '../../../../components/cabinet/Shell';
 import {
   Board,
@@ -23,7 +23,9 @@ import {
   Thread,
   authorName,
   formatDate,
+  formatDay,
   formatSize,
+  formatTime,
   type MaterialRow,
   type RoadmapItem,
   type StageStateKey,
@@ -37,7 +39,14 @@ import {
   projectMaterials,
 } from '../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../lib/cabinet/session';
-import { createStage, postMessage, setExpert, setManager } from '../../actions';
+import {
+  createStage,
+  postMessage,
+  saveProject,
+  saveStage,
+  setExpert,
+  setManager,
+} from '../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,6 +133,42 @@ export default async function ProjectScreen({
     dueOn: formatDate(stage.dueOn),
     href: `/cabinet/stages/${stage.id}`,
     note: stage.state === 'AWAITING_CLIENT' ? stage.blockedReason : null,
+    // Суть выполнения этапа пишет куратор; клиенту она отвечает на вопрос
+    // «что здесь делают», не заставляя открывать этап (решение Р-190).
+    summary: stage.summary,
+    // План работ составляет куратор, и правит он его здесь же: уходить за
+    // этим на отдельный экран ради одной строки незачем.
+    edit: mayEdit ? (
+      <Form action={saveStage}>
+        <input type="hidden" name="stageId" value={stage.id} />
+        <input type="hidden" name="code" value={project.code} />
+        <Field
+          label="Название этапа"
+          name="title"
+          scope={stage.id}
+          required
+          defaultValue={stage.title}
+        />
+        <Field
+          label="Суть выполнения"
+          name="summary"
+          scope={stage.id}
+          multiline
+          defaultValue={stage.summary ?? ''}
+          hint="Что делается на этапе и чем он заканчивается. Видно клиенту."
+        />
+        <Field
+          label="Срок этапа"
+          name="dueOn"
+          scope={stage.id}
+          type="date"
+          defaultValue={stage.dueOn?.toISOString().slice(0, 10) ?? ''}
+        />
+        <FormActions>
+          <Button tone="quiet">Сохранить этап</Button>
+        </FormActions>
+      </Form>
+    ) : undefined,
   }));
 
   const materials: MaterialRow[] = (withMaterials?.materials ?? [])
@@ -146,14 +191,32 @@ export default async function ProjectScreen({
     (event) => !forClient || !CLIENT_HIDDEN_EVENTS.has(event.kind),
   );
 
+  // Короткое описание работы. На виду остаётся название и срок, остальное
+  // — под раскрытием: тема, тип сопровождения, куратор, суть задачи и
+  // последние слова сторон (требование заказчика, решение Р-190).
+  //
   // Тип работы часто и есть её название — у всего, что перенесено из книги
   // заказов; тема тоже нередко повторяет название другими словами. Ни то,
   // ни другое не печатается дважды.
-  const facts = [
-    project.title === project.serviceType.name ? null : project.serviceType.name,
-    project.topic === project.title ? null : project.topic,
-    `куратор — ${project.manager.fullName}`,
-  ].filter((fact) => fact !== null);
+  const about = [
+    project.title === project.serviceType.name
+      ? null
+      : { term: 'Тип сопровождения', value: project.serviceType.name },
+    project.topic === project.title ? null : { term: 'Тема', value: project.topic },
+    { term: 'Срок работы', value: formatDate(project.dueOn) ?? 'не назначен' },
+    { term: 'Куратор', value: project.manager.fullName },
+  ].filter((row) => row !== null);
+
+  // Последнее слово каждой стороны: на чём разговор остановился, видно, не
+  // уходя в переписку. Эксперту переписка закрыта, и здесь её тоже нет.
+  const fromClient = thread.filter((message) => message.author.role === 'CLIENT');
+  const fromStaff = thread.filter((message) => message.author.role !== 'CLIENT');
+  const lastWords = [
+    fromClient[fromClient.length - 1] ?? null,
+    fromStaff[fromStaff.length - 1] ?? null,
+  ]
+    .filter((message) => message !== null)
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
   return (
     <Shell actor={actor} current="/cabinet/projects" board>
@@ -161,7 +224,8 @@ export default async function ProjectScreen({
           три яруса и 154 пикселя: на панели это четверть места, отведённого
           колонкам (решение Р-169). */}
       <ScreenTop style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Chip mono>{project.code}</Chip>
+        {/* Код работы с экранов убран (решение Р-189): человеку он
+            ничего не сообщает, а взгляд цепляет первым. */}
         <Heading level={1} size={2}>
           {project.title}
         </Heading>
@@ -179,23 +243,57 @@ export default async function ProjectScreen({
           </span>
         )}
       </ScreenTop>
-      {facts.length === 0 ? null : (
-        <p
-          style={{
-            margin: '8px 0 0',
-            fontFamily: SANS,
-            fontSize: 13,
-            lineHeight: 1.5,
-            color: 'var(--pd-ink-muted)',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
-        >
-          {facts.join(' · ')}
-        </p>
-      )}
+      <Disclosure title="О работе" style={{ marginTop: 12 }}>
+        <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
+          {about.map((row) => (
+            <div
+              key={row.term}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0,170px) minmax(0,1fr)',
+                gap: 14,
+              }}
+            >
+              <dt style={{ margin: 0 }}>
+                <Text muted size={13}>
+                  {row.term}
+                </Text>
+              </dt>
+              <dd style={{ margin: 0 }}>
+                <Text size={14}>{row.value}</Text>
+              </dd>
+            </div>
+          ))}
+        </dl>
+        {project.summary === null ? null : (
+          <Text size={14} style={{ marginTop: 14 }}>
+            {project.summary}
+          </Text>
+        )}
+        {lastWords.length === 0 ? null : (
+          <div
+            style={{
+              marginTop: 14,
+              paddingTop: 14,
+              borderTop: '1px solid var(--pd-divider)',
+              display: 'grid',
+              gap: 12,
+            }}
+          >
+            {lastWords.map((message) => (
+              <div key={message.id}>
+                <Text muted size={13}>
+                  {authorName(message.author, actor, message.authorId)} ·{' '}
+                  {formatDay(message.createdAt)}, {formatTime(message.createdAt)}
+                </Text>
+                <Text size={14} style={{ marginTop: 2 }}>
+                  {message.body}
+                </Text>
+              </div>
+            ))}
+          </div>
+        )}
+      </Disclosure>
 
       <ProgressPanel
           style={{ marginTop: 16, marginBottom: 20 }}
@@ -208,31 +306,22 @@ export default async function ProjectScreen({
           actionHref={current === null || action === null ? null : `/cabinet/stages/${current.id}`}
         />
 
-      <Board columns={mayWrite ? 3 : 2}>
-        <BoardColumn title="План работ">
-          <Roadmap items={roadmap} />
-        </BoardColumn>
-
+      {/* Две колонки, а не три: колонка «Материалы» с панели снята по
+          требованию заказчика, а по горизонтали помещается не более двух
+          плашек — иначе они ужимаются и наезжают (решение Р-189).
+          Материалы никуда не делись: у них свой экран, и на него ведёт
+          строка под планом работ. */}
+      <Board columns={2}>
         <BoardColumn
-          title="Материалы"
+          title="План работ"
           href={`/cabinet/projects/${project.code}/materials`}
-          hrefLabel="все версии"
-          footer={
-            mayUpload ? (
-              <ButtonLink href={`/cabinet/projects/${project.code}/materials`}>
-                Приложить материал
-              </ButtonLink>
-            ) : undefined
+          hrefLabel={
+            materials.length === 0
+              ? 'материалы'
+              : `материалы · ${materials.length}`
           }
         >
-          <MaterialList
-            items={materials}
-            empty={
-              mayUpload
-                ? 'Материалов пока нет — приложите первый.'
-                : 'Материалов пока нет.'
-            }
-          />
+          <Roadmap items={roadmap} />
         </BoardColumn>
 
         {mayWrite ? (
@@ -302,12 +391,60 @@ export default async function ProjectScreen({
                   <Field
                     label="Новый этап"
                     name="title"
+                    scope="new-stage"
                     required
                     placeholder="Глава 2. Модель отказов лимитирующих узлов"
                     hint="Название свободное; состояние выбирается на экране этапа из пяти."
                   />
+                  <Field
+                    label="Суть выполнения"
+                    name="summary"
+                    scope="new-stage"
+                    multiline
+                    placeholder="Что делается на этапе и чем он заканчивается"
+                    hint="Видно клиенту в плане работ под раскрытием."
+                  />
+                  <Field label="Срок этапа" name="dueOn" scope="new-stage" type="date" />
                   <FormActions>
                     <Button tone="quiet">Добавить этап</Button>
+                  </FormActions>
+                </Form>
+              ) : null}
+
+              {mayEdit ? (
+                <Form action={saveProject}>
+                  <input type="hidden" name="projectId" value={project.id} />
+                  <input type="hidden" name="code" value={project.code} />
+                  <Field
+                    label="Название работы"
+                    name="title"
+                    scope="project"
+                    required
+                    defaultValue={project.title}
+                  />
+                  <Field
+                    label="Тема"
+                    name="topic"
+                    scope="project"
+                    defaultValue={project.topic ?? ''}
+                  />
+                  <Field
+                    label="Короткое описание задачи"
+                    name="summary"
+                    scope="project"
+                    multiline
+                    defaultValue={project.summary ?? ''}
+                    hint="Видно клиенту под раскрытием «О работе»."
+                  />
+                  <Field
+                    label="Срок работы"
+                    name="dueOn"
+                    scope="project"
+                    type="date"
+                    defaultValue={project.dueOn?.toISOString().slice(0, 10) ?? ''}
+                  />
+                  <FormActions>
+                    <Button tone="quiet">Сохранить карточку</Button>
                   </FormActions>
                 </Form>
               ) : null}

@@ -135,7 +135,7 @@ export default async function FinanceScreen({
                         посреди текста отличается только цветом, и
                         проверка доступности законно против (Р-184). */}
                     <a href={`/cabinet/projects/${row.code}/payments`}>
-                      {row.code} · {row.title}
+                      {row.title}
                     </a>
                   </td>
                   <td style={TABLE_CELL}>{row.client}</td>

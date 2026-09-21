@@ -44,6 +44,8 @@ const ACTIONS: Record<string, string> = {
   STAGE_STATE_CHANGED: 'Изменено состояние этапа',
   STAGE_APPROVED: 'Этап согласован',
   STAGE_CREATED: 'Заведён этап',
+  STAGE_EDITED: 'Этап изменён',
+  PROJECT_EDITED: 'Карточка работы изменена',
   MATERIAL_UPLOADED: 'Приложен материал',
   MESSAGE_SENT: 'Отправлено сообщение',
 };

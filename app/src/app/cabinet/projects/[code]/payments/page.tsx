@@ -91,7 +91,7 @@ export default async function PaymentsScreen({
     <Shell actor={actor} current="/cabinet/projects">
       <ScreenHead
         backHref={`/cabinet/projects/${project.code}`}
-        backLabel={project.code}
+        backLabel={project.title}
         title="Оплаты и документы"
         note={project.title}
       />

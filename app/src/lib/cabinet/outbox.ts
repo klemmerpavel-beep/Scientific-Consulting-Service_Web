@@ -233,7 +233,7 @@ export async function enqueueDeadlineReminders(): Promise<number> {
       eventKind: 'DEADLINE_IN_3_DAYS',
       subject: `Срок этапа «${stage.title}» подходит`,
       body:
-        `Проект ${stage.project.code} — ${stage.project.title}.\n` +
+        `Работа: ${stage.project.title}.\n` +
         `Этап «${stage.title}» должен быть закрыт до ${stage.dueOn?.toISOString().slice(0, 10)}.\n` +
         'Если от вас что-то требуется, это видно на главном экране кабинета.',
       dedupKey: `stage:${stage.id}:deadline:${today}`,
@@ -256,7 +256,7 @@ export interface OutboxFailure {
   readonly eventKind: string;
   readonly subject: string;
   readonly recipient: string;
-  readonly projectCode: string | null;
+  readonly projectTitle: string | null;
   readonly attempts: number;
   readonly lastError: string | null;
   readonly scheduledAt: Date;
@@ -301,7 +301,7 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
         lastError: true,
         scheduledAt: true,
         user: { select: { fullName: true } },
-        project: { select: { code: true } },
+        project: { select: { title: true } },
       },
     }),
   ]);
@@ -320,7 +320,7 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
       // Адрес получателя в служебный перечень не выносится: для разбора
       // достаточно имени, а адрес — персональные данные.
       recipient: row.user.fullName,
-      projectCode: row.project?.code ?? null,
+      projectTitle: row.project?.title ?? null,
       attempts: row.attempts,
       lastError: row.lastError,
       scheduledAt: row.scheduledAt,

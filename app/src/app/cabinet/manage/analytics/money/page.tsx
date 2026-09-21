@@ -181,7 +181,7 @@ export default async function AnalyticsMoney() {
                   {/* Код и тема — одной строкой: вторым ярусом они делали
                       строку таблицы вдвое выше без нужды. */}
                   <td style={cell}>
-                    {debt.code} · {debt.title}
+                    {debt.title}
                   </td>
                   <td style={cell}>{debt.client}</td>
                   <td style={num}>{formatAmount(debt.cost)}</td>

@@ -39,7 +39,7 @@ export async function GET(request: Request): Promise<Response> {
     to: day('to'),
     actorId: value('actorId'),
     action: value('action'),
-    projectCode: value('projectCode'),
+    projectTitle: value('projectTitle'),
     limit: 5000,
   };
 
@@ -48,13 +48,13 @@ export async function GET(request: Request): Promise<Response> {
     if (files) {
       const events = await fileAccessEvents(actor, filter);
       rows = [
-        ['Когда', 'Кто', 'Роль', 'Действие', 'Проект', 'Материал', 'Версия', 'Файл', 'Адрес'],
+        ['Когда', 'Кто', 'Роль', 'Действие', 'Работа', 'Материал', 'Версия', 'Файл', 'Адрес'],
         ...events.map((event) => [
           formatMoment(event.occurredAt),
           event.user?.fullName ?? '',
           event.user?.role ?? '',
           event.action,
-          event.version.material.project.code,
+          event.version.material.project.title,
           event.version.material.title,
           String(event.version.number),
           event.version.originalName,

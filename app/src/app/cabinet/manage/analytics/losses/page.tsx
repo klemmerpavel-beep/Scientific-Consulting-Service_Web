@@ -78,10 +78,7 @@ export default async function AnalyticsLosses() {
                 <tbody>
                   {report.rows.map((row) => (
                     <tr key={row.code}>
-                      <td style={cell}>
-                        {row.code}
-                        <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{row.title}</div>
-                      </td>
+                      <td style={cell}>{row.title}</td>
                       <td style={cell}>{row.client}</td>
                       <td style={num}>{formatAmount(row.cost)}</td>
                       <td style={num}>{formatAmount(row.paid)}</td>

@@ -108,7 +108,7 @@ export default async function OutboxScreen() {
                     {eventLabel(row.eventKind)}
                     <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
                       {row.subject}
-                      {row.projectCode === null ? null : ` · ${row.projectCode}`}
+                      {row.projectTitle === null ? null : ` · ${row.projectTitle}`}
                     </div>
                   </td>
                   <td style={TABLE_CELL}>{row.recipient}</td>

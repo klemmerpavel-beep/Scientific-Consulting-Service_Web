@@ -41,6 +41,8 @@ import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue, retryFailed } from '../../lib/cabinet/outbox';
 import {
   addStage,
+  editProject,
+  editStage,
   approveLead,
   assignExpert,
   assignManager,
@@ -149,7 +151,39 @@ export async function createStage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
-  await addStage(actor, { projectId, title: String(form.get('title') ?? '') });
+  await addStage(actor, {
+    projectId,
+    title: String(form.get('title') ?? ''),
+    summary: String(form.get('summary') ?? ''),
+    dueOn: dateOrNull(form.get('dueOn')),
+  });
+  redirect(`/cabinet/projects/${code}`);
+}
+
+/** Правка этапа менеджером прямо в плане работ (решение Р-190). */
+export async function saveStage(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  await editStage(actor, {
+    stageId: String(form.get('stageId') ?? ''),
+    title: String(form.get('title') ?? ''),
+    summary: String(form.get('summary') ?? ''),
+    dueOn: dateOrNull(form.get('dueOn')),
+  });
+  redirect(`/cabinet/projects/${code}`);
+}
+
+/** Правка карточки работы менеджером (решение Р-190). */
+export async function saveProject(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  await editProject(actor, {
+    projectId: String(form.get('projectId') ?? ''),
+    title: String(form.get('title') ?? ''),
+    topic: String(form.get('topic') ?? ''),
+    summary: String(form.get('summary') ?? ''),
+    dueOn: dateOrNull(form.get('dueOn')),
+  });
   redirect(`/cabinet/projects/${code}`);
 }
 
