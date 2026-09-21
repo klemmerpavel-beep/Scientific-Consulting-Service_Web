@@ -62,7 +62,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
     <Shell actor={actor} current="/cabinet/projects">
       <ScreenHead
         backHref={`/cabinet/projects/${stage.project.code}`}
-        backLabel={stage.project.code}
+        backLabel={stage.project.title}
         title={stage.title}
         chips={<Chip tone="accent">{STAGE_STATE_LABEL[state]}</Chip>}
         note={

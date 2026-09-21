@@ -77,6 +77,74 @@ describe('снимок не зависит от времени съёмки', ()
   }
 });
 
+describe('кода работы на экранах нет', () => {
+  /**
+   * `PD-2026-047` человеку ничего не говорит и сбивает при чтении: взгляд
+   * цепляет его первым, а смысла в нём нет (замечание заказчика, решение
+   * Р-189). Код остаётся ключом маршрута и живёт в адресе страницы —
+   * поэтому проверяется текст, а не разметка целиком.
+   */
+  for (const folder of ['client', 'expert', 'manager', 'head']) {
+    for (const file of screens(folder)) {
+      it(path.relative(PROTOTYPE, file), () => {
+        const text = body(file)
+          // Адреса ссылок не в счёт: код в них — часть маршрута.
+          .replace(/href="[^"]*"/gu, '')
+          .replace(/value="[^"]*"/gu, '')
+          .replace(/<[^>]+>/gu, ' ');
+        const hit = /PD-\d{4}-\d{3}/u.exec(text);
+        assert.equal(hit, null, `код работы ${hit?.[0] ?? ''} остался на экране`);
+      });
+    }
+  }
+});
+
+describe('в ряду не больше двух плашек', () => {
+  /**
+   * Три плашки в ряду ужимаются и наезжают друг на друга — заказчик
+   * потребовал не более двух (решение Р-189). Проверяется то, чем число
+   * задаётся: у сетки плашек минимальная ширина трека не меньше 400 px,
+   * а панель собирается ровно из двух колонок.
+   */
+  it('сетки плашек не дробятся мельче 400 px', () => {
+    const root = path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet');
+    const guilty: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name.endsWith('.tsx')) {
+          const code = readFileSync(full, 'utf8');
+          for (const hit of code.matchAll(/minmax\(min\((\d+)px/gu)) {
+            if (Number(hit[1]) < 400) guilty.push(`${path.relative(root, full)}: ${hit[1]}px`);
+          }
+        }
+      }
+    };
+    walk(root);
+    assert.deepEqual(guilty, [], 'трек сетки уже 400 px — в ряд встанет три плашки и больше');
+  });
+
+  it('панель собирается из двух колонок', () => {
+    const root = path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet');
+    const guilty: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name.endsWith('.tsx')) {
+          const code = readFileSync(full, 'utf8');
+          for (const hit of code.matchAll(/<Board\s+columns=\{([^}]+)\}/gu)) {
+            if (!/^\s*2\s*$/u.test(hit[1]!)) guilty.push(`${path.relative(root, full)}: ${hit[1]}`);
+          }
+        }
+      }
+    };
+    walk(root);
+    assert.deepEqual(guilty, [], 'панель просит больше двух колонок');
+  });
+});
+
 describe('клиент не видит исполнителя', () => {
   // Состав привлечённых специалистов клиенту не показывается: ни подписью
   // автора, ни в тексте сообщения или замечания (решения Р-140, Р-143).
@@ -454,13 +522,25 @@ describe('колонка сводки показывает столько, ск�
 
   for (const file of summaries) {
     const name = path.relative(PROTOTYPE, file);
-    it(`${name}: колонка сводки не прокручивается внутри себя`, () => {
+    it(`${name}: прокручиваемая колонка доступна с клавиатуры`, () => {
+      /**
+       * Прежде колонкам сводки прокрутка была запрещена: тело обрывалось
+       * на семи десятых окна, и счётчик обещал больше, чем показывал
+       * (Р-182). Заказчик потребовал обратного — «Мои работы» и «Заявки»
+       * цельными блоками с прокруткой (решение Р-189). Счётчик при этом
+       * по-прежнему обязан совпадать с числом записей: это проверяет
+       * правило выше, и прокрутка его не отменяет.
+       *
+       * Остаётся требование доступности: область, которая прокручивается,
+       * должна получать фокус и иметь имя.
+       */
       const html = body(file).match(/<main\b[\s\S]*?<\/main>/u)?.[0] ?? '';
       const board = html.match(/<div class="(?:[^"]*\s)?cab-board(?:\s[^"]*)?"[\s\S]*<\/div>/u)?.[0] ?? '';
-      // Свёртки в колонках сводки не стоят, и `cab-board-body` здесь
-      // принадлежит только телу колонки.
-      const scrolled = (board.match(/class="cab-board-body"[^>]*tabindex="0"/gu) ?? []).length;
-      assert.equal(scrolled, 0, `прокручиваемых колонок: ${scrolled}`);
+      for (const column of board.match(/<div class="cab-board-body"[^>]*>/gu) ?? []) {
+        if (!/overflow-y:\s*auto/u.test(column)) continue;
+        assert.match(column, /tabindex="0"/u, 'прокручиваемая колонка не берёт фокус');
+        assert.match(column, /aria-label="/u, 'у прокручиваемой колонки нет имени');
+      }
     });
   }
 });

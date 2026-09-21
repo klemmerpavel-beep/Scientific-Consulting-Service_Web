@@ -60,7 +60,7 @@ export default async function AuditScreen({
     to?: string;
     actorId?: string;
     action?: string;
-    projectCode?: string;
+    projectTitle?: string;
   }>;
 }) {
   const actor = await currentActor();
@@ -75,7 +75,7 @@ export default async function AuditScreen({
     to: date(query.to),
     actorId: query.actorId ?? null,
     action: query.action ?? null,
-    projectCode: query.projectCode ?? null,
+    projectTitle: query.projectTitle ?? null,
   };
 
   const [actions, actors] = await Promise.all([journalActions(actor), journalActors(actor)]);
@@ -88,7 +88,7 @@ export default async function AuditScreen({
     to: query.to ?? '',
     actorId: query.actorId ?? '',
     action: query.action ?? '',
-    projectCode: query.projectCode ?? '',
+    projectTitle: query.projectTitle ?? '',
   }).toString()}`;
 
   return (
@@ -148,10 +148,10 @@ export default async function AuditScreen({
               ))}
             </Select>
             <Field
-              label="Код проекта"
-              name="projectCode"
-              defaultValue={query.projectCode ?? ''}
-              placeholder="PD-2026-001"
+              label="Работа"
+              name="projectTitle"
+              defaultValue={query.projectTitle ?? ''}
+              placeholder="часть названия работы"
             />
           </FormRow>
           <FormActions>
@@ -187,7 +187,7 @@ export default async function AuditScreen({
                         {FILE_ACTION_LABEL[event.action] ?? event.action}
                       </Chip>
                     </td>
-                    <td style={TABLE_CELL}>{event.version.material.project.code}</td>
+                    <td style={TABLE_CELL}>{event.version.material.project.title}</td>
                     <td style={TABLE_CELL}>
                       {event.version.material.title}
                       <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>

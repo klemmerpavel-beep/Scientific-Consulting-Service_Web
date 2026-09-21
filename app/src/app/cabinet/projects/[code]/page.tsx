@@ -161,7 +161,8 @@ export default async function ProjectScreen({
           три яруса и 154 пикселя: на панели это четверть места, отведённого
           колонкам (решение Р-169). */}
       <ScreenTop style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Chip mono>{project.code}</Chip>
+        {/* Код работы с экранов убран (решение Р-189): человеку он
+            ничего не сообщает, а взгляд цепляет первым. */}
         <Heading level={1} size={2}>
           {project.title}
         </Heading>
@@ -208,31 +209,22 @@ export default async function ProjectScreen({
           actionHref={current === null || action === null ? null : `/cabinet/stages/${current.id}`}
         />
 
-      <Board columns={mayWrite ? 3 : 2}>
-        <BoardColumn title="План работ">
-          <Roadmap items={roadmap} />
-        </BoardColumn>
-
+      {/* Две колонки, а не три: колонка «Материалы» с панели снята по
+          требованию заказчика, а по горизонтали помещается не более двух
+          плашек — иначе они ужимаются и наезжают (решение Р-189).
+          Материалы никуда не делись: у них свой экран, и на него ведёт
+          строка под планом работ. */}
+      <Board columns={2}>
         <BoardColumn
-          title="Материалы"
+          title="План работ"
           href={`/cabinet/projects/${project.code}/materials`}
-          hrefLabel="все версии"
-          footer={
-            mayUpload ? (
-              <ButtonLink href={`/cabinet/projects/${project.code}/materials`}>
-                Приложить материал
-              </ButtonLink>
-            ) : undefined
+          hrefLabel={
+            materials.length === 0
+              ? 'материалы'
+              : `материалы · ${materials.length}`
           }
         >
-          <MaterialList
-            items={materials}
-            empty={
-              mayUpload
-                ? 'Материалов пока нет — приложите первый.'
-                : 'Материалов пока нет.'
-            }
-          />
+          <Roadmap items={roadmap} />
         </BoardColumn>
 
         {mayWrite ? (

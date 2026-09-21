@@ -258,11 +258,15 @@ async function main() {
         where: { projectId: project.id },
         create: {
           projectId: project.id,
-          number: `Д-${code}`,
+          // Номер договора не повторяет внутренний код работы: код с
+          // экранов убран, и в номере он всплывал бы снова (Р-189).
+          number: `Д-${code.replace(/^PD-/u, '').replace('-', '/')}`,
           signedOn: startedOn,
           totalAmount: money(row.cost),
         },
-        update: {},
+        // Номер правится и на существующем стенде: прежде он собирался
+        // из кода работы, и `update: {}` оставил бы старый (Р-189).
+        update: { number: `Д-${code.replace(/^PD-/u, '').replace('-', '/')}` },
         select: { id: true, tranches: { select: { id: true } } },
       });
       if (contract.tranches.length === 0) {

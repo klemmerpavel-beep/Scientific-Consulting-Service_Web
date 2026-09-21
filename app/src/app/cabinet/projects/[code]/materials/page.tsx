@@ -52,7 +52,7 @@ export default async function ProjectMaterialsScreen({
     <Shell actor={actor} current="/cabinet/projects">
       <ScreenHead
         backHref={`/cabinet/projects/${project.code}`}
-        backLabel={project.code}
+        backLabel={project.title}
         title="Материалы работы"
         note={project.title}
       />

@@ -93,7 +93,7 @@ describe('журнал действий', { skip: !enabled }, async () => {
   it('отбор по несуществующей работе не отдаёт чужих записей', async () => {
     // Код работы, которого нет, не должен вырождаться в «показать всё».
     const rows = await auditEvents(actorOf(ids.boss!, 'HEAD'), {
-      projectCode: `PD-НЕТ-${stamp}`,
+      projectTitle: `нет такой работы ${stamp}`,
     });
     assert.deepEqual(rows, []);
   });

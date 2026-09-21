@@ -4,6 +4,7 @@ import Shell from '../../../components/cabinet/Shell';
 import { SANS } from '../../../components/cabinet/tokens';
 import { BarChart, RankChart, compactNumber } from '../../../components/cabinet/Charts';
 import {
+  Block,
   Board,
   BoardColumn,
   ButtonLink,
@@ -109,7 +110,7 @@ export default async function ManageQueue({
       const late = overdueDays(stage.dueOn);
       return {
         key: `overdue-${stage.id}`,
-        title: `${stage.title} · ${stage.project.code}`,
+        title: `${stage.title} · ${stage.project.title}`,
         mark: late === null ? 'срок сегодня' : `просрочено ${late} ${plural(late, 'день', 'дня', 'дней')}`,
         urgent: true,
         detail: stage.project.client.fullName,
@@ -119,7 +120,7 @@ export default async function ManageQueue({
     }),
     ...light.stalled.map((stage: (typeof light.stalled)[number]) => ({
       key: `stalled-${stage.id}`,
-      title: `${stage.title} · ${stage.project.code}`,
+      title: `${stage.title} · ${stage.project.title}`,
       mark:
         stage.awaitingClientSince === null
           ? 'ждёт клиента'
@@ -131,7 +132,7 @@ export default async function ManageQueue({
     })),
     ...unread.map((row) => ({
       key: `unread-${row.code}`,
-      title: `${row.title} · ${row.code}`,
+      title: row.title,
       mark: `непрочитанных ${row.count}`,
       urgent: false,
       detail: null,
@@ -140,7 +141,7 @@ export default async function ManageQueue({
     })),
     ...moderation.map((row) => ({
       key: `comment-${row.stageId ?? row.material}`,
-      title: `${row.stageTitle} · ${row.projectCode}`,
+      title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: `замечаний на модерации ${row.count}`,
       urgent: false,
       detail: row.material,
@@ -350,7 +351,7 @@ export default async function ManageQueue({
                         href={`/cabinet/stages/${row.id}`}
                         style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
                       >
-                        {row.stage} · {row.code}
+                        {row.stage} · {row.title}
                       </a>
                       <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
                         {formatDate(row.dueOn)}
@@ -393,80 +394,105 @@ export default async function ManageQueue({
         </div>
       )}
 
-      {/* Доли ширины неравные: у «Заявок» строка короткая, а в двух
-          других колонках при равной трети рвались слова — «Подготовка / к
-          предзащите» (решение Р-175). Колонки сжимаются по содержимому:
-          прежде колонка с одной строкой держала пустое поле до низа окна. */}
-      {/* Колонки равной ширины и равной высоты: заказчик требует, чтобы
-          карточки и блоки были одного размера. Прежде доли были неравными
-          (1,15 / 1,15 / 0,7), а `fit` сжимал колонку по содержимому, и
-          разброс высоты доходил до семисот пикселей (решение Р-185). */}
-      <Board columns={works.length === 0 ? 2 : 3}>
-        <BoardColumn
-          title={
-            attention.length === 0 ? 'Требует внимания' : `Требует внимания · ${attention.length}`
-          }
-          flow
-        >
-          {attention.length === 0 ? (
-            <Text muted>Сейчас ничего не требует вмешательства.</Text>
-          ) : (
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
-              {attention.map((row) => (
-                <li key={row.key} style={{ display: 'grid', gap: 6 }}>
-                  {/* Ведёт сама запись: отдельная строка «Открыть» под
-                      каждой занимала 44 пикселя и вела туда же. */}
-                  <a
-                    href={row.href}
-                    style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}
-                  >
-                    {row.title}
-                  </a>
-                  {/* Пометка стоит своей строкой, а не внутри абзаца: чип
-                      в потоке текста разрывает строку и уводит остаток
-                      вниз (решение Р-182). */}
-                  <div>
-                    <Chip tone={row.urgent ? 'accent' : 'neutral'}>{row.mark}</Chip>
-                  </div>
-                  {row.detail === null ? null : (
-                    <Text muted size={13}>
-                      {row.detail}
-                    </Text>
-                  )}
-                  <Text size={13}>{row.todo}</Text>
-                </li>
-              ))}
-            </ul>
-          )}
-        </BoardColumn>
-
-        {works.length === 0 ? null : (
-          <BoardColumn
-            title={`${summary === null ? 'Мои работы' : 'Сейчас в работе'} · ${works.length}`}
-            href="/cabinet/projects"
-            hrefLabel="все работы"
-            flow
+      {/* «Требует внимания» — верхней полосой отдельными плашками, а не
+          колонкой: заказчик смотрит сводку сверху вниз, и то, что нельзя
+          оставить как есть, должно встречать первым. Каждая запись —
+          своя плашка с переходом на задачу (решение Р-189). */}
+      {attention.length === 0 ? null : (
+        <Block style={{ marginBottom: 20 }}>
+          <Heading level={2} style={{ marginBottom: 12 }}>
+            Требует внимания · {attention.length}
+          </Heading>
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: 'none',
+              display: 'grid',
+              // Не более двух плашек в ряду — общее правило облика.
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(420px,100%),1fr))',
+              gap: 12,
+            }}
           >
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
-              {works.map((work) => {
+            {attention.map((row) => (
+              <Card
+                as="li"
+                key={row.key}
+                link
+                style={{
+                  padding: '14px 16px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  ...(row.urgent ? { borderColor: 'var(--pd-accent-edge)' } : {}),
+                }}
+              >
+                <a
+                  href={row.href}
+                  style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}
+                >
+                  {row.title}
+                </a>
+                <div>
+                  <Chip tone={row.urgent ? 'accent' : 'neutral'}>{row.mark}</Chip>
+                </div>
+                {row.detail === null ? null : (
+                  <Text muted size={13}>
+                    {row.detail}
+                  </Text>
+                )}
+                <Text size={13} style={{ marginTop: 'auto', paddingTop: 4 }}>
+                  {row.todo}
+                </Text>
+              </Card>
+            ))}
+          </ul>
+        </Block>
+      )}
+
+      {/* Ниже — два цельных блока с прокруткой: работы и заявки. Третья
+          колонка ужимала все три и заставляла строки рваться посреди
+          слова (решение Р-189). */}
+      <Board columns={2}>
+        <BoardColumn
+          title={`${summary === null ? 'Мои работы' : 'Сейчас в работе'} · ${works.length}`}
+          href="/cabinet/projects"
+          hrefLabel="все работы"
+        >
+          {works.length === 0 ? (
+            <Text muted>Действующих работ нет.</Text>
+          ) : (
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+              {works.map((work, index) => {
                 const late = overdueDays(work.dueOn);
                 return (
-                  <li key={work.code} style={{ display: 'grid', gap: 6 }}>
+                  <li
+                    key={work.code}
+                    style={{
+                      display: 'grid',
+                      gap: 6,
+                      // Записи разделены едва заметной линией: сплошной
+                      // список из шести работ читался единым полотном
+                      // (решение Р-189).
+                      ...(index === 0
+                        ? { paddingBottom: 14 }
+                        : {
+                            borderTop: '1px solid var(--pd-divider)',
+                            paddingTop: 14,
+                            paddingBottom: 14,
+                          }),
+                    }}
+                  >
                     <a
                       href={`/cabinet/projects/${work.code}`}
-                      style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}
+                      style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}
                     >
                       {work.title}
                     </a>
                     <Text muted size={13}>
-                      {work.code} · {work.client}
+                      {work.client}
                       {work.stage === null ? '' : ` · ${work.stage}`}
                     </Text>
-                    {/* Срок стоит ровно в одном месте строки. Просрочка
-                        названа днями, а не датой: «срок 1 сентября 2025»
-                        требует считать в уме, «просрочено 384 дня» — нет
-                        (решение Р-180). Пометка занимает свою строку:
-                        внутри абзаца она разрывала текст (решение Р-182). */}
                     {late === null ? (
                       <Text muted size={13}>
                         {work.dueOn === null ? 'срок не назначен' : `срок ${formatDate(work.dueOn)}`}
@@ -490,24 +516,32 @@ export default async function ManageQueue({
                 );
               })}
             </ul>
-          </BoardColumn>
-        )}
+          )}
+        </BoardColumn>
 
         <BoardColumn
           title={queue.total === 0 ? 'Заявки' : `Заявки · ${queue.total}`}
           href={queue.total > 0 ? '/cabinet/manage/leads' : undefined}
           hrefLabel="все обращения"
-          flow
         >
           {leads.length === 0 ? (
             <Text muted>Новых заявок нет.</Text>
           ) : (
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
               {/* Контакт стоит в строке, а разбор начинается кнопкой:
                   прежде за тем и другим приходилось заходить внутрь, а
                   менеджер решает по заявке за секунды (решение Р-180). */}
-              {leads.map((lead) => (
-                <li key={lead.id} style={{ display: 'grid', gap: 4 }}>
+              {leads.map((lead, index) => (
+                <li
+                  key={lead.id}
+                  style={{
+                    display: 'grid',
+                    gap: 4,
+                    paddingTop: index === 0 ? 0 : 14,
+                    paddingBottom: 14,
+                    ...(index === 0 ? {} : { borderTop: '1px solid var(--pd-divider)' }),
+                  }}
+                >
                   <a
                     href={`/cabinet/manage/leads/${lead.id}`}
                     style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}

@@ -12,6 +12,7 @@ import {
   TABLE_HEAD,
   TableCard,
   FilterBar,
+  FilterSearch,
   Tabs,
   Text,
   formatDate,
@@ -105,18 +106,20 @@ export default async function RegistryScreen({
           ]}
         />
         {tab !== 'clients' || (clients.length <= PAGE_SIZE && query === '') ? null : (
-          <Form method="get" inline>
-            <Field
-              label="Поиск по клиентам"
-              name="q"
-              labelHidden
-              defaultValue={query}
-              placeholder="Фамилия, вуз или направление"
-              minWidth={220}
-              dense
-            />
-            <Button tone="quiet">Найти</Button>
-          </Form>
+          <FilterSearch>
+            <Form method="get" inline>
+              <Field
+                label="Поиск по клиентам"
+                name="q"
+                labelHidden
+                defaultValue={query}
+                placeholder="Фамилия, вуз или направление"
+                minWidth={220}
+                dense
+              />
+              <Button tone="quiet">Найти</Button>
+            </Form>
+          </FilterSearch>
         )}
       </FilterBar>
 
@@ -261,7 +264,7 @@ export default async function RegistryScreen({
                 <li key={message.id}>
                   <Text size={14}>{message.body}</Text>
                   <Text muted size={13} style={{ marginTop: 4 }}>
-                    {message.author.fullName} · {message.project.code} ·{' '}
+                    {message.author.fullName} · {message.project.title} ·{' '}
                     {formatDate(message.createdAt)}
                   </Text>
                 </li>

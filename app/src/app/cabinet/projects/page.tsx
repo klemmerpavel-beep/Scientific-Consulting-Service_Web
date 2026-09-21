@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   Chip,
+  Disclosure,
   Field,
   Form,
   Empty,
@@ -16,10 +17,12 @@ import {
   ScreenTop,
   Block,
   FilterBar,
+  FilterSearch,
   Tabs,
   plural,
   Text,
   formatDate,
+  STAGE_STATE_LABEL,
   type StageStateKey,
 } from '../../../components/cabinet/ui';
 import { unreadByProject } from '../../../lib/cabinet/messages';
@@ -122,19 +125,21 @@ export default async function ProjectsScreen({
           {/* Поиск отправляется на свой же маршрут: состояние экрана целиком
               лежит в адресе, и ссылку на отобранный перечень можно
               сохранить или переслать. */}
-          <Form method="get" inline>
-            {filter === 'all' ? null : <input type="hidden" name="state" value={filter} />}
-            <Field
-              label="Поиск по работам"
-              name="q"
-              labelHidden
-              defaultValue={query}
-              placeholder={forClient ? 'Код или название' : 'Код, название или клиент'}
-              minWidth={200}
-              dense
-            />
-            <Button tone="quiet">Найти</Button>
-          </Form>
+          <FilterSearch>
+            <Form method="get" inline>
+              {filter === 'all' ? null : <input type="hidden" name="state" value={filter} />}
+              <Field
+                label="Поиск по работам"
+                name="q"
+                labelHidden
+                defaultValue={query}
+                placeholder={forClient ? 'Название работы' : 'Название или клиент'}
+                minWidth={200}
+                dense
+              />
+              <Button tone="quiet">Найти</Button>
+            </Form>
+          </FilterSearch>
         </FilterBar>
       ) : null}
 
@@ -162,7 +167,7 @@ export default async function ProjectsScreen({
                         : `Согласовать этап: ${stage.title}`}
                     </Heading>
                     <Text muted size={14} style={{ marginTop: 4 }}>
-                      {stage.project.code} · {stage.project.title}
+                      {stage.project.title}
                     </Text>
                     {stage.blockedReason === null ? null : (
                       <Text size={14} style={{ marginTop: 8 }}>
@@ -225,7 +230,12 @@ export default async function ProjectsScreen({
             // растягивается баннером во всю ширину экрана. Минимум трека
             // ограничен шириной окна — жёсткие 440 px давали
             // горизонтальное переполнение на телефоне (решение Р-175).
-            gridTemplateColumns: 'repeat(auto-fill, minmax(min(440px,100%),1fr))',
+            // Не более двух плашек в ряду — требование заказчика:
+            // три ужатые плашки наезжают друг на друга и читаются хуже
+            // двух просторных (решение Р-189). Ниже 900 px ряд
+            // становится одиночным сам собой.
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(420px,100%),1fr))',
+            maxWidth: 'calc(2 * 560px + 16px)',
             // Плашки в ряду одного размера — требование заказчика: ряд
             // из карточек разной высоты читается как сбой раскладки
             // (решение Р-185). Чтобы выровненная плашка не пустовала,
@@ -276,7 +286,10 @@ export default async function ProjectsScreen({
                     marginBottom: 8,
                   }}
                 >
-                  <Chip mono>{project.code}</Chip>
+                  {/* Код работы с экранов убран: он ничего не говорит
+                      человеку и сбивает при чтении плашки (замечание
+                      заказчика, решение Р-189). В адресе страницы код
+                      остаётся — он ключ маршрута. */}
                   {/* Тип не дублируется чипом, когда он же стоит заголовком
                       карточки: у всего, что перенесено из книги заказов, это
                       одна и та же строка. */}
@@ -377,6 +390,48 @@ export default async function ProjectsScreen({
                 <Text muted size={13} style={{ marginTop: 'auto', paddingTop: 10 }}>
                   {facts.length === 0 ? '\u00A0' : facts.join(' · ')}
                 </Text>
+
+                {/* Плашка раскрывается на месте: план работ виден без
+                    ухода с перечня, а в саму работу ведёт её название.
+                    Раскрытие неполное — этапы и сроки, остальное на
+                    экране работы (замечание заказчика, решение Р-189).
+                    Собрано на `details`, без клиентского кода. */}
+                {project.stages.length === 0 ? null : (
+                  <Disclosure
+                    title={`Этапы · ${project.stages.length}`}
+                    style={{ marginTop: 12 }}
+                  >
+                    <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                      {project.stages.map((stage, index) => (
+                        <li
+                          key={stage.id}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'minmax(0,1fr) auto',
+                            gap: 12,
+                            alignItems: 'baseline',
+                            paddingTop: index === 0 ? 0 : 10,
+                            paddingBottom: 10,
+                            ...(index === 0
+                              ? {}
+                              : { borderTop: '1px solid var(--pd-divider)' }),
+                          }}
+                        >
+                          <a
+                            href={`/cabinet/stages/${stage.id}`}
+                            style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
+                          >
+                            {stage.title}
+                          </a>
+                          <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
+                            {STAGE_STATE_LABEL[stage.state as StageStateKey]}
+                            {stage.dueOn === null ? '' : ` · ${formatDate(stage.dueOn)}`}
+                          </Text>
+                        </li>
+                      ))}
+                    </ul>
+                  </Disclosure>
+                )}
               </Card>
             );
           })}

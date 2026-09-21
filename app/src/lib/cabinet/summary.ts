@@ -130,6 +130,8 @@ export interface LoadPoint {
 export interface DueSoon {
   readonly id: string;
   readonly code: string;
+  /** Название работы: код с экранов убран и человеку ничего не говорит. */
+  readonly title: string;
   readonly stage: string;
   readonly client: string;
   readonly dueOn: Date;
@@ -165,6 +167,7 @@ export async function stageLoad(
     where: { ...(scope ?? {}), status: 'ACTIVE' },
     select: {
       code: true,
+      title: true,
       client: { select: { fullName: true } },
       stages: {
         orderBy: { position: 'asc' },
@@ -195,6 +198,7 @@ export async function stageLoad(
       soon.push({
         id: current.id,
         code: project.code,
+        title: project.title,
         stage: current.title,
         client: project.client.fullName,
         dueOn: current.dueOn,

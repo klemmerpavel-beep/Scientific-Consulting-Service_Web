@@ -52,7 +52,7 @@ export default async function MessagesScreen({
       <Narrow width={780}>
         <ScreenHead
           backHref={`/cabinet/projects/${project.code}`}
-          backLabel={project.code}
+          backLabel={project.title}
           title="Переписка"
           note={project.title}
         />
