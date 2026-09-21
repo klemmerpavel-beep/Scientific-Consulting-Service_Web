@@ -580,17 +580,36 @@ export function losses(rows: readonly ProjectRow[]): LossesReport {
 
 // ─────────────────────────── Выводы ─────────────────────────────────────────
 
+/** Насколько вывод надёжен: от подтверждённого числами до рискованного. */
+export type Confidence = 'sure' | 'likely' | 'risky';
+
 export interface Conclusion {
+  /** Область, к которой относится вывод: деньги, клиенты, продукт, сроки. */
+  readonly area: string;
   readonly title: string;
+  /** Что показывают числа. */
   readonly text: string;
+  /** Что с этим делать. Без этой строки вывод остаётся наблюдением. */
+  readonly action: string;
+  readonly confidence: Confidence;
+  /** Когда этим заниматься. */
+  readonly term: string;
+  /** Оценка эффекта в копейках; `null` — величина не считается честно. */
+  readonly effect: bigint | null;
 }
 
 /**
- * Три вывода на вкладке «Обзор».
+ * Выводы обзора с рекомендациями.
  *
- * Выводы строятся из чисел и ими же ограничены: никаких рекомендаций,
- * не выводимых из данных. Каждый называет величину, на которой основан, —
- * иначе читателю нечего проверить.
+ * Прежде выводы были наблюдениями: «пять клиентов дают 68 % суммы
+ * договоров» — и человек сам решал, что с этим делать. Требование
+ * заказчика: вывод обязан говорить, что работает лучше и когда, то есть
+ * нести действие, срок и оценку эффекта (решение Р-194).
+ *
+ * Оценка эффекта считается только там, где её можно вывести из своих же
+ * чисел: взыскиваемый остаток — это сумма долга, выравнивание цены к
+ * собственной медиане — разница медианы и среднего на числе заказов.
+ * Где честной величины нет, стоит `null`, а не выдуманный процент роста.
  */
 export function conclusions(rows: readonly ProjectRow[], controlDate: Date): Conclusion[] {
   const out: Conclusion[] = [];
@@ -600,59 +619,161 @@ export function conclusions(rows: readonly ProjectRow[], controlDate: Date): Con
   const clientReport = clients(rows, controlDate);
   const productRows = products(rows);
   const season = seasonalNorm(rows, controlDate);
-  const cycleReport = cycles(rows, controlDate);
+  const debts = receivables(rows, controlDate);
 
-  // 1. Концентрация: пять клиентов и их доля.
-  if (clientReport.clients.length >= 5) {
+  // 1. Просроченный остаток — деньги, которые уже заработаны.
+  const overdueDebts = debts.filter((debt) => (debt.overdueDays ?? 0) > 0);
+  const overdueSum = sum(overdueDebts.map((debt) => debt.debt));
+  if (overdueDebts.length > 0) {
     out.push({
-      title: 'Концентрация выручки',
+      area: 'Деньги',
+      title: 'Взыскать просроченный остаток',
       text:
-        `Пять крупнейших клиентов дают ${Math.round(clientReport.top5Share * 100)} % суммы ` +
-        `договоров при ${clientReport.clients.length} клиентах всего. ` +
-        `Повторных клиентов ${clientReport.repeat} — ${Math.round(clientReport.repeatShare * 100)} %.`,
+        `По ${overdueDebts.length} ${plural(overdueDebts.length, 'работе', 'работам', 'работам')} ` +
+        `срок прошёл, а остаток не получен: ${moneyWords(overdueSum)}. ` +
+        `Собрано по завершённым работам ${Math.round(money.collection * 100)} %.`,
+      action:
+        'Пройти по каждой работе и назвать дату платежа; где платить не будут — списать, ' +
+        'чтобы эти деньги перестали считаться выручкой будущего.',
+      confidence: 'sure',
+      term: 'две недели',
+      effect: overdueSum,
     });
   }
 
-  // 2. Сезонность: три месяца с наибольшей нормой.
+  // 2. Сорванные сроки действующих работ.
+  const late = rows.filter(
+    (row) => row.status === 'ACTIVE' && row.dueOn !== null && row.dueOn.getTime() < controlDate.getTime(),
+  );
+  if (late.length > 0) {
+    out.push({
+      area: 'Сроки',
+      title: 'Разобрать сорванные сроки',
+      text:
+        `${late.length} ${plural(late.length, 'действующая работа', 'действующие работы', 'действующих работ')} ` +
+        'стоит со сроком в прошлом. Срок в прошлом не двигает работу и портит разговор с клиентом.',
+      action:
+        'По каждой назначить новый срок и сказать об этом клиенту — либо закрыть работу, ' +
+        'если она фактически завершена.',
+      confidence: 'sure',
+      term: 'неделя',
+      effect: null,
+    });
+  }
+
+  // 3. Что работает лучше и когда: тип с наибольшим средним чеком и месяцы
+  //    пика сезона. Это и есть прямой ответ на вопрос заказчика.
+  const workhorse = productRows
+    .filter((product) => product.orders >= 3)
+    .sort((a, b) => (b.averageCheck > a.averageCheck ? 1 : b.averageCheck < a.averageCheck ? -1 : 0))[0];
   const peak = [...season].sort((a, b) => b.norm - a.norm).slice(0, 3);
-  if (peak.length === 3 && peak[0]!.norm > 0) {
+  if (workhorse !== undefined && peak.length === 3 && peak[0]!.norm > 0) {
     out.push({
-      title: 'Сезон заказов',
+      area: 'Продукт',
+      title: `Лучше всего работает «${workhorse.typeName}»`,
       text:
-        `Наибольшая норма приходится на ${peak.map((month) => month.label).join(', ')} — ` +
-        `${peak.map((month) => month.norm.toFixed(1)).join(', ')} заказа в месяц. ` +
-        'Норма считается по наблюдавшимся месяцам, а не по календарным годам.',
+        `Средний чек ${moneyWords(workhorse.averageCheck)} при ${workhorse.orders} ` +
+        `${plural(workhorse.orders, 'заказе', 'заказах', 'заказах')} — выше остальных позиций. ` +
+        `Заказы приходят плотнее всего в ${peak.map((month) => month.label).join(', ')}: ` +
+        `${peak.map((month) => month.norm.toFixed(1).replace('.', ',')).join(', ')} заказа в месяц.`,
+      action:
+        `Готовить предложение по этой позиции к ${peak[0]!.label} и держать под неё свободного ` +
+        'исполнителя: спрос приходит в те же месяцы, что и в прошлые годы.',
+      confidence: 'likely',
+      term: 'к началу сезона',
+      effect: null,
     });
   }
 
-  // 3. Разброс чека либо срок исполнения — что показательнее.
+  // 4. Повторные клиенты: проверенный спрос, который просто не спросили.
+  const sleeping = clientReport.clients.filter(
+    (client) =>
+      client.orders >= 2 &&
+      client.lastOrder !== null &&
+      controlDate.getTime() - client.lastOrder.getTime() > 180 * DAY,
+  );
+  if (sleeping.length > 0 && money.averageCheck > 0n) {
+    out.push({
+      area: 'Клиенты',
+      title: 'Вернуться к повторным клиентам',
+      text:
+        `${sleeping.length} ${plural(sleeping.length, 'клиент', 'клиента', 'клиентов')} заказывал ` +
+        'не по одному разу и не появлялся дольше полугода. Повторных клиентов всего ' +
+        `${clientReport.repeat} — ${Math.round(clientReport.repeatShare * 100)} %.`,
+      action:
+        'Написать каждому лично под его тему: у этих людей спрос уже проверен, и новая работа ' +
+        'стоит практике дешевле первой.',
+      confidence: 'likely',
+      term: 'месяц',
+      effect: money.averageCheck * BigInt(sleeping.length),
+    });
+  }
+
+  // 5. Цена назначается по случаю: выравнивание к собственной медиане.
   const scattered = productRows.filter((product) => product.needsPriceList && product.orders >= 3);
   if (scattered.length > 0) {
+    const uplift = sum(
+      scattered.map((product) =>
+        product.medianCheck > product.averageCheck
+          ? (product.medianCheck - product.averageCheck) * BigInt(product.orders)
+          : 0n,
+      ),
+    );
     out.push({
-      title: 'Цена назначается по случаю',
+      area: 'Продукт',
+      title: 'Вывести прайс там, где цена гуляет',
       text:
         `Разброс чека выше 40 % у позиций: ${scattered
           .map((product) => `${product.typeName} (${Math.round(product.variation * 100)} %)`)
-          .join(', ')}. Прайс по этим позициям не выведен из практики.`,
-    });
-  } else if (cycleReport.overall.median !== null) {
-    out.push({
-      title: 'Срок исполнения',
-      text:
-        `Медиана срока — ${cycleReport.overall.median} дн. по ${cycleReport.overall.observations} ` +
-        `работам, из них завершено ${cycleReport.overall.events}. Незавершённые учтены ` +
-        'цензурированием, а не выброшены.',
+          .join(', ')}. Одна и та же работа продаётся по разной цене без видимой причины.`,
+      action:
+        'Назначить по этим позициям базовую цену — собственную медиану — и отклоняться от неё ' +
+        'только письменно, с причиной.',
+      confidence: 'risky',
+      term: 'месяц',
+      effect: uplift > 0n ? uplift : null,
     });
   }
 
-  if (out.length < 3 && money.outstanding > 0n) {
+  // 6. Зависимость от нескольких клиентов.
+  if (clientReport.clients.length >= 5 && clientReport.top5Share > 0.5) {
     out.push({
-      title: 'Задолженность',
+      area: 'Клиенты',
+      title: 'Зависимость от пяти клиентов',
       text:
-        `Не получено ${(Number(money.outstanding) / 100).toLocaleString('ru-RU')} ₽ по незакрытым ` +
-        `работам при собранных ${Math.round(money.collection * 100)} % по завершённым.`,
+        `Пять крупнейших дают ${Math.round(clientReport.top5Share * 100)} % суммы договоров ` +
+        `при ${clientReport.clients.length} клиентах всего. Уход одного заметно бьёт по году.`,
+      action:
+        'Считать поток новых клиентов отдельной величиной и планировать его наравне с выручкой.',
+      confidence: 'risky',
+      term: 'квартал',
+      effect: null,
     });
   }
 
-  return out.slice(0, 3);
+  // Порядок: сначала то, у чего есть считаемый эффект, крупное сверху.
+  return out
+    .sort((a, b) => {
+      if (a.effect === null && b.effect === null) return 0;
+      if (a.effect === null) return 1;
+      if (b.effect === null) return -1;
+      return b.effect > a.effect ? 1 : b.effect < a.effect ? -1 : 0;
+    })
+    .slice(0, 5);
 }
+
+/** Сумма словами для текста вывода: целые рубли, без копеек. */
+function moneyWords(amount: bigint): string {
+  return `${Math.round(Number(amount) / 100).toLocaleString('ru-RU')} ₽`;
+}
+
+/** Русское склонение по числу. Своё: модуль расчётов не знает разметки. */
+function plural(count: number, one: string, few: string, many: string): string {
+  const mod100 = count % 100;
+  const mod10 = count % 10;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
+

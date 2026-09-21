@@ -2,7 +2,17 @@ import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
 import {
+  BarChart,
+  DonutChart,
+  Legend,
+  compactMoney,
+  compactNumber,
+  seriesColor,
+} from '../../../../components/cabinet/Charts';
+import {
   Card,
+  Disclosure,
+  Heading,
   Mono,
   ScreenHead,
   Tile,
@@ -19,10 +29,22 @@ import {
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { financeSummary } from '../../../../lib/cabinet/finance';
+import { byMonth } from '../../../../lib/cabinet/analytics/metrics';
+import { loadRows } from '../../../../lib/cabinet/analytics/data';
 import { formatAmount } from '../../../../lib/cabinet/money';
 import { currentActor } from '../../../../lib/cabinet/session';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Доля в сумме договоров. Целые проценты, без ложной точности; доля
+ * меньше процента пишется словами — «0 %» читалось бы как «ничего».
+ */
+function donutShare(value: number, total: number): string {
+  if (total <= 0 || value <= 0) return '—';
+  const percent = (value / total) * 100;
+  return percent < 1 ? 'менее 1 %' : `${Math.round(percent)} %`;
+}
 
 /** Сколько строк расчётов показывается на одной странице. */
 const PAGE_SIZE = 20;
@@ -40,6 +62,16 @@ export default async function FinanceScreen({
 
   const sp = await searchParams;
   const { rows, totals } = await financeSummary(actor);
+  // Помесячный ряд и разбиение работ на действующие и закрытые: деньги
+  // ушли с главной, и отвечать на вопрос «когда они приходят» теперь
+  // этому экрану (решение Р-194).
+  const months = byMonth(await loadRows(actor)).slice(-12);
+  const openCount = rows.filter((row) => row.status === 'ACTIVE' || row.status === 'PAUSED').length;
+  const closedCount = rows.length - openCount;
+  const openSum = rows
+    .filter((row) => row.status === 'ACTIVE' || row.status === 'PAUSED')
+    .reduce((acc, row) => acc + row.contracted, 0n);
+  const closedSum = totals.contracted - openSum;
 
   // По умолчанию показываются работы с незакрытым остатком: за этим на
   // экран и приходят. Полный перечень — вкладкой рядом (решение Р-172).
@@ -86,6 +118,111 @@ export default async function FinanceScreen({
           <Tile key={tile.label} label={tile.label} value={formatAmount(tile.value)} />
         ))}
       </Tiles>
+
+      {/* Две диаграммы: когда приходят деньги и как сумма договоров делится
+          между действующими и закрытыми работами. Заказчик попросил их
+          именно здесь, а не на главной (решение Р-194). */}
+      <div
+        style={{
+          display: 'grid',
+          // Не больше двух плашек в ряду (решение Р-189).
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(440px,100%),1fr))',
+          gap: 20,
+          margin: '24px 0',
+          maxWidth: 'calc(2 * 600px + 20px)',
+        }}
+      >
+        <Card>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+            Деньги по месяцам
+          </Heading>
+          {months.length === 0 ? (
+            <Text muted>Поступлений пока нет.</Text>
+          ) : (
+            <>
+              <BarChart
+                title="Поступления по месяцам"
+                width={560}
+                height={220}
+                unit="тыс ₽"
+                data={months.map((month) => ({
+                  label: month.label,
+                  value: Number(month.received) / 100_000,
+                }))}
+                format={(value) => compactNumber(value, 0)}
+              />
+              <Text muted size={13} style={{ marginTop: 10 }}>
+                Получено по месяцу начала работы, последние двенадцать месяцев.
+              </Text>
+              <Disclosure title="Числа" style={{ marginTop: 12 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={TABLE_HEAD} scope="col">Месяц</th>
+                      <th style={TABLE_NUM_HEAD} scope="col">Получено</th>
+                      <th style={TABLE_NUM_HEAD} scope="col">Заказов</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {months.map((month) => (
+                      <tr key={month.key}>
+                        <td style={TABLE_CELL}>{month.label}</td>
+                        <td style={TABLE_NUM}>{formatAmount(month.received)}</td>
+                        <td style={TABLE_NUM}>{month.orders}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Disclosure>
+            </>
+          )}
+        </Card>
+
+        <Card>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+            Действующие и закрытые
+          </Heading>
+          {rows.length === 0 ? (
+            <Text muted>Работ с договором пока нет.</Text>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'center' }}>
+              <div style={{ width: 220, flex: '0 0 auto' }}>
+                <DonutChart
+                  title="Сумма договоров: действующие и закрытые работы"
+                  center={String(rows.length)}
+                  centerLabel="работ"
+                  segments={[
+                    { label: 'Действующие', value: Number(openSum), color: seriesColor(0) },
+                    { label: 'Закрытые', value: Number(closedSum), color: seriesColor(2) },
+                  ]}
+                />
+              </div>
+              <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+                <Legend
+                  column
+                  items={[
+                    {
+                      label: `Действующие · ${openCount}`,
+                      color: seriesColor(0),
+                      value: formatAmount(openSum),
+                      share: donutShare(Number(openSum), Number(totals.contracted)),
+                    },
+                    {
+                      label: `Закрытые · ${closedCount}`,
+                      color: seriesColor(2),
+                      value: formatAmount(closedSum),
+                      share: donutShare(Number(closedSum), Number(totals.contracted)),
+                    },
+                  ]}
+                />
+                <Text muted size={13} style={{ marginTop: 12 }}>
+                  Доля в сумме договоров: {compactMoney(totals.contracted)} за всё время.
+                </Text>
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
 
       <FilterBar>
         <Tabs

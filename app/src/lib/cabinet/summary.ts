@@ -228,6 +228,39 @@ export async function stageLoad(
   };
 }
 
+/**
+ * Состояние заказов без денег.
+ *
+ * Главная руководителя показывает, чем практика занята, а не сколько она
+ * заработала: деньгам отведён свой экран, и выносить их дважды заказчик
+ * запретил (решение Р-194). Право спрашивается то же, что на перечень
+ * работ, — деньги здесь не участвуют вовсе.
+ */
+export async function orderSummary(actor: Actor): Promise<{
+  orders: number;
+  active: number;
+  paused: number;
+  completed: number;
+  startedLastQuarter: number;
+  closedLastQuarter: number;
+}> {
+  ensure(actor, 'PROJECT_VIEW');
+  const scope = scopeProjects(actor) ?? {};
+  const quarterAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+  const [orders, active, paused, completed, startedLastQuarter, closedLastQuarter] =
+    await Promise.all([
+      prisma.project.count({ where: scope }),
+      prisma.project.count({ where: { ...scope, status: 'ACTIVE' } }),
+      prisma.project.count({ where: { ...scope, status: 'PAUSED' } }),
+      prisma.project.count({ where: { ...scope, status: 'COMPLETED' } }),
+      prisma.project.count({ where: { ...scope, startedOn: { gte: quarterAgo } } }),
+      prisma.project.count({ where: { ...scope, closedOn: { gte: quarterAgo } } }),
+    ]);
+
+  return { orders, active, paused, completed, startedLastQuarter, closedLastQuarter };
+}
+
 export async function practiceSummary(actor: Actor): Promise<PracticeSummary> {
   ensure(actor, 'MARGIN_VIEW');
 
