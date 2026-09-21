@@ -243,22 +243,50 @@ export async function orderSummary(actor: Actor): Promise<{
   completed: number;
   startedLastQuarter: number;
   closedLastQuarter: number;
+  /** Те же кварталы, но предыдущие: без них число ни с чем не сравнить. */
+  startedPrevQuarter: number;
+  closedPrevQuarter: number;
 }> {
   ensure(actor, 'PROJECT_VIEW');
   const scope = scopeProjects(actor) ?? {};
-  const quarterAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const DAY = 24 * 60 * 60 * 1000;
+  const quarterAgo = new Date(Date.now() - 90 * DAY);
+  const halfYearAgo = new Date(Date.now() - 180 * DAY);
 
-  const [orders, active, paused, completed, startedLastQuarter, closedLastQuarter] =
-    await Promise.all([
-      prisma.project.count({ where: scope }),
-      prisma.project.count({ where: { ...scope, status: 'ACTIVE' } }),
-      prisma.project.count({ where: { ...scope, status: 'PAUSED' } }),
-      prisma.project.count({ where: { ...scope, status: 'COMPLETED' } }),
-      prisma.project.count({ where: { ...scope, startedOn: { gte: quarterAgo } } }),
-      prisma.project.count({ where: { ...scope, closedOn: { gte: quarterAgo } } }),
-    ]);
+  const [
+    orders,
+    active,
+    paused,
+    completed,
+    startedLastQuarter,
+    closedLastQuarter,
+    startedPrevQuarter,
+    closedPrevQuarter,
+  ] = await Promise.all([
+    prisma.project.count({ where: scope }),
+    prisma.project.count({ where: { ...scope, status: 'ACTIVE' } }),
+    prisma.project.count({ where: { ...scope, status: 'PAUSED' } }),
+    prisma.project.count({ where: { ...scope, status: 'COMPLETED' } }),
+    prisma.project.count({ where: { ...scope, startedOn: { gte: quarterAgo } } }),
+    prisma.project.count({ where: { ...scope, closedOn: { gte: quarterAgo } } }),
+    prisma.project.count({
+      where: { ...scope, startedOn: { gte: halfYearAgo, lt: quarterAgo } },
+    }),
+    prisma.project.count({
+      where: { ...scope, closedOn: { gte: halfYearAgo, lt: quarterAgo } },
+    }),
+  ]);
 
-  return { orders, active, paused, completed, startedLastQuarter, closedLastQuarter };
+  return {
+    orders,
+    active,
+    paused,
+    completed,
+    startedLastQuarter,
+    closedLastQuarter,
+    startedPrevQuarter,
+    closedPrevQuarter,
+  };
 }
 
 export async function practiceSummary(actor: Actor): Promise<PracticeSummary> {

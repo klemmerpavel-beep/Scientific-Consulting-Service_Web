@@ -30,10 +30,24 @@ import { pendingComments } from '../../../lib/cabinet/materials';
 import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { currentActor } from '../../../lib/cabinet/session';
-import { byMonth } from '../../../lib/cabinet/analytics/metrics';
+import { byMonth, products } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
 import { activeWorks, orderSummary, stageLoad } from '../../../lib/cabinet/summary';
 export const dynamic = 'force-dynamic';
+
+/**
+ * Изменение к предыдущему такому же периоду.
+ *
+ * Число без сравнения не говорит ничего: «принято 2» — это много или
+ * мало, зависит от того, сколько было кварталом раньше (решение Р-196).
+ */
+function delta(now: number, before: number): string {
+  if (before === 0) return now === 0 ? 'кварталом раньше тоже ноль' : 'кварталом раньше не было';
+  const change = now - before;
+  if (change === 0) return `столько же, сколько кварталом раньше`;
+  const percent = Math.round((Math.abs(change) / before) * 100);
+  return `${change > 0 ? '+' : '−'}${Math.abs(change)} к прошлому кварталу (${percent} %)`;
+}
 
 /** Сколько дней прошло с назначенного срока; до срока — ничего. */
 function overdueDays(dueOn: Date | null): number | null {
@@ -82,7 +96,19 @@ export default async function ManageQueue({
   // (решение Р-180). Прокрутка здесь разрешена: витрину в окно не уложить,
   // не отрезав от неё смысл.
   const dashboard = can(actor, 'ANALYTICS_VIEW');
-  const months = dashboard ? byMonth(await loadRows(actor)).slice(-12) : [];
+  const analyticsRows = dashboard ? await loadRows(actor) : [];
+  const months = dashboard ? byMonth(analyticsRows).slice(-12) : [];
+  // Что заказывают: типы сопровождения за последние двенадцать месяцев.
+  // Плитки говорят, сколько работ, графики — когда они приходят и где
+  // стоят; это отвечает, чего именно просят (решение Р-196).
+  const yearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+  const demand = dashboard
+    ? products(analyticsRows.filter((row) => row.startedOn !== null && row.startedOn >= yearAgo))
+        .slice()
+        .sort((a, b) => b.orders - a.orders)
+        .slice(0, 6)
+    : [];
+  const demandTotal = demand.reduce((acc, item) => acc + item.orders, 0);
   const load = dashboard ? await stageLoad(actor) : null;
   // Итоги по тому же ряду, что и столбцы: считать их заново неоткуда.
   const yearOrders = months.reduce((acc, month) => acc + month.orders, 0);
@@ -179,12 +205,12 @@ export default async function ManageQueue({
             <Tile
               label="Принято за квартал"
               value={String(summary.startedLastQuarter)}
-              note="последние 90 дней"
+              note={delta(summary.startedLastQuarter, summary.startedPrevQuarter)}
             />
             <Tile
               label="Закрыто за квартал"
               value={String(summary.closedLastQuarter)}
-              note={`всего завершено ${summary.completed}`}
+              note={delta(summary.closedLastQuarter, summary.closedPrevQuarter)}
             />
           </Tiles>
         </div>
@@ -384,6 +410,48 @@ export default async function ManageQueue({
               </Disclosure>
             )}
           </Card>
+
+          {demand.length === 0 ? null : (
+            <Card style={{ display: 'flex', flexDirection: 'column' }}>
+              <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+                Что заказывают
+              </Heading>
+              <RankChart
+                title="Заказы по типам сопровождения за год"
+                width={560}
+                labelWidth={220}
+                data={demand.map((item) => ({ label: item.typeName, value: item.orders }))}
+                format={(value) => String(Math.round(value))}
+              />
+              <Text muted size={13} style={{ marginTop: 10 }}>
+                Последние двенадцать месяцев по дате начала работы, шесть крупнейших позиций из{' '}
+                {demandTotal} {plural(demandTotal, 'заказа', 'заказов', 'заказов')}.
+              </Text>
+              <div style={{ marginTop: 'auto' }} />
+              <Disclosure title="Числа" style={{ marginTop: 12 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={TABLE_HEAD} scope="col">Тип сопровождения</th>
+                      <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Заказов</th>
+                      <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Доля</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {demand.map((item) => (
+                      <tr key={item.typeCode}>
+                        <td style={TABLE_CELL}>{item.typeName}</td>
+                        <td style={TABLE_NUM}>{item.orders}</td>
+                        <td style={TABLE_NUM}>
+                          {demandTotal === 0 ? '—' : `${Math.round((item.orders / demandTotal) * 100)} %`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Disclosure>
+            </Card>
+          )}
         </div>
       )}
 

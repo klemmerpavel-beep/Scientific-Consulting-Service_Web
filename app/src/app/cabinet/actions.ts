@@ -30,10 +30,12 @@ import {
   saveStageTemplateItem,
   saveOwnChannels,
   setUserRole,
+  issueAccessLink,
   setUserStatus,
   signExpertNda,
   type Role,
 } from '../../lib/cabinet/admin';
+import type { AccessLinkState } from '../../components/cabinet/AccessLink';
 import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
 import { createCabinetRequest, REQUEST_FILES_MAX } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
@@ -490,6 +492,36 @@ export async function changeUserStatus(form: FormData): Promise<void> {
     redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
   }
   redirect('/cabinet/manage/users');
+}
+
+export async function giveAccessLink(
+  _previous: AccessLinkState,
+  form: FormData,
+): Promise<AccessLinkState> {
+  const actor = await actorOrRedirect();
+  try {
+    const issued = await issueAccessLink(
+      actor,
+      String(form.get('userId') ?? ''),
+      await requestIp(),
+    );
+    const until = issued.expiresAt.toLocaleTimeString('ru-RU', {
+      timeZone: 'Europe/Moscow',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return {
+      link: issued.link,
+      note: `Ссылка для «${issued.fullName}» действует до ${until} по Москве и срабатывает один раз.`,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      link: null,
+      note: null,
+      error: error instanceof Error ? error.message : 'Не удалось выдать ссылку',
+    };
+  }
 }
 
 export async function updateExpertNda(form: FormData): Promise<void> {

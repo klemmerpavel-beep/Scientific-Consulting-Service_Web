@@ -41,8 +41,18 @@ describe('вложения заявки', { skip: !enabled }, async () => {
     root = await mkdtemp(path.join(tmpdir(), 'pd-lead-'));
     setStorage(new LocalStorage(root));
 
+      // Служебные роли наборов заводятся с закрытым доступом: уведомления
+      // о новых заявках ставятся всем действующим менеджерам и
+      // руководителям, и каждый оставшийся от прежних прогонов набор
+      // растил общую очередь стенда, пока набор на саму очередь не
+      // переставал видеть свою строку в пачке (решение Р-195).
     const manager = await prisma.user.create({
-      data: { email: `lead-manager-${stamp}@example.org`, fullName: 'Куратор', role: 'MANAGER' },
+      data: {
+        email: `lead-manager-${stamp}@example.org`,
+        fullName: 'Куратор',
+        role: 'MANAGER',
+        status: 'SUSPENDED',
+      },
     });
     const client = await prisma.user.create({
       data: {
@@ -176,7 +186,12 @@ describe('вложения заявки', { skip: !enabled }, async () => {
   it('затирание по требованию субъекта не оставляет вложений', async () => {
     const erasure = await import('../src/lib/cabinet/erasure.ts');
     const head = await prisma.user.create({
-      data: { email: `lead-head-${stamp}@example.org`, fullName: 'Руководитель', role: 'HEAD' },
+      data: {
+        email: `lead-head-${stamp}@example.org`,
+        fullName: 'Руководитель',
+        role: 'HEAD',
+        status: 'SUSPENDED',
+      },
     });
     const actor = staff(head.id, 'HEAD');
 
