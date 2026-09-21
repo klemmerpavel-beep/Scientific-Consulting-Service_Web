@@ -386,7 +386,7 @@ describe('выводы обзора', () => {
     assert.deepEqual(conclusions([], CONTROL), []);
   });
 
-  it('выводов не больше трёх и каждый называет величину', () => {
+  it('выводов не больше пяти, каждый называет величину и несёт действие', () => {
     const rows = Array.from({ length: 12 }, (_, index) =>
       row({
         code: `PD-${index}`,
@@ -397,10 +397,47 @@ describe('выводы обзора', () => {
       }),
     );
     const list = conclusions(rows, CONTROL);
-    assert.ok(list.length > 0 && list.length <= 3);
+    assert.ok(list.length > 0 && list.length <= 5);
     for (const item of list) {
       assert.ok(item.title.length > 0);
       assert.match(item.text, /\d/u, `вывод «${item.title}» не называет ни одной величины`);
+      // Вывод без действия остаётся наблюдением: требование заказчика —
+      // рекомендация, срок и область (решение Р-194).
+      assert.ok(item.action.length > 0, `вывод «${item.title}» не говорит, что делать`);
+      assert.ok(item.term.length > 0, `вывод «${item.title}» не называет срока`);
+      assert.ok(item.area.length > 0, `вывод «${item.title}» не назван областью`);
+      assert.ok(
+        ['sure', 'likely', 'risky'].includes(item.confidence),
+        `вывод «${item.title}» не называет уверенности`,
+      );
+    }
+  });
+
+  it('выводы идут от крупного считаемого эффекта к несчитаемому', () => {
+    const rows = Array.from({ length: 24 }, (_, index) =>
+      row({
+        code: `PD-${index}`,
+        clientId: `c${index % 6}`,
+        clientName: `Клиент ${index % 6}`,
+        cost: BigInt((index + 1) * 1_000_000),
+        paid: BigInt(index * 500_000),
+        startedOn: new Date(Date.UTC(2024, index % 12, 5)),
+        dueOn: new Date(Date.UTC(2025, index % 12, 5)),
+      }),
+    );
+    const list = conclusions(rows, CONTROL);
+    const effects = list.map((item) => item.effect);
+    const counted = effects.filter((effect) => effect !== null) as bigint[];
+    // Считаемые эффекты идут по убыванию и все стоят выше несчитаемых.
+    for (let i = 1; i < counted.length; i += 1) {
+      assert.ok(counted[i - 1]! >= counted[i]!, 'эффекты идут не по убыванию');
+    }
+    const firstNull = effects.indexOf(null);
+    if (firstNull !== -1) {
+      assert.ok(
+        effects.slice(firstNull).every((effect) => effect === null),
+        'вывод со считаемым эффектом оказался ниже вывода без него',
+      );
     }
   });
 });

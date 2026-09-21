@@ -6,12 +6,22 @@ import {
   compactNumber,
   seriesColor,
 } from '../../../../components/cabinet/Charts';
-import { Card, Empty, Heading, Text } from '../../../../components/cabinet/ui';
+import { Card, Chip, Empty, Heading, Mono, Text } from '../../../../components/cabinet/ui';
 import { byMonth, conclusions, overview, products } from '../../../../lib/cabinet/analytics/metrics';
 import { formatAmount, formatRounded } from '../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from './shared';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Уверенность вывода: слово и цвет полосы. Слово обязательно — смысл не
+ * держится на одном цвете (правило Р-165, решение Р-194).
+ */
+const CONFIDENCE = {
+  sure: { label: 'подтверждено числами', edge: 'var(--pd-accent)' },
+  likely: { label: 'вероятно', edge: 'var(--pd-accent-edge)' },
+  risky: { label: 'под вопросом', edge: 'var(--pd-border)' },
+} as const;
 
 /**
  * Доля типа в сумме договоров. Целые проценты, без ложной точности; доля
@@ -59,21 +69,70 @@ export default async function AnalyticsOverview() {
             <Tile label="Средний чек" value={formatRounded(total.averageCheck)} note={`клиентов ${total.clients}`} />
           </Tiles>
 
-          <Heading level={2} style={{ marginBottom: 12 }}>
-            Выводы
+          <Heading level={2} style={{ marginBottom: 4 }}>
+            Выводы и что делать
           </Heading>
-          <div style={{ display: 'grid', gap: 16, marginBottom: 28 }}>
+          <Text muted size={14} style={{ marginBottom: 14 }}>
+            Каждый вывод несёт действие, срок и — где величина считается честно — оценку
+            эффекта. Уверенность: «подтверждено числами» — прямой счёт по своим данным,
+            «вероятно» — спрос проверен, но повторение не гарантировано, «под вопросом» —
+            решение спорное, зато потенциал наибольший.
+          </Text>
+          {/* Не больше двух плашек в ряду (решение Р-189). */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(440px,100%),1fr))',
+              gap: 16,
+              marginBottom: 28,
+            }}
+          >
             {outputs.length === 0 ? (
               <Card>
                 <Text muted>Данных пока мало: выводы появятся, когда наберётся история.</Text>
               </Card>
             ) : (
               outputs.map((item) => (
-                <Card key={item.title}>
-                  <Heading level={3} style={{ marginBottom: 6 }}>
+                <Card
+                  key={item.title}
+                  style={{
+                    // Полоса слева называет уверенность цветом, а подпись
+                    // ниже — словом: смысл не держится на цвете (Р-165).
+                    borderLeft: `3px solid ${CONFIDENCE[item.confidence].edge}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <Mono>{item.area}</Mono>
+                  <Heading level={3} style={{ margin: '8px 0 6px' }}>
                     {item.title}
                   </Heading>
-                  <Text muted>{item.text}</Text>
+                  <Text muted size={14}>
+                    {item.text}
+                  </Text>
+                  <Text size={14} style={{ marginTop: 10 }}>
+                    <strong style={{ fontWeight: 600 }}>Что делать: </strong>
+                    {item.action}
+                  </Text>
+                  <div style={{ marginTop: 'auto' }} />
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 10,
+                      marginTop: 14,
+                      paddingTop: 12,
+                      borderTop: '1px solid var(--pd-divider)',
+                    }}
+                  >
+                    <Chip tone={item.confidence === 'sure' ? 'accent' : undefined}>
+                      {CONFIDENCE[item.confidence].label}
+                    </Chip>
+                    <Chip>срок: {item.term}</Chip>
+                    {item.effect === null ? null : (
+                      <Chip>оценка: {formatRounded(item.effect)}</Chip>
+                    )}
+                  </div>
                 </Card>
               ))
             )}

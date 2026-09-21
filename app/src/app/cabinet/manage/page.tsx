@@ -24,7 +24,7 @@ import {
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
-import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
+import { formatPlain } from '../../../lib/cabinet/money';
 import { unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments } from '../../../lib/cabinet/materials';
 import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
@@ -32,12 +32,7 @@ import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { currentActor } from '../../../lib/cabinet/session';
 import { byMonth } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
-import {
-  OVERHEAD_PERCENT,
-  activeWorks,
-  practiceSummary,
-  stageLoad,
-} from '../../../lib/cabinet/summary';
+import { activeWorks, orderSummary, stageLoad } from '../../../lib/cabinet/summary';
 export const dynamic = 'force-dynamic';
 
 /** Сколько дней прошло с назначенного срока; до срока — ничего. */
@@ -65,8 +60,10 @@ export default async function ManageQueue({
   ]);
   const leads = queue.rows;
 
-  // Сводка — это деньги практики, и её видит только тот, кому открыта маржа.
-  const summary = can(actor, 'MARGIN_VIEW') ? await practiceSummary(actor) : null;
+  // Состояние заказов без денег: заказчик запретил выносить деньги на
+  // главную — для них есть свой экран (решение Р-194). Плитки видит тот,
+  // кому открыта практика целиком.
+  const summary = can(actor, 'MARGIN_VIEW') ? await orderSummary(actor) : null;
   // Перечень действующих работ видят обе служебные роли, и каждая — свои:
   // менеджеру `scopeProjects` оставляет те, где он куратор. Деньги в строке
   // появляются только при праве на маржу (решение Р-175).
@@ -88,10 +85,11 @@ export default async function ManageQueue({
   const months = dashboard ? byMonth(await loadRows(actor)).slice(-12) : [];
   const load = dashboard ? await stageLoad(actor) : null;
   // Итоги по тому же ряду, что и столбцы: считать их заново неоткуда.
-  const yearTotal = months.reduce((acc, month) => acc + month.received, 0n);
-  const monthAverage = months.length === 0 ? 0n : yearTotal / BigInt(months.length);
+  const yearOrders = months.reduce((acc, month) => acc + month.orders, 0);
+  const monthAverage =
+    months.length === 0 ? '0' : (yearOrders / months.length).toFixed(1).replace('.', ',');
   const bestMonth = months.reduce<(typeof months)[number] | null>(
-    (best, month) => (best === null || month.received > best.received ? month : best),
+    (best, month) => (best === null || month.orders > best.orders ? month : best),
     null,
   );
 
@@ -176,56 +174,53 @@ export default async function ManageQueue({
       {summary === null ? null : (
         <div>
           <Tiles>
-            <Tile label="Заказов" value={String(summary.orders)} note={`${summary.active} в работе`} />
-            <Tile label="Выручка" value={formatAmount(summary.received)} note="получено" />
+            <Tile label="Заказов" value={String(summary.orders)} note="за всё время" />
+            <Tile label="В работе" value={String(summary.active)} note="сейчас ведутся" />
             <Tile
-              label="Прибыль"
-              value={formatAmount(summary.profit)}
-              note={`выручка минус ${OVERHEAD_PERCENT} % расходов`}
+              label="Принято за квартал"
+              value={String(summary.startedLastQuarter)}
+              note="последние 90 дней"
             />
-            <Tile label="К получению" value={formatAmount(summary.outstanding)} note="не оплачено" />
+            <Tile
+              label="Закрыто за квартал"
+              value={String(summary.closedLastQuarter)}
+              note={`всего завершено ${summary.completed}`}
+            />
           </Tiles>
         </div>
       )}
 
-      {/* Деньги и загрузка стоят рядом: плитки отвечают, сколько денег, а
-          эти два графика — когда они приходят и чем практика занята
-          сейчас. Порядок в загрузке — ход работы, а не убывание числа
-          (решение Р-180). */}
+      {/* Два графика отвечают на два вопроса: сколько работ приходит
+          месяц за месяцем и чем практика занята прямо сейчас. Денег
+          здесь нет — им отведён свой экран (решение Р-194). Поле рисунка
+          совпадает с шириной карточки: при жёстком поле в 560 пикселей
+          на карточке в 580 всё растягивалось и кегли шли вразнобой. */}
       {load === null ? null : (
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(440px,1fr))',
+            // Не больше двух плашек в ряду (решение Р-189).
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(440px,100%),1fr))',
             gap: 20,
             marginBottom: 24,
+            maxWidth: 'calc(2 * 600px + 20px)',
           }}
         >
-          {/* Карточки — колонками, и свёртка с числами прижата к низу:
-              иначе та, что короче, оставляла под собой пустое поле в
-              полторы сотни пикселей (решение Р-182). */}
           <Card style={{ display: 'flex', flexDirection: 'column' }}>
             <Heading level={2} size={3} style={{ marginBottom: 12 }}>
-              Деньги по месяцам
+              Заказы по месяцам
             </Heading>
             <BarChart
-              title="Поступления по месяцам"
+              title="Принято заказов по месяцам"
               width={560}
               height={220}
-              unit="тыс ₽"
-              data={months.map((month) => ({
-                label: month.label,
-                value: Number(month.received) / 100_000,
-              }))}
-              format={(value) => compactNumber(value, 0)}
+              unit="работ"
+              data={months.map((month) => ({ label: month.label, value: month.orders }))}
+              format={(value) => String(Math.round(value))}
             />
             <Text muted size={13} style={{ marginTop: 10 }}>
-              Получено по месяцу заказа, последние двенадцать месяцев.
+              По месяцу начала работы, последние двенадцать месяцев.
             </Text>
-            {/* Три числа под графиком отвечают на то, чего столбцы не
-                говорят: сколько всего, сколько в среднем и когда был
-                лучший месяц. Заодно карточка перестала пустовать снизу
-                (решение Р-182). */}
             {months.length === 0 ? null : (
               <dl
                 style={{
@@ -238,11 +233,11 @@ export default async function ManageQueue({
                 }}
               >
                 {[
-                  { key: 'sum', label: 'За двенадцать месяцев', value: formatAmount(yearTotal) },
-                  { key: 'avg', label: 'В среднем в месяц', value: formatAmount(monthAverage) },
+                  { key: 'sum', label: 'За двенадцать месяцев', value: String(yearOrders) },
+                  { key: 'avg', label: 'В среднем в месяц', value: monthAverage },
                   {
                     key: 'best',
-                    label: 'Лучший месяц',
+                    label: 'Самый плотный месяц',
                     value: bestMonth === null ? '—' : bestMonth.label,
                   },
                 ].map((row) => (
@@ -272,7 +267,6 @@ export default async function ManageQueue({
                 <thead>
                   <tr>
                     <th style={TABLE_HEAD} scope="col">Месяц</th>
-                    <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Получено</th>
                     <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Заказов</th>
                   </tr>
                 </thead>
@@ -280,7 +274,6 @@ export default async function ManageQueue({
                   {months.map((month) => (
                     <tr key={month.key}>
                       <td style={TABLE_CELL}>{month.label}</td>
-                      <td style={TABLE_NUM}>{formatAmount(month.received)}</td>
                       <td style={TABLE_NUM}>{month.orders}</td>
                     </tr>
                   ))}
