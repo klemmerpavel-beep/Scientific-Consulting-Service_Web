@@ -9,7 +9,6 @@ import {
   Form,
   FormActions,
   Heading,
-  Mono,
   Notice,
   Text,
 } from '../../components/cabinet/ui';
@@ -37,14 +36,14 @@ export default async function CabinetEntrance({
 
   return (
     <Shell actor={null} center>
-      <div style={{ width: '100%', maxWidth: 560 }}>
-        <Mono>Личный кабинет</Mono>
-        <Heading level={1} style={{ margin: '12px 0 16px' }}>
-          Вход по ссылке
+      {/* Страница входа сведена к одному действию: заголовок, поле, кнопка
+          и строка о том, как устроен вход. Пояснительный абзац про адрес
+          снят по требованию заказчика — то же самое говорит подсказка
+          поля, и говорить это дважды незачем (решение Р-193). */}
+      <div style={{ width: '100%', maxWidth: 440 }}>
+        <Heading level={1} style={{ marginBottom: 20 }}>
+          Личный кабинет
         </Heading>
-        <Text style={{ marginBottom: 24 }}>
-          Укажите адрес, на который оформлено сопровождение, — придёт письмо со ссылкой.
-        </Text>
 
         {params.error === undefined ? null : (
           <div style={{ marginBottom: 20 }}>
@@ -72,7 +71,7 @@ export default async function CabinetEntrance({
                 type="email"
                 required
                 placeholder="you@example.ru"
-                hint="Тот адрес, который вы указывали при обращении."
+                hint="Тот адрес, на который оформлено сопровождение."
               />
               <FormActions>
                 <Button>Прислать ссылку</Button>
@@ -86,6 +85,10 @@ export default async function CabinetEntrance({
           </Notice>
         )}
 
+        <Text muted size={13} style={{ marginTop: 16 }}>
+          Пароля нет: ссылка приходит на почту, действует пятнадцать минут и срабатывает один
+          раз.
+        </Text>
       </div>
     </Shell>
   );
