@@ -9,7 +9,7 @@
     "start": "node .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"tests/**/*.test.ts\"",
-    "test:db": "node --env-file=.env --test \"tests/**/*.test.ts\"",
+    "test:db": "node --env-file=.env --test-concurrency=1 --test \"tests/**/*.test.ts\"",
     "postinstall": "prisma generate",
     "schema:sql": "node scripts/schema-sql.mjs",
     "build:preview": "node scripts/build-preview.mjs",

@@ -25,6 +25,8 @@ const ACTIONS: Record<string, string> = {
   LEAD_APPROVED: 'Заявка одобрена',
   LEAD_DECLINED: 'Заявка отклонена',
   LEAD_EXPORT: 'Заявки выгружены',
+  LEAD_FILE_DOWNLOADED: 'Скачано вложение заявки',
+  LEAD_FILES_MOVED: 'Вложения заявки перенесены в работу',
   MANAGER_ASSIGNED: 'Назначен куратор',
   OUTBOX_RETRY: 'Уведомление отправлено заново',
   PAYOUT_ACCRUED: 'Начислено вознаграждение',

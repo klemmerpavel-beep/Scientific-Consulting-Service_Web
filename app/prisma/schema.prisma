@@ -33,6 +33,13 @@ model Lead {
   direction    String?
   message      String? @db.Text
 
+  /// Заявка из кабинета собирает больше, чем форма сайта: работу ведут с
+  /// оглядкой на научного руководителя и на требования кафедры, а звонить
+  /// приходится по телефону, а не по почте, которой человек вошёл
+  /// (решение Р-191). Оба поля необязательны и на формы сайта не влияют.
+  supervisorName String?
+  phone          String?
+
   /// Журнал согласий: что именно отметил заявитель и в какой редакции текста
   consentGiven   Boolean
   consentVersion String
@@ -60,11 +67,43 @@ model Lead {
   projectId String?  @unique
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
-  deliveries Delivery[]
+  deliveries  Delivery[]
+  attachments LeadAttachment[]
 
   @@index([createdAt])
   @@index([status])
   @@index([source])
+}
+
+/// Файл, приложенный к заявке из кабинета.
+///
+/// Материал живёт при работе, а заявка работой ещё не стала: приложить
+/// файл к `Material` до одобрения некуда. Поэтому у заявки своё вложение —
+/// с тем же порядком, что у версий материалов: ключ объекта не содержит
+/// имени файла, размер и свёртка фиксируются при приёме, строка не
+/// удаляется никогда. При одобрении заявки вложения переносятся в
+/// материалы созданной работы, а `materialId` помнит куда (решение Р-191).
+model LeadAttachment {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  storageKey   String @unique
+  originalName String
+  sizeBytes    BigInt
+  sha256       String
+  contentType  String
+
+  uploadedById String?
+  uploadedBy   User?    @relation("LeadAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedAt   DateTime @default(now())
+
+  /// Материал работы, в который вложение перенесено при одобрении.
+  materialId String?
+  /// Объект вычищен из хранилища: по требованию субъекта либо по сроку.
+  purgedAt   DateTime?
+
+  @@index([leadId])
 }
 
 enum LeadStatus {
@@ -160,6 +199,7 @@ model User {
   projectEvents     ProjectEvent[]
   createdMaterials  Material[]
   uploadedVersions  MaterialVersion[]
+  leadAttachments   LeadAttachment[]     @relation("LeadAttachmentUploader")
   authoredComments  VersionComment[]     @relation("CommentAuthor")
   moderatedComments VersionComment[]     @relation("CommentModerator")
   fileAccess        FileAccessLog[]

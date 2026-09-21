@@ -22,15 +22,18 @@ export function FilePick({
   id,
   accept,
   required = false,
+  multiple = false,
   describedBy,
 }: {
   name: string;
   id: string;
   accept?: string;
   required?: boolean;
+  /** Можно выбрать несколько файлов: вложения к заявке (решение Р-191). */
+  multiple?: boolean;
   describedBy?: string;
 }) {
-  const [picked, setPicked] = useState<{ name: string; size: number } | null>(null);
+  const [picked, setPicked] = useState<{ name: string; size: number }[]>([]);
   const labelId = useId();
 
   return (
@@ -40,6 +43,7 @@ export function FilePick({
         type="file"
         name={name}
         accept={accept}
+        multiple={multiple}
         required={required}
         aria-describedby={describedBy}
         style={{
@@ -52,18 +56,23 @@ export function FilePick({
           pointerEvents: 'none',
         }}
         onChange={(event) => {
-          const file = event.target.files?.[0];
-          setPicked(file === undefined ? null : { name: file.name, size: file.size });
+          setPicked(
+            [...(event.target.files ?? [])].map((file) => ({ name: file.name, size: file.size })),
+          );
         }}
       />
       <label htmlFor={id} id={labelId} style={{ ...BUTTON_QUIET, cursor: 'pointer' }}>
-        {picked === null ? 'Выбрать файл' : 'Выбрать другой'}
+        {picked.length === 0 ? (multiple ? 'Выбрать файлы' : 'Выбрать файл') : 'Выбрать другие'}
       </label>
       <span
         aria-live="polite"
         style={{ fontFamily: SANS, fontSize: 14, color: 'var(--pd-ink-secondary)' }}
       >
-        {picked === null ? 'файл не выбран' : `${picked.name} · ${size(picked.size)}`}
+        {picked.length === 0
+          ? multiple
+            ? 'файлы не выбраны'
+            : 'файл не выбран'
+          : picked.map((file) => `${file.name} · ${size(file.size)}`).join('; ')}
       </span>
     </div>
   );

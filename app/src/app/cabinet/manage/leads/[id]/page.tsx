@@ -16,6 +16,7 @@ import {
   Select,
   Text,
   formatDate,
+  formatSize,
 } from '../../../../../components/cabinet/ui';
 import { ensure } from '../../../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
@@ -49,6 +50,16 @@ export default async function LeadScreen({
   const [lead, types] = await Promise.all([leadById(actor, id), serviceTypes(actor)]);
   if (lead === null) notFound();
 
+  const facts = [
+    lead.supervisorName === null
+      ? null
+      : { term: 'Научный руководитель', value: lead.supervisorName },
+    lead.organization === null ? null : { term: 'Организация или вуз', value: lead.organization },
+    lead.speciality === null ? null : { term: 'Направление подготовки', value: lead.speciality },
+    lead.phone === null ? null : { term: 'Контактный телефон', value: lead.phone },
+    lead.deadline === null ? null : { term: 'Желаемый срок', value: lead.deadline },
+  ].filter((fact) => fact !== null);
+
   return (
     <Shell actor={actor} current="/cabinet/manage">
       <Narrow width={780}>
@@ -73,6 +84,67 @@ export default async function LeadScreen({
           ) : (
             <Text style={{ whiteSpace: 'pre-wrap' }}>{lead.message}</Text>
           )}
+
+          {/* Сведения, которые собирает заявка из кабинета: научный
+              руководитель, место учёбы, телефон. У обращений с сайта их
+              нет, и строка не печатается (решение Р-191). */}
+          {facts.length === 0 ? null : (
+            <dl
+              style={{
+                margin: '16px 0 0',
+                paddingTop: 16,
+                borderTop: '1px solid var(--pd-divider)',
+                display: 'grid',
+                gap: 10,
+              }}
+            >
+              {facts.map((fact) => (
+                <div
+                  key={fact.term}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0,210px) minmax(0,1fr)',
+                    gap: 14,
+                  }}
+                >
+                  <dt style={{ margin: 0 }}>
+                    <Text muted size={13}>
+                      {fact.term}
+                    </Text>
+                  </dt>
+                  <dd style={{ margin: 0 }}>
+                    <Text size={14}>{fact.value}</Text>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+
+          {lead.attachments.length === 0 ? null : (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--pd-divider)' }}>
+              <Text muted size={13} style={{ marginBottom: 8 }}>
+                Приложено файлов: {lead.attachments.length}. После одобрения они перейдут в
+                материалы работы.
+              </Text>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
+                {lead.attachments.map((file) => (
+                  <li key={file.id}>
+                    <a
+                      className="cab-mark"
+                      href={`/cabinet/lead-files/${file.id}`}
+                      style={{ fontSize: 14 }}
+                    >
+                      {file.originalName}
+                    </a>
+                    <Text muted size={13} style={{ marginTop: 2 }}>
+                      {formatSize(file.sizeBytes)}
+                    </Text>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <Text muted size={13} style={{ marginTop: 16 }}>
             {lead.consentGiven
               ? 'Согласие на обработку персональных данных получено.'

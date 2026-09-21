@@ -31,6 +31,10 @@ body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;
 /* Место под полосу прокрутки занято всегда: иначе содержимое колонки
    дёргается вбок, когда записей становится больше высоты. */
 .cab-board-body{scrollbar-gutter:stable}
+/* Тело свёртки ограничено по высоте только на экране-панели: там страница
+   не прокручивается, и раскрытая свёртка вытолкнула бы её за край. На
+   обычной странице свёртка растёт по содержимому (решение Р-191). */
+.cab-board-main .cab-fold-body{max-height:200px;overflow-y:auto;scrollbar-gutter:stable}
 main{flex:1}
 h1,h2,h3{text-wrap:balance;margin:0}
 h1,h2,h3,p,li,td,th,a,label,span{overflow-wrap:break-word}
