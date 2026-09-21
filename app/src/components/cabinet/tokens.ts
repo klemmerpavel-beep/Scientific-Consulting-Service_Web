@@ -27,7 +27,11 @@ export const ROOT_TOKENS =
   // сектор кольца повторял цвет первого (решение Р-175).
   '--pd-series-mid:#5C8FD6;--pd-series-quiet:#98A2B3}';
 
-export const SERIF = "'Literata', Georgia, 'Times New Roman', serif";
+// Записано ровно так же, как на девяти страницах сайта: тот же набор и
+// тот же порядок, без пробелов после запятых. Гарнитуры совпадали и
+// прежде, но два написания одной строки — это два места, которые
+// расходятся при первой правке (решение Р-193).
+export const SERIF = "'Literata',Georgia,'Times New Roman',serif";
 export const SANS = "'Inter','Helvetica Neue',Arial,sans-serif";
 export const MONO = "'JetBrains Mono','SFMono-Regular',monospace";
 
