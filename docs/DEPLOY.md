@@ -424,9 +424,10 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
 ```
 
 Скрипт печатает ссылку входа — она действует час и срабатывает один раз.
-Пока почта не подключена, это единственный способ войти: письма отправлять
-некуда. Повторный запуск не плодит записи, а обновляет роль и имя и выдаёт
-новую ссылку.
+Повторный запуск не плодит записи, а обновляет роль и имя и выдаёт новую
+ссылку. Эта команда нужна ровно один раз: дальше руководитель открывает
+вход остальным прямо в кабинете, на экране учётных записей (решение
+Р-195), и доступ к серверу для этого больше не требуется.
 
 Учётные записи клиентов заводятся сами — при одобрении заявки.
 
@@ -452,6 +453,77 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
 архивирует этот каталог рядом с дампом (`storage_ГГГГ-ММ-ДД_ЧЧММ.tar.gz`) и
 удаляет архивы по тому же сроку в тридцать дней: восстановление одной базы
 дало бы кабинет, где ссылки на версии есть, а файлов нет.
+
+## 5в-бис. Открытие кабинета: весь порядок одним заходом
+
+Тот же порядок, что в разделе 5в, собранный в одну последовательность —
+сверху вниз, ничего не пропуская. Выполняется на сервере под `root`, один
+раз. Заменить нужно две вещи: адрес и ФИО руководителя в шаге 4.
+
+```bash
+# 1. Код и секреты
+cd /opt/prodisser
+git pull
+printf 'SESSION_SECRET=%s\n'      "$(openssl rand -base64 48)" >> deploy/.env
+printf 'CABINET_CRON_SECRET=%s\n' "$(openssl rand -base64 32)" >> deploy/.env
+printf 'CABINET_STORAGE_DIR=%s\n' /var/lib/prodisser/materials >> deploy/.env
+
+# 2. Миграции и пересборка
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
+  --profile migrate run --rm migrate
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
+
+# 3. Проверка, что раздел поднялся
+curl -sS -o /dev/null -w '%{http_code}\n' https://prodisser.ru/cabinet
+
+# 4. Учётная запись руководителя — подставьте свой адрес и ФИО
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
+  --profile tools run --rm tools \
+  scripts/grant-role.ts info@prodisser.ru HEAD "Фамилия Имя Отчество"
+```
+
+Последняя команда печатает ссылку входа. Она действует час и срабатывает
+один раз — откройте её сразу.
+
+```bash
+# 5. Расписание рассылки уведомлений
+crontab -l > /tmp/cron.now 2>/dev/null || : > /tmp/cron.now
+grep -q outbox.sh /tmp/cron.now || \
+  echo '* * * * * /opt/prodisser/deploy/outbox.sh >> /var/log/prodisser-outbox.log 2>&1' >> /tmp/cron.now
+crontab /tmp/cron.now && rm /tmp/cron.now
+```
+
+**6. Зеркало на Яндекс Диске** (раздел 5д, по желанию). Пароль
+приложения заводится в настройках учётной записи Яндекса — обычный пароль
+от почты WebDAV не принимает:
+
+```bash
+cat >> deploy/.env <<'ENV'
+YANDEX_DISK_USER=логин@prodisser.ru
+YANDEX_DISK_PASSWORD=пароль приложения
+YANDEX_DISK_FOLDER=ProDisser
+YANDEX_DISK_SCOPE=all
+ENV
+/opt/prodisser/deploy/yandex-sync.sh          # первый прогон вручную
+crontab -l > /tmp/cron.now
+grep -q yandex-sync.sh /tmp/cron.now || \
+  echo '0 * * * * /opt/prodisser/deploy/yandex-sync.sh >> /var/log/prodisser-yandex.log 2>&1' >> /tmp/cron.now
+crontab /tmp/cron.now && rm /tmp/cron.now
+```
+
+Результат прогона виден в кабинете: `/cabinet/manage/disk` — когда
+обновлялось, сколько файлов уехало, были ли отказы.
+
+**7. Книга заказов — из кабинета, а не с сервера.** Настоящая книга в
+репозиторий не попадает ни при каких условиях, и команд для неё нет.
+Файл загружается на экране «Перенос книги заказов»
+(`/cabinet/manage/import`): предпросмотр, разбор замечаний, фиксация.
+Порядок — в `GUIDE-CABINET.md`.
+
+**Чего в этом блоке нет.** SMTP: пока ящика нет, вход открывает
+руководитель ссылкой из кабинета (раздел 5в, шаг 4). Когда ящик появится,
+настройки почты добавляются в `deploy/.env` по разделу 5е — переделывать
+ничего не придётся.
 
 ## 5г. Автоматический выкат
 

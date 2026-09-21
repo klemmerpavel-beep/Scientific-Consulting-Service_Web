@@ -11,7 +11,9 @@
  */
 
 const ACTIONS: Record<string, string> = {
+  ACCESS_LINK_ISSUED: 'Выдана ссылка входа',
   CLIENT_MERGED: 'Карточки клиента сведены',
+  DISK_SYNC: 'Зеркало на Диске обновлено',
   CONTRACT_SAVED: 'Договор сохранён',
   ERASURE_EXECUTED: 'Данные удалены по требованию',
   ERASURE_REQUESTED: 'Поступило требование об удалении',

@@ -26,7 +26,15 @@ import {
 import { can } from '../../../../lib/cabinet/access';
 import { ROLE_LABEL, STATUS_LABEL, USER_PAGE_SIZE, listUsers, type Role } from '../../../../lib/cabinet/admin';
 import { currentActor } from '../../../../lib/cabinet/session';
-import { changeUserRole, changeUserStatus, inviteUser, updateExpertNda } from '../../actions';
+import { AccessLink } from '../../../../components/cabinet/AccessLink';
+import { mailConfigured } from '../../../../lib/cabinet/mail';
+import {
+  changeUserRole,
+  changeUserStatus,
+  giveAccessLink,
+  inviteUser,
+  updateExpertNda,
+} from '../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +66,13 @@ export default async function UsersScreen({
   const list = await listUsers(actor, { role, status, page: Number(flags.page ?? '1') });
   const users = list.rows;
   const experts = users.filter((user) => user.expertProfile !== null);
+  // Ссылка выдаётся только действующим записям: приостановленной и
+  // обезличенной вход закрыт, и предлагать его — значит обещать то, чего
+  // не будет (решение Р-195).
+  const active = users.filter((user) => user.status === 'ACTIVE');
+  // Текст блока зависит от того, настроена ли почта: с ней ссылка отсюда
+  // — запасной путь, без неё — единственный.
+  const mailReady = mailConfigured();
 
   /** Адрес того же экрана с другим отбором или страницей. */
   const href = (next: { role?: Role | null; status?: UserState | null; page?: number }) => {
@@ -74,7 +89,7 @@ export default async function UsersScreen({
   return (
     <Shell actor={actor} current="/cabinet/manage/users">
       <ScreenHead
-        title="Пользователи"
+        title="Учётные записи"
         note="Роль назначается здесь и нигде больше: она не приходит с формы входа и не меняется самим пользователем. При смене роли и при приостановке доступа все сессии отзываются."
       />
 
@@ -226,7 +241,10 @@ export default async function UsersScreen({
                       формой в теле строки, и строка вырастала до ста
                       семидесяти пикселей (решение Р-183). */}
                   <td style={TABLE_CELL}>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+                    {/* Действия переносятся на вторую строку, когда ячейке
+                        тесно: прежде «Приостановить» уезжала за правый край
+                        и читалась обрезанной (решение Р-196). */}
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                       {self || erased ? null : (
                         <Form action={changeUserRole} inline>
                           <input type="hidden" name="userId" value={user.id} />
@@ -274,6 +292,29 @@ export default async function UsersScreen({
         </table>
       </TableCard>
       )}
+
+      {/* Вход без письма: пока почтовый канал практики не настроен, ссылку
+          на вход выдавали командой на сервере, и открытие кабинета
+          клиенту было делом системного администратора. Теперь это делает
+          руководитель (решение Р-195). */}
+      <Disclosure title="Выдать ссылку входа" style={{ marginTop: 20 }}>
+        <Text size={14} style={{ marginBottom: 14 }}>
+          {mailReady
+            ? 'Письмо со ссылкой приходит человеку само, когда он запрашивает вход. Ссылка отсюда нужна, если письмо не дошло: она действует два часа и срабатывает один раз.'
+            : 'Почтовый канал практики не настроен, и письмо со ссылкой отправить некуда. Выдайте ссылку здесь и передайте её человеку тем каналом, которым с ним уже разговариваете: она действует два часа и срабатывает один раз.'}
+        </Text>
+        {active.length === 0 ? (
+          <Text muted>Действующих учётных записей нет: ссылку выдавать некому.</Text>
+        ) : (
+          <AccessLink
+            action={giveAccessLink}
+            people={active.map((user) => ({
+              id: user.id,
+              label: `${user.fullName} · ${ROLE_LABEL[user.role as Role]} · ${user.email}`,
+            }))}
+          />
+        )}
+      </Disclosure>
 
       {/* Дата договора поручения касается только экспертов, и править её
           приходится раз в год. В строке она держала третью форму и

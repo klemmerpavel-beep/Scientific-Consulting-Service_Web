@@ -43,6 +43,70 @@ export interface UserFilter {
  * это незаметно, а на штате в полсотни экран превращался в ленту,
  * которую нечем сузить (решение Р-183).
  */
+/**
+ * Сколько живёт ссылка входа, выданная руководителем из кабинета.
+ *
+ * Письмо ждёт ближайшей рассылки, и пятнадцати минут ему мало; здесь
+ * ссылку передают в руки — мессенджером или голосом, — и два часа
+ * покрывают этот разговор, не превращая ссылку в постоянный пароль
+ * (решение Р-195).
+ */
+const ACCESS_LINK_TTL_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Выдать человеку ссылку входа, не отправляя письма.
+ *
+ * Пока почтовый канал практики не настроен, войти в кабинет может только
+ * тот, кому ссылку выдали на сервере командой. Это делает открытие
+ * кабинета клиенту делом системного администратора, а не куратора.
+ * Руководитель выдаёт ссылку здесь и передаёт её тем каналом, которым уже
+ * разговаривает с человеком.
+ *
+ * Ссылка возвращается ровно один раз: в базе лежит только свёртка
+ * проверочной части, и восстановить её потом нельзя по построению. Выдача
+ * пишется в журнал действий — это доступ к чужой учётной записи, и он
+ * обязан быть виден.
+ */
+export async function issueAccessLink(
+  actor: Actor,
+  userId: string,
+  ip?: string | null,
+): Promise<{ link: string; expiresAt: Date; fullName: string }> {
+  ensure(actor, 'USER_MANAGE');
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, fullName: true, status: true },
+  });
+  if (user === null) throw new Error('Учётной записи нет');
+  if (user.status !== 'ACTIVE') {
+    throw new Error('Доступ приостановлен или запись обезличена: ссылка не выдаётся');
+  }
+
+  const { createRawToken, digest, loginLink } = await import('./token.ts');
+  const token = createRawToken();
+  const expiresAt = new Date(Date.now() + ACCESS_LINK_TTL_MS);
+  await prisma.loginToken.create({
+    data: {
+      selector: token.selector,
+      verifierHash: digest(token.verifier),
+      userId: user.id,
+      expiresAt,
+      requestIp: ip ?? 'cabinet',
+    },
+  });
+
+  await record(actor, {
+    action: 'ACCESS_LINK_ISSUED',
+    objectType: 'User',
+    objectId: user.id,
+    ip,
+    payload: { expiresAt: expiresAt.toISOString() },
+  });
+
+  return { link: loginLink(token.value), expiresAt, fullName: user.fullName };
+}
+
 export async function listUsers(actor: Actor, filter: UserFilter = {}) {
   ensure(actor, 'USER_MANAGE');
   const where = {

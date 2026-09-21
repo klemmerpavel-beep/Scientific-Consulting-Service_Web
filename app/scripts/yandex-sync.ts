@@ -19,6 +19,7 @@
  */
 import { prisma } from '../src/lib/db.ts';
 import type { Actor } from '../src/lib/cabinet/access.ts';
+import { record } from '../src/lib/cabinet/audit.ts';
 import { sha256, storage } from '../src/lib/cabinet/storage.ts';
 import { YandexDisk } from '../src/lib/disk/webdav.ts';
 import { formatManifest, parseManifest, planSync, type MirrorEntry } from '../src/lib/disk/plan.ts';
@@ -150,6 +151,23 @@ async function main(): Promise<number> {
   // Опись, записанная наперёд, при обрыве связи расходится с Диском, и
   // расхождение уже ничем не чинится, кроме полного обхода.
   await disk.put(MANIFEST, Buffer.from(formatManifest(done), 'utf8'));
+
+  // Прогон отмечается в журнале действий: иначе о зеркале известно
+  // только из журнала процесса на сервере, а руководителю нужно видеть
+  // в кабинете, что выгрузка идёт и когда она была последней
+  // (решение Р-196). Действующего лица нет — прогон идёт по расписанию.
+  await record(null, {
+    action: 'DISK_SYNC',
+    objectType: 'Mirror',
+    payload: {
+      uploaded: plan.upload.length,
+      removed: plan.remove.length,
+      failed,
+      files: done.length,
+      scope,
+    },
+  });
+
   say(failed === 0 ? `готово: в зеркале ${done.length} файлов` : `завершено с ошибками: ${failed}`);
   return failed === 0 ? 0 : 1;
 }
