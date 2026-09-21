@@ -199,4 +199,13 @@ describe('деньги проекта', { skip: !enabled }, async () => {
     assert.equal(row.margin, 40_000_000n);
     assert.ok(totals.contracted >= row.contracted);
   });
+
+  it('строки сводки идут в устойчивом порядке', async () => {
+    // Порядок строк задавался физическим порядком записей в таблице и
+    // менялся при всякой правке работы: два наполнения подряд давали
+    // разный снимок экрана денег (решение Р-190).
+    const { rows } = await finance.financeSummary(actor(ids.head, 'HEAD'));
+    const codes = rows.map((r) => r.code);
+    assert.deepEqual(codes, [...codes].sort((a, b) => a.localeCompare(b)));
+  });
 });

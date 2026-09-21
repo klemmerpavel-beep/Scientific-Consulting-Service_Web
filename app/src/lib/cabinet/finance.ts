@@ -267,6 +267,11 @@ export async function financeSummary(actor: Actor) {
   ensure(actor, 'MARGIN_VIEW');
   const [contracts, payouts] = await Promise.all([
     prisma.contract.findMany({
+      // Порядок задан явно. Без него строки шли физическим порядком в
+      // таблице, и он менялся при всякой правке записи: два наполнения
+      // подряд давали разный снимок экрана денег, хотя код не менялся
+      // (решение Р-190).
+      orderBy: { project: { code: 'asc' } },
       include: {
         tranches: true,
         project: { select: { code: true, title: true, status: true, client: { select: { fullName: true } } } },

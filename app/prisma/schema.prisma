@@ -372,6 +372,11 @@ model Project {
   title String
   topic String? @db.Text
 
+  /// Короткое описание работы для клиента: о чём она и чем закончится.
+  /// Тема — формулировка исследования, а это объяснение в двух фразах
+  /// (решение Р-190).
+  summary String? @db.Text
+
   managerId String
   manager   User   @relation("ProjectManager", fields: [managerId], references: [id])
 
@@ -432,6 +437,11 @@ model Stage {
   /// Причина остановки открытым текстом: «ждём протокол испытаний;
   /// после загрузки — два рабочих дня работы эксперта».
   blockedReason String?   @db.Text
+
+  /// Суть выполнения этапа: что именно делается и что человек получит.
+  /// Заполняет менеджер при заведении плана — прежде этап нёс одно
+  /// название, и клиент догадывался о содержании сам (решение Р-190).
+  summary String? @db.Text
 
   expertId String?
   expert   User?   @relation("StageExpert", fields: [expertId], references: [id], onDelete: SetNull)

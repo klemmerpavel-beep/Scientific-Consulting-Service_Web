@@ -304,6 +304,8 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
 export interface AddStageInput {
   readonly projectId: string;
   readonly title: string;
+  /** Суть выполнения: что делается на этапе и чем он закончится. */
+  readonly summary?: string | null;
   readonly dueOn?: Date | null;
   readonly expertId?: string | null;
 }
@@ -328,11 +330,96 @@ export async function addStage(actor: Actor, input: AddStageInput) {
         projectId: input.projectId,
         position: (last?.position ?? 0) + 1,
         title,
+        summary: input.summary?.trim() || null,
         dueOn: input.dueOn ?? null,
         expertId: input.expertId ?? null,
       },
     });
   });
+}
+
+/**
+ * Правка этапа менеджером: название, суть выполнения, срок.
+ *
+ * План работ заводит и ведёт менеджер — заказчик потребовал, чтобы он мог
+ * не только добавить этап, но и описать, что на нём делается, и поправить
+ * срок, не заходя на отдельный экран (решение Р-190). Состояние правится
+ * своим действием: у него закрытый перечень переходов.
+ */
+export async function editStage(
+  actor: Actor,
+  input: {
+    readonly stageId: string;
+    readonly title: string;
+    readonly summary?: string | null;
+    readonly dueOn?: Date | null;
+  },
+) {
+  const stage = await prisma.stage.findUnique({
+    where: { id: input.stageId },
+    select: { id: true, projectId: true, title: true },
+  });
+  if (stage === null) throw new Error('Этап не найден');
+  const ref = await projectRef(stage.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'STAGE_EDIT', ref);
+
+  const title = input.title.trim();
+  if (title.length === 0) throw new Error('Этап без названия не заводится');
+
+  const saved = await prisma.stage.update({
+    where: { id: stage.id },
+    data: { title, summary: input.summary?.trim() || null, dueOn: input.dueOn ?? null },
+  });
+  await record(actor, {
+    action: 'STAGE_EDITED',
+    objectType: 'Stage',
+    objectId: stage.id,
+    projectId: stage.projectId,
+    payload: { from: stage.title, to: title },
+  });
+  return saved;
+}
+
+/**
+ * Правка карточки работы менеджером: название, тема, короткое описание,
+ * срок. Прежде карточка заполнялась один раз при одобрении заявки и
+ * больше не менялась ничем (решение Р-190).
+ */
+export async function editProject(
+  actor: Actor,
+  input: {
+    readonly projectId: string;
+    readonly title: string;
+    readonly topic?: string | null;
+    readonly summary?: string | null;
+    readonly dueOn?: Date | null;
+  },
+) {
+  const ref = await projectRef(input.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'PROJECT_EDIT', ref);
+
+  const title = input.title.trim();
+  if (title.length === 0) throw new Error('Работа без названия не заводится');
+
+  const saved = await prisma.project.update({
+    where: { id: input.projectId },
+    data: {
+      title,
+      topic: input.topic?.trim() || null,
+      summary: input.summary?.trim() || null,
+      dueOn: input.dueOn ?? null,
+    },
+  });
+  await record(actor, {
+    action: 'PROJECT_EDITED',
+    objectType: 'Project',
+    objectId: input.projectId,
+    projectId: input.projectId,
+    payload: { title },
+  });
+  return saved;
 }
 
 export type StageState =

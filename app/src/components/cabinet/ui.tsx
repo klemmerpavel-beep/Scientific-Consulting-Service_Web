@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
 import { FilePick } from './FilePick.tsx';
@@ -842,52 +843,127 @@ export function Thread({
 }) {
   if (messages.length === 0) return <Text muted>{empty}</Text>;
 
+  /*
+   * Деловая переписка строится днями, а не сплошной лентой: день
+   * отбивается строкой, подпись автора стоит над сообщением и не
+   * повторяется, пока говорит тот же человек, а время — под пузырём.
+   * Прежде под каждым сообщением печаталась одна и та же тройка «имя ·
+   * роль · дата», и десять реплик подряд давали десять одинаковых строк
+   * без времени (решение Р-190).
+   */
+  const rows = messages.map((message, index) => {
+    const previous = index === 0 ? null : messages[index - 1];
+    const day = dayKey(message.createdAt);
+    const opensDay = previous === null || dayKey(previous.createdAt) !== day;
+    return {
+      message,
+      opensDay,
+      // Подпись повторяется только со сменой говорящего или дня.
+      named: opensDay || previous === null || previous.author.id !== message.author.id,
+    };
+  });
+
   return (
-    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: dense ? 14 : 18 }}>
-      {messages.map((message) => {
+    <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+      {rows.map(({ message, opensDay, named }, index) => {
         const mine = message.author.id === viewer.id;
+        const gap = index === 0 ? 0 : named ? (dense ? 14 : 18) : 6;
         return (
-          <li
-            key={message.id}
-            style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}
-          >
-            <div style={{ maxWidth: dense ? '100%' : '78%', width: dense ? '100%' : undefined }}>
-              <div
+          <Fragment key={message.id}>
+            {opensDay ? (
+              <li
                 style={{
-                  padding: '12px 16px',
-                  borderRadius: 14,
-                  background: mine ? 'var(--pd-accent-tint)' : 'var(--pd-surface-quiet)',
-                  border: `1px solid ${mine ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
-                  fontFamily: SANS,
-                  fontSize: 15,
-                  lineHeight: 1.6,
-                  color: 'var(--pd-ink)',
-                  whiteSpace: 'pre-wrap',
-                }}
-              >
-                {message.body}
-              </div>
-              <div
-                style={{
-                  marginTop: 6,
                   display: 'flex',
-                  gap: 8,
+                  gap: 12,
                   alignItems: 'center',
-                  justifyContent: mine ? 'flex-end' : 'flex-start',
-                  flexWrap: 'wrap',
+                  margin: index === 0 ? '0 0 14px' : '20px 0 14px',
                 }}
               >
-                <Text muted size={13}>
-                  {authorName(message.author, viewer, message.author.id)} ·{' '}
-                  {ROLE_LABEL[message.author.role] ?? message.author.role} ·{' '}
-                  {formatDate(message.createdAt)}
-                </Text>
-                {flagContacts && message.containsContactHint ? (
-                  <Chip>похоже на передачу контактов</Chip>
+                <span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid var(--pd-divider)' }} />
+                <span
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 12,
+                    lineHeight: 1.4,
+                    color: 'var(--pd-ink-muted)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {formatDay(message.createdAt)}
+                </span>
+                <span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid var(--pd-divider)' }} />
+              </li>
+            ) : null}
+            <li
+              style={{
+                display: 'flex',
+                justifyContent: mine ? 'flex-end' : 'flex-start',
+                marginTop: opensDay ? 0 : gap,
+              }}
+            >
+              <div style={{ maxWidth: dense ? '100%' : '78%', width: dense ? '100%' : undefined }}>
+                {named ? (
+                  <div
+                    style={{
+                      marginBottom: 6,
+                      textAlign: mine ? 'right' : 'left',
+                      fontFamily: SANS,
+                      fontSize: 13,
+                      lineHeight: 1.4,
+                      fontWeight: 500,
+                      color: 'var(--pd-ink-secondary)',
+                    }}
+                  >
+                    {authorName(message.author, viewer, message.author.id)}
+                    <span style={{ fontWeight: 400, color: 'var(--pd-ink-muted)' }}>
+                      {' · '}
+                      {ROLE_LABEL[message.author.role] ?? message.author.role}
+                    </span>
+                  </div>
                 ) : null}
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: 14,
+                    background: mine ? 'var(--pd-accent-tint)' : 'var(--pd-surface-quiet)',
+                    border: `1px solid ${mine ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
+                    fontFamily: SANS,
+                    fontSize: 15,
+                    lineHeight: 1.6,
+                    color: 'var(--pd-ink)',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {message.body}
+                </div>
+                <div
+                  style={{
+                    marginTop: 4,
+                    display: 'flex',
+                    gap: 8,
+                    alignItems: 'center',
+                    justifyContent: mine ? 'flex-end' : 'flex-start',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 12,
+                      lineHeight: 1.4,
+                      color: 'var(--pd-ink-muted)',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {formatTime(message.createdAt)}
+                  </span>
+                  {flagContacts && message.containsContactHint ? (
+                    <Chip>похоже на передачу контактов</Chip>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          </li>
+            </li>
+          </Fragment>
         );
       })}
     </ul>
@@ -1359,6 +1435,14 @@ function DoneMark() {
 export interface RoadmapItem extends StepItem {
   readonly note?: string | null;
   readonly done?: boolean;
+  /**
+   * Суть выполнения этапа: что на нём делается и чем он закончится.
+   * Заполняет менеджер; показывается под раскрытием, чтобы план оставался
+   * обозримым (решение Р-190).
+   */
+  readonly summary?: string | null;
+  /** Правка этапа менеджером прямо в плане: форма под раскрытием. */
+  readonly edit?: ReactNode;
 }
 
 /**
@@ -1460,6 +1544,37 @@ export function Roadmap({ items }: { items: readonly RoadmapItem[] }) {
                 }}
               >
                 {item.note}
+              </span>
+            )}
+
+            {/* Суть выполнения стоит на виду: «что здесь делают» — это
+                главный вопрос к этапу, и прятать ответ под раскрытие
+                значило бы требовать нажатия ради одной строки. Длинное
+                описание подрезается двумя строками, целиком оно на экране
+                этапа (решение Р-190). */}
+            {item.summary == null || item.summary.length === 0 ? null : (
+              <span
+                style={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  marginTop: 6,
+                  fontFamily: SANS,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  color: 'var(--pd-ink-secondary)',
+                }}
+              >
+                {item.summary}
+              </span>
+            )}
+
+            {/* Правка этапа — под раскрытием: её ведёт куратор, и форма
+                не должна занимать место у всех остальных. */}
+            {item.edit === undefined ? null : (
+              <span style={{ display: 'block', marginTop: 10 }}>
+                <Disclosure title="Правка этапа">{item.edit}</Disclosure>
               </span>
             )}
           </span>
@@ -1717,7 +1832,17 @@ export function BoardColumn({
           minHeight: fit ? 0 : 200,
           ...(flow
             ? { maxHeight: 'none', overflowY: 'visible' }
-            : { maxHeight: '70vh', overflowY: 'auto' }),
+            : {
+                // Предел высоты тела считается от окна, а не от одного
+                // только его роста: на экране заказа над рядом колонок
+                // стоят шапка сайта, шапка экрана, описание работы и блок
+                // готовности, под ним — свёртки и подвал, и вместе они
+                // занимают около 520 пикселей. Пока предел был равен семи
+                // десятым окна, колонка с планом на пяти этапах
+                // выталкивала экран на полторы высоты (решение Р-190).
+                maxHeight: 'min(70vh, calc(100dvh - 520px))',
+                overflowY: 'auto',
+              }),
           padding: '16px 18px',
           ...(anchor === 'end' ? { display: 'flex', flexDirection: 'column-reverse' } : {}),
         }}
@@ -2090,6 +2215,50 @@ const MONTHS = [
 export function formatDate(value: Date | null | undefined): string | null {
   if (!value) return null;
   return `${value.getUTCDate()} ${MONTHS[value.getUTCMonth()]} ${value.getUTCFullYear()}`;
+}
+
+/**
+ * Мгновение по московскому времени.
+ *
+ * Сроки и даты подписания — это дни, и они хранятся в UTC-полночи:
+ * `formatDate` разбирает их по UTC и потому не сдвигает день. Сообщение
+ * переписки — это мгновение, и показывать его временем сервера значит
+ * ошибаться на три часа. Тот же пояс берут журнал действий и письма.
+ * Пояс назван прямо, поэтому снимки прототипа не зависят от настроек
+ * машины, на которой снимаются.
+ */
+function moscow(value: Date): { day: number; month: number; year: number } {
+  const [year, month, day] = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Moscow',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+    .format(value)
+    .split('-')
+    .map(Number);
+  return { day: day ?? 1, month: month ?? 1, year: year ?? 1970 };
+}
+
+/** День мгновения по Москве — им отбиваются дни в переписке. */
+export function formatDay(value: Date): string {
+  const { day, month, year } = moscow(value);
+  return `${day} ${MONTHS[month - 1]} ${year}`;
+}
+
+/** Ключ дня: два сообщения одного дня дают одну строку. */
+function dayKey(value: Date): string {
+  const { day, month, year } = moscow(value);
+  return `${year}-${month}-${day}`;
+}
+
+/** Время сообщения по Москве, часы и минуты. */
+export function formatTime(value: Date): string {
+  return value.toLocaleTimeString('ru-RU', {
+    timeZone: 'Europe/Moscow',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 /** Размер файла. Точность до десятых достаточна и не создаёт ложной строгости. */

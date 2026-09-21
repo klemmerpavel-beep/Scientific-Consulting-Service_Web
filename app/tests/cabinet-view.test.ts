@@ -694,3 +694,38 @@ describe('карточки в ряду одного размера', () => {
     assert.deepEqual(guilty, [], 'сетка карточек выравнена по началу — высота в ряду разная');
   });
 });
+
+describe('переписка называет день и время', () => {
+  /**
+   * Деловая переписка строится днями: у каждого сообщения стоит время, а
+   * день отбивается строкой. Прежде под сообщением печаталась тройка
+   * «имя · роль · дата» без времени, и десять реплик одного дня выглядели
+   * одинаково подписанными (решение Р-190).
+   *
+   * Проверяется по снимкам: у каждого пузыря (единственное место, где
+   * стоит `white-space:pre-wrap`) есть своё время вида «ЧЧ:ММ», и хотя бы
+   * один день отбит.
+   */
+  const pages = ['client', 'manager', 'head']
+    .flatMap((folder) => screens(folder))
+    .filter((file) => file.includes(`${path.sep}messages${path.sep}`));
+
+  it('экраны переписки нашлись в снимках', () => {
+    assert.ok(pages.length >= 2, `экранов переписки в снимках: ${pages.length}`);
+  });
+
+  for (const file of pages) {
+    const name = path.relative(PROTOTYPE, file);
+    it(`${name}: у каждого сообщения есть время`, () => {
+      const html = body(file);
+      const bubbles = html.match(/white-space:pre-wrap/gu)?.length ?? 0;
+      if (bubbles === 0) return; // переписки на экране нет — проверять нечего
+      const times = html.match(/>\d\d:\d\d</gu)?.length ?? 0;
+      assert.equal(times, bubbles, 'число отметок времени не совпало с числом сообщений');
+      assert.ok(
+        /<span[^>]*>\d{1,2} [а-яё]+ \d{4}<\/span>/u.test(html),
+        'день в переписке не отбит',
+      );
+    });
+  }
+});

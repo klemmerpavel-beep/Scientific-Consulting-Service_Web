@@ -46,6 +46,12 @@ export default async function MessagesScreen({
   await markRead(actor, project.id);
 
   const mayModerate = can(actor, 'COMMENT_MODERATE', ref);
+  const forClient = actor.role === 'CLIENT';
+  // Подзаголовок называет собеседника, а не повторяет название работы:
+  // оно уже стоит строкой возврата над заголовком (решение Р-190).
+  const counterpart = forClient
+    ? `с куратором · ${project.manager.fullName}`
+    : `с клиентом · ${project.client.fullName}`;
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -54,11 +60,20 @@ export default async function MessagesScreen({
           backHref={`/cabinet/projects/${project.code}`}
           backLabel={project.title}
           title="Переписка"
-          note={project.title}
+          note={counterpart}
         />
 
         <Card>
-          <Thread messages={messages} viewer={actor} flagContacts={mayModerate} />
+          <Thread
+            messages={messages}
+            viewer={actor}
+            flagContacts={mayModerate}
+            empty={
+              forClient
+                ? 'Переписки пока нет — напишите куратору, он ответит в рабочее время.'
+                : 'Переписки пока нет.'
+            }
+          />
 
           <Form
             action={postMessage}
@@ -70,7 +85,14 @@ export default async function MessagesScreen({
           >
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="code" value={project.code} />
-            <Field label="Сообщение" name="body" multiline required />
+            <Field
+              label="Новое сообщение"
+              name="body"
+              multiline
+              required
+              placeholder={forClient ? 'Написать куратору' : 'Написать клиенту'}
+              hint="Переписка ведётся внутри кабинета: она остаётся при работе и доступна обеим сторонам."
+            />
             <FormActions>
               <Button>Отправить</Button>
             </FormActions>

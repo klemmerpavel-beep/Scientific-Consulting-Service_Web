@@ -218,6 +218,28 @@ async function main() {
   }));
 
   const projectIds: string[] = [];
+
+  /**
+   * Короткое описание задачи: чем работа занята по существу. Его пишет
+   * куратор в карточке работы, а клиент читает под раскрытием «О работе»
+   * (решение Р-190). В наполнении описание задаётся по типу сопровождения
+   * — так же, как план работ.
+   */
+  const SUMMARY: Record<string, string> = {
+    dissertation:
+      'Сопровождение диссертационного исследования от постановки задачи до предзащиты: методика, расчётная часть, апробация и подготовка материалов к обсуждению на кафедре.',
+    article:
+      'Подготовка научной статьи к подаче в рецензируемый журнал: структура, расчёты и иллюстрации, редактура под требования издания.',
+    postgrad:
+      'Сопровождение аспирантской подготовки в пределах семестра: план, реферативная часть, подготовка к сдаче.',
+    research:
+      'Научно-исследовательская работа по программе заказчика: постановка эксперимента, обработка результатов, отчёт и презентация.',
+    consulting:
+      'Консультационное сопровождение по задаче заказчика: разбор постановки, рекомендации и сопровождение до защиты.',
+    diploma:
+      'Сопровождение выпускной квалификационной работы: план и введение, основная часть, нормоконтроль и подготовка к защите.',
+  };
+
   for (const [index, row] of PLAN.entries()) {
     const startedOn = row.orderedOn;
     const dueOn = row.dueOn ?? new Date(startedOn.getTime() + 120 * 86_400_000);
@@ -245,10 +267,11 @@ async function main() {
         startedOn,
         dueOn,
         closedOn,
+        summary: SUMMARY[row.type] ?? SUMMARY.consulting!,
       },
       // Куратор переназначается при каждом наполнении: правка распределения
       // в этом файле должна доезжать до снимка.
-      update: { managerId: curatorId },
+      update: { managerId: curatorId, summary: SUMMARY[row.type] ?? SUMMARY.consulting! },
       select: { id: true },
     });
     projectIds.push(project.id);
@@ -373,11 +396,41 @@ async function main() {
 
   const showcase = projectIds[BOOK.orders.indexOf(showcaseOrder)]!;
   const stageRows = [
-    { title: 'Постановка задачи и план исследования', state: 'DONE' as const, offset: 150 },
-    { title: 'Обзор источников и методика', state: 'DONE' as const, offset: 100 },
-    { title: 'Расчётная часть: первая редакция', state: 'IN_APPROVAL' as const, offset: 20 },
-    { title: 'Апробация: статья и конференция', state: 'AWAITING_CLIENT' as const, offset: 10 },
-    { title: 'Подготовка к предзащите', state: 'NOT_STARTED' as const, offset: -30 },
+    {
+      title: 'Постановка задачи и план исследования',
+      state: 'DONE' as const,
+      offset: 150,
+      summary:
+        'Согласованы предмет, объект и границы исследования; составлен календарный план с контрольными точками.',
+    },
+    {
+      title: 'Обзор источников и методика',
+      state: 'DONE' as const,
+      offset: 100,
+      summary:
+        'Разобраны отечественные и зарубежные источники по теме, выбран и обоснован метод расчёта.',
+    },
+    {
+      title: 'Расчётная часть: первая редакция',
+      state: 'IN_APPROVAL' as const,
+      offset: 20,
+      summary:
+        'Получены расчётные зависимости и проведена проверка на контрольном примере. Этап закончится вашим согласованием редакции.',
+    },
+    {
+      title: 'Апробация: статья и конференция',
+      state: 'AWAITING_CLIENT' as const,
+      offset: 10,
+      summary:
+        'Материалы готовятся к публикации и докладу. Нужен ваш выбор журнала и конференции из подобранного перечня.',
+    },
+    {
+      title: 'Подготовка к предзащите',
+      state: 'NOT_STARTED' as const,
+      offset: -30,
+      summary:
+        'Сборка работы целиком, доклад и раздаточные материалы, разбор вопросов к предзащите.',
+    },
   ];
   const stageIds: string[] = [];
   for (const [position, stage] of stageRows.entries()) {
@@ -387,6 +440,7 @@ async function main() {
         projectId: showcase,
         position: position + 1,
         title: stage.title,
+        summary: stage.summary,
         state: stage.state,
         dueOn: day(stage.offset - 30),
         expertId: expertUser.id,
@@ -394,7 +448,9 @@ async function main() {
         completedAt: stage.state === 'DONE' ? day(stage.offset) : null,
         awaitingClientSince: stage.state === 'AWAITING_CLIENT' ? day(18) : null,
       },
-      update: {},
+      // Суть выполнения переписывается при каждом наполнении: правка
+      // текста в этом файле должна доезжать до снимка.
+      update: { summary: stage.summary },
       select: { id: true },
     });
     stageIds.push(created.id);

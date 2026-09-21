@@ -120,7 +120,10 @@ export async function unreadInbox(
         ? []
         : [{ code: project.code, title: project.title, count: row._count._all }];
     })
-    .sort((a, b) => b.count - a.count);
+    // Последний ключ сортировки — код работы: при равном числе
+    // непрочитанных порядок иначе задавался бы группировкой в базе и
+    // менялся от наполнения к наполнению (решение Р-190).
+    .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
 }
 
 export async function markRead(actor: Actor, projectId: string): Promise<void> {
