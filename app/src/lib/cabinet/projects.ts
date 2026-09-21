@@ -2,6 +2,7 @@ import { prisma } from '../db.ts';
 import { ensure, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
 import { enqueue } from './outbox.ts';
+import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
 
 /**
@@ -201,7 +202,69 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
     payload: { code: project.code },
   });
 
+  await moveLeadAttachments(actor, lead.id, project.id);
+
   return project;
+}
+
+/**
+ * Вложения заявки переезжают в материалы созданной работы.
+ *
+ * Иначе файл, ради которого человек и написал, остался бы при заявке:
+ * дойти до него можно было бы только через экран разбора, а работа,
+ * которую он описывает, о нём не знала бы (решение Р-191).
+ *
+ * Перенос идёт после транзакции создания работы: он ходит в хранилище, а
+ * держать транзакцию открытой на время записи байтов нельзя. Отказ
+ * хранилища не отменяет одобрения — строка вложения остаётся при заявке и
+ * переносится следующей попыткой.
+ */
+async function moveLeadAttachments(actor: Actor, leadId: string, projectId: string) {
+  const files = await prisma.leadAttachment.findMany({
+    where: { leadId, materialId: null, purgedAt: null },
+    orderBy: { uploadedAt: 'asc' },
+  });
+  if (files.length === 0) return;
+
+  const store = storage();
+  for (const file of files) {
+    const material = await prisma.material.create({
+      data: {
+        projectId,
+        title: file.originalName.slice(0, 300),
+        createdById: actor.id,
+      },
+    });
+    const key = materialKey(projectId, material.id, 1, file.originalName);
+    await store.put(key, await store.get(file.storageKey), file.contentType);
+    await prisma.materialVersion.create({
+      data: {
+        materialId: material.id,
+        number: 1,
+        storageKey: key,
+        originalName: file.originalName,
+        sizeBytes: file.sizeBytes,
+        sha256: file.sha256,
+        contentType: file.contentType,
+        uploadedById: file.uploadedById ?? actor.id,
+      },
+    });
+    // Исходный объект убирается: две копии одного файла означали бы два
+    // места, откуда его придётся вычищать по требованию субъекта.
+    await store.remove(file.storageKey);
+    await prisma.leadAttachment.update({
+      where: { id: file.id },
+      data: { materialId: material.id, purgedAt: new Date() },
+    });
+  }
+
+  await record(actor, {
+    action: 'LEAD_FILES_MOVED',
+    objectType: 'Lead',
+    objectId: leadId,
+    projectId,
+    payload: { count: files.length },
+  });
 }
 
 /** Отклонить заявку. Причина видна заявителю; заявка остаётся в системе. */

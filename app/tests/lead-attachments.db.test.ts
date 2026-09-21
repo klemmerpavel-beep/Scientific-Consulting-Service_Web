@@ -1,0 +1,210 @@
+/**
+ * Вложения к заявке из кабинета: приём, выдача, перенос в работу при
+ * одобрении и затирание по требованию субъекта (решение Р-191).
+ *
+ * Пропускается без заданного адреса базы: запускается командой
+ * `npm run test:db`.
+ */
+
+import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { after, before, describe, it } from 'node:test';
+
+import type { Actor } from '../src/lib/cabinet/access.ts';
+
+process.env.SESSION_SECRET ??= 'z'.repeat(48);
+
+const enabled = Boolean(process.env.DATABASE_URL);
+
+describe('вложения заявки', { skip: !enabled }, async () => {
+  const { prisma } = await import('../src/lib/db.ts');
+  const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
+  const queries = await import('../src/lib/cabinet/queries.ts');
+  const projects = await import('../src/lib/cabinet/projects.ts');
+  const { LocalStorage, setStorage } = await import('../src/lib/cabinet/storage.ts');
+
+  const stamp = Date.now();
+  const ids: Record<string, string> = {};
+  let root = '';
+
+  const staff = (id: string, role: 'MANAGER' | 'HEAD'): Actor => ({
+    id,
+    role,
+    status: 'ACTIVE',
+    clientProfileId: null,
+    expertNdaSignedAt: null,
+  });
+
+  before(async () => {
+    root = await mkdtemp(path.join(tmpdir(), 'pd-lead-'));
+    setStorage(new LocalStorage(root));
+
+    const manager = await prisma.user.create({
+      data: { email: `lead-manager-${stamp}@example.org`, fullName: 'Куратор', role: 'MANAGER' },
+    });
+    const client = await prisma.user.create({
+      data: {
+        email: `lead-client-${stamp}@example.org`,
+        fullName: 'Заказчик Пробный Пробнович',
+        role: 'CLIENT',
+        consentVersion: 'v1',
+      },
+    });
+    const profile = await prisma.clientProfile.create({
+      data: {
+        userId: client.id,
+        fullName: 'Заказчик Пробный Пробнович',
+        normalizedName: `probny-${stamp}`,
+        email: client.email,
+        university: 'Горный университет',
+        speciality: '2.8.6',
+      },
+    });
+    const serviceType = await prisma.serviceType.create({
+      data: { code: `lead-type-${stamp}`, name: 'Кандидатская диссертация' },
+    });
+
+    ids.manager = manager.id;
+    ids.client = client.id;
+    ids.profile = profile.id;
+    ids.serviceType = serviceType.id;
+  });
+
+  after(async () => {
+    setStorage(null);
+    if (root !== '') await rm(root, { recursive: true, force: true });
+    // Уведомления модераторам, поставленные заявками этого набора, из
+    // общей очереди стенда убираются: иначе они копятся и мешают набору
+    // на саму очередь.
+    await prisma.notificationOutbox.deleteMany({ where: { userId: ids.manager } });
+  });
+
+  const clientActor = (): Actor => ({
+    id: ids.client!,
+    role: 'CLIENT',
+    status: 'ACTIVE',
+    clientProfileId: ids.profile!,
+    expertNdaSignedAt: null,
+  });
+
+  it('заявка принимает файлы и дополнительные поля', async () => {
+    const lead = await queries.createCabinetRequest(
+      clientActor(),
+      {
+        topic: 'Надёжность лимитирующих узлов',
+        need: null,
+        deadline: null,
+        message: 'Нужен разбор постановки',
+        applicantName: 'Заказчик Пробный Пробнович',
+        supervisorName: 'Соловьёв Дмитрий Викторович',
+        organization: 'Горный университет',
+        speciality: '2.8.6 — Горные машины',
+        phone: '+7 900 000-00-00',
+        files: [
+          {
+            originalName: 'черновик.txt',
+            contentType: 'text/plain',
+            body: Buffer.from('черновик главы 2'),
+          },
+        ],
+        ip: '127.0.0.1',
+      },
+      'v1',
+    );
+    ids.lead = lead.id;
+
+    const saved = await prisma.lead.findUniqueOrThrow({
+      where: { id: lead.id },
+      include: { attachments: true },
+    });
+    assert.equal(saved.supervisorName, 'Соловьёв Дмитрий Викторович');
+    assert.equal(saved.phone, '+7 900 000-00-00');
+    assert.equal(saved.speciality, '2.8.6 — Горные машины');
+    assert.equal(saved.attachments.length, 1);
+    assert.equal(saved.attachments[0]!.originalName, 'черновик.txt');
+    // Имя файла в ключ объекта не попадает: оно может содержать фамилию.
+    assert.ok(!saved.attachments[0]!.storageKey.includes('черновик'));
+  });
+
+  it('вложение читает только тот, кто разбирает заявки', async () => {
+    const file = await prisma.leadAttachment.findFirstOrThrow({ where: { leadId: ids.lead! } });
+
+    await assert.rejects(
+      () => queries.readLeadAttachment(clientActor(), file.id),
+      AccessDenied,
+      'клиент получил чужой порядок выдачи',
+    );
+
+    const read = await queries.readLeadAttachment(staff(ids.manager!, 'MANAGER'), file.id);
+    assert.ok(read !== null);
+    assert.equal(read.body.toString(), 'черновик главы 2');
+
+    const logged = await prisma.auditEvent.findFirst({
+      where: { action: 'LEAD_FILE_DOWNLOADED', objectId: file.id },
+    });
+    assert.ok(logged !== null, 'обращение к вложению не попало в журнал');
+  });
+
+  it('одобрение переносит вложения в материалы работы', async () => {
+    const project = await projects.approveLead(staff(ids.manager!, 'MANAGER'), {
+      leadId: ids.lead!,
+      serviceTypeId: ids.serviceType!,
+      managerId: ids.manager!,
+      title: 'Сопровождение диссертационного исследования',
+    });
+    ids.project = project.id;
+
+    const materials = await prisma.material.findMany({
+      where: { projectId: project.id },
+      include: { versions: true },
+    });
+    assert.equal(materials.length, 1);
+    assert.equal(materials[0]!.versions.length, 1);
+    assert.equal(materials[0]!.versions[0]!.originalName, 'черновик.txt');
+
+    const moved = await prisma.leadAttachment.findFirstOrThrow({ where: { leadId: ids.lead! } });
+    assert.equal(moved.materialId, materials[0]!.id);
+    assert.ok(moved.purgedAt !== null, 'исходное вложение осталось непомеченным');
+
+    // Повторный перенос не задваивает материалы: перенесённое помечено.
+    const second = await prisma.material.count({ where: { projectId: project.id } });
+    assert.equal(second, 1);
+  });
+
+  it('затирание по требованию субъекта не оставляет вложений', async () => {
+    const erasure = await import('../src/lib/cabinet/erasure.ts');
+    const head = await prisma.user.create({
+      data: { email: `lead-head-${stamp}@example.org`, fullName: 'Руководитель', role: 'HEAD' },
+    });
+    const actor = staff(head.id, 'HEAD');
+
+    // Вторая заявка с файлом: первая свои вложения уже отдала работе.
+    const lead = await queries.createCabinetRequest(
+      clientActor(),
+      {
+        topic: 'Вторая заявка',
+        need: null,
+        deadline: null,
+        message: null,
+        files: [
+          {
+            originalName: 'требования.txt',
+            contentType: 'text/plain',
+            body: Buffer.from('требования кафедры'),
+          },
+        ],
+        ip: '127.0.0.1',
+      },
+      'v1',
+    );
+
+    const request = await erasure.requestErasure(actor, ids.profile!, 'PERSONAL_DATA_AND_FILES');
+    await erasure.executeErasure(actor, request.id);
+
+    const file = await prisma.leadAttachment.findFirstOrThrow({ where: { leadId: lead.id } });
+    assert.ok(file.purgedAt !== null, 'вложение заявки пережило затирание');
+    assert.notEqual(file.originalName, 'требования.txt');
+  });
+});

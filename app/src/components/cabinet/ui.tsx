@@ -736,6 +736,7 @@ export function FileField({
   required = false,
   hint,
   accept,
+  multiple = false,
   scope,
   labelHidden = false,
 }: {
@@ -745,6 +746,8 @@ export function FileField({
   hint?: string;
   /** Какие расширения предлагать в окне выбора: книга заказов — только `.xlsx`. */
   accept?: string;
+  /** Несколько файлов за раз: вложения к заявке (решение Р-191). */
+  multiple?: boolean;
   scope?: string;
   labelHidden?: boolean;
 }) {
@@ -753,7 +756,14 @@ export function FileField({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <FieldLabel id={id} label={label} required={required} hidden={labelHidden} />
-      <FilePick id={id} name={name} accept={accept} required={required} describedBy={hintId} />
+      <FilePick
+        id={id}
+        name={name}
+        accept={accept}
+        multiple={multiple}
+        required={required}
+        describedBy={hintId}
+      />
       {hint === undefined ? null : (
         <span id={hintId} style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
           {hint}
@@ -2023,8 +2033,13 @@ export function Disclosure({
   style?: CSSProperties;
 }) {
   // Раскрытая свёртка не должна выталкивать панель за край окна, поэтому
-  // её тело ограничено по высоте и прокручивается внутри — а значит, как
-  // и колонка, получает фокус и имя (решения Р-168, Р-169).
+  // на экране-панели её тело ограничено по высоте и прокручивается внутри
+  // — а значит, как и колонка, получает фокус и имя (решения Р-168, Р-169).
+  //
+  // На обычной странице предел снят: там прокручивается сама страница, и
+  // окно в двести пикселей резало форму из трёх полей пополам
+  // (решение Р-191). Предел ставится правилом `.cab-board-main`, а не
+  // здесь: свёртка не знает, на каком экране стоит.
 
   return (
     // Свёртка считается блоком, даже сомкнутая: пять свёрток подряд
@@ -2057,11 +2072,11 @@ export function Disclosure({
         {title}
       </summary>
       <div
-        className="cab-board-body"
+        className="cab-fold-body"
         role="region"
         aria-label={title}
         tabIndex={0}
-        style={{ maxHeight: 200, overflowY: 'auto', padding: '4px 18px 18px' }}
+        style={{ padding: '4px 18px 18px' }}
       >
         {children}
       </div>
@@ -2261,10 +2276,15 @@ export function formatTime(value: Date): string {
   });
 }
 
-/** Размер файла. Точность до десятых достаточна и не создаёт ложной строгости. */
+/**
+ * Размер файла. Точность до десятых достаточна и не создаёт ложной
+ * строгости. Дробная часть отделяется запятой — как в русском письме и
+ * как это уже делает поле выбора файла (решение Р-191).
+ */
 export function formatSize(bytes: bigint | number): string {
   const value = typeof bytes === 'bigint' ? Number(bytes) : bytes;
+  const tenths = (amount: number): string => amount.toFixed(1).replace('.', ',');
   if (value < 1024) return `${value} Б`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} КБ`;
-  return `${(value / 1024 / 1024).toFixed(1)} МБ`;
+  if (value < 1024 * 1024) return `${tenths(value / 1024)} КБ`;
+  return `${tenths(value / 1024 / 1024)} МБ`;
 }

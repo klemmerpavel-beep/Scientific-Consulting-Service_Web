@@ -46,6 +46,19 @@ export function materialKey(
   return `projects/${projectId}/materials/${materialId}/v${version}/${randomUUID()}${safeExt}`;
 }
 
+/**
+ * Ключ вложения заявки.
+ *
+ * Тот же порядок, что у версий материалов: исходное имя в ключ не
+ * попадает — оно приходит от человека и может содержать фамилию
+ * (решение Р-191).
+ */
+export function leadAttachmentKey(leadId: string, originalName: string): string {
+  const ext = path.extname(originalName).toLowerCase().slice(0, 10);
+  const safeExt = /^\.[a-z0-9]+$/.test(ext) ? ext : '';
+  return `leads/${leadId}/${randomUUID()}${safeExt}`;
+}
+
 export function sha256(body: Buffer): string {
   return createHash('sha256').update(body).digest('hex');
 }

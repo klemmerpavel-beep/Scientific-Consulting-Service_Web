@@ -601,23 +601,53 @@ async function main() {
 
   // ── Заявка в очереди менеджера ──────────────────────────────────────────
   const lead = await prisma.lead.findFirst({ where: { contact: `lead@${DOMAIN}` } });
-  if (lead === null) {
-    await prisma.lead.create({
+  const queued =
+    lead ??
+    (await prisma.lead.create({
       data: {
-        source: 'postgrad',
+        source: 'cabinet',
         form: 'request',
         name: 'Панкратов Егор Максимович',
         contactKind: 'email',
         contact: `lead@${DOMAIN}`,
         topic: 'Сопровождение подготовки к поступлению в аспирантуру по направлению 2.8.6',
-        speciality: '2.8.6',
+        speciality: '2.8.6 — Горные машины и оборудование',
+        organization: 'Горный университет',
+        supervisorName: 'Соловьёв Дмитрий Викторович',
+        phone: '+7 900 000-00-00',
         message: 'Нужна помощь с реферативной частью и планом исследования.',
         consentGiven: true,
         consentVersion: '2026-08-21',
         termsAccepted: true,
       },
-    });
-  }
+    }));
+  // Сведения, которые собирает заявка из кабинета, дописываются и при
+  // повторном наполнении: правка текста должна доезжать до снимка.
+  await prisma.lead.update({
+    where: { id: queued.id },
+    data: {
+      source: 'cabinet',
+      speciality: '2.8.6 — Горные машины и оборудование',
+      organization: 'Горный университет',
+      supervisorName: 'Соловьёв Дмитрий Викторович',
+      phone: '+7 900 000-00-00',
+    },
+  });
+  // Вложение заявки: на артборде видно, что к обращению приложен файл.
+  // Объект в хранилище не кладётся — снимок показывает перечень, а выдача
+  // байтов идёт отдельным маршрутом, в обход прототипа (решение Р-191).
+  await prisma.leadAttachment.upsert({
+    where: { storageKey: `leads/${queued.id}/artboard-1.pdf` },
+    create: {
+      leadId: queued.id,
+      storageKey: `leads/${queued.id}/artboard-1.pdf`,
+      originalName: 'Требования кафедры.pdf',
+      sizeBytes: 184_320n,
+      sha256: 'a'.repeat(64),
+      contentType: 'application/pdf',
+    },
+    update: {},
+  });
 
   // ── Отчёт переноса книги заказов ────────────────────────────────────────
   //

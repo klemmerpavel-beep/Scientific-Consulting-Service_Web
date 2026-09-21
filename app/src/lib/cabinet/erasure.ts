@@ -174,12 +174,22 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     select: { id: true, storageKey: true },
   });
 
+  // Вложения заявок: у них своё хранилище объектов, и без этой выборки
+  // файл, приложенный к обращению, пережил бы затирание (решение Р-191).
+  const leadFiles =
+    leadIds.length === 0
+      ? []
+      : await prisma.leadAttachment.findMany({
+          where: { leadId: { in: leadIds }, purgedAt: null },
+          select: { id: true, storageKey: true },
+        });
+
   let objectsPurged = 0;
   let objectsFailed = 0;
   if (request.scope === 'PERSONAL_DATA_AND_FILES') {
-    for (const version of versions) {
+    for (const object of [...versions, ...leadFiles]) {
       try {
-        await storage().remove(version.storageKey);
+        await storage().remove(object.storageKey);
         objectsPurged += 1;
       } catch {
         // Объекта может не быть: хранилище чистили вручную либо загрузка
@@ -266,6 +276,8 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
             data: {
               name: null,
               contact: ERASED,
+              supervisorName: null,
+              phone: null,
               organization: null,
               topic: null,
               speciality: null,
@@ -279,6 +291,15 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
               userAgent: null,
             },
           });
+
+    // Вложения заявок: строка остаётся ради связности, имя файла и
+    // свёртка затираются, объект уже убран из хранилища выше.
+    if (leadFiles.length > 0) {
+      await tx.leadAttachment.updateMany({
+        where: { id: { in: leadFiles.map((file) => file.id) } },
+        data: { originalName: ERASED, sha256: ERASED, purgedAt: executedAt },
+      });
+    }
 
     // Попытки входа хранятся ради ограничения частоты и учётным
     // документом не являются — удаляются целиком.

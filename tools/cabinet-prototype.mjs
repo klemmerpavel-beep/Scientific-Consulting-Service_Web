@@ -67,7 +67,15 @@ const ROLES = [
  * Выдача файла и выгрузка журнала отдают не страницу, а файл; вход по
  * ссылке погашает токен и увёл бы обход из-под роли.
  */
-const SKIP = [/^\/cabinet\/enter\b/u, /^\/cabinet\/files\b/u, /\/export\b/u, /^\/cabinet\/logout\b/u];
+const SKIP = [
+  /^\/cabinet\/enter\b/u,
+  /^\/cabinet\/files\b/u,
+  // Вложение заявки отдаётся тем же порядком, что и материал: не
+  // страницей, а файлом (решение Р-191).
+  /^\/cabinet\/lead-files\b/u,
+  /\/export\b/u,
+  /^\/cabinet\/logout\b/u,
+];
 
 const LIMIT = 90;
 

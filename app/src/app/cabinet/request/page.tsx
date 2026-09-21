@@ -5,7 +5,9 @@ import {
   Button,
   ButtonLink,
   Card,
+  Disclosure,
   Field,
+  FileField,
   Form,
   FormActions,
   Notice,
@@ -15,7 +17,11 @@ import {
   Text,
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
-import { serviceTypes } from '../../../lib/cabinet/queries';
+import {
+  REQUEST_FILES_MAX,
+  requestDefaults,
+  serviceTypes,
+} from '../../../lib/cabinet/queries';
 import { currentActor } from '../../../lib/cabinet/session';
 import { submitCabinetRequest } from '../actions';
 
@@ -30,7 +36,11 @@ export default async function NewRequestScreen({
   if (actor === null) redirect('/cabinet');
   if (!can(actor, 'REQUEST_CREATE')) redirect('/cabinet/projects');
 
-  const [params, types] = await Promise.all([searchParams, serviceTypes(actor)]);
+  const [params, types, defaults] = await Promise.all([
+    searchParams,
+    serviceTypes(actor),
+    requestDefaults(actor),
+  ]);
 
   return (
     <Shell actor={actor} current="/cabinet/request">
@@ -38,13 +48,28 @@ export default async function NewRequestScreen({
         <ScreenHead title="Обращение по новой работе" />
         <Text style={{ marginBottom: 24 }}>
           Заявка попадёт в ту же очередь, что и обращения с сайта. Менеджер рассмотрит её и либо
-          развернёт в проект сопровождения, либо ответит с причиной. Контакты брать заново не нужно
-          — они уже в вашей карточке.
+          развернёт в проект сопровождения, либо ответит с причиной. Что известно из вашей
+          карточки, уже подставлено.
         </Text>
 
         {params.sent === undefined ? (
           <Card>
             <Form action={submitCabinetRequest}>
+                <Field
+                label="ФИО заказчика"
+                name="applicantName"
+                required
+                defaultValue={defaults.fullName}
+                hint="Подставлено из вашей карточки; поправьте, если работа оформляется на другое лицо."
+              />
+
+              <Field
+                label="ФИО научного руководителя"
+                name="supervisorName"
+                placeholder="Соловьёв Дмитрий Викторович"
+                hint="Если руководитель назначен: его требования учитываются с первого этапа."
+              />
+
               <Select label="Тип сопровождения" name="need">
                 <option value="">— уточню при разговоре —</option>
                 {types.map((type) => (
@@ -74,6 +99,38 @@ export default async function NewRequestScreen({
                 multiline
                 hint="Коротко о задаче, о том, что уже сделано, и о требованиях кафедры или журнала."
               />
+
+              <FileField
+                label="Приложить файлы"
+                name="files"
+                multiple
+                hint={`Черновик, требования кафедры, отзыв рецензента — до ${REQUEST_FILES_MAX} файлов по 25 МБ. Файлы видит только куратор; после одобрения они перейдут в материалы работы.`}
+              />
+
+              {/* Место учёбы и контакт нужны не каждой заявке: у постоянного
+                  клиента они уже в карточке и подставлены. Под свёрткой они
+                  не занимают места, но и не теряются (решение Р-191). */}
+              <Disclosure title="Место учёбы и контакт для связи">
+                <Field
+                  label="Организация или вуз"
+                  name="organization"
+                  defaultValue={defaults.organization}
+                  placeholder="Горный университет"
+                />
+                <Field
+                  label="Направление подготовки"
+                  name="speciality"
+                  defaultValue={defaults.speciality}
+                  placeholder="2.8.6 — Горные машины и оборудование"
+                />
+                <Field
+                  label="Контактный телефон"
+                  name="phone"
+                  type="tel"
+                  defaultValue={defaults.phone}
+                  hint="Для срочной связи; письма по-прежнему идут на адрес, которым вы вошли."
+                />
+              </Disclosure>
 
               <FormActions>
                 <Button>Отправить заявку</Button>

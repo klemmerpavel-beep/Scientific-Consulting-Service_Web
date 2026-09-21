@@ -35,7 +35,7 @@ import {
   type Role,
 } from '../../lib/cabinet/admin';
 import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
-import { createCabinetRequest } from '../../lib/cabinet/queries';
+import { createCabinetRequest, REQUEST_FILES_MAX } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue, retryFailed } from '../../lib/cabinet/outbox';
@@ -232,6 +232,21 @@ export async function decideOnComment(form: FormData): Promise<void> {
 export async function submitCabinetRequest(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
 
+  // Файлы приходят одним полем: браузер кладёт в форму по записи на
+  // каждый выбранный файл, и `getAll` собирает их все. Пустая запись
+  // означает «ничего не выбрано» и отбрасывается (решение Р-191).
+  const files = await Promise.all(
+    form
+      .getAll('files')
+      .filter((entry): entry is File => entry instanceof File && entry.size > 0)
+      .slice(0, REQUEST_FILES_MAX)
+      .map(async (file) => ({
+        originalName: file.name,
+        contentType: file.type || 'application/octet-stream',
+        body: Buffer.from(await file.arrayBuffer()),
+      })),
+  );
+
   await createCabinetRequest(
     actor,
     {
@@ -239,6 +254,12 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
       need: String(form.get('need') ?? '').trim() || null,
       deadline: String(form.get('deadline') ?? '').trim() || null,
       message: String(form.get('message') ?? '').trim() || null,
+      applicantName: String(form.get('applicantName') ?? '').trim() || null,
+      supervisorName: String(form.get('supervisorName') ?? '').trim() || null,
+      organization: String(form.get('organization') ?? '').trim() || null,
+      speciality: String(form.get('speciality') ?? '').trim() || null,
+      phone: String(form.get('phone') ?? '').trim() || null,
+      files,
       ip: await requestIp(),
     },
     CONSENT_VERSION,

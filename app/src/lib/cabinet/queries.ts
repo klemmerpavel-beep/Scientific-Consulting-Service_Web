@@ -1,6 +1,8 @@
 import type { StageState } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { enqueue } from './outbox.ts';
+import { record } from './audit.ts';
+import { leadAttachmentKey, sha256, storage } from './storage.ts';
 import { can, ensure, scopeComments, scopeMaterials, scopeProjects, type Actor } from './access.ts';
 
 /**
@@ -264,7 +266,40 @@ export async function leadQueue(actor: Actor, page = 1) {
  */
 export async function leadById(actor: Actor, id: string) {
   ensure(actor, 'REQUEST_MODERATE');
-  return prisma.lead.findUnique({ where: { id } });
+  return prisma.lead.findUnique({
+    where: { id },
+    include: {
+      attachments: {
+        where: { purgedAt: null },
+        orderBy: { uploadedAt: 'asc' },
+      },
+    },
+  });
+}
+
+/**
+ * Содержимое вложения заявки.
+ *
+ * Байты отдаются только через маршрут выдачи и только тому, кто разбирает
+ * заявки: у вложения нет работы, а значит, нет и обычной выборки прав по
+ * проекту. Обращение записывается в журнал действий — журнал доступа к
+ * файлам ведётся по версиям материалов, а вложение версией не является
+ * (решение Р-191).
+ */
+export async function readLeadAttachment(actor: Actor, id: string, ip?: string | null) {
+  ensure(actor, 'REQUEST_MODERATE');
+  const file = await prisma.leadAttachment.findUnique({ where: { id } });
+  if (file === null || file.purgedAt !== null) return null;
+
+  const body = await storage().get(file.storageKey);
+  await record(actor, {
+    action: 'LEAD_FILE_DOWNLOADED',
+    objectType: 'LeadAttachment',
+    objectId: file.id,
+    ip,
+    payload: { leadId: file.leadId },
+  });
+  return { body, contentType: file.contentType, originalName: file.originalName };
 }
 
 /**
@@ -498,6 +533,32 @@ export async function leadList(actor: Actor, filter: LeadFilter = {}) {
   return { rows, total, page: current, pages };
 }
 
+/**
+ * Что подставляется в форму новой заявки.
+ *
+ * Человек уже вошёл, и его ФИО, телефон, вуз и направление известны из
+ * карточки: спрашивать их заново значит заставлять набирать то, что у
+ * практики есть. Поля остаются правимыми — заявка может идти по другой
+ * работе и с другим руководителем (решение Р-191).
+ */
+export async function requestDefaults(actor: Actor) {
+  ensure(actor, 'REQUEST_CREATE');
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: actor.id },
+    select: {
+      fullName: true,
+      phone: true,
+      clientProfile: { select: { university: true, speciality: true, phone: true } },
+    },
+  });
+  return {
+    fullName: user.fullName,
+    phone: user.phone ?? user.clientProfile?.phone ?? '',
+    organization: user.clientProfile?.university ?? '',
+    speciality: user.clientProfile?.speciality ?? '',
+  };
+}
+
 /** Что подставляется в заявку из кабинета: контакт и редакция согласия. */
 export interface RequestDraft {
   readonly topic: string;
@@ -505,7 +566,27 @@ export interface RequestDraft {
   readonly deadline: string | null;
   readonly message: string | null;
   readonly ip: string;
+  /** ФИО заказчика: подставляется из учётной записи и правится в форме. */
+  readonly applicantName?: string | null;
+  /** ФИО научного руководителя: работу ведут с оглядкой на его требования. */
+  readonly supervisorName?: string | null;
+  readonly organization?: string | null;
+  readonly speciality?: string | null;
+  readonly phone?: string | null;
+  /** Файлы, приложенные к обращению. */
+  readonly files?: readonly RequestFile[];
 }
+
+/** Файл, приложенный к заявке из кабинета. */
+export interface RequestFile {
+  readonly originalName: string;
+  readonly contentType: string;
+  readonly body: Buffer;
+}
+
+/** Сколько файлов принимается к одной заявке и какого размера каждый. */
+export const REQUEST_FILES_MAX = 5;
+export const REQUEST_FILE_MAX_BYTES = 25 * 1024 * 1024;
 
 /**
  * Заявка, поданная изнутри кабинета.
@@ -535,13 +616,17 @@ export async function createCabinetRequest(
     data: {
       source: 'cabinet',
       form: 'request',
-      name: user.fullName,
+      name: draft.applicantName?.trim() || user.fullName,
       contactKind: 'email',
       contact: user.email,
       topic: draft.topic,
       need: draft.need,
       deadline: draft.deadline,
       message: draft.message,
+      supervisorName: draft.supervisorName?.trim() || null,
+      organization: draft.organization?.trim() || null,
+      speciality: draft.speciality?.trim() || null,
+      phone: draft.phone?.trim() || null,
       // Согласие принято при первом входе в кабинет; редакция текста
       // хранится вместе с заявкой, как и у обращений с сайта.
       consentGiven: true,
@@ -550,6 +635,31 @@ export async function createCabinetRequest(
       ip: draft.ip,
     },
   });
+
+  // Вложения кладутся после заявки: ключ объекта строится от её
+  // идентификатора, а заявка без файлов остаётся действительной — отказ
+  // хранилища не должен терять обращение (решение Р-191).
+  for (const file of (draft.files ?? []).slice(0, REQUEST_FILES_MAX)) {
+    if (file.body.byteLength === 0) continue;
+    if (file.body.byteLength > REQUEST_FILE_MAX_BYTES) {
+      throw new Error(
+        `Файл больше допустимых ${Math.round(REQUEST_FILE_MAX_BYTES / 1024 / 1024)} МБ`,
+      );
+    }
+    const key = leadAttachmentKey(lead.id, file.originalName);
+    await storage().put(key, file.body, file.contentType);
+    await prisma.leadAttachment.create({
+      data: {
+        leadId: lead.id,
+        storageKey: key,
+        originalName: file.originalName.slice(0, 300),
+        sizeBytes: BigInt(file.body.byteLength),
+        sha256: sha256(file.body),
+        contentType: file.contentType.slice(0, 128),
+        uploadedById: actor.id,
+      },
+    });
+  }
 
   // Менеджеры узнают о заявке из очереди, и постановка идёт здесь же:
   // событие кладётся рядом с самой заявкой, а не в действии экрана —
