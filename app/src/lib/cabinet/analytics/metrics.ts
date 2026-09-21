@@ -697,8 +697,10 @@ export function conclusions(rows: readonly ProjectRow[], controlDate: Date): Con
       area: 'Клиенты',
       title: 'Вернуться к повторным клиентам',
       text:
-        `${sleeping.length} ${plural(sleeping.length, 'клиент', 'клиента', 'клиентов')} заказывал ` +
-        'не по одному разу и не появлялся дольше полугода. Повторных клиентов всего ' +
+        `${sleeping.length} ${plural(sleeping.length, 'клиент', 'клиента', 'клиентов')} ` +
+        `${plural(sleeping.length, 'заказывал', 'заказывали', 'заказывали')} не по одному разу и ` +
+        `${plural(sleeping.length, 'не появлялся', 'не появлялись', 'не появлялись')} дольше ` +
+        'полугода. Повторных клиентов всего ' +
         `${clientReport.repeat} — ${Math.round(clientReport.repeatShare * 100)} %.`,
       action:
         'Написать каждому лично под его тему: у этих людей спрос уже проверен, и новая работа ' +
