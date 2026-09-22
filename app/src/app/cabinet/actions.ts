@@ -140,6 +140,42 @@ export async function uploadMaterial(form: FormData): Promise<void> {
   redirect(`/cabinet/stages/${stageId}`);
 }
 
+/**
+ * Новый материал с пояснением — форма эксперта на экране работы.
+ *
+ * От `uploadMaterial` отличается двумя вещами: материал заводится с
+ * названием («глава 2 диссертации»), а пояснение к нему кладётся
+ * замечанием к той же версии — отдельной формы для этого не нужно
+ * (решение Р-200).
+ */
+export async function uploadMaterialWithNote(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const file = form.get('file');
+  const code = String(form.get('code') ?? '');
+  if (!(file instanceof File) || file.size === 0) {
+    redirect(`/cabinet/projects/${code}?error=${encodeURIComponent('Файл не выбран')}`);
+  }
+  const stageId = String(form.get('stageId') ?? '');
+  const version = await uploadVersion(
+    actor,
+    {
+      projectId: String(form.get('projectId') ?? ''),
+      stageId: stageId || null,
+      materialId: null,
+      title: String(form.get('title') ?? '') || undefined,
+      originalName: (file as File).name,
+      contentType: (file as File).type || 'application/octet-stream',
+      body: Buffer.from(await (file as File).arrayBuffer()),
+    },
+    await requestIp(),
+  );
+
+  const note = String(form.get('note') ?? '').trim();
+  if (note.length > 0) await addComment(actor, version.id, note);
+
+  redirect(`/cabinet/projects/${code}`);
+}
+
 export async function moderateLead(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   ensure(actor, 'REQUEST_MODERATE');
