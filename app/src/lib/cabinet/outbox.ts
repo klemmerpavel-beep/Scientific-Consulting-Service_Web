@@ -46,13 +46,37 @@ type Db = Prisma.TransactionClient | typeof prisma;
 export async function enqueue(db: Db, item: OutboxItem): Promise<void> {
   const user = await db.user.findUnique({
     where: { id: item.userId },
-    select: { status: true, notifyEmail: true, notifyTelegram: true, telegramChatId: true },
+    select: {
+      status: true,
+      notifyEmail: true,
+      notifyTelegram: true,
+      telegramChatId: true,
+      notifyRules: { select: { eventKind: true, channel: true, enabled: true } },
+    },
   });
   if (user === null || user.status !== 'ACTIVE') return;
 
-  const channels: ('EMAIL' | 'TELEGRAM')[] = [];
-  if (user.notifyEmail) channels.push('EMAIL');
-  if (user.notifyTelegram && user.telegramChatId !== null) channels.push('TELEGRAM');
+  // Общие переключатели решают, каким каналом человек вообще согласен
+  // получать уведомления. Правила решают, какие события каким каналом —
+  // и только среди разрешённых каналов: правило не может включить канал,
+  // выключенный целиком (решение Р-198).
+  const allowed: ('EMAIL' | 'TELEGRAM')[] = [];
+  if (user.notifyEmail) allowed.push('EMAIL');
+  if (user.notifyTelegram && user.telegramChatId !== null) allowed.push('TELEGRAM');
+
+  const channels = allowed.filter((channel) => {
+    // Точное правило сильнее общего; когда правил нет вовсе, канал
+    // работает — иначе включение разбора по событиям молча обрубило бы
+    // все уведомления.
+    const exact = user.notifyRules.find(
+      (rule) => rule.eventKind === item.eventKind && rule.channel === channel,
+    );
+    if (exact !== undefined) return exact.enabled;
+    const every = user.notifyRules.find(
+      (rule) => rule.eventKind === '*' && rule.channel === channel,
+    );
+    return every === undefined ? true : every.enabled;
+  });
 
   for (const channel of channels) {
     await db.notificationOutbox.createMany({

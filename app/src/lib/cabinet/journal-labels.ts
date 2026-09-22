@@ -12,6 +12,10 @@
 
 const ACTIONS: Record<string, string> = {
   ACCESS_LINK_ISSUED: 'Выдана ссылка входа',
+  CONTACT_ADDED: 'Добавлен способ связи',
+  CONTACT_REMOVED: 'Убран способ связи',
+  CONTACT_PREFERRED: 'Выбран предпочтительный способ связи',
+  NOTIFY_RULES_SAVED: 'Изменены правила уведомлений',
   CLIENT_MERGED: 'Карточки клиента сведены',
   DISK_SYNC: 'Зеркало на Диске обновлено',
   CONTRACT_SAVED: 'Договор сохранён',

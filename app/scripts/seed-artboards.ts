@@ -192,6 +192,43 @@ async function main() {
     where: { emailNormalized: { endsWith: `@${DOMAIN}` } },
   });
 
+  // Способы связи: у клиента звонок предпочтителен, у эксперта — Telegram,
+  // у руководителя — правила по событиям. Переписываются заново, чтобы
+  // правка этого файла доезжала до снимка (решение Р-198).
+  await prisma.contactChannel.deleteMany({ where: { userId: { in: staff } } });
+  await prisma.contactChannel.createMany({
+    data: [
+      {
+        userId: clientUser.id,
+        kind: 'PHONE_CALL',
+        value: '+7 900 000-00-00',
+        note: 'Звонить после 18:00, днём на кафедре',
+        preferred: true,
+      },
+      { userId: clientUser.id, kind: 'EMAIL', preferred: false },
+      {
+        userId: expertUser.id,
+        kind: 'MESSENGER',
+        value: '@artboard_expert',
+        note: 'Отвечаю в течение дня',
+        preferred: true,
+      },
+      { userId: manager.id, kind: 'FULL_SUPPORT', preferred: true },
+    ],
+  });
+
+  await prisma.notifyRule.deleteMany({ where: { userId: { in: staff } } });
+  await prisma.notifyRule.createMany({
+    data: [
+      { userId: head.id, eventKind: 'REQUEST_CREATED', channel: 'EMAIL', enabled: true },
+      { userId: head.id, eventKind: 'REQUEST_CREATED', channel: 'TELEGRAM', enabled: true },
+      { userId: head.id, eventKind: 'DEADLINE_IN_3_DAYS', channel: 'EMAIL', enabled: false },
+      { userId: head.id, eventKind: 'DEADLINE_IN_3_DAYS', channel: 'TELEGRAM', enabled: true },
+      { userId: head.id, eventKind: 'MESSAGE_RECEIVED', channel: 'EMAIL', enabled: false },
+      { userId: head.id, eventKind: 'MESSAGE_RECEIVED', channel: 'TELEGRAM', enabled: false },
+    ],
+  });
+
   await prisma.projectCodeCounter.upsert({
     where: { year: 2026 },
     create: { year: 2026, lastNumber: 0 },

@@ -36,6 +36,14 @@ import {
   type Role,
 } from '../../lib/cabinet/admin';
 import type { AccessLinkState } from '../../components/cabinet/AccessLink';
+import {
+  RULE_EVENTS,
+  addContact,
+  dropContact,
+  preferContact,
+  saveRules,
+  type ContactKind,
+} from '../../lib/cabinet/channels';
 import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
 import { createCabinetRequest, REQUEST_FILES_MAX } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
@@ -298,6 +306,50 @@ export async function saveNotificationChannels(form: FormData): Promise<void> {
     email: form.get('notifyEmail') === 'on',
     telegram: form.get('notifyTelegram') === 'on',
   });
+  redirect('/cabinet/settings?saved=1');
+}
+
+export async function addContactChannel(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const kind = String(form.get('kind') ?? '') as ContactKind;
+  try {
+    await addContact(actor, {
+      kind,
+      value: String(form.get('value') ?? ''),
+      note: String(form.get('note') ?? ''),
+      preferred: form.get('preferred') === 'on',
+    });
+  } catch (error) {
+    const text = error instanceof Error ? error.message : 'Не удалось добавить способ связи';
+    redirect(`/cabinet/settings?error=${encodeURIComponent(text)}`);
+  }
+  redirect('/cabinet/settings?saved=1');
+}
+
+export async function removeContactChannel(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await dropContact(actor, String(form.get('id') ?? ''));
+  redirect('/cabinet/settings?saved=1');
+}
+
+export async function makeContactPreferred(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await preferContact(actor, String(form.get('id') ?? ''));
+  redirect('/cabinet/settings?saved=1');
+}
+
+export async function saveNotifyRules(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  // Форма присылает состояние всей решётки: у каждой клетки своё имя
+  // вида `rule:<событие>:<канал>`, и снятая галочка просто не приходит.
+  const rules = RULE_EVENTS.flatMap((event) =>
+    (['EMAIL', 'TELEGRAM'] as const).map((channel) => ({
+      eventKind: event.kind,
+      channel,
+      enabled: form.get(`rule:${event.kind}:${channel}`) === 'on',
+    })),
+  );
+  await saveRules(actor, rules);
   redirect('/cabinet/settings?saved=1');
 }
 

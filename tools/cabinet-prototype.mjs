@@ -238,6 +238,20 @@ async function snapshot(page) {
     for (const node of clone.querySelectorAll('input[name^="$ACTION_ID_"]')) {
       node.setAttribute('name', '$ACTION_ID');
     }
+    // Тот же хэш приходит и значением поля у форм, связанных с состоянием
+    // действия (`useActionState`): `{"id":"60ac…"}`. Он тоже меняется от
+    // каждой правки кода, и снимок расходился между двумя прогонами
+    // подряд (решение Р-198).
+    // Пустые скрытые таблицы — след гидратации React: он вставляет их
+    // как шаблоны для строк и убирает не сразу, поэтому их число зависит
+    // от того, в какой момент снят снимок. Облика они не несут вовсе.
+    for (const node of clone.querySelectorAll('table[hidden]')) node.remove();
+    for (const node of clone.querySelectorAll('input[name^="$ACTION_"][value]')) {
+      node.setAttribute(
+        'value',
+        (node.getAttribute('value') ?? '').replace(/"id":"[0-9a-f]{16,}"/g, '"id":"ACTION"'),
+      );
+    }
     return clone.innerHTML;
   });
 

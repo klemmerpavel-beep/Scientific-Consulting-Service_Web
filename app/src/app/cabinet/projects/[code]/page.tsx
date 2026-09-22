@@ -31,6 +31,7 @@ import {
   type StageStateKey,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
+import { CONTACT_LABEL, contactsOf } from '../../../../lib/cabinet/channels';
 import { STAGE_STATE_LABEL } from '../../../../lib/cabinet/stage-state';
 import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import {
@@ -148,6 +149,12 @@ export default async function ProjectScreen({
   const mayAssign = can(actor, 'PROJECT_ASSIGN_EXPERT', ref);
   const maySeeContacts = can(actor, 'CONTACTS_VIEW', ref);
   const mayWrite = can(actor, 'MESSAGE_READ', ref);
+  // Способы связи клиента видит тот же, кто видит его контакты: телефон и
+  // ссылка на мессенджер — персональные данные (решение Р-198).
+  const clientContacts =
+    maySeeContacts && project.client.userId !== null
+      ? await contactsOf(actor, project.client.userId)
+      : [];
   const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref);
   const unread = mayWrite ? await unreadCount(actor, project.id) : 0;
   // Короткий разговор виден прямо на экране заказа: уходить за ним на
@@ -563,6 +570,34 @@ export default async function ProjectScreen({
                     <Text muted size={13}>
                       {project.client.phone}
                     </Text>
+                  )}
+                  {/* Как человек просил с ним связываться. Куратор держится
+                      этого списка, а не звонит наугад (решение Р-198). */}
+                  {clientContacts.length === 0 ? null : (
+                    <ul
+                      style={{
+                        margin: '10px 0 0',
+                        padding: 0,
+                        listStyle: 'none',
+                        display: 'grid',
+                        gap: 6,
+                      }}
+                    >
+                      {clientContacts.map((contact) => (
+                        <li key={contact.id}>
+                          <Text size={13}>
+                            {contact.preferred ? 'Предпочитает: ' : ''}
+                            {CONTACT_LABEL[contact.kind]}
+                            {contact.value === null ? '' : ` — ${contact.value}`}
+                          </Text>
+                          {contact.note === null ? null : (
+                            <Text muted size={13}>
+                              {contact.note}
+                            </Text>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               ) : null}
