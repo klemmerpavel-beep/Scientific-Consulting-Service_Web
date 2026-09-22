@@ -587,17 +587,64 @@ async function main() {
     ],
   });
 
-  const events = await prisma.projectEvent.count({ where: { projectId: showcase } });
-  if (events === 0) {
-    await prisma.projectEvent.createMany({
-      data: [
-        { projectId: showcase, actorId: manager.id, kind: 'PROJECT_CREATED', createdAt: day(120) },
-        { projectId: showcase, actorId: expertUser.id, kind: 'VERSION_UPLOADED', createdAt: day(24) },
-        { projectId: showcase, actorId: clientUser.id, kind: 'VERSION_UPLOADED', createdAt: day(12) },
-        { projectId: showcase, actorId: manager.id, kind: 'STAGE_STATE_CHANGED', createdAt: day(10) },
-      ],
-    });
-  }
+  // История переписывается заново: у событий есть подробности в `payload`
+  // (какой этап, откуда куда перешёл, какая версия материала), и без них
+  // история выглядела бы чередой одинаковых строк «этап сменил состояние»
+  // (решение Р-197).
+  await prisma.projectEvent.deleteMany({ where: { projectId: showcase } });
+  await prisma.projectEvent.createMany({
+    data: [
+      {
+        projectId: showcase,
+        actorId: manager.id,
+        kind: 'PROJECT_CREATED',
+        payload: { code: 'artboard' },
+        createdAt: day(120),
+      },
+      {
+        projectId: showcase,
+        actorId: manager.id,
+        kind: 'STAGE_STATE_CHANGED',
+        payload: { stageId: stageIds[0], from: 'IN_PROGRESS', to: 'DONE' },
+        createdAt: day(96),
+      },
+      {
+        projectId: showcase,
+        actorId: manager.id,
+        kind: 'STAGE_STATE_CHANGED',
+        payload: { stageId: stageIds[1], from: 'IN_PROGRESS', to: 'DONE' },
+        createdAt: day(60),
+      },
+      {
+        projectId: showcase,
+        actorId: expertUser.id,
+        kind: 'VERSION_UPLOADED',
+        payload: { materialId: material.id, version: 1 },
+        createdAt: day(24),
+      },
+      {
+        projectId: showcase,
+        actorId: clientUser.id,
+        kind: 'VERSION_UPLOADED',
+        payload: { materialId: material.id, version: 2 },
+        createdAt: day(12),
+      },
+      {
+        projectId: showcase,
+        actorId: manager.id,
+        kind: 'STAGE_STATE_CHANGED',
+        payload: { stageId: stageIds[2], from: 'IN_PROGRESS', to: 'IN_APPROVAL' },
+        createdAt: day(10),
+      },
+      {
+        projectId: showcase,
+        actorId: manager.id,
+        kind: 'STAGE_STATE_CHANGED',
+        payload: { stageId: stageIds[3], from: 'NOT_STARTED', to: 'AWAITING_CLIENT' },
+        createdAt: day(6),
+      },
+    ],
+  });
 
   // ── Заявка в очереди менеджера ──────────────────────────────────────────
   const lead = await prisma.lead.findFirst({ where: { contact: `lead@${DOMAIN}` } });

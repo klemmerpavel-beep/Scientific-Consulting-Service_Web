@@ -121,9 +121,13 @@ export async function projectByCode(actor: Actor, code: string) {
         select: { id: true, fullName: true, expertProfile: true },
       },
       stages: { orderBy: { position: 'asc' } },
+      // История работы показывается целиком, а не последней дюжиной:
+      // заказчик разбирает по ней спор о том, что и когда происходило
+      // (решение Р-197). Предел оставлен на случай работы с сотнями
+      // событий — свёртка прокручивается, а не растёт бесконечно.
       events: {
         orderBy: { createdAt: 'desc' },
-        take: 12,
+        take: 200,
         include: { actor: { select: { id: true, fullName: true, role: true } } },
       },
     },

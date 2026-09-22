@@ -31,6 +31,7 @@ import {
   type StageStateKey,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
+import { STAGE_STATE_LABEL } from '../../../../lib/cabinet/stage-state';
 import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import {
   curators,
@@ -66,6 +67,48 @@ const EVENT_LABEL: Record<string, string> = {
 };
 
 const CLIENT_HIDDEN_EVENTS = new Set(['EXPERT_ASSIGNED']);
+
+/**
+ * Строка истории: что именно произошло, а не какого рода было событие.
+ *
+ * Прежде история писала «Этап сменил состояние» — двенадцать одинаковых
+ * строк подряд, по которым нельзя восстановить ход работы. Подробности
+ * лежат в `payload` с первого спринта и просто не доставались: номер
+ * этапа, его название, откуда и куда он перешёл, номер версии материала
+ * (решение Р-197).
+ */
+function eventLine(
+  kind: string,
+  payload: unknown,
+  stages: readonly { id: string; position: number; title: string }[],
+  materials: readonly { id: string; title: string }[],
+): string {
+  const data = (payload ?? {}) as Record<string, unknown>;
+  const stage = stages.find((item) => item.id === data.stageId);
+  const material = materials.find((item) => item.id === data.materialId);
+
+  if (kind === 'STAGE_STATE_CHANGED') {
+    const from = typeof data.from === 'string' ? STAGE_STATE_LABEL[data.from as StageStateKey] : null;
+    const to = typeof data.to === 'string' ? STAGE_STATE_LABEL[data.to as StageStateKey] : null;
+    // Название этапа само нередко содержит двоеточие («Расчётная часть:
+    // первая редакция»), поэтому оно берётся в кавычки, а не приписывается
+    // через ещё одно двоеточие.
+    const where = stage === undefined ? 'Этап' : `Этап ${stage.position} «${stage.title}»`;
+    if (to === null) return `${where} — состояние изменено`;
+    // Переход описан словами: знак-стрелка — украшение, а правило облика
+    // требует штриховых значков, не символов.
+    return from === null ? `${where} — ${to}` : `${where} — ${to} (было «${from}»)`;
+  }
+
+  if (kind === 'VERSION_UPLOADED') {
+    const number = typeof data.version === 'number' ? `версия ${data.version}` : 'новая версия';
+    return material === undefined
+      ? `Приложена ${number} материала`
+      : `Приложена ${number} материала «${material.title}»`;
+  }
+
+  return EVENT_LABEL[kind] ?? kind;
+}
 
 /** Что требуется от клиента в этом состоянии этапа. */
 const ACTION_BY_STATE: Partial<Record<StageStateKey, string>> = {
@@ -187,9 +230,17 @@ export default async function ProjectScreen({
       };
     });
 
-  const events = project.events.filter(
-    (event) => !forClient || !CLIENT_HIDDEN_EVENTS.has(event.kind),
-  );
+  const events = project.events
+    .filter((event) => !forClient || !CLIENT_HIDDEN_EVENTS.has(event.kind))
+    .map((event) => ({
+      id: event.id,
+      line: eventLine(event.kind, event.payload, project.stages, withMaterials?.materials ?? []),
+      at: `${formatDay(event.createdAt)}, ${formatTime(event.createdAt)}`,
+      who:
+        event.actor === null
+          ? null
+          : authorName(event.actor, actor, event.actorId ?? undefined),
+    }));
 
   // Короткое описание работы. На виду остаётся название и срок, остальное
   // — под раскрытием: тема, тип сопровождения, куратор, суть задачи и
@@ -361,19 +412,17 @@ export default async function ProjectScreen({
 
       {/* Ниже — то, что нужно не каждый раз: история и служебные действия.
           На виду они занимали пол-экрана, пересказывая этапы и переписку. */}
-      <Disclosure title="История работы" style={{ marginTop: 20 }}>
+      <Disclosure title="История работы" tall style={{ marginTop: 20 }}>
           {events.length === 0 ? (
             <Text muted>Событий пока нет.</Text>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
               {events.map((event) => (
                 <li key={event.id}>
-                  <Text size={14}>{EVENT_LABEL[event.kind] ?? event.kind}</Text>
+                  <Text size={14}>{event.line}</Text>
                   <Text muted size={13} style={{ marginTop: 2 }}>
-                    {formatDate(event.createdAt)}
-                    {event.actor === null
-                      ? ''
-                      : ` · ${authorName(event.actor, actor, event.actorId ?? undefined)}`}
+                    {event.at}
+                    {event.who === null ? '' : ` · ${event.who}`}
                   </Text>
                 </li>
               ))}

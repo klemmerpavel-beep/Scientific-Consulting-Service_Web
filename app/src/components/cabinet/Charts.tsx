@@ -20,8 +20,10 @@ import {
   smoothPath,
   ticks,
   topRoundedBar,
+  wavePath,
+  type WaveMood,
 } from '../../lib/cabinet/charts';
-import { MONO, SANS } from './tokens';
+import { MONO, RADIUS, SANS } from './tokens';
 
 const GRID = 'var(--pd-divider)';
 const MUTED = 'var(--pd-ink-muted)';
@@ -551,6 +553,49 @@ export function Legend({
         </span>
       ))}
     </div>
+  );
+}
+
+/**
+ * Шкала готовности работы: заполнение волной, а не ровной заливкой.
+ *
+ * Прямая полоса сообщает одну величину — долю. Волна сообщает вторую:
+ * гребень у кромки заполнения поднимается, пока работа идёт, опадает до
+ * ряби, когда она ждёт человека, и сходит в гладь, когда всё закрыто.
+ * Форма считается из доли, поэтому у каждой работы свой рисунок.
+ *
+ * Смысл на рисунке не держится: доля стоит числом рядом, а состояние —
+ * словами в заголовке блока. Картинка помечена `aria-hidden`, потому что
+ * читалке она не сообщает ничего сверх уже сказанного текстом.
+ *
+ * Покачивание — только у идущей работы и только через класс
+ * `cab-tide`: правило `prefers-reduced-motion` в таблице токенов гасит
+ * его вместе со всем прочим движением.
+ */
+export function WaveBar({ share, mood }: { share: number; mood: WaveMood }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: 'block',
+        height: 26,
+        borderRadius: RADIUS.mark,
+        background: 'var(--pd-divider)',
+        overflow: 'hidden',
+      }}
+    >
+      <svg
+        viewBox="0 0 100 24"
+        preserveAspectRatio="none"
+        style={{ display: 'block', width: '100%', height: '100%' }}
+      >
+        <path
+          className={mood === 'active' ? 'cab-tide' : undefined}
+          d={wavePath(share, mood)}
+          fill="var(--pd-accent)"
+        />
+      </svg>
+    </span>
   );
 }
 
