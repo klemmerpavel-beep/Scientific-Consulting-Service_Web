@@ -1,9 +1,20 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
-import { Card, Heading, ScreenHead, Text } from '../../../../components/cabinet/ui';
+import {
+  Button,
+  Card,
+  Field,
+  Form,
+  FormActions,
+  Heading,
+  Notice,
+  ScreenHead,
+  Text,
+} from '../../../../components/cabinet/ui';
 import { can, type Action } from '../../../../lib/cabinet/access';
 import { currentActor } from '../../../../lib/cabinet/session';
+import { requestHelp } from '../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +65,13 @@ const TOOLS: readonly {
   action: Action;
   group: GroupKey;
 }[] = [
+  {
+    href: '/cabinet/projects',
+    title: 'Работы практики',
+    note: 'Вести перечень заказов: отбор и поиск, а внутри работы — правка карточки, сроков и состава этапов.',
+    action: 'PROJECT_VIEW',
+    group: 'work',
+  },
   {
     href: '/cabinet/manage/leads',
     title: 'Все заявки',
@@ -119,9 +137,14 @@ const TOOLS: readonly {
   },
 ];
 
-export default async function ToolsScreen() {
+export default async function ToolsScreen({
+  searchParams,
+}: {
+  searchParams: Promise<{ sent?: string; error?: string }>;
+}) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
+  const params = await searchParams;
 
   const allowed = TOOLS.filter((tool) => can(actor, tool.action));
   if (allowed.length === 0) redirect('/cabinet/projects');
@@ -142,6 +165,17 @@ export default async function ToolsScreen() {
         title="Служебные разделы"
         note="Кухня практики: справочники, журналы, перенос книги заказов и учётные записи. Сюда заходят изредка, поэтому в первом ряду разделов их нет."
       />
+
+      {params.sent === undefined ? null : (
+        <div style={{ marginBottom: 20 }}>
+          <Notice>Вопрос отправлен руководителю практики.</Notice>
+        </div>
+      )}
+      {params.error === undefined ? null : (
+        <div style={{ marginBottom: 20 }}>
+          <Notice tone="error">{params.error}</Notice>
+        </div>
+      )}
 
       {groups.map((group) => (
         // Группа набрана `div`, а не `section`: сценарий движения сайта
@@ -183,11 +217,39 @@ export default async function ToolsScreen() {
       ))}
 
       {partial ? (
-        <Text muted size={14}>
+        <Text muted size={14} style={{ marginBottom: 24 }}>
           Остальные служебные разделы — справочники, журналы, перенос книги заказов, учётные
           записи — ведёт руководитель практики.
         </Text>
       ) : null}
+
+      {/* Спросить руководителя было негде: переписка в кабинете — только с
+          клиентом. Вопрос идёт той же очередью уведомлений, что и всё
+          прочее, и приходит выбранным руководителем каналом
+          (решение Р-199). */}
+      {actor.role === 'HEAD' ? null : (
+        <Card>
+          <Heading level={2} size={3} style={{ marginBottom: 4 }}>
+            Спросить руководителя практики
+          </Heading>
+          <Text muted size={14} style={{ marginBottom: 14 }}>
+            Спорный случай, нестандартная просьба клиента, сомнение по срокам или цене — вопрос
+            уйдёт руководителю и вернётся ответом тем каналом, который он выбрал.
+          </Text>
+          <Form action={requestHelp}>
+            <Field
+              label="В чём нужна помощь"
+              name="text"
+              required
+              multiline
+              placeholder="Клиент просит перенести защиту на месяц и сменить тему. Стоит ли пересматривать договор?"
+            />
+            <FormActions>
+              <Button>Отправить вопрос</Button>
+            </FormActions>
+          </Form>
+        </Card>
+      )}
     </Shell>
   );
 }

@@ -226,3 +226,53 @@ export async function saveRules(
     payload: { rules: clean.filter((rule) => rule.enabled).length },
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* Обращение куратора за помощью                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Куратор спрашивает руководителя практики.
+ *
+ * Прежде спросить было негде: переписка в кабинете — только с клиентом,
+ * а служебные разделы молчали. Вопрос кладётся в ту же очередь, что и
+ * прочие уведомления, и приходит руководителю выбранным им каналом
+ * (решение Р-199).
+ */
+export async function askForHelp(actor: Actor, text: string): Promise<void> {
+  const body = text.trim();
+  if (body.length === 0) throw new Error('Напишите, в чём нужна помощь');
+
+  const { prisma: db } = await import('../db.ts');
+  const { enqueue } = await import('./outbox.ts');
+
+  const me = await db.user.findUniqueOrThrow({
+    where: { id: actor.id },
+    select: { fullName: true },
+  });
+  const heads = await db.user.findMany({
+    where: { role: 'HEAD', status: 'ACTIVE' },
+    select: { id: true },
+  });
+
+  const stamp = new Date().toISOString().slice(0, 16);
+  for (const head of heads) {
+    await enqueue(db, {
+      userId: head.id,
+      eventKind: 'HELP_REQUESTED',
+      subject: `Вопрос от куратора: ${me.fullName}`,
+      // Содержание вопроса в письме идёт целиком: это служебная переписка
+      // практики, а не разговор с клиентом, чьё содержание наружу не
+      // пересылается.
+      body,
+      dedupKey: `help:${actor.id}:${stamp}:${head.id}`,
+    });
+  }
+
+  await record(actor, {
+    action: 'HELP_REQUESTED',
+    objectType: 'User',
+    objectId: actor.id,
+    payload: { heads: heads.length },
+  });
+}

@@ -380,8 +380,26 @@ export async function trafficLight(actor: Actor) {
   const inWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
+  // Карточка «Требует внимания» должна отвечать на три вопроса сразу:
+  // что просрочено, чей ход и сколько денег под угрозой. Состояние этапа
+  // и суммы договора берутся здесь же — вторым запросом на каждую строку
+  // это стоило бы десятков обращений к базе (решение Р-199).
   const include = {
-    project: { select: { code: true, title: true, client: { select: { fullName: true } } } },
+    project: {
+      select: {
+        code: true,
+        title: true,
+        dueOn: true,
+        client: { select: { fullName: true } },
+        manager: { select: { fullName: true } },
+        contract: {
+          select: {
+            totalAmount: true,
+            tranches: { select: { amount: true, status: true } },
+          },
+        },
+      },
+    },
   } as const;
   // Незакрытые этапы: завершённые в светофор не попадают по определению.
   const live = {

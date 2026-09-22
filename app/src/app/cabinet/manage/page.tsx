@@ -24,7 +24,8 @@ import {
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
-import { formatPlain } from '../../../lib/cabinet/money';
+import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
+import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments } from '../../../lib/cabinet/materials';
 import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
@@ -56,6 +57,62 @@ function overdueDays(dueOn: Date | null): number | null {
   return days > 0 ? days : null;
 }
 
+/**
+ * Ступень тревоги по величине просрочки.
+ *
+ * Одного красного мало: на сводке рядом стоят просрочка в день и в год, а
+ * выглядели они одинаково. Ступени — неделя, месяц, квартал и дальше;
+ * граница проходит там, где меняется существо дела: день опоздания — это
+ * рабочая заминка, месяц — сорванный этап, квартал — работа, о которой
+ * забыли (решение Р-199).
+ */
+function alertStep(late: number | null): 0 | 1 | 2 | 3 | 4 {
+  if (late === null) return 0;
+  if (late <= 7) return 1;
+  if (late <= 30) return 2;
+  if (late <= 90) return 3;
+  return 4;
+}
+
+/**
+ * Чей сейчас ход. Состояние этапа названо не своим именем, а ответом на
+ * вопрос менеджера: делать это ему, ждать ли клиента или исполнителя.
+ */
+const TURN_BY_STATE: Partial<Record<StageStateKey, string>> = {
+  NOT_STARTED: 'ход за вами: этап не начат',
+  IN_PROGRESS: 'ход за исполнителем',
+  AWAITING_CLIENT: 'ход за клиентом',
+  IN_APPROVAL: 'ход за клиентом: ждёт согласования',
+};
+
+/** Заливка плашки по ступени тревоги. Ноль — обычная карточка. */
+const ALERT_FILL: Record<number, string | undefined> = {
+  0: undefined,
+  1: 'var(--pd-alert-1)',
+  2: 'var(--pd-alert-2)',
+  3: 'var(--pd-alert-3)',
+  4: 'var(--pd-alert-4)',
+};
+
+/**
+ * Остаток по договору работы: сколько ещё не получено.
+ *
+ * На карточке просрочки это главная величина после самого срока: сорванный
+ * этап у работы с закрытым остатком и у работы, где не получено полмиллиона,
+ * — две разные беды.
+ */
+function owed(contract: {
+  totalAmount: bigint;
+  tranches: readonly { amount: bigint; status: string }[];
+} | null): bigint {
+  if (contract === null) return 0n;
+  const paid = contract.tranches
+    .filter((tranche) => tranche.status === 'PAID')
+    .reduce((sum, tranche) => sum + tranche.amount, 0n);
+  const rest = contract.totalAmount - paid;
+  return rest > 0n ? rest : 0n;
+}
+
 export default async function ManageQueue({
   searchParams,
 }: {
@@ -77,7 +134,8 @@ export default async function ManageQueue({
   // Состояние заказов без денег: заказчик запретил выносить деньги на
   // главную — для них есть свой экран (решение Р-194). Плитки видит тот,
   // кому открыта практика целиком.
-  const summary = can(actor, 'MARGIN_VIEW') ? await orderSummary(actor) : null;
+  const maySeeMoney = can(actor, 'MARGIN_VIEW');
+  const summary = maySeeMoney ? await orderSummary(actor) : null;
   // Перечень действующих работ видят обе служебные роли, и каждая — свои:
   // менеджеру `scopeProjects` оставляет те, где он куратор. Деньги в строке
   // появляются только при праве на маржу (решение Р-175).
@@ -132,18 +190,29 @@ export default async function ManageQueue({
   const attention = [
     ...light.overdue.map((stage: (typeof light.overdue)[number]) => {
       const late = overdueDays(stage.dueOn);
+      const rest = maySeeMoney ? owed(stage.project.contract) : 0n;
       return {
         key: `overdue-${stage.id}`,
         title: `${stage.title} · ${stage.project.title}`,
         mark: late === null ? 'срок сегодня' : `просрочено ${late} ${plural(late, 'день', 'дня', 'дней')}`,
         urgent: true,
-        detail: stage.project.client.fullName,
+        step: alertStep(late),
+        // Чей ход — первое, что нужно знать: своё дело менеджер закрывает
+        // сам, чужое требует письма или звонка.
+        detail: [
+          TURN_BY_STATE[stage.state as StageStateKey] ?? null,
+          stage.project.client.fullName,
+          rest > 0n ? `не получено ${formatAmount(rest)}` : null,
+        ]
+          .filter((part) => part !== null)
+          .join(' · '),
         todo: 'Назначить новый срок или перевести этап',
         href: `/cabinet/stages/${stage.id}`,
       };
     }),
     ...light.stalled.map((stage: (typeof light.stalled)[number]) => ({
       key: `stalled-${stage.id}`,
+      step: 0 as const,
       title: `${stage.title} · ${stage.project.title}`,
       mark:
         stage.awaitingClientSince === null
@@ -156,6 +225,7 @@ export default async function ManageQueue({
     })),
     ...unread.map((row) => ({
       key: `unread-${row.code}`,
+      step: 0 as const,
       title: row.title,
       mark: `непрочитанных ${row.count}`,
       urgent: false,
@@ -165,6 +235,7 @@ export default async function ManageQueue({
     })),
     ...moderation.map((row) => ({
       key: `comment-${row.stageId ?? row.material}`,
+      step: 0 as const,
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: `замечаний на модерации ${row.count}`,
       urgent: false,
@@ -176,6 +247,7 @@ export default async function ManageQueue({
       ? [
           {
             key: 'outbox',
+            step: 0 as const,
             title: 'Очередь уведомлений',
             mark: `не доставлено ${outbox.failed}`,
             urgent: true,
@@ -485,7 +557,17 @@ export default async function ManageQueue({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 6,
-                  ...(row.urgent ? { borderColor: 'var(--pd-accent-edge)' } : {}),
+                  // Чем дольше просрочка, тем плотнее заливка. Величина при
+                  // этом стоит и текстом: цвет показывает, а читают
+                  // подпись (решение Р-199).
+                  ...(row.step > 0
+                    ? {
+                        background: ALERT_FILL[row.step],
+                        borderColor: 'var(--pd-alert-edge)',
+                      }
+                    : row.urgent
+                      ? { borderColor: 'var(--pd-accent-edge)' }
+                      : {}),
                 }}
               >
                 <a
@@ -498,7 +580,14 @@ export default async function ManageQueue({
                   <Chip tone={row.urgent ? 'accent' : 'neutral'}>{row.mark}</Chip>
                 </div>
                 {row.detail === null ? null : (
-                  <Text muted size={13}>
+                  // На цветной плашке приглушённый цвет не проходит по
+                  // контрасту: заливка тревоги плотнее белого фона, и
+                  // подпись берётся на ступень темнее (решение Р-199).
+                  <Text
+                    muted={row.step === 0}
+                    size={13}
+                    style={row.step === 0 ? undefined : { color: 'var(--pd-ink-secondary)' }}
+                  >
                     {row.detail}
                   </Text>
                 )}

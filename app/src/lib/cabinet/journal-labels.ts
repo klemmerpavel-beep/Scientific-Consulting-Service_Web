@@ -16,6 +16,7 @@ const ACTIONS: Record<string, string> = {
   CONTACT_REMOVED: 'Убран способ связи',
   CONTACT_PREFERRED: 'Выбран предпочтительный способ связи',
   NOTIFY_RULES_SAVED: 'Изменены правила уведомлений',
+  HELP_REQUESTED: 'Куратор обратился за помощью',
   CLIENT_MERGED: 'Карточки клиента сведены',
   DISK_SYNC: 'Зеркало на Диске обновлено',
   CONTRACT_SAVED: 'Договор сохранён',

@@ -39,6 +39,7 @@ import type { AccessLinkState } from '../../components/cabinet/AccessLink';
 import {
   RULE_EVENTS,
   addContact,
+  askForHelp,
   dropContact,
   preferContact,
   saveRules,
@@ -181,6 +182,24 @@ export async function saveStage(form: FormData): Promise<void> {
     dueOn: dateOrNull(form.get('dueOn')),
   });
   redirect(`/cabinet/projects/${code}`);
+}
+
+/**
+ * Перенос срока прямо с экрана этапа (решение Р-199).
+ *
+ * Отличается от `saveStage` только тем, куда возвращает: менеджер
+ * переносит срок, не уходя с этапа, и продолжает разбирать его дальше.
+ */
+export async function moveStageDue(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  await editStage(actor, {
+    stageId,
+    title: String(form.get('title') ?? ''),
+    summary: String(form.get('summary') ?? ''),
+    dueOn: dateOrNull(form.get('dueOn')),
+  });
+  redirect(`/cabinet/stages/${stageId}`);
 }
 
 /** Правка карточки работы менеджером (решение Р-190). */
@@ -351,6 +370,17 @@ export async function saveNotifyRules(form: FormData): Promise<void> {
   );
   await saveRules(actor, rules);
   redirect('/cabinet/settings?saved=1');
+}
+
+export async function requestHelp(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  try {
+    await askForHelp(actor, String(form.get('text') ?? ''));
+  } catch (error) {
+    const text = error instanceof Error ? error.message : 'Не удалось отправить вопрос';
+    redirect(`/cabinet/manage/tools?error=${encodeURIComponent(text)}`);
+  }
+  redirect('/cabinet/manage/tools?sent=1');
 }
 
 export async function dropTelegram(): Promise<void> {
