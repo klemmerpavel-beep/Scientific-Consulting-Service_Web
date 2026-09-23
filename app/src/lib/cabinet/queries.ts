@@ -4,6 +4,7 @@ import { enqueue } from './outbox.ts';
 import { record } from './audit.ts';
 import { leadAttachmentKey, sha256, storage } from './storage.ts';
 import { can, ensure, scopeComments, scopeMaterials, scopeProjects, type Actor } from './access.ts';
+import { now as today } from './clock.ts';
 
 /**
  * Выборки экранов кабинета. Каждая строится через ограничение из модуля
@@ -60,7 +61,12 @@ export async function listProjects(
       : applied === 'done'
         ? { status: { in: ['COMPLETED' as const, 'CANCELLED' as const] } }
         : applied === 'waiting'
-          ? { stages: { some: { state: { in: ['AWAITING_CLIENT' as const, 'IN_APPROVAL' as const] } } } }
+          ? {
+              // Только действующие: у закрытой работы застрявший этап —
+              // след переноса книги, а не ожидание человека (решение Р-206).
+              status: 'ACTIVE' as const,
+              stages: { some: { state: { in: ['AWAITING_CLIENT' as const, 'IN_APPROVAL' as const] } } },
+            }
           : {};
 
   const needle = query.trim();
@@ -382,7 +388,8 @@ export async function trafficLight(actor: Actor) {
   const scope = scopeProjects(actor);
   if (scope === null) return { overdue: [], soon: [], stalled: [] };
   const mine = Object.keys(scope).length === 0 ? {} : { project: scope };
-  const now = new Date();
+  // День — у часов кабинета: снимок не зависит от дня съёмки (Р-205).
+  const now = today();
   const inWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
@@ -396,6 +403,9 @@ export async function trafficLight(actor: Actor) {
         code: true,
         title: true,
         dueOn: true,
+        // Куратор нужен, чтобы сказать руководителю, чей ход по чужой
+        // работе: «ход за вами» у него значил не то (решение Р-206).
+        managerId: true,
         client: { select: { fullName: true } },
         manager: { select: { fullName: true } },
         contract: {

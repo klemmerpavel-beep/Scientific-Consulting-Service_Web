@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
-import { SANS } from '../../../components/cabinet/tokens';
+import { RADIUS, SANS } from '../../../components/cabinet/tokens';
 import { BarChart, RankChart, compactNumber } from '../../../components/cabinet/Charts';
 import {
   Block,
@@ -12,6 +12,7 @@ import {
   Chip,
   Disclosure,
   Heading,
+  Mono,
   ScreenHead,
   TABLE_CELL,
   TABLE_HEAD,
@@ -30,6 +31,7 @@ import { unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments } from '../../../lib/cabinet/materials';
 import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
+import { daysPast, now } from '../../../lib/cabinet/clock';
 import { currentActor } from '../../../lib/cabinet/session';
 import { byMonth, products } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
@@ -50,12 +52,12 @@ function delta(now: number, before: number): string {
   return `${change > 0 ? '+' : '−'}${Math.abs(change)} к прошлому кварталу (${percent} %)`;
 }
 
-/** Сколько дней прошло с назначенного срока; до срока — ничего. */
-function overdueDays(dueOn: Date | null): number | null {
-  if (dueOn === null) return null;
-  const days = Math.floor((Date.now() - dueOn.getTime()) / 86_400_000);
-  return days > 0 ? days : null;
-}
+/**
+ * Сколько дней прошло с назначенного срока; до срока — ничего. День
+ * берётся у часов кабинета, а не у системных: снимок не должен
+ * зависеть от дня съёмки (решение Р-205).
+ */
+const overdueDays = (dueOn: Date | null): number | null => daysPast(dueOn);
 
 /**
  * Ступень тревоги по величине просрочки.
@@ -85,13 +87,24 @@ const TURN_BY_STATE: Partial<Record<StageStateKey, string>> = {
   IN_APPROVAL: 'ход за клиентом: ждёт согласования',
 };
 
-/** Заливка плашки по ступени тревоги. Ноль — обычная карточка. */
-const ALERT_FILL: Record<number, string | undefined> = {
+/**
+ * Кромка плашки по ступени тревоги. Ноль — кромки нет.
+ *
+ * Прежде ступень заливала плашку целиком четырьмя оттенками красного —
+ * вторая ступень побайтно совпадала с фоном блока ошибки, — и сводка из
+ * восьми сорванных сроков читалась одним красным полем: настоящая ошибка
+ * формы на таком фоне терялась, а правило «красный — только исход
+ * действия» обходилось псевдонимом. Теперь плашка белая, а ступень несёт
+ * кромка слева — от серой к графитовой, по той же шкале текста, что и
+ * вся система. Число дней стоит меткой над названием: цвет показывает,
+ * а читают подпись (решение Р-208).
+ */
+const ALERT_EDGE: Record<number, string | undefined> = {
   0: undefined,
-  1: 'var(--pd-alert-1)',
-  2: 'var(--pd-alert-2)',
-  3: 'var(--pd-alert-3)',
-  4: 'var(--pd-alert-4)',
+  1: 'var(--pd-edge-neutral)',
+  2: 'var(--pd-ink-muted)',
+  3: 'var(--pd-ink-secondary)',
+  4: 'var(--pd-ink)',
 };
 
 /**
@@ -162,7 +175,7 @@ export default async function ManageQueue({
   // Что заказывают: типы сопровождения за последние двенадцать месяцев.
   // Плитки говорят, сколько работ, графики — когда они приходят и где
   // стоят; это отвечает, чего именно просят (решение Р-196).
-  const yearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+  const yearAgo = new Date(now().getTime() - 365 * 24 * 60 * 60 * 1000);
   const demand = dashboard
     ? products(analyticsRows.filter((row) => row.startedOn !== null && row.startedOn >= yearAgo))
         .slice()
@@ -203,7 +216,11 @@ export default async function ManageQueue({
         // Чей ход — первое, что нужно знать: своё дело менеджер закрывает
         // сам, чужое требует письма или звонка.
         detail: [
-          TURN_BY_STATE[stage.state as StageStateKey] ?? null,
+          // Руководителю «ход за вами» по чужой работе говорил неправду:
+          // этап начинает куратор (решение Р-206).
+          stage.state === 'NOT_STARTED' && stage.project.managerId !== actor.id
+            ? 'ход за куратором: этап не начат'
+            : (TURN_BY_STATE[stage.state as StageStateKey] ?? null),
           stage.project.client.fullName,
           rest > 0n ? `не получено ${formatAmount(rest)}` : null,
         ]
@@ -213,7 +230,13 @@ export default async function ManageQueue({
         href: `/cabinet/stages/${stage.id}`,
       };
     }),
-    ...light.stalled.map((stage: (typeof light.stalled)[number]) => ({
+    // Этап, уже названный просроченным, второй плашкой «ждёт клиента» не
+    // повторяется: одна работа стояла на сводке дважды (решение Р-206).
+    ...light.stalled
+      .filter((stage: (typeof light.stalled)[number]) =>
+        light.overdue.every((late: (typeof light.overdue)[number]) => late.id !== stage.id),
+      )
+      .map((stage: (typeof light.stalled)[number]) => ({
       key: `stalled-${stage.id}`,
       step: 0 as const,
       title: `${stage.title} · ${stage.project.title}`,
@@ -230,7 +253,7 @@ export default async function ManageQueue({
       key: `unread-${row.code}`,
       step: 0 as const,
       title: row.title,
-      mark: `непрочитанных ${row.count}`,
+      mark: `${row.count} ${plural(row.count, 'непрочитанное', 'непрочитанных', 'непрочитанных')}`,
       urgent: false,
       detail: null,
       todo: 'Ответить клиенту',
@@ -240,7 +263,7 @@ export default async function ManageQueue({
       key: `comment-${row.stageId ?? row.material}`,
       step: 0 as const,
       title: `${row.stageTitle} · ${row.projectTitle}`,
-      mark: `замечаний на модерации ${row.count}`,
+      mark: `${row.count} ${plural(row.count, 'замечание', 'замечания', 'замечаний')} на модерации`,
       urgent: false,
       detail: row.material,
       todo: 'Опубликовать или отклонить — до этого клиент их не видит',
@@ -262,6 +285,36 @@ export default async function ManageQueue({
       : []),
   ];
 
+  // Ответ сводки одной фразой: сколько дел требуют решения и с чего
+  // начать. Прежде его собирали глазами из плашек ниже (решение Р-207).
+  const lateCount = light.overdue.length;
+  const oldest = light.overdue[0] ?? null;
+  const oldestLate = oldest === null ? null : overdueDays(oldest.dueOn);
+  const answer = {
+    lead:
+      attention.length === 0
+        ? 'Сегодня ничего не горит.'
+        : `${attention.length} ${plural(attention.length, 'дело требует', 'дела требуют', 'дел требуют')} решения.`,
+    detail:
+      [
+        lateCount === 0
+          ? null
+          : `Сорвано сроков — ${lateCount}; старший — «${oldest?.title}»${
+              oldestLate === null ? '' : `, ${oldestLate} ${plural(oldestLate, 'день', 'дня', 'дней')}`
+            }.`,
+        summary === null ? null : `В работе ${summary.active} ${plural(summary.active, 'работа', 'работы', 'работ')}.`,
+        queue.total === 0
+          ? null
+          : `${queue.total} ${plural(queue.total, 'заявка ждёт', 'заявки ждут', 'заявок ждут')} разбора.`,
+      ]
+        .filter((part) => part !== null)
+        .join(' ') || null,
+    action:
+      attention.length === 0 ? undefined : (
+        <ButtonLink href={attention[0]!.href}>Начать с главного</ButtonLink>
+      ),
+  };
+
   return (
     <Shell actor={actor} current="/cabinet/manage" board>
       {/* Сводка — первый экран после входа обеих служебных ролей, и она
@@ -276,6 +329,7 @@ export default async function ManageQueue({
           нет вовсе. */}
       <ScreenHead
         title={summary === null ? 'Работа на сегодня' : 'Практика'}
+        answer={answer}
         action={
           dashboard ? <ButtonLink href="/cabinet/manage/report">Отчёт за период</ButtonLink> : undefined
         }
@@ -322,7 +376,7 @@ export default async function ManageQueue({
             </Heading>
             <BarChart
               title="Принято заказов по месяцам"
-              width={560}
+              width={460}
               height={220}
               unit="работ"
               data={months.map((month) => ({ label: month.label, value: month.orders }))}
@@ -401,7 +455,7 @@ export default async function ManageQueue({
             ) : (
               <RankChart
                 title="Работы по состоянию текущего этапа"
-                width={580}
+                width={460}
                 labelWidth={200}
                 data={load.points.map((point) => ({ label: point.label, value: point.count }))}
                 format={(value) => String(Math.round(value))}
@@ -458,8 +512,8 @@ export default async function ManageQueue({
               </Heading>
               <RankChart
                 title="Заказы по типам сопровождения за год"
-                width={560}
-                labelWidth={220}
+                width={460}
+                labelWidth={200}
                 data={demand.map((item) => ({ label: item.typeName, value: item.orders }))}
                 format={(value) => String(Math.round(value))}
               />
@@ -520,6 +574,7 @@ export default async function ManageQueue({
                     >
                       <a
                         href={`/cabinet/stages/${row.id}`}
+                        className="cab-mark"
                         style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
                       >
                         {row.stage} · {row.title}
@@ -622,41 +677,48 @@ export default async function ManageQueue({
                 key={row.key}
                 link
                 style={{
-                  padding: '14px 16px 16px',
+                  position: 'relative',
+                  padding: row.step > 0 ? '14px 16px 16px 24px' : '14px 16px 16px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 6,
-                  // Чем дольше просрочка, тем плотнее заливка. Величина при
-                  // этом стоит и текстом: цвет показывает, а читают
-                  // подпись (решение Р-199).
-                  ...(row.step > 0
-                    ? {
-                        background: ALERT_FILL[row.step],
-                        borderColor: 'var(--pd-alert-edge)',
-                      }
-                    : row.urgent
-                      ? { borderColor: 'var(--pd-accent-edge)' }
-                      : {}),
+                  ...(row.urgent && row.step === 0 ? { borderColor: 'var(--pd-accent-edge)' } : {}),
                 }}
               >
+                {/* Ступень тревоги — кромкой слева, от серой к графитовой;
+                    плашка остаётся белой (решение Р-208). */}
+                {row.step === 0 ? null : (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      left: 10,
+                      top: 14,
+                      bottom: 14,
+                      width: 4,
+                      borderRadius: RADIUS.pill,
+                      background: ALERT_EDGE[row.step],
+                    }}
+                  />
+                )}
+                {/* Вид беды — моноширинной меткой над названием, как метки
+                    разделов на страницах сайта; пилюля на цветном фоне
+                    спорила с заливкой и дублировала её (решение Р-208). */}
+                <Mono style={row.urgent ? { color: 'var(--pd-ink)', fontWeight: 500 } : undefined}>
+                  {row.mark}
+                </Mono>
+                {/* Ссылка растянута на всю плашку: подсвечивается плашка
+                    целиком, и нажиматься должна она же, а не строка в
+                    шестнадцать пикселей (решение Р-209). */}
                 <a
                   href={row.href}
+                  className="cab-stretch"
                   style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}
                 >
                   {row.title}
                 </a>
-                <div>
-                  <Chip tone={row.urgent ? 'accent' : 'neutral'}>{row.mark}</Chip>
-                </div>
                 {row.detail === null ? null : (
-                  // На цветной плашке приглушённый цвет не проходит по
-                  // контрасту: заливка тревоги плотнее белого фона, и
-                  // подпись берётся на ступень темнее (решение Р-199).
-                  <Text
-                    muted={row.step === 0}
-                    size={13}
-                    style={row.step === 0 ? undefined : { color: 'var(--pd-ink-secondary)' }}
-                  >
+                  <Text muted size={13}>
                     {row.detail}
                   </Text>
                 )}
@@ -704,6 +766,7 @@ export default async function ManageQueue({
                   >
                     <a
                       href={`/cabinet/projects/${work.code}`}
+                      className="cab-mark"
                       style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}
                     >
                       {work.title}
@@ -712,17 +775,16 @@ export default async function ManageQueue({
                       {work.client}
                       {work.stage === null ? '' : ` · ${work.stage}`}
                     </Text>
-                    {late === null ? (
-                      <Text muted size={13}>
-                        {work.dueOn === null ? 'срок не назначен' : `срок ${formatDate(work.dueOn)}`}
-                      </Text>
-                    ) : (
-                      <div>
-                        <Chip tone="accent">
-                          просрочено {late} {plural(late, 'день', 'дня', 'дней')}
-                        </Chip>
-                      </div>
-                    )}
+                    {/* Срок работы — строкой, без пилюли «просрочено N
+                        дней»: число считалось от срока работы, а рядом
+                        стояло название этапа, и та же работа выше, в
+                        «Требует внимания», несла другое число — от срока
+                        этапа (решение Р-206). */}
+                    <Text muted size={13}>
+                      {work.dueOn === null
+                        ? 'срок не назначен'
+                        : `срок работы — ${formatDate(work.dueOn)}${late === null ? '' : ' · прошёл'}`}
+                    </Text>
                     {work.contracted === null ? null : (
                       <Text muted size={13}>
                         {formatPlain(work.contracted)} ₽ по договору
@@ -763,6 +825,7 @@ export default async function ManageQueue({
                 >
                   <a
                     href={`/cabinet/manage/leads/${lead.id}`}
+                    className="cab-mark"
                     style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}
                   >
                     {lead.name ?? 'Без имени'}

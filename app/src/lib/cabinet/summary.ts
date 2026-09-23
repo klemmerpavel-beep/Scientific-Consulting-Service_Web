@@ -11,6 +11,7 @@ import { can, ensure, type Actor } from './access.ts';
 import { financeSummary } from './finance.ts';
 import { prisma } from '../db.ts';
 import { scopeProjects } from './access.ts';
+import { now as today } from './clock.ts';
 
 /**
  * Доля издержек, вычитаемая из поступлений при расчёте прибыли.
@@ -158,7 +159,7 @@ const SOON_DAYS = 14;
  */
 export async function stageLoad(
   actor: Actor,
-  now: Date = new Date(),
+  now: Date = today(),
 ): Promise<{ points: LoadPoint[]; overdue: number; planless: number; soon: DueSoon[] }> {
   ensure(actor, 'PROJECT_VIEW');
   const scope = scopeProjects(actor);
@@ -250,8 +251,8 @@ export async function orderSummary(actor: Actor): Promise<{
   ensure(actor, 'PROJECT_VIEW');
   const scope = scopeProjects(actor) ?? {};
   const DAY = 24 * 60 * 60 * 1000;
-  const quarterAgo = new Date(Date.now() - 90 * DAY);
-  const halfYearAgo = new Date(Date.now() - 180 * DAY);
+  const quarterAgo = new Date(today().getTime() - 90 * DAY);
+  const halfYearAgo = new Date(today().getTime() - 180 * DAY);
 
   const [
     orders,
@@ -332,7 +333,7 @@ export async function moneyBrief(actor: Actor): Promise<{
   overdue: bigint;
 }> {
   ensure(actor, 'MARGIN_VIEW');
-  const today = new Date();
+  const day = today();
   const [received, awaiting, overdue] = await Promise.all([
     prisma.tranche.aggregate({ _sum: { amount: true }, where: { status: 'PAID' } }),
     prisma.tranche.aggregate({
@@ -341,7 +342,7 @@ export async function moneyBrief(actor: Actor): Promise<{
     }),
     prisma.tranche.aggregate({
       _sum: { amount: true },
-      where: { status: { in: ['PLANNED', 'INVOICED'] }, plannedDate: { lt: today } },
+      where: { status: { in: ['PLANNED', 'INVOICED'] }, plannedDate: { lt: day } },
     }),
   ]);
   return {

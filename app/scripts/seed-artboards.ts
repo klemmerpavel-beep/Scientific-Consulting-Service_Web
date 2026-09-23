@@ -691,6 +691,10 @@ async function main() {
       data: {
         source: 'cabinet',
         form: 'request',
+        // Дата задаётся от постоянной точки: по умолчанию база ставит
+        // настоящее «сейчас», и снимок очереди менялся ото дня ко дню
+        // (решение Р-205).
+        createdAt: day(1),
         name: 'Панкратов Егор Максимович',
         contactKind: 'email',
         contact: `lead@${DOMAIN}`,
@@ -711,6 +715,7 @@ async function main() {
     where: { id: queued.id },
     data: {
       source: 'cabinet',
+      createdAt: day(1),
       speciality: '2.8.6 — Горные машины и оборудование',
       organization: 'Горный университет',
       supervisorName: 'Соловьёв Дмитрий Викторович',
@@ -811,7 +816,12 @@ async function main() {
   }
 
   // Токены печатаются машинно разбираемой строкой: их читает скрипт снимка.
-  process.stdout.write(`${JSON.stringify({ links, showcase: PLAN.length > 0 ? 'ok' : 'empty' })}\n`);
+  // День съёмки отдаётся инструментам снимка: экраны считают просрочку и
+  // окна от часов кабинета, и часы должны стоять там же, где отсчёт
+  // наполнения (решение Р-205).
+  process.stdout.write(
+    `${JSON.stringify({ links, showcase: PLAN.length > 0 ? 'ok' : 'empty', now: new Date(REFERENCE).toISOString() })}\n`,
+  );
   await prisma.$disconnect();
 }
 

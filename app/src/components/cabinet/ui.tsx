@@ -5,7 +5,7 @@ import { WaveBar } from './Charts.tsx';
 import { FilePick } from './FilePick.tsx';
 import { BUTTON_PRIMARY, BUTTON_QUIET, MONO, RADIUS, SANS, SERIF, SHADOW } from './tokens.ts';
 import type { WaveMood } from '../../lib/cabinet/charts';
-import { STAGE_STATE_LABEL, type StageStateKey } from '../../lib/cabinet/stage-state';
+import { STAGE_STATE_LABEL, stageLabel, type StageStateKey } from '../../lib/cabinet/stage-state';
 
 /**
  * Составные части экранов кабинета. Пишутся вручную и типизированно —
@@ -95,7 +95,10 @@ export function TableCard({
         role="region"
         aria-label={label}
         tabIndex={0}
-        style={{ overflowX: 'auto', borderRadius: RADIUS.card }}
+        // Точка отсчёта для подписей, убранных с глаз: без неё скрытая
+        // подпись поля в дальней колонке позиционировалась от страницы и
+        // раздвигала её вбок на телефоне (решение Р-209).
+        style={{ position: 'relative', overflowX: 'auto', borderRadius: RADIUS.card }}
       >
         {children}
       </div>
@@ -936,10 +939,14 @@ export function Thread({
                     }}
                   >
                     {authorName(message.author, viewer, message.author.id)}
-                    <span style={{ fontWeight: 400, color: 'var(--pd-ink-muted)' }}>
-                      {' · '}
-                      {ROLE_LABEL[message.author.role] ?? message.author.role}
-                    </span>
+                    {/* Свою роль человек знает: «Вы · клиент» читалось как
+                        пометка системы о нём самом (решение Р-206). */}
+                    {mine ? null : (
+                      <span style={{ fontWeight: 400, color: 'var(--pd-ink-muted)' }}>
+                        {' · '}
+                        {ROLE_LABEL[message.author.role] ?? message.author.role}
+                      </span>
+                    )}
                   </div>
                 ) : null}
                 <div
@@ -1222,13 +1229,20 @@ export function LongTable({
  * два разных кегля числа через месяц.
  */
 export function Tile({ label, value, note }: { label: string; value: string; note?: string }) {
+  // Плитка — ячейка полосы величин, а не отдельная карточка: четыре-пять
+  // карточек в ряд нарушали правило «не более двух плашек в ряду» на
+  // тринадцати экранах руководителя, а машинная проверка их не видела —
+  // сетка плиток задавалась мимо проверяемого шаблона (решение Р-209).
   return (
-    <Card>
+    <div
+      style={{
+        padding: '16px 20px 18px',
+        borderTop: '1px solid var(--pd-divider)',
+        borderLeft: '1px solid var(--pd-divider)',
+      }}
+    >
       <Mono>{label}</Mono>
-      {/* Число — главное в плитке, и оно обязано весить больше подписей
-          вокруг. Прежде вес не задавался вовсе, и «4 370 000 ₽» при кегле
-          22 читалось легче заголовка колонки под ним; интерлиньяж 1,6 на
-          однострочном числе добавлял к плитке девять лишних пикселей
+      {/* Число — главное в ячейке и весит больше подписей вокруг
           (решение Р-175). */}
       <Text
         size={22}
@@ -1247,21 +1261,59 @@ export function Tile({ label, value, note }: { label: string; value: string; not
           {note}
         </Text>
       )}
-    </Card>
+    </div>
   );
 }
 
-export function Tiles({ children }: { children: ReactNode }) {
-  return (
+/**
+ * Полоса величин: одна плашка, ячейки разделены волосяной линией.
+ *
+ * Сетка сдвинута на пиксель вверх и влево, а карточка режет выступ: так
+ * верхняя и левая линии первого ряда и первого столбца уходят под край, и
+ * разделители остаются только между ячейками при любом их числе в ряду.
+ */
+export function Tiles({ children, inset = false }: { children: ReactNode; inset?: boolean }) {
+  const grid = (
     <div
-      className="cab-block"
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-        gap: 16,
-        marginBottom: 28,
+        margin: '-1px 0 0 -1px',
       }}
     >
+      {children}
+    </div>
+  );
+  // Внутри карточки полоса — вложенный блок: радиус от внешнего, 10 px, и
+  // без собственной тени (раздел 4.2 дизайн-системы).
+  if (inset) {
+    return (
+      <div
+        style={{
+          overflow: 'hidden',
+          border: '1px solid var(--pd-border)',
+          borderRadius: RADIUS.field,
+          marginBottom: 16,
+        }}
+      >
+        {grid}
+      </div>
+    );
+  }
+  return <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 28 }}>{grid}</Card>;
+}
+
+/**
+ * Таблица, прокручиваемая вбок внутри уже стоящей карточки.
+ *
+ * `TableCard` сам карточка и внутрь другой не вкладывается; таблицы
+ * отчёта и правил уведомлений стояли в карточке голыми и на телефоне
+ * раздвигали страницу вбок (решение Р-209). Прокрутка — с фокусом и
+ * именем, как у всех областей прокрутки кабинета (решение Р-168).
+ */
+export function TableScroll({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div role="region" aria-label={label} tabIndex={0} style={{ position: 'relative', overflowX: 'auto' }}>
       {children}
     </div>
   );
@@ -1321,7 +1373,7 @@ export function plural(count: number, one: string, few: string, many: string): s
   return many;
 }
 
-export { STAGE_STATE_LABEL, type StageStateKey };
+export { STAGE_STATE_LABEL, stageLabel, type StageStateKey };
 
 /**
  * Отметка этапа. Цвет несёт одно различие — начат этап или нет; само
@@ -1342,6 +1394,12 @@ export interface StepItem {
   readonly title: string;
   readonly state: StageStateKey;
   readonly dueOn?: string | null;
+  /**
+   * Срок прошёл, а этап не закрыт. Называется словом у всех ролей: дата в
+   * прошлом без пометки читалась как опечатка, а эксперт не узнавал о
+   * сорванном сроке своего же этапа (решение Р-206).
+   */
+  readonly late?: boolean;
   readonly href?: string;
 }
 
@@ -1356,10 +1414,13 @@ export function Progress({
   done,
   total,
   current,
+  staff = false,
 }: {
   done: number;
   total: number;
   current: { title: string; state: StageStateKey } | null;
+  /** Подпись состояния глазами практики, а не клиента (решение Р-206). */
+  staff?: boolean;
 }) {
   // Пока плана нет, полосе нечего показывать, а фраза «План работы ещё
   // составляется» в перечне эксперта повторялась семнадцать раз подряд и
@@ -1385,7 +1446,7 @@ export function Progress({
           <span>Все этапы завершены</span>
         ) : (
           <>
-            <strong style={{ fontWeight: 600 }}>{STAGE_STATE_LABEL[current.state]}</strong>
+            <strong style={{ fontWeight: 600 }}>{stageLabel(current.state, staff)}</strong>
             <span style={{ color: 'var(--pd-ink-secondary)' }}>{current.title}</span>
           </>
         )}
@@ -1474,10 +1535,21 @@ export interface RoadmapItem extends StepItem {
  * тот же смысл на любой ширине, называет состояние словом и показывает
  * причину остановки там же, где она возникла.
  */
-export function Roadmap({ items }: { items: readonly RoadmapItem[] }) {
+export function Roadmap({
+  items,
+  staff = false,
+}: {
+  items: readonly RoadmapItem[];
+  /** Подписи глазами практики; куратору не пишется «куратор добавит». */
+  staff?: boolean;
+}) {
   if (items.length === 0) {
     return (
-      <Text muted>Этапы ещё не заведены — куратор добавит их после согласования плана.</Text>
+      <Text muted>
+        {staff
+          ? 'План работ ещё не заведён.'
+          : 'Этапы ещё не заведены — куратор добавит их после согласования плана.'}
+      </Text>
     );
   }
   return (
@@ -1546,8 +1618,9 @@ export function Roadmap({ items }: { items: readonly RoadmapItem[] }) {
                 color: 'var(--pd-ink-muted)',
               }}
             >
-              {STAGE_STATE_LABEL[item.state]}
+              {stageLabel(item.state, staff)}
               {item.dueOn ? ` · срок ${item.dueOn}` : ''}
+              {item.late === true && item.state !== 'DONE' ? ' · срок прошёл' : ''}
             </span>
             {item.note === null || item.note === undefined ? null : (
               <span
@@ -1624,6 +1697,7 @@ export function ScreenHead({
   note,
   aside,
   action,
+  answer,
 }: {
   /** Куда вернуться: код работы для экранов внутри неё. */
   backHref?: string;
@@ -1642,7 +1716,110 @@ export function ScreenHead({
    * общее действие страницы, а не среди карточек (решение Р-201).
    */
   action?: ReactNode;
+  /**
+   * Ответ экрана — то, ради чего владелец его открыл.
+   *
+   * Начальный экран каждой роли начинался с названия раздела, а ответ
+   * («что с моей работой», «что горит сегодня») приходилось собирать
+   * глазами из плашек ниже. Теперь он стоит первым и набран, как лид
+   * первого экрана сайта: моноширинная метка, фраза антиквой, пояснение
+   * гротеском, одно действие. Шапка при этом становится акцентной
+   * панелью — той единственной тёмной поверхностью на страницу, которую
+   * дизайн-система разрешает (раздел 1, решение Р-207).
+   *
+   * Название экрана остаётся заголовком первого уровня — меткой над
+   * ответом: по нему читалка строит оглавление.
+   */
+  answer?: {
+    lead: string;
+    detail?: string | null;
+    action?: ReactNode;
+  };
 }) {
+  if (answer !== undefined) {
+    return (
+      <div className="cab-head cab-answer" style={{ marginBottom: 24 }}>
+        <section
+          style={{
+            display: 'grid',
+            gap: 10,
+            padding: '20px 26px 24px',
+            borderRadius: RADIUS.card,
+            background: 'var(--pd-accent-deep)',
+            color: 'var(--pd-ink-inverse)',
+          }}
+        >
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <h1
+              style={{
+                margin: 0,
+                fontFamily: MONO,
+                fontSize: 12,
+                fontWeight: 500,
+                lineHeight: 1.4,
+                letterSpacing: '.06em',
+                textTransform: 'uppercase',
+                color: 'var(--pd-accent-edge)',
+              }}
+            >
+              {title}
+            </h1>
+            {aside == null ? null : (
+              <span
+                style={{
+                  marginLeft: 'auto',
+                  fontFamily: MONO,
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                  color: 'var(--pd-accent-mark)',
+                }}
+              >
+                {aside}
+              </span>
+            )}
+            {action === undefined ? null : (
+              <span style={{ marginLeft: aside == null ? 'auto' : 12, display: 'flex', gap: 8 }}>
+                {action}
+              </span>
+            )}
+          </div>
+          <p
+            style={{
+              margin: 0,
+              maxWidth: '44ch',
+              fontFamily: SERIF,
+              fontSize: 'clamp(22px,2.4vw,28px)',
+              fontWeight: 500,
+              lineHeight: 1.24,
+              letterSpacing: '-.012em',
+              color: 'var(--pd-ink-inverse)',
+            }}
+          >
+            {answer.lead}
+          </p>
+          {answer.detail == null ? null : (
+            <p
+              style={{
+                margin: 0,
+                maxWidth: '72ch',
+                fontFamily: SANS,
+                fontSize: 15,
+                lineHeight: 1.6,
+                color: 'var(--pd-accent-mark)',
+              }}
+            >
+              {answer.detail}
+            </p>
+          )}
+          {answer.action === undefined ? null : (
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 6 }}>
+              {answer.action}
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  }
   return (
     // Шапка экрана блоком не считается: она называет страницу, а не
     // несёт содержимое. Класс нужен правилу о пяти блоках, чтобы
@@ -1904,12 +2081,45 @@ export function BoardColumn({
  * ото дня и ломал побайтную воспроизводимость снимков, на которой держится
  * приёмка облика.
  */
+/**
+ * Что сейчас с работой — одной фразой, по роли читающего.
+ *
+ * Прежде фраза по умолчанию была одна на всех: «Сейчас от вас ничего не
+ * требуется — работа идёт». Её читали эксперт и менеджер, ею же
+ * подписывалась работа без плана и работа, закрытая целиком
+ * (решение Р-206).
+ */
+function panelAnswer(
+  current: { state: StageStateKey } | null,
+  total: number,
+  staff: boolean,
+): string {
+  if (current === null) {
+    if (total === 0) {
+      return staff ? 'План работ не заведён.' : 'План работ составляет куратор — этапы появятся здесь.';
+    }
+    return staff ? 'Все этапы закрыты.' : 'Работа закрыта. Материалы остаются доступны здесь.';
+  }
+  if (!staff) return 'Сейчас от вас ничего не требуется — работа идёт.';
+  const turn: Record<StageStateKey, string> = {
+    NOT_STARTED: 'Ход за практикой: этап не начат.',
+    IN_PROGRESS: 'Ход за исполнителем: этап в работе.',
+    AWAITING_CLIENT: 'Ход за клиентом: ждём материалов.',
+    IN_APPROVAL: 'Ход за клиентом: этап на согласовании.',
+    DONE: 'Этап закрыт.',
+  };
+  return turn[current.state];
+}
+
 export function ProgressPanel({
   done,
   total,
   current,
   stageDueOn,
   projectDueOn,
+  stageLate = false,
+  projectLate = false,
+  staff = false,
   action,
   actionHref,
   actionLabel,
@@ -1920,6 +2130,11 @@ export function ProgressPanel({
   current: { title: string; state: StageStateKey } | null;
   stageDueOn?: string | null;
   projectDueOn?: string | null;
+  /** Срок прошёл: называется словом, не цветом (решение Р-206). */
+  stageLate?: boolean;
+  projectLate?: boolean;
+  /** Панель читает практика, а не клиент. */
+  staff?: boolean;
   action?: string | null;
   actionHref?: string | null;
   actionLabel?: string;
@@ -1928,7 +2143,8 @@ export function ProgressPanel({
   const share = total === 0 ? 0 : Math.round((done / total) * 100);
   // Ожидание человека подсвечивается: это единственное состояние, в котором
   // работа стоит из-за него, и оно не должно теряться среди прочих.
-  const waiting = current?.state === 'AWAITING_CLIENT' || current?.state === 'IN_APPROVAL';
+  const waiting =
+    !staff && (current?.state === 'AWAITING_CLIENT' || current?.state === 'IN_APPROVAL');
   // Настроение шкалы: волна набегает, пока работа идёт, опадает до ряби,
   // когда она ждёт человека, и сходит в гладь, когда всё закрыто. Считается
   // из состояния, а не из текущего времени, — иначе снимок менялся бы ото
@@ -1961,11 +2177,12 @@ export function ProgressPanel({
             ? total === 0
               ? 'План работы ещё составляется'
               : 'Все этапы завершены'
-            : `${STAGE_STATE_LABEL[current.state]}: ${current.title}`}
+            : `${stageLabel(current.state, staff)}: ${current.title}`}
         </span>
         {/* Доля названа числом: полоса показывает её вид, а прочитать
-            выполнение заказа человек должен, не измеряя глазом. */}
-        {(
+            выполнение заказа человек должен, не измеряя глазом. При пустом
+            плане «0 %» рядом с «план составляется» ничего не сообщал. */}
+        {total === 0 ? null : (
           <span
             style={{
               marginLeft: 'auto',
@@ -1987,15 +2204,20 @@ export function ProgressPanel({
       <WaveBar share={share} mood={mood} />
 
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Фраза — ответ на вопрос, с которым сюда приходят, и набрана
+            антиквой, как лид на страницах сайта: она главнее строки
+            состояния над шкалой (решение Р-207). */}
         <span
           style={{
-            fontFamily: SANS,
-            fontSize: 15,
-            lineHeight: 1.5,
-            color: 'var(--pd-ink-secondary)',
+            fontFamily: SERIF,
+            fontSize: 20,
+            fontWeight: 500,
+            lineHeight: 1.4,
+            letterSpacing: '-.005em',
+            color: 'var(--pd-ink)',
           }}
         >
-          {action ?? 'Сейчас от вас ничего не требуется — работа идёт.'}
+          {action ?? panelAnswer(current, total, staff)}
         </span>
         {actionHref == null ? null : (
           <ButtonLink href={actionHref} tone="primary">
@@ -2020,8 +2242,18 @@ export function ProgressPanel({
             {done} из {total} {plural(total, 'этапа', 'этапов', 'этапов')} завершено
           </span>
         )}
-        {stageDueOn == null ? null : <span>срок этапа — {stageDueOn}</span>}
-        {projectDueOn == null ? null : <span>срок работы — {projectDueOn}</span>}
+        {stageDueOn == null ? null : (
+          <span>
+            срок этапа — {stageDueOn}
+            {stageLate ? ' · прошёл' : ''}
+          </span>
+        )}
+        {projectDueOn == null ? null : (
+          <span>
+            срок работы — {projectDueOn}
+            {projectLate ? ' · прошёл' : ''}
+          </span>
+        )}
       </div>
     </section>
   );
@@ -2196,7 +2428,7 @@ export function MaterialList({
                 {item.title}
               </span>
             ) : (
-              <a href={item.href} style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.5 }}>
+              <a className="cab-mark" href={item.href} style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.5 }}>
                 {item.title}
               </a>
             )}

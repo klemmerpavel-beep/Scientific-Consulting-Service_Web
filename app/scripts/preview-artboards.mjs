@@ -15,7 +15,7 @@
  * страницы сайта (`/`, `/offer`, `/privacy`) внутри артбордов получают
  * префикс подпапки наравне с остальными.
  */
-import { cpSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const SOURCE = path.join('..', 'design', 'cabinet');
@@ -99,6 +99,10 @@ export function writeCabinetArtboards() {
     const source = readFileSync(path.join(SOURCE, file), 'utf8');
     writeFileSync(path.join(TARGET, `${slug}.html`), publishable(source, slug));
   }
+
+  // Гарнитуры лежат рядом с артбордами и едут вместе с ними (решение Р-204).
+  const fonts = path.join(SOURCE, 'fonts');
+  if (existsSync(fonts)) cpSync(fonts, path.join(TARGET, 'fonts'), { recursive: true });
 
   writeFileSync(path.join(TARGET, 'index.html'), indexPage(files.length));
   console.log(`Артборды кабинета в витрине: ${files.length} и перечень`);

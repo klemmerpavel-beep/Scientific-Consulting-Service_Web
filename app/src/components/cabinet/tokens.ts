@@ -11,7 +11,10 @@
 
 import type { CSSProperties } from 'react';
 
-/** Блок токенов, совпадающий с макетами сайта побайтно. */
+/**
+ * Блок токенов: двадцать семь токенов макетов сайта в их порядке и две
+ * ступени шкалы графиков, заведённые кабинетом (решение Р-175).
+ */
 export const ROOT_TOKENS =
   ':root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;' +
   '--pd-ink-inverse:#FFFFFF;--pd-border:#E3E7EC;--pd-divider:#EFF1F4;' +
@@ -25,14 +28,11 @@ export const ROOT_TOKENS =
   // Две ступени сверх палитры сайта: шкала рядов графиков. Типов
   // сопровождения шесть, а различимых ступеней было четыре — пятый
   // сектор кольца повторял цвет первого (решение Р-175).
-  '--pd-series-mid:#5C8FD6;--pd-series-quiet:#98A2B3;' +
-  // Четыре ступени тревоги: чем дольше просрочка, тем плотнее заливка
-  // плашки. Одного красного мало — на сводке рядом стоят просрочки в день
-  // и в год, и выглядели они одинаково (решение Р-199). Ступени проверены
-  // на контраст с `--pd-err-ink`: 7,6 / 7,0 / 5,8 / 4,6 — все выше 4,5,
-  // то есть уровень AA держится и на самой плотной.
-  '--pd-alert-1:#FDF2F0;--pd-alert-2:#FAE7E5;--pd-alert-3:#F3CFC9;' +
-  '--pd-alert-4:#EBB4AC;--pd-alert-edge:#E4A79E;--pd-alert-ink:#8E2C22}';
+  // Шкала тревоги `--pd-alert-*` (решение Р-199) снята решением Р-208:
+  // её вторая ступень и цвет текста побайтно совпадали с фоном и текстом
+  // блока ошибки, то есть красный выходил за пределы исхода действия под
+  // другим именем. Ступень просрочки несёт кромка из шкалы текста.
+  '--pd-series-mid:#5C8FD6;--pd-series-quiet:#98A2B3}';
 
 // Записано ровно так же, как на девяти страницах сайта: тот же набор и
 // тот же порядок, без пробелов после запятых. Гарнитуры совпадали и
@@ -145,6 +145,9 @@ p a{text-decoration:underline;text-underline-offset:3px;text-decoration-thicknes
 *:focus-visible{outline:2px solid var(--pd-accent);outline-offset:2px}
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}
 .pd-skip:focus{left:0;color:var(--pd-ink-inverse)}
+/* Акцентная панель ответа: тёмный синий, как на страницах сайта. Кольцо
+   фокуса акцентного цвета на нём не видно — берётся белое (решение Р-207). */
+.cab-answer *:focus-visible{outline-color:var(--pd-ink-inverse)}
 .cab-nav a{color:var(--pd-ink-secondary)}
 .cab-nav a:hover,.cab-nav a:focus-visible{color:var(--pd-accent)}
 .cab-nav a[aria-current="page"]{color:var(--pd-accent);box-shadow:inset 0 -2px 0 var(--pd-accent)}
@@ -156,6 +159,9 @@ p a{text-decoration:underline;text-underline-offset:3px;text-decoration-thicknes
 .cab-card{transition:box-shadow 200ms ${EASING},border-color 200ms ${EASING}}
 .cab-link-card:hover,.cab-link-card:focus-within{box-shadow:${SHADOW.hover};border-color:var(--pd-accent-edge)}
 .cab-mark{display:inline-flex;align-items:center;min-height:44px}
+/* Ссылка, растянутая на плашку: нажимается вся плашка, которая и так
+   подсвечивается при наведении, а не строка названия (решение Р-209). */
+.cab-stretch::after{content:"";position:absolute;inset:0;border-radius:14px}
 .cab-wordmark{transition:background 180ms ${EASING}}
 .cab-wordmark:hover{background:rgba(216,228,243,.62)}
 .cab-wordmark:active{background:rgba(216,228,243,.84)}
@@ -178,17 +184,15 @@ details[open]>summary .cab-caret{transform:rotate(90deg)}
    кривой (решение Р-197). */
 details[open]>summary{background:var(--pd-accent-mark);color:var(--pd-accent-deep)}
 details[open].cab-block{border-color:var(--pd-accent-edge)}
-/* Волна готовности покачивается, пока работа идёт. Ход небольшой и
-   медленный: это признак жизни, а не мигание. */
-@keyframes cab-tide{from{transform:translateY(.6px)}to{transform:translateY(-.9px)}}
-.cab-tide{animation:cab-tide 3200ms ${EASING} infinite alternate}
+/* Бесконечные движения — покачивание волны (3,2 с) и пульс заготовки
+   (1,4 с) — сняты: в системе движется только появление и отклик на
+   действие, 180—260 мс (решение Р-209). Заготовка стоит неподвижно. */
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-@keyframes cab-pulse{0%,100%{opacity:1}50%{opacity:.55}}
-.cab-skeleton{background:var(--pd-surface-quiet);border-radius:6px;animation:cab-pulse 1400ms ${EASING} infinite}
+.cab-skeleton{background:var(--pd-surface-quiet);border-radius:6px}
 [role="status"],[role="alert"]{animation:pd-appear 220ms ${EASING}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
 @media (max-width:1024px){.cab-board-main{display:block!important;overflow:visible!important;padding-bottom:clamp(72px,7vw,112px)!important}.cab-board{grid-template-columns:minmax(0,1fr)!important}.cab-board-body{max-height:none!important;overflow:visible!important}}
-@media print{@page{margin:14mm}body{background:#fff}header,footer,nav,.pd-skip,.cab-no-print{display:none!important}main{padding:0!important;max-width:none!important}.cab-block{break-inside:avoid;box-shadow:none!important}details{break-inside:avoid}details>*:not(summary){display:block!important}details>summary{display:none!important}a{text-decoration:none;color:inherit}}
+@media print{@page{margin:14mm}body{background:var(--pd-ink-inverse)}header,footer,nav,.pd-skip,.cab-no-print{display:none!important}main{padding:0!important;max-width:none!important}.cab-block{break-inside:avoid;box-shadow:none!important}details{break-inside:avoid}details>*:not(summary){display:block!important}details>summary{display:none!important}a{text-decoration:none;color:inherit}}
 `;

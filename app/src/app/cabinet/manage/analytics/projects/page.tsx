@@ -8,12 +8,13 @@ import {
 } from '../../../../../components/cabinet/ui';
 import { cycles, overview } from '../../../../../lib/cabinet/analytics/metrics';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, cycleLabel, head, num, share } from '../shared';
+import { now as clockNow } from '../../../../../lib/cabinet/clock';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsProjects() {
   const { actor, rows } = await analyticsScreen();
-  const now = new Date();
+  const now = clockNow();
   const report = cycles(rows, now);
   const total = overview(rows);
 
@@ -78,7 +79,7 @@ export default async function AnalyticsProjects() {
               }
             >
               <RankChart
-                width={1120}
+                width={1000}
                 labelWidth={380}
                 title="Медиана срока по позициям"
                 data={withMedian.map((row) => ({ label: row.typeName, value: row.estimate.median! }))}

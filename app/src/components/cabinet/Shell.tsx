@@ -208,7 +208,10 @@ export default function Shell({
             boxSizing: 'border-box',
             maxWidth: CONTAINER,
             margin: '0 auto',
-            padding: `24px ${GUTTER}px`,
+            // Ссылки подвала набраны целью в 44 px (правило Р-57): прежде
+            // они были строкой в пятнадцать пикселей, и отступы подвала
+            // уменьшены на ту же величину (решение Р-209).
+            padding: `10px ${GUTTER}px`,
             display: 'flex',
             gap: 20,
             flexWrap: 'wrap',
@@ -221,8 +224,12 @@ export default function Shell({
               законом. В закрытом разделе человек уже знает, с кем работает,
               и строка занимает место без пользы. */}
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 20 }}>
-            <a href="/offer">Оферта</a>
-            <a href="/privacy">Политика обработки данных</a>
+            <a className="cab-mark" href="/offer">
+              Оферта
+            </a>
+            <a className="cab-mark" href="/privacy">
+              Политика обработки данных
+            </a>
           </span>
         </div>
       </footer>

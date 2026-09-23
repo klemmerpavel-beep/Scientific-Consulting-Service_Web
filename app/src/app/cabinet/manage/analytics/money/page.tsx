@@ -33,12 +33,13 @@ import {
   num,
   share,
 } from '../shared';
+import { now as clockNow } from '../../../../../lib/cabinet/clock';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsMoney() {
   const { actor, rows } = await analyticsScreen();
-  const now = new Date();
+  const now = clockNow();
 
   const total = overview(rows);
   const months = byMonth(rows);
@@ -94,7 +95,7 @@ export default async function AnalyticsMoney() {
           >
             <LineChart
               title="Договоры и поступления по месяцам"
-              width={1120}
+              width={1000}
               categories={months.map((month) => month.label)}
               series={[
                 { name: 'Законтрактовано', points: months.map((month) => Number(month.contracted) / 100) },
@@ -138,7 +139,7 @@ export default async function AnalyticsMoney() {
           >
             <BarChart
               title="Сезонная норма заказов"
-              width={1120}
+              width={1000}
               unit="заказов в месяц"
               data={season.map((month) => ({ label: month.label, value: month.norm }))}
               format={(value) => compactNumber(value, 1)}

@@ -93,7 +93,6 @@ export default async function PaymentsScreen({
         backHref={`/cabinet/projects/${project.code}`}
         backLabel={project.title}
         title="Оплаты и документы"
-        note={project.title}
       />
 
       {contract === null || money === null ? (

@@ -25,6 +25,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import path from 'node:path';
 import { chromium } from '/var/tmp/pwtest/node_modules/playwright-core/index.mjs';
 
+import { embedFonts } from './cabinet-fonts.mjs';
+
 const ROOT = path.resolve(import.meta.dirname, '..');
 const APP = path.join(ROOT, 'app');
 const OUT = path.join(ROOT, 'design', 'cabinet');
@@ -212,13 +214,14 @@ async function snapshot(page, url) {
  * Артборд должен открываться с диска и не меняться от запуска к запуску.
  *
  * Правила @font-face ведут на файлы сборки, которых рядом с артбордом нет:
- * они вырезаются, гарнитура берётся из стека, как и в макетах сайта.
- * Идентификаторы записей выдаются базой заново при каждом наполнении, и
- * без приведения к постоянному виду каждый снимок отличался бы от
- * предыдущего одними только ключами.
+ * файлы кладутся в `design/cabinet/fonts/`, правила переписываются на них
+ * (`embedFonts`, решение Р-204). Идентификаторы записей выдаются базой
+ * заново при каждом наполнении, и без приведения к постоянному виду
+ * каждый снимок отличался бы от предыдущего одними только ключами.
  */
 function stabilize(text) {
-  const withoutFonts = text.replace(/@font-face\s*\{[^}]*\}/g, '');
+  const { css, faces } = embedFonts(text, OUT);
+  const withoutFonts = faces === '' ? css : css.replace('<style>\n', `<style>\n${faces}\n`);
   const ids = new Map();
   return withoutFonts.replace(/\b(c[a-z0-9]{24})\b/g, (id) => {
     if (!ids.has(id)) ids.set(id, `id-${String(ids.size + 1).padStart(2, '0')}`);
@@ -245,9 +248,9 @@ function wrap({ title, about, path: route, html, styles }) {
   Маршрут: ${route}
   Пересборка: node tools/cabinet-artboards.mjs
 
-  Данные вымышлены. Гарнитуры объявлены стеком, как и в макетах сайта:
-  файлы шрифтов в макеты не встраиваются, поэтому при открытии с диска
-  подставляется системная гарнитура из того же стека.
+  Данные вымышлены. Гарнитуры сайта лежат рядом, в каталоге fonts/: при
+  открытии с диска артборд набирается Literata, Inter и JetBrains Mono,
+  а не системной заменой (решение Р-204).
 -->
 <style>
 ${styles}
@@ -280,7 +283,10 @@ async function main() {
   await new Promise((resolve, reject) => {
     seed.on('exit', (code) => (code === 0 ? resolve() : reject(new Error('Наполнение отказало'))));
   });
-  const { links } = JSON.parse(out.trim().split('\n').at(-1));
+  const { links, now } = JSON.parse(out.trim().split('\n').at(-1));
+  // Часы кабинета стоят на дне наполнения: просрочка и окна считаются от
+  // него, и снимок не зависит от дня съёмки (решение Р-205).
+  env.CABINET_NOW = now;
 
   await ensureBuild(env);
   const server = await startServer(env);

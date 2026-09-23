@@ -20,6 +20,7 @@ import {
   TABLE_HEAD,
   Text,
   formatDate,
+  TableScroll,
 } from '../../../components/cabinet/ui';
 import { createTelegramBindLink } from '../../../lib/cabinet/auth';
 import { ownChannels } from '../../../lib/cabinet/admin';
@@ -217,6 +218,7 @@ export default async function SettingsScreen({
               письмом. Снятая всюду строка означает, что о таком событии не сообщать вовсе.
             </Text>
             <Form action={saveNotifyRules}>
+              <TableScroll label="Какое событие каким каналом">
               <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
                 <thead>
                   <tr>
@@ -248,6 +250,7 @@ export default async function SettingsScreen({
                   ))}
                 </tbody>
               </table>
+              </TableScroll>
               <FormActions>
                 <Button>Сохранить правила</Button>
               </FormActions>
