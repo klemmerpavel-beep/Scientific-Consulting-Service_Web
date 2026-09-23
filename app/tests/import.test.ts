@@ -279,9 +279,15 @@ describe('разбор срока', () => {
   });
 });
 
-describe('состояние работы: текст ведёт, красная заливка перекрывает', () => {
-  it('зелёная заливка не делает работу закрытой, но расхождение отмечается', () => {
-    assert.deepEqual(classifyStatus('в работе', GREEN), { status: 'IN_WORK', conflict: true });
+describe('состояние работы: заливка ведёт, текст — при её отсутствии', () => {
+  // Решение Р-216: заливка — рабочая разметка заказчика. Текст «в работе»
+  // остаётся в строке и после сдачи, поэтому ведущим признаком он быть не
+  // может; расхождение по-прежнему выводится на разбор.
+  const YELLOW = 'FFFFFF00';
+  const BLUE = 'FF00B0F0';
+
+  it('зелёная заливка закрывает работу, расхождение с текстом отмечается', () => {
+    assert.deepEqual(classifyStatus('в работе', GREEN), { status: 'CLOSED', conflict: true });
   });
 
   it('зелёная заливка при согласном тексте расхождения не даёт', () => {
@@ -292,12 +298,33 @@ describe('состояние работы: текст ведёт, красная
     assert.deepEqual(classifyStatus('', GREEN), { status: 'CLOSED', conflict: false });
   });
 
+  it('жёлтая заливка — работа идёт, даже когда в тексте «черновик готов»', () => {
+    assert.deepEqual(classifyStatus('черновик готов', YELLOW), { status: 'IN_WORK', conflict: true });
+    assert.deepEqual(classifyStatus('В работе', YELLOW), { status: 'IN_WORK', conflict: false });
+  });
+
+  it('голубая заливка — работа на старте', () => {
+    assert.deepEqual(classifyStatus('На старте', BLUE), { status: 'ON_START', conflict: false });
+  });
+
   it('красная заливка перекрывает текст и даёт расхождение', () => {
     assert.deepEqual(classifyStatus('закрыт', RED), { status: 'STOPPED', conflict: true });
   });
 
   it('красная заливка при согласном тексте расхождения не даёт', () => {
     assert.deepEqual(classifyStatus('остановлен', RED), { status: 'STOPPED', conflict: false });
+  });
+
+  it('без заливки и при цвете вне таблицы решает текст', () => {
+    assert.deepEqual(classifyStatus('в работе', null), { status: 'IN_WORK', conflict: false });
+    assert.deepEqual(classifyStatus('готово', 'FF7030A0'), { status: 'CLOSED', conflict: false });
+  });
+
+  it('таблица заливок из справочника перекрывает таблицу по умолчанию', () => {
+    assert.deepEqual(classifyStatus('', 'FF7030A0', { FF7030A0: 'STOPPED' }), {
+      status: 'STOPPED',
+      conflict: false,
+    });
   });
 
   it('неразобранный текст без заливки считается работой в процессе', () => {
@@ -324,7 +351,9 @@ describe('книга целиком', () => {
       NONEXISTENT_DATE: 2,
       DEADLINE_WITHOUT_YEAR: 1,
       PAYMENT_EXCEEDS_CONTRACT: 1,
-      CLOSED_WITH_OUTSTANDING_BALANCE: 1,
+      // Зелёная строка «в работе» с остатком закрывается заливкой и
+      // даёт второе замечание об остатке (решение Р-216).
+      CLOSED_WITH_OUTSTANDING_BALANCE: 2,
       DUPLICATE_CLIENT_BY_NAME: 4,
       STATUS_FILL_CONFLICT: 2,
     };
@@ -372,10 +401,11 @@ describe('книга целиком', () => {
     );
   });
 
-  it('состояние при расхождении берётся по тексту, а не по цвету', () => {
+  it('состояние при расхождении берётся по заливке, а не по тексту', () => {
     const rows = parsed().rows;
-    assert.equal(rows.find((row) => row.rowNumber === 3)?.status, 'IN_WORK');
-    // Красная заливка — единственная, что перекрывает текст.
+    // Зелёная строка «в работе» закрыта: текст остаётся после сдачи
+    // (решение Р-216).
+    assert.equal(rows.find((row) => row.rowNumber === 3)?.status, 'CLOSED');
     assert.equal(rows.find((row) => row.rowNumber === 6)?.status, 'STOPPED');
   });
 

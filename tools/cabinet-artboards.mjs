@@ -307,11 +307,29 @@ async function main() {
 
     const client = contexts.client;
     await client.goto(`${BASE}/cabinet/projects`, { waitUntil: 'networkidle' });
-    const projectHref = await client.locator('a[href^="/cabinet/projects/PD-"]').first().getAttribute('href');
-    await client.goto(BASE + projectHref, { waitUntil: 'networkidle' });
+    // Берётся первая работа клиента с планом: работы из книги заказов
+    // переносятся без этапов (решение Р-216), и артборд этапа снимать с
+    // них нечего. Порядок перечня постоянен — снимок воспроизводим.
+    const candidates = [
+      ...new Set(
+        await client
+          .locator('a[href^="/cabinet/projects/PD-"]')
+          .evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
+      ),
+    ];
+    let projectHref = null;
+    let stageLinks = [];
+    for (const href of candidates) {
+      await client.goto(BASE + href, { waitUntil: 'networkidle' });
+      stageLinks = await client.locator('a[href^="/cabinet/stages/"]').all();
+      if (stageLinks.length > 0) {
+        projectHref = href;
+        break;
+      }
+    }
+    if (projectHref === null) throw new Error('У клиента снимков нет работы с планом');
     // Для артборда берётся этап в согласовании, а не первый попавшийся:
     // именно это состояние показывает действие клиента.
-    const stageLinks = await client.locator('a[href^="/cabinet/stages/"]').all();
     const stageHref = await (stageLinks[2] ?? stageLinks[0]).getAttribute('href');
 
     const head = contexts.head;

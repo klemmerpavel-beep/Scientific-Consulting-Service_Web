@@ -68,6 +68,8 @@ const SERVICE_TYPES: readonly {
  */
 const COLOR_MAP: readonly { argb: string; mapsTo: string; description: string }[] = [
   { argb: 'FF00B050', mapsTo: 'CLOSED', description: 'Зелёная: работа доведена' },
+  { argb: 'FFFFFF00', mapsTo: 'IN_WORK', description: 'Жёлтая: работа идёт' },
+  { argb: 'FF00B0F0', mapsTo: 'ON_START', description: 'Голубая: работа на старте' },
   { argb: 'FFFF0000', mapsTo: 'STOPPED', description: 'Красная: работа остановлена' },
 ];
 

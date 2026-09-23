@@ -386,7 +386,7 @@ export async function trafficLight(actor: Actor) {
   // (решение Р-149). Правило модуля прав — списки и реестры идут через
   // `scope*`, а не через отдельное условие.
   const scope = scopeProjects(actor);
-  if (scope === null) return { overdue: [], soon: [], stalled: [] };
+  if (scope === null) return { overdue: [], soon: [], stalled: [], lateWorks: [] };
   const mine = Object.keys(scope).length === 0 ? {} : { project: scope };
   // День — у часов кабинета: снимок не зависит от дня съёмки (Р-205).
   const now = today();
@@ -440,7 +440,36 @@ export async function trafficLight(actor: Actor) {
     }),
   ]);
 
-  return { overdue, soon, stalled };
+  // Работа, срок которой прошёл, а просроченного этапа у неё нет. Так
+  // выглядит почти вся перенесённая книга: этапов у неё нет, и сорванный
+  // срок работы на сводке не появлялся вовсе — ответ говорил «ничего не
+  // горит» при просроченных заказах (решение Р-216).
+  const lateWorks = await prisma.project.findMany({
+    where: {
+      ...scope,
+      status: 'ACTIVE',
+      dueOn: { lt: now },
+      stages: { none: { state: live, dueOn: { lt: now } } },
+    },
+    orderBy: [{ dueOn: 'asc' }, { code: 'asc' }],
+    select: {
+      id: true,
+      code: true,
+      title: true,
+      dueOn: true,
+      managerId: true,
+      client: { select: { fullName: true } },
+      contract: {
+        select: {
+          totalAmount: true,
+          tranches: { select: { amount: true, status: true } },
+        },
+      },
+      _count: { select: { stages: true } },
+    },
+  });
+
+  return { overdue, soon, stalled, lateWorks };
 }
 
 /** Реестр клиентов. Контакты отдаются только ролям, которым они положены. */

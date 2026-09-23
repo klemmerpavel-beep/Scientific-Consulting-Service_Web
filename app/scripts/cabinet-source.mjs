@@ -29,6 +29,8 @@ export const SOURCE_PATHS = [
   'app/src/app/layout.tsx',
   'app/src/app/globals.css',
   'app/src/components/cabinet',
+  // Сценарий движения сайта касался и экранов кабинета (решение Р-216).
+  'app/src/components/SiteMotion.tsx',
   'app/src/lib/cabinet',
   'app/scripts/seed-artboards.ts',
   'app/scripts/data/book.json',

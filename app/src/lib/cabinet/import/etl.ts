@@ -264,28 +264,40 @@ const STATUS_RULES: readonly [RegExp, LegacyStatus][] = [
   [/в работ|в процесс|черновик/iu, 'IN_WORK'],
 ];
 
-/** Заливка исходной книги: зелёная — «работа доведена», красная — «остановлена». */
-const GREEN_FILL = 'FF00B050';
-const RED_FILL = 'FFFF0000';
+/**
+ * Заливка книги — рабочая разметка заказчика: жёлтая — работа идёт,
+ * голубая — на старте, зелёная — доведена, красная — остановлена.
+ * Таблица по умолчанию; руководитель переопределяет её на экране
+ * справочников (`ImportColorMap`), и разбор берёт оттуда (решение Р-216).
+ */
+export const DEFAULT_FILLS: Readonly<Record<string, LegacyStatus>> = {
+  FF00B050: 'CLOSED',
+  FFFFFF00: 'IN_WORK',
+  FF00B0F0: 'ON_START',
+  FFFF0000: 'STOPPED',
+};
 
 /**
- * Состояние работы по тексту и заливке.
+ * Состояние работы по заливке и тексту.
  *
- * Ведущим признаком принят **текст**, заливка — уточняющим. В исходной книге
- * зелёным помечены и закрытые работы, и девять строк со статусом «в работе»:
- * доверие цвету дало бы 46 закрытых работ вместо фактических 37. Красная
- * заливка однозначнее — ею размечены остановленные работы, и она перекрывает
- * текст.
+ * **Ведущий признак — заливка** (решение Р-216). Прежде вёл текст (Р-133),
+ * а заливка лишь уточняла: так понималась первая редакция книги. Разбор
+ * актуальной книги показал обратное. Текст «в работе» остаётся в строке и
+ * после сдачи: в книге 23.09.2026 он стоит у семнадцати зелёных строк
+ * 2024—2026 годов, и перенос по тексту дал бы 24 действующие работы вместо
+ * восьми, помеченных заказчиком. «Черновик готов» у жёлтой строки текст
+ * читал как «закрыт» по слову «готов». Прототип держится заливки с
+ * решения Р-141; перенос в кабинет теперь держится её же, и обе дорожки
+ * показывают одно и то же.
  *
- * Расхождение цвета с текстом не исправляется молча ни в ту, ни в другую
- * сторону: состояние берётся по описанному правилу, а сама строка попадает
- * в отдельный перечень предпросмотра. Разметка цветом велась вручную, и
- * выбор между «работа доведена» и «работа идёт» — за руководителем, а не
- * за разбором.
+ * Расхождение цвета с текстом по-прежнему не исправляется молча: строка
+ * попадает в отдельный перечень предпросмотра, и выбор за руководителем.
+ * Без заливки, или при цвете вне таблицы, решает текст.
  */
 export function classifyStatus(
   text: string,
   fill: string | null,
+  fills: Readonly<Record<string, LegacyStatus>> = DEFAULT_FILLS,
 ): { status: LegacyStatus; conflict: boolean } {
   let byText: LegacyStatus | null = null;
   for (const [pattern, status] of STATUS_RULES) {
@@ -295,12 +307,9 @@ export function classifyStatus(
     }
   }
 
-  if (fill === RED_FILL) {
-    return { status: 'STOPPED', conflict: byText !== null && byText !== 'STOPPED' };
-  }
-  if (fill === GREEN_FILL) {
-    const status = byText ?? 'CLOSED';
-    return { status, conflict: byText !== null && byText !== 'CLOSED' };
+  const byFill = fill === null ? null : (fills[fill] ?? null);
+  if (byFill !== null) {
+    return { status: byFill, conflict: byText !== null && byText !== byFill };
   }
   if (byText !== null) return { status: byText, conflict: false };
   return { status: 'IN_WORK', conflict: false };
@@ -351,7 +360,11 @@ function cellOf(row: Row, column: string | undefined): { value: string; fill: st
   return { value: cell?.value ?? '', fill: cell?.fill ?? null };
 }
 
-export function parseRow(row: Row, columns: ColumnMap): ParsedRow | null {
+export function parseRow(
+  row: Row,
+  columns: ColumnMap,
+  fills: Readonly<Record<string, LegacyStatus>> = DEFAULT_FILLS,
+): ParsedRow | null {
   const customer = cellOf(row, columns.customer).value.trim();
   if (customer.length === 0) return null;
 
@@ -393,7 +406,7 @@ export function parseRow(row: Row, columns: ColumnMap): ParsedRow | null {
   const statusCell = cellOf(row, columns.status);
   const fill = statusCell.fill ?? cellOf(row, columns.customer).fill;
   const rawStatus = statusCell.value.trim();
-  const { status, conflict } = classifyStatus(rawStatus, fill);
+  const { status, conflict } = classifyStatus(rawStatus, fill, fills);
 
   if (status === 'CLOSED' && paid < cost) {
     issues.push({
@@ -457,7 +470,10 @@ export interface ParsedBook {
   readonly conflicts: readonly { rowNumber: number; text: string; fill: string | null }[];
 }
 
-export function parseBook(sheets: readonly Sheet[]): ParsedBook {
+export function parseBook(
+  sheets: readonly Sheet[],
+  fills: Readonly<Record<string, LegacyStatus>> = DEFAULT_FILLS,
+): ParsedBook {
   const sheet = sheets.find((s) => s.rows.length > 0);
   if (sheet === undefined) {
     throw new ImportError('EMPTY_HEADER', 'В книге нет ни одного заполненного листа.');
@@ -469,10 +485,10 @@ export function parseBook(sheets: readonly Sheet[]): ParsedBook {
 
   for (const row of sheet.rows) {
     if (row.number <= headerRow) continue;
-    const parsed = parseRow(row, columns);
+    const parsed = parseRow(row, columns, fills);
     if (parsed === null) continue;
     rows.push(parsed);
-    const { conflict } = classifyStatus(parsed.rawStatus, parsed.fill);
+    const { conflict } = classifyStatus(parsed.rawStatus, parsed.fill, fills);
     if (conflict) conflicts.push({ rowNumber: row.number, text: parsed.rawStatus, fill: parsed.fill });
   }
 

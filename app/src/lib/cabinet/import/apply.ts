@@ -19,6 +19,7 @@ import { ensure, type Actor } from '../access.ts';
 import { record } from '../audit.ts';
 import { nextProjectCode } from '../projects.ts';
 import {
+  DEFAULT_FILLS,
   ISSUE_LABEL,
   STATUS_LABEL,
   normalizeName,
@@ -192,7 +193,14 @@ export interface PreviewInput {
 export async function previewBook(actor: Actor, input: PreviewInput): Promise<Preview> {
   ensure(actor, 'IMPORT_RUN');
 
-  const book = parseBook(readWorkbook(input.bytes));
+  // Таблица заливок берётся из справочника: прежде экран справочников
+  // показывал её, а разбор держал два цвета в коде и таблицу не читал
+  // (решение Р-216). Записи справочника перекрывают таблицу по умолчанию.
+  const fills: Record<string, LegacyStatus> = { ...DEFAULT_FILLS };
+  for (const color of await prisma.importColorMap.findMany()) {
+    if (color.mapsTo in STATUS_LABEL) fills[color.argb.toUpperCase()] = color.mapsTo as LegacyStatus;
+  }
+  const book = parseBook(readWorkbook(input.bytes), fills);
   if (book.rows.length === 0) {
     throw new ImportError('EMPTY_HEADER', 'В книге не нашлось ни одной содержательной строки.');
   }

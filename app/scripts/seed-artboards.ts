@@ -39,7 +39,8 @@ const RED = 'FFFF0000';
  * и состояния настоящие, имена заменены, темы обобщены (решение Р-141).
  */
 interface BookOrder {
-  readonly orderedOn: string;
+  /** Дата заказа; в книге бывает пустой — перенос тоже оставляет её пустой. */
+  readonly orderedOn: string | null;
   readonly client: string;
   readonly typeCode: string;
   readonly typeName: string;
@@ -72,7 +73,10 @@ const TYPES = [
  * иначе каждый снимок отличался бы от предыдущего одними только датами,
  * и разбор изменений в артбордах стал бы нечитаемым.
  */
-const REFERENCE = Date.UTC(2026, 8, 16, 9, 0, 0);
+// День книги заказов, с которой снят свод: 23.09.2026. Часы кабинета при
+// съёмке стоят на нём же, и «просрочено» считается от дня книги, а не от
+// выдуманной точки (решение Р-216).
+const REFERENCE = Date.UTC(2026, 8, 23, 9, 0, 0);
 
 function day(offsetDays: number): Date {
   return new Date(REFERENCE - offsetDays * 86_400_000);
@@ -246,7 +250,8 @@ async function main() {
     topic: order.topic,
     cost: order.cost,
     paid: order.paid,
-    orderedOn: new Date(`${order.orderedOn}T09:00:00Z`),
+    orderedOn: order.orderedOn === null ? null : new Date(`${order.orderedOn}T09:00:00Z`),
+    statusRaw: order.statusRaw,
     dueOn: order.dueOn === null ? null : new Date(`${order.dueOn}T09:00:00Z`),
     status:
       order.state === 'ACTIVE' ? ('ACTIVE' as const)
@@ -278,10 +283,13 @@ async function main() {
   };
 
   for (const [index, row] of PLAN.entries()) {
+    // Строка без даты заказа переносится с пустой датой начала — как при
+    // настоящем переносе; для отсчёта сроков берётся день книги.
     const startedOn = row.orderedOn;
-    const dueOn = row.dueOn ?? new Date(startedOn.getTime() + 120 * 86_400_000);
+    const base = startedOn ?? day(0);
+    const dueOn = row.dueOn ?? new Date(base.getTime() + 120 * 86_400_000);
     const closedOn = row.status === 'COMPLETED' ? dueOn : null;
-    const year = startedOn.getUTCFullYear();
+    const year = base.getUTCFullYear();
     const code = `PD-${year}-${String(index + 1).padStart(3, '0')}`;
 
     // Часть работ ведёт руководитель сам, остальные — менеджер: иначе у
@@ -308,7 +316,20 @@ async function main() {
       },
       // Куратор переназначается при каждом наполнении: правка распределения
       // в этом файле должна доезжать до снимка.
-      update: { managerId: curatorId, summary: SUMMARY[row.type] ?? SUMMARY.consulting! },
+      // Состояние, сроки и тип идут за книгой: книга ведётся и меняется, и
+      // снимок, наполненный по прежней её редакции, показывал бы прежнюю
+      // практику (решение Р-216).
+      update: {
+        managerId: curatorId,
+        summary: SUMMARY[row.type] ?? SUMMARY.consulting!,
+        serviceTypeId: typeIds.get(row.type)!,
+        title: TYPES.find((type) => type[0] === row.type)![1],
+        topic: row.topic,
+        status: row.status,
+        startedOn,
+        dueOn,
+        closedOn,
+      },
       select: { id: true },
     });
     projectIds.push(project.id);
@@ -321,7 +342,7 @@ async function main() {
           // Номер договора не повторяет внутренний код работы: код с
           // экранов убран, и в номере он всплывал бы снова (Р-189).
           number: `Д-${code.replace(/^PD-/u, '').replace('-', '/')}`,
-          signedOn: startedOn,
+          signedOn: base,
           totalAmount: money(row.cost),
         },
         // Номер правится и на существующем стенде: прежде он собирался
@@ -400,27 +421,42 @@ async function main() {
   // данных») появлялись только в базе, где они уже лежали с прошлого
   // наполнения. На свежей базе снимок был другим (решение Р-213).
   const showcaseIndex = BOOK.orders.indexOf(showcaseOrder);
+  // План разворачивается только у работ эксперта: без этапов его роль в
+  // прототипе нечем показать. Остальные работы книги остаются без плана —
+  // ровно так их заводит перенос в кабинет, и сводка руководителя
+  // показывает то, что покажет боевой кабинет после переноса той же
+  // книги: настоящие сроки и остатки, а не придуманные этапы
+  // (решение Р-216).
   for (const [index, row] of PLAN.entries()) {
-    if (row.status !== 'ACTIVE' || index === showcaseIndex) continue;
+    if (row.status !== 'ACTIVE' || index === showcaseIndex || index % 3 !== 0) continue;
     const projectId = projectIds[index]!;
     const titles = STAGE_PLAN[row.type] ?? STAGE_PLAN.consulting!;
     const paidShare = row.cost === 0 ? 0 : row.paid / row.cost;
     // Завершёнными считаются этапы, покрытые оплатой; следующий — текущий.
     const doneCount = Math.min(titles.length - 1, Math.floor(paidShare * titles.length));
-    const dueOn = row.dueOn ?? new Date(row.orderedOn.getTime() + 120 * 86_400_000);
-    const span = (dueOn.getTime() - row.orderedOn.getTime()) / titles.length;
+    const orderedOn = row.orderedOn ?? day(0);
+    const dueOn = row.dueOn ?? new Date(orderedOn.getTime() + 120 * 86_400_000);
+    const span = (dueOn.getTime() - orderedOn.getTime()) / titles.length;
+    // Состояние текущего этапа — по статусу книги, а не по остатку от
+    // деления: «на старте» — этап не начат, «черновик готов» — клиент
+    // смотрит черновик, остальное — работа идёт (решение Р-216).
+    const status = (row.statusRaw ?? '').toLowerCase();
+    const starting = /старт/u.test(status);
+    const current: 'NOT_STARTED' | 'IN_APPROVAL' | 'IN_PROGRESS' = starting
+      ? 'NOT_STARTED'
+      : /черновик|готов/u.test(status)
+        ? 'IN_APPROVAL'
+        : 'IN_PROGRESS';
 
+    // Работа на старте ещё не прошла ни одного этапа, сколько бы по ней
+    // ни было внесено: этапы идут от работы, а не от оплаты.
+    const done = starting ? 0 : doneCount;
     for (const [position, title] of titles.entries()) {
       const state =
-        position < doneCount ? ('DONE' as const)
-        // Ожидание клиента — у работ со вторым остатком от деления на три.
-        // Прежде оно падало на тот же остаток, что и назначение эксперта
-        // (`index % 3 === 0`), и все действующие работы эксперта ждали
-        // клиента: его главный сценарий «ход за вами» в прототипе не
-        // появлялся ни разу (решение Р-213).
-        : position === doneCount ? (index % 3 === 1 ? ('AWAITING_CLIENT' as const) : ('IN_PROGRESS' as const))
+        position < done ? ('DONE' as const)
+        : position === done ? current
         : ('NOT_STARTED' as const);
-      const stageDue = new Date(row.orderedOn.getTime() + span * (position + 1));
+      const stageDue = new Date(orderedOn.getTime() + span * (position + 1));
       await prisma.stage.upsert({
         where: { projectId_position: { projectId, position: position + 1 } },
         create: {
@@ -429,15 +465,20 @@ async function main() {
           title,
           state,
           dueOn: stageDue,
-          startedAt: state === 'NOT_STARTED' ? null : new Date(row.orderedOn.getTime() + span * position),
+          startedAt: state === 'NOT_STARTED' ? null : new Date(orderedOn.getTime() + span * position),
           completedAt: state === 'DONE' ? stageDue : null,
-          awaitingClientSince: state === 'AWAITING_CLIENT' ? day(9) : null,
-          blockedReason:
-            state === 'AWAITING_CLIENT'
-              ? 'Ждём исходные данные по разделу: без них расчёт продолжить нельзя.'
-              : null,
         },
-        update: {},
+        // Этап переписывается целиком: книга меняется, и снимок обязан
+        // идти за ней, а не за историей базы (решения Р-213, Р-216).
+        update: {
+          title,
+          state,
+          dueOn: stageDue,
+          startedAt: state === 'NOT_STARTED' ? null : new Date(orderedOn.getTime() + span * position),
+          completedAt: state === 'DONE' ? stageDue : null,
+          awaitingClientSince: null,
+          blockedReason: null,
+        },
       });
     }
   }
@@ -514,12 +555,14 @@ async function main() {
     stageIds.push(created.id);
   }
 
-  // Срок работы не раньше срока последнего этапа: в книге у показательной
-  // работы стоит 2 сентября, а план тянется до ноября, и клиент видел
-  // работу «в ходе» со сроком, прошедшим две недели назад (решение Р-213).
+  // Срок работы — из книги, а не подогнанный под план показа: Р-213
+  // переносил его на декабрь, чтобы он не расходился с этапами, но
+  // сводка руководителя обязана говорить о настоящем сроке (решение
+  // Р-216). Исполнитель назначается: этапы показательной работы ведёт
+  // эксперт.
   await prisma.project.update({
     where: { id: showcase },
-    data: { dueOn: day(-75), expertId: expertUser.id },
+    data: { expertId: expertUser.id },
   });
 
   const material = await prisma.material.upsert({
