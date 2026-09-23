@@ -249,6 +249,35 @@ export default async function ManageQueue({
         href: `/cabinet/stages/${stage.id}`,
       };
     }),
+    // Работа, у которой прошёл срок работы, а просроченного этапа нет, —
+    // почти вся перенесённая книга: этапов у неё нет. Прежде такие работы
+    // на сводку не попадали вовсе (решение Р-216).
+    ...light.lateWorks.map((work: (typeof light.lateWorks)[number]) => {
+      const late = overdueDays(work.dueOn);
+      const rest = maySeeMoney ? owed(work.contract) : 0n;
+      return {
+        key: `late-${work.id}`,
+        title: work.title,
+        mark:
+          late === null
+            ? 'срок работы сегодня'
+            : `срок работы прошёл ${late} ${plural(late, 'день', 'дня', 'дней')} назад`,
+        urgent: true,
+        step: alertStep(late),
+        detail: [
+          work._count.stages === 0 ? 'план работ не заведён' : null,
+          work.client.fullName,
+          rest > 0n ? `не получено ${formatAmount(rest)}` : null,
+        ]
+          .filter((part) => part !== null)
+          .join(' · '),
+        todo:
+          work._count.stages === 0
+            ? 'Назначить новый срок, завести план или закрыть работу'
+            : 'Назначить новый срок работы или закрыть её',
+        href: `/cabinet/projects/${work.code}`,
+      };
+    }),
     // Этап, уже названный просроченным, второй плашкой «ждёт клиента» не
     // повторяется: одна работа стояла на сводке дважды (решение Р-206).
     ...light.stalled
@@ -306,8 +335,16 @@ export default async function ManageQueue({
 
   // Ответ сводки одной фразой: сколько дел требуют решения и с чего
   // начать. Прежде его собирали глазами из плашек ниже (решение Р-207).
-  const lateCount = light.overdue.length;
-  const oldest = light.overdue[0] ?? null;
+  // Сорванные сроки — этапов и работ без просроченного этапа; старший
+  // срок — самый давний из тех и других (решение Р-216).
+  const lateCount = light.overdue.length + light.lateWorks.length;
+  const oldest =
+    [
+      ...light.overdue.map((stage: (typeof light.overdue)[number]) => ({ title: stage.title, dueOn: stage.dueOn })),
+      ...light.lateWorks.map((work: (typeof light.lateWorks)[number]) => ({ title: work.title, dueOn: work.dueOn })),
+    ]
+      .filter((row) => row.dueOn !== null)
+      .sort((a, b) => a.dueOn!.getTime() - b.dueOn!.getTime())[0] ?? null;
   const oldestLate = oldest === null ? null : overdueDays(oldest.dueOn);
   const answer = {
     lead:
@@ -575,15 +612,12 @@ export default async function ManageQueue({
                   прошлом
                 </Chip>
               )}
-              {load.planless === 0 ? null : (
-                <Chip>
-                  {load.planless} без плана работ
-                </Chip>
-              )}
+              {/* Работы без плана стоят в графике своей строкой, пометкой
+                  они не повторяются (решение Р-216). */}
             </div>
             <Text muted size={13} style={{ marginTop: 10 }}>
               Состояние берётся у первого незавершённого этапа: он и есть то, где работа стоит
-              сейчас.
+              сейчас. Работы, перенесённые из книги без плана, стоят своей строкой.
             </Text>
             {/* Числа стоят и текстом: график объявлен картинкой, и читалка
                 получает от него одно название (правило Р-176). */}

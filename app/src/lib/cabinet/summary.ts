@@ -169,6 +169,7 @@ export async function stageLoad(
     select: {
       code: true,
       title: true,
+      dueOn: true,
       client: { select: { fullName: true } },
       stages: {
         orderBy: { position: 'asc' },
@@ -185,8 +186,15 @@ export async function stageLoad(
 
   for (const project of projects) {
     const current = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
+    // Работа без плана — это почти вся перенесённая книга: этапов в ней
+    // нет, одна строка на заказ. Прежде такие работы выпадали из графика и
+    // из счёта просрочки, и сводка практики, ведущей учёт книгой, молчала
+    // о главном. Теперь они стоят в графике своей строкой, а срок у них —
+    // срок работы (решение Р-216).
     if (project.stages.length === 0) {
       planless += 1;
+      counts.set('PLANLESS', (counts.get('PLANLESS') ?? 0) + 1);
+      if (project.dueOn !== null && project.dueOn < now) overdue += 1;
       continue;
     }
     const key = current?.state ?? 'DONE';
@@ -217,6 +225,7 @@ export async function stageLoad(
     { key: 'AWAITING_CLIENT', label: 'Ждут клиента' },
     { key: 'IN_APPROVAL', label: 'На согласовании' },
     { key: 'DONE', label: 'Все этапы пройдены' },
+    { key: 'PLANLESS', label: 'Без плана работ' },
   ];
 
   return {

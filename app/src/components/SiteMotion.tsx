@@ -56,7 +56,13 @@ export default function SiteMotion() {
     // который не прокручивается вовсе: показывать блоки по мере прокрутки
     // там нечем, а полоса прогресса чтения показывала бы вечный ноль
     // (решения Р-93, Р-169).
-    const still = !!document.querySelector('.doc-layout, .cab-board-main');
+    //
+    // Кабинет не получает его вовсе, а не только на панели: сценарий
+    // выпускал при прокрутке каждую `section` под `main` — и полосу
+    // величин, и карточки служебных экранов — за 520 мс, мимо шкалы
+    // кабинета 180—260 мс, и снимок заставал ячейки то помеченными, то
+    // нет (решение Р-216).
+    const still = !!document.querySelector('.doc-layout, .cab-board-main, .cab-nav, .cab-wordmark');
     const sections = still
       ? []
       : Array.from(document.querySelectorAll<HTMLElement>('main > section')).slice(1);
@@ -72,7 +78,7 @@ export default function SiteMotion() {
     const bar = document.createElement('div');
     bar.className = 'pd-progress';
     bar.setAttribute('aria-hidden', 'true');
-    if (!document.querySelector('.cab-board-main')) document.body.appendChild(bar);
+    if (!document.querySelector('.cab-board-main, .cab-nav, .cab-wordmark')) document.body.appendChild(bar);
 
     const pending = new Set(sections);
 
