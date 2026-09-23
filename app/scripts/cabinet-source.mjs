@@ -19,7 +19,10 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-const ROOT = path.resolve(import.meta.dirname, '..');
+// Модуль лежит в `app/scripts`, а не в `tools/`: его импортирует проверка
+// из `app/tests`, и образ приложения, собираемый из одного `app`, иначе
+// не нашёл бы его при проверке типов.
+const ROOT = path.resolve(import.meta.dirname, '..', '..');
 
 export const SOURCE_PATHS = [
   'app/src/app/cabinet',

@@ -14,7 +14,7 @@ import { describe, it } from 'node:test';
 
 import { CABINET_CSS, ROOT_TOKENS } from '../src/components/cabinet/tokens.ts';
 import { daysPast, now } from '../src/lib/cabinet/clock.ts';
-import { SOURCE_FILE, sourceHash } from '../../tools/cabinet-source.mjs';
+import { SOURCE_FILE, sourceHash } from '../scripts/cabinet-source.mjs';
 import {
   STAGE_STATE_LABEL,
   STAGE_STATE_LABEL_STAFF,

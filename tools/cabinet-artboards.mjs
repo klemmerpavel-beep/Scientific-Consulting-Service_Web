@@ -26,7 +26,7 @@ import path from 'node:path';
 import { chromium } from '/var/tmp/pwtest/node_modules/playwright-core/index.mjs';
 
 import { embedFonts } from './cabinet-fonts.mjs';
-import { SOURCE_FILE, sourceNote } from './cabinet-source.mjs';
+import { SOURCE_FILE, sourceNote } from '../app/scripts/cabinet-source.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const APP = path.join(ROOT, 'app');
