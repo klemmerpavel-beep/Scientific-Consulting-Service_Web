@@ -1623,6 +1623,7 @@ export function ScreenHead({
   chips,
   note,
   aside,
+  action,
 }: {
   /** Куда вернуться: код работы для экранов внутри неё. */
   backHref?: string;
@@ -1634,6 +1635,13 @@ export function ScreenHead({
   note?: string | null;
   /** Правый край полосы: срок. */
   aside?: string | null;
+  /**
+   * Правый край полосы: действие всего экрана.
+   *
+   * Заказчик просил кнопку отчёта «справа вверху» — там, где взгляд ищет
+   * общее действие страницы, а не среди карточек (решение Р-201).
+   */
+  action?: ReactNode;
 }) {
   return (
     // Шапка экрана блоком не считается: она называет страницу, а не
@@ -1665,6 +1673,11 @@ export function ScreenHead({
             }}
           >
             {aside}
+          </span>
+        )}
+        {action === undefined ? null : (
+          <span style={{ marginLeft: aside == null ? 'auto' : 12, display: 'flex', gap: 8 }}>
+            {action}
           </span>
         )}
       </div>

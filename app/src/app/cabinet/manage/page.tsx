@@ -33,7 +33,7 @@ import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { currentActor } from '../../../lib/cabinet/session';
 import { byMonth, products } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
-import { activeWorks, orderSummary, stageLoad } from '../../../lib/cabinet/summary';
+import { activeWorks, moneyBrief, orderSummary, stageLoad } from '../../../lib/cabinet/summary';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -136,6 +136,9 @@ export default async function ManageQueue({
   // кому открыта практика целиком.
   const maySeeMoney = can(actor, 'MARGIN_VIEW');
   const summary = maySeeMoney ? await orderSummary(actor) : null;
+  // Деньги коротко — три итога для нижней правой плашки главной. Разбор
+  // по работам остаётся на своём экране (решение Р-201).
+  const money = maySeeMoney ? await moneyBrief(actor) : null;
   // Перечень действующих работ видят обе служебные роли, и каждая — свои:
   // менеджеру `scopeProjects` оставляет те, где он куратор. Деньги в строке
   // появляются только при праве на маржу (решение Р-175).
@@ -267,7 +270,16 @@ export default async function ManageQueue({
           плавал — у руководителя «Практика», у менеджера «Требует
           внимания», — и один блок был набран двумя способами
           (решение Р-172). */}
-      <ScreenHead title={summary === null ? 'Работа на сегодня' : 'Практика'} />
+      {/* Кнопка отчёта стоит справа вверху — там, где заказчик её просил:
+          общее действие страницы, а не карточка среди карточек
+          (решение Р-201). Менеджеру аналитика закрыта, и кнопки у него
+          нет вовсе. */}
+      <ScreenHead
+        title={summary === null ? 'Работа на сегодня' : 'Практика'}
+        action={
+          dashboard ? <ButtonLink href="/cabinet/manage/report">Отчёт за период</ButtonLink> : undefined
+        }
+      />
 
       {summary === null ? null : (
         <div>
@@ -389,8 +401,8 @@ export default async function ManageQueue({
             ) : (
               <RankChart
                 title="Работы по состоянию текущего этапа"
-                width={560}
-                labelWidth={220}
+                width={580}
+                labelWidth={200}
                 data={load.points.map((point) => ({ label: point.label, value: point.count }))}
                 format={(value) => String(Math.round(value))}
               />
@@ -414,50 +426,6 @@ export default async function ManageQueue({
               Состояние берётся у первого незавершённого этапа: он и есть то, где работа стоит
               сейчас.
             </Text>
-            {/* Полосы говорят, чем практика занята, но не когда наступает
-                следующий срок. Перечень ближайших двух недель отвечает на
-                это и заодно наполняет карточку: прежде она была ниже
-                соседней и пустовала снизу (решение Р-182). */}
-            <div style={{ marginTop: 16, borderTop: '1px solid var(--pd-divider)', paddingTop: 14 }}>
-              <Heading level={3} size={3} style={{ marginBottom: 10 }}>
-                Сроки ближайших двух недель
-              </Heading>
-              {load.soon.length === 0 ? (
-                <Text muted size={13}>
-                  В ближайшие две недели сроков не назначено.
-                </Text>
-              ) : (
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
-                  {load.soon.slice(0, 6).map((row) => (
-                    <li
-                      key={row.id}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(0,1fr) auto',
-                        gap: 12,
-                        alignItems: 'baseline',
-                      }}
-                    >
-                      <a
-                        href={`/cabinet/stages/${row.id}`}
-                        style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
-                      >
-                        {row.stage} · {row.title}
-                      </a>
-                      <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
-                        {formatDate(row.dueOn)}
-                      </Text>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {load.soon.length <= 6 ? null : (
-                <Text muted size={13} style={{ marginTop: 10 }}>
-                  И ещё {load.soon.length - 6}{' '}
-                  {plural(load.soon.length - 6, 'срок', 'срока', 'сроков')} в том же окне.
-                </Text>
-              )}
-            </div>
             {/* Числа стоят и текстом: график объявлен картинкой, и читалка
                 получает от него одно название (правило Р-176). */}
             <div style={{ marginTop: 'auto' }} />
@@ -522,6 +490,107 @@ export default async function ManageQueue({
                   </tbody>
                 </table>
               </Disclosure>
+            </Card>
+          )}
+
+          {/* Четвёртая плашка: ближайшие сроки и деньги коротко. Прежде
+              справа снизу пустовало место, а сроки жили внутри карточки
+              загрузки и делали её график мелким (решение Р-201). */}
+          {money === null ? null : (
+            <Card style={{ display: 'flex', flexDirection: 'column' }}>
+              <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+                Ближайшие сроки и деньги
+              </Heading>
+
+              {load === null || load.soon.length === 0 ? (
+                <Text muted size={14}>
+                  В ближайшие две недели сроков не назначено.
+                </Text>
+              ) : (
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+                  {load.soon.slice(0, 5).map((row) => (
+                    <li
+                      key={row.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(0,1fr) auto',
+                        gap: 12,
+                        alignItems: 'baseline',
+                      }}
+                    >
+                      <a
+                        href={`/cabinet/stages/${row.id}`}
+                        style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
+                      >
+                        {row.stage} · {row.title}
+                      </a>
+                      <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
+                        {formatDate(row.dueOn)}
+                      </Text>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {load === null || load.soon.length <= 5 ? null : (
+                <Text muted size={13} style={{ marginTop: 10 }}>
+                  И ещё {load.soon.length - 5}{' '}
+                  {plural(load.soon.length - 5, 'срок', 'срока', 'сроков')} в том же окне.
+                </Text>
+              )}
+
+              <dl
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, minmax(0,1fr))',
+                  gap: 12,
+                  margin: '16px 0 0',
+                  paddingTop: 14,
+                  borderTop: '1px solid var(--pd-divider)',
+                }}
+              >
+                {[
+                  { key: 'got', label: 'Получено', value: formatPlain(money.received) },
+                  { key: 'wait', label: 'К получению', value: formatPlain(money.awaiting) },
+                  {
+                    key: 'debt',
+                    label: 'Просрочено',
+                    value: formatPlain(money.overdue),
+                  },
+                ].map((row) => (
+                  <div key={row.key}>
+                    <dt
+                      style={{
+                        fontFamily: SANS,
+                        fontSize: 13,
+                        color: 'var(--pd-ink-muted)',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {row.label}
+                    </dt>
+                    <dd
+                      style={{
+                        margin: '4px 0 0',
+                        fontFamily: SANS,
+                        fontSize: 16,
+                        fontWeight: 600,
+                        lineHeight: 1.24,
+                        color: 'var(--pd-ink)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {row.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <Text muted size={13} style={{ marginTop: 10 }}>
+                Суммы в рублях. Разбор по работам — на экране денег.
+              </Text>
+              <div style={{ marginTop: 'auto' }} />
+              <div style={{ marginTop: 12 }}>
+                <ButtonLink href="/cabinet/manage/finance">Деньги и расчёты</ButtonLink>
+              </div>
             </Card>
           )}
         </div>
