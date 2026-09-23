@@ -20,6 +20,7 @@ import {
   Text,
   Tile,
   Tiles,
+  clip,
   formatDate,
   plural,
 } from '../../../components/cabinet/ui';
@@ -31,7 +32,7 @@ import { unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments } from '../../../lib/cabinet/materials';
 import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
-import { daysPast, now } from '../../../lib/cabinet/clock';
+import { daysPast } from '../../../lib/cabinet/clock';
 import { currentActor } from '../../../lib/cabinet/session';
 import { byMonth, products } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
@@ -108,6 +109,13 @@ const ALERT_EDGE: Record<number, string | undefined> = {
 };
 
 /**
+ * Толщина кромки по той же ступени. Третья и четвёртая ступени по тону
+ * почти неразличимы (`ink-secondary` и `ink`), поэтому ступень читается
+ * ещё и шириной: 3, 4, 5, 6 px (решение Р-212).
+ */
+const ALERT_WIDTH: Record<number, number> = { 0: 0, 1: 3, 2: 4, 3: 5, 4: 6 };
+
+/**
  * Остаток по договору работы: сколько ещё не получено.
  *
  * На карточке просрочки это главная величина после самого срока: сорванный
@@ -175,14 +183,25 @@ export default async function ManageQueue({
   // Что заказывают: типы сопровождения за последние двенадцать месяцев.
   // Плитки говорят, сколько работ, графики — когда они приходят и где
   // стоят; это отвечает, чего именно просят (решение Р-196).
-  const yearAgo = new Date(now().getTime() - 365 * 24 * 60 * 60 * 1000);
-  const demand = dashboard
-    ? products(analyticsRows.filter((row) => row.startedOn !== null && row.startedOn >= yearAgo))
+  //
+  // Окно то же, что у столбцов слева, — двенадцать календарных месяцев
+  // ряда, а не 365 дней от сегодня. Прежде рядом стояли «за двенадцать
+  // месяцев 17» и «из 18 заказов»: два окна для одного вопроса. Доля
+  // считается от всех заказов окна, а не от суммы шести показанных
+  // позиций (решение Р-211).
+  const windowStart =
+    months.length === 0 ? null : new Date(Date.UTC(months[0]!.year, months[0]!.month - 1, 1));
+  const demandAll = dashboard
+    ? products(
+        analyticsRows.filter(
+          (row) => row.startedOn !== null && windowStart !== null && row.startedOn >= windowStart,
+        ),
+      )
         .slice()
         .sort((a, b) => b.orders - a.orders)
-        .slice(0, 6)
     : [];
-  const demandTotal = demand.reduce((acc, item) => acc + item.orders, 0);
+  const demand = demandAll.slice(0, 6);
+  const demandTotal = demandAll.reduce((acc, item) => acc + item.orders, 0);
   const load = dashboard ? await stageLoad(actor) : null;
   // Итоги по тому же ряду, что и столбцы: считать их заново неоткуда.
   const yearOrders = months.reduce((acc, month) => acc + month.orders, 0);
@@ -299,7 +318,7 @@ export default async function ManageQueue({
       [
         lateCount === 0
           ? null
-          : `Сорвано сроков — ${lateCount}; старший — «${oldest?.title}»${
+          : `Сорвано сроков — ${lateCount}; старший — «${clip(oldest?.title ?? '', 48)}»${
               oldestLate === null ? '' : `, ${oldestLate} ${plural(oldestLate, 'день', 'дня', 'дней')}`
             }.`,
         summary === null ? null : `В работе ${summary.active} ${plural(summary.active, 'работа', 'работы', 'работ')}.`,
@@ -335,11 +354,97 @@ export default async function ManageQueue({
         }
       />
 
+      {/* «Требует внимания» — верхней полосой отдельными плашками, а не
+          колонкой: заказчик смотрит сводку сверху вниз, и то, что нельзя
+          оставить как есть, должно встречать первым. Каждая запись —
+          своя плашка с переходом на задачу (решение Р-189). У
+          руководителя полоса стояла под плитками и графиками, на втором
+          экране прокрутки, — вопреки тому же решению; теперь она сразу
+          под ответом, а витрина практики ниже (решение Р-210). */}
+      {attention.length === 0 ? null : (
+        <Block style={{ marginBottom: 20 }}>
+          <Heading level={2} style={{ marginBottom: 12 }}>
+            Требует внимания · {attention.length}
+          </Heading>
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: 'none',
+              display: 'grid',
+              // Не более двух плашек в ряду — общее правило облика.
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(420px,100%),1fr))',
+              gap: 12,
+            }}
+          >
+            {attention.map((row) => (
+              <Card
+                as="li"
+                key={row.key}
+                link
+                style={{
+                  position: 'relative',
+                  padding: row.step > 0 ? '14px 16px 16px 24px' : '14px 16px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  ...(row.urgent && row.step === 0 ? { borderColor: 'var(--pd-accent-edge)' } : {}),
+                }}
+              >
+                {/* Ступень тревоги — кромкой слева, от серой к графитовой;
+                    плашка остаётся белой (решение Р-208). */}
+                {row.step === 0 ? null : (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      left: 10,
+                      top: 14,
+                      bottom: 14,
+                      width: ALERT_WIDTH[row.step],
+                      borderRadius: RADIUS.pill,
+                      background: ALERT_EDGE[row.step],
+                    }}
+                  />
+                )}
+                {/* Вид беды — моноширинной меткой над названием, как метки
+                    разделов на страницах сайта; пилюля на цветном фоне
+                    спорила с заливкой и дублировала её (решение Р-208). */}
+                <Mono style={row.urgent ? { color: 'var(--pd-ink)', fontWeight: 500 } : undefined}>
+                  {row.mark}
+                </Mono>
+                {/* Ссылка растянута на всю плашку: подсвечивается плашка
+                    целиком, и нажиматься должна она же, а не строка в
+                    шестнадцать пикселей (решение Р-209). */}
+                <a
+                  href={row.href}
+                  className="cab-stretch"
+                  style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}
+                >
+                  {row.title}
+                </a>
+                {row.detail === null ? null : (
+                  <Text muted size={13}>
+                    {row.detail}
+                  </Text>
+                )}
+                <Text size={13} style={{ marginTop: 'auto', paddingTop: 4 }}>
+                  {row.todo}
+                </Text>
+              </Card>
+            ))}
+          </ul>
+        </Block>
+      )}
+
       {summary === null ? null : (
         <div>
           <Tiles>
             <Tile label="Заказов" value={String(summary.orders)} note="за всё время" />
-            <Tile label="В работе" value={String(summary.active)} note="сейчас ведутся" />
+            {/* «Действующих», а не «В работе»: рядом график называет «В
+                работе» состояние этапа, и два разных числа под одним словом
+                читались как расхождение (решение Р-211). */}
+            <Tile label="Действующих работ" value={String(summary.active)} note="сейчас ведутся" />
             <Tile
               label="Принято за квартал"
               value={String(summary.startedLastQuarter)}
@@ -518,7 +623,8 @@ export default async function ManageQueue({
                 format={(value) => String(Math.round(value))}
               />
               <Text muted size={13} style={{ marginTop: 10 }}>
-                Последние двенадцать месяцев по дате начала работы, шесть крупнейших позиций из{' '}
+                Те же двенадцать месяцев, что на графике слева, по дате начала работы; шесть
+                крупнейших позиций из{' '}
                 {demandTotal} {plural(demandTotal, 'заказа', 'заказов', 'заказов')}.
               </Text>
               <div style={{ marginTop: 'auto' }} />
@@ -649,86 +755,6 @@ export default async function ManageQueue({
             </Card>
           )}
         </div>
-      )}
-
-      {/* «Требует внимания» — верхней полосой отдельными плашками, а не
-          колонкой: заказчик смотрит сводку сверху вниз, и то, что нельзя
-          оставить как есть, должно встречать первым. Каждая запись —
-          своя плашка с переходом на задачу (решение Р-189). */}
-      {attention.length === 0 ? null : (
-        <Block style={{ marginBottom: 20 }}>
-          <Heading level={2} style={{ marginBottom: 12 }}>
-            Требует внимания · {attention.length}
-          </Heading>
-          <ul
-            style={{
-              margin: 0,
-              padding: 0,
-              listStyle: 'none',
-              display: 'grid',
-              // Не более двух плашек в ряду — общее правило облика.
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(420px,100%),1fr))',
-              gap: 12,
-            }}
-          >
-            {attention.map((row) => (
-              <Card
-                as="li"
-                key={row.key}
-                link
-                style={{
-                  position: 'relative',
-                  padding: row.step > 0 ? '14px 16px 16px 24px' : '14px 16px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                  ...(row.urgent && row.step === 0 ? { borderColor: 'var(--pd-accent-edge)' } : {}),
-                }}
-              >
-                {/* Ступень тревоги — кромкой слева, от серой к графитовой;
-                    плашка остаётся белой (решение Р-208). */}
-                {row.step === 0 ? null : (
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      position: 'absolute',
-                      left: 10,
-                      top: 14,
-                      bottom: 14,
-                      width: 4,
-                      borderRadius: RADIUS.pill,
-                      background: ALERT_EDGE[row.step],
-                    }}
-                  />
-                )}
-                {/* Вид беды — моноширинной меткой над названием, как метки
-                    разделов на страницах сайта; пилюля на цветном фоне
-                    спорила с заливкой и дублировала её (решение Р-208). */}
-                <Mono style={row.urgent ? { color: 'var(--pd-ink)', fontWeight: 500 } : undefined}>
-                  {row.mark}
-                </Mono>
-                {/* Ссылка растянута на всю плашку: подсвечивается плашка
-                    целиком, и нажиматься должна она же, а не строка в
-                    шестнадцать пикселей (решение Р-209). */}
-                <a
-                  href={row.href}
-                  className="cab-stretch"
-                  style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}
-                >
-                  {row.title}
-                </a>
-                {row.detail === null ? null : (
-                  <Text muted size={13}>
-                    {row.detail}
-                  </Text>
-                )}
-                <Text size={13} style={{ marginTop: 'auto', paddingTop: 4 }}>
-                  {row.todo}
-                </Text>
-              </Card>
-            ))}
-          </ul>
-        </Block>
       )}
 
       {/* Ниже — два цельных блока с прокруткой: работы и заявки. Третья

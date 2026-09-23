@@ -98,6 +98,11 @@ p a{text-decoration:underline;text-underline-offset:3px;text-decoration-thicknes
 /* Ссылка, растянутая на плашку: нажимается вся плашка, которая и так
    подсвечивается при наведении, а не строка названия (решение Р-209). */
 .cab-stretch::after{content:"";position:absolute;inset:0;border-radius:14px}
+/* Плашка-ссылка держит растянутую ссылку в своих границах; собственные
+   ссылки, свёртки и кнопки внутри плашки стоят над ней и нажимаются
+   сами (решение Р-211). */
+.cab-link-card{position:relative}
+.cab-link-card :is(a:not(.cab-stretch),summary,details,button,input,label,[tabindex]){position:relative;z-index:1}
 .cab-wordmark{transition:background 180ms cubic-bezier(.2,0,.2,1)}
 .cab-wordmark:hover{background:rgba(216,228,243,.62)}
 .cab-wordmark:active{background:rgba(216,228,243,.84)}

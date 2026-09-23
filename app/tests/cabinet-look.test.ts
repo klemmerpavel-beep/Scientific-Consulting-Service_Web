@@ -14,6 +14,7 @@ import { describe, it } from 'node:test';
 
 import { CABINET_CSS, ROOT_TOKENS } from '../src/components/cabinet/tokens.ts';
 import { daysPast, now } from '../src/lib/cabinet/clock.ts';
+import { SOURCE_FILE, sourceHash } from '../../tools/cabinet-source.mjs';
 import {
   STAGE_STATE_LABEL,
   STAGE_STATE_LABEL_STAFF,
@@ -150,9 +151,11 @@ describe('начальный экран роли отвечает на свой 
 describe('день — у часов кабинета', () => {
   // Экраны считали просрочку от настоящего «сейчас», а наполнение снимков —
   // от постоянной точки: снимок менялся ото дня ко дню (решение Р-205).
-  it('CABINET_NOW задаёт день', () => {
+  it('CABINET_NOW задаёт день при базе снимков', () => {
     const before = process.env.CABINET_NOW;
+    const base = process.env.DATABASE_URL;
     process.env.CABINET_NOW = '2026-09-16T09:00:00.000Z';
+    process.env.DATABASE_URL = 'postgresql://postgres@127.0.0.1:5433/prodisser_artboards';
     try {
       assert.equal(now().toISOString(), '2026-09-16T09:00:00.000Z');
       assert.equal(daysPast(new Date('2026-09-06T09:00:00Z')), 10);
@@ -161,6 +164,25 @@ describe('день — у часов кабинета', () => {
     } finally {
       if (before === undefined) delete process.env.CABINET_NOW;
       else process.env.CABINET_NOW = before;
+      if (base === undefined) delete process.env.DATABASE_URL;
+      else process.env.DATABASE_URL = base;
+    }
+  });
+
+  it('на рабочей базе CABINET_NOW не действует', () => {
+    // Остановленные часы на боевой базе заморозили бы все просрочки
+    // (решение Р-214).
+    const before = process.env.CABINET_NOW;
+    const base = process.env.DATABASE_URL;
+    process.env.CABINET_NOW = '2020-01-01T00:00:00.000Z';
+    process.env.DATABASE_URL = 'postgresql://app@db:5432/prodisser';
+    try {
+      assert.ok(Math.abs(now().getTime() - Date.now()) < 1000);
+    } finally {
+      if (before === undefined) delete process.env.CABINET_NOW;
+      else process.env.CABINET_NOW = before;
+      if (base === undefined) delete process.env.DATABASE_URL;
+      else process.env.DATABASE_URL = base;
     }
   });
 
@@ -181,4 +203,40 @@ describe('день — у часов кабинета', () => {
       .filter((name) => /Date\.now\(\)|new Date\(\)/u.test(readFileSync(path.join(SCREENS, name), 'utf8')));
     assert.deepEqual(guilty, []);
   });
+});
+
+describe('снимок не старше кода', () => {
+  // Снимки уже однажды отстали от экранов, и правила облика читали
+  // устаревшую разметку (решения Р-203, Р-214).
+  const current = sourceHash();
+  for (const dir of [PROTOTYPE, ARTBOARDS]) {
+    it(path.relative(ROOT, dir), () => {
+      const file = path.join(dir, SOURCE_FILE);
+      assert.ok(existsSync(file), 'у снимка нет отпечатка исходников — пересоберите его');
+      const recorded = readFileSync(file, 'utf8').split('\n')[0];
+      assert.equal(
+        recorded,
+        current,
+        'исходники кабинета изменились после съёмки: node tools/cabinet-artboards.mjs, затем node tools/cabinet-prototype.mjs',
+      );
+    });
+  }
+});
+
+describe('ответ помещается в первый экран', () => {
+  // Название этапа в ответе не ограничивалось, и длинное выталкивало ответ
+  // за нижний край телефона (решение Р-210).
+  for (const folder of ['client', 'expert', 'manager', 'head']) {
+    for (const file of screens(folder)) {
+      const html = body(file);
+      if (!html.includes('cab-answer')) continue;
+      it(`${path.relative(PROTOTYPE, file)}: фраза ответа не длиннее 90 знаков`, () => {
+        const panel = html.slice(html.indexOf('cab-answer'));
+        const lead = /<\/h1>[\s\S]*?<p\b[^>]*>([\s\S]*?)<\/p>/u.exec(panel)?.[1] ?? '';
+        const text = lead.replace(/<[^>]+>/gu, '').replace(/&[a-z]+;/gu, ' ').trim();
+        assert.ok(text.length > 0, 'фраза ответа не найдена');
+        assert.ok(text.length <= 90, `фраза ответа ${text.length} знаков: ${text}`);
+      });
+    }
+  }
 });

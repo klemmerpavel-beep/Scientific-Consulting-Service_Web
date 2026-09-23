@@ -26,6 +26,7 @@ import path from 'node:path';
 import { chromium } from '/var/tmp/pwtest/node_modules/playwright-core/index.mjs';
 
 import { embedFonts } from './cabinet-fonts.mjs';
+import { SOURCE_FILE, sourceNote } from './cabinet-source.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const APP = path.join(ROOT, 'app');
@@ -344,6 +345,9 @@ async function main() {
     server.kill();
   }
 
+  // Отпечаток исходников: проверка сверяет его с кодом и не даёт снимку
+  // отстать от экранов (решение Р-214).
+  writeFileSync(path.join(OUT, SOURCE_FILE), sourceNote());
   console.log(`\nАртбордов снято: ${BOARDS.length}. Каталог: design/cabinet`);
 }
 

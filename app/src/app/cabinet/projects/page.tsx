@@ -21,6 +21,7 @@ import {
   FilterBar,
   FilterSearch,
   Tabs,
+  clip,
   plural,
   Text,
   formatDate,
@@ -82,11 +83,15 @@ export default async function ProjectsScreen({
   // чего в перечне сейчас не видно: отсечённое отбором или ушедшее на
   // другую страницу (решение Р-175).
   const shown = new Set(projects.map((project) => project.code));
-  const onPage = new Map(
-    pendingAll
-      .filter((stage) => shown.has(stage.project.code))
-      .map((stage) => [stage.project.code, stage]),
-  );
+  // На плашке — первое дело по работе, то же, что называет ответ в шапке:
+  // `new Map` из пар оставлял последнее, и ответ и плашка называли разные
+  // этапы одной работы (решение Р-213).
+  const onPage = new Map<string, (typeof pendingAll)[number]>();
+  for (const stage of pendingAll) {
+    if (shown.has(stage.project.code) && !onPage.has(stage.project.code)) {
+      onPage.set(stage.project.code, stage);
+    }
+  }
   // Эксперту блок «Требует внимания» с чужими действиями не нужен: ждут
   // здесь клиента, а не его (решение Р-206).
   // Первое дело клиента названо ответом в шапке — второй раз блоком ниже
@@ -147,8 +152,8 @@ export default async function ProjectsScreen({
     row === null || row.stage === null || row.stage.dueOn === null
       ? null
       : daysPast(row.stage.dueOn) === null
-        ? `Ближайший срок — ${formatDate(row.stage.dueOn)}, этап «${row.stage.title}».`
-        : `Срок этапа «${row.stage.title}» прошёл ${formatDate(row.stage.dueOn)}.`;
+        ? `Ближайший срок — ${formatDate(row.stage.dueOn)}, этап «${clip(row.stage.title, 60)}».`
+        : `Срок этапа «${clip(row.stage.title, 60)}» прошёл ${formatDate(row.stage.dueOn)}.`;
   let answer: { lead: string; detail?: string | null; action?: ReactNode } | undefined;
   if (forClient) {
     const first = pendingAll[0] ?? null;
@@ -157,11 +162,15 @@ export default async function ProjectsScreen({
         ? {
             lead:
               first.state === 'AWAITING_CLIENT'
-                ? `От вас ждут материалы к этапу «${first.title}».`
-                : `От вас ждут согласования этапа «${first.title}».`,
+                ? `От вас ждут материалы к этапу «${clip(first.title, 48)}».`
+                : `От вас ждут согласования этапа «${clip(first.title, 48)}».`,
+            // Срок — первым: пояснение режется тремя строками, и на
+            // телефоне срок уходил за многоточие (решение Р-213).
             detail: [
-              `Работа «${first.project.title}» стоит, пока их нет.`,
               first.dueOn === null ? null : `Срок этапа — ${formatDate(first.dueOn)}.`,
+              first.state === 'AWAITING_CLIENT'
+                ? `Работа «${clip(first.project.title, 60)}» стоит, пока их нет.`
+                : `Работа «${clip(first.project.title, 60)}» продолжится после вашего согласования.`,
               pendingAll.length > 1 ? `Ещё дел за вами: ${pendingAll.length - 1}.` : null,
             ]
               .filter((part) => part !== null)
@@ -367,7 +376,9 @@ export default async function ProjectsScreen({
               project._count.materials === 0
                 ? null
                 : `${project._count.materials} ${plural(project._count.materials, 'материал', 'материала', 'материалов')}`,
-              newMessages === 0
+              // Эксперт в переписку не входит (решение Р-150): счётчик
+              // «новых сообщений» звал его туда, куда ему нельзя.
+              newMessages === 0 || forExpert
                 ? null
                 : `${newMessages} ${plural(newMessages, 'новое сообщение', 'новых сообщения', 'новых сообщений')}`,
               forClient ? null : project.client.fullName,
@@ -432,7 +443,11 @@ export default async function ProjectsScreen({
                     отсутствии третий уровень оказывался сразу после
                     первого — пропуск, который ловит правило облика. */}
                 <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-                  <a href={`/cabinet/projects/${project.code}`} style={{ color: 'var(--pd-ink)' }}>
+                  <a
+                    href={`/cabinet/projects/${project.code}`}
+                    className="cab-stretch"
+                    style={{ color: 'var(--pd-ink)' }}
+                  >
                     {project.title}
                   </a>
                 </Heading>
@@ -550,6 +565,7 @@ export default async function ProjectsScreen({
                         >
                           <a
                             href={`/cabinet/stages/${stage.id}`}
+                            className="cab-mark"
                             style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
                           >
                             {stage.title}

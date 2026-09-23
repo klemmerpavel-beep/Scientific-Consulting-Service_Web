@@ -5,6 +5,7 @@ import {
   Heading,
   TableCard,
   Text,
+  plural,
 } from '../../../../../components/cabinet/ui';
 import { cycles, overview } from '../../../../../lib/cabinet/analytics/metrics';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, cycleLabel, head, num, share } from '../shared';
@@ -37,7 +38,7 @@ export default async function AnalyticsProjects() {
             <Tile
               label="Медиана срока"
               value={cycleLabel(report.overall)}
-              note={`${report.overall.observations} наблюдений, завершено ${report.overall.events}`}
+              note={`${report.overall.observations} ${plural(report.overall.observations, 'наблюдение', 'наблюдения', 'наблюдений')}, завершено ${report.overall.events}`}
             />
             <Tile label="В работе" value={String(total.active)} note={`приостановлено ${total.paused}`} />
             <Tile

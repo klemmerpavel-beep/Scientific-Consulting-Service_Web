@@ -1363,6 +1363,20 @@ export function Empty({
   );
 }
 
+/**
+ * Сократить строку до `max` знаков по границе слова, с многоточием.
+ *
+ * Нужна ответу экрана: название этапа или работы в нём ничем не
+ * ограничено, и длинное выталкивало ответ за нижний край телефона — тот
+ * же дефект, что закрывало решение Р-167 для темы работы (решение Р-210).
+ */
+export function clip(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}
+
 /** Согласование числительного: «1 этап», «2 этапа», «5 этапов». */
 export function plural(count: number, one: string, few: string, many: string): string {
   const mod100 = count % 100;
@@ -1798,9 +1812,15 @@ export function ScreenHead({
             {answer.lead}
           </p>
           {answer.detail == null ? null : (
+            // Пояснение — не длиннее трёх строк: ответ обязан помещаться
+            // в первый экран телефона вместе с действием (решение Р-210).
             <p
               style={{
                 margin: 0,
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
                 maxWidth: '72ch',
                 fontFamily: SANS,
                 fontSize: 15,

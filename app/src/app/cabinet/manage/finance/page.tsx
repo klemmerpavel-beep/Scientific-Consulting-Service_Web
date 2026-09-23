@@ -271,7 +271,7 @@ export default async function FinanceScreen({
                     {/* Ссылкой служит вся строка, а не один код: ссылка
                         посреди текста отличается только цветом, и
                         проверка доступности законно против (Р-184). */}
-                    <a href={`/cabinet/projects/${row.code}/payments`}>
+                    <a className="cab-mark" href={`/cabinet/projects/${row.code}/payments`}>
                       {row.title}
                     </a>
                   </td>

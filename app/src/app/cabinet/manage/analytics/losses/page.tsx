@@ -5,6 +5,7 @@ import {
   Notice,
   TableCard,
   Text,
+  plural,
 } from '../../../../../components/cabinet/ui';
 import { losses, overview } from '../../../../../lib/cabinet/analytics/metrics';
 import { formatAmount } from '../../../../../lib/cabinet/money';
@@ -40,7 +41,7 @@ export default async function AnalyticsLosses() {
             <Tile
               label="Потери по расчёту"
               value={formatAmount(report.total)}
-              note={`${report.rows.length} работ с остатком`}
+              note={`${report.rows.length} ${plural(report.rows.length, 'работа', 'работы', 'работ')} с остатком`}
             />
             <Tile label="Величина из брифа" value={formatAmount(BRIEF_LOSSES)} note="PD-LK-BRIEF-001, раздел 5" />
             <Tile label="Приостановлено" value={String(report.stopped)} note={`отменено ${report.cancelled}`} />

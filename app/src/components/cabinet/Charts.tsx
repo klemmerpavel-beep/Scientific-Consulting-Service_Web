@@ -8,6 +8,7 @@
  * только в виде картинки.
  */
 
+import { Fragment } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
 import {
@@ -217,78 +218,85 @@ export function BarChart({
   );
 }
 
-/** Горизонтальное ранжирование: длинные подписи слева, значение справа. */
+/**
+ * Горизонтальное ранжирование: длинные подписи слева, значение справа.
+ *
+ * Собрано блоками, а не рисунком (решение Р-212). В SVG ширину подписи
+ * нельзя измерить, и её оценивали по числу знаков — мера расходилась с
+ * гарнитурой, и начало названия срезалось (Р-204); на телефоне рисунок в
+ * 460 px уходил в прокрутку вбок (Р-209). Блоки делят ширину сами:
+ * подпись режется многоточием по месту, полоса занимает остаток, кегль
+ * остаётся 12 px на любой ширине, прокрутки нет.
+ */
 export function RankChart({
   data,
   format = compactNumber,
   title,
   labelWidth = 200,
-  width = 720,
 }: {
   data: readonly BarDatum[];
   format?: (value: number) => string;
   title: string;
   labelWidth?: number;
-  /** Ширина поля рисунка; на широкой карточке задаётся по месту (Р-176). */
+  /** Прежнее поле рисунка; блокам оно не нужно. */
   width?: number;
 }) {
-  const W = width;
-  const rowH = 30;
-  const padR = 92;
-  const top = 6;
-  const H = top * 2 + Math.max(1, data.length) * rowH;
   const max = Math.max(1, ...data.map((item) => item.value));
-  const iw = W - labelWidth - padR;
-
-  /**
-   * Подпись не должна уходить за левый край.
-   *
-   * Подписи выключены вправо по границе колонки, и длинное название
-   * позиции («Сопровождение выпускной квалификационной работы») уезжало
-   * влево за пределы картинки: первые слова просто срезались, и строка
-   * начиналась с середины. Ширину текста в SVG не измерить, поэтому она
-   * оценивается по числу знаков. Мера 6,8 px была снята со снимков,
-   * набранных системной заменой; в Inter, который теперь стоит и в
-   * снимках (решение Р-204), знак кириллицы при кегле 12 шире — около
-   * 7,4 px, и начало подписи снова срезалось. Что не поместилось,
-   * заменяется многоточием; полное название остаётся в подсказке и в
-   * таблице под графиком.
-   */
-  const fit = (label: string): string => {
-    const room = Math.max(6, Math.floor((labelWidth - 14) / 7.4));
-    return label.length <= room ? label : `${label.slice(0, room - 1).trimEnd()}…`;
-  };
-
   return (
-    <Frame width={W} title={title}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
-        fontFamily={SANS} role="img" aria-label={title}>
-        {data.map((item, index) => {
-          const y = top + index * rowH;
-          const width = max > 0 ? (item.value / max) * iw : 0;
-          return (
-            <g key={`${item.label}-${index}`}>
-              <title>{`${item.label}: ${format(item.value)}`}</title>
-              <text x={labelWidth - 10} y={y + rowH / 2 + 4} textAnchor="end" fontSize={12} fill={INK}>
-                {fit(item.label)}
-              </text>
-              <rect x={labelWidth} y={y + 6} width={iw} height={rowH - 14} rx={(rowH - 14) / 2} fill={GRID} />
-              <rect
-                x={labelWidth}
-                y={y + 6}
-                width={Math.max(4, width)}
-                height={rowH - 14}
-                rx={(rowH - 14) / 2}
-                fill={item.color ?? seriesColor(1)}
-              />
-              <text x={labelWidth + Math.max(4, width) + 8} y={y + rowH / 2 + 4} fontSize={12} fontWeight={500} fill={INK}>
-                {format(item.value)}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-    </Frame>
+    <div
+      role="img"
+      aria-label={title}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: `min(${labelWidth}px, 42%) minmax(0,1fr) auto`,
+        columnGap: 10,
+        rowGap: 14,
+        alignItems: 'center',
+        padding: '6px 0',
+        fontFamily: SANS,
+        fontSize: 12,
+        lineHeight: 1.4,
+        color: INK,
+      }}
+    >
+      {data.map((item, index) => (
+        <Fragment key={`${item.label}-${index}`}>
+          <span
+            title={item.label}
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textAlign: 'right',
+            }}
+          >
+            {item.label}
+          </span>
+          <span
+            style={{
+              display: 'block',
+              height: 16,
+              borderRadius: RADIUS.pill,
+              background: GRID,
+              overflow: 'hidden',
+            }}
+          >
+            <span
+              style={{
+                display: 'block',
+                width: `${Math.max(2, (item.value / max) * 100)}%`,
+                height: '100%',
+                borderRadius: RADIUS.pill,
+                background: item.color ?? seriesColor(1),
+              }}
+            />
+          </span>
+          <span style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums', minWidth: 24 }}>
+            {format(item.value)}
+          </span>
+        </Fragment>
+      ))}
+    </div>
   );
 }
 

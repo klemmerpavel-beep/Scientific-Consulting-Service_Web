@@ -26,6 +26,7 @@ import path from 'node:path';
 import { chromium } from '/var/tmp/pwtest/node_modules/playwright-core/index.mjs';
 
 import { embedFonts } from './cabinet-fonts.mjs';
+import { SOURCE_FILE, sourceNote } from './cabinet-source.mjs';
 import { buildPortable } from './cabinet-portable.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -505,6 +506,8 @@ async function main() {
   writeFileSync(path.join(OUT, 'index.html'), document_(entryBody, 0));
   written += 1;
 
+  // Отпечаток исходников рядом со снимком (решение Р-214).
+  writeFileSync(path.join(OUT, SOURCE_FILE), sourceNote());
   console.log(`\nПрототип собран: ${written} экранов. Каталог: design/cabinet-prototype`);
 
   // Копия для боевого сайта складывается тут же, а не отдельной командой:

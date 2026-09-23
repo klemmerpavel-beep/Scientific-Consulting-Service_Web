@@ -13,6 +13,7 @@ import {
   Heading,
   Text,
   formatDate,
+  plural,
 } from '../../../../../components/cabinet/ui';
 import {
   byMonth,
@@ -61,11 +62,11 @@ export default async function AnalyticsMoney() {
           <Tiles>
             <Tile label="Законтрактовано" value={formatAmount(total.contracted)} />
             <Tile label="Получено" value={formatAmount(total.received)} note={`${share(total.collection)} по завершённым`} />
-            <Tile label="Задолженность" value={formatAmount(total.outstanding)} note={`${debts.length} работ с остатком`} />
+            <Tile label="Задолженность" value={formatAmount(total.outstanding)} note={`${debts.length} ${plural(debts.length, 'работа', 'работы', 'работ')} с остатком`} />
             <Tile
               label="Просрочено"
               value={formatAmount(overdue.reduce((acc, debt) => acc + debt.debt, 0n))}
-              note={`${overdue.length} работ со сроком в прошлом`}
+              note={`${overdue.length} ${plural(overdue.length, 'работа', 'работы', 'работ')} со сроком в прошлом`}
             />
           </Tiles>
 

@@ -303,7 +303,7 @@ export default async function ToolsScreen({
                   }}
                 >
                   <Heading level={3} size={3}>
-                    <a href={tool.href}>{tool.title}</a>
+                    <a className="cab-mark" href={tool.href}>{tool.title}</a>
                   </Heading>
                   <Chip>{tool.often}</Chip>
                 </div>

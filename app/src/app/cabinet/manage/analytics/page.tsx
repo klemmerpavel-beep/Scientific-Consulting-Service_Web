@@ -6,7 +6,7 @@ import {
   compactNumber,
   seriesColor,
 } from '../../../../components/cabinet/Charts';
-import { Card, Chip, Empty, Heading, Mono, Text } from '../../../../components/cabinet/ui';
+import { Card, Chip, Empty, Heading, Mono, Text, plural } from '../../../../components/cabinet/ui';
 import { byMonth, conclusions, overview, products, verdict } from '../../../../lib/cabinet/analytics/metrics';
 import { formatAmount, formatRounded } from '../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from './shared';
@@ -90,7 +90,7 @@ export default async function AnalyticsOverview() {
           )}
 
           <Tiles>
-            <Tile label="Законтрактовано" value={formatAmount(total.contracted)} note={`${total.projects} проектов, период ${period}`} />
+            <Tile label="Законтрактовано" value={formatAmount(total.contracted)} note={`${total.projects} ${plural(total.projects, 'работа', 'работы', 'работ')}, период ${period}`} />
             <Tile label="Получено" value={formatAmount(total.received)} note={`собрано ${share(total.collection)} по завершённым`} />
             <Tile label="Задолженность" value={formatAmount(total.outstanding)} note="остаток по каждой работе, не меньше нуля" />
             <Tile label="Средний чек" value={formatRounded(total.averageCheck)} note={`клиентов ${total.clients}`} />

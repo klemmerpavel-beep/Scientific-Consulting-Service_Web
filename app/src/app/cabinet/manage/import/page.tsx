@@ -123,7 +123,7 @@ export default async function ImportScreen({
             return (
               <tr key={batch.id}>
                 <td style={TABLE_CELL}>
-                  <a href={`/cabinet/manage/import/${batch.id}`}>{batch.fileName}</a>
+                  <a className="cab-mark" href={`/cabinet/manage/import/${batch.id}`}>{batch.fileName}</a>
                   <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
                     {batch.uploadedBy.fullName}
                   </div>

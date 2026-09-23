@@ -241,7 +241,7 @@ export default async function PaymentsScreen({
                                 {document.versions[0] === undefined ? (
                                   document.title
                                 ) : (
-                                  <a href={`/cabinet/files/${document.versions[0].id}`}>
+                                  <a className="cab-mark" href={`/cabinet/files/${document.versions[0].id}`}>
                                     {MATERIAL_KIND_LABEL[document.kind as MaterialKind]}:{' '}
                                     {document.title}
                                   </a>
@@ -334,7 +334,7 @@ export default async function PaymentsScreen({
                         {document.versions[0] === undefined ? (
                           document.title
                         ) : (
-                          <a href={`/cabinet/files/${document.versions[0].id}`}>
+                          <a className="cab-mark" href={`/cabinet/files/${document.versions[0].id}`}>
                             {MATERIAL_KIND_LABEL[document.kind as MaterialKind]}: {document.title}
                           </a>
                         )}
