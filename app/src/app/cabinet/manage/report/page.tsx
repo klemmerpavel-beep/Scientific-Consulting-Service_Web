@@ -27,6 +27,7 @@ import {
   overview,
   products,
   receivables,
+  verdict,
   type ProjectRow,
 } from "../../../../lib/cabinet/analytics/metrics";
 
@@ -129,6 +130,7 @@ export default async function ReportScreen({
   );
   const debtSum = debts.reduce((acc, debt) => acc + debt.debt, 0n);
   const advice = conclusions(all, today);
+  const digest = verdict(all, today);
 
   return (
     <Shell actor={actor} current="/cabinet/manage">
@@ -160,6 +162,29 @@ export default async function ReportScreen({
           разметку, а снимок принимает облик, а не движение (решение
           Р-186). */}
       <div>
+        {/* Итог первой строкой: отчёт читают не глазами по таблицам, а
+            по одному абзацу сверху (решение Р-202). */}
+        {digest === null ? null : (
+          <Card style={{ marginBottom: 20 }}>
+            <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+              Итог
+            </Heading>
+            <Text size={15}>{digest.state}</Text>
+            {digest.risk === null ? null : (
+              <Text size={15} style={{ marginTop: 8 }}>
+                <strong style={{ fontWeight: 600 }}>Под угрозой: </strong>
+                {digest.risk}
+              </Text>
+            )}
+            {digest.first === null ? null : (
+              <Text size={15} style={{ marginTop: 8 }}>
+                <strong style={{ fontWeight: 600 }}>Первым делом: </strong>
+                {digest.first}
+              </Text>
+            )}
+          </Card>
+        )}
+
         <Card style={{ marginBottom: 20 }}>
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Работы

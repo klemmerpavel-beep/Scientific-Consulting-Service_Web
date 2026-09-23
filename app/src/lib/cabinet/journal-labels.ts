@@ -19,6 +19,7 @@ const ACTIONS: Record<string, string> = {
   HELP_REQUESTED: 'Куратор обратился за помощью',
   CLIENT_MERGED: 'Карточки клиента сведены',
   DISK_SYNC: 'Зеркало на Диске обновлено',
+  BOOK_PULL: 'Книга заказов перенесена с Диска',
   CONTRACT_SAVED: 'Договор сохранён',
   ERASURE_EXECUTED: 'Данные удалены по требованию',
   ERASURE_REQUESTED: 'Поступило требование об удалении',

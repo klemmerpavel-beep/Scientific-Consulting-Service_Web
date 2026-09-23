@@ -28,6 +28,7 @@ import {
   receivables,
   seasonalNorm,
   stdev,
+  verdict,
   type ProjectRow,
 } from '../src/lib/cabinet/analytics/metrics.ts';
 import {
@@ -513,5 +514,66 @@ describe('геометрия графиков', () => {
     // Разделитель разрядов у ru-RU — неразрывный пробел, и это важно:
     // подпись «1 234,6» не должна разрываться по середине числа.
     assert.equal(compactNumber(1234.56, 1), '1\u00A0234,6');
+  });
+});
+
+describe('итог практики одним абзацем', () => {
+  it('на пустом наборе итога нет', () => {
+    // Фраза «в работе 0 работ из 0» хуже молчания: она занимает место и
+    // ничего не сообщает.
+    assert.equal(verdict([], CONTROL), null);
+  });
+
+  it('состояние называет число работ и деньги', () => {
+    const digest = verdict(
+      [
+        row({ code: 'a', status: 'ACTIVE', closedOn: null, cost: 30_000_000n, paid: 10_000_000n }),
+        row({ code: 'b', cost: 20_000_000n, paid: 20_000_000n }),
+      ],
+      CONTROL,
+    );
+    assert.ok(digest !== null);
+    assert.match(digest.state, /В работе 1 работа из 2/u);
+    // Получено 300 000 ₽ из 500 000 ₽, остаток 200 000 ₽ — по каждой
+    // работе отдельно, переплата одной долг другой не гасит. Разделитель
+    // разрядов у ru-RU — неразрывный пробел.
+    assert.match(digest.state, /300\u00A0000 ₽/u);
+    assert.match(digest.state, /500\u00A0000 ₽/u);
+    assert.match(digest.state, /200\u00A0000 ₽/u);
+  });
+
+  it('у практики без долгов и срывов риска нет', () => {
+    const digest = verdict([row({ code: 'a' })], CONTROL);
+    assert.ok(digest !== null);
+    assert.equal(digest.risk, null);
+  });
+
+  it('риск собирает просроченный остаток и сорванные сроки', () => {
+    const late = new Date(Date.UTC(2026, 6, 1));
+    const digest = verdict(
+      [
+        // Работа закрыта, срок прошёл, остаток не получен — это долг.
+        row({ code: 'a', dueOn: late, cost: 10_000_000n, paid: 4_000_000n }),
+        // Работа идёт, срок в прошлом — это сорванный срок.
+        row({ code: 'b', status: 'ACTIVE', closedOn: null, dueOn: late }),
+      ],
+      CONTROL,
+    );
+    assert.ok(digest !== null);
+    assert.ok(digest.risk !== null);
+    assert.match(digest.risk, /60\u00A0000 ₽/u);
+    assert.match(digest.risk, /со сроком в прошлом/u);
+  });
+
+  it('первым делом стоит старший вывод', () => {
+    const digest = verdict(
+      [row({ code: 'a', dueOn: new Date(Date.UTC(2026, 6, 1)), cost: 10_000_000n, paid: 0n })],
+      CONTROL,
+    );
+    assert.ok(digest !== null);
+    assert.ok(digest.first !== null);
+    // Вывод несёт действие, а не наблюдение: после двоеточия стоит, что
+    // делать (решение Р-194).
+    assert.match(digest.first, /:\s+\S/u);
   });
 });

@@ -779,3 +779,63 @@ function plural(count: number, one: string, few: string, many: string): string {
   return many;
 }
 
+
+/**
+ * Итог практики одной связной фразой.
+ *
+ * Заказчик просил, чтобы аналитика подавалась ёмко и концентрированно:
+ * открыл — и понял, как дела, не читая плиток и не обходя шесть вкладок.
+ * Отдельного экрана под это не заводится — четвёртая копия одних и тех же
+ * чисел не добавила бы ничего; итог встаёт первой строкой обзора и отчёта
+ * (решение Р-202).
+ *
+ * Ничего нового здесь не считается: величины берутся из `overview`,
+ * `receivables` и `conclusions`. Новое только сведение их в речь.
+ */
+export interface Verdict {
+  /** Как дела: работы и деньги. */
+  readonly state: string;
+  /** Главный риск: то, что стоит дороже всего, если не трогать. */
+  readonly risk: string | null;
+  /** Первое действие — старший вывод `conclusions`. */
+  readonly first: string | null;
+}
+
+export function verdict(rows: readonly ProjectRow[], controlDate: Date): Verdict | null {
+  if (rows.length === 0) return null;
+
+  const money = overview(rows);
+  const debts = receivables(rows, controlDate).filter((debt) => (debt.overdueDays ?? 0) > 0);
+  const overdueSum = sum(debts.map((debt) => debt.debt));
+  const late = rows.filter(
+    (row) =>
+      row.status === 'ACTIVE' && row.dueOn !== null && row.dueOn.getTime() < controlDate.getTime(),
+  );
+  const advice = conclusions(rows, controlDate);
+
+  const state =
+    `В работе ${money.active} ${plural(money.active, 'работа', 'работы', 'работ')} ` +
+    `из ${money.projects}; получено ${moneyWords(money.received)} ` +
+    `из ${moneyWords(money.contracted)} законтрактованных, ` +
+    `не закрыт остаток ${moneyWords(money.outstanding)}.`;
+
+  const risks: string[] = [];
+  if (debts.length > 0) {
+    risks.push(
+      `${moneyWords(overdueSum)} по ${debts.length} ` +
+        `${plural(debts.length, 'работе', 'работам', 'работам')} со сроком в прошлом`,
+    );
+  }
+  if (late.length > 0) {
+    risks.push(
+      `${late.length} ${plural(late.length, 'действующая работа стоит', 'действующие работы стоят', 'действующих работ стоят')} ` +
+        'со сроком в прошлом',
+    );
+  }
+
+  return {
+    state,
+    risk: risks.length === 0 ? null : `${risks.join('; ')}.`,
+    first: advice[0] === undefined ? null : `${advice[0].title}: ${advice[0].action}`,
+  };
+}
