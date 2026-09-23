@@ -10,6 +10,7 @@ import {
   Chip,
   Disclosure,
   Field,
+  FileField,
   Form,
   FormActions,
   Heading,
@@ -30,7 +31,10 @@ import {
   type RoadmapItem,
   type StageStateKey,
 } from '../../../../components/cabinet/ui';
+import { SANS } from '../../../../components/cabinet/tokens';
 import { can } from '../../../../lib/cabinet/access';
+import { CONTACT_LABEL, contactsOf } from '../../../../lib/cabinet/channels';
+import { STAGE_STATE_LABEL } from '../../../../lib/cabinet/stage-state';
 import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import {
   curators,
@@ -46,6 +50,7 @@ import {
   saveStage,
   setExpert,
   setManager,
+  uploadMaterialWithNote,
 } from '../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -66,6 +71,48 @@ const EVENT_LABEL: Record<string, string> = {
 };
 
 const CLIENT_HIDDEN_EVENTS = new Set(['EXPERT_ASSIGNED']);
+
+/**
+ * Строка истории: что именно произошло, а не какого рода было событие.
+ *
+ * Прежде история писала «Этап сменил состояние» — двенадцать одинаковых
+ * строк подряд, по которым нельзя восстановить ход работы. Подробности
+ * лежат в `payload` с первого спринта и просто не доставались: номер
+ * этапа, его название, откуда и куда он перешёл, номер версии материала
+ * (решение Р-197).
+ */
+function eventLine(
+  kind: string,
+  payload: unknown,
+  stages: readonly { id: string; position: number; title: string }[],
+  materials: readonly { id: string; title: string }[],
+): string {
+  const data = (payload ?? {}) as Record<string, unknown>;
+  const stage = stages.find((item) => item.id === data.stageId);
+  const material = materials.find((item) => item.id === data.materialId);
+
+  if (kind === 'STAGE_STATE_CHANGED') {
+    const from = typeof data.from === 'string' ? STAGE_STATE_LABEL[data.from as StageStateKey] : null;
+    const to = typeof data.to === 'string' ? STAGE_STATE_LABEL[data.to as StageStateKey] : null;
+    // Название этапа само нередко содержит двоеточие («Расчётная часть:
+    // первая редакция»), поэтому оно берётся в кавычки, а не приписывается
+    // через ещё одно двоеточие.
+    const where = stage === undefined ? 'Этап' : `Этап ${stage.position} «${stage.title}»`;
+    if (to === null) return `${where} — состояние изменено`;
+    // Переход описан словами: знак-стрелка — украшение, а правило облика
+    // требует штриховых значков, не символов.
+    return from === null ? `${where} — ${to}` : `${where} — ${to} (было «${from}»)`;
+  }
+
+  if (kind === 'VERSION_UPLOADED') {
+    const number = typeof data.version === 'number' ? `версия ${data.version}` : 'новая версия';
+    return material === undefined
+      ? `Приложена ${number} материала`
+      : `Приложена ${number} материала «${material.title}»`;
+  }
+
+  return EVENT_LABEL[kind] ?? kind;
+}
 
 /** Что требуется от клиента в этом состоянии этапа. */
 const ACTION_BY_STATE: Partial<Record<StageStateKey, string>> = {
@@ -105,7 +152,14 @@ export default async function ProjectScreen({
   const mayAssign = can(actor, 'PROJECT_ASSIGN_EXPERT', ref);
   const maySeeContacts = can(actor, 'CONTACTS_VIEW', ref);
   const mayWrite = can(actor, 'MESSAGE_READ', ref);
+  // Способы связи клиента видит тот же, кто видит его контакты: телефон и
+  // ссылка на мессенджер — персональные данные (решение Р-198).
+  const clientContacts =
+    maySeeContacts && project.client.userId !== null
+      ? await contactsOf(actor, project.client.userId)
+      : [];
   const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref);
+  const forExpert = actor.role === 'EXPERT';
   const unread = mayWrite ? await unreadCount(actor, project.id) : 0;
   // Короткий разговор виден прямо на экране заказа: уходить за ним на
   // отдельный экран, чтобы прочитать три строки, незачем. Прочитанным он
@@ -119,6 +173,21 @@ export default async function ProjectScreen({
   // замечания по матрице прав, а `projectByCode` служит ещё четырём
   // экранам, и тянуть версии ради них было бы напрасной работой.
   const withMaterials = await projectMaterials(actor, decodeURIComponent(code));
+  // Свои замечания, ждущие публикации: до неё клиент их не видит, и
+  // эксперт должен понимать, что работа сделана, но ещё не дошла.
+  const myPending = (withMaterials?.materials ?? []).reduce(
+    (sum, material) =>
+      sum +
+      material.versions.reduce(
+        (inner, version) =>
+          inner +
+          version.comments.filter(
+            (comment) => comment.authorId === actor.id && comment.moderationStatus === 'PENDING',
+          ).length,
+        0,
+      ),
+    0,
+  );
 
   const stages = project.stages;
   const done = stages.filter((stage) => stage.state === 'DONE').length;
@@ -187,9 +256,17 @@ export default async function ProjectScreen({
       };
     });
 
-  const events = project.events.filter(
-    (event) => !forClient || !CLIENT_HIDDEN_EVENTS.has(event.kind),
-  );
+  const events = project.events
+    .filter((event) => !forClient || !CLIENT_HIDDEN_EVENTS.has(event.kind))
+    .map((event) => ({
+      id: event.id,
+      line: eventLine(event.kind, event.payload, project.stages, withMaterials?.materials ?? []),
+      at: `${formatDay(event.createdAt)}, ${formatTime(event.createdAt)}`,
+      who:
+        event.actor === null
+          ? null
+          : authorName(event.actor, actor, event.actorId ?? undefined),
+    }));
 
   // Короткое описание работы. На виду остаётся название и срок, остальное
   // — под раскрытием: тема, тип сопровождения, куратор, суть задачи и
@@ -356,24 +433,103 @@ export default async function ProjectScreen({
               empty={forClient ? 'Переписки пока нет — напишите куратору.' : 'Переписки пока нет.'}
             />
           </BoardColumn>
+        ) : forExpert ? (
+          /* У эксперта переписки нет по устройству (решение Р-150), и
+             правая половина панели пустовала. Теперь там его работа:
+             что от него ждут, к какому сроку, что ушло на модерацию и
+             форма нового материала (решение Р-200). */
+          <BoardColumn
+            title="Ваша работа"
+            href="/cabinet/payout"
+            hrefLabel="вознаграждение"
+            footer={
+              <Form action={uploadMaterialWithNote} encType="multipart/form-data">
+                <input type="hidden" name="projectId" value={project.id} />
+                <input type="hidden" name="code" value={project.code} />
+                <input type="hidden" name="stageId" value={current?.id ?? ''} />
+                <Field
+                  label="Название материала"
+                  name="title"
+                  required
+                  placeholder="Глава 2 диссертации"
+                />
+                <FileField label="Файл" name="file" required />
+                <Field
+                  label="Пояснение"
+                  name="note"
+                  multiline
+                  placeholder="Что сделано в этой редакции и на что смотреть в первую очередь"
+                  hint="Пояснение уходит замечанием к версии: клиент увидит его после публикации куратором."
+                />
+                <FormActions>
+                  <Button>Приложить материал</Button>
+                </FormActions>
+              </Form>
+            }
+          >
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div>
+                <Mono>Что от вас ждут</Mono>
+                <Text size={15} style={{ marginTop: 6 }}>
+                  {current === null
+                    ? 'Все этапы закрыты — новых заданий по этой работе нет.'
+                    : (current.summary ?? 'Куратор не описал этап: спросите его, что требуется.')}
+                </Text>
+                <Text muted size={13} style={{ marginTop: 6 }}>
+                  {current === null
+                    ? ''
+                    : `Этап ${current.position}: ${current.title} · ${STAGE_STATE_LABEL[current.state as StageStateKey]}`}
+                </Text>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 18,
+                  flexWrap: 'wrap',
+                  fontFamily: SANS,
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  color: 'var(--pd-ink-muted)',
+                }}
+              >
+                {current?.dueOn == null ? null : <span>срок этапа — {formatDate(current.dueOn)}</span>}
+                {project.dueOn === null ? null : <span>срок работы — {formatDate(project.dueOn)}</span>}
+                <span>материалов {materials.length}</span>
+              </div>
+
+              <div>
+                <Mono>Ваши замечания</Mono>
+                <Text size={14} style={{ marginTop: 6 }}>
+                  {myPending === 0
+                    ? 'Замечаний, ждущих публикации, нет.'
+                    : `Ждут публикации куратором: ${myPending}. До неё клиент их не видит.`}
+                </Text>
+              </div>
+
+              {current === null ? null : (
+                <div>
+                  <ButtonLink href={`/cabinet/stages/${current.id}`}>Открыть текущий этап</ButtonLink>
+                </div>
+              )}
+            </div>
+          </BoardColumn>
         ) : null}
       </Board>
 
       {/* Ниже — то, что нужно не каждый раз: история и служебные действия.
           На виду они занимали пол-экрана, пересказывая этапы и переписку. */}
-      <Disclosure title="История работы" style={{ marginTop: 20 }}>
+      <Disclosure title="История работы" tall style={{ marginTop: 20 }}>
           {events.length === 0 ? (
             <Text muted>Событий пока нет.</Text>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
               {events.map((event) => (
                 <li key={event.id}>
-                  <Text size={14}>{EVENT_LABEL[event.kind] ?? event.kind}</Text>
+                  <Text size={14}>{event.line}</Text>
                   <Text muted size={13} style={{ marginTop: 2 }}>
-                    {formatDate(event.createdAt)}
-                    {event.actor === null
-                      ? ''
-                      : ` · ${authorName(event.actor, actor, event.actorId ?? undefined)}`}
+                    {event.at}
+                    {event.who === null ? '' : ` · ${event.who}`}
                   </Text>
                 </li>
               ))}
@@ -514,6 +670,34 @@ export default async function ProjectScreen({
                     <Text muted size={13}>
                       {project.client.phone}
                     </Text>
+                  )}
+                  {/* Как человек просил с ним связываться. Куратор держится
+                      этого списка, а не звонит наугад (решение Р-198). */}
+                  {clientContacts.length === 0 ? null : (
+                    <ul
+                      style={{
+                        margin: '10px 0 0',
+                        padding: 0,
+                        listStyle: 'none',
+                        display: 'grid',
+                        gap: 6,
+                      }}
+                    >
+                      {clientContacts.map((contact) => (
+                        <li key={contact.id}>
+                          <Text size={13}>
+                            {contact.preferred ? 'Предпочитает: ' : ''}
+                            {CONTACT_LABEL[contact.kind]}
+                            {contact.value === null ? '' : ` — ${contact.value}`}
+                          </Text>
+                          {contact.note === null ? null : (
+                            <Text muted size={13}>
+                              {contact.note}
+                            </Text>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               ) : null}

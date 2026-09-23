@@ -192,6 +192,43 @@ async function main() {
     where: { emailNormalized: { endsWith: `@${DOMAIN}` } },
   });
 
+  // Способы связи: у клиента звонок предпочтителен, у эксперта — Telegram,
+  // у руководителя — правила по событиям. Переписываются заново, чтобы
+  // правка этого файла доезжала до снимка (решение Р-198).
+  await prisma.contactChannel.deleteMany({ where: { userId: { in: staff } } });
+  await prisma.contactChannel.createMany({
+    data: [
+      {
+        userId: clientUser.id,
+        kind: 'PHONE_CALL',
+        value: '+7 900 000-00-00',
+        note: 'Звонить после 18:00, днём на кафедре',
+        preferred: true,
+      },
+      { userId: clientUser.id, kind: 'EMAIL', preferred: false },
+      {
+        userId: expertUser.id,
+        kind: 'MESSENGER',
+        value: '@artboard_expert',
+        note: 'Отвечаю в течение дня',
+        preferred: true,
+      },
+      { userId: manager.id, kind: 'FULL_SUPPORT', preferred: true },
+    ],
+  });
+
+  await prisma.notifyRule.deleteMany({ where: { userId: { in: staff } } });
+  await prisma.notifyRule.createMany({
+    data: [
+      { userId: head.id, eventKind: 'REQUEST_CREATED', channel: 'EMAIL', enabled: true },
+      { userId: head.id, eventKind: 'REQUEST_CREATED', channel: 'TELEGRAM', enabled: true },
+      { userId: head.id, eventKind: 'DEADLINE_IN_3_DAYS', channel: 'EMAIL', enabled: false },
+      { userId: head.id, eventKind: 'DEADLINE_IN_3_DAYS', channel: 'TELEGRAM', enabled: true },
+      { userId: head.id, eventKind: 'MESSAGE_RECEIVED', channel: 'EMAIL', enabled: false },
+      { userId: head.id, eventKind: 'MESSAGE_RECEIVED', channel: 'TELEGRAM', enabled: false },
+    ],
+  });
+
   await prisma.projectCodeCounter.upsert({
     where: { year: 2026 },
     create: { year: 2026, lastNumber: 0 },
@@ -587,17 +624,64 @@ async function main() {
     ],
   });
 
-  const events = await prisma.projectEvent.count({ where: { projectId: showcase } });
-  if (events === 0) {
-    await prisma.projectEvent.createMany({
-      data: [
-        { projectId: showcase, actorId: manager.id, kind: 'PROJECT_CREATED', createdAt: day(120) },
-        { projectId: showcase, actorId: expertUser.id, kind: 'VERSION_UPLOADED', createdAt: day(24) },
-        { projectId: showcase, actorId: clientUser.id, kind: 'VERSION_UPLOADED', createdAt: day(12) },
-        { projectId: showcase, actorId: manager.id, kind: 'STAGE_STATE_CHANGED', createdAt: day(10) },
-      ],
-    });
-  }
+  // История переписывается заново: у событий есть подробности в `payload`
+  // (какой этап, откуда куда перешёл, какая версия материала), и без них
+  // история выглядела бы чередой одинаковых строк «этап сменил состояние»
+  // (решение Р-197).
+  await prisma.projectEvent.deleteMany({ where: { projectId: showcase } });
+  await prisma.projectEvent.createMany({
+    data: [
+      {
+        projectId: showcase,
+        actorId: manager.id,
+        kind: 'PROJECT_CREATED',
+        payload: { code: 'artboard' },
+        createdAt: day(120),
+      },
+      {
+        projectId: showcase,
+        actorId: manager.id,
+        kind: 'STAGE_STATE_CHANGED',
+        payload: { stageId: stageIds[0], from: 'IN_PROGRESS', to: 'DONE' },
+        createdAt: day(96),
+      },
+      {
+        projectId: showcase,
+        actorId: manager.id,
+        kind: 'STAGE_STATE_CHANGED',
+        payload: { stageId: stageIds[1], from: 'IN_PROGRESS', to: 'DONE' },
+        createdAt: day(60),
+      },
+      {
+        projectId: showcase,
+        actorId: expertUser.id,
+        kind: 'VERSION_UPLOADED',
+        payload: { materialId: material.id, version: 1 },
+        createdAt: day(24),
+      },
+      {
+        projectId: showcase,
+        actorId: clientUser.id,
+        kind: 'VERSION_UPLOADED',
+        payload: { materialId: material.id, version: 2 },
+        createdAt: day(12),
+      },
+      {
+        projectId: showcase,
+        actorId: manager.id,
+        kind: 'STAGE_STATE_CHANGED',
+        payload: { stageId: stageIds[2], from: 'IN_PROGRESS', to: 'IN_APPROVAL' },
+        createdAt: day(10),
+      },
+      {
+        projectId: showcase,
+        actorId: manager.id,
+        kind: 'STAGE_STATE_CHANGED',
+        payload: { stageId: stageIds[3], from: 'NOT_STARTED', to: 'AWAITING_CLIENT' },
+        createdAt: day(6),
+      },
+    ],
+  });
 
   // ── Заявка в очереди менеджера ──────────────────────────────────────────
   const lead = await prisma.lead.findFirst({ where: { contact: `lead@${DOMAIN}` } });

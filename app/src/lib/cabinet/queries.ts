@@ -121,9 +121,13 @@ export async function projectByCode(actor: Actor, code: string) {
         select: { id: true, fullName: true, expertProfile: true },
       },
       stages: { orderBy: { position: 'asc' } },
+      // История работы показывается целиком, а не последней дюжиной:
+      // заказчик разбирает по ней спор о том, что и когда происходило
+      // (решение Р-197). Предел оставлен на случай работы с сотнями
+      // событий — свёртка прокручивается, а не растёт бесконечно.
       events: {
         orderBy: { createdAt: 'desc' },
-        take: 12,
+        take: 200,
         include: { actor: { select: { id: true, fullName: true, role: true } } },
       },
     },
@@ -196,7 +200,13 @@ export async function projectMaterials(actor: Actor, code: string) {
             orderBy: { number: 'desc' },
             include: {
               uploadedBy: { select: { fullName: true, role: true } },
-              comments: { where: commentScope, select: { id: true } },
+              // Состояние модерации нужно эксперту: его замечание не
+              // видно клиенту, пока куратор его не опубликовал, и ждущее
+              // публикации он должен видеть у себя (решение Р-200).
+              comments: {
+                where: commentScope,
+                select: { id: true, authorId: true, moderationStatus: true },
+              },
             },
           },
         },
@@ -376,8 +386,26 @@ export async function trafficLight(actor: Actor) {
   const inWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
+  // Карточка «Требует внимания» должна отвечать на три вопроса сразу:
+  // что просрочено, чей ход и сколько денег под угрозой. Состояние этапа
+  // и суммы договора берутся здесь же — вторым запросом на каждую строку
+  // это стоило бы десятков обращений к базе (решение Р-199).
   const include = {
-    project: { select: { code: true, title: true, client: { select: { fullName: true } } } },
+    project: {
+      select: {
+        code: true,
+        title: true,
+        dueOn: true,
+        client: { select: { fullName: true } },
+        manager: { select: { fullName: true } },
+        contract: {
+          select: {
+            totalAmount: true,
+            tranches: { select: { amount: true, status: true } },
+          },
+        },
+      },
+    },
   } as const;
   // Незакрытые этапы: завершённые в светофор не попадают по определению.
   const live = {

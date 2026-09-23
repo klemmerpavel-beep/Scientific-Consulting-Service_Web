@@ -357,6 +357,12 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
           erasedAt: executedAt,
         },
       });
+      // Способы связи — это телефон и ссылки на мессенджеры, то есть
+      // персональные данные; строки удаляются целиком, а не затираются
+      // по значению (решение Р-198). Правила уведомлений уходят вместе с
+      // ними: без каналов они бессмысленны.
+      await tx.contactChannel.deleteMany({ where: { userId: client.userId } });
+      await tx.notifyRule.deleteMany({ where: { userId: client.userId } });
       userErased = true;
     }
 

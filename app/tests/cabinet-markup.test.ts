@@ -231,8 +231,12 @@ describe('слои кабинета не смешиваются', () => {
     const { actionCodes } = await import('../src/lib/cabinet/journal-labels.ts');
     const known = new Set(actionCodes());
     const root = path.join(SCREENS, '..', '..', 'lib', 'cabinet');
+    // Расписание пишет в журнал наравне с экранами: зеркало на диске и
+    // мост «Диск → база» ведутся скриптами, и их виды действия обходили
+    // правило стороной (решение Р-202).
+    const scripts = path.join(SCREENS, '..', '..', '..', 'scripts');
     const unnamed = new Set<string>();
-    for (const file of [...sources(root, 'both'), ...sources(SCREENS)]) {
+    for (const file of [...sources(root, 'both'), ...sources(SCREENS), ...sources(scripts, '.ts')]) {
       const code = readFileSync(file, 'utf8');
       // Только записи в журнал: у `can` и `ensure` тем же словом названо
       // право, и оно к словарю журнала отношения не имеет.

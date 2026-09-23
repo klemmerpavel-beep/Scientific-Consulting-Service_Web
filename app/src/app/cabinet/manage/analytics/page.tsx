@@ -7,7 +7,7 @@ import {
   seriesColor,
 } from '../../../../components/cabinet/Charts';
 import { Card, Chip, Empty, Heading, Mono, Text } from '../../../../components/cabinet/ui';
-import { byMonth, conclusions, overview, products } from '../../../../lib/cabinet/analytics/metrics';
+import { byMonth, conclusions, overview, products, verdict } from '../../../../lib/cabinet/analytics/metrics';
 import { formatAmount, formatRounded } from '../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from './shared';
 
@@ -42,6 +42,7 @@ export default async function AnalyticsOverview() {
   const months = byMonth(rows);
   const productRows = products(rows);
   const outputs = conclusions(rows, now);
+  const digest = verdict(rows, now);
 
   const period =
     total.period.from === null
@@ -62,6 +63,31 @@ export default async function AnalyticsOverview() {
         </Empty>
       ) : (
         <>
+          {/* Итог первой строкой: заказчик просил подавать аналитику ёмко и
+              концентрированно — открыл и понял, как дела, не читая плиток.
+              Отдельного экрана под это не заводится, чтобы не держать
+              четвёртую копию одних и тех же чисел (решение Р-202). */}
+          {digest === null ? null : (
+            <Card style={{ marginBottom: 20 }}>
+              <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+                Итог
+              </Heading>
+              <Text size={15}>{digest.state}</Text>
+              {digest.risk === null ? null : (
+                <Text size={15} style={{ marginTop: 8 }}>
+                  <strong style={{ fontWeight: 600 }}>Под угрозой: </strong>
+                  {digest.risk}
+                </Text>
+              )}
+              {digest.first === null ? null : (
+                <Text size={15} style={{ marginTop: 8 }}>
+                  <strong style={{ fontWeight: 600 }}>Первым делом: </strong>
+                  {digest.first}
+                </Text>
+              )}
+            </Card>
+          )}
+
           <Tiles>
             <Tile label="Законтрактовано" value={formatAmount(total.contracted)} note={`${total.projects} проектов, период ${period}`} />
             <Tile label="Получено" value={formatAmount(total.received)} note={`собрано ${share(total.collection)} по завершённым`} />

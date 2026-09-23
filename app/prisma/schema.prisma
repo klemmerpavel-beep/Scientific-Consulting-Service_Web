@@ -191,6 +191,9 @@ model User {
   sessions    Session[]
   loginTokens LoginToken[]
 
+  contactChannels ContactChannel[]
+  notifyRules     NotifyRule[]
+
   managedProjects Project[] @relation("ProjectManager")
   expertProjects  Project[] @relation("ProjectExpert")
   expertStages    Stage[]   @relation("StageExpert")
@@ -783,6 +786,71 @@ model ExpertPayout {
 enum NotificationChannel {
   EMAIL
   TELEGRAM
+}
+
+/// Способ связи, названный самим человеком.
+///
+/// Это не то же, что канал доставки уведомлений: система умеет писать
+/// почтой и в Telegram, а звонить и писать в соцсетях — нет. Здесь
+/// человек говорит, **как ему удобно**, чтобы практика с ним общалась;
+/// куратор это видит и так и поступает (решение Р-198).
+enum ContactKind {
+  /// Письмо на адрес учётной записи.
+  EMAIL
+  /// Сообщение в Telegram.
+  TELEGRAM
+  /// Звонок куратора на указанный номер.
+  PHONE_CALL
+  /// Сообщение в мессенджере или социальной сети — по ссылке или имени.
+  MESSENGER
+  /// Полное сопровождение: куратор ведёт работу сам и связывается
+  /// первым, не дожидаясь вопросов.
+  FULL_SUPPORT
+}
+
+/// Как с человеком связываться. Строк может быть несколько, одна из них
+/// помечается предпочтительной.
+model ContactChannel {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  kind ContactKind
+
+  /// Номер, ссылка или имя в мессенджере. У почты и полного сопровождения
+  /// пусто: адрес известен из учётной записи, а сопровождение — порядок
+  /// работы, а не адрес. Персональные данные: затирается по ст. 21 152-ФЗ.
+  value String?
+
+  /// Оговорка человека: «звонить после 18:00», «в выходные не писать».
+  note String?
+
+  /// Предпочтительный способ. Проверяется в коде, а не ограничением базы:
+  /// при переносе предпочтения строк недолго бывает две.
+  preferred Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/// Какое событие каким каналом приходит. Правил может не быть вовсе —
+/// тогда работают общие переключатели `notifyEmail` и `notifyTelegram`.
+model NotifyRule {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Вид события очереди (`STAGE_AWAITING_CLIENT` и прочие) либо `*` —
+  /// правило на всё, что не названо отдельно.
+  eventKind String
+
+  channel NotificationChannel
+  enabled Boolean @default(true)
+
+  @@unique([userId, eventKind, channel])
+  @@index([userId])
 }
 
 enum NotificationState {

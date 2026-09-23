@@ -25,7 +25,14 @@ export const ROOT_TOKENS =
   // Две ступени сверх палитры сайта: шкала рядов графиков. Типов
   // сопровождения шесть, а различимых ступеней было четыре — пятый
   // сектор кольца повторял цвет первого (решение Р-175).
-  '--pd-series-mid:#5C8FD6;--pd-series-quiet:#98A2B3}';
+  '--pd-series-mid:#5C8FD6;--pd-series-quiet:#98A2B3;' +
+  // Четыре ступени тревоги: чем дольше просрочка, тем плотнее заливка
+  // плашки. Одного красного мало — на сводке рядом стоят просрочки в день
+  // и в год, и выглядели они одинаково (решение Р-199). Ступени проверены
+  // на контраст с `--pd-err-ink`: 7,6 / 7,0 / 5,8 / 4,6 — все выше 4,5,
+  // то есть уровень AA держится и на самой плотной.
+  '--pd-alert-1:#FDF2F0;--pd-alert-2:#FAE7E5;--pd-alert-3:#F3CFC9;' +
+  '--pd-alert-4:#EBB4AC;--pd-alert-edge:#E4A79E;--pd-alert-ink:#8E2C22}';
 
 // Записано ровно так же, как на девяти страницах сайта: тот же набор и
 // тот же порядок, без пробелов после запятых. Гарнитуры совпадали и
@@ -125,6 +132,9 @@ body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;
    не прокручивается, и раскрытая свёртка вытолкнула бы её за край. На
    обычной странице свёртка растёт по содержимому (решение Р-191). */
 .cab-board-main .cab-fold-body{max-height:200px;overflow-y:auto;scrollbar-gutter:stable}
+/* История работы длиннее прочих свёрток: по ней разбирают ход дела, и
+   двух строк за раз для этого мало (решение Р-197). */
+.cab-board-main .cab-fold-tall{max-height:340px}
 main{flex:1}
 h1,h2,h3{text-wrap:balance;margin:0}
 h1,h2,h3,p,li,td,th,a,label,span{overflow-wrap:break-word}
@@ -157,10 +167,21 @@ input[type="file"]{font-family:${SANS};font-size:16px;color:var(--pd-ink-seconda
 input[type="file"]::file-selector-button{min-height:44px;padding:0 18px;margin-right:14px;border-radius:999px;border:1px solid var(--pd-edge-neutral);background:var(--pd-ink-inverse);color:var(--pd-ink-secondary);font-family:${SANS};font-size:15px;cursor:pointer;transition:border-color 180ms ${EASING},color 180ms ${EASING}}
 input[type="file"]::file-selector-button:hover{border-color:var(--pd-accent);color:var(--pd-accent)}
 button[disabled]{opacity:.7!important;cursor:progress!important}
-summary{cursor:pointer;list-style:none}
+summary{cursor:pointer;list-style:none;transition:background 180ms ${EASING},color 180ms ${EASING}}
 summary::-webkit-details-marker{display:none}
 .cab-caret{flex:0 0 14px;transition:transform 180ms ${EASING}}
 details[open]>summary .cab-caret{transform:rotate(90deg)}
+/* Раскрытая свёртка окрашивается так же, как раскрытый вопрос на
+   страницах сайта: заливка шапки и рамка вокруг блока. Смысл на цвете не
+   держится — состояние видно и по повороту маркера, — но взгляд сразу
+   находит открытое место. Переход тот же, что у вопросов: 180 мс единой
+   кривой (решение Р-197). */
+details[open]>summary{background:var(--pd-accent-mark);color:var(--pd-accent-deep)}
+details[open].cab-block{border-color:var(--pd-accent-edge)}
+/* Волна готовности покачивается, пока работа идёт. Ход небольшой и
+   медленный: это признак жизни, а не мигание. */
+@keyframes cab-tide{from{transform:translateY(.6px)}to{transform:translateY(-.9px)}}
+.cab-tide{animation:cab-tide 3200ms ${EASING} infinite alternate}
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes cab-pulse{0%,100%{opacity:1}50%{opacity:.55}}
 .cab-skeleton{background:var(--pd-surface-quiet);border-radius:6px;animation:cab-pulse 1400ms ${EASING} infinite}
@@ -169,4 +190,5 @@ details[open]>summary .cab-caret{transform:rotate(90deg)}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
 @media (max-width:1024px){.cab-board-main{display:block!important;overflow:visible!important;padding-bottom:clamp(72px,7vw,112px)!important}.cab-board{grid-template-columns:minmax(0,1fr)!important}.cab-board-body{max-height:none!important;overflow:visible!important}}
+@media print{@page{margin:14mm}body{background:#fff}header,footer,nav,.pd-skip,.cab-no-print{display:none!important}main{padding:0!important;max-width:none!important}.cab-block{break-inside:avoid;box-shadow:none!important}details{break-inside:avoid}details>*:not(summary){display:block!important}details>summary{display:none!important}a{text-decoration:none;color:inherit}}
 `;

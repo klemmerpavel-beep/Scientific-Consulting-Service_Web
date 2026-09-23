@@ -24,7 +24,8 @@ import {
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
-import { formatPlain } from '../../../lib/cabinet/money';
+import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
+import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments } from '../../../lib/cabinet/materials';
 import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
@@ -32,7 +33,7 @@ import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { currentActor } from '../../../lib/cabinet/session';
 import { byMonth, products } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
-import { activeWorks, orderSummary, stageLoad } from '../../../lib/cabinet/summary';
+import { activeWorks, moneyBrief, orderSummary, stageLoad } from '../../../lib/cabinet/summary';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -56,6 +57,62 @@ function overdueDays(dueOn: Date | null): number | null {
   return days > 0 ? days : null;
 }
 
+/**
+ * Ступень тревоги по величине просрочки.
+ *
+ * Одного красного мало: на сводке рядом стоят просрочка в день и в год, а
+ * выглядели они одинаково. Ступени — неделя, месяц, квартал и дальше;
+ * граница проходит там, где меняется существо дела: день опоздания — это
+ * рабочая заминка, месяц — сорванный этап, квартал — работа, о которой
+ * забыли (решение Р-199).
+ */
+function alertStep(late: number | null): 0 | 1 | 2 | 3 | 4 {
+  if (late === null) return 0;
+  if (late <= 7) return 1;
+  if (late <= 30) return 2;
+  if (late <= 90) return 3;
+  return 4;
+}
+
+/**
+ * Чей сейчас ход. Состояние этапа названо не своим именем, а ответом на
+ * вопрос менеджера: делать это ему, ждать ли клиента или исполнителя.
+ */
+const TURN_BY_STATE: Partial<Record<StageStateKey, string>> = {
+  NOT_STARTED: 'ход за вами: этап не начат',
+  IN_PROGRESS: 'ход за исполнителем',
+  AWAITING_CLIENT: 'ход за клиентом',
+  IN_APPROVAL: 'ход за клиентом: ждёт согласования',
+};
+
+/** Заливка плашки по ступени тревоги. Ноль — обычная карточка. */
+const ALERT_FILL: Record<number, string | undefined> = {
+  0: undefined,
+  1: 'var(--pd-alert-1)',
+  2: 'var(--pd-alert-2)',
+  3: 'var(--pd-alert-3)',
+  4: 'var(--pd-alert-4)',
+};
+
+/**
+ * Остаток по договору работы: сколько ещё не получено.
+ *
+ * На карточке просрочки это главная величина после самого срока: сорванный
+ * этап у работы с закрытым остатком и у работы, где не получено полмиллиона,
+ * — две разные беды.
+ */
+function owed(contract: {
+  totalAmount: bigint;
+  tranches: readonly { amount: bigint; status: string }[];
+} | null): bigint {
+  if (contract === null) return 0n;
+  const paid = contract.tranches
+    .filter((tranche) => tranche.status === 'PAID')
+    .reduce((sum, tranche) => sum + tranche.amount, 0n);
+  const rest = contract.totalAmount - paid;
+  return rest > 0n ? rest : 0n;
+}
+
 export default async function ManageQueue({
   searchParams,
 }: {
@@ -77,7 +134,11 @@ export default async function ManageQueue({
   // Состояние заказов без денег: заказчик запретил выносить деньги на
   // главную — для них есть свой экран (решение Р-194). Плитки видит тот,
   // кому открыта практика целиком.
-  const summary = can(actor, 'MARGIN_VIEW') ? await orderSummary(actor) : null;
+  const maySeeMoney = can(actor, 'MARGIN_VIEW');
+  const summary = maySeeMoney ? await orderSummary(actor) : null;
+  // Деньги коротко — три итога для нижней правой плашки главной. Разбор
+  // по работам остаётся на своём экране (решение Р-201).
+  const money = maySeeMoney ? await moneyBrief(actor) : null;
   // Перечень действующих работ видят обе служебные роли, и каждая — свои:
   // менеджеру `scopeProjects` оставляет те, где он куратор. Деньги в строке
   // появляются только при праве на маржу (решение Р-175).
@@ -132,18 +193,29 @@ export default async function ManageQueue({
   const attention = [
     ...light.overdue.map((stage: (typeof light.overdue)[number]) => {
       const late = overdueDays(stage.dueOn);
+      const rest = maySeeMoney ? owed(stage.project.contract) : 0n;
       return {
         key: `overdue-${stage.id}`,
         title: `${stage.title} · ${stage.project.title}`,
         mark: late === null ? 'срок сегодня' : `просрочено ${late} ${plural(late, 'день', 'дня', 'дней')}`,
         urgent: true,
-        detail: stage.project.client.fullName,
+        step: alertStep(late),
+        // Чей ход — первое, что нужно знать: своё дело менеджер закрывает
+        // сам, чужое требует письма или звонка.
+        detail: [
+          TURN_BY_STATE[stage.state as StageStateKey] ?? null,
+          stage.project.client.fullName,
+          rest > 0n ? `не получено ${formatAmount(rest)}` : null,
+        ]
+          .filter((part) => part !== null)
+          .join(' · '),
         todo: 'Назначить новый срок или перевести этап',
         href: `/cabinet/stages/${stage.id}`,
       };
     }),
     ...light.stalled.map((stage: (typeof light.stalled)[number]) => ({
       key: `stalled-${stage.id}`,
+      step: 0 as const,
       title: `${stage.title} · ${stage.project.title}`,
       mark:
         stage.awaitingClientSince === null
@@ -156,6 +228,7 @@ export default async function ManageQueue({
     })),
     ...unread.map((row) => ({
       key: `unread-${row.code}`,
+      step: 0 as const,
       title: row.title,
       mark: `непрочитанных ${row.count}`,
       urgent: false,
@@ -165,6 +238,7 @@ export default async function ManageQueue({
     })),
     ...moderation.map((row) => ({
       key: `comment-${row.stageId ?? row.material}`,
+      step: 0 as const,
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: `замечаний на модерации ${row.count}`,
       urgent: false,
@@ -176,6 +250,7 @@ export default async function ManageQueue({
       ? [
           {
             key: 'outbox',
+            step: 0 as const,
             title: 'Очередь уведомлений',
             mark: `не доставлено ${outbox.failed}`,
             urgent: true,
@@ -195,7 +270,16 @@ export default async function ManageQueue({
           плавал — у руководителя «Практика», у менеджера «Требует
           внимания», — и один блок был набран двумя способами
           (решение Р-172). */}
-      <ScreenHead title={summary === null ? 'Работа на сегодня' : 'Практика'} />
+      {/* Кнопка отчёта стоит справа вверху — там, где заказчик её просил:
+          общее действие страницы, а не карточка среди карточек
+          (решение Р-201). Менеджеру аналитика закрыта, и кнопки у него
+          нет вовсе. */}
+      <ScreenHead
+        title={summary === null ? 'Работа на сегодня' : 'Практика'}
+        action={
+          dashboard ? <ButtonLink href="/cabinet/manage/report">Отчёт за период</ButtonLink> : undefined
+        }
+      />
 
       {summary === null ? null : (
         <div>
@@ -317,8 +401,8 @@ export default async function ManageQueue({
             ) : (
               <RankChart
                 title="Работы по состоянию текущего этапа"
-                width={560}
-                labelWidth={220}
+                width={580}
+                labelWidth={200}
                 data={load.points.map((point) => ({ label: point.label, value: point.count }))}
                 format={(value) => String(Math.round(value))}
               />
@@ -342,50 +426,6 @@ export default async function ManageQueue({
               Состояние берётся у первого незавершённого этапа: он и есть то, где работа стоит
               сейчас.
             </Text>
-            {/* Полосы говорят, чем практика занята, но не когда наступает
-                следующий срок. Перечень ближайших двух недель отвечает на
-                это и заодно наполняет карточку: прежде она была ниже
-                соседней и пустовала снизу (решение Р-182). */}
-            <div style={{ marginTop: 16, borderTop: '1px solid var(--pd-divider)', paddingTop: 14 }}>
-              <Heading level={3} size={3} style={{ marginBottom: 10 }}>
-                Сроки ближайших двух недель
-              </Heading>
-              {load.soon.length === 0 ? (
-                <Text muted size={13}>
-                  В ближайшие две недели сроков не назначено.
-                </Text>
-              ) : (
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
-                  {load.soon.slice(0, 6).map((row) => (
-                    <li
-                      key={row.id}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(0,1fr) auto',
-                        gap: 12,
-                        alignItems: 'baseline',
-                      }}
-                    >
-                      <a
-                        href={`/cabinet/stages/${row.id}`}
-                        style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
-                      >
-                        {row.stage} · {row.title}
-                      </a>
-                      <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
-                        {formatDate(row.dueOn)}
-                      </Text>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {load.soon.length <= 6 ? null : (
-                <Text muted size={13} style={{ marginTop: 10 }}>
-                  И ещё {load.soon.length - 6}{' '}
-                  {plural(load.soon.length - 6, 'срок', 'срока', 'сроков')} в том же окне.
-                </Text>
-              )}
-            </div>
             {/* Числа стоят и текстом: график объявлен картинкой, и читалка
                 получает от него одно название (правило Р-176). */}
             <div style={{ marginTop: 'auto' }} />
@@ -452,6 +492,107 @@ export default async function ManageQueue({
               </Disclosure>
             </Card>
           )}
+
+          {/* Четвёртая плашка: ближайшие сроки и деньги коротко. Прежде
+              справа снизу пустовало место, а сроки жили внутри карточки
+              загрузки и делали её график мелким (решение Р-201). */}
+          {money === null ? null : (
+            <Card style={{ display: 'flex', flexDirection: 'column' }}>
+              <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+                Ближайшие сроки и деньги
+              </Heading>
+
+              {load === null || load.soon.length === 0 ? (
+                <Text muted size={14}>
+                  В ближайшие две недели сроков не назначено.
+                </Text>
+              ) : (
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+                  {load.soon.slice(0, 5).map((row) => (
+                    <li
+                      key={row.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(0,1fr) auto',
+                        gap: 12,
+                        alignItems: 'baseline',
+                      }}
+                    >
+                      <a
+                        href={`/cabinet/stages/${row.id}`}
+                        style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
+                      >
+                        {row.stage} · {row.title}
+                      </a>
+                      <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
+                        {formatDate(row.dueOn)}
+                      </Text>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {load === null || load.soon.length <= 5 ? null : (
+                <Text muted size={13} style={{ marginTop: 10 }}>
+                  И ещё {load.soon.length - 5}{' '}
+                  {plural(load.soon.length - 5, 'срок', 'срока', 'сроков')} в том же окне.
+                </Text>
+              )}
+
+              <dl
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, minmax(0,1fr))',
+                  gap: 12,
+                  margin: '16px 0 0',
+                  paddingTop: 14,
+                  borderTop: '1px solid var(--pd-divider)',
+                }}
+              >
+                {[
+                  { key: 'got', label: 'Получено', value: formatPlain(money.received) },
+                  { key: 'wait', label: 'К получению', value: formatPlain(money.awaiting) },
+                  {
+                    key: 'debt',
+                    label: 'Просрочено',
+                    value: formatPlain(money.overdue),
+                  },
+                ].map((row) => (
+                  <div key={row.key}>
+                    <dt
+                      style={{
+                        fontFamily: SANS,
+                        fontSize: 13,
+                        color: 'var(--pd-ink-muted)',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {row.label}
+                    </dt>
+                    <dd
+                      style={{
+                        margin: '4px 0 0',
+                        fontFamily: SANS,
+                        fontSize: 16,
+                        fontWeight: 600,
+                        lineHeight: 1.24,
+                        color: 'var(--pd-ink)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {row.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <Text muted size={13} style={{ marginTop: 10 }}>
+                Суммы в рублях. Разбор по работам — на экране денег.
+              </Text>
+              <div style={{ marginTop: 'auto' }} />
+              <div style={{ marginTop: 12 }}>
+                <ButtonLink href="/cabinet/manage/finance">Деньги и расчёты</ButtonLink>
+              </div>
+            </Card>
+          )}
         </div>
       )}
 
@@ -485,7 +626,17 @@ export default async function ManageQueue({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 6,
-                  ...(row.urgent ? { borderColor: 'var(--pd-accent-edge)' } : {}),
+                  // Чем дольше просрочка, тем плотнее заливка. Величина при
+                  // этом стоит и текстом: цвет показывает, а читают
+                  // подпись (решение Р-199).
+                  ...(row.step > 0
+                    ? {
+                        background: ALERT_FILL[row.step],
+                        borderColor: 'var(--pd-alert-edge)',
+                      }
+                    : row.urgent
+                      ? { borderColor: 'var(--pd-accent-edge)' }
+                      : {}),
                 }}
               >
                 <a
@@ -498,7 +649,14 @@ export default async function ManageQueue({
                   <Chip tone={row.urgent ? 'accent' : 'neutral'}>{row.mark}</Chip>
                 </div>
                 {row.detail === null ? null : (
-                  <Text muted size={13}>
+                  // На цветной плашке приглушённый цвет не проходит по
+                  // контрасту: заливка тревоги плотнее белого фона, и
+                  // подпись берётся на ступень темнее (решение Р-199).
+                  <Text
+                    muted={row.step === 0}
+                    size={13}
+                    style={row.step === 0 ? undefined : { color: 'var(--pd-ink-secondary)' }}
+                  >
                     {row.detail}
                   </Text>
                 )}

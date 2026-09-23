@@ -14,7 +14,8 @@ export type EventKind =
   | 'DEADLINE_IN_3_DAYS'
   | 'PAYMENT_STATUS_CHANGED'
   | 'REQUEST_CREATED'
-  | 'PROJECT_OPENED';
+  | 'PROJECT_OPENED'
+  | 'HELP_REQUESTED';
 
 /**
  * Человеческие названия событий. Стоят здесь, а не на экране очереди: их
@@ -28,6 +29,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   STAGE_IN_APPROVAL: 'этап на согласовании',
   DEADLINE_IN_3_DAYS: 'приближается срок',
   PAYMENT_STATUS_CHANGED: 'изменилась оплата',
+  HELP_REQUESTED: 'куратор просит помощи',
   REQUEST_CREATED: 'новая заявка',
   PROJECT_OPENED: 'работа заведена',
 };

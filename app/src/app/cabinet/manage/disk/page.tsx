@@ -39,6 +39,7 @@ export default async function DiskScreen() {
 
   const status = await diskStatus(actor);
   const last = status.last;
+  const pull = status.pullLast;
 
   return (
     <Shell actor={actor} current="/cabinet/manage/tools">
@@ -46,7 +47,7 @@ export default async function DiskScreen() {
         backHref="/cabinet/manage/tools"
         backLabel="к служебным разделам"
         title="Зеркало на облачном диске"
-        note="Таблицы реестров и файлы материалов уходят на диск раз в час. Читается только в одну сторону: правка на диске в кабинет не вернётся и будет затёрта ближайшим прогоном."
+        note="Таблицы реестров и файлы материалов уходят на диск раз в час; обратно с диска приходит только книга заказов, и только строками без замечаний. Всё прочее, правленное на диске, в кабинет не вернётся и будет затёрто ближайшим прогоном."
       />
 
       {/* Выключенное зеркало — это состояние, а не сбой: красный блок
@@ -107,6 +108,69 @@ export default async function DiskScreen() {
           ближайшим прогоном: зеркало без удаления оставляло бы в облаке копию, о которой никто
           не помнит.
         </Text>
+      </Card>
+
+      {/* Обратный мост: книга заказов с диска в базу. Пока учёт ведётся
+          таблицей, руководителю пришлось бы грузить её руками; расписание
+          делает то же самое, а строки с замечаниями оставляет человеку
+          (решение Р-202). */}
+      <Card style={{ marginBottom: 24 }}>
+        <Heading level={2} size={3} style={{ marginBottom: 10 }}>
+          Книга заказов с диска в кабинет
+        </Heading>
+        {status.pullConfigured ? (
+          <Text size={14}>
+            Файл «{status.pullPath}» в той же папке разбирается раз в час, и строки без замечаний
+            заводятся работами. Строка, у которой разбор нашёл ошибку, в базу не идёт: она
+            остаётся в{' '}
+            <a href="/cabinet/manage/import">переносе книги заказов</a> и ждёт разбора.
+          </Text>
+        ) : (
+          <Text size={14}>
+            Мост выключен: путь книги на диске не задан. Пока его нет, история переносится вручную
+            на экране <a href="/cabinet/manage/import">«Перенос книги заказов»</a>.
+          </Text>
+        )}
+        {pull === null ? (
+          <Text muted size={13} style={{ marginTop: 10 }}>
+            Прогонов ещё не было.
+          </Text>
+        ) : (
+          <Text muted size={13} style={{ marginTop: 10 }}>
+            Последний прогон {formatDate(pull.occurredAt)} в {formatTime(pull.occurredAt)}: из{' '}
+            {pull.rows} {plural(pull.rows, 'строки', 'строк', 'строк')} заведено {pull.created},
+            обновлено {pull.updated}, уже было {pull.skipped}
+            {pull.held === 0
+              ? '.'
+              : `; ${pull.held} ${plural(pull.held, 'строка требует', 'строки требуют', 'строк требуют')} разбора.`}
+          </Text>
+        )}
+        {status.pullRuns.length === 0 ? null : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 14 }}>
+            <thead>
+              <tr>
+                <th style={TABLE_HEAD} scope="col">Когда</th>
+                <th style={TABLE_NUM_HEAD} scope="col">Строк</th>
+                <th style={TABLE_NUM_HEAD} scope="col">Заведено</th>
+                <th style={TABLE_NUM_HEAD} scope="col">Обновлено</th>
+                <th style={TABLE_NUM_HEAD} scope="col">На разбор</th>
+              </tr>
+            </thead>
+            <tbody>
+              {status.pullRuns.map((run) => (
+                <tr key={run.occurredAt.toISOString()}>
+                  <td style={TABLE_CELL}>
+                    {formatDate(run.occurredAt)}, {formatTime(run.occurredAt)}
+                  </td>
+                  <td style={TABLE_NUM}>{run.rows}</td>
+                  <td style={TABLE_NUM}>{run.created}</td>
+                  <td style={TABLE_NUM}>{run.updated}</td>
+                  <td style={TABLE_NUM}>{run.held}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </Card>
 
       {status.runs.length === 0 ? (

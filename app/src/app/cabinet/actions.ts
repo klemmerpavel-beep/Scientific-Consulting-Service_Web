@@ -36,6 +36,15 @@ import {
   type Role,
 } from '../../lib/cabinet/admin';
 import type { AccessLinkState } from '../../components/cabinet/AccessLink';
+import {
+  RULE_EVENTS,
+  addContact,
+  askForHelp,
+  dropContact,
+  preferContact,
+  saveRules,
+  type ContactKind,
+} from '../../lib/cabinet/channels';
 import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
 import { createCabinetRequest, REQUEST_FILES_MAX } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
@@ -131,6 +140,42 @@ export async function uploadMaterial(form: FormData): Promise<void> {
   redirect(`/cabinet/stages/${stageId}`);
 }
 
+/**
+ * Новый материал с пояснением — форма эксперта на экране работы.
+ *
+ * От `uploadMaterial` отличается двумя вещами: материал заводится с
+ * названием («глава 2 диссертации»), а пояснение к нему кладётся
+ * замечанием к той же версии — отдельной формы для этого не нужно
+ * (решение Р-200).
+ */
+export async function uploadMaterialWithNote(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const file = form.get('file');
+  const code = String(form.get('code') ?? '');
+  if (!(file instanceof File) || file.size === 0) {
+    redirect(`/cabinet/projects/${code}?error=${encodeURIComponent('Файл не выбран')}`);
+  }
+  const stageId = String(form.get('stageId') ?? '');
+  const version = await uploadVersion(
+    actor,
+    {
+      projectId: String(form.get('projectId') ?? ''),
+      stageId: stageId || null,
+      materialId: null,
+      title: String(form.get('title') ?? '') || undefined,
+      originalName: (file as File).name,
+      contentType: (file as File).type || 'application/octet-stream',
+      body: Buffer.from(await (file as File).arrayBuffer()),
+    },
+    await requestIp(),
+  );
+
+  const note = String(form.get('note') ?? '').trim();
+  if (note.length > 0) await addComment(actor, version.id, note);
+
+  redirect(`/cabinet/projects/${code}`);
+}
+
 export async function moderateLead(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   ensure(actor, 'REQUEST_MODERATE');
@@ -173,6 +218,24 @@ export async function saveStage(form: FormData): Promise<void> {
     dueOn: dateOrNull(form.get('dueOn')),
   });
   redirect(`/cabinet/projects/${code}`);
+}
+
+/**
+ * Перенос срока прямо с экрана этапа (решение Р-199).
+ *
+ * Отличается от `saveStage` только тем, куда возвращает: менеджер
+ * переносит срок, не уходя с этапа, и продолжает разбирать его дальше.
+ */
+export async function moveStageDue(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  await editStage(actor, {
+    stageId,
+    title: String(form.get('title') ?? ''),
+    summary: String(form.get('summary') ?? ''),
+    dueOn: dateOrNull(form.get('dueOn')),
+  });
+  redirect(`/cabinet/stages/${stageId}`);
 }
 
 /** Правка карточки работы менеджером (решение Р-190). */
@@ -299,6 +362,61 @@ export async function saveNotificationChannels(form: FormData): Promise<void> {
     telegram: form.get('notifyTelegram') === 'on',
   });
   redirect('/cabinet/settings?saved=1');
+}
+
+export async function addContactChannel(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const kind = String(form.get('kind') ?? '') as ContactKind;
+  try {
+    await addContact(actor, {
+      kind,
+      value: String(form.get('value') ?? ''),
+      note: String(form.get('note') ?? ''),
+      preferred: form.get('preferred') === 'on',
+    });
+  } catch (error) {
+    const text = error instanceof Error ? error.message : 'Не удалось добавить способ связи';
+    redirect(`/cabinet/settings?error=${encodeURIComponent(text)}`);
+  }
+  redirect('/cabinet/settings?saved=1');
+}
+
+export async function removeContactChannel(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await dropContact(actor, String(form.get('id') ?? ''));
+  redirect('/cabinet/settings?saved=1');
+}
+
+export async function makeContactPreferred(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await preferContact(actor, String(form.get('id') ?? ''));
+  redirect('/cabinet/settings?saved=1');
+}
+
+export async function saveNotifyRules(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  // Форма присылает состояние всей решётки: у каждой клетки своё имя
+  // вида `rule:<событие>:<канал>`, и снятая галочка просто не приходит.
+  const rules = RULE_EVENTS.flatMap((event) =>
+    (['EMAIL', 'TELEGRAM'] as const).map((channel) => ({
+      eventKind: event.kind,
+      channel,
+      enabled: form.get(`rule:${event.kind}:${channel}`) === 'on',
+    })),
+  );
+  await saveRules(actor, rules);
+  redirect('/cabinet/settings?saved=1');
+}
+
+export async function requestHelp(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  try {
+    await askForHelp(actor, String(form.get('text') ?? ''));
+  } catch (error) {
+    const text = error instanceof Error ? error.message : 'Не удалось отправить вопрос';
+    redirect(`/cabinet/manage/tools?error=${encodeURIComponent(text)}`);
+  }
+  redirect('/cabinet/manage/tools?sent=1');
 }
 
 export async function dropTelegram(): Promise<void> {

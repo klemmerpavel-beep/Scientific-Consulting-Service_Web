@@ -4,7 +4,7 @@
 html,body{background:#fff;min-height:100%;margin:0;padding:0}body{font-family:var(--font-sans), "Helvetica Neue", Arial, sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}:root{--pd-serif:var(--font-serif);--pd-sans:var(--font-sans);--pd-mono:var(--font-mono)}*,:before,:after{box-sizing:border-box}:focus-visible{outline-offset:2px;outline:2px solid #14417a}input[type=checkbox]{accent-color:#14417a}@media (prefers-reduced-motion:reduce){*,:before,:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}html{scroll-behavior:smooth}@media (prefers-reduced-motion:no-preference){.pd-js .pd-rise{opacity:0;transform:translateY(14px)}.pd-js .pd-rise.pd-in{opacity:1;transform:none}.pd-js .pd-rise{transition:opacity .52s cubic-bezier(.2,0,.2,1),transform .52s cubic-bezier(.2,0,.2,1)}.pd-js .pd-rise .pd-rise-kid{opacity:0;transform:translateY(10px)}.pd-js .pd-rise.pd-in .pd-rise-kid{opacity:1;transform:none}.pd-js .pd-rise .pd-rise-kid{transition:opacity .46s cubic-bezier(.2,0,.2,1),transform .46s cubic-bezier(.2,0,.2,1)}}.pd-progress{z-index:40;transform-origin:0;pointer-events:none;will-change:transform;background:#14417a;height:2px;position:fixed;inset:0 0 auto;transform:scaleX(0)}@media print{.pd-progress{display:none}}
 
 
-:root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;--pd-ink-inverse:#FFFFFF;--pd-border:#E3E7EC;--pd-divider:#EFF1F4;--pd-surface-quiet:#F6F7F9;--pd-edge-neutral:#C4CAD4;--pd-accent:#14417A;--pd-accent-press:#0F3260;--pd-accent-deep:#0D2B52;--pd-accent-mark:#D8E4F3;--pd-accent-edge:#B4C9E5;--pd-accent-tint:#ECF1F8;--pd-button-hover:#262A33;--pd-accent-hover:#0A2145;--pd-accent-active:#081A38;--pd-ok-bg:#E6F9F1;--pd-ok-ink:#0E4E3C;--pd-err-bg:#FAE7E5;--pd-err-border:#F0C9C3;--pd-err-ink:#8E2C22;--pd-ok-border:#C5EEDD;--pd-accent-soft:#2A63B4;--pd-art-line:#E5EBF2;--pd-art-mark:#D3DEEC;--pd-art-dot:#D8DEE6;--pd-series-mid:#5C8FD6;--pd-series-quiet:#98A2B3}
+:root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;--pd-ink-inverse:#FFFFFF;--pd-border:#E3E7EC;--pd-divider:#EFF1F4;--pd-surface-quiet:#F6F7F9;--pd-edge-neutral:#C4CAD4;--pd-accent:#14417A;--pd-accent-press:#0F3260;--pd-accent-deep:#0D2B52;--pd-accent-mark:#D8E4F3;--pd-accent-edge:#B4C9E5;--pd-accent-tint:#ECF1F8;--pd-button-hover:#262A33;--pd-accent-hover:#0A2145;--pd-accent-active:#081A38;--pd-ok-bg:#E6F9F1;--pd-ok-ink:#0E4E3C;--pd-err-bg:#FAE7E5;--pd-err-border:#F0C9C3;--pd-err-ink:#8E2C22;--pd-ok-border:#C5EEDD;--pd-accent-soft:#2A63B4;--pd-art-line:#E5EBF2;--pd-art-mark:#D3DEEC;--pd-art-dot:#D8DEE6;--pd-series-mid:#5C8FD6;--pd-series-quiet:#98A2B3;--pd-alert-1:#FDF2F0;--pd-alert-2:#FAE7E5;--pd-alert-3:#F3CFC9;--pd-alert-4:#EBB4AC;--pd-alert-edge:#E4A79E;--pd-alert-ink:#8E2C22}
 body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;flex-direction:column}
 /* Место под полосу прокрутки занято всегда: иначе содержимое колонки
    дёргается вбок, когда записей становится больше высоты. */
@@ -13,6 +13,9 @@ body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;
    не прокручивается, и раскрытая свёртка вытолкнула бы её за край. На
    обычной странице свёртка растёт по содержимому (решение Р-191). */
 .cab-board-main .cab-fold-body{max-height:200px;overflow-y:auto;scrollbar-gutter:stable}
+/* История работы длиннее прочих свёрток: по ней разбирают ход дела, и
+   двух строк за раз для этого мало (решение Р-197). */
+.cab-board-main .cab-fold-tall{max-height:340px}
 main{flex:1}
 h1,h2,h3{text-wrap:balance;margin:0}
 h1,h2,h3,p,li,td,th,a,label,span{overflow-wrap:break-word}
@@ -45,10 +48,21 @@ input[type="file"]{font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-si
 input[type="file"]::file-selector-button{min-height:44px;padding:0 18px;margin-right:14px;border-radius:999px;border:1px solid var(--pd-edge-neutral);background:var(--pd-ink-inverse);color:var(--pd-ink-secondary);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;cursor:pointer;transition:border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
 input[type="file"]::file-selector-button:hover{border-color:var(--pd-accent);color:var(--pd-accent)}
 button[disabled]{opacity:.7!important;cursor:progress!important}
-summary{cursor:pointer;list-style:none}
+summary{cursor:pointer;list-style:none;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
 summary::-webkit-details-marker{display:none}
 .cab-caret{flex:0 0 14px;transition:transform 180ms cubic-bezier(.2,0,.2,1)}
 details[open]>summary .cab-caret{transform:rotate(90deg)}
+/* Раскрытая свёртка окрашивается так же, как раскрытый вопрос на
+   страницах сайта: заливка шапки и рамка вокруг блока. Смысл на цвете не
+   держится — состояние видно и по повороту маркера, — но взгляд сразу
+   находит открытое место. Переход тот же, что у вопросов: 180 мс единой
+   кривой (решение Р-197). */
+details[open]>summary{background:var(--pd-accent-mark);color:var(--pd-accent-deep)}
+details[open].cab-block{border-color:var(--pd-accent-edge)}
+/* Волна готовности покачивается, пока работа идёт. Ход небольшой и
+   медленный: это признак жизни, а не мигание. */
+@keyframes cab-tide{from{transform:translateY(.6px)}to{transform:translateY(-.9px)}}
+.cab-tide{animation:cab-tide 3200ms cubic-bezier(.2,0,.2,1) infinite alternate}
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes cab-pulse{0%,100%{opacity:1}50%{opacity:.55}}
 .cab-skeleton{background:var(--pd-surface-quiet);border-radius:6px;animation:cab-pulse 1400ms cubic-bezier(.2,0,.2,1) infinite}
@@ -57,6 +71,7 @@ details[open]>summary .cab-caret{transform:rotate(90deg)}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
 @media (max-width:1024px){.cab-board-main{display:block!important;overflow:visible!important;padding-bottom:clamp(72px,7vw,112px)!important}.cab-board{grid-template-columns:minmax(0,1fr)!important}.cab-board-body{max-height:none!important;overflow:visible!important}}
+@media print{@page{margin:14mm}body{background:#fff}header,footer,nav,.pd-skip,.cab-no-print{display:none!important}main{padding:0!important;max-width:none!important}.cab-block{break-inside:avoid;box-shadow:none!important}details{break-inside:avoid}details>*:not(summary){display:block!important}details>summary{display:none!important}a{text-decoration:none;color:inherit}}
 
 
 .pt-bar { position:sticky; top:0; z-index:9999; display:flex; flex-wrap:wrap; align-items:center;

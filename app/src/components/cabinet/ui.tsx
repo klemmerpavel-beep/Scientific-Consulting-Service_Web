@@ -1,8 +1,10 @@
 import { Fragment } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
+import { WaveBar } from './Charts.tsx';
 import { FilePick } from './FilePick.tsx';
 import { BUTTON_PRIMARY, BUTTON_QUIET, MONO, RADIUS, SANS, SERIF, SHADOW } from './tokens.ts';
+import type { WaveMood } from '../../lib/cabinet/charts';
 import { STAGE_STATE_LABEL, type StageStateKey } from '../../lib/cabinet/stage-state';
 
 /**
@@ -603,9 +605,18 @@ export function Block({
  * значит по смыслу, но правило о пяти блоках видело только её и не
  * добиралось до настоящих блоков внутри (Р-183).
  */
+/**
+ * Узкая колонка по центру страницы.
+ *
+ * Прежде колонка прижималась к левому краю: предел ширины стоял, а
+ * выравнивания не было, и форма заявки висела в левой трети окна при
+ * пустой правой половине (решение Р-197). Центрирование общее для всех
+ * четырёх экранов на этой части — заявка, переписка, настройки, разбор
+ * обращения: колонка одна, и выглядеть они должны одинаково.
+ */
 export function Narrow({ width = 780, children }: { width?: number; children: ReactNode }) {
   return (
-    <div className="cab-column" style={{ maxWidth: width }}>
+    <div className="cab-column" style={{ maxWidth: width, margin: '0 auto' }}>
       {children}
     </div>
   );
@@ -1612,6 +1623,7 @@ export function ScreenHead({
   chips,
   note,
   aside,
+  action,
 }: {
   /** Куда вернуться: код работы для экранов внутри неё. */
   backHref?: string;
@@ -1623,6 +1635,13 @@ export function ScreenHead({
   note?: string | null;
   /** Правый край полосы: срок. */
   aside?: string | null;
+  /**
+   * Правый край полосы: действие всего экрана.
+   *
+   * Заказчик просил кнопку отчёта «справа вверху» — там, где взгляд ищет
+   * общее действие страницы, а не среди карточек (решение Р-201).
+   */
+  action?: ReactNode;
 }) {
   return (
     // Шапка экрана блоком не считается: она называет страницу, а не
@@ -1654,6 +1673,11 @@ export function ScreenHead({
             }}
           >
             {aside}
+          </span>
+        )}
+        {action === undefined ? null : (
+          <span style={{ marginLeft: aside == null ? 'auto' : 12, display: 'flex', gap: 8 }}>
+            {action}
           </span>
         )}
       </div>
@@ -1905,6 +1929,11 @@ export function ProgressPanel({
   // Ожидание человека подсвечивается: это единственное состояние, в котором
   // работа стоит из-за него, и оно не должно теряться среди прочих.
   const waiting = current?.state === 'AWAITING_CLIENT' || current?.state === 'IN_APPROVAL';
+  // Настроение шкалы: волна набегает, пока работа идёт, опадает до ряби,
+  // когда она ждёт человека, и сходит в гладь, когда всё закрыто. Считается
+  // из состояния, а не из текущего времени, — иначе снимок менялся бы ото
+  // дня ко дню (решение Р-186).
+  const mood: WaveMood = current === null && total > 0 ? 'done' : waiting ? 'waiting' : 'active';
   return (
     <section
       className="cab-block"
@@ -1936,7 +1965,7 @@ export function ProgressPanel({
         </span>
         {/* Доля названа числом: полоса показывает её вид, а прочитать
             выполнение заказа человек должен, не измеряя глазом. */}
-        {total === 0 ? null : (
+        {(
           <span
             style={{
               marginLeft: 'auto',
@@ -1952,27 +1981,10 @@ export function ProgressPanel({
         )}
       </div>
 
-      {total === 0 ? null : (
-        <span
-          aria-hidden="true"
-          style={{
-            display: 'block',
-            height: 10,
-            borderRadius: RADIUS.mark,
-            background: 'var(--pd-divider)',
-            overflow: 'hidden',
-          }}
-        >
-          <span
-            style={{
-              display: 'block',
-              width: `${share}%`,
-              height: '100%',
-              background: 'var(--pd-accent)',
-            }}
-          />
-        </span>
-      )}
+      {/* Шкала стоит и при пустом плане: заказчик должен видеть, что счёт
+          начат, а не что рисунка нет вовсе. Ноль рисуется полоской у
+          левого края. */}
+      <WaveBar share={share} mood={mood} />
 
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
         <span
@@ -2026,10 +2038,13 @@ export function ProgressPanel({
 export function Disclosure({
   title,
   children,
+  tall = false,
   style,
 }: {
   title: string;
   children: ReactNode;
+  /** Высокое тело: история работы длиннее прочих свёрток и требует места. */
+  tall?: boolean;
   style?: CSSProperties;
 }) {
   // Раскрытая свёртка не должна выталкивать панель за край окна, поэтому
@@ -2072,7 +2087,7 @@ export function Disclosure({
         {title}
       </summary>
       <div
-        className="cab-fold-body"
+        className={tall ? 'cab-fold-body cab-fold-tall' : 'cab-fold-body'}
         role="region"
         aria-label={title}
         tabIndex={0}

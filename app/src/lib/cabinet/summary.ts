@@ -315,3 +315,38 @@ export async function practiceSummary(actor: Actor): Promise<PracticeSummary> {
     profit: received - payouts - overhead,
   };
 }
+
+/**
+ * Деньги коротко для главной руководителя.
+ *
+ * Три величины и ни одной лишней: получено, к получению и просрочено.
+ * Без третьей вторая ничего не говорит — завтрашний транш и годовалый
+ * долг в ней стоят рядом и выглядят одинаково (решение Р-201).
+ *
+ * Считается тремя сложениями по индексу `(status, plannedDate)`, а не
+ * разбором всей сводки денег: на главной нужны итоги, а не строки.
+ */
+export async function moneyBrief(actor: Actor): Promise<{
+  received: bigint;
+  awaiting: bigint;
+  overdue: bigint;
+}> {
+  ensure(actor, 'MARGIN_VIEW');
+  const today = new Date();
+  const [received, awaiting, overdue] = await Promise.all([
+    prisma.tranche.aggregate({ _sum: { amount: true }, where: { status: 'PAID' } }),
+    prisma.tranche.aggregate({
+      _sum: { amount: true },
+      where: { status: { in: ['PLANNED', 'INVOICED'] } },
+    }),
+    prisma.tranche.aggregate({
+      _sum: { amount: true },
+      where: { status: { in: ['PLANNED', 'INVOICED'] }, plannedDate: { lt: today } },
+    }),
+  ]);
+  return {
+    received: received._sum.amount ?? 0n,
+    awaiting: awaiting._sum.amount ?? 0n,
+    overdue: overdue._sum.amount ?? 0n,
+  };
+}

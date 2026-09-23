@@ -19,8 +19,10 @@ import {
   formatDate,
   authorName,
   formatSize,
+  plural,
   type StageStateKey,
 } from '../../../../components/cabinet/ui';
+import { SANS } from '../../../../components/cabinet/tokens';
 import { can } from '../../../../lib/cabinet/access';
 import { stageById } from '../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../lib/cabinet/session';
@@ -29,12 +31,42 @@ import {
   changeStageState,
   commentOnVersion,
   decideOnComment,
+  moveStageDue,
   uploadMaterial,
 } from '../../actions';
 
 export const dynamic = 'force-dynamic';
 
 /** Переходы, которые менеджер может выполнить с этого состояния. */
+/** Чей сейчас ход — тем же языком, что на сводке (решение Р-199). */
+const TURN_BY_STATE: Partial<Record<StageStateKey, string>> = {
+  NOT_STARTED: 'ход за вами: этап не начат',
+  IN_PROGRESS: 'ход за исполнителем',
+  AWAITING_CLIENT: 'ход за клиентом',
+  IN_APPROVAL: 'ход за клиентом: ждёт согласования',
+  DONE: 'этап закрыт',
+};
+
+/** Что делать куратору в этом состоянии этапа. */
+const STAFF_TODO: Record<StageStateKey, string> = {
+  NOT_STARTED:
+    'Этап не начат: назначьте исполнителя на работе и переведите этап в работу, когда он приступил.',
+  IN_PROGRESS:
+    'Работа идёт. Следите за сроком: если исполнитель не успевает, перенесите срок сейчас, а не в день сдачи.',
+  AWAITING_CLIENT:
+    'Ждём материалы от клиента. Если молчит дольше недели — напишите в переписке: причина остановки ему видна, но напоминание работает лучше.',
+  IN_APPROVAL:
+    'Клиент смотрит материалы. Замечания эксперта на модерации опубликуйте: до этого клиент их не видит.',
+  DONE: 'Этап закрыт. Проверьте, что следующий начат и у него есть срок.',
+};
+
+/** Сколько дней прошло с назначенного срока; до срока — ничего. */
+function overdueDays(dueOn: Date | null): number | null {
+  if (dueOn === null) return null;
+  const days = Math.floor((Date.now() - dueOn.getTime()) / 86_400_000);
+  return days > 0 ? days : null;
+}
+
 const NEXT_STATES: Record<StageStateKey, readonly StageStateKey[]> = {
   NOT_STARTED: ['IN_PROGRESS'],
   IN_PROGRESS: ['AWAITING_CLIENT', 'IN_APPROVAL'],
@@ -57,6 +89,18 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
   const mayApprove = state === 'IN_APPROVAL' && can(actor, 'STAGE_APPROVE', ref);
   const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref);
   const mayModerate = can(actor, 'COMMENT_MODERATE', ref);
+  const forStaff = actor.role !== 'CLIENT' && mayEdit;
+  const late = overdueDays(stage.dueOn);
+  const pendingComments = stage.materials.reduce(
+    (sum, material) =>
+      sum +
+      material.versions.reduce(
+        (inner, version) =>
+          inner + version.comments.filter((comment) => comment.moderationStatus === 'PENDING').length,
+        0,
+      ),
+    0,
+  );
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -83,6 +127,60 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
           </Notice>
         </Block>
       )}
+
+      {/* Менеджер приходит сюда с вопросом «что тут делать», а экран
+          начинался с механики перевода состояний. Теперь сверху — ответ:
+          чей ход, на сколько просрочено, что предпринять и чем управлять
+          (решение Р-199). */}
+      {forStaff ? (
+        <Card style={{ marginBottom: 24, borderColor: 'var(--pd-accent-edge)' }}>
+          <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+            Что сделать сейчас
+          </Heading>
+          <Text style={{ marginBottom: 12 }}>{STAFF_TODO[state]}</Text>
+          <div
+            style={{
+              display: 'flex',
+              gap: 18,
+              flexWrap: 'wrap',
+              fontFamily: SANS,
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: 'var(--pd-ink-muted)',
+              marginBottom: 14,
+            }}
+          >
+            <span>{TURN_BY_STATE[state] ?? 'ход за практикой'}</span>
+            {late === null ? null : (
+              <span style={{ color: 'var(--pd-alert-ink)' }}>
+                просрочено {late} {plural(late, 'день', 'дня', 'дней')}
+              </span>
+            )}
+            <span>материалов {stage.materials.length}</span>
+            {pendingComments === 0 ? null : <span>замечаний на модерации {pendingComments}</span>}
+          </div>
+
+          {/* Срок переносится здесь же: менеджер держит сроки, и уходить
+              за этим на экран работы незачем. */}
+          <Disclosure title="Перенести срок этапа">
+            <Form action={moveStageDue}>
+              <input type="hidden" name="stageId" value={stage.id} />
+              <input type="hidden" name="title" value={stage.title} />
+              <input type="hidden" name="summary" value={stage.summary ?? ''} />
+              <Field
+                label="Новый срок"
+                name="dueOn"
+                type="date"
+                defaultValue={stage.dueOn?.toISOString().slice(0, 10) ?? ''}
+                hint="Срок видит клиент: перенос без причины в переписке он читает как срыв."
+              />
+              <FormActions>
+                <Button tone="quiet">Сохранить срок</Button>
+              </FormActions>
+            </Form>
+          </Disclosure>
+        </Card>
+      ) : null}
 
       {mayApprove ? (
         <Card style={{ marginBottom: 24, borderColor: 'var(--pd-accent-edge)' }}>
