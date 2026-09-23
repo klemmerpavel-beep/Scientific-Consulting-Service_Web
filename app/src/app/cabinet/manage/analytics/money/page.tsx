@@ -13,6 +13,7 @@ import {
   Heading,
   Text,
   formatDate,
+  plural,
 } from '../../../../../components/cabinet/ui';
 import {
   byMonth,
@@ -33,12 +34,13 @@ import {
   num,
   share,
 } from '../shared';
+import { now as clockNow } from '../../../../../lib/cabinet/clock';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsMoney() {
   const { actor, rows } = await analyticsScreen();
-  const now = new Date();
+  const now = clockNow();
 
   const total = overview(rows);
   const months = byMonth(rows);
@@ -60,11 +62,11 @@ export default async function AnalyticsMoney() {
           <Tiles>
             <Tile label="Законтрактовано" value={formatAmount(total.contracted)} />
             <Tile label="Получено" value={formatAmount(total.received)} note={`${share(total.collection)} по завершённым`} />
-            <Tile label="Задолженность" value={formatAmount(total.outstanding)} note={`${debts.length} работ с остатком`} />
+            <Tile label="Задолженность" value={formatAmount(total.outstanding)} note={`${debts.length} ${plural(debts.length, 'работа', 'работы', 'работ')} с остатком`} />
             <Tile
               label="Просрочено"
               value={formatAmount(overdue.reduce((acc, debt) => acc + debt.debt, 0n))}
-              note={`${overdue.length} работ со сроком в прошлом`}
+              note={`${overdue.length} ${plural(overdue.length, 'работа', 'работы', 'работ')} со сроком в прошлом`}
             />
           </Tiles>
 
@@ -94,7 +96,7 @@ export default async function AnalyticsMoney() {
           >
             <LineChart
               title="Договоры и поступления по месяцам"
-              width={1120}
+              width={1000}
               categories={months.map((month) => month.label)}
               series={[
                 { name: 'Законтрактовано', points: months.map((month) => Number(month.contracted) / 100) },
@@ -138,7 +140,7 @@ export default async function AnalyticsMoney() {
           >
             <BarChart
               title="Сезонная норма заказов"
-              width={1120}
+              width={1000}
               unit="заказов в месяц"
               data={season.map((month) => ({ label: month.label, value: month.norm }))}
               format={(value) => compactNumber(value, 1)}

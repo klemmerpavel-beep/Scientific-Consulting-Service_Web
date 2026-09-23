@@ -54,7 +54,6 @@ export default async function ProjectMaterialsScreen({
         backHref={`/cabinet/projects/${project.code}`}
         backLabel={project.title}
         title="Материалы работы"
-        note={project.title}
       />
 
       {project.materials.length === 0 ? (
@@ -104,7 +103,9 @@ export default async function ProjectMaterialsScreen({
                       }}
                     >
                       <span style={{ fontFamily: MONO, fontSize: 12 }}>v{version.number}</span>
-                      <a href={`/cabinet/files/${version.id}`}>{version.originalName}</a>
+                      <a className="cab-mark" href={`/cabinet/files/${version.id}`}>
+                        {version.originalName}
+                      </a>
                       <span>{formatSize(version.sizeBytes)}</span>
                       <span>{formatDate(version.uploadedAt)}</span>
                       <span>{authorName(version.uploadedBy, actor, version.uploadedById)}</span>

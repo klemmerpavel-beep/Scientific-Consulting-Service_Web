@@ -394,8 +394,14 @@ async function main() {
     diploma: ['План и введение', 'Основная часть', 'Нормоконтроль и защита'],
   };
 
+  // Показательная работа получает свой план ниже. Прежде общий цикл
+  // заводил её этапы первым, а показательный блок правил у них одно
+  // описание: задуманные состояния («На согласовании», «Ждём ваших
+  // данных») появлялись только в базе, где они уже лежали с прошлого
+  // наполнения. На свежей базе снимок был другим (решение Р-213).
+  const showcaseIndex = BOOK.orders.indexOf(showcaseOrder);
   for (const [index, row] of PLAN.entries()) {
-    if (row.status !== 'ACTIVE') continue;
+    if (row.status !== 'ACTIVE' || index === showcaseIndex) continue;
     const projectId = projectIds[index]!;
     const titles = STAGE_PLAN[row.type] ?? STAGE_PLAN.consulting!;
     const paidShare = row.cost === 0 ? 0 : row.paid / row.cost;
@@ -407,7 +413,12 @@ async function main() {
     for (const [position, title] of titles.entries()) {
       const state =
         position < doneCount ? ('DONE' as const)
-        : position === doneCount ? (index % 3 === 0 ? ('AWAITING_CLIENT' as const) : ('IN_PROGRESS' as const))
+        // Ожидание клиента — у работ со вторым остатком от деления на три.
+        // Прежде оно падало на тот же остаток, что и назначение эксперта
+        // (`index % 3 === 0`), и все действующие работы эксперта ждали
+        // клиента: его главный сценарий «ход за вами» в прототипе не
+        // появлялся ни разу (решение Р-213).
+        : position === doneCount ? (index % 3 === 1 ? ('AWAITING_CLIENT' as const) : ('IN_PROGRESS' as const))
         : ('NOT_STARTED' as const);
       const stageDue = new Date(row.orderedOn.getTime() + span * (position + 1));
       await prisma.stage.upsert({
@@ -485,13 +496,31 @@ async function main() {
         completedAt: stage.state === 'DONE' ? day(stage.offset) : null,
         awaitingClientSince: stage.state === 'AWAITING_CLIENT' ? day(18) : null,
       },
-      // Суть выполнения переписывается при каждом наполнении: правка
-      // текста в этом файле должна доезжать до снимка.
-      update: { summary: stage.summary },
+      // Этап показательной работы переписывается целиком при каждом
+      // наполнении: состояние, срок и исполнитель — то, что снимок
+      // показывает, и они не должны зависеть от истории базы (Р-213).
+      update: {
+        title: stage.title,
+        summary: stage.summary,
+        state: stage.state,
+        dueOn: day(stage.offset - 30),
+        expertId: expertUser.id,
+        startedAt: stage.state === 'NOT_STARTED' ? null : day(stage.offset + 20),
+        completedAt: stage.state === 'DONE' ? day(stage.offset) : null,
+        awaitingClientSince: stage.state === 'AWAITING_CLIENT' ? day(18) : null,
+      },
       select: { id: true },
     });
     stageIds.push(created.id);
   }
+
+  // Срок работы не раньше срока последнего этапа: в книге у показательной
+  // работы стоит 2 сентября, а план тянется до ноября, и клиент видел
+  // работу «в ходе» со сроком, прошедшим две недели назад (решение Р-213).
+  await prisma.project.update({
+    where: { id: showcase },
+    data: { dueOn: day(-75), expertId: expertUser.id },
+  });
 
   const material = await prisma.material.upsert({
     where: { id: 'artboard-material-1' },
@@ -691,6 +720,10 @@ async function main() {
       data: {
         source: 'cabinet',
         form: 'request',
+        // Дата задаётся от постоянной точки: по умолчанию база ставит
+        // настоящее «сейчас», и снимок очереди менялся ото дня ко дню
+        // (решение Р-205).
+        createdAt: day(1),
         name: 'Панкратов Егор Максимович',
         contactKind: 'email',
         contact: `lead@${DOMAIN}`,
@@ -711,6 +744,7 @@ async function main() {
     where: { id: queued.id },
     data: {
       source: 'cabinet',
+      createdAt: day(1),
       speciality: '2.8.6 — Горные машины и оборудование',
       organization: 'Горный университет',
       supervisorName: 'Соловьёв Дмитрий Викторович',
@@ -811,7 +845,12 @@ async function main() {
   }
 
   // Токены печатаются машинно разбираемой строкой: их читает скрипт снимка.
-  process.stdout.write(`${JSON.stringify({ links, showcase: PLAN.length > 0 ? 'ok' : 'empty' })}\n`);
+  // День съёмки отдаётся инструментам снимка: экраны считают просрочку и
+  // окна от часов кабинета, и часы должны стоять там же, где отсчёт
+  // наполнения (решение Р-205).
+  process.stdout.write(
+    `${JSON.stringify({ links, showcase: PLAN.length > 0 ? 'ok' : 'empty', now: new Date(REFERENCE).toISOString() })}\n`,
+  );
   await prisma.$disconnect();
 }
 

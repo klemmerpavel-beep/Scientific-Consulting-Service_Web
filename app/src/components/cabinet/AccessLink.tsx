@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react';
 
 import { BUTTON_PRIMARY, BUTTON_QUIET, MONO, RADIUS, SANS } from './tokens.ts';
+import { Notice } from './ui.tsx';
 
 /**
  * Состояние выдачи ссылки: то, что действие возвращает форме.
@@ -95,9 +96,12 @@ export function AccessLink({
       </form>
 
       {state.error === null ? null : (
-        <p role="alert" style={{ margin: 0, fontFamily: SANS, fontSize: 14, color: 'var(--pd-err-ink)' }}>
+        // Отказ выдачи — исход действия, и оформляется общим блоком исхода,
+        // а не абзацем с цветом ошибки: пара ok/err живёт только в `Notice`
+        // (решения Р-146, Р-211).
+        <Notice tone="error" role="alert">
           {state.error}
-        </p>
+        </Notice>
       )}
 
       {state.link === null ? null : (

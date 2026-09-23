@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import type { ReactNode } from 'react';
 
 import Shell from '../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../components/cabinet/tokens';
@@ -14,15 +15,17 @@ import {
   Heading,
   Mono,
   Progress,
+  ScreenHead,
   ScreenTop,
   Block,
   FilterBar,
   FilterSearch,
   Tabs,
+  clip,
   plural,
   Text,
   formatDate,
-  STAGE_STATE_LABEL,
+  stageLabel,
   type StageStateKey,
 } from '../../../components/cabinet/ui';
 import { unreadByProject } from '../../../lib/cabinet/messages';
@@ -32,14 +35,18 @@ import {
   pendingActions,
   type ProjectFilter,
 } from '../../../lib/cabinet/queries';
+import { daysPast } from '../../../lib/cabinet/clock';
 import { currentActor } from '../../../lib/cabinet/session';
 
 export const dynamic = 'force-dynamic';
 
 const FILTERS: readonly ProjectFilter[] = ['active', 'waiting', 'done', 'all'];
 
+// «Действующие», а не «В работе»: работа, ждущая клиента, тоже действует,
+// и под вкладкой «В работе» она читалась как ошибка отбора — рядом стоит
+// вкладка «Ждут» с той же работой (решение Р-206).
 const FILTER_LABEL: Record<ProjectFilter, string> = {
-  active: 'В работе',
+  active: 'Действующие',
   waiting: 'Ждут',
   done: 'Завершённые',
   all: 'Все',
@@ -76,12 +83,38 @@ export default async function ProjectsScreen({
   // чего в перечне сейчас не видно: отсечённое отбором или ушедшее на
   // другую страницу (решение Р-175).
   const shown = new Set(projects.map((project) => project.code));
-  const onPage = new Map(
-    pendingAll
-      .filter((stage) => shown.has(stage.project.code))
-      .map((stage) => [stage.project.code, stage]),
-  );
-  const pending = pendingAll.filter((stage) => !shown.has(stage.project.code));
+  // На плашке — первое дело по работе, то же, что называет ответ в шапке:
+  // `new Map` из пар оставлял последнее, и ответ и плашка называли разные
+  // этапы одной работы (решение Р-213).
+  const onPage = new Map<string, (typeof pendingAll)[number]>();
+  for (const stage of pendingAll) {
+    if (shown.has(stage.project.code) && !onPage.has(stage.project.code)) {
+      onPage.set(stage.project.code, stage);
+    }
+  }
+  // Эксперту блок «Требует внимания» с чужими действиями не нужен: ждут
+  // здесь клиента, а не его (решение Р-206).
+  // Первое дело клиента названо ответом в шапке — второй раз блоком ниже
+  // оно не повторяется.
+  const pending = forExpert
+    ? []
+    : pendingAll.filter(
+        (stage) =>
+          !shown.has(stage.project.code) && !(forClient && stage.id === pendingAll[0]?.id),
+      );
+  /**
+   * Что ждут по этапу — глазами смотрящего. Клиенту это задание, практике —
+   * сведение о том, чей ход: «Загрузить материалы» у эксперта и
+   * руководителя читалось как поручение им (решение Р-206).
+   */
+  const waitingLine = (stage: { state: string; title: string }) =>
+    forClient
+      ? stage.state === 'AWAITING_CLIENT'
+        ? `Загрузить материалы: ${stage.title}`
+        : `Согласовать этап: ${stage.title}`
+      : stage.state === 'AWAITING_CLIENT'
+        ? `Ждём материалов клиента: ${stage.title}`
+        : `На согласовании у клиента: ${stage.title}`;
   const href = (next: { state?: ProjectFilter; page?: number }) => {
     const params = new URLSearchParams();
     const state = next.state ?? filter;
@@ -101,15 +134,105 @@ export default async function ProjectsScreen({
   const mayWrite = actor.role !== 'EXPERT';
 
 
+  // Ответ экрана одной фразой — клиенту и эксперту: что от них нужно и с
+  // чего начать. Работы практики у менеджера и руководителя отвечают
+  // сводкой, и там перечень остаётся перечнем (решение Р-207).
+  const title = forClient ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы практики';
+  const live = projects
+    .filter((project) => project.status === 'ACTIVE')
+    .map((project) => ({
+      project,
+      stage: project.stages.find((stage) => stage.state !== 'DONE') ?? null,
+    }));
+  const nearest =
+    live
+      .filter((row) => row.stage?.dueOn != null)
+      .sort((a, b) => a.stage!.dueOn!.getTime() - b.stage!.dueOn!.getTime())[0] ?? null;
+  const dueLine = (row: typeof nearest) =>
+    row === null || row.stage === null || row.stage.dueOn === null
+      ? null
+      : daysPast(row.stage.dueOn) === null
+        ? `Ближайший срок — ${formatDate(row.stage.dueOn)}, этап «${clip(row.stage.title, 60)}».`
+        : `Срок этапа «${clip(row.stage.title, 60)}» прошёл ${formatDate(row.stage.dueOn)}.`;
+  let answer: { lead: string; detail?: string | null; action?: ReactNode } | undefined;
+  if (forClient) {
+    const first = pendingAll[0] ?? null;
+    answer =
+      first !== null
+        ? {
+            lead:
+              first.state === 'AWAITING_CLIENT'
+                ? `От вас ждут материалы к этапу «${clip(first.title, 48)}».`
+                : `От вас ждут согласования этапа «${clip(first.title, 48)}».`,
+            // Срок — первым: пояснение режется тремя строками, и на
+            // телефоне срок уходил за многоточие (решение Р-213).
+            detail: [
+              first.dueOn === null ? null : `Срок этапа — ${formatDate(first.dueOn)}.`,
+              first.state === 'AWAITING_CLIENT'
+                ? `Работа «${clip(first.project.title, 60)}» стоит, пока их нет.`
+                : `Работа «${clip(first.project.title, 60)}» продолжится после вашего согласования.`,
+              pendingAll.length > 1 ? `Ещё дел за вами: ${pendingAll.length - 1}.` : null,
+            ]
+              .filter((part) => part !== null)
+              .join(' '),
+            action: <ButtonLink href={`/cabinet/stages/${first.id}`}>Открыть этап</ButtonLink>,
+          }
+        : live.length > 0
+          ? {
+              lead:
+                live.length === 1
+                  ? 'Сейчас от вас ничего не требуется — работа идёт.'
+                  : 'Сейчас от вас ничего не требуется — работы идут.',
+              detail: dueLine(nearest),
+            }
+          : {
+              lead: 'Действующих работ нет.',
+              detail: 'Новую работу можно заказать здесь же: заявка уйдёт куратору.',
+              action: <ButtonLink href="/cabinet/request">Новая заявка</ButtonLink>,
+            };
+  } else if (forExpert && !awaitingNda) {
+    // Ход за экспертом — этап не начат или в работе; остальное ждёт
+    // клиента, и заданием ему не является.
+    const mine = live.filter(
+      (row) => row.stage !== null && (row.stage.state === 'IN_PROGRESS' || row.stage.state === 'NOT_STARTED'),
+    );
+    const next =
+      mine
+        .filter((row) => row.stage?.dueOn != null)
+        .sort((a, b) => a.stage!.dueOn!.getTime() - b.stage!.dueOn!.getTime())[0] ??
+      mine[0] ??
+      null;
+    answer =
+      mine.length === 0
+        ? {
+            lead: 'Сейчас ход не за вами.',
+            detail:
+              live.length === 0
+                ? 'Действующих назначений нет.'
+                : 'Этапы ваших работ ждут клиента или закрыты; куратор сообщит, когда продолжать.',
+          }
+        : {
+            lead: `Ход за вами в ${mine.length} ${plural(mine.length, 'работе', 'работах', 'работах')}.`,
+            detail: dueLine(next),
+            action:
+              next?.stage == null ? undefined : (
+                <ButtonLink href={`/cabinet/stages/${next.stage.id}`}>Открыть этап</ButtonLink>
+              ),
+          };
+  }
+
   return (
     <Shell actor={actor} current="/cabinet/projects">
-      {/* Композиционный центр экрана: не список работ, а перечень действий.
-          Основная потеря календарного времени — ожидание материалов. */}
-      <ScreenTop style={{ marginBottom: 24 }}>
-        <Heading level={1}>
-          {forClient ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы практики'}
-        </Heading>
-      </ScreenTop>
+      {/* Композиционный центр экрана — ответ: что от человека нужно
+          сейчас. Основная потеря календарного времени — ожидание
+          материалов (решение Р-207). */}
+      {answer === undefined ? (
+        <ScreenTop style={{ marginBottom: 24 }}>
+          <Heading level={1}>{title}</Heading>
+        </ScreenTop>
+      ) : (
+        <ScreenHead title={title} answer={answer} />
+      )}
 
       {showFilters ? (
         <FilterBar>
@@ -161,11 +284,7 @@ export default async function ProjectsScreen({
                   }}
                 >
                   <div style={{ flex: '1 1 340px', minWidth: 0 }}>
-                    <Heading level={3}>
-                      {stage.state === 'AWAITING_CLIENT'
-                        ? `Загрузить материалы: ${stage.title}`
-                        : `Согласовать этап: ${stage.title}`}
-                    </Heading>
+                    <Heading level={3}>{waitingLine(stage)}</Heading>
                     <Text muted size={14} style={{ marginTop: 4 }}>
                       {stage.project.title}
                     </Text>
@@ -257,7 +376,9 @@ export default async function ProjectsScreen({
               project._count.materials === 0
                 ? null
                 : `${project._count.materials} ${plural(project._count.materials, 'материал', 'материала', 'материалов')}`,
-              newMessages === 0
+              // Эксперт в переписку не входит (решение Р-150): счётчик
+              // «новых сообщений» звал его туда, куда ему нельзя.
+              newMessages === 0 || forExpert
                 ? null
                 : `${newMessages} ${plural(newMessages, 'новое сообщение', 'новых сообщения', 'новых сообщений')}`,
               forClient ? null : project.client.fullName,
@@ -296,7 +417,6 @@ export default async function ProjectsScreen({
                   {project.title === project.serviceType.name ? null : (
                     <Chip tone="accent">{project.serviceType.name}</Chip>
                   )}
-                  {project.stages.length === 0 ? <Chip>план не заведён</Chip> : null}
                   {project.dueOn === null ? null : (
                     <span
                       style={{
@@ -308,6 +428,9 @@ export default async function ProjectsScreen({
                       }}
                     >
                       срок — {formatDate(project.dueOn)}
+                      {project.status === 'ACTIVE' && daysPast(project.dueOn) !== null
+                        ? ' · прошёл'
+                        : ''}
                     </span>
                   )}
                 </div>
@@ -320,7 +443,11 @@ export default async function ProjectsScreen({
                     отсутствии третий уровень оказывался сразу после
                     первого — пропуск, который ловит правило облика. */}
                 <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-                  <a href={`/cabinet/projects/${project.code}`} style={{ color: 'var(--pd-ink)' }}>
+                  <a
+                    href={`/cabinet/projects/${project.code}`}
+                    className="cab-stretch"
+                    style={{ color: 'var(--pd-ink)' }}
+                  >
                     {project.title}
                   </a>
                 </Heading>
@@ -350,9 +477,24 @@ export default async function ProjectsScreen({
                 {/* Работа без плана говорит, что будет дальше: прежде у
                     неё не было ни шкалы, ни строки фактов, и плашка
                     молчала вовсе (решение Р-182). */}
-                {project.stages.length > 0 ? null : (
+                {/* Чип «план не заведён» и эта же фраза стояли рядом; у
+                    закрытой работы фраза обещала план, которого не будет,
+                    а эксперту советовала то, что ему недоступно
+                    (решение Р-206). */}
+                {/* Закрытая работа без плана молчала вовсе: ни шкалы, ни
+                    строки состояния (решение Р-206). */}
+                {project.stages.length === 0 && project.status !== 'ACTIVE' ? (
                   <Text muted size={13} style={{ margin: '0 0 2px' }}>
-                    {forClient
+                    {project.status === 'COMPLETED'
+                      ? 'Работа завершена.'
+                      : project.status === 'PAUSED'
+                        ? 'Работа приостановлена.'
+                        : 'Работа остановлена.'}
+                  </Text>
+                ) : null}
+                {project.stages.length > 0 || project.status !== 'ACTIVE' ? null : (
+                  <Text muted size={13} style={{ margin: '0 0 2px' }}>
+                    {forClient || forExpert
                       ? 'План работ ещё составляется: куратор заведёт этапы и сообщит.'
                       : 'План работ не заведён: этапы задаются на экране работы.'}
                   </Text>
@@ -361,6 +503,7 @@ export default async function ProjectsScreen({
                 {/* Состояние работы называется словом и стоит в плашке:
                     чтобы понять, где работа, открывать её не нужно. */}
                 <Progress
+                  staff={!forClient}
                   done={done}
                   total={project.stages.length}
                   current={
@@ -375,11 +518,7 @@ export default async function ProjectsScreen({
                     что и так видно в шкале (решение Р-175). */}
                 {waiting === null ? null : (
                   <Text size={13} style={{ marginTop: 10 }}>
-                    <a href={`/cabinet/stages/${waiting.id}`}>
-                      {waiting.state === 'AWAITING_CLIENT'
-                        ? `Загрузить материалы: ${waiting.title}`
-                        : `Согласовать этап: ${waiting.title}`}
-                    </a>
+                    <a href={`/cabinet/stages/${waiting.id}`}>{waitingLine(waiting)}</a>
                     {waiting.dueOn === null ? '' : ` — до ${formatDate(waiting.dueOn)}`}
                   </Text>
                 )}
@@ -387,9 +526,16 @@ export default async function ProjectsScreen({
                 {/* Строка фактов прижата к низу: в ряду равной высоты
                     она встаёт у всех плашек на одной линии, и ряд
                     читается таблицей, а не лесенкой (решение Р-185). */}
-                <Text muted size={13} style={{ marginTop: 'auto', paddingTop: 10 }}>
-                  {facts.length === 0 ? '\u00A0' : facts.join(' · ')}
-                </Text>
+                {/* Пустая строка фактов прежде печаталась неразрывным
+                    пробелом ради ровного низа ряда — абзац без текста,
+                    который читалка объявляла пустым (решение Р-206). */}
+                {facts.length === 0 ? (
+                  <span aria-hidden="true" style={{ marginTop: 'auto' }} />
+                ) : (
+                  <Text muted size={13} style={{ marginTop: 'auto', paddingTop: 10 }}>
+                    {facts.join(' · ')}
+                  </Text>
+                )}
 
                 {/* Плашка раскрывается на месте: план работ виден без
                     ухода с перечня, а в саму работу ведёт её название.
@@ -419,12 +565,13 @@ export default async function ProjectsScreen({
                         >
                           <a
                             href={`/cabinet/stages/${stage.id}`}
+                            className="cab-mark"
                             style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
                           >
                             {stage.title}
                           </a>
                           <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
-                            {STAGE_STATE_LABEL[stage.state as StageStateKey]}
+                            {stageLabel(stage.state as StageStateKey, !forClient)}
                             {stage.dueOn === null ? '' : ` · ${formatDate(stage.dueOn)}`}
                           </Text>
                         </li>

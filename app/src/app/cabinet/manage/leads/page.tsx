@@ -170,7 +170,7 @@ export default async function AllLeadsScreen({
                       Р-172, но ссылки на него отсюда не было вовсе, и
                       попасть туда можно было только со сводки (Р-183). */}
                   <td style={TABLE_CELL}>
-                    <a href={`/cabinet/manage/leads/${lead.id}`}>{lead.name ?? 'Без имени'}</a>
+                    <a className="cab-mark" href={`/cabinet/manage/leads/${lead.id}`}>{lead.name ?? 'Без имени'}</a>
                   </td>
                   <td style={TABLE_CELL}>{lead.contact}</td>
                   <td style={TABLE_CELL}>{lead.topic ?? lead.need ?? '—'}</td>

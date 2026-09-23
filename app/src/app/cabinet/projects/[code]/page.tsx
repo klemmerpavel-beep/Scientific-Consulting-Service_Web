@@ -23,6 +23,7 @@ import {
   Text,
   Thread,
   authorName,
+  plural,
   formatDate,
   formatDay,
   formatSize,
@@ -34,7 +35,8 @@ import {
 import { SANS } from '../../../../components/cabinet/tokens';
 import { can } from '../../../../lib/cabinet/access';
 import { CONTACT_LABEL, contactsOf } from '../../../../lib/cabinet/channels';
-import { STAGE_STATE_LABEL } from '../../../../lib/cabinet/stage-state';
+import { stageLabel } from '../../../../lib/cabinet/stage-state';
+import { daysPast } from '../../../../lib/cabinet/clock';
 import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import {
   curators,
@@ -86,14 +88,15 @@ function eventLine(
   payload: unknown,
   stages: readonly { id: string; position: number; title: string }[],
   materials: readonly { id: string; title: string }[],
+  staff: boolean,
 ): string {
   const data = (payload ?? {}) as Record<string, unknown>;
   const stage = stages.find((item) => item.id === data.stageId);
   const material = materials.find((item) => item.id === data.materialId);
 
   if (kind === 'STAGE_STATE_CHANGED') {
-    const from = typeof data.from === 'string' ? STAGE_STATE_LABEL[data.from as StageStateKey] : null;
-    const to = typeof data.to === 'string' ? STAGE_STATE_LABEL[data.to as StageStateKey] : null;
+    const from = typeof data.from === 'string' ? stageLabel(data.from as StageStateKey, staff) : null;
+    const to = typeof data.to === 'string' ? stageLabel(data.to as StageStateKey, staff) : null;
     // Название этапа само нередко содержит двоеточие («Расчётная часть:
     // первая редакция»), поэтому оно берётся в кавычки, а не приписывается
     // через ещё одно двоеточие.
@@ -193,13 +196,19 @@ export default async function ProjectScreen({
   const done = stages.filter((stage) => stage.state === 'DONE').length;
   // Текущий этап — первый незавершённый; он и отвечает на вопрос «где работа».
   const current = stages.find((stage) => stage.state !== 'DONE') ?? null;
-  const action = current === null ? null : (ACTION_BY_STATE[current.state as StageStateKey] ?? null);
+  // Действие клиента показывается только клиенту: загрузить материалы и
+  // согласовать этап может лишь он, а эксперту и менеджеру та же фраза с
+  // главной кнопкой читалась как задание им (решение Р-206).
+  const action =
+    current === null || !forClient ? null : (ACTION_BY_STATE[current.state as StageStateKey] ?? null);
+  const staff = !forClient;
 
   const roadmap: RoadmapItem[] = stages.map((stage) => ({
     id: stage.id,
     title: stage.title,
     state: stage.state as StageStateKey,
     dueOn: formatDate(stage.dueOn),
+    late: daysPast(stage.dueOn) !== null,
     href: `/cabinet/stages/${stage.id}`,
     note: stage.state === 'AWAITING_CLIENT' ? stage.blockedReason : null,
     // Суть выполнения этапа пишет куратор; клиенту она отвечает на вопрос
@@ -240,6 +249,9 @@ export default async function ProjectScreen({
     ) : undefined,
   }));
 
+  // Счётчик берётся у полного перечня: колонка показывает дюжину, и
+  // число, снятое с неё, врало бы у работы с тринадцатью материалами.
+  const materialCount = withMaterials?.materials.length ?? 0;
   const materials: MaterialRow[] = (withMaterials?.materials ?? [])
     .slice(0, MATERIALS_IN_COLUMN)
     .map((material) => {
@@ -260,7 +272,7 @@ export default async function ProjectScreen({
     .filter((event) => !forClient || !CLIENT_HIDDEN_EVENTS.has(event.kind))
     .map((event) => ({
       id: event.id,
-      line: eventLine(event.kind, event.payload, project.stages, withMaterials?.materials ?? []),
+      line: eventLine(event.kind, event.payload, project.stages, withMaterials?.materials ?? [], staff),
       at: `${formatDay(event.createdAt)}, ${formatTime(event.createdAt)}`,
       who:
         event.actor === null
@@ -288,10 +300,13 @@ export default async function ProjectScreen({
   // уходя в переписку. Эксперту переписка закрыта, и здесь её тоже нет.
   const fromClient = thread.filter((message) => message.author.role === 'CLIENT');
   const fromStaff = thread.filter((message) => message.author.role !== 'CLIENT');
-  const lastWords = [
+  // Когда колонка переписки стоит на этом же экране, последние слова в
+  // «О работе» повторяли её дословно: одна реплика читалась дважды
+  // (решение Р-206). Остаются они там, где переписки на экране нет.
+  const lastWords = (mayWrite ? [] : [
     fromClient[fromClient.length - 1] ?? null,
     fromStaff[fromStaff.length - 1] ?? null,
-  ]
+  ])
     .filter((message) => message !== null)
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
@@ -379,6 +394,9 @@ export default async function ProjectScreen({
           current={current === null ? null : { title: current.title, state: current.state as StageStateKey }}
           stageDueOn={current === null ? null : formatDate(current.dueOn)}
           projectDueOn={formatDate(project.dueOn)}
+          stageLate={current !== null && daysPast(current.dueOn) !== null}
+          projectLate={current !== null && daysPast(project.dueOn) !== null}
+          staff={staff}
           action={action}
           actionHref={current === null || action === null ? null : `/cabinet/stages/${current.id}`}
         />
@@ -393,19 +411,23 @@ export default async function ProjectScreen({
           title="План работ"
           href={`/cabinet/projects/${project.code}/materials`}
           hrefLabel={
-            materials.length === 0
+            materialCount === 0
               ? 'материалы'
-              : `материалы · ${materials.length}`
+              : `материалы · ${materialCount}`
           }
         >
-          <Roadmap items={roadmap} />
+          <Roadmap items={roadmap} staff={staff} />
         </BoardColumn>
 
         {mayWrite ? (
           <BoardColumn
             title={forClient ? 'Переписка с куратором' : 'Переписка с клиентом'}
             href={`/cabinet/projects/${project.code}/messages`}
-            hrefLabel={unread > 0 ? `вся · ${unread} новых` : 'вся переписка'}
+            hrefLabel={
+              unread > 0
+                ? `вся · ${unread} ${plural(unread, 'новое', 'новых', 'новых')}`
+                : 'вся переписка'
+            }
             anchor="end"
             footer={
               <Form action={postMessage} inline>
@@ -472,14 +494,16 @@ export default async function ProjectScreen({
                 <Mono>Что от вас ждут</Mono>
                 <Text size={15} style={{ marginTop: 6 }}>
                   {current === null
-                    ? 'Все этапы закрыты — новых заданий по этой работе нет.'
+                    ? stages.length === 0
+                      ? 'План работ ещё не заведён: этапы и задание назначит куратор.'
+                      : 'Все этапы закрыты — новых заданий по этой работе нет.'
                     : (current.summary ?? 'Куратор не описал этап: спросите его, что требуется.')}
                 </Text>
-                <Text muted size={13} style={{ marginTop: 6 }}>
-                  {current === null
-                    ? ''
-                    : `Этап ${current.position}: ${current.title} · ${STAGE_STATE_LABEL[current.state as StageStateKey]}`}
-                </Text>
+                {current === null ? null : (
+                  <Text muted size={13} style={{ marginTop: 6 }}>
+                    {`Этап ${current.position}: ${current.title} · ${stageLabel(current.state as StageStateKey, true)}`}
+                  </Text>
+                )}
               </div>
 
               <div
@@ -493,9 +517,16 @@ export default async function ProjectScreen({
                   color: 'var(--pd-ink-muted)',
                 }}
               >
-                {current?.dueOn == null ? null : <span>срок этапа — {formatDate(current.dueOn)}</span>}
+                {current?.dueOn == null ? null : (
+                  <span>
+                    срок этапа — {formatDate(current.dueOn)}
+                    {daysPast(current.dueOn) === null ? '' : ' · прошёл'}
+                  </span>
+                )}
                 {project.dueOn === null ? null : <span>срок работы — {formatDate(project.dueOn)}</span>}
-                <span>материалов {materials.length}</span>
+                <span>
+                  {materialCount} {plural(materialCount, 'материал', 'материала', 'материалов')}
+                </span>
               </div>
 
               <div>

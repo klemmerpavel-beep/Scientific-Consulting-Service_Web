@@ -25,6 +25,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import path from 'node:path';
 import { chromium } from '/var/tmp/pwtest/node_modules/playwright-core/index.mjs';
 
+import { embedFonts } from './cabinet-fonts.mjs';
+import { SOURCE_FILE, sourceNote } from '../app/scripts/cabinet-source.mjs';
 import { buildPortable } from './cabinet-portable.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -434,7 +436,9 @@ async function main() {
   await new Promise((resolve, reject) => {
     seed.on('exit', (code) => (code === 0 ? resolve() : reject(new Error('Наполнение отказало'))));
   });
-  const { links } = JSON.parse(printed.trim().split('\n').at(-1));
+  const { links, now } = JSON.parse(printed.trim().split('\n').at(-1));
+  // Часы кабинета стоят на дне наполнения (решение Р-205).
+  env.CABINET_NOW = now;
 
   await ensureBuild(env);
   const server = await startServer(env);
@@ -473,8 +477,10 @@ async function main() {
 
   // Таблицы стилей одни и те же на всех экранах: прототип отдаётся по сети,
   // и повторять их в каждом файле незачем — из мегабайтов вышли бы десятки.
-  const sheet = [...styles].join('\n').replace(/@font-face\s*\{[^}]*\}/gu, '');
-  writeFileSync(path.join(OUT, 'prototype.css'), `${sheet}\n${BAR_CSS}\n`);
+  // Гарнитуры сайта лежат рядом, в `fonts/`: без них прототип набирался
+  // системной заменой, и облик принимался в чужих шрифтах (решение Р-204).
+  const { css: sheet, faces } = embedFonts([...styles].join('\n'), OUT);
+  writeFileSync(path.join(OUT, 'prototype.css'), `${faces}\n${sheet}\n${BAR_CSS}\n`);
 
   let written = 0;
   for (const [roleKey, tree] of trees) {
@@ -500,6 +506,8 @@ async function main() {
   writeFileSync(path.join(OUT, 'index.html'), document_(entryBody, 0));
   written += 1;
 
+  // Отпечаток исходников рядом со снимком (решение Р-214).
+  writeFileSync(path.join(OUT, SOURCE_FILE), sourceNote());
   console.log(`\nПрототип собран: ${written} экранов. Каталог: design/cabinet-prototype`);
 
   // Копия для боевого сайта складывается тут же, а не отдельной командой:

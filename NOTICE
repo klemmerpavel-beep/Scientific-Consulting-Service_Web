@@ -74,8 +74,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 2. ШРИФТЫ
 ================================================================================
 
-Файлы шрифтов в репозитории не хранятся: гарнитуры подключаются на этапе
-сборки через `next/font/google` и попадают только в собранный сайт.
+Сайт подключает гарнитуры на этапе сборки через `next/font/google`.
+Снимки кабинета (`design/cabinet/`, `design/cabinet-prototype/` и копия
+в `app/public/cabinet-preview/`) несут файлы шрифтов в каталогах `fonts/`
+вместе с текстом лицензии `OFL.txt` — иначе снимок набирался бы
+системной заменой (решение Р-204).
 
   Literata      — SIL Open Font License 1.1, © Type Network
   Inter         — SIL Open Font License 1.1, © The Inter Project Authors

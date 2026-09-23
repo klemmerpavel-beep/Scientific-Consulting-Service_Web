@@ -74,7 +74,7 @@ export default async function AnalyticsProducts() {
             }
           >
             <RankChart
-              width={1120}
+              width={1000}
               labelWidth={380}
               title="Средний чек по позициям"
               data={list.map((product) => ({

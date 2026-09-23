@@ -8,7 +8,8 @@
  * только в виде картинки.
  */
 
-import type { CSSProperties } from 'react';
+import { Fragment } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import {
   compactMoney,
@@ -30,6 +31,26 @@ const MUTED = 'var(--pd-ink-muted)';
 const INK = 'var(--pd-ink)';
 
 const svgStyle: CSSProperties = { width: '100%', height: 'auto', display: 'block' };
+
+/**
+ * Рамка рисунка: график не сжимается мельче своего поля.
+ *
+ * Рисунок тянулся на ширину карточки и вместе с ней сжимался: при поле в
+ * 560 px на карточке в 470 (окно 1100 px) подписи в 12 px выходили по
+ * 10 px, на телефоне — по 7. Правило «кегль не ниже 12 px» нарушалось на
+ * каждом графике, а машинный обход его не видел — текст внутри SVG он
+ * пропускал (решение Р-209). Теперь рисунок не уже своего поля: где
+ * карточка уже, он прокручивается вбок, и область прокрутки получает
+ * фокус и имя, как у широких таблиц (решение Р-168). Поля рисунков
+ * подобраны так, чтобы на компьютере от 1100 px прокрутки не было.
+ */
+function Frame({ width, title, children }: { width: number; title: string; children: ReactNode }) {
+  return (
+    <div role="region" aria-label={title} tabIndex={0} style={{ overflowX: 'auto' }}>
+      <div style={{ minWidth: width }}>{children}</div>
+    </div>
+  );
+}
 
 /** Маркер ряда в легенде. Набор радиусов закрыт: 6 — подсветка. */
 const swatch: CSSProperties = {
@@ -149,119 +170,133 @@ export function BarChart({
   const everyValue = Math.max(1, Math.ceil(valueWidth / step));
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
-      fontFamily={SANS} role="img" aria-label={title}>
-      <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} format={format} />
-      {unit === undefined ? null : (
-        <text x={4} y={12} textAnchor="start" fontSize={12} fill={MUTED}>
-          {unit}
-        </text>
-      )}
-      {/* Столбцы рисуются первыми, подписи — следом: иначе соседний столбец
-          ложится поверх уже написанного числа и срезает его («175 ть»). */}
-      {data.map((item, index) => {
-        const x = x0 + index * (bw + gap);
-        const h = max > 0 ? (item.value / max) * ih : 0;
-        return (
-          <g key={`bar-${item.label}-${index}`}>
-            <title>{`${item.label}: ${format(item.value)}`}</title>
-            <path
-              d={topRoundedBar(x, pad.t + ih - h, bw, Math.max(0, h), 5)}
-              fill={item.color ?? seriesColor(1)}
-            />
-          </g>
-        );
-      })}
-      {data.map((item, index) => {
-        const x = x0 + index * (bw + gap);
-        const h = max > 0 ? (item.value / max) * ih : 0;
-        const y = pad.t + ih - h;
-        return (
-          <g key={`label-${item.label}-${index}`}>
-            {item.value === 0 || (n - 1 - index) % everyValue !== 0 ? null : (
-              <text x={x + bw / 2} y={y - 6} textAnchor="middle" fontSize={12} fontWeight={500} fill={INK}>
-                {format(item.value)}
-              </text>
-            )}
-            {(n - 1 - index) % everyLabel === 0 ? (
-              <text x={x + bw / 2} y={H - 12} textAnchor="middle" fontSize={12} fill={MUTED}>
-                {item.label}
-              </text>
-            ) : null}
-          </g>
-        );
-      })}
-    </svg>
+    <Frame width={W} title={title}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
+        fontFamily={SANS} role="img" aria-label={title}>
+        <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} format={format} />
+        {unit === undefined ? null : (
+          <text x={4} y={12} textAnchor="start" fontSize={12} fill={MUTED}>
+            {unit}
+          </text>
+        )}
+        {/* Столбцы рисуются первыми, подписи — следом: иначе соседний столбец
+            ложится поверх уже написанного числа и срезает его («175 ть»). */}
+        {data.map((item, index) => {
+          const x = x0 + index * (bw + gap);
+          const h = max > 0 ? (item.value / max) * ih : 0;
+          return (
+            <g key={`bar-${item.label}-${index}`}>
+              <title>{`${item.label}: ${format(item.value)}`}</title>
+              <path
+                d={topRoundedBar(x, pad.t + ih - h, bw, Math.max(0, h), 5)}
+                fill={item.color ?? seriesColor(1)}
+              />
+            </g>
+          );
+        })}
+        {data.map((item, index) => {
+          const x = x0 + index * (bw + gap);
+          const h = max > 0 ? (item.value / max) * ih : 0;
+          const y = pad.t + ih - h;
+          return (
+            <g key={`label-${item.label}-${index}`}>
+              {item.value === 0 || (n - 1 - index) % everyValue !== 0 ? null : (
+                <text x={x + bw / 2} y={y - 6} textAnchor="middle" fontSize={12} fontWeight={500} fill={INK}>
+                  {format(item.value)}
+                </text>
+              )}
+              {(n - 1 - index) % everyLabel === 0 ? (
+                <text x={x + bw / 2} y={H - 12} textAnchor="middle" fontSize={12} fill={MUTED}>
+                  {item.label}
+                </text>
+              ) : null}
+            </g>
+          );
+        })}
+      </svg>
+    </Frame>
   );
 }
 
-/** Горизонтальное ранжирование: длинные подписи слева, значение справа. */
+/**
+ * Горизонтальное ранжирование: длинные подписи слева, значение справа.
+ *
+ * Собрано блоками, а не рисунком (решение Р-212). В SVG ширину подписи
+ * нельзя измерить, и её оценивали по числу знаков — мера расходилась с
+ * гарнитурой, и начало названия срезалось (Р-204); на телефоне рисунок в
+ * 460 px уходил в прокрутку вбок (Р-209). Блоки делят ширину сами:
+ * подпись режется многоточием по месту, полоса занимает остаток, кегль
+ * остаётся 12 px на любой ширине, прокрутки нет.
+ */
 export function RankChart({
   data,
   format = compactNumber,
   title,
   labelWidth = 200,
-  width = 720,
 }: {
   data: readonly BarDatum[];
   format?: (value: number) => string;
   title: string;
   labelWidth?: number;
-  /** Ширина поля рисунка; на широкой карточке задаётся по месту (Р-176). */
+  /** Прежнее поле рисунка; блокам оно не нужно. */
   width?: number;
 }) {
-  const W = width;
-  const rowH = 30;
-  const padR = 92;
-  const top = 6;
-  const H = top * 2 + Math.max(1, data.length) * rowH;
   const max = Math.max(1, ...data.map((item) => item.value));
-  const iw = W - labelWidth - padR;
-
-  /**
-   * Подпись не должна уходить за левый край.
-   *
-   * Подписи выключены вправо по границе колонки, и длинное название
-   * позиции («Сопровождение выпускной квалификационной работы») уезжало
-   * влево за пределы картинки: первые слова просто срезались, и строка
-   * начиналась с середины. Ширину текста в SVG не измерить, поэтому она
-   * оценивается по числу знаков — при кегле 12 знак кириллицы занимает
-   * около 6,8 px. Что не поместилось, заменяется многоточием; полное
-   * название остаётся в подсказке и в таблице под графиком.
-   */
-  const fit = (label: string): string => {
-    const room = Math.max(6, Math.floor((labelWidth - 14) / 6.8));
-    return label.length <= room ? label : `${label.slice(0, room - 1).trimEnd()}…`;
-  };
-
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
-      fontFamily={SANS} role="img" aria-label={title}>
-      {data.map((item, index) => {
-        const y = top + index * rowH;
-        const width = max > 0 ? (item.value / max) * iw : 0;
-        return (
-          <g key={`${item.label}-${index}`}>
-            <title>{`${item.label}: ${format(item.value)}`}</title>
-            <text x={labelWidth - 10} y={y + rowH / 2 + 4} textAnchor="end" fontSize={12} fill={INK}>
-              {fit(item.label)}
-            </text>
-            <rect x={labelWidth} y={y + 6} width={iw} height={rowH - 14} rx={(rowH - 14) / 2} fill={GRID} />
-            <rect
-              x={labelWidth}
-              y={y + 6}
-              width={Math.max(4, width)}
-              height={rowH - 14}
-              rx={(rowH - 14) / 2}
-              fill={item.color ?? seriesColor(1)}
+    <div
+      role="img"
+      aria-label={title}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: `min(${labelWidth}px, 42%) minmax(0,1fr) auto`,
+        columnGap: 10,
+        rowGap: 14,
+        alignItems: 'center',
+        padding: '6px 0',
+        fontFamily: SANS,
+        fontSize: 12,
+        lineHeight: 1.4,
+        color: INK,
+      }}
+    >
+      {data.map((item, index) => (
+        <Fragment key={`${item.label}-${index}`}>
+          <span
+            title={item.label}
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textAlign: 'right',
+            }}
+          >
+            {item.label}
+          </span>
+          <span
+            style={{
+              display: 'block',
+              height: 16,
+              borderRadius: RADIUS.pill,
+              background: GRID,
+              overflow: 'hidden',
+            }}
+          >
+            <span
+              style={{
+                display: 'block',
+                width: `${Math.max(2, (item.value / max) * 100)}%`,
+                height: '100%',
+                borderRadius: RADIUS.pill,
+                background: item.color ?? seriesColor(1),
+              }}
             />
-            <text x={labelWidth + Math.max(4, width) + 8} y={y + rowH / 2 + 4} fontSize={12} fontWeight={500} fill={INK}>
-              {format(item.value)}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+          </span>
+          <span style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums', minWidth: 24 }}>
+            {format(item.value)}
+          </span>
+        </Fragment>
+      ))}
+    </div>
   );
 }
 
@@ -310,49 +345,51 @@ export function LineChart({
   const everyLabel = Math.max(1, Math.ceil(46 / gapX));
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
-      fontFamily={SANS} role="img" aria-label={title}>
-      <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} format={format} />
-      {series.map((line, lineIndex) => {
-        const color = line.color ?? seriesColor(lineIndex);
-        const points = line.points.map((value, index) => ({ x: xAt(index), y: yAt(value) }));
-        return (
-          <g key={line.name}>
-            <path
-              d={smoothPath(points)}
-              fill="none"
-              stroke={color}
-              strokeWidth={2.5}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-            {points.map((point, index) => (
-              <g key={index}>
-                <title>{`${line.name} · ${categories[index] ?? ''}: ${format(line.points[index] ?? 0)}`}</title>
-                <circle cx={point.x} cy={point.y} r={3} fill={color} stroke="var(--pd-ink-inverse)" strokeWidth={1.5} />
-              </g>
-            ))}
-          </g>
-        );
-      })}
-      {categories.map((category, index) =>
-        (categories.length - 1 - index) % everyLabel === 0 ? (
-          <text
-            key={`tick-${category}-${index}`}
-            x={xAt(index)}
-            y={H - 10}
-            /* Крайние подписи якорятся по краю поля: центрированная
-               подпись последней точки наполовину уходила за границу
-               рисунка и обрезалась («сен 2»). */
-            textAnchor={index === 0 ? 'start' : index === categories.length - 1 ? 'end' : 'middle'}
-            fontSize={12}
-            fill={MUTED}
-          >
-            {category}
-          </text>
-        ) : null,
-      )}
-    </svg>
+    <Frame width={W} title={title}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
+        fontFamily={SANS} role="img" aria-label={title}>
+        <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} format={format} />
+        {series.map((line, lineIndex) => {
+          const color = line.color ?? seriesColor(lineIndex);
+          const points = line.points.map((value, index) => ({ x: xAt(index), y: yAt(value) }));
+          return (
+            <g key={line.name}>
+              <path
+                d={smoothPath(points)}
+                fill="none"
+                stroke={color}
+                strokeWidth={2.5}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              {points.map((point, index) => (
+                <g key={index}>
+                  <title>{`${line.name} · ${categories[index] ?? ''}: ${format(line.points[index] ?? 0)}`}</title>
+                  <circle cx={point.x} cy={point.y} r={3} fill={color} stroke="var(--pd-ink-inverse)" strokeWidth={1.5} />
+                </g>
+              ))}
+            </g>
+          );
+        })}
+        {categories.map((category, index) =>
+          (categories.length - 1 - index) % everyLabel === 0 ? (
+            <text
+              key={`tick-${category}-${index}`}
+              x={xAt(index)}
+              y={H - 10}
+              /* Крайние подписи якорятся по краю поля: центрированная
+                 подпись последней точки наполовину уходила за границу
+                 рисунка и обрезалась («сен 2»). */
+              textAnchor={index === 0 ? 'start' : index === categories.length - 1 ? 'end' : 'middle'}
+              fontSize={12}
+              fill={MUTED}
+            >
+              {category}
+            </text>
+          ) : null,
+        )}
+      </svg>
+    </Frame>
   );
 }
 
@@ -432,62 +469,66 @@ export function DonutChart({
   );
 }
 
-/** Полоса долей: сегменты клиентов, структура портфеля. */
+/**
+ * Полоса долей: сегменты клиентов, структура портфеля.
+ *
+ * Собрана блоками, а не рисунком: прежде это был SVG с
+ * `preserveAspectRatio="none"`, и подписи долей внутри него растягивались
+ * и сжимались по горизонтали вместе с полосой (решение Р-209). Ширина
+ * сегмента задаётся долей, кегль остаётся кеглем.
+ */
 export function StackBar({
   segments,
   title,
-  width = 720,
 }: {
   segments: readonly Segment[];
   title: string;
-  /** Ширина поля рисунка; на широкой карточке задаётся по месту (Р-176). */
+  /** Прежнее поле рисунка; полосе из блоков оно не нужно. */
   width?: number;
 }) {
-  const W = width;
-  const H = 18;
   const total = segments.reduce((acc, segment) => acc + segment.value, 0);
-  let x = 0;
-
   return (
-    <svg viewBox={`0 0 ${W} ${H + 4}`} preserveAspectRatio="none" style={svgStyle}
-      fontFamily={SANS} role="img" aria-label={title}>
-      <rect x={0} y={0} width={W} height={H} rx={H / 2} fill={GRID} />
+    <div
+      role="img"
+      aria-label={title}
+      style={{
+        display: 'flex',
+        gap: 2,
+        height: 22,
+        borderRadius: RADIUS.pill,
+        overflow: 'hidden',
+        background: GRID,
+      }}
+    >
       {segments.map((segment, index) => {
-        const width = total > 0 ? (segment.value / total) * W : 0;
-        const share = total > 0 ? Math.round((segment.value / total) * 100) : 0;
-        const left = x;
-        const piece =
-          width <= 0 ? null : (
-            <g key={segment.label}>
-              <rect
-                x={left}
-                y={0}
-                width={Math.max(0, width - 1.5)}
-                height={H}
-                rx={H / 2}
-                fill={segment.color ?? seriesColor(index)}
-              >
-                <title>{`${segment.label}: ${segment.value}`}</title>
-              </rect>
-              {/* Доля подписана прямо в сегменте, где он вмещает подпись:
-                  иначе смысл держался бы на одной заливке. */}
-              {width < 46 ? null : (
-                <text
-                  x={left + width / 2}
-                  y={H / 2 + 4}
-                  textAnchor="middle"
-                  fontSize={12}
-                  fill={seriesInkDark(index) ? INK : 'var(--pd-ink-inverse)'}
-                >
-                  {share} %
-                </text>
-              )}
-            </g>
-          );
-        x += width;
-        return piece;
+        const share = total > 0 ? (segment.value / total) * 100 : 0;
+        if (share <= 0) return null;
+        return (
+          <span
+            key={segment.label}
+            title={`${segment.label}: ${segment.value}`}
+            style={{
+              flex: `0 0 ${share}%`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 0,
+              overflow: 'hidden',
+              background: segment.color ?? seriesColor(index),
+              color: seriesInkDark(index) ? INK : 'var(--pd-ink-inverse)',
+              fontFamily: SANS,
+              fontSize: 12,
+              lineHeight: 1.4,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {/* Доля подписана прямо в сегменте, где он вмещает подпись:
+                иначе смысл держался бы на одной заливке. */}
+            {share < 7 ? null : `${Math.round(share)} %`}
+          </span>
+        );
       })}
-    </svg>
+    </div>
   );
 }
 
@@ -568,9 +609,10 @@ export function Legend({
  * словами в заголовке блока. Картинка помечена `aria-hidden`, потому что
  * читалке она не сообщает ничего сверх уже сказанного текстом.
  *
- * Покачивание — только у идущей работы и только через класс
- * `cab-tide`: правило `prefers-reduced-motion` в таблице токенов гасит
- * его вместе со всем прочим движением.
+ * Бесконечное покачивание гребня (3,2 с) снято решением Р-209: движение
+ * в системе — появление и отклик на действие, 180—260 мс одной кривой, а
+ * не фон, который шевелится, пока человек читает. Настроение работы
+ * держит форма гребня, а не его ход.
  */
 export function WaveBar({ share, mood }: { share: number; mood: WaveMood }) {
   return (
@@ -590,7 +632,6 @@ export function WaveBar({ share, mood }: { share: number; mood: WaveMood }) {
         style={{ display: 'block', width: '100%', height: '100%' }}
       >
         <path
-          className={mood === 'active' ? 'cab-tide' : undefined}
           d={wavePath(share, mood)}
           fill="var(--pd-accent)"
         />

@@ -13,6 +13,7 @@ import {
   Text,
   Tile,
   Tiles,
+  TableScroll,
   formatDate,
   plural,
 } from "../../../../components/cabinet/ui";
@@ -30,6 +31,7 @@ import {
   verdict,
   type ProjectRow,
 } from "../../../../lib/cabinet/analytics/metrics";
+import { now as clockNow } from "../../../../lib/cabinet/clock";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +96,7 @@ export default async function ReportScreen({
 
   const asked = (await searchParams).period;
   const period = PERIODS.find((item) => item.key === asked) ?? PERIODS[0];
-  const today = new Date();
+  const today = clockNow();
   const from = new Date(today.getTime() - period.days * 86_400_000);
 
   const all = await loadRows(actor);
@@ -189,7 +191,7 @@ export default async function ReportScreen({
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Работы
           </Heading>
-          <Tiles>
+          <Tiles inset>
             <Tile
               label="Принято"
               value={String(started.length)}
@@ -216,6 +218,7 @@ export default async function ReportScreen({
               За период работ не начиналось и не закрывалось.
             </Text>
           ) : (
+            <TableScroll label="Работы за период">
             <table
               style={{
                 width: "100%",
@@ -256,6 +259,7 @@ export default async function ReportScreen({
                 ))}
               </tbody>
             </table>
+            </TableScroll>
           )}
         </Card>
 
@@ -263,7 +267,7 @@ export default async function ReportScreen({
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Деньги
           </Heading>
-          <Tiles>
+          <Tiles inset>
             <Tile
               label="Законтрактовано"
               value={formatAmount(sum.contracted)}
@@ -290,6 +294,7 @@ export default async function ReportScreen({
             %; средний чек за период — {formatAmount(sum.averageCheck)}.
           </Text>
           {months.length === 0 ? null : (
+            <TableScroll label="Деньги по месяцам">
             <table
               style={{
                 width: "100%",
@@ -324,6 +329,7 @@ export default async function ReportScreen({
                 ))}
               </tbody>
             </table>
+            </TableScroll>
           )}
         </Card>
 
@@ -331,7 +337,7 @@ export default async function ReportScreen({
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Аналитика
           </Heading>
-          <Tiles>
+          <Tiles inset>
             <Tile
               label="Клиентов"
               value={String(clientReport.clients.length)}
@@ -349,6 +355,7 @@ export default async function ReportScreen({
             />
           </Tiles>
           {demand.length === 0 ? null : (
+            <TableScroll label="Что заказывали">
             <table
               style={{
                 width: "100%",
@@ -383,6 +390,7 @@ export default async function ReportScreen({
                 ))}
               </tbody>
             </table>
+            </TableScroll>
           )}
         </Card>
 

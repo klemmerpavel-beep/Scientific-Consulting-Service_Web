@@ -14,7 +14,7 @@ import {
   Mono,
   Notice,
   ScreenHead,
-  STAGE_STATE_LABEL,
+  stageLabel,
   Text,
   formatDate,
   authorName,
@@ -25,6 +25,7 @@ import {
 import { SANS } from '../../../../components/cabinet/tokens';
 import { can } from '../../../../lib/cabinet/access';
 import { stageById } from '../../../../lib/cabinet/queries';
+import { daysPast } from '../../../../lib/cabinet/clock';
 import { currentActor } from '../../../../lib/cabinet/session';
 import {
   approveStage,
@@ -60,12 +61,12 @@ const STAFF_TODO: Record<StageStateKey, string> = {
   DONE: 'Этап закрыт. Проверьте, что следующий начат и у него есть срок.',
 };
 
-/** Сколько дней прошло с назначенного срока; до срока — ничего. */
-function overdueDays(dueOn: Date | null): number | null {
-  if (dueOn === null) return null;
-  const days = Math.floor((Date.now() - dueOn.getTime()) / 86_400_000);
-  return days > 0 ? days : null;
-}
+/**
+ * Сколько дней прошло с назначенного срока; до срока — ничего. День
+ * берётся у часов кабинета, а не у системных: снимок не должен
+ * зависеть от дня съёмки (решение Р-205).
+ */
+const overdueDays = (dueOn: Date | null): number | null => daysPast(dueOn);
 
 const NEXT_STATES: Record<StageStateKey, readonly StageStateKey[]> = {
   NOT_STARTED: ['IN_PROGRESS'],
@@ -87,7 +88,10 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
   const state = stage.state as StageStateKey;
   const mayEdit = can(actor, 'STAGE_SET_STATE', ref);
   const mayApprove = state === 'IN_APPROVAL' && can(actor, 'STAGE_APPROVE', ref);
-  const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref);
+  // На закрытом этапе клиенту не предлагается приложить «первый» материал:
+  // этап сдан, и новая загрузка в него ничего не сдвинет (решение Р-206).
+  const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref) && (state !== 'DONE' || actor.role !== 'CLIENT');
+  const staff = actor.role !== 'CLIENT';
   const mayModerate = can(actor, 'COMMENT_MODERATE', ref);
   const forStaff = actor.role !== 'CLIENT' && mayEdit;
   const late = overdueDays(stage.dueOn);
@@ -108,16 +112,27 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
         backHref={`/cabinet/projects/${stage.project.code}`}
         backLabel={stage.project.title}
         title={stage.title}
-        chips={<Chip tone="accent">{STAGE_STATE_LABEL[state]}</Chip>}
+        chips={<Chip tone="accent">{stageLabel(state, staff)}</Chip>}
+        // Название работы уже стоит ссылкой возврата слева; повторённое
+        // строкой ниже, оно занимало ярус и ничего не добавляло
+        // (решение Р-206). Состав привлечённых специалистов клиенту не
+        // показывается: для него работу ведёт куратор (решение Р-140).
         note={
-          stage.project.title +
-          // Состав привлечённых специалистов клиенту не показывается: для
-          // него работу ведёт куратор (решение Р-140).
-          (stage.expert === null || actor.role === 'CLIENT'
-            ? ''
-            : ` · исполнитель ${stage.expert.fullName}`)
+          stage.expert === null || actor.role === 'CLIENT'
+            ? null
+            : `исполнитель ${stage.expert.fullName}`
         }
-        aside={stage.dueOn === null ? null : `срок — ${formatDate(stage.dueOn)}`}
+        // Просрочка называется всем ролям, а не только куратору: эксперт
+        // не узнавал о сорванном сроке своего же этапа (решение Р-206).
+        aside={
+          stage.dueOn === null
+            ? null
+            : `срок — ${formatDate(stage.dueOn)}${
+                late === null || state === 'DONE'
+                  ? ''
+                  : ` · прошёл ${late} ${plural(late, 'день', 'дня', 'дней')} назад`
+              }`
+        }
       />
 
       {stage.blockedReason === null ? null : (
@@ -152,12 +167,20 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
           >
             <span>{TURN_BY_STATE[state] ?? 'ход за практикой'}</span>
             {late === null ? null : (
-              <span style={{ color: 'var(--pd-alert-ink)' }}>
+              <span style={{ color: 'var(--pd-ink)', fontWeight: 600 }}>
                 просрочено {late} {plural(late, 'день', 'дня', 'дней')}
               </span>
             )}
-            <span>материалов {stage.materials.length}</span>
-            {pendingComments === 0 ? null : <span>замечаний на модерации {pendingComments}</span>}
+            <span>
+              {stage.materials.length}{' '}
+              {plural(stage.materials.length, 'материал', 'материала', 'материалов')}
+            </span>
+            {pendingComments === 0 ? null : (
+              <span>
+                {pendingComments} {plural(pendingComments, 'замечание', 'замечания', 'замечаний')} на
+                модерации
+              </span>
+            )}
           </div>
 
           {/* Срок переносится здесь же: менеджер держит сроки, и уходить
@@ -221,7 +244,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                   hint="Причину читает клиент: от неё зависит, что и когда он пришлёт."
                 />
                 <FormActions>
-                  <Button tone="quiet">Перевести в «{STAGE_STATE_LABEL[next]}»</Button>
+                  <Button tone="quiet">Перевести в «{stageLabel(next, true)}»</Button>
                 </FormActions>
               </Form>
             ))}
@@ -232,7 +255,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                 <Form key={next} action={changeStageState} inline>
                   <input type="hidden" name="stageId" value={stage.id} />
                   <input type="hidden" name="state" value={next} />
-                  <Button tone="quiet">Перевести в «{STAGE_STATE_LABEL[next]}»</Button>
+                  <Button tone="quiet">Перевести в «{stageLabel(next, true)}»</Button>
                 </Form>
               ))}
           </div>

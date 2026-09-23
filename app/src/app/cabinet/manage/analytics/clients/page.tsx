@@ -25,6 +25,7 @@ import {
   num,
   share,
 } from '../shared';
+import { now as clockNow } from '../../../../../lib/cabinet/clock';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ const SEGMENT_ORDER: ClientSegment[] = ['CORE', 'ACTIVE', 'DORMANT_VALUABLE', 'D
 
 export default async function AnalyticsClients() {
   const { actor, rows } = await analyticsScreen();
-  const report = clients(rows, new Date());
+  const report = clients(rows, clockNow());
   const top = report.clients.slice(0, 10);
 
   return (
@@ -69,7 +70,7 @@ export default async function AnalyticsClients() {
             note="Недавним считается клиент с заказом за последние 180 дней. Ядро — недавние с двумя и более заказами; спящие делятся по LTV относительно медианы."
           >
             <StackBar
-              width={1120}
+              width={1000}
               title="Сегменты клиентов"
               segments={SEGMENT_ORDER.map((segment, index) => ({
                 label: SEGMENT_LABEL[segment],
@@ -115,7 +116,7 @@ export default async function AnalyticsClients() {
           >
             <RankChart
               title="Десять крупнейших клиентов"
-              width={1120}
+              width={1000}
               labelWidth={240}
               data={top.map((client) => ({ label: client.name, value: Number(client.ltv) / 100 }))}
               format={(value) => compactMoney(BigInt(Math.round(value * 100)))}

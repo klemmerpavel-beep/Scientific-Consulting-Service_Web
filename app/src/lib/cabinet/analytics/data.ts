@@ -23,6 +23,10 @@ export async function loadRows(actor: Actor): Promise<ProjectRow[]> {
 
   const projects = await prisma.project.findMany({
     where: scope,
+    // Порядок задан явно: без него строки приходили в порядке, выбранном
+    // базой, и таблица отчёта за период на двух прогонах съёмки подряд
+    // стояла по-разному (решение Р-205).
+    orderBy: { code: 'asc' },
     select: {
       id: true,
       code: true,
