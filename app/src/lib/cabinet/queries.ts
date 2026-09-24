@@ -289,6 +289,15 @@ export async function leadById(actor: Actor, id: string) {
         where: { purgedAt: null },
         orderBy: { uploadedAt: 'asc' },
       },
+      // Исход разбора: работа, в которую развёрнута заявка, и письмо с
+      // причиной отказа. Без них экран предлагал одобрить отклонённую и
+      // развёрнутую заявку (решение Р-217).
+      project: { select: { code: true } },
+      notifications: {
+        where: { eventKind: 'LEAD_DECLINED' },
+        select: { state: true, lastError: true, sentAt: true },
+        take: 1,
+      },
     },
   });
 }

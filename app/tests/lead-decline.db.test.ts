@@ -111,6 +111,20 @@ describe('ответ заявителю при отказе', { skip: !enabled }
     assert.equal(lead.declineReason, 'Уточнённая причина.');
   });
 
+  it('отклонённую заявку одобрить нельзя: ответ заявителю уже дан', async () => {
+    const { approveLead } = await import('../src/lib/cabinet/projects.ts');
+    await assert.rejects(
+      () =>
+        approveLead(manager(), {
+          leadId: leadIds[0]!,
+          serviceTypeId: 'нет-такого',
+          managerId,
+          title: 'Работа',
+        }),
+      /отклонена/u,
+    );
+  });
+
   it('оставившему телефон письма нет: ответ звонком', async () => {
     const leadId = await newLead('phone', '+7 900 000-00-00');
     const { queued } = await declineLead(manager(), leadId, 'Сроки не позволяют.');

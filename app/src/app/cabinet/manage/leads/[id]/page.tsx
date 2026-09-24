@@ -20,6 +20,7 @@ import {
 } from '../../../../../components/cabinet/ui';
 import { ensure } from '../../../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
+import { declineLetterNote } from '../../../../../lib/cabinet/lead-letter';
 import { leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
 import { moderateLead } from '../../../actions';
@@ -49,6 +50,7 @@ export default async function LeadScreen({
   const { id } = await params;
   const [lead, types] = await Promise.all([leadById(actor, id), serviceTypes(actor)]);
   if (lead === null) notFound();
+  const letter = lead.notifications[0] ?? null;
 
   const facts = [
     lead.supervisorName === null
@@ -98,21 +100,21 @@ export default async function LeadScreen({
                 gap: 10,
               }}
             >
+              {/* Подпись и значение — строкой, пока значению хватает места,
+                  и одно под другим на телефоне. Сетка с колонкой подписей
+                  в 210 px оставляла значению на 390 px около 85 px, и
+                  «университет» рвался посреди слова (решение Р-217). */}
               {facts.map((fact) => (
                 <div
                   key={fact.term}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0,210px) minmax(0,1fr)',
-                    gap: 14,
-                  }}
+                  style={{ display: 'flex', flexWrap: 'wrap', columnGap: 14, rowGap: 2 }}
                 >
-                  <dt style={{ margin: 0 }}>
+                  <dt style={{ margin: 0, flex: '0 0 210px', minWidth: 0 }}>
                     <Text muted size={13}>
                       {fact.term}
                     </Text>
                   </dt>
-                  <dd style={{ margin: 0 }}>
+                  <dd style={{ margin: 0, flex: '1 1 240px', minWidth: 0 }}>
                     <Text size={14}>{fact.value}</Text>
                   </dd>
                 </div>
@@ -152,58 +154,91 @@ export default async function LeadScreen({
           </Text>
         </Card>
 
-        <Card style={{ marginBottom: 20 }}>
-          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
-            Одобрить и создать работу
-          </Heading>
-          <Form action={moderateLead}>
-            <input type="hidden" name="leadId" value={lead.id} />
-            <input type="hidden" name="decision" value="approve" />
-            <Field
-              label="Название работы"
-              name="title"
-              required
-              defaultValue={lead.topic ?? ''}
-              placeholder="Сопровождение кандидатской диссертации"
-            />
-            <Select label="Тип сопровождения" name="serviceTypeId" required>
-              {types.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
-                </option>
-              ))}
-            </Select>
-            <Checkbox name="applyTemplate" label="Применить шаблон этапов этого типа" />
-            <FormActions>
-              <Button>Одобрить и создать работу</Button>
-            </FormActions>
-          </Form>
-        </Card>
+        {/* Разобранная заявка показывает исход, а не формы. Прежде формы
+            стояли всегда: отклонённую можно было «одобрить» вопреки
+            письму, где человеку уже ответили «нет», а у развёрнутой в
+            работу одобрение падало ошибкой (решение Р-217). */}
+        {lead.project !== null ? (
+          <Card>
+            <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+              Заявка стала работой
+            </Heading>
+            <Text>
+              <a className="cab-mark" href={`/cabinet/projects/${lead.project.code}`}>
+                Работа {lead.project.code}
+              </a>
+            </Text>
+          </Card>
+        ) : lead.status === 'DECLINED' ? (
+          <Card>
+            <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+              Заявка отклонена
+            </Heading>
+            <Text style={{ marginBottom: 8, whiteSpace: 'pre-wrap' }}>
+              <strong style={{ fontWeight: 600 }}>Причина: </strong>
+              {lead.declineReason ?? 'не записана'}
+            </Text>
+            <Text muted size={13}>
+              {declineLetterNote(lead, letter)}
+              {letter?.state === 'SENT' ? ` ${formatDate(letter.sentAt) ?? ''}`.trimEnd() + '.' : ''}
+            </Text>
+          </Card>
+        ) : (
+          <>
+            <Card style={{ marginBottom: 20 }}>
+              <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+                Одобрить и создать работу
+              </Heading>
+              <Form action={moderateLead}>
+                <input type="hidden" name="leadId" value={lead.id} />
+                <input type="hidden" name="decision" value="approve" />
+                <Field
+                  label="Название работы"
+                  name="title"
+                  required
+                  defaultValue={lead.topic ?? ''}
+                  placeholder="Сопровождение кандидатской диссертации"
+                />
+                <Select label="Тип сопровождения" name="serviceTypeId" required>
+                  {types.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.name}
+                    </option>
+                  ))}
+                </Select>
+                <Checkbox name="applyTemplate" label="Применить шаблон этапов этого типа" />
+                <FormActions>
+                  <Button>Одобрить и создать работу</Button>
+                </FormActions>
+              </Form>
+            </Card>
 
-        {/* Отказ — редкий исход, и поле причины на четыре строки занимало
-            треть экрана под формой, которой пользуются каждый раз. Под
-            свёрткой оно на виду не стоит, а раскрывается на месте
-            (решение Р-182). */}
-        <Disclosure title="Отклонить заявку">
-          <Form action={moderateLead}>
-            <input type="hidden" name="leadId" value={lead.id} />
-            <input type="hidden" name="decision" value="decline" />
-            <Field
-              label="Причина отказа"
-              name="reason"
-              required
-              multiline
-              hint={
-                lead.contactKind === 'email'
-                  ? 'Причина уйдёт заявителю письмом, поэтому пишется человеческим языком.'
-                  : 'Заявитель оставил телефон: письма не будет, причину сообщите звонком.'
-              }
-            />
-            <FormActions>
-              <Button tone="quiet">Отклонить заявку</Button>
-            </FormActions>
-          </Form>
-        </Disclosure>
+            {/* Отказ — редкий исход, и поле причины на четыре строки занимало
+                треть экрана под формой, которой пользуются каждый раз. Под
+                свёрткой оно на виду не стоит, а раскрывается на месте
+                (решение Р-182). */}
+            <Disclosure title="Отклонить заявку">
+              <Form action={moderateLead}>
+                <input type="hidden" name="leadId" value={lead.id} />
+                <input type="hidden" name="decision" value="decline" />
+                <Field
+                  label="Причина отказа"
+                  name="reason"
+                  required
+                  multiline
+                  hint={
+                    lead.contactKind === 'email'
+                      ? 'Причина уйдёт заявителю письмом, поэтому пишется человеческим языком.'
+                      : 'Заявитель оставил телефон: письма не будет, причину сообщите звонком.'
+                  }
+                />
+                <FormActions>
+                  <Button tone="quiet">Отклонить заявку</Button>
+                </FormActions>
+              </Form>
+            </Disclosure>
+          </>
+        )}
       </Narrow>
     </Shell>
   );

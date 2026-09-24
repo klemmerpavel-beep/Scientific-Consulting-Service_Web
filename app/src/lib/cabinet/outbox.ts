@@ -2,7 +2,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
-import { telegramNote, type EventKind } from './events.ts';
+import { CHANNEL_OFF, telegramNote, type EventKind } from './events.ts';
 import { leadAddress } from './lead-letter.ts';
 import { sendMailTo } from './mail.ts';
 import { escapeHtml } from './token.ts';
@@ -20,7 +20,7 @@ import { escapeHtml } from './token.ts';
  */
 
 export type { EventKind } from './events.ts';
-export { EVENT_LABEL, eventLabel, telegramNote } from './events.ts';
+export { CHANNEL_OFF, EVENT_LABEL, eventLabel, telegramNote } from './events.ts';
 
 export interface OutboxItem {
   readonly userId: string;
@@ -141,13 +141,6 @@ export async function enqueueToLead(
 /** Сколько раз пробуем доставить, прежде чем признать отправку неудачной. */
 const MAX_ATTEMPTS = 5;
 
-/**
- * Причина, которую отправители возвращают при незаданных настройках канала.
- * Она отличается от настоящего отказа по существу: чинить нечего, пока
- * ящик или бот не заведены, и попытки такой строке не наращиваются —
- * иначе очередь перегорит до первой же настоящей отправки.
- */
-export const CHANNEL_OFF = 'канал не настроен';
 
 /** Адреса нет: заявка обезличена либо оставлен телефон. */
 const NO_ADDRESS = 'адрес заявителя недоступен';

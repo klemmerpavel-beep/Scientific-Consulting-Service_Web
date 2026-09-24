@@ -66,6 +66,11 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
   const lead = await prisma.lead.findUnique({ where: { id: input.leadId } });
   if (lead === null) throw new Error('Заявка не найдена');
   if (lead.projectId !== null) throw new Error('Заявка уже развёрнута в проект');
+  // Отклонённому ушло письмо «взяться не можем» (решение Р-217); работа по
+  // той же заявке противоречила бы ему. Передумали — нужна новая заявка.
+  if (lead.status === 'DECLINED') {
+    throw new Error('Заявка отклонена, заявителю уже ответили: работа заводится по новой заявке');
+  }
 
   const fullName = lead.name?.trim() || 'Клиент без имени';
   const normalized = normalizeName(fullName);
