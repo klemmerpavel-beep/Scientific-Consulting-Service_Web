@@ -20,7 +20,7 @@ import {
 } from '../../../../../components/cabinet/ui';
 import { ensure } from '../../../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
-import { declineLetterNote } from '../../../../../lib/cabinet/lead-letter';
+import { declineLetterNote, leadAddress } from '../../../../../lib/cabinet/lead-letter';
 import { leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
 import { moderateLead } from '../../../actions';
@@ -147,6 +147,15 @@ export default async function LeadScreen({
             </div>
           )}
 
+          {/* Причина машинной пометки лежала в заметке заявки и не
+              показывалась нигде: куратор не видел, почему заявка в спаме
+              (решение Р-227). */}
+          {lead.status === 'SPAM' ? (
+            <Text muted size={13} style={{ marginTop: 16 }}>
+              Помечена как машинная при приёме{lead.notes === null ? '.' : `: ${lead.notes}.`}
+            </Text>
+          ) : null}
+
           <Text muted size={13} style={{ marginTop: 16 }}>
             {lead.consentGiven
               ? 'Согласие на обработку персональных данных получено.'
@@ -227,9 +236,11 @@ export default async function LeadScreen({
                   required
                   multiline
                   hint={
-                    lead.contactKind === 'email'
-                      ? 'Причина уйдёт заявителю письмом, поэтому пишется человеческим языком.'
-                      : 'Заявитель оставил телефон: письма не будет, причину сообщите звонком.'
+                    lead.status === 'SPAM'
+                      ? 'Заявка помечена как машинная: письма не будет — адрес в ней мог вписать кто угодно.'
+                      : leadAddress(lead) !== null
+                        ? 'Причина уйдёт заявителю письмом, поэтому пишется человеческим языком.'
+                        : 'Почты для ответа нет: письма не будет, причину сообщите звонком.'
                   }
                 />
                 <FormActions>

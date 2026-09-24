@@ -305,6 +305,10 @@ export async function declineLead(actor: Actor, leadId: string, reason: string) 
   // Отказ по заявке, уже ставшей работой, отправил бы человеку «нет» после
   // приглашения в кабинет.
   if (found.projectId !== null) throw new Error('Заявка уже развёрнута в проект');
+  // Повторный отказ переписывал причину, а письмо — по ключу — оставалось
+  // прежним: экран показывал новую причину рядом с «письмо ушло», хотя
+  // человек получил старую (решение Р-227).
+  if (found.status === 'DECLINED') throw new Error('Заявка уже отклонена, заявителю ответили');
 
   const { lead, queued } = await prisma.$transaction(async (tx) => {
     const lead = await tx.lead.update({
