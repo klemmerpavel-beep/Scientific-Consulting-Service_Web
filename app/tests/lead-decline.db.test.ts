@@ -103,12 +103,26 @@ describe('ответ заявителю при отказе', { skip: !enabled }
     assert.deepEqual(audit.payload, { letter: true });
   });
 
-  it('повторный отказ второго письма не ставит', async () => {
+  it('повторный отказ отвергается: причина и письмо остаются прежними', async () => {
+    // Прежде повторный отказ переписывал причину, а письмо оставалось
+    // старым, и экран показывал не то, что получил человек (решение Р-227).
     const leadId = leadIds[0]!;
-    await declineLead(manager(), leadId, 'Уточнённая причина.');
+    await assert.rejects(() => declineLead(manager(), leadId, 'Уточнённая причина.'), /уже отклонена/u);
     assert.equal(await prisma.notificationOutbox.count({ where: { leadId } }), 1);
     const lead = await prisma.lead.findUniqueOrThrow({ where: { id: leadId } });
-    assert.equal(lead.declineReason, 'Уточнённая причина.');
+    assert.equal(lead.declineReason, 'Тема вне наших направлений.');
+  });
+
+  it('поиск находит заявку из кабинета по телефону', async () => {
+    const { leadList } = await import('../src/lib/cabinet/queries.ts');
+    // Цифры телефона не встречаются больше нигде в заявке: иначе поиск
+    // нашёл бы её по адресу, и проверка ничего бы не доказала.
+    const letters = stamp.toString(36).replace(/[0-9]/gu, 'x');
+    const leadId = await newLead('email', `phone-case-${letters}@example.org`);
+    const digits = '4815162342';
+    await prisma.lead.update({ where: { id: leadId }, data: { phone: `+7 ${digits}`, topic: 'Тема без цифр' } });
+    const found = await leadList(manager(), { query: digits });
+    assert.ok(found.rows.some((row) => row.id === leadId), 'заявка не найдена по телефону');
   });
 
   it('отклонённую заявку одобрить нельзя: ответ заявителю уже дан', async () => {

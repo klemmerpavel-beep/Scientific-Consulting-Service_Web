@@ -571,6 +571,10 @@ export async function leadList(actor: Actor, filter: LeadFilter = {}) {
           OR: [
             { name: { contains: query, mode: 'insensitive' as const } },
             { contact: { contains: query, mode: 'insensitive' as const } },
+            // Заявка из кабинета держит телефон отдельно от контакта
+            // (Р-191): поиск «по телефону», обещанный в поле, его не видел
+            // (решение Р-227).
+            { phone: { contains: query, mode: 'insensitive' as const } },
             { organization: { contains: query, mode: 'insensitive' as const } },
             { topic: { contains: query, mode: 'insensitive' as const } },
           ],
@@ -584,8 +588,10 @@ export async function leadList(actor: Actor, filter: LeadFilter = {}) {
   const rows = await prisma.lead.findMany({
     where,
     // Здесь порядок обратный очереди: перечень просматривают сверху вниз,
-    // и наверху должно быть свежее.
-    orderBy: { createdAt: 'desc' },
+    // и наверху должно быть свежее. Второй ключ — идентификатор: заявки с
+    // одной секундой иначе менялись местами между страницами выгрузки
+    // (решение Р-227).
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     skip: (current - 1) * LEAD_LIST_PAGE_SIZE,
     take: LEAD_LIST_PAGE_SIZE,
     select: {
