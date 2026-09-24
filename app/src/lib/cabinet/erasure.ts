@@ -490,7 +490,7 @@ export async function erasableClients(actor: Actor) {
   ensure(actor, 'ERASURE_EXECUTE');
   return prisma.clientProfile.findMany({
     where: { erasedAt: null, mergedIntoId: null },
-    orderBy: { fullName: 'asc' },
+    orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
     select: {
       id: true,
       fullName: true,

@@ -6,6 +6,7 @@ import { enqueue, enqueueToLead } from './outbox.ts';
 import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
 import { now } from './clock.ts';
+import { STAGE_TRANSITIONS } from './stage-state.ts';
 import {
   PROJECT_STATUS_LABEL,
   canChangeProjectStatus,
@@ -600,22 +601,8 @@ export type StageState =
   | 'IN_APPROVAL'
   | 'DONE';
 
-/**
- * Допустимые переходы состояния этапа. Перечень закрыт: состояние держит на
- * себе уведомления, фильтры, расчёт просрочек и аналитику, поэтому переход
- * «откуда угодно куда угодно» означал бы, что ни одна из этих величин не
- * имеет смысла.
- */
-const TRANSITIONS: Record<StageState, readonly StageState[]> = {
-  NOT_STARTED: ['IN_PROGRESS'],
-  IN_PROGRESS: ['AWAITING_CLIENT', 'IN_APPROVAL', 'NOT_STARTED'],
-  AWAITING_CLIENT: ['IN_PROGRESS', 'IN_APPROVAL'],
-  IN_APPROVAL: ['DONE', 'IN_PROGRESS'],
-  DONE: [],
-};
-
 export function canTransition(from: StageState, to: StageState): boolean {
-  return TRANSITIONS[from].includes(to);
+  return STAGE_TRANSITIONS[from].includes(to);
 }
 
 export async function setStageState(

@@ -169,6 +169,9 @@ export async function stageLoad(
 
   const projects = await prisma.project.findMany({
     where: { ...(scope ?? {}), status: 'ACTIVE' },
+    // Порядок задан явно: без него строки шли так, как их отдала база
+    // (решение Р-229).
+    orderBy: { code: 'asc' },
     select: {
       code: true,
       title: true,
@@ -218,7 +221,9 @@ export async function stageLoad(
     }
   }
 
-  soon.sort((a, b) => a.dueOn.getTime() - b.dueOn.getTime());
+  // При равном сроке — по коду: на сводке показываются первые пять, и
+  // без второго ключа их набор менялся от прогона к прогону (решение Р-229).
+  soon.sort((a, b) => a.dueOn.getTime() - b.dueOn.getTime() || a.code.localeCompare(b.code));
 
   // Порядок — ход работы, а не убывание числа: перечень читается как
   // путь от «не начат» до «на согласовании».
