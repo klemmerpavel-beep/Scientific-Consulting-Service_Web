@@ -324,10 +324,21 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                                 {formatDate(comment.createdAt)}
                                 {comment.moderationStatus === 'PENDING'
                                   ? ' · ожидает публикации'
-                                  : ''}
+                                  : comment.moderationStatus === 'REJECTED'
+                                    ? ' · отклонено куратором'
+                                    : ''}
                               </Text>
+                              {/* Отклонённое прежде выглядело опубликованным:
+                                  эксперт не узнавал, что клиент его не
+                                  видел, и почему (решение Р-226). */}
+                              {comment.moderationStatus === 'REJECTED' &&
+                              comment.moderationNote !== null ? (
+                                <Text muted size={13} style={{ marginTop: 2 }}>
+                                  Причина: {comment.moderationNote}
+                                </Text>
+                              ) : null}
                               {mayModerate && comment.moderationStatus === 'PENDING' ? (
-                                <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
                                   <Form action={decideOnComment} inline>
                                     <input type="hidden" name="commentId" value={comment.id} />
                                     <input type="hidden" name="stageId" value={stage.id} />
@@ -338,6 +349,14 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                                     <input type="hidden" name="commentId" value={comment.id} />
                                     <input type="hidden" name="stageId" value={stage.id} />
                                     <input type="hidden" name="decision" value="reject" />
+                                    <Field
+                                      label={`Причина отклонения: ${comment.body.slice(0, 40)}`}
+                                      labelHidden
+                                      name="note"
+                                      scope={comment.id}
+                                      placeholder="Причина — её увидит эксперт"
+                                      minWidth={220}
+                                    />
                                     <Button tone="quiet">Отклонить</Button>
                                   </Form>
                                 </div>
