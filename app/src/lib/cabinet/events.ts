@@ -15,6 +15,7 @@ export type EventKind =
   | 'PAYMENT_STATUS_CHANGED'
   | 'REQUEST_CREATED'
   | 'PROJECT_OPENED'
+  | 'LEAD_DECLINED'
   | 'HELP_REQUESTED';
 
 /**
@@ -32,6 +33,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   HELP_REQUESTED: 'куратор просит помощи',
   REQUEST_CREATED: 'новая заявка',
   PROJECT_OPENED: 'работа заведена',
+  LEAD_DECLINED: 'ответ на отклонённую заявку',
 };
 
 /**

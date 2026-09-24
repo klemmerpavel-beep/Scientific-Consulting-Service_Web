@@ -1,5 +1,6 @@
 import { prisma } from '../db.ts';
 import type { Actor } from './access.ts';
+import { now } from './clock.ts';
 import {
   createRawToken,
   createSessionValue,
@@ -187,7 +188,11 @@ export async function createSession(
         userAgent,
       },
     }),
-    prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } }),
+    // Отметка последнего входа — подпись на экранах учётных записей и
+    // реестра, ни одна проверка на неё не опирается. Поэтому она идёт по
+    // часам кабинета: в бою это настоящее время, а снимок не несёт дня
+    // съёмки (решение Р-217). Срок сессии выше — по настоящим часам.
+    prisma.user.update({ where: { id: userId }, data: { lastLoginAt: now() } }),
   ]);
   return raw;
 }

@@ -193,7 +193,11 @@ export default async function LeadScreen({
               name="reason"
               required
               multiline
-              hint="Причину видит заявитель, поэтому она пишется человеческим языком."
+              hint={
+                lead.contactKind === 'email'
+                  ? 'Причина уйдёт заявителю письмом, поэтому пишется человеческим языком.'
+                  : 'Заявитель оставил телефон: письма не будет, причину сообщите звонком.'
+              }
             />
             <FormActions>
               <Button tone="quiet">Отклонить заявку</Button>

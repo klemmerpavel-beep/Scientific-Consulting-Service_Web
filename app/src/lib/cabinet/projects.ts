@@ -1,7 +1,8 @@
 import { prisma } from '../db.ts';
 import { ensure, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
-import { enqueue } from './outbox.ts';
+import { declineLetter } from './lead-letter.ts';
+import { enqueue, enqueueToLead } from './outbox.ts';
 import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
 
@@ -267,23 +268,60 @@ async function moveLeadAttachments(actor: Actor, leadId: string, projectId: stri
   });
 }
 
-/** Отклонить заявку. Причина видна заявителю; заявка остаётся в системе. */
+/**
+ * Отклонить заявку. Заявка остаётся в системе, а причина уходит заявителю
+ * письмом — в той же транзакции, что и сама отметка отказа.
+ *
+ * Прежде причина записывалась в заявку и дальше не шла: экрана, где
+ * заявитель её прочёл бы, нет, а кабинета у отклонённого не будет. Человек
+ * оставлял обращение и не получал ответа вовсе (решение Р-217).
+ *
+ * Возвращает заявку и признак, ушло ли письмо в очередь: у того, кто
+ * оставил телефон, адреса нет, и ответ ему — звонком.
+ */
 export async function declineLead(actor: Actor, leadId: string, reason: string) {
   ensure(actor, 'REQUEST_MODERATE');
   const trimmed = reason.trim();
   if (trimmed.length === 0) {
-    throw new Error('Отклонение без причины не принимается: причину видит заявитель');
+    throw new Error('Отклонение без причины не принимается: причину получает заявитель');
   }
-  const lead = await prisma.lead.update({
+  const found = await prisma.lead.findUnique({
     where: { id: leadId },
-    data: { status: 'DECLINED', declineReason: trimmed },
+    select: { projectId: true, status: true },
   });
+  if (found === null) throw new Error('Заявка не найдена');
+  // Отказ по заявке, уже ставшей работой, отправил бы человеку «нет» после
+  // приглашения в кабинет.
+  if (found.projectId !== null) throw new Error('Заявка уже развёрнута в проект');
+
+  const { lead, queued } = await prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.update({
+      where: { id: leadId },
+      data: { status: 'DECLINED', declineReason: trimmed },
+    });
+    // Заявке, помеченной при приёме как машинная, письма нет: адрес в ней
+    // мог вписать кто угодно, и отказ стал бы способом слать письма на
+    // чужой ящик от имени практики.
+    const queued =
+      found.status !== 'SPAM' &&
+      (await enqueueToLead(tx, {
+        leadId,
+        eventKind: 'LEAD_DECLINED',
+        ...declineLetter(lead.name, lead.topic, trimmed),
+        // Ключ по заявке: повторное отклонение с правленой причиной второго
+        // письма не отправит — человек уже получил ответ.
+        dedupKey: `lead:${leadId}:declined`,
+      }));
+    return { lead, queued };
+  });
+
   await record(actor, {
     action: 'LEAD_DECLINED',
     objectType: 'Lead',
     objectId: leadId,
+    payload: { letter: queued },
   });
-  return lead;
+  return { lead, queued };
 }
 
 /** Реквизиты проекта для модуля прав. */
