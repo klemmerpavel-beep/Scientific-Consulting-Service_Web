@@ -295,6 +295,26 @@ describe('сквозной контур', { skip: !enabled }, async () => {
     const visible = await materials.listComments(client, ids.version2);
     assert.equal(visible.length, 1);
     assert.match(visible[0].body, /наработка на отказ/);
+
+    // Разобранное второй раз не разбирается: устаревшая вкладка не
+    // отклонит уже опубликованное (решение Р-226).
+    await assert.rejects(
+      materials.moderateComment(staff(ids.manager, 'MANAGER'), comment.id, 'REJECTED'),
+      /уже разобрано/u,
+    );
+
+    // Отклонённое хранит причину, клиент его не видит, эксперт видит своё.
+    const second = await materials.addComment(expert, ids.version2, 'Второе замечание эксперта.');
+    await materials.moderateComment(staff(ids.manager, 'MANAGER'), second.id, 'REJECTED', ' Уже учтено в п. 2.1 ');
+    const rejected = await prisma.versionComment.findUniqueOrThrow({ where: { id: second.id } });
+    assert.equal(rejected.moderationStatus, 'REJECTED');
+    assert.equal(rejected.moderationNote, 'Уже учтено в п. 2.1');
+    assert.equal((await materials.listComments(client, ids.version2)).length, 1);
+
+    // Замечание клиента публикуется сразу: модерация — против выхода
+    // эксперта на клиента, а не против самого клиента.
+    const own = await materials.addComment(client, ids.version2, 'Уточню данные по парку.');
+    assert.equal(own.moderationStatus, 'PUBLISHED');
   });
 
   it('этап проходит состояния и согласуется клиентом', async () => {

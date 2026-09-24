@@ -226,7 +226,15 @@ export async function readVersion(actor: Actor, versionId: string, ip?: string |
 
 /**
  * Комментарий к версии. Комментарий эксперта клиенту не виден до публикации
- * менеджером; комментарий менеджера и руководителя публикуется сразу.
+ * менеджером; комментарий клиента, менеджера и руководителя публикуется
+ * сразу.
+ *
+ * Модерация стоит между экспертом и клиентом — против прямого выхода
+ * эксперта на клиента. Замечание самого клиента прежде тоже уходило на
+ * модерацию: у него на экране стояло «ожидает публикации», у куратора —
+ * кнопка «Опубликовать клиенту» над его же текстом, а публикация слала
+ * клиенту «Эксперт оставил замечание» о том, что он написал сам
+ * (решение Р-226).
  */
 export async function addComment(actor: Actor, versionId: string, body: string) {
   const version = await prisma.materialVersion.findUnique({
@@ -245,7 +253,7 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
   const text = body.trim();
   if (text.length === 0) throw new Error('Пустой комментарий не сохраняется');
 
-  const published = actor.role === 'MANAGER' || actor.role === 'HEAD';
+  const published = actor.role !== 'EXPERT';
   return prisma.versionComment.create({
     data: {
       versionId,
@@ -286,16 +294,22 @@ export async function moderateComment(
   if (target === null) throw new Error('Замечание не найдено');
   ensure(actor, 'COMMENT_MODERATE', target.version.material.project);
   const now = new Date();
-  const comment = await prisma.versionComment.update({
-    where: { id: commentId },
+  // Разобрать можно только ждущее решения: вкладка, открытая до
+  // публикации, иначе отклонила бы замечание, о котором клиенту уже
+  // сообщили (решение Р-226).
+  const reason = note?.trim() || null;
+  const { count } = await prisma.versionComment.updateMany({
+    where: { id: commentId, moderationStatus: 'PENDING' },
     data: {
       moderationStatus: decision,
       moderatedById: actor.id,
       moderatedAt: now,
-      moderationNote: note ?? null,
+      moderationNote: decision === 'REJECTED' ? reason : null,
       publishedAt: decision === 'PUBLISHED' ? now : null,
     },
   });
+  if (count === 0) throw new Error('Замечание уже разобрано');
+  const comment = await prisma.versionComment.findUniqueOrThrow({ where: { id: commentId } });
   await record(actor, {
     action: decision === 'PUBLISHED' ? 'COMMENT_PUBLISHED' : 'COMMENT_REJECTED',
     objectType: 'VersionComment',

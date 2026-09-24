@@ -295,7 +295,7 @@ export async function decideOnComment(form: FormData): Promise<void> {
   const commentId = String(form.get('commentId') ?? '');
   const stageId = String(form.get('stageId') ?? '');
   const decision = String(form.get('decision') ?? '') === 'publish' ? 'PUBLISHED' : 'REJECTED';
-  await moderateComment(actor, commentId, decision);
+  await moderateComment(actor, commentId, decision, String(form.get('note') ?? ''));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
