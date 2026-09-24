@@ -190,6 +190,71 @@ describe('документы, материалы и шаблоны', { skip: !en
     assert.equal(version.number, 1);
   });
 
+  // Следующая версия ложится в существующий материал, и вид с работой
+  // берутся из базы, а не из формы (решение Р-222).
+  const clientActor = () => actor(ids.clientUser, 'CLIENT', { clientProfileId: ids.client });
+  const file = (extra: Record<string, unknown>) => ({
+    projectId: ids.project,
+    originalName: 'v2.pdf',
+    contentType: 'application/pdf',
+    body: Buffer.from('следующая версия', 'utf8'),
+    ...extra,
+  });
+
+  it('версию договора клиент не добавит, не указав вида', async () => {
+    const contract = await prisma.material.findFirstOrThrow({
+      where: { contractId: ids.contract, kind: 'CONTRACT' },
+      select: { id: true },
+    });
+    await assert.rejects(
+      uploadVersion(clientActor(), file({ materialId: contract.id })),
+      AccessDenied,
+      'клиент добавил версию договора под правом загрузки материалов',
+    );
+  });
+
+  it('материал другой работы и удалённый материал не принимают версию', async () => {
+    const other = await prisma.project.create({
+      data: {
+        code: `PD-DOC2-${String(stamp).slice(-6)}`,
+        clientId: ids.client,
+        serviceTypeId: ids.type,
+        title: 'Вторая работа',
+        managerId: ids.manager,
+      },
+    });
+    const foreign = await prisma.material.create({
+      data: { projectId: other.id, title: 'Материал второй работы', createdById: ids.head },
+    });
+    const otherStage = await prisma.stage.create({
+      data: { projectId: other.id, position: 1, title: 'Этап второй работы' },
+    });
+    try {
+      await assert.rejects(
+        uploadVersion(clientActor(), file({ materialId: foreign.id })),
+        /Материал не найден/u,
+        'версия легла в материал другой работы',
+      );
+      await assert.rejects(
+        uploadVersion(clientActor(), file({ stageId: otherStage.id, title: 'Новый' })),
+        /Этап не найден/u,
+        'новый материал привязан к этапу другой работы',
+      );
+      const own = await prisma.material.create({
+        data: { projectId: ids.project, title: 'Удалённый', createdById: ids.head, deletedAt: new Date() },
+      });
+      await assert.rejects(
+        uploadVersion(clientActor(), file({ materialId: own.id })),
+        /Материал не найден/u,
+        'версия легла в удалённый материал',
+      );
+    } finally {
+      await prisma.material.deleteMany({ where: { projectId: other.id } });
+      await prisma.stage.deleteMany({ where: { projectId: other.id } });
+      await prisma.project.delete({ where: { id: other.id } });
+    }
+  });
+
   it('материал вне этапа виден на экране материалов работы', async () => {
     const view = await projectMaterials(
       actor(ids.clientUser, 'CLIENT', { clientProfileId: ids.client }),

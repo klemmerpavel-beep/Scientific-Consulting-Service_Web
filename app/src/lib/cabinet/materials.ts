@@ -53,10 +53,36 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   const ref = await projectRef(input.projectId);
   if (ref === null) throw new Error('Проект не найден');
 
+  // Следующая версия ложится в существующий материал, и всё о нём берётся
+  // из базы, а не из формы. Прежде вид материала приходил с формы, а
+  // принадлежность работе не проверялась: клиент, не указав вида, добавлял
+  // версию к своему договору или акту под правом загрузки материалов, а
+  // подставив чужой материал — клал файл в чужую работу (решение Р-222).
+  const existing =
+    input.materialId == null
+      ? null
+      : await prisma.material.findUnique({
+          where: { id: input.materialId },
+          select: { projectId: true, kind: true, deletedAt: true },
+        });
+  if (
+    input.materialId != null &&
+    (existing === null || existing.projectId !== input.projectId || existing.deletedAt !== null)
+  ) {
+    throw new Error('Материал не найден');
+  }
+  if (existing === null && input.stageId != null) {
+    const stage = await prisma.stage.findUnique({
+      where: { id: input.stageId },
+      select: { projectId: true },
+    });
+    if (stage === null || stage.projectId !== input.projectId) throw new Error('Этап не найден');
+  }
+
   // Закрывающие документы — часть финансового контура, а не производства:
   // договор, счёт и акт заводит тот же, кто ведёт деньги. Иначе клиент мог
   // бы приложить свой «акт» к чужому траншу.
-  const kind = input.kind ?? 'STAGE_MATERIAL';
+  const kind = existing?.kind ?? input.kind ?? 'STAGE_MATERIAL';
   ensure(actor, kind === 'STAGE_MATERIAL' ? 'MATERIAL_UPLOAD' : 'PAYMENT_EDIT', ref);
 
   if (input.body.byteLength === 0) throw new Error('Пустой файл не принимается');
@@ -67,13 +93,13 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   // Номер версии вычисляется и занимается в одной транзакции; от гонки
   // защищает уникальность пары «материал — номер» на стороне базы.
   const { version, material } = await prisma.$transaction(async (tx) => {
-    const existing =
+    const current =
       input.materialId == null
         ? null
         : await tx.material.findUnique({ where: { id: input.materialId } });
 
     const target =
-      existing ??
+      current ??
       (await tx.material.create({
         data: {
           projectId: input.projectId,

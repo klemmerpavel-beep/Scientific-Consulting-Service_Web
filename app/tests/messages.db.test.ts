@@ -42,6 +42,9 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     const expert = await prisma.user.create({
       data: { email: `ms-exp-${stamp}@example.org`, fullName: 'Эксперт', role: 'EXPERT' },
     });
+    const head = await prisma.user.create({
+      data: { email: `ms-head-${stamp}@example.org`, fullName: 'Руководитель', role: 'HEAD' },
+    });
     const client = await prisma.user.create({
       data: { email: `ms-cli-${stamp}@example.org`, fullName: 'Клиент', role: 'CLIENT' },
     });
@@ -64,6 +67,7 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     });
     Object.assign(ids, {
       manager: manager.id,
+      head: head.id,
       expert: expert.id,
       client: client.id,
       profile: profile.id,
@@ -78,7 +82,7 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     await prisma.clientProfile.deleteMany({ where: { id: ids.profile } });
     await prisma.serviceType.deleteMany({ where: { id: ids.type } });
     await prisma.user.deleteMany({
-      where: { id: { in: [ids.manager!, ids.expert!, ids.client!] } },
+      where: { id: { in: [ids.manager!, ids.head!, ids.expert!, ids.client!] } },
     });
     await prisma.$disconnect();
   });
@@ -151,6 +155,34 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     assert.equal(await messages.unreadCount(manager(), ids.project!), 0);
     // У клиента остаётся непрочитанным то, что написал куратор.
     assert.ok((await messages.unreadCount(client(), ids.project!)) > 0);
+  });
+
+  it('руководитель, открывший чужую работу, не гасит новое у куратора', async () => {
+    // Прежде отметку ставил любой читатель, кроме автора (решение Р-221).
+    const head = actorOf(ids.head!, 'HEAD');
+    await messages.sendMessage(client(), ids.project!, 'Вопрос куратору');
+    const before = await messages.unreadCount(manager(), ids.project!);
+    assert.ok(before > 0);
+    await messages.markRead(head, ids.project!);
+    assert.equal(await messages.unreadCount(manager(), ids.project!), before);
+  });
+
+  it('сообщение руководителя ново для клиента и не висит у куратора', async () => {
+    const head = actorOf(ids.head!, 'HEAD');
+    await messages.markRead(manager(), ids.project!);
+    await messages.markRead(client(), ids.project!);
+    await messages.sendMessage(head, ids.project!, 'Руководитель на связи');
+    assert.equal(await messages.unreadCount(client(), ids.project!), 1, 'клиент не видит нового');
+    assert.equal(await messages.unreadCount(manager(), ids.project!), 0, 'у куратора висит сообщение своей стороны');
+  });
+
+  it('куратор, открывший переписку, не гасит новое у клиента', async () => {
+    await messages.sendMessage(manager(), ids.project!, 'Ответ куратора');
+    const before = await messages.unreadCount(client(), ids.project!);
+    await messages.markRead(manager(), ids.project!);
+    assert.equal(await messages.unreadCount(client(), ids.project!), before);
+    await messages.markRead(client(), ids.project!);
+    assert.equal(await messages.unreadCount(client(), ids.project!), 0);
   });
 
   it('входящие куратора называют работу', async () => {
