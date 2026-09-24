@@ -133,7 +133,8 @@ export default async function ProjectMaterialsScreen({
                     <input type="hidden" name="back" value={`/cabinet/projects/${project.code}/materials`} />
                     <FileField
                       label={`Новая версия материала «${material.title}»`}
-                      name={`file-${material.id}`}
+                      name="file"
+                      scope={material.id}
                       required
                     />
                     <FormActions>
