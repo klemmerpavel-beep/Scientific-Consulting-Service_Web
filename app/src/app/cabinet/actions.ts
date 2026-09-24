@@ -182,7 +182,8 @@ export async function moderateLead(form: FormData): Promise<void> {
   const leadId = String(form.get('leadId') ?? '');
   if (String(form.get('decision') ?? '') === 'decline') {
     await declineLead(actor, leadId, String(form.get('reason') ?? ''));
-    redirect('/cabinet/manage');
+    // Назад на экран заявки: там виден исход — причина и судьба письма.
+    redirect(`/cabinet/manage/leads/${leadId}`);
   }
   const project = await approveLead(actor, {
     leadId,

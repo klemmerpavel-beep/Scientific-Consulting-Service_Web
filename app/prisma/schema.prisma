@@ -58,8 +58,9 @@ model Lead {
   status LeadStatus @default(NEW)
   notes  String?    @db.Text
 
-  /// Причина отказа, показываемая заявителю в кабинете. Отдельно от notes:
-  /// notes — внутренняя пометка менеджера и наружу не выходит.
+  /// Причина отказа, которую заявитель получает письмом (решение Р-217).
+  /// Отдельно от notes: notes — внутренняя пометка менеджера и наружу не
+  /// выходит.
   declineReason String? @db.Text
 
   /// Проект, в который развёрнута одобренная заявка. Заявка не удаляется
@@ -67,8 +68,10 @@ model Lead {
   projectId String?  @unique
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
-  deliveries  Delivery[]
-  attachments LeadAttachment[]
+  deliveries    Delivery[]
+  attachments   LeadAttachment[]
+  /// Ответ заявителю, у которого нет кабинета: письмо об отказе (Р-217).
+  notifications NotificationOutbox[]
 
   @@index([createdAt])
   @@index([status])
@@ -863,9 +866,15 @@ enum NotificationState {
 /// само изменение: отказ почты или Telegram не откатывает бизнес-операцию,
 /// а недоставленное уведомление видно руководителю.
 model NotificationOutbox {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String  @id @default(cuid())
+  /// Адресат — учётная запись либо заявка, ровно одно из двух. Заявителю,
+  /// которому отказали, учётную запись не заводят, а ответить ему надо:
+  /// письмо идёт на адрес из заявки и читается оттуда в момент отправки,
+  /// копия адреса здесь не хранится (решение Р-217).
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadId String?
+  lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
@@ -888,6 +897,7 @@ model NotificationOutbox {
   @@index([state, scheduledAt])
   /// Сводка очереди: ушедшее за сутки и время последней отправки.
   @@index([state, sentAt])
+  @@index([leadId])
 }
 
 /// Журнал действий. Запись выполняется явным вызовом в сервисном слое:

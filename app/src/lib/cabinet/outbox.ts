@@ -2,7 +2,8 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
-import { telegramNote, type EventKind } from './events.ts';
+import { CHANNEL_OFF, telegramNote, type EventKind } from './events.ts';
+import { leadAddress } from './lead-letter.ts';
 import { sendMailTo } from './mail.ts';
 import { escapeHtml } from './token.ts';
 
@@ -19,7 +20,7 @@ import { escapeHtml } from './token.ts';
  */
 
 export type { EventKind } from './events.ts';
-export { EVENT_LABEL, eventLabel, telegramNote } from './events.ts';
+export { CHANNEL_OFF, EVENT_LABEL, eventLabel, telegramNote } from './events.ts';
 
 export interface OutboxItem {
   readonly userId: string;
@@ -96,16 +97,53 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<void> {
   }
 }
 
+/**
+ * Письмо заявителю, у которого нет кабинета.
+ *
+ * Заявка с сайта учётной записи не заводит, а отказ её и не заведёт: у
+ * человека, которому ответили «нет», кабинета не будет никогда. Прежде
+ * причина отказа записывалась в заявку и дальше не шла — ни письма, ни
+ * экрана, где заявитель мог бы её прочесть (решение Р-217).
+ *
+ * Канал один — почта, и только если человек оставил почту: Telegram
+ * привязывается к учётной записи, а телефон отвечает звонком. Правила
+ * уведомлений не спрашиваются — их нет у того, у кого нет записи, а
+ * ответ на собственное обращение не рассылка, от которой отписываются.
+ * Адрес в строку не копируется: рассылка читает его из заявки, и
+ * обезличенная заявка письма уже не отправит.
+ *
+ * Возвращает, поставлено ли письмо.
+ */
+export async function enqueueToLead(
+  db: Db,
+  item: Omit<OutboxItem, 'userId'> & { readonly leadId: string },
+): Promise<boolean> {
+  const lead = await db.lead.findUnique({
+    where: { id: item.leadId },
+    select: { contactKind: true, contact: true },
+  });
+  if (lead === null || leadAddress(lead) === null) return false;
+  await db.notificationOutbox.createMany({
+    data: {
+      leadId: item.leadId,
+      projectId: item.projectId ?? null,
+      channel: 'EMAIL',
+      eventKind: item.eventKind,
+      subject: item.subject,
+      body: item.body,
+      dedupKey: `${item.dedupKey}:email`,
+    },
+    skipDuplicates: true,
+  });
+  return true;
+}
+
 /** Сколько раз пробуем доставить, прежде чем признать отправку неудачной. */
 const MAX_ATTEMPTS = 5;
 
-/**
- * Причина, которую отправители возвращают при незаданных настройках канала.
- * Она отличается от настоящего отказа по существу: чинить нечего, пока
- * ящик или бот не заведены, и попытки такой строке не наращиваются —
- * иначе очередь перегорит до первой же настоящей отправки.
- */
-export const CHANNEL_OFF = 'канал не настроен';
+
+/** Адреса нет: заявка обезличена либо оставлен телефон. */
+const NO_ADDRESS = 'адрес заявителя недоступен';
 
 /** Через сколько проверить строку, ждущую настройки канала. */
 const CHANNEL_OFF_DELAY_MS = 60 * 60 * 1000;
@@ -137,7 +175,11 @@ async function sendTelegram(chatId: string, text: string): Promise<{ ok: boolean
   }
 }
 
-function letter(subject: string, body: string): string {
+/** Строка под письмом: участнику — о кабинете, заявителю — об обращении. */
+const FOOTER_MEMBER = 'Письмо отправлено личным кабинетом ProDisser. Ход работы виден в кабинете.';
+const FOOTER_APPLICANT = 'Письмо отправлено ProDisser в ответ на вашу заявку.';
+
+function letter(subject: string, body: string, footer: string): string {
   const paragraphs = body
     .split('\n')
     .filter((line) => line.trim().length > 0)
@@ -147,8 +189,7 @@ function letter(subject: string, body: string): string {
     `<div style="font:15px/1.6 'Helvetica Neue',Arial,sans-serif;color:#14161C">` +
     `<p style="margin:0 0 16px;font-size:17px;font-weight:600">${escapeHtml(subject)}</p>` +
     paragraphs +
-    `<p style="margin:20px 0 0;color:#5C6474;font-size:13px">Письмо отправлено личным кабинетом ` +
-    `ProDisser. Ход работы виден в кабинете.</p></div>`
+    `<p style="margin:20px 0 0;color:#5C6474;font-size:13px">${escapeHtml(footer)}</p></div>`
   );
 }
 
@@ -164,6 +205,7 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     take: limit,
     include: {
       user: { select: { email: true, telegramChatId: true } },
+      lead: { select: { contactKind: true, contact: true } },
       project: { select: { code: true } },
     },
   });
@@ -172,15 +214,29 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
   let failed = 0;
 
   for (const item of pending) {
+    // Адрес заявителя читается из заявки сейчас, а не при постановке:
+    // обезличенная за это время заявка адреса уже не даст (решение Р-217).
+    const address = item.user?.email ?? (item.lead === null ? null : leadAddress(item.lead));
+    const footer = item.user === null ? FOOTER_APPLICANT : FOOTER_MEMBER;
+    const chatId = item.user?.telegramChatId ?? null;
     const result =
-      item.channel === 'EMAIL'
-        ? await sendMailTo(item.user.email, item.subject, letter(item.subject, item.body), item.body)
-        : item.user.telegramChatId === null
-          ? { ok: false, error: 'привязка Telegram снята' }
-          : await sendTelegram(
-              item.user.telegramChatId,
-              telegramNote(item.eventKind, item.project?.code ?? null),
-            );
+      address === null && item.channel === 'EMAIL'
+        ? { ok: false, error: NO_ADDRESS }
+        : item.channel === 'EMAIL'
+          ? await sendMailTo(address!, item.subject, letter(item.subject, item.body, footer), item.body)
+          : chatId === null
+            ? { ok: false, error: 'привязка Telegram снята' }
+            : await sendTelegram(chatId, telegramNote(item.eventKind, item.project?.code ?? null));
+
+    // Без адреса повторять нечего: строка сразу помечается неудачей.
+    if (result.error === NO_ADDRESS) {
+      await prisma.notificationOutbox.update({
+        where: { id: item.id },
+        data: { state: 'FAILED', attempts: { increment: 1 }, lastError: NO_ADDRESS },
+      });
+      failed += 1;
+      continue;
+    }
 
     if (result.ok) {
       await prisma.notificationOutbox.update({
@@ -325,6 +381,7 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
         lastError: true,
         scheduledAt: true,
         user: { select: { fullName: true } },
+        lead: { select: { name: true } },
         project: { select: { title: true } },
       },
     }),
@@ -343,7 +400,7 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
       subject: row.subject,
       // Адрес получателя в служебный перечень не выносится: для разбора
       // достаточно имени, а адрес — персональные данные.
-      recipient: row.user.fullName,
+      recipient: row.user?.fullName ?? `заявитель ${row.lead?.name ?? 'без имени'}`,
       projectTitle: row.project?.title ?? null,
       attempts: row.attempts,
       lastError: row.lastError,

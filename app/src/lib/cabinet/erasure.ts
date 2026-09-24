@@ -253,7 +253,9 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     });
 
     // Поставленные уведомления: тема и тело письма называют человека по
-    // имени. Строка остаётся — по ней видно, что отправка была.
+    // имени. Строка остаётся — по ней видно, что отправка была. Письма
+    // по его заявкам (ответ на отказ, Р-217) адресованы заявке, а не
+    // записи, и попадают сюда отдельным условием.
     const notifications = await tx.notificationOutbox.updateMany({
       where: {
         OR: [
@@ -261,6 +263,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
             ? { id: '—нет такой строки—' }
             : { projectId: { in: projectIds } },
           client.userId === null ? { id: '—нет такой строки—' } : { userId: client.userId },
+          leadIds.length === 0 ? { id: '—нет такой строки—' } : { leadId: { in: leadIds } },
         ],
       },
       data: { subject: ERASED, body: ERASED },

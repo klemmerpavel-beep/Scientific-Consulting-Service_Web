@@ -113,10 +113,13 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
     };
   });
 
+  // При равном сроке — по коду. Без второго ключа две работы с одним днём
+  // стояли в том порядке, в каком их отдала база, и сводка менялась от
+  // прогона к прогону при тех же данных (решение Р-217).
   return rows.sort((a, b) => {
-    if (a.dueOn === null) return b.dueOn === null ? 0 : 1;
+    if (a.dueOn === null) return b.dueOn === null ? a.code.localeCompare(b.code) : 1;
     if (b.dueOn === null) return -1;
-    return a.dueOn.getTime() - b.dueOn.getTime();
+    return a.dueOn.getTime() - b.dueOn.getTime() || a.code.localeCompare(b.code);
   });
 }
 

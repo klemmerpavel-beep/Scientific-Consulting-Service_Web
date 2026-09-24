@@ -612,6 +612,10 @@ async function main() {
             authorId: manager.id,
             body: 'Принято в работу. Методическую часть смотрим отдельно.',
             moderationStatus: 'PUBLISHED',
+            // Дата — от точки отсчёта, как у переписки: без неё база
+            // ставила настоящее время, и снимок этапа нёс день съёмки
+            // (решение Р-217).
+            createdAt: day(11),
             publishedAt: day(11),
           },
           {
@@ -619,6 +623,7 @@ async function main() {
             authorId: expertUser.id,
             body: 'В разделе 2.3 нужен вывод формулы (7): без него переход к оценке не следует.',
             moderationStatus: 'PENDING',
+            createdAt: day(1),
           },
         ],
       });
