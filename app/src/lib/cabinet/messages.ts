@@ -139,9 +139,14 @@ export async function markRead(actor: Actor, projectId: string): Promise<void> {
 /** Сообщения с признаком передачи контактов — сводка для менеджера. */
 export async function flaggedMessages(actor: Actor) {
   ensure(actor, 'REGISTRY_VIEW');
+  // Текст сообщения с телефоном или почтой — персональные данные клиента:
+  // менеджер видит только сообщения своих работ. Прежде выборка шла по
+  // всей практике, и реестр показывал чужих клиентов (решение Р-220).
+  const scope = scopeProjects(actor);
+  if (scope === null) return [];
   return prisma.message.findMany({
-    where: { containsContactHint: true },
-    orderBy: { createdAt: 'desc' },
+    where: { containsContactHint: true, project: scope },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: 50,
     include: {
       author: { select: { fullName: true, role: true } },

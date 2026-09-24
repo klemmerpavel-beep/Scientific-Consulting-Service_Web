@@ -239,7 +239,26 @@ export async function moderateComment(
   decision: 'PUBLISHED' | 'REJECTED',
   note?: string | null,
 ) {
+  // Сначала право по роли — чтобы клиент не узнавал, есть ли такое
+  // замечание, — затем по работе: замечание публикует куратор его работы,
+  // а не любой менеджер (решение Р-220).
   ensure(actor, 'COMMENT_MODERATE');
+  const target = await prisma.versionComment.findUnique({
+    where: { id: commentId },
+    select: {
+      version: {
+        select: {
+          material: {
+            select: {
+              project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (target === null) throw new Error('Замечание не найдено');
+  ensure(actor, 'COMMENT_MODERATE', target.version.material.project);
   const now = new Date();
   const comment = await prisma.versionComment.update({
     where: { id: commentId },

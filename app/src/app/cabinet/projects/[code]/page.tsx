@@ -159,7 +159,7 @@ export default async function ProjectScreen({
   // ссылка на мессенджер — персональные данные (решение Р-198).
   const clientContacts =
     maySeeContacts && project.client.userId !== null
-      ? await contactsOf(actor, project.client.userId)
+      ? await contactsOf(actor, ref, project.client.userId)
       : [];
   const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref);
   const forExpert = actor.role === 'EXPERT';

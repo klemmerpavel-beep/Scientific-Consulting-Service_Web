@@ -112,6 +112,23 @@ function isStaff(actor: Actor): boolean {
 }
 
 /**
+ * Практика по отношению к работе: руководитель — к любой, менеджер — к
+ * той, где он куратор (решение Р-149).
+ *
+ * Прежде действия над работой разрешались всей практике: менеджер,
+ * которому чужая работа не видна ни в одном перечне, мог перевести её
+ * этап, написать её клиенту, опубликовать замечание или скачать файл по
+ * прямому адресу — выборки держали разграничение, а права нет (решение
+ * Р-220). Без работы вопрос о кураторстве не встаёт: так спрашивают
+ * перечни, и их сужает `scopeProjects`.
+ */
+function isPracticeFor(actor: Actor, project: ProjectRef | null): boolean {
+  if (actor.role === 'HEAD') return true;
+  if (actor.role !== 'MANAGER') return false;
+  return project === null || project.managerId === actor.id;
+}
+
+/**
  * Разрешено ли действие. Для действий над проектом обязателен `project`:
  * без него отношение к объекту неизвестно, и ответ — «нет».
  */
@@ -123,6 +140,7 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
   const assigned = isAssignedExpert(actor, project);
   const head = actor.role === 'HEAD';
   const staff = isStaff(actor);
+  const practice = isPracticeFor(actor, project);
 
   switch (action) {
     // ── Производство ──────────────────────────────────────────────────────
@@ -130,19 +148,19 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     case 'MATERIAL_VIEW':
     case 'MATERIAL_UPLOAD':
     case 'COMMENT_CREATE':
-      return own || assigned || staff;
+      return own || assigned || practice;
 
     case 'PROJECT_EDIT':
     case 'PROJECT_ASSIGN_EXPERT':
     case 'STAGE_EDIT':
     case 'STAGE_SET_STATE':
     case 'COMMENT_MODERATE':
-      return staff;
+      return practice;
 
     // Согласование этапа — действие клиента. Менеджер и руководитель могут
     // закрыть этап за него, эксперт — нет: он же его и выполнял.
     case 'STAGE_APPROVE':
-      return own || staff;
+      return own || practice;
 
     // ── Переписка ─────────────────────────────────────────────────────────
     // Канал один: клиент — менеджер. Эксперт высказывается комментариями
@@ -150,17 +168,17 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     // это и есть технический барьер против переманивания.
     case 'MESSAGE_READ':
     case 'MESSAGE_WRITE':
-      return own || staff;
+      return own || practice;
 
     // ── Персональные данные ───────────────────────────────────────────────
     case 'CONTACTS_VIEW':
-      return staff;
+      return practice;
 
     // ── Финансы ───────────────────────────────────────────────────────────
     // Клиент видит свой договор и статус оплаты; эксперт не видит ничего,
     // кроме собственного вознаграждения.
     case 'CONTRACT_VIEW':
-      return own || staff;
+      return own || practice;
 
     // Финансовый контур ведёт руководитель (PD-LK-FUNC-002, п. 3.2).
     case 'PAYMENT_EDIT':
