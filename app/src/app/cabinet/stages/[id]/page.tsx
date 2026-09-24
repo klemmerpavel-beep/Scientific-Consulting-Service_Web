@@ -26,6 +26,7 @@ import { SANS } from '../../../../components/cabinet/tokens';
 import { can } from '../../../../lib/cabinet/access';
 import { stageById } from '../../../../lib/cabinet/queries';
 import { daysPast } from '../../../../lib/cabinet/clock';
+import { stageStateButtons } from '../../../../lib/cabinet/stage-state';
 import { currentActor } from '../../../../lib/cabinet/session';
 import {
   approveStage,
@@ -68,13 +69,6 @@ const STAFF_TODO: Record<StageStateKey, string> = {
  */
 const overdueDays = (dueOn: Date | null): number | null => daysPast(dueOn);
 
-const NEXT_STATES: Record<StageStateKey, readonly StageStateKey[]> = {
-  NOT_STARTED: ['IN_PROGRESS'],
-  IN_PROGRESS: ['AWAITING_CLIENT', 'IN_APPROVAL'],
-  AWAITING_CLIENT: ['IN_PROGRESS', 'IN_APPROVAL'],
-  IN_APPROVAL: ['IN_PROGRESS'],
-  DONE: [],
-};
 
 export default async function StageScreen({ params }: { params: Promise<{ id: string }> }) {
   const actor = await currentActor();
@@ -221,7 +215,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
         </Card>
       ) : null}
 
-      {mayEdit && NEXT_STATES[state].length > 0 ? (
+      {mayEdit && stageStateButtons(state).length > 0 ? (
         <Card style={{ marginBottom: 24 }}>
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Перевести этап
@@ -230,7 +224,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
               рядом: столбиком они читались как разные дела. Остановка
               требует причины, которую читает клиент, и потому набирается
               полной формой над ними (решение Р-170). */}
-          {NEXT_STATES[state]
+          {stageStateButtons(state)
             .filter((next) => next === 'AWAITING_CLIENT')
             .map((next) => (
               <Form key={next} action={changeStageState} style={{ marginBottom: 16 }}>
@@ -249,7 +243,7 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
               </Form>
             ))}
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {NEXT_STATES[state]
+            {stageStateButtons(state)
               .filter((next) => next !== 'AWAITING_CLIENT')
               .map((next) => (
                 <Form key={next} action={changeStageState} inline>

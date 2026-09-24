@@ -39,3 +39,29 @@ export function stageLabel(state: StageStateKey, staff: boolean): string {
 export function stageStateLabel(value: string): string {
   return STAGE_STATE_LABEL_STAFF[value as StageStateKey] ?? value;
 }
+
+/**
+ * Допустимые переходы состояния этапа — одна таблица для сервера и экрана
+ * (решение Р-229).
+ *
+ * Перечень закрыт: состояние держит на себе уведомления, фильтры, расчёт
+ * просрочек и аналитику. Прежде сервер держал свою таблицу, экран — свою,
+ * и сервер принимал «В работе → Не начат», которого экран намеренно не
+ * предлагал: начатый этап возвращался в «не начат» с датой начала, а
+ * следующий старт её переписывал, и длительность этапа в аналитике
+ * врала. Переход «На согласовании → Завершён» — это согласование, его
+ * экран ведёт своей кнопкой.
+ */
+export const STAGE_TRANSITIONS: Record<StageStateKey, readonly StageStateKey[]> = {
+  NOT_STARTED: ['IN_PROGRESS'],
+  IN_PROGRESS: ['AWAITING_CLIENT', 'IN_APPROVAL'],
+  AWAITING_CLIENT: ['IN_PROGRESS', 'IN_APPROVAL'],
+  IN_APPROVAL: ['DONE', 'IN_PROGRESS'],
+  DONE: [],
+};
+
+/** Переходы, которые экран этапа предлагает кнопками смены состояния. */
+export function stageStateButtons(from: StageStateKey): readonly StageStateKey[] {
+  // Завершение этапа — согласование, у него отдельная кнопка.
+  return STAGE_TRANSITIONS[from].filter((to) => to !== 'DONE');
+}

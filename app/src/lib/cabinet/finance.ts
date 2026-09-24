@@ -362,7 +362,7 @@ export async function projectContract(actor: Actor, projectId: string) {
     where: { projectId },
     include: {
       tranches: {
-        orderBy: { plannedDate: 'asc' },
+        orderBy: [{ plannedDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         include: {
           documents: {
             where: { deletedAt: null },

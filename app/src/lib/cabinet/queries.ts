@@ -361,7 +361,7 @@ export async function curators(actor: Actor) {
   ensure(actor, 'PROJECT_EDIT');
   return prisma.user.findMany({
     where: { role: { in: ['MANAGER', 'HEAD'] }, status: 'ACTIVE' },
-    orderBy: { fullName: 'asc' },
+    orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
     select: { id: true, fullName: true, role: true },
   });
 }
@@ -377,7 +377,7 @@ export async function experts(actor: Actor) {
   ensure(actor, 'PROJECT_ASSIGN_EXPERT');
   return prisma.user.findMany({
     where: { role: 'EXPERT', status: 'ACTIVE' },
-    orderBy: { fullName: 'asc' },
+    orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
     include: { expertProfile: { select: { specialization: true, ndaSignedAt: true } } },
   });
 }
@@ -434,12 +434,14 @@ export async function trafficLight(actor: Actor) {
   const [overdue, soon, stalled] = await Promise.all([
     prisma.stage.findMany({
       where: { ...mine, state: live, dueOn: { lt: now } },
-      orderBy: { dueOn: 'asc' },
+      // Второй ключ — идентификатор: сроки хранятся днём, совпадения часты, а
+      // первая строка решает, куда ведёт «Начать с главного» (решение Р-229).
+      orderBy: [{ dueOn: 'asc' }, { id: 'asc' }],
       include,
     }),
     prisma.stage.findMany({
       where: { ...mine, state: live, dueOn: { gte: now, lte: inWeek } },
-      orderBy: { dueOn: 'asc' },
+      orderBy: [{ dueOn: 'asc' }, { id: 'asc' }],
       include,
     }),
     prisma.stage.findMany({
@@ -491,7 +493,7 @@ export async function clientRegistry(actor: Actor) {
   const mine = Object.keys(scope).length === 0 ? {} : { projects: { some: scope } };
   const rows = await prisma.clientProfile.findMany({
     where: { ...mine, erasedAt: null },
-    orderBy: { fullName: 'asc' },
+    orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
     include: {
       projects: { select: { id: true, status: true } },
       user: { select: { lastLoginAt: true } },
@@ -516,7 +518,7 @@ export async function expertRegistry(actor: Actor) {
   ensure(actor, 'REGISTRY_VIEW');
   const rows = await prisma.user.findMany({
     where: { role: 'EXPERT', status: 'ACTIVE' },
-    orderBy: { fullName: 'asc' },
+    orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
     include: {
       expertProfile: true,
       expertProjects: { select: { id: true, status: true } },

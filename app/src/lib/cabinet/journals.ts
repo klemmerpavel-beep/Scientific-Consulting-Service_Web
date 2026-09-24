@@ -125,7 +125,7 @@ export async function journalActors(actor: Actor) {
   return prisma.user.findMany({
     where: { auditEvents: { some: {} } },
     select: { id: true, fullName: true, role: true },
-    orderBy: { fullName: 'asc' },
+    orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
   });
 }
 

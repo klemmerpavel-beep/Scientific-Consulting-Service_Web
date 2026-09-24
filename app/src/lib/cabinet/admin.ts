@@ -300,7 +300,7 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
 export async function listServiceTypes(actor: Actor) {
   ensure(actor, 'DIRECTORY_EDIT');
   return prisma.serviceType.findMany({
-    orderBy: { sortOrder: 'asc' },
+    orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
     select: {
       id: true,
       code: true,
