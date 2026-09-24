@@ -42,10 +42,22 @@ export async function sendMessage(actor: Actor, projectId: string, body: string)
 }
 
 /**
- * Непрочитанное — это сообщения, написанные не этой стороной. Отметка стоит
+ * Непрочитанное — это сообщения, написанные другой стороной. Отметка стоит
  * на самом сообщении, а не на паре «сообщение — читатель»: в канале ровно
- * две стороны, и различать внутри стороны нечего.
+ * две стороны — клиент и практика.
+ *
+ * Сторона определяется ролью автора, а не тем, кто спрашивает. Прежде
+ * «другой стороной» считался любой автор, кроме самого читателя: ответ
+ * куратора, открытый руководителем, получал отметку прочтения, и клиент
+ * не видел его новым, а сообщение руководителя висело у куратора
+ * непрочитанным, как письмо клиента (решение Р-221).
  */
+function otherSide(actor: Actor) {
+  return actor.role === 'CLIENT'
+    ? { author: { role: { not: 'CLIENT' as const } } }
+    : { author: { role: 'CLIENT' as const } };
+}
+
 export async function unreadCount(actor: Actor, projectId: string): Promise<number> {
   // Принадлежность работы проверяется здесь, а не оставляется на совесть
   // вызывающего: выборка обязана держать разграничение сама, иначе чужой
@@ -55,7 +67,7 @@ export async function unreadCount(actor: Actor, projectId: string): Promise<numb
   return prisma.message.count({
     where: {
       readAt: null,
-      authorId: { not: actor.id },
+      ...otherSide(actor),
       project: { id: projectId, ...scope },
     },
   });
@@ -76,7 +88,7 @@ export async function unreadByProject(
     by: ['projectId'],
     where: {
       readAt: null,
-      authorId: { not: actor.id },
+      ...otherSide(actor),
       project: { id: { in: [...projectIds] }, ...scope },
     },
     _count: { _all: true },
@@ -100,7 +112,7 @@ export async function unreadInbox(
     by: ['projectId'],
     where: {
       readAt: null,
-      authorId: { not: actor.id },
+      ...otherSide(actor),
       ...(Object.keys(scope).length === 0 ? {} : { project: scope }),
     },
     _count: { _all: true },
@@ -130,8 +142,12 @@ export async function markRead(actor: Actor, projectId: string): Promise<void> {
   const ref = await projectRef(projectId);
   if (ref === null) return;
   ensure(actor, 'MESSAGE_READ', ref);
+  // За практику прочтение отмечает куратор работы. Руководитель, открывший
+  // чужую работу, отметки не ставит: иначе письмо клиента, которое куратор
+  // ещё не видел, перестало бы быть для него новым (решение Р-221).
+  if (actor.role !== 'CLIENT' && ref.managerId !== actor.id) return;
   await prisma.message.updateMany({
-    where: { projectId, readAt: null, authorId: { not: actor.id } },
+    where: { projectId, readAt: null, ...otherSide(actor) },
     data: { readAt: new Date() },
   });
 }
