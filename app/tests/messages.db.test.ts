@@ -78,6 +78,7 @@ describe('переписка по работе', { skip: !enabled }, async () =>
 
   after(async () => {
     await prisma.message.deleteMany({ where: { projectId: ids.project } });
+    await prisma.notificationOutbox.deleteMany({ where: { projectId: ids.project } });
     await prisma.project.deleteMany({ where: { id: ids.project } });
     await prisma.clientProfile.deleteMany({ where: { id: ids.profile } });
     await prisma.serviceType.deleteMany({ where: { id: ids.type } });
@@ -183,6 +184,53 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     assert.equal(await messages.unreadCount(client(), ids.project!), before);
     await messages.markRead(client(), ids.project!);
     assert.equal(await messages.unreadCount(client(), ids.project!), 0);
+  });
+
+  it('о новом сообщении второй стороне уходит сигнал, но не на каждую реплику', async () => {
+    // Сигнал без текста: переписка во внешние каналы не уходит (решение
+    // Р-228). Счёт ведётся по очереди уведомлений этой работы.
+    const signals = (userId: string) =>
+      prisma.notificationOutbox.count({
+        where: { projectId: ids.project!, userId, eventKind: 'MESSAGE_RECEIVED' },
+      });
+    await prisma.user.updateMany({
+      where: { id: { in: [ids.manager!, ids.client!] } },
+      data: { notifyEmail: true },
+    });
+    await messages.markRead(manager(), ids.project!);
+    await messages.markRead(client(), ids.project!);
+
+    const before = await signals(ids.manager!);
+    await messages.sendMessage(client(), ids.project!, 'Первый вопрос');
+    assert.equal(await signals(ids.manager!), before + 1, 'куратор не получил сигнала');
+    await messages.sendMessage(client(), ids.project!, 'И ещё уточнение');
+    assert.equal(await signals(ids.manager!), before + 1, 'сигнал на каждую реплику');
+
+    const toClient = await signals(ids.client!);
+    await messages.sendMessage(manager(), ids.project!, 'Отвечаю на оба');
+    assert.equal(await signals(ids.client!), toClient + 1, 'клиент не получил сигнала');
+
+    const row = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId: ids.project!, userId: ids.client!, eventKind: 'MESSAGE_RECEIVED' },
+      orderBy: { createdAt: 'desc' },
+    });
+    assert.ok(!row.body.includes('Отвечаю на оба'), 'текст сообщения ушёл во внешний канал');
+  });
+
+  it('правило куратора отключает сигнал о сообщении', async () => {
+    await prisma.notifyRule.create({
+      data: { userId: ids.manager!, eventKind: 'MESSAGE_RECEIVED', channel: 'EMAIL', enabled: false },
+    });
+    await messages.markRead(manager(), ids.project!);
+    const before = await prisma.notificationOutbox.count({
+      where: { userId: ids.manager!, eventKind: 'MESSAGE_RECEIVED' },
+    });
+    await messages.sendMessage(client(), ids.project!, 'Вопрос после правила');
+    const after = await prisma.notificationOutbox.count({
+      where: { userId: ids.manager!, eventKind: 'MESSAGE_RECEIVED' },
+    });
+    assert.equal(after, before, 'правило не сработало');
+    await prisma.notifyRule.deleteMany({ where: { userId: ids.manager! } });
   });
 
   it('входящие куратора называют работу', async () => {

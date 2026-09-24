@@ -117,26 +117,27 @@ describe('способы связи и правила уведомлений', {
   });
 
   it('правило по событию решает, каким каналом ставить уведомление', async () => {
-    // Оба канала включены целиком, но правило запрещает письмо о сроке.
+    // Оба канала включены целиком, но правило запрещает письмо о новой
+    // версии. Событие взято из сетки правил практики (решение Р-228).
     await prisma.user.update({
       where: { id: ids.client! },
       data: { notifyEmail: true, notifyTelegram: true, telegramChatId: `chan-${stamp}` },
     });
     await channels.saveRules(who(ids.client!, 'CLIENT'), [
-      { eventKind: 'DEADLINE_IN_3_DAYS', channel: 'EMAIL', enabled: false },
-      { eventKind: 'DEADLINE_IN_3_DAYS', channel: 'TELEGRAM', enabled: true },
+      { eventKind: 'VERSION_UPLOADED', channel: 'EMAIL', enabled: false },
+      { eventKind: 'VERSION_UPLOADED', channel: 'TELEGRAM', enabled: true },
     ]);
 
     await enqueue(prisma, {
       userId: ids.client!,
-      eventKind: 'DEADLINE_IN_3_DAYS',
-      subject: 'Срок подходит',
+      eventKind: 'VERSION_UPLOADED',
+      subject: 'Новая версия материала',
       body: 'Ход работы виден в кабинете.',
       dedupKey: `chan-rule-${stamp}`,
     });
 
     const rows = await prisma.notificationOutbox.findMany({
-      where: { userId: ids.client!, eventKind: 'DEADLINE_IN_3_DAYS' },
+      where: { userId: ids.client!, eventKind: 'VERSION_UPLOADED' },
       select: { channel: true },
     });
     assert.deepEqual(
@@ -153,8 +154,8 @@ describe('способы связи и правила уведомлений', {
     });
     await enqueue(prisma, {
       userId: ids.client!,
-      eventKind: 'DEADLINE_IN_3_DAYS',
-      subject: 'Срок подходит',
+      eventKind: 'VERSION_UPLOADED',
+      subject: 'Новая версия материала',
       body: 'Ход работы виден в кабинете.',
       dedupKey: `chan-rule-off-${stamp}`,
     });
