@@ -130,6 +130,43 @@ describe('деньги проекта', { skip: !enabled }, async () => {
     assert.equal(paid.status, 'PAID');
   });
 
+  it('оплаченный транш не откатывается, неизвестный статус не принимается', async () => {
+    // Прежде статус принимался любой, в том числе PAID → PLANNED со
+    // стиранием даты поступления (решение Р-224).
+    await assert.rejects(
+      finance.setTrancheStatus(actor(ids.head, 'HEAD'), ids.firstTranche, 'PLANNED'),
+      /не переводится/u,
+    );
+    await assert.rejects(
+      finance.setTrancheStatus(actor(ids.head, 'HEAD'), ids.firstTranche, 'REFUNDED' as never),
+      /Неизвестный статус/u,
+    );
+    const kept = await prisma.tranche.findUniqueOrThrow({ where: { id: ids.firstTranche } });
+    assert.equal(kept.status, 'PAID');
+    assert.ok(kept.paidOn !== null, 'дата поступления стёрта');
+  });
+
+  it('счёт выставляется, долг списывается, списанный дальше не идёт', async () => {
+    const { tranche } = await finance.addTranche(actor(ids.head, 'HEAD'), {
+      contractId: ids.contract,
+      title: 'Проверка списания',
+      amount: parseAmount('1 000'),
+    });
+    try {
+      const invoiced = await finance.setTrancheStatus(actor(ids.head, 'HEAD'), tranche.id, 'INVOICED');
+      assert.equal(invoiced.status, 'INVOICED');
+      const written = await finance.setTrancheStatus(actor(ids.head, 'HEAD'), tranche.id, 'WRITTEN_OFF');
+      assert.equal(written.status, 'WRITTEN_OFF');
+      await assert.rejects(
+        finance.setTrancheStatus(actor(ids.head, 'HEAD'), tranche.id, 'PAID', new Date('2026-05-01T00:00:00Z')),
+        /не переводится/u,
+      );
+    } finally {
+      await prisma.notificationOutbox.deleteMany({ where: { dedupKey: { startsWith: `tranche:${tranche.id}:` } } });
+      await prisma.tranche.delete({ where: { id: tranche.id } });
+    }
+  });
+
   it('транш сверх суммы договора отмечается, но не отбрасывается', async () => {
     const { tranche, exceedsContract } = await finance.addTranche(actor(ids.head, 'HEAD'), {
       contractId: ids.contract,
