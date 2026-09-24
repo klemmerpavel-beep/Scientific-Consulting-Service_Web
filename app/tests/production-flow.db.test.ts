@@ -286,6 +286,11 @@ describe('сквозной контур', { skip: !enabled }, async () => {
     assert.equal((await materials.listComments(client, ids.version2)).length, 0);
     assert.equal((await materials.listComments(expert, ids.version2)).length, 1);
 
+    // Менеджер другой работы замечание не публикует (решение Р-220).
+    await assert.rejects(
+      materials.moderateComment(staff(`other-${ids.manager}`, 'MANAGER'), comment.id, 'PUBLISHED'),
+      AccessDenied,
+    );
     await materials.moderateComment(staff(ids.manager, 'MANAGER'), comment.id, 'PUBLISHED');
     const visible = await materials.listComments(client, ids.version2);
     assert.equal(visible.length, 1);

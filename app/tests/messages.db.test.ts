@@ -121,6 +121,19 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     assert.equal(sent.containsContactHint, true);
     const flagged = await messages.flaggedMessages(manager());
     assert.ok(flagged.some((row) => row.id === sent.id), 'помеченное сообщение не попало в реестр');
+    // Менеджер другой работы этого сообщения не видит: в нём контакт
+    // чужого клиента (решение Р-220).
+    const foreign = await messages.flaggedMessages(actorOf(`ms-other-${stamp}`, 'MANAGER'));
+    assert.ok(!foreign.some((row) => row.id === sent.id), 'реестр показал сообщение чужой работы');
+  });
+
+  it('менеджер чужой работы не читает и не пишет в её канал', async () => {
+    // Работа не видна ему ни в одном перечне, и действовать в ней по
+    // прямому адресу он тоже не может (решение Р-220).
+    const other = actorOf(`ms-other-${stamp}`, 'MANAGER');
+    await assert.rejects(() => messages.listMessages(other, ids.project!), AccessDenied);
+    await assert.rejects(() => messages.sendMessage(other, ids.project!, 'Здравствуйте'), AccessDenied);
+    await assert.rejects(() => messages.markRead(other, ids.project!), AccessDenied);
   });
 
   it('непрочитанным считается написанное другой стороной', async () => {

@@ -17,7 +17,7 @@
  * идентификатор в эти функции не передаётся вовсе.
  */
 
-import { ensure, type Actor } from './access.ts';
+import { ensure, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
 import { prisma } from '../db.ts';
 
@@ -69,8 +69,14 @@ export async function ownContacts(actor: Actor): Promise<ContactRow[]> {
  * Право то же, что на контакты клиента: телефон и ссылка на мессенджер
  * — персональные данные, и эксперту они не видны (решение Р-122).
  */
-export async function contactsOf(actor: Actor, userId: string): Promise<ContactRow[]> {
-  ensure(actor, 'CONTACTS_VIEW');
+export async function contactsOf(
+  actor: Actor,
+  project: ProjectRef,
+  userId: string,
+): Promise<ContactRow[]> {
+  // Право проверяется по работе: контакты клиента видит куратор его
+  // работы, а не любой менеджер практики (решение Р-220).
+  ensure(actor, 'CONTACTS_VIEW', project);
   const rows = await prisma.contactChannel.findMany({
     where: { userId },
     orderBy: [{ preferred: 'desc' }, { createdAt: 'asc' }],

@@ -89,17 +89,31 @@ describe('способы связи и правила уведомлений', {
     assert.equal(support?.value, null, 'у порядка работы откуда-то взялся адрес');
   });
 
+  // Реквизиты работы, к которой относится вопрос о контактах: куратор —
+  // менеджер `m-own`, исполнитель — эксперт набора (решение Р-220).
+  const work = () => ({ id: 'w', clientId: 'c', managerId: 'm-own', expertId: ids.expert! });
+
   it('эксперту чужие способы связи недоступны', async () => {
     await assert.rejects(
-      () => channels.contactsOf(who(ids.expert!, 'EXPERT'), ids.client!),
+      () => channels.contactsOf(who(ids.expert!, 'EXPERT'), work(), ids.client!),
       AccessDenied,
       'эксперт получил телефон клиента',
     );
   });
 
-  it('куратор видит способы связи клиента', async () => {
-    const rows = await channels.contactsOf(who(ids.head!, 'HEAD'), ids.client!);
-    assert.ok(rows.length >= 2, 'куратор не увидел ни одного способа связи');
+  it('менеджеру чужой работы способы связи клиента недоступны', async () => {
+    await assert.rejects(
+      () => channels.contactsOf(who('m-other', 'MANAGER'), work(), ids.client!),
+      AccessDenied,
+      'менеджер чужой работы получил телефон клиента',
+    );
+  });
+
+  it('куратор работы и руководитель видят способы связи клиента', async () => {
+    const own = await channels.contactsOf(who('m-own', 'MANAGER'), work(), ids.client!);
+    assert.ok(own.length >= 2, 'куратор не увидел ни одного способа связи');
+    const rows = await channels.contactsOf(who(ids.head!, 'HEAD'), work(), ids.client!);
+    assert.ok(rows.length >= 2, 'руководитель не увидел ни одного способа связи');
   });
 
   it('правило по событию решает, каким каналом ставить уведомление', async () => {

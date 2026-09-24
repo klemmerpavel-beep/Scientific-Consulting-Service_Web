@@ -151,7 +151,8 @@ describe('чужой проект', () => {
     }
   });
 
-  it('менеджер и руководитель видят любой проект', () => {
+  it('менеджер видит чужого клиента в своей работе, руководитель — любую работу', () => {
+    // `foreign` — работа другого клиента, но куратор у неё тот же `m1`.
     assert.equal(can(manager, 'PROJECT_VIEW', foreign), true);
     assert.equal(can(head, 'PROJECT_VIEW', foreign), true);
   });
@@ -159,6 +160,52 @@ describe('чужой проект', () => {
   it('без указания проекта действие над проектом не разрешается', () => {
     assert.equal(can(client, 'PROJECT_VIEW', null), false);
     assert.equal(can(expert, 'MATERIAL_VIEW', null), false);
+  });
+});
+
+describe('работа другого куратора', () => {
+  // Выборки держали разграничение между кураторами, а права — нет:
+  // менеджер мог действовать в работе, которую не видит ни в одном
+  // перечне (решение Р-220).
+  const otherCurator: ProjectRef = {
+    id: 'p3',
+    clientId: 'c3',
+    managerId: 'm2',
+    expertId: 'e3',
+  };
+  const projectBound: Action[] = [
+    'PROJECT_VIEW',
+    'PROJECT_EDIT',
+    'PROJECT_ASSIGN_EXPERT',
+    'STAGE_EDIT',
+    'STAGE_SET_STATE',
+    'STAGE_APPROVE',
+    'MATERIAL_VIEW',
+    'MATERIAL_UPLOAD',
+    'COMMENT_CREATE',
+    'COMMENT_MODERATE',
+    'MESSAGE_READ',
+    'MESSAGE_WRITE',
+    'CONTACTS_VIEW',
+    'CONTRACT_VIEW',
+  ];
+
+  for (const action of projectBound) {
+    it(`менеджер × ${action}: в чужой работе нельзя, у руководителя можно`, () => {
+      assert.equal(can(manager, action, otherCurator), false);
+      assert.equal(can(head, action, otherCurator), true);
+    });
+  }
+
+  it('без работы менеджеру разрешено то же, что прежде: перечни сужает выборка', () => {
+    for (const action of projectBound) {
+      assert.equal(can(manager, action, null), true, action);
+    }
+  });
+
+  it('дела практики без работы остаются менеджеру доступны', () => {
+    assert.equal(can(manager, 'REQUEST_MODERATE', null), true);
+    assert.equal(can(manager, 'REGISTRY_VIEW', null), true);
   });
 });
 
