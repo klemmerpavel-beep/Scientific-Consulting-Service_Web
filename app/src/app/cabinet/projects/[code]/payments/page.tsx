@@ -14,6 +14,7 @@ import {
   FormRow,
   Heading,
   Mono,
+  Notice,
   ScreenHead,
   Select,
   Text,
@@ -23,7 +24,12 @@ import {
 import { can } from '../../../../../lib/cabinet/access';
 import { projectContract, projectMoney, projectPayouts } from '../../../../../lib/cabinet/finance';
 import { MATERIAL_KIND_LABEL, type MaterialKind } from '../../../../../lib/cabinet/materials';
-import { formatAmount, STATUS_LABEL, type TrancheStatus } from '../../../../../lib/cabinet/money';
+import {
+  formatAmount,
+  nextTrancheStatuses,
+  STATUS_LABEL,
+  type TrancheStatus,
+} from '../../../../../lib/cabinet/money';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
 import {
@@ -42,6 +48,14 @@ export const dynamic = 'force-dynamic';
  * зелёный и красный дизайн-система держит за исходом действия, а статус
  * транша исходом не является (решение Р-146). Статус назван словом.
  */
+/** Название перехода на кнопке; оплата идёт своей формой с датой. */
+const TRANCHE_ACTION: Record<TrancheStatus, string> = {
+  PLANNED: 'Отозвать счёт',
+  INVOICED: 'Счёт выставлен',
+  PAID: 'Отметить оплату',
+  WRITTEN_OFF: 'Списать',
+};
+
 const TONE: Record<TrancheStatus, 'accent' | 'neutral'> = {
   PAID: 'accent',
   INVOICED: 'neutral',
@@ -51,13 +65,16 @@ const TONE: Record<TrancheStatus, 'accent' | 'neutral'> = {
 
 export default async function PaymentsScreen({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<{ exceeds?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
 
   const { code } = await params;
+  const exceeds = (await searchParams).exceeds === '1';
   const project = await projectByCode(actor, decodeURIComponent(code));
   if (project === null) notFound();
 
@@ -206,23 +223,38 @@ export default async function PaymentsScreen({
                         {formatAmount(tranche.amount)}
                       </Text>
 
-                      {mayEdit && tranche.status !== 'PAID' ? (
-                        <Form action={changeTrancheStatus} inline>
-                          <input type="hidden" name="trancheId" value={tranche.id} />
-                          <input type="hidden" name="code" value={project.code} />
-                          <input type="hidden" name="status" value="PAID" />
-                          <Field
-                            label={`Дата поступления: ${tranche.title}`}
-                            labelHidden
-                            name="paidOn"
-                            type="date"
-                            scope={tranche.id}
-                            required
-                            minWidth={170}
-                          />
-                          <Button tone="quiet">Отметить оплату</Button>
-                        </Form>
-                      ) : null}
+                      {/* Кнопки строятся из той же таблицы переходов, что
+                          проверяет сервер: прежде экран предлагал только
+                          «Отметить оплату» — и у списанного транша тоже, — а
+                          счёт и списание выставить было нечем (решение Р-224). */}
+                      {mayEdit
+                        ? nextTrancheStatuses(tranche.status as TrancheStatus).map((next) =>
+                            next === 'PAID' ? (
+                              <Form key={next} action={changeTrancheStatus} inline>
+                                <input type="hidden" name="trancheId" value={tranche.id} />
+                                <input type="hidden" name="code" value={project.code} />
+                                <input type="hidden" name="status" value="PAID" />
+                                <Field
+                                  label={`Дата поступления: ${tranche.title}`}
+                                  labelHidden
+                                  name="paidOn"
+                                  type="date"
+                                  scope={tranche.id}
+                                  required
+                                  minWidth={170}
+                                />
+                                <Button tone="quiet">Отметить оплату</Button>
+                              </Form>
+                            ) : (
+                              <Form key={next} action={changeTrancheStatus} inline>
+                                <input type="hidden" name="trancheId" value={tranche.id} />
+                                <input type="hidden" name="code" value={project.code} />
+                                <input type="hidden" name="status" value={next} />
+                                <Button tone="quiet">{TRANCHE_ACTION[next]}</Button>
+                              </Form>
+                            ),
+                          )
+                        : null}
 
                       <div style={{ flexBasis: '100%' }}>
                         {tranche.documents.length === 0 ? null : (
@@ -287,6 +319,19 @@ export default async function PaymentsScreen({
                   ))}
                 </ul>
               )}
+
+              {/* Превышение суммы договора не запрещается — бывает доплата по
+                  дополнительному соглашению, — но и не принимается молча:
+                  служба возвращала признак, а экран его терял (решение Р-224). */}
+              {mayEdit && exceeds ? (
+                <div style={{ marginTop: 16 }}>
+                  <Notice tone="quiet">
+                    Транш добавлен, но сумма траншей теперь больше суммы договора. Если это доплата
+                    по дополнительному соглашению, поправьте сумму договора; если ошибка — уточните
+                    транши.
+                  </Notice>
+                </div>
+              ) : null}
 
               {mayEdit ? (
                 <Form

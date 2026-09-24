@@ -3,7 +3,7 @@ import { can, ensure, scopePayouts, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
-import { STATUS_LABEL, type TrancheStatus } from './money.ts';
+import { STATUS_LABEL, canChangeTrancheStatus, isTrancheStatus, type TrancheStatus } from './money.ts';
 
 export { formatAmount, parseAmount, STATUS_LABEL, type TrancheStatus } from './money.ts';
 
@@ -115,6 +115,12 @@ export async function setTrancheStatus(
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PAYMENT_EDIT', ref);
 
+  if (!isTrancheStatus(status)) throw new Error('Неизвестный статус транша');
+  if (!canChangeTrancheStatus(tranche.status as TrancheStatus, status)) {
+    throw new Error(
+      `Транш «${STATUS_LABEL[tranche.status as TrancheStatus]}» в «${STATUS_LABEL[status]}» не переводится`,
+    );
+  }
   if (status === 'PAID' && (paidOn ?? null) === null) {
     throw new Error('Для оплаченного транша нужна дата поступления');
   }

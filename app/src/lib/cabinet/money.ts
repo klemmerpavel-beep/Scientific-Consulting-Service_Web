@@ -19,6 +19,34 @@ export const STATUS_LABEL: Record<TrancheStatus, string> = {
   WRITTEN_OFF: 'списан',
 };
 
+/**
+ * Допустимые смены статуса транша (решение Р-224).
+ *
+ * Прежде статус принимался любой, в том числе откат оплаченного в
+ * «ожидается» со стиранием даты поступления, а выставить счёт или списать
+ * долг было нечем: экран предлагал только «Отметить оплату». Оплаченный и
+ * списанный транш — итог, из которого не уходят: ошибочную отметку
+ * исправляет новый транш, а не стирание истории поступлений.
+ */
+const TRANCHE_TRANSITIONS: Record<TrancheStatus, readonly TrancheStatus[]> = {
+  PLANNED: ['INVOICED', 'PAID', 'WRITTEN_OFF'],
+  INVOICED: ['PAID', 'WRITTEN_OFF', 'PLANNED'],
+  PAID: [],
+  WRITTEN_OFF: [],
+};
+
+export function isTrancheStatus(value: string): value is TrancheStatus {
+  return value in STATUS_LABEL;
+}
+
+export function nextTrancheStatuses(from: TrancheStatus): readonly TrancheStatus[] {
+  return TRANCHE_TRANSITIONS[from];
+}
+
+export function canChangeTrancheStatus(from: TrancheStatus, to: TrancheStatus): boolean {
+  return TRANCHE_TRANSITIONS[from].includes(to);
+}
+
 /** Разбор суммы, введённой человеком: «240 000», «240000,50», «240 000.50». */
 export function parseAmount(raw: string): bigint {
   const normalized = raw

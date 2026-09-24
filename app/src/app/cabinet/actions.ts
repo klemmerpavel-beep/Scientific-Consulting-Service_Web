@@ -464,13 +464,15 @@ export async function saveProjectContract(form: FormData): Promise<void> {
 export async function addContractTranche(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
-  await addTranche(actor, {
+  const { exceedsContract } = await addTranche(actor, {
     contractId: String(form.get('contractId') ?? ''),
     title: String(form.get('title') ?? ''),
     amount: parseAmount(String(form.get('amount') ?? '')),
     plannedDate: dateOrNull(form.get('plannedDate')),
   });
-  redirect(`/cabinet/projects/${code}/payments`);
+  // Превышение суммы договора показывается на экране, а не теряется
+  // (решение Р-224).
+  redirect(`/cabinet/projects/${code}/payments${exceedsContract ? '?exceeds=1' : ''}`);
 }
 
 export async function changeTrancheStatus(form: FormData): Promise<void> {

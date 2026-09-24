@@ -74,3 +74,28 @@ describe('арифметика не теряет копейки', () => {
     assert.equal(formatAmount(sum), '0,30 ₽');
   });
 });
+
+describe('смена статуса транша (решение Р-224)', async () => {
+  const { canChangeTrancheStatus, isTrancheStatus, nextTrancheStatuses } = await import(
+    '../src/lib/cabinet/money.ts'
+  );
+
+  it('ожидаемый транш: счёт, оплата или списание', () => {
+    assert.deepEqual([...nextTrancheStatuses('PLANNED')].sort(), ['INVOICED', 'PAID', 'WRITTEN_OFF']);
+  });
+
+  it('оплаченный и списанный — итог, из него не уходят', () => {
+    assert.deepEqual(nextTrancheStatuses('PAID'), []);
+    assert.deepEqual(nextTrancheStatuses('WRITTEN_OFF'), []);
+    assert.equal(canChangeTrancheStatus('PAID', 'PLANNED'), false);
+  });
+
+  it('выставленный счёт можно отозвать', () => {
+    assert.equal(canChangeTrancheStatus('INVOICED', 'PLANNED'), true);
+  });
+
+  it('статус проверяется по перечню', () => {
+    assert.equal(isTrancheStatus('PAID'), true);
+    assert.equal(isTrancheStatus('REFUNDED'), false);
+  });
+});
