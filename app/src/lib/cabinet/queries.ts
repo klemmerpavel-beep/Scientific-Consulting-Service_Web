@@ -525,8 +525,10 @@ export async function expertRegistry(actor: Actor) {
   return rows.map((row) => ({
     id: row.id,
     fullName: row.fullName,
-    degree: row.expertProfile?.degree ?? null,
-    specialization: row.expertProfile?.specialization ?? null,
+    // Пустая строка — то же, что «не указано»: так регалии заводились до
+    // решения Р-225, и реестр печатал «Имя · » и пустую клетку.
+    degree: row.expertProfile?.degree || null,
+    specialization: row.expertProfile?.specialization || null,
     ndaSignedAt: row.expertProfile?.ndaSignedAt ?? null,
     active: row.expertProjects.filter((p) => p.status === 'ACTIVE').length,
     total: row.expertProjects.length,

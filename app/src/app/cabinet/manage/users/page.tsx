@@ -24,7 +24,15 @@ import {
   formatDate,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
-import { ROLE_LABEL, STATUS_LABEL, USER_PAGE_SIZE, listUsers, type Role } from '../../../../lib/cabinet/admin';
+import {
+  ROLE_LABEL,
+  STATUS_LABEL,
+  USER_PAGE_SIZE,
+  accessLinkPeople,
+  expertsForNda,
+  listUsers,
+  type Role,
+} from '../../../../lib/cabinet/admin';
 import { currentActor } from '../../../../lib/cabinet/session';
 import { AccessLink } from '../../../../components/cabinet/AccessLink';
 import { mailConfigured } from '../../../../lib/cabinet/mail';
@@ -63,13 +71,16 @@ export default async function UsersScreen({
   const status = STATES.includes(flags.status as UserState)
     ? (flags.status as UserState)
     : undefined;
-  const list = await listUsers(actor, { role, status, page: Number(flags.page ?? '1') });
+  // Списки для договоров и ссылок входа — отдельными выборками: со страницы
+  // перечня в двадцать строк эксперты и нужные люди уходили на следующие
+  // страницы (решение Р-225). Ссылка выдаётся только действующим записям:
+  // приостановленной и обезличенной вход закрыт (решение Р-195).
+  const [list, experts, active] = await Promise.all([
+    listUsers(actor, { role, status, page: Number(flags.page ?? '1') }),
+    expertsForNda(actor),
+    accessLinkPeople(actor),
+  ]);
   const users = list.rows;
-  const experts = users.filter((user) => user.expertProfile !== null);
-  // Ссылка выдаётся только действующим записям: приостановленной и
-  // обезличенной вход закрыт, и предлагать его — значит обещать то, чего
-  // не будет (решение Р-195).
-  const active = users.filter((user) => user.status === 'ACTIVE');
   // Текст блока зависит от того, настроена ли почта: с ней ссылка отсюда
   // — запасной путь, без неё — единственный.
   const mailReady = mailConfigured();

@@ -142,6 +142,34 @@ export async function listUsers(actor: Actor, filter: UserFilter = {}) {
   return { rows, total, page, pages };
 }
 
+/**
+ * Эксперты для договоров поручения — все, а не страница перечня.
+ *
+ * Список брался из текущей страницы перечня учётных записей (двадцать
+ * строк, роли по алфавиту): когда клиентов больше двадцати, эксперты
+ * уходили на вторую страницу, и на первой договор отметить было некому
+ * (решение Р-225). Отбор по роли, а не по наличию профиля: запись без
+ * профиля тоже должна быть видна, иначе её не исправить.
+ */
+export async function expertsForNda(actor: Actor) {
+  ensure(actor, 'USER_MANAGE');
+  return prisma.user.findMany({
+    where: { role: 'EXPERT', status: { not: 'ERASED' } },
+    orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
+    select: { id: true, fullName: true, expertProfile: { select: { ndaSignedAt: true } } },
+  });
+}
+
+/** Кому можно выдать ссылку входа: все действующие записи, а не страница. */
+export async function accessLinkPeople(actor: Actor) {
+  ensure(actor, 'USER_MANAGE');
+  return prisma.user.findMany({
+    where: { status: 'ACTIVE' },
+    orderBy: [{ role: 'asc' }, { fullName: 'asc' }, { id: 'asc' }],
+    select: { id: true, fullName: true, role: true, email: true },
+  });
+}
+
 export interface CreateUserInput {
   readonly email: string;
   readonly fullName: string;
@@ -165,10 +193,10 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
 
   // Эксперту заводится профиль: без него матрица прав не выдаст доступ к
   // материалам, и причина отказа была бы неочевидна.
+  // Регалии не заводятся пустой строкой: реестр печатал «Имя · » и пустую
+  // клетку специализации (решение Р-225).
   if (input.role === 'EXPERT') {
-    await prisma.expertProfile.create({
-      data: { userId: user.id, degree: '', specialization: '' },
-    });
+    await prisma.expertProfile.create({ data: { userId: user.id } });
   }
 
   await record(actor, {
@@ -195,6 +223,13 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
 
   await prisma.$transaction(async (tx) => {
     await tx.user.update({ where: { id: userId }, data: { role } });
+    // Профиль эксперта заводится и при смене роли, а не только при
+    // создании записи: без него у эксперта нет даты договора поручения,
+    // выборка прав не отдаёт ему ни одной работы, а экран договоров его не
+    // показывал — исправить было нечем (решение Р-225).
+    if (role === 'EXPERT') {
+      await tx.expertProfile.upsert({ where: { userId }, create: { userId }, update: {} });
+    }
     await tx.session.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
@@ -245,9 +280,12 @@ export async function setUserStatus(actor: Actor, userId: string, status: 'ACTIV
 /** Отметить договор поручения с экспертом: без него доступ к материалам закрыт. */
 export async function signExpertNda(actor: Actor, userId: string, signedOn: Date | null) {
   ensure(actor, 'USER_MANAGE');
-  await prisma.expertProfile.update({
+  // Профиля может не быть у записи, ставшей экспертом до решения Р-225:
+  // договор заводит его сам, а не падает.
+  await prisma.expertProfile.upsert({
     where: { userId },
-    data: { ndaSignedAt: signedOn },
+    create: { userId, ndaSignedAt: signedOn },
+    update: { ndaSignedAt: signedOn },
   });
   await record(actor, {
     action: 'EXPERT_NDA_UPDATED',
