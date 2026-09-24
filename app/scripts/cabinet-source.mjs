@@ -40,6 +40,8 @@ export const SOURCE_PATHS = [
   'tools/cabinet-portable.mjs',
   'tools/cabinet-fonts.mjs',
   'tools/fonts-OFL.txt',
+  // Файлы гарнитур в репозитории (решение Р-230).
+  'app/src/fonts',
 ];
 
 /** Имя файла отпечатка рядом со снимком. */

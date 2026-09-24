@@ -154,11 +154,13 @@ Mono в метках разделов и номерах этапов читае�
 | Текст, интерфейс | `'Inter', 'Helvetica Neue', Arial, sans-serif` | 400, 500, 600 | 115 |
 | Метки, номера, суммы | `'JetBrains Mono', 'SFMono-Regular', monospace` | 400, 500, 600 | 192 |
 
-Подключаются через `next/font/google` в `app/src/app/layout.tsx` с
-подмножествами `latin` и `cyrillic`, `display: swap`. Файлы шрифтов в
-репозитории не хранятся. Переменные `--font-serif`, `--font-sans`,
-`--font-mono` пробрасываются в `globals.css` как `--pd-serif`, `--pd-sans`,
-`--pd-mono`; `body` наследует `--font-sans`.
+Файлы лежат в `app/src/fonts/` (лицензия OFL рядом) и подключаются через
+`next/font/local` в `app/src/app/layout.tsx`, `display: swap`, с
+предзагрузкой; сборка в сеть за ними не ходит (решение Р-230). Готовит их
+`tools/fonts-subset.py`: основная и расширенная латиница и кириллица,
+одна переменная гарнитура на семейство. Имена семейств и запасные
+начертания с поправками метрик объявлены в `globals.css` как `--pd-serif`,
+`--pd-sans`, `--pd-mono`; `body` наследует `--pd-sans`.
 
 ### 3.2 Шкала
 

@@ -21,7 +21,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from '/var/tmp/pwtest/node_modules/playwright-core/index.mjs';
 
@@ -293,6 +293,9 @@ async function main() {
   const server = await startServer(env);
   const browser = await chromium.launch({ executablePath: BROWSER, args: ['--no-sandbox'] });
   mkdirSync(OUT, { recursive: true });
+  // Файлы шрифтов прежней съёмки убираются: после смены гарнитур они
+  // оставались рядом, ни одним артбордом не упомянутые (решение Р-230).
+  rmSync(path.join(OUT, 'fonts'), { recursive: true, force: true });
 
   try {
     // Маршруты, зависящие от данных, выясняются на месте: коды проектов и
