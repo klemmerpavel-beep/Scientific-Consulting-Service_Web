@@ -5,6 +5,13 @@ import { declineLetter } from './lead-letter.ts';
 import { enqueue, enqueueToLead } from './outbox.ts';
 import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
+import { now } from './clock.ts';
+import {
+  PROJECT_STATUS_LABEL,
+  canChangeProjectStatus,
+  isClosedStatus,
+  type ProjectStatusKey,
+} from './project-status.ts';
 
 /**
  * Производственный контур: модерация заявки, проект, этапы.
@@ -524,6 +531,60 @@ export async function editProject(
     objectId: input.projectId,
     projectId: input.projectId,
     payload: { title },
+  });
+  return saved;
+}
+
+/**
+ * Сменить состояние работы: приостановить, завершить, отменить, вернуть в
+ * действие (решение Р-223).
+ *
+ * Прежде состояние и дату закрытия писал только перенос книги заказов:
+ * работу, заведённую в кабинете, закрыть было нельзя, хотя сводка
+ * советовала «закрыть работу». Она оставалась действующей навсегда — не
+ * попадала в «Завершённые», в отчёт о закрытых за период и в сроки
+ * выполнения аналитики, а после срока висела в «Требует внимания».
+ */
+export async function setProjectStatus(actor: Actor, projectId: string, to: ProjectStatusKey) {
+  const ref = await projectRef(projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'PROJECT_EDIT', ref);
+  if (!(to in PROJECT_STATUS_LABEL)) throw new Error('Неизвестное состояние работы');
+
+  const current = await prisma.project.findUniqueOrThrow({
+    where: { id: projectId },
+    select: { status: true },
+  });
+  const from = current.status as ProjectStatusKey;
+  if (!canChangeProjectStatus(from, to)) {
+    throw new Error(
+      `Из состояния «${PROJECT_STATUS_LABEL[from]}» в «${PROJECT_STATUS_LABEL[to]}» работа не переводится`,
+    );
+  }
+
+  // Дата закрытия — день, а не мгновение: так её пишет и перенос книги.
+  const today = now();
+  const closedOn = isClosedStatus(to)
+    ? new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
+    : null;
+
+  const saved = await prisma.$transaction(async (tx) => {
+    const updated = await tx.project.update({
+      where: { id: projectId },
+      data: { status: to, closedOn },
+    });
+    await tx.projectEvent.create({
+      data: { projectId, actorId: actor.id, kind: 'PROJECT_STATUS_CHANGED', payload: { from, to } },
+    });
+    return updated;
+  });
+
+  await record(actor, {
+    action: 'PROJECT_STATUS_CHANGED',
+    objectType: 'Project',
+    objectId: projectId,
+    projectId,
+    payload: { from, to },
   });
   return saved;
 }
