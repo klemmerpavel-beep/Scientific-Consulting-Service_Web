@@ -16,6 +16,7 @@ export type EventKind =
   | 'REQUEST_CREATED'
   | 'PROJECT_OPENED'
   | 'LEAD_DECLINED'
+  | 'MESSAGE_RECEIVED'
   | 'HELP_REQUESTED';
 
 /**
@@ -42,6 +43,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   REQUEST_CREATED: 'новая заявка',
   PROJECT_OPENED: 'работа заведена',
   LEAD_DECLINED: 'ответ на отклонённую заявку',
+  MESSAGE_RECEIVED: 'новое сообщение',
 };
 
 /**

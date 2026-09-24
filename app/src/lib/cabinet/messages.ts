@@ -1,6 +1,7 @@
 import { prisma } from '../db.ts';
 import { ensure, scopeProjects, type Actor } from './access.ts';
 import { hasContacts } from './contacts.ts';
+import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
 
 /**
@@ -31,13 +32,62 @@ export async function sendMessage(actor: Actor, projectId: string, body: string)
   const text = body.trim();
   if (text.length === 0) throw new Error('Пустое сообщение не отправляется');
 
-  return prisma.message.create({
-    data: {
-      projectId,
-      authorId: actor.id,
-      body: text,
-      containsContactHint: hasContacts(text),
+  return prisma.$transaction(async (tx) => {
+    const message = await tx.message.create({
+      data: {
+        projectId,
+        authorId: actor.id,
+        body: text,
+        containsContactHint: hasContacts(text),
+      },
+    });
+    await signalMessage(tx, actor, ref, message.id);
+    return message;
+  });
+}
+
+/**
+ * Сигнал второй стороне о новом сообщении (решение Р-228).
+ *
+ * Сигнал, а не содержание: переписка во внешние каналы не уходит, письмо
+ * и сообщение в Telegram говорят только, что в работе есть новое. Клиенту
+ * пишет практика — сигнал идёт клиенту; клиент пишет — куратору работы.
+ * Пока предыдущее сообщение той же стороны не прочитано, второй сигнал не
+ * ставится: человек и так знает, что его ждут, а десять писем на десять
+ * реплик приучили бы его их не читать.
+ */
+async function signalMessage(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  actor: Actor,
+  ref: { id: string; managerId: string; clientId: string },
+  messageId: string,
+): Promise<void> {
+  const fromClient = actor.role === 'CLIENT';
+  const pending = await tx.message.count({
+    where: {
+      projectId: ref.id,
+      id: { not: messageId },
+      readAt: null,
+      author: fromClient ? { role: 'CLIENT' } : { role: { not: 'CLIENT' } },
     },
+  });
+  if (pending > 0) return;
+
+  const project = await tx.project.findUnique({
+    where: { id: ref.id },
+    select: { code: true, client: { select: { userId: true } } },
+  });
+  if (project === null) return;
+  const userId = fromClient ? ref.managerId : project.client.userId;
+  if (userId === null || userId === actor.id) return;
+
+  await enqueue(tx, {
+    userId,
+    projectId: ref.id,
+    eventKind: 'MESSAGE_RECEIVED',
+    subject: `Новое сообщение по работе ${project.code}`,
+    body: 'В переписке по работе новое сообщение. Прочитать и ответить можно в кабинете.',
+    dedupKey: `message:${messageId}:${userId}`,
   });
 }
 
