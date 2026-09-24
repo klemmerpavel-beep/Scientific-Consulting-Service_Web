@@ -58,8 +58,10 @@ import {
   assignExpert,
   assignManager,
   declineLead,
+  setProjectStatus,
   setStageState,
 } from '../../lib/cabinet/projects';
+import type { ProjectStatusKey } from '../../lib/cabinet/project-status';
 import { currentActor, requestIp } from '../../lib/cabinet/session';
 
 /**
@@ -250,6 +252,18 @@ export async function saveProject(form: FormData): Promise<void> {
     summary: String(form.get('summary') ?? ''),
     dueOn: dateOrNull(form.get('dueOn')),
   });
+  redirect(`/cabinet/projects/${code}`);
+}
+
+/** Смена состояния работы куратором или руководителем (решение Р-223). */
+export async function changeProjectStatus(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  await setProjectStatus(
+    actor,
+    String(form.get('projectId') ?? ''),
+    String(form.get('status') ?? '') as ProjectStatusKey,
+  );
   redirect(`/cabinet/projects/${code}`);
 }
 

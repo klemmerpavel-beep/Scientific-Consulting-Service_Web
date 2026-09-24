@@ -36,6 +36,11 @@ import { SANS } from '../../../../components/cabinet/tokens';
 import { can } from '../../../../lib/cabinet/access';
 import { CONTACT_LABEL, contactsOf } from '../../../../lib/cabinet/channels';
 import { stageLabel } from '../../../../lib/cabinet/stage-state';
+import {
+  PROJECT_STATUS_ACTION,
+  PROJECT_STATUS_LABEL,
+  nextProjectStatuses,
+} from '../../../../lib/cabinet/project-status';
 import { daysPast } from '../../../../lib/cabinet/clock';
 import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import {
@@ -49,6 +54,7 @@ import {
   createStage,
   postMessage,
   saveProject,
+  changeProjectStatus,
   saveStage,
   setExpert,
   setManager,
@@ -70,6 +76,7 @@ const EVENT_LABEL: Record<string, string> = {
   EXPERT_ASSIGNED: 'Назначен исполнитель',
   STAGE_STATE_CHANGED: 'Этап сменил состояние',
   VERSION_UPLOADED: 'Приложена новая версия материала',
+  PROJECT_STATUS_CHANGED: 'Состояние работы изменено',
 };
 
 const CLIENT_HIDDEN_EVENTS = new Set(['EXPERT_ASSIGNED']);
@@ -105,6 +112,17 @@ function eventLine(
     // Переход описан словами: знак-стрелка — украшение, а правило облика
     // требует штриховых значков, не символов.
     return from === null ? `${where} — ${to}` : `${where} — ${to} (было «${from}»)`;
+  }
+
+  if (kind === 'PROJECT_STATUS_CHANGED') {
+    const to = typeof data.to === 'string' ? data.to : null;
+    const line: Record<string, string> = {
+      ACTIVE: 'Работа возобновлена',
+      PAUSED: 'Работа приостановлена',
+      COMPLETED: 'Работа завершена',
+      CANCELLED: 'Работа отменена',
+    };
+    return (to === null ? undefined : line[to]) ?? EVENT_LABEL[kind]!;
   }
 
   if (kind === 'VERSION_UPLOADED') {
@@ -321,6 +339,11 @@ export default async function ProjectScreen({
         <Heading level={1} size={2}>
           {project.title}
         </Heading>
+        {/* Состояние печатается, только когда работа не действует: у
+            действующей оно подразумевается (решение Р-223). */}
+        {project.status === 'ACTIVE' ? null : (
+          <Chip>{PROJECT_STATUS_LABEL[project.status]}</Chip>
+        )}
         {project.dueOn === null ? null : (
           <span
             style={{
@@ -594,6 +617,28 @@ export default async function ProjectScreen({
                   <Field label="Срок этапа" name="dueOn" scope="new-stage" type="date" />
                   <FormActions>
                     <Button tone="quiet">Добавить этап</Button>
+                  </FormActions>
+                </Form>
+              ) : null}
+
+              {mayEdit ? (
+                <Form action={changeProjectStatus}>
+                  <input type="hidden" name="projectId" value={project.id} />
+                  <input type="hidden" name="code" value={project.code} />
+                  <Select
+                    label="Состояние работы"
+                    name="status"
+                    required
+                    hint={`Сейчас: ${PROJECT_STATUS_LABEL[project.status].toLowerCase()}. Завершённая и отменённая работа уходит в «Завершённые», дата закрытия ставится сегодняшняя.`}
+                  >
+                    {nextProjectStatuses(project.status).map((status) => (
+                      <option key={status} value={status}>
+                        {PROJECT_STATUS_ACTION[status]}
+                      </option>
+                    ))}
+                  </Select>
+                  <FormActions>
+                    <Button tone="quiet">Сменить состояние</Button>
                   </FormActions>
                 </Form>
               ) : null}
