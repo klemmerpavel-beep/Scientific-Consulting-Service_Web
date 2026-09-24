@@ -9,19 +9,42 @@ html, body {
 }
 
 body {
-  font-family: var(--font-sans), 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--pd-sans), 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* Макеты обращаются к семействам по имени ('Literata', 'Inter',
-   'JetBrains Mono'). next/font регистрирует их под теми же именами,
-   поэтому отдельного связывания не требуется. Переменные оставлены
-   для слоёв приложения, которые не переносятся из макетов. */
+   'JetBrains Mono'). Под этими именами их регистрирует `layout.tsx`
+   из файлов в репозитории (решение Р-230), поэтому отдельного связывания
+   не требуется. Переменные оставлены для слоёв приложения, которые не
+   переносятся из макетов.
+
+   Запасные начертания подогнаны под метрики гарнитур: пока файл не
+   пришёл, строка набирается системным шрифтом той же ширины и высоты
+   и не прыгает при замене. Поправки сняты с самих файлов. */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial');
+  ascent-override: 89.79%;
+  descent-override: 22.36%;
+  line-gap-override: 0%;
+  size-adjust: 107.89%;
+}
+
+@font-face {
+  font-family: 'Literata Fallback';
+  src: local('Times New Roman');
+  ascent-override: 99.63%;
+  descent-override: 26.07%;
+  line-gap-override: 0%;
+  size-adjust: 118.14%;
+}
+
 :root {
-  --pd-serif: var(--font-serif);
-  --pd-sans: var(--font-sans);
-  --pd-mono: var(--font-mono);
+  --pd-serif: 'Literata', 'Literata Fallback';
+  --pd-sans: 'Inter', 'Inter Fallback';
+  --pd-mono: 'JetBrains Mono';
 }
 
 *, *::before, *::after { box-sizing: border-box; }
