@@ -327,7 +327,7 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
       })),
   );
 
-  await createCabinetRequest(
+  const { filesLost } = await createCabinetRequest(
     actor,
     {
       topic: String(form.get('topic') ?? '').trim(),
@@ -345,7 +345,7 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
     CONSENT_VERSION,
   );
 
-  redirect('/cabinet/request?sent=1');
+  redirect(filesLost > 0 ? `/cabinet/request?sent=1&lost=${filesLost}` : '/cabinet/request?sent=1');
 }
 
 /**
