@@ -37,7 +37,13 @@ export async function loadRows(actor: Actor): Promise<ProjectRow[]> {
       closedOn: true,
       client: { select: { id: true, fullName: true } },
       serviceType: { select: { code: true, name: true } },
-      contract: { select: { totalAmount: true, tranches: { select: { amount: true, status: true } } } },
+      contract: {
+        select: {
+          totalAmount: true,
+          signedOn: true,
+          tranches: { select: { amount: true, status: true, paidOn: true } },
+        },
+      },
     },
   });
 
@@ -54,9 +60,23 @@ export async function loadRows(actor: Actor): Promise<ProjectRow[]> {
     dueOn: project.dueOn,
     closedOn: project.closedOn,
     cost: project.contract?.totalAmount ?? 0n,
-    paid:
-      project.contract?.tranches
-        .filter((tranche) => tranche.status === 'PAID')
-        .reduce((acc, tranche) => acc + tranche.amount, 0n) ?? 0n,
+    paid: total(project.contract?.tranches, 'PAID'),
+    writtenOff: total(project.contract?.tranches, 'WRITTEN_OFF'),
+    payments: (project.contract?.tranches ?? [])
+      .filter((tranche) => tranche.status === 'PAID')
+      .map((tranche) => ({
+        amount: tranche.amount,
+        // Та же подстановка даты, что в итогах по годам (finance-years.ts).
+        on: tranche.paidOn ?? project.contract?.signedOn ?? project.startedOn ?? null,
+      })),
   }));
+}
+
+function total(
+  tranches: readonly { amount: bigint; status: string }[] | undefined,
+  status: 'PAID' | 'WRITTEN_OFF',
+): bigint {
+  return (tranches ?? [])
+    .filter((tranche) => tranche.status === status)
+    .reduce((acc, tranche) => acc + tranche.amount, 0n);
 }

@@ -30,6 +30,40 @@ export interface ProjectRow {
   readonly cost: bigint;
   /** Поступило по траншам со статусом «оплачен», в копейках. */
   readonly paid: bigint;
+  /**
+   * Списано по траншам со статусом «списан», в копейках. Списанное — не
+   * долг: прежде аналитика и отчёт считали его к получению и просроченным,
+   * а экран финансов — нет (решение Р-236).
+   */
+  readonly writtenOff: bigint;
+  /**
+   * Поступления с датой: дата оплаты, а без неё — дата договора или начала
+   * работы, как в итогах по годам. По ним считается «получено за период».
+   */
+  readonly payments: readonly { readonly amount: bigint; readonly on: Date | null }[];
+}
+
+/** Незакрытый остаток работы: договор без оплаченного и списанного, не меньше нуля. */
+export function openBalance(row: ProjectRow): bigint {
+  const left = row.cost - row.paid - row.writtenOff;
+  return left > 0n ? left : 0n;
+}
+
+/**
+ * Поступило за период — по дате поступления, а не по датам работы.
+ * Прежде отчёт брал оплату работ, начатых или закрытых в периоде: работа,
+ * оплаченная два года назад и закрытая вчера, давала всю сумму «за
+ * тридцать дней», а оплата вчера по работе, начатой зимой, не попадала
+ * никуда (решение Р-236).
+ */
+export function receivedBetween(rows: readonly ProjectRow[], from: Date, to: Date): bigint {
+  let total = 0n;
+  for (const row of rows) {
+    for (const payment of row.payments) {
+      if (payment.on !== null && payment.on >= from && payment.on <= to) total += payment.amount;
+    }
+  }
+  return total;
 }
 
 const DAY = 86_400_000;
@@ -195,7 +229,7 @@ export function overview(rows: readonly ProjectRow[]): Overview {
     received: sum(rows.map((row) => row.paid)),
     // Остаток считается по каждой работе отдельно и снизу ограничен нулём:
     // переплата по одному договору не погашает долг по другому.
-    outstanding: sum(rows.map((row) => (row.cost > row.paid ? row.cost - row.paid : 0n))),
+    outstanding: sum(rows.map(openBalance)),
     collection: contractedClosed > 0n ? Number(receivedClosed) / Number(contractedClosed) : 0,
     averageCheck: rows.length === 0 ? 0n : contracted / BigInt(rows.length),
     period: {
@@ -302,7 +336,7 @@ export interface Receivable {
 /** Дебиторка: незакрытые остатки, крупные сверху. */
 export function receivables(rows: readonly ProjectRow[], controlDate: Date): Receivable[] {
   return rows
-    .filter((row) => row.cost > row.paid)
+    .filter((row) => openBalance(row) > 0n)
     .map((row) => ({
       code: row.code,
       client: row.clientName,
@@ -310,12 +344,14 @@ export function receivables(rows: readonly ProjectRow[], controlDate: Date): Rec
       status: row.status,
       cost: row.cost,
       paid: row.paid,
-      debt: row.cost - row.paid,
+      debt: openBalance(row),
       dueOn: row.dueOn,
+      // Полные сутки после срока, как на экране траншей (`daysPast`):
+      // округление делало работу просроченной уже в день срока с полудня.
       overdueDays:
         row.dueOn === null
           ? null
-          : Math.round((controlDate.getTime() - row.dueOn.getTime()) / DAY),
+          : Math.floor((controlDate.getTime() - row.dueOn.getTime()) / DAY),
     }))
     .sort((a, b) => (b.debt > a.debt ? 1 : b.debt < a.debt ? -1 : a.code.localeCompare(b.code)));
 }

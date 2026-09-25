@@ -144,6 +144,30 @@ describe('деньги коротко', { skip: !enabled }, async () => {
     assert.ok(now.overdue - before0.overdue < 70_000_00n);
   });
 
+  it('транш со сроком сегодня ещё не просрочен', async () => {
+    // Прежде сравнение шло с текущим моментом, и транш со сроком сегодня
+    // считался просроченным уже с трёх часов ночи по Москве (решение Р-236).
+    const at = new Date();
+    const midnight = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
+    const before = await moneyBrief(actorOf(ids.boss!, 'HEAD'));
+    const today = await prisma.tranche.create({
+      data: {
+        contractId: ids.contract!,
+        title: 'Сегодняшний платёж',
+        amount: 1_000_00n,
+        status: 'INVOICED',
+        plannedDate: midnight,
+      },
+    });
+    try {
+      const after = await moneyBrief(actorOf(ids.boss!, 'HEAD'));
+      assert.equal(after.awaiting - before.awaiting, 1_000_00n);
+      assert.equal(after.overdue - before.overdue, 0n, 'транш просрочен в день срока');
+    } finally {
+      await prisma.tranche.delete({ where: { id: today.id } });
+    }
+  });
+
   it('деньги практики целиком видит только руководитель', async () => {
     await assert.rejects(() => moneyBrief(actorOf(ids.manager!, 'MANAGER')), AccessDenied);
   });

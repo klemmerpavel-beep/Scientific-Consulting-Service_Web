@@ -350,7 +350,12 @@ export async function moneyBrief(actor: Actor): Promise<{
   overdue: bigint;
 }> {
   ensure(actor, 'MARGIN_VIEW');
-  const day = today();
+  // Просрочен транш со сроком до сегодняшнего дня: со сроком сегодня —
+  // ещё нет. Прежде сравнение шло с текущим моментом, и транш становился
+  // просроченным в три часа ночи по Москве в самый день срока, а экран
+  // траншей его просроченным не показывал (решение Р-236).
+  const at = today();
+  const day = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
   const [received, awaiting, overdue] = await Promise.all([
     prisma.tranche.aggregate({ _sum: { amount: true }, where: { status: 'PAID' } }),
     prisma.tranche.aggregate({
