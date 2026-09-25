@@ -304,7 +304,9 @@ async function main() {
     for (const [role, token] of Object.entries(links)) {
       const context = await browser.newContext({ viewport: { width: 1440, height: 1200 } });
       const page = await context.newPage();
+      // Ключ гасится нажатием, а не открытием ссылки (решение Р-232).
       await page.goto(`${BASE}/cabinet/enter/${token}`, { waitUntil: 'networkidle' });
+      await Promise.all([page.waitForURL(/\/cabinet\/projects/u), page.click('button[type=submit]')]);
       contexts[role] = page;
     }
 

@@ -4,7 +4,12 @@ import { redirect } from 'next/navigation';
 
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { ensure } from '../../lib/cabinet/access';
-import { requestLoginLink, unbindTelegram } from '../../lib/cabinet/auth';
+import {
+  consumeLoginToken,
+  requestLoginLink,
+  revokeSession,
+  unbindTelegram,
+} from '../../lib/cabinet/auth';
 import {
   addComment,
   moderateComment,
@@ -62,7 +67,13 @@ import {
   setStageState,
 } from '../../lib/cabinet/projects';
 import type { ProjectStatusKey } from '../../lib/cabinet/project-status';
-import { currentActor, requestIp } from '../../lib/cabinet/session';
+import {
+  currentActor,
+  currentSessionValue,
+  requestIp,
+  setSessionCookie,
+  userAgent,
+} from '../../lib/cabinet/session';
 
 /**
  * Действия экранов кабинета. Каждое начинается с восстановления
@@ -91,6 +102,23 @@ export async function requestLink(form: FormData): Promise<void> {
   // системы, а не человека, и от адреса оно не зависит. Молчать о нём
   // значило бы обещать письмо, которого не будет (решение Р-163).
   redirect(outcome === 'channel_off' ? '/cabinet?channel=off' : '/cabinet?sent=1');
+}
+
+/**
+ * Вход по одноразовой ссылке. Ключ гасится здесь, отправкой формы, а не
+ * открытием страницы: предпросмотр мессенджера и проверщик ссылок в почте
+ * форм не отправляют (решение Р-232).
+ *
+ * Сессия, с которой браузер пришёл, отзывается: прежде она оставалась
+ * действительной в базе до своего срока, хотя браузер её уже забыл.
+ */
+export async function enterByLink(form: FormData): Promise<void> {
+  const token = String(form.get('token') ?? '');
+  const session = await consumeLoginToken(token, await requestIp(), await userAgent());
+  if (session === null) redirect('/cabinet?error=link');
+  await revokeSession(await currentSessionValue());
+  await setSessionCookie(session);
+  redirect('/cabinet/projects');
 }
 
 export async function approveStage(form: FormData): Promise<void> {

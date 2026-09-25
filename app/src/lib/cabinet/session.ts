@@ -10,8 +10,13 @@ import { SESSION_COOKIE, SESSION_TTL_DAYS } from './token.ts';
  * с клиента — иначе их можно было бы подменить заголовком.
  */
 export async function currentActor(): Promise<Actor | null> {
+  return resolveSession(await currentSessionValue());
+}
+
+/** Значение cookie сессии, с которым пришёл браузер. */
+export async function currentSessionValue(): Promise<string | undefined> {
   const jar = await cookies();
-  return resolveSession(jar.get(SESSION_COOKIE)?.value);
+  return jar.get(SESSION_COOKIE)?.value;
 }
 
 /** Адрес обратившегося. nginx кладёт настоящий адрес в X-Real-IP. */
@@ -34,18 +39,29 @@ export async function userAgent(): Promise<string | null> {
   return h.get('user-agent')?.slice(0, 400) ?? null;
 }
 
-export async function setSessionCookie(value: string): Promise<void> {
-  const jar = await cookies();
-  jar.set(SESSION_COOKIE, value, {
+/** Свойства cookie сессии: одни и те же при выдаче и при стирании. */
+function sessionCookieOptions(maxAge: number) {
+  return {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: SESSION_TTL_DAYS * 24 * 60 * 60,
-  });
+    maxAge,
+  };
 }
 
+export async function setSessionCookie(value: string): Promise<void> {
+  const jar = await cookies();
+  jar.set(SESSION_COOKIE, value, sessionCookieOptions(SESSION_TTL_DAYS * 24 * 60 * 60));
+}
+
+/**
+ * Стирание cookie сессии. Прежде шло через `delete`, а тот отправляет
+ * cookie без признака Secure; браузер отвергает такую запись для имени с
+ * приставкой `__Host-`, и отозванное значение оставалось в браузере.
+ * Стирается тем же набором свойств, с каким выдаётся (решение Р-232).
+ */
 export async function clearSessionCookie(): Promise<void> {
   const jar = await cookies();
-  jar.delete(SESSION_COOKIE);
+  jar.set(SESSION_COOKIE, '', sessionCookieOptions(0));
 }
