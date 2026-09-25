@@ -22,10 +22,12 @@ import {
   losses,
   mean,
   median,
+  openBalance,
   overview,
   products,
   quantile,
   receivables,
+  receivedBetween,
   seasonalNorm,
   stdev,
   verdict,
@@ -61,6 +63,8 @@ function row(over: Partial<ProjectRow> & { code: string }): ProjectRow {
     cost: 10_000_000n,
     paid: 10_000_000n,
     ...over,
+    writtenOff: over.writtenOff ?? 0n,
+    payments: over.payments ?? [],
     code: over.code,
   };
 }
@@ -575,5 +579,48 @@ describe('итог практики одним абзацем', () => {
     // Вывод несёт действие, а не наблюдение: после двоеточия стоит, что
     // делать (решение Р-194).
     assert.match(digest.first, /:\s+\S/u);
+  });
+});
+
+describe('деньги сходятся с экраном финансов', () => {
+  // Решение Р-236: списанное — не долг; просрочка — с полных суток после
+  // срока; «получено за период» — по дате поступления.
+  it('списанное не считается ни долгом, ни просрочкой', () => {
+    const written = row({
+      code: 'PD-2026-900',
+      cost: 10_000_000n,
+      paid: 4_000_000n,
+      writtenOff: 6_000_000n,
+      dueOn: new Date(Date.UTC(2026, 5, 1)),
+    });
+    assert.equal(openBalance(written), 0n);
+    assert.equal(overview([written]).outstanding, 0n);
+    assert.equal(receivables([written], CONTROL).length, 0);
+  });
+
+  it('в день срока работа ещё не просрочена', () => {
+    const due = row({ code: 'PD-2026-901', paid: 0n, dueOn: CONTROL });
+    const noon = new Date(CONTROL.getTime() + 15 * 60 * 60 * 1000);
+    assert.equal(receivables([due], noon)[0]?.overdueDays, 0);
+    const nextDay = new Date(CONTROL.getTime() + 25 * 60 * 60 * 1000);
+    assert.equal(receivables([due], nextDay)[0]?.overdueDays, 1);
+  });
+
+  it('получено за период — по дате поступления, а не по датам работы', () => {
+    const old = row({
+      code: 'PD-2024-001',
+      startedOn: new Date(Date.UTC(2024, 2, 1)),
+      closedOn: new Date(Date.UTC(2026, 8, 10)),
+      payments: [{ amount: 30_000_000n, on: new Date(Date.UTC(2024, 5, 1)) }],
+    });
+    const fresh = row({
+      code: 'PD-2026-002',
+      status: 'ACTIVE',
+      startedOn: new Date(Date.UTC(2026, 0, 15)),
+      closedOn: null,
+      payments: [{ amount: 20_000_000n, on: new Date(Date.UTC(2026, 8, 10)) }],
+    });
+    const from = new Date(CONTROL.getTime() - 30 * 86_400_000);
+    assert.equal(receivedBetween([old, fresh], from, CONTROL), 20_000_000n);
   });
 });

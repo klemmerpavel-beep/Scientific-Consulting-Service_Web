@@ -28,6 +28,7 @@ import {
   overview,
   products,
   receivables,
+  receivedBetween,
   verdict,
   type ProjectRow,
 } from "../../../../lib/cabinet/analytics/metrics";
@@ -275,7 +276,7 @@ export default async function ReportScreen({
             />
             <Tile
               label="Получено"
-              value={formatAmount(sum.received)}
+              value={formatAmount(receivedBetween(all, from, today))}
               note={period.words}
             />
             <Tile
