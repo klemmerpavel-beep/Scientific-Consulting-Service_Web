@@ -63,7 +63,12 @@ export async function requestLoginLink(
   const since = new Date(Date.now() - RATE_WINDOW_MS);
 
   const [byEmail, byIp] = await Promise.all([
-    prisma.loginAttempt.count({ where: { emailNormalized: email, occurredAt: { gte: since } } }),
+    // Отказы по частоте в счёт адреса не идут: иначе пять запросов с
+    // любых узлов запирали человека, а каждая его попытка продлевала запор
+    // ещё на час (решение Р-232).
+    prisma.loginAttempt.count({
+      where: { emailNormalized: email, occurredAt: { gte: since }, outcome: { not: 'rate_limited' } },
+    }),
     prisma.loginAttempt.count({ where: { ip, occurredAt: { gte: since } } }),
   ]);
 

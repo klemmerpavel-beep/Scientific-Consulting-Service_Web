@@ -134,6 +134,24 @@ describe('вход по одноразовой ссылке', { skip: !enabled }
     }
   });
 
+  it('отказы по частоте не продлевают запор адреса', async () => {
+    // Прежде в счёт адреса шли и сами отказы: пять чужих запросов запирали
+    // человека, а каждая его попытка продлевала запор ещё на час (Р-232).
+    const target = `locked-${Date.now()}@example.org`;
+    process.env.SMTP_HOST = 'smtp.invalid';
+    try {
+      for (let i = 0; i < 10; i += 1) {
+        await prisma.loginAttempt.create({
+          data: { emailNormalized: target, ip: `10.1.0.${i}`, outcome: 'rate_limited' },
+        });
+      }
+      assert.equal(await auth.requestLoginLink(target, '10.1.1.1'), 'unknown_email');
+    } finally {
+      delete process.env.SMTP_HOST;
+      await prisma.loginAttempt.deleteMany({ where: { emailNormalized: target } });
+    }
+  });
+
   it('ненастроенная почта называется прямо, а не обещает письмо', async () => {
     // Прежде исход был «отправлено» при любом положении дел: человек ждал
     // письма, которого не существует, и считал, что перепутал адрес.
