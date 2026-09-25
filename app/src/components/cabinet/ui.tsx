@@ -461,11 +461,13 @@ export function Checkbox({
   name,
   defaultChecked = false,
   disabled = false,
+  required = false,
 }: {
   label: ReactNode;
   name: string;
   defaultChecked?: boolean;
   disabled?: boolean;
+  required?: boolean;
 }) {
   return (
     <label
@@ -484,6 +486,7 @@ export function Checkbox({
         name={name}
         defaultChecked={defaultChecked}
         disabled={disabled}
+        required={required}
         style={{ width: 18, height: 18 }}
       />
       <span>{label}</span>

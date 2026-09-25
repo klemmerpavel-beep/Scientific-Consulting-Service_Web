@@ -59,7 +59,9 @@ describe('вложения заявки', { skip: !enabled }, async () => {
         email: `lead-client-${stamp}@example.org`,
         fullName: 'Заказчик Пробный Пробнович',
         role: 'CLIENT',
+        // Согласие дано заявкой с сайта и перенесено при одобрении (Р-238).
         consentVersion: 'v1',
+        consentAcceptedAt: new Date(),
       },
     });
     const profile = await prisma.clientProfile.create({

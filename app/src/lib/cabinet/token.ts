@@ -65,6 +65,9 @@ export interface RawToken {
   readonly value: string;
 }
 
+/** Длина селектора: двенадцать случайных байт в base64url — шестнадцать знаков. */
+export const SELECTOR_LENGTH = 16;
+
 export function createRawToken(): RawToken {
   const selector = randomBytes(12).toString('base64url');
   const verifier = randomBytes(32).toString('base64url');

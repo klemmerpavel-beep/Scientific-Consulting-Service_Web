@@ -5,6 +5,7 @@ import {
   Button,
   ButtonLink,
   Card,
+  Checkbox,
   Disclosure,
   Field,
   FileField,
@@ -26,6 +27,13 @@ import { currentActor } from '../../../lib/cabinet/session';
 import { submitCabinetRequest } from '../actions';
 
 export const dynamic = 'force-dynamic';
+
+// Ссылка остаётся строчной, чтобы подпись переносилась как текст, а цель
+// нажатия добирается до 44 пикселей отступом сверху и снизу.
+const LEGAL_LINK = {
+  color: 'var(--pd-accent)',
+  padding: '14px 0',
+} as const;
 
 export default async function NewRequestScreen({
   searchParams,
@@ -134,6 +142,44 @@ export default async function NewRequestScreen({
                   hint="Для срочной связи; письма по-прежнему идут на адрес, которым вы вошли."
                 />
               </Disclosure>
+
+              {/* Согласие спрашивается, пока его нет в учётной записи: теми же
+                  отметками и той же редакцией, что на сайте (решение Р-238).
+                  Кто пришёл заявкой с сайта, дал его там — ему отметок нет.
+                  Ссылки внутри подписи добраны отступом до 44 пикселей:
+                  строчная ссылка давала цель нажатия в 17 пикселей. */}
+              {defaults.consentNeeded ? (
+                <div style={{ marginTop: 8 }}>
+                  <Checkbox
+                    name="consent"
+                    required
+                    label={
+                      <>
+                        Даю{' '}
+                        <a href="/consent" style={LEGAL_LINK}>
+                          согласие на обработку персональных данных
+                        </a>
+                      </>
+                    }
+                  />
+                  <Checkbox
+                    name="terms"
+                    required
+                    label={
+                      <>
+                        Принимаю{' '}
+                        <a href="/offer" style={LEGAL_LINK}>
+                          оферту
+                        </a>{' '}
+                        и{' '}
+                        <a href="/privacy" style={LEGAL_LINK}>
+                          политику
+                        </a>
+                      </>
+                    }
+                  />
+                </div>
+              ) : null}
 
               <FormActions>
                 <Button>Отправить заявку</Button>
