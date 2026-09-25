@@ -634,10 +634,14 @@ export async function requestDefaults(actor: Actor) {
     select: {
       fullName: true,
       phone: true,
+      consentAcceptedAt: true,
       clientProfile: { select: { university: true, speciality: true, phone: true } },
     },
   });
   return {
+    // Согласие спрашивается в форме, пока его нет в учётной записи
+    // (решение Р-238).
+    consentNeeded: user.consentAcceptedAt === null,
     fullName: user.fullName,
     phone: user.phone ?? user.clientProfile?.phone ?? '',
     organization: user.clientProfile?.university ?? '',
@@ -652,6 +656,9 @@ export interface RequestDraft {
   readonly deadline: string | null;
   readonly message: string | null;
   readonly ip: string;
+  /** Отметки согласия и акцепта с формы — нужны, пока согласия нет в записи. */
+  readonly consent?: boolean;
+  readonly terms?: boolean;
   /** ФИО заказчика: подставляется из учётной записи и правится в форме. */
   readonly applicantName?: string | null;
   /** ФИО научного руководителя: работу ведут с оглядкой на его требования. */
@@ -707,8 +714,26 @@ export async function createCabinetRequest(
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: actor.id },
-    select: { email: true, fullName: true, consentVersion: true },
+    select: { email: true, fullName: true, consentVersion: true, consentAcceptedAt: true },
   });
+
+  // Согласие на обработку и акцепт оферты. Прежде заявка из кабинета
+  // помечалась согласованной со ссылкой на «согласие при первом входе»,
+  // которого не существовало: учётная запись, заведённая руководителем
+  // или переносом книги, согласия не давала никогда. Теперь согласие
+  // либо уже записано (дано в заявке с сайта и перенесено при одобрении),
+  // либо даётся здесь теми же отметками и той же редакцией, что на сайте
+  // (решение Р-238).
+  const accepted = user.consentAcceptedAt !== null;
+  if (!accepted && !(draft.consent === true && draft.terms === true)) {
+    throw new Error('Нужны согласие на обработку персональных данных и принятие оферты');
+  }
+  if (!accepted) {
+    await prisma.user.update({
+      where: { id: actor.id },
+      data: { consentAcceptedAt: new Date(), consentVersion },
+    });
+  }
 
   const lead = await prisma.lead.create({
     data: {
@@ -725,10 +750,10 @@ export async function createCabinetRequest(
       organization: draft.organization?.trim() || null,
       speciality: draft.speciality?.trim() || null,
       phone: draft.phone?.trim() || null,
-      // Согласие принято при первом входе в кабинет; редакция текста
-      // хранится вместе с заявкой, как и у обращений с сайта.
+      // Согласие записано в учётной записи — ранее или только что; его
+      // редакция хранится вместе с заявкой, как у обращений с сайта.
       consentGiven: true,
-      consentVersion: user.consentVersion ?? consentVersion,
+      consentVersion: accepted ? (user.consentVersion ?? consentVersion) : consentVersion,
       termsAccepted: true,
       ip: draft.ip,
     },

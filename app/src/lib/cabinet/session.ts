@@ -50,9 +50,21 @@ function sessionCookieOptions(maxAge: number) {
   };
 }
 
+/**
+ * Срок жизни cookie в браузере — с запасом над сроком сессии.
+ *
+ * Сессия скользящая: запись в базе продлевается при обращениях
+ * (`resolveSession`), а cookie выдаётся один раз, при входе. Пока браузер
+ * хранил её ровно тридцать дней, человек, заходящий каждый день, всё равно
+ * терял вход через тридцать дней после входа (решение Р-238). Теперь
+ * браузер хранит значение дольше, а действительность решает запись в
+ * базе: тридцать дней без обращений — и сессии нет, отзыв — сразу.
+ */
+const COOKIE_MAX_DAYS = SESSION_TTL_DAYS * 6;
+
 export async function setSessionCookie(value: string): Promise<void> {
   const jar = await cookies();
-  jar.set(SESSION_COOKIE, value, sessionCookieOptions(SESSION_TTL_DAYS * 24 * 60 * 60));
+  jar.set(SESSION_COOKIE, value, sessionCookieOptions(COOKIE_MAX_DAYS * 24 * 60 * 60));
 }
 
 /**

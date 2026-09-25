@@ -12,6 +12,7 @@ import {
   RATE_PER_IP,
   RATE_WINDOW_MS,
   sameDigest,
+  SELECTOR_LENGTH,
   SESSION_TTL_DAYS,
   splitToken,
   TOKEN_TTL_MINUTES,
@@ -290,7 +291,17 @@ export async function createTelegramBindLink(userId: string): Promise<string | n
       requestIp: 'cabinet',
     },
   });
-  return `https://t.me/${bot}?start=${token.value}`;
+  // Параметр запуска бота допускает только латиницу, цифры, `_` и `-`:
+  // точка между частями ключа в него не проходит, и бот получал голый
+  // /start. Части склеиваются без разделителя — селектор всегда
+  // шестнадцать знаков (решение Р-238).
+  return `https://t.me/${bot}?start=${token.selector}${token.verifier}`;
+}
+
+/** Ключ из параметра бота: без точки части разделяются по длине селектора. */
+function bindValue(value: string): string {
+  if (value.includes('.') || value.length <= SELECTOR_LENGTH) return value;
+  return `${value.slice(0, SELECTOR_LENGTH)}.${value.slice(SELECTOR_LENGTH)}`;
 }
 
 /**
@@ -298,7 +309,7 @@ export async function createTelegramBindLink(userId: string): Promise<string | n
  * уходит: бот на неизвестную метку не отвечает ничем.
  */
 export async function bindTelegram(value: string, chatId: string): Promise<boolean> {
-  const parsed = splitToken(value);
+  const parsed = splitToken(bindValue(value));
   if (parsed === null) return false;
 
   const token = await prisma.loginToken.findUnique({ where: { selector: parsed.selector } });

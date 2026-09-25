@@ -95,12 +95,33 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
     // upsert: после него отличить созданную от найденной уже нельзя.
     let firstTime = false;
     if (email !== null) {
-      const known = await tx.user.findUnique({ where: { email }, select: { id: true } });
+      const known = await tx.user.findUnique({
+        where: { email },
+        select: { id: true, role: true, status: true, consentAcceptedAt: true },
+      });
+      // Адрес заявки может принадлежать сотруднику или закрытой записи.
+      // Прежде работа молча вешалась на неё: сотрудник как клиент работы
+      // не видит, приостановленный не войдёт, а письмо обещало «работа
+      // добавлена в ваш кабинет» (решение Р-238).
+      if (known !== null && known.role !== 'CLIENT') {
+        throw new Error('Адрес заявки принадлежит сотруднику практики: клиенту нужен свой адрес');
+      }
+      if (known !== null && known.status !== 'ACTIVE') {
+        throw new Error('Учётная запись с адресом заявки закрыта: сначала откройте её');
+      }
       firstTime = known === null;
+      // Согласие на обработку дано в самой заявке: его момент и редакция
+      // переходят в учётную запись. Прежде запись оставалась без согласия,
+      // а обращение из кабинета всё равно помечалось согласованным
+      // (решение Р-238).
+      const consent =
+        lead.consentGiven && (known === null || known.consentAcceptedAt === null)
+          ? { consentAcceptedAt: lead.createdAt, consentVersion: lead.consentVersion }
+          : {};
       const user = await tx.user.upsert({
         where: { email },
-        create: { email, fullName, role: 'CLIENT', phone },
-        update: {},
+        create: { email, fullName, role: 'CLIENT', phone, ...consent },
+        update: consent,
       });
       userId = user.id;
     }

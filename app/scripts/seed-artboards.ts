@@ -176,8 +176,17 @@ async function main() {
 
   const clientUser = await prisma.user.upsert({
     where: { email: `client@${DOMAIN}` },
-    create: { email: `client@${DOMAIN}`, fullName: CLIENTS[0], role: 'CLIENT' },
-    update: {},
+    // Клиент пришёл заявкой с сайта: согласие дано там и перенесено при
+    // одобрении (решение Р-238). Дата — от дня наполнения, снимок её
+    // показывает в настройках.
+    create: {
+      email: `client@${DOMAIN}`,
+      fullName: CLIENTS[0],
+      role: 'CLIENT',
+      consentAcceptedAt: day(120),
+      consentVersion: '2026-08-21',
+    },
+    update: { consentAcceptedAt: day(120), consentVersion: '2026-08-21' },
   });
   await prisma.clientProfile.update({
     where: { id: clientIds[showcaseClient]! },

@@ -369,6 +369,8 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
       phone: String(form.get('phone') ?? '').trim() || null,
       files,
       ip: await requestIp(),
+      consent: form.get('consent') === 'on',
+      terms: form.get('terms') === 'on',
     },
     CONSENT_VERSION,
   );
