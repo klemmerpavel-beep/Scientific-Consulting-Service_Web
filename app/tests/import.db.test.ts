@@ -34,7 +34,7 @@ const HEADER: TestRow = [
 /** Метка прогона отделяет данные проверки от всего, что есть в базе. */
 const stamp = Date.now();
 
-function book(): Buffer {
+function book(paidSecond = '40000', extra: TestRow[] = []): Buffer {
   return makeWorkbook([
     HEADER,
     [
@@ -55,7 +55,7 @@ function book(): Buffer {
       '20.12.2025',
       '90000',
       { value: 'в работе', fill: GREEN },
-      '40000',
+      paidSecond,
     ],
     [
       excelSerial('2025-04-07'),
@@ -77,6 +77,7 @@ function book(): Buffer {
       { value: 'на старте', fill: null },
       '0',
     ],
+    ...extra,
   ]);
 }
 
@@ -267,6 +268,101 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     await assert.rejects(
       applyBatch(actor(ids.head, 'HEAD'), batchId, { managerId: ids.manager }),
       /уже зафиксирована/u,
+    );
+  });
+
+  it('изменившаяся строка правит свою работу, а не заводит вторую', async () => {
+    // Прежде предпросмотр не запоминал прежнюю работу строки, и
+    // «обновление» при фиксации заводило вторую — с договором на всю сумму
+    // и оплатой ещё раз (решение Р-233).
+    const mine = { managerId: ids.manager };
+    const before = await prisma.project.count({ where: mine });
+    const head = actor(ids.head, 'HEAD');
+
+    // Две загрузки одной книги до фиксации: вторая не должна повторить
+    // первую.
+    const first = await previewBook(head, { fileName: `книга-${stamp}-4.xlsx`, bytes: book('90000') });
+    const second = await previewBook(head, { fileName: `книга-${stamp}-5.xlsx`, bytes: book('90000') });
+    batches.push(first.batchId, second.batchId);
+    assert.equal(first.counts.UPDATE, 1);
+
+    const report = await applyBatch(head, first.batchId, { managerId: ids.manager });
+    assert.equal(report.updated, 1);
+    assert.equal(report.created, 0);
+    assert.equal(await prisma.project.count({ where: mine }), before);
+
+    const partial = await prisma.contract.findFirstOrThrow({
+      where: { totalAmount: 9_000_000n, project: { managerId: ids.manager } },
+      select: { tranches: { select: { status: true, amount: true } } },
+    });
+    const paid = partial.tranches
+      .filter((tranche) => tranche.status === 'PAID')
+      .reduce((sum, tranche) => sum + tranche.amount, 0n);
+    assert.equal(paid, 9_000_000n, 'доплата из книги не дошла до траншей');
+    assert.equal(
+      partial.tranches.filter((tranche) => tranche.status === 'PLANNED').length,
+      0,
+      'погашенный остаток остался к получению',
+    );
+
+    const again = await applyBatch(head, second.batchId, { managerId: ids.manager });
+    assert.equal(again.created, 0, 'вторая загрузка той же книги завела работы');
+    assert.equal(again.updated, 0);
+    assert.equal(await prisma.project.count({ where: mine }), before);
+  });
+
+  it('одну загрузку нельзя зафиксировать дважды и одновременно', async () => {
+    const head = actor(ids.head, 'HEAD');
+    const extra: TestRow[] = [
+      [
+        excelSerial('2025-06-02'),
+        `Орлова Анна ${stamp}`,
+        'Диссертция',
+        'Кандидатская',
+        '20.12.2025',
+        '50000',
+        { value: 'в работе', fill: null },
+        '0',
+      ],
+    ];
+    const preview = await previewBook(head, { fileName: `книга-${stamp}-6.xlsx`, bytes: book('90000', extra) });
+    batches.push(preview.batchId);
+    const results = await Promise.allSettled([
+      applyBatch(head, preview.batchId, { managerId: ids.manager }),
+      applyBatch(head, preview.batchId, { managerId: ids.manager }),
+    ]);
+    assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+    assert.equal(
+      await prisma.project.count({ where: { client: { normalizedName: { contains: `орлова анна ${stamp}` } } } }),
+      1,
+    );
+  });
+
+  it('нечитаемая сумма — замечание и отказ, а не договор на ноль', async () => {
+    const head = actor(ids.head, 'HEAD');
+    const extra: TestRow[] = [
+      [
+        excelSerial('2025-07-01'),
+        `Петров Олег ${stamp}`,
+        'Диссертция',
+        'Кандидатская',
+        '20.12.2025',
+        'договорная',
+        { value: 'в работе', fill: null },
+        '50000',
+      ],
+    ];
+    const preview = await previewBook(head, { fileName: `книга-${stamp}-7.xlsx`, bytes: book('90000', extra) });
+    batches.push(preview.batchId);
+    const row = preview.rows.find((candidate) => candidate.customer === `Петров Олег ${stamp}`);
+    assert.equal(row?.severity, 'ERROR');
+    assert.ok(row?.issues.some((issue) => issue.code === 'AMOUNT_UNREADABLE'));
+
+    const report = await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    assert.ok(report.rejected.some((item) => item.rowNumber === row?.rowNumber));
+    assert.equal(
+      await prisma.project.count({ where: { client: { normalizedName: { contains: `петров олег ${stamp}` } } } }),
+      0,
     );
   });
 

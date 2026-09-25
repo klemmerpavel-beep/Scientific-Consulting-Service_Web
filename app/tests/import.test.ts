@@ -17,6 +17,7 @@ import {
   classifyStatus,
   classifyType,
   findHeader,
+  money,
   normalizeName,
   parseBook,
   parseDeadline,
@@ -343,7 +344,7 @@ describe('книга целиком', () => {
     assert.equal(totals.paid, 29_000_000n); // 290 000 ₽
   });
 
-  it('все шесть классов замечаний представлены поимённо', () => {
+  it('все классы замечаний представлены поимённо', () => {
     const { issueCounts } = parsed();
     const expected: Record<IssueCode, number> = {
       UNKNOWN_SUPPORT_TYPE: 0,
@@ -356,6 +357,7 @@ describe('книга целиком', () => {
       CLOSED_WITH_OUTSTANDING_BALANCE: 2,
       DUPLICATE_CLIENT_BY_NAME: 4,
       STATUS_FILL_CONFLICT: 2,
+      AMOUNT_UNREADABLE: 0,
     };
     assert.deepEqual(issueCounts, expected);
   });
@@ -506,4 +508,27 @@ describe('естественный ключ строки', () => {
     assert.notEqual(rows[0]?.signature, rows[1]?.signature);
     assert.match(rows[1]?.signature ?? '', /\|#2$/u);
   });
+});
+
+describe('суммы книги', () => {
+  // Прежде нечитаемое молча становилось нулём, а «150.000» — ста
+  // пятьюдесятью рублями (решение Р-233).
+  const cases: [string, bigint | null][] = [
+    ['150000', 15_000_000n],
+    ['150 000 р.', 15_000_000n],
+    ['150\u00a0000 ₽', 15_000_000n],
+    ['150.000', 15_000_000n],
+    ['1,234,567', 123_456_700n],
+    ['150,50', 15_050n],
+    ['35000.00', 3_500_000n],
+    ['', 0n],
+    ['#VALUE!', null],
+    ['150 000 р. + 20 000 р.', null],
+    ['договорная', null],
+  ];
+  for (const [raw, expected] of cases) {
+    it(`«${raw}» → ${expected === null ? 'не читается' : expected}`, () => {
+      assert.equal(money(raw), expected);
+    });
+  }
 });

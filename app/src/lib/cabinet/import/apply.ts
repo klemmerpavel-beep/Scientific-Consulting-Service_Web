@@ -93,6 +93,18 @@ function severityOf(row: ParsedRow): RowSeverity {
   return row.issues.length > 0 ? 'WARNING' : 'OK';
 }
 
+/** Название транша, которым перенос заводит неоплаченный остаток договора. */
+const REST_TITLE = 'Остаток по договору';
+
+/** То же сравнение по сохранённым значениям строки — при фиксации. */
+function changed(parsed: { cost: string; paid: string; status: string }, before: unknown): boolean {
+  const earlier = before as { cost?: string; paid?: string; status?: string } | null;
+  if (earlier === null || earlier === undefined) return true;
+  return (
+    earlier.cost !== parsed.cost || earlier.paid !== parsed.paid || earlier.status !== parsed.status
+  );
+}
+
 /** Сравнение с ранее перенесённой строкой: изменились ли деньги или состояние. */
 function differs(row: ParsedRow, previous: { parsed: unknown }): boolean {
   const before = previous.parsed as { cost?: string; paid?: string; status?: string } | null;
@@ -289,6 +301,10 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
             normalizedName: row.normalizedName,
           },
           severity: rows[index]!.severity,
+          // Строка, уже перенесённая раньше, помнит свою работу: без этого
+          // «обновление» при фиксации проходило как новая строка и заводило
+          // вторую работу с договором и оплатой (решение Р-233).
+          projectId: seen.get(row.signature)?.project?.id ?? null,
           errors: row.issues.map((issue) => ({
             code: issue.code,
             label: ISSUE_LABEL[issue.code],
@@ -445,6 +461,7 @@ interface StoredRow {
   readonly parsed: unknown;
   readonly action: RowAction;
   readonly projectId: string | null;
+  readonly errors: unknown;
 }
 
 /**
@@ -478,6 +495,7 @@ export async function applyBatch(
       parsed: true,
       action: true,
       projectId: true,
+      errors: true,
     },
   })) as StoredRow[];
 
@@ -496,6 +514,37 @@ export async function applyBatch(
 
   await prisma.$transaction(
     async (tx) => {
+      // Фиксации идут по одной: две загрузки одной книги, применённые
+      // разом, не видели бы строк друг друга и завели бы каждую работу
+      // дважды (решение Р-233).
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('import-apply'))`;
+
+      // Загрузка захватывается условием на её состояние: второе нажатие
+      // «Зафиксировать» ждёт первого и находит её уже зафиксированной.
+      const claimed = await tx.importBatch.updateMany({
+        where: { id: batchId, state: 'PREVIEWED' },
+        data: { state: 'APPLIED', appliedAt: new Date() },
+      });
+      if (claimed.count !== 1) throw new Error('Загрузка уже зафиксирована');
+
+      // Действие строки сверяется заново с тем, что перенесено к этой
+      // минуте, а не берётся из предпросмотра: между ними могла быть
+      // зафиксирована другая загрузка той же книги.
+      const signatures = stored
+        .map((row) => row.signature)
+        .filter((signature): signature is string => signature !== null);
+      const earlier = await tx.importRow.findMany({
+        where: {
+          signature: { in: signatures },
+          projectId: { not: null },
+          batchId: { not: batchId },
+          batch: { state: 'APPLIED' },
+        },
+        orderBy: { batch: { appliedAt: 'asc' } },
+        select: { signature: true, parsed: true, projectId: true },
+      });
+      const current = new Map(earlier.map((row) => [row.signature ?? '', row]));
+
       const clients = new Map<string, string>();
 
       for (const row of stored) {
@@ -515,8 +564,30 @@ export async function applyBatch(
           normalizedName: string;
         };
 
-        if (excluded.has(row.rowNumber) || row.action === 'SKIP') {
+        const before = row.signature === null ? undefined : current.get(row.signature);
+        const action: RowAction =
+          before === undefined ? 'CREATE' : changed(parsed, before.parsed) ? 'UPDATE' : 'SKIP';
+        const projectId = before?.projectId ?? null;
+
+        if (excluded.has(row.rowNumber) || action === 'SKIP') {
+          if (action === 'SKIP' && projectId !== null) {
+            await tx.importRow.update({ where: { id: row.id }, data: { action, projectId } });
+          }
           skipped += 1;
+          continue;
+        }
+
+        // Нечитаемая сумма — не ноль: без договора оплата по строке
+        // потерялась бы. Строка не переносится, пока её не поправят в книге.
+        const codes = Array.isArray(row.errors)
+          ? (row.errors as { code?: string }[]).map((error) => error.code)
+          : [];
+        if (codes.includes('AMOUNT_UNREADABLE')) {
+          rejected.push({ rowNumber: row.rowNumber, reason: 'сумма в книге не читается' });
+          await tx.importRow.update({
+            where: { id: row.id },
+            data: { action: 'SKIP', severity: 'ERROR' },
+          });
           continue;
         }
 
@@ -568,25 +639,61 @@ export async function applyBatch(
           clients.set(parsed.normalizedName, clientId);
         }
 
-        if (row.action === 'UPDATE' && row.projectId !== null) {
+        if (action === 'UPDATE' && projectId !== null) {
           // Изменившаяся строка: поправляются состояние, сроки и сумма
-          // договора. Транши не переписываются — по ним могли пройти
-          // ручные правки менеджера, и они старше книги.
+          // договора. Транши, внесённые руками, не трогаются; из книги
+          // доносится только разница оплаты — отдельным поступлением, — и
+          // остаток, заведённый прошлым переносом, пересчитывается под новую
+          // сумму. Прежде разница оплаты шла в итог загрузки, но в базу не
+          // попадала (решение Р-233).
           await tx.project.update({
-            where: { id: row.projectId },
+            where: { id: projectId },
             data: {
               status,
               dueOn: deadline,
               closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
             },
           });
-          await tx.contract.updateMany({
-            where: { projectId: row.projectId },
-            data: { totalAmount: rowCost },
+          const contract = await tx.contract.findFirst({
+            where: { projectId },
+            select: { id: true, tranches: { select: { id: true, title: true, amount: true, status: true } } },
           });
+          if (contract !== null) {
+            await tx.contract.update({ where: { id: contract.id }, data: { totalAmount: rowCost } });
+            const paidSoFar = contract.tranches
+              .filter((tranche) => tranche.status === 'PAID')
+              .reduce((sum, tranche) => sum + tranche.amount, 0n);
+            let received = 0n;
+            if (rowPaid > paidSoFar) {
+              received = rowPaid - paidSoFar;
+              await tx.tranche.create({
+                data: {
+                  contractId: contract.id,
+                  title: 'Поступление по книге учёта',
+                  amount: received,
+                  status: 'PAID',
+                },
+              });
+            }
+            const rest = contract.tranches.find(
+              (tranche) => tranche.title === REST_TITLE && tranche.status === 'PLANNED',
+            );
+            if (rest !== undefined) {
+              const others = contract.tranches
+                .filter((tranche) => tranche.id !== rest.id)
+                .reduce((sum, tranche) => sum + tranche.amount, 0n);
+              const left = rowCost - others - received;
+              if (left > 0n) {
+                await tx.tranche.update({ where: { id: rest.id }, data: { amount: left } });
+              } else {
+                await tx.tranche.delete({ where: { id: rest.id } });
+              }
+            }
+            paid += received;
+          }
+          await tx.importRow.update({ where: { id: row.id }, data: { action, projectId } });
           updated += 1;
           cost += rowCost;
-          paid += rowPaid;
           continue;
         }
 
@@ -639,7 +746,7 @@ export async function applyBatch(
             await tx.tranche.create({
               data: {
                 contractId: contract.id,
-                title: 'Остаток по договору',
+                title: REST_TITLE,
                 amount: rowCost - rowPaid,
                 plannedDate: deadline,
                 status: 'PLANNED',
@@ -660,8 +767,6 @@ export async function applyBatch(
       await tx.importBatch.update({
         where: { id: batchId },
         data: {
-          state: 'APPLIED',
-          appliedAt: new Date(),
           stats: {
             created,
             updated,

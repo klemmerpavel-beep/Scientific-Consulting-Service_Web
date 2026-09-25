@@ -22,7 +22,8 @@ export type IssueCode =
   | 'PAYMENT_EXCEEDS_CONTRACT'
   | 'CLOSED_WITH_OUTSTANDING_BALANCE'
   | 'DUPLICATE_CLIENT_BY_NAME'
-  | 'STATUS_FILL_CONFLICT';
+  | 'STATUS_FILL_CONFLICT'
+  | 'AMOUNT_UNREADABLE';
 
 export type Severity = 'ERROR' | 'WARNING';
 
@@ -43,6 +44,7 @@ export const ISSUE_LABEL: Record<IssueCode, string> = {
   CLOSED_WITH_OUTSTANDING_BALANCE: 'Закрытая работа с непогашенным остатком',
   DUPLICATE_CLIENT_BY_NAME: 'Дубль клиента по ФИО',
   STATUS_FILL_CONFLICT: 'Текст статуса расходится с заливкой',
+  AMOUNT_UNREADABLE: 'Нечитаемая сумма',
 };
 
 /** Состояние работы, выведенное из книги. */
@@ -347,11 +349,31 @@ export function normalizeName(raw: string): string {
     .trim();
 }
 
-function money(raw: string): bigint {
-  const normalized = raw.replace(/ /g, '').replace(/[^\d.,-]/g, '').replace(',', '.');
-  if (normalized.length === 0) return 0n;
-  const value = Number(normalized);
-  return Number.isFinite(value) ? BigInt(Math.round(value * 100)) : 0n;
+/**
+ * Сумма из ячейки в копейках; `null` — ячейка не пуста, но суммой не
+ * читается.
+ *
+ * Прежде всё нечитаемое молча становилось нулём: «1,234,567», «150 000 р. +
+ * 20 000 р.», «#VALUE!» давали 0 ₽, а «150.000» — 150 ₽. Договор с нулём не
+ * заводился, и оплата по нему терялась без единого замечания (решение
+ * Р-233). Теперь читается одно число — с дробной частью до двух знаков
+ * либо с разрядами через точку или запятую; остальное — замечание.
+ */
+export function money(raw: string): bigint | null {
+  const text = raw
+    .replace(/[\s  ]/gu, '')
+    .replace(/(₽|руб(лей|ля|ль)?\.?|р\.?)$/iu, '');
+  if (text.length === 0) return 0n;
+  let digits: string;
+  if (/^\d+([.,]\d{1,2})?$/u.test(text)) {
+    digits = text.replace(',', '.');
+  } else if (/^\d{1,3}([.,]\d{3})+$/u.test(text)) {
+    digits = text.replace(/[.,]/gu, '');
+  } else {
+    return null;
+  }
+  const value = Number(digits);
+  return Number.isFinite(value) ? BigInt(Math.round(value * 100)) : null;
 }
 
 function cellOf(row: Row, column: string | undefined): { value: string; fill: string | null } {
@@ -392,8 +414,25 @@ export function parseRow(
     issues.push({ ...issue, column: columns.deadline ?? null });
   }
 
-  const cost = money(cellOf(row, columns.cost).value);
-  const paid = money(cellOf(row, columns.paid).value);
+  const rawCost = cellOf(row, columns.cost).value;
+  const rawPaid = cellOf(row, columns.paid).value;
+  const readCost = money(rawCost);
+  const readPaid = money(rawPaid);
+  for (const [value, text, column] of [
+    [readCost, rawCost, columns.cost],
+    [readPaid, rawPaid, columns.paid],
+  ] as const) {
+    if (value === null) {
+      issues.push({
+        code: 'AMOUNT_UNREADABLE',
+        severity: 'ERROR',
+        column: column ?? null,
+        note: `«${text.trim()}» не читается как сумма`,
+      });
+    }
+  }
+  const cost = readCost ?? 0n;
+  const paid = readPaid ?? 0n;
   if (paid > cost) {
     issues.push({
       code: 'PAYMENT_EXCEEDS_CONTRACT',
