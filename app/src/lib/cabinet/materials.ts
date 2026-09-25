@@ -92,7 +92,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
 
   // Номер версии вычисляется и занимается в одной транзакции; от гонки
   // защищает уникальность пары «материал — номер» на стороне базы.
-  const { version, material } = await prisma.$transaction(async (tx) => {
+  const { version, material, fresh, eventId } = await prisma.$transaction(async (tx) => {
     const current =
       input.materialId == null
         ? null
@@ -132,21 +132,34 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
       },
     });
 
-    await tx.projectEvent.create({
+    const event = await tx.projectEvent.create({
       data: {
         projectId: input.projectId,
         actorId: actor.id,
         kind: 'VERSION_UPLOADED',
         payload: { materialId: target.id, version: number },
       },
+      select: { id: true },
     });
 
-    return { version: created, material: target };
+    return { version: created, material: target, fresh: current === null, eventId: event.id };
   });
 
-  // Байты пишутся после строки: объект без строки — мусор, который видно
-  // сверкой, а строка без объекта была бы обещанием файла, которого нет.
-  await storage().put(version.storageKey, input.body, input.contentType);
+  // Байты пишутся после строки: ключ объекта строится от номера версии,
+  // а номер занимается в транзакции. Отказ записи откатывает строку: прежде
+  // строка оставалась «последней версией» без объекта, каждое скачивание
+  // кончалось ошибкой сервера, а следующая загрузка получала номер через
+  // одну (решение Р-237).
+  try {
+    await storage().put(version.storageKey, input.body, input.contentType);
+  } catch (error) {
+    await prisma.$transaction(async (tx) => {
+      await tx.projectEvent.delete({ where: { id: eventId } });
+      await tx.materialVersion.delete({ where: { id: version.id } });
+      if (fresh) await tx.material.delete({ where: { id: material.id } });
+    });
+    throw error;
+  }
 
   await prisma.fileAccessLog.create({
     data: { versionId: version.id, userId: actor.id, action: 'UPLOAD', ip: ip ?? null },
@@ -158,17 +171,56 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     select: {
       code: true,
       title: true,
+      clientId: true,
       managerId: true,
       expertId: true,
       client: { select: { userId: true } },
     },
   });
   if (project !== null) {
-    const recipients = new Set(
-      [project.client.userId, project.managerId, project.expertId].filter(
-        (id): id is string => id !== null && id !== actor.id,
-      ),
-    );
+    // Получатель — тот, кому этот файл можно открыть. Прежде уведомление
+    // уходило эксперту о договоре, счёте и акте, которых ему не видно, и
+    // эксперту без подписанного соглашения о неразглашении — с названием
+    // материала клиента (решение Р-237).
+    const permission = material.kind === 'STAGE_MATERIAL' ? 'MATERIAL_VIEW' : 'CONTRACT_VIEW';
+    const ref = {
+      id: input.projectId,
+      clientId: project.clientId,
+      managerId: project.managerId,
+      expertId: project.expertId,
+    };
+    const candidates = await prisma.user.findMany({
+      where: {
+        id: {
+          in: [project.client.userId, project.managerId, project.expertId].filter(
+            (id): id is string => id !== null && id !== actor.id,
+          ),
+        },
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+        role: true,
+        status: true,
+        clientProfile: { select: { id: true } },
+        expertProfile: { select: { ndaSignedAt: true } },
+      },
+    });
+    const recipients = candidates
+      .filter((user) =>
+        can(
+          {
+            id: user.id,
+            role: user.role,
+            status: user.status,
+            clientProfileId: user.clientProfile?.id ?? null,
+            expertNdaSignedAt: user.expertProfile?.ndaSignedAt ?? null,
+          },
+          permission,
+          ref,
+        ),
+      )
+      .map((user) => user.id);
     for (const userId of recipients) {
       await enqueue(prisma, {
         userId,
@@ -211,7 +263,17 @@ export async function readVersion(actor: Actor, versionId: string, ip?: string |
   });
   if (version === null) return null;
   if (version.purgedAt !== null) return null;
-  ensure(actor, 'MATERIAL_VIEW', version.material.project);
+  // Удалённый материал в перечнях не виден никому, кроме руководителя, —
+  // и скачиваться по старой ссылке не должен (решение Р-237).
+  if (version.material.deletedAt !== null && actor.role !== 'HEAD') return null;
+  // Договор, счёт и акт — финансовый контур: их видит тот, кому открыт
+  // договор. Прежде выдача проверяла только право на материалы, и эксперт
+  // работы скачивал акт по номеру версии (решение Р-237).
+  ensure(
+    actor,
+    version.material.kind === 'STAGE_MATERIAL' ? 'MATERIAL_VIEW' : 'CONTRACT_VIEW',
+    version.material.project,
+  );
 
   await prisma.fileAccessLog.create({
     data: { versionId, userId: actor.id, action: 'DOWNLOAD', ip: ip ?? null },

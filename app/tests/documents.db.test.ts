@@ -346,4 +346,120 @@ describe('документы, материалы и шаблоны', { skip: !en
       /целое число/u,
     );
   });
+
+  describe('кто видит файл и узнаёт о нём (решение Р-237)', async () => {
+    const { readVersion } = await import('../src/lib/cabinet/materials.ts');
+    const { setStorage, LocalStorage } = await import('../src/lib/cabinet/storage.ts');
+    let expertId = '';
+
+    before(async () => {
+      const expert = await prisma.user.create({
+        data: {
+          email: `doc-expert-${stamp}@example.org`,
+          fullName: 'Эксперт',
+          role: 'EXPERT',
+          // Почта включена у обоих: иначе отсутствие строки в очереди
+          // ничего бы не доказывало.
+          notifyEmail: true,
+          expertProfile: { create: { ndaSignedAt: new Date() } },
+        },
+      });
+      expertId = expert.id;
+      await prisma.project.update({ where: { id: ids.project }, data: { expertId } });
+      await prisma.user.update({ where: { id: ids.clientUser }, data: { notifyEmail: true } });
+    });
+
+    after(async () => {
+      await prisma.project.update({ where: { id: ids.project }, data: { expertId: null } });
+      await prisma.notificationOutbox.deleteMany({ where: { userId: expertId } });
+      await prisma.user.delete({ where: { id: expertId } });
+    });
+
+    const expert = (nda: Date | null = new Date()) => actor(expertId, 'EXPERT', { expertNdaSignedAt: nda });
+    const head = () => actor(ids.head, 'HEAD');
+    const noticesFor = (versionId: string, userId: string) =>
+      prisma.notificationOutbox.count({
+        where: { dedupKey: { startsWith: `version:${versionId}:uploaded:${userId}:` } },
+      });
+
+    it('счёт эксперту не виден и о нём ему не пишут', async () => {
+      const invoice = await uploadVersion(head(), {
+        projectId: ids.project,
+        kind: 'INVOICE',
+        trancheId: ids.tranche,
+        title: 'Счёт № 7',
+        originalName: 'invoice.pdf',
+        contentType: 'application/pdf',
+        body: Buffer.from('счёт', 'utf8'),
+      });
+      await assert.rejects(readVersion(expert(), invoice.id), AccessDenied, 'эксперт скачал счёт');
+      assert.equal(await noticesFor(invoice.id, expertId), 0, 'эксперту ушло письмо о счёте');
+      assert.equal(await noticesFor(invoice.id, ids.clientUser), 1, 'клиенту о счёте не сообщили');
+    });
+
+    it('эксперт без соглашения о неразглашении о материалах не узнаёт', async () => {
+      await prisma.expertProfile.update({ where: { userId: expertId }, data: { ndaSignedAt: null } });
+      try {
+        const draft = await uploadVersion(head(), {
+          projectId: ids.project,
+          title: 'Глава для эксперта',
+          originalName: 'chapter.docx',
+          contentType: 'application/octet-stream',
+          body: Buffer.from('глава', 'utf8'),
+        });
+        assert.equal(await noticesFor(draft.id, expertId), 0);
+        assert.equal(await noticesFor(draft.id, ids.clientUser), 1);
+      } finally {
+        await prisma.expertProfile.update({ where: { userId: expertId }, data: { ndaSignedAt: new Date() } });
+      }
+    });
+
+    it('удалённый материал по старой ссылке отдаётся только руководителю', async () => {
+      const version = await uploadVersion(head(), {
+        projectId: ids.project,
+        title: 'Удалится',
+        originalName: 'gone.txt',
+        contentType: 'text/plain',
+        body: Buffer.from('удалится', 'utf8'),
+      });
+      await prisma.material.update({
+        where: { id: version.materialId },
+        data: { deletedAt: new Date() },
+      });
+      assert.equal(
+        await readVersion(actor(ids.clientUser, 'CLIENT', { clientProfileId: ids.client }), version.id),
+        null,
+      );
+      assert.ok((await readVersion(head(), version.id)) !== null);
+    });
+
+    it('отказ хранилища не оставляет версии без файла', async () => {
+      const inner = new LocalStorage(process.env.CABINET_STORAGE_DIR!);
+      setStorage({
+        put: () => Promise.reject(new Error('диск')),
+        get: (key) => inner.get(key),
+        remove: (key) => inner.remove(key),
+        signedUrl: () => inner.signedUrl(),
+      });
+      try {
+        await assert.rejects(
+          uploadVersion(head(), {
+            projectId: ids.project,
+            title: `Не ляжет ${stamp}`,
+            originalName: 'broken.pdf',
+            contentType: 'application/pdf',
+            body: Buffer.from('не ляжет', 'utf8'),
+          }),
+          /диск/u,
+        );
+      } finally {
+        setStorage(null);
+      }
+      assert.equal(
+        await prisma.material.count({ where: { projectId: ids.project, title: `Не ляжет ${stamp}` } }),
+        0,
+        'материал без файла остался в работе',
+      );
+    });
+  });
 });
