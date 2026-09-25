@@ -23,7 +23,11 @@
  *   свободные тексты работы: названия материалов и этапов, причина
  *     остановки, замечания к версиям и пометки модератора;
  *   содержимое событий работы и тексты поставленных уведомлений;
- *   строки книги заказов, из которых заведены его работы.
+ *   строки книги заказов, из которых заведены его работы;
+ *   карточки, сведённые в эту (другие написания того же ФИО), — их
+ *     контакты тоже ведут к его заявкам;
+ *   описания работы и этапов, причины смены состояния этапа и названия,
+ *     записанные в журнал при правке работы и этапа (решение Р-234).
  *
  * Что сохраняется:
  *   код проекта, суммы договора и траншей, даты, состояния;
@@ -38,6 +42,21 @@ import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { prisma } from '../db.ts';
 import { storage } from './storage.ts';
+
+/**
+ * У клиента есть действующие работы. Затирать данные, пока по работе идёт
+ * переписка и загружаются версии, значит получить новые персональные
+ * данные в уже «обезличенной» работе без всякого следа (решение Р-234).
+ */
+export class ActiveWorkError extends Error {
+  readonly codes: readonly string[];
+
+  constructor(codes: readonly string[]) {
+    super(`Действующие работы: ${codes.join(', ')}. Завершите или отмените их.`);
+    this.name = 'ActiveWorkError';
+    this.codes = codes;
+  }
+}
 
 /** Маркер вместо затёртого значения: пустая строка читалась бы как потеря. */
 const ERASED = '[удалено по требованию субъекта]';
@@ -117,19 +136,49 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
       email: true,
       phone: true,
       user: { select: { email: true } },
-      projects: { select: { id: true } },
+      projects: { select: { id: true, code: true, status: true } },
     },
   });
   if (client === null) throw new Error('Карточка клиента не найдена');
 
-  const projectIds = client.projects.map((project) => project.id);
+  // Карточки, сведённые в эту при переносе книги: другое написание того же
+  // ФИО со своими телефоном и почтой. Прежде они переживали затирание, а
+  // выбрать их отдельно было нельзя — экран показывает только основные
+  // (решение Р-234). Сведение бывает цепочкой, поэтому обход идёт вглубь.
+  const cards = [{ id: client.id, email: client.email, phone: client.phone }];
+  for (let frontier = [client.id]; frontier.length > 0; ) {
+    const merged = await prisma.clientProfile.findMany({
+      where: { mergedIntoId: { in: frontier } },
+      select: { id: true, email: true, phone: true },
+    });
+    const fresh = merged.filter((card) => !cards.some((known) => known.id === card.id));
+    cards.push(...fresh);
+    frontier = fresh.map((card) => card.id);
+  }
+  const cardIds = cards.map((card) => card.id);
+
+  const mergedProjects = await prisma.project.findMany({
+    where: { clientId: { in: cardIds.filter((id) => id !== client.id) } },
+    select: { id: true, code: true, status: true },
+  });
+  const allProjects = [...client.projects, ...mergedProjects];
+
+  const active = allProjects.filter(
+    (project) => project.status === 'ACTIVE' || project.status === 'PAUSED',
+  );
+  if (active.length > 0) throw new ActiveWorkError(active.map((project) => project.code));
+
+  const projectIds = allProjects.map((project) => project.id);
 
   /**
    * Адреса и телефоны, по которым это лицо оставляло след. Учётной записи
    * может не быть вовсе — историческим клиентам вход не открывается,
    * — поэтому перечень собирается из всех известных значений.
    */
-  const contacts = [client.email, client.phone, client.user?.email ?? null]
+  const contacts = [
+    ...cards.flatMap((card) => [card.email, card.phone]),
+    client.user?.email ?? null,
+  ]
     .filter((value): value is string => value !== null && value.trim().length > 0)
     .map((value) => value.trim());
   const emails = contacts
@@ -176,18 +225,24 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
 
   // Вложения заявок: у них своё хранилище объектов, и без этой выборки
   // файл, приложенный к обращению, пережил бы затирание (решение Р-191).
+  //
+  // Выбираются все вложения его заявок, а не только лежащие в хранилище:
+  // перенесённые в материалы при одобрении помечены изъятыми, и прежде
+  // имя файла и его свёртка на них оставались (решение Р-234). Объект
+  // удаляется только у тех, что ещё лежат при заявке.
   const leadFiles =
     leadIds.length === 0
       ? []
       : await prisma.leadAttachment.findMany({
-          where: { leadId: { in: leadIds }, purgedAt: null },
-          select: { id: true, storageKey: true },
+          where: { leadId: { in: leadIds } },
+          select: { id: true, storageKey: true, purgedAt: true },
         });
+  const storedLeadFiles = leadFiles.filter((file) => file.purgedAt === null);
 
   let objectsPurged = 0;
   let objectsFailed = 0;
   if (request.scope === 'PERSONAL_DATA_AND_FILES') {
-    for (const object of [...versions, ...leadFiles]) {
+    for (const object of [...versions, ...storedLeadFiles]) {
       try {
         await storage().remove(object.storageKey);
         objectsPurged += 1;
@@ -203,25 +258,36 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
   const executedAt = new Date();
 
   const result = await prisma.$transaction(async (tx) => {
-    await tx.clientProfile.update({
-      where: { id: client.id },
-      data: {
-        fullName: ERASED,
-        normalizedName: `erased-${client.id}`,
-        phone: null,
-        email: null,
-        university: null,
-        speciality: null,
-        notes: null,
-        erasedAt: executedAt,
-      },
+    // Требование захватывается условием на исполнение: второе нажатие
+    // ждёт первого и находит требование исполненным. Прежде проверка
+    // стояла вне транзакции, и двойное нажатие исполняло всё дважды.
+    const claimed = await tx.erasureRequest.updateMany({
+      where: { id: request.id, executedAt: null },
+      data: { executedAt },
     });
+    if (claimed.count !== 1) throw new Error('Требование уже исполнено');
+
+    for (const card of cards) {
+      await tx.clientProfile.update({
+        where: { id: card.id },
+        data: {
+          fullName: ERASED,
+          normalizedName: `erased-${card.id}`,
+          phone: null,
+          email: null,
+          university: null,
+          speciality: null,
+          notes: null,
+          erasedAt: executedAt,
+        },
+      });
+    }
 
     // Тема проекта пересказывает работу и косвенно опознаёт автора;
     // код и суммы остаются.
     await tx.project.updateMany({
       where: { id: { in: projectIds } },
-      data: { topic: null, title: ERASED },
+      data: { topic: null, title: ERASED, summary: null },
     });
 
     const messages = await tx.message.updateMany({
@@ -238,7 +304,23 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     });
     const stages = await tx.stage.updateMany({
       where: { projectId: { in: projectIds } },
-      data: { title: ERASED, blockedReason: null },
+      data: { title: ERASED, blockedReason: null, summary: null },
+    });
+    // Причина смены состояния этапа — тот же текст, что причина остановки,
+    // только в истории этапа.
+    const reasons = await tx.stageStateChange.updateMany({
+      where: { stage: { projectId: { in: projectIds } }, reason: { not: null } },
+      data: { reason: ERASED },
+    });
+    // Журнал действий хранит идентификаторы, но правка работы и этапа
+    // писала в него названия — прежнее и новое. Содержимое этих записей
+    // заменяется отметкой; сами записи остаются.
+    const journal = await tx.auditEvent.updateMany({
+      where: {
+        projectId: { in: projectIds },
+        action: { in: ['PROJECT_EDITED', 'STAGE_EDITED', 'STAGE_CREATED'] },
+      },
+      data: { payload: { erased: true } },
     });
     const comments = await tx.versionComment.updateMany({
       where: { version: { material: { projectId: { in: projectIds } } } },
@@ -264,6 +346,10 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
             : { projectId: { in: projectIds } },
           client.userId === null ? { id: '—нет такой строки—' } : { userId: client.userId },
           leadIds.length === 0 ? { id: '—нет такой строки—' } : { leadId: { in: leadIds } },
+          // Уведомления менеджерам о новой заявке из кабинета адресованы
+          // менеджеру, а не заявке, и называют автора и тему; заявку они
+          // помнят только в ключе от повторов (решение Р-234).
+          ...leadIds.map((leadId) => ({ dedupKey: { startsWith: `lead:${leadId}:` } })),
         ],
       },
       data: { subject: ERASED, body: ERASED },
@@ -297,10 +383,24 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
 
     // Вложения заявок: строка остаётся ради связности, имя файла и
     // свёртка затираются, объект уже убран из хранилища выше.
-    if (leadFiles.length > 0) {
+    //
+    // Вложения при заявке идут по тому же правилу, что версии материалов:
+    // при затирании без файлов объект и его имя остаются, и строка не
+    // помечается изъятой — прежде помечалась, и объект оставался в
+    // хранилище недостижимым навсегда (решение Р-234). Перенесённые в
+    // материалы вложения затираются всегда: их объект уже живёт версией.
+    const movedFiles = leadFiles.filter((file) => file.purgedAt !== null);
+    const erasedFiles = request.scope === 'PERSONAL_DATA_AND_FILES' ? leadFiles : movedFiles;
+    if (erasedFiles.length > 0) {
       await tx.leadAttachment.updateMany({
-        where: { id: { in: leadFiles.map((file) => file.id) } },
-        data: { originalName: ERASED, sha256: ERASED, purgedAt: executedAt },
+        where: { id: { in: erasedFiles.map((file) => file.id) } },
+        data: { originalName: ERASED, sha256: ERASED },
+      });
+    }
+    if (request.scope === 'PERSONAL_DATA_AND_FILES' && storedLeadFiles.length > 0) {
+      await tx.leadAttachment.updateMany({
+        where: { id: { in: storedLeadFiles.map((file) => file.id) } },
+        data: { purgedAt: executedAt },
       });
     }
 
@@ -385,8 +485,8 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
           userErased,
           leads: leads.count,
           loginAttempts: loginAttempts.count,
-          texts: materials.count + stages.count + comments.count,
-          events: events.count,
+          texts: materials.count + stages.count + comments.count + reasons.count,
+          events: events.count + journal.count,
           notifications: notifications.count,
           importRows: importRows.count,
           contracts: contracts.length,
@@ -403,8 +503,8 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
       userErased,
       leads: leads.count,
       loginAttempts: loginAttempts.count,
-      texts: materials.count + stages.count + comments.count,
-      events: events.count,
+      texts: materials.count + stages.count + comments.count + reasons.count,
+      events: events.count + journal.count,
       notifications: notifications.count,
       importRows: importRows.count,
     };

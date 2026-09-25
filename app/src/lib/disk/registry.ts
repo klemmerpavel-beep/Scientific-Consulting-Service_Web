@@ -197,10 +197,14 @@ export interface MaterialFile {
  * им делать нечего. Именно поэтому зеркало умеет удалять — изъятие материала
  * на сервере должно убирать его и с Диска, иначе обезличивание субъекта
  * (ст. 21 152-ФЗ) оставляло бы копию, о которой никто не помнит.
+ *
+ * Изъятые версии исключены тоже: объекта у них больше нет, и зеркало,
+ * пытавшееся выложить их под новым именем, каждый час кончалось ошибкой
+ * (решение Р-234).
  */
 export async function materialFiles(): Promise<MaterialFile[]> {
   const versions = await prisma.materialVersion.findMany({
-    where: { material: { deletedAt: null } },
+    where: { material: { deletedAt: null }, purgedAt: null },
     include: {
       material: {
         select: { title: true, project: { select: { code: true } } },

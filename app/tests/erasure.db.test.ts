@@ -211,7 +211,66 @@ describe('удаление данных субъекта', { skip: !enabled }, a
       },
     });
 
+    // След, который оставался и после Р-185 (решение Р-234): описания
+    // работы и этапа, причина смены состояния, название в журнале,
+    // уведомление менеджеру о заявке и карточка, сведённая в основную.
+    await prisma.project.update({
+      where: { id: project.id },
+      data: { summary: 'Кандидатская Смирнова О. П. о кубитах' },
+    });
+    await prisma.stage.update({
+      where: { id: stage.id },
+      data: { summary: 'Смирнов присылает главу 1' },
+    });
+    await prisma.stageStateChange.create({
+      data: { stageId: stage.id, toState: 'AWAITING_CLIENT', reason: 'Смирнов уехал в МГУ' },
+    });
+    const journal = await prisma.auditEvent.create({
+      data: {
+        actorId: manager.id,
+        action: 'PROJECT_EDITED',
+        objectType: 'Project',
+        objectId: project.id,
+        projectId: project.id,
+        payload: { title: 'ВКР Смирнова О. П.' },
+      },
+    });
+    const merged = await prisma.clientProfile.create({
+      data: {
+        fullName: 'Смирнов О.П.',
+        normalizedName: `смирнов о п ${stamp}`,
+        phone: `+7 911 ${String(stamp).slice(-7)}`,
+        email: `era-merged-${stamp}@example.org`,
+        mergedIntoId: client.id,
+      },
+    });
+    const mergedLead = await prisma.lead.create({
+      data: {
+        source: 'landing',
+        form: 'hero',
+        name: 'Смирнов О. П.',
+        contactKind: 'phone',
+        contact: `+7 911 ${String(stamp).slice(-7)}`,
+        consentGiven: true,
+        consentVersion: 'v1',
+      },
+    });
+    const requestNotice = await prisma.notificationOutbox.create({
+      data: {
+        userId: manager.id,
+        channel: 'EMAIL',
+        eventKind: 'REQUEST_CREATED',
+        subject: 'Новая заявка из кабинета',
+        body: 'Смирнов Олег Петрович: спиновые кубиты',
+        dedupKey: `lead:${lead.id}:created:${manager.id}`,
+      },
+    });
+
     Object.assign(ids, {
+      journal: journal.id,
+      merged: merged.id,
+      mergedLead: mergedLead.id,
+      requestNotice: requestNotice.id,
       stage: stage.id,
       comment: comment.id,
       event: event.id,
@@ -233,7 +292,10 @@ describe('удаление данных субъекта', { skip: !enabled }, a
   after(async () => {
     await prisma.importRow.deleteMany({ where: { batchId: ids.batch } });
     await prisma.importBatch.deleteMany({ where: { id: ids.batch } });
-    await prisma.notificationOutbox.deleteMany({ where: { id: ids.outbox } });
+    await prisma.notificationOutbox.deleteMany({ where: { id: { in: [ids.outbox!, ids.requestNotice!] } } });
+    await prisma.lead.deleteMany({ where: { id: ids.mergedLead } });
+    await prisma.auditEvent.deleteMany({ where: { id: ids.journal } });
+    await prisma.stageStateChange.deleteMany({ where: { stage: { projectId: ids.project } } });
     await prisma.loginAttempt.deleteMany({
       where: { emailNormalized: `era-client-${stamp}@example.org` },
     });
@@ -252,6 +314,7 @@ describe('удаление данных субъекта', { skip: !enabled }, a
       where: { actorId: { in: [ids.head, ids.manager, ids.clientUser] } },
     });
     await prisma.project.deleteMany({ where: { id: ids.project } });
+    await prisma.clientProfile.deleteMany({ where: { id: ids.merged } });
     await prisma.clientProfile.deleteMany({ where: { id: ids.client } });
     await prisma.session.deleteMany({ where: { userId: ids.clientUser } });
     await prisma.loginToken.deleteMany({ where: { userId: ids.clientUser } });
@@ -269,6 +332,18 @@ describe('удаление данных субъекта', { skip: !enabled }, a
         `роль ${role} приняла требование об удалении`,
       );
     }
+  });
+
+  it('пока работа действует, требование не исполняется', async () => {
+    // Иначе по «обезличенной» работе продолжали бы идти переписка и
+    // версии — с новыми персональными данными (решение Р-234).
+    const { ActiveWorkError } = await import('../src/lib/cabinet/erasure.ts');
+    const request = await requestErasure(actor(ids.head, 'HEAD'), ids.client);
+    await assert.rejects(executeErasure(actor(ids.head, 'HEAD'), request.id), ActiveWorkError);
+    const client = await prisma.clientProfile.findUnique({ where: { id: ids.client } });
+    assert.equal(client?.erasedAt, null, 'отказ затронул данные');
+    await prisma.erasureRequest.delete({ where: { id: request.id } });
+    await prisma.project.update({ where: { id: ids.project }, data: { status: 'COMPLETED' } });
   });
 
   it('требование исполняется целиком и отчёт сходится', async () => {
@@ -353,6 +428,25 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     assert.equal(row?.signature, null);
   });
 
+  it('описания, причины, журнал, уведомления о заявке и сведённые карточки затёрты', async () => {
+    const project = await prisma.project.findUnique({ where: { id: ids.project } });
+    assert.equal(project?.summary, null);
+    const stage = await prisma.stage.findUnique({ where: { id: ids.stage } });
+    assert.equal(stage?.summary, null);
+    const change = await prisma.stageStateChange.findFirst({ where: { stageId: ids.stage } });
+    assert.doesNotMatch(change?.reason ?? '', /Смирнов/u);
+    const journal = await prisma.auditEvent.findUnique({ where: { id: ids.journal } });
+    assert.deepEqual(journal?.payload, { erased: true }, 'название работы осталось в журнале');
+    const notice = await prisma.notificationOutbox.findUnique({ where: { id: ids.requestNotice } });
+    assert.doesNotMatch(notice?.body ?? '', /Смирнов/u, 'уведомление менеджеру называет автора');
+    const merged = await prisma.clientProfile.findUnique({ where: { id: ids.merged } });
+    assert.equal(merged?.phone, null, 'сведённая карточка сохранила телефон');
+    assert.equal(merged?.email, null);
+    assert.ok(merged?.erasedAt instanceof Date);
+    const mergedLead = await prisma.lead.findUnique({ where: { id: ids.mergedLead } });
+    assert.equal(mergedLead?.name, null, 'заявка по телефону сведённой карточки не затёрта');
+  });
+
   it('объект изъят из хранилища, строка версии осталась', async () => {
     await assert.rejects(storage().get(storageKey), 'объект остался в хранилище');
 
@@ -363,6 +457,14 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     assert.ok(version?.purgedAt instanceof Date);
     // Размер и номер версии остаются: они не персональные данные, а учёт.
     assert.equal(version?.number, 1);
+  });
+
+  it('зеркало на Диске не ищет изъятую версию', async () => {
+    // Прежде изъятая версия просилась в зеркало под новым именем, объекта
+    // не было, и каждый часовой прогон кончался ошибкой (решение Р-234).
+    const { materialFiles } = await import('../src/lib/disk/registry.ts');
+    const files = await materialFiles();
+    assert.equal(files.some((file) => file.storageKey === storageKey), false);
   });
 
   it('изъятие отражено в журнале доступа к файлам', async () => {

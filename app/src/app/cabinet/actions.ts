@@ -50,7 +50,7 @@ import {
   saveRules,
   type ContactKind,
 } from '../../lib/cabinet/channels';
-import { executeErasure, requestErasure } from '../../lib/cabinet/erasure';
+import { ActiveWorkError, executeErasure, requestErasure } from '../../lib/cabinet/erasure';
 import { createCabinetRequest, REQUEST_FILES_MAX } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
@@ -609,7 +609,16 @@ export async function openErasureRequest(form: FormData): Promise<void> {
 
 export async function executeErasureRequest(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await executeErasure(actor, String(form.get('requestId') ?? ''));
+  try {
+    await executeErasure(actor, String(form.get('requestId') ?? ''));
+  } catch (error) {
+    // Отказ из-за действующих работ — не сбой, а условие: экран называет
+    // коды работ, которые надо закрыть (решение Р-234).
+    if (error instanceof ActiveWorkError) {
+      redirect(`/cabinet/manage/erasure?active=${encodeURIComponent(error.codes.join(','))}`);
+    }
+    throw error;
+  }
   redirect('/cabinet/manage/erasure?done=1');
 }
 
