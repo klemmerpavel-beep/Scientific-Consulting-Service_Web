@@ -230,8 +230,8 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
  *
  * Перенос идёт после транзакции создания работы: он ходит в хранилище, а
  * держать транзакцию открытой на время записи байтов нельзя. Отказ
- * хранилища не отменяет одобрения — строка вложения остаётся при заявке и
- * переносится следующей попыткой.
+ * хранилища не отменяет одобрения — файл остаётся при заявке и
+ * открывается с её экрана.
  */
 async function moveLeadAttachments(actor: Actor, leadId: string, projectId: string) {
   const files = await prisma.leadAttachment.findMany({
@@ -240,35 +240,63 @@ async function moveLeadAttachments(actor: Actor, leadId: string, projectId: stri
   });
   if (files.length === 0) return;
 
+  // Каждый файл переносится отдельно и в таком порядке: строки материала
+  // и версии, байты, отметка на вложении, удаление исходного объекта.
+  // Прежде материал заводился до записи байтов, а исходный объект
+  // удалялся до отметки: отказ хранилища оставлял пустой материал в
+  // работе, а обрыв между удалением и отметкой — вложение, ведущее на
+  // удалённый объект (решение Р-237). Теперь отказ на файле откатывает
+  // его строки, файл остаётся при заявке и открывается с экрана заявки;
+  // остальные файлы переносятся.
   const store = storage();
+  let moved = 0;
   for (const file of files) {
-    const material = await prisma.material.create({
-      data: {
-        projectId,
-        title: file.originalName.slice(0, 300),
-        createdById: actor.id,
-      },
-    });
-    const key = materialKey(projectId, material.id, 1, file.originalName);
-    await store.put(key, await store.get(file.storageKey), file.contentType);
-    await prisma.materialVersion.create({
-      data: {
-        materialId: material.id,
-        number: 1,
-        storageKey: key,
-        originalName: file.originalName,
-        sizeBytes: file.sizeBytes,
-        sha256: file.sha256,
-        contentType: file.contentType,
-        uploadedById: file.uploadedById ?? actor.id,
-      },
-    });
-    // Исходный объект убирается: две копии одного файла означали бы два
-    // места, откуда его придётся вычищать по требованию субъекта.
-    await store.remove(file.storageKey);
-    await prisma.leadAttachment.update({
-      where: { id: file.id },
-      data: { materialId: material.id, purgedAt: new Date() },
+    let created: { materialId: string; versionId: string; key: string } | null = null;
+    try {
+      const body = await store.get(file.storageKey);
+      created = await prisma.$transaction(async (tx) => {
+        const material = await tx.material.create({
+          data: { projectId, title: file.originalName.slice(0, 300), createdById: actor.id },
+        });
+        const key = materialKey(projectId, material.id, 1, file.originalName);
+        const version = await tx.materialVersion.create({
+          data: {
+            materialId: material.id,
+            number: 1,
+            storageKey: key,
+            originalName: file.originalName,
+            sizeBytes: file.sizeBytes,
+            sha256: file.sha256,
+            contentType: file.contentType,
+            uploadedById: file.uploadedById ?? actor.id,
+          },
+        });
+        return { materialId: material.id, versionId: version.id, key };
+      });
+      await store.put(created.key, body, file.contentType);
+      await prisma.leadAttachment.update({
+        where: { id: file.id },
+        data: { materialId: created.materialId, purgedAt: new Date() },
+      });
+      moved += 1;
+    } catch (error) {
+      console.error('Вложение заявки не перенесено', file.id, error);
+      if (created !== null) {
+        const { materialId, versionId } = created;
+        await prisma
+          .$transaction([
+            prisma.materialVersion.delete({ where: { id: versionId } }),
+            prisma.material.delete({ where: { id: materialId } }),
+          ])
+          .catch(() => undefined);
+      }
+      continue;
+    }
+    // Исходный объект убирается последним: две копии одного файла означали
+    // бы два места, откуда его придётся вычищать по требованию субъекта;
+    // отказ здесь оставляет лишнюю копию, но не ломает ни заявку, ни работу.
+    await store.remove(file.storageKey).catch((error: unknown) => {
+      console.error('Исходный объект вложения не удалён', file.id, error);
     });
   }
 
@@ -277,7 +305,7 @@ async function moveLeadAttachments(actor: Actor, leadId: string, projectId: stri
     objectType: 'Lead',
     objectId: leadId,
     projectId,
-    payload: { count: files.length },
+    payload: { count: moved, failed: files.length - moved },
   });
 }
 

@@ -246,6 +246,26 @@ describe('вложения заявки', { skip: !enabled }, async () => {
         saved.map((file) => file.originalName),
         ['второй.txt'],
       );
+
+      // Одобрение при отказе хранилища: работа заводится, файл остаётся
+      // при заявке, пустого материала в работе нет (решение Р-237).
+      setStorage({
+        put: () => Promise.reject(new Error('диск')),
+        get: (key) => inner.get(key),
+        remove: (key) => inner.remove(key),
+        signedUrl: () => inner.signedUrl(),
+      });
+      const project = await projects.approveLead(staff(ids.manager!, 'MANAGER'), {
+        leadId: result.id,
+        serviceTypeId: ids.serviceType!,
+        managerId: ids.manager!,
+        title: 'Работа при отказе хранилища',
+      });
+      assert.equal(await prisma.material.count({ where: { projectId: project.id } }), 0);
+      const kept = await prisma.leadAttachment.findFirstOrThrow({ where: { leadId: result.id } });
+      assert.equal(kept.materialId, null);
+      assert.equal(kept.purgedAt, null, 'файл помечен перенесённым, хотя не перенесён');
+      assert.deepEqual(await inner.get(kept.storageKey), Buffer.from('ляжет'));
     } finally {
       setStorage(inner);
     }
