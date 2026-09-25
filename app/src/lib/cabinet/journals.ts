@@ -24,10 +24,24 @@ export interface JournalFilter {
   /** Отбор по работе: её название, а не код — код с экранов убран (Р-189). */
   readonly projectTitle?: string | null;
   readonly limit?: number;
+  /** Выборка для выгрузки: своя, большая граница вместо экранной. */
+  readonly forExport?: boolean;
 }
 
 /** Верхняя граница выборки: журнал читают, а не выгружают целиком в разметку. */
 const MAX_ROWS = 500;
+
+/**
+ * Граница выгрузки. Прежде выгрузка просила 5000 строк и молча получала
+ * экранные 500: квартал для проверяющего обрезался без пометки (решение
+ * Р-235). Выборка берёт на строку больше границы — по ней выгрузка знает,
+ * что обрезана, и говорит об этом в самом файле.
+ */
+export const EXPORT_MAX_ROWS = 20_000;
+
+function cap(filter: JournalFilter): number {
+  return Math.min(filter.limit ?? 200, filter.forExport === true ? EXPORT_MAX_ROWS + 1 : MAX_ROWS);
+}
 
 function period(filter: JournalFilter): Record<string, Date> | undefined {
   const range: Record<string, Date> = {};
@@ -61,7 +75,7 @@ export async function auditEvents(actor: Actor, filter: JournalFilter = {}) {
       projectId,
     },
     orderBy: { occurredAt: 'desc' },
-    take: Math.min(filter.limit ?? 200, MAX_ROWS),
+    take: cap(filter),
     select: {
       id: true,
       occurredAt: true,
@@ -100,7 +114,7 @@ export async function fileAccessEvents(actor: Actor, filter: JournalFilter = {})
             },
     },
     orderBy: { occurredAt: 'desc' },
-    take: Math.min(filter.limit ?? 200, MAX_ROWS),
+    take: cap(filter),
     select: {
       id: true,
       occurredAt: true,

@@ -4,6 +4,7 @@ import { AccessDenied } from '../../../../../lib/cabinet/access';
 import { record } from '../../../../../lib/cabinet/audit';
 import {
   auditEvents,
+  EXPORT_MAX_ROWS,
   fileAccessEvents,
   formatMoment,
   toCsv,
@@ -40,13 +41,17 @@ export async function GET(request: Request): Promise<Response> {
     actorId: value('actorId'),
     action: value('action'),
     projectTitle: value('projectTitle'),
-    limit: 5000,
+    limit: EXPORT_MAX_ROWS + 1,
+    forExport: true,
   };
+  let truncated = false;
 
   let rows: string[][];
   try {
     if (files) {
-      const events = await fileAccessEvents(actor, filter);
+      const found = await fileAccessEvents(actor, filter);
+      truncated = found.length > EXPORT_MAX_ROWS;
+      const events = found.slice(0, EXPORT_MAX_ROWS);
       rows = [
         ['Когда', 'Кто', 'Роль', 'Действие', 'Работа', 'Материал', 'Версия', 'Файл', 'Адрес'],
         ...events.map((event) => [
@@ -62,7 +67,9 @@ export async function GET(request: Request): Promise<Response> {
         ]),
       ];
     } else {
-      const events = await auditEvents(actor, filter);
+      const found = await auditEvents(actor, filter);
+      truncated = found.length > EXPORT_MAX_ROWS;
+      const events = found.slice(0, EXPORT_MAX_ROWS);
       rows = [
         ['Когда', 'Кто', 'Роль', 'Адрес', 'Действие', 'Тип объекта', 'Объект', 'Проект', 'Подробности'],
         ...events.map((event) => [
@@ -83,10 +90,23 @@ export async function GET(request: Request): Promise<Response> {
     throw error;
   }
 
+  const exported = rows.length - 1;
+  if (truncated) {
+    // Обрезка видна в самом файле: иначе выгрузка за период выглядела бы
+    // полной, а старые записи просто отсутствовали бы.
+    rows.push([
+      `Выгрузка обрезана: показаны последние ${EXPORT_MAX_ROWS} записей. Сузьте период, чтобы получить остальные.`,
+    ]);
+  }
+
   await record(actor, {
     action: 'JOURNAL_EXPORTED',
     objectType: files ? 'FileAccessLog' : 'AuditEvent',
-    payload: { rows: rows.length - 1, filter: { ...filter, limit: undefined } },
+    payload: {
+      rows: exported,
+      truncated,
+      filter: { ...filter, limit: undefined, forExport: undefined },
+    },
     ip: await requestIp(),
   });
 
