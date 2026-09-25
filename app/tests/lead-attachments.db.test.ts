@@ -283,11 +283,19 @@ describe('вложения заявки', { skip: !enabled }, async () => {
       'v1',
     );
 
+    // Действующую работу обезличить нельзя (решение Р-234): работа,
+    // заведённая из первой заявки, закрывается.
+    await prisma.project.updateMany({ where: { clientId: ids.profile }, data: { status: 'COMPLETED' } });
     const request = await erasure.requestErasure(actor, ids.profile!, 'PERSONAL_DATA_AND_FILES');
     await erasure.executeErasure(actor, request.id);
 
     const file = await prisma.leadAttachment.findFirstOrThrow({ where: { leadId: lead.id } });
     assert.ok(file.purgedAt !== null, 'вложение заявки пережило затирание');
     assert.notEqual(file.originalName, 'требования.txt');
+
+    // Вложение первой заявки переехало в материалы при одобрении и было
+    // помечено изъятым; имя файла на нём прежде оставалось (Р-234).
+    const moved = await prisma.leadAttachment.findFirstOrThrow({ where: { leadId: ids.lead } });
+    assert.notEqual(moved.originalName, 'черновик.txt', 'имя перенесённого вложения пережило затирание');
   });
 });

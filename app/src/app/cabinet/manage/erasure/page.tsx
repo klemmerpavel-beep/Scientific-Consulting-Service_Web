@@ -48,7 +48,7 @@ interface Report {
 export default async function ErasureScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ done?: string }>;
+  searchParams: Promise<{ done?: string; active?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
@@ -56,6 +56,10 @@ export default async function ErasureScreen({
   if (!can(actor, 'ERASURE_EXECUTE')) redirect('/cabinet/projects');
 
   const flags = await searchParams;
+  // Коды берутся из адреса: показываются только те, что похожи на код работы.
+  const active = (flags.active ?? '')
+    .split(',')
+    .filter((code) => /^PD-\d{4}-\d{3,}$/u.test(code));
   const [clients, log] = await Promise.all([
     erasableClients(actor),
     listErasureRequests(actor),
@@ -74,6 +78,15 @@ export default async function ErasureScreen({
       {flags.done === undefined ? null : (
         <div style={{ marginBottom: 20 }}>
           <Notice>Требование исполнено. Отчёт записан и показан в перечне ниже.</Notice>
+        </div>
+      )}
+
+      {active.length === 0 ? null : (
+        <div style={{ marginBottom: 20 }}>
+          <Notice tone="error" role="alert">
+            Требование не исполнено: у клиента есть действующие работы — {active.join(', ')}.
+            Завершите или отмените их в карточке работы, затем исполните требование.
+          </Notice>
         </div>
       )}
 
