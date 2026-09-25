@@ -183,6 +183,74 @@ describe('вложения заявки', { skip: !enabled }, async () => {
     assert.equal(second, 1);
   });
 
+  it('слишком большой файл отвергается до заявки: половины обращения не остаётся', async () => {
+    // Прежде проверка размера стояла в цикле после создания заявки, и
+    // второй большой файл оставлял заявку с первым и без уведомления
+    // менеджерам, а повторная отправка давала дубль (решение Р-231).
+    const topic = `Слишком большой ${stamp}`;
+    await assert.rejects(
+      () =>
+        queries.createCabinetRequest(
+          clientActor(),
+          {
+            topic,
+            need: null,
+            deadline: null,
+            message: null,
+            files: [
+              { originalName: 'мал.txt', contentType: 'text/plain', body: Buffer.from('a') },
+              {
+                originalName: 'велик.bin',
+                contentType: 'application/octet-stream',
+                body: Buffer.alloc(queries.REQUEST_FILE_MAX_BYTES + 1),
+              },
+            ],
+            ip: '127.0.0.1',
+          },
+          'v1',
+        ),
+      /МБ/u,
+    );
+    assert.equal(await prisma.lead.count({ where: { topic } }), 0);
+  });
+
+  it('отказ хранилища на одном файле не теряет ни заявку, ни остальные файлы', async () => {
+    const { LocalStorage, setStorage } = await import('../src/lib/cabinet/storage.ts');
+    const inner = new LocalStorage(root);
+    setStorage({
+      put: (key, body) =>
+        body.toString() === 'сломается' ? Promise.reject(new Error('диск')) : inner.put(key, body),
+      get: (key) => inner.get(key),
+      remove: (key) => inner.remove(key),
+      signedUrl: () => inner.signedUrl(),
+    });
+    try {
+      const result = await queries.createCabinetRequest(
+        clientActor(),
+        {
+          topic: `Отказ хранилища ${stamp}`,
+          need: null,
+          deadline: null,
+          message: null,
+          files: [
+            { originalName: 'первый.txt', contentType: 'text/plain', body: Buffer.from('сломается') },
+            { originalName: 'второй.txt', contentType: 'text/plain', body: Buffer.from('ляжет') },
+          ],
+          ip: '127.0.0.1',
+        },
+        'v1',
+      );
+      assert.equal(result.filesLost, 1);
+      const saved = await prisma.leadAttachment.findMany({ where: { leadId: result.id } });
+      assert.deepEqual(
+        saved.map((file) => file.originalName),
+        ['второй.txt'],
+      );
+    } finally {
+      setStorage(inner);
+    }
+  });
+
   it('затирание по требованию субъекта не оставляет вложений', async () => {
     const erasure = await import('../src/lib/cabinet/erasure.ts');
     const head = await prisma.user.create({

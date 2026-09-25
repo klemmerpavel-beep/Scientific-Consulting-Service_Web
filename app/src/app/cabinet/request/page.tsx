@@ -30,7 +30,7 @@ export const dynamic = 'force-dynamic';
 export default async function NewRequestScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ sent?: string }>;
+  searchParams: Promise<{ sent?: string; lost?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
@@ -41,6 +41,9 @@ export default async function NewRequestScreen({
     serviceTypes(actor),
     requestDefaults(actor),
   ]);
+
+  // Число берётся из адреса, поэтому читается как число, а не как текст.
+  const lost = Math.max(0, Number.parseInt(params.lost ?? '0', 10) || 0);
 
   return (
     <Shell actor={actor} current="/cabinet/request">
@@ -104,7 +107,7 @@ export default async function NewRequestScreen({
                 label="Приложить файлы"
                 name="files"
                 multiple
-                hint={`Черновик, требования кафедры, отзыв рецензента — до ${REQUEST_FILES_MAX} файлов по 25 МБ. Файлы видит только куратор; после одобрения они перейдут в материалы работы.`}
+                hint={`Черновик, требования кафедры, отзыв рецензента — до ${REQUEST_FILES_MAX} файлов по 25 МБ. Файлы видят менеджеры, разбирающие заявки; после одобрения они перейдут в материалы работы.`}
               />
 
               {/* Место учёбы и контакт нужны не каждой заявке: у постоянного
@@ -143,6 +146,12 @@ export default async function NewRequestScreen({
               Заявка принята и передана менеджеру. Ответ придёт на вашу почту, а ход работы будет
               виден в разделе «Мои работы».
             </Notice>
+            {lost === 0 ? null : (
+              <Notice tone="error">
+                Не сохранились приложенные файлы: {lost}. Заявка принята без них — пришлите
+                их менеджеру в переписке после одобрения.
+              </Notice>
+            )}
             {/* Следующее действие — кнопкой, а не строчной ссылкой: две
                 ссылки через точку давали цель нажатия вдвое мельче
                 положенных 44 пикселей (решение Р-172). */}

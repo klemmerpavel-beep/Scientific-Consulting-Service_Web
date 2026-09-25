@@ -689,9 +689,21 @@ export async function createCabinetRequest(
   actor: Actor,
   draft: RequestDraft,
   consentVersion: string,
-): Promise<{ id: string; authorName: string }> {
+): Promise<{ id: string; authorName: string; filesLost: number }> {
   ensure(actor, 'REQUEST_CREATE');
   if (draft.topic.length === 0) throw new Error('Тема работы не указана');
+
+  // Размер проверяется до заявки: прежде проверка стояла в цикле после
+  // неё, и слишком большой второй файл оставлял заявку с первым, без
+  // уведомления менеджерам, а повторная отправка давала дубль (Р-231).
+  const files = (draft.files ?? [])
+    .slice(0, REQUEST_FILES_MAX)
+    .filter((file) => file.body.byteLength > 0);
+  if (files.some((file) => file.body.byteLength > REQUEST_FILE_MAX_BYTES)) {
+    throw new Error(
+      `Файл больше допустимых ${Math.round(REQUEST_FILE_MAX_BYTES / 1024 / 1024)} МБ`,
+    );
+  }
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: actor.id },
@@ -724,27 +736,29 @@ export async function createCabinetRequest(
 
   // Вложения кладутся после заявки: ключ объекта строится от её
   // идентификатора, а заявка без файлов остаётся действительной — отказ
-  // хранилища не должен терять обращение (решение Р-191).
-  for (const file of (draft.files ?? []).slice(0, REQUEST_FILES_MAX)) {
-    if (file.body.byteLength === 0) continue;
-    if (file.body.byteLength > REQUEST_FILE_MAX_BYTES) {
-      throw new Error(
-        `Файл больше допустимых ${Math.round(REQUEST_FILE_MAX_BYTES / 1024 / 1024)} МБ`,
-      );
-    }
+  // хранилища не должен терять обращение (решение Р-191). Отказ на одном
+  // файле не прерывает остальные и не отменяет уведомление: сколько файлов
+  // не легло, человек узнаёт на экране (решение Р-231).
+  let filesLost = 0;
+  for (const file of files) {
     const key = leadAttachmentKey(lead.id, file.originalName);
-    await storage().put(key, file.body, file.contentType);
-    await prisma.leadAttachment.create({
-      data: {
-        leadId: lead.id,
-        storageKey: key,
-        originalName: file.originalName.slice(0, 300),
-        sizeBytes: BigInt(file.body.byteLength),
-        sha256: sha256(file.body),
-        contentType: file.contentType.slice(0, 128),
-        uploadedById: actor.id,
-      },
-    });
+    try {
+      await storage().put(key, file.body, file.contentType);
+      await prisma.leadAttachment.create({
+        data: {
+          leadId: lead.id,
+          storageKey: key,
+          originalName: file.originalName.slice(0, 300),
+          sizeBytes: BigInt(file.body.byteLength),
+          sha256: sha256(file.body),
+          contentType: file.contentType.slice(0, 128),
+          uploadedById: actor.id,
+        },
+      });
+    } catch (error) {
+      filesLost += 1;
+      console.error('Вложение заявки не сохранено', lead.id, error);
+    }
   }
 
   // Менеджеры узнают о заявке из очереди, и постановка идёт здесь же:
@@ -766,5 +780,5 @@ export async function createCabinetRequest(
     });
   }
 
-  return { id: lead.id, authorName: user.fullName };
+  return { id: lead.id, authorName: user.fullName, filesLost };
 }
