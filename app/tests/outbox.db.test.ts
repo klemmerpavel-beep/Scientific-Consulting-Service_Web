@@ -146,6 +146,83 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
     assert.equal(done.attempts, 5);
   });
 
+  it('два наложившихся прогона не берут одну строку дважды', async () => {
+    // Прежде порция выбиралась простым чтением, и прогон, наложившийся на
+    // медленный предыдущий, отправлял те же письма ещё раз (решение Р-235).
+    for (let i = 0; i < 6; i += 1) {
+      await prisma.notificationOutbox.create({
+        data: {
+          userId,
+          channel: 'TELEGRAM',
+          eventKind: 'STAGE_AWAITING_CLIENT',
+          subject: 'Этап ждёт ваших материалов',
+          body: 'Проект PD-2026-001.',
+          dedupKey: `t-${stamp}-race-${i}`,
+          scheduledAt: new Date(Date.now() - 1000),
+        },
+      });
+    }
+    const due = await prisma.notificationOutbox.count({
+      where: { state: 'PENDING', scheduledAt: { lte: new Date() } },
+    });
+    const [a, b] = await Promise.all([dispatch(500), dispatch(500)]);
+    assert.equal(a.taken + b.taken, due, 'одна строка досталась обоим прогонам');
+    const rows = await prisma.notificationOutbox.findMany({
+      where: { dedupKey: { startsWith: `t-${stamp}-race-` } },
+    });
+    for (const row of rows) assert.equal(row.attempts, 1);
+  });
+
+  it('о сроке этапа приостановленной работы не напоминается', async () => {
+    const { enqueueDeadlineReminders } = await import('../src/lib/cabinet/outbox.ts');
+    const type = await prisma.serviceType.upsert({
+      where: { code: 'dissertation' },
+      create: { code: 'dissertation', name: 'Диссертация' },
+      update: {},
+    });
+    const client = await prisma.clientProfile.create({
+      data: { userId, fullName: 'Получатель', normalizedName: `outbox-${stamp}` },
+    });
+    const project = await prisma.project.create({
+      data: {
+        code: `PD-OBX-${String(stamp).slice(-6)}`,
+        clientId: client.id,
+        serviceTypeId: type.id,
+        title: 'Работа',
+        managerId,
+        status: 'PAUSED',
+      },
+    });
+    const stage = await prisma.stage.create({
+      data: {
+        projectId: project.id,
+        position: 1,
+        title: 'Глава',
+        state: 'IN_PROGRESS',
+        dueOn: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+    });
+    try {
+      await enqueueDeadlineReminders();
+      const paused = await prisma.notificationOutbox.count({
+        where: { dedupKey: { startsWith: `stage:${stage.id}:` } },
+      });
+      assert.equal(paused, 0, 'приостановленная работа напомнила о сроке');
+
+      await prisma.project.update({ where: { id: project.id }, data: { status: 'ACTIVE' } });
+      await enqueueDeadlineReminders();
+      const active = await prisma.notificationOutbox.count({
+        where: { dedupKey: { startsWith: `stage:${stage.id}:` } },
+      });
+      assert.ok(active >= 1, 'действующая работа о сроке не напомнила');
+    } finally {
+      await prisma.notificationOutbox.deleteMany({ where: { projectId: project.id } });
+      await prisma.stage.delete({ where: { id: stage.id } });
+      await prisma.project.delete({ where: { id: project.id } });
+      await prisma.clientProfile.delete({ where: { id: client.id } });
+    }
+  });
+
   it('сводка очереди считает состояния и показывает отказ', async () => {
     const digest = await outboxDigest(head());
     assert.ok(digest.failed >= 1, 'отказ не попал в счётчик');

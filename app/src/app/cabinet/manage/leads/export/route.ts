@@ -3,17 +3,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { AccessDenied, ensure } from '../../../../../lib/cabinet/access';
 import { record } from '../../../../../lib/cabinet/audit';
 import { leadSourceLabel, leadStatusLabel } from '../../../../../lib/cabinet/lead-labels';
+import { toCsv } from '../../../../../lib/cabinet/csv';
 import { leadList } from '../../../../../lib/cabinet/queries';
 import { currentActor, requestIp } from '../../../../../lib/cabinet/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** Экранирование по RFC 4180: кавычки удваиваются, поле берётся в кавычки. */
-function cell(value: unknown): string {
-  const s = value === null || value === undefined ? '' : String(value);
-  return `"${s.replace(/"/g, '""')}"`;
-}
 
 /**
  * Выгрузка отобранных заявок в таблицу — тем же отбором, что показан на
@@ -63,7 +59,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     'Состояние',
     'Работа заведена',
   ];
-  const lines = [head.map(cell).join(',')];
+  // Строки собираются в общую выгрузку `toCsv`: она ставит апостроф перед
+  // значением, которое табличный редактор исполнил бы как формулу, и
+  // делит поля точкой с запятой, как ждёт русский Excel. Прежде здесь
+  // была своя выгрузка без того и другого, а имя и сообщение приходят
+  // с открытой формы сайта (решение Р-235).
+  const lines: string[][] = [head];
 
   let page = 1;
   let total = 0;
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           lead.marketingOptIn ? 'да' : 'нет',
           leadStatusLabel(lead.status),
           lead.projectId === null ? 'нет' : 'да',
-        ].map(cell).join(','),
+        ],
       );
     }
     if (page >= chunk.pages) break;
@@ -102,9 +103,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     ip: await requestIp(),
   });
 
-  // Метка BOM и перевод строк CRLF: без них таблицы на Windows открывают
-  // кириллицу вопросительными знаками, а строки — одной длинной ячейкой.
-  const csv = `﻿${lines.join('\r\n')}\r\n`;
+  const csv = toCsv(lines);
   const stamp = new Date().toISOString().slice(0, 10);
 
   return new NextResponse(csv, {

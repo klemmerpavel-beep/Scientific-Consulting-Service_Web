@@ -193,16 +193,38 @@ function letter(subject: string, body: string, footer: string): string {
   );
 }
 
+/** Срок, на который прогон рассылки захватывает строку очереди. */
+const LEASE_MS = 10 * 60 * 1000;
+
 /**
  * Разослать накопившееся. Берём небольшими порциями: маршрут вызывается раз
  * в минуту, и длинная очередь разойдётся за несколько вызовов, не удерживая
  * запрос на минуты.
  */
 export async function dispatch(limit = 20): Promise<DispatchReport> {
+  // Строки захватываются до отправки: срок следующей попытки сдвигается на
+  // время аренды одним запросом с `FOR UPDATE SKIP LOCKED`. Прежде порция
+  // выбиралась простым чтением, и прогон, наложившийся на медленный
+  // предыдущий (расписание раз в минуту, curl сдаётся через 30 секунд, а
+  // маршрут продолжает работать), брал те же строки — письмо уходило
+  // дважды (решение Р-235). Любой исход отправки ниже переписывает срок
+  // или состояние, так что аренда держит строку только на время прогона;
+  // если прогон оборвался, строка вернётся в очередь по истечении аренды.
+  const now = new Date();
+  const leaseUntil = new Date(now.getTime() + LEASE_MS);
+  const claimed = await prisma.$queryRaw<{ id: string }[]>`
+    UPDATE "NotificationOutbox" SET "scheduledAt" = ${leaseUntil}
+    WHERE "id" IN (
+      SELECT "id" FROM "NotificationOutbox"
+      WHERE "state" = 'PENDING' AND "scheduledAt" <= ${now}
+      ORDER BY "scheduledAt" ASC
+      LIMIT ${limit}
+      FOR UPDATE SKIP LOCKED
+    )
+    RETURNING "id"`;
   const pending = await prisma.notificationOutbox.findMany({
-    where: { state: 'PENDING', scheduledAt: { lte: new Date() } },
-    orderBy: { scheduledAt: 'asc' },
-    take: limit,
+    where: { id: { in: claimed.map((row) => row.id) } },
+    orderBy: { createdAt: 'asc' },
     include: {
       user: { select: { email: true, telegramChatId: true } },
       lead: { select: { contactKind: true, contact: true } },
@@ -272,7 +294,7 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
         lastError: result.error ?? null,
         // Отступ растёт с числом попыток: временная недоступность почты не
         // должна выливаться в сотню обращений подряд.
-        scheduledAt: giveUp ? item.scheduledAt : new Date(Date.now() + attempts * 5 * 60 * 1000),
+        scheduledAt: giveUp ? now : new Date(Date.now() + attempts * 5 * 60 * 1000),
       },
     });
     failed += 1;
@@ -294,6 +316,9 @@ export async function enqueueDeadlineReminders(): Promise<number> {
     where: {
       state: { in: ['IN_PROGRESS', 'AWAITING_CLIENT', 'IN_APPROVAL'] },
       dueOn: { gte: now, lte: horizon },
+      // Приостановленная, завершённая и отменённая работа о сроках этапов
+      // не напоминает: прежде напоминания шли по любой (решение Р-235).
+      project: { status: 'ACTIVE' },
     },
     include: {
       project: {
