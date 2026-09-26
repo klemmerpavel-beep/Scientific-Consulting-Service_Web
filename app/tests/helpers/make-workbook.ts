@@ -37,9 +37,10 @@ interface Entry {
   readonly deflated: Buffer;
 }
 
-function zip(files: readonly { name: string; content: string }[]): Buffer {
+/** Архив из произвольных файлов: нужен проверкам разбора архива. */
+export function zip(files: readonly { name: string; content: string | Buffer }[]): Buffer {
   const entries: Entry[] = files.map((file) => {
-    const raw = Buffer.from(file.content, 'utf8');
+    const raw = typeof file.content === 'string' ? Buffer.from(file.content, 'utf8') : file.content;
     return { name: file.name, raw, deflated: deflateRawSync(raw) };
   });
 

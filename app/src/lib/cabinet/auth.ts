@@ -47,6 +47,15 @@ export type LoginRequestOutcome =
 export async function requestLoginLink(
   rawEmail: string,
   ip: string,
+  options: {
+    /**
+     * Куда отложить отправку письма. Форма входа передаёт сюда `after` из
+     * `next/server`: письмо уходит после ответа, и время ответа не зависит
+     * от того, есть ли такой адрес (решение Р-239). Без параметра письмо
+     * отправляется сразу — так проверяют исход отправки.
+     */
+    readonly defer?: (task: () => Promise<void>) => void;
+  } = {},
 ): Promise<LoginRequestOutcome> {
   const email = normalizeEmail(rawEmail);
 
@@ -109,10 +118,14 @@ export async function requestLoginLink(
   // Исход записывается по факту отправки, а не до неё. Прежде в журнал
   // всегда ложилось «отправлено», и разобрать по нему, дошло ли письмо,
   // было нельзя.
-  const delivered = await deliverLoginLink(user.email, user.fullName, token.value);
-  await prisma.loginAttempt.create({
-    data: { emailNormalized: email, ip, outcome: delivered ? 'sent' : 'send_failed' },
-  });
+  const send = async () => {
+    const delivered = await deliverLoginLink(user.email, user.fullName, token.value);
+    await prisma.loginAttempt.create({
+      data: { emailNormalized: email, ip, outcome: delivered ? 'sent' : 'send_failed' },
+    });
+  };
+  if (options.defer === undefined) await send();
+  else options.defer(send);
 
   // Наружу отказ отправки не выносится: письмо не уходит только по
   // существующему адресу, и отдельный ответ выдал бы, что такой адрес есть.

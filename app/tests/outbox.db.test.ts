@@ -106,6 +106,9 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
     // Предел берётся с запасом: очередь на стенде общая, и при двадцати
     // строках за раз своя могла не попасть в пачку — проверка падала от
     // соседнего набора, а не от разладки канала (решение Р-191).
+    // Своя строка ставится первой: иначе при полутысяче накопившихся
+    // строк прошлых прогонов она могла не попасть в пачку.
+    await prisma.notificationOutbox.updateMany({ where: { userId }, data: { scheduledAt: new Date(0) } });
     const report = await dispatch(500);
     assert.ok(report.taken >= 1);
     assert.equal(report.sent, 0);
@@ -165,7 +168,8 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
     const due = await prisma.notificationOutbox.count({
       where: { state: 'PENDING', scheduledAt: { lte: new Date() } },
     });
-    const [a, b] = await Promise.all([dispatch(500), dispatch(500)]);
+    // Предел с запасом: очередь стенда общая и копит строки прошлых прогонов.
+    const [a, b] = await Promise.all([dispatch(5000), dispatch(5000)]);
     assert.equal(a.taken + b.taken, due, 'одна строка досталась обоим прогонам');
     const rows = await prisma.notificationOutbox.findMany({
       where: { dedupKey: { startsWith: `t-${stamp}-race-` } },

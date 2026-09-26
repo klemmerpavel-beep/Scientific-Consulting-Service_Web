@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { ensure } from '../../lib/cabinet/access';
@@ -96,7 +97,9 @@ export async function requestLink(form: FormData): Promise<void> {
   const email = String(form.get('email') ?? '');
   let outcome: Awaited<ReturnType<typeof requestLoginLink>> | null = null;
   if (email.trim().length > 0) {
-    outcome = await requestLoginLink(email, await requestIp());
+    // Письмо уходит после ответа: знакомый адрес иначе отвечал бы на
+    // время отправки дольше незнакомого (решение Р-239).
+    outcome = await requestLoginLink(email, await requestIp(), { defer: after });
   }
   // Ответ один на все исходы, кроме одного: ненастроенная почта — состояние
   // системы, а не человека, и от адреса оно не зависит. Молчать о нём
