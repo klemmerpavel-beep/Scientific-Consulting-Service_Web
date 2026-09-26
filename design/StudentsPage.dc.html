@@ -48,7 +48,7 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 .sp-norm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .sp-after{display:flex}
 @media (max-width:1024px){.sp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.sp-orbit>.sp-ring,.sp-orbit>.sp-dot,.sp-orbit>.sp-core{display:none!important}.sp-orbit>.sp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.sp-offer{grid-template-columns:repeat(2,minmax(0,1fr))}.sp-cost{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:768px){.sp-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.sp-hero,.sp-req,.sp-norm,.sp-faq,.sp-team,.sp-duo{grid-template-columns:minmax(0,1fr)}.sp-after{grid-template-columns:minmax(0,1fr)}.sp-nav{position:absolute;right:0;top:64px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px 14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.sp-nav[hidden]{display:none!important}.sp-burger{display:inline-flex}.sp-art{order:-1}}
+@media (max-width:768px){.sp-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.sp-hero,.sp-req,.sp-norm,.sp-faq,.sp-team,.sp-duo{grid-template-columns:minmax(0,1fr)}.sp-after{grid-template-columns:minmax(0,1fr)}.sp-nav{position:absolute;right:0;top:64px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px 14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.sp-nav[hidden]{display:none!important}.sp-burger{display:inline-flex}}
 /* Подпись раздела на узком экране — под заголовком слева, а не прижатой вправо строкой (Р-250). */
 @media (max-width:768px){.sp-sub{text-align:left!important;margin-left:0!important}}
 @media (max-width:768px){.sp-offer,.sp-cost,.sp-steps{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
@@ -149,7 +149,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="sp-hero" style="gap:40px;align-items:start">
 <div style="min-width:0">
 <span style="display:inline-block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);margin-bottom:24px">Студентам, магистрантам и специалистам</span>
-<h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(30px,3vw,42px);line-height:1.4;font-weight:500;letter-spacing:-.018em;color:var(--pd-ink);max-width:22ch;text-wrap:balance">Диплом, собранный <span style="background:var(--pd-accent-mark);border-radius:6px;padding:0 10px;box-decoration-break:clone;-webkit-box-decoration-break:clone">под требования вашей кафедры</span></h1>
+<h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(30px,3vw,42px);line-height:1.4;font-weight:500;letter-spacing:-.018em;color:var(--pd-ink);max-width:22ch;text-wrap:balance"><span style="display:block">Диплом, собранный</span><span style="background:var(--pd-accent-mark);border-radius:6px;box-shadow:-10px 0 0 var(--pd-accent-mark),10px 0 0 var(--pd-accent-mark);box-decoration-break:clone;-webkit-box-decoration-break:clone">под требования вашей кафедры</span></h1>
 <p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:48ch">Куратор с учёной степенью доводит вашу работу до требований кафедры и ГОСТ — от разбора до защиты.</p>
 
 <form onSubmit="{{ submitTop }}" style="margin:32px 0 0;max-width:420px;display:flex;flex-wrap:wrap;align-items:center;gap:12px">
@@ -609,7 +609,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Заявка</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:32ch;text-wrap:balance">Пришлите тему и срок — оценим объём работ</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:32ch;text-wrap:balance">Пришлите тему и срок — оценим объём работ</h2>
 </div>
 <span class="sp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Отвечаем Пн—Пт, 10:00—19:00</span>
 </div>
@@ -757,10 +757,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:0 -10px;border-radius:10px;text-decoration:none;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:21px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:var(--pd-accent)">PRO</span><span style="color:var(--pd-ink)">DISSER</span></a>
 <a href="tel:+74954564323" style="display:inline-flex;align-items:center;min-height:44px;font-size:15px;font-weight:500;color:var(--pd-ink);text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">+7 495 456 43 23</a>
 <a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink-secondary)">info.prodisser@gmail.com</a>
+<a href="./cabinet.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;font-weight:500;color:var(--pd-ink);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Личный кабинет</a>
 </span>
 <span style="display:flex;align-items:center;gap:12px;min-width:0">
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Пишите в телеграм — отвечаем в рабочее время</span>
-<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Пишите в Telegram — отвечаем в рабочее время</span>
+<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Telegram ProDisser" title="Telegram" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
 <a href="https://vk.ru/cmnrut" target="_blank" rel="noopener noreferrer" aria-label="Сообщество ProDisser во ВКонтакте" title="ВКонтакте" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1;font-weight:600;letter-spacing:.02em;color:var(--pd-accent)">VK</span></a>
 </span>
 </div>
@@ -770,10 +771,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Политика конфиденциальности</a>
 <a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Обработка персональных данных</a>
 </span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.02em;color:var(--pd-ink-muted)">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.02em;color:var(--pd-ink-muted)">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:8px">
-<span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted)">© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
+<span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted)">© 2016—2026 ProDisser — научный консалтинг. Работаем по всей России</span>
 <span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Другие направления</span>
 <a href="./main.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Аспирантам и соискателям</a>
@@ -1027,7 +1028,7 @@ class Component extends DCLogic {
     const faqData = [
       ['С чего начинается работа?', 'С бесплатной консультации на 20 минут. Куратор разбирает работу и требования кафедры, называет объём правок и срок. После этого присылаем смету — решение остаётся за вами.'],
       ['Как именно вы помогаете с дипломом?', 'Разбираем структуру и логику глав, редактируем ваш текст, приводим оформление к ГОСТ 7.32 и методичке кафедры. Отдельно готовим доклад и репетируем вопросы комиссии.'],
-      ['Узнает ли научный руководитель?', 'От нас — нет. Мы не связываемся с кафедрой и вузом, все материалы вы передаёте руководителю сами. Тема и текст не уходят третьим лицам: NDA подписывают все участники проекта.'],
+      ['Как это выглядит для научного руководителя?', 'Автор работы — вы, и с руководителем её обсуждаете вы. Мы не связываемся с кафедрой и вузом без вашей просьбы: разбор, правки и подготовку к защите вы проходите сами, а материалы руководителю передаёте тоже вы. Тема и текст не уходят третьим лицам: NDA подписывают все участники проекта.'],
       ['Что если работу завернут после правок?', 'Разбираем новый лист замечаний вместе с вами. Правки по сданному этапу отрабатываем без доплаты в рамках согласованного объёма, срок ответа прописан в договоре.'],
       ['Успеем, если до защиты три недели?', 'Часто да, но зависит от стадии работы. На консультации разбираем текст и называем выполнимый объём: работа целиком, часть разделов или только оформление и доклад.'],
       ['Что делать, если меняется тема?', 'Пересобираем план по главам и подписываем дополнительное соглашение. Сделанные этапы не пропадают — часть материала обычно переносится в новую тему.'],
@@ -1044,22 +1045,22 @@ class Component extends DCLogic {
     // двенадцати не опубликованы, потому что называют предметом работу,
     // выполненную за клиента.
     const REVIEWS = [
-      { photo: 'av-1', role: 'Александра', field: 'Авито · 30 июня 2024',
-        text: 'вежливый, все сделал быстро и оперативно, как и просила, рекомендую!!! еще раз спасибо за оперативность и качество работы' },
-      { photo: 'av-2', role: 'Ирина', field: 'Авито · 12 июля 2024',
-        text: 'Цена соответствует качеству работы, все было выполнено даже раньше срока, в полном объёме. Быстрые ответы, вежливое общение, пояснения по всем вопросам)' },
       { photo: 'av-3', role: 'Роман', field: 'Авито · 30 сентября 2024',
         text: 'Работа была выполнена качественно. Все договоренности проработали, цена была объявлена сразу. Человек компетентный и опытный, довериться можно)' },
-      { photo: 'av-4', role: 'Никита', field: 'Авито · 25 октября 2024',
-        text: 'Огромное спасибо за быстро и качественно выполненную работа. Всегда на связи. Спрашивают и переживают были ли замечания от преподавателей в работе.' },
+      { photo: 'av-2', role: 'Ирина', field: 'Авито · 12 июля 2024',
+        text: 'Цена соответствует качеству работы, все было выполнено даже раньше срока, в полном объёме. Быстрые ответы, вежливое общение, пояснения по всем вопросам)' },
+      { photo: 'av-8', role: 'Анастасия', field: 'Авито · 14 ноября 2024',
+        text: 'Хочу выразить искреннюю благодарность за профессиональную помощь и поддержку в процессе работы. Все выполнено качественно и главное в срок, получила оценку «отлично»' },
       { photo: 'av-5', role: 'Олег', field: 'Авито · 1 ноября 2024',
         text: 'Спасибо за работу, выполнено профессионально не смотря на сложную тему, однозначно буду обращаться ещё)' },
       { photo: 'av-6', role: 'Ян', field: 'Авито · 2 ноября 2024',
         text: 'Цена оправдана. Срок и требования были идеально выполнены, я очень благодарен таким людям!' },
       { photo: 'av-7', role: 'Велина', field: 'Авито · 3 ноября 2024',
         text: 'Работа выполнена качественно, в соответствии с заявленным объявлением, максимально быстро, без технических и иных проблем! Благодарю Вас!' },
-      { photo: 'av-8', role: 'Анастасия', field: 'Авито · 14 ноября 2024',
-        text: 'Хочу выразить искреннюю благодарность за профессиональную помощь и поддержку в процессе работы. Все выполнено качественно и главное в срок, получила оценку «отлично»' },
+      { photo: 'av-4', role: 'Никита', field: 'Авито · 25 октября 2024',
+        text: 'Огромное спасибо за быстро и качественно выполненную работа. Всегда на связи. Спрашивают и переживают были ли замечания от преподавателей в работе.' },
+      { photo: 'av-1', role: 'Александра', field: 'Авито · 30 июня 2024',
+        text: 'вежливый, все сделал быстро и оперативно, как и просила, рекомендую!!! еще раз спасибо за оперативность и качество работы' },
     ];
     const revN = REVIEWS.length;
     const revAt = this.state.revAt;
@@ -1128,10 +1129,10 @@ class Component extends DCLogic {
         // с натюрмортом; остальной перечень идёт строками под кнопкой.
         const svc = [
           ['Дипломная работа и ВКР', 'Разбираем структуру и логику глав, ведём научную редактуру авторского текста, сверяем расчёты, таблицы и приложения.', 'от 3 недель', 'svc-diploma.webp'],
-          ['Магистерская диссертация', 'Проверяем постановку задачи и научную новизну, готовим текст и доклад к предзащите на кафедре.', 'от 4 недель', 'svc-doctoral.webp'],
+          ['Магистерская диссертация', 'Проверяем постановку задачи и научную новизну, разбираем текст и доклад перед предзащитой на кафедре.', 'от 4 недель', 'svc-doctoral.webp'],
           ['Нормоконтроль и ГОСТ 7.32', 'Поля, интервалы, нумерация, таблицы, рисунки и список литературы — по методичке вашей кафедры.', 'от 2 дней', 'svc-norm.webp'],
           ['Отчёт по практике и НИР', 'Приводим структуру, дневник практики и приложения к требованиям кафедры и базы практики.', 'от 5 дней', 'svc-practice.webp'],
-          ['Статья для журнала РИНЦ', 'Готовим текст под требования редакции, оформляем ссылочный аппарат и аннотацию.', 'от 10 дней', 'svc-articles.webp'],
+          ['Статья для журнала РИНЦ', 'Приводим текст к требованиям редакции, выверяем ссылочный аппарат и аннотацию.', 'от 10 дней', 'svc-articles.webp'],
           ['Подготовка к предзащите', 'Разбираем слабые места работы и собираем ответы на типовые вопросы комиссии.', 'от 3 дней', 'svc-defense.webp']
         ].map(([title, text, term, file]) => ({
           title, text, term,
@@ -1166,7 +1167,7 @@ class Component extends DCLogic {
         toggle: () => this.setState(s => ({ open: s.open === i ? -1 : i }))
       })),
       offerRest: (() => {
-        const all = ['Доклад и презентация к защите', 'Перевод статьи на английский', 'Курсовая работа повышенной сложности', 'Отчёт по преддипломной практике', 'Расчётная часть и таблицы', 'Статистическая обработка данных', 'Проверка корректности цитирования', 'Оформление списка литературы по ГОСТ', 'Аннотация и ключевые слова', 'Чертежи и схемы к пояснительной записке', 'Раздаточный материал к защите', 'Речь защиты на 7 минут', 'Ответы на замечания рецензента', 'Публикация в сборнике конференции', 'Перевод аннотации на английский', 'Сопровождение иностранных студентов', 'Подготовка к пересдаче защиты'];
+        const all = ['Доклад и презентация к защите', 'Перевод статьи на английский', 'Разбор курсовой работы повышенной сложности', 'Отчёт по преддипломной практике', 'Проверка расчётной части и таблиц', 'Методика статистической обработки данных', 'Проверка корректности цитирования', 'Оформление списка литературы по ГОСТ', 'Аннотация и ключевые слова', 'Проверка чертежей и схем по ЕСКД', 'Раздаточный материал к защите', 'Репетиция речи на защите', 'Разбор замечаний рецензента', 'Подача тезисов в сборник конференции', 'Перевод аннотации на английский', 'Сопровождение иностранных студентов', 'Подготовка к пересдаче защиты'];
         return (this.state.offerOpen ? all : all.slice(0, 8)).map(title => ({ title }));
       })(),
       offerOpen: this.state.offerOpen ? 'true' : 'false',
