@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import Shell from '../../../../components/cabinet/Shell';
 import { Button, Form, Heading, Text } from '../../../../components/cabinet/ui';
+import { loginLinkOwner } from '../../../../lib/cabinet/auth';
 import { enterByLink } from '../../actions';
 
 export const metadata: Metadata = {
@@ -22,8 +23,13 @@ export const dynamic = 'force-dynamic';
  * ссылка тратилась раньше, чем человек её открывал, а тот, кто её
  * запросил первым, получал живую сессию. Теперь открытие только
  * показывает кнопку; ключ гасит отправка формы — её роботы не делают
- * (решение Р-232). Страница ключ не проверяет: иначе она подсказывала бы,
- * какие ключи существуют.
+ * (решение Р-232).
+ *
+ * Рядом с кнопкой — замаскированный адрес владельца ссылки: ссылку на
+ * свой адрес злоумышленник мог подсунуть человеку, и тот, нажав «Войти»,
+ * работал бы в чужой записи (решение Р-251). Адрес показывается только
+ * при действующем ключе целиком — существование ключей по странице
+ * по-прежнему не угадать.
  */
 export default async function EnterByLink({
   params,
@@ -31,6 +37,7 @@ export default async function EnterByLink({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  const owner = await loginLinkOwner(token);
 
   return (
     <Shell actor={null} center>
@@ -38,9 +45,15 @@ export default async function EnterByLink({
         <Heading level={1} style={{ marginBottom: 12 }}>
           Вход в личный кабинет
         </Heading>
-        <Text style={{ marginBottom: 24 }}>
+        <Text style={{ marginBottom: owner === null ? 24 : 12 }}>
           Ссылка одноразовая: после входа она перестаёт действовать.
         </Text>
+        {owner === null ? null : (
+          <Text style={{ marginBottom: 24 }}>
+            Вход в запись <strong style={{ fontWeight: 600 }}>{owner}</strong>. Если это не ваш адрес,
+            не нажимайте «Войти»: ссылку выдали на чужую почту.
+          </Text>
+        )}
         <Form action={enterByLink}>
           <input type="hidden" name="token" value={token} />
           <Button>Войти</Button>

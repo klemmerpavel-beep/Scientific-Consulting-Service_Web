@@ -12,7 +12,7 @@ import {
   Heading,
   ScreenHead,
   LongTable,
-  Notice,
+  Outcome,
   TABLE_CELL,
   TABLE_HEAD,
   TableCard,
@@ -67,11 +67,9 @@ export default async function ImportScreen({
       />
 
       {error === undefined ? null : (
-        <div style={{ marginBottom: 20 }}>
-          <Notice tone="error" role="alert">
-            {ERRORS[error] ?? ERRORS.UNSUPPORTED}
-          </Notice>
-        </div>
+        <Outcome tone="error">
+          {ERRORS[error] ?? ERRORS.UNSUPPORTED}
+        </Outcome>
       )}
 
       <Card style={{ marginBottom: 32 }}>

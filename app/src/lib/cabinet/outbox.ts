@@ -2,7 +2,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
-import { CHANNEL_OFF, telegramNote, type EventKind } from './events.ts';
+import { CHANNEL_OFF, telegramNote, telegramPermanent, type EventKind } from './events.ts';
 import { leadAddress } from './lead-letter.ts';
 import { sendMailTo } from './mail.ts';
 import { escapeHtml } from './token.ts';
@@ -160,7 +160,15 @@ export interface DispatchReport {
   readonly failed: number;
 }
 
-async function sendTelegram(chatId: string, text: string): Promise<{ ok: boolean; error?: string }> {
+/** Исход одной отправки: почтой или в Telegram. */
+interface SendResult {
+  readonly ok: boolean;
+  readonly error?: string;
+  /** Повторять бессмысленно: адресат отвергнут окончательно (Р-252). */
+  readonly permanent?: boolean;
+}
+
+async function sendTelegram(chatId: string, text: string): Promise<SendResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return { ok: false, error: CHANNEL_OFF };
   try {
@@ -174,7 +182,9 @@ async function sendTelegram(chatId: string, text: string): Promise<{ ok: boolean
       }),
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return { ok: false, error: `${res.status}` };
+    if (!res.ok) {
+      return { ok: false, error: `${res.status}`, permanent: telegramPermanent(res.status) };
+    }
     return { ok: true };
   } catch (e) {
     return { ok: false, error: String(e).slice(0, 300) };
@@ -279,7 +289,7 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     const address = item.user?.email ?? (item.lead === null ? null : leadAddress(item.lead));
     const footer = item.user === null ? FOOTER_APPLICANT : FOOTER_MEMBER;
     const chatId = item.user?.telegramChatId ?? null;
-    const result =
+    const result: SendResult =
       address === null && item.channel === 'EMAIL'
         ? { ok: false, error: NO_ADDRESS }
         : item.channel === 'EMAIL'
@@ -322,8 +332,12 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
       continue;
     }
 
+    // Окончательный отказ — ящика нет, адрес отвергнут, бот заблокирован —
+    // строку сразу закрывает: прежде она ещё четыре раза стучалась туда же,
+    // по разу в несколько минут (решение Р-252). Признак выставляет сама
+    // отправка по коду ответа сервера, а не разбор текста ошибки.
     const attempts = item.attempts + 1;
-    const giveUp = attempts >= MAX_ATTEMPTS;
+    const giveUp = attempts >= MAX_ATTEMPTS || result.permanent === true;
     await prisma.notificationOutbox.update({
       where: { id: item.id },
       data: {

@@ -53,10 +53,20 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-request{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 @media (max-width:1024px){.pd-usp{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.pd-orbit>.pd-ring,.pd-orbit>.pd-dot,.pd-orbit>.pd-core{display:none!important}.pd-orbit>.pd-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}}
 .pd-nav{display:flex;align-items:center;gap:28px;flex-wrap:wrap}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-problem>.pd-arrow{transform:rotate(90deg);margin:0 auto}.pd-services,.pd-cost,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
+/* Подпись раздела на узком экране — под заголовком слева, а не прижатой вправо строкой (Р-250). */
+@media (max-width:768px){.pd-sub{text-align:left!important;margin-left:0!important}}
 @media (max-width:768px){.pd-metrics,.pd-usp,.pd-services,.pd-cost,}
 @media (max-width:480px){.pd-hero,.pd-metrics,.pd-problem,.pd-usp,.pd-services,.pd-team,.pd-cost,.pd-faq,.pd-request,.pd-foot{grid-template-columns:minmax(0,1fr)!important}.pd-metrics,.pd-services,.pd-cost,.pd-usp,.pd-foot,.pd-orbit{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}}@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}@media (max-width:768px){.pd-heroart{justify-content:flex-start!important;gap:28px!important}.pd-facea{max-width:184px!important}.pd-facea-c{width:184px!important;height:184px!important}.pd-faceb{max-width:132px!important;padding-top:76px!important}.pd-faceb-c{width:132px!important;height:132px!important}}@media (max-width:430px){.pd-facea{max-width:150px!important}.pd-facea-c{width:150px!important;height:150px!important}.pd-faceb{max-width:108px!important;padding-top:58px!important}.pd-faceb-c{width:108px!important;height:108px!important}}
 .pd-crewcard{position:relative;z-index:1}
 .pd-crewfig{position:absolute;left:50%;transform:translateX(-50%);top:-166px;height:210px;width:auto;z-index:0;pointer-events:none}
+/* Облако «проблем» — сцена 440 px с чипами на абсолютных местах. В три
+   колонки на 769—1024 px ей оставалось ~370 px, на телефоне ~320—350 px, и
+   правые чипы срезались. До 1024 px блок идёт в одну колонку со стрелкой
+   вниз, а на узком телефоне сцена масштабируется целиком (Р-250). */
+@media (max-width:1024px){.pd-problem{grid-template-columns:minmax(0,1fr)!important}.pd-problem>.pd-arrow{transform:rotate(90deg);margin:0 auto}}
+@media (max-width:480px){.pd-pains{zoom:.8}.pd-painbox{min-height:0!important;padding:12px 0}}
+@media (max-width:400px){.pd-pains{zoom:.74}}
+@media (max-width:365px){.pd-pains{zoom:.68}}
 .pd-orbit{margin-top:156px}
 @media (max-width:1024px){.pd-orbit{margin-top:0}.pd-crewfig{position:relative;left:auto;top:auto;transform:none;display:block;height:190px;margin:0 auto -42px}}
 @media (max-width:480px){.pd-crewfig{height:168px;margin-bottom:-38px}}
@@ -131,8 +141,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <input type="text" name="name" autocomplete="name" required="{{ true }}" placeholder="Как к вам обращаться" aria-label="Ваше имя" style="flex:1 1 220px;min-width:0;box-sizing:border-box;height:48px;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
 <input id="mp-contact-top" name="contact" type="{{ contactTypeTop }}" autocomplete="{{ contactAutoTop }}" required="{{ true }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" style="flex:1 1 220px;min-width:0;box-sizing:border-box;height:48px;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
-<label for="mp-consent-top" style="flex:1 1 100%;display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="mp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
-<label for="mp-terms-top" style="flex:1 1 100%;display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="mp-terms-top" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оферту</a> и <a href="./privacy.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">политику</a></span></label>
+<label for="mp-consent-top" style="flex:1 1 100%;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="mp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
+<label for="mp-terms-top" style="flex:1 1 100%;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="mp-terms-top" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оферту</a> и <a href="./privacy.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">политику</a></span></label>
 <button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Оставить заявку</button>
 <sc-if value="{{ sentTop }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="{{ -1 }}" data-sent="top" style="flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
@@ -205,12 +215,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:60ch">Замечания копятся, сроки уходят, а плана нет. <strong style="font-weight:600;color:var(--pd-ink)">План, сроки и приёмку берём на себя</strong> — вы сосредоточены на исследовании и выходите к защите подготовленным.</p>
 <div class="pd-problem" style="gap:24px;align-items:center;margin-top:32px">
-<div style="position:relative;min-width:0;min-height:430px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+<div class="pd-painbox" style="position:relative;min-width:0;min-height:430px;overflow:hidden;display:flex;align-items:center;justify-content:center">
 <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:min(360px,78%);aspect-ratio:1;transform:translate(-50%,-50%);margin:0;border-radius:50%;background:radial-gradient(circle closest-side,rgba(178,58,47,.11) 0%,rgba(178,58,47,.112) 14%,rgba(178,58,47,.098) 26%,rgba(178,58,47,.08) 37%,rgba(178,58,47,.062) 47%,rgba(178,58,47,.045) 57%,rgba(178,58,47,.03) 67%,rgba(178,58,47,.018) 76%,rgba(178,58,47,.008) 86%,rgba(178,58,47,.002) 94%,rgba(178,58,47,0) 100%);filter:blur(28px)"></div>
 <svg aria-hidden="true" viewBox="0 0 400 400" width="min(400px,96%)" fill="none" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);aspect-ratio:1">
 <path d="M200 22c98 0 178 80 178 178s-80 178-178 178S22 298 22 200 92 44 200 44s156 70 156 156-62 146-156 146-134-62-134-146S130 66 200 66s112 52 112 134-44 124-112 124-96-44-96-124 34-102 96-102 80 36 80 80-24 62-58 62" stroke="#E2B6B1" stroke-width="1" stroke-dasharray="5 7" opacity=".85"></path>
 </svg>
-<div style="position:relative;width:100%;max-width:440px;height:410px">
+<div class="pd-pains" style="position:relative;width:440px;max-width:none;height:410px;flex:0 0 auto">
 <sc-for list="{{ pains }}" as="p" hint-placeholder-count="7">
 <span style="position:absolute;left:{{ p.x }};top:{{ p.y }};transform:rotate({{ p.rot }});background:var(--pd-ink-inverse);border:1px solid var(--pd-err-border);border-radius:999px;padding:8px 16px 8px 12px;display:inline-flex;align-items:center;gap:10px;white-space:nowrap;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-err-ink)">
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:var(--pd-err-ink);-webkit-mask:{{ p.mask }};mask:{{ p.mask }}"></span>{{ p.text }}
@@ -270,7 +280,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Преимущества</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Почему с нами работают</h2>
 </div>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Четыре принципа, закреплённые договором</span>
+<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Четыре принципа, закреплённые договором</span>
 </div>
 <ol class="pd-usp" style="list-style:none;margin:0;padding:0;gap:16px">
 <sc-for list="{{ usp }}" as="u" hint-placeholder-count="4">
@@ -306,7 +316,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span aria-hidden="true" style="width:20px;height:20px;flex:0 0 20px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ o.title }}</h3>
 </div>
-<span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
 </div>
 <p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ o.text }}</p>
 <div style="margin-top:auto;height:104px;border-radius:10px;background:var(--pd-surface-quiet);display:flex;align-items:center;justify-content:center;overflow:hidden">
@@ -327,7 +336,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span aria-hidden="true" style="width:20px;height:20px;flex:0 0 20px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ o.title }}</h3>
 </div>
-<span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
 </div>
 <p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ o.text }}</p>
 <div style="margin-top:auto;height:104px;border-radius:10px;background:var(--pd-surface-quiet);display:flex;align-items:center;justify-content:center;overflow:hidden">
@@ -363,12 +371,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Стоимость</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Из чего складывается смета и когда вы узнаёте сумму</h2>
 </div>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Сумму называем на консультации, до договора и до оплаты</span>
+<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Сумму называем на консультации, до договора и до оплаты</span>
 </div>
 <div style="margin:0 0 32px;border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;background:var(--pd-ink-inverse)">
 <div style="display:flex;align-items:baseline;gap:12px;padding:14px 20px;background:var(--pd-surface-quiet);border-bottom:1px solid var(--pd-border)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);flex:1 1 auto">Направление работы</span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);flex:0 0 auto;text-align:right">Минимальный срок сопровождения</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);flex:0 1 auto;min-width:0;text-align:right">Минимальный срок сопровождения</span>
 </div>
 <sc-for list="{{ termRows }}" as="t" hint-placeholder-count="5">
 <div style="display:flex;align-items:baseline;gap:16px;padding:14px 20px;border-bottom:1px solid var(--pd-divider);background:{{ t.zebra }}">
@@ -397,7 +405,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Этапы</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Понятный план работы с первого дня и прозрачность на каждом этапе</h2>
 </div>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Шесть этапов с промежуточной приёмкой</span>
+<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Шесть этапов с промежуточной приёмкой</span>
 </div>
 <div data-carousel="process" tabindex="0" role="group" aria-label="Этапы работы — прокрутите стрелками" onScroll="{{ onStepScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:10px 2px 12px;margin:-10px -2px -12px">
 <sc-for list="{{ steps }}" as="p" hint-placeholder-count="6">
@@ -562,7 +570,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Заявка</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Подберём формат сопровождения под уровень работы и сроки защиты</h2>
 </div>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);white-space:nowrap;text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Ответим в рабочее время и предложим время консультации</span>
+<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Ответим в рабочее время и предложим время консультации</span>
 </div>
 <div class="pd-request" style="background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <div style="position:relative;min-height:440px;padding:26px 0 26px 26px;display:flex;align-items:center">
@@ -597,9 +605,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <label for="mp-spec" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Специальность<input id="mp-spec" type="text" name="speciality" autocomplete="off" placeholder="Название или шифр, например 2.3.1" style="width:100%;height:52px;box-sizing:border-box;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.24;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:0 22px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
 <label for="mp-term" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Дата защиты<input id="mp-term" type="text" name="deadline" autocomplete="off" placeholder="Например: июнь 2027" style="width:100%;height:52px;box-sizing:border-box;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.24;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:0 22px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
 </div>
-<label for="mp-consent" style="margin:6px 0 0;display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
-<label for="mp-terms" style="margin:6px 0 0;display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-terms" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оферту</a> и <a href="./privacy.html" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">политику</a></span></label>
-<label for="mp-ads" style="margin:6px 0 0;display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-ads" name="marketing" type="checkbox" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Согласен получать информационные и рекламные сообщения</span></label>
+<label for="mp-consent" style="margin:6px 0 0;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
+<label for="mp-terms" style="margin:6px 0 0;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-terms" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оферту</a> и <a href="./privacy.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">политику</a></span></label>
+<label for="mp-ads" style="margin:6px 0 0;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-ads" name="marketing" type="checkbox" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Согласен получать информационные и рекламные сообщения</span></label>
 <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:4px">
 <button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;height:52px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:0 32px;border-radius:999px;display:inline-flex;align-items:center;gap:10px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Отправить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span></button>
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:var(--pd-ink-muted)">Консультация 20 мин · бесплатно</span>
@@ -654,13 +662,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </button>
 </div>
 <div style="display:flex;justify-content:center;margin-top:20px">
-<button type="button" onClick="{{ toggleRevForm }}" aria-expanded="{{ revFormOpenAttr }}" aria-controls="mp-revform" style="appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;min-height:44px;background:transparent;border:1px solid var(--pd-ink);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 22px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-ink);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">{{ revFormLabel }}</button>
+<button type="button" onClick="{{ toggleRevForm }}" aria-expanded="{{ revFormOpenAttr }}" aria-controls="mp-revform" id="mp-revbtn" style="appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;min-height:44px;background:transparent;border:1px solid var(--pd-ink);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 22px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-ink);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">{{ revFormLabel }}</button>
 </div>
 <div id="mp-revform" onClick="{{ closeRevFormOnBackdrop }}" style="position:fixed;inset:0;z-index:40;display:{{ revFormDisplay }};align-items:center;justify-content:center;padding:20px;background:rgba(20,22,28,.55)">
 <div role="dialog" aria-modal="true" aria-labelledby="mp-revform-title" onClick="{{ stopInside }}" style="width:100%;max-width:440px;max-height:calc(100vh - 40px);overflow-y:auto;box-sizing:border-box;background:var(--pd-ink-inverse);border-radius:14px;padding:24px;box-shadow:0 10px 20px rgba(20,22,28,.09)">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
-<h3 id="mp-revform-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Написать отзыв</h3>
-<button type="button" onClick="{{ toggleRevForm }}" aria-label="Закрыть окно" style="appearance:none;cursor:pointer;width:36px;height:36px;flex:0 0 36px;margin:-4px -4px 0 0;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)">
+<h3 id="mp-revform-title" tabindex="-1" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Написать отзыв</h3>
+<button type="button" onClick="{{ toggleRevForm }}" aria-label="Закрыть окно" style="appearance:none;cursor:pointer;width:44px;height:44px;flex:0 0 44px;margin:-10px -10px 0 0;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)">
 <span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-ink-muted);-webkit-mask:url('./assets/icons/x-circle.svg') center/contain no-repeat;mask:url('./assets/icons/x-circle.svg') center/contain no-repeat"></span>
 </button>
 </div>
@@ -671,7 +679,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-size:13px;line-height:1.5;color:var(--pd-ink-muted);margin-top:-6px">Имя указывать не нужно — только роль и направление.</span>
 <label for="mp-rev-text" style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Отзыв
 <textarea id="mp-rev-text" name="message" required="{{ true }}" rows="{{ 4 }}" placeholder="Что было сделано и что из этого вышло" style="width:100%;box-sizing:border-box;padding:12px 16px;min-height:112px;resize:vertical;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></textarea></label>
-<label for="mp-rev-pub" style="margin:2px 0 0;display:flex;min-height:36px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-rev-pub" name="publish" type="checkbox" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Разрешаю опубликовать отзыв на сайте без указания имени</span></label>
+<label for="mp-rev-pub" style="margin:2px 0 0;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-rev-pub" name="publish" type="checkbox" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Разрешаю опубликовать отзыв на сайте без указания имени</span></label>
 <button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;min-height:44px;padding:0 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Отправить отзыв</button>
 <sc-if value="{{ sentReview }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="{{ -1 }}" data-sent="review" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
@@ -729,7 +737,30 @@ class Component extends DCLogic {
   componentDidMount(){
     // Всплывающее окно закрывается клавишей Esc — иначе с клавиатуры
     // из него не выйти, а закрывающая кнопка может быть прокручена.
-    this.onRevKey = e => { if (e.key === 'Escape' && this.state.revFormOpen) this.setState({ revFormOpen: false }); };
+    // Окно отзыва модальное (aria-modal): при открытии фокус переходит в
+    // него, Tab не выходит за его пределы, при закрытии фокус возвращается
+    // на кнопку «Написать отзыв» — иначе клавиатура оставалась под
+    // затемнением, а читалка теряла место (Р-250).
+    this.openRev = () => {
+      this.setState({ revFormOpen: true });
+      requestAnimationFrame(() => document.getElementById('mp-revform-title')?.focus());
+    };
+    this.closeRev = () => {
+      this.setState({ revFormOpen: false });
+      requestAnimationFrame(() => document.getElementById('mp-revbtn')?.focus());
+    };
+    this.onRevKey = e => {
+      if (!this.state.revFormOpen) return;
+      if (e.key === 'Escape') { this.closeRev(); return; }
+      if (e.key !== 'Tab') return;
+      const box = document.querySelector('#mp-revform [role="dialog"]');
+      if (!box) return;
+      const items = [...box.querySelectorAll('button, input, textarea, select, a[href]')].filter(x => !x.disabled && x.offsetParent !== null);
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1], at = document.activeElement;
+      if (e.shiftKey && (at === first || !box.contains(at))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (at === last || !box.contains(at))) { e.preventDefault(); first.focus(); }
+    };
     window.addEventListener('keydown', this.onRevKey);
     this.measure = () => {
       const t = document.querySelector('[data-carousel="plan"]');
@@ -961,9 +992,9 @@ class Component extends DCLogic {
       revFormOpenAttr: this.state.revFormOpen ? 'true' : 'false',
       revFormLabel: this.state.revFormOpen ? 'Свернуть форму' : 'Написать отзыв',
       revWhoHint: 'Например: соискатель, технические науки',
-      toggleRevForm: () => this.setState(s => ({ revFormOpen: !s.revFormOpen })),
+      toggleRevForm: () => (this.state.revFormOpen ? this.closeRev() : this.openRev()),
       // Окно закрывается щелчком по затемнению, но не по самому окну
-      closeRevFormOnBackdrop: e => { if (e.target === e.currentTarget) this.setState({ revFormOpen: false }); },
+      closeRevFormOnBackdrop: e => { if (e.target === e.currentTarget) this.closeRev(); },
       stopInside: e => e.stopPropagation(),
       sentReview: this.state.sentReview,
       submitReview: e => { e.preventDefault(); this.setState({ sentReview: true }, () => { const el = document.querySelector('[data-sent="review"]'); if (el) el.focus(); }); },
@@ -1008,7 +1039,7 @@ class Component extends DCLogic {
         const frac = Math.min(1, Math.max(0, t.scrollLeft / max));
         if (p !== this.state.stepPage || Math.abs(frac - this.state.stepFrac) > 0.005) this.setState({ stepPage: p, stepFrac: frac });
       },
-      checkMask: this.mask('square-check'), linkMask: this.mask('external-link'),
+      checkMask: this.mask('square-check'), linkMask: this.mask('arrow-right'),
       clockMask: this.mask('clock'), offerOpen,
       offerToggleLabel: offerOpen ? 'Свернуть список' : 'Полный список услуг',
       offerToggleMask: this.mask(offerOpen ? 'arrow-left' : 'arrow-down'),

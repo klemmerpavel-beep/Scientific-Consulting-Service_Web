@@ -7,27 +7,35 @@
  * и отменять их задним числом хуже, чем показать отчёт до записи.
  *
  * Кода заказа в книге нет, поэтому повторность определяется естественным
- * ключом строки (`ParsedRow.signature`): дата, ФИО, написание типа работы
- * и сумма. Ключ хранится в `ImportRow.signature`, и повторная загрузка того
- * же файла даёт строки со значением `SKIP`, а не новые проекты.
+ * ключом строки (`ParsedRow.signature`): дата, ФИО и написание типа работы.
+ * Ключ хранится в `ImportRow.signature`, и повторная загрузка того же файла
+ * даёт строки со значением `SKIP`, а не новые проекты. Сумма в ключ больше
+ * не входит, а строки со старыми ключами (с суммой) сверяются по основе —
+ * см. `import/match.ts` (решение Р-252).
  */
 
 import { createHash } from 'node:crypto';
 
+import type { Prisma } from '../../../generated/prisma/client.js';
 import { prisma } from '../../db.ts';
 import { ensure, type Actor } from '../access.ts';
 import { record } from '../audit.ts';
 import { nextProjectCode } from '../projects.ts';
 import {
   DEFAULT_FILLS,
+  ERASED_KEY_PREFIX,
   ISSUE_LABEL,
+  KEY_VERSION,
   STATUS_LABEL,
+  erasedKey,
   normalizeName,
   parseBook,
+  signatureBase,
   type IssueCode,
   type LegacyStatus,
   type ParsedRow,
 } from './etl.ts';
+import { changed, matchBook, type KnownWork, type RowMatch } from './match.ts';
 import { readWorkbook } from './xlsx.ts';
 import { ImportError } from './zip.ts';
 
@@ -62,6 +70,10 @@ export interface PreviewRow {
   readonly issues: readonly { code: IssueCode; label: string; note: string }[];
   /** Код проекта, если строка уже перенесена прежней загрузкой. */
   readonly existingCode: string | null;
+  /** Данные заказчика стёрты по требованию субъекта: строка не переносится. */
+  readonly erased: boolean;
+  /** Пояснение к решению по строке, если оно не очевидно из самого решения. */
+  readonly note: string | null;
 }
 
 export interface DuplicateGroup {
@@ -93,27 +105,107 @@ function severityOf(row: ParsedRow): RowSeverity {
   return row.issues.length > 0 ? 'WARNING' : 'OK';
 }
 
+/** Значения разобранной строки в том виде, в каком их хранит загрузка. */
+function valuesOf(row: ParsedRow) {
+  return {
+    cost: row.cost.toString(),
+    paid: row.paid.toString(),
+    status: row.status,
+    deadline: row.deadline?.toISOString() ?? null,
+  };
+}
+
 /** Название транша, которым перенос заводит неоплаченный остаток договора. */
 const REST_TITLE = 'Остаток по договору';
 
-/** То же сравнение по сохранённым значениям строки — при фиксации. */
-function changed(parsed: { cost: string; paid: string; status: string }, before: unknown): boolean {
-  const earlier = before as { cost?: string; paid?: string; status?: string } | null;
-  if (earlier === null || earlier === undefined) return true;
+/** Маркер вместо стёртого заказчика — тот же, что у обезличивания. */
+const ERASED_CUSTOMER = '[удалено по требованию субъекта]';
+
+/** Почему строка стёртого заказчика не переносится (решение Р-252). */
+export const ERASED_NOTE =
+  'данные заказчика удалены по требованию субъекта — строка не переносится';
+
+/** Почему строка оставлена на разбор, а не заведена. */
+function unclearNote(candidates: number): string {
   return (
-    earlier.cost !== parsed.cost || earlier.paid !== parsed.paid || earlier.status !== parsed.status
+    `похожих перенесённых работ (та же дата, ФИО и тип): ${candidates}; ` +
+    'какая из них эта строка, неясно — сверьте суммы в книге'
   );
 }
 
-/** Сравнение с ранее перенесённой строкой: изменились ли деньги или состояние. */
-function differs(row: ParsedRow, previous: { parsed: unknown }): boolean {
-  const before = previous.parsed as { cost?: string; paid?: string; status?: string } | null;
-  if (before === null || before === undefined) return true;
-  return (
-    before.cost !== row.cost.toString() ||
-    before.paid !== row.paid.toString() ||
-    before.status !== row.status
+/**
+ * Прежние переносы, с которыми сверяются строки: зафиксированные строки
+ * с работой и с той же основой ключа — любой из двух формул (Р-252).
+ *
+ * Отбор идёт по началу подписи: у прежней формулы основа стоит в начале, у
+ * новой — после метки. Совпадение начала ещё не совпадение основы, поэтому
+ * найденное перепроверяется точным сравнением основ.
+ */
+async function knownWorks(
+  db: Pick<typeof prisma, 'importRow'>,
+  signatures: readonly (string | null)[],
+  exceptBatch: string | null,
+): Promise<(KnownWork & { code: string | null })[]> {
+  const bases = new Set(
+    signatures.map(signatureBase).filter((base): base is string => base !== null),
   );
+  if (bases.size === 0) return [];
+  const found = await db.importRow.findMany({
+    where: {
+      projectId: { not: null },
+      batch: { state: 'APPLIED' },
+      ...(exceptBatch === null ? {} : { batchId: { not: exceptBatch } }),
+      OR: [...bases].flatMap((base) => [
+        { signature: { startsWith: `${base}|` } },
+        { signature: { startsWith: `${KEY_VERSION}|${base}` } },
+      ]),
+    },
+    select: {
+      signature: true,
+      parsed: true,
+      projectId: true,
+      rowNumber: true,
+      project: { select: { code: true } },
+      batch: { select: { appliedAt: true } },
+    },
+  });
+  return found
+    .filter((row) => {
+      const base = signatureBase(row.signature);
+      return base !== null && bases.has(base);
+    })
+    // Порядок фиксации, внутри загрузки — порядок строк. Номером по порядку,
+    // а не произведением: миллисекунды на номер строки не помещаются в
+    // точное целое, и строки одной загрузки сравнялись бы.
+    .sort(
+      (a, b) =>
+        (a.batch.appliedAt?.getTime() ?? 0) - (b.batch.appliedAt?.getTime() ?? 0) ||
+        a.rowNumber - b.rowNumber,
+    )
+    .map((row, order) => ({
+      signature: row.signature,
+      projectId: row.projectId!,
+      parsed: row.parsed,
+      order,
+      code: row.project?.code ?? null,
+    }));
+}
+
+/** Надгробия, оставленные обезличиванием для строк этой книги. */
+async function erasedKeys(
+  db: Pick<typeof prisma, 'importRow'>,
+  signatures: readonly (string | null)[],
+): Promise<Set<string>> {
+  const keys = [
+    ...new Set(signatures.map(erasedKey).filter((key): key is string => key !== null)),
+  ];
+  if (keys.length === 0) return new Set();
+  const found = await db.importRow.findMany({
+    where: { signature: { in: keys } },
+    select: { signature: true },
+    distinct: ['signature'],
+  });
+  return new Set(found.map((row) => row.signature!));
 }
 
 /**
@@ -145,6 +237,8 @@ async function assemble(
 
   const byName = new Map<string, { spellings: Set<string>; rowNumbers: number[] }>();
   for (const row of rows) {
+    // Стёртые строки ФИО не несут: в однофамильцы их не сводить.
+    if (row.erased) continue;
     const key = normalizeName(row.customer);
     const group = byName.get(key) ?? { spellings: new Set<string>(), rowNumbers: [] };
     group.spellings.add(row.customer);
@@ -219,27 +313,69 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
 
   const sha256 = createHash('sha256').update(input.bytes).digest('hex');
 
-  // Ранее перенесённые строки: ключ → проект. Берутся только зафиксированные
-  // загрузки, иначе брошенный предпросмотр закрывал бы строки от переноса.
-  const applied = await prisma.importRow.findMany({
-    where: {
-      signature: { in: book.rows.map((row) => row.signature) },
-      projectId: { not: null },
-      batch: { state: 'APPLIED' },
-    },
-    select: { signature: true, parsed: true, project: { select: { id: true, code: true } } },
-  });
-  const seen = new Map(applied.map((row) => [row.signature ?? '', row]));
+  // Ранее перенесённые строки. Берутся только зафиксированные загрузки,
+  // иначе брошенный предпросмотр закрывал бы строки от переноса. Сверка —
+  // по основе ключа, а не по ключу целиком: так находят свои работы и
+  // строки с исправленной суммой, и строки со старыми ключами (Р-252).
+  const signatures = book.rows.map((row) => row.signature);
+  const known = await knownWorks(prisma, signatures, null);
+  const codes = new Map(known.map((work) => [work.projectId, work.code]));
+  const tombs = await erasedKeys(prisma, signatures);
+  const matches = matchBook(book.rows, known, tombs);
 
-  const rows: PreviewRow[] = book.rows.map((row) => {
-    const previous = seen.get(row.signature);
+  const rows: PreviewRow[] = book.rows.map((row, index) => {
+    const match = matches[index]!;
+    if (match.kind === 'ERASED') {
+      // Строка стёртого заказчика: ни ФИО, ни тема из книги в отчёт не
+      // идут — отчёт сохраняется и открывается повторно (решение Р-252).
+      return {
+        rowNumber: row.rowNumber,
+        signature: erasedKey(row.signature)!,
+        action: 'SKIP',
+        severity: 'OK',
+        customer: ERASED_CUSTOMER,
+        rawType: '',
+        typeCode: null,
+        topic: '',
+        orderDate: null,
+        deadline: null,
+        cost: row.cost,
+        paid: row.paid,
+        status: row.status,
+        statusLabel: STATUS_LABEL[row.status],
+        rawStatus: '',
+        fill: null,
+        issues: [],
+        existingCode: null,
+        erased: true,
+        note: ERASED_NOTE,
+      };
+    }
+    const issues = row.issues.map((issue) => ({
+      code: issue.code,
+      label: ISSUE_LABEL[issue.code],
+      note: issue.note,
+    }));
+    if (match.kind === 'UNCLEAR') {
+      issues.push({
+        code: 'PREVIOUS_WORK_UNCLEAR',
+        label: ISSUE_LABEL.PREVIOUS_WORK_UNCLEAR,
+        note: unclearNote(match.candidates),
+      });
+    }
     const action: RowAction =
-      previous === undefined ? 'CREATE' : differs(row, previous) ? 'UPDATE' : 'SKIP';
+      match.kind === 'KNOWN'
+        ? changed(valuesOf(row), match.parsed)
+          ? 'UPDATE'
+          : 'SKIP'
+        : 'CREATE';
     return {
       rowNumber: row.rowNumber,
       signature: row.signature,
       action,
-      severity: severityOf(row),
+      // Неясное соответствие — ошибка: мост оставляет такие строки
+      // человеку, а фиксация их не заводит.
+      severity: match.kind === 'UNCLEAR' ? 'ERROR' : severityOf(row),
       customer: row.customer,
       rawType: row.rawType,
       typeCode: row.typeCode,
@@ -252,12 +388,10 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
       statusLabel: STATUS_LABEL[row.status],
       rawStatus: row.rawStatus,
       fill: row.fill,
-      issues: row.issues.map((issue) => ({
-        code: issue.code,
-        label: ISSUE_LABEL[issue.code],
-        note: issue.note,
-      })),
-      existingCode: previous?.project?.code ?? null,
+      issues,
+      existingCode: match.kind === 'KNOWN' ? (codes.get(match.projectId) ?? null) : null,
+      erased: false,
+      note: match.kind === 'UNCLEAR' ? unclearNote(match.candidates) : null,
     };
   });
 
@@ -276,42 +410,55 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
         conflicts: book.conflicts.length,
       },
       rows: {
-        create: book.rows.map((row, index) => ({
-          rowNumber: row.rowNumber,
-          signature: row.signature,
-          // Исходные значения ячеек вместе с кодом заливки: разбор остаётся
-          // воспроизводимым и оспоримым без обращения к самому файлу.
-          raw: {
-            customer: row.customer,
-            type: row.rawType,
-            description: row.topic,
-            deadline: row.rawDeadline,
-            cost: row.cost.toString(),
-            paid: row.paid.toString(),
-            status: row.rawStatus,
-            fill: row.fill,
-          },
-          parsed: {
-            typeCode: row.typeCode,
-            orderDate: row.orderDate?.toISOString() ?? null,
-            deadline: row.deadline?.toISOString() ?? null,
-            cost: row.cost.toString(),
-            paid: row.paid.toString(),
-            status: row.status,
-            normalizedName: row.normalizedName,
-          },
-          severity: rows[index]!.severity,
-          // Строка, уже перенесённая раньше, помнит свою работу: без этого
-          // «обновление» при фиксации проходило как новая строка и заводило
-          // вторую работу с договором и оплатой (решение Р-233).
-          projectId: seen.get(row.signature)?.project?.id ?? null,
-          errors: row.issues.map((issue) => ({
-            code: issue.code,
-            label: ISSUE_LABEL[issue.code],
-            note: issue.note,
-          })),
-          action: rows[index]!.action,
-        })),
+        create: book.rows.map((row, index) => {
+          const match = matches[index]!;
+          const preview = rows[index]!;
+          // Строка стёртого заказчика хранится надгробием: ФИО и тема из
+          // книги в базу снова не попадают, суммы — не персональные данные.
+          if (match.kind === 'ERASED') {
+            return {
+              rowNumber: row.rowNumber,
+              signature: preview.signature,
+              raw: { erased: true },
+              parsed: { erased: true, cost: row.cost.toString(), paid: row.paid.toString() },
+              severity: preview.severity,
+              errors: [],
+              action: preview.action,
+            };
+          }
+          return {
+            rowNumber: row.rowNumber,
+            signature: row.signature,
+            // Исходные значения ячеек вместе с кодом заливки: разбор остаётся
+            // воспроизводимым и оспоримым без обращения к самому файлу.
+            raw: {
+              customer: row.customer,
+              type: row.rawType,
+              description: row.topic,
+              deadline: row.rawDeadline,
+              cost: row.cost.toString(),
+              paid: row.paid.toString(),
+              status: row.rawStatus,
+              fill: row.fill,
+            },
+            parsed: {
+              typeCode: row.typeCode,
+              orderDate: row.orderDate?.toISOString() ?? null,
+              deadline: row.deadline?.toISOString() ?? null,
+              cost: row.cost.toString(),
+              paid: row.paid.toString(),
+              status: row.status,
+              normalizedName: row.normalizedName,
+            },
+            severity: preview.severity,
+            // Строка, уже перенесённая раньше, помнит свою работу: без этого
+            // «обновление» при фиксации проходило как новая строка и заводило
+            // вторую работу с договором и оплатой (решение Р-233).
+            projectId: match.kind === 'KNOWN' ? match.projectId : null,
+            errors: preview.issues,
+            action: preview.action,
+          };
+        }),
       },
     },
     select: { id: true },
@@ -364,40 +511,48 @@ export async function loadBatch(actor: Actor, batchId: string): Promise<Preview 
 
   const rows: PreviewRow[] = stored.map((row) => {
     const raw = row.raw as {
-      customer: string;
-      type: string;
-      description: string;
-      status: string;
-      fill: string | null;
-    };
-    const parsed = row.parsed as {
-      typeCode: string | null;
-      orderDate: string | null;
-      deadline: string | null;
-      cost: string;
-      paid: string;
-      status: LegacyStatus;
+      erased?: boolean;
+      customer?: string;
+      type?: string;
+      description?: string;
+      status?: string;
+      fill?: string | null;
     } | null;
+    const parsed = row.parsed as {
+      typeCode?: string | null;
+      orderDate?: string | null;
+      deadline?: string | null;
+      cost?: string;
+      paid?: string;
+      status?: LegacyStatus;
+    } | null;
+    // Стёртая строка хранит `{ erased: true }` вместо ячеек: прежде отчёт с
+    // такой строкой не открывался вовсе — разбор ФИО падал на пустом месте.
+    const erased = raw?.erased === true;
     const status = parsed?.status ?? 'IN_WORK';
+    const issues = Array.isArray(row.errors) ? (row.errors as unknown as PreviewRow['issues']) : [];
+    const unclear = issues.find((issue) => issue.code === 'PREVIOUS_WORK_UNCLEAR');
     return {
       rowNumber: row.rowNumber,
       signature: row.signature ?? '',
       action: row.action,
       severity: row.severity,
-      customer: raw.customer,
-      rawType: raw.type,
+      customer: erased ? ERASED_CUSTOMER : (raw?.customer ?? ''),
+      rawType: raw?.type ?? '',
       typeCode: parsed?.typeCode ?? null,
-      topic: raw.description,
+      topic: raw?.description ?? '',
       orderDate: parsed?.orderDate == null ? null : new Date(parsed.orderDate),
       deadline: parsed?.deadline == null ? null : new Date(parsed.deadline),
       cost: BigInt(parsed?.cost ?? '0'),
       paid: BigInt(parsed?.paid ?? '0'),
       status,
       statusLabel: STATUS_LABEL[status],
-      rawStatus: raw.status,
-      fill: raw.fill,
-      issues: (row.errors ?? []) as unknown as PreviewRow['issues'],
+      rawStatus: raw?.status ?? '',
+      fill: raw?.fill ?? null,
+      issues,
       existingCode: row.project?.code ?? null,
+      erased,
+      note: erased ? ERASED_NOTE : (unclear?.note ?? null),
     };
   });
 
@@ -453,6 +608,56 @@ export interface ApplyReport {
   readonly totals: { readonly cost: bigint; readonly paid: bigint };
 }
 
+/**
+ * Договор перенесённой работы: сумма из книги, поступление и остаток.
+ * Общий для заведения работы и для правки, заставшей работу без договора.
+ */
+async function openContract(
+  tx: Prisma.TransactionClient,
+  input: {
+    readonly projectId: string;
+    readonly code: string;
+    readonly orderDate: Date | null;
+    readonly deadline: Date | null;
+    readonly rowCost: bigint;
+    readonly rowPaid: bigint;
+  },
+): Promise<void> {
+  const contract = await tx.contract.create({
+    data: {
+      projectId: input.projectId,
+      number: input.code,
+      signedOn: input.orderDate,
+      totalAmount: input.rowCost,
+    },
+    select: { id: true },
+  });
+
+  // Дата поступления в книге не ведётся, поэтому у транша её нет:
+  // пустое поле честнее подставленной даты заказа.
+  if (input.rowPaid > 0n) {
+    await tx.tranche.create({
+      data: {
+        contractId: contract.id,
+        title: 'Поступление по книге учёта',
+        amount: input.rowPaid,
+        status: 'PAID',
+      },
+    });
+  }
+  if (input.rowCost > input.rowPaid) {
+    await tx.tranche.create({
+      data: {
+        contractId: contract.id,
+        title: REST_TITLE,
+        amount: input.rowCost - input.rowPaid,
+        plannedDate: input.deadline,
+        status: 'PLANNED',
+      },
+    });
+  }
+}
+
 interface StoredRow {
   readonly id: string;
   readonly rowNumber: number;
@@ -483,6 +688,17 @@ export async function applyBatch(
   if (batch === null) throw new Error('Загрузка не найдена');
   if (batch.state === 'APPLIED') throw new Error('Загрузка уже зафиксирована');
   if (batch.state !== 'PREVIEWED') throw new Error('Фиксация возможна только после предпросмотра');
+
+  // Куратор перенесённых работ приходит с формы и проверяется так же, как
+  // при передаче работы (`assignManager`): действующий менеджер или
+  // руководитель. Прежде подставленный идентификатор клиента или
+  // приостановленной записи закреплял за ней всю книгу — работы, которых
+  // не видел ни один куратор (решение Р-251).
+  const curator = await prisma.user.findFirst({
+    where: { id: input.managerId, status: 'ACTIVE', role: { in: ['MANAGER', 'HEAD'] } },
+    select: { id: true },
+  });
+  if (curator === null) throw new Error('Куратором может быть менеджер или руководитель');
 
   const stored = (await prisma.importRow.findMany({
     where: { batchId },
@@ -529,25 +745,48 @@ export async function applyBatch(
 
       // Действие строки сверяется заново с тем, что перенесено к этой
       // минуте, а не берётся из предпросмотра: между ними могла быть
-      // зафиксирована другая загрузка той же книги.
-      const signatures = stored
-        .map((row) => row.signature)
-        .filter((signature): signature is string => signature !== null);
-      const earlier = await tx.importRow.findMany({
-        where: {
-          signature: { in: signatures },
-          projectId: { not: null },
-          batchId: { not: batchId },
-          batch: { state: 'APPLIED' },
-        },
-        orderBy: { batch: { appliedAt: 'asc' } },
-        select: { signature: true, parsed: true, projectId: true },
-      });
-      const current = new Map(earlier.map((row) => [row.signature ?? '', row]));
+      // зафиксирована другая загрузка той же книги, а заказчик — стёрт по
+      // требованию субъекта. Сверка та же, что в предпросмотре (Р-252).
+      const signatures = stored.map((row) => row.signature);
+      const known = await knownWorks(tx, signatures, batchId);
+      const tombs = await erasedKeys(tx, signatures);
+      const matches = matchBook(
+        stored.map((row) => ({
+          signature: row.signature,
+          cost: BigInt((row.parsed as { cost?: string } | null)?.cost ?? '0'),
+        })),
+        known,
+        tombs,
+      );
 
       const clients = new Map<string, string>();
 
-      for (const row of stored) {
+      for (const [index, row] of stored.entries()) {
+        const match: RowMatch = matches[index]!;
+        // Строка, стёртая прежним обезличиванием, ключа не имеет вовсе, а
+        // ячеек в ней нет: заводить по ней нечего (решение Р-252).
+        const wiped = (row.raw as { erased?: unknown } | null)?.erased === true;
+        if (match.kind === 'ERASED' || wiped) {
+          // Заказчик стёрт — строка не заводит работу никогда, а её ячейки
+          // заменяются надгробием и здесь, если стирание пришлось между
+          // предпросмотром и фиксацией.
+          const tomb = row.signature?.startsWith(ERASED_KEY_PREFIX) ? row.signature : erasedKey(row.signature);
+          const amounts = row.parsed as { cost?: string; paid?: string } | null;
+          await tx.importRow.update({
+            where: { id: row.id },
+            data: {
+              action: 'SKIP',
+              signature: tomb,
+              raw: { erased: true },
+              parsed: { erased: true, cost: amounts?.cost ?? '0', paid: amounts?.paid ?? '0' },
+              errors: [],
+              projectId: null,
+            },
+          });
+          skipped += 1;
+          continue;
+        }
+
         const raw = row.raw as {
           customer: string;
           type: string;
@@ -564,44 +803,48 @@ export async function applyBatch(
           normalizedName: string;
         };
 
-        const before = row.signature === null ? undefined : current.get(row.signature);
         const action: RowAction =
-          before === undefined ? 'CREATE' : changed(parsed, before.parsed) ? 'UPDATE' : 'SKIP';
-        const projectId = before?.projectId ?? null;
+          match.kind === 'KNOWN'
+            ? changed({ ...parsed, deadline: parsed.deadline ?? null }, match.parsed)
+              ? 'UPDATE'
+              : 'SKIP'
+            : 'CREATE';
+        const projectId = match.kind === 'KNOWN' ? match.projectId : null;
 
         if (excluded.has(row.rowNumber) || action === 'SKIP') {
           if (action === 'SKIP' && projectId !== null) {
             await tx.importRow.update({ where: { id: row.id }, data: { action, projectId } });
+          } else if (row.projectId !== null) {
+            // Исключённая правка не внесена — и строка не должна помнить
+            // работу: иначе следующая сверка взяла бы её значения за уже
+            // перенесённые и правку пропустила бы (решение Р-252).
+            await tx.importRow.update({ where: { id: row.id }, data: { projectId: null } });
           }
           skipped += 1;
           continue;
         }
 
-        // Нечитаемая сумма — не ноль: без договора оплата по строке
-        // потерялась бы. Строка не переносится, пока её не поправят в книге.
         const codes = Array.isArray(row.errors)
           ? (row.errors as { code?: string }[]).map((error) => error.code)
           : [];
+        // Строка похожа на несколько перенесённых работ сразу либо две
+        // строки — на одну: заводить её значило бы рискнуть второй работой
+        // с договором и оплатой (решение Р-252). Разбирает человек.
+        if (match.kind === 'UNCLEAR') {
+          rejected.push({ rowNumber: row.rowNumber, reason: unclearNote(match.candidates) });
+          await tx.importRow.update({
+            where: { id: row.id },
+            data: { action: 'SKIP', severity: 'ERROR', projectId: null },
+          });
+          continue;
+        }
+        // Нечитаемая сумма — не ноль: без договора оплата по строке
+        // потерялась бы. Строка не переносится, пока её не поправят в книге.
         if (codes.includes('AMOUNT_UNREADABLE')) {
           rejected.push({ rowNumber: row.rowNumber, reason: 'сумма в книге не читается' });
           await tx.importRow.update({
             where: { id: row.id },
-            data: { action: 'SKIP', severity: 'ERROR' },
-          });
-          continue;
-        }
-
-        const override = input.typeOverrides?.[raw.type];
-        const serviceTypeId =
-          override ?? (parsed.typeCode === null ? undefined : typeByCode.get(parsed.typeCode));
-        if (serviceTypeId === undefined) {
-          rejected.push({
-            rowNumber: row.rowNumber,
-            reason: `написание «${raw.type}» не сведено к позиции справочника`,
-          });
-          await tx.importRow.update({
-            where: { id: row.id },
-            data: { action: 'SKIP', severity: 'ERROR' },
+            data: { action: 'SKIP', severity: 'ERROR', projectId: null },
           });
           continue;
         }
@@ -612,7 +855,111 @@ export async function applyBatch(
         const deadline = parsed.deadline === null ? null : new Date(parsed.deadline);
         const status = PROJECT_STATUS[parsed.status];
 
-        // Карточка клиента: учётная запись при переносе не заводится
+        if (action === 'UPDATE' && projectId !== null) {
+          // Изменившаяся строка: поправляются состояние, сроки и сумма
+          // договора. Транши, внесённые руками, не трогаются; из книги
+          // доносится только разница оплаты — отдельным поступлением, — и
+          // остаток, заведённый прошлым переносом, пересчитывается под новую
+          // сумму. Прежде разница оплаты шла в итог загрузки, но в базу не
+          // попадала (решение Р-233).
+          await tx.project.update({
+            where: { id: projectId },
+            data: {
+              status,
+              dueOn: deadline,
+              closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
+            },
+          });
+          const contract = await tx.contract.findFirst({
+            where: { projectId },
+            select: { id: true, tranches: { select: { id: true, title: true, amount: true, status: true } } },
+          });
+          // Работа заведена с нулевой суммой, и договора у неё нет, а в книге
+          // сумму проставили: договор заводится так же, как при заведении
+          // работы. Прежде такая правка до базы не доходила (решение Р-252).
+          if (contract === null && rowCost > 0n) {
+            const { code } = await tx.project.findUniqueOrThrow({
+              where: { id: projectId },
+              select: { code: true },
+            });
+            await openContract(tx, { projectId, code, orderDate, deadline, rowCost, rowPaid });
+            paid += rowPaid;
+          }
+          if (contract !== null) {
+            await tx.contract.update({ where: { id: contract.id }, data: { totalAmount: rowCost } });
+            const paidSoFar = contract.tranches
+              .filter((tranche) => tranche.status === 'PAID')
+              .reduce((sum, tranche) => sum + tranche.amount, 0n);
+            let received = 0n;
+            if (rowPaid > paidSoFar) {
+              received = rowPaid - paidSoFar;
+              await tx.tranche.create({
+                data: {
+                  contractId: contract.id,
+                  title: 'Поступление по книге учёта',
+                  amount: received,
+                  status: 'PAID',
+                },
+              });
+            }
+            const rest = contract.tranches.find(
+              (tranche) => tranche.title === REST_TITLE && tranche.status === 'PLANNED',
+            );
+            const others = contract.tranches
+              .filter((tranche) => tranche.id !== rest?.id)
+              .reduce((sum, tranche) => sum + tranche.amount, 0n);
+            const left = rowCost - others - received;
+            if (rest !== undefined) {
+              if (left > 0n) {
+                await tx.tranche.update({ where: { id: rest.id }, data: { amount: left } });
+              } else {
+                await tx.tranche.delete({ where: { id: rest.id } });
+              }
+            } else if (left > 0n) {
+              // Остаток был погашен и снят, а сумму в книге подняли: без
+              // нового остатка разница не стояла бы ни в одном плане
+              // (решение Р-252).
+              await tx.tranche.create({
+                data: {
+                  contractId: contract.id,
+                  title: REST_TITLE,
+                  amount: left,
+                  plannedDate: deadline,
+                  status: 'PLANNED',
+                },
+              });
+            }
+            paid += received;
+          }
+          await tx.importRow.update({ where: { id: row.id }, data: { action, projectId } });
+          updated += 1;
+          cost += rowCost;
+          continue;
+        }
+
+        // Позиция справочника нужна только новой работе: у перенесённой она
+        // уже есть. Прежде проверка стояла до обновления, и правка суммы в
+        // строке с несведённым написанием отклонялась при каждом прогоне
+        // моста — он замен написаний не передаёт (решение Р-252).
+        const override = input.typeOverrides?.[raw.type];
+        const serviceTypeId =
+          override ?? (parsed.typeCode === null ? undefined : typeByCode.get(parsed.typeCode));
+        if (serviceTypeId === undefined) {
+          rejected.push({
+            rowNumber: row.rowNumber,
+            reason: `написание «${raw.type}» не сведено к позиции справочника`,
+          });
+          await tx.importRow.update({
+            where: { id: row.id },
+            data: { action: 'SKIP', severity: 'ERROR', projectId: null },
+          });
+          continue;
+        }
+
+        // Карточка клиента — тоже только новой работе. Прежде она искалась до
+        // обновления, и правка строки, чья карточка сведена в другую,
+        // заводила пустую карточку с тем же ФИО (решение Р-252).
+        // Учётная запись при переносе не заводится
         // (решение Р-133) — историческим клиентам вход не открывается,
         // и рассылки им не уходят.
         let clientId = clients.get(parsed.normalizedName);
@@ -639,64 +986,6 @@ export async function applyBatch(
           clients.set(parsed.normalizedName, clientId);
         }
 
-        if (action === 'UPDATE' && projectId !== null) {
-          // Изменившаяся строка: поправляются состояние, сроки и сумма
-          // договора. Транши, внесённые руками, не трогаются; из книги
-          // доносится только разница оплаты — отдельным поступлением, — и
-          // остаток, заведённый прошлым переносом, пересчитывается под новую
-          // сумму. Прежде разница оплаты шла в итог загрузки, но в базу не
-          // попадала (решение Р-233).
-          await tx.project.update({
-            where: { id: projectId },
-            data: {
-              status,
-              dueOn: deadline,
-              closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
-            },
-          });
-          const contract = await tx.contract.findFirst({
-            where: { projectId },
-            select: { id: true, tranches: { select: { id: true, title: true, amount: true, status: true } } },
-          });
-          if (contract !== null) {
-            await tx.contract.update({ where: { id: contract.id }, data: { totalAmount: rowCost } });
-            const paidSoFar = contract.tranches
-              .filter((tranche) => tranche.status === 'PAID')
-              .reduce((sum, tranche) => sum + tranche.amount, 0n);
-            let received = 0n;
-            if (rowPaid > paidSoFar) {
-              received = rowPaid - paidSoFar;
-              await tx.tranche.create({
-                data: {
-                  contractId: contract.id,
-                  title: 'Поступление по книге учёта',
-                  amount: received,
-                  status: 'PAID',
-                },
-              });
-            }
-            const rest = contract.tranches.find(
-              (tranche) => tranche.title === REST_TITLE && tranche.status === 'PLANNED',
-            );
-            if (rest !== undefined) {
-              const others = contract.tranches
-                .filter((tranche) => tranche.id !== rest.id)
-                .reduce((sum, tranche) => sum + tranche.amount, 0n);
-              const left = rowCost - others - received;
-              if (left > 0n) {
-                await tx.tranche.update({ where: { id: rest.id }, data: { amount: left } });
-              } else {
-                await tx.tranche.delete({ where: { id: rest.id } });
-              }
-            }
-            paid += received;
-          }
-          await tx.importRow.update({ where: { id: row.id }, data: { action, projectId } });
-          updated += 1;
-          cost += rowCost;
-          continue;
-        }
-
         // Код выдаётся по году заказа, а не по текущему: перенесённая
         // история должна читаться в своей хронологии.
         const year = orderDate?.getUTCFullYear() ?? new Date().getUTCFullYear();
@@ -720,39 +1009,7 @@ export async function applyBatch(
         });
 
         if (rowCost > 0n) {
-          const contract = await tx.contract.create({
-            data: {
-              projectId: project.id,
-              number: code,
-              signedOn: orderDate,
-              totalAmount: rowCost,
-            },
-            select: { id: true },
-          });
-
-          // Дата поступления в книге не ведётся, поэтому у транша её нет:
-          // пустое поле честнее подставленной даты заказа.
-          if (rowPaid > 0n) {
-            await tx.tranche.create({
-              data: {
-                contractId: contract.id,
-                title: 'Поступление по книге учёта',
-                amount: rowPaid,
-                status: 'PAID',
-              },
-            });
-          }
-          if (rowCost > rowPaid) {
-            await tx.tranche.create({
-              data: {
-                contractId: contract.id,
-                title: REST_TITLE,
-                amount: rowCost - rowPaid,
-                plannedDate: deadline,
-                status: 'PLANNED',
-              },
-            });
-          }
+          await openContract(tx, { projectId: project.id, code, orderDate, deadline, rowCost, rowPaid });
         }
 
         await tx.importRow.update({
@@ -802,8 +1059,8 @@ export async function applyBatch(
 
 /**
  * Свести две карточки клиента. Разное написание одного ФИО — случай
- * исходной книги («Набиль АльзалзалиНадир Таррад» и «Набиль Альзалзали
- * Надир Таррад» — один человек), и машинно оно не различимо от однофамильцев.
+ * книги такого вида («Самир ХалиловРашид Мансур» и «Самир Халилов Рашид
+ * Мансур» — один человек), и машинно оно не различимо от однофамильцев.
  * Поэтому сведение — ручное действие руководителя, а не правило разбора.
  */
 export async function mergeClients(
@@ -861,7 +1118,7 @@ export async function mergeClients(
 
 /**
  * Карточки, похожие на одного человека: одинаковое ФИО без пробелов и
- * с «ё» как «е» — «АльзалзалиНадир» и «Альзалзали Надир».
+ * с «ё» как «е» — «ХалиловРашид» и «Халилов Рашид».
  *
  * Прежде блок сведения показывался по совпадению ФИО в книге — а такие
  * строки при переносе и так ложатся на одну карточку, — и просил ввести

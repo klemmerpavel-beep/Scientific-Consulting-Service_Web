@@ -129,12 +129,15 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
 
   // Название нового материала видит другая сторона: клиент — эксперт,
   // эксперт — клиент. Контакт в названии обходил и модерацию замечаний, и
-  // единственный канал переписки (решение Р-242).
-  if (existing === null && actor.role !== 'MANAGER' && actor.role !== 'HEAD') {
-    const title = (input.title ?? input.originalName).trim();
-    if (hasContacts(title)) {
+  // единственный канал переписки (решение Р-242). Имя файла проверяется у
+  // любой версии, а не только у первой: история версий показывает имя
+  // каждой, и контакт уходил второй версией к уже названному материалу
+  // (решение Р-251).
+  if (actor.role === 'CLIENT' || actor.role === 'EXPERT') {
+    const names = [input.originalName, ...(input.title === undefined ? [] : [input.title])];
+    if (names.some((name) => hasContacts(name.trim()))) {
       throw new Error(
-        'В названии материала есть телефон, адрес или ссылка на мессенджер: переименуйте файл или задайте название без них',
+        'В названии материала или имени файла есть телефон, адрес или ссылка на мессенджер: переименуйте файл или задайте название без них',
       );
     }
   }
@@ -368,6 +371,16 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
   });
   if (version === null) throw new Error('Версия не найдена');
   ensure(actor, 'COMMENT_CREATE', version.material.project);
+  // Замечание — к тому, что можно открыть. Договор, счёт и акт видны по
+  // праву на договор, а не на материалы: эксперт, которому они закрыты,
+  // зная номер версии, оставлял к ним замечание (решение Р-251).
+  if (version.material.kind !== 'STAGE_MATERIAL') {
+    ensure(actor, 'CONTRACT_VIEW', version.material.project);
+  }
+  // К удалённому материалу и изъятой версии замечаний не пишут: на экране
+  // их уже нет, и замечание повисало бы без предмета (решение Р-251).
+  if (version.material.deletedAt !== null) throw new Error('Материал удалён: замечание к нему не принимается');
+  if (version.purgedAt !== null) throw new Error('Версия изъята: замечание к ней не принимается');
 
   const text = body.trim();
   if (text.length === 0) throw new Error('Пустой комментарий не сохраняется');

@@ -3,7 +3,7 @@ import { prisma } from '../db.ts';
 import { enqueue } from './outbox.ts';
 import { record } from './audit.ts';
 import { leadAttachmentKey, openObject, sha256, storage } from './storage.ts';
-import { can, ensure, scopeComments, scopeMaterials, scopeProjects, type Actor } from './access.ts';
+import { can, ensure, scopeComments, scopeLeads, scopeMaterials, scopeProjects, type Actor } from './access.ts';
 import { now as today } from './clock.ts';
 import { LEAD_STATUS_LABEL } from './lead-labels.ts';
 
@@ -330,8 +330,12 @@ export async function leadQueue(actor: Actor, page = 1) {
  */
 export async function leadById(actor: Actor, id: string) {
   ensure(actor, 'REQUEST_MODERATE');
-  return prisma.lead.findUnique({
-    where: { id },
+  // Заявка, развёрнутая в чужую работу, для менеджера не существует — как
+  // и сама работа (решение Р-251).
+  const scope = scopeLeads(actor);
+  if (scope === null) return null;
+  return prisma.lead.findFirst({
+    where: { AND: [{ id }, scope] },
     include: {
       attachments: {
         where: { purgedAt: null },
@@ -361,7 +365,11 @@ export async function leadById(actor: Actor, id: string) {
  */
 export async function readLeadAttachment(actor: Actor, id: string, ip?: string | null) {
   ensure(actor, 'REQUEST_MODERATE');
-  const file = await prisma.leadAttachment.findUnique({ where: { id } });
+  // Вложение видно тому, кому видна его заявка: по заявке, развёрнутой в
+  // чужую работу, менеджер файлов не получает (решение Р-251).
+  const scope = scopeLeads(actor);
+  if (scope === null) return null;
+  const file = await prisma.leadAttachment.findFirst({ where: { id, lead: scope } });
   if (file === null || file.purgedAt !== null) return null;
 
   // Потоком, а не целиком (решение Р-247).
@@ -583,12 +591,21 @@ export async function clientRegistry(actor: Actor) {
 /** Реестр экспертов с их загрузкой. */
 export async function expertRegistry(actor: Actor) {
   ensure(actor, 'REGISTRY_VIEW');
+  // Загрузка эксперта считается по видимым работам: менеджеру — по своим.
+  // Прежде в число шли и чужие работы, и по разнице чисел менеджер узнавал
+  // о работах, которые выборка от него закрывает (решение Р-251). Сам
+  // перечень экспертов не сужается: назначать эксперта менеджер выбирает
+  // из всех.
+  const scope = scopeProjects(actor);
   const rows = await prisma.user.findMany({
     where: { role: 'EXPERT', status: 'ACTIVE' },
     orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
     include: {
       expertProfile: true,
-      expertProjects: { select: { id: true, status: true } },
+      expertProjects: {
+        where: scope ?? { id: { in: [] } },
+        select: { id: true, status: true },
+      },
     },
   });
   return rows.map((row) => ({
@@ -614,6 +631,13 @@ export interface LeadFilter {
   /** Поиск по имени, контакту, организации и теме. */
   readonly query?: string;
   readonly page?: number;
+  /**
+   * Верхняя граница даты заявки. Выгрузка перебирает страницы по одной, и
+   * заявка, пришедшая посреди перебора, вставала первой строкой и сдвигала
+   * страницы: последняя строка прочитанной страницы повторялась на
+   * следующей (решение Р-252). Выгрузка фиксирует границу на момент начала.
+   */
+  readonly until?: Date;
 }
 
 /**
@@ -626,12 +650,20 @@ export interface LeadFilter {
  */
 export async function leadList(actor: Actor, filter: LeadFilter = {}) {
   ensure(actor, 'REQUEST_MODERATE');
+  // Заявки, развёрнутые в чужие работы, менеджеру не видны ни в перечне,
+  // ни в выгрузке — она идёт через эту же выборку (решение Р-251).
+  const scope = scopeLeads(actor);
+  if (scope === null) return { rows: [], total: 0, page: 1, pages: 1 };
 
   const query = (filter.query ?? '').trim();
   const where = {
+    // Условие видимости стоит в AND: поиск ниже занимает собственный OR,
+    // и сложение объектов одно из условий потеряло бы.
+    AND: [scope],
     // Отзывы приходят той же формой и лежат в той же таблице; в перечне
     // обращений им не место — у них свой порядок работы (Р-111).
     form: { not: 'review' },
+    ...(filter.until === undefined ? {} : { createdAt: { lte: filter.until } }),
     ...(filter.source ? { source: filter.source } : {}),
     // Состояние — из перечня; неизвестное значение — «любое»: прежде оно
     // уходило в базу и роняло экран и выгрузку ошибкой (решение Р-245).

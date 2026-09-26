@@ -3,7 +3,16 @@ import type { CSSProperties, ReactNode } from 'react';
 
 import { WaveBar } from './Charts.tsx';
 import { FilePick } from './FilePick.tsx';
-import { BUTTON_PRIMARY, BUTTON_QUIET, MONO, RADIUS, SANS, SERIF, SHADOW } from './tokens.ts';
+import {
+  BUTTON_PRIMARY,
+  BUTTON_QUIET,
+  FIELD_CONTROL,
+  MONO,
+  RADIUS,
+  SANS,
+  SERIF,
+  SHADOW,
+} from './tokens.ts';
 import type { WaveMood } from '../../lib/cabinet/charts';
 import { STAGE_STATE_LABEL, stageLabel, type StageStateKey } from '../../lib/cabinet/stage-state';
 
@@ -346,19 +355,11 @@ export function Field({
    */
   dense?: boolean;
 }) {
-  const control: CSSProperties = {
-    boxSizing: 'border-box',
-    width: '100%',
-    minHeight: dense ? 44 : 48,
-    padding: dense ? '10px 14px' : '12px 14px',
-    borderRadius: RADIUS.field,
-    border: '1px solid var(--pd-edge-neutral)',
-    background: 'var(--pd-ink-inverse)',
-    color: 'var(--pd-ink)',
-    fontFamily: SANS,
-    fontSize: 16,
-    lineHeight: 1.5,
-  };
+  // Рамка — `--pd-field-edge`, не светлее 3:1 к белому и к тихой
+  // поверхности: прежняя кромка давала 1,65:1 (решение Р-253).
+  const control: CSSProperties = dense
+    ? { ...FIELD_CONTROL, minHeight: 44, padding: '10px 14px' }
+    : FIELD_CONTROL;
   // Подсказка лежит вне подписи и связывается с полем отдельно. Пока она
   // стояла внутри `<label>`, доступным именем поля становилась склейка:
   // «Электронная почта Тот адрес, который вы указывали при обращении.»
@@ -1090,20 +1091,7 @@ export function Select({
         required={required}
         defaultValue={defaultValue}
         aria-describedby={hintId}
-        style={{
-          boxSizing: 'border-box',
-          width: '100%',
-          minHeight: 48,
-          minWidth,
-          padding: '12px 14px',
-          borderRadius: RADIUS.field,
-          border: '1px solid var(--pd-edge-neutral)',
-          background: 'var(--pd-ink-inverse)',
-          color: 'var(--pd-ink)',
-          fontFamily: SANS,
-          fontSize: 16,
-          lineHeight: 1.5,
-        }}
+        style={{ ...FIELD_CONTROL, minWidth }}
       >
         {children}
       </select>
@@ -1122,6 +1110,10 @@ export function Select({
  * Зелёный и красный дизайн-система держит за исходом: получилось или не
  * получилось. Состояние работы — не исход, поэтому причина остановки этапа
  * и предупреждения витрин выводятся спокойным тоном (решение Р-146).
+ *
+ * Исход (зелёный и красный тон) помечен классом `cab-outcome`: в счёт пяти
+ * блоков экрана он не входит — он временный и появляется только после
+ * действия (решение Р-253). Спокойный тон — состояние, пометки у него нет.
  */
 export function Notice({
   children,
@@ -1149,6 +1141,7 @@ export function Notice({
   return (
     <div
       role={role}
+      className={tone === 'quiet' ? undefined : 'cab-outcome'}
       style={{
         padding: '14px 16px',
         borderRadius: RADIUS.field,
@@ -1161,6 +1154,32 @@ export function Notice({
       }}
     >
       {children}
+    </div>
+  );
+}
+
+/**
+ * Исход действия, стоящий на экране отдельно: над содержимым, с отступом.
+ *
+ * Обёртку `<div style={{ marginBottom: 20 }}>` вокруг `Notice` экраны
+ * писали каждый сам, и она не несла никакого признака: правило «каждый
+ * блок собран общей частью» видело в ней блок мимо общих частей, а
+ * правило пяти блоков не могло её учесть. Исход — не блок: временный,
+ * появляется только после действия, и в счёт пяти не входит; признак
+ * `cab-outcome` говорит это явно (решение Р-253).
+ */
+export function Outcome({
+  children,
+  tone = 'ok',
+}: {
+  children: ReactNode;
+  tone?: 'ok' | 'error';
+}) {
+  return (
+    <div className="cab-outcome" style={{ marginBottom: 20 }}>
+      <Notice tone={tone} role={tone === 'error' ? 'alert' : 'status'}>
+        {children}
+      </Notice>
     </div>
   );
 }
@@ -1213,10 +1232,15 @@ export function LongTable({
           title={`Ещё ${rest.length} ${plural(rest.length, 'строка', 'строки', 'строк')}`}
           style={{ marginTop: 12 }}
         >
-          <table style={style}>
-            <thead>{columns}</thead>
-            <tbody>{rest}</tbody>
-          </table>
+          {/* Тело свёртки на обычной странице не прокручивается, и голая
+              таблица в 720 px раздвигала страницу вбок на телефоне —
+              прокрутка своя, с фокусом и именем (решения Р-168, Р-253). */}
+          <TableScroll label={`${label}: остальные строки`}>
+            <table style={style}>
+              <thead>{columns}</thead>
+              <tbody>{rest}</tbody>
+            </table>
+          </TableScroll>
         </Disclosure>
       )}
     </>

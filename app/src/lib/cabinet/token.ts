@@ -24,11 +24,65 @@ import { siteUrl } from '../site-url.ts';
 export const TOKEN_TTL_MINUTES = 15;
 /** Скользящий срок сессии. */
 export const SESSION_TTL_DAYS = 30;
+/**
+ * Абсолютный предел сессии от её открытия. Скользящее продление за него не
+ * выходит: иначе похищенная cookie, которой пользуются хоть раз в месяц,
+ * жила бы вечно (решение Р-251).
+ */
+export const SESSION_MAX_DAYS = 90;
 
-/** Не более пяти ссылок на один адрес и двадцати с одного адреса IP в час. */
-export const RATE_PER_EMAIL = 5;
+/**
+ * Частота ссылок входа за час (решение Р-251). Счёт двухъярусный:
+ * - не более пяти ссылок на пару «адрес + IP» — обычный предел для человека;
+ * - не более десяти на адрес со всех IP вместе — потолок, чтобы ящик нельзя
+ *   было засыпать письмами, меняя узлы;
+ * - не более двадцати запросов с одного IP на любые адреса.
+ * Потолок адреса не действует на IP, с которого владелец адреса уже входил
+ * в кабинет: иначе чужие узлы, исчерпав потолок, запирали бы человека, и
+ * его собственный запрос из дома не проходил бы. Предел пары действует и
+ * там — пять ссылок в час с одного узла хватает с запасом.
+ */
+export const RATE_PER_EMAIL_IP = 5;
+export const RATE_PER_EMAIL = 10;
 export const RATE_PER_IP = 20;
 export const RATE_WINDOW_MS = 60 * 60 * 1000;
+
+/** Счётчики попыток за окно, по которым решается, выдавать ли ссылку. */
+export type LoginRateCounts = {
+  /** Попытки на этот адрес с этого IP, кроме отказов по частоте. */
+  readonly byPair: number;
+  /** Попытки на этот адрес со всех IP, кроме отказов по частоте. */
+  readonly byEmail: number;
+  /** Все попытки с этого IP на любые адреса. */
+  readonly byIp: number;
+  /** С этого IP владелец адреса уже входил в кабинет. */
+  readonly knownIp: boolean;
+};
+
+/** Превышен ли предел частоты. Чистая функция: схема проверяется без базы. */
+export function loginRateExceeded(counts: LoginRateCounts): boolean {
+  if (counts.byIp >= RATE_PER_IP) return true;
+  if (counts.byPair >= RATE_PER_EMAIL_IP) return true;
+  if (!counts.knownIp && counts.byEmail >= RATE_PER_EMAIL) return true;
+  return false;
+}
+
+/**
+ * Адрес владельца ссылки в виде, который можно показать на странице входа:
+ * первая буква имени, звёздочки и домен — `i***@mail.ru`. Человек видит, в
+ * чью запись входит, и чужую ссылку, подсунутую ему для входа под чужим
+ * именем, узнаёт до нажатия (решение Р-251). Полный адрес на странице не
+ * показывается: ссылку мог открыть и посторонний, пересланную или из
+ * предпросмотра.
+ */
+export function maskEmail(email: string): string {
+  const at = email.lastIndexOf('@');
+  if (at <= 0) return '***';
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const first = Array.from(local)[0] ?? '';
+  return `${first}***@${domain}`;
+}
 
 /**
  * Имя cookie. Приставка `__Host-` требует защищённого соединения и потому

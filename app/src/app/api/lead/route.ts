@@ -150,5 +150,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ ok: true, id });
+  // Номер записи наружу не отдаётся (Р-250): форме он не нужен, а первичный
+  // ключ в ответе открытого маршрута — лишнее знание о внутреннем устройстве.
+  return NextResponse.json({ ok: true });
 }

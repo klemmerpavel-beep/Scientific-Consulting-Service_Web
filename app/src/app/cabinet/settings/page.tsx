@@ -13,7 +13,7 @@ import {
   FormActions,
   Heading,
   Narrow,
-  Notice,
+  Outcome,
   ScreenHead,
   Select,
   TABLE_CELL,
@@ -88,15 +88,11 @@ export default async function SettingsScreen({
         </Text>
 
         {failure === undefined ? null : (
-          <div style={{ marginBottom: 20 }}>
-            <Notice tone="error" role="alert">{failure}</Notice>
-          </div>
+          <Outcome tone="error">{failure}</Outcome>
         )}
 
         {params.saved === undefined ? null : (
-          <div style={{ marginBottom: 20 }}>
-            <Notice>Настройки сохранены.</Notice>
-          </div>
+          <Outcome>Настройки сохранены.</Outcome>
         )}
 
         {/* Способ связи — не канал доставки: звонить и писать в соцсети

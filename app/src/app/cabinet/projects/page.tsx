@@ -525,7 +525,11 @@ export default async function ProjectsScreen({
                     что и так видно в шкале (решение Р-175). */}
                 {waiting === null ? null : (
                   <Text size={13} style={{ marginTop: 10 }}>
-                    <a href={`/cabinet/stages/${waiting.id}`}>{waitingLine(waiting)}</a>
+                    {/* Призыв к действию — цель в 44 px, а не строка в
+                        девятнадцать (решение Р-253). */}
+                    <a className="cab-mark" href={`/cabinet/stages/${waiting.id}`}>
+                      {waitingLine(waiting)}
+                    </a>
                     {waiting.dueOn === null ? '' : ` — до ${formatDate(waiting.dueOn)}`}
                   </Text>
                 )}

@@ -17,6 +17,7 @@ import {
   hasContacts,
   presentProject,
   scopeComments,
+  scopeLeads,
   scopeMaterials,
   scopePayouts,
   scopeProjects,
@@ -265,6 +266,16 @@ describe('ограничение выборки', () => {
       OR: [{ moderationStatus: 'PUBLISHED' }, { authorId: 'u-client' }],
     });
     assert.deepEqual(scopeComments(manager), {});
+  });
+
+  it('заявки чужих работ менеджеру не видны, неразобранные видны (Р-251)', () => {
+    assert.deepEqual(scopeLeads(manager), {
+      OR: [{ projectId: null }, { project: { managerId: 'm1' } }],
+    });
+    assert.deepEqual(scopeLeads(head), {});
+    assert.equal(scopeLeads(client), null);
+    assert.equal(scopeLeads(expert), null);
+    assert.equal(scopeLeads({ ...manager, status: 'SUSPENDED' }), null);
   });
 
   it('эксперт видит только собственные начисления', () => {

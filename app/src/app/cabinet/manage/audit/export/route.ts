@@ -102,10 +102,18 @@ export async function GET(request: Request): Promise<Response> {
   await record(actor, {
     action: 'JOURNAL_EXPORTED',
     objectType: files ? 'FileAccessLog' : 'AuditEvent',
+    // Отбор по названию работы — свободный текст: там бывает и фамилия
+    // клиента. В журнал идёт признак отбора, а не его текст (решение Р-252).
     payload: {
       rows: exported,
       truncated,
-      filter: { ...filter, limit: undefined, forExport: undefined },
+      filter: {
+        from: filter.from,
+        to: filter.to,
+        actorId: filter.actorId,
+        action: filter.action,
+        projectTitle: filter.projectTitle !== null,
+      },
     },
     ip: await requestIp(),
   });

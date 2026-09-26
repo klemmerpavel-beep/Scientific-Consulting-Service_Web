@@ -11,7 +11,7 @@ import {
   Heading,
   ScreenHead,
   LongTable,
-  Notice,
+  Outcome,
   Select,
   TABLE_CELL,
   TABLE_HEAD,
@@ -76,18 +76,14 @@ export default async function ErasureScreen({
       />
 
       {flags.done === undefined ? null : (
-        <div style={{ marginBottom: 20 }}>
-          <Notice>Требование исполнено. Отчёт записан и показан в перечне ниже.</Notice>
-        </div>
+        <Outcome>Требование исполнено. Отчёт записан и показан в перечне ниже.</Outcome>
       )}
 
       {active.length === 0 ? null : (
-        <div style={{ marginBottom: 20 }}>
-          <Notice tone="error" role="alert">
-            Требование не исполнено: у клиента есть действующие работы — {active.join(', ')}.
-            Завершите или отмените их в карточке работы, затем исполните требование.
-          </Notice>
-        </div>
+        <Outcome tone="error">
+          Требование не исполнено: у клиента есть действующие работы — {active.join(', ')}.
+          Завершите или отмените их в карточке работы, затем исполните требование.
+        </Outcome>
       )}
 
       <Card style={{ marginBottom: 32 }}>

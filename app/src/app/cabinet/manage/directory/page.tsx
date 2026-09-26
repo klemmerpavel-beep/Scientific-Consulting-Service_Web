@@ -15,7 +15,7 @@ import {
   FormActions,
   FormRow,
   Heading,
-  Notice,
+  Outcome,
   ScreenHead,
   Select,
   TABLE_CELL,
@@ -103,11 +103,9 @@ export default async function DirectoryScreen({
       </FilterBar>
 
       {failure === undefined ? null : (
-        <div style={{ marginBottom: 20 }}>
-          <Notice tone="error" role="alert">
-            {failure}
-          </Notice>
-        </div>
+        <Outcome tone="error">
+          {failure}
+        </Outcome>
       )}
 
       {tab === 'types' ? (

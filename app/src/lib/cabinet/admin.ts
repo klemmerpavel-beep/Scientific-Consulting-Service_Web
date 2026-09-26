@@ -8,6 +8,7 @@
 
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
+import { now } from './clock.ts';
 import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
 
@@ -234,11 +235,14 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
     await prisma.expertProfile.create({ data: { userId: user.id } });
   }
 
+  // Адрес почты в журнал не пишется: запись ссылается на учётную запись
+  // идентификатором, а адрес в ней переживал бы и смену адреса, и
+  // обезличивание (решение Р-252).
   await record(actor, {
     action: 'USER_CREATED',
     objectType: 'User',
     objectId: user.id,
-    payload: { email: user.email, role: user.role },
+    payload: { role: user.role },
   });
   return user;
 }
@@ -246,7 +250,9 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
 /**
  * Сменить роль. Все сессии отзываются: роль хранится в сессии на время
  * запроса, и вкладка, открытая до понижения, иначе доработала бы старыми
- * правами.
+ * правами. Гасятся и выданные, но не погашенные ссылки входа — как при
+ * приостановке: ссылка, выданная до смены роли, иначе открывала новую
+ * сессию сразу после отзыва старых (решение Р-251).
  */
 export async function setUserRole(actor: Actor, userId: string, role: Role) {
   ensure(actor, 'USER_MANAGE');
@@ -273,6 +279,10 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
     await tx.session.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
+    });
+    await tx.loginToken.updateMany({
+      where: { userId, usedAt: null },
+      data: { usedAt: new Date() },
     });
   });
 
@@ -318,9 +328,36 @@ export async function setUserStatus(actor: Actor, userId: string, status: 'ACTIV
   });
 }
 
-/** Отметить договор поручения с экспертом: без него доступ к материалам закрыт. */
+/**
+ * Сегодняшний день по Москве как полночь UTC — в том виде, в каком формы
+ * кабинета хранят даты без времени (`2026-09-26T00:00:00Z`).
+ */
+export function moscowToday(at: Date = now()): Date {
+  const day = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Moscow',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(at);
+  return new Date(`${day}T00:00:00Z`);
+}
+
+/**
+ * Отметить договор поручения с экспертом: без него доступ к материалам закрыт.
+ *
+ * Прежде отметка ложилась на любую запись и любой датой: договор
+ * «подписывался» клиенту или менеджеру — профиль эксперта заводился у
+ * человека, который экспертом не является, — и датой из будущего, которая
+ * открывала доступ заранее и выглядела как опечатка (решение Р-251).
+ */
 export async function signExpertNda(actor: Actor, userId: string, signedOn: Date | null) {
   ensure(actor, 'USER_MANAGE');
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (user === null) throw new Error('Учётная запись не найдена');
+  if (user.role !== 'EXPERT') throw new Error('Договор поручения отмечается только у эксперта');
+  if (signedOn !== null && signedOn.getTime() > moscowToday().getTime()) {
+    throw new Error('Дата договора не может быть позже сегодняшней');
+  }
   // Профиля может не быть у записи, ставшей экспертом до решения Р-225:
   // договор заводит его сам, а не падает.
   await prisma.expertProfile.upsert({

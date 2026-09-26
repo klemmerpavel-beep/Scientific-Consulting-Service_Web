@@ -12,8 +12,9 @@
 import type { CSSProperties } from 'react';
 
 /**
- * Блок токенов: двадцать семь токенов макетов сайта в их порядке и две
- * ступени шкалы графиков, заведённые кабинетом (решение Р-175).
+ * Блок токенов: двадцать семь токенов макетов сайта в их порядке, две
+ * ступени шкалы графиков (решение Р-175) и рамка поля ввода (решение
+ * Р-253), заведённые кабинетом.
  */
 export const ROOT_TOKENS =
   ':root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;' +
@@ -32,7 +33,14 @@ export const ROOT_TOKENS =
   // её вторая ступень и цвет текста побайтно совпадали с фоном и текстом
   // блока ошибки, то есть красный выходил за пределы исхода действия под
   // другим именем. Ступень просрочки несёт кромка из шкалы текста.
-  '--pd-series-mid:#5C8FD6;--pd-series-quiet:#98A2B3}';
+  '--pd-series-mid:#5C8FD6;--pd-series-quiet:#98A2B3;' +
+  // Рамка поля ввода. Поля стояли в кромке `edge-neutral` (#C4CAD4) —
+  // 1,65:1 к белому, а граница элемента управления обязана держать 3:1
+  // (WCAG 1.4.11). #7D8697 даёт 3,67:1 к белому, 3,42:1 к фону тихих
+  // поверхностей и 3,23:1 к акцентной подложке, где стоит поле выданной
+  // ссылки. Токен свой, кабинетный: `edge-neutral` общий с сайтом и там
+  // несёт кромку карточки, а не поля (решение Р-253).
+  '--pd-field-edge:#7D8697}';
 
 // Записано ровно так же, как на девяти страницах сайта: тот же набор и
 // тот же порядок, без пробелов после запятых. Гарнитуры совпадали и
@@ -107,6 +115,27 @@ export const BUTTON_CHIP: CSSProperties = {
   border: '1px solid var(--pd-border)',
 };
 
+/**
+ * Поле ввода кабинета: однострочное, многострочное и выбор из списка.
+ *
+ * Вид поля был записан трижды — в `Field`, `Select` и выдаче ссылки
+ * входа, — и третья запись разошлась с первыми двумя рамкой. Кегль 16:
+ * при меньшем Safari на телефоне масштабирует вьюпорт (решение Р-86).
+ */
+export const FIELD_CONTROL: CSSProperties = {
+  boxSizing: 'border-box',
+  width: '100%',
+  minHeight: 48,
+  padding: '12px 14px',
+  borderRadius: RADIUS.field,
+  border: '1px solid var(--pd-field-edge)',
+  background: 'var(--pd-ink-inverse)',
+  color: 'var(--pd-ink)',
+  fontFamily: SANS,
+  fontSize: 16,
+  lineHeight: 1.5,
+};
+
 /** Ширина рабочей колонки и поля, как на страницах сайта. */
 export const CONTAINER = 1220;
 export const GUTTER = 30;
@@ -116,14 +145,28 @@ export const GUTTER = 30;
  * в каждом компоненте свой блок стилей означал бы десятки повторов одного
  * и того же и расхождение при первой же правке.
  *
- * Правило `p a` — про ссылку внутри сплошного текста: одним цветом она
- * отличается недостаточно для тех, кто цвет различает хуже, и машинная
- * проверка доступности назвала это прямо (Р-168). Образец подчёркивания
- * взят со страницы 404 сайта. Ссылки-строки, ссылки-карточки и навигация
- * абзацем не окружены, и правило их не касается.
+ * Правило `:is(p,label) a` — про ссылку внутри сплошного текста: одним
+ * цветом она отличается недостаточно для тех, кто цвет различает хуже, и
+ * машинная проверка доступности назвала это прямо (Р-168). Образец
+ * подчёркивания взят со страницы 404 сайта. Подпись согласия в заявке —
+ * тоже сплошной текст, но стоит в `<label>`, а не в абзаце, и её ссылки
+ * отличались от текста только цветом, 1,78:1 (решение Р-253).
+ * Ссылки-строки, ссылки-карточки и навигация абзацем не окружены, и
+ * правило их не касается.
+ *
+ * Состояния наведения, фокуса и нажатия объявлены важными: вид кнопки,
+ * карточки и поля задан встроенным стилем, а встроенный стиль перекрывает
+ * любое правило без `!important`. Без пометки кнопки не отзывались на
+ * наведение ничем, кроме сжатия при нажатии, а рамка поля в фокусе не
+ * синела (решение Р-253).
  */
 export const CABINET_CSS = `
 ${ROOT_TOKENS}
+/* Плавная прокрутка сайта (globals.css, html{scroll-behavior:smooth}) в
+   кабинете снята: переход к якорю и к полю с ошибкой случается сразу, а не
+   едет через весь экран. Селектор :root весомее html и берёт верх при
+   любом порядке листов (решение Р-253). */
+:root{scroll-behavior:auto}
 body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;flex-direction:column}
 /* Место под полосу прокрутки занято всегда: иначе содержимое колонки
    дёргается вбок, когда записей становится больше высоты. */
@@ -141,7 +184,7 @@ h1,h2,h3,p,li,td,th,a,label,span{overflow-wrap:break-word}
 p,li{text-wrap:pretty}
 a{color:var(--pd-accent);text-decoration:none}
 a:hover{color:var(--pd-accent-press)}
-p a{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+:is(p,label) a{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 *:focus-visible{outline:2px solid var(--pd-accent);outline-offset:2px}
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}
 .pd-skip:focus{left:0;color:var(--pd-ink-inverse)}
@@ -153,11 +196,14 @@ p a{text-decoration:underline;text-underline-offset:3px;text-decoration-thicknes
 .cab-nav a[aria-current="page"]{color:var(--pd-accent);box-shadow:inset 0 -2px 0 var(--pd-accent)}
 .cab-btn{transition:background 180ms ${EASING},border-color 180ms ${EASING},color 180ms ${EASING},transform 180ms ${EASING}}
 .cab-btn:active{transform:scale(.97)}
-.cab-btn-primary:hover,.cab-btn-primary:focus-visible{background:var(--pd-accent-hover)}
-.cab-btn-primary:active{background:var(--pd-accent-active)}
-.cab-btn-quiet:hover,.cab-btn-quiet:focus-visible{border-color:var(--pd-accent);color:var(--pd-accent)}
+.cab-btn-primary:hover,.cab-btn-primary:focus-visible{background:var(--pd-accent-hover)!important}
+.cab-btn-primary:active{background:var(--pd-accent-active)!important}
+.cab-btn-quiet:hover,.cab-btn-quiet:focus-visible{border-color:var(--pd-accent)!important;color:var(--pd-accent)!important}
+/* Поле выбора файла скрыто, и фокус с клавиатуры виден на метке-кнопке,
+   которая стоит сразу за полем (решение Р-253). */
+.cab-file:focus-visible+label{outline:2px solid var(--pd-accent);outline-offset:2px}
 .cab-card{transition:box-shadow 200ms ${EASING},border-color 200ms ${EASING}}
-.cab-link-card:hover,.cab-link-card:focus-within{box-shadow:${SHADOW.hover};border-color:var(--pd-accent-edge)}
+.cab-link-card:hover,.cab-link-card:focus-within{box-shadow:${SHADOW.hover}!important;border-color:var(--pd-accent-edge)!important}
 .cab-mark{display:inline-flex;align-items:center;min-height:44px}
 /* Ссылка, растянутая на плашку: нажимается вся плашка, которая и так
    подсвечивается при наведении, а не строка названия (решение Р-209). */
@@ -171,7 +217,7 @@ p a{text-decoration:underline;text-underline-offset:3px;text-decoration-thicknes
 .cab-wordmark:hover{background:rgba(216,228,243,.62)}
 .cab-wordmark:active{background:rgba(216,228,243,.84)}
 input,textarea,select{font-family:${SANS};font-size:16px}
-input:focus,textarea:focus,select:focus{box-shadow:${SHADOW.focus};border-color:var(--pd-accent)}
+input:focus,textarea:focus,select:focus{box-shadow:${SHADOW.focus};border-color:var(--pd-accent)!important}
 input[type="checkbox"],input[type="radio"]{accent-color:var(--pd-accent)}
 input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 input[type="file"]{font-family:${SANS};font-size:16px;color:var(--pd-ink-secondary)}
@@ -187,8 +233,8 @@ details[open]>summary .cab-caret{transform:rotate(90deg)}
    держится — состояние видно и по повороту маркера, — но взгляд сразу
    находит открытое место. Переход тот же, что у вопросов: 180 мс единой
    кривой (решение Р-197). */
-details[open]>summary{background:var(--pd-accent-mark);color:var(--pd-accent-deep)}
-details[open].cab-block{border-color:var(--pd-accent-edge)}
+details[open]>summary{background:var(--pd-accent-mark);color:var(--pd-accent-deep)!important}
+details[open].cab-block{border-color:var(--pd-accent-edge)!important}
 /* Бесконечные движения — покачивание волны (3,2 с) и пульс заготовки
    (1,4 с) — сняты: в системе движется только появление и отклик на
    действие, 180—260 мс (решение Р-209). Заготовка стоит неподвижно. */

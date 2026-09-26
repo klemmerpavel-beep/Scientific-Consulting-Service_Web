@@ -4,7 +4,6 @@ import localFont from 'next/font/local';
 import './globals.css';
 import SiteMotion from '../components/SiteMotion';
 import Metrika from '../components/Metrika';
-import OrgSchema from '../components/OrgSchema';
 
 // Шрифты лежат в репозитории (`src/fonts/`, лицензия OFL рядом) и
 // отдаются с нашего же домена: внешних запросов нет ни со страниц, ни у
@@ -79,7 +78,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <SiteMotion />
         <Metrika />
-        <OrgSchema />
       </body>
     </html>
   );

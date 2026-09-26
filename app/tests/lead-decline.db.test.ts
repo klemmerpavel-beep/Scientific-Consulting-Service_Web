@@ -93,7 +93,11 @@ describe('ответ заявителю при отказе', { skip: !enabled }
     assert.equal(row!.channel, 'EMAIL');
     assert.equal(row!.eventKind, 'LEAD_DECLINED');
     assert.ok(row!.body.includes('Тема вне наших направлений.'), 'причины нет в письме');
-    assert.ok(row!.body.includes(`Тема отказа ${stamp}`), 'темы обращения нет в письме');
+    // Заявка с сайта: адрес не подтверждён, и имя с темой с открытой формы
+    // в письмо не идут — иначе отказ разносил бы чужой текст (Р-252).
+    assert.ok(!row!.body.includes(`Тема отказа ${stamp}`), 'тема с открытой формы ушла в письмо');
+    assert.ok(!row!.body.includes('Заявитель Отказа'), 'имя с открытой формы ушло в письмо');
+    assert.ok(row!.body.startsWith('Здравствуйте.\n'), 'обращение не обезличено');
     // Адрес в строку не копируется: его читает рассылка из заявки.
     assert.ok(!JSON.stringify(row).includes(`decline-${stamp}@example.org`), 'адрес скопирован в очередь');
 
