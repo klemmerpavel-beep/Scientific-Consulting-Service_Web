@@ -179,6 +179,47 @@ describe('очередь уведомлений: адресат и повтор'
     await assert.rejects(() => retryFailed(head, row.id), /старше суток/u);
   });
 
+  it('недоступный почтовый сервер: одна попытка, остальные строки отложены без попыток (Р-255)', async () => {
+    const saved = { host: process.env.SMTP_HOST, port: process.env.SMTP_PORT, secure: process.env.SMTP_SECURE };
+    // Закрытый порт на петле: соединение отвергается сразу, без ожидания.
+    process.env.SMTP_HOST = '127.0.0.1';
+    process.env.SMTP_PORT = '1';
+    process.env.SMTP_SECURE = 'false';
+    try {
+      const rows = [];
+      for (let i = 0; i < 3; i++) {
+        rows.push(
+          await prisma.notificationOutbox.create({
+            data: {
+              userId: ids.head!,
+              channel: 'EMAIL',
+              eventKind: 'MESSAGE_NEW',
+              subject: 'Новое сообщение',
+              body: 'Проект.',
+              dedupKey: `sr-${stamp}-down-${i}`,
+              // Самые старые в очереди — проход возьмёт именно их.
+              scheduledAt: new Date(Date.UTC(2000, 0, 1, 0, i)),
+              createdAt: new Date(Date.UTC(2000, 0, 1, 0, i)),
+            },
+          }),
+        );
+      }
+      await dispatch(3);
+      const after = await prisma.notificationOutbox.findMany({
+        where: { id: { in: rows.map((r) => r.id) } },
+        orderBy: { createdAt: 'asc' },
+      });
+      assert.deepEqual(after.map((r) => r.attempts), [1, 0, 0]);
+      assert.ok(after.every((r) => r.state === 'PENDING'));
+      assert.ok(after.every((r) => r.scheduledAt.getTime() > Date.now()), 'строка осталась в очереди на сейчас');
+    } finally {
+      for (const [key, value] of [['SMTP_HOST', saved.host], ['SMTP_PORT', saved.port], ['SMTP_SECURE', saved.secure]] as const) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
   it('повторный прогон напоминаний не насчитывает уже поставленные', async () => {
     await enqueueDeadlineReminders();
     assert.equal(await enqueueDeadlineReminders(), 0);

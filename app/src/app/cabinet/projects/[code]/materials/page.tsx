@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 
+import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../../../components/cabinet/tokens';
 import {
@@ -30,8 +31,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProjectMaterialsScreen({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
@@ -55,6 +58,8 @@ export default async function ProjectMaterialsScreen({
         backLabel={project.title}
         title="Материалы работы"
       />
+      {/* Отказ загрузки возвращается сюда причиной (решение Р-255). */}
+      <ActionError id={(await searchParams).error} />
 
       {project.materials.length === 0 ? (
         <Empty title="Материалов пока нет" />

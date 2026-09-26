@@ -16,7 +16,7 @@ import { erasedKey, normalizeName, parseBook, signatureBase } from '../src/lib/c
 import { changed, matchBook, type KnownWork } from '../src/lib/cabinet/import/match.ts';
 import { readWorkbook } from '../src/lib/cabinet/import/xlsx.ts';
 import { declineLetterFor } from '../src/lib/cabinet/lead-letter.ts';
-import { hideAddresses, smtpPermanent } from '../src/lib/cabinet/mail.ts';
+import { hideAddresses, smtpPermanent, smtpUnreachable } from '../src/lib/cabinet/mail.ts';
 import { csv, mskDay, mskMoment } from '../src/lib/disk/table.ts';
 import { excelSerial, makeWorkbook, type TestRow } from './helpers/make-workbook.ts';
 
@@ -200,6 +200,11 @@ describe('отказы доставки', () => {
   it('окончательный отказ SMTP — код 5xx, сетевой сбой — нет', () => {
     assert.equal(smtpPermanent(Object.assign(new Error('x'), { responseCode: 550 })), true);
     assert.equal(smtpPermanent(Object.assign(new Error('x'), { responseCode: 421 })), false);
+    // Отказ связи — не ответ сервера: такие строки прохода откладываются (Р-255).
+    assert.equal(smtpUnreachable(Object.assign(new Error('Connection timeout'), { code: 'ETIMEDOUT' })), true);
+    assert.equal(smtpUnreachable(Object.assign(new Error('x'), { code: 'ESOCKET' })), true);
+    assert.equal(smtpUnreachable(Object.assign(new Error('x'), { code: 'EENVELOPE', responseCode: 550 })), false);
+    assert.equal(smtpUnreachable(Object.assign(new Error('x'), { code: 'ECONNECTION', responseCode: 421 })), false);
     assert.equal(smtpPermanent(Object.assign(new Error('x'), { code: 'ETIMEDOUT' })), false);
     assert.equal(smtpPermanent(null), false);
   });
