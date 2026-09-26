@@ -161,13 +161,16 @@ export default async function OutboxScreen({
           value={String(leads.leadsLastDay)}
           note="сохранено в базе"
         />
+        {/* Одна заявка даёт до двух доставок — в почту и в Telegram: без
+            этой оговорки доставок вдвое больше заявок читалось как повтор
+            (решение Р-256). */}
         <Tile
           label="Доставок за сутки"
           value={String(leads.deliveredLastDay)}
           note={
             leads.lastOkAt === null
-              ? 'доставок не было ни разу'
-              : `последняя ${formatMoment(leads.lastOkAt)}`
+              ? 'до двух на заявку: почта и Telegram; доставок не было ни разу'
+              : `до двух на заявку: почта и Telegram; последняя ${formatMoment(leads.lastOkAt)}`
           }
         />
         <Tile

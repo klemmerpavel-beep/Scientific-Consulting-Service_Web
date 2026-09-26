@@ -8,7 +8,7 @@
 
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
-import { now } from './clock.ts';
+import { moscowToday } from './clock.ts';
 import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
 
@@ -328,19 +328,9 @@ export async function setUserStatus(actor: Actor, userId: string, status: 'ACTIV
   });
 }
 
-/**
- * Сегодняшний день по Москве как полночь UTC — в том виде, в каком формы
- * кабинета хранят даты без времени (`2026-09-26T00:00:00Z`).
- */
-export function moscowToday(at: Date = now()): Date {
-  const day = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Moscow',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(at);
-  return new Date(`${day}T00:00:00Z`);
-}
+// «Сегодня по Москве» живёт в часах кабинета рядом с `now()`; здесь —
+// реэкспорт для прежних импортов (решение Р-256).
+export { moscowToday };
 
 /**
  * Отметить договор поручения с экспертом: без него доступ к материалам закрыт.

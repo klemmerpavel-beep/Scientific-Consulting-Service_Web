@@ -118,9 +118,13 @@ export function ChartCard({
   );
 }
 
-/** Доля в процентах, без ложной точности. */
-export function share(value: number): string {
-  return `${Math.round(value * 100)} %`;
+/**
+ * Доля в процентах, без ложной точности. Доли нет — прочерк: «0 %» при
+ * пустом знаменателе читалось как «ничего», хотя считать было не из чего
+ * (решение Р-256).
+ */
+export function share(value: number | null): string {
+  return value === null ? '—' : `${Math.round(value * 100)} %`;
 }
 
 /** Срок в днях словами, с учётом оценки снизу при цензурировании. */

@@ -40,7 +40,7 @@ export default async function AnalyticsOverview() {
   const now = clockNow();
 
   const total = overview(rows);
-  const months = byMonth(rows);
+  const months = byMonth(rows, now);
   const productRows = products(rows);
   const outputs = conclusions(rows, now);
   const digest = verdict(rows, now);
@@ -91,8 +91,16 @@ export default async function AnalyticsOverview() {
 
           <Tiles>
             <Tile label="Законтрактовано" value={formatAmount(total.contracted)} note={`${total.projects} ${plural(total.projects, 'работа', 'работы', 'работ')}, период ${period}`} />
-            <Tile label="Получено" value={formatAmount(total.received)} note={`собрано ${share(total.collection)} по завершённым`} />
-            <Tile label="Задолженность" value={formatAmount(total.outstanding)} note="остаток по каждой работе, не меньше нуля" />
+            {/* Без завершённых работ доли нет: «0 %» читалось как «ничего не
+                собрано» (решение Р-256). */}
+            <Tile
+              label="Получено"
+              value={formatAmount(total.received)}
+              note={total.collection === null ? 'нет завершённых работ с договором' : `собрано ${share(total.collection)} по завершённым`}
+            />
+            {/* Отменённые не входят: их неоплаченное — потеря, а не долг
+                (решение Р-256). */}
+            <Tile label="Задолженность" value={formatAmount(total.outstanding)} note="остаток по каждой работе, кроме отменённых" />
             <Tile label="Средний чек" value={formatRounded(total.averageCheck)} note={`клиентов ${total.clients}`} />
           </Tiles>
 
@@ -167,7 +175,7 @@ export default async function AnalyticsOverview() {
 
           <ChartCard
             title="Законтрактовано по месяцам"
-            note="По дате заказа. Месяц без заказов показан нулём, а не пропуском: разрыв читался бы как отсутствие данных."
+            note="По месяцу начала работы, до текущего месяца включительно. Месяц без заказов показан нулём, а не пропуском: разрыв читался бы как отсутствие данных."
             numbers={
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>

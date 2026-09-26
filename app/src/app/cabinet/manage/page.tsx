@@ -26,13 +26,13 @@ import {
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
-import { formatAmount, formatPlain, outstandingOf } from '../../../lib/cabinet/money';
+import { formatAmount, formatPlain, outstandingOf, workMoneyNote } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments } from '../../../lib/cabinet/materials';
 import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
-import { daysPast } from '../../../lib/cabinet/clock';
+import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
 import { currentActor } from '../../../lib/cabinet/session';
 import { byMonth, products } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
@@ -176,7 +176,9 @@ export default async function ManageQueue({
   // не отрезав от неё смысл.
   const dashboard = can(actor, 'ANALYTICS_VIEW');
   const analyticsRows = dashboard ? await loadRows(actor) : [];
-  const months = dashboard ? byMonth(analyticsRows).slice(-12) : [];
+  // Ряд доходит до текущего месяца: «последние двенадцать месяцев»
+  // кончаются сегодняшним, а не месяцем последнего начала (решение Р-256).
+  const months = dashboard ? byMonth(analyticsRows, clockNow()).slice(-12) : [];
   // Что заказывают: типы сопровождения за последние двенадцать месяцев.
   // Плитки говорят, сколько работ, графики — когда они приходят и где
   // стоят; это отвечает, чего именно просят (решение Р-196).
@@ -377,12 +379,15 @@ export default async function ManageQueue({
         : `${attention.length} ${plural(attention.length, 'дело требует', 'дела требуют', 'дел требуют')} решения.`,
     detail:
       [
+        // «Этапов и работ»: число складывает сорванные этапы и работы без
+        // сорванного этапа, и без уточнения его сверяли с «Работ с прошедшим
+        // сроком» отчёта — другой величиной (решение Р-256).
         lateCount === 0
           ? null
-          : `Сорвано сроков — ${lateCount}; старший — «${clip(oldest?.title ?? '', 48)}»${
+          : `Сорвано сроков этапов и работ — ${lateCount}; старший — «${clip(oldest?.title ?? '', 48)}»${
               oldestLate === null ? '' : `, ${oldestLate} ${plural(oldestLate, 'день', 'дня', 'дней')}`
             }.`,
-        summary === null ? null : `В работе ${summary.active} ${plural(summary.active, 'работа', 'работы', 'работ')}.`,
+        summary === null ? null : `Действующих работ — ${summary.active + summary.paused}.`,
         queue.total === 0
           ? null
           : `${queue.total} ${plural(queue.total, 'заявка ждёт', 'заявки ждут', 'заявок ждут')} разбора.`,
@@ -511,8 +516,15 @@ export default async function ManageQueue({
             <Tile label="Заказов" value={String(summary.orders)} note="за всё время" />
             {/* «Действующих», а не «В работе»: рядом график называет «В
                 работе» состояние этапа, и два разных числа под одним словом
-                читались как расхождение (решение Р-211). */}
-            <Tile label="Действующих работ" value={String(summary.active)} note="сейчас ведутся" />
+                читались как расхождение (решение Р-211). Действующие —
+                идущие и приостановленные, как вкладка «Действующие»
+                перечня и диаграмма экрана денег; прежде плитка считала одни
+                идущие (решение Р-256). */}
+            <Tile
+              label="Действующих работ"
+              value={String(summary.active + summary.paused)}
+              note={summary.paused > 0 ? `из них приостановлено ${summary.paused}` : 'сейчас ведутся'}
+            />
             <Tile
               label="Принято за квартал"
               value={String(summary.startedLastQuarter)}
@@ -547,18 +559,24 @@ export default async function ManageQueue({
             <Heading level={2} size={3} style={{ marginBottom: 12 }}>
               Заказы по месяцам
             </Heading>
-            <BarChart
-              title="Принято заказов по месяцам"
-              width={460}
-              height={220}
-              unit="работ"
-              data={months.map((month) => ({ label: month.label, value: month.orders }))}
-              format={(value) => String(Math.round(value))}
-            />
+            {/* Без заказов — фраза, а не пустые оси: график из нулей
+                читался как сбой, а не как затишье (решение Р-256). */}
+            {yearOrders === 0 ? (
+              <Text muted>Заказов за двенадцать месяцев нет.</Text>
+            ) : (
+              <BarChart
+                title="Принято заказов по месяцам"
+                width={460}
+                height={220}
+                unit="работ"
+                data={months.map((month) => ({ label: month.label, value: month.orders }))}
+                format={(value) => String(Math.round(value))}
+              />
+            )}
             <Text muted size={13} style={{ marginTop: 10 }}>
-              По месяцу начала работы, последние двенадцать месяцев.
+              По месяцу начала работы, последние двенадцать месяцев, включая текущий.
             </Text>
-            {months.length === 0 ? null : (
+            {yearOrders === 0 ? null : (
               <dl
                 style={{
                   display: 'grid',
@@ -599,24 +617,26 @@ export default async function ManageQueue({
               </dl>
             )}
             <div style={{ marginTop: 'auto' }} />
-            <Disclosure title="Числа" style={{ marginTop: 12 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={TABLE_HEAD} scope="col">Месяц</th>
-                    <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Заказов</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {months.map((month) => (
-                    <tr key={month.key}>
-                      <td style={TABLE_CELL}>{month.label}</td>
-                      <td style={TABLE_NUM}>{month.orders}</td>
+            {yearOrders === 0 ? null : (
+              <Disclosure title="Числа" style={{ marginTop: 12 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={TABLE_HEAD} scope="col">Месяц</th>
+                      <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Заказов</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Disclosure>
+                  </thead>
+                  <tbody>
+                    {months.map((month) => (
+                      <tr key={month.key}>
+                        <td style={TABLE_CELL}>{month.label}</td>
+                        <td style={TABLE_NUM}>{month.orders}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Disclosure>
+            )}
           </Card>
 
           <Card style={{ display: 'flex', flexDirection: 'column' }}>
@@ -777,9 +797,13 @@ export default async function ManageQueue({
                 {[
                   { key: 'got', label: 'Получено', value: formatPlain(money.received) },
                   { key: 'wait', label: 'К получению', value: formatPlain(money.awaiting) },
+                  // Платежи со сроком раньше сегодняшнего дня. Не «остаток по
+                  // работам с прошедшим сроком» отчёта и аналитики — там мера
+                  // другая, и одно слово на двух экранах читалось как
+                  // расхождение (решение Р-256).
                   {
                     key: 'debt',
-                    label: 'Просрочено',
+                    label: 'Просрочено по траншам',
                     value: formatPlain(money.overdue),
                   },
                 ].map((row) => (
@@ -811,7 +835,9 @@ export default async function ManageQueue({
                 ))}
               </dl>
               <Text muted size={13} style={{ marginTop: 10 }}>
-                Суммы в рублях. Разбор по работам — на экране денег.
+                Суммы в рублях; остаток отменённых работ к получению не считается. Остаток
+                по каждой работе — на экране денег; просроченные платежи — на экранах оплат
+                работ.
               </Text>
               <div style={{ marginTop: 'auto' }} />
               <div style={{ marginTop: 12 }}>
@@ -826,8 +852,11 @@ export default async function ManageQueue({
           колонка ужимала все три и заставляла строки рваться посреди
           слова (решение Р-189). */}
       <Board columns={2}>
+        {/* «Ведутся сейчас» — только идущие работы: приостановленные сюда
+            не входят, и под «В работе» число расходилось с плиткой
+            «Действующих работ» выше (решение Р-256). */}
         <BoardColumn
-          title={`${summary === null ? 'Мои работы' : 'Сейчас в работе'} · ${works.length}`}
+          title={`${summary === null ? 'Мои работы' : 'Ведутся сейчас'} · ${works.length}`}
           href="/cabinet/projects"
           hrefLabel="все работы"
         >
@@ -876,12 +905,20 @@ export default async function ManageQueue({
                         ? 'срок не назначен'
                         : `срок работы — ${formatDate(work.dueOn)}${late === null ? '' : ' · прошёл'}`}
                     </Text>
+                    {/* Работа без договора — «договор не заведён», а не
+                        «0 ₽ · оплачено полностью»; закрытый списанием
+                        остаток назван списанием (решение Р-256). */}
                     {work.contracted === null ? null : (
                       <Text muted size={13}>
-                        {formatPlain(work.contracted)} ₽ по договору
-                        {work.outstanding !== null && work.outstanding > 0n
-                          ? ` · ${formatPlain(work.outstanding)} ₽ не оплачено`
-                          : ' · оплачено полностью'}
+                        {workMoneyNote(
+                          work.hasContract
+                            ? {
+                                contracted: work.contracted,
+                                outstanding: work.outstanding ?? 0n,
+                                writtenOff: work.writtenOff ?? 0n,
+                              }
+                            : null,
+                        )}
                       </Text>
                     )}
                   </li>

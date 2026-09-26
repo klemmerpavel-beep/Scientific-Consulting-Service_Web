@@ -28,7 +28,7 @@ export default async function AnalyticsProjects() {
       actor={actor}
       current="/cabinet/manage/analytics/projects"
       title="Сроки"
-      lead="Срок оценивается по Каплану — Мейеру: незавершённые работы не выбрасываются, а цензурируют кривую. Среднее по закрытым занижало бы срок, потому что длинные работы ещё идут."
+      lead="Срок оценивается по Каплану — Мейеру: незавершённые работы не выбрасываются, а цензурируют кривую. Среднее по закрытым занижало бы срок, потому что длинные работы ещё идут. Отменённая работа не считается завершённой: наблюдение за ней обрывается в день отмены."
     >
       {rows.length === 0 ? (
         <Empty title="Считать нечего">Проектов в системе нет.</Empty>
@@ -38,15 +38,28 @@ export default async function AnalyticsProjects() {
             <Tile
               label="Медиана срока"
               value={cycleLabel(report.overall)}
-              note={`${report.overall.observations} ${plural(report.overall.observations, 'наблюдение', 'наблюдения', 'наблюдений')}, завершено ${report.overall.events}`}
+              note={
+                `${report.overall.observations} ${plural(report.overall.observations, 'наблюдение', 'наблюдения', 'наблюдений')}, завершено ${report.overall.events}` +
+                (report.cancelled > 0 ? `; отменённые (${report.cancelled}) — как незавершённые` : '')
+              }
             />
-            <Tile label="В работе" value={String(total.active)} note={`приостановлено ${total.paused}`} />
+            {/* «Действующих» — идущие и приостановленные, как на главной и
+                во вкладке перечня работ (решение Р-256). */}
+            <Tile
+              label="Действующих"
+              value={String(total.ongoing)}
+              note={total.paused > 0 ? `из них приостановлено ${total.paused}` : 'приостановленных нет'}
+            />
             <Tile
               label="В срок"
               value={report.withDue === 0 ? '—' : share(report.onTime / report.withDue)}
               note={`из ${report.withDue} завершённых с заданным сроком`}
             />
-            <Tile label="Просрочено" value={String(report.overdueOpen)} note="незакрытых работ со сроком в прошлом" />
+            <Tile
+              label="С прошедшим сроком"
+              value={String(report.overdueOpen)}
+              note="действующих работ со сроком раньше сегодняшнего дня"
+            />
           </Tiles>
 
           {withMedian.length === 0 ? (
