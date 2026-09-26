@@ -393,6 +393,41 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     );
   });
 
+  it('оставленная на разбор строка в отчёте не значится «завести»', async () => {
+    // Р-260: мост с Диска исключает строки с ошибкой разбора. Прежде такая
+    // строка хранила действие предпросмотра, и отчёт зафиксированной
+    // загрузки показывал «завести» у строки, которой в кабинете нет.
+    const head = actor(ids.head, 'HEAD');
+    const extra: TestRow[] = [
+      [
+        excelSerial('2025-08-01'),
+        `Орлова Вера ${stamp}`,
+        'Диссертция',
+        'Кандидатская, химия',
+        'когда-нибудь',
+        '120000',
+        { value: 'в работе', fill: null },
+        '0',
+      ],
+    ];
+    const preview = await previewBook(head, { fileName: `книга-${stamp}-8.xlsx`, bytes: book('90000', extra) });
+    batches.push(preview.batchId);
+    const held = preview.rows.find((candidate) => candidate.customer === `Орлова Вера ${stamp}`);
+    assert.equal(held?.severity, 'ERROR');
+    assert.equal(held?.action, 'CREATE');
+
+    await applyBatch(head, preview.batchId, { managerId: ids.manager, excludeRows: [held!.rowNumber] });
+
+    const report = await loadBatch(head, preview.batchId);
+    const kept = report?.rows.find((row) => row.rowNumber === held!.rowNumber);
+    assert.equal(kept?.action, 'SKIP');
+    assert.equal(kept?.existingCode, null);
+    assert.equal(
+      await prisma.project.count({ where: { client: { normalizedName: { contains: `орлова вера ${stamp}` } } } }),
+      0,
+    );
+  });
+
   it('карточки сводятся вручную, проекты переходят к основной', async () => {
     const clients = await prisma.clientProfile.findMany({
       where: { normalizedName: { contains: String(stamp) }, mergedIntoId: null },

@@ -89,13 +89,22 @@ async function main(): Promise<number> {
   }
 
   // Таблицы участвуют в описи наравне с файлами: пересобранная, но не
-  // изменившаяся таблица второй раз не уходит.
-  const desired: MirrorEntry[] = tables.map((t) => {
-    const body = Buffer.from(t.body, 'utf8');
-    return { path: tablePath(t.name), sha256: sha256(body), sizeBytes: body.byteLength };
-  });
+  // изменившаяся таблица второй раз не уходит. Каждая уходит двумя файлами:
+  // книгой Excel для людей и CSV для учётных программ (решение Р-260).
+  // Книга собирается детерминированно, поэтому свёртка у неизменной
+  // таблицы та же, что в прошлый раз.
+  const desired: MirrorEntry[] = [];
   const bodies = new Map<string, Buffer>();
-  tables.forEach((t, i) => bodies.set(desired[i]!.path, Buffer.from(t.body, 'utf8')));
+  for (const t of tables) {
+    for (const [name, body] of [
+      [t.file, t.xlsx],
+      [t.name, Buffer.from(t.csv, 'utf8')],
+    ] as const) {
+      const path = tablePath(name);
+      desired.push({ path, sha256: sha256(body), sizeBytes: body.byteLength });
+      bodies.set(path, body);
+    }
+  }
 
   for (const file of files) {
     desired.push({ path: file.path, sha256: file.sha256, sizeBytes: file.sizeBytes });

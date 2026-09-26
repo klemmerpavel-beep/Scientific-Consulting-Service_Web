@@ -854,11 +854,16 @@ export async function applyBatch(
         if (excluded.has(row.rowNumber) || action === 'SKIP') {
           if (action === 'SKIP' && projectId !== null) {
             await tx.importRow.update({ where: { id: row.id }, data: { action, projectId } });
-          } else if (row.projectId !== null) {
-            // Исключённая правка не внесена — и строка не должна помнить
-            // работу: иначе следующая сверка взяла бы её значения за уже
-            // перенесённые и правку пропустила бы (решение Р-252).
-            await tx.importRow.update({ where: { id: row.id }, data: { projectId: null } });
+          } else {
+            // Исключённая строка не внесена — и не должна ни помнить работу,
+            // ни значиться «завести»: иначе следующая сверка взяла бы её
+            // значения за уже перенесённые (Р-252), а отчёт зафиксированной
+            // загрузки показывал бы «завести» у строки, которой в кабинете
+            // нет (Р-260).
+            await tx.importRow.update({
+              where: { id: row.id },
+              data: { action: 'SKIP', projectId: null },
+            });
           }
           skipped += 1;
           continue;
