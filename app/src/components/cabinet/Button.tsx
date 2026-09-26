@@ -32,6 +32,7 @@ export function Button({
   name,
   value,
   style,
+  onClick,
 }: {
   children: ReactNode;
   tone?: 'primary' | 'quiet' | 'chip';
@@ -39,6 +40,8 @@ export function Button({
   name?: string;
   value?: string;
   style?: CSSProperties;
+  /** Действие кнопки вне формы: «Открыть снова» на экране сбоя. */
+  onClick?: () => void;
 }) {
   const status = useFormStatus();
   // Ждём только свою форму: у кнопки вне формы состояния нет, и
@@ -52,6 +55,7 @@ export function Button({
       value={value}
       disabled={busy}
       aria-busy={busy}
+      onClick={onClick}
       className={`cab-btn ${tone === 'primary' ? 'cab-btn-primary' : 'cab-btn-quiet'}`}
       style={{ ...TONES[tone], ...style }}
     >

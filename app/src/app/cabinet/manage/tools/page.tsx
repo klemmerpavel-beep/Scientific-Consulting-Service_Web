@@ -11,7 +11,7 @@ import {
   Form,
   FormActions,
   Heading,
-  Notice,
+  Outcome,
   ScreenHead,
   Text,
 } from '../../../../components/cabinet/ui';
@@ -259,14 +259,10 @@ export default async function ToolsScreen({
       </Card>
 
       {params.sent === undefined ? null : (
-        <div style={{ marginBottom: 20 }}>
-          <Notice>Вопрос отправлен руководителю практики.</Notice>
-        </div>
+        <Outcome>Вопрос отправлен руководителю практики.</Outcome>
       )}
       {failure === undefined ? null : (
-        <div style={{ marginBottom: 20 }}>
-          <Notice tone="error" role="alert">{failure}</Notice>
-        </div>
+        <Outcome tone="error">{failure}</Outcome>
       )}
 
       {groups.map((group) => (
@@ -305,8 +301,11 @@ export default async function ToolsScreen({
                     marginBottom: 4,
                   }}
                 >
+                  {/* Ссылка растянута на плашку, как на плашках внимания:
+                      подсвечивается плашка целиком, и нажиматься должна
+                      она же, а не строка названия (решения Р-209, Р-253). */}
                   <Heading level={3} size={3}>
-                    <a className="cab-mark" href={tool.href}>{tool.title}</a>
+                    <a className="cab-stretch" href={tool.href}>{tool.title}</a>
                   </Heading>
                   <Chip>{tool.often}</Chip>
                 </div>
