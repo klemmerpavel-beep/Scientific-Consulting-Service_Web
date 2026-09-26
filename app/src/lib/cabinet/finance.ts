@@ -63,6 +63,9 @@ function ensurePastDate(on: Date, what: string): void {
 
 const money = (value: bigint) => value.toString();
 
+/** Состояния траншей, видимые тому, кто оплаты не ведёт (решение Р-251). */
+export const CLIENT_TRANCHE_STATUSES = ['PLANNED', 'INVOICED', 'PAID'] as const;
+
 export interface ContractInput {
   readonly projectId: string;
   readonly number: string;
@@ -392,7 +395,8 @@ export interface ProjectMoney {
   readonly contractTotal: bigint;
   readonly received: bigint;
   readonly awaiting: bigint;
-  readonly writtenOff: bigint;
+  /** Только тому, кто ведёт оплаты: списание — внутреннее решение (Р-251). */
+  readonly writtenOff?: bigint;
   /** Заполняется только для роли, допущенной к экономике. */
   readonly payoutsAccrued?: bigint;
   readonly payoutsPaid?: bigint;
@@ -421,13 +425,17 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
       .filter((t) => t.status === status)
       .reduce((acc, t) => acc + t.amount, 0n);
 
-  const base: ProjectMoney = {
+  // Итоги того, кто оплаты не ведёт, складываются только из видимых ему
+  // траншей: полученное и ожидаемое. Списанное в объект не попадает вовсе
+  // — ни числом, ни нулём (решение Р-251).
+  const visible: ProjectMoney = {
     contractTotal: contract.totalAmount,
     received: sum('PAID'),
     awaiting: sum('PLANNED') + sum('INVOICED'),
-    writtenOff: sum('WRITTEN_OFF'),
   };
+  if (!can(actor, 'PAYMENT_EDIT', ref)) return visible;
 
+  const base = { ...visible, writtenOff: sum('WRITTEN_OFF') };
   if (!can(actor, 'MARGIN_VIEW', ref)) return base;
 
   const payouts = await prisma.expertPayout.findMany({ where: { projectId } });
@@ -512,16 +520,28 @@ export async function financeSummary(actor: Actor) {
   };
 }
 
-/** Собственные начисления эксперта. Маржу он не видит — только своё. */
+/**
+ * Собственные начисления эксперта. Маржу он не видит — только своё.
+ *
+ * Эксперт без договора поручения получает суммы, состояние и даты, но не
+ * работу, этап и комментарий: код и название работы, названия этапов и
+ * пояснение к начислению — сведения о клиенте, а до договора выборка работ
+ * не отдаёт ему ни одной (решение Р-251). Прежде этот экран был единственным
+ * местом, где они всё же доходили.
+ */
 export async function ownPayouts(actor: Actor) {
   ensure(actor, 'PAYOUT_VIEW_OWN');
   const scope = scopePayouts(actor);
   if (scope === null) return { rows: [], accrued: 0n, paid: 0n };
-  const rows = await prisma.expertPayout.findMany({
+  const closed = actor.role === 'EXPERT' && actor.expertNdaSignedAt === null;
+  const found = await prisma.expertPayout.findMany({
     where: scope,
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     include: { project: { select: { code: true, title: true } }, stage: { select: { title: true } } },
   });
+  const rows = found.map((row) =>
+    closed ? { ...row, projectId: null, stageId: null, project: null, stage: null, comment: null } : row,
+  );
   return {
     rows,
     accrued: rows.reduce((acc, r) => acc + r.amount, 0n),
@@ -540,11 +560,16 @@ export async function projectContract(actor: Actor, projectId: string) {
   const ref = await projectRef(projectId);
   if (ref === null) return null;
   ensure(actor, 'CONTRACT_VIEW', ref);
+  // Списанные и сторнированные транши — внутренний учёт практики: о них
+  // клиенту не пишется (Р-244, Р-249), и на экране оплат их тоже нет у
+  // того, кто оплаты не ведёт (решение Р-251).
+  const mayEdit = can(actor, 'PAYMENT_EDIT', ref);
 
   return prisma.contract.findUnique({
     where: { projectId },
     include: {
       tranches: {
+        where: mayEdit ? {} : { status: { in: [...CLIENT_TRANCHE_STATUSES] } },
         orderBy: [{ plannedDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         include: {
           documents: {

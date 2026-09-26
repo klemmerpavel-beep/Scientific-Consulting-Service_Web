@@ -85,6 +85,22 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
     throw new Error('Это отзыв или обращение без контакта: работа по нему не заводится');
   }
 
+  // Тип и название проверяются до захвата заявки и словами. Прежде пустое
+  // или подставленное значение доходило до базы: несуществующий тип ронял
+  // одобрение ошибкой внешнего ключа, выведенный из оборота заводил работу
+  // по услуге, которой практика больше не оказывает, а пустое название
+  // давало работу без имени в перечнях (решение Р-251).
+  const title = input.title.trim();
+  if (title.length === 0) throw new Error('Название работы не указано');
+  const serviceType = await prisma.serviceType.findUnique({
+    where: { id: input.serviceTypeId },
+    select: { isActive: true },
+  });
+  if (serviceType === null) throw new Error('Тип сопровождения не найден: выберите его из списка');
+  if (!serviceType.isActive) {
+    throw new Error('Тип сопровождения выведен из оборота: выберите действующий');
+  }
+
   const fullName = lead.name?.trim() || 'Клиент без имени';
   const normalized = normalizeName(fullName);
   const email = lead.contactKind === 'email' ? lead.contact.trim().toLowerCase() : null;
@@ -171,7 +187,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
         code,
         clientId: client.id,
         serviceTypeId: input.serviceTypeId,
-        title: input.title,
+        title,
         topic: input.topic ?? lead.topic ?? null,
         managerId: input.managerId,
         dueOn: input.dueOn ?? null,
@@ -225,7 +241,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
           ? `Заявка принята: работа ${code}`
           : `Заведена новая работа ${code}`,
         body:
-          `${input.title}${created.topic === null ? '' : ` — ${created.topic}`}.\n` +
+          `${title}${created.topic === null ? '' : ` — ${created.topic}`}.\n` +
           (firstTime
             ? 'Ход работы, материалы и переписка с куратором собраны в личном кабинете.\n' +
               `Откройте ${entrance} и укажите этот адрес почты — придёт ссылка для входа.\n` +
@@ -680,14 +696,23 @@ export async function setProjectStatus(actor: Actor, projectId: string, to: Proj
     : null;
 
   const saved = await prisma.$transaction(async (tx) => {
-    const updated = await tx.project.update({
-      where: { id: projectId },
+    // Перевод захватывает работу по прежнему состоянию, как транш и этап.
+    // Прежде «Завершить» и «Отменить», пришедшие почти одновременно,
+    // проходили оба: проверка перехода стояла на прочитанном до записи, и
+    // вторая запись переводила работу из состояния, которого уже не было,
+    // а в ленте оставались два перехода из одного «Действует» (решение
+    // Р-251).
+    const claimed = await tx.project.updateMany({
+      where: { id: projectId, status: from },
       data: { status: to, closedOn },
     });
+    if (claimed.count === 0) {
+      throw new Error('Состояние работы уже изменено другим действием: обновите страницу');
+    }
     await tx.projectEvent.create({
       data: { projectId, actorId: actor.id, kind: 'PROJECT_STATUS_CHANGED', payload: { from, to } },
     });
-    return updated;
+    return tx.project.findUniqueOrThrow({ where: { id: projectId } });
   });
 
   await record(actor, {

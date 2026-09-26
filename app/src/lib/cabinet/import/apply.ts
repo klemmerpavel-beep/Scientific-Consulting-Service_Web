@@ -484,6 +484,17 @@ export async function applyBatch(
   if (batch.state === 'APPLIED') throw new Error('Загрузка уже зафиксирована');
   if (batch.state !== 'PREVIEWED') throw new Error('Фиксация возможна только после предпросмотра');
 
+  // Куратор перенесённых работ приходит с формы и проверяется так же, как
+  // при передаче работы (`assignManager`): действующий менеджер или
+  // руководитель. Прежде подставленный идентификатор клиента или
+  // приостановленной записи закреплял за ней всю книгу — работы, которых
+  // не видел ни один куратор (решение Р-251).
+  const curator = await prisma.user.findFirst({
+    where: { id: input.managerId, status: 'ACTIVE', role: { in: ['MANAGER', 'HEAD'] } },
+    select: { id: true },
+  });
+  if (curator === null) throw new Error('Куратором может быть менеджер или руководитель');
+
   const stored = (await prisma.importRow.findMany({
     where: { batchId },
     orderBy: { rowNumber: 'asc' },

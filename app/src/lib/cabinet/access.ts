@@ -269,6 +269,24 @@ export function scopeComments(actor: Actor): Record<string, unknown> | null {
   return { OR: [{ moderationStatus: 'PUBLISHED' }, { authorId: actor.id }] };
 }
 
+/**
+ * Условие видимости заявок для того, кто их разбирает (решение Р-251).
+ *
+ * Неразобранная заявка работы не имеет и видна всем, кто разбирает
+ * заявки. Развёрнутая в работу — только тому, кому видна сама работа:
+ * прежде менеджер через перечень, выгрузку и карточку заявки читал
+ * контакты и вложения по чужим работам, которые выборка работ от него
+ * закрывает (Р-149). Руководитель видит всё.
+ */
+export function scopeLeads(actor: Actor): Record<string, unknown> | null {
+  if (actor.status !== 'ACTIVE') return null;
+  if (!isStaff(actor)) return null;
+  const projects = scopeProjects(actor);
+  if (projects === null) return { projectId: null };
+  if (Object.keys(projects).length === 0) return {};
+  return { OR: [{ projectId: null }, { project: projects }] };
+}
+
 /** Условие видимости начислений: эксперт видит только своё. */
 export function scopePayouts(actor: Actor): Record<string, unknown> | null {
   if (actor.status !== 'ACTIVE') return null;

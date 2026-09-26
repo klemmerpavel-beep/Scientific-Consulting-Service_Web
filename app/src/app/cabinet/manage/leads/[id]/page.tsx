@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 
+import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
 import {
   Button,
@@ -40,14 +41,17 @@ export const dynamic = 'force-dynamic';
  */
 export default async function LeadScreen({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
   ensure(actor, 'REQUEST_MODERATE');
 
   const { id } = await params;
+  const flags = await searchParams;
   const [lead, types] = await Promise.all([leadById(actor, id), serviceTypes(actor)]);
   if (lead === null) notFound();
   const letter = lead.notifications[0] ?? null;
@@ -73,6 +77,8 @@ export default async function LeadScreen({
           note={`${lead.contactKind === 'email' ? 'Почта' : 'Телефон'}: ${lead.contact}`}
           aside={formatDate(lead.createdAt)}
         />
+
+        <ActionError id={flags.error} />
 
         <Card style={{ marginBottom: 24 }}>
           {lead.topic === null ? null : (

@@ -2,7 +2,7 @@ import { cookies, headers } from 'next/headers';
 
 import { resolveSession } from './auth.ts';
 import type { Actor } from './access.ts';
-import { SESSION_COOKIE, SESSION_TTL_DAYS } from './token.ts';
+import { SESSION_COOKIE, SESSION_MAX_DAYS } from './token.ts';
 
 /**
  * Действующее лицо текущего запроса. Единственный источник: серверная
@@ -59,8 +59,10 @@ function sessionCookieOptions(maxAge: number) {
  * терял вход через тридцать дней после входа (решение Р-238). Теперь
  * браузер хранит значение дольше, а действительность решает запись в
  * базе: тридцать дней без обращений — и сессии нет, отзыв — сразу.
+ * Дольше абсолютного предела сессии хранить значение незачем: после него
+ * запись в базе недействительна при любых обращениях (решение Р-251).
  */
-const COOKIE_MAX_DAYS = SESSION_TTL_DAYS * 6;
+const COOKIE_MAX_DAYS = SESSION_MAX_DAYS;
 
 export async function setSessionCookie(value: string): Promise<void> {
   const jar = await cookies();
