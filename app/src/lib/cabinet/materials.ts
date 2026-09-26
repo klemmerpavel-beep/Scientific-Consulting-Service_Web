@@ -1,6 +1,7 @@
 import { prisma } from '../db.ts';
 import { can, ensure, scopeComments, scopeProjects, type Actor } from './access.ts';
 import { record } from './audit.ts';
+import { hasContacts } from './contacts.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
 import { materialKey, sha256, storage } from './storage.ts';
@@ -84,6 +85,18 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   // бы приложить свой «акт» к чужому траншу.
   const kind = existing?.kind ?? input.kind ?? 'STAGE_MATERIAL';
   ensure(actor, kind === 'STAGE_MATERIAL' ? 'MATERIAL_UPLOAD' : 'PAYMENT_EDIT', ref);
+
+  // Название нового материала видит другая сторона: клиент — эксперт,
+  // эксперт — клиент. Контакт в названии обходил и модерацию замечаний, и
+  // единственный канал переписки (решение Р-242).
+  if (existing === null && actor.role !== 'MANAGER' && actor.role !== 'HEAD') {
+    const title = (input.title ?? input.originalName).trim();
+    if (hasContacts(title)) {
+      throw new Error(
+        'В названии материала есть телефон, адрес или ссылка на мессенджер: переименуйте файл или задайте название без них',
+      );
+    }
+  }
 
   if (input.body.byteLength === 0) throw new Error('Пустой файл не принимается');
   if (input.body.byteLength > MAX_UPLOAD_BYTES) {
@@ -314,9 +327,19 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
 
   const text = body.trim();
   if (text.length === 0) throw new Error('Пустой комментарий не сохраняется');
+  if (text.length > COMMENT_MAX) {
+    throw new Error(`Замечание длиннее ${COMMENT_MAX} знаков: разделите его на несколько`);
+  }
 
-  const published = actor.role !== 'EXPERT';
-  return prisma.versionComment.create({
+  // Замечание эксперта всегда проходит модерацию. Замечание клиента с
+  // телефоном, адресом или ссылкой на мессенджер — тоже: прежде оно сразу
+  // становилось видно назначенному эксперту, и контакт уходил в обход
+  // куратора (решение Р-242). Автор видит своё замечание с отметкой
+  // «ожидает публикации».
+  const contactHint = hasContacts(text);
+  const held = actor.role === 'EXPERT' || (actor.role === 'CLIENT' && contactHint);
+  const published = !held;
+  const comment = await prisma.versionComment.create({
     data: {
       versionId,
       authorId: actor.id,
@@ -327,7 +350,19 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
       publishedAt: published ? new Date() : null,
     },
   });
+  // В журнал — факт и признаки, без текста (решения Р-234, Р-239).
+  await record(actor, {
+    action: 'COMMENT_CREATED',
+    objectType: 'VersionComment',
+    objectId: comment.id,
+    projectId: version.material.project.id,
+    payload: { held, contactHint },
+  });
+  return comment;
 }
+
+/** Предел длины замечания: больше — уже документ, а не замечание. */
+export const COMMENT_MAX = 10_000;
 
 export async function moderateComment(
   actor: Actor,
@@ -342,6 +377,7 @@ export async function moderateComment(
   const target = await prisma.versionComment.findUnique({
     where: { id: commentId },
     select: {
+      author: { select: { role: true } },
       version: {
         select: {
           material: {
@@ -378,7 +414,9 @@ export async function moderateComment(
     objectId: commentId,
   });
 
-  if (decision === 'PUBLISHED') {
+  // Письмо «эксперт оставил замечание» уходит клиенту, только если автор —
+  // эксперт: своё же замечание клиенту пересылать незачем (решение Р-242).
+  if (decision === 'PUBLISHED' && target.author.role === 'EXPERT') {
     const context = await prisma.versionComment.findUnique({
       where: { id: commentId },
       select: {

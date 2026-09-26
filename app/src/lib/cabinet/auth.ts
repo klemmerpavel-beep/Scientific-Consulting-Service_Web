@@ -1,5 +1,6 @@
 import { prisma } from '../db.ts';
 import type { Actor } from './access.ts';
+import { record } from './audit.ts';
 import { now } from './clock.ts';
 import {
   createRawToken,
@@ -340,7 +341,7 @@ export async function bindTelegram(value: string, chatId: string): Promise<boole
 
   // Один аккаунт Telegram — одна учётная запись: привязка у прежнего
   // владельца снимается, иначе уведомления уходили бы двоим.
-  await prisma.$transaction([
+  const [, bound] = await prisma.$transaction([
     prisma.user.updateMany({
       where: { telegramChatId: chatId, id: { not: token.userId } },
       data: { telegramChatId: null, notifyTelegram: false },
@@ -348,15 +349,23 @@ export async function bindTelegram(value: string, chatId: string): Promise<boole
     prisma.user.update({
       where: { id: token.userId },
       data: { telegramChatId: chatId, notifyTelegram: true },
+      select: { id: true, role: true, status: true },
     }),
   ]);
+  // Привязка — новый адрес доставки уведомлений о работе; в журнал идёт
+  // факт без номера чата (решение Р-242).
+  await record(
+    { id: bound.id, role: bound.role, status: bound.status, clientProfileId: null, expertNdaSignedAt: null },
+    { action: 'TELEGRAM_BOUND', objectType: 'User', objectId: bound.id },
+  );
   return true;
 }
 
 /** Снять привязку по требованию пользователя. */
-export async function unbindTelegram(userId: string): Promise<void> {
+export async function unbindTelegram(actor: Actor): Promise<void> {
   await prisma.user.update({
-    where: { id: userId },
+    where: { id: actor.id },
     data: { telegramChatId: null, notifyTelegram: false },
   });
+  await record(actor, { action: 'TELEGRAM_UNBOUND', objectType: 'User', objectId: actor.id });
 }

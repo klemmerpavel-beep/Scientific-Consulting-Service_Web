@@ -92,9 +92,18 @@ export interface ContactInput {
   readonly preferred?: boolean;
 }
 
+/** Предел длины способа связи и заметки к нему. */
+export const CONTACT_MAX = 500;
+
 /** Добавить способ связи себе. */
 export async function addContact(actor: Actor, input: ContactInput): Promise<void> {
   const value = (input.value ?? '').trim();
+  const note = (input.note ?? '').trim();
+  // Пределы длины: телефон и ссылка не бывают длиннее, а заметка — это
+  // «звонить после шести», а не письмо (решение Р-242).
+  if (value.length > CONTACT_MAX || note.length > CONTACT_MAX) {
+    throw new Error(`Способ связи и заметка к нему — не длиннее ${CONTACT_MAX} знаков`);
+  }
   if (needsValue(input.kind) && value.length === 0) {
     throw new Error(
       input.kind === 'PHONE_CALL'
@@ -115,7 +124,7 @@ export async function addContact(actor: Actor, input: ContactInput): Promise<voi
         userId: actor.id,
         kind: input.kind,
         value: needsValue(input.kind) ? value : null,
-        note: (input.note ?? '').trim() || null,
+        note: note || null,
         preferred: input.preferred === true,
       },
     });
@@ -250,8 +259,13 @@ export async function saveRules(
  * (решение Р-199).
  */
 export async function askForHelp(actor: Actor, text: string): Promise<void> {
+  // Вопрос руководителю задаёт сотрудник практики. Прежде право не
+  // проверялось: любой вошедший, в том числе клиент, мог слать
+  // руководителю письма с произвольным текстом (решение Р-242).
+  ensure(actor, 'REGISTRY_VIEW');
   const body = text.trim();
   if (body.length === 0) throw new Error('Напишите, в чём нужна помощь');
+  if (body.length > 10_000) throw new Error('Вопрос длиннее 10 000 знаков: сократите его');
 
   const { prisma: db } = await import('../db.ts');
   const { enqueue } = await import('./outbox.ts');

@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 
 import { MONO } from '../../../../components/cabinet/tokens';
+import ActionError from '../../../../components/cabinet/ActionError';
 import Shell from '../../../../components/cabinet/Shell';
 import {
   Board,
@@ -150,8 +151,10 @@ const MATERIALS_IN_COLUMN = 12;
 
 export default async function ProjectScreen({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
@@ -361,6 +364,7 @@ export default async function ProjectScreen({
           </span>
         )}
       </ScreenTop>
+      <ActionError text={(await searchParams).error} />
       <Disclosure title="О работе" style={{ marginTop: 12 }}>
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
           {about.map((row) => (

@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 
+import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
 import {
   Button,
@@ -21,8 +22,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function MessagesScreen({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
@@ -62,6 +65,8 @@ export default async function MessagesScreen({
           title="Переписка"
           note={counterpart}
         />
+
+        <ActionError text={(await searchParams).error} />
 
         <Card>
           <Thread

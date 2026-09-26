@@ -16,6 +16,9 @@ const ACTIONS: Record<string, string> = {
   CONTACT_REMOVED: 'Убран способ связи',
   CONTACT_PREFERRED: 'Выбран предпочтительный способ связи',
   NOTIFY_RULES_SAVED: 'Изменены правила уведомлений',
+  NOTIFY_CHANNELS_SAVED: 'Изменены каналы уведомлений',
+  TELEGRAM_BOUND: 'Привязан Telegram',
+  TELEGRAM_UNBOUND: 'Отвязан Telegram',
   HELP_REQUESTED: 'Куратор обратился за помощью',
   CLIENT_MERGED: 'Карточки клиента сведены',
   DISK_SYNC: 'Зеркало на Диске обновлено',
@@ -49,6 +52,7 @@ const ACTIONS: Record<string, string> = {
   USER_ROLE_CHANGED: 'Изменена роль',
   USER_STATUS_CHANGED: 'Изменено состояние доступа',
   VERSION_UPLOADED: 'Загружена версия материала',
+  COMMENT_CREATED: 'Оставлен комментарий',
   COMMENT_PUBLISHED: 'Комментарий опубликован',
   COMMENT_REJECTED: 'Комментарий отклонён',
   STAGE_STATE_CHANGED: 'Изменено состояние этапа',
@@ -152,6 +156,9 @@ const FIELDS: Record<string, string> = {
   channel: 'канал',
   alias: 'написание',
   position: 'номер',
+  held: 'на модерации',
+  contactHint: 'есть контакты',
+  telegram: 'Telegram',
   durationDays: 'длительность, дней',
   dueFrom: 'срок был',
   dueTo: 'срок стал',
@@ -165,6 +172,7 @@ export function detailsLabel(payload: unknown): string {
 
 function flatten(value: unknown, prefix = ''): string[] {
   if (value === null || value === undefined) return [];
+  if (typeof value === 'boolean') return [`${prefix}${value ? 'да' : 'нет'}`];
   if (typeof value !== 'object') return [`${prefix}${String(value)}`];
   if (Array.isArray(value)) {
     return value.length === 0 ? [] : [`${prefix}${value.map((item) => String(item)).join(', ')}`];
