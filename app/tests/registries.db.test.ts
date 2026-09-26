@@ -184,8 +184,8 @@ describe('реестры и служебные экраны', { skip: !enabled }
   });
 
   it('сведение карточек: разные написания найдены, цикл и карточка со входом отклоняются', async () => {
-    const joined = await newClient(`АльзалзалиНадир${tail}`);
-    const spaced = await newClient(`Альзалзали Надир${tail}`);
+    const joined = await newClient(`ХалиловРашид${tail}`);
+    const spaced = await newClient(`Халилов Рашид${tail}`);
     const groups = await mergeCandidates(head());
     assert.ok(
       groups.some((group) => group.some((c) => c.id === joined) && group.some((c) => c.id === spaced)),

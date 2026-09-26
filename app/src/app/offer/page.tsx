@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Page from '../../components/pages/OfferPage';
 import { meta } from '../../components/pages/OfferPage.meta';
 import { OG_COVER } from '../../components/og-cover';
+import OrgSchema from '../../components/OrgSchema';
 
 export const metadata: Metadata = {
   title: meta.title,
@@ -11,5 +12,10 @@ export const metadata: Metadata = {
 };
 
 export default function Route() {
-  return <Page />;
+  return (
+    <>
+      <Page />
+      <OrgSchema />
+    </>
+  );
 }

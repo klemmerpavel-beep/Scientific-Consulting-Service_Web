@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Script from 'next/script';
+import { usePathname } from 'next/navigation';
 
 /**
  * Счётчик посещаемости и уведомление о файлах cookies.
@@ -44,12 +45,21 @@ export default function Metrika() {
   // До монтирования выбора не знаем: на сервере localStorage нет. Держим
   // `undefined`, чтобы разметка сервера и первый проход в браузере совпали.
   const [choice, setChoice] = useState<Choice | undefined>(undefined);
+  // Кабинет счётчику не показывается (Р-250): ключ входа стоит прямо в
+  // адресе `/cabinet/enter/<ключ>`, а в строке поиска реестров бывают ФИО,
+  // телефоны и почта — Метрика унесла бы их в свои отчёты, хотя политика
+  // обещает, что содержание заявок сервису не передаётся. Уведомление о
+  // cookies поверх экранов кабинета тоже не к месту. Переход с сайта в
+  // кабинет — обычная ссылка с полной загрузкой, поэтому уже запущенный
+  // на публичной странице счётчик в кабинет не переносится.
+  const pathname = usePathname();
+  const cabinet = pathname === '/cabinet' || (pathname ?? '').startsWith('/cabinet/');
 
   useEffect(() => {
-    if (METRIKA_ID) setChoice(readChoice());
-  }, []);
+    if (METRIKA_ID && !cabinet) setChoice(readChoice());
+  }, [cabinet]);
 
-  if (!METRIKA_ID || choice === undefined) return null;
+  if (!METRIKA_ID || cabinet || choice === undefined) return null;
 
   const decide = (v: Exclude<Choice, null>) => {
     try {
