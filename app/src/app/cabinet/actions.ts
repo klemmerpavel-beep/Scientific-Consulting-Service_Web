@@ -613,6 +613,7 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
       String(form.get('trancheId') ?? ''),
       String(form.get('status') ?? '') as TrancheStatus,
       dateOrNull(form.get('paidOn')),
+      String(form.get('reason') ?? ''),
     );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сменить статус транша');

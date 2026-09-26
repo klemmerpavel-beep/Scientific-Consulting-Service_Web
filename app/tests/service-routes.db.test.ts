@@ -55,6 +55,40 @@ describe('секреты и сценарии выката', () => {
     assert.match(statics, /Strict-Transport-Security/u);
   });
 
+  it('крупный POST в кабинет проходит только после проверки сессии (Р-247)', () => {
+    const conf = readFileSync(path.join(ROOT, 'deploy/nginx.conf'), 'utf8');
+    assert.match(conf, /"~\^POST:\[0-9\]\{7,\}\$" 1;/u);
+    const upload = conf.slice(conf.indexOf('location ^~ /__cabinet_upload/'), conf.indexOf('location = /__cabinet_session'));
+    assert.match(upload, /internal;/u);
+    assert.match(upload, /auth_request \/__cabinet_session;/u);
+    const check = conf.slice(conf.indexOf('location = /__cabinet_session'));
+    assert.match(check, /proxy_pass_request_body off;/u);
+    assert.match(check, /client_max_body_size 130m;/u);
+    assert.match(check, /\/cabinet\/api\/session;/u);
+    const route = readFileSync(path.join(APP, 'src/app/cabinet/api/session/route.ts'), 'utf8');
+    assert.match(route, /actor === null \? 401 : 204/u);
+  });
+
+  it('каталог материалов закреплён за томом, выкат отдаёт его приложению (Р-248)', () => {
+    const compose = readFileSync(path.join(ROOT, 'deploy/docker-compose.yml'), 'utf8');
+    assert.equal((compose.match(/CABINET_STORAGE_DIR: \/app\/storage\n/gu) ?? []).length, 2);
+    assert.doesNotMatch(compose, /CABINET_STORAGE_DIR: \$\{/u);
+    const update = readFileSync(path.join(ROOT, 'deploy/update.sh'), 'utf8');
+    assert.match(update, /docker cp "\$CONTAINER:\$OLD_DIR\/\." "\$DIR\/storage\/"/u);
+    assert.match(update, /chown -R 1001:1001 "\$DIR\/storage"/u);
+    assert.ok(update.indexOf('chown -R 1001:1001') < update.indexOf('$COMPOSE up -d web'));
+    const deploy = readFileSync(path.join(ROOT, 'docs/DEPLOY.md'), 'utf8');
+    assert.doesNotMatch(deploy, /printf 'CABINET_STORAGE_DIR/u);
+  });
+
+  it('копия материалов — полная раз в неделю и разностная (Р-248)', () => {
+    const script = readFileSync(path.join(ROOT, 'deploy/backup.sh'), 'utf8');
+    assert.match(script, /--listed-incremental="\$SNAR\.part"/u);
+    assert.match(script, /--listed-incremental="\$SNAR\.work"/u);
+    assert.match(script, /_full\.tar\.gz/u);
+    assert.match(script, /_diff\.tar\.gz/u);
+  });
+
   it('compose передаёт приложению признаки зеркала и путь моста, но не пароль', () => {
     const compose = readFileSync(path.join(ROOT, 'deploy/docker-compose.yml'), 'utf8');
     const web = compose.slice(compose.indexOf('\n  web:'), compose.indexOf('\n  migrate:'));

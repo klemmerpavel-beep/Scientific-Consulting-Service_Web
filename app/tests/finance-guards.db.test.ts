@@ -226,6 +226,36 @@ describe('защиты финансового контура', { skip: !enabled 
     );
   });
 
+  it('сторно оплаченного транша: только с причиной, остаток возвращается, письма нет (Р-249)', async () => {
+    const { outstandingOf } = await import('../src/lib/cabinet/money.ts');
+    const projectId = await newProject('S');
+    const contract = await newContract(projectId, 1_000_000n);
+    const { tranche } = await finance.addTranche(head(), { contractId: contract.id, title: 'Аванс', amount: 400_000n });
+    await finance.setTrancheStatus(head(), tranche.id, 'PAID', new Date('2026-03-01T00:00:00Z'));
+    await assert.rejects(() => finance.setTrancheStatus(head(), tranche.id, 'REVERSED'), /без причины/u);
+    await assert.rejects(() => finance.setTrancheStatus(head(), tranche.id, 'PLANNED'), /не переводится/u);
+    await finance.setTrancheStatus(head(), tranche.id, 'REVERSED', null, 'Оплата отмечена по ошибке: деньги пришли по другой работе');
+    const row = await prisma.tranche.findUniqueOrThrow({ where: { id: tranche.id } });
+    assert.equal(row.status, 'REVERSED');
+    assert.equal(row.paidOn?.toISOString().slice(0, 10), '2026-03-01', 'дата снятого поступления стёрта');
+    const tranches = await prisma.tranche.findMany({ where: { contractId: contract.id } });
+    assert.equal(outstandingOf(contract.totalAmount, tranches), 1_000_000n);
+    const money = await finance.projectMoney(head(), projectId);
+    assert.equal(money?.received, 0n);
+    await assert.rejects(
+      () => finance.setTrancheStatus(head(), tranche.id, 'PAID', new Date('2026-03-02T00:00:00Z')),
+      /не переводится/u,
+    );
+    const entry = await prisma.auditEvent.findFirstOrThrow({
+      where: { objectId: tranche.id, action: 'TRANCHE_STATUS_CHANGED', payload: { path: ['to'], equals: 'REVERSED' } },
+    });
+    assert.match(String((entry.payload as Record<string, unknown>).reason), /по ошибке/u);
+    assert.equal(
+      await prisma.notificationOutbox.count({ where: { dedupKey: { startsWith: `tranche:${tranche.id}:reversed` } } }),
+      0,
+    );
+  });
+
   it('маржа — без списанного; повторный счёт доходит, о списании клиенту не пишется', async () => {
     const projectId = await newProject('G');
     const contract = await newContract(projectId, 10_000_000n);

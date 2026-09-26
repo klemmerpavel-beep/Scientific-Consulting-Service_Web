@@ -4,7 +4,7 @@ import { record } from './audit.ts';
 import { hasContacts } from './contacts.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
-import { materialKey, sha256, storage } from './storage.ts';
+import { materialKey, openObject, sha256, storage } from './storage.ts';
 
 /**
  * Материалы и их версии.
@@ -333,8 +333,11 @@ export async function readVersion(actor: Actor, versionId: string, ip?: string |
     data: { versionId, userId: actor.id, action: 'DOWNLOAD', ip: ip ?? null },
   });
 
+  // Потоком, а не целиком (решение Р-247).
+  const opened = await openObject(storage(), version.storageKey);
   return {
-    body: await storage().get(version.storageKey),
+    stream: opened.stream,
+    sizeBytes: opened.sizeBytes,
     originalName: version.originalName,
     contentType: version.contentType,
   };

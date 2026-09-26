@@ -97,10 +97,11 @@ describe('смена статуса транша (решение Р-224)', async
     assert.deepEqual([...nextTrancheStatuses('PLANNED')].sort(), ['INVOICED', 'PAID', 'WRITTEN_OFF']);
   });
 
-  it('оплаченный и списанный — итог, из него не уходят', () => {
-    assert.deepEqual(nextTrancheStatuses('PAID'), []);
+  it('оплаченный не откатывается, списанный — итог; оплату снимает только сторно (Р-224, Р-249)', () => {
+    assert.deepEqual(nextTrancheStatuses('PAID'), ['REVERSED']);
     assert.deepEqual(nextTrancheStatuses('WRITTEN_OFF'), []);
     assert.equal(canChangeTrancheStatus('PAID', 'PLANNED'), false);
+    assert.equal(canChangeTrancheStatus('PAID', 'WRITTEN_OFF'), false);
   });
 
   it('выставленный счёт можно отозвать', () => {
@@ -133,5 +134,22 @@ describe('суммы и признаки в журнале', () => {
     assert.match(text, /сумма 240\s000,50\s₽/u);
     assert.match(text, /на модерации да/u);
     assert.match(text, /есть контакты нет/u);
+  });
+});
+
+describe('сторно транша (решение Р-249)', () => {
+  it('оплаченный снимается только сторно, сторнированный — итог', async () => {
+    const { canChangeTrancheStatus, nextTrancheStatuses } = await import('../src/lib/cabinet/money.ts');
+    assert.deepEqual(nextTrancheStatuses('PAID'), ['REVERSED']);
+    assert.deepEqual(nextTrancheStatuses('REVERSED'), []);
+    assert.equal(canChangeTrancheStatus('PAID', 'PLANNED'), false);
+    assert.equal(canChangeTrancheStatus('INVOICED', 'REVERSED'), false);
+    assert.equal(
+      outstandingOf(1000n, [
+        { amount: 400n, status: 'REVERSED' },
+        { amount: 100n, status: 'PAID' },
+      ]),
+      900n,
+    );
   });
 });

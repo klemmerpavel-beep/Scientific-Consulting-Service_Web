@@ -151,7 +151,7 @@ describe('вложения заявки', { skip: !enabled }, async () => {
 
     const read = await queries.readLeadAttachment(staff(ids.manager!, 'MANAGER'), file.id);
     assert.ok(read !== null);
-    assert.equal(read.body.toString(), 'черновик главы 2');
+    assert.equal(await new Response(read.stream).text(), 'черновик главы 2');
 
     const logged = await prisma.auditEvent.findFirst({
       where: { action: 'LEAD_FILE_DOWNLOADED', objectId: file.id },

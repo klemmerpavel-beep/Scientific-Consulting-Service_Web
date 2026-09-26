@@ -118,6 +118,35 @@ $COMPOSE --profile migrate run --rm migrate
 say "собираю образ"
 $COMPOSE build web
 
+# Материалы, записанные внутрь прежнего контейнера. Порядок открытия
+# советовал задать CABINET_STORAGE_DIR вне тома, и такой контейнер держал
+# файлы работ в себе — пересоздание их уничтожило бы. Каталог теперь
+# закреплён в docker-compose.yml, а файлы из прежнего каталога переносятся
+# на хост до пересоздания (решение Р-248). Ничего не удаляется: при отказе
+# копирования выкат останавливается, прежний контейнер продолжает работать.
+if [ -n "$CONTAINER" ]; then
+  OLD_DIR=$(docker exec "$CONTAINER" printenv CABINET_STORAGE_DIR 2>/dev/null || true)
+  if [ -n "$OLD_DIR" ] && [ "$OLD_DIR" != "/app/storage" ]; then
+    if docker exec "$CONTAINER" test -d "$OLD_DIR"; then
+      say "материалы лежали внутри контейнера ($OLD_DIR) — переношу в deploy/storage"
+      mkdir -p "$DIR/storage"
+      if docker cp "$CONTAINER:$OLD_DIR/." "$DIR/storage/"; then
+        say "материалы перенесены: $(find "$DIR/storage" -type f | wc -l) файлов в deploy/storage"
+      else
+        say "ОТКАЗ: материалы из контейнера не скопированы, выкат остановлен"
+        exit 1
+      fi
+    fi
+  fi
+fi
+
+# Приложение в контейнере работает от nextjs (uid 1001, app/Dockerfile), а
+# каталог материалов на хосте заводился от root: запись версии и вложения
+# упиралась в права. Выкат идёт от root и отдаёт каталог приложению —
+# в том числе перенесённые выше файлы (решение Р-248).
+mkdir -p "$DIR/storage"
+chown -R 1001:1001 "$DIR/storage"
+
 say "поднимаю приложение"
 $COMPOSE up -d web
 

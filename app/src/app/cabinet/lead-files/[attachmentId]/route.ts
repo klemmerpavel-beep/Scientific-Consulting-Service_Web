@@ -33,10 +33,11 @@ export async function GET(
   try {
     const file = await readLeadAttachment(actor, attachmentId, await requestIp());
     if (file === null) return new NextResponse('Не найдено', { status: 404 });
-    // Представление над тем же буфером, без копии: прежде файл до 50 МБ
-    // лежал в памяти дважды на каждое скачивание (решение Р-246).
-    return new NextResponse(new Uint8Array(file.body.buffer as ArrayBuffer, file.body.byteOffset, file.body.byteLength), {
+    // Байты идут потоком с диска: прежде файл до 50 МБ читался в память
+    // целиком на каждое скачивание (решения Р-246, Р-247).
+    return new NextResponse(file.stream, {
       headers: {
+        'content-length': String(file.sizeBytes),
         'content-type': safeType(file.contentType),
         'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(file.originalName)}`,
         'cache-control': 'private, no-store',

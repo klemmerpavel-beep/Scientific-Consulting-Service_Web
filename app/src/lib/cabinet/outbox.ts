@@ -269,7 +269,7 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     if (recipientOff) {
       await prisma.notificationOutbox.update({
         where: { id: item.id },
-        data: { state: 'FAILED', lastError: RECIPIENT_OFF },
+        data: { state: 'FAILED', lastError: RECIPIENT_OFF, scheduledAt: new Date() },
       });
       continue;
     }
@@ -435,7 +435,10 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
     }),
     prisma.notificationOutbox.findMany({
       where: { state: 'FAILED' },
-      orderBy: { scheduledAt: 'desc' },
+      // Свежие уведомления первыми. Срок следующей попытки у отказавшей
+      // строки — след аренды, а не момент отказа: по нему старые строки
+      // вытесняли свежие из перечня (решение Р-249).
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: 50,
       select: {
         id: true,
