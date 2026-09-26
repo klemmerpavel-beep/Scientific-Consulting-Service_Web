@@ -64,4 +64,15 @@ describe('пределы загрузки файлов', () => {
     // Иначе правка nginx.conf до сервера не доезжает (решение Р-231).
     assert.match(read('deploy/update.sh'), /nginx-sync\.sh/u);
   });
+
+  it('выкат ставит расписание связки с Диском', () => {
+    // Иначе связка, готовая в коде, ждёт ручного crontab -e (решение Р-261).
+    assert.match(read('deploy/update.sh'), /cron-sync\.sh/u);
+    const cron = read('deploy/cron-sync.sh');
+    for (const job of ['outbox.sh', 'yandex-sync.sh', 'book-pull.sh']) {
+      assert.match(cron, new RegExp(`\\$DIR/${job.replace('.', '\\.')}`, 'u'));
+    }
+    // Прежний скрипт выгрузки снимается с расписания, а не ставится.
+    assert.doesNotMatch(cron, /\$DIR\/yandex-upload\.sh/u);
+  });
 });
