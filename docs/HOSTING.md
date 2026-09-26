@@ -405,7 +405,7 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
 curl -s http://127.0.0.1:3000/api/health
 ```
 
-Ожидается `{"ok":true,"db":true}`. Первая сборка идёт 5–10 минут.
+Ожидается `{"ok":true,"db":true,"schema":true}`. Первая сборка идёт 5–10 минут.
 
 Приложение слушает только `127.0.0.1:3000` и снаружи недоступно —
 так и должно быть.
@@ -448,7 +448,7 @@ nginx -t && systemctl reload nginx
 ```bash
 curl -sI http://prodisser.ru | head -1          # 301
 curl -sI https://www.prodisser.ru | head -1     # 301
-curl -s https://prodisser.ru/api/health         # {"ok":true,"db":true}
+curl -s https://prodisser.ru/api/health         # {"ok":true,"db":true,"schema":true}
 ```
 
 ---
@@ -490,7 +490,7 @@ ls -lh /opt/prodisser/deploy/backups/
 ## Шаг 10. Проверить, что всё работает
 
 ```bash
-curl -s https://prodisser.ru/api/health          # {"ok":true,"db":true}
+curl -s https://prodisser.ru/api/health          # {"ok":true,"db":true,"schema":true}
 curl -sI https://prodisser.ru | grep -iE 'content-security|strict-transport|x-frame|x-content'
 curl -s https://prodisser.ru/sitemap.xml | head  # настоящий домен, не localhost
 curl -s -o /dev/null -w '%{http_code}\n' \

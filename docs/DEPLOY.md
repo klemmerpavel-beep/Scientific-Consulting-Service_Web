@@ -155,7 +155,7 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
 docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
   up -d --build
 
-curl -s http://127.0.0.1:3000/api/health      # ожидается {"ok":true,"db":true}
+curl -s http://127.0.0.1:3000/api/health      # ожидается {"ok":true,"db":true,"schema":true}
 ```
 
 Публичный адрес обязателен на сборке, а не только при запуске: `canonical`,
@@ -971,7 +971,7 @@ cookies и веб-аналитика» в редакции 1.1: их можно 
       в записи стоят `consentGiven` и `termsAccepted`
 - [ ] отзыв с трёх форм «Написать отзыв» доходит до базы с пустым контактом,
       отметка «Разрешаю опубликовать» сохраняется в `publishAllowed`
-- [ ] `/api/health` отвечает `{"ok":true,"db":true}`
+- [ ] `/api/health` отвечает `{"ok":true,"db":true,"schema":true}`
 - [ ] `/robots.txt` и `/sitemap.xml` содержат настоящий домен
 - [ ] сайт открывается из России у мобильного оператора и у домашнего провайдера
 - [ ] резервная копия создалась ночью и восстанавливается: `deploy/restore-check.sh`
