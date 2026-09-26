@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { Row, Sheet } from './xlsx.ts';
 import { ImportError } from './zip.ts';
 
@@ -23,7 +25,8 @@ export type IssueCode =
   | 'CLOSED_WITH_OUTSTANDING_BALANCE'
   | 'DUPLICATE_CLIENT_BY_NAME'
   | 'STATUS_FILL_CONFLICT'
-  | 'AMOUNT_UNREADABLE';
+  | 'AMOUNT_UNREADABLE'
+  | 'PREVIOUS_WORK_UNCLEAR';
 
 export type Severity = 'ERROR' | 'WARNING';
 
@@ -45,6 +48,9 @@ export const ISSUE_LABEL: Record<IssueCode, string> = {
   DUPLICATE_CLIENT_BY_NAME: 'Дубль клиента по ФИО',
   STATUS_FILL_CONFLICT: 'Текст статуса расходится с заливкой',
   AMOUNT_UNREADABLE: 'Нечитаемая сумма',
+  // Не дефект книги, а итог сверки с уже перенесённым: разбор его не
+  // выставляет, его ставит перенос (`import/match.ts`, решение Р-252).
+  PREVIOUS_WORK_UNCLEAR: 'Неясно, какой перенесённой работе соответствует строка',
 };
 
 /** Состояние работы, выведенное из книги. */
@@ -334,9 +340,60 @@ export interface ParsedRow {
   readonly rawStatus: string;
   readonly status: LegacyStatus;
   readonly fill: string | null;
-  /** Естественный ключ строки: кода заказа в книге нет. */
+  /** Естественный ключ строки: кода заказа в книге нет. Сумма в него не входит. */
   readonly signature: string;
   readonly issues: readonly Issue[];
+}
+
+/**
+ * Метка формулы естественного ключа (решение Р-252).
+ *
+ * Прежде ключ был «дата|ФИО|тип|сумма»: сумма входила в ключ, и правка
+ * стоимости в книге давала новую строку, а мост «Диск → база» заводил по
+ * ней вторую работу с договором и оплатой. Теперь ключ — «k2|дата|ФИО|тип»,
+ * а сумма сравнивается как изменившееся значение. Метка отличает новую
+ * формулу от прежней: в базе лежат перенесённые строки со старыми ключами,
+ * и сверка (`import/match.ts`) читает обе.
+ */
+export const KEY_VERSION = 'k2';
+
+/** Начало надгробия: ключ строки, данные которой стёрты по требованию субъекта. */
+export const ERASED_KEY_PREFIX = 'erased:';
+
+/** Основа ключа: дата, ФИО и написание типа — без суммы и номера повтора. */
+export function rowBase(rawDate: string, customer: string, rawType: string): string {
+  return [rawDate, normalizeName(customer), normalizeName(rawType)].join('|');
+}
+
+/**
+ * Основа ключа из сохранённой подписи любой формулы: новой
+ * («k2|дата|ФИО|тип[|#n]») и прежней («дата|ФИО|тип|сумма[|#n]»).
+ * `null` — подписи нет либо это надгробие.
+ */
+export function signatureBase(signature: string | null): string | null {
+  if (signature === null || signature.startsWith(ERASED_KEY_PREFIX)) return null;
+  const plain = signature.replace(/\|#\d+$/u, '');
+  if (plain.startsWith(`${KEY_VERSION}|`)) return plain.slice(KEY_VERSION.length + 1);
+  // Прежняя формула: последним полем шла сумма в копейках.
+  const legacy = /^(.*)\|\d+$/su.exec(plain);
+  return legacy === null ? plain : legacy[1]!;
+}
+
+/**
+ * Надгробие строки книги (решение Р-252).
+ *
+ * Прежде обезличивание обнуляло подпись, и мост, раз в час разбирающий
+ * книгу, не находил прежнего переноса и заводил стёртого клиента заново —
+ * с ФИО из книги. Теперь вместо подписи хранится свёртка её основы: по ней
+ * строка книги узнаётся, а ФИО из неё не читается — свёртку можно только
+ * сверить с той же строкой, которая и так лежит в книге. Свёртка
+ * берётся от основы, а не от всей подписи: правка суммы или порядка
+ * строк не должна снимать запрет.
+ */
+export function erasedKey(signature: string | null): string | null {
+  const base = signatureBase(signature);
+  if (base === null) return null;
+  return ERASED_KEY_PREFIX + createHash('sha256').update(base, 'utf8').digest('hex');
 }
 
 /** Приведение ФИО к виду, пригодному для поиска однофамильцев. */
@@ -460,12 +517,7 @@ export function parseRow(
   // «Отчёт НИР» и «Презентация по отчёту НИР» сводятся к одной позиции
   // справочника, но это два разных заказа, и в книге они стоят рядом — с
   // одним клиентом, одной датой и одной суммой.
-  const signature = [
-    rawDate,
-    normalizeName(customer),
-    normalizeName(rawType),
-    cost.toString(),
-  ].join('|');
+  const signature = `${KEY_VERSION}|${rowBase(rawDate, customer, rawType)}`;
 
   return {
     rowNumber: row.number,

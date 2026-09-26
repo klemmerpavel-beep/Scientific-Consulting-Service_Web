@@ -1,7 +1,7 @@
 import { prisma } from '../db.ts';
 import { ensure, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
-import { declineLetter } from './lead-letter.ts';
+import { declineLetterFor } from './lead-letter.ts';
 import { enqueue, enqueueToLead } from './outbox.ts';
 import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
@@ -391,7 +391,9 @@ export async function declineLead(actor: Actor, leadId: string, reason: string) 
       (await enqueueToLead(tx, {
         leadId,
         eventKind: 'LEAD_DECLINED',
-        ...declineLetter(lead.name, lead.topic, trimmed),
+        // Имя и тема подставляются только в ответ на заявку из кабинета:
+        // адрес заявки с сайта не подтверждён (решение Р-252).
+        ...declineLetterFor(lead, trimmed),
         // Ключ по заявке: повторное отклонение с правленой причиной второго
         // письма не отправит — человек уже получил ответ.
         dedupKey: `lead:${leadId}:declined`,

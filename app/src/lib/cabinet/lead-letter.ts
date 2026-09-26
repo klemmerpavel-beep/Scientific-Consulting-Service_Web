@@ -36,6 +36,28 @@ export function declineLetter(
   };
 }
 
+/**
+ * Письмо об отказе для конкретной заявки (решение Р-252).
+ *
+ * Заявка с сайта приходит с открытой формы, и адрес в ней никем не
+ * подтверждён: вписать можно чужой ящик. Имя и тема из такой заявки в
+ * письмо не подставляются — иначе отказ становился способом разослать
+ * произвольный текст («Здравствуйте, <ссылка>») на чужой адрес от имени
+ * практики. Обращение обезличенное, причина — словами менеджера.
+ *
+ * Заявка из кабинета подана вошедшим человеком, и письмо уходит на адрес
+ * его учётной записи, подтверждённый входом по ссылке: ему имя и тема
+ * возвращаются как есть.
+ */
+export function declineLetterFor(
+  lead: { readonly source: string; readonly name: string | null; readonly topic: string | null },
+  reason: string,
+): { subject: string; body: string } {
+  return lead.source === 'cabinet'
+    ? declineLetter(lead.name, lead.topic, reason)
+    : declineLetter(null, null, reason);
+}
+
 /** Адрес почты из заявки; `null`, если человек оставил телефон. */
 export function leadAddress(lead: { contactKind: string; contact: string }): string | null {
   const contact = lead.contact.trim();

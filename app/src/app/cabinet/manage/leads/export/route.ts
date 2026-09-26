@@ -19,7 +19,8 @@ export const dynamic = 'force-dynamic';
  * персональных данных не должна заводиться там, где её никто не удалит.
  * Каждая выгрузка пишется в журнал действий с числом строк и условиями
  * отбора — это вынос персональных данных за пределы экрана, и он должен
- * быть виден проверяющему (решение Р-159).
+ * быть виден проверяющему (решение Р-159). Текст поиска в журнал не идёт —
+ * только признак, что он был (решение Р-252).
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const actor = await currentActor();
@@ -37,6 +38,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     source: params.get('source') ?? undefined,
     status: params.get('status') ?? undefined,
     query: params.get('query') ?? undefined,
+    // Граница — момент начала выгрузки: заявка, пришедшая во время
+    // перебора страниц, не сдвигает их и не повторяет строку (Р-252).
+    until: new Date(),
   };
 
   // Выгружается весь отбор, а не одна страница: человек нажимает «выгрузить»,
@@ -98,10 +102,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     page += 1;
   }
 
+  // В журнал идёт признак поиска, а не его текст: ищут по имени, почте и
+  // телефону, и строка поиска — те же персональные данные, только в
+  // журнале, который обезличивание не находит (решение Р-252).
   await record(actor, {
     action: 'LEAD_EXPORT',
     objectType: 'Lead',
-    payload: { rows: lines.length - 1, total, ...filter },
+    payload: {
+      rows: lines.length - 1,
+      total,
+      source: filter.source,
+      status: filter.status,
+      query: (filter.query ?? '').trim().length > 0,
+    },
     ip: await requestIp(),
   });
 

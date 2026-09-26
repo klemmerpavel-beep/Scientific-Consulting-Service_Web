@@ -234,11 +234,14 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
     await prisma.expertProfile.create({ data: { userId: user.id } });
   }
 
+  // Адрес почты в журнал не пишется: запись ссылается на учётную запись
+  // идентификатором, а адрес в ней переживал бы и смену адреса, и
+  // обезличивание (решение Р-252).
   await record(actor, {
     action: 'USER_CREATED',
     objectType: 'User',
     objectId: user.id,
-    payload: { email: user.email, role: user.role },
+    payload: { role: user.role },
   });
   return user;
 }

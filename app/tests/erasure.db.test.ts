@@ -23,6 +23,10 @@ process.env.CABINET_STORAGE_DIR ??= mkdtempSync(path.join(tmpdir(), 'pd-erasure-
 
 const enabled = Boolean(process.env.DATABASE_URL);
 const stamp = Date.now();
+// Телефон субъекта — свой у каждого прогона: заявки теперь сверяются по
+// последним десяти цифрам (решение Р-252), и общий «+7 900 000-00-00»
+// находил бы на общей базе стенда заявки чужих наборов.
+const phone = `+7 9${String(stamp).slice(-9)}`;
 
 describe('удаление данных субъекта', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
@@ -53,7 +57,7 @@ describe('удаление данных субъекта', { skip: !enabled }, a
         email: `era-client-${stamp}@example.org`,
         fullName: 'Смирнов Олег Петрович',
         role: 'CLIENT',
-        phone: '+7 900 000-00-00',
+        phone,
         telegramChatId: '123456',
       },
     });
@@ -62,7 +66,7 @@ describe('удаление данных субъекта', { skip: !enabled }, a
         userId: clientUser.id,
         fullName: 'Смирнов Олег Петрович',
         normalizedName: `смирнов олег петрович ${stamp}`,
-        phone: '+7 900 000-00-00',
+        phone,
         email: `era-client-${stamp}@example.org`,
         university: 'МГУ',
         speciality: 'Физика',
@@ -425,7 +429,10 @@ describe('удаление данных субъекта', { skip: !enabled }, a
 
     const row = await prisma.importRow.findUnique({ where: { id: ids.importRow } });
     assert.deepEqual(row?.raw, { erased: true }, 'в строке книги остались значения ячеек с ФИО');
-    assert.equal(row?.signature, null);
+    // Ключ не обнуляется, а заменяется надгробием: без него мост книги
+    // завёл бы стёртого клиента заново (решение Р-252). ФИО в нём нет.
+    assert.match(row?.signature ?? '', /^erased:[0-9a-f]{64}$/u);
+    assert.doesNotMatch(row?.signature ?? '', /смирнов/u);
   });
 
   it('описания, причины, журнал, уведомления о заявке и сведённые карточки затёрты', async () => {

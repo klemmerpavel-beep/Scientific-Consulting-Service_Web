@@ -5,7 +5,7 @@ import type { Actor } from '../cabinet/access.ts';
 import { STATUS_LABEL as TRANCHE_LABEL } from '../cabinet/money.ts';
 import { stageStateLabel } from '../cabinet/stage-state.ts';
 import { materialFolders, versionPath } from './paths.ts';
-import { csv, rub } from './table.ts';
+import { csv, mskDay, mskMoment, rub } from './table.ts';
 
 /**
  * Таблицы реестров для зеркала на Диске.
@@ -20,14 +20,12 @@ import { csv, rub } from './table.ts';
  * кончился прошлый прогон, и умело бы расходиться с базой.
  */
 
-/** Дата без времени: в таблице сортируют по дню, час там лишний. */
-function day(value: Date | null | undefined): string {
-  return value === null || value === undefined ? '' : value.toISOString().slice(0, 10);
-}
-
-function moment(value: Date | null | undefined): string {
-  return value === null || value === undefined ? '' : value.toISOString().slice(0, 16).replace('T', ' ');
-}
+/**
+ * Дата без времени: в таблице сортируют по дню, час там лишний. День и
+ * момент — по Москве, как на экранах кабинета (решение Р-252).
+ */
+const day = mskDay;
+const moment = mskMoment;
 
 /**
  * Названия состояний работы. Перечень короткий и нигде больше не нужен:
@@ -58,7 +56,7 @@ export async function leadsTable(): Promise<Table> {
   });
   return table(
     'zayavki.csv',
-    ['Дата', 'Страница', 'Форма', 'Имя', 'Контакт', 'Организация', 'Тема', 'Что нужно',
+    ['Дата (МСК)', 'Страница', 'Форма', 'Имя', 'Контакт', 'Организация', 'Тема', 'Что нужно',
      'Срок', 'Сообщение', 'Согласие', 'Рассылка', 'Состояние', 'Работа', 'Идентификатор'],
     rows.map((r) => [
       moment(r.createdAt), leadSourceLabel(r.source), r.form, r.name ?? '', r.contact,
@@ -76,7 +74,7 @@ export async function reviewsTable(): Promise<Table> {
   });
   return table(
     'otzyvy.csv',
-    ['Дата', 'Страница', 'Кто', 'Отзыв', 'Можно публиковать', 'Состояние', 'Идентификатор'],
+    ['Дата (МСК)', 'Страница', 'Кто', 'Отзыв', 'Можно публиковать', 'Состояние', 'Идентификатор'],
     rows.map((r) => [
       moment(r.createdAt), leadSourceLabel(r.source), r.name ?? '', r.message ?? '',
       r.publishAllowed ? 'да' : 'нет', leadStatusLabel(r.status), r.id,
@@ -128,7 +126,7 @@ export async function stagesTable(): Promise<Table> {
   });
   return table(
     'etapy.csv',
-    ['Работа', '№', 'Этап', 'Состояние', 'Срок', 'Исполнитель', 'Начат', 'Завершён'],
+    ['Работа', '№', 'Этап', 'Состояние', 'Срок', 'Исполнитель', 'Начат (МСК)', 'Завершён (МСК)'],
     rows.map((s) => [
       s.project.code, s.position, s.title, stageStateLabel(s.state),
       day(s.dueOn), s.expert?.fullName ?? '', day(s.startedAt), day(s.completedAt),
@@ -236,7 +234,7 @@ export async function materialsTable(files: readonly MaterialFile[]): Promise<Ta
   const pathByKey = new Map(files.map((f) => [f.storageKey, f.path]));
   return table(
     'materialy.csv',
-    ['Работа', 'Материал', 'Версия', 'Файл', 'Размер, байт', 'Загружен', 'Кем', 'Путь в зеркале'],
+    ['Работа', 'Материал', 'Версия', 'Файл', 'Размер, байт', 'Загружен (МСК)', 'Кем', 'Путь в зеркале'],
     versions.map((v) => [
       v.material.project.code, v.material.title, v.number, v.originalName,
       String(v.sizeBytes), moment(v.uploadedAt), v.uploadedBy?.fullName ?? '',
