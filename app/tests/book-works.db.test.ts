@@ -35,7 +35,12 @@ describe('работа из книги без плана на сводке', { s
     expertNdaSignedAt: null,
   });
 
-  async function work(suffix: string, dueOn: Date | null, stage?: { state: 'IN_PROGRESS'; dueOn: Date }) {
+  async function work(
+    suffix: string,
+    dueOn: Date | null,
+    stage?: { state: 'IN_PROGRESS'; dueOn: Date },
+    status: 'ACTIVE' | 'PAUSED' = 'ACTIVE',
+  ) {
     const project = await prisma.project.create({
       data: {
         code: `PD-BOOK-${stamp}-${suffix}`,
@@ -43,7 +48,7 @@ describe('работа из книги без плана на сводке', { s
         serviceTypeId: ids.type!,
         title: `Работа ${suffix}`,
         managerId: ids.boss!,
-        status: 'ACTIVE',
+        status,
         source: 'IMPORT',
         dueOn,
       },
@@ -78,11 +83,13 @@ describe('работа из книги без плана на сводке', { s
         state: 'IN_PROGRESS',
         dueOn: new Date(now - 10 * day),
       }),
+      // приостановлена, срок прошёл — тоже на сводку (Р-256)
+      paused: await work('paused', new Date(now - 20 * day), undefined, 'PAUSED'),
     });
   });
 
   after(async () => {
-    const projects = [ids.late!, ids.ahead!, ids.staged!];
+    const projects = [ids.late!, ids.ahead!, ids.staged!, ids.paused!];
     await prisma.stage.deleteMany({ where: { projectId: { in: projects } } });
     await prisma.project.deleteMany({ where: { id: { in: projects } } });
     await prisma.clientProfile.deleteMany({ where: { id: ids.client } });
@@ -96,6 +103,14 @@ describe('работа из книги без плана на сводке', { s
     const codes = light.lateWorks.map((work) => work.code);
     assert.ok(codes.includes(`PD-BOOK-${stamp}-late`));
     assert.ok(!codes.includes(`PD-BOOK-${stamp}-ahead`), 'срок впереди — не просрочка');
+  });
+
+  it('приостановленная работа с прошедшим сроком тоже в «Требует внимания»', async () => {
+    // Отчёт и аналитика считают её среди действующих с прошедшим сроком;
+    // главная прежде её пропускала, и счёт расходился (решение Р-256).
+    const light = await trafficLight(head());
+    const paused = light.lateWorks.find((work) => work.code === `PD-BOOK-${stamp}-paused`);
+    assert.equal(paused?.status, 'PAUSED');
   });
 
   it('работа, уже названная просроченным этапом, второй раз не встаёт', async () => {

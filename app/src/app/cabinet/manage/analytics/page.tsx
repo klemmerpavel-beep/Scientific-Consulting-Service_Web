@@ -7,9 +7,9 @@ import {
   seriesColor,
 } from '../../../../components/cabinet/Charts';
 import { Card, Chip, Empty, Heading, Mono, Text, plural } from '../../../../components/cabinet/ui';
-import { byMonth, conclusions, overview, products, verdict } from '../../../../lib/cabinet/analytics/metrics';
+import { byMonth, collectionPercent, conclusions, overview, products, verdict } from '../../../../lib/cabinet/analytics/metrics';
 import { formatAmount, formatRounded } from '../../../../lib/cabinet/money';
-import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from './shared';
+import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num } from './shared';
 import { now as clockNow } from '../../../../lib/cabinet/clock';
 
 export const dynamic = 'force-dynamic';
@@ -96,7 +96,7 @@ export default async function AnalyticsOverview() {
             <Tile
               label="Получено"
               value={formatAmount(total.received)}
-              note={total.collection === null ? 'нет завершённых работ с договором' : `собрано ${share(total.collection)} по завершённым`}
+              note={total.collection === null ? 'нет завершённых работ с договором' : `собрано ${collectionPercent(total.collection)} по завершённым`}
             />
             {/* Отменённые не входят: их неоплаченное — потеря, а не долг
                 (решение Р-256). */}

@@ -2,7 +2,6 @@ import {
   Card,
   Empty,
   Heading,
-  Notice,
   TableCard,
   Text,
   plural,
@@ -12,14 +11,6 @@ import { formatAmount } from '../../../../../lib/cabinet/money';
 import { Frame, Tile, Tiles, analyticsScreen, cell, head, num } from '../shared';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * Величина из брифа PD-LK-BRIEF-001. Показывается рядом с расчётной, но не
- * вместо неё: источник расхождения не установлен, и обе цифры имеют право
- * быть на экране — одна как факт данных, другая как утверждение заказчика
- * (решение Р-134).
- */
-const BRIEF_LOSSES = 36_500_000n;
 
 export default async function AnalyticsLosses() {
   const { actor, rows } = await analyticsScreen();
@@ -39,23 +30,13 @@ export default async function AnalyticsLosses() {
         <>
           <Tiles>
             <Tile
-              label="Потери по расчёту"
+              label="Потери"
               value={formatAmount(report.total)}
               note={`${report.rows.length} ${plural(report.rows.length, 'работа', 'работы', 'работ')} с остатком`}
             />
-            <Tile label="Величина из брифа" value={formatAmount(BRIEF_LOSSES)} note="PD-LK-BRIEF-001, раздел 5" />
             <Tile label="Приостановлено" value={String(report.stopped)} note={`отменено ${report.cancelled}`} />
             <Tile label="Задолженность всего" value={formatAmount(total.outstanding)} note="по всем работам, кроме отменённых" />
           </Tiles>
-
-          <div style={{ marginBottom: 28 }}>
-            <Notice tone="quiet" role="status">
-              Расчётная величина — {formatAmount(report.total)} — получена из данных системы и
-              воспроизводима построчно. Бриф называет {formatAmount(BRIEF_LOSSES)}; ту же величину,
-              что и расчёт, независимо даёт автотест панели учёта. Источник расхождения не установлен,
-              поэтому показаны обе: подменять расчёт цифрой брифа нельзя, скрывать цифру брифа — тоже.
-            </Notice>
-          </div>
 
           <Heading level={2} style={{ marginBottom: 12 }}>
             Остановленные работы

@@ -532,17 +532,25 @@ export async function trafficLight(actor: Actor) {
   // срок работы на сводке не появлялся вовсе — ответ говорил «ничего не
   // горит» при просроченных заказах (решение Р-216).
   const lateWorks = await prisma.project.findMany({
+    // Приостановленная работа со сроком в прошлом — тоже работа с
+    // прошедшим сроком: отчёт и аналитика считают её среди «действующих»,
+    // а главная прежде молчала о ней, и счёт на двух экранах расходился
+    // (решение Р-256). Её этапы в перечень просроченных не входят, поэтому
+    // условие «нет просроченного этапа» к ней не применяется.
     where: {
       ...scope,
-      status: 'ACTIVE',
       dueOn: { lt: now },
-      stages: { none: { state: live, dueOn: { lt: now } } },
+      OR: [
+        { status: 'ACTIVE', stages: { none: { state: live, dueOn: { lt: now } } } },
+        { status: 'PAUSED' },
+      ],
     },
     orderBy: [{ dueOn: 'asc' }, { code: 'asc' }],
     select: {
       id: true,
       code: true,
       title: true,
+      status: true,
       dueOn: true,
       managerId: true,
       client: { select: { fullName: true } },

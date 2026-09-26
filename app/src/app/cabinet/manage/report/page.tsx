@@ -29,6 +29,7 @@ import { loadRows } from "../../../../lib/cabinet/analytics/data";
 import {
   byMonth,
   clients,
+  collectionPercent,
   conclusions,
   contractedBetween,
   lateOpen,
@@ -330,7 +331,7 @@ export default async function ReportScreen({
           <Text muted size={13} style={{ marginTop: 12 }}>
             {whole.collection === null
               ? "Завершённых работ с договором нет — собираемость не считается"
-              : `Собрано по завершённым работам ${Math.round(whole.collection * 100)} %`}
+              : `Собрано по завершённым работам ${collectionPercent(whole.collection)}`}
             {quiet
               ? "."
               : `; средний чек за период — ${formatRounded(signed.averageCheck)}.`}
@@ -500,7 +501,7 @@ export default async function ReportScreen({
                     {item.area} · срок: {item.term}
                     {item.effect === null
                       ? ""
-                      : ` · оценка: ${formatAmount(item.effect)}`}
+                      : ` · оценка: ${formatRounded(item.effect)}`}
                   </Text>
                   <p
                     style={{

@@ -15,6 +15,7 @@ import { describe, it } from 'node:test';
 
 import {
   byMonth,
+  collectionPercent,
   clients,
   conclusions,
   contractedBetween,
@@ -331,5 +332,26 @@ describe('деньги строкой в перечне «Ведутся сей�
       workMoneyNote({ contracted: 10_000_000n, outstanding: 0n, writtenOff: 0n }),
       /оплачено полностью$/u,
     );
+  });
+});
+
+describe('собираемость по закрытым работам', () => {
+  it('переплата одной закрытой работы не закрывает недобор другой', () => {
+    // Случай книги: закрытая работа недоплачена на 5 000 ₽, другая
+    // переплачена на 5 000 ₽. Прежде суммы гасились и выходило «100 %»
+    // (решение Р-256).
+    const report = overview([
+      row({ code: 'PD-U', status: 'COMPLETED', cost: 10_000_000n, paid: 9_500_000n }),
+      row({ code: 'PD-O', status: 'COMPLETED', cost: 10_000_000n, paid: 10_500_000n }),
+    ]);
+    assert.equal(report.collection, 0.975);
+  });
+});
+
+describe('собираемость процентом', () => {
+  it('недобор не округляется до ста процентов', () => {
+    assert.equal(collectionPercent(0.9984), '99,8 %');
+    assert.equal(collectionPercent(1), '100 %');
+    assert.equal(collectionPercent(0.75), '75 %');
   });
 });

@@ -266,6 +266,7 @@ export default async function ManageQueue({
         urgent: true,
         step: alertStep(late),
         detail: [
+          work.status === 'PAUSED' ? 'приостановлена' : null,
           work._count.stages === 0 ? 'план работ не заведён' : null,
           work.client.fullName,
           rest > 0n ? `не получено ${formatAmount(rest)}` : null,
@@ -273,7 +274,9 @@ export default async function ManageQueue({
           .filter((part) => part !== null)
           .join(' · '),
         todo:
-          work._count.stages === 0
+          work.status === 'PAUSED'
+            ? 'Возобновить с новым сроком или закрыть работу'
+            : work._count.stages === 0
             ? 'Назначить новый срок, завести план или закрыть работу'
             : 'Назначить новый срок работы или закрыть её',
         href: `/cabinet/projects/${work.code}`,

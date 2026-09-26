@@ -63,6 +63,20 @@ export interface ProjectRow {
  * неоплаченное считается потерей (вкладка «Потери»), и в задолженность,
  * к получению и остаток с прошедшим сроком оно не входит (решение Р-256).
  */
+/**
+ * Собираемость процентом. Округление до целых превращало 99,84 % в
+ * «100 %» при неоплаченном остатке закрытой работы; пока собрано не всё,
+ * процент не округляется до ста — берётся знак после запятой вниз
+ * (решение Р-256).
+ */
+export function collectionPercent(ratio: number): string {
+  const whole = Math.round(ratio * 100);
+  if (ratio < 1 && whole >= 100) {
+    return `${(Math.floor(ratio * 1000) / 10).toFixed(1).replace('.', ',')} %`;
+  }
+  return `${whole} %`;
+}
+
 export function openBalance(row: ProjectRow): bigint {
   if (!expectsPayment(row.status)) return 0n;
   const left = row.cost - row.paid - row.writtenOff;
@@ -298,7 +312,10 @@ export function overview(rows: readonly ProjectRow[]): Overview {
 
   const completed = rows.filter((row) => row.status === 'COMPLETED');
   const contractedClosed = sum(completed.map((row) => row.cost));
-  const receivedClosed = sum(completed.map((row) => row.paid));
+  // Собранное по работе ограничено её договором: переплата одной
+  // работы не закрывает недобор другой, иначе книга с переплатой и
+  // неоплаченной закрытой работой давала «собрано 100 %» (решение Р-256).
+  const receivedClosed = sum(completed.map((row) => (row.paid < row.cost ? row.paid : row.cost)));
 
   const contracted = sum(rows.map((row) => row.cost));
   return {
@@ -714,9 +731,9 @@ export interface LossesReport {
 /**
  * Потери на остановленных работах: недополученное по договору.
  *
- * Величина считается по данным системы. Бриф называет иную — 365 000 ₽,
- * и источник расхождения не установлен; обе показываются на экране
- * (решение Р-134), но подменять расчёт цифрой брифа нельзя.
+ * Величина считается только по данным системы. Прежде рядом стояла
+ * цифра из брифа, не выводимая из данных; экран руководителя показывает
+ * лишь то, что следует из его учёта (решение Р-256, заменяет Р-134).
  */
 export function losses(rows: readonly ProjectRow[]): LossesReport {
   const stopped = rows.filter(
@@ -795,7 +812,7 @@ export function conclusions(rows: readonly ProjectRow[], controlDate: Date): Con
         `срок прошёл, а остаток не получен: ${moneyWords(overdueSum)}.` +
         (money.collection === null
           ? ''
-          : ` Собрано по завершённым работам ${Math.round(money.collection * 100)} %.`),
+          : ` Собрано по завершённым работам ${collectionPercent(money.collection)}.`),
       action:
         'Пройти по каждой работе и назвать дату платежа; где платить не будут — списать, ' +
         'чтобы эти деньги перестали считаться выручкой будущего.',

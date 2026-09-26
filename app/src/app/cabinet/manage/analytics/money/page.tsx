@@ -17,6 +17,7 @@ import {
 } from '../../../../../components/cabinet/ui';
 import {
   byMonth,
+  collectionPercent,
   overview,
   receivables,
   seasonalNorm,
@@ -32,7 +33,6 @@ import {
   cell,
   head,
   num,
-  share,
 } from '../shared';
 import { now as clockNow } from '../../../../../lib/cabinet/clock';
 
@@ -64,7 +64,7 @@ export default async function AnalyticsMoney() {
             <Tile
               label="Получено"
               value={formatAmount(total.received)}
-              note={total.collection === null ? 'нет завершённых работ с договором' : `${share(total.collection)} по завершённым`}
+              note={total.collection === null ? 'нет завершённых работ с договором' : `${collectionPercent(total.collection)} по завершённым`}
             />
             <Tile
               label="Задолженность"
