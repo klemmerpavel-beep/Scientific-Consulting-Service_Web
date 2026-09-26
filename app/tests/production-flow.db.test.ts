@@ -253,7 +253,9 @@ describe('сквозной контур', { skip: !enabled }, async () => {
 
     // Первая версия остаётся доступной: история не переписывается.
     const read = await materials.readVersion(client, ids.version1);
-    assert.equal(read?.body.toString(), 'черновик главы 2');
+    // Выдача идёт потоком (решение Р-247): содержимое читается из него.
+    assert.equal(await new Response(read!.stream).text(), 'черновик главы 2');
+    assert.equal(read!.sizeBytes, Buffer.byteLength('черновик главы 2'));
 
     const log = await prisma.fileAccessLog.findMany({ where: { versionId: ids.version1 } });
     assert.ok(log.some((row) => row.action === 'UPLOAD'));

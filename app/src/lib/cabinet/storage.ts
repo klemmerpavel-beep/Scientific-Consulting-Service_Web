@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 
 /**
  * Хранилище материалов.
@@ -27,9 +29,17 @@ export interface StoredObject {
   readonly sha256: string;
 }
 
+/** Объект, открытый на чтение потоком: байты не собираются в память целиком. */
+export interface OpenedObject {
+  readonly stream: ReadableStream<Uint8Array>;
+  readonly sizeBytes: number;
+}
+
 export interface Storage {
   put(key: string, body: Buffer, contentType: string): Promise<StoredObject>;
   get(key: string): Promise<Buffer>;
+  /** Открыть потоком. Необязательно: без него объект читается целиком. */
+  open?(key: string): Promise<OpenedObject>;
   remove(key: string): Promise<void>;
   /** Ссылка ограниченного срока действия либо `null`, если выдача только потоком. */
   signedUrl(key: string, ttlSeconds: number): Promise<string | null>;
@@ -91,6 +101,15 @@ export class LocalStorage implements Storage {
     return readFile(this.resolve(key));
   }
 
+  async open(key: string): Promise<OpenedObject> {
+    const full = this.resolve(key);
+    const { size } = await stat(full);
+    return {
+      stream: Readable.toWeb(createReadStream(full)) as ReadableStream<Uint8Array>,
+      sizeBytes: size,
+    };
+  }
+
   async remove(key: string): Promise<void> {
     await rm(this.resolve(key), { force: true });
   }
@@ -115,6 +134,28 @@ export function storage(): Storage {
   }
   current = new LocalStorage(root);
   return current;
+}
+
+/**
+ * Открыть объект на выдачу (решение Р-247).
+ *
+ * Прежде выдача читала файл целиком — до 50 МБ на каждое скачивание, и
+ * несколько одновременных скачиваний глав упирались в память контейнера.
+ * Теперь байты идут потоком с диска; хранилище без потокового чтения
+ * (подмена в тестах) отдаёт прочитанное целиком тем же видом.
+ */
+export async function openObject(store: Storage, key: string): Promise<OpenedObject> {
+  if (store.open !== undefined) return store.open(key);
+  const body = await store.get(key);
+  return {
+    stream: new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(body));
+        controller.close();
+      },
+    }),
+    sizeBytes: body.byteLength,
+  };
 }
 
 /** Подмена хранилища в тестах. */

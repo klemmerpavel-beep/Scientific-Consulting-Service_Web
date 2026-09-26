@@ -180,7 +180,11 @@ export async function addTranche(actor: Actor, input: TrancheInput) {
     },
   });
 
-  const planned = contract.tranches.reduce((sum, t) => sum + t.amount, 0n) + input.amount;
+  // Сторнированный транш денег не несёт и в сверку с договором не входит.
+  const planned =
+    contract.tranches
+      .filter((t) => t.status !== 'REVERSED')
+      .reduce((sum, t) => sum + t.amount, 0n) + input.amount;
   return { tranche, exceedsContract: planned > contract.totalAmount };
 }
 
@@ -194,6 +198,7 @@ export async function setTrancheStatus(
   trancheId: string,
   status: TrancheStatus,
   paidOn?: Date | null,
+  reason?: string | null,
 ) {
   const tranche = await prisma.tranche.findUniqueOrThrow({
     where: { id: trancheId },
@@ -213,6 +218,14 @@ export async function setTrancheStatus(
     throw new Error('Для оплаченного транша нужна дата поступления');
   }
   if (status === 'PAID') ensurePastDate(paidOn!, 'Дата поступления');
+  // Сторно — только с причиной: через год по журналу должно быть видно,
+  // почему поступление снято — ошибка отметки или возврат клиенту
+  // (решение Р-249).
+  const note = (reason ?? '').trim();
+  if (status === 'REVERSED' && note.length === 0) {
+    throw new Error('Сторно без причины не принимается: укажите, ошибка ли это отметки или возврат');
+  }
+  if (note.length > 500) throw new Error('Причина — не длиннее 500 знаков');
   await ensureMoneyWritable(tranche.contract.projectId, false);
 
   const updated = await prisma.$transaction(async (tx) => {
@@ -222,7 +235,11 @@ export async function setTrancheStatus(
     // (решение Р-244).
     const claimed = await tx.tranche.updateMany({
       where: { id: trancheId, status: tranche.status },
-      data: { status, paidOn: status === 'PAID' ? paidOn : null },
+      // Сторно сохраняет дату снятого поступления: она — часть истории.
+      data: {
+        status,
+        paidOn: status === 'PAID' ? paidOn : status === 'REVERSED' ? tranche.paidOn : null,
+      },
     });
     if (claimed.count === 0) {
       throw new Error('Статус транша уже изменён другим действием: обновите страницу');
@@ -236,7 +253,8 @@ export async function setTrancheStatus(
     const userId = project?.client.userId ?? null;
     // Списание — внутреннее решение практики, клиенту о нём не пишется
     // (решение Р-244).
-    if (userId !== null && status !== 'WRITTEN_OFF') {
+    // Сторно — исправление учёта, о нём клиенту тоже не пишется (Р-249).
+    if (userId !== null && status !== 'WRITTEN_OFF' && status !== 'REVERSED') {
       await enqueue(tx, {
         userId,
         projectId: tranche.contract.projectId,
@@ -264,6 +282,7 @@ export async function setTrancheStatus(
       to: status,
       amount: money(tranche.amount),
       paidOn: status === 'PAID' ? paidOn!.toISOString().slice(0, 10) : null,
+      ...(status === 'REVERSED' ? { reason: note } : {}),
     },
   });
   return updated;

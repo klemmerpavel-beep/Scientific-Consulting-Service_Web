@@ -57,6 +57,7 @@ const TRANCHE_ACTION: Record<TrancheStatus, string> = {
   INVOICED: 'Счёт выставлен',
   PAID: 'Отметить оплату',
   WRITTEN_OFF: 'Списать',
+  REVERSED: 'Сторнировать',
 };
 
 const TONE: Record<TrancheStatus, 'accent' | 'neutral'> = {
@@ -64,6 +65,7 @@ const TONE: Record<TrancheStatus, 'accent' | 'neutral'> = {
   INVOICED: 'neutral',
   PLANNED: 'neutral',
   WRITTEN_OFF: 'neutral',
+  REVERSED: 'neutral',
 };
 
 export default async function PaymentsScreen({
@@ -250,6 +252,24 @@ export default async function PaymentsScreen({
                                   minWidth={170}
                                 />
                                 <Button tone="quiet">Отметить оплату</Button>
+                              </Form>
+                            ) : next === 'REVERSED' ? (
+                              // Сторно — с причиной: ошибка отметки или
+                              // возврат клиенту (решение Р-249).
+                              <Form key={next} action={changeTrancheStatus} inline>
+                                <input type="hidden" name="trancheId" value={tranche.id} />
+                                <input type="hidden" name="code" value={project.code} />
+                                <input type="hidden" name="status" value="REVERSED" />
+                                <Field
+                                  label={`Причина сторно: ${tranche.title}`}
+                                  labelHidden
+                                  name="reason"
+                                  scope={`reverse-${tranche.id}`}
+                                  required
+                                  placeholder="Причина: ошибка отметки или возврат"
+                                  minWidth={240}
+                                />
+                                <Button tone="quiet">{TRANCHE_ACTION[next]}</Button>
                               </Form>
                             ) : (
                               <Form key={next} action={changeTrancheStatus} inline>

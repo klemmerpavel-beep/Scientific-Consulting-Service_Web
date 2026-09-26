@@ -10,13 +10,14 @@
  * проверяется тестами без поднятой базы.
  */
 
-export type TrancheStatus = 'PLANNED' | 'INVOICED' | 'PAID' | 'WRITTEN_OFF';
+export type TrancheStatus = 'PLANNED' | 'INVOICED' | 'PAID' | 'WRITTEN_OFF' | 'REVERSED';
 
 export const STATUS_LABEL: Record<TrancheStatus, string> = {
   PLANNED: 'ожидается',
   INVOICED: 'выставлен счёт',
   PAID: 'оплачен',
   WRITTEN_OFF: 'списан',
+  REVERSED: 'сторнирован',
 };
 
 /**
@@ -25,14 +26,18 @@ export const STATUS_LABEL: Record<TrancheStatus, string> = {
  * Прежде статус принимался любой, в том числе откат оплаченного в
  * «ожидается» со стиранием даты поступления, а выставить счёт или списать
  * долг было нечем: экран предлагал только «Отметить оплату». Оплаченный и
- * списанный транш — итог, из которого не уходят: ошибочную отметку
- * исправляет новый транш, а не стирание истории поступлений.
+ * списанный транш — итог, из которого не уходят; оплаченный снимается
+ * только сторно (решение Р-249), история поступлений не стирается.
  */
 const TRANCHE_TRANSITIONS: Record<TrancheStatus, readonly TrancheStatus[]> = {
   PLANNED: ['INVOICED', 'PAID', 'WRITTEN_OFF'],
   INVOICED: ['PAID', 'WRITTEN_OFF', 'PLANNED'],
-  PAID: [],
+  // Оплаченный транш не возвращается ни в «ожидается», ни в «списан»:
+  // ошибочную или возвращённую оплату снимает сторно — отдельный итог с
+  // причиной в журнале, история поступления не стирается (решение Р-249).
+  PAID: ['REVERSED'],
   WRITTEN_OFF: [],
+  REVERSED: [],
 };
 
 export function isTrancheStatus(value: string): value is TrancheStatus {

@@ -2,7 +2,7 @@ import type { StageState } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { enqueue } from './outbox.ts';
 import { record } from './audit.ts';
-import { leadAttachmentKey, sha256, storage } from './storage.ts';
+import { leadAttachmentKey, openObject, sha256, storage } from './storage.ts';
 import { can, ensure, scopeComments, scopeMaterials, scopeProjects, type Actor } from './access.ts';
 import { now as today } from './clock.ts';
 import { LEAD_STATUS_LABEL } from './lead-labels.ts';
@@ -364,7 +364,8 @@ export async function readLeadAttachment(actor: Actor, id: string, ip?: string |
   const file = await prisma.leadAttachment.findUnique({ where: { id } });
   if (file === null || file.purgedAt !== null) return null;
 
-  const body = await storage().get(file.storageKey);
+  // Потоком, а не целиком (решение Р-247).
+  const opened = await openObject(storage(), file.storageKey);
   await record(actor, {
     action: 'LEAD_FILE_DOWNLOADED',
     objectType: 'LeadAttachment',
@@ -372,7 +373,12 @@ export async function readLeadAttachment(actor: Actor, id: string, ip?: string |
     ip,
     payload: { leadId: file.leadId },
   });
-  return { body, contentType: file.contentType, originalName: file.originalName };
+  return {
+    stream: opened.stream,
+    sizeBytes: opened.sizeBytes,
+    contentType: file.contentType,
+    originalName: file.originalName,
+  };
 }
 
 /**

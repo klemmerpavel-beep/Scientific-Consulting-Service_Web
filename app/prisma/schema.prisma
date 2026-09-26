@@ -712,6 +712,8 @@ enum TrancheStatus {
   INVOICED
   PAID
   WRITTEN_OFF
+  /// Сторнирован: оплата снята — отмечена по ошибке или возвращена (Р-249)
+  REVERSED
 }
 
 enum PayoutStatus {
