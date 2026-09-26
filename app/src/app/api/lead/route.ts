@@ -1,7 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { prisma } from '../../../lib/db';
 import { deliver } from '../../../lib/notify';
-import { CONSENT_VERSION, RATE_LIMIT_MESSAGE, leadSchema, looksAutomated } from '../../../lib/lead-schema';
+import {
+  CONSENT_VERSION,
+  RATE_LIMIT_MESSAGE,
+  forIntake,
+  leadSchema,
+  looksAutomated,
+} from '../../../lib/lead-schema';
+import { RateLimiter } from '../../../lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,18 +28,7 @@ export const dynamic = 'force-dynamic';
  * и жёсткий лимит отрезал бы живых заявителей вместе с роботами. Роботов
  * ловят ловушка в форме и отсчёт времени, а не этот счётчик.
  */
-const RATE_WINDOW_MS = 5 * 60_000;
-const RATE_LIMIT = 15;
-const hits = new Map<string, number[]>();
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  if (hits.size > 5000) hits.clear();   // не даём карте расти без предела
-  return recent.length > RATE_LIMIT;
-}
+const limiter = new RateLimiter({ windowMs: 5 * 60_000, limit: 15, maxKeys: 5000 });
 
 /**
  * Адрес заявителя. Порядок источников намеренный.
@@ -58,7 +54,7 @@ function clientIp(req: NextRequest): string {
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
 
-  if (rateLimited(ip)) {
+  if (limiter.hit(ip)) {
     return NextResponse.json(
       { ok: false, message: RATE_LIMIT_MESSAGE },
       { status: 429 },
@@ -85,7 +81,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const lead = parsed.data;
+  // Одна очищенная запись и для базы, и для доставки (решение Р-241).
+  const lead = forIntake(parsed.data);
   const automated = looksAutomated(lead);
 
   let id: string;
@@ -100,7 +97,7 @@ export async function POST(req: NextRequest) {
         // значение всё же пришло — прислал его не человек. Пишем пусто,
         // иначе через эту форму можно было бы собрать контакт в обход
         // отметки согласия, которой у отзыва нет (Р-110).
-        contact: lead.form === 'review' ? '' : lead.contact,
+        contact: lead.contact,
         organization: lead.organization || null,
         topic: lead.topic || null,
         speciality: lead.speciality || null,
@@ -135,14 +132,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Помеченные как автоматические не тревожат ответственного, но лежат в базе
+  // Помеченные как автоматические не тревожат ответственного, но лежат в базе.
+  //
+  // Доставка идёт после ответа. Прежде заявитель ждал, пока ответят
+  // Telegram и почтовый сервер: при их задержке форма висела на
+  // «Отправляем» десятки секунд, хотя заявка уже была записана, — а
+  // записанная заявка и есть принятая (решение Р-241). Исход доставки
+  // по-прежнему ложится в журнал.
   if (!automated) {
-    const results = await deliver(lead, id);
-    await prisma.delivery
-      .createMany({
-        data: results.map((r) => ({ leadId: id, channel: r.channel, ok: r.ok, error: r.error ?? null })),
-      })
-      .catch((e) => console.error('[lead] не удалось записать журнал доставки', e));
+    after(async () => {
+      const results = await deliver(lead, id);
+      await prisma.delivery
+        .createMany({
+          data: results.map((r) => ({ leadId: id, channel: r.channel, ok: r.ok, error: r.error ?? null })),
+        })
+        .catch((e) => console.error('[lead] не удалось записать журнал доставки', e));
+    });
   }
 
   return NextResponse.json({ ok: true, id });

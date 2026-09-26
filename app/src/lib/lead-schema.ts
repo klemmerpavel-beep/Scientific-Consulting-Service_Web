@@ -16,12 +16,40 @@ export const CONSENT_VERSION = '2026-08-21';
  * расходились при первой же правке.
  */
 export const RATE_LIMIT_MESSAGE =
-  'Слишком много попыток подряд. Подождите минуту и отправьте снова.';
+  'Слишком много попыток подряд. Подождите несколько минут и отправьте снова.';
 
 /** Страницы, с которых приходят заявки */
 const SOURCES = ['landing', 'postgrad', 'students', 'business'] as const;
 
-const trimmed = (max: number) => z.string().trim().max(max);
+/**
+ * Строковое поле с пределом длины. Сообщение о превышении — по-русски:
+ * прежде заявитель читал английское «Too big: expected string to have
+ * <=4000 characters» под полем «Сообщение» (решение Р-241).
+ */
+const trimmed = (max: number) =>
+  z.string().trim().max(max, `Не длиннее ${max} ${plural(max)}`);
+
+function plural(n: number): string {
+  const tail = n % 100;
+  if (tail >= 11 && tail <= 14) return 'знаков';
+  if (n % 10 === 1) return 'знака';
+  return 'знаков';
+}
+
+/**
+ * Адрес почты: имя, «@», домен с точкой. Проверка встроенной в zod
+ * отвергала кириллические домены — «мария@почта.рф» получал «проверьте
+ * адрес», хотя адрес рабочий (решение Р-241). Доставку проверяет письмо,
+ * а не выражение: здесь отсекаются только явные опечатки.
+ */
+const EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/u;
+
+export function looksLikeEmail(value: string): boolean {
+  if (!EMAIL.test(value)) return false;
+  const domain = value.slice(value.lastIndexOf('@') + 1);
+  const top = domain.slice(domain.lastIndexOf('.') + 1);
+  return top.length >= 2 && !/^\d+$/u.test(top);
+}
 
 /** Телефон: принимаем как пишут люди, храним как есть, сверяем по числу цифр */
 const PHONE = /^[\d\s()+\-.]{10,24}$/;
@@ -64,7 +92,13 @@ export const leadSchema = z
     // упирался в неустранимую ошибку на поле, которого не видит. Заполненную
     // ловушку разбирает looksAutomated: заявка сохраняется и помечается
     // спамом, как и описано ниже.
-    company_website: trimmed(200).optional().default(''),
+    // Значение не проверяется ни по длине, ни по типу: любое непустое —
+    // признак робота, а не ошибка заявителя. Прежде строка длиннее 200
+    // знаков давала 422 с именем поля ловушки (решение Р-241).
+    company_website: z.preprocess(
+      (value) => (value === undefined || value === null ? '' : String(value).trim().slice(0, 200)),
+      z.string(),
+    ),
     // Время от открытия формы до отправки, мс
     elapsed: z.coerce.number().int().nonnegative().optional(),
   })
@@ -95,8 +129,7 @@ export const leadSchema = z
       return;
     }
     if (v.contactKind === 'email') {
-      const ok = z.string().email().safeParse(v.contact).success;
-      if (!ok) {
+      if (!looksLikeEmail(v.contact)) {
         ctx.addIssue({
           code: 'custom',
           path: ['contact'],
@@ -116,6 +149,18 @@ export const leadSchema = z
   });
 
 export type Lead = z.infer<typeof leadSchema>;
+
+/**
+ * Заявка в том виде, в каком её сохраняют и рассылают. Одна запись на оба
+ * пути: прежде отзыв писался в базу без контакта, а в Telegram и почту
+ * уходил исходный — с контактом, если его подставил робот или правка
+ * формы (решение Р-241). Поле `name` в отзыве — роль автора, а не имя,
+ * и остаётся; контакта отзыв не собирает (Р-110).
+ */
+export function forIntake(lead: Lead): Lead {
+  if (lead.form !== 'review') return lead;
+  return { ...lead, contact: '' };
+}
 
 /** Человеческие названия полей для сводки ошибок */
 export const FIELD_LABELS: Record<string, string> = {
