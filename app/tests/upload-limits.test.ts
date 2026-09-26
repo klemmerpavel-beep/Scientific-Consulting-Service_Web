@@ -75,4 +75,24 @@ describe('пределы загрузки файлов', () => {
     // Прежний скрипт выгрузки снимается с расписания, а не ставится.
     assert.doesNotMatch(cron, /\$DIR\/yandex-upload\.sh/u);
   });
+
+  it('выкат при любом исходе печатает отчёт о цепочке, без секретов', () => {
+    // Отчёт — единственный взгляд на сервер без захода на него (Р-263).
+    const update = read('deploy/update.sh');
+    assert.match(update, /chain-check\.sh/u);
+    assert.equal(update.match(/^\s*report$/gmu)?.length, 3);
+    // Секрет читается только для проверки «задан ли» и для входа на Диск —
+    // в журнал выката, видимый всем с доступом к репозиторию, он не идёт.
+    const check = read('deploy/chain-check.sh').split('\n');
+    for (const line of check) {
+      if (!/PASSWORD|TOKEN|SECRET/u.test(line) || /^\s*#/u.test(line)) continue;
+      assert.match(
+        line,
+        /\[ -[nz] "\$\(read_env [A-Z_]+\)" \]|^\s*pass=\$\(read_env YANDEX_DISK_PASSWORD\)$|^\s*(ok|off|bad) "/u,
+        line,
+      );
+      // Строка отчёта называет переменную, но не подставляет значение.
+      if (/^\s*(ok|off|bad) "/u.test(line)) assert.doesNotMatch(line, /\$\(read_env|\$pass|\$user/u, line);
+    }
+  });
 });

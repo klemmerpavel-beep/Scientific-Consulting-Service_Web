@@ -43,8 +43,14 @@ AFTER=$(git rev-parse --short FETCH_HEAD)
 DEPLOYED=""
 [ -f "$DIR/.deployed" ] && DEPLOYED=$(cat "$DIR/.deployed")
 
+# Отчёт о состоянии цепочки «сайт → Диск → кабинет» — в конце любого
+# исхода, в том числе когда обновлять нечего: ручной запуск выката с GitHub
+# тогда служит проверкой цепочки (решение Р-263). На исход не влияет.
+report() { "$DIR/chain-check.sh" || true; }
+
 if [ "$BEFORE" = "$AFTER" ] && [ "$DEPLOYED" = "$AFTER" ]; then
   say "обновление не требуется: на сервере уже $BEFORE"
+  report
   exit 0
 fi
 
@@ -175,6 +181,7 @@ if [ "$ok" -eq 1 ]; then
   # Расписание связки «сайт → Диск → кабинет» — так же: включает её одно
   # заполнение deploy/.env, без захода в crontab (решение Р-262).
   "$DIR/cron-sync.sh" || true
+  report
   exit 0
 fi
 
@@ -191,4 +198,5 @@ else
   say "откатывать нечего: прежний образ не найден"
 fi
 
+report
 exit 1
