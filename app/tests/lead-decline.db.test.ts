@@ -192,7 +192,9 @@ describe('ответ заявителю при отказе', { skip: !enabled }
     const leadId = leadIds[0]!;
     await prisma.notificationOutbox.updateMany({
       where: { leadId },
-      data: { scheduledAt: new Date(Date.now() - 1000) },
+      // Самая ранняя строка очереди: очередь на стенде общая, и при
+      // полутысяче накопившихся строк своя могла не попасть в пачку.
+      data: { scheduledAt: new Date(0) },
     });
     await dispatch(500);
     const row = await prisma.notificationOutbox.findFirstOrThrow({ where: { leadId } });
@@ -205,7 +207,9 @@ describe('ответ заявителю при отказе', { skip: !enabled }
     await prisma.lead.update({ where: { id: leadId }, data: { contact: '[удалено]' } });
     await prisma.notificationOutbox.updateMany({
       where: { leadId },
-      data: { scheduledAt: new Date(Date.now() - 1000) },
+      // Самая ранняя строка очереди: очередь на стенде общая, и при
+      // полутысяче накопившихся строк своя могла не попасть в пачку.
+      data: { scheduledAt: new Date(0) },
     });
     await dispatch(500);
     const row = await prisma.notificationOutbox.findFirstOrThrow({ where: { leadId } });

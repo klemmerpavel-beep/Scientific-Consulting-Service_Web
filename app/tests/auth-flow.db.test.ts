@@ -171,6 +171,31 @@ describe('вход по одноразовой ссылке', { skip: !enabled }
     await prisma.loginAttempt.deleteMany({ where: { emailNormalized: unknown } });
   });
 
+  it('письмо уходит после ответа формы, если отправку отложили', async () => {
+    // Знакомый адрес отвечал на время отправки письма дольше незнакомого,
+    // и по времени ответа можно было перебирать клиентов (решение Р-239).
+    process.env.SMTP_HOST = 'smtp.invalid';
+    try {
+      let deferred: (() => Promise<void>) | null = null;
+      const outcome = await auth.requestLoginLink(email, '10.0.0.9', {
+        defer: (task) => {
+          deferred = task;
+        },
+      });
+      assert.equal(outcome, 'sent');
+      assert.ok(deferred !== null, 'отправка не отложена');
+      const before = await prisma.loginAttempt.count({ where: { emailNormalized: email, ip: '10.0.0.9' } });
+      assert.equal(before, 0, 'исход записан до отправки');
+      await (deferred as unknown as () => Promise<void>)();
+      const attempt = await prisma.loginAttempt.findFirst({
+        where: { emailNormalized: email, ip: '10.0.0.9' },
+      });
+      assert.equal(attempt?.outcome, 'send_failed');
+    } finally {
+      delete process.env.SMTP_HOST;
+    }
+  });
+
   it('неудачная отправка записывается как неудачная', async () => {
     // Узел заведомо не отвечает, поэтому отправка не проходит. Наружу это
     // по-прежнему «отправлено» — иначе отказ выдал бы, что адрес существует.

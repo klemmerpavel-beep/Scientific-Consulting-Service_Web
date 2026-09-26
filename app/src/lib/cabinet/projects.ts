@@ -486,7 +486,7 @@ export async function addStage(actor: Actor, input: AddStageInput) {
   const title = input.title.trim();
   if (title.length === 0) throw new Error('Этап без названия не заводится');
 
-  return prisma.$transaction(async (tx) => {
+  const stage = await prisma.$transaction(async (tx) => {
     const last = await tx.stage.findFirst({
       where: { projectId: input.projectId },
       orderBy: { position: 'desc' },
@@ -503,6 +503,16 @@ export async function addStage(actor: Actor, input: AddStageInput) {
       },
     });
   });
+  // Название этапа в журнал не пишется: журнал хранит идентификаторы, а
+  // текст затирается по требованию субъекта (решения Р-234, Р-239).
+  await record(actor, {
+    action: 'STAGE_CREATED',
+    objectType: 'Stage',
+    objectId: stage.id,
+    projectId: input.projectId,
+    payload: { position: stage.position },
+  });
+  return stage;
 }
 
 /**
@@ -684,7 +694,7 @@ export async function setStageState(
   }
 
   const now = new Date();
-  return prisma.$transaction(async (tx) => {
+  const saved = await prisma.$transaction(async (tx) => {
     const updated = await tx.stage.update({
       where: { id: stageId },
       data: {
@@ -738,4 +748,18 @@ export async function setStageState(
 
     return updated;
   });
+
+  // Журнал действий: экран журнала предлагал отбор «Изменено состояние
+  // этапа» и «Этап согласован», а записей таких не было — согласование
+  // клиентом нигде, кроме истории этапа, не оставляло следа (решение
+  // Р-239). Причина остановки в журнал не пишется: её текст лежит в
+  // истории этапа и затирается вместе с ней.
+  await record(actor, {
+    action: action === 'STAGE_APPROVE' ? 'STAGE_APPROVED' : 'STAGE_STATE_CHANGED',
+    objectType: 'Stage',
+    objectId: stageId,
+    projectId: stage.projectId,
+    payload: { from, to },
+  });
+  return saved;
 }

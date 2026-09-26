@@ -25,7 +25,7 @@ import {
 } from '../src/lib/cabinet/import/etl.ts';
 import { readWorkbook } from '../src/lib/cabinet/import/xlsx.ts';
 import { ImportError, unzip } from '../src/lib/cabinet/import/zip.ts';
-import { excelSerial, makeWorkbook, type TestRow } from './helpers/make-workbook.ts';
+import { excelSerial, makeWorkbook, zip, type TestRow } from './helpers/make-workbook.ts';
 
 const GREEN = 'FF00B050';
 const RED = 'FFFF0000';
@@ -531,4 +531,27 @@ describe('суммы книги', () => {
       assert.equal(money(raw), expected);
     });
   }
+});
+
+describe('архив книги', () => {
+  // Сжатый в сотни килобайт архив разворачивался бы в гигабайты: предел
+  // распакованного объёма держит память сервера (решение Р-239).
+  it('архив, раздувающийся при распаковке, отклоняется', () => {
+    const bomb = zip([{ name: 'xl/worksheets/sheet1.xml', content: Buffer.alloc(80 * 1024 * 1024) }]);
+    assert.ok(bomb.length < 1024 * 1024, 'проверочный архив не сжался');
+    assert.throws(() => unzip(bomb), (error: unknown) => {
+      assert.ok(error instanceof ImportError);
+      assert.match(error.message, /больше допустимого/u);
+      return true;
+    });
+  });
+
+  it('повреждённое сжатие называется повреждением, а не размером', () => {
+    const good = zip([{ name: 'a.xml', content: 'x'.repeat(1000) }]);
+    const broken = Buffer.from(good);
+    // Портится начало сжатых данных, заголовки остаются целыми.
+    broken[30 + 'a.xml'.length] = 0xff;
+    broken[31 + 'a.xml'.length] = 0xff;
+    assert.throws(() => unzip(broken), /Повреждённый архив/u);
+  });
 });

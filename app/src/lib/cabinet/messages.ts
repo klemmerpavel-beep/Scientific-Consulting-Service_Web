@@ -1,4 +1,5 @@
 import { prisma } from '../db.ts';
+import { record } from './audit.ts';
 import { ensure, scopeProjects, type Actor } from './access.ts';
 import { hasContacts } from './contacts.ts';
 import { enqueue } from './outbox.ts';
@@ -32,8 +33,8 @@ export async function sendMessage(actor: Actor, projectId: string, body: string)
   const text = body.trim();
   if (text.length === 0) throw new Error('Пустое сообщение не отправляется');
 
-  return prisma.$transaction(async (tx) => {
-    const message = await tx.message.create({
+  const message = await prisma.$transaction(async (tx) => {
+    const created = await tx.message.create({
       data: {
         projectId,
         authorId: actor.id,
@@ -41,9 +42,20 @@ export async function sendMessage(actor: Actor, projectId: string, body: string)
         containsContactHint: hasContacts(text),
       },
     });
-    await signalMessage(tx, actor, ref, message.id);
-    return message;
+    await signalMessage(tx, actor, ref, created.id);
+    return created;
   });
+  // В журнал — факт отправки без текста: переписка остаётся в работе и
+  // затирается по требованию субъекта, а журнал хранит идентификаторы
+  // (решение Р-239).
+  await record(actor, {
+    action: 'MESSAGE_SENT',
+    objectType: 'Message',
+    objectId: message.id,
+    projectId,
+    payload: { contactHint: message.containsContactHint },
+  });
+  return message;
 }
 
 /**
