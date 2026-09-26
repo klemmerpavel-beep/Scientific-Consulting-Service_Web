@@ -41,6 +41,15 @@ const ACTION_LABEL = {
   SKIP: 'уже перенесена',
 } as const;
 
+/**
+ * Строка зафиксированной загрузки, которая работой не стала: разбор нашёл
+ * ошибку, и она была оставлена человеку (Р-260). Прежде такая строка
+ * значилась «завести» — как перенесённые.
+ */
+function notCarried(row: { action: string; severity: string; existingCode: string | null; erased: boolean }): boolean {
+  return !row.erased && row.action === 'SKIP' && row.severity === 'ERROR' && row.existingCode === null;
+}
+
 export default async function ImportBatchScreen({
   params,
   searchParams,
@@ -295,7 +304,11 @@ export default async function ImportBatchScreen({
               </td>
               <td style={TABLE_CELL}>
                 <Chip tone={row.action === 'SKIP' ? 'neutral' : 'accent'}>
-                  {row.erased ? 'не переносится' : ACTION_LABEL[row.action]}
+                  {row.erased
+                    ? 'не переносится'
+                    : notCarried(row)
+                      ? 'не перенесена'
+                      : ACTION_LABEL[row.action]}
                 </Chip>
                 {row.existingCode === null ? '' : ` ${row.existingCode}`}
                 {/* Почему строка не заведена, если это не видно из решения:
@@ -314,6 +327,9 @@ export default async function ImportBatchScreen({
         <Text muted>
           Загрузка зафиксирована. Повторная фиксация невозможна: строки закрыты естественным
           ключом, и та же книга даёт пропуск, а не новые проекты.
+          {report.rows.some(notCarried)
+            ? ' Строки «не перенесена» исправьте в самой книге: при заборе с диска их перенесёт ближайший прогон, при ручном переносе — новая загрузка исправленной книги.'
+            : ''}
         </Text>
       ) : (
         <Card>
