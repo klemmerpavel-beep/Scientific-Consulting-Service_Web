@@ -34,6 +34,8 @@ const ORG = {
   },
   areaServed: 'RU',
   knowsLanguage: 'ru',
+  // Год начала работы сервиса — тот же, что в подвале и копирайте (HANDOFF, правило 6).
+  foundingDate: '2016',
   sameAs: ['https://t.me/prodisser', 'https://vk.ru/cmnrut'],
 };
 
