@@ -250,19 +250,31 @@ export async function moderateLead(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   ensure(actor, 'REQUEST_MODERATE');
   const leadId = String(form.get('leadId') ?? '');
-  if (String(form.get('decision') ?? '') === 'decline') {
-    await declineLead(actor, leadId, String(form.get('reason') ?? ''));
-    // Назад на экран заявки: там виден исход — причина и судьба письма.
-    redirect(`/cabinet/manage/leads/${leadId}`);
+  // Отказ службы — фразой на экране заявки, а не общим экраном сбоя:
+  // пустое название или выведенный из оборота тип прежде кончались
+  // «Сбоем» без объяснения (решение Р-251).
+  let failure: string | null = null;
+  let code: string | null = null;
+  try {
+    if (String(form.get('decision') ?? '') === 'decline') {
+      await declineLead(actor, leadId, String(form.get('reason') ?? ''));
+    } else {
+      const project = await approveLead(actor, {
+        leadId,
+        serviceTypeId: String(form.get('serviceTypeId') ?? ''),
+        managerId: actor.id,
+        title: String(form.get('title') ?? ''),
+        applyStageTemplate: form.get('applyTemplate') === 'on',
+      });
+      code = project.code;
+    }
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось разобрать заявку');
   }
-  const project = await approveLead(actor, {
-    leadId,
-    serviceTypeId: String(form.get('serviceTypeId') ?? ''),
-    managerId: actor.id,
-    title: String(form.get('title') ?? ''),
-    applyStageTemplate: form.get('applyTemplate') === 'on',
-  });
-  redirect(`/cabinet/projects/${project.code}`);
+  if (failure !== null) redirect(await withError(`/cabinet/manage/leads/${leadId}`, failure));
+  // После отказа — назад на экран заявки: там виден исход — причина и
+  // судьба письма.
+  redirect(code === null ? `/cabinet/manage/leads/${leadId}` : `/cabinet/projects/${code}`);
 }
 
 export async function createStage(form: FormData): Promise<void> {
@@ -723,7 +735,15 @@ export async function applyOrderBook(form: FormData): Promise<void> {
     .map((value) => Number(value))
     .filter((value) => Number.isInteger(value) && value > 0);
 
-  await applyBatch(actor, batchId, { managerId, excludeRows });
+  let failure: string | null = null;
+  try {
+    await applyBatch(actor, batchId, { managerId, excludeRows });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось зафиксировать загрузку');
+  }
+  // Отказ — фразой на экране загрузки: куратор не из числа сотрудников
+  // или загрузка уже зафиксирована (решение Р-251).
+  if (failure !== null) redirect(await withError(`/cabinet/manage/import/${batchId}`, failure));
   redirect(`/cabinet/manage/import/${batchId}?applied=1`);
 }
 

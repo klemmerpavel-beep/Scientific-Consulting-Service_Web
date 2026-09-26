@@ -69,10 +69,16 @@ export default async function PayoutScreen() {
               {rows.map((row) => (
                 <tr key={row.id}>
                   <td style={TABLE_CELL}>
-                    <a className="cab-mark" href={`/cabinet/projects/${row.project.code}`}>{row.project.title}</a>
+                    {/* До договора поручения работа не называется: выборка
+                        её не отдаёт (решение Р-251). */}
+                    {row.project === null ? (
+                      <span style={{ color: 'var(--pd-ink-muted)' }}>откроется после договора поручения</span>
+                    ) : (
+                      <a className="cab-mark" href={`/cabinet/projects/${row.project.code}`}>{row.project.title}</a>
+                    )}
                   </td>
                   <td style={TABLE_CELL}>
-                    {row.stage?.title ?? 'по работе в целом'}
+                    {row.project === null ? '—' : (row.stage?.title ?? 'по работе в целом')}
                     {row.comment === null ? null : (
                       <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{row.comment}</div>
                     )}

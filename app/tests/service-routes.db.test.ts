@@ -58,6 +58,17 @@ describe('секреты и сценарии выката', () => {
   it('крупный POST в кабинет проходит только после проверки сессии (Р-247)', () => {
     const conf = readFileSync(path.join(ROOT, 'deploy/nginx.conf'), 'utf8');
     assert.match(conf, /"~\^POST:\[0-9\]\{7,\}\$" 1;/u);
+    // Тело без Content-Length (chunked, HTTP/2) — тоже через проверку сессии (Р-251).
+    const bigPost = conf.slice(conf.indexOf('$prodisser_big_post {'), conf.indexOf('server {'));
+    assert.match(bigPost, /"~\^POST:\$"\s+1;/u);
+    assert.match(bigPost, /default\s+0;/u);
+    // Разбор правил map тем же порядком, что у nginx: регулярные выражения по очереди.
+    const rules = [...bigPost.matchAll(/"~([^"]+)"\s+1;/gu)].map((m) => new RegExp(m[1]!, 'u'));
+    const big = (key: string) => rules.some((r) => r.test(key));
+    assert.equal(big('POST:'), true, 'POST без длины');
+    assert.equal(big('POST:1048576'), true, 'POST от мегабайта');
+    assert.equal(big('POST:2048'), false, 'мелкий POST');
+    assert.equal(big('GET:'), false, 'GET без тела');
     const upload = conf.slice(conf.indexOf('location ^~ /__cabinet_upload/'), conf.indexOf('location = /__cabinet_session'));
     assert.match(upload, /internal;/u);
     assert.match(upload, /auth_request \/__cabinet_session;/u);

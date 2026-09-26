@@ -184,13 +184,16 @@ describe('вход по одноразовой ссылке', { skip: !enabled }
       });
       assert.equal(outcome, 'sent');
       assert.ok(deferred !== null, 'отправка не отложена');
-      const before = await prisma.loginAttempt.count({ where: { emailNormalized: email, ip: '10.0.0.9' } });
-      assert.equal(before, 0, 'исход записан до отправки');
+      // Попытка ложится до отправки — иначе параллельные запросы не видели
+      // друг друга в счёте частоты (Р-251), — но с исходом «выдано», а не
+      // «отправлено»: итог отправки дописывается в ту же строку потом.
+      const before = await prisma.loginAttempt.findMany({ where: { emailNormalized: email, ip: '10.0.0.9' } });
+      assert.deepEqual(before.map((row) => row.outcome), ['issued'], 'исход записан до отправки');
       await (deferred as unknown as () => Promise<void>)();
-      const attempt = await prisma.loginAttempt.findFirst({
+      const attempts = await prisma.loginAttempt.findMany({
         where: { emailNormalized: email, ip: '10.0.0.9' },
       });
-      assert.equal(attempt?.outcome, 'send_failed');
+      assert.deepEqual(attempts.map((row) => row.outcome), ['send_failed']);
     } finally {
       delete process.env.SMTP_HOST;
     }
