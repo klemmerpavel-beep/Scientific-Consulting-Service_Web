@@ -69,7 +69,7 @@ export default async function FinanceScreen({
   //
   // Ряд доходит до текущего месяца: окно «последние двенадцать месяцев»
   // кончается сегодняшним месяцем, а не месяцем последнего начала работы
-  // (решение Р-256).
+  // (решение Р-257).
   const months = byMonth(await loadRows(actor), clockNow()).slice(-12);
   const openCount = rows.filter((row) => row.status === 'ACTIVE' || row.status === 'PAUSED').length;
   const closedCount = rows.length - openCount;
@@ -82,7 +82,7 @@ export default async function FinanceScreen({
   // экран и приходят. Полный перечень — вкладкой рядом (решение Р-172).
   // Итоги считаются по всем работам и от отбора не зависят. Отменённая
   // работа в «С остатком» не попадает: её остаток — потеря, и к получению
-  // у неё ноль (решение Р-256).
+  // у неё ноль (решение Р-257).
   const owing = rows.filter((row) => row.awaiting > 0n);
   const all = sp.set === 'all';
   const chosen = all ? rows : owing;
@@ -108,7 +108,7 @@ export default async function FinanceScreen({
     { label: 'Списано', value: totals.lost },
     // Маржа вычитает и начисления по работам без договора: строк у таких
     // работ здесь нет, и прежде эти деньги из итога выпадали (решение
-    // Р-256).
+    // Р-257).
     {
       label: 'Маржа',
       value: totals.margin,
@@ -153,7 +153,7 @@ export default async function FinanceScreen({
           {/* Это не поступления месяца: ряд относит оплату к месяцу начала
               работы, когда бы деньги ни пришли. Прежде заголовок «Деньги по
               месяцам» и подпись «Поступления» обещали кассу месяца
-              (решение Р-256). */}
+              (решение Р-257). */}
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Оплаты по месяцу начала работы
           </Heading>
@@ -260,7 +260,7 @@ export default async function FinanceScreen({
               active: !all,
             },
             // Строки экрана — договоры: работа без договора здесь не стоит,
-            // и «Все работы» обещали больше, чем показано (решение Р-256).
+            // и «Все работы» обещали больше, чем показано (решение Р-257).
             { href: href('all'), label: `Все работы с договором · ${rows.length}`, active: all },
           ]}
         />

@@ -163,7 +163,7 @@ export default async function OutboxScreen({
         />
         {/* Одна заявка даёт до двух доставок — в почту и в Telegram: без
             этой оговорки доставок вдвое больше заявок читалось как повтор
-            (решение Р-256). */}
+            (решение Р-257). */}
         <Tile
           label="Доставок за сутки"
           value={String(leads.deliveredLastDay)}

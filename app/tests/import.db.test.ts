@@ -168,7 +168,7 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     assert.equal(preview.counts.CREATE, 4);
     assert.equal(preview.totals.cost, 47_500_000n);
     assert.equal(preview.totals.paid, 24_000_000n);
-    // Остаток — сумма остатков строк; переплат в этой книге нет (Р-256).
+    // Остаток — сумма остатков строк; переплат в этой книге нет (Р-257).
     assert.equal(preview.totals.outstanding, preview.totals.cost - preview.totals.paid);
     assert.equal(preview.totals.overpaid, 0n);
     // Однофамильцы и несведённые написания выведены отдельно.
@@ -187,7 +187,7 @@ describe('перенос книги заказов', { skip: !enabled }, async (
   it('переплата одной строки не гасит остаток другой', async () => {
     // Вторая работа — 90 000 ₽, оплачено 95 000 ₽: переплата 5 000 ₽.
     // Остаток книги — 50 000 (закрыто полностью: 0) + 150 000 + 35 000,
-    // а не разность итогов, меньшая на переплату (решение Р-256).
+    // а не разность итогов, меньшая на переплату (решение Р-257).
     const preview = await previewBook(actor(ids.head, 'HEAD'), {
       fileName: `книга-${stamp}-переплата.xlsx`,
       bytes: book('95000'),
@@ -220,7 +220,7 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     assert.equal(report.clientsCreated, 2, 'однофамильцы в книге дали одну карточку');
 
     // Отчёт зафиксированной загрузки говорит об итоге и помнит лист:
-    // прежде фиксация затирала сведения предпросмотра (решение Р-256).
+    // прежде фиксация затирала сведения предпросмотра (решение Р-257).
     const reopened = await loadBatch(actor(ids.head, 'HEAD'), preview.batchId);
     assert.notEqual(reopened?.sheet, '', 'лист загрузки потерян при фиксации');
     assert.deepEqual(reopened?.applied, { created: 3, updated: 0, skipped: 0, rejected: 1 });

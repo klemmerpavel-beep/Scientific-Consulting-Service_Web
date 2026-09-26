@@ -83,7 +83,7 @@ describe('работа из книги без плана на сводке', { s
         state: 'IN_PROGRESS',
         dueOn: new Date(now - 10 * day),
       }),
-      // приостановлена, срок прошёл — тоже на сводку (Р-256)
+      // приостановлена, срок прошёл — тоже на сводку (Р-257)
       paused: await work('paused', new Date(now - 20 * day), undefined, 'PAUSED'),
     });
   });
@@ -107,7 +107,7 @@ describe('работа из книги без плана на сводке', { s
 
   it('приостановленная работа с прошедшим сроком тоже в «Требует внимания»', async () => {
     // Отчёт и аналитика считают её среди действующих с прошедшим сроком;
-    // главная прежде её пропускала, и счёт расходился (решение Р-256).
+    // главная прежде её пропускала, и счёт расходился (решение Р-257).
     const light = await trafficLight(head());
     const paused = light.lateWorks.find((work) => work.code === `PD-BOOK-${stamp}-paused`);
     assert.equal(paused?.status, 'PAUSED');

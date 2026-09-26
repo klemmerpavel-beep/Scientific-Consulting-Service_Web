@@ -78,7 +78,7 @@ export default async function AnalyticsProducts() {
               labelWidth={380}
               title="Средний чек по позициям"
               // Позиция без договоров в график не идёт: столбец нулевой
-              // высоты читался бы как цена «0 ₽» (решение Р-256).
+              // высоты читался бы как цена «0 ₽» (решение Р-257).
               data={list
                 .filter((product) => product.averageCheck !== null)
                 .map((product) => ({

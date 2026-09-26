@@ -329,7 +329,7 @@ export async function setUserStatus(actor: Actor, userId: string, status: 'ACTIV
 }
 
 // «Сегодня по Москве» живёт в часах кабинета рядом с `now()`; здесь —
-// реэкспорт для прежних импортов (решение Р-256).
+// реэкспорт для прежних импортов (решение Р-257).
 export { moscowToday };
 
 /**

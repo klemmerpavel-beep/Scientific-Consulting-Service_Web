@@ -45,7 +45,7 @@ export function now(): Date {
  * Прежде функция жила в `admin.ts`, а сроки сравнивались то с текущим
  * моментом, то с началом UTC-суток: с полуночи до трёх часов ночи по
  * Москве вчерашний срок ещё не считался прошедшим, а один и тот же срок
- * на главной и в отчёте числился по-разному (решение Р-256).
+ * на главной и в отчёте числился по-разному (решение Р-257).
  */
 export function moscowToday(at: Date = now()): Date {
   const day = new Intl.DateTimeFormat('en-CA', {
@@ -59,7 +59,7 @@ export function moscowToday(at: Date = now()): Date {
 
 /**
  * Прошёл ли срок: день срока раньше сегодняшнего дня по Москве. Срок —
- * день, и в самый день срока он ещё не прошёл (решения Р-240, Р-256).
+ * день, и в самый день срока он ещё не прошёл (решения Р-240, Р-257).
  */
 export function isPastDue(dueOn: Date | null | undefined, at: Date = now()): boolean {
   if (dueOn === null || dueOn === undefined) return false;
@@ -69,7 +69,7 @@ export function isPastDue(dueOn: Date | null | undefined, at: Date = now()): boo
 /**
  * Сколько дней прошло после срока; `null` — срок не наступил. Счёт — от
  * начала сегодняшнего дня по Москве, как у всех «срок прошёл» кабинета
- * (решение Р-256).
+ * (решение Р-257).
  */
 export function daysPast(dueOn: Date | null | undefined, at: Date = now()): number | null {
   if (dueOn === null || dueOn === undefined) return null;

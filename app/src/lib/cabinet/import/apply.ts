@@ -93,7 +93,7 @@ export interface Preview {
   readonly rows: readonly PreviewRow[];
   /**
    * Итоги книги. Остаток считается по строкам, как в кабинете (`outstandingOf`):
-   * переплата одной работы не гасит долг другой (решение Р-256).
+   * переплата одной работы не гасит долг другой (решение Р-257).
    */
   readonly totals: {
     readonly cost: bigint;
@@ -1065,7 +1065,7 @@ export async function applyBatch(
         where: { id: batchId },
         data: {
           // Сведения предпросмотра (лист, замечания) сохраняются: прежде
-          // фиксация затирала их, и отчёт писал «Лист «»» (решение Р-256).
+          // фиксация затирала их, и отчёт писал «Лист «»» (решение Р-257).
           stats: {
             ...((batch.stats ?? {}) as Record<string, unknown>),
             created,

@@ -195,7 +195,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
         // День начала — день одобрения по Москве. Прежде его ставил только
         // перенос книги, и работы, заведённые в кабинете, выпадали из
         // «Принято за квартал», заказов по месяцам, сезонности, длительности
-        // цикла и итогов по годам (решение Р-256).
+        // цикла и итогов по годам (решение Р-257).
         startedOn: moscowToday(),
         source: 'WEB',
       },
@@ -699,7 +699,7 @@ export async function setProjectStatus(actor: Actor, projectId: string, to: Proj
 
   // Дата закрытия — день, а не мгновение: так её пишет и перенос книги.
   // День московский: по UTC работа, закрытая до трёх часов ночи, получала
-  // вчерашнюю дату (решение Р-256).
+  // вчерашнюю дату (решение Р-257).
   const closedOn = isClosedStatus(to) ? moscowToday() : null;
 
   const saved = await prisma.$transaction(async (tx) => {

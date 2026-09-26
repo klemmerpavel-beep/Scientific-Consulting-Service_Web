@@ -121,7 +121,7 @@ export function ChartCard({
 /**
  * Доля в процентах, без ложной точности. Доли нет — прочерк: «0 %» при
  * пустом знаменателе читалось как «ничего», хотя считать было не из чего
- * (решение Р-256).
+ * (решение Р-257).
  */
 export function share(value: number | null): string {
   return value === null ? '—' : `${Math.round(value * 100)} %`;

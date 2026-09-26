@@ -57,7 +57,7 @@ async function ensureMoneyWritable(projectId: string, fresh: boolean): Promise<v
  *
  * «Сегодня» — московское: по UTC-суткам оплата, отмеченная сегодняшним
  * числом между полуночью и тремя часами ночи, отклонялась как будущая
- * (решение Р-256).
+ * (решение Р-257).
  */
 function ensurePastDate(on: Date, what: string): void {
   if (on.getTime() > moscowToday().getTime()) {
@@ -405,7 +405,7 @@ export interface ProjectMoney {
   readonly scheduled: bigint;
   /**
    * Работа отменена: остаток не ждут, он учтён в потерях, и `awaiting`
-   * равен нулю (решение Р-256).
+   * равен нулю (решение Р-257).
    */
   readonly cancelled: boolean;
   /** Только тому, кто ведёт оплаты: списание — внутреннее решение (Р-251). */
@@ -450,7 +450,7 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
   // вычитается и клиенту: прощённое он платить не должен.
   //
   // У отменённой работы остатка к оплате нет: его не ждут, он учтён в
-  // потерях, и сводки его к получению не считают (решение Р-256).
+  // потерях, и сводки его к получению не считают (решение Р-257).
   const visible: ProjectMoney = {
     contractTotal: contract.totalAmount,
     received: sum('PAID'),
@@ -509,7 +509,7 @@ export async function financeSummary(actor: Actor) {
     // заведённые незакрытые транши: договор без траншей давал ноль, выпадал
     // из отбора «С остатком», и экран писал «все работы оплачены» при не
     // полученных деньгах (решение Р-244). У отменённой работы — ноль: её
-    // неоплаченное — потеря, а не деньги к получению (решение Р-256).
+    // неоплаченное — потеря, а не деньги к получению (решение Р-257).
     const awaiting = receivableOf(contract.project.status, contract.totalAmount, contract.tranches);
     const lost = contract.tranches
       .filter((t) => t.status === 'WRITTEN_OFF')
@@ -536,7 +536,7 @@ export async function financeSummary(actor: Actor) {
 
   // Начисления по работам без договора. Строки сводки строятся от
   // договоров, и такие начисления прежде не вычитались из маржи вовсе:
-  // эксперту заплачено, а итог практики этого не знал (решение Р-256).
+  // эксперту заплачено, а итог практики этого не знал (решение Р-257).
   const contracted = new Set(contracts.map((contract) => contract.projectId));
   const accruedWithoutContract = payouts
     .filter((payout) => !contracted.has(payout.projectId))

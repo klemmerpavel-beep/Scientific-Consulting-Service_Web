@@ -92,14 +92,14 @@ export default async function AnalyticsOverview() {
           <Tiles>
             <Tile label="Законтрактовано" value={formatAmount(total.contracted)} note={`${total.projects} ${plural(total.projects, 'работа', 'работы', 'работ')}, период ${period}`} />
             {/* Без завершённых работ доли нет: «0 %» читалось как «ничего не
-                собрано» (решение Р-256). */}
+                собрано» (решение Р-257). */}
             <Tile
               label="Получено"
               value={formatAmount(total.received)}
               note={total.collection === null ? 'нет завершённых работ с договором' : `собрано ${collectionPercent(total.collection)} по завершённым`}
             />
             {/* Отменённые не входят: их неоплаченное — потеря, а не долг
-                (решение Р-256). */}
+                (решение Р-257). */}
             <Tile label="Задолженность" value={formatAmount(total.outstanding)} note="остаток по каждой работе, кроме отменённых" />
             <Tile label="Средний чек" value={formatRounded(total.averageCheck)} note={`клиентов ${total.clients}`} />
           </Tiles>

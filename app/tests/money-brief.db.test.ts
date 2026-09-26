@@ -152,7 +152,7 @@ describe('деньги коротко', { skip: !enabled }, async () => {
     // Прежде сравнение шло с текущим моментом, и транш со сроком сегодня
     // считался просроченным уже с трёх часов ночи по Москве (решение Р-236).
     // «Сегодня» — московское: по UTC-суткам проверка с 21:00 до полуночи
-    // по UTC брала вчерашний день и падала (решение Р-256).
+    // по UTC брала вчерашний день и падала (решение Р-257).
     const { moscowToday } = await import('../src/lib/cabinet/clock.ts');
     const midnight = moscowToday();
     const before = await moneyBrief(actorOf(ids.boss!, 'HEAD'));

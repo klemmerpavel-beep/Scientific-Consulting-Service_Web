@@ -161,7 +161,7 @@ export default async function PaymentsScreen({
                 </Text>
                 {/* У отменённой работы остаток не ждут: он учтён в потерях,
                     и ноль здесь — не «оплачено», а решение. Сотруднику это
-                    названо прямо (решение Р-256). */}
+                    названо прямо (решение Р-257). */}
                 {mayEdit && money.cancelled ? (
                   <Text muted size={13} style={{ marginTop: 4 }}>
                     работа отменена — остаток учтён в потерях
@@ -384,7 +384,7 @@ export default async function PaymentsScreen({
 
               {/* Новый транш по отменённой работе служба не примет
                   (`ensureMoneyWritable`), и форма, которая всегда
-                  отказывает, не показывается (решение Р-256). */}
+                  отказывает, не показывается (решение Р-257). */}
               {mayEdit && !money.cancelled ? (
                 <Form
                   action={addContractTranche}

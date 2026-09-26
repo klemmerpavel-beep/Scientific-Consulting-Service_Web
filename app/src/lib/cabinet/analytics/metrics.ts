@@ -15,7 +15,7 @@
  * Из соседних модулей берутся только чистые правила: «ждёт ли практика
  * денег по работе» (`money.ts`) и «сегодня по Москве» (`clock.ts`). Свои
  * копии этих правил здесь уже расходились с главной и экраном денег
- * (решение Р-256).
+ * (решение Р-257).
  */
 
 import { isPastDue, moscowToday } from '../clock.ts';
@@ -37,7 +37,7 @@ export interface ProjectRow {
   /**
    * День подписания договора; `null` — договора нет или дата не указана.
    * По нему работа относится к периоду в «законтрактовано за период»
-   * (решение Р-256).
+   * (решение Р-257).
    */
   readonly signedOn: Date | null;
   /** Сумма договора в копейках. */
@@ -61,13 +61,13 @@ export interface ProjectRow {
  * Незакрытый остаток работы: договор без оплаченного и списанного, не
  * меньше нуля. У отменённой работы остатка к получению нет — её
  * неоплаченное считается потерей (вкладка «Потери»), и в задолженность,
- * к получению и остаток с прошедшим сроком оно не входит (решение Р-256).
+ * к получению и остаток с прошедшим сроком оно не входит (решение Р-257).
  */
 /**
  * Собираемость процентом. Округление до целых превращало 99,84 % в
  * «100 %» при неоплаченном остатке закрытой работы; пока собрано не всё,
  * процент не округляется до ста — берётся знак после запятой вниз
- * (решение Р-256).
+ * (решение Р-257).
  */
 export function collectionPercent(ratio: number): string {
   const whole = Math.round(ratio * 100);
@@ -89,7 +89,7 @@ export function openBalance(row: ProjectRow): bigint {
  *
  * Прежде отчёт, итог и вкладка «Сроки» считали это каждый по-своему:
  * одни — только идущие работы, другие — и приостановленные, и сравнивали
- * срок с текущим моментом, а не с началом дня (решение Р-256).
+ * срок с текущим моментом, а не с началом дня (решение Р-257).
  */
 export function lateOpen(rows: readonly ProjectRow[], controlDate: Date): ProjectRow[] {
   return rows.filter(
@@ -109,7 +109,7 @@ export function isOngoing(row: ProjectRow): boolean {
  * Прежде отчёт брал сумму договоров работ, начатых или закрытых в
  * периоде: договор двухлетней давности, закрытый вчера, давал всю сумму
  * «законтрактовано за тридцать дней», и средний чек периода считался по
- * нему же (решение Р-256).
+ * нему же (решение Р-257).
  */
 export function contractedBetween(
   rows: readonly ProjectRow[],
@@ -264,7 +264,7 @@ export function cycleMedian(items: readonly Duration[]): CycleEstimate {
  * Событие «завершено» — только завершённая работа. Отменённая наблюдалась
  * до дня отмены и обрывает наблюдение, то есть цензурирует кривую: прежде
  * она шла событием, и работа, брошенная через неделю, делала медиану
- * срока короче, будто работу сделали за неделю (решение Р-256).
+ * срока короче, будто работу сделали за неделю (решение Р-257).
  */
 export function durationOf(row: ProjectRow, controlDate: Date): Duration | null {
   if (row.startedOn === null) return null;
@@ -284,7 +284,7 @@ export interface Overview {
   readonly clients: number;
   readonly active: number;
   readonly paused: number;
-  /** Действующих: идущие и приостановленные (решение Р-256). */
+  /** Действующих: идущие и приостановленные (решение Р-257). */
   readonly ongoing: number;
   readonly completed: number;
   readonly contracted: bigint;
@@ -296,10 +296,10 @@ export interface Overview {
   readonly outstanding: bigint;
   /**
    * Доля собранного по завершённым работам; `null` — завершённых работ с
-   * договором нет, и «0 %» читалось бы как «ничего не собрано» (Р-256).
+   * договором нет, и «0 %» читалось бы как «ничего не собрано» (Р-257).
    */
   readonly collection: number | null;
-  /** Средний чек по работам с договором; `null` — договоров нет (Р-256). */
+  /** Средний чек по работам с договором; `null` — договоров нет (Р-257). */
   readonly averageCheck: bigint | null;
   readonly period: { readonly from: Date | null; readonly to: Date | null };
 }
@@ -314,7 +314,7 @@ export function overview(rows: readonly ProjectRow[]): Overview {
   const contractedClosed = sum(completed.map((row) => row.cost));
   // Собранное по работе ограничено её договором: переплата одной
   // работы не закрывает недобор другой, иначе книга с переплатой и
-  // неоплаченной закрытой работой давала «собрано 100 %» (решение Р-256).
+  // неоплаченной закрытой работой давала «собрано 100 %» (решение Р-257).
   const receivedClosed = sum(completed.map((row) => (row.paid < row.cost ? row.paid : row.cost)));
 
   const contracted = sum(rows.map((row) => row.cost));
@@ -333,7 +333,7 @@ export function overview(rows: readonly ProjectRow[]): Overview {
     collection: contractedClosed > 0n ? Number(receivedClosed) / Number(contractedClosed) : null,
     // Чек — по работам с договором: работа без суммы договора (его ещё не
     // завели) тянула средний к нулю (решение Р-244). Без договоров чека
-    // нет вовсе, а не «0 ₽» (решение Р-256).
+    // нет вовсе, а не «0 ₽» (решение Р-257).
     averageCheck: (() => {
       const priced = rows.filter((row) => row.cost > 0n);
       return priced.length === 0 ? null : sum(priced.map((row) => row.cost)) / BigInt(priced.length);
@@ -363,12 +363,12 @@ export interface MonthPoint {
  * Всё в ряду отнесено к месяцу НАЧАЛА работы: число заказов, сумма
  * договоров и оплаты по этим работам. Оплата здесь — не поступление
  * месяца: деньги за работу, начатую в марте, стоят в марте, когда бы ни
- * пришли. Подписи экранов говорят это прямо (решение Р-256).
+ * пришли. Подписи экранов говорят это прямо (решение Р-257).
  *
  * Ряд доходит до текущего месяца, а не до месяца последнего начала:
  * прежде «последние двенадцать месяцев» при затишье кончались полгода
  * назад, и пустые месяцы выпадали из окна вместо того, чтобы стоять
- * нулями (решение Р-256).
+ * нулями (решение Р-257).
  */
 export function byMonth(rows: readonly ProjectRow[], controlDate: Date): MonthPoint[] {
   const dated = rows.filter((row) => row.startedOn !== null);
@@ -453,7 +453,7 @@ export interface Receivable {
 
 /**
  * Дебиторка: незакрытые остатки, крупные сверху. Отменённых работ здесь
- * нет — их остаток в потерях (решение Р-256).
+ * нет — их остаток в потерях (решение Р-257).
  */
 export function receivables(rows: readonly ProjectRow[], controlDate: Date): Receivable[] {
   const day = moscowToday(controlDate).getTime();
@@ -471,7 +471,7 @@ export function receivables(rows: readonly ProjectRow[], controlDate: Date): Rec
       // Дни от срока до начала сегодняшнего дня по Москве, как у
       // `daysPast`: округление делало работу просроченной уже в день срока
       // с полудня (Р-236), а счёт от момента — только с трёх часов ночи
-      // следующего дня (решение Р-256).
+      // следующего дня (решение Р-257).
       overdueDays: row.dueOn === null ? null : Math.floor((day - row.dueOn.getTime()) / DAY),
     }))
     .sort((a, b) => (b.debt > a.debt ? 1 : b.debt < a.debt ? -1 : a.code.localeCompare(b.code)));
@@ -504,7 +504,7 @@ export interface ClientsReport {
   readonly clients: readonly ClientRow[];
   readonly repeat: number;
   readonly repeatShare: number;
-  /** `null` — ни у одного клиента нет договора: медиана «0 ₽» лгала бы (Р-256). */
+  /** `null` — ни у одного клиента нет договора: медиана «0 ₽» лгала бы (Р-257). */
   readonly medianLtv: bigint | null;
   /** Доля пяти крупнейших клиентов в сумме договоров; `null` — договоров нет. */
   readonly top5Share: number | null;
@@ -597,7 +597,7 @@ export interface ProductRow {
   readonly total: bigint;
   /**
    * Статистика цены — по работам с договором; `null` — договоров по
-   * позиции нет, и «0 ₽» читалось бы как цена (решение Р-256).
+   * позиции нет, и «0 ₽» читалось бы как цена (решение Р-257).
    */
   readonly averageCheck: bigint | null;
   readonly medianCheck: bigint | null;
@@ -668,7 +668,7 @@ export interface CyclesReport {
   /** Завершённые в срок, из числа тех, у кого срок был задан. */
   readonly onTime: number;
   readonly withDue: number;
-  /** Незакрытых работ с прошедшим сроком — `lateOpen` (решение Р-256). */
+  /** Незакрытых работ с прошедшим сроком — `lateOpen` (решение Р-257). */
   readonly overdueOpen: number;
   /** Отменённых работ с датой начала: они цензурируют кривую, а не завершают её. */
   readonly cancelled: number;
@@ -733,7 +733,7 @@ export interface LossesReport {
  *
  * Величина считается только по данным системы. Прежде рядом стояла
  * цифра из брифа, не выводимая из данных; экран руководителя показывает
- * лишь то, что следует из его учёта (решение Р-256, заменяет Р-134).
+ * лишь то, что следует из его учёта (решение Р-257, заменяет Р-134).
  */
 export function losses(rows: readonly ProjectRow[]): LossesReport {
   const stopped = rows.filter(
@@ -800,7 +800,7 @@ export function conclusions(rows: readonly ProjectRow[], controlDate: Date): Con
   const debts = receivables(rows, controlDate);
 
   // 1. Остаток по работам с прошедшим сроком — деньги, которые уже
-  //    заработаны. Отменённых здесь нет: их остаток — потеря (Р-256).
+  //    заработаны. Отменённых здесь нет: их остаток — потеря (Р-257).
   const overdueDebts = debts.filter((debt) => (debt.overdueDays ?? 0) > 0);
   const overdueSum = sum(overdueDebts.map((debt) => debt.debt));
   if (overdueDebts.length > 0) {
@@ -823,7 +823,7 @@ export function conclusions(rows: readonly ProjectRow[], controlDate: Date): Con
   }
 
   // 2. Сорванные сроки действующих работ — идущих и приостановленных,
-  //    срок раньше сегодняшнего дня по Москве (решение Р-256).
+  //    срок раньше сегодняшнего дня по Москве (решение Р-257).
   const late = lateOpen(rows, controlDate);
   if (late.length > 0) {
     out.push({
@@ -1001,7 +1001,7 @@ export function verdict(rows: readonly ProjectRow[], controlDate: Date): Verdict
 
   // «Действующих» — идущие и приостановленные, как на главной и во
   // вкладке перечня; «в работе» здесь прежде значило одни идущие, а на
-  // соседнем экране — обе (решение Р-256).
+  // соседнем экране — обе (решение Р-257).
   const state =
     `Действующих работ ${money.ongoing} из ${money.projects}` +
     (money.paused > 0 ? ` (из них приостановлено ${money.paused})` : '') +

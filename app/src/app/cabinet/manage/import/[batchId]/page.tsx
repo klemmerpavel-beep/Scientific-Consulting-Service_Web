@@ -85,7 +85,7 @@ export default async function ImportBatchScreen({
     { label: 'Получено', value: formatAmount(report.totals.paid) },
     // Остаток — по строкам, как в кабинете: переплата одной работы не
     // уменьшает долг другой. Прежде плитка давала разность итогов, и
-    // книга с переплатой показывала остаток меньше настоящего (Р-256).
+    // книга с переплатой показывала остаток меньше настоящего (Р-257).
     {
       label: 'Остаток',
       value: formatAmount(report.totals.outstanding),
