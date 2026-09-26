@@ -6,6 +6,8 @@
  * глазами в выгруженном файле.
  */
 
+import { isMoney } from './xlsx.ts';
+
 /**
  * Экранирование по RFC 4180: кавычки удваиваются, поле берётся в кавычки.
  *
@@ -16,7 +18,7 @@
  * (решение Р-246). Отрицательная сумма «-5,00» формулой не считается.
  */
 function cell(value: unknown): string {
-  const s = value === null || value === undefined ? '' : String(value);
+  const s = isMoney(value) ? rub(value.kopecks) : value === null || value === undefined ? '' : String(value);
   const formula = /^[=+@\t\r]/u.test(s) || (s.startsWith('-') && !/^-\d+(,\d+)?$/u.test(s));
   const guarded = formula ? `'${s}` : s;
   return `"${guarded.replace(/"/g, '""')}"`;

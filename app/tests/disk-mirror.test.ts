@@ -40,7 +40,8 @@ describe('имена в зеркале', () => {
     const p = versionPath('PD-2026-001', 'Глава 2', 3, 'глава-2.docx');
     assert.equal(p, 'Работы/PD-2026-001/Глава 2/v3 — глава-2.docx');
     assert.equal(projectFolder('PD-2026-001'), 'Работы/PD-2026-001');
-    assert.equal(tablePath('raboty.csv'), 'Таблицы/raboty.csv');
+    assert.equal(tablePath('Работы.xlsx'), 'Таблицы/Работы.xlsx');
+    assert.equal(tablePath('raboty.csv'), 'Таблицы/csv/raboty.csv');
   });
 
   it('кириллица в адресе кодируется по отрезкам, а не целиком', () => {

@@ -71,9 +71,9 @@ export function versionPath(
   ].join('/');
 }
 
-/** Путь к таблице реестра. */
+/** Путь к таблице реестра: книга Excel — в «Таблицах», её CSV — в «Таблицах/csv» (Р-260). */
 export function tablePath(name: string): string {
-  return `Таблицы/${name}`;
+  return name.toLowerCase().endsWith('.csv') ? `Таблицы/csv/${name}` : `Таблицы/${name}`;
 }
 
 /**

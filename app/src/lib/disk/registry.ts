@@ -5,7 +5,8 @@ import type { Actor } from '../cabinet/access.ts';
 import { STATUS_LABEL as TRANCHE_LABEL } from '../cabinet/money.ts';
 import { stageStateLabel } from '../cabinet/stage-state.ts';
 import { materialFolders, versionPath } from './paths.ts';
-import { csv, mskDay, mskMoment, rub } from './table.ts';
+import { csv, mskDay, mskMoment } from './table.ts';
+import { xlsx, type Money, type XlsxCell } from './xlsx.ts';
 
 /**
  * Таблицы реестров для зеркала на Диске.
@@ -38,14 +39,35 @@ const PROJECT_STATUS: Record<string, string> = {
   CANCELLED: 'отменена',
 };
 
+/**
+ * Таблица реестра в двух видах (решение Р-260). Книга Excel — для людей:
+ * Яндекс Документы и Excel открывают её таблицей с закреплённым
+ * заголовком, фильтром и суммами-числами. CSV — для учётных программ:
+ * «1С» и выгрузки бухгалтера принимают его без преобразований.
+ */
 export interface Table {
+  /** Имя книги Excel, по-русски: так её находят на телефоне. */
+  readonly file: string;
+  /** Имя CSV, латиницей: учётные программы не любят кириллицу в путях. */
   readonly name: string;
-  readonly body: string;
   readonly rows: number;
+  readonly xlsx: Buffer;
+  readonly csv: string;
 }
 
-function table(name: string, head: readonly string[], rows: readonly (readonly unknown[])[]): Table {
-  return { name, body: csv(head, rows), rows: rows.length };
+/** Сумма в копейках: в книге — число, в CSV — «12345,67». */
+function rub(kopecks: bigint | null | undefined): Money | '' {
+  return kopecks === null || kopecks === undefined ? '' : { kopecks };
+}
+
+function table(
+  file: string,
+  name: string,
+  head: readonly string[],
+  rows: readonly (readonly XlsxCell[])[],
+): Table {
+  const title = file.replace(/\.xlsx$/, '');
+  return { file, name, rows: rows.length, xlsx: xlsx({ title, head, rows }), csv: csv(head, rows) };
 }
 
 export async function leadsTable(): Promise<Table> {
@@ -55,13 +77,13 @@ export async function leadsTable(): Promise<Table> {
     include: { project: { select: { code: true } } },
   });
   return table(
-    'zayavki.csv',
+    'Заявки.xlsx', 'zayavki.csv',
     ['Дата (МСК)', 'Страница', 'Форма', 'Имя', 'Контакт', 'Организация', 'Тема', 'Что нужно',
-     'Срок', 'Сообщение', 'Согласие', 'Рассылка', 'Состояние', 'Работа', 'Идентификатор'],
+     'Срок', 'Сообщение', 'Согласие', 'Оферта', 'Рассылка', 'Состояние', 'Работа', 'Идентификатор'],
     rows.map((r) => [
       moment(r.createdAt), leadSourceLabel(r.source), r.form, r.name ?? '', r.contact,
       r.organization ?? '', r.topic ?? '', r.need ?? '', r.deadline ?? '', r.message ?? '',
-      r.consentGiven ? 'да' : 'нет', r.marketingOptIn ? 'да' : 'нет',
+      r.consentGiven ? 'да' : 'нет', r.termsAccepted ? 'да' : 'нет', r.marketingOptIn ? 'да' : 'нет',
       leadStatusLabel(r.status), r.project?.code ?? '', r.id,
     ]),
   );
@@ -73,7 +95,7 @@ export async function reviewsTable(): Promise<Table> {
     orderBy: { createdAt: 'desc' },
   });
   return table(
-    'otzyvy.csv',
+    'Отзывы.xlsx', 'otzyvy.csv',
     ['Дата (МСК)', 'Страница', 'Кто', 'Отзыв', 'Можно публиковать', 'Состояние', 'Идентификатор'],
     rows.map((r) => [
       moment(r.createdAt), leadSourceLabel(r.source), r.name ?? '', r.message ?? '',
@@ -97,7 +119,7 @@ export async function projectsTable(): Promise<Table> {
     },
   });
   return table(
-    'raboty.csv',
+    'Работы.xlsx', 'raboty.csv',
     ['Код', 'Название', 'Тема', 'Клиент', 'Тип сопровождения', 'Куратор', 'Исполнитель',
      'Состояние', 'Начата', 'Срок', 'Закрыта', 'Договор', 'Сумма договора', 'Оплачено',
      'Этапов', 'Материалов'],
@@ -125,7 +147,7 @@ export async function stagesTable(): Promise<Table> {
     },
   });
   return table(
-    'etapy.csv',
+    'Этапы.xlsx', 'etapy.csv',
     ['Работа', '№', 'Этап', 'Состояние', 'Срок', 'Исполнитель', 'Начат (МСК)', 'Завершён (МСК)'],
     rows.map((s) => [
       s.project.code, s.position, s.title, stageStateLabel(s.state),
@@ -149,7 +171,7 @@ export async function paymentsTable(): Promise<Table> {
     },
   });
   return table(
-    'oplaty.csv',
+    'Оплаты.xlsx', 'oplaty.csv',
     ['Работа', 'Клиент', 'Договор', 'Подписан', 'Сумма договора', 'Поступление', 'Сумма',
      'Плановая дата', 'Состояние', 'Оплачено'],
     rows.map((t) => [
@@ -169,7 +191,7 @@ export async function paymentsTable(): Promise<Table> {
 export async function yearsTable(actor: Actor): Promise<Table> {
   const summary = await yearlyRows(actor);
   return table(
-    'itogi-po-godam.csv',
+    'Итоги по годам.xlsx', 'itogi-po-godam.csv',
     ['Год', 'Выручка (введено)', 'Затраты (введено)', 'Прибыль (введено)',
      'Выручка (посчитано)', 'Затраты (посчитано)', 'Прибыль (посчитано)', 'Заказов',
      'Расхождение по выручке', 'Примечание'],
@@ -221,10 +243,12 @@ export async function materialFiles(): Promise<MaterialFile[]> {
 /**
  * Опись материалов таблицей: что лежит в зеркале, где и какого размера.
  * По ней ищут файл, не обходя папки, и по ней же видно, что зеркало полное.
+ * Изъятые версии в опись не входят, как и в сами файлы зеркала: прежде они
+ * стояли строкой с пустым путём и размером файла, которого больше нет (Р-260).
  */
 export async function materialsTable(files: readonly MaterialFile[]): Promise<Table> {
   const versions = await prisma.materialVersion.findMany({
-    where: { material: { deletedAt: null } },
+    where: { material: { deletedAt: null }, purgedAt: null },
     include: {
       uploadedBy: { select: { fullName: true } },
       material: { select: { title: true, project: { select: { code: true } } } },
@@ -233,11 +257,11 @@ export async function materialsTable(files: readonly MaterialFile[]): Promise<Ta
   });
   const pathByKey = new Map(files.map((f) => [f.storageKey, f.path]));
   return table(
-    'materialy.csv',
+    'Материалы.xlsx', 'materialy.csv',
     ['Работа', 'Материал', 'Версия', 'Файл', 'Размер, байт', 'Загружен (МСК)', 'Кем', 'Путь в зеркале'],
     versions.map((v) => [
       v.material.project.code, v.material.title, v.number, v.originalName,
-      String(v.sizeBytes), moment(v.uploadedAt), v.uploadedBy?.fullName ?? '',
+      Number(v.sizeBytes), moment(v.uploadedAt), v.uploadedBy?.fullName ?? '',
       pathByKey.get(v.storageKey) ?? '',
     ]),
   );
