@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '../../components/cabinet/Button';
 import { MONO, SANS, SERIF } from '../../components/cabinet/tokens';
 
 /**
@@ -50,24 +51,11 @@ export default function CabinetError({ reset }: { error: Error; reset: () => voi
         Данные не пострадали: кабинет ничего не сохраняет наполовину. Попробуйте открыть раздел
         снова, а если повторится — напишите менеджеру проекта.
       </p>
-      <button
-        type="button"
-        onClick={reset}
-        style={{
-          minHeight: 44,
-          padding: '0 20px',
-          borderRadius: 999,
-          border: 0,
-          background: 'var(--pd-accent)',
-          color: 'var(--pd-ink-inverse)',
-          fontFamily: 'inherit',
-          fontSize: 15,
-          fontWeight: 500,
-          cursor: 'pointer',
-        }}
-      >
+      {/* Общая кнопка: своя разметка шла с начертанием 500 вместо 600 и
+          без отклика на наведение и нажатие (решение Р-253). */}
+      <Button type="button" onClick={reset}>
         Открыть снова
-      </button>
+      </Button>
     </main>
   );
 }

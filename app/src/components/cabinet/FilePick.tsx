@@ -41,6 +41,9 @@ export function FilePick({
       <input
         id={id}
         type="file"
+        // Фокус скрытого поля виден на метке, стоящей сразу за ним:
+        // правило `.cab-file:focus-visible+label` (решение Р-253).
+        className="cab-file"
         name={name}
         accept={accept}
         multiple={multiple}
@@ -61,7 +64,15 @@ export function FilePick({
           );
         }}
       />
-      <label htmlFor={id} id={labelId} style={{ ...BUTTON_QUIET, cursor: 'pointer' }}>
+      {/* Метка стоит сразу за полем — на этом держится правило фокуса —
+          и несёт классы общей кнопки: без них она не отзывалась на
+          наведение (решение Р-253). */}
+      <label
+        htmlFor={id}
+        id={labelId}
+        className="cab-btn cab-btn-quiet"
+        style={{ ...BUTTON_QUIET, cursor: 'pointer' }}
+      >
         {picked.length === 0 ? (multiple ? 'Выбрать файлы' : 'Выбрать файл') : 'Выбрать другие'}
       </label>
       <span

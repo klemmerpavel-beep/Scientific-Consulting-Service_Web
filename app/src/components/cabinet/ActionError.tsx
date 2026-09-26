@@ -1,5 +1,5 @@
 import { flashText } from '../../lib/cabinet/flash';
-import { Notice } from './ui';
+import { Outcome } from './ui';
 
 /**
  * Отказ действия, переданный экрану адресом (`?error=`).
@@ -10,15 +10,12 @@ import { Notice } from './ui';
  * что данные не пропали (решение Р-242). В адресе — только метка: текст
  * берётся из одноразовой cookie того, чьё действие отказало, и чужая
  * ссылка ничего не выводит (решение Р-243).
+ *
+ * Блок собран общей частью исхода: он помечен как исход и в счёт пяти
+ * блоков экрана не входит (решение Р-253).
  */
 export default async function ActionError({ id }: { id: string | undefined }) {
   const text = await flashText(id);
   if (text === undefined || text.trim() === '') return null;
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <Notice tone="error" role="alert">
-        {text.slice(0, 300)}
-      </Notice>
-    </div>
-  );
+  return <Outcome tone="error">{text.slice(0, 300)}</Outcome>;
 }

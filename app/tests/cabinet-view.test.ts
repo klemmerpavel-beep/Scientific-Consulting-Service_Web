@@ -562,6 +562,11 @@ describe('страница не перегружена блоками', () => {
    * поэтому экран о нём не помнит. Второе условие ловит блок, собранный
    * мимо общих частей: такой ребёнок не имеет ни одного из признаков, и
    * счёт перестал бы быть верным.
+   *
+   * Блок исхода действия (`cab-outcome`: `Outcome`, `Notice` зелёного и
+   * красного тона) в счёт пяти не входит — он временный и появляется только
+   * после действия, — но и за блок мимо общих частей не принимается: его
+   * признак ставит общая часть (решение Р-253).
    */
   const LIMIT = 5;
   const pages = ['client', 'expert', 'manager'].flatMap((folder) => screens(folder));
@@ -619,7 +624,7 @@ describe('страница не перегружена блоками', () => {
         (kid) =>
           kid.tag !== 'nav' &&
           kid.tag !== 'p' &&
-          !/cab-block|cab-head|cab-filter/u.test(kid.cls),
+          !/cab-block|cab-head|cab-filter|cab-outcome/u.test(kid.cls),
       );
       assert.deepEqual(
         stray.map((kid) => `<${kid.tag} class="${kid.cls}">`),

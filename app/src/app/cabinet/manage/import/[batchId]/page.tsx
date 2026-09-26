@@ -13,7 +13,7 @@ import {
   FormActions,
   Heading,
   LongTable,
-  Notice,
+  Outcome,
   ScreenHead,
   Select,
   TABLE_CELL,
@@ -98,14 +98,10 @@ export default async function ImportBatchScreen({
       <ActionError id={flags.error} />
 
       {flags.applied === undefined ? null : (
-        <div style={{ marginBottom: 20 }}>
-          <Notice>Загрузка зафиксирована. Проекты заведены и доступны в реестре.</Notice>
-        </div>
+        <Outcome>Загрузка зафиксирована. Проекты заведены и доступны в реестре.</Outcome>
       )}
       {flags.merged === undefined ? null : (
-        <div style={{ marginBottom: 20 }}>
-          <Notice>Карточки сведены: проекты переведены на основную.</Notice>
-        </div>
+        <Outcome>Карточки сведены: проекты переведены на основную.</Outcome>
       )}
 
       {/* Плитка живёт общей частью: своя копия разошлась бы с прочими
@@ -289,11 +285,14 @@ export default async function ImportBatchScreen({
         />
       </div>
 
+      {/* Зафиксированная загрузка — состояние, а не исход: оно видно при
+          каждом открытии отчёта, и зелёный блок здесь повторял исход,
+          показанный сразу после фиксации (решения Р-146, Р-253). */}
       {applied ? (
-        <Notice>
+        <Text muted>
           Загрузка зафиксирована. Повторная фиксация невозможна: строки закрыты естественным
           ключом, и та же книга даёт пропуск, а не новые проекты.
-        </Notice>
+        </Text>
       ) : (
         <Card>
           <Heading level={2} style={{ marginBottom: 8 }}>
@@ -349,8 +348,11 @@ export default async function ImportBatchScreen({
                             <input type="hidden" name="batchId" value={report.batchId} />
                             <input type="hidden" name="sourceId" value={source.id} />
                             <input type="hidden" name="targetId" value={target.id} />
+                            {/* Направление сведения названо словами: стрелка
+                                знаком — символ-украшение, который правило
+                                облика запрещает (решения Р-165, Р-253). */}
                             <Button tone="quiet">
-                              {`«${source.fullName}» (${source.projects}) → в «${target.fullName}» (${target.projects})`}
+                              {`Свести «${source.fullName}» (${source.projects}) в «${target.fullName}» (${target.projects})`}
                             </Button>
                           </Form>
                         )),

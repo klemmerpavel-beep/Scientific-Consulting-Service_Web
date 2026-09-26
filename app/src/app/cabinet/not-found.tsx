@@ -1,5 +1,5 @@
 import Shell from '../../components/cabinet/Shell';
-import { Card, Heading, Mono, Text } from '../../components/cabinet/ui';
+import { ButtonLink, Card, Heading, Mono, Text } from '../../components/cabinet/ui';
 
 /**
  * Раздел не найден. Тот же ответ отдаётся, когда раздел существует, но
@@ -19,9 +19,14 @@ export default function CabinetNotFound() {
             Адрес мог измениться, а проект — быть закрыт или передан другому менеджеру. Откройте
             список работ: там видно всё, что вам доступно.
           </Text>
-          <Text>
-            <a href="/cabinet/projects">К моим работам</a> · <a href="/cabinet">Войти заново</a>
-          </Text>
+          {/* Два выхода — две кнопки в ряд: строка ссылок через точку
+              давала цели нажатия в двадцать четыре пикселя (решение Р-253). */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <ButtonLink href="/cabinet/projects" tone="primary">
+              К моим работам
+            </ButtonLink>
+            <ButtonLink href="/cabinet">Войти заново</ButtonLink>
+          </div>
         </Card>
       </div>
     </Shell>

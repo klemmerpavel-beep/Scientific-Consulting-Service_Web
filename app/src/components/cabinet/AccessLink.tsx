@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react';
 
-import { BUTTON_PRIMARY, BUTTON_QUIET, MONO, RADIUS, SANS } from './tokens.ts';
+import { BUTTON_PRIMARY, BUTTON_QUIET, FIELD_CONTROL, MONO, RADIUS, SANS } from './tokens.ts';
 import { Notice } from './ui.tsx';
 
 /**
@@ -56,18 +56,10 @@ export function AccessLink({
     color: 'var(--pd-ink-secondary)',
     marginBottom: 6,
   };
-  const control: React.CSSProperties = {
-    boxSizing: 'border-box',
-    width: '100%',
-    minHeight: 48,
-    padding: '12px 14px',
-    borderRadius: RADIUS.field,
-    border: '1px solid var(--pd-border)',
-    background: 'var(--pd-ink-inverse)',
-    fontFamily: SANS,
-    fontSize: 16,
-    color: 'var(--pd-ink)',
-  };
+  // Вид поля — общий с `Field` и `Select`: своя запись стояла в кромке
+  // `--pd-border`, 1,24:1 к белому, и поле почти не читалось границей
+  // (решение Р-253).
+  const control = FIELD_CONTROL;
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
@@ -88,6 +80,7 @@ export function AccessLink({
           <button
             type="submit"
             disabled={pending || people.length === 0}
+            className="cab-btn cab-btn-primary"
             style={{ ...BUTTON_PRIMARY, cursor: pending ? 'progress' : 'pointer' }}
           >
             {pending ? 'Выдаём…' : state.link === null ? 'Выдать ссылку' : 'Выдать новую ссылку'}
@@ -139,12 +132,15 @@ export function AccessLink({
               readOnly
               value={state.link}
               onFocus={(event) => event.currentTarget.select()}
-              style={{ ...control, fontFamily: MONO, fontSize: 13 }}
+              // Кегль 16, как у всех полей: при 13 Safari на телефоне
+              // увеличивал вьюпорт при фокусе (решения Р-86, Р-253).
+              style={{ ...control, fontFamily: MONO }}
             />
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
+              className="cab-btn cab-btn-quiet"
               style={{ ...BUTTON_QUIET, cursor: 'pointer' }}
               onClick={() => {
                 navigator.clipboard?.writeText(state.link ?? '').then(

@@ -186,7 +186,10 @@ export default async function FinanceScreen({
             <Text muted>Работ с договором пока нет.</Text>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'center' }}>
-              <div style={{ width: 220, flex: '0 0 auto' }}>
+              {/* Рамка — в поле рисунка, 260 px, как на аналитике: в рамке
+                  220 кольцо сжималось, и подписи в 12 px выходили по
+                  10,2 px — ниже нижней ступени кегля (решение Р-253). */}
+              <div style={{ width: 260, flex: '0 0 auto' }}>
                 <DonutChart
                   title="Сумма договоров: действующие и закрытые работы"
                   center={String(rows.length)}

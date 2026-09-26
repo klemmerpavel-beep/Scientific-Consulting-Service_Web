@@ -10,6 +10,7 @@ import {
   FormActions,
   Heading,
   Notice,
+  Outcome,
   Text,
 } from '../../components/cabinet/ui';
 import { currentActor } from '../../lib/cabinet/session';
@@ -46,20 +47,16 @@ export default async function CabinetEntrance({
         </Heading>
 
         {params.error === undefined ? null : (
-          <div style={{ marginBottom: 20 }}>
-            <Notice tone="error" role="alert">
-              Ссылка недействительна: её уже использовали или истёк срок. Запросите новую.
-            </Notice>
-          </div>
+          <Outcome tone="error">
+            Ссылка недействительна: её уже использовали или истёк срок. Запросите новую.
+          </Outcome>
         )}
 
         {params.channel === undefined ? null : (
-          <div style={{ marginBottom: 20 }}>
-            <Notice tone="error" role="alert">
-              Вход по ссылке пока недоступен: почтовый канал практики не настроен, и письмо
-              отправить некуда. Напишите куратору работы — он откроет доступ другим способом.
-            </Notice>
-          </div>
+          <Outcome tone="error">
+            Вход по ссылке пока недоступен: почтовый канал практики не настроен, и письмо
+            отправить некуда. Напишите куратору работы — он откроет доступ другим способом.
+          </Outcome>
         )}
 
         {params.sent === undefined ? (
