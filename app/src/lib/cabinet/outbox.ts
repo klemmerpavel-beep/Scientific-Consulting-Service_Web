@@ -166,7 +166,12 @@ interface SendResult {
   readonly error?: string;
   /** Повторять бессмысленно: адресат отвергнут окончательно (Р-252). */
   readonly permanent?: boolean;
+  /** Сервер канала не ответил: соединение не установилось или истекло (Р-255). */
+  readonly unreachable?: boolean;
 }
+
+/** Через сколько вернуть строку, отложенную из-за недоступного канала. */
+const UNREACHABLE_DELAY_MS = 5 * 60 * 1000;
 
 async function sendTelegram(chatId: string, text: string): Promise<SendResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -187,7 +192,9 @@ async function sendTelegram(chatId: string, text: string): Promise<SendResult> {
     }
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: String(e).slice(0, 300) };
+    // Исключение fetch — это отказ связи или истёкшее ожидание: ответа
+    // Telegram не было вовсе (Р-255).
+    return { ok: false, error: String(e).slice(0, 300), unreachable: true };
   }
 }
 
@@ -266,8 +273,22 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
 
   let sent = 0;
   let failed = 0;
+  // Каналы, сервер которых в этом проходе не ответил. Прежде при лежащей
+  // почте проход ждал восемь секунд на каждое из двадцати писем — почти три
+  // минуты, а расписание раз в минуту запускало следующие поверх. Теперь
+  // после первого обрыва остальные строки канала откладываются без
+  // попытки: пропавшая связь — не повод расходовать их лимит (решение Р-255).
+  const down = new Set<string>();
 
   for (const item of pending) {
+    if (down.has(item.channel)) {
+      await prisma.notificationOutbox.update({
+        where: { id: item.id },
+        data: { scheduledAt: new Date(Date.now() + UNREACHABLE_DELAY_MS) },
+      });
+      continue;
+    }
+
     // Адресат перепроверяется в момент отправки: приостановленный после
     // постановки или отключивший канал больше писем не получает. Прежде
     // очередь отправляла всё, что в ней лежало (решение Р-246).
@@ -336,6 +357,7 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     // строку сразу закрывает: прежде она ещё четыре раза стучалась туда же,
     // по разу в несколько минут (решение Р-252). Признак выставляет сама
     // отправка по коду ответа сервера, а не разбор текста ошибки.
+    if (result.unreachable === true) down.add(item.channel);
     const attempts = item.attempts + 1;
     const giveUp = attempts >= MAX_ATTEMPTS || result.permanent === true;
     await prisma.notificationOutbox.update({

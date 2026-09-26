@@ -100,9 +100,17 @@ async function actorOrRedirect() {
  * разбора несёт в тексте имена таблиц и куски запросов: вместо него —
  * фиксированная фраза, а подробности идут в журнал сервера.
  */
+/** Отказ загрузки без причины по существу — обычно недоступное хранилище (Р-255). */
+const UPLOAD_FAILED =
+  'Файл не сохранён: хранилище файлов сейчас недоступно. Попробуйте ещё раз через несколько минут; если повторится — напишите руководителю.';
+
 function reasonOf(error: unknown, fallback: string): string {
   if (error instanceof AccessDenied) return 'Это действие недоступно для вашей роли';
-  if (error instanceof Error && error.constructor === Error) return error.message;
+  // Системная ошибка (диск, сеть) — тоже `Error`, но с кодом `ENOTDIR`,
+  // `ENOSPC` и т. п. и путём на сервере в тексте: человеку она ничего не
+  // скажет, а путь показывать незачем. Для неё — общая фраза (Р-255).
+  const system = typeof (error as { code?: unknown } | null)?.code === 'string';
+  if (error instanceof Error && error.constructor === Error && !system) return error.message;
   console.error('[cabinet] сбой действия', error);
   return fallback;
 }
@@ -189,24 +197,33 @@ export async function uploadMaterial(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const file = form.get('file');
   if (!(file instanceof File) || file.size === 0) {
-    throw new Error('Файл не выбран');
+    redirect(await withError(`/cabinet/stages/${String(form.get('stageId') ?? '')}`, 'Файл не выбран'));
   }
   const stageId = String(form.get('stageId') ?? '');
   const projectId = String(form.get('projectId') ?? '');
   const materialId = String(form.get('materialId') ?? '');
-  await uploadVersion(
-    actor,
-    {
-      projectId,
-      stageId: stageId || null,
-      materialId: materialId || null,
-      title: String(form.get('title') ?? '') || undefined,
-      originalName: file.name,
-      contentType: file.type || 'application/octet-stream',
-      body: Buffer.from(await file.arrayBuffer()),
-    },
-    await requestIp(),
-  );
+  // Отказ загрузки — контакт в названии, неподходящий файл, недоступное
+  // хранилище — возвращается на экран этапа причиной, а не общим экраном
+  // сбоя (решение Р-255). Перенаправление вне `try`: оно само — исключение.
+  let failure: string | null = null;
+  try {
+    await uploadVersion(
+      actor,
+      {
+        projectId,
+        stageId: stageId || null,
+        materialId: materialId || null,
+        title: String(form.get('title') ?? '') || undefined,
+        originalName: file.name,
+        contentType: file.type || 'application/octet-stream',
+        body: Buffer.from(await file.arrayBuffer()),
+      },
+      await requestIp(),
+    );
+  } catch (error) {
+    failure = reasonOf(error, UPLOAD_FAILED);
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -226,22 +243,27 @@ export async function uploadMaterialWithNote(form: FormData): Promise<void> {
     redirect(await withError(`/cabinet/projects/${code}`, 'Файл не выбран'));
   }
   const stageId = String(form.get('stageId') ?? '');
-  const version = await uploadVersion(
-    actor,
-    {
-      projectId: String(form.get('projectId') ?? ''),
-      stageId: stageId || null,
-      materialId: null,
-      title: String(form.get('title') ?? '') || undefined,
-      originalName: (file as File).name,
-      contentType: (file as File).type || 'application/octet-stream',
-      body: Buffer.from(await (file as File).arrayBuffer()),
-    },
-    await requestIp(),
-  );
-
-  const note = String(form.get('note') ?? '').trim();
-  if (note.length > 0) await addComment(actor, version.id, note);
+  let failure: string | null = null;
+  try {
+    const version = await uploadVersion(
+      actor,
+      {
+        projectId: String(form.get('projectId') ?? ''),
+        stageId: stageId || null,
+        materialId: null,
+        title: String(form.get('title') ?? '') || undefined,
+        originalName: (file as File).name,
+        contentType: (file as File).type || 'application/octet-stream',
+        body: Buffer.from(await (file as File).arrayBuffer()),
+      },
+      await requestIp(),
+    );
+    const note = String(form.get('note') ?? '').trim();
+    if (note.length > 0) await addComment(actor, version.id, note);
+  } catch (error) {
+    failure = reasonOf(error, UPLOAD_FAILED);
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
 
   redirect(`/cabinet/projects/${code}`);
 }
@@ -977,21 +999,27 @@ export async function addMaterialVersion(form: FormData): Promise<void> {
       ? rawBack
       : '/cabinet/projects';
   if (!(file instanceof File) || file.size === 0) {
-    throw new Error('Файл не выбран');
+    redirect(await withError(back, 'Файл не выбран'));
   }
-  await uploadVersion(
-    actor,
-    {
-      projectId: String(form.get('projectId') ?? ''),
-      stageId: String(form.get('stageId') ?? '') || null,
-      materialId: String(form.get('materialId') ?? '') || null,
-      title: String(form.get('title') ?? '') || undefined,
-      originalName: file.name,
-      contentType: file.type || 'application/octet-stream',
-      body: Buffer.from(await file.arrayBuffer()),
-    },
-    await requestIp(),
-  );
+  let failure: string | null = null;
+  try {
+    await uploadVersion(
+      actor,
+      {
+        projectId: String(form.get('projectId') ?? ''),
+        stageId: String(form.get('stageId') ?? '') || null,
+        materialId: String(form.get('materialId') ?? '') || null,
+        title: String(form.get('title') ?? '') || undefined,
+        originalName: file.name,
+        contentType: file.type || 'application/octet-stream',
+        body: Buffer.from(await file.arrayBuffer()),
+      },
+      await requestIp(),
+    );
+  } catch (error) {
+    failure = reasonOf(error, UPLOAD_FAILED);
+  }
+  if (failure !== null) redirect(await withError(back, failure));
   redirect(back);
 }
 

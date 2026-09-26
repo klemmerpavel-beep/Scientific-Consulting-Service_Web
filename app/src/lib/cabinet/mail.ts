@@ -19,6 +19,12 @@ export interface MailResult {
    * поэтому очередь такую строку сразу помечает неудачей (решение Р-252).
    */
   readonly permanent?: boolean;
+  /**
+   * Сервер не ответил вовсе: соединение не установилось, оборвалось или
+   * истекло. Остальные письма того же прохода ждали бы те же восемь секунд
+   * каждое, поэтому очередь откладывает их, не тратя попыток (Р-255).
+   */
+  readonly unreachable?: boolean;
 }
 
 /**
@@ -38,6 +44,16 @@ export function hideAddresses(text: string): string {
  * `responseCode` ошибки (для отвергнутых получателей — код ответа на
  * RCPT TO); сетевые сбои и тайм-ауты кода не имеют и повторяются.
  */
+/** Коды nodemailer, которыми он называет отказ связи, а не ответ сервера. */
+const UNREACHABLE_CODES = new Set(['ETIMEDOUT', 'ECONNECTION', 'ESOCKET', 'EDNS', 'ECONNREFUSED', 'ECONNRESET']);
+
+/** Почтовый сервер недоступен: ответа по существу письма не было (Р-255). */
+export function smtpUnreachable(error: unknown): boolean {
+  const e = error as { code?: unknown; responseCode?: unknown } | null;
+  if (typeof e?.responseCode === 'number') return false;
+  return typeof e?.code === 'string' && UNREACHABLE_CODES.has(e.code);
+}
+
 export function smtpPermanent(error: unknown): boolean {
   const code = (error as { responseCode?: unknown } | null)?.responseCode;
   return typeof code === 'number' && code >= 500 && code < 600;
@@ -93,6 +109,7 @@ export async function sendMailTo(
       ok: false,
       error: hideAddresses(hideSecrets(String(e))).slice(0, 500),
       permanent: smtpPermanent(e),
+      unreachable: smtpUnreachable(e),
     };
   }
 }
