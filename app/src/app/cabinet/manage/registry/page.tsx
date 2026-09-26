@@ -16,6 +16,7 @@ import {
   Tabs,
   Text,
   formatDate,
+  formatDay,
   plural,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
@@ -69,7 +70,7 @@ export default async function RegistryScreen({
             (row.speciality ?? '').toLocaleLowerCase('ru').includes(needle),
         );
   const pages = Math.max(1, Math.ceil(matched.length / PAGE_SIZE));
-  const page = Math.min(Math.max(1, Number(sp.page) || 1), pages);
+  const page = Math.min(Math.max(1, Math.trunc(Number(sp.page)) || 1), pages);
   const shown = matched.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const href = (next: Tab, nextPage = 1) => {
@@ -86,7 +87,7 @@ export default async function RegistryScreen({
   const withContacts = clients.length > 0 && 'email' in clients[0]!;
 
   return (
-    <Shell actor={actor} current="/cabinet/manage">
+    <Shell actor={actor} current="/cabinet/manage/registry">
       <ScreenHead
         title="Реестры"
         note="Клиенты, эксперты и сообщения с признаком передачи контактов."
@@ -166,7 +167,7 @@ export default async function RegistryScreen({
                         {client.projects}
                         {client.active > 0 ? ` · ${client.active} в работе` : ''}
                       </td>
-                      <td style={TABLE_CELL}>{formatDate(client.lastLoginAt) ?? 'не входил'}</td>
+                      <td style={TABLE_CELL}>{client.lastLoginAt === null ? 'не входил' : formatDay(client.lastLoginAt)}</td>
                     </tr>
                   ))
                 )}
@@ -265,7 +266,7 @@ export default async function RegistryScreen({
                   <Text size={14}>{message.body}</Text>
                   <Text muted size={13} style={{ marginTop: 4 }}>
                     {message.author.fullName} · {message.project.title} ·{' '}
-                    {formatDate(message.createdAt)}
+                    {formatDay(message.createdAt)}
                   </Text>
                 </li>
               ))}

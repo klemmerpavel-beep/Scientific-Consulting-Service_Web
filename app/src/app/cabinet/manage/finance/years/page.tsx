@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 
+import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
 import { SANS } from '../../../../../components/cabinet/tokens';
 import {
@@ -36,7 +37,11 @@ function gap(value: bigint | null): string {
   return `${value > 0n ? '+' : '−'}${formatAmount(value < 0n ? -value : value)}`;
 }
 
-export default async function FinanceYearsScreen() {
+export default async function FinanceYearsScreen({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
   if (!can(actor, 'MARGIN_VIEW')) redirect('/cabinet/projects');
@@ -52,6 +57,8 @@ export default async function FinanceYearsScreen() {
         title="Итоги по годам"
         note="В строке года две величины рядом: введённая вами и посчитанная кабинетом по оплаченным траншам и выплатам экспертам. Пока история прошлых лет ведётся отдельно, они расходятся — колонка «расхождение» показывает, насколько."
       />
+
+      <ActionError id={(await searchParams).error} />
 
       {rows.length === 0 ? (
         <Empty title="Годовых итогов пока нет">

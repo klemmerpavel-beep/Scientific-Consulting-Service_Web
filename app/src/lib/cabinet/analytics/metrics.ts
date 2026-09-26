@@ -231,7 +231,12 @@ export function overview(rows: readonly ProjectRow[]): Overview {
     // переплата по одному договору не погашает долг по другому.
     outstanding: sum(rows.map(openBalance)),
     collection: contractedClosed > 0n ? Number(receivedClosed) / Number(contractedClosed) : 0,
-    averageCheck: rows.length === 0 ? 0n : contracted / BigInt(rows.length),
+    // Чек — по работам с договором: работа без суммы договора (его ещё не
+    // завели) тянула средний к нулю (решение Р-244).
+    averageCheck: (() => {
+      const priced = rows.filter((row) => row.cost > 0n);
+      return priced.length === 0 ? 0n : sum(priced.map((row) => row.cost)) / BigInt(priced.length);
+    })(),
     period: {
       from: dates.length === 0 ? null : new Date(Math.min(...dates)),
       to: dates.length === 0 ? null : new Date(Math.max(...dates)),
@@ -492,7 +497,10 @@ export function products(rows: readonly ProjectRow[]): ProductRow[] {
 
   return [...byType.entries()]
     .map(([typeCode, list]) => {
-      const costs = list.map((row) => Number(row.cost));
+      // Статистика цены — по работам с договором (решение Р-244); число
+      // заказов и сумма — по всем.
+      const priced = list.filter((row) => row.cost > 0n).map((row) => Number(row.cost));
+      const costs = priced.length === 0 ? [0] : priced;
       const average = mean(costs);
       const variation = average === 0 ? 0 : stdev(costs) / average;
       return {

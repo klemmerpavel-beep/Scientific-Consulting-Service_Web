@@ -62,6 +62,16 @@ services:
       CABINET_CRON_SECRET: ${CABINET_CRON_SECRET:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      # Экран «Зеркало на Диске» показывает, настроено ли зеркало и мост.
+      # Прежде этих значений у приложения не было, и экран при работающем
+      # зеркале писал «не настроено» (решение Р-246). Пароль сюда не
+      # передаётся: вместо него — признак, что он задан.
+      YANDEX_DISK_USER: ${YANDEX_DISK_USER:-}
+      YANDEX_DISK_CONFIGURED: ${YANDEX_DISK_PASSWORD:+yes}
+      YANDEX_DISK_FOLDER: ${YANDEX_DISK_FOLDER:-ProDisser}
+      YANDEX_DISK_SCOPE: ${YANDEX_DISK_SCOPE:-all}
+      YANDEX_DISK_WEBDAV: ${YANDEX_DISK_WEBDAV:-https://webdav.yandex.ru}
+      BOOK_PULL_PATH: ${BOOK_PULL_PATH:-}
     volumes:
       # Материалы кабинета лежат на хосте, а не внутри контейнера: при
       # пересборке образа содержимое контейнера теряется целиком, а это
@@ -127,6 +137,10 @@ services:
       YANDEX_DISK_FOLDER: ${YANDEX_DISK_FOLDER:-ProDisser}
       YANDEX_DISK_SCOPE: ${YANDEX_DISK_SCOPE:-all}
       YANDEX_DISK_WEBDAV: ${YANDEX_DISK_WEBDAV:-https://webdav.yandex.ru}
+      # Мост «Диск → база»: без этой строки путь книги до контейнера не
+      # доезжал, сценарий писал «мост выключен» и выходил с кодом 0 —
+      # книга не переносилась никогда (решение Р-246).
+      BOOK_PULL_PATH: ${BOOK_PULL_PATH:-}
     volumes:
       # Тот же каталог материалов и каталог выгрузок, что у приложения.
       - ./storage:/app/storage

@@ -44,7 +44,8 @@ type Db = Prisma.TransactionClient | typeof prisma;
  * проверяется: адресата определяет вызывающий сценарий, который уже прошёл
  * через модуль прав.
  */
-export async function enqueue(db: Db, item: OutboxItem): Promise<void> {
+/** Возвращает число поставленных строк: повтор по ключу не считается. */
+export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
   const user = await db.user.findUnique({
     where: { id: item.userId },
     select: {
@@ -55,7 +56,7 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<void> {
       notifyRules: { select: { eventKind: true, channel: true, enabled: true } },
     },
   });
-  if (user === null || user.status !== 'ACTIVE') return;
+  if (user === null || user.status !== 'ACTIVE') return 0;
 
   // Общие переключатели решают, каким каналом человек вообще согласен
   // получать уведомления. Правила решают, какие события каким каналом —
@@ -79,8 +80,9 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<void> {
     return every === undefined ? true : every.enabled;
   });
 
+  let created = 0;
   for (const channel of channels) {
-    await db.notificationOutbox.createMany({
+    const { count } = await db.notificationOutbox.createMany({
       // Ключ уникален, поэтому повторная постановка молча пропускается:
       // это и есть идемпотентность, ради которой ключ заведён.
       data: {
@@ -94,7 +96,9 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<void> {
       },
       skipDuplicates: true,
     });
+    created += count;
   }
+  return created;
 }
 
 /**
@@ -144,6 +148,8 @@ const MAX_ATTEMPTS = 5;
 
 /** Адреса нет: заявка обезличена либо оставлен телефон. */
 const NO_ADDRESS = 'адрес заявителя недоступен';
+/** Получатель закрыт или отключил канал после постановки (решение Р-246). */
+const RECIPIENT_OFF = 'получатель отключил канал или доступ закрыт';
 
 /** Через сколько проверить строку, ждущую настройки канала. */
 const CHANNEL_OFF_DELAY_MS = 60 * 60 * 1000;
@@ -172,6 +178,14 @@ async function sendTelegram(chatId: string, text: string): Promise<{ ok: boolean
     return { ok: true };
   } catch (e) {
     return { ok: false, error: String(e).slice(0, 300) };
+  }
+}
+
+/** Ответ бота в чат: исход привязки (решение Р-246). Отказ канала не роняет маршрут. */
+export async function telegramSay(chatId: string, text: string): Promise<void> {
+  const result = await sendTelegram(chatId, text);
+  if (!result.ok && result.error !== CHANNEL_OFF) {
+    console.error('[telegram] ответ в чат не ушёл', result.error);
   }
 }
 
@@ -226,7 +240,15 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     where: { id: { in: claimed.map((row) => row.id) } },
     orderBy: { createdAt: 'asc' },
     include: {
-      user: { select: { email: true, telegramChatId: true } },
+      user: {
+        select: {
+          email: true,
+          telegramChatId: true,
+          status: true,
+          notifyEmail: true,
+          notifyTelegram: true,
+        },
+      },
       lead: { select: { contactKind: true, contact: true } },
       project: { select: { code: true } },
     },
@@ -236,6 +258,22 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
   let failed = 0;
 
   for (const item of pending) {
+    // Адресат перепроверяется в момент отправки: приостановленный после
+    // постановки или отключивший канал больше писем не получает. Прежде
+    // очередь отправляла всё, что в ней лежало (решение Р-246).
+    const recipientOff =
+      item.user !== null &&
+      (item.user.status !== 'ACTIVE' ||
+        (item.channel === 'EMAIL' && !item.user.notifyEmail) ||
+        (item.channel === 'TELEGRAM' && !item.user.notifyTelegram));
+    if (recipientOff) {
+      await prisma.notificationOutbox.update({
+        where: { id: item.id },
+        data: { state: 'FAILED', lastError: RECIPIENT_OFF },
+      });
+      continue;
+    }
+
     // Адрес заявителя читается из заявки сейчас, а не при постановке:
     // обезличенная за это время заявка адреса уже не даст (решение Р-217).
     const address = item.user?.email ?? (item.lead === null ? null : leadAddress(item.lead));
@@ -332,7 +370,10 @@ export async function enqueueDeadlineReminders(): Promise<number> {
   for (const stage of stages) {
     const userId = stage.project.client.userId;
     if (userId === null) continue;
-    await enqueue(prisma, {
+    // Считаются новые строки, а не попытки: прежде счётчик рос на каждом
+    // прогоне, и сценарий расписания писал строку в журнал каждую минуту
+    // (решение Р-246).
+    queued += await enqueue(prisma, {
       userId,
       projectId: stage.project.id,
       eventKind: 'DEADLINE_IN_3_DAYS',
@@ -343,7 +384,6 @@ export async function enqueueDeadlineReminders(): Promise<number> {
         'Если от вас что-то требуется, это видно на главном экране кабинета.',
       dedupKey: `stage:${stage.id}:deadline:${today}`,
     });
-    queued += 1;
   }
   return queued;
 }
@@ -485,7 +525,13 @@ export async function leadDeliveryDigest(actor: Actor): Promise<LeadDeliveryDige
   const broken = { ok: false, createdAt: { gte: windowStart }, NOT: { error: CHANNEL_OFF } };
 
   const [leadsLastDay, deliveredLastDay, lastOk, failed, channelOff, failures] = await Promise.all([
-    prisma.lead.count({ where: { createdAt: { gte: dayAgo } } }),
+    // Сравнимо с доставками: машинным заявкам доставка не запускается, а
+    // обращения из кабинета идут через очередь, не через `Delivery`.
+    // Прежде они входили в счёт, и расхождение выглядело отказом канала
+    // (решение Р-245).
+    prisma.lead.count({
+      where: { createdAt: { gte: dayAgo }, status: { not: 'SPAM' }, source: { not: 'cabinet' } },
+    }),
     prisma.delivery.count({ where: { ok: true, createdAt: { gte: dayAgo } } }),
     prisma.delivery.findFirst({
       where: { ok: true },
@@ -536,9 +582,14 @@ export async function retryFailed(actor: Actor, id: string, ip?: string | null):
   ensure(actor, 'AUDIT_VIEW');
   const row = await prisma.notificationOutbox.findUnique({
     where: { id },
-    select: { id: true, state: true, projectId: true, eventKind: true },
+    select: { id: true, state: true, projectId: true, eventKind: true, createdAt: true },
   });
   if (row === null || row.state !== 'FAILED') return;
+  // Напоминание о сроке, повторённое через неделю, сообщало бы «срок через
+  // три дня» после срока (решение Р-246).
+  if (row.eventKind.startsWith('DEADLINE_') && Date.now() - row.createdAt.getTime() > 86_400_000) {
+    throw new Error('Напоминание о сроке старше суток не повторяется: срок уже другой');
+  }
 
   await prisma.notificationOutbox.update({
     where: { id: row.id },

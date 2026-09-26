@@ -814,11 +814,27 @@ export async function mergeClients(
   ensure(actor, 'IMPORT_RUN');
   if (sourceId === targetId) throw new Error('Карточка сводится сама с собой');
 
+  const card = { id: true, erasedAt: true, mergedIntoId: true, userId: true } as const;
   const [source, target] = await Promise.all([
-    prisma.clientProfile.findUnique({ where: { id: sourceId }, select: { id: true } }),
-    prisma.clientProfile.findUnique({ where: { id: targetId }, select: { id: true } }),
+    prisma.clientProfile.findUnique({ where: { id: sourceId }, select: card }),
+    prisma.clientProfile.findUnique({ where: { id: targetId }, select: card }),
   ]);
   if (source === null || target === null) throw new Error('Карточка не найдена');
+  // Сводятся только живые карточки. Прежде проверок не было: сведение
+  // A→B, а затем B→A выводило обе карточки из всех перечней, и требование
+  // об удалении исполнить было не по чему; обезличенная карточка получала
+  // работы с живыми данными (решение Р-245).
+  if (source.erasedAt !== null || target.erasedAt !== null) {
+    throw new Error('Обезличенная карточка не сводится');
+  }
+  if (source.mergedIntoId !== null || target.mergedIntoId !== null) {
+    throw new Error('Карточка уже сведена в другую');
+  }
+  // У карточки с учётной записью клиент входит в кабинет: после сведения
+  // он потерял бы все свои работы — видит он работы своей карточки.
+  if (source.userId !== null) {
+    throw new Error('У сводимой карточки есть вход в кабинет: сводите в неё, а не её');
+  }
 
   const moved = await prisma.$transaction(async (tx) => {
     const { count } = await tx.project.updateMany({
@@ -841,6 +857,46 @@ export async function mergeClients(
     payload: { into: targetId, projects: moved },
   });
   return { moved };
+}
+
+/**
+ * Карточки, похожие на одного человека: одинаковое ФИО без пробелов и
+ * с «ё» как «е» — «АльзалзалиНадир» и «Альзалзали Надир».
+ *
+ * Прежде блок сведения показывался по совпадению ФИО в книге — а такие
+ * строки при переносе и так ложатся на одну карточку, — и просил ввести
+ * идентификаторы карточек, которые нигде не выводятся (решение Р-245).
+ */
+export async function mergeCandidates(actor: Actor) {
+  ensure(actor, 'IMPORT_RUN');
+  const cards = await prisma.clientProfile.findMany({
+    where: { erasedAt: null, mergedIntoId: null },
+    orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      fullName: true,
+      normalizedName: true,
+      userId: true,
+      _count: { select: { projects: true } },
+    },
+  });
+  const groups = new Map<string, typeof cards>();
+  for (const card of cards) {
+    const key = card.normalizedName.replace(/ё/gu, 'е').replace(/\s+/gu, '');
+    const list = groups.get(key) ?? [];
+    list.push(card);
+    groups.set(key, list);
+  }
+  return [...groups.values()]
+    .filter((list) => list.length > 1)
+    .map((list) =>
+      list.map((card) => ({
+        id: card.id,
+        fullName: card.fullName,
+        projects: card._count.projects,
+        hasAccount: card.userId !== null,
+      })),
+    );
 }
 
 /** Приведение написания ФИО к виду поиска — тем же правилом, что и разбор. */

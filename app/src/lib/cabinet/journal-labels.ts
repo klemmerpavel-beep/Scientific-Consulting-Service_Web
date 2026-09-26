@@ -10,6 +10,8 @@
  * ищут и сверяют. На экране стоит название.
  */
 
+import { formatAmount } from './money.ts';
+
 const ACTIONS: Record<string, string> = {
   ACCESS_LINK_ISSUED: 'Выдана ссылка входа',
   CONTACT_ADDED: 'Добавлен способ связи',
@@ -48,6 +50,8 @@ const ACTIONS: Record<string, string> = {
   STAGE_TEMPLATE_REMOVED: 'Этап шаблона снят',
   STAGE_TEMPLATE_SAVED: 'Этап шаблона сохранён',
   TRANCHE_STATUS_CHANGED: 'Изменено состояние транша',
+  TRANCHE_ADDED: 'Заведён транш',
+  TRANCHE_REMOVED: 'Удалён плановый транш',
   USER_CREATED: 'Заведена учётная запись',
   USER_ROLE_CHANGED: 'Изменена роль',
   USER_STATUS_CHANGED: 'Изменено состояние доступа',
@@ -145,6 +149,11 @@ const FIELDS: Record<string, string> = {
   code: 'код',
   title: 'название',
   amount: 'сумма',
+  total: 'сумма договора',
+  totalFrom: 'сумма была',
+  numberFrom: 'номер был',
+  paidOn: 'дата оплаты',
+  plannedDate: 'срок',
   status: 'состояние',
   role: 'роль',
   email: 'почта',
@@ -165,6 +174,18 @@ const FIELDS: Record<string, string> = {
   year: 'год',
 };
 
+/** Поля с суммой: журнал хранит их строкой копеек, bigint в JSON не кладётся. */
+const MONEY_KEYS = new Set(['amount', 'total', 'totalFrom']);
+
+/** Значение поля для человека: рубли вместо копеек, «да»/«нет» вместо true/false. */
+function valueLabel(key: string, value: unknown): string {
+  if (typeof value === 'boolean') return value ? 'да' : 'нет';
+  if (typeof value === 'string' && MONEY_KEYS.has(key) && /^-?\d+$/u.test(value)) {
+    return formatAmount(BigInt(value));
+  }
+  return String(value);
+}
+
 export function detailsLabel(payload: unknown): string {
   const parts = flatten(payload);
   return parts.length === 0 ? '—' : parts.join(' · ');
@@ -184,7 +205,8 @@ function flatten(value: unknown, prefix = ''): string[] {
     if (inner !== null && typeof inner === 'object' && !Array.isArray(inner)) {
       out.push(...flatten(inner, `${name}: `));
     } else if (inner !== null && inner !== undefined && String(inner).length > 0) {
-      out.push(`${name} ${String(inner)}`);
+      // Суммы — рублями, признаки — «да»/«нет» (решения Р-242, Р-244).
+      out.push(`${name} ${valueLabel(key, inner)}`);
     }
   }
   return out;

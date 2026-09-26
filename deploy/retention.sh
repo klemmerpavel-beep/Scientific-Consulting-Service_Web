@@ -45,13 +45,32 @@ case "$DUE" in
     ;;
 esac
 
+# Файлы вложений удаляются до строк заявок. Удаление строки каскадом
+# убирает и запись вложения, но объект в хранилище оставался навсегда — и
+# каждую ночь уходил в резервную копию: персональные данные без владельца и
+# без срока, вопреки тому же п. 7.1 (решение Р-246). Ключ вложения — путь
+# внутри каталога хранилища; ключ с «..» или абсолютный не трогается.
+SQL_KEYS="SELECT a.\"storageKey\" FROM \"LeadAttachment\" a JOIN \"Lead\" l ON l.id = a.\"leadId\" WHERE a.\"purgedAt\" IS NULL AND l.\"status\" <> 'CONTRACTED' AND l.\"createdAt\" < now() - interval '$KEEP_MONTHS months';"
+
+# Без раннего выхода: прежде при нуле истёкших заявок скрипт завершался
+# здесь, и чистка служебных строк кабинета ниже не выполнялась почти
+# никогда (решение Р-246).
 if [ "$DUE" -eq 0 ]; then
   echo "$(date -Is) срок хранения не истёк ни у одной заявки"
-  exit 0
+else
+  FILES_REMOVED=0
+  for KEY in $(run "$SQL_KEYS"); do
+    case "$KEY" in
+      /*|*..*) echo "$(date -Is) ВНИМАНИЕ: ключ вложения вне хранилища пропущен: $KEY" >&2; continue ;;
+    esac
+    if [ -f "$DIR/storage/$KEY" ]; then
+      rm -f "$DIR/storage/$KEY"
+      FILES_REMOVED=$((FILES_REMOVED + 1))
+    fi
+  done
+  run "$SQL_DELETE" > /dev/null
+  echo "$(date -Is) удалено заявок с истёкшим сроком хранения: $DUE, файлов вложений: $FILES_REMOVED"
 fi
-
-run "$SQL_DELETE" > /dev/null
-echo "$(date -Is) удалено заявок с истёкшим сроком хранения: $DUE"
 
 # ── Кабинет: погашенные ссылки входа и отработавшие сессии ────────────────
 #

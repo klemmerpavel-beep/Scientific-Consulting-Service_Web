@@ -1,3 +1,4 @@
+import { flashText } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -69,6 +70,8 @@ export default async function DirectoryScreen({
   if (!can(actor, 'DIRECTORY_EDIT')) redirect('/cabinet/projects');
 
   const sp = await searchParams;
+  // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
+  const failure = await flashText(sp.error);
   const tab: Tab = TABS.includes(sp.tab as Tab) ? (sp.tab as Tab) : 'types';
 
   // Типы нужны и вкладке шаблонов — выбором в форме. Остальные выборки
@@ -99,10 +102,10 @@ export default async function DirectoryScreen({
         />
       </FilterBar>
 
-      {sp.error === undefined ? null : (
+      {failure === undefined ? null : (
         <div style={{ marginBottom: 20 }}>
           <Notice tone="error" role="alert">
-            {decodeURIComponent(sp.error)}
+            {failure}
           </Notice>
         </div>
       )}

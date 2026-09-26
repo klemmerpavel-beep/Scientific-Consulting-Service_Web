@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { foldersFor, projectFolder, safeSegment, tablePath, versionPath, webdavUrl }
+import { foldersFor, materialFolders, projectFolder, safeSegment, tablePath, versionPath, webdavUrl }
   from '../src/lib/disk/paths.ts';
 import { formatManifest, parseManifest, planSync } from '../src/lib/disk/plan.ts';
 import { csv, rub } from '../src/lib/disk/table.ts';
@@ -174,5 +174,36 @@ describe('разговор по WebDAV', () => {
     const { transport } = fake([404]);
     const disk = new YandexDisk({ ...opts, transport });
     await disk.remove('Работы/PD-1/м/v1 — a.docx');
+  });
+});
+
+describe('зеркало: формулы, эмодзи на границе, одноимённые материалы (решение Р-246)', () => {
+  it('значение-формула в таблице получает апостроф, отрицательная сумма — нет', () => {
+    const text = csv(['Имя', 'Сумма'], [['=HYPERLINK("http://evil/")', '-5,00'], ['@cmd', '+1']]);
+    assert.match(text, /"'=HYPERLINK\(""http:\/\/evil\/""\)"/u);
+    assert.match(text, /"-5,00"/u);
+    assert.match(text, /"'@cmd"/u);
+    assert.match(text, /"'\+1"/u);
+  });
+
+  it('обрезка не разрывает эмодзи, адрес WebDAV собирается', () => {
+    const name = `${'а'.repeat(59)}😀${'б'.repeat(30)}.docx`;
+    const cut = safeSegment(name, 70);
+    assert.ok(!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/u.test(cut), 'одиночный суррогат');
+    assert.doesNotThrow(() => webdavUrl('https://webdav.example', 'Зеркало', `Работы/${cut}`));
+  });
+
+  it('одноимённые материалы одной работы получают разные папки; первый сохраняет прежнюю', () => {
+    const at = (s: number) => new Date(Date.UTC(2026, 8, 1, 0, 0, s));
+    const folders = materialFolders([
+      { id: 'b', createdAt: at(2), title: 'Счёт.pdf', project: { code: 'PD-1' } },
+      { id: 'a', createdAt: at(1), title: 'Счёт.pdf', project: { code: 'PD-1' } },
+      { id: 'c', createdAt: at(3), title: 'Счёт.pdf', project: { code: 'PD-2' } },
+    ]);
+    assert.equal(folders.get('a'), 'Счёт.pdf');
+    assert.equal(folders.get('b'), 'Счёт.pdf (2)');
+    assert.equal(folders.get('c'), 'Счёт.pdf');
+    const paths = ['a', 'b'].map((id) => versionPath('PD-1', folders.get(id)!, 1, 'Счёт.pdf'));
+    assert.notEqual(paths[0], paths[1]);
   });
 });

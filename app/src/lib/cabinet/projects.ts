@@ -79,6 +79,11 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
   if (lead.status === 'DECLINED') {
     throw new Error('Заявка отклонена, заявителю уже ответили: работа заводится по новой заявке');
   }
+  // Отзыв и обращение без контакта в работу не разворачиваются: учётная
+  // запись с пустой почтой собрала бы на себя все такие работы (Р-245).
+  if (lead.form === 'review' || lead.contact.trim() === '') {
+    throw new Error('Это отзыв или обращение без контакта: работа по нему не заводится');
+  }
 
   const fullName = lead.name?.trim() || 'Клиент без имени';
   const normalized = normalizeName(fullName);
@@ -655,7 +660,7 @@ export async function setProjectStatus(actor: Actor, projectId: string, to: Proj
   const ref = await projectRef(projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PROJECT_EDIT', ref);
-  if (!(to in PROJECT_STATUS_LABEL)) throw new Error('Неизвестное состояние работы');
+  if (!Object.hasOwn(PROJECT_STATUS_LABEL, to)) throw new Error('Неизвестное состояние работы');
 
   const current = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },

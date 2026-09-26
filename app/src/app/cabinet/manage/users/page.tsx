@@ -1,3 +1,4 @@
+import { flashText } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -67,6 +68,8 @@ export default async function UsersScreen({
   if (!can(actor, 'USER_MANAGE')) redirect('/cabinet/projects');
 
   const flags = await searchParams;
+  // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
+  const failure = await flashText(flags.error);
   const role = ROLES.includes(flags.role as Role) ? (flags.role as Role) : undefined;
   const status = STATES.includes(flags.status as UserState)
     ? (flags.status as UserState)
@@ -104,10 +107,10 @@ export default async function UsersScreen({
         note="Роль назначается здесь и нигде больше: она не приходит с формы входа и не меняется самим пользователем. При смене роли и при приостановке доступа все сессии отзываются."
       />
 
-      {flags.error === undefined ? null : (
+      {failure === undefined ? null : (
         <Block as="div" style={{ marginBottom: 20 }}>
           <Notice tone="error" role="alert">
-            {decodeURIComponent(flags.error)}
+            {failure}
           </Notice>
         </Block>
       )}

@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { bindTelegram } from '../../../lib/cabinet/auth';
+import { telegramSay } from '../../../lib/cabinet/outbox';
+import { sameSecret } from '../../../lib/cabinet/token';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,7 +17,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!secret || request.headers.get('x-telegram-bot-api-secret-token') !== secret) {
+  // Сравнение за постоянное время (решение Р-246).
+  if (!secret || !sameSecret(request.headers.get('x-telegram-bot-api-secret-token'), secret)) {
     return new NextResponse('Не найдено', { status: 404 });
   }
 
@@ -31,9 +34,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: true });
   }
 
+  // Бот отвечает на /start исходом привязки. Прежде он молчал и при
+  // успехе, и при устаревшей ссылке: человек не понимал, подключены ли
+  // уведомления (решение Р-246). Больше бот не говорит ничего.
   const payload = text.slice('/start'.length).trim();
-  if (payload.length === 0) return NextResponse.json({ ok: true });
+  if (payload.length === 0) {
+    await telegramSay(
+      String(chatId),
+      'Чтобы получать уведомления, откройте в личном кабинете ProDisser раздел «Уведомления» и нажмите «Привязать Telegram».',
+    );
+    return NextResponse.json({ ok: true });
+  }
 
-  await bindTelegram(payload, String(chatId));
+  const bound = await bindTelegram(payload, String(chatId));
+  await telegramSay(
+    String(chatId),
+    bound
+      ? 'Готово: уведомления личного кабинета ProDisser будут приходить сюда. Отключить их можно в кабинете, в разделе «Уведомления».'
+      : 'Ссылка устарела или уже использована. Получите новую в личном кабинете, в разделе «Уведомления».',
+  );
   return NextResponse.json({ ok: true });
 }

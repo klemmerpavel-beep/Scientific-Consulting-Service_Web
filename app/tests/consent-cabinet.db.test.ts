@@ -159,6 +159,10 @@ describe('согласие в кабинете', { skip: !enabled }, async () =>
   it('ссылка привязки Telegram — без точки, и бот её принимает', async () => {
     process.env.TELEGRAM_BOT_USERNAME = 'prodisser_test_bot';
     try {
+      // Без секрета вебхука бот не примет /start: ссылка не выдаётся (Р-246).
+      delete process.env.TELEGRAM_WEBHOOK_SECRET;
+      assert.equal(await createTelegramBindLink(ids.invited!), null);
+      process.env.TELEGRAM_WEBHOOK_SECRET = 'секрет-проверки';
       const link = await createTelegramBindLink(ids.invited!);
       const start = new URL(link!).searchParams.get('start')!;
       assert.match(start, /^[A-Za-z0-9_-]{1,64}$/u, 'параметр запуска вне алфавита Telegram');
@@ -167,6 +171,7 @@ describe('согласие в кабинете', { skip: !enabled }, async () =>
       assert.equal(user.telegramChatId, `9${String(stamp).slice(-8)}`);
     } finally {
       delete process.env.TELEGRAM_BOT_USERNAME;
+      delete process.env.TELEGRAM_WEBHOOK_SECRET;
       await prisma.user.update({ where: { id: ids.invited! }, data: { telegramChatId: null } });
     }
   });

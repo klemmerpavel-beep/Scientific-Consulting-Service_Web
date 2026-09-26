@@ -145,7 +145,7 @@ export default async function StageScreen({
         }
       />
 
-      <ActionError text={(await searchParams).error} />
+      <ActionError id={(await searchParams).error} />
 
       {stage.blockedReason === null ? null : (
         <Block as="div" style={{ marginBottom: 24 }}>

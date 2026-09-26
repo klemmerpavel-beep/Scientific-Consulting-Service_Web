@@ -1,9 +1,16 @@
 import { prisma } from '../db.ts';
 import { can, ensure, scopePayouts, type Actor } from './access.ts';
 import { record } from './audit.ts';
+import { now as today } from './clock.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
-import { STATUS_LABEL, canChangeTrancheStatus, isTrancheStatus, type TrancheStatus } from './money.ts';
+import {
+  STATUS_LABEL,
+  canChangeTrancheStatus,
+  isTrancheStatus,
+  outstandingOf,
+  type TrancheStatus,
+} from './money.ts';
 
 export { formatAmount, parseAmount, STATUS_LABEL, type TrancheStatus } from './money.ts';
 
@@ -18,6 +25,43 @@ export { formatAmount, parseAmount, STATUS_LABEL, type TrancheStatus } from './m
  * деньгам не применяется: 0.1 + 0.2 в нём не равно 0.3, и расхождение
  * всплывает на сверке, а не на сложении.
  */
+
+/**
+ * Можно ли писать деньги по работе (решение Р-244).
+ *
+ * По обезличенному клиенту новые денежные записи не заводятся: название
+ * транша и комментарий начисления — свободный текст, и туда попадала бы
+ * фамилия после исполнения требования субъекта (Р-234). У отменённой
+ * работы не заводятся новые транши и начисления — оплату уже выставленных
+ * траншей отметить можно (`fresh: false`).
+ */
+async function ensureMoneyWritable(projectId: string, fresh: boolean): Promise<void> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { status: true, client: { select: { erasedAt: true } } },
+  });
+  if (project === null) throw new Error('Проект не найден');
+  if (project.client.erasedAt !== null) {
+    throw new Error('Данные клиента удалены по его требованию: новые денежные записи по работе не заводятся');
+  }
+  if (fresh && project.status === 'CANCELLED') {
+    throw new Error('Работа отменена: новые транши и начисления по ней не заводятся');
+  }
+}
+
+/**
+ * Дата поступления или выплаты — не в будущем по часам кабинета и не
+ * раньше 2000 года. Опечатка «2062» уводила оплату в строку 2062 года
+ * итогов и мимо отчёта за период (решение Р-244).
+ */
+function ensurePastDate(on: Date, what: string): void {
+  const now = today();
+  const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  if (on.getTime() > end) throw new Error(`${what} не может быть позже сегодняшнего дня`);
+  if (on.getUTCFullYear() < 2000) throw new Error(`${what} указана неверно`);
+}
+
+const money = (value: bigint) => value.toString();
 
 export interface ContractInput {
   readonly projectId: string;
@@ -36,6 +80,27 @@ export async function saveContract(actor: Actor, input: ContractInput) {
   const number = input.number.trim();
   if (number.length === 0) throw new Error('Номер договора не указан');
 
+  const before = await prisma.contract.findUnique({
+    where: { projectId: input.projectId },
+    include: { tranches: { select: { amount: true, status: true } } },
+  });
+  await ensureMoneyWritable(input.projectId, before === null);
+  // Сумма договора не опускается ниже полученного: иначе остаток ушёл бы в
+  // минус, а переплата выглядела бы долгом наоборот (решение Р-244).
+  if (before !== null) {
+    const received = before.tranches
+      .filter((t) => t.status === 'PAID')
+      .reduce((acc, t) => acc + t.amount, 0n);
+    if (input.totalAmount < received) {
+      throw new Error('Сумма договора меньше уже полученного по нему');
+    }
+  }
+  const taken = await prisma.contract.findFirst({
+    where: { number, projectId: { not: input.projectId } },
+    select: { id: true },
+  });
+  if (taken !== null) throw new Error(`Договор с номером «${number}» уже заведён по другой работе`);
+
   const contract = await prisma.contract.upsert({
     where: { projectId: input.projectId },
     create: {
@@ -47,12 +112,22 @@ export async function saveContract(actor: Actor, input: ContractInput) {
     update: { number, signedOn: input.signedOn ?? null, totalAmount: input.totalAmount },
   });
 
+  // Правка договора — прежние номер и сумма рядом с новыми: иначе по
+  // журналу не восстановить, с чего начиналось (решение Р-244).
   await record(actor, {
     action: 'CONTRACT_SAVED',
     objectType: 'Contract',
     objectId: contract.id,
     projectId: input.projectId,
-    payload: { number, total: input.totalAmount.toString() },
+    payload:
+      before === null
+        ? { number, total: money(input.totalAmount) }
+        : {
+            number,
+            total: money(input.totalAmount),
+            numberFrom: before.number,
+            totalFrom: money(before.totalAmount),
+          },
   });
   return contract;
 }
@@ -82,6 +157,8 @@ export async function addTranche(actor: Actor, input: TrancheInput) {
   if (input.amount <= 0n) throw new Error('Сумма транша должна быть больше нуля');
   const title = input.title.trim();
   if (title.length === 0) throw new Error('Назначение транша не указано');
+  if (title.length > 300) throw new Error('Назначение транша — не длиннее 300 знаков');
+  await ensureMoneyWritable(contract.projectId, true);
 
   const tranche = await prisma.tranche.create({
     data: {
@@ -89,6 +166,17 @@ export async function addTranche(actor: Actor, input: TrancheInput) {
       title,
       amount: input.amount,
       plannedDate: input.plannedDate ?? null,
+    },
+  });
+  // Заведение транша прежде не оставляло следа в журнале вовсе (Р-244).
+  await record(actor, {
+    action: 'TRANCHE_ADDED',
+    objectType: 'Tranche',
+    objectId: tranche.id,
+    projectId: contract.projectId,
+    payload: {
+      amount: money(input.amount),
+      plannedDate: input.plannedDate?.toISOString().slice(0, 10) ?? null,
     },
   });
 
@@ -124,19 +212,31 @@ export async function setTrancheStatus(
   if (status === 'PAID' && (paidOn ?? null) === null) {
     throw new Error('Для оплаченного транша нужна дата поступления');
   }
+  if (status === 'PAID') ensurePastDate(paidOn!, 'Дата поступления');
+  await ensureMoneyWritable(tranche.contract.projectId, false);
 
   const updated = await prisma.$transaction(async (tx) => {
-    const row = await tx.tranche.update({
-      where: { id: trancheId },
+    // Перевод захватывает транш по прежнему статусу. Прежде «Отметить
+    // оплату» и «Списать», пришедшие почти одновременно, проходили оба:
+    // оплата стиралась в «списан» — ровно то, что запретил Р-224
+    // (решение Р-244).
+    const claimed = await tx.tranche.updateMany({
+      where: { id: trancheId, status: tranche.status },
       data: { status, paidOn: status === 'PAID' ? paidOn : null },
     });
+    if (claimed.count === 0) {
+      throw new Error('Статус транша уже изменён другим действием: обновите страницу');
+    }
+    const row = await tx.tranche.findUniqueOrThrow({ where: { id: trancheId } });
 
     const project = await tx.project.findUnique({
       where: { id: tranche.contract.projectId },
       select: { code: true, title: true, client: { select: { userId: true } } },
     });
     const userId = project?.client.userId ?? null;
-    if (userId !== null) {
+    // Списание — внутреннее решение практики, клиенту о нём не пишется
+    // (решение Р-244).
+    if (userId !== null && status !== 'WRITTEN_OFF') {
       await enqueue(tx, {
         userId,
         projectId: tranche.contract.projectId,
@@ -146,7 +246,9 @@ export async function setTrancheStatus(
           `Проект ${project?.code} — ${project?.title}.\n` +
           `Транш «${row.title}» переведён в состояние «${STATUS_LABEL[status]}».\n` +
           'Документы и состояние оплат видны в кабинете.',
-        dedupKey: `tranche:${trancheId}:${status.toLowerCase()}`,
+        // Ключ по моменту перехода: счёт, отозванный и выставленный снова,
+        // прежде не доходил — строка с тем же ключом уже была (Р-244).
+        dedupKey: `tranche:${trancheId}:${status.toLowerCase()}:${row.updatedAt.getTime()}`,
       });
     }
     return row;
@@ -157,9 +259,46 @@ export async function setTrancheStatus(
     objectType: 'Tranche',
     objectId: trancheId,
     projectId: tranche.contract.projectId,
-    payload: { from: tranche.status, to: status },
+    payload: {
+      from: tranche.status,
+      to: status,
+      amount: money(tranche.amount),
+      paidOn: status === 'PAID' ? paidOn!.toISOString().slice(0, 10) : null,
+    },
   });
   return updated;
+}
+
+/**
+ * Убрать транш, ошибочно заведённый: только плановый и без документов.
+ * Прежде ошибку в сумме транша лечило только списание, и опечатка навсегда
+ * оставалась в «Списано» (решение Р-244).
+ */
+export async function removeTranche(actor: Actor, trancheId: string) {
+  const tranche = await prisma.tranche.findUniqueOrThrow({
+    where: { id: trancheId },
+    include: {
+      contract: { select: { projectId: true } },
+      documents: { where: { deletedAt: null }, select: { id: true } },
+    },
+  });
+  const ref = await projectRef(tranche.contract.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'PAYMENT_EDIT', ref);
+  if (tranche.documents.length > 0) {
+    throw new Error('К траншу приложены документы: такой транш не удаляется');
+  }
+  const removed = await prisma.tranche.deleteMany({ where: { id: trancheId, status: 'PLANNED' } });
+  if (removed.count === 0) {
+    throw new Error('Удалить можно только плановый транш: выставленный отзывается, оплаченный остаётся');
+  }
+  await record(actor, {
+    action: 'TRANCHE_REMOVED',
+    objectType: 'Tranche',
+    objectId: trancheId,
+    projectId: tranche.contract.projectId,
+    payload: { amount: money(tranche.amount) },
+  });
 }
 
 /** Начисление эксперту. Сумма вводится вручную: ставки по типам работ нет. */
@@ -177,14 +316,21 @@ export async function addPayout(
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PAYOUT_MANAGE', ref);
   if (input.amount <= 0n) throw new Error('Сумма начисления должна быть больше нуля');
+  // Начисление без исполнителя уменьшало маржу, а видеть его было некому
+  // (решение Р-244).
+  const expertId = input.expertId ?? ref.expertId;
+  if (expertId === null) throw new Error('Сначала назначьте исполнителя работы');
+  const comment = input.comment?.trim() || null;
+  if (comment !== null && comment.length > 500) throw new Error('Комментарий — не длиннее 500 знаков');
+  await ensureMoneyWritable(input.projectId, true);
 
   const payout = await prisma.expertPayout.create({
     data: {
       projectId: input.projectId,
       stageId: input.stageId ?? null,
-      expertId: input.expertId ?? ref.expertId,
+      expertId,
       amount: input.amount,
-      comment: input.comment ?? null,
+      comment,
     },
   });
   await record(actor, {
@@ -192,6 +338,7 @@ export async function addPayout(
     objectType: 'ExpertPayout',
     objectId: payout.id,
     projectId: input.projectId,
+    payload: { amount: money(input.amount) },
   });
   return payout;
 }
@@ -201,16 +348,23 @@ export async function markPayoutPaid(actor: Actor, payoutId: string, paidOn: Dat
   const ref = await projectRef(payout.projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PAYOUT_MANAGE', ref);
+  ensurePastDate(paidOn, 'Дата выплаты');
 
-  const updated = await prisma.expertPayout.update({
-    where: { id: payoutId },
+  // Отметка захватывает начисление в состоянии «начислено». Прежде повторная
+  // отметка переписывала дату выплаты, и расход переезжал в другой год
+  // итогов задним числом (решение Р-244).
+  const claimed = await prisma.expertPayout.updateMany({
+    where: { id: payoutId, status: 'ACCRUED' },
     data: { status: 'PAID', paidOn },
   });
+  if (claimed.count === 0) throw new Error('Начисление уже отмечено выплаченным');
+  const updated = await prisma.expertPayout.findUniqueOrThrow({ where: { id: payoutId } });
   await record(actor, {
     action: 'PAYOUT_PAID',
     objectType: 'ExpertPayout',
     objectId: payoutId,
     projectId: payout.projectId,
+    payload: { amount: money(payout.amount), paidOn: paidOn.toISOString().slice(0, 10) },
   });
   return updated;
 }
@@ -263,9 +417,15 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
     .filter((p) => p.status === 'PAID')
     .reduce((acc, p) => acc + p.amount, 0n);
 
-  // Маржа нигде не хранится. У исторических строк без исполнителя начислений
-  // нет, и маржа сама собой равна сумме договора — отдельной ветви не нужно.
-  return { ...base, payoutsAccrued: accrued, payoutsPaid: paid, margin: contract.totalAmount - accrued };
+  // Маржа нигде не хранится: договор без списанного и без начислений.
+  // Списанное — деньги, которых уже не ждут; прежде маржа их учитывала, и
+  // работа в убытке показывалась прибыльной (решение Р-244).
+  return {
+    ...base,
+    payoutsAccrued: accrued,
+    payoutsPaid: paid,
+    margin: contract.totalAmount - base.writtenOff - accrued,
+  };
 }
 
 /** Сводка по практике для руководителя. */
@@ -292,9 +452,12 @@ export async function financeSummary(actor: Actor) {
     const received = contract.tranches
       .filter((t) => t.status === 'PAID')
       .reduce((acc, t) => acc + t.amount, 0n);
-    const awaiting = contract.tranches
-      .filter((t) => t.status === 'PLANNED' || t.status === 'INVOICED')
-      .reduce((acc, t) => acc + t.amount, 0n);
+    // «К получению» — договор без полученного и списанного, той же
+    // функцией, что главная и отчёт. Прежде здесь суммировались только
+    // заведённые незакрытые транши: договор без траншей давал ноль, выпадал
+    // из отбора «С остатком», и экран писал «все работы оплачены» при не
+    // полученных деньгах (решение Р-244).
+    const awaiting = outstandingOf(contract.totalAmount, contract.tranches);
     const lost = contract.tranches
       .filter((t) => t.status === 'WRITTEN_OFF')
       .reduce((acc, t) => acc + t.amount, 0n);
@@ -310,7 +473,8 @@ export async function financeSummary(actor: Actor) {
       awaiting,
       lost,
       accrued,
-      margin: contract.totalAmount - accrued,
+      // Договор без списанного и без начислений (решение Р-244).
+      margin: contract.totalAmount - lost - accrued,
     };
   });
 

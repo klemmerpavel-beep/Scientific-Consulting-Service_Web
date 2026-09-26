@@ -64,8 +64,14 @@ describe('деньги коротко', { skip: !enabled }, async () => {
         status: 'ACTIVE',
       },
     });
+    before0 = await moneyBrief(actorOf(boss.id, 'HEAD'));
+
+    // Договор заводится после замера: «к получению» считается от договора
+    // (договор без полученного и списанного — решения Р-236, Р-244), и
+    // договор, заведённый до замера, вошёл бы в него целиком. Сумма равна
+    // сумме траншей.
     const contract = await prisma.contract.create({
-      data: { projectId: project.id, number: `MB-${stamp}`, totalAmount: 100_000_00n },
+      data: { projectId: project.id, number: `MB-${stamp}`, totalAmount: 170_000_00n },
     });
     Object.assign(ids, {
       boss: boss.id,
@@ -75,8 +81,6 @@ describe('деньги коротко', { skip: !enabled }, async () => {
       project: project.id,
       contract: contract.id,
     });
-
-    before0 = await moneyBrief(actorOf(boss.id, 'HEAD'));
 
     const now = Date.now();
     await prisma.tranche.createMany({
@@ -161,7 +165,9 @@ describe('деньги коротко', { skip: !enabled }, async () => {
     });
     try {
       const after = await moneyBrief(actorOf(ids.boss!, 'HEAD'));
-      assert.equal(after.awaiting - before.awaiting, 1_000_00n);
+      // Остаток считается от договора: транш в его пределах остатка не
+      // меняет, он лишь назначает день платежа (решение Р-244).
+      assert.equal(after.awaiting - before.awaiting, 0n);
       assert.equal(after.overdue - before.overdue, 0n, 'транш просрочен в день срока');
     } finally {
       await prisma.tranche.delete({ where: { id: today.id } });

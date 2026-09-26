@@ -1,3 +1,4 @@
+import { flashText } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -122,7 +123,7 @@ const TOOLS: readonly {
   {
     href: '/cabinet/manage/leads',
     title: 'Все заявки',
-    note: 'Разобрать обращение, найти старое, выгрузить перечень за период. Отбор по состоянию, направлению и сроку.',
+    note: 'Разобрать обращение, найти старое, выгрузить отобранный перечень. Отбор по странице сайта, состоянию и поиску.',
     when: 'Пришло новое обращение либо нужно поднять старое — кто просил, когда и чем закончилось.',
     often: 'Каждый день',
     action: 'REQUEST_MODERATE',
@@ -210,6 +211,8 @@ export default async function ToolsScreen({
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
   const params = await searchParams;
+  // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
+  const failure = await flashText(params.error);
 
   const allowed = TOOLS.filter((tool) => can(actor, tool.action));
   if (allowed.length === 0) redirect('/cabinet/projects');
@@ -260,9 +263,9 @@ export default async function ToolsScreen({
           <Notice>Вопрос отправлен руководителю практики.</Notice>
         </div>
       )}
-      {params.error === undefined ? null : (
+      {failure === undefined ? null : (
         <div style={{ marginBottom: 20 }}>
-          <Notice tone="error">{params.error}</Notice>
+          <Notice tone="error" role="alert">{failure}</Notice>
         </div>
       )}
 

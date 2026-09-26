@@ -5,10 +5,12 @@ import { after } from 'next/server';
 
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { AccessDenied, ensure } from '../../lib/cabinet/access';
+import { withError } from '../../lib/cabinet/flash';
 import {
   consumeLoginToken,
   requestLoginLink,
   revokeSession,
+  createTelegramBindLink,
   unbindTelegram,
 } from '../../lib/cabinet/auth';
 import {
@@ -23,6 +25,7 @@ import {
   addTranche,
   markPayoutPaid,
   saveContract,
+  removeTranche,
   setTrancheStatus,
 } from '../../lib/cabinet/finance';
 import { saveYear } from '../../lib/cabinet/finance-years';
@@ -104,10 +107,6 @@ function reasonOf(error: unknown, fallback: string): string {
   return fallback;
 }
 
-/** Вернуть на экран с отказом: `redirect` бросает, поэтому вызывается вне `try`. */
-function withError(path: string, reason: string): string {
-  return `${path}?error=${encodeURIComponent(reason)}`;
-}
 
 /**
  * Запрос ссылки входа. Ответ одинаков для любого исхода: иначе форма
@@ -153,7 +152,7 @@ export async function approveStage(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось согласовать этап');
   }
-  if (failure !== null) redirect(withError(`/cabinet/stages/${stageId}`, failure));
+  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -168,7 +167,7 @@ export async function changeStageState(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сменить состояние этапа');
   }
-  if (failure !== null) redirect(withError(`/cabinet/stages/${stageId}`, failure));
+  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -182,7 +181,7 @@ export async function commentOnVersion(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить замечание');
   }
-  if (failure !== null) redirect(withError(`/cabinet/stages/${stageId}`, failure));
+  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -224,7 +223,7 @@ export async function uploadMaterialWithNote(form: FormData): Promise<void> {
   const file = form.get('file');
   const code = String(form.get('code') ?? '');
   if (!(file instanceof File) || file.size === 0) {
-    redirect(`/cabinet/projects/${code}?error=${encodeURIComponent('Файл не выбран')}`);
+    redirect(await withError(`/cabinet/projects/${code}`, 'Файл не выбран'));
   }
   const stageId = String(form.get('stageId') ?? '');
   const version = await uploadVersion(
@@ -281,7 +280,7 @@ export async function createStage(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось завести этап');
   }
-  if (failure !== null) redirect(withError(`/cabinet/projects/${code}`, failure));
+  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
   redirect(`/cabinet/projects/${code}`);
 }
 
@@ -300,7 +299,7 @@ export async function saveStage(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить этап');
   }
-  if (failure !== null) redirect(withError(`/cabinet/projects/${code}`, failure));
+  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
   redirect(`/cabinet/projects/${code}`);
 }
 
@@ -324,7 +323,7 @@ export async function moveStageDue(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось перенести срок');
   }
-  if (failure !== null) redirect(withError(`/cabinet/stages/${stageId}`, failure));
+  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -388,7 +387,7 @@ export async function decideOnComment(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось разобрать замечание');
   }
-  if (failure !== null) redirect(withError(`/cabinet/stages/${stageId}`, failure));
+  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -464,7 +463,7 @@ export async function postMessage(form: FormData): Promise<void> {
   const back = String(form.get('back') ?? '');
   const target =
     back === 'project' ? `/cabinet/projects/${code}` : `/cabinet/projects/${code}/messages`;
-  if (failure !== null) redirect(withError(target, failure));
+  if (failure !== null) redirect(await withError(target, failure));
   redirect(target);
 }
 
@@ -490,7 +489,7 @@ export async function addContactChannel(form: FormData): Promise<void> {
     });
   } catch (error) {
     const text = reasonOf(error, 'Не удалось добавить способ связи');
-    redirect(`/cabinet/settings?error=${encodeURIComponent(text)}`);
+    redirect(await withError(`/cabinet/settings`, text));
   }
   redirect('/cabinet/settings?saved=1');
 }
@@ -528,9 +527,22 @@ export async function requestHelp(form: FormData): Promise<void> {
     await askForHelp(actor, String(form.get('text') ?? ''));
   } catch (error) {
     const text = reasonOf(error, 'Не удалось отправить вопрос');
-    redirect(`/cabinet/manage/tools?error=${encodeURIComponent(text)}`);
+    redirect(await withError(`/cabinet/manage/tools`, text));
   }
   redirect('/cabinet/manage/tools?sent=1');
+}
+
+/**
+ * Ссылка привязки Telegram — по нажатию (решение Р-245): метка заводится
+ * здесь, и человек сразу уходит в бота.
+ */
+export async function startTelegramBind(): Promise<void> {
+  const actor = await actorOrRedirect();
+  const link = await createTelegramBindLink(actor.id);
+  if (link === null) {
+    redirect(await withError('/cabinet/settings', 'Telegram не настроен на стороне сервиса'));
+  }
+  redirect(link);
 }
 
 export async function dropTelegram(): Promise<void> {
@@ -551,71 +563,130 @@ export async function saveProjectContract(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
-  await saveContract(actor, {
-    projectId,
-    number: String(form.get('number') ?? ''),
-    signedOn: dateOrNull(form.get('signedOn')),
-    totalAmount: parseAmount(String(form.get('totalAmount') ?? '')),
-  });
-  redirect(`/cabinet/projects/${code}/payments`);
+  const back = `/cabinet/projects/${code}/payments`;
+  let failure: string | null = null;
+  try {
+    await saveContract(actor, {
+      projectId,
+      number: String(form.get('number') ?? ''),
+      signedOn: dateOrNull(form.get('signedOn')),
+      totalAmount: parseAmount(String(form.get('totalAmount') ?? '')),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить договор');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 export async function addContractTranche(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
-  const { exceedsContract } = await addTranche(actor, {
-    contractId: String(form.get('contractId') ?? ''),
-    title: String(form.get('title') ?? ''),
-    amount: parseAmount(String(form.get('amount') ?? '')),
-    plannedDate: dateOrNull(form.get('plannedDate')),
-  });
+  const back = `/cabinet/projects/${code}/payments`;
+  let exceeds = false;
+  let failure: string | null = null;
+  try {
+    const { exceedsContract } = await addTranche(actor, {
+      contractId: String(form.get('contractId') ?? ''),
+      title: String(form.get('title') ?? ''),
+      amount: parseAmount(String(form.get('amount') ?? '')),
+      plannedDate: dateOrNull(form.get('plannedDate')),
+    });
+    exceeds = exceedsContract;
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось добавить транш');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
   // Превышение суммы договора показывается на экране, а не теряется
   // (решение Р-224).
-  redirect(`/cabinet/projects/${code}/payments${exceedsContract ? '?exceeds=1' : ''}`);
+  redirect(`${back}${exceeds ? '?exceeds=1' : ''}`);
 }
 
 export async function changeTrancheStatus(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
-  await setTrancheStatus(
-    actor,
-    String(form.get('trancheId') ?? ''),
-    String(form.get('status') ?? '') as TrancheStatus,
-    dateOrNull(form.get('paidOn')),
-  );
-  redirect(`/cabinet/projects/${code}/payments`);
+  const back = `/cabinet/projects/${code}/payments`;
+  let failure: string | null = null;
+  try {
+    await setTrancheStatus(
+      actor,
+      String(form.get('trancheId') ?? ''),
+      String(form.get('status') ?? '') as TrancheStatus,
+      dateOrNull(form.get('paidOn')),
+    );
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сменить статус транша');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** Удалить ошибочно заведённый плановый транш (решение Р-244). */
+export async function dropTranche(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const back = `/cabinet/projects/${code}/payments`;
+  let failure: string | null = null;
+  try {
+    await removeTranche(actor, String(form.get('trancheId') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось удалить транш');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 export async function saveFinanceYear(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const note = String(form.get('note') ?? '').trim();
-  await saveYear(actor, {
-    year: Number(String(form.get('year') ?? '').trim()),
-    revenue: parseAmount(String(form.get('revenue') ?? '')),
-    costs: parseAmount(String(form.get('costs') ?? '')),
-    note: note.length === 0 ? null : note,
-  });
-  redirect('/cabinet/manage/finance/years');
+  const back = '/cabinet/manage/finance/years';
+  let failure: string | null = null;
+  try {
+    await saveYear(actor, {
+      year: Number(String(form.get('year') ?? '').trim()),
+      revenue: parseAmount(String(form.get('revenue') ?? '')),
+      costs: parseAmount(String(form.get('costs') ?? '')),
+      note: note.length === 0 ? null : note,
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить итог года');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 export async function accruePayout(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
-  await addPayout(actor, {
-    projectId: String(form.get('projectId') ?? ''),
-    amount: parseAmount(String(form.get('amount') ?? '')),
-    comment: String(form.get('comment') ?? '') || null,
-  });
-  redirect(`/cabinet/projects/${code}/payments`);
+  const back = `/cabinet/projects/${code}/payments`;
+  let failure: string | null = null;
+  try {
+    await addPayout(actor, {
+      projectId: String(form.get('projectId') ?? ''),
+      amount: parseAmount(String(form.get('amount') ?? '')),
+      comment: String(form.get('comment') ?? '') || null,
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось начислить');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 export async function payPayout(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
-  const paidOn = dateOrNull(form.get('paidOn'));
-  if (paidOn === null) throw new Error('Для выплаты нужна дата');
-  await markPayoutPaid(actor, String(form.get('payoutId') ?? ''), paidOn);
-  redirect(`/cabinet/projects/${code}/payments`);
+  const back = `/cabinet/projects/${code}/payments`;
+  let failure: string | null = null;
+  try {
+    const paidOn = dateOrNull(form.get('paidOn'));
+    if (paidOn === null) throw new Error('Для выплаты нужна дата');
+    await markPayoutPaid(actor, String(form.get('payoutId') ?? ''), paidOn);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отметить выплату');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 /**
@@ -658,12 +729,19 @@ export async function applyOrderBook(form: FormData): Promise<void> {
 export async function mergeClientCards(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const batchId = String(form.get('batchId') ?? '');
-  await mergeClients(
-    actor,
-    String(form.get('sourceId') ?? ''),
-    String(form.get('targetId') ?? ''),
-  );
-  redirect(`/cabinet/manage/import/${batchId}?merged=1`);
+  const back = `/cabinet/manage/import/${batchId}`;
+  let failure: string | null = null;
+  try {
+    await mergeClients(
+      actor,
+      String(form.get('sourceId') ?? ''),
+      String(form.get('targetId') ?? ''),
+    );
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось свести карточки');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(`${back}?merged=1`);
 }
 
 /** Принять требование субъекта об удалении данных. Исполнение — отдельным действием. */
@@ -709,7 +787,7 @@ export async function inviteUser(form: FormData): Promise<void> {
     });
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось завести запись');
-    redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
+    redirect(await withError(`/cabinet/manage/users`, reason));
   }
   redirect('/cabinet/manage/users?created=1');
 }
@@ -720,7 +798,7 @@ export async function changeUserRole(form: FormData): Promise<void> {
     await setUserRole(actor, String(form.get('userId') ?? ''), String(form.get('role') ?? '') as Role);
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось сменить роль');
-    redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
+    redirect(await withError(`/cabinet/manage/users`, reason));
   }
   redirect('/cabinet/manage/users');
 }
@@ -732,7 +810,7 @@ export async function changeUserStatus(form: FormData): Promise<void> {
     await setUserStatus(actor, String(form.get('userId') ?? ''), status);
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось изменить состояние');
-    redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
+    redirect(await withError(`/cabinet/manage/users`, reason));
   }
   redirect('/cabinet/manage/users');
 }
@@ -775,7 +853,7 @@ export async function updateExpertNda(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отметить договор');
   }
-  if (failure !== null) redirect(withError('/cabinet/manage/users', failure));
+  if (failure !== null) redirect(await withError('/cabinet/manage/users', failure));
   redirect('/cabinet/manage/users');
 }
 
@@ -794,7 +872,7 @@ export async function saveType(form: FormData): Promise<void> {
     });
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось сохранить позицию');
-    redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
+    redirect(await withError(`/cabinet/manage/directory`, reason));
   }
   redirect('/cabinet/manage/directory');
 }
@@ -805,7 +883,7 @@ export async function attachAlias(form: FormData): Promise<void> {
     await addAlias(actor, String(form.get('serviceTypeId') ?? ''), String(form.get('alias') ?? ''));
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось привязать написание');
-    redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
+    redirect(await withError(`/cabinet/manage/directory`, reason));
   }
   redirect('/cabinet/manage/directory');
 }
@@ -818,7 +896,7 @@ export async function detachAlias(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отвязать написание');
   }
-  if (failure !== null) redirect(withError('/cabinet/manage/directory', failure));
+  if (failure !== null) redirect(await withError('/cabinet/manage/directory', failure));
   redirect('/cabinet/manage/directory');
 }
 
@@ -832,25 +910,33 @@ export async function uploadFinanceDocument(form: FormData): Promise<void> {
   const code = String(form.get('code') ?? '');
   const file = form.get('file');
   if (!(file instanceof File) || file.size === 0) {
-    redirect(`/cabinet/projects/${code}/payments?error=empty`);
+    redirect(await withError(`/cabinet/projects/${code}/payments`, 'Файл не выбран'));
   }
-  const kind = String(form.get('kind') ?? 'OTHER') as MaterialKind;
+  // С экрана оплат — только закрывающие документы (решение Р-244).
+  const rawKind = String(form.get('kind') ?? 'OTHER');
+  const kind = (['CONTRACT', 'INVOICE', 'ACT', 'OTHER'].includes(rawKind) ? rawKind : 'OTHER') as MaterialKind;
   const trancheId = String(form.get('trancheId') ?? '') || null;
 
-  await uploadVersion(
-    actor,
-    {
-      projectId: String(form.get('projectId') ?? ''),
-      kind,
-      contractId: trancheId === null ? String(form.get('contractId') ?? '') || null : null,
-      trancheId,
-      title: String(form.get('title') ?? '') || undefined,
-      originalName: file.name,
-      contentType: file.type || 'application/octet-stream',
-      body: Buffer.from(await file.arrayBuffer()),
-    },
-    await requestIp(),
-  );
+  let failure: string | null = null;
+  try {
+    await uploadVersion(
+      actor,
+      {
+        projectId: String(form.get('projectId') ?? ''),
+        kind,
+        contractId: trancheId === null ? String(form.get('contractId') ?? '') || null : null,
+        trancheId,
+        title: String(form.get('title') ?? '') || undefined,
+        originalName: file.name,
+        contentType: file.type || 'application/octet-stream',
+        body: Buffer.from(await file.arrayBuffer()),
+      },
+      await requestIp(),
+    );
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось приложить документ');
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}/payments`, failure));
   redirect(`/cabinet/projects/${code}/payments`);
 }
 
@@ -862,7 +948,13 @@ export async function uploadFinanceDocument(form: FormData): Promise<void> {
 export async function addMaterialVersion(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const file = form.get('file');
-  const back = String(form.get('back') ?? '/cabinet/projects');
+  // Адрес возврата — только внутри кабинета: значение поля формы иначе
+  // уводило бы на чужой узел после загрузки (решение Р-246).
+  const rawBack = String(form.get('back') ?? '');
+  const back =
+    rawBack.startsWith('/cabinet/') && !rawBack.startsWith('//') && !rawBack.includes('\\')
+      ? rawBack
+      : '/cabinet/projects';
   if (!(file instanceof File) || file.size === 0) {
     throw new Error('Файл не выбран');
   }
@@ -894,7 +986,7 @@ export async function saveStageTemplate(form: FormData): Promise<void> {
     });
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось сохранить этап шаблона');
-    redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
+    redirect(await withError(`/cabinet/manage/directory`, reason));
   }
   redirect('/cabinet/manage/directory');
 }
@@ -907,7 +999,7 @@ export async function dropStageTemplate(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось убрать этап шаблона');
   }
-  if (failure !== null) redirect(withError('/cabinet/manage/directory', failure));
+  if (failure !== null) redirect(await withError('/cabinet/manage/directory', failure));
   redirect('/cabinet/manage/directory');
 }
 
@@ -917,6 +1009,12 @@ export async function dropStageTemplate(form: FormData): Promise<void> {
  */
 export async function retryNotification(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await retryFailed(actor, String(form.get('id') ?? ''), await requestIp());
+  let failure: string | null = null;
+  try {
+    await retryFailed(actor, String(form.get('id') ?? ''), await requestIp());
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось вернуть уведомление в очередь');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/manage/outbox', failure));
   redirect('/cabinet/manage/outbox');
 }
