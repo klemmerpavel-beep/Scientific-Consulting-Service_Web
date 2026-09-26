@@ -20,5 +20,8 @@ import { defineConfig } from 'prisma/config';
 export default defineConfig({
   schema: path.join('prisma', 'schema.prisma'),
   migrations: { path: path.join('prisma', 'migrations') },
-  datasource: { url: process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? '' },
+  // `||`, а не `??`: `.env.example` предписывает оставлять DIRECT_URL пустым
+  // на своём сервере, и пустая строка через `??` проходила как адрес —
+  // миграции падали с «Connection url is empty».
+  datasource: { url: process.env.DIRECT_URL || process.env.DATABASE_URL || '' },
 });

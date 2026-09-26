@@ -21,7 +21,8 @@ const SOURCE_NAMES: Record<string, string> = {
 function fields(lead: Lead): [string, string][] {
   const rows: [string, string | undefined][] = [
     ['Страница', SOURCE_NAMES[lead.source] ?? lead.source],
-    ['Имя', lead.name],
+    // В отзыве поле `name` — роль автора, а не имя (Р-110).
+    [lead.form === 'review' ? 'Автор' : 'Имя', lead.name],
     [lead.contactKind === 'email' ? 'E-mail' : 'Телефон', lead.contact],
     ['Организация', lead.organization],
     ['Направление', lead.direction],
@@ -132,26 +133,68 @@ async function sendTelegram(lead: Lead, id: string): Promise<DeliveryResult> {
 
 // ---------------------------------------------------------------------- Почта
 
+/** Отметки журнала согласий словами — для подписи письма */
+const yesNo = (v: boolean | undefined) => (v ? 'да' : 'нет');
+
+/**
+ * Письмо о заявке: тема, HTML и текстовая версия.
+ *
+ * Текстовая версия обязательна: письмо только в HTML почтовые фильтры
+ * штрафуют, и заявка рискует лечь в спам ящика, который её ждёт. Отзыв
+ * называется отзывом — прежде он приходил с темой «Заявка», а роль автора
+ * стояла в строке «Имя». Подпись несёт весь журнал отметок, а не одно
+ * согласие: менеджеру до ответа нужно знать, принята ли оферта и можно ли
+ * писать о рассылке. Ссылка ведёт на карточку заявки в кабинете.
+ */
+export function leadMail(lead: Lead, id: string): { subject: string; html: string; text: string } {
+  const review = lead.form === 'review';
+  const where = SOURCE_NAMES[lead.source] ?? lead.source;
+  const base = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') ?? '';
+  const link = `${base}/cabinet/manage/leads/${encodeURIComponent(id)}`;
+  const marks = review
+    ? [['публикация', yesNo(lead.publish)]]
+    : [
+        ['согласие', yesNo(lead.consent)],
+        ['оферта', yesNo(lead.terms)],
+        ['рассылка', yesNo(lead.marketing)],
+      ];
+  const footer = `${review ? 'Отзыв' : 'Заявка'} ${id} · ${marks.map(([k, v]) => `${k}: ${v}`).join(' · ')}`;
+  const title = review ? 'Новый отзыв с сайта' : 'Новая заявка с сайта';
+
+  const rows = fields(lead)
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:6px 16px 6px 0;color:#5C6474;white-space:nowrap;vertical-align:top">${escapeHtml(k)}</td>` +
+        `<td style="padding:6px 0;color:#14161C">${escapeHtml(v).replace(/\n/g, '<br>')}</td></tr>`,
+    )
+    .join('');
+
+  const html =
+    `<div style="font:15px/1.6 -apple-system,Segoe UI,Arial,sans-serif;color:#14161C">` +
+    `<p style="margin:0 0 16px;font-size:17px;font-weight:600">${title}</p>` +
+    `<table style="border-collapse:collapse">${rows}</table>` +
+    (base ? `<p style="margin:20px 0 0"><a href="${escapeHtml(link)}" style="color:#14417A">Открыть в кабинете</a></p>` : '') +
+    `<p style="margin:20px 0 0;font:12px/1.5 ui-monospace,monospace;color:#5C6474">${escapeHtml(footer)}</p></div>`;
+
+  const text = [
+    title,
+    '',
+    ...fields(lead).map(([k, v]) => `${k}: ${v}`),
+    '',
+    ...(base ? [`Открыть в кабинете: ${link}`, ''] : []),
+    footer,
+  ].join('\n');
+
+  const subject = header(`${review ? 'Отзыв' : 'Заявка'} · ${where}${lead.name ? ` · ${lead.name}` : ''}`);
+  return { subject, html, text };
+}
+
 async function sendMail(lead: Lead, id: string): Promise<DeliveryResult> {
   const host = process.env.SMTP_HOST;
   const to = process.env.LEAD_MAIL_TO;
   if (!host || !to) return { channel: 'email', ok: false, error: 'канал не настроен' };
 
-  const rows = fields(lead)
-    .map(
-      ([k, v]) =>
-        `<tr><td style="padding:6px 16px 6px 0;color:#6B6178;white-space:nowrap;vertical-align:top">${escapeHtml(k)}</td>` +
-        `<td style="padding:6px 0;color:#16121C">${escapeHtml(v).replace(/\n/g, '<br>')}</td></tr>`,
-    )
-    .join('');
-
-  const html =
-    `<div style="font:15px/1.6 -apple-system,Segoe UI,Arial,sans-serif;color:#16121C">` +
-    `<p style="margin:0 0 16px;font-size:17px;font-weight:600">Новая заявка с сайта</p>` +
-    `<table style="border-collapse:collapse">${rows}</table>` +
-    `<p style="margin:20px 0 0;font:12px/1.5 ui-monospace,monospace;color:#6B6178">` +
-    `Заявка ${escapeHtml(id)} · согласие ${escapeHtml(lead.consent ? 'да' : 'нет')}` +
-    `</p></div>`;
+  const { subject, html, text } = leadMail(lead, id);
 
   try {
     const transport = nodemailer.createTransport({
@@ -171,11 +214,10 @@ async function sendMail(lead: Lead, id: string): Promise<DeliveryResult> {
     await transport.sendMail({
       from: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? to,
       to,
-      replyTo: lead.contactKind === 'email' ? header(lead.contact) : undefined,
-      subject: header(
-        `Заявка · ${SOURCE_NAMES[lead.source] ?? lead.source}${lead.name ? ` · ${lead.name}` : ''}`,
-      ),
+      replyTo: lead.contactKind === 'email' && lead.contact ? header(lead.contact) : undefined,
+      subject,
       html,
+      text,
     });
     return { channel: 'email', ok: true };
   } catch (e) {
