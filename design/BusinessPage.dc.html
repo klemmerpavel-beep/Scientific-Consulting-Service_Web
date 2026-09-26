@@ -81,7 +81,6 @@
 .bp-trlbody-b{animation:bp-trl-b 260ms cubic-bezier(.2,0,.2,1) both}
 @media (max-width:1024px){.bp-trlcard{min-height:0}}
 @media (prefers-reduced-motion:reduce){.bp-trlbody-a,.bp-trlbody-b{animation:none}}
-@keyframes bp-marquee-l{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes bp-marquee-r{from{transform:translateX(-50%)}to{transform:translateX(0)}}.bp-ticker:hover .bp-run,.bp-ticker:focus-within .bp-run{animation-play-state:paused!important}
 
 
 /* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
@@ -107,21 +106,18 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <svg viewBox="0 0 640 580" width="1180" height="1069" fill="none" style="position:absolute;right:calc(50% - 610px - 210px);top:-200px">
 <g stroke="#D9E1EC" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EDF2F8" stroke-width="1"></ellipse>
-<path d="M330 226c.9 9.1 4 13.6 16.5 16.5-12.5 2.9-15.6 7.4-16.5 16.5-.9-9.1-4-13.6-16.5-16.5 12.5-2.9 15.6-7.4 16.5-16.5z" fill="#D8E4F3" transform="translate(0,58)"></path>
 <circle cx="450" cy="300" r="6" fill="#D8E4F3"></circle>
 <circle cx="330" cy="104" r="4" fill="#14417A"></circle>
 </svg>
 <svg viewBox="0 0 640 580" width="900" height="816" fill="none" style="position:absolute;left:calc(50% - 610px - 280px);top:1720px">
 <g stroke="#E5EBF2" stroke-width="1"><ellipse cx="330" cy="300" rx="150" ry="150"></ellipse><ellipse cx="330" cy="300" rx="236" ry="236"></ellipse></g>
 
-<path d="M330 226c.9 9.1 4 13.6 16.5 16.5-12.5 2.9-15.6 7.4-16.5 16.5-.9-9.1-4-13.6-16.5-16.5 12.5-2.9 15.6-7.4 16.5-16.5z" fill="#D8E4F3" transform="translate(0,58)"></path>
 <circle cx="470" cy="300" r="5" fill="#D8E4F3"></circle>
 <circle cx="330" cy="96" r="4" fill="#B4C9E5"></circle>
 </svg>
 <svg viewBox="0 0 640 580" width="960" height="870" fill="none" style="position:absolute;right:calc(50% - 610px - 320px);top:3200px">
 <g stroke="#EDF2F8" stroke-width="1"><ellipse cx="330" cy="300" rx="140" ry="140"></ellipse><ellipse cx="330" cy="300" rx="224" ry="224"></ellipse></g>
 
-<path d="M330 226c.9 9.1 4 13.6 16.5 16.5-12.5 2.9-15.6 7.4-16.5 16.5-.9-9.1-4-13.6-16.5-16.5 12.5-2.9 15.6-7.4 16.5-16.5z" fill="#D3DEEC" transform="translate(0,58)"></path>
 <circle cx="470" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="96" r="4" fill="#D8E4F3"></circle>
 </svg>
@@ -157,7 +153,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="min-width:0">
 <span style="display:inline-block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);margin-bottom:24px">Бизнесу и стартап-командам</span>
 <h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3vw,40px);line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink);max-width:22ch;text-wrap:balance"><span style="display:block">Оформить разработку по требованиям</span><span style="background:var(--pd-accent-mark);border-radius:6px;box-shadow:-10px 0 0 var(--pd-accent-mark),10px 0 0 var(--pd-accent-mark);box-decoration-break:clone;-webkit-box-decoration-break:clone">приёмки, гранта и патента</span></h1>
-<p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">Превращаем разработку в документ, который проходит приёмку, и в актив, который принадлежит вам.</p>
+<p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">Техническое задание, отчётность по НИОКР, заявки на патенты и гранты, постановка прав на баланс — по действующим ГОСТ и требованиям получателя документа.</p>
 
 <form onSubmit="{{ submitTop }}" style="margin:36px 0 0;max-width:520px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
 <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
@@ -230,25 +226,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section aria-label="Направления работ — бегущая строка, останавливается при наведении и фокусе" tabindex="0" class="bp-ticker" style="position:relative;z-index:1;margin:clamp(80px,7vw,112px) 0 0;padding:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)">
-<div class="bp-run" style="display:flex;width:max-content;gap:52px;padding-right:52px;animation:bp-marquee-l 46s linear infinite">
-<sc-for list="{{ tickerA }}" as="t" hint-placeholder-count="12">
-<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
-</sc-for>
-</div>
-<div class="bp-run" style="display:flex;width:max-content;gap:52px;padding-right:52px;margin-top:16px;animation:bp-marquee-r 52s linear infinite">
-<sc-for list="{{ tickerB }}" as="t" hint-placeholder-count="12">
-<span aria-hidden="{{ t.dup }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--pd-ink-secondary);white-space:nowrap">{{ t.text }}</span>
-</sc-for>
-</div>
-</section>
 
 <section class="bp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
 <div class="bp-team" style="gap:40px;align-items:center">
 <div style="display:flex;flex-direction:column;gap:24px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Команда</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:24ch;text-wrap:pretty">Над задачей работает проектная команда, а не один подрядчик</h2>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:40ch">За проектом закреплены четверо: менеджер, отраслевой эксперт, методолог и научный редактор. Исполнителей на стороне не ищем.</p>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:24ch;text-wrap:pretty">Кто работает над проектом</h2>
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:40ch">За проектом закреплены четверо: менеджер, отраслевой эксперт, методолог и научный редактор. Каждый отвечает за свой участок и подписывает NDA.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">С 2016</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">научный коллектив ведёт НИОКР и заявки по всей России</span></div>
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">04</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">специалиста закрепляем за проектом до сдачи результата</span></div>
@@ -331,7 +315,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Уровень готовности технологии</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:38ch;text-wrap:balance">На каком уровне разработка и какие документы получаются на выходе</h2>
 </div>
-<span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Выберите свой уровень — покажем состав работ и документы</span>
+<span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Состав работ и документов для каждого уровня</span>
 </div>
 
 <div class="bp-scroll" style="margin-bottom:20px">
@@ -494,9 +478,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Как устроена работа</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:38ch;text-wrap:balance">Шесть механизмов, закреплённых договором и приёмкой</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:38ch;text-wrap:balance">Условия, закреплённые договором и приёмкой</h2>
 </div>
-<span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Под каждым механизмом — носитель обязательства</span>
+<span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Для каждого условия указан документ</span>
 </div>
 <div class="bp-mech" style="gap:16px">
 <sc-for list="{{ reasons }}" as="r" hint-placeholder-count="6">
@@ -552,7 +536,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Вопросы</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:38ch;text-wrap:balance">Вопросы о договоре, приёмке и правах на результат</h2>
 </div>
-<span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Отвечаем так же на установочной сессии</span>
+<span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Те же вопросы разбираем на установочной сессии</span>
 </div>
 <div class="bp-faq" style="gap:40px;align-items:stretch">
 <div style="flex:1 1 auto;min-height:340px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
@@ -860,19 +844,19 @@ class Component extends DCLogic {
         'Документ, собранный под требования заказчика и под налоговый учёт.'],
       ['pack-3', '03', 'Заявка на грант или субсидию', 'от 3 недель', 2, '15px',
         'Есть проект и конкурс с дедлайном.',
-        'Подбираем программу под стадию и отрасль, упаковываем заявку под требования конкурса. Считаем бюджет и разбираем с командой вопросы экспертного совета.',
+        'Подбираем программу под стадию и отрасль, готовим заявку по форме конкурса. Считаем бюджет и разбираем с командой вопросы экспертного совета.',
         [['Заявка по форме конкурса', ''], ['Финансово-экономическое обоснование', 'по форме конкурса'], ['Дорожная карта и план коммерциализации', 'по форме конкурса'], ['Презентация и разбор вопросов совета', 'к дате защиты']],
         'Чтобы заявку не вернули по формальным основаниям.'],
       ['pack-4', '04', 'Разработка в нематериальный актив', 'от 4 недель', 2, '15px',
         'Результат получен, его нужно защитить и поставить на баланс.',
         'Строим патентный ландшафт, проверяем свободу использования, оформляем заявку на охранный документ. Вводим режим коммерческой тайны и служебные результаты.',
         [['Патентный ландшафт и заключение', 'по итогам поиска'], ['Заявка на изобретение или полезную модель', 'гл. 72 ГК РФ'], ['Заявка на программу для ЭВМ или базу данных', 'ст. 1262 ГК РФ'], ['Документы по коммерческой тайне', '98-ФЗ'], ['Документы для постановки прав на баланс', 'ФСБУ 14/2022']],
-        'Превратить разработку из расхода в актив.'],
+        'Результат разработки учитывается на балансе как нематериальный актив.'],
       ['pack-5', '05', 'Рынок и решение о внедрении', 'от 3 недель', 2, '15px',
         'Нужно решение о внедрении: технология, рынок и экономика.',
         'Считаем объём рынка по вторичным источникам, сравниваем с решениями конкурентов. Разбираем нормативные барьеры и считаем экономику внедрения.',
         [['Аналитический отчёт по рынку', 'вторичные источники'], ['Технологический бенчмаркинг', 'открытые данные'], ['Обзор нормативных барьеров', 'действующие требования'], ['Технико-экономическое обоснование', 'расчёт эффекта']],
-        'Решение «внедрять или нет» с цифрами, а не с ощущением.']
+        'Решение о внедрении опирается на расчёт рынка и экономики.']
     ];
     const packSpans = { 'pack-1': 2, 'pack-2': 2, 'pack-3': 2, 'pack-4': 3, 'pack-5': 3 };
     // Пиктограммы пакетов идут в порядке packData: техзадание и патентный
@@ -1137,13 +1121,6 @@ class Component extends DCLogic {
       navOpenAttr: this.state.navOpen ? 'true' : 'false',
       toggleNav: () => this.setState(s => ({ navOpen: !s.navOpen })),
       needs: ['Ещё не определились', 'Техзадание и патентная чистота', 'НИОКР под сдачу', 'Заявка на грант или субсидию', 'Разработка в нематериальный актив', 'Рынок и решение о внедрении', 'Патентный поиск и охранные документы', 'Обоснование расходов на НИОКР'].map(label => ({ label })),
-            ...(() => {
-        const t = items => items.concat(items).map((text, i) => ({ text, dup: i >= items.length ? 'true' : undefined }));
-        return {
-          tickerA: t(['НИОКР под сдачу', 'Техническое задание', 'Отчёт о НИР', 'Программа испытаний', 'Приёмка этапов', 'Учёт НИОКТР']),
-          tickerB: t(['Патентный ландшафт', 'Заявка на изобретение', 'Программа для ЭВМ', 'Гранты и субсидии', 'Обоснование внедрения', 'Постановка НМА на баланс'])
-        };
-      })(),
       crewMask: "url('./assets/icons/users.svg') center/contain no-repeat",
       methodMask: "url('./assets/icons/flask-conical.svg') center/contain no-repeat",
       editorMask: "url('./assets/icons/pencil-line.svg') center/contain no-repeat",
@@ -1168,9 +1145,9 @@ class Component extends DCLogic {
       toggleAll: () => this.setState(s => ({ allOpen: !s.allOpen, open: s.allOpen ? { 0: true } : {} })),
       reasons: [
         ['01', 'Получатель документа фиксируется до старта', 'До подписания договора определяем, кто принимает результат: фонд, банк, налоговая, комиссия заказчика или ведомство. Его требования становятся критерием готовности.', 'чек-лист требований получателя прикладывается к техническому заданию и к акту сдачи этапа.'],
-        ['02', 'Патентный поиск идёт до утверждения техзадания', 'Сначала выясняем, свободна ли ниша, и только потом считаем смету на работы. Разработка не финансируется вслепую.', 'отчёт о патентном поиске — отдельный первый этап с собственным актом.'],
+        ['02', 'Патентный поиск идёт до утверждения техзадания', 'Сначала выясняем, свободна ли ниша, затем считаем смету на работы.', 'отчёт о патентном поиске — отдельный первый этап с собственным актом.'],
         ['03', 'Исключительные права принадлежат заказчику', 'Всё, что создано в проекте, переходит вам. NDA подписывает каждый участник команды до доступа к материалам.', 'пункт договора об отчуждении прав, NDA с каждым исполнителем, акт передачи материалов.'],
-        ['04', 'Работу ведёт отраслевой эксперт со степенью', 'Кандидат или доктор наук в вашей области, а не универсальный аналитик и не студент на подряде.', 'профиль эксперта и список его публикаций вы получаете до договора.'],
+        ['04', 'Работу ведёт отраслевой эксперт со степенью', 'Кандидат или доктор наук в вашей области с публикациями по теме проекта.', 'профиль эксперта и список его публикаций вы получаете до договора.'],
         ['05', 'Оплата за этап только после приёмки', 'Этап не сдан в срок — оплата за него возвращается по заявлению. Вы не платите за работу вперёд.', 'календарный план с датами, акт по каждому этапу, порядок возврата в договоре.'],
         ['06', 'Предмет договора — соответствие требованиям', 'Решение принимают фонд, ведомство и налоговый орган, и мы его не обещаем. Отвечаем за соответствие документа требованиям на дату подачи.', 'формулировка предмета договора и чек-лист требований получателя.']
       ].map(([num, title, text, proof], i) => {
@@ -1191,7 +1168,7 @@ class Component extends DCLogic {
         ['С чего начинается работа?',
          'С подписанного NDA — задачу обсуждаем только после него. Дальше установочная сессия на сорок минут: разбираем разработку, её стадию и получателя документа: фонд, комиссию заказчика, ведомство или налоговый орган. Смета и календарный план считаются после разбора материалов, до согласования Задания работы не начинаются.'],
         ['Кто заключает договор и что в нём фиксируется?',
-         'Договор заключается с ООО «РУСДРОН»; ProDisser — коммерческое обозначение. В Задании к договору фиксируются состав работ, требования получателя документа, календарный план и стоимость по этапам. Изменение объёма, сроков или стоимости оформляется дополнительным соглашением, а не сообщением в переписке.'],
+         'Договор заключается с ООО «РУСДРОН»; ProDisser — коммерческое обозначение. В Задании к договору фиксируются состав работ, требования получателя документа, календарный план и стоимость по этапам. Изменение объёма, сроков или стоимости оформляется дополнительным соглашением.'],
         ['Что будет, если документ не примут?',
          'Предмет договора — соответствие документа требованиям получателя на дату подачи. Само решение принимают фонд, комиссия или ведомство по своему усмотрению, и его мы не обещаем. Замечания в пределах согласованного объёма отрабатываем без доплаты. Если этап не сдан в срок, оплата за него возвращается по вашему заявлению.'],
         ['Кому принадлежат права на результат?',
@@ -1199,7 +1176,7 @@ class Component extends DCLogic {
         ['Как считается смета и когда платить?',
          'Стоимость складывается из состава работ и стадии готовности разработки, поэтому считается после разбора материалов — цен на сайте нет. Оплата идёт по этапам: следующий оплачивается после приёмки предыдущего. Вперёд за всю работу платить не нужно.'],
         ['Подойдут ли документы для учёта расходов на НИОКР?',
-         'Комплект под учёт собираем: отчёт по ГОСТ 7.32-2017, акты сдачи-приёмки этапов, регистрационную и информационную карту НИОКТР. Решение о применении коэффициента по п. 7 ст. 262 НК РФ принимает налоговый орган — мы отвечаем за состав и оформление документов, а не за его решение.']
+         'Комплект под учёт собираем: отчёт по ГОСТ 7.32-2017, акты сдачи-приёмки этапов, регистрационную и информационную карту НИОКТР. Решение о применении коэффициента по п. 7 ст. 262 НК РФ принимает налоговый орган; мы отвечаем за состав и оформление документов.']
       ].map(([q, a], i) => ({
         q, a,
         open: this.state.faqOpen === i,
