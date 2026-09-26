@@ -22,7 +22,10 @@
 | `deploy/restore-check.sh` | проверка, что копия восстанавливается: временная база, сверка, удаление |
 | `deploy/outbox.sh` | рассылка уведомлений кабинета по расписанию |
 | `deploy/update.sh` | обновление сайта: копия базы, миграции, сборка, проверка здоровья, откат |
-| `deploy/yandex-upload.sh` | выгрузка заявок и отзывов в таблицы на Яндекс Диске |
+| `deploy/yandex-sync.sh` | зеркало практики на Яндекс Диске: таблицы и материалы (раздел 5д) |
+| `deploy/book-pull.sh` | мост «Диск → база»: книга заказов с Диска в кабинет (раздел 5д) |
+| `deploy/cron-sync.sh` | расписание связки «сайт → Диск → кабинет»: ставится выкатом сам (Р-262) |
+| `deploy/yandex-upload.sh` | прежняя выгрузка двух таблиц; снимается с расписания выкатом (Р-262) |
 | `deploy/retention.sh` | еженедельное удаление заявок с истёкшим сроком хранения |
 | `app/src/app/api/health/route.ts` | проверка живости: отвечает 503, если база недоступна |
 
@@ -195,11 +198,19 @@ crontab -e
 # 0 3 * * * /opt/prodisser/deploy/backup.sh >> /var/log/prodisser-backup.log 2>&1
 # 30 3 * * 1 /opt/prodisser/deploy/retention.sh >> /var/log/prodisser-retention.log 2>&1
 # 0 4 1 * * /opt/prodisser/deploy/restore-check.sh >> /var/log/prodisser-restore.log 2>&1
-# 0 * * * * /opt/prodisser/deploy/yandex-upload.sh >> /var/log/prodisser-yandex.log 2>&1
-# * * * * * /opt/prodisser/deploy/outbox.sh >> /var/log/prodisser-outbox.log 2>&1
 ```
 
-Третье расписание рассылает уведомления кабинета. Отдельного процесса-демона
+Рассылку уведомлений кабинета (`outbox.sh`), зеркало на Диске
+(`yandex-sync.sh`) и мост книги заказов (`book-pull.sh`) руками в crontab
+не вписывают: их ставит выкат — `update.sh` после проверки здоровья
+вызывает `cron-sync.sh`, и тот ведёт в crontab помеченный блок
+«>>> prodisser … <<< prodisser» (решение Р-262). Строки этих скриптов,
+вписанные раньше вне блока, и строку прежнего `yandex-upload.sh` он
+убирает сам. Скрипт без доступов в `deploy/.env` пишет «выключено» и
+выходит — стоять в расписании ему безопасно. Отказаться от управления
+расписанием: `CRON_SYNC=off` в `deploy/.env`.
+
+Рассылка уведомлений кабинета идёт раз в минуту. Отдельного процесса-демона
 для этого не заводится: при семи типах событий и нескольких десятках проектов
 он был бы компонентом «на вырост». Маршрут закрыт общим секретом, а не
 сессией — у расписания учётной записи нет, — и слушает только петлю: наружу
@@ -441,12 +452,9 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
 Учётные записи клиентов заводятся сами — при одобрении заявки.
 
 **4. Расписание рассылки.** Уведомления кабинета разбирает `outbox.sh`,
-который cron запускает раз в минуту (раздел 4). Без строки в crontab
-уведомления копятся в очереди и не уходят:
-
-```
-* * * * * /opt/prodisser/deploy/outbox.sh >> /var/log/prodisser-outbox.log 2>&1
-```
+который cron запускает раз в минуту (раздел 4). Строку в crontab ставит
+выкат (`cron-sync.sh`, Р-262); без неё уведомления копились бы в очереди.
+Проверка: `crontab -l | grep outbox.sh`.
 
 Секрет должен состоять из знаков ASCII — `openssl rand -base64` даёт именно
 такие. Кириллица в общем секрете не годится: заголовки HTTP переносят её
@@ -511,11 +519,10 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml \
 один раз — откройте её сразу.
 
 ```bash
-# 5. Расписание рассылки уведомлений
-crontab -l > /tmp/cron.now 2>/dev/null || : > /tmp/cron.now
-grep -q outbox.sh /tmp/cron.now || \
-  echo '* * * * * /opt/prodisser/deploy/outbox.sh >> /var/log/prodisser-outbox.log 2>&1' >> /tmp/cron.now
-crontab /tmp/cron.now && rm /tmp/cron.now
+# 5. Расписание рассылки уведомлений, зеркала и моста — ставит выкат
+#    (Р-262); при ручном открытии без конвейера:
+/opt/prodisser/deploy/cron-sync.sh
+crontab -l | sed -n '/>>> prodisser/,/<<< prodisser/p'
 ```
 
 **6. Зеркало на Яндекс Диске** (раздел 5д, по желанию). Пароль
@@ -530,11 +537,10 @@ YANDEX_DISK_FOLDER=ProDisser
 YANDEX_DISK_SCOPE=all
 ENV
 /opt/prodisser/deploy/yandex-sync.sh          # первый прогон вручную
-crontab -l > /tmp/cron.now
-grep -q yandex-sync.sh /tmp/cron.now || \
-  echo '0 * * * * /opt/prodisser/deploy/yandex-sync.sh >> /var/log/prodisser-yandex.log 2>&1' >> /tmp/cron.now
-crontab /tmp/cron.now && rm /tmp/cron.now
 ```
+
+Строка расписания уже стоит — её ставит выкат (Р-262); с этого часа
+зеркало работает само.
 
 Результат прогона виден в кабинете: `/cabinet/manage/disk` — когда
 обновлялось, сколько файлов уехало, были ли отказы.
@@ -547,13 +553,9 @@ crontab /tmp/cron.now && rm /tmp/cron.now
 ```bash
 printf 'BOOK_PULL_PATH=%s\n' 'Отработка заказов.xlsx' >> deploy/.env
 /opt/prodisser/deploy/book-pull.sh             # первый прогон вручную
-crontab -l > /tmp/cron.now
-grep -q book-pull.sh /tmp/cron.now || \
-  echo '30 * * * * /opt/prodisser/deploy/book-pull.sh >> /var/log/prodisser-book.log 2>&1' >> /tmp/cron.now
-crontab /tmp/cron.now && rm /tmp/cron.now
 ```
 
-Расписание сдвинуто на `:30` от зеркала: два прогона разом спорили бы за
+Строка расписания, как и у зеркала, стоит с выката. Расписание сдвинуто на `:30` от зеркала: два прогона разом спорили бы за
 один служебный контейнер. Второй запуск подряд не делает ничего — свёртка
 файла сверяется с прежними загрузками, и разбор не начинается. Прогоны
 видны там же, `/cabinet/manage/disk`, карточкой «Книга заказов с диска в
@@ -761,18 +763,14 @@ YANDEX_DISK_SCOPE=all
 должен отправить ноль: опись сверяется по свёрткам, и неизменившееся
 повторно не уходит.
 
-4. Поставить в расписание и убрать строку прежнего скрипта, если она там
-   была:
+4. Расписание руками не ставится: строку `yandex-sync.sh` вписывает
+   выкат (`cron-sync.sh`, Р-262), он же снимает строку прежнего
+   `yandex-upload.sh`, если она была. Иначе в папке лежали бы две пары
+   таблиц — свежая в «Таблицы/» и старая в корне. Проверка:
 
 ```bash
-crontab -e
-# было:  0 * * * * /opt/prodisser/deploy/yandex-upload.sh >> /var/log/prodisser-yandex.log 2>&1
-# стало: 0 * * * * /opt/prodisser/deploy/yandex-sync.sh  >> /var/log/prodisser-yandex.log 2>&1
+crontab -l | sed -n '/>>> prodisser/,/<<< prodisser/p'
 ```
-
-Прежний скрипт выгружал две таблицы в корень папки. Если оставить обе
-строки, в папке будут лежать две пары таблиц — свежая в «Таблицы/» и старая
-в корне.
 
 ### Что делать, если прогон упал
 
@@ -810,7 +808,8 @@ crontab -e
 
 Целевое устройство обратное нынешнему: заказы ведутся в кабинете, а
 таблица на Диске остаётся выгрузкой — её пишет `yandex-sync.sh`. Когда
-переходное время кончится, строку `book-pull.sh` из расписания убирают.
+переходное время кончится, стирают `BOOK_PULL_PATH` в `deploy/.env`:
+строка в расписании остаётся, но мост пишет «выключен» и выходит.
 
 ## 5е. Уведомления о новых заявках: Telegram и почта
 
