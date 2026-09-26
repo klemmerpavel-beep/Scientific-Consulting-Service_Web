@@ -38,7 +38,10 @@
 .bp-trl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .bp-mech{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr}
 /* Полоса натюрморта фиксирована 96 пикселями и не тянется вместе с
-   карточкой; равную высоту пяти карточек даёт сетка, а не заданное число. */
+   карточкой. Карточки одного ряда равны по высоте, но ряд высотой в
+   самый длинный пакет не навязывается: второй ряд шире и короче, и
+   равные ряды оставляли в нём до 150 px пустоты, а в одну колонку —
+   у каждого короткого пакета. */
 /* Шесть карточек механизмов равны по высоте, но высоту задаёт содержимое:
    `grid-auto-rows: 1fr` тянет ряды до самой высокой карточки, а не до
    заранее заданного числа. Прежний резерв под раскрытую строку «чем
@@ -53,7 +56,7 @@
 .bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
 .bp-support{display:grid;grid-template-columns:minmax(0,1fr)}
 @media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-trl{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-mech{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq,.bp-mech{grid-template-columns:minmax(0,1fr)}.bp-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.bp-nav[hidden]{display:none!important}.bp-burger{display:inline-flex}.bp-pack{grid-column:span 6!important}}
+@media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq,.bp-mech{grid-template-columns:minmax(0,1fr)}.bp-mech,.bp-rights{grid-auto-rows:auto}.bp-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.bp-nav[hidden]{display:none!important}.bp-burger{display:inline-flex}.bp-pack{grid-column:span 6!important}}
 /* Подпись раздела на узком экране — под заголовком слева, а не прижатой вправо строкой (Р-250). */
 @media (max-width:768px){.bp-sub{text-align:left!important;margin-left:0!important}}
 @media (max-width:430px){.bp-head{gap:12px!important}.bp-logo{font-size:22px!important}.bp-cta{padding:12px 16px!important;font-size:12px!important}}
@@ -153,7 +156,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="bp-hero" style="gap:44px;align-items:start">
 <div style="min-width:0">
 <span style="display:inline-block;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);margin-bottom:24px">Бизнесу и стартап-командам</span>
-<h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3vw,40px);line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink);max-width:22ch;text-wrap:balance">Оформить разработку по требованиям <span style="background:var(--pd-accent-mark);border-radius:6px;padding:0 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">приёмки, гранта и патента</span></h1>
+<h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3vw,40px);line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink);max-width:22ch;text-wrap:balance"><span style="display:block">Оформить разработку по требованиям</span><span style="background:var(--pd-accent-mark);border-radius:6px;box-shadow:-10px 0 0 var(--pd-accent-mark),10px 0 0 var(--pd-accent-mark);box-decoration-break:clone;-webkit-box-decoration-break:clone">приёмки, гранта и патента</span></h1>
 <p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">Превращаем разработку в документ, который проходит приёмку, и в актив, который принадлежит вам.</p>
 
 <form onSubmit="{{ submitTop }}" style="margin:36px 0 0;max-width:520px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
@@ -214,7 +217,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </a>
 <a href="#trl" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:16px;min-height:116px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark);border-color:var(--pd-accent)" style-active="background:var(--pd-accent-mark)">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">9 уровней</span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">готовности технологии по ГОСТ Р 58048-2017</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">готовности технологии по <span style="white-space:nowrap">ГОСТ Р 58048-2017</span></span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Шкала УГТ<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a href="#packs" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:116px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet);border-color:var(--pd-accent)" style-active="background:var(--pd-surface-quiet)">
@@ -248,7 +251,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:40ch">За проектом закреплены четверо: менеджер, отраслевой эксперт, методолог и научный редактор. Исполнителей на стороне не ищем.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">С 2016</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">научный коллектив ведёт НИОКР и заявки по всей России</span></div>
-<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">Четыре</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">специалиста закрепляем за проектом до сдачи результата</span></div>
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">04</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">специалиста закрепляем за проектом до сдачи результата</span></div>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px">
 <span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">НИОКР и отчётность</span>
@@ -397,11 +400,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Предложения</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:30ch;text-wrap:balance">Пять пакетов: от техзадания <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 8px;box-decoration-break:clone;-webkit-box-decoration-break:clone">до постановки прав на баланс</span></h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:30ch;text-wrap:balance"><span style="display:block">Пять пакетов: от техзадания</span><span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-10px 0 0 var(--pd-accent-mark),10px 0 0 var(--pd-accent-mark);box-decoration-break:clone;-webkit-box-decoration-break:clone">до постановки прав на баланс</span></h2>
 </div>
 <span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Сроки и смета фиксируются календарным планом после разбора материала</span>
 </div>
-<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:1fr;gap:16px">
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px">
 <sc-for list="{{ packs }}" as="p" hint-placeholder-count="5">
 <article id="{{ p.anchor }}" class="bp-pack" style="grid-column:span {{ p.span }};scroll-margin-top:24px;border:1px solid {{ p.border }};border-radius:14px;background:var(--pd-ink-inverse);box-shadow:inset 0 -3px 0 {{ p.edge }},0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;overflow:hidden">
 <span aria-hidden="true" style="display:block;height:96px;flex:0 0 96px;border-bottom:1px solid var(--pd-divider);background:var(--pd-surface-quiet) {{ p.art }};background-size:cover;background-position:center"></span>
@@ -737,10 +740,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:0 -10px;border-radius:10px;text-decoration:none;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:21px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:var(--pd-accent)">PRO</span><span style="color:var(--pd-ink)">DISSER</span></a>
 <a href="tel:+74954564323" style="display:inline-flex;align-items:center;min-height:44px;font-size:15px;font-weight:500;color:var(--pd-ink);text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">+7 495 456 43 23</a>
 <a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink-secondary)">info.prodisser@gmail.com</a>
+<a href="./cabinet.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;font-weight:500;color:var(--pd-ink);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Личный кабинет</a>
 </span>
 <span style="display:flex;align-items:center;gap:12px;min-width:0">
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Пишите в телеграм — отвечаем в рабочее время</span>
-<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Телеграм ProDisser" title="Телеграм" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Пишите в Telegram — отвечаем в рабочее время</span>
+<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Telegram ProDisser" title="Telegram" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
 <a href="https://vk.ru/cmnrut" target="_blank" rel="noopener noreferrer" aria-label="Сообщество ProDisser во ВКонтакте" title="ВКонтакте" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1;font-weight:600;letter-spacing:.02em;color:var(--pd-accent)">VK</span></a>
 </span>
 </div>
@@ -750,10 +754,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Политика конфиденциальности</a>
 <a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Обработка персональных данных</a>
 </span>
-<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.02em;color:var(--pd-ink-muted)">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
+<span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.02em;color:var(--pd-ink-muted)">ООО «РУСДРОН» · ОГРН 1257700248860 · ИНН 9723254250 · КПП 772301001</span>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:8px">
-<span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted)">© 2026 ProDisser — Научный Консалтинг. Работаем по всей России</span>
+<span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted)">© 2016—2026 ProDisser — научный консалтинг. Работаем по всей России</span>
 <span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
 <span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:13px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Другие направления</span>
 <a href="./main.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Аспирантам и соискателям</a>
@@ -1007,7 +1011,7 @@ class Component extends DCLogic {
       // ответственности в нашу сторону на 3—7 и в сторону предприятия на 8—9.
       noteLabel: cur.noteKind === 'early' ? 'Для инструментов внедрения рано'
         : cur.noteKind === 'plant' ? 'Дальше документацию ведёт предприятие'
-        : 'Документы этого уровня — наша зона',
+        : 'Документацию этого уровня ведём мы',
       noteBg: cur.noteKind === 'early' ? 'var(--pd-err-bg)' : 'var(--pd-surface-quiet)',
       noteBorder: cur.noteKind === 'early' ? 'var(--pd-err-border)' : 'var(--pd-border)',
       noteInk: cur.noteKind === 'early' ? 'var(--pd-err-ink)' : 'var(--pd-accent)',
@@ -1072,22 +1076,22 @@ class Component extends DCLogic {
     // двенадцати не опубликованы, потому что называют предметом работу,
     // выполненную за клиента.
     const REVIEWS = [
-      { photo: 'av-1', role: 'Александра', field: 'Авито · 30 июня 2024',
-        text: 'вежливый, все сделал быстро и оперативно, как и просила, рекомендую!!! еще раз спасибо за оперативность и качество работы' },
-      { photo: 'av-2', role: 'Ирина', field: 'Авито · 12 июля 2024',
-        text: 'Цена соответствует качеству работы, все было выполнено даже раньше срока, в полном объёме. Быстрые ответы, вежливое общение, пояснения по всем вопросам)' },
       { photo: 'av-3', role: 'Роман', field: 'Авито · 30 сентября 2024',
         text: 'Работа была выполнена качественно. Все договоренности проработали, цена была объявлена сразу. Человек компетентный и опытный, довериться можно)' },
-      { photo: 'av-4', role: 'Никита', field: 'Авито · 25 октября 2024',
-        text: 'Огромное спасибо за быстро и качественно выполненную работа. Всегда на связи. Спрашивают и переживают были ли замечания от преподавателей в работе.' },
+      { photo: 'av-2', role: 'Ирина', field: 'Авито · 12 июля 2024',
+        text: 'Цена соответствует качеству работы, все было выполнено даже раньше срока, в полном объёме. Быстрые ответы, вежливое общение, пояснения по всем вопросам)' },
+      { photo: 'av-8', role: 'Анастасия', field: 'Авито · 14 ноября 2024',
+        text: 'Хочу выразить искреннюю благодарность за профессиональную помощь и поддержку в процессе работы. Все выполнено качественно и главное в срок, получила оценку «отлично»' },
       { photo: 'av-5', role: 'Олег', field: 'Авито · 1 ноября 2024',
         text: 'Спасибо за работу, выполнено профессионально не смотря на сложную тему, однозначно буду обращаться ещё)' },
       { photo: 'av-6', role: 'Ян', field: 'Авито · 2 ноября 2024',
         text: 'Цена оправдана. Срок и требования были идеально выполнены, я очень благодарен таким людям!' },
       { photo: 'av-7', role: 'Велина', field: 'Авито · 3 ноября 2024',
         text: 'Работа выполнена качественно, в соответствии с заявленным объявлением, максимально быстро, без технических и иных проблем! Благодарю Вас!' },
-      { photo: 'av-8', role: 'Анастасия', field: 'Авито · 14 ноября 2024',
-        text: 'Хочу выразить искреннюю благодарность за профессиональную помощь и поддержку в процессе работы. Все выполнено качественно и главное в срок, получила оценку «отлично»' },
+      { photo: 'av-4', role: 'Никита', field: 'Авито · 25 октября 2024',
+        text: 'Огромное спасибо за быстро и качественно выполненную работа. Всегда на связи. Спрашивают и переживают были ли замечания от преподавателей в работе.' },
+      { photo: 'av-1', role: 'Александра', field: 'Авито · 30 июня 2024',
+        text: 'вежливый, все сделал быстро и оперативно, как и просила, рекомендую!!! еще раз спасибо за оперативность и качество работы' },
     ];
     const revN = REVIEWS.length;
     const revAt = this.state.revAt;
