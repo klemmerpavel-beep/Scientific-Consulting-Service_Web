@@ -90,6 +90,17 @@ export function splitToken(value: string): RawToken | null {
 }
 
 /** Сравнение свёрток за постоянное время. */
+/**
+ * Сравнение общего секрета за постоянное время (решение Р-246). Обе строки
+ * сводятся к свёрткам одной длины: иначе длина секрета выдавала бы себя
+ * временем отказа, а прямое сравнение — совпавшим началом.
+ */
+export function sameSecret(given: string | null | undefined, expected: string): boolean {
+  if (given === null || given === undefined) return false;
+  const hash = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex');
+  return sameDigest(hash(given), hash(expected));
+}
+
 export function sameDigest(a: string, b: string): boolean {
   const left = Buffer.from(a, 'utf8');
   const right = Buffer.from(b, 'utf8');

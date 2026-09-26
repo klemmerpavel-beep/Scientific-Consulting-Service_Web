@@ -66,7 +66,7 @@ export default async function MessagesScreen({
           note={counterpart}
         />
 
-        <ActionError text={(await searchParams).error} />
+        <ActionError id={(await searchParams).error} />
 
         <Card>
           <Thread

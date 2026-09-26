@@ -17,6 +17,7 @@ import {
   Select,
   Text,
   formatDate,
+  formatDay,
   plural,
   TABLE_CELL,
   TABLE_HEAD,
@@ -128,7 +129,8 @@ export default async function AllLeadsScreen({
         as="div"
       >
         <Text style={{ margin: 0 }}>
-          Найдено {list.total} {plural(list.total, 'заявка', 'заявки', 'заявок')}
+          {plural(list.total, 'Найдена', 'Найдены', 'Найдено')} {list.total}{' '}
+          {plural(list.total, 'заявка', 'заявки', 'заявок')}
           {list.total > 0
             ? `, показаны с ${(list.page - 1) * LEAD_LIST_PAGE_SIZE + 1} по ${(list.page - 1) * LEAD_LIST_PAGE_SIZE + list.rows.length}`
             : ''}
@@ -164,7 +166,8 @@ export default async function AllLeadsScreen({
             <tbody>
               {list.rows.map((lead) => (
                 <tr key={lead.id}>
-                  <td style={TABLE_CELL}>{formatDate(lead.createdAt)}</td>
+                  {/* Мгновение — днём по Москве, как в выгрузке (Р-245). */}
+                  <td style={TABLE_CELL}>{formatDay(lead.createdAt)}</td>
                   <td style={TABLE_CELL}>{leadSourceLabel(lead.source)}</td>
                   {/* Имя ведёт на разбор: экран заявки заведён решением
                       Р-172, но ссылки на него отсюда не было вовсе, и

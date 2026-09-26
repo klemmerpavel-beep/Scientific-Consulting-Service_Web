@@ -292,8 +292,8 @@ export async function revokeAllSessions(userId: string): Promise<void> {
  * в мессенджер, где её видит и пересылает кто угодно.
  */
 export async function createTelegramBindLink(userId: string): Promise<string | null> {
-  const bot = process.env.TELEGRAM_BOT_USERNAME;
-  if (!bot) return null;
+  if (!telegramBindAvailable()) return null;
+  const bot = process.env.TELEGRAM_BOT_USERNAME!;
   const token = createRawToken();
   await prisma.loginToken.create({
     data: {
@@ -310,6 +310,16 @@ export async function createTelegramBindLink(userId: string): Promise<string | n
   // /start. Части склеиваются без разделителя — селектор всегда
   // шестнадцать знаков (решение Р-238).
   return `https://t.me/${bot}?start=${token.selector}${token.verifier}`;
+}
+
+/**
+ * Привязка возможна, только когда бот настроен целиком: имя бота и секрет
+ * вебхука. Без секрета маршрут бота отвечает 404 на всё, и ссылка вела в
+ * тишину — человек отправлял /start, и ничего не происходило (решение
+ * Р-246).
+ */
+export function telegramBindAvailable(): boolean {
+  return Boolean(process.env.TELEGRAM_BOT_USERNAME) && Boolean(process.env.TELEGRAM_WEBHOOK_SECRET);
 }
 
 /** Ключ из параметра бота: без точки части разделяются по длине селектора. */

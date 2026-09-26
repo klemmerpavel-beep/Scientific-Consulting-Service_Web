@@ -32,6 +32,7 @@ import { unreadByProject } from '../../../lib/cabinet/messages';
 import {
   PROJECT_FILTER_FROM,
   listProjects,
+  liveWorks,
   pendingActions,
   type ProjectFilter,
 } from '../../../lib/cabinet/queries';
@@ -107,6 +108,8 @@ export default async function ProjectsScreen({
    * сведение о том, чей ход: «Загрузить материалы» у эксперта и
    * руководителя читалось как поручение им (решение Р-206).
    */
+  const tabLabel = (key: ProjectFilter) =>
+    key === 'waiting' ? (forClient ? 'Ждут меня' : 'Ждут клиента') : FILTER_LABEL[key];
   const waitingLine = (stage: { state: string; title: string }) =>
     forClient
       ? stage.state === 'AWAITING_CLIENT'
@@ -138,8 +141,7 @@ export default async function ProjectsScreen({
   // чего начать. Работы практики у менеджера и руководителя отвечают
   // сводкой, и там перечень остаётся перечнем (решение Р-207).
   const title = forClient ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы практики';
-  const live = projects
-    .filter((project) => project.status === 'ACTIVE')
+  const live = (forClient || forExpert ? await liveWorks(actor) : [])
     .map((project) => ({
       project,
       stage: project.stages.find((stage) => stage.state !== 'DONE') ?? null,
@@ -241,7 +243,7 @@ export default async function ProjectsScreen({
             label="Отбор работ"
             items={FILTERS.map((key) => ({
               href: href({ state: key }),
-              label: key === 'waiting' ? (forClient ? 'Ждут меня' : 'Ждут клиента') : FILTER_LABEL[key],
+              label: tabLabel(key),
               active: key === filter,
             }))}
           />
@@ -327,7 +329,8 @@ export default async function ProjectsScreen({
           <Empty
             title="Ничего не найдено"
             filters={[
-              filter === 'all' ? '' : `состояние — ${FILTER_LABEL[filter].toLowerCase()}`,
+              // Подпись — та же, что на вкладке (решение Р-245).
+              filter === 'all' ? '' : `состояние — ${tabLabel(filter).toLowerCase()}`,
               query === '' ? '' : `поиск — «${query}»`,
             ]}
             total={list.all}
@@ -483,7 +486,11 @@ export default async function ProjectsScreen({
                     (решение Р-206). */}
                 {/* Закрытая работа без плана молчала вовсе: ни шкалы, ни
                     строки состояния (решение Р-206). */}
-                {project.stages.length === 0 && project.status !== 'ACTIVE' ? (
+                {/* Состояние неактивной работы называется всегда: этапы при
+                    закрытии не закрываются (Р-240), и шкала «Ждём ваших
+                    материалов» у отменённой работы вводила в заблуждение
+                    (решение Р-245). */}
+                {project.status !== 'ACTIVE' ? (
                   <Text muted size={13} style={{ margin: '0 0 2px' }}>
                     {project.status === 'COMPLETED'
                       ? 'Работа завершена.'
@@ -507,7 +514,7 @@ export default async function ProjectsScreen({
                   done={done}
                   total={project.stages.length}
                   current={
-                    currentStage === null
+                    currentStage === null || project.status !== 'ACTIVE'
                       ? null
                       : { title: currentStage.title, state: currentStage.state as StageStateKey }
                   }

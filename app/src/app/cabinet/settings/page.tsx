@@ -1,9 +1,9 @@
+import { flashText } from '../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
 import {
   Button,
-  ButtonLink,
   Card,
   Checkbox,
   Chip,
@@ -22,7 +22,7 @@ import {
   formatDate,
   TableScroll,
 } from '../../../components/cabinet/ui';
-import { createTelegramBindLink } from '../../../lib/cabinet/auth';
+import { telegramBindAvailable } from '../../../lib/cabinet/auth';
 import { ownChannels } from '../../../lib/cabinet/admin';
 import {
   CONTACT_LABEL,
@@ -41,6 +41,7 @@ import {
   removeContactChannel,
   saveNotificationChannels,
   saveNotifyRules,
+  startTelegramBind,
 } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -59,6 +60,8 @@ export default async function SettingsScreen({
     ownContacts(actor),
     ownRules(actor),
   ]);
+  // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
+  const failure = await flashText(params.error);
 
   // Разбор по событиям нужен тому, кто получает уведомления обо всей
   // практике: у клиента их несколько в месяц, и делить их по каналам
@@ -70,7 +73,10 @@ export default async function SettingsScreen({
   };
 
   const bound = user.telegramChatId !== null;
-  const bindLink = bound ? null : await createTelegramBindLink(actor.id);
+  // Ссылка привязки заводится нажатием, а не при каждом открытии экрана:
+  // прежде каждое открытие и каждое «Сохранить» писали в базу новую
+  // живую метку (решение Р-245).
+  const mayBind = !bound && telegramBindAvailable();
 
   return (
     <Shell actor={actor} current="/cabinet/settings">
@@ -81,9 +87,9 @@ export default async function SettingsScreen({
           согласованию, приближается срок. Содержание переписки наружу не пересылается.
         </Text>
 
-        {params.error === undefined ? null : (
+        {failure === undefined ? null : (
           <div style={{ marginBottom: 20 }}>
-            <Notice tone="error">{params.error}</Notice>
+            <Notice tone="error" role="alert">{failure}</Notice>
           </div>
         )}
 
@@ -269,19 +275,20 @@ export default async function SettingsScreen({
                 <Button tone="quiet">Отвязать</Button>
               </Form>
             </>
-          ) : bindLink === null ? (
+          ) : !mayBind ? (
             <Text muted>
               Канал не настроен на стороне сервиса. Пока уведомления приходят только почтой.
             </Text>
           ) : (
             <>
               <Text style={{ marginBottom: 16 }}>
-                Откройте ссылку и нажмите «Начать» — бот запомнит, куда присылать уведомления.
-                Ссылка действует час и срабатывает один раз; войти по ней в кабинет нельзя.
+                Нажмите кнопку — откроется бот; нажмите в нём «Начать», и он запомнит, куда
+                присылать уведомления. Ссылка действует час и срабатывает один раз; войти по ней в
+                кабинет нельзя.
               </Text>
-              <ButtonLink href={bindLink} tone="primary">
-                Привязать Telegram
-              </ButtonLink>
+              <Form action={startTelegramBind} inline>
+                <Button>Привязать Telegram</Button>
+              </Form>
             </>
           )}
         </Card>

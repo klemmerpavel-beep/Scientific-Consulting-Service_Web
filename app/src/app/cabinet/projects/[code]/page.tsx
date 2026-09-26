@@ -364,7 +364,7 @@ export default async function ProjectScreen({
           </span>
         )}
       </ScreenTop>
-      <ActionError text={(await searchParams).error} />
+      <ActionError id={(await searchParams).error} />
       <Disclosure title="О работе" style={{ marginTop: 12 }}>
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
           {about.map((row) => (

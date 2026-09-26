@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 
+import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../../../components/cabinet/tokens';
 import {
@@ -7,6 +8,7 @@ import {
   Block,
   Card,
   Chip,
+  Disclosure,
   Field,
   FileField,
   Form,
@@ -36,6 +38,7 @@ import {
   accruePayout,
   addContractTranche,
   changeTrancheStatus,
+  dropTranche,
   payPayout,
   saveProjectContract,
   uploadFinanceDocument,
@@ -68,13 +71,14 @@ export default async function PaymentsScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ exceeds?: string }>;
+  searchParams: Promise<{ exceeds?: string; error?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
 
   const { code } = await params;
-  const exceeds = (await searchParams).exceeds === '1';
+  const flags = await searchParams;
+  const exceeds = flags.exceeds === '1';
   const project = await projectByCode(actor, decodeURIComponent(code));
   if (project === null) notFound();
 
@@ -111,6 +115,8 @@ export default async function PaymentsScreen({
         backLabel={project.title}
         title="Оплаты и документы"
       />
+
+      <ActionError id={flags.error} />
 
       {contract === null || money === null ? (
         <Card>
@@ -255,6 +261,15 @@ export default async function PaymentsScreen({
                             ),
                           )
                         : null}
+                      {/* Плановый транш без документов удаляется: прежде
+                          опечатку в сумме лечило только списание (Р-244). */}
+                      {mayEdit && tranche.status === 'PLANNED' && tranche.documents.length === 0 ? (
+                        <Form action={dropTranche} inline>
+                          <input type="hidden" name="trancheId" value={tranche.id} />
+                          <input type="hidden" name="code" value={project.code} />
+                          <Button tone="quiet">Удалить транш</Button>
+                        </Form>
+                      ) : null}
 
                       <div style={{ flexBasis: '100%' }}>
                         {tranche.documents.length === 0 ? null : (
@@ -516,6 +531,36 @@ export default async function PaymentsScreen({
           ) : null}
         </>
       )}
+
+      {/* Договор правится: номер, дата, сумма — не ниже полученного.
+          Прежде форма была только для нового договора, а предупреждение
+          о превышении советовало «поправить сумму договора» (Р-244). */}
+      {mayEdit && contract !== null ? (
+        <Disclosure title="Изменить договор" style={{ marginTop: 20 }}>
+          <Form action={saveProjectContract}>
+            <input type="hidden" name="projectId" value={project.id} />
+            <input type="hidden" name="code" value={project.code} />
+            <FormRow>
+              <Field label="Номер" name="number" required defaultValue={contract.number} />
+              <Field
+                label="Дата подписания"
+                name="signedOn"
+                type="date"
+                defaultValue={contract.signedOn?.toISOString().slice(0, 10) ?? ''}
+              />
+              <Field
+                label="Сумма договора"
+                name="totalAmount"
+                required
+                defaultValue={formatAmount(contract.totalAmount)}
+              />
+            </FormRow>
+            <FormActions>
+              <Button tone="quiet">Сохранить договор</Button>
+            </FormActions>
+          </Form>
+        </Disclosure>
+      ) : null}
 
       {mayEdit && contract === null ? (
         <Card style={{ marginTop: 20 }}>

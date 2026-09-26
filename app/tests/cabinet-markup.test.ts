@@ -187,10 +187,11 @@ describe('слои кабинета не смешиваются', () => {
     for (const file of sources(root, 'both')) {
       const code = readFileSync(file, 'utf8');
       const name = path.relative(root, file);
-      // Единственное исключение: сессия читает cookie запроса, и без
-      // `next/headers` этого не сделать.
-      if (name === 'session.ts') continue;
-      if (/from\s+'[^']*components\//u.test(code) || /from\s+'next\//u.test(code)) {
+      // Исключения — модули cookie запроса: сессия и одноразовое сообщение
+      // об отказе (решение Р-243). Без `next/headers` cookie не прочесть;
+      // к оформлению они не обращаются и под это исключение не подпадают.
+      const cookieModule = name === 'session.ts' || name === 'flash.ts';
+      if (/from\s+'[^']*components\//u.test(code) || (!cookieModule && /from\s+'next\//u.test(code))) {
         guilty.push(name);
       }
     }

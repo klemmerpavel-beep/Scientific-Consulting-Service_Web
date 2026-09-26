@@ -43,7 +43,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // чтобы получить всё найденное, а не первые полсотни строк. Страницы
   // перебираются по одной, чтобы не держать в памяти разом весь перечень.
   const head = [
-    'Дата',
+    'Дата (МСК)',
     'Страница',
     'Форма',
     'Имя',
@@ -74,7 +74,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     for (const lead of chunk.rows) {
       lines.push(
         [
-          lead.createdAt.toISOString().slice(0, 16).replace('T', ' '),
+          // Время — московское, как на экранах: прежде стояло UTC без
+          // пометки, и заявка от 26.09 в 01:30 выглядела вчерашней (Р-245).
+          new Date(lead.createdAt.getTime() + 3 * 3_600_000).toISOString().slice(0, 16).replace('T', ' '),
           leadSourceLabel(lead.source),
           lead.form,
           lead.name ?? '',

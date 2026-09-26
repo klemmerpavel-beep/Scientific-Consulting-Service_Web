@@ -80,7 +80,7 @@ export default async function FinanceScreen({
   const all = sp.set === 'all';
   const chosen = all ? rows : owing;
   const pages = Math.max(1, Math.ceil(chosen.length / PAGE_SIZE));
-  const page = Math.min(Math.max(1, Number(sp.page) || 1), pages);
+  const page = Math.min(Math.max(1, Math.trunc(Number(sp.page)) || 1), pages);
   const shown = chosen.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const href = (set: 'owing' | 'all', next = 1) => {
     const params = new URLSearchParams();

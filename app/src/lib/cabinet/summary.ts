@@ -361,11 +361,14 @@ export async function moneyBrief(actor: Actor): Promise<{
   // траншей его просроченным не показывал (решение Р-236).
   const at = today();
   const day = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
-  const [received, awaiting, overdue] = await Promise.all([
+  const [received, contracts, overdue] = await Promise.all([
     prisma.tranche.aggregate({ _sum: { amount: true }, where: { status: 'PAID' } }),
-    prisma.tranche.aggregate({
-      _sum: { amount: true },
-      where: { status: { in: ['PLANNED', 'INVOICED'] } },
+    // «К получению» — договор без полученного и списанного, той же функцией,
+    // что экран финансов и отчёт: прежде здесь были только заведённые
+    // незакрытые транши, и главная расходилась с отчётом на сумму договоров
+    // без траншей (решение Р-244).
+    prisma.contract.findMany({
+      select: { totalAmount: true, tranches: { select: { amount: true, status: true } } },
     }),
     prisma.tranche.aggregate({
       _sum: { amount: true },
@@ -374,7 +377,7 @@ export async function moneyBrief(actor: Actor): Promise<{
   ]);
   return {
     received: received._sum.amount ?? 0n,
-    awaiting: awaiting._sum.amount ?? 0n,
+    awaiting: contracts.reduce((acc, c) => acc + outstandingOf(c.totalAmount, c.tranches), 0n),
     overdue: overdue._sum.amount ?? 0n,
   };
 }

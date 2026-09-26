@@ -32,12 +32,17 @@ export function safeSegment(raw: string, limit = 80): string {
     .replace(/\.+$/, '')
     .trim();
   if (cleaned.length === 0) return 'без названия';
-  if (cleaned.length <= limit) return cleaned;
+  // Длина и обрезка — по знакам, а не по половинкам суррогатной пары:
+  // эмодзи на границе обрезки распадался на одиночный суррогат, адрес
+  // WebDAV не собирался, и файл не уходил на Диск ни на одном прогоне
+  // (решение Р-246).
+  const chars = Array.from(cleaned);
+  if (chars.length <= limit) return cleaned;
   // Обрезается середина, а не хвост: расширение и начало названия несут
   // больше смысла, чем середина длинной фразы.
-  const dot = cleaned.lastIndexOf('.');
-  const ext = dot > 0 && cleaned.length - dot <= 12 ? cleaned.slice(dot) : '';
-  const head = cleaned.slice(0, limit - ext.length - 1).trim();
+  const dot = chars.lastIndexOf('.');
+  const ext = dot > 0 && chars.length - dot <= 12 ? chars.slice(dot).join('') : '';
+  const head = chars.slice(0, limit - Array.from(ext).length - 1).join('').trim();
   return `${head}${ext}`;
 }
 
@@ -89,5 +94,33 @@ export function foldersFor(relative: string): string[] {
   parts.pop();
   const out: string[] = [];
   for (let i = 1; i <= parts.length; i += 1) out.push(parts.slice(0, i).join('/'));
+  return out;
+}
+
+/**
+ * Папка материала в зеркале. Два материала одной работы с одинаковым
+ * названием — два «Счёт.pdf» к разным траншам — прежде ложились в одну
+ * папку, и их версии с одинаковым именем затирали друг друга: зеркало
+ * каждый час перезаливало одну поверх другой, а второго файла на Диске не
+ * было никогда (решение Р-246). Первый по времени материал сохраняет
+ * прежнюю папку, следующие получают « (2)», « (3)».
+ */
+export function materialFolders(
+  materials: readonly { id: string; createdAt: Date; title: string; project: { code: string } }[],
+): Map<string, string> {
+  const unique = [...new Map(materials.map((m) => [m.id, m])).values()].sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
+  );
+  const seen = new Map<string, number>();
+  const out = new Map<string, string>();
+  for (const material of unique) {
+    const key = `${material.project.code}/${safeSegment(material.title, 60).toLowerCase()}`;
+    const count = (seen.get(key) ?? 0) + 1;
+    seen.set(key, count);
+    out.set(
+      material.id,
+      count === 1 ? material.title : `${safeSegment(material.title, 54)} (${count})`,
+    );
+  }
   return out;
 }

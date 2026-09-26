@@ -4,7 +4,7 @@ import { yearlyRows } from '../cabinet/finance-years.ts';
 import type { Actor } from '../cabinet/access.ts';
 import { STATUS_LABEL as TRANCHE_LABEL } from '../cabinet/money.ts';
 import { stageStateLabel } from '../cabinet/stage-state.ts';
-import { versionPath } from './paths.ts';
+import { materialFolders, versionPath } from './paths.ts';
 import { csv, rub } from './table.ts';
 
 /**
@@ -207,13 +207,14 @@ export async function materialFiles(): Promise<MaterialFile[]> {
     where: { material: { deletedAt: null }, purgedAt: null },
     include: {
       material: {
-        select: { title: true, project: { select: { code: true } } },
+        select: { id: true, createdAt: true, title: true, project: { select: { code: true } } },
       },
     },
   });
+  const folders = materialFolders(versions.map((v) => v.material));
   return versions.map((v) => ({
     storageKey: v.storageKey,
-    path: versionPath(v.material.project.code, v.material.title, v.number, v.originalName),
+    path: versionPath(v.material.project.code, folders.get(v.material.id)!, v.number, v.originalName),
     sha256: v.sha256,
     sizeBytes: Number(v.sizeBytes),
   }));

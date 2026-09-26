@@ -5,6 +5,7 @@ import { record } from './audit.ts';
 import { leadAttachmentKey, sha256, storage } from './storage.ts';
 import { can, ensure, scopeComments, scopeMaterials, scopeProjects, type Actor } from './access.ts';
 import { now as today } from './clock.ts';
+import { LEAD_STATUS_LABEL } from './lead-labels.ts';
 
 /**
  * Выборки экранов кабинета. Каждая строится через ограничение из модуля
@@ -57,7 +58,10 @@ export async function listProjects(
 
   const byFilter =
     applied === 'active'
-      ? { status: 'ACTIVE' as const }
+      ? // Приостановленная работа не закрыта: прежде она не попадала ни в
+        // «Действующие», ни в «Завершённые» и пропадала с экрана, открытого
+        // по умолчанию (решение Р-245).
+        { status: { in: ['ACTIVE' as const, 'PAUSED' as const] } }
       : applied === 'done'
         ? { status: { in: ['COMPLETED' as const, 'CANCELLED' as const] } }
         : applied === 'waiting'
@@ -232,6 +236,31 @@ export async function projectMaterials(actor: Actor, code: string) {
 }
 
 /**
+ * Действующие работы с этапами — для ответа в шапке «Мои работы» и
+ * «Назначенные работы». Ответ говорит обо всех работах человека, а не о
+ * странице перечня: прежде он строился по отобранной выборке, и клиент,
+ * открывший «Завершённые», читал «Действующих работ нет» (решение Р-245).
+ */
+export async function liveWorks(actor: Actor) {
+  const scope = scopeProjects(actor);
+  if (scope === null) return [];
+  return prisma.project.findMany({
+    where: { ...scope, status: 'ACTIVE' },
+    orderBy: { code: 'asc' },
+    select: {
+      id: true,
+      code: true,
+      title: true,
+      status: true,
+      stages: {
+        orderBy: { position: 'asc' },
+        select: { id: true, title: true, state: true, dueOn: true },
+      },
+    },
+  });
+}
+
+/**
  * Блок «сейчас от вас требуется» — композиционный центр главного экрана.
  * Собирается из состояний этапов: ожидание материалов от клиента и этапы,
  * ждущие его согласования. Основная потеря календарного времени в проектах
@@ -270,7 +299,14 @@ export const LEAD_PAGE_SIZE = 20;
  */
 export async function leadQueue(actor: Actor, page = 1) {
   ensure(actor, 'REQUEST_MODERATE');
-  const where = { status: { in: ['NEW' as const, 'IN_PROGRESS' as const] }, projectId: null };
+  // Отзыв — не заявка: у него нет контакта, и одобрить его в работу нельзя.
+  // Прежде отзывы стояли в очереди, счётчик расходился с «Все заявки», а
+  // одобренный отзыв заводил клиента с пустой почтой (решение Р-245).
+  const where = {
+    status: { in: ['NEW' as const, 'IN_PROGRESS' as const] },
+    projectId: null,
+    form: { not: 'review' },
+  };
   const total = await prisma.lead.count({ where });
   const pages = Math.max(1, Math.ceil(total / LEAD_PAGE_SIZE));
   // Страница за пределами перечня — не ошибка: ссылку могли сохранить, а
@@ -513,10 +549,14 @@ export async function clientRegistry(actor: Actor) {
   if (scope === null) return [];
   const mine = Object.keys(scope).length === 0 ? {} : { projects: { some: scope } };
   const rows = await prisma.clientProfile.findMany({
-    where: { ...mine, erasedAt: null },
+    // Сведённая карточка-дубль в реестр не попадает: её работы уже у
+    // основной (решение Р-245).
+    where: { ...mine, erasedAt: null, mergedIntoId: null },
     orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
     include: {
-      projects: { select: { id: true, status: true } },
+      // Работы — в пределах видимого: менеджер видел число и чужих работ
+      // клиента, вопреки Р-149 (решение Р-245).
+      projects: { where: scope, select: { id: true, status: true } },
       user: { select: { lastLoginAt: true } },
     },
   });
@@ -587,7 +627,11 @@ export async function leadList(actor: Actor, filter: LeadFilter = {}) {
     // обращений им не место — у них свой порядок работы (Р-111).
     form: { not: 'review' },
     ...(filter.source ? { source: filter.source } : {}),
-    ...(filter.status ? { status: filter.status as 'NEW' } : {}),
+    // Состояние — из перечня; неизвестное значение — «любое»: прежде оно
+    // уходило в базу и роняло экран и выгрузку ошибкой (решение Р-245).
+    ...(filter.status && Object.hasOwn(LEAD_STATUS_LABEL, filter.status)
+      ? { status: filter.status as 'NEW' }
+      : {}),
     ...(query.length === 0
       ? {}
       : {
@@ -600,6 +644,8 @@ export async function leadList(actor: Actor, filter: LeadFilter = {}) {
             { phone: { contains: query, mode: 'insensitive' as const } },
             { organization: { contains: query, mode: 'insensitive' as const } },
             { topic: { contains: query, mode: 'insensitive' as const } },
+            // Столбец «Тема» выводит `topic ?? need`: искать нужно и там.
+            { need: { contains: query, mode: 'insensitive' as const } },
           ],
         }),
   };

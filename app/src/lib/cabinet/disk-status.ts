@@ -112,9 +112,12 @@ export async function diskStatus(actor: Actor): Promise<DiskStatus> {
   const pullRuns = pulls.map(asPull);
 
   return {
+    // Приложению пароль не передаётся — только признак, что он задан
+    // (решение Р-246); средства в контейнере tools видят сам пароль.
     configured:
       (process.env.YANDEX_DISK_USER?.trim() ?? '').length > 0 &&
-      (process.env.YANDEX_DISK_PASSWORD?.trim() ?? '').length > 0,
+      ((process.env.YANDEX_DISK_PASSWORD?.trim() ?? '').length > 0 ||
+        process.env.YANDEX_DISK_CONFIGURED === 'yes'),
     folder: process.env.YANDEX_DISK_FOLDER?.trim() || 'ProDisser',
     host: process.env.YANDEX_DISK_WEBDAV?.trim() || 'https://webdav.yandex.ru',
     scope: (process.env.YANDEX_DISK_SCOPE?.trim() || 'all').toLowerCase() === 'tables'

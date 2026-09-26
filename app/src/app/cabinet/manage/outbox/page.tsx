@@ -25,6 +25,7 @@ import {
 } from '../../../../lib/cabinet/outbox';
 import { currentActor } from '../../../../lib/cabinet/session';
 import { retryNotification } from '../../actions';
+import ActionError from '../../../../components/cabinet/ActionError';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,11 @@ const CHANNEL_LABEL: Record<string, string> = {
   TELEGRAM: 'Telegram',
 };
 
-export default async function OutboxScreen() {
+export default async function OutboxScreen({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
   // Состояние очереди — служебная кухня практики; менеджеру она не нужна.
@@ -47,6 +52,8 @@ export default async function OutboxScreen() {
         title="Очередь отправки"
         note="Два разных пути. Уведомления кабинета копятся в очереди и уходят рассылкой раз в минуту. Обращения с сайта не ждут очереди: их отправляет сам приём заявки, а исход записывает в журнал доставки — он ниже."
       />
+
+      <ActionError id={(await searchParams).error} />
 
       <Heading level={2} style={{ margin: '0 0 12px' }}>
         Уведомления кабинета

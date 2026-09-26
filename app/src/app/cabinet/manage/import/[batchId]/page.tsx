@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 
+import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
 import { SANS } from '../../../../../components/cabinet/tokens';
 import {
@@ -27,7 +28,7 @@ import {
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
 import { curators } from '../../../../../lib/cabinet/queries';
-import { loadBatch } from '../../../../../lib/cabinet/import/apply';
+import { loadBatch, mergeCandidates } from '../../../../../lib/cabinet/import/apply';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { currentActor } from '../../../../../lib/cabinet/session';
 import { applyOrderBook, mergeClientCards } from '../../../actions';
@@ -45,7 +46,7 @@ export default async function ImportBatchScreen({
   searchParams,
 }: {
   params: Promise<{ batchId: string }>;
-  searchParams: Promise<{ applied?: string; merged?: string }>;
+  searchParams: Promise<{ applied?: string; merged?: string; error?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
@@ -61,6 +62,8 @@ export default async function ImportBatchScreen({
   // стояло тремя независимыми копиями — здесь, в действиях и в
   // `queries.ts` (решение Р-185).
   const managers = await curators(actor);
+  // Кандидаты на сведение — по всей базе карточек после переноса (Р-245).
+  const candidates = applied ? await mergeCandidates(actor) : [];
 
   const issues = Object.entries(report.issueCounts).filter(([, count]) => count > 0);
 
@@ -91,6 +94,8 @@ export default async function ImportBatchScreen({
         title={report.fileName}
         note={`Лист «${report.sheet}», загружена ${formatDate(report.createdAt)}. К заведению ${report.counts.CREATE}, к обновлению ${report.counts.UPDATE}, уже перенесено ${report.counts.SKIP}.`}
       />
+
+      <ActionError id={flags.error} />
 
       {flags.applied === undefined ? null : (
         <div style={{ marginBottom: 20 }}>
@@ -320,23 +325,39 @@ export default async function ImportBatchScreen({
         </Card>
       )}
 
-      {report.duplicates.length === 0 || !applied ? null : (
+      {candidates.length === 0 || !applied ? null : (
         <Card style={{ marginTop: 28 }}>
           <Heading level={2} style={{ marginBottom: 8 }}>
             Свести карточки
           </Heading>
           <Text muted style={{ marginBottom: 16 }}>
-            Сведение переводит проекты на основную карточку. Прежняя не удаляется: на неё
-            ссылаются журналы и требования об удалении данных субъекта.
+            Карточки с одинаковым ФИО без учёта пробелов — вероятно, один человек, записанный
+            по-разному. Сведение переводит работы на основную карточку; прежняя не удаляется: на
+            неё ссылаются журналы и требования об удалении данных субъекта. Карточка со входом в
+            кабинет сводится только как основная.
           </Text>
-          <Form action={mergeClientCards} style={{ maxWidth: 520 }}>
-            <input type="hidden" name="batchId" value={report.batchId} />
-            <Field label="Идентификатор карточки, которую сводим" name="sourceId" required />
-            <Field label="Идентификатор основной карточки" name="targetId" required />
-            <FormActions>
-              <Button tone="quiet">Свести</Button>
-            </FormActions>
-          </Form>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {candidates.map((group) => (
+              <div key={group.map((card) => card.id).join('-')} style={{ display: 'grid', gap: 8 }}>
+                {group.flatMap((source) =>
+                  source.hasAccount
+                    ? []
+                    : group
+                        .filter((target) => target.id !== source.id)
+                        .map((target) => (
+                          <Form key={`${source.id}-${target.id}`} action={mergeClientCards} inline>
+                            <input type="hidden" name="batchId" value={report.batchId} />
+                            <input type="hidden" name="sourceId" value={source.id} />
+                            <input type="hidden" name="targetId" value={target.id} />
+                            <Button tone="quiet">
+                              {`«${source.fullName}» (${source.projects}) → в «${target.fullName}» (${target.projects})`}
+                            </Button>
+                          </Form>
+                        )),
+                )}
+              </div>
+            ))}
+          </div>
         </Card>
       )}
     </Shell>

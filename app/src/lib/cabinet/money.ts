@@ -36,7 +36,7 @@ const TRANCHE_TRANSITIONS: Record<TrancheStatus, readonly TrancheStatus[]> = {
 };
 
 export function isTrancheStatus(value: string): value is TrancheStatus {
-  return value in STATUS_LABEL;
+  return Object.hasOwn(STATUS_LABEL, value);
 }
 
 export function nextTrancheStatuses(from: TrancheStatus): readonly TrancheStatus[] {
@@ -66,17 +66,33 @@ export function outstandingOf(
   return total > closed ? total - closed : 0n;
 }
 
-/** Разбор суммы, введённой человеком: «240 000», «240000,50», «240 000.50». */
+/**
+ * Разбор суммы, введённой человеком: «240 000», «240000,50», «240 000.50».
+ *
+ * Прежде из строки выбрасывалось всё, кроме цифр и разделителей: «240 тыс»
+ * давало 240 ₽, «1,5 млн» — 1,50 ₽, «240.000» с точкой-разделителем
+ * тысяч — 240 ₽, а «−5000» с типографским минусом — плюс пять тысяч.
+ * Договор на «600 тыс» заводился на шестьсот рублей, и исправить это было
+ * нечем (решение Р-244). Теперь строка принимается целиком или не
+ * принимается: разряды через пробел, один разделитель копеек, не больше
+ * двух знаков после него. Разбор — строковый, без числа с плавающей точкой.
+ */
 export function parseAmount(raw: string): bigint {
-  const normalized = raw
-    .replace(/ /g, ' ')
-    .replace(/[^\d,.-]/g, '')
-    .replace(/\s/g, '')
-    .replace(',', '.');
-  if (normalized.length === 0) throw new Error('Сумма не указана');
-  const value = Number(normalized);
-  if (!Number.isFinite(value) || value < 0) throw new Error('Сумма распознана неверно');
-  return BigInt(Math.round(value * 100));
+  const text = raw
+    .replace(/[\u00a0\u202f\u2009]/gu, ' ')
+    .replace(/\s*₽\s*$/u, '')
+    .replace(/\s*руб\.?\s*$/iu, '')
+    .trim();
+  if (text.length === 0) throw new Error('Сумма не указана');
+  const match = /^(\d{1,3}(?: \d{3})+|\d+)(?:[.,](\d{1,2}))?$/u.exec(text);
+  if (match === null) {
+    throw new Error(
+      'Сумма распознана неверно: цифрами в рублях, разряды — пробелом, копейки — после запятой, например «240 000» или «1 250,50»',
+    );
+  }
+  const rubles = BigInt(match[1]!.replace(/ /gu, ''));
+  const kopecks = BigInt((match[2] ?? '').padEnd(2, '0') || '0');
+  return rubles * 100n + kopecks;
 }
 
 /** Сумма в рублях для показа: «240 000 ₽», «1 250,50 ₽». */

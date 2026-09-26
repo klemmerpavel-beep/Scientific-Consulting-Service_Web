@@ -33,6 +33,19 @@ describe('разбор введённой суммы', () => {
 
   it('отрицательная сумма не принимается', () => {
     assert.throws(() => parseAmount('-1000'), /Сумма/);
+    assert.throws(() => parseAmount('−5000'), /Сумма/);
+  });
+
+  it('слова, лишние знаки и точка-разделитель тысяч отклоняются, а не выбрасываются (Р-244)', () => {
+    for (const bad of ['240 тыс', '1,5 млн', '240к', '240.000', '240 000,505', '24 00', '1,2,3']) {
+      assert.throws(() => parseAmount(bad), /Сумма распознана неверно/u, bad);
+    }
+  });
+
+  it('неразрывный пробел, «руб.» и одна цифра копеек принимаются', () => {
+    assert.equal(parseAmount('240\u00a0000'), 24_000_000n);
+    assert.equal(parseAmount('240 000 руб.'), 24_000_000n);
+    assert.equal(parseAmount('240,5'), 24_050n);
   });
 });
 
@@ -110,5 +123,15 @@ describe('остаток долга по договору', () => {
     assert.equal(outstandingOf(220_000n, tranches), 70_000n);
     assert.equal(outstandingOf(120_000n, tranches), 0n);
     assert.equal(outstandingOf(220_000n, []), 220_000n);
+  });
+});
+
+describe('суммы и признаки в журнале', () => {
+  it('копейки показываются рублями, логические значения — «да»/«нет» (Р-242, Р-244)', async () => {
+    const { detailsLabel } = await import('../src/lib/cabinet/journal-labels.ts');
+    const text = detailsLabel({ amount: '24000050', held: true, contactHint: false });
+    assert.match(text, /сумма 240\s000,50\s₽/u);
+    assert.match(text, /на модерации да/u);
+    assert.match(text, /есть контакты нет/u);
   });
 });

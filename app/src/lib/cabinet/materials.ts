@@ -34,6 +34,8 @@ export const MATERIAL_KIND_LABEL: Record<MaterialKind, string> = {
   OTHER: 'документ',
 };
 
+const MATERIAL_KINDS: readonly MaterialKind[] = ['STAGE_MATERIAL', 'CONTRACT', 'INVOICE', 'ACT', 'OTHER'];
+
 export interface UploadInput {
   readonly projectId: string;
   readonly stageId?: string | null;
@@ -86,6 +88,45 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   const kind = existing?.kind ?? input.kind ?? 'STAGE_MATERIAL';
   ensure(actor, kind === 'STAGE_MATERIAL' ? 'MATERIAL_UPLOAD' : 'PAYMENT_EDIT', ref);
 
+  // Вид — из закрытого перечня, привязка документа — к договору и траншу
+  // этой же работы. Прежде вид с формы шёл в базу как есть (мусорное
+  // значение давало общий экран сбоя), а транш чужой работы принимался, и
+  // документ появлялся в её перечне траншей (решение Р-244).
+  if (!MATERIAL_KINDS.includes(kind)) throw new Error('Неизвестный вид документа');
+  let contractId: string | null = null;
+  let trancheId: string | null = null;
+  if (existing === null && kind !== 'STAGE_MATERIAL') {
+    if (input.trancheId != null) {
+      const tranche = await prisma.tranche.findUnique({
+        where: { id: input.trancheId },
+        select: { contract: { select: { projectId: true } } },
+      });
+      if (tranche === null || tranche.contract.projectId !== input.projectId) {
+        throw new Error('Транш не найден');
+      }
+      trancheId = input.trancheId;
+    }
+    if (input.contractId != null) {
+      const contract = await prisma.contract.findUnique({
+        where: { id: input.contractId },
+        select: { projectId: true },
+      });
+      if (contract === null || contract.projectId !== input.projectId) {
+        throw new Error('Договор не найден');
+      }
+      contractId = input.contractId;
+    }
+  }
+  // Новые файлы к работе обезличенного клиента не прикладываются: имя
+  // файла — тоже свободный текст (решения Р-234, Р-244).
+  const owner = await prisma.project.findUnique({
+    where: { id: input.projectId },
+    select: { client: { select: { erasedAt: true } } },
+  });
+  if (owner?.client.erasedAt != null) {
+    throw new Error('Данные клиента удалены по его требованию: новые файлы к работе не прикладываются');
+  }
+
   // Название нового материала видит другая сторона: клиент — эксперт,
   // эксперт — клиент. Контакт в названии обходил и модерацию замечаний, и
   // единственный канал переписки (решение Р-242).
@@ -118,8 +159,8 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
           projectId: input.projectId,
           stageId: input.stageId ?? null,
           kind,
-          contractId: input.contractId ?? null,
-          trancheId: input.trancheId ?? null,
+          contractId,
+          trancheId,
           title: (input.title ?? input.originalName).trim(),
           createdById: actor.id,
         },
