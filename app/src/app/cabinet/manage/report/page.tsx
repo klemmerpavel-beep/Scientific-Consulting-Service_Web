@@ -18,13 +18,20 @@ import {
   plural,
 } from "../../../../components/cabinet/ui";
 import { can } from "../../../../lib/cabinet/access";
-import { formatAmount, formatPlain } from "../../../../lib/cabinet/money";
+import {
+  formatAmount,
+  formatPlain,
+  formatRounded,
+  roundRuble,
+} from "../../../../lib/cabinet/money";
 import { currentActor } from "../../../../lib/cabinet/session";
 import { loadRows } from "../../../../lib/cabinet/analytics/data";
 import {
   byMonth,
   clients,
   conclusions,
+  contractedBetween,
+  lateOpen,
   overview,
   products,
   receivables,
@@ -32,7 +39,7 @@ import {
   verdict,
   type ProjectRow,
 } from "../../../../lib/cabinet/analytics/metrics";
-import { now as clockNow } from "../../../../lib/cabinet/clock";
+import { moscowToday, now as clockNow } from "../../../../lib/cabinet/clock";
 
 export const dynamic = "force-dynamic";
 
@@ -103,7 +110,6 @@ export default async function ReportScreen({
   const all = await loadRows(actor);
   const rows = all.filter((row) => inPeriod(row, from));
 
-  const sum = overview(rows);
   const whole = overview(all);
   const started = rows.filter(
     (row) => row.startedOn !== null && row.startedOn >= from,
@@ -111,20 +117,28 @@ export default async function ReportScreen({
   const closed = rows.filter(
     (row) => row.closedOn !== null && row.closedOn >= from,
   );
-  const late = all.filter(
-    (row) =>
-      row.status === "ACTIVE" &&
-      row.dueOn !== null &&
-      row.dueOn.getTime() < today.getTime(),
-  );
+  // Работы с прошедшим сроком — действующие, срок раньше сегодняшнего
+  // дня по Москве; та же функция, что у вкладки «Сроки» и итога
+  // (решение Р-256).
+  const late = lateOpen(all, today);
 
-  // Пустые месяцы из таблицы убираются: ряд `byMonth` начинается первым
-  // заказом, и отчёт за тридцать дней тянул бы два десятка нулевых строк
-  // ради двух содержательных (решение Р-201).
-  const months = byMonth(rows).filter(
+  // Законтрактовано за период — по дате договора, а без неё — по дню
+  // начала работы. Прежде сюда шли договоры работ, начатых или закрытых в
+  // периоде, и старая работа, закрытая вчера, давала всю свою сумму «за
+  // тридцать дней» (решение Р-256).
+  const signed = contractedBetween(all, from, today);
+  const received = receivedBetween(all, from, today);
+  const quiet = signed.total === 0n && received === 0n;
+
+  // Помесячный ряд и спрос — по работам, начатым в периоде: ряд `byMonth`
+  // относит всё к месяцу начала, и закрытая в периоде старая работа
+  // тянула в таблицу свой месяц двухлетней давности (решение Р-256).
+  // Пустые месяцы из таблицы убираются: отчёт за тридцать дней тянул бы
+  // нулевые строки ради двух содержательных (решение Р-201).
+  const months = byMonth(started, today).filter(
     (month) => month.orders > 0 || month.contracted > 0n || month.received > 0n,
   );
-  const demand = products(rows)
+  const demand = products(started)
     .slice()
     .sort((a, b) => b.orders - a.orders);
   const clientReport = clients(all, today);
@@ -141,7 +155,7 @@ export default async function ReportScreen({
         backHref="/cabinet/manage"
         backLabel="практика"
         title="Отчёт практики"
-        note={`Свод ${period.words}. Составлен ${formatDate(today)}.`}
+        note={`Свод ${period.words}. Составлен ${formatDate(moscowToday(today))}.`}
       />
 
       <div className="cab-no-print">
@@ -198,20 +212,29 @@ export default async function ReportScreen({
               value={String(started.length)}
               note={period.words}
             />
+            {/* «Закрыто», а не «Завершено»: в число входят и отменённые —
+                так же, как «Закрыто за квартал» на главной (решение
+                Р-256). */}
             <Tile
-              label="Завершено"
+              label="Закрыто"
               value={String(closed.length)}
-              note={period.words}
+              note={`${period.words}, включая отменённые`}
+            />
+            {/* «Действующих» — идущие и приостановленные, как на главной
+                и во вкладке перечня работ (решение Р-256). */}
+            <Tile
+              label="Действующих"
+              value={String(whole.ongoing)}
+              note={
+                whole.paused > 0
+                  ? `на день отчёта, из них приостановлено ${whole.paused}`
+                  : "на день отчёта"
+              }
             />
             <Tile
-              label="В работе"
-              value={String(whole.active)}
-              note="на день отчёта"
-            />
-            <Tile
-              label="Сорвано сроков"
+              label="Работ с прошедшим сроком"
               value={String(late.length)}
-              note="действующих работ со сроком в прошлом"
+              note="действующих, срок раньше сегодняшнего дня"
             />
           </Tiles>
           {rows.length === 0 ? (
@@ -268,34 +291,52 @@ export default async function ReportScreen({
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Деньги
           </Heading>
+          {/* Период без договоров и оплат — фразой, а не плитками нулей:
+              два «0 ₽» подряд читались как сбой расчёта (решение Р-256). */}
+          {quiet ? (
+            <Text muted size={14} style={{ marginBottom: 12 }}>
+              {`${period.words[0]!.toUpperCase()}${period.words.slice(1)} договоров не подписано и оплат не поступало.`}
+            </Text>
+          ) : null}
           <Tiles inset>
-            <Tile
-              label="Законтрактовано"
-              value={formatAmount(sum.contracted)}
-              note={period.words}
-            />
-            <Tile
-              label="Получено"
-              value={formatAmount(receivedBetween(all, from, today))}
-              note={period.words}
-            />
+            {quiet ? null : (
+              <Tile
+                label="Законтрактовано"
+                value={formatAmount(signed.total)}
+                note={`${period.words}, по дате договора`}
+              />
+            )}
+            {quiet ? null : (
+              <Tile
+                label="Получено"
+                value={formatAmount(received)}
+                note={period.words}
+              />
+            )}
             <Tile
               label="К получению"
               value={formatAmount(whole.outstanding)}
-              note="по всем работам"
+              note="по всем работам, кроме отменённых"
             />
+            {/* Не «Просрочено»: так на главной названы платежи со сроком в
+                прошлом, а здесь — остаток работ, чей срок прошёл
+                (решение Р-256). */}
             <Tile
-              label="Просрочено"
+              label="Остаток по работам с прошедшим сроком"
               value={formatAmount(debtSum)}
-              note={`${debts.length} ${plural(debts.length, "работа", "работы", "работ")} со сроком в прошлом`}
+              note={`${debts.length} ${plural(debts.length, "работа", "работы", "работ")}`}
             />
           </Tiles>
           <Text muted size={13} style={{ marginTop: 12 }}>
-            Собрано по завершённым работам {Math.round(whole.collection * 100)}{" "}
-            %; средний чек за период — {formatAmount(sum.averageCheck)}.
+            {whole.collection === null
+              ? "Завершённых работ с договором нет — собираемость не считается"
+              : `Собрано по завершённым работам ${Math.round(whole.collection * 100)} %`}
+            {quiet
+              ? "."
+              : `; средний чек за период — ${formatRounded(signed.averageCheck)}.`}
           </Text>
           {months.length === 0 ? null : (
-            <TableScroll label="Деньги по месяцам">
+            <TableScroll label="Договоры и оплаты по месяцу начала работы">
             <table
               style={{
                 width: "100%",
@@ -303,6 +344,16 @@ export default async function ReportScreen({
                 marginTop: 16,
               }}
             >
+              <caption
+                style={{
+                  ...TABLE_CELL,
+                  textAlign: "left",
+                  color: "var(--pd-ink-secondary)",
+                }}
+              >
+                Работы, начатые в периоде, по месяцу начала: сумма договоров и
+                полученное по ним — когда бы оно ни пришло.
+              </caption>
               <thead>
                 <tr>
                   <th style={TABLE_HEAD} scope="col">
@@ -351,7 +402,11 @@ export default async function ReportScreen({
             />
             <Tile
               label="Доля первых пяти"
-              value={`${Math.round(clientReport.top5Share * 100)} %`}
+              value={
+                clientReport.top5Share === null
+                  ? "—"
+                  : `${Math.round(clientReport.top5Share * 100)} %`
+              }
               note="в сумме договоров"
             />
           </Tiles>
@@ -364,6 +419,15 @@ export default async function ReportScreen({
                 marginTop: 16,
               }}
             >
+              <caption
+                style={{
+                  ...TABLE_CELL,
+                  textAlign: "left",
+                  color: "var(--pd-ink-secondary)",
+                }}
+              >
+                Работы, начатые в периоде.
+              </caption>
               <thead>
                 <tr>
                   <th style={TABLE_HEAD} scope="col">
@@ -386,7 +450,15 @@ export default async function ReportScreen({
                     <td style={TABLE_CELL}>{item.typeName}</td>
                     <td style={TABLE_NUM}>{item.orders}</td>
                     <td style={TABLE_NUM}>{formatPlain(item.total)}</td>
-                    <td style={TABLE_NUM}>{formatPlain(item.averageCheck)}</td>
+                    {/* Округление до рубля — как средний чек аналитики
+                        (решение Р-256). */}
+                    <td style={TABLE_NUM}>
+                      {formatPlain(
+                        item.averageCheck === null
+                          ? null
+                          : roundRuble(item.averageCheck),
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

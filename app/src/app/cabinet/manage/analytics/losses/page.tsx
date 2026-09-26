@@ -31,7 +31,7 @@ export default async function AnalyticsLosses() {
       actor={actor}
       current="/cabinet/manage/analytics/losses"
       title="Потери"
-      lead="Потерей считается недополученное по остановленным и отменённым работам. Работа, остановленная без задолженности, потерь не даёт."
+      lead="Потерей считается недополученное по приостановленным и отменённым работам. Работа, остановленная без задолженности, потерь не даёт. Остаток отменённых работ считается только здесь: к получению его больше не ждут. Приостановленные при этом остаются и в «к получению» — они могут возобновиться."
     >
       {rows.length === 0 ? (
         <Empty title="Считать нечего">Проектов в системе нет.</Empty>
@@ -45,7 +45,7 @@ export default async function AnalyticsLosses() {
             />
             <Tile label="Величина из брифа" value={formatAmount(BRIEF_LOSSES)} note="PD-LK-BRIEF-001, раздел 5" />
             <Tile label="Приостановлено" value={String(report.stopped)} note={`отменено ${report.cancelled}`} />
-            <Tile label="Задолженность всего" value={formatAmount(total.outstanding)} note="включая действующие работы" />
+            <Tile label="Задолженность всего" value={formatAmount(total.outstanding)} note="по всем работам, кроме отменённых" />
           </Tiles>
 
           <div style={{ marginBottom: 28 }}>

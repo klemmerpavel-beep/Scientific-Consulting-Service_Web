@@ -77,10 +77,14 @@ export default async function AnalyticsProducts() {
               width={1000}
               labelWidth={380}
               title="Средний чек по позициям"
-              data={list.map((product) => ({
-                label: product.typeName,
-                value: Number(product.averageCheck) / 100,
-              }))}
+              // Позиция без договоров в график не идёт: столбец нулевой
+              // высоты читался бы как цена «0 ₽» (решение Р-256).
+              data={list
+                .filter((product) => product.averageCheck !== null)
+                .map((product) => ({
+                  label: product.typeName,
+                  value: Number(product.averageCheck) / 100,
+                }))}
               format={(value) => compactMoney(BigInt(Math.round(value * 100)))}
             />
           </ChartCard>

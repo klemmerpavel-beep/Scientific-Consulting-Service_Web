@@ -72,6 +72,55 @@ export function outstandingOf(
 }
 
 /**
+ * Состояния работы, по которым практика денег больше не ждёт.
+ *
+ * Неоплаченный остаток отменённой работы — потеря, а не деньги к
+ * получению: прежде он одновременно стоял в «Потерях» аналитики и в «К
+ * получению» главной, экрана денег и отчёта, в «Задолженности» и в
+ * просроченном, и одна сумма считалась дважды — и как долг, и как
+ * убыток. Приостановленная работа сюда не входит: она может
+ * возобновиться, и её остаток ждут (решение Р-256).
+ *
+ * Перечень — массивом, чтобы выборки из базы брали его же в условие
+ * `notIn`, а не писали своё: правило живёт в одном месте.
+ */
+export const PAYMENT_CLOSED_STATUSES = ['CANCELLED'] as const;
+
+/** Ждёт ли практика денег по работе в этом состоянии (решение Р-256). */
+export function expectsPayment(status: string): boolean {
+  return !(PAYMENT_CLOSED_STATUSES as readonly string[]).includes(status);
+}
+
+/**
+ * К получению по работе: остаток по договору, если практика ещё ждёт
+ * денег, и ноль у отменённой работы (решение Р-256).
+ */
+export function receivableOf(
+  status: string,
+  total: bigint,
+  tranches: readonly { readonly amount: bigint; readonly status: string }[],
+): bigint {
+  return expectsPayment(status) ? outstandingOf(total, tranches) : 0n;
+}
+
+/**
+ * Деньги строкой в перечне «Ведутся сейчас» на главной.
+ *
+ * Прежде работа без договора читалась как «0 ₽ по договору · оплачено
+ * полностью», а работа, чей остаток списан, — как оплаченная полностью,
+ * хотя денег по ней пришло меньше договора (решение Р-256).
+ */
+export function workMoneyNote(
+  money: { readonly contracted: bigint; readonly outstanding: bigint; readonly writtenOff: bigint } | null,
+): string {
+  if (money === null) return 'договор не заведён';
+  const head = `${formatPlain(money.contracted)} ₽ по договору`;
+  if (money.outstanding > 0n) return `${head} · ${formatPlain(money.outstanding)} ₽ не оплачено`;
+  if (money.writtenOff > 0n) return `${head} · закрыто, из них списано ${formatPlain(money.writtenOff)} ₽`;
+  return `${head} · оплачено полностью`;
+}
+
+/**
  * Разбор суммы, введённой человеком: «240 000», «240000,50», «240 000.50».
  *
  * Прежде из строки выбрасывалось всё, кроме цифр и разделителей: «240 тыс»
@@ -122,11 +171,20 @@ export function formatPlain(kopecks: bigint | number | null | undefined): string
 export function formatRounded(kopecks: bigint | number | null | undefined): string {
   if (kopecks === null || kopecks === undefined) return '—';
   const value = typeof kopecks === 'bigint' ? kopecks : BigInt(Math.round(kopecks));
-  const negative = value < 0n;
-  const abs = negative ? -value : value;
+  return formatAmount(roundRuble(value));
+}
+
+/**
+ * Сумма в копейках, округлённая до целого рубля. Нужна колонке таблицы,
+ * где знак рубля вынесен в шапку, а число — тот же средний чек, что на
+ * плитке аналитики (решение Р-256).
+ */
+export function roundRuble(kopecks: bigint): bigint {
+  const negative = kopecks < 0n;
+  const abs = negative ? -kopecks : kopecks;
   // Половина рубля и выше округляется вверх — обычное правило округления.
   const rubles = (abs + 50n) / 100n;
-  return formatAmount((negative ? -rubles : rubles) * 100n);
+  return (negative ? -rubles : rubles) * 100n;
 }
 
 export function formatAmount(kopecks: bigint | number | null | undefined): string {

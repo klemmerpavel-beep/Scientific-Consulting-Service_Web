@@ -43,7 +43,7 @@ export default async function AnalyticsMoney() {
   const now = clockNow();
 
   const total = overview(rows);
-  const months = byMonth(rows);
+  const months = byMonth(rows, now);
   const season = seasonalNorm(rows, now);
   const debts = receivables(rows, now);
   const overdue = debts.filter((debt) => debt.overdueDays !== null && debt.overdueDays > 0);
@@ -61,18 +61,30 @@ export default async function AnalyticsMoney() {
         <>
           <Tiles>
             <Tile label="Законтрактовано" value={formatAmount(total.contracted)} />
-            <Tile label="Получено" value={formatAmount(total.received)} note={`${share(total.collection)} по завершённым`} />
-            <Tile label="Задолженность" value={formatAmount(total.outstanding)} note={`${debts.length} ${plural(debts.length, 'работа', 'работы', 'работ')} с остатком`} />
             <Tile
-              label="Просрочено"
+              label="Получено"
+              value={formatAmount(total.received)}
+              note={total.collection === null ? 'нет завершённых работ с договором' : `${share(total.collection)} по завершённым`}
+            />
+            <Tile
+              label="Задолженность"
+              value={formatAmount(total.outstanding)}
+              note={`${debts.length} ${plural(debts.length, 'работа', 'работы', 'работ')} с остатком, кроме отменённых`}
+            />
+            {/* Не «Просрочено»: так на главной названы платежи со сроком в
+                прошлом, а здесь — остаток работ, чей срок прошёл. Две
+                величины под одним словом читались как расхождение
+                (решение Р-256). */}
+            <Tile
+              label="Остаток по работам с прошедшим сроком"
               value={formatAmount(overdue.reduce((acc, debt) => acc + debt.debt, 0n))}
-              note={`${overdue.length} ${plural(overdue.length, 'работа', 'работы', 'работ')} со сроком в прошлом`}
+              note={`${overdue.length} ${plural(overdue.length, 'работа', 'работы', 'работ')} со сроком раньше сегодняшнего дня`}
             />
           </Tiles>
 
           <ChartCard
-            title="Договоры и поступления по месяцам"
-            note="Обе величины отнесены к дате заказа: поступление показано там, где возникло обязательство, а не там, где пришли деньги — даты платежей в перенесённой истории отсутствуют."
+            title="Договоры и оплаты по месяцу начала работы"
+            note="Обе величины отнесены к месяцу начала работы: оплата показана там, где возникло обязательство, а не там, где пришли деньги, — даты платежей в перенесённой истории отсутствуют. Это не поступления месяца. Ряд доходит до текущего месяца."
             numbers={
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -95,7 +107,7 @@ export default async function AnalyticsMoney() {
             }
           >
             <LineChart
-              title="Договоры и поступления по месяцам"
+              title="Договоры и оплаты по месяцу начала работы"
               width={1000}
               categories={months.map((month) => month.label)}
               series={[

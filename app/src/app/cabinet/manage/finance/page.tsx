@@ -33,6 +33,7 @@ import { byMonth } from '../../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../../lib/cabinet/analytics/data';
 import { formatAmount } from '../../../../lib/cabinet/money';
 import { currentActor } from '../../../../lib/cabinet/session';
+import { now as clockNow } from '../../../../lib/cabinet/clock';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,7 +66,11 @@ export default async function FinanceScreen({
   // Помесячный ряд и разбиение работ на действующие и закрытые: деньги
   // ушли с главной, и отвечать на вопрос «когда они приходят» теперь
   // этому экрану (решение Р-194).
-  const months = byMonth(await loadRows(actor)).slice(-12);
+  //
+  // Ряд доходит до текущего месяца: окно «последние двенадцать месяцев»
+  // кончается сегодняшним месяцем, а не месяцем последнего начала работы
+  // (решение Р-256).
+  const months = byMonth(await loadRows(actor), clockNow()).slice(-12);
   const openCount = rows.filter((row) => row.status === 'ACTIVE' || row.status === 'PAUSED').length;
   const closedCount = rows.length - openCount;
   const openSum = rows
@@ -75,7 +80,9 @@ export default async function FinanceScreen({
 
   // По умолчанию показываются работы с незакрытым остатком: за этим на
   // экран и приходят. Полный перечень — вкладкой рядом (решение Р-172).
-  // Итоги считаются по всем работам и от отбора не зависят.
+  // Итоги считаются по всем работам и от отбора не зависят. Отменённая
+  // работа в «С остатком» не попадает: её остаток — потеря, и к получению
+  // у неё ноль (решение Р-256).
   const owing = rows.filter((row) => row.awaiting > 0n);
   const all = sp.set === 'all';
   const chosen = all ? rows : owing;
@@ -99,14 +106,24 @@ export default async function FinanceScreen({
     // остановленным работам. Две разные величины под одним словом на
     // соседних экранах читались как одна (решение Р-182).
     { label: 'Списано', value: totals.lost },
-    { label: 'Маржа', value: totals.margin },
+    // Маржа вычитает и начисления по работам без договора: строк у таких
+    // работ здесь нет, и прежде эти деньги из итога выпадали (решение
+    // Р-256).
+    {
+      label: 'Маржа',
+      value: totals.margin,
+      note:
+        totals.accruedWithoutContract > 0n
+          ? `с учётом начислений по работам без договора: ${formatAmount(totals.accruedWithoutContract)}`
+          : undefined,
+    },
   ];
 
   return (
     <Shell actor={actor} current="/cabinet/manage/finance">
       <ScreenHead
         title="Договоры и расчёты"
-        note="Маржа — сумма договора за вычетом начислений эксперту; у исторических работ, где исполнитель не указан, она равна сумме договора."
+        note="Маржа — сумма договора за вычетом списанного и начислений эксперту; у исторических работ, где исполнитель не указан, начислений нет. «К получению» не считает отменённые работы: их неоплаченное учтено в потерях."
       />
       <Text style={{ marginBottom: 24 }}>
         <a href="/cabinet/manage/finance/years">Итоги по годам</a> — выручка и прибыль по годам:
@@ -115,7 +132,7 @@ export default async function FinanceScreen({
 
       <Tiles>
         {tiles.map((tile) => (
-          <Tile key={tile.label} label={tile.label} value={formatAmount(tile.value)} />
+          <Tile key={tile.label} label={tile.label} value={formatAmount(tile.value)} note={tile.note} />
         ))}
       </Tiles>
 
@@ -133,15 +150,19 @@ export default async function FinanceScreen({
         }}
       >
         <Card>
+          {/* Это не поступления месяца: ряд относит оплату к месяцу начала
+              работы, когда бы деньги ни пришли. Прежде заголовок «Деньги по
+              месяцам» и подпись «Поступления» обещали кассу месяца
+              (решение Р-256). */}
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
-            Деньги по месяцам
+            Оплаты по месяцу начала работы
           </Heading>
           {months.length === 0 ? (
-            <Text muted>Поступлений пока нет.</Text>
+            <Text muted>Работ с датой начала пока нет.</Text>
           ) : (
             <>
               <BarChart
-                title="Поступления по месяцам"
+                title="Оплаты по месяцу начала работы"
                 width={460}
                 height={220}
                 unit="тыс ₽"
@@ -152,7 +173,8 @@ export default async function FinanceScreen({
                 format={(value) => compactNumber(value, 0)}
               />
               <Text muted size={13} style={{ marginTop: 10 }}>
-                Получено по месяцу начала работы, последние двенадцать месяцев.
+                Полученное по работам, начатым в месяце, — когда бы оно ни пришло; это не
+                поступления месяца. Последние двенадцать месяцев, включая текущий.
               </Text>
               <Disclosure title="Числа" style={{ marginTop: 12 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -193,7 +215,7 @@ export default async function FinanceScreen({
                 <DonutChart
                   title="Сумма договоров: действующие и закрытые работы"
                   center={String(rows.length)}
-                  centerLabel="работ"
+                  centerLabel="работ с договором"
                   segments={[
                     { label: 'Действующие', value: Number(openSum), color: seriesColor(0) },
                     { label: 'Закрытые', value: Number(closedSum), color: seriesColor(2) },
@@ -237,7 +259,9 @@ export default async function FinanceScreen({
               label: `С остатком · ${owing.length}`,
               active: !all,
             },
-            { href: href('all'), label: `Все работы · ${rows.length}`, active: all },
+            // Строки экрана — договоры: работа без договора здесь не стоит,
+            // и «Все работы» обещали больше, чем показано (решение Р-256).
+            { href: href('all'), label: `Все работы с договором · ${rows.length}`, active: all },
           ]}
         />
       </FilterBar>
@@ -261,7 +285,7 @@ export default async function FinanceScreen({
                 <td style={TABLE_CELL} colSpan={7}>
                   {rows.length === 0
                     ? 'Договоров пока нет.'
-                    : 'Незакрытых остатков нет — все работы оплачены.'}
+                    : 'Незакрытых остатков нет. Неполученное по отменённым работам — потеря, а не долг: оно на вкладке «Потери» аналитики.'}
                 </td>
               </tr>
             ) : (
