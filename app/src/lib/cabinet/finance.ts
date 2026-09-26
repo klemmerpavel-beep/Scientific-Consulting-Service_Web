@@ -1,14 +1,15 @@
 import { prisma } from '../db.ts';
 import { can, ensure, scopePayouts, type Actor } from './access.ts';
 import { record } from './audit.ts';
-import { now as today } from './clock.ts';
+import { moscowToday } from './clock.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
 import {
   STATUS_LABEL,
   canChangeTrancheStatus,
+  expectsPayment,
   isTrancheStatus,
-  outstandingOf,
+  receivableOf,
   type TrancheStatus,
 } from './money.ts';
 
@@ -53,11 +54,15 @@ async function ensureMoneyWritable(projectId: string, fresh: boolean): Promise<v
  * Дата поступления или выплаты — не в будущем по часам кабинета и не
  * раньше 2000 года. Опечатка «2062» уводила оплату в строку 2062 года
  * итогов и мимо отчёта за период (решение Р-244).
+ *
+ * «Сегодня» — московское: по UTC-суткам оплата, отмеченная сегодняшним
+ * числом между полуночью и тремя часами ночи, отклонялась как будущая
+ * (решение Р-257).
  */
 function ensurePastDate(on: Date, what: string): void {
-  const now = today();
-  const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  if (on.getTime() > end) throw new Error(`${what} не может быть позже сегодняшнего дня`);
+  if (on.getTime() > moscowToday().getTime()) {
+    throw new Error(`${what} не может быть позже сегодняшнего дня`);
+  }
   if (on.getUTCFullYear() < 2000) throw new Error(`${what} указана неверно`);
 }
 
@@ -398,6 +403,11 @@ export interface ProjectMoney {
   readonly awaiting: bigint;
   /** Из остатка — заведено траншами «ожидается» и «выставлен». */
   readonly scheduled: bigint;
+  /**
+   * Работа отменена: остаток не ждут, он учтён в потерях, и `awaiting`
+   * равен нулю (решение Р-257).
+   */
+  readonly cancelled: boolean;
   /** Только тому, кто ведёт оплаты: списание — внутреннее решение (Р-251). */
   readonly writtenOff?: bigint;
   /** Заполняется только для роли, допущенной к экономике. */
@@ -419,7 +429,7 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
 
   const contract = await prisma.contract.findUnique({
     where: { projectId },
-    include: { tranches: true },
+    include: { tranches: true, project: { select: { status: true } } },
   });
   if (contract === null) return null;
 
@@ -438,11 +448,15 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
   // «ожидается 0 ₽», а сводка по той же работе — 120 000. Клиент читал это
   // как «платить больше нечего» (решение Р-254). Списанное из остатка
   // вычитается и клиенту: прощённое он платить не должен.
+  //
+  // У отменённой работы остатка к оплате нет: его не ждут, он учтён в
+  // потерях, и сводки его к получению не считают (решение Р-257).
   const visible: ProjectMoney = {
     contractTotal: contract.totalAmount,
     received: sum('PAID'),
-    awaiting: outstandingOf(contract.totalAmount, contract.tranches),
+    awaiting: receivableOf(contract.project.status, contract.totalAmount, contract.tranches),
     scheduled: sum('PLANNED') + sum('INVOICED'),
+    cancelled: !expectsPayment(contract.project.status),
   };
   if (!can(actor, 'PAYMENT_EDIT', ref)) return visible;
 
@@ -494,8 +508,9 @@ export async function financeSummary(actor: Actor) {
     // функцией, что главная и отчёт. Прежде здесь суммировались только
     // заведённые незакрытые транши: договор без траншей давал ноль, выпадал
     // из отбора «С остатком», и экран писал «все работы оплачены» при не
-    // полученных деньгах (решение Р-244).
-    const awaiting = outstandingOf(contract.totalAmount, contract.tranches);
+    // полученных деньгах (решение Р-244). У отменённой работы — ноль: её
+    // неоплаченное — потеря, а не деньги к получению (решение Р-257).
+    const awaiting = receivableOf(contract.project.status, contract.totalAmount, contract.tranches);
     const lost = contract.tranches
       .filter((t) => t.status === 'WRITTEN_OFF')
       .reduce((acc, t) => acc + t.amount, 0n);
@@ -519,6 +534,14 @@ export async function financeSummary(actor: Actor) {
   const total = (pick: (row: (typeof rows)[number]) => bigint) =>
     rows.reduce((acc, row) => acc + pick(row), 0n);
 
+  // Начисления по работам без договора. Строки сводки строятся от
+  // договоров, и такие начисления прежде не вычитались из маржи вовсе:
+  // эксперту заплачено, а итог практики этого не знал (решение Р-257).
+  const contracted = new Set(contracts.map((contract) => contract.projectId));
+  const accruedWithoutContract = payouts
+    .filter((payout) => !contracted.has(payout.projectId))
+    .reduce((acc, payout) => acc + (payout._sum.amount ?? 0n), 0n);
+
   return {
     rows,
     totals: {
@@ -526,7 +549,8 @@ export async function financeSummary(actor: Actor) {
       received: total((r) => r.received),
       awaiting: total((r) => r.awaiting),
       lost: total((r) => r.lost),
-      margin: total((r) => r.margin),
+      accruedWithoutContract,
+      margin: total((r) => r.margin) - accruedWithoutContract,
     },
   };
 }

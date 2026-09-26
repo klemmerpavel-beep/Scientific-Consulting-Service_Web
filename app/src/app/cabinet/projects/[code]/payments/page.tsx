@@ -159,6 +159,14 @@ export default async function PaymentsScreen({
                 <Text size={20} style={{ marginTop: 6, color: 'var(--pd-ink)' }}>
                   {formatAmount(money.awaiting)}
                 </Text>
+                {/* У отменённой работы остаток не ждут: он учтён в потерях,
+                    и ноль здесь — не «оплачено», а решение. Сотруднику это
+                    названо прямо (решение Р-257). */}
+                {mayEdit && money.cancelled ? (
+                  <Text muted size={13} style={{ marginTop: 4 }}>
+                    работа отменена — остаток учтён в потерях
+                  </Text>
+                ) : null}
               </div>
               {maySeeEconomy && 'margin' in money ? (
                 <div>
@@ -192,7 +200,7 @@ export default async function PaymentsScreen({
               {/* Остаток по договору, не разнесённый траншами, — подсказка
                   тому, кто ведёт оплаты: без транша у суммы нет срока и
                   счёта (решение Р-254). */}
-              {mayEdit && money.awaiting > money.scheduled
+              {mayEdit && !money.cancelled && money.awaiting > money.scheduled
                 ? ` · не разнесено по траншам ${formatAmount(money.awaiting - money.scheduled)}`
                 : ''}
             </Text>
@@ -374,7 +382,10 @@ export default async function PaymentsScreen({
                 </div>
               ) : null}
 
-              {mayEdit ? (
+              {/* Новый транш по отменённой работе служба не примет
+                  (`ensureMoneyWritable`), и форма, которая всегда
+                  отказывает, не показывается (решение Р-257). */}
+              {mayEdit && !money.cancelled ? (
                 <Form
                   action={addContractTranche}
                   style={{

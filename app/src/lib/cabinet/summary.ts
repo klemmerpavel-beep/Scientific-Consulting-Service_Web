@@ -1,48 +1,16 @@
 /**
  * Сводка практики для главного экрана руководителя.
  *
- * Три величины, которые руководитель хочет видеть, открыв кабинет:
- * сколько заказов, сколько денег получено, сколько из этого прибыль.
- * Ничего нового здесь не считается — берутся уже проверенные выборки
- * финансового контура; новое только сведение и ставка издержек.
+ * Сколько заказов, чем практика занята и деньги коротко. Ничего нового
+ * здесь не считается — берутся уже проверенные правила денежного контура
+ * (`money.ts`) и часов кабинета (`clock.ts`); новое только сведение.
  */
 
 import { can, ensure, type Actor } from './access.ts';
-import { financeSummary } from './finance.ts';
 import { prisma } from '../db.ts';
 import { scopeProjects } from './access.ts';
-import { now as today } from './clock.ts';
-import { outstandingOf } from './money.ts';
-
-/**
- * Доля издержек, вычитаемая из поступлений при расчёте прибыли.
- *
- * Практику до сих пор вёл сам руководитель: исполнителем по работам
- * выступал он, и вознаграждение сторонним экспертам при переносе книги
- * заказов не восстанавливалось. Поэтому честная себестоимость сводится к
- * накладным расходам — их доля принята заказчиком равной десяти процентам.
- *
- * Это допущение, а не расчёт, и подпись плитки говорит об этом прямо.
- * Как только начисления экспертам появятся в системе, они вычитаются
- * дополнительно и прибыль станет считаться по факту.
- */
-export const OVERHEAD_PERCENT = 10n;
-
-export interface PracticeSummary {
-  /** Сколько работ всего и сколько из них в работе. */
-  readonly orders: number;
-  readonly active: number;
-  /** Законтрактовано по договорам. */
-  readonly contracted: bigint;
-  /** Поступило — это и есть выручка. */
-  readonly received: bigint;
-  /** Ожидается по выставленным и запланированным траншам. */
-  readonly outstanding: bigint;
-  /** Начислено экспертам; пока начислений нет — ноль. */
-  readonly payouts: bigint;
-  /** Поступления за вычетом начислений и накладных расходов. */
-  readonly profit: bigint;
-}
+import { moscowToday, now as today } from './clock.ts';
+import { PAYMENT_CLOSED_STATUSES, outstandingOf, receivableOf } from './money.ts';
 
 /** Работа, идущая прямо сейчас: то, чем практика занята. */
 export interface ActiveWork {
@@ -58,6 +26,13 @@ export interface ActiveWork {
   readonly contracted: bigint | null;
   readonly received: bigint | null;
   readonly outstanding: bigint | null;
+  /** Списано по траншам: без него закрытый списанием остаток читался «оплачено полностью». */
+  readonly writtenOff: bigint | null;
+  /**
+   * Заведён ли договор. Без этого признака работа без договора выглядела
+   * как «0 ₽ по договору · оплачено полностью» (решение Р-257).
+   */
+  readonly hasContract: boolean;
   readonly stage: string | null;
   readonly stageState: string | null;
 }
@@ -106,6 +81,12 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
       dueOn: project.dueOn,
       contracted: money ? contracted : null,
       received: money ? received : null,
+      writtenOff: money
+        ? tranches
+            .filter((tranche) => tranche.status === 'WRITTEN_OFF')
+            .reduce((acc, tranche) => acc + tranche.amount, 0n)
+        : null,
+      hasContract: project.contract !== null,
       // Переплату в задолженность не записываем: остаток не бывает
       // отрицательным (то же правило, что в финансовом контуре). Списанное
       // долгом не считается (решение Р-240).
@@ -189,8 +170,10 @@ export async function stageLoad(
   const counts = new Map<string, number>();
   const soon: DueSoon[] = [];
   // Срок — день: сравнение с началом суток, иначе срок «сегодня» числился
-  // сорванным с первой минуты (решение Р-240).
-  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  // сорванным с первой минуты (решение Р-240). Сутки — московские: по
+  // UTC вчерашний срок до трёх часов ночи ещё не считался прошедшим
+  // (решение Р-257).
+  const day = moscowToday(now);
   const horizon = new Date(day.getTime() + SOON_DAYS * 86_400_000);
   let overdue = 0;
   let planless = 0;
@@ -312,42 +295,20 @@ export async function orderSummary(actor: Actor): Promise<{
   };
 }
 
-export async function practiceSummary(actor: Actor): Promise<PracticeSummary> {
-  ensure(actor, 'MARGIN_VIEW');
-
-  const scope = scopeProjects(actor);
-  const [orders, active, finance] = await Promise.all([
-    prisma.project.count({ where: scope ?? undefined }),
-    prisma.project.count({ where: { ...(scope ?? {}), status: 'ACTIVE' } }),
-    financeSummary(actor),
-  ]);
-
-  const received = finance.totals.received;
-  const payouts = finance.rows.reduce((acc, row) => acc + row.accrued, 0n);
-  // Деление целых: копейка округления в меньшую сторону безразлична, а
-  // плавающая точка к деньгам не применяется.
-  const overhead = (received * OVERHEAD_PERCENT) / 100n;
-
-  return {
-    orders,
-    active,
-    contracted: finance.totals.contracted,
-    received,
-    outstanding: finance.totals.awaiting,
-    payouts,
-    profit: received - payouts - overhead,
-  };
-}
-
 /**
  * Деньги коротко для главной руководителя.
  *
- * Три величины и ни одной лишней: получено, к получению и просрочено.
- * Без третьей вторая ничего не говорит — завтрашний транш и годовалый
- * долг в ней стоят рядом и выглядят одинаково (решение Р-201).
+ * Три величины и ни одной лишней: получено, к получению и просрочено по
+ * траншам. Без третьей вторая ничего не говорит — завтрашний транш и
+ * годовалый долг в ней стоят рядом и выглядят одинаково (решение Р-201).
  *
- * Считается тремя сложениями по индексу `(status, plannedDate)`, а не
- * разбором всей сводки денег: на главной нужны итоги, а не строки.
+ * «Просрочено по траншам» — сумма платежей со сроком раньше сегодняшнего
+ * дня. Это не «остаток по работам с прошедшим сроком» отчёта и аналитики:
+ * там мерой служит срок работы, здесь — день платежа, и под одним словом
+ * две величины читались как расхождение (решение Р-257).
+ *
+ * Считается сложениями по индексу `(status, plannedDate)`, а не разбором
+ * всей сводки денег: на главной нужны итоги, а не строки.
  */
 export async function moneyBrief(actor: Actor): Promise<{
   received: bigint;
@@ -358,9 +319,12 @@ export async function moneyBrief(actor: Actor): Promise<{
   // Просрочен транш со сроком до сегодняшнего дня: со сроком сегодня —
   // ещё нет. Прежде сравнение шло с текущим моментом, и транш становился
   // просроченным в три часа ночи по Москве в самый день срока, а экран
-  // траншей его просроченным не показывал (решение Р-236).
-  const at = today();
-  const day = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
+  // траншей его просроченным не показывал (решение Р-236). День —
+  // московский (решение Р-257).
+  const day = moscowToday(today());
+  // Отменённая работа денег не ждёт: её неоплаченное — потеря, и ни в «к
+  // получению», ни в просроченное оно не входит (решение Р-257).
+  const expecting = { project: { status: { notIn: [...PAYMENT_CLOSED_STATUSES] } } };
   const [received, contracts, overdue] = await Promise.all([
     prisma.tranche.aggregate({ _sum: { amount: true }, where: { status: 'PAID' } }),
     // «К получению» — договор без полученного и списанного, той же функцией,
@@ -368,16 +332,27 @@ export async function moneyBrief(actor: Actor): Promise<{
     // незакрытые транши, и главная расходилась с отчётом на сумму договоров
     // без траншей (решение Р-244).
     prisma.contract.findMany({
-      select: { totalAmount: true, tranches: { select: { amount: true, status: true } } },
+      select: {
+        totalAmount: true,
+        project: { select: { status: true } },
+        tranches: { select: { amount: true, status: true } },
+      },
     }),
     prisma.tranche.aggregate({
       _sum: { amount: true },
-      where: { status: { in: ['PLANNED', 'INVOICED'] }, plannedDate: { lt: day } },
+      where: {
+        status: { in: ['PLANNED', 'INVOICED'] },
+        plannedDate: { lt: day },
+        contract: expecting,
+      },
     }),
   ]);
   return {
     received: received._sum.amount ?? 0n,
-    awaiting: contracts.reduce((acc, c) => acc + outstandingOf(c.totalAmount, c.tranches), 0n),
+    awaiting: contracts.reduce(
+      (acc, c) => acc + receivableOf(c.project.status, c.totalAmount, c.tranches),
+      0n,
+    ),
     overdue: overdue._sum.amount ?? 0n,
   };
 }

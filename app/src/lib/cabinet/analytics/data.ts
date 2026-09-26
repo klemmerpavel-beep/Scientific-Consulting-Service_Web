@@ -59,6 +59,7 @@ export async function loadRows(actor: Actor): Promise<ProjectRow[]> {
     startedOn: project.startedOn,
     dueOn: project.dueOn,
     closedOn: project.closedOn,
+    signedOn: project.contract?.signedOn ?? null,
     cost: project.contract?.totalAmount ?? 0n,
     paid: total(project.contract?.tranches, 'PAID'),
     writtenOff: total(project.contract?.tranches, 'WRITTEN_OFF'),

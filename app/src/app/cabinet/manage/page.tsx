@@ -26,13 +26,13 @@ import {
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
-import { formatAmount, formatPlain, outstandingOf } from '../../../lib/cabinet/money';
+import { formatAmount, formatPlain, outstandingOf, workMoneyNote } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments } from '../../../lib/cabinet/materials';
 import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
-import { daysPast } from '../../../lib/cabinet/clock';
+import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
 import { currentActor } from '../../../lib/cabinet/session';
 import { byMonth, products } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
@@ -134,7 +134,7 @@ function owed(contract: {
 export default async function ManageQueue({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; attention?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
@@ -176,7 +176,9 @@ export default async function ManageQueue({
   // не отрезав от неё смысл.
   const dashboard = can(actor, 'ANALYTICS_VIEW');
   const analyticsRows = dashboard ? await loadRows(actor) : [];
-  const months = dashboard ? byMonth(analyticsRows).slice(-12) : [];
+  // Ряд доходит до текущего месяца: «последние двенадцать месяцев»
+  // кончаются сегодняшним, а не месяцем последнего начала (решение Р-257).
+  const months = dashboard ? byMonth(analyticsRows, clockNow()).slice(-12) : [];
   // Что заказывают: типы сопровождения за последние двенадцать месяцев.
   // Плитки говорят, сколько работ, графики — когда они приходят и где
   // стоят; это отвечает, чего именно просят (решение Р-196).
@@ -225,6 +227,7 @@ export default async function ManageQueue({
       const rest = maySeeMoney ? owed(stage.project.contract) : 0n;
       return {
         key: `overdue-${stage.id}`,
+        kind: 'overdue' as const,
         title: `${stage.title} · ${stage.project.title}`,
         mark: late === null ? 'срок сегодня' : `просрочено ${late} ${plural(late, 'день', 'дня', 'дней')}`,
         urgent: true,
@@ -254,6 +257,7 @@ export default async function ManageQueue({
       const rest = maySeeMoney ? owed(work.contract) : 0n;
       return {
         key: `late-${work.id}`,
+        kind: 'late' as const,
         title: work.title,
         mark:
           late === null
@@ -262,6 +266,7 @@ export default async function ManageQueue({
         urgent: true,
         step: alertStep(late),
         detail: [
+          work.status === 'PAUSED' ? 'приостановлена' : null,
           work._count.stages === 0 ? 'план работ не заведён' : null,
           work.client.fullName,
           rest > 0n ? `не получено ${formatAmount(rest)}` : null,
@@ -269,7 +274,9 @@ export default async function ManageQueue({
           .filter((part) => part !== null)
           .join(' · '),
         todo:
-          work._count.stages === 0
+          work.status === 'PAUSED'
+            ? 'Возобновить с новым сроком или закрыть работу'
+            : work._count.stages === 0
             ? 'Назначить новый срок, завести план или закрыть работу'
             : 'Назначить новый срок работы или закрыть её',
         href: `/cabinet/projects/${work.code}`,
@@ -283,6 +290,7 @@ export default async function ManageQueue({
       )
       .map((stage: (typeof light.stalled)[number]) => ({
       key: `stalled-${stage.id}`,
+      kind: 'stalled' as const,
       step: 0 as const,
       title: `${stage.title} · ${stage.project.title}`,
       mark:
@@ -296,6 +304,7 @@ export default async function ManageQueue({
     })),
     ...unread.map((row) => ({
       key: `unread-${row.code}`,
+      kind: 'unread' as const,
       step: 0 as const,
       title: row.title,
       mark: `${row.count} ${plural(row.count, 'непрочитанное', 'непрочитанных', 'непрочитанных')}`,
@@ -306,6 +315,7 @@ export default async function ManageQueue({
     })),
     ...moderation.map((row) => ({
       key: `comment-${row.stageId ?? row.material}`,
+      kind: 'comment' as const,
       step: 0 as const,
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: `${row.count} ${plural(row.count, 'замечание', 'замечания', 'замечаний')} на модерации`,
@@ -318,6 +328,7 @@ export default async function ManageQueue({
       ? [
           {
             key: 'outbox',
+            kind: 'outbox' as const,
             step: 0 as const,
             title: 'Очередь уведомлений',
             mark: `не доставлено ${outbox.failed}`,
@@ -329,6 +340,27 @@ export default async function ManageQueue({
         ]
       : []),
   ];
+
+  // На сводке — не весь перечень, а первые дела каждого вида: при сотнях
+  // сорванных сроков главная вытягивалась в десятки тысяч пикселей, а
+  // непрочитанное сообщение клиента, стоящее в конце, пропадало под ними.
+  // Остальное — по ссылке «Показать все» (решение Р-257).
+  const ATTENTION_LIMIT: Record<(typeof attention)[number]['kind'], number> = {
+    overdue: 4,
+    late: 2,
+    stalled: 2,
+    unread: 3,
+    comment: 3,
+    outbox: 1,
+  };
+  const showAll = (await searchParams).attention === 'all' || attention.length <= 12;
+  const taken: Partial<Record<(typeof attention)[number]['kind'], number>> = {};
+  const shownAttention = showAll
+    ? attention
+    : attention.filter((row) => {
+        taken[row.kind] = (taken[row.kind] ?? 0) + 1;
+        return taken[row.kind]! <= ATTENTION_LIMIT[row.kind];
+      });
 
   // Ответ сводки одной фразой: сколько дел требуют решения и с чего
   // начать. Прежде его собирали глазами из плашек ниже (решение Р-207).
@@ -350,12 +382,15 @@ export default async function ManageQueue({
         : `${attention.length} ${plural(attention.length, 'дело требует', 'дела требуют', 'дел требуют')} решения.`,
     detail:
       [
+        // «Этапов и работ»: число складывает сорванные этапы и работы без
+        // сорванного этапа, и без уточнения его сверяли с «Работ с прошедшим
+        // сроком» отчёта — другой величиной (решение Р-257).
         lateCount === 0
           ? null
-          : `Сорвано сроков — ${lateCount}; старший — «${clip(oldest?.title ?? '', 48)}»${
+          : `Сорвано сроков этапов и работ — ${lateCount}; старший — «${clip(oldest?.title ?? '', 48)}»${
               oldestLate === null ? '' : `, ${oldestLate} ${plural(oldestLate, 'день', 'дня', 'дней')}`
             }.`,
-        summary === null ? null : `В работе ${summary.active} ${plural(summary.active, 'работа', 'работы', 'работ')}.`,
+        summary === null ? null : `Действующих работ — ${summary.active + summary.paused}.`,
         queue.total === 0
           ? null
           : `${queue.total} ${plural(queue.total, 'заявка ждёт', 'заявки ждут', 'заявок ждут')} разбора.`,
@@ -396,7 +431,7 @@ export default async function ManageQueue({
           экране прокрутки, — вопреки тому же решению; теперь она сразу
           под ответом, а витрина практики ниже (решение Р-210). */}
       {attention.length === 0 ? null : (
-        <Block style={{ marginBottom: 20 }}>
+        <Block id="attention" style={{ marginBottom: 20 }}>
           <Heading level={2} style={{ marginBottom: 12 }}>
             Требует внимания · {attention.length}
           </Heading>
@@ -411,7 +446,7 @@ export default async function ManageQueue({
               gap: 12,
             }}
           >
-            {attention.map((row) => (
+            {shownAttention.map((row) => (
               <Card
                 as="li"
                 key={row.key}
@@ -468,6 +503,13 @@ export default async function ManageQueue({
               </Card>
             ))}
           </ul>
+          {shownAttention.length < attention.length ? (
+            <div style={{ marginTop: 12 }}>
+              <ButtonLink href="/cabinet/manage?attention=all#attention" tone="quiet">
+                Показать все {attention.length}
+              </ButtonLink>
+            </div>
+          ) : null}
         </Block>
       )}
 
@@ -477,8 +519,15 @@ export default async function ManageQueue({
             <Tile label="Заказов" value={String(summary.orders)} note="за всё время" />
             {/* «Действующих», а не «В работе»: рядом график называет «В
                 работе» состояние этапа, и два разных числа под одним словом
-                читались как расхождение (решение Р-211). */}
-            <Tile label="Действующих работ" value={String(summary.active)} note="сейчас ведутся" />
+                читались как расхождение (решение Р-211). Действующие —
+                идущие и приостановленные, как вкладка «Действующие»
+                перечня и диаграмма экрана денег; прежде плитка считала одни
+                идущие (решение Р-257). */}
+            <Tile
+              label="Действующих работ"
+              value={String(summary.active + summary.paused)}
+              note={summary.paused > 0 ? `из них приостановлено ${summary.paused}` : 'сейчас ведутся'}
+            />
             <Tile
               label="Принято за квартал"
               value={String(summary.startedLastQuarter)}
@@ -513,18 +562,24 @@ export default async function ManageQueue({
             <Heading level={2} size={3} style={{ marginBottom: 12 }}>
               Заказы по месяцам
             </Heading>
-            <BarChart
-              title="Принято заказов по месяцам"
-              width={460}
-              height={220}
-              unit="работ"
-              data={months.map((month) => ({ label: month.label, value: month.orders }))}
-              format={(value) => String(Math.round(value))}
-            />
+            {/* Без заказов — фраза, а не пустые оси: график из нулей
+                читался как сбой, а не как затишье (решение Р-257). */}
+            {yearOrders === 0 ? (
+              <Text muted>Заказов за двенадцать месяцев нет.</Text>
+            ) : (
+              <BarChart
+                title="Принято заказов по месяцам"
+                width={460}
+                height={220}
+                unit="работ"
+                data={months.map((month) => ({ label: month.label, value: month.orders }))}
+                format={(value) => String(Math.round(value))}
+              />
+            )}
             <Text muted size={13} style={{ marginTop: 10 }}>
-              По месяцу начала работы, последние двенадцать месяцев.
+              По месяцу начала работы, последние двенадцать месяцев, включая текущий.
             </Text>
-            {months.length === 0 ? null : (
+            {yearOrders === 0 ? null : (
               <dl
                 style={{
                   display: 'grid',
@@ -565,24 +620,26 @@ export default async function ManageQueue({
               </dl>
             )}
             <div style={{ marginTop: 'auto' }} />
-            <Disclosure title="Числа" style={{ marginTop: 12 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={TABLE_HEAD} scope="col">Месяц</th>
-                    <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Заказов</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {months.map((month) => (
-                    <tr key={month.key}>
-                      <td style={TABLE_CELL}>{month.label}</td>
-                      <td style={TABLE_NUM}>{month.orders}</td>
+            {yearOrders === 0 ? null : (
+              <Disclosure title="Числа" style={{ marginTop: 12 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={TABLE_HEAD} scope="col">Месяц</th>
+                      <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Заказов</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Disclosure>
+                  </thead>
+                  <tbody>
+                    {months.map((month) => (
+                      <tr key={month.key}>
+                        <td style={TABLE_CELL}>{month.label}</td>
+                        <td style={TABLE_NUM}>{month.orders}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Disclosure>
+            )}
           </Card>
 
           <Card style={{ display: 'flex', flexDirection: 'column' }}>
@@ -743,9 +800,13 @@ export default async function ManageQueue({
                 {[
                   { key: 'got', label: 'Получено', value: formatPlain(money.received) },
                   { key: 'wait', label: 'К получению', value: formatPlain(money.awaiting) },
+                  // Платежи со сроком раньше сегодняшнего дня. Не «остаток по
+                  // работам с прошедшим сроком» отчёта и аналитики — там мера
+                  // другая, и одно слово на двух экранах читалось как
+                  // расхождение (решение Р-257).
                   {
                     key: 'debt',
-                    label: 'Просрочено',
+                    label: 'Просрочено по траншам',
                     value: formatPlain(money.overdue),
                   },
                 ].map((row) => (
@@ -777,7 +838,9 @@ export default async function ManageQueue({
                 ))}
               </dl>
               <Text muted size={13} style={{ marginTop: 10 }}>
-                Суммы в рублях. Разбор по работам — на экране денег.
+                Суммы в рублях; остаток отменённых работ к получению не считается. Остаток
+                по каждой работе — на экране денег; просроченные платежи — на экранах оплат
+                работ.
               </Text>
               <div style={{ marginTop: 'auto' }} />
               <div style={{ marginTop: 12 }}>
@@ -792,8 +855,11 @@ export default async function ManageQueue({
           колонка ужимала все три и заставляла строки рваться посреди
           слова (решение Р-189). */}
       <Board columns={2}>
+        {/* «Ведутся сейчас» — только идущие работы: приостановленные сюда
+            не входят, и под «В работе» число расходилось с плиткой
+            «Действующих работ» выше (решение Р-257). */}
         <BoardColumn
-          title={`${summary === null ? 'Мои работы' : 'Сейчас в работе'} · ${works.length}`}
+          title={`${summary === null ? 'Мои работы' : 'Ведутся сейчас'} · ${works.length}`}
           href="/cabinet/projects"
           hrefLabel="все работы"
         >
@@ -842,12 +908,20 @@ export default async function ManageQueue({
                         ? 'срок не назначен'
                         : `срок работы — ${formatDate(work.dueOn)}${late === null ? '' : ' · прошёл'}`}
                     </Text>
+                    {/* Работа без договора — «договор не заведён», а не
+                        «0 ₽ · оплачено полностью»; закрытый списанием
+                        остаток назван списанием (решение Р-257). */}
                     {work.contracted === null ? null : (
                       <Text muted size={13}>
-                        {formatPlain(work.contracted)} ₽ по договору
-                        {work.outstanding !== null && work.outstanding > 0n
-                          ? ` · ${formatPlain(work.outstanding)} ₽ не оплачено`
-                          : ' · оплачено полностью'}
+                        {workMoneyNote(
+                          work.hasContract
+                            ? {
+                                contracted: work.contracted,
+                                outstanding: work.outstanding ?? 0n,
+                                writtenOff: work.writtenOff ?? 0n,
+                              }
+                            : null,
+                        )}
                       </Text>
                     )}
                   </li>

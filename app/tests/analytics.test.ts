@@ -63,6 +63,7 @@ function row(over: Partial<ProjectRow> & { code: string }): ProjectRow {
     cost: 10_000_000n,
     paid: 10_000_000n,
     ...over,
+    signedOn: over.signedOn ?? null,
     writtenOff: over.writtenOff ?? 0n,
     payments: over.payments ?? [],
     code: over.code,
@@ -171,24 +172,31 @@ describe('обзор', () => {
 
   it('собираемость считается по завершённым работам', () => {
     // Завершены PD-1 (15 000 из 15 000) и PD-3 (30 000 из 25 000).
+    // Переплата PD-3 сверх договора в собранное не идёт: иначе она
+    // закрывала бы недобор другой закрытой работы (решение Р-257).
     const report = overview(rows);
-    assert.ok(report.collection > 1);
+    assert.equal(report.collection, 1);
   });
 
   it('пустая выборка не делит на ноль', () => {
+    // Считать не из чего — «нет данных», а не «0 ₽» и «0 %»: нули читались
+    // как «средний чек ноль» и «ничего не собрано» (решение Р-257).
     const report = overview([]);
-    assert.equal(report.averageCheck, 0n);
-    assert.equal(report.collection, 0);
+    assert.equal(report.averageCheck, null);
+    assert.equal(report.collection, null);
     assert.equal(report.period.from, null);
   });
 });
 
 describe('помесячный ряд', () => {
   it('месяц без заказов входит нулём, а не пропуском', () => {
-    const points = byMonth([
-      row({ code: 'PD-1', startedOn: new Date(Date.UTC(2025, 0, 5)) }),
-      row({ code: 'PD-2', startedOn: new Date(Date.UTC(2025, 2, 5)) }),
-    ]);
+    const points = byMonth(
+      [
+        row({ code: 'PD-1', startedOn: new Date(Date.UTC(2025, 0, 5)) }),
+        row({ code: 'PD-2', startedOn: new Date(Date.UTC(2025, 2, 5)) }),
+      ],
+      new Date(Date.UTC(2025, 2, 20)),
+    );
     assert.deepEqual(
       points.map((point) => point.key),
       ['2025-01', '2025-02', '2025-03'],
@@ -198,10 +206,13 @@ describe('помесячный ряд', () => {
   });
 
   it('ряд переходит через границу года', () => {
-    const points = byMonth([
-      row({ code: 'PD-1', startedOn: new Date(Date.UTC(2024, 10, 5)) }),
-      row({ code: 'PD-2', startedOn: new Date(Date.UTC(2025, 1, 5)) }),
-    ]);
+    const points = byMonth(
+      [
+        row({ code: 'PD-1', startedOn: new Date(Date.UTC(2024, 10, 5)) }),
+        row({ code: 'PD-2', startedOn: new Date(Date.UTC(2025, 1, 5)) }),
+      ],
+      new Date(Date.UTC(2025, 1, 20)),
+    );
     assert.deepEqual(
       points.map((point) => point.key),
       ['2024-11', '2024-12', '2025-01', '2025-02'],
@@ -537,7 +548,8 @@ describe('итог практики одним абзацем', () => {
       CONTROL,
     );
     assert.ok(digest !== null);
-    assert.match(digest.state, /В работе 1 работа из 2/u);
+    // «Действующих» — идущие и приостановленные (решение Р-257).
+    assert.match(digest.state, /Действующих работ 1 из 2/u);
     // Получено 300 000 ₽ из 500 000 ₽, остаток 200 000 ₽ — по каждой
     // работе отдельно, переплата одной долг другой не гасит. Разделитель
     // разрядов у ru-RU — неразрывный пробел.

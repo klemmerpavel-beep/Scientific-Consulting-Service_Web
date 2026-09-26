@@ -6,6 +6,7 @@ import { enqueue, enqueueToLead } from './outbox.ts';
 import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
 import { now } from './clock.ts';
+import { moscowToday } from './admin.ts';
 import { STAGE_TRANSITIONS } from './stage-state.ts';
 import {
   PROJECT_STATUS_LABEL,
@@ -191,6 +192,11 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
         topic: input.topic ?? lead.topic ?? null,
         managerId: input.managerId,
         dueOn: input.dueOn ?? null,
+        // День начала — день одобрения по Москве. Прежде его ставил только
+        // перенос книги, и работы, заведённые в кабинете, выпадали из
+        // «Принято за квартал», заказов по месяцам, сезонности, длительности
+        // цикла и итогов по годам (решение Р-257).
+        startedOn: moscowToday(),
         source: 'WEB',
       },
     });
@@ -692,10 +698,9 @@ export async function setProjectStatus(actor: Actor, projectId: string, to: Proj
   }
 
   // Дата закрытия — день, а не мгновение: так её пишет и перенос книги.
-  const today = now();
-  const closedOn = isClosedStatus(to)
-    ? new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
-    : null;
+  // День московский: по UTC работа, закрытая до трёх часов ночи, получала
+  // вчерашнюю дату (решение Р-257).
+  const closedOn = isClosedStatus(to) ? moscowToday() : null;
 
   const saved = await prisma.$transaction(async (tx) => {
     // Перевод захватывает работу по прежнему состоянию, как транш и этап.

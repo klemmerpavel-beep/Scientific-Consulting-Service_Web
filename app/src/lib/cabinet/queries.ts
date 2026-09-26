@@ -4,7 +4,7 @@ import { enqueue } from './outbox.ts';
 import { record } from './audit.ts';
 import { leadAttachmentKey, openObject, sha256, storage } from './storage.ts';
 import { can, ensure, scopeComments, scopeLeads, scopeMaterials, scopeProjects, type Actor } from './access.ts';
-import { now as today } from './clock.ts';
+import { moscowToday, now as today } from './clock.ts';
 import { LEAD_STATUS_LABEL } from './lead-labels.ts';
 
 /**
@@ -470,11 +470,11 @@ export async function trafficLight(actor: Actor) {
   // День — у часов кабинета: снимок не зависит от дня съёмки (Р-205).
   // Сравнение идёт с началом дня: срок — день, и срок «сегодня» сорванным
   // не считается до конца этого дня. Прежде он становился просроченным с
-  // первой минуты суток (решение Р-240).
+  // первой минуты суток (решение Р-240). Сутки — московские, как у
+  // всех «срок прошёл» кабинета: по UTC вчерашний срок до трёх часов ночи
+  // ещё не считался сорванным (решение Р-257).
   const moment = today();
-  const now = new Date(
-    Date.UTC(moment.getUTCFullYear(), moment.getUTCMonth(), moment.getUTCDate()),
-  );
+  const now = moscowToday(moment);
   const inWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(moment.getTime() - 14 * 24 * 60 * 60 * 1000);
 
@@ -532,17 +532,25 @@ export async function trafficLight(actor: Actor) {
   // срок работы на сводке не появлялся вовсе — ответ говорил «ничего не
   // горит» при просроченных заказах (решение Р-216).
   const lateWorks = await prisma.project.findMany({
+    // Приостановленная работа со сроком в прошлом — тоже работа с
+    // прошедшим сроком: отчёт и аналитика считают её среди «действующих»,
+    // а главная прежде молчала о ней, и счёт на двух экранах расходился
+    // (решение Р-257). Её этапы в перечень просроченных не входят, поэтому
+    // условие «нет просроченного этапа» к ней не применяется.
     where: {
       ...scope,
-      status: 'ACTIVE',
       dueOn: { lt: now },
-      stages: { none: { state: live, dueOn: { lt: now } } },
+      OR: [
+        { status: 'ACTIVE', stages: { none: { state: live, dueOn: { lt: now } } } },
+        { status: 'PAUSED' },
+      ],
     },
     orderBy: [{ dueOn: 'asc' }, { code: 'asc' }],
     select: {
       id: true,
       code: true,
       title: true,
+      status: true,
       dueOn: true,
       managerId: true,
       client: { select: { fullName: true } },

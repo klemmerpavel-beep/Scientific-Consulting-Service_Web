@@ -84,7 +84,7 @@ function book(paidSecond = '40000', extra: TestRow[] = []): Buffer {
 describe('перенос книги заказов', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
   const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
-  const { applyBatch, mergeClients, previewBook } = await import(
+  const { applyBatch, loadBatch, mergeClients, previewBook } = await import(
     '../src/lib/cabinet/import/apply.ts'
   );
 
@@ -168,6 +168,9 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     assert.equal(preview.counts.CREATE, 4);
     assert.equal(preview.totals.cost, 47_500_000n);
     assert.equal(preview.totals.paid, 24_000_000n);
+    // Остаток — сумма остатков строк; переплат в этой книге нет (Р-257).
+    assert.equal(preview.totals.outstanding, preview.totals.cost - preview.totals.paid);
+    assert.equal(preview.totals.overpaid, 0n);
     // Однофамильцы и несведённые написания выведены отдельно.
     assert.equal(preview.duplicates.length, 1);
     assert.deepEqual(preview.duplicates[0]?.rowNumbers, [2, 3]);
@@ -178,6 +181,23 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     assert.deepEqual(
       preview.conflicts.map((conflict) => conflict.rowNumber),
       [3],
+    );
+  });
+
+  it('переплата одной строки не гасит остаток другой', async () => {
+    // Вторая работа — 90 000 ₽, оплачено 95 000 ₽: переплата 5 000 ₽.
+    // Остаток книги — 50 000 (закрыто полностью: 0) + 150 000 + 35 000,
+    // а не разность итогов, меньшая на переплату (решение Р-257).
+    const preview = await previewBook(actor(ids.head, 'HEAD'), {
+      fileName: `книга-${stamp}-переплата.xlsx`,
+      bytes: book('95000'),
+    });
+    batches.push(preview.batchId);
+    assert.equal(preview.totals.overpaid, 500_000n);
+    assert.equal(preview.totals.outstanding, 18_500_000n);
+    assert.equal(
+      preview.totals.cost - preview.totals.paid,
+      preview.totals.outstanding - preview.totals.overpaid,
     );
   });
 
@@ -198,6 +218,13 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     assert.equal(report.rejected[0]?.rowNumber, 5);
     assert.match(report.rejected[0]?.reason ?? '', /не сведено/u);
     assert.equal(report.clientsCreated, 2, 'однофамильцы в книге дали одну карточку');
+
+    // Отчёт зафиксированной загрузки говорит об итоге и помнит лист:
+    // прежде фиксация затирала сведения предпросмотра (решение Р-257).
+    const reopened = await loadBatch(actor(ids.head, 'HEAD'), preview.batchId);
+    assert.notEqual(reopened?.sheet, '', 'лист загрузки потерян при фиксации');
+    assert.deepEqual(reopened?.applied, { created: 3, updated: 0, skipped: 0, rejected: 1 });
+    assert.equal(preview.applied, null);
 
     const projects = await prisma.project.findMany({
       where: { client: { normalizedName: { contains: String(stamp) } } },

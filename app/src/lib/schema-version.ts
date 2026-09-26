@@ -10,4 +10,4 @@
  * Проверка `schema-version.test.ts` не даёт забыть поднять имя вместе с
  * новой миграцией.
  */
-export const LATEST_MIGRATION = '20260926120000_tranche_reversed';
+export const LATEST_MIGRATION = '20260926170000_project_started_on';

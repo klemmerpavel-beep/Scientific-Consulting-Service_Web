@@ -91,7 +91,23 @@ export interface Preview {
   readonly state: 'PARSED' | 'PREVIEWED' | 'APPLIED' | 'CANCELLED';
   readonly createdAt: Date;
   readonly rows: readonly PreviewRow[];
-  readonly totals: { readonly cost: bigint; readonly paid: bigint };
+  /**
+   * Итоги книги. Остаток считается по строкам, как в кабинете (`outstandingOf`):
+   * переплата одной работы не гасит долг другой (решение Р-257).
+   */
+  readonly totals: {
+    readonly cost: bigint;
+    readonly paid: bigint;
+    readonly outstanding: bigint;
+    readonly overpaid: bigint;
+  };
+  /** Итог фиксации; у незафиксированной загрузки его нет. */
+  readonly applied: {
+    readonly created: number;
+    readonly updated: number;
+    readonly skipped: number;
+    readonly rejected: number;
+  } | null;
   readonly issueCounts: Readonly<Record<IssueCode, number>>;
   readonly conflicts: readonly { rowNumber: number; text: string; fill: string | null }[];
   readonly duplicates: readonly DuplicateGroup[];
@@ -275,6 +291,14 @@ async function assemble(
     totals: {
       cost: rows.reduce((sum, row) => sum + row.cost, 0n),
       paid: rows.reduce((sum, row) => sum + row.paid, 0n),
+      outstanding: rows.reduce(
+        (sum, row) => sum + (row.cost > row.paid ? row.cost - row.paid : 0n),
+        0n,
+      ),
+      overpaid: rows.reduce(
+        (sum, row) => sum + (row.paid > row.cost ? row.paid - row.cost : 0n),
+        0n,
+      ),
     },
     issueCounts,
     conflicts,
@@ -480,6 +504,7 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
     state: 'PREVIEWED',
     createdAt: new Date(),
     rows,
+    applied: null,
     ...report,
   };
 }
@@ -556,14 +581,29 @@ export async function loadBatch(actor: Actor, batchId: string): Promise<Preview 
     };
   });
 
-  const sheet = (batch.stats as { sheet?: string } | null)?.sheet ?? '';
+  const stats = (batch.stats ?? {}) as {
+    sheet?: string;
+    created?: number;
+    updated?: number;
+    skipped?: number;
+    rejected?: number;
+  };
   return {
     batchId: batch.id,
     fileName: batch.fileName,
-    sheet,
+    sheet: stats.sheet ?? '',
     state: batch.state,
     createdAt: batch.createdAt,
     rows,
+    applied:
+      batch.state === 'APPLIED' && stats.created !== undefined
+        ? {
+            created: stats.created,
+            updated: stats.updated ?? 0,
+            skipped: stats.skipped ?? 0,
+            rejected: stats.rejected ?? 0,
+          }
+        : null,
     ...(await assemble(rows)),
   };
 }
@@ -683,7 +723,7 @@ export async function applyBatch(
 
   const batch = await prisma.importBatch.findUnique({
     where: { id: batchId },
-    select: { id: true, state: true, fileName: true },
+    select: { id: true, state: true, fileName: true, stats: true },
   });
   if (batch === null) throw new Error('Загрузка не найдена');
   if (batch.state === 'APPLIED') throw new Error('Загрузка уже зафиксирована');
@@ -1024,7 +1064,10 @@ export async function applyBatch(
       await tx.importBatch.update({
         where: { id: batchId },
         data: {
+          // Сведения предпросмотра (лист, замечания) сохраняются: прежде
+          // фиксация затирала их, и отчёт писал «Лист «»» (решение Р-257).
           stats: {
+            ...((batch.stats ?? {}) as Record<string, unknown>),
             created,
             updated,
             skipped,

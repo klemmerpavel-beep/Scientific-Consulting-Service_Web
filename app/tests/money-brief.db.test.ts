@@ -151,8 +151,10 @@ describe('деньги коротко', { skip: !enabled }, async () => {
   it('транш со сроком сегодня ещё не просрочен', async () => {
     // Прежде сравнение шло с текущим моментом, и транш со сроком сегодня
     // считался просроченным уже с трёх часов ночи по Москве (решение Р-236).
-    const at = new Date();
-    const midnight = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
+    // «Сегодня» — московское: по UTC-суткам проверка с 21:00 до полуночи
+    // по UTC брала вчерашний день и падала (решение Р-257).
+    const { moscowToday } = await import('../src/lib/cabinet/clock.ts');
+    const midnight = moscowToday();
     const before = await moneyBrief(actorOf(ids.boss!, 'HEAD'));
     const today = await prisma.tranche.create({
       data: {
