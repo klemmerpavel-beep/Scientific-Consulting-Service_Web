@@ -83,8 +83,27 @@ export default async function ImportBatchScreen({
     { label: 'Строк в книге', value: String(report.rows.length) },
     { label: 'Законтрактовано', value: formatAmount(report.totals.cost) },
     { label: 'Получено', value: formatAmount(report.totals.paid) },
-    { label: 'Остаток', value: formatAmount(report.totals.cost - report.totals.paid) },
+    // Остаток — по строкам, как в кабинете: переплата одной работы не
+    // уменьшает долг другой. Прежде плитка давала разность итогов, и
+    // книга с переплатой показывала остаток меньше настоящего (Р-256).
+    {
+      label: 'Остаток',
+      value: formatAmount(report.totals.outstanding),
+      note:
+        report.totals.overpaid > 0n
+          ? `Переплата ${formatAmount(report.totals.overpaid)} в остаток не зачтена`
+          : undefined,
+    },
   ];
+
+  const sheet = report.sheet === '' ? '' : `Лист «${report.sheet}», з`;
+  const loaded = `${sheet === '' ? 'З' : sheet}агружена ${formatDate(report.createdAt)}.`;
+  // После фиксации подпись говорит, что сделано, а не что предполагалось:
+  // прежде зафиксированная книга читалась «к заведению 56, уже перенесено 0».
+  const summary =
+    report.applied === null
+      ? `К заведению ${report.counts.CREATE}, к обновлению ${report.counts.UPDATE}, уже перенесено ${report.counts.SKIP}.`
+      : `Зафиксирована: заведено ${report.applied.created}, обновлено ${report.applied.updated}, пропущено ${report.applied.skipped + report.applied.rejected}.`;
 
   return (
     <Shell actor={actor} current="/cabinet/manage/import">
@@ -92,7 +111,7 @@ export default async function ImportBatchScreen({
         backHref="/cabinet/manage/import"
         backLabel="к загрузкам"
         title={report.fileName}
-        note={`Лист «${report.sheet}», загружена ${formatDate(report.createdAt)}. К заведению ${report.counts.CREATE}, к обновлению ${report.counts.UPDATE}, уже перенесено ${report.counts.SKIP}.`}
+        note={`${loaded} ${summary}`}
       />
 
       <ActionError id={flags.error} />
@@ -108,7 +127,7 @@ export default async function ImportBatchScreen({
           по кеглю и весу числа при первой же правке (решение Р-177). */}
       <Tiles>
         {tiles.map((tile) => (
-          <Tile key={tile.label} label={tile.label} value={tile.value} />
+          <Tile key={tile.label} label={tile.label} value={tile.value} note={tile.note} />
         ))}
       </Tiles>
 
