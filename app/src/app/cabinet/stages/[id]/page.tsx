@@ -26,6 +26,8 @@ import { SANS } from '../../../../components/cabinet/tokens';
 import { can } from '../../../../lib/cabinet/access';
 import { stageById } from '../../../../lib/cabinet/queries';
 import { daysPast } from '../../../../lib/cabinet/clock';
+import { hasContacts } from '../../../../lib/cabinet/contacts';
+import ActionError from '../../../../components/cabinet/ActionError';
 import { stageStateButtons } from '../../../../lib/cabinet/stage-state';
 import {
   PROJECT_STATUS_LABEL,
@@ -74,7 +76,13 @@ const STAFF_TODO: Record<StageStateKey, string> = {
 const overdueDays = (dueOn: Date | null): number | null => daysPast(dueOn);
 
 
-export default async function StageScreen({ params }: { params: Promise<{ id: string }> }) {
+export default async function StageScreen({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
 
@@ -136,6 +144,8 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
               }`
         }
       />
+
+      <ActionError text={(await searchParams).error} />
 
       {stage.blockedReason === null ? null : (
         <Block as="div" style={{ marginBottom: 24 }}>
@@ -335,7 +345,9 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                                 {authorName(comment.author, actor, comment.authorId)} ·{' '}
                                 {formatDate(comment.createdAt)}
                                 {comment.moderationStatus === 'PENDING'
-                                  ? ' · ожидает публикации'
+                                  ? mayModerate && hasContacts(comment.body)
+                                    ? ' · ожидает публикации · есть контакты'
+                                    : ' · ожидает публикации'
                                   : comment.moderationStatus === 'REJECTED'
                                     ? ' · отклонено куратором'
                                     : ''}
@@ -355,7 +367,9 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                                     <input type="hidden" name="commentId" value={comment.id} />
                                     <input type="hidden" name="stageId" value={stage.id} />
                                     <input type="hidden" name="decision" value="publish" />
-                                    <Button tone="quiet">Опубликовать клиенту</Button>
+                                    <Button tone="quiet">
+                                      {comment.author.role === 'CLIENT' ? 'Опубликовать' : 'Опубликовать клиенту'}
+                                    </Button>
                                   </Form>
                                   <Form action={decideOnComment} inline>
                                     <input type="hidden" name="commentId" value={comment.id} />
@@ -366,7 +380,11 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
                                       labelHidden
                                       name="note"
                                       scope={comment.id}
-                                      placeholder="Причина — её увидит эксперт"
+                                      placeholder={
+                                        comment.author.role === 'CLIENT'
+                                          ? 'Причина — её увидит клиент'
+                                          : 'Причина — её увидит эксперт'
+                                      }
                                       minWidth={220}
                                     />
                                     <Button tone="quiet">Отклонить</Button>

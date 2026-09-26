@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 
 import { CONSENT_VERSION } from '../../lib/lead-schema';
-import { ensure } from '../../lib/cabinet/access';
+import { AccessDenied, ensure } from '../../lib/cabinet/access';
 import {
   consumeLoginToken,
   requestLoginLink,
@@ -90,6 +90,26 @@ async function actorOrRedirect() {
 }
 
 /**
+ * Что сказать человеку об отказе действия (решение Р-242).
+ *
+ * Своё сообщение показывается только у отказов служб — обычного `Error`
+ * с текстом для человека — и у отказа в праве. Сбой базы, хранилища или
+ * разбора несёт в тексте имена таблиц и куски запросов: вместо него —
+ * фиксированная фраза, а подробности идут в журнал сервера.
+ */
+function reasonOf(error: unknown, fallback: string): string {
+  if (error instanceof AccessDenied) return 'Это действие недоступно для вашей роли';
+  if (error instanceof Error && error.constructor === Error) return error.message;
+  console.error('[cabinet] сбой действия', error);
+  return fallback;
+}
+
+/** Вернуть на экран с отказом: `redirect` бросает, поэтому вызывается вне `try`. */
+function withError(path: string, reason: string): string {
+  return `${path}?error=${encodeURIComponent(reason)}`;
+}
+
+/**
  * Запрос ссылки входа. Ответ одинаков для любого исхода: иначе форма
  * превращается в средство проверки, кто является клиентом практики.
  */
@@ -127,7 +147,13 @@ export async function enterByLink(form: FormData): Promise<void> {
 export async function approveStage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const stageId = String(form.get('stageId') ?? '');
-  await setStageState(actor, stageId, 'DONE');
+  let failure: string | null = null;
+  try {
+    await setStageState(actor, stageId, 'DONE');
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось согласовать этап');
+  }
+  if (failure !== null) redirect(withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -136,7 +162,13 @@ export async function changeStageState(form: FormData): Promise<void> {
   const stageId = String(form.get('stageId') ?? '');
   const to = String(form.get('state') ?? '') as Parameters<typeof setStageState>[2];
   const reason = String(form.get('reason') ?? '');
-  await setStageState(actor, stageId, to, reason);
+  let failure: string | null = null;
+  try {
+    await setStageState(actor, stageId, to, reason);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сменить состояние этапа');
+  }
+  if (failure !== null) redirect(withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -144,7 +176,13 @@ export async function commentOnVersion(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const versionId = String(form.get('versionId') ?? '');
   const stageId = String(form.get('stageId') ?? '');
-  await addComment(actor, versionId, String(form.get('body') ?? ''));
+  let failure: string | null = null;
+  try {
+    await addComment(actor, versionId, String(form.get('body') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить замечание');
+  }
+  if (failure !== null) redirect(withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -232,12 +270,18 @@ export async function createStage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
-  await addStage(actor, {
-    projectId,
-    title: String(form.get('title') ?? ''),
-    summary: String(form.get('summary') ?? ''),
-    dueOn: dateOrNull(form.get('dueOn')),
-  });
+  let failure: string | null = null;
+  try {
+    await addStage(actor, {
+      projectId,
+      title: String(form.get('title') ?? ''),
+      summary: String(form.get('summary') ?? ''),
+      dueOn: dateOrNull(form.get('dueOn')),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось завести этап');
+  }
+  if (failure !== null) redirect(withError(`/cabinet/projects/${code}`, failure));
   redirect(`/cabinet/projects/${code}`);
 }
 
@@ -245,12 +289,18 @@ export async function createStage(form: FormData): Promise<void> {
 export async function saveStage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
-  await editStage(actor, {
-    stageId: String(form.get('stageId') ?? ''),
-    title: String(form.get('title') ?? ''),
-    summary: String(form.get('summary') ?? ''),
-    dueOn: dateOrNull(form.get('dueOn')),
-  });
+  let failure: string | null = null;
+  try {
+    await editStage(actor, {
+      stageId: String(form.get('stageId') ?? ''),
+      title: String(form.get('title') ?? ''),
+      summary: String(form.get('summary') ?? ''),
+      dueOn: dateOrNull(form.get('dueOn')),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить этап');
+  }
+  if (failure !== null) redirect(withError(`/cabinet/projects/${code}`, failure));
   redirect(`/cabinet/projects/${code}`);
 }
 
@@ -263,12 +313,18 @@ export async function saveStage(form: FormData): Promise<void> {
 export async function moveStageDue(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const stageId = String(form.get('stageId') ?? '');
-  await editStage(actor, {
-    stageId,
-    title: String(form.get('title') ?? ''),
-    summary: String(form.get('summary') ?? ''),
-    dueOn: dateOrNull(form.get('dueOn')),
-  });
+  let failure: string | null = null;
+  try {
+    await editStage(actor, {
+      stageId,
+      title: String(form.get('title') ?? ''),
+      summary: String(form.get('summary') ?? ''),
+      dueOn: dateOrNull(form.get('dueOn')),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось перенести срок');
+  }
+  if (failure !== null) redirect(withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -326,7 +382,13 @@ export async function decideOnComment(form: FormData): Promise<void> {
   const commentId = String(form.get('commentId') ?? '');
   const stageId = String(form.get('stageId') ?? '');
   const decision = String(form.get('decision') ?? '') === 'publish' ? 'PUBLISHED' : 'REJECTED';
-  await moderateComment(actor, commentId, decision, String(form.get('note') ?? ''));
+  let failure: string | null = null;
+  try {
+    await moderateComment(actor, commentId, decision, String(form.get('note') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось разобрать замечание');
+  }
+  if (failure !== null) redirect(withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -393,13 +455,17 @@ export async function postMessage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
-  await sendMessage(actor, projectId, String(form.get('body') ?? ''));
+  let failure: string | null = null;
+  try {
+    await sendMessage(actor, projectId, String(form.get('body') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить сообщение');
+  }
   const back = String(form.get('back') ?? '');
-  redirect(
-    back === 'project'
-      ? `/cabinet/projects/${code}`
-      : `/cabinet/projects/${code}/messages`,
-  );
+  const target =
+    back === 'project' ? `/cabinet/projects/${code}` : `/cabinet/projects/${code}/messages`;
+  if (failure !== null) redirect(withError(target, failure));
+  redirect(target);
 }
 
 /** Каналы уведомлений. Выбор за получателем, а не за системой. */
@@ -423,7 +489,7 @@ export async function addContactChannel(form: FormData): Promise<void> {
       preferred: form.get('preferred') === 'on',
     });
   } catch (error) {
-    const text = error instanceof Error ? error.message : 'Не удалось добавить способ связи';
+    const text = reasonOf(error, 'Не удалось добавить способ связи');
     redirect(`/cabinet/settings?error=${encodeURIComponent(text)}`);
   }
   redirect('/cabinet/settings?saved=1');
@@ -461,7 +527,7 @@ export async function requestHelp(form: FormData): Promise<void> {
   try {
     await askForHelp(actor, String(form.get('text') ?? ''));
   } catch (error) {
-    const text = error instanceof Error ? error.message : 'Не удалось отправить вопрос';
+    const text = reasonOf(error, 'Не удалось отправить вопрос');
     redirect(`/cabinet/manage/tools?error=${encodeURIComponent(text)}`);
   }
   redirect('/cabinet/manage/tools?sent=1');
@@ -469,7 +535,7 @@ export async function requestHelp(form: FormData): Promise<void> {
 
 export async function dropTelegram(): Promise<void> {
   const actor = await actorOrRedirect();
-  await unbindTelegram(actor.id);
+  await unbindTelegram(actor);
   redirect('/cabinet/settings?saved=1');
 }
 
@@ -642,7 +708,7 @@ export async function inviteUser(form: FormData): Promise<void> {
       role: String(form.get('role') ?? 'EXPERT') as Role,
     });
   } catch (error) {
-    const reason = error instanceof Error ? error.message : 'Не удалось завести запись';
+    const reason = reasonOf(error, 'Не удалось завести запись');
     redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
   }
   redirect('/cabinet/manage/users?created=1');
@@ -653,7 +719,7 @@ export async function changeUserRole(form: FormData): Promise<void> {
   try {
     await setUserRole(actor, String(form.get('userId') ?? ''), String(form.get('role') ?? '') as Role);
   } catch (error) {
-    const reason = error instanceof Error ? error.message : 'Не удалось сменить роль';
+    const reason = reasonOf(error, 'Не удалось сменить роль');
     redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
   }
   redirect('/cabinet/manage/users');
@@ -665,7 +731,7 @@ export async function changeUserStatus(form: FormData): Promise<void> {
   try {
     await setUserStatus(actor, String(form.get('userId') ?? ''), status);
   } catch (error) {
-    const reason = error instanceof Error ? error.message : 'Не удалось изменить состояние';
+    const reason = reasonOf(error, 'Не удалось изменить состояние');
     redirect(`/cabinet/manage/users?error=${encodeURIComponent(reason)}`);
   }
   redirect('/cabinet/manage/users');
@@ -696,14 +762,20 @@ export async function giveAccessLink(
     return {
       link: null,
       note: null,
-      error: error instanceof Error ? error.message : 'Не удалось выдать ссылку',
+      error: reasonOf(error, 'Не удалось выдать ссылку'),
     };
   }
 }
 
 export async function updateExpertNda(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await signExpertNda(actor, String(form.get('userId') ?? ''), dateOrNull(form.get('signedOn')));
+  let failure: string | null = null;
+  try {
+    await signExpertNda(actor, String(form.get('userId') ?? ''), dateOrNull(form.get('signedOn')));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отметить договор');
+  }
+  if (failure !== null) redirect(withError('/cabinet/manage/users', failure));
   redirect('/cabinet/manage/users');
 }
 
@@ -721,7 +793,7 @@ export async function saveType(form: FormData): Promise<void> {
       sortOrder: rawOrder.length === 0 ? undefined : Number(rawOrder),
     });
   } catch (error) {
-    const reason = error instanceof Error ? error.message : 'Не удалось сохранить позицию';
+    const reason = reasonOf(error, 'Не удалось сохранить позицию');
     redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
   }
   redirect('/cabinet/manage/directory');
@@ -732,7 +804,7 @@ export async function attachAlias(form: FormData): Promise<void> {
   try {
     await addAlias(actor, String(form.get('serviceTypeId') ?? ''), String(form.get('alias') ?? ''));
   } catch (error) {
-    const reason = error instanceof Error ? error.message : 'Не удалось привязать написание';
+    const reason = reasonOf(error, 'Не удалось привязать написание');
     redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
   }
   redirect('/cabinet/manage/directory');
@@ -740,7 +812,13 @@ export async function attachAlias(form: FormData): Promise<void> {
 
 export async function detachAlias(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await removeAlias(actor, String(form.get('aliasId') ?? ''));
+  let failure: string | null = null;
+  try {
+    await removeAlias(actor, String(form.get('aliasId') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отвязать написание');
+  }
+  if (failure !== null) redirect(withError('/cabinet/manage/directory', failure));
   redirect('/cabinet/manage/directory');
 }
 
@@ -815,7 +893,7 @@ export async function saveStageTemplate(form: FormData): Promise<void> {
       durationDays: durationRaw.length === 0 ? null : Number(durationRaw),
     });
   } catch (error) {
-    const reason = error instanceof Error ? error.message : 'Не удалось сохранить этап шаблона';
+    const reason = reasonOf(error, 'Не удалось сохранить этап шаблона');
     redirect(`/cabinet/manage/directory?error=${encodeURIComponent(reason)}`);
   }
   redirect('/cabinet/manage/directory');
@@ -823,7 +901,13 @@ export async function saveStageTemplate(form: FormData): Promise<void> {
 
 export async function dropStageTemplate(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await removeStageTemplateItem(actor, String(form.get('id') ?? ''));
+  let failure: string | null = null;
+  try {
+    await removeStageTemplateItem(actor, String(form.get('id') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось убрать этап шаблона');
+  }
+  if (failure !== null) redirect(withError('/cabinet/manage/directory', failure));
   redirect('/cabinet/manage/directory');
 }
 

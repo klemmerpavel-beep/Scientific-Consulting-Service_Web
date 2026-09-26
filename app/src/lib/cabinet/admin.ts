@@ -170,6 +170,35 @@ export async function accessLinkPeople(actor: Actor) {
   });
 }
 
+const ROLES: readonly Role[] = ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'];
+
+/**
+ * У сотрудника не осталось открытых работ, где он куратор или эксперт.
+ *
+ * Прежде приостановка или смена роли проходили молча: работа оставалась
+ * за человеком, который больше не входит, — куратору не приходили
+ * сообщения клиента, эксперт числился на работе, которую не откроет, а
+ * менеджер, ставший экспертом, продолжал значиться куратором (решение
+ * Р-242). Сначала работы передаются, затем меняется доступ.
+ */
+async function ensureNoOpenWorks(userId: string): Promise<void> {
+  const open = await prisma.project.findMany({
+    where: {
+      status: { in: ['ACTIVE', 'PAUSED'] },
+      OR: [{ managerId: userId }, { expertId: userId }],
+    },
+    orderBy: { code: 'asc' },
+    select: { code: true },
+    take: 6,
+  });
+  if (open.length === 0) return;
+  const shown = open.slice(0, 5).map((project) => project.code).join(', ');
+  throw new Error(
+    `За человеком открытые работы: ${shown}${open.length > 5 ? ' и другие' : ''}. ` +
+      'Сначала передайте их другому куратору или эксперту',
+  );
+}
+
 export interface CreateUserInput {
   readonly email: string;
   readonly fullName: string;
@@ -180,8 +209,14 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
   ensure(actor, 'USER_MANAGE');
   const email = normalizeEmail(input.email);
   if (email.length === 0) throw new Error('Адрес почты не указан');
+  // Запись с опечаткой в адресе не войдёт никогда: ссылка входа уйдёт в
+  // никуда, а выглядеть это будет как поломка кабинета (решение Р-242).
+  if (!/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/u.test(email)) {
+    throw new Error('Проверьте адрес почты: он должен выглядеть как имя@домен');
+  }
   const fullName = input.fullName.trim();
   if (fullName.length === 0) throw new Error('Имя не указано');
+  if (!ROLES.includes(input.role)) throw new Error('Неизвестная роль');
 
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (existing !== null) throw new Error('Учётная запись с таким адресом уже есть');
@@ -217,9 +252,14 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
   ensure(actor, 'USER_MANAGE');
   if (userId === actor.id) throw new Error('Собственная роль не меняется: это оставило бы систему без руководителя');
 
+  if (!ROLES.includes(role)) throw new Error('Неизвестная роль');
   const before = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
   if (before === null) throw new Error('Учётная запись не найдена');
   if (before.role === role) return;
+  const staff = (value: Role) => value === 'MANAGER' || value === 'HEAD';
+  if ((staff(before.role) && !staff(role)) || (before.role === 'EXPERT' && role !== 'EXPERT')) {
+    await ensureNoOpenWorks(userId);
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.user.update({ where: { id: userId }, data: { role } });
@@ -254,6 +294,7 @@ export async function setUserStatus(actor: Actor, userId: string, status: 'ACTIV
   if (before.status === 'ERASED') {
     throw new Error('Запись обезличена по требованию субъекта и не восстанавливается');
   }
+  if (status === 'SUSPENDED') await ensureNoOpenWorks(userId);
 
   await prisma.$transaction(async (tx) => {
     await tx.user.update({ where: { id: userId }, data: { status } });
@@ -328,24 +369,43 @@ export async function saveServiceType(actor: Actor, input: ServiceTypeInput) {
   const code = input.code.trim();
   const name = input.name.trim();
   if (code.length === 0 || name.length === 0) throw new Error('Код и название обязательны');
+  if (!/^[a-z0-9_-]+$/u.test(code)) {
+    throw new Error('Код — латиница в нижнем регистре, цифры, дефис и подчёркивание, без пробелов');
+  }
+  if (input.basePrice != null && input.basePrice < 0n) {
+    throw new Error('Базовая цена не бывает отрицательной');
+  }
+  if (input.sortOrder !== undefined && (!Number.isInteger(input.sortOrder) || input.sortOrder < 0)) {
+    throw new Error('Порядок — целое число от нуля');
+  }
 
-  const type = await prisma.serviceType.upsert({
-    where: { code },
-    create: {
-      code,
-      name,
-      basePrice: input.basePrice ?? null,
-      sortOrder: input.sortOrder ?? 100,
-      isActive: input.isActive ?? true,
-    },
-    update: {
-      name,
-      basePrice: input.basePrice ?? null,
-      sortOrder: input.sortOrder ?? undefined,
-      isActive: input.isActive ?? undefined,
-    },
-    select: { id: true, code: true },
-  });
+  // Форма «Добавить позицию» заводит новую позицию. Прежде при совпадении
+  // кода она молча переписывала название и цену существующей — и вместе с
+  // ней подписи всех её работ, отчётов и аналитики (решение Р-242).
+  const data = {
+    name,
+    basePrice: input.basePrice ?? null,
+    sortOrder: input.sortOrder ?? 100,
+    isActive: input.isActive ?? true,
+  };
+  const type =
+    input.id == null
+      ? await (async () => {
+          const taken = await prisma.serviceType.findUnique({ where: { code }, select: { id: true } });
+          if (taken !== null) throw new Error(`Позиция с кодом «${code}» уже есть`);
+          return prisma.serviceType.create({ data: { code, ...data }, select: { id: true, code: true } });
+        })()
+      : await prisma.serviceType.update({
+          where: { id: input.id },
+          data: {
+            code,
+            name,
+            basePrice: input.basePrice ?? null,
+            sortOrder: input.sortOrder ?? undefined,
+            isActive: input.isActive ?? undefined,
+          },
+          select: { id: true, code: true },
+        });
 
   await record(actor, {
     action: 'SERVICE_TYPE_SAVED',
@@ -431,6 +491,14 @@ export async function saveStageTemplateItem(actor: Actor, input: StageTemplateIn
   if (!Number.isInteger(input.position) || input.position < 1) {
     throw new Error('Порядковый номер этапа — целое число, начиная с единицы');
   }
+  // «10,5» и «-3» ложились в шаблон как есть, а срок этапа от них
+  // получался дробным или раньше начала (решение Р-242).
+  if (
+    input.durationDays != null &&
+    (!Number.isInteger(input.durationDays) || input.durationDays < 0)
+  ) {
+    throw new Error('Длительность — целое число дней от нуля');
+  }
 
   const item = await prisma.stageTemplate.upsert({
     where: {
@@ -499,5 +567,13 @@ export async function saveOwnChannels(
   await prisma.user.update({
     where: { id: actor.id },
     data: { notifyEmail: channels.email, notifyTelegram: channels.telegram },
+  });
+  // Отключённый канал — ответ на вопрос «почему не пришло письмо»; прежде
+  // следа не оставалось (решение Р-242).
+  await record(actor, {
+    action: 'NOTIFY_CHANNELS_SAVED',
+    objectType: 'User',
+    objectId: actor.id,
+    payload: { email: channels.email, telegram: channels.telegram },
   });
 }

@@ -25,6 +25,9 @@ export async function listMessages(actor: Actor, projectId: string) {
   });
 }
 
+/** Предел длины сообщения в переписке. */
+export const MESSAGE_MAX = 10_000;
+
 export async function sendMessage(actor: Actor, projectId: string, body: string) {
   const ref = await projectRef(projectId);
   if (ref === null) throw new Error('Проект не найден');
@@ -32,6 +35,11 @@ export async function sendMessage(actor: Actor, projectId: string, body: string)
 
   const text = body.trim();
   if (text.length === 0) throw new Error('Пустое сообщение не отправляется');
+  // Предел длины: без него одно сообщение в мегабайты ложилось в базу и
+  // в каждую выдачу переписки (решение Р-242).
+  if (text.length > MESSAGE_MAX) {
+    throw new Error(`Сообщение длиннее ${MESSAGE_MAX} знаков: разделите его или приложите файлом`);
+  }
 
   const message = await prisma.$transaction(async (tx) => {
     const created = await tx.message.create({
