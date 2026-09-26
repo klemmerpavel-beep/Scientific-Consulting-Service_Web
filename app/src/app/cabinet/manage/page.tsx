@@ -26,7 +26,7 @@ import {
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
-import { formatAmount, formatPlain } from '../../../lib/cabinet/money';
+import { formatAmount, formatPlain, outstandingOf } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments } from '../../../lib/cabinet/materials';
@@ -127,11 +127,8 @@ function owed(contract: {
   tranches: readonly { amount: bigint; status: string }[];
 } | null): bigint {
   if (contract === null) return 0n;
-  const paid = contract.tranches
-    .filter((tranche) => tranche.status === 'PAID')
-    .reduce((sum, tranche) => sum + tranche.amount, 0n);
-  const rest = contract.totalAmount - paid;
-  return rest > 0n ? rest : 0n;
+  // Списанное под угрозой уже не числится (решение Р-240).
+  return outstandingOf(contract.totalAmount, contract.tranches);
 }
 
 export default async function ManageQueue({

@@ -86,6 +86,20 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
   const phone = lead.contactKind === 'phone' ? lead.contact.trim() : null;
 
   const project = await prisma.$transaction(async (tx) => {
+    // Заявка захватывается первой строкой транзакции, по состоянию, а не по
+    // прочитанному выше. Прежде два одновременных одобрения проходили
+    // проверку оба и заводили две работы с двумя приглашениями, а отказ,
+    // пришедший между проверкой и записью, оставлял заявку «отклонённой» с
+    // работой при ней (решение Р-240). Захват держит строку до конца
+    // транзакции: второй ждёт и не находит заявку свободной.
+    const claimed = await tx.lead.updateMany({
+      where: { id: lead.id, projectId: null, status: { not: 'DECLINED' } },
+      data: { status: 'CONTRACTED' },
+    });
+    if (claimed.count === 0) {
+      throw new Error('Заявку уже разобрали: обновите страницу');
+    }
+
     // Учётная запись клиента заводится только при известном адресе почты:
     // вход в кабинет идёт по ссылке на почту, телефоном войти нельзя.
     let userId: string | null = null;
@@ -172,15 +186,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
       });
       if (template.length > 0) {
         await tx.stage.createMany({
-          data: template.map((item, index) => ({
-            projectId: created.id,
-            position: index + 1,
-            title: item.title,
-            dueOn:
-              item.durationDays === null
-                ? null
-                : new Date(Date.now() + item.durationDays * 24 * 60 * 60 * 1000),
-          })),
+          data: templateStages(created.id, template, now()),
         });
       }
     }
@@ -361,10 +367,17 @@ export async function declineLead(actor: Actor, leadId: string, reason: string) 
   if (found.status === 'DECLINED') throw new Error('Заявка уже отклонена, заявителю ответили');
 
   const { lead, queued } = await prisma.$transaction(async (tx) => {
-    const lead = await tx.lead.update({
-      where: { id: leadId },
+    // Захват по состоянию: одобрение, начатое раньше, держит строку, и
+    // отказ после его завершения видит заявку уже развёрнутой (решение
+    // Р-240).
+    const claimed = await tx.lead.updateMany({
+      where: { id: leadId, projectId: null, status: { not: 'DECLINED' } },
       data: { status: 'DECLINED', declineReason: trimmed },
     });
+    if (claimed.count === 0) {
+      throw new Error('Заявку уже разобрали: обновите страницу');
+    }
+    const lead = await tx.lead.findUniqueOrThrow({ where: { id: leadId } });
     // Заявке, помеченной при приёме как машинная, письма нет: адрес в ней
     // мог вписать кто угодно, и отказ стал бы способом слать письма на
     // чужой ящик от имени практики.
@@ -402,6 +415,23 @@ export async function assignExpert(actor: Actor, projectId: string, expertId: st
   const ref = await projectRef(projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PROJECT_ASSIGN_EXPERT', ref);
+
+  // Экспертом работы может быть только действующий эксперт. Прежде в поле
+  // ложился любой идентификатор формы: клиент или сотрудник становился
+  // «экспертом», а приостановленный эксперт получал работу, которую не
+  // откроет (решение Р-240).
+  if (expertId !== null) {
+    const target = await prisma.user.findFirst({
+      where: { id: expertId, status: 'ACTIVE', role: 'EXPERT' },
+      select: { id: true },
+    });
+    if (target === null) throw new Error('Экспертом может быть только действующий эксперт');
+  }
+  // Повторное назначение того же эксперта ничего не меняет и в ленту
+  // клиента и журнал не пишется.
+  if (expertId === ref.expertId) {
+    return prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+  }
 
   const project = await prisma.$transaction(async (tx) => {
     const updated = await tx.project.update({
@@ -482,6 +512,7 @@ export async function addStage(actor: Actor, input: AddStageInput) {
   const ref = await projectRef(input.projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'STAGE_EDIT', ref);
+  await ensureProjectActive(ref.id);
 
   const title = input.title.trim();
   if (title.length === 0) throw new Error('Этап без названия не заводится');
@@ -534,12 +565,13 @@ export async function editStage(
 ) {
   const stage = await prisma.stage.findUnique({
     where: { id: input.stageId },
-    select: { id: true, projectId: true, title: true },
+    select: { id: true, projectId: true, title: true, dueOn: true },
   });
   if (stage === null) throw new Error('Этап не найден');
   const ref = await projectRef(stage.projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'STAGE_EDIT', ref);
+  await ensureProjectActive(ref.id);
 
   const title = input.title.trim();
   if (title.length === 0) throw new Error('Этап без названия не заводится');
@@ -553,7 +585,13 @@ export async function editStage(
     objectType: 'Stage',
     objectId: stage.id,
     projectId: stage.projectId,
-    payload: { from: stage.title, to: title },
+    // Перенос срока — то, о чём потом спрашивают: кто и когда сдвинул.
+    // Прежде журнал помнил только название (решение Р-240).
+    payload: {
+      from: stage.title,
+      to: title,
+      ...dueChange(stage.dueOn, saved.dueOn),
+    },
   });
   return saved;
 }
@@ -580,6 +618,10 @@ export async function editProject(
   const title = input.title.trim();
   if (title.length === 0) throw new Error('Работа без названия не заводится');
 
+  const before = await prisma.project.findUniqueOrThrow({
+    where: { id: input.projectId },
+    select: { dueOn: true },
+  });
   const saved = await prisma.project.update({
     where: { id: input.projectId },
     data: {
@@ -594,7 +636,7 @@ export async function editProject(
     objectType: 'Project',
     objectId: input.projectId,
     projectId: input.projectId,
-    payload: { title },
+    payload: { title, ...dueChange(before.dueOn, saved.dueOn) },
   });
   return saved;
 }
@@ -664,6 +706,64 @@ export function canTransition(from: StageState, to: StageState): boolean {
   return STAGE_TRANSITIONS[from].includes(to);
 }
 
+const INACTIVE_PROJECT =
+  'Работа не в действии: этапы приостановленной, завершённой или отменённой работы не меняются';
+
+/**
+ * Этапы меняются только у действующей работы.
+ *
+ * Прежде закрытие работы этапов не касалось: этап отменённой работы можно
+ * было перевести, клиенту уходило «ждём ваших материалов», а сводка
+ * куратора держала его в «Требует внимания» бессрочно (решение Р-240).
+ * Вернуть работу в действие — отдельное действие с записью в ленте.
+ */
+async function ensureProjectActive(projectId: string): Promise<void> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { status: true },
+  });
+  if (project === null) throw new Error('Проект не найден');
+  if (project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
+}
+
+/** Полночь UTC того же дня: сроки в кабинете — дни, а не мгновения. */
+function dayOf(at: Date): Date {
+  return new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
+}
+
+/**
+ * Этапы из шаблона со сроками подряд.
+ *
+ * Длительность в справочнике — длительность этапа, и срок каждого
+ * отсчитывается от срока предыдущего. Прежде все сроки отсчитывались от
+ * одного «сейчас»: этапы в 10, 20 и 15 дней получали сроки на 10-й, 20-й и
+ * 15-й день — третий раньше второго, — да ещё с часами и минутами момента
+ * одобрения, из-за чего срок «сегодня» выглядел сорванным с утра (решение
+ * Р-240). Этап без длительности срока не получает и отсчёт не сдвигает.
+ */
+export function templateStages(
+  projectId: string,
+  template: readonly { readonly title: string; readonly durationDays: number | null }[],
+  at: Date,
+) {
+  let cursor = dayOf(at).getTime();
+  return template.map((item, index) => {
+    let dueOn: Date | null = null;
+    if (item.durationDays !== null) {
+      cursor += item.durationDays * 86_400_000;
+      dueOn = new Date(cursor);
+    }
+    return { projectId, position: index + 1, title: item.title, dueOn };
+  });
+}
+
+/** Перенос срока для журнала: пусто, если срок не менялся. */
+function dueChange(from: Date | null, to: Date | null) {
+  const a = from?.toISOString().slice(0, 10) ?? null;
+  const b = to?.toISOString().slice(0, 10) ?? null;
+  return a === b ? {} : { dueFrom: a ?? 'без срока', dueTo: b ?? 'без срока' };
+}
+
 export async function setStageState(
   actor: Actor,
   stageId: string,
@@ -673,7 +773,9 @@ export async function setStageState(
   const stage = await prisma.stage.findUnique({
     where: { id: stageId },
     include: {
-      project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
+      project: {
+        select: { id: true, clientId: true, managerId: true, expertId: true, status: true },
+      },
     },
   });
   if (stage === null) throw new Error('Этап не найден');
@@ -681,6 +783,7 @@ export async function setStageState(
   // Согласование этапа — действие клиента, остальные переходы ведёт менеджер.
   const action = stage.state === 'IN_APPROVAL' && to === 'DONE' ? 'STAGE_APPROVE' : 'STAGE_SET_STATE';
   ensure(actor, action, stage.project);
+  if (stage.project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
 
   const from = stage.state as StageState;
   if (!canTransition(from, to)) {
@@ -695,8 +798,12 @@ export async function setStageState(
 
   const now = new Date();
   const saved = await prisma.$transaction(async (tx) => {
-    const updated = await tx.stage.update({
-      where: { id: stageId },
+    // Перевод захватывает этап по прежнему состоянию. Прежде два
+    // одновременных перевода проходили проверку по прочитанному и оба
+    // записывались: история этапа получала два перехода из одного
+    // состояния, клиент — два письма (решение Р-240).
+    const claimed = await tx.stage.updateMany({
+      where: { id: stageId, state: from },
       data: {
         state: to,
         blockedReason: to === 'AWAITING_CLIENT' ? (reason ?? '').trim() : null,
@@ -705,6 +812,10 @@ export async function setStageState(
         completedAt: to === 'DONE' ? now : null,
       },
     });
+    if (claimed.count === 0) {
+      throw new Error('Этап уже переведён другим действием: обновите страницу');
+    }
+    const updated = await tx.stage.findUniqueOrThrow({ where: { id: stageId } });
     await tx.stageStateChange.create({
       data: { stageId, fromState: from, toState: to, actorId: actor.id, reason: reason ?? null },
     });

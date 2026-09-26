@@ -153,6 +153,8 @@ const FIELDS: Record<string, string> = {
   alias: 'написание',
   position: 'номер',
   durationDays: 'длительность, дней',
+  dueFrom: 'срок был',
+  dueTo: 'срок стал',
   year: 'год',
 };
 

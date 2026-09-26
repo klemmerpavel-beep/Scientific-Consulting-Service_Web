@@ -148,7 +148,17 @@ export async function stageById(actor: Actor, stageId: string) {
   return prisma.stage.findFirst({
     where: { id: stageId, project: scope },
     include: {
-      project: { select: { id: true, code: true, title: true, clientId: true, managerId: true, expertId: true } },
+      project: {
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          status: true,
+          clientId: true,
+          managerId: true,
+          expertId: true,
+        },
+      },
       expert: { select: { fullName: true, expertProfile: { select: { degree: true } } } },
       materials: {
         where: materialScope,
@@ -232,7 +242,9 @@ export async function pendingActions(actor: Actor) {
   if (scope === null) return [];
   const stages = await prisma.stage.findMany({
     where: {
-      project: scope,
+      // Только действующие работы: этап приостановленной или закрытой
+      // работы от клиента ничего не ждёт (решение Р-240).
+      project: { ...scope, status: 'ACTIVE' as const },
       state: { in: ['AWAITING_CLIENT', 'IN_APPROVAL'] },
     },
     orderBy: [{ dueOn: 'asc' }, { awaitingClientSince: 'asc' }, { id: 'asc' }],
@@ -396,11 +408,20 @@ export async function trafficLight(actor: Actor) {
   // `scope*`, а не через отдельное условие.
   const scope = scopeProjects(actor);
   if (scope === null) return { overdue: [], soon: [], stalled: [], lateWorks: [] };
-  const mine = Object.keys(scope).length === 0 ? {} : { project: scope };
+  // Этапы только действующих работ. Прежде этап отменённой или
+  // завершённой работы, брошенный незакрытым, висел в «Требует внимания»
+  // бессрочно, а изменить его было уже нельзя (решение Р-240).
+  const mine = { project: { ...scope, status: 'ACTIVE' as const } };
   // День — у часов кабинета: снимок не зависит от дня съёмки (Р-205).
-  const now = today();
+  // Сравнение идёт с началом дня: срок — день, и срок «сегодня» сорванным
+  // не считается до конца этого дня. Прежде он становился просроченным с
+  // первой минуты суток (решение Р-240).
+  const moment = today();
+  const now = new Date(
+    Date.UTC(moment.getUTCFullYear(), moment.getUTCMonth(), moment.getUTCDate()),
+  );
   const inWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+  const twoWeeksAgo = new Date(moment.getTime() - 14 * 24 * 60 * 60 * 1000);
 
   // Карточка «Требует внимания» должна отвечать на три вопроса сразу:
   // что просрочено, чей ход и сколько денег под угрозой. Состояние этапа

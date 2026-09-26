@@ -47,6 +47,25 @@ export function canChangeTrancheStatus(from: TrancheStatus, to: TrancheStatus): 
   return TRANCHE_TRANSITIONS[from].includes(to);
 }
 
+/**
+ * Остаток долга по договору: сумма договора без полученного и без
+ * списанного, не ниже нуля.
+ *
+ * Списанный транш — решение больше этих денег не ждать. Прежде главный
+ * экран считал долг как «договор минус оплата», и списанное продолжало
+ * числиться под угрозой, хотя экран финансов его уже не ждал (решение
+ * Р-240).
+ */
+export function outstandingOf(
+  total: bigint,
+  tranches: readonly { readonly amount: bigint; readonly status: string }[],
+): bigint {
+  const closed = tranches
+    .filter((tranche) => tranche.status === 'PAID' || tranche.status === 'WRITTEN_OFF')
+    .reduce((sum, tranche) => sum + tranche.amount, 0n);
+  return total > closed ? total - closed : 0n;
+}
+
 /** Разбор суммы, введённой человеком: «240 000», «240000,50», «240 000.50». */
 export function parseAmount(raw: string): bigint {
   const normalized = raw
