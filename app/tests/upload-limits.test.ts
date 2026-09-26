@@ -66,7 +66,7 @@ describe('пределы загрузки файлов', () => {
   });
 
   it('выкат ставит расписание связки с Диском', () => {
-    // Иначе связка, готовая в коде, ждёт ручного crontab -e (решение Р-261).
+    // Иначе связка, готовая в коде, ждёт ручного crontab -e (решение Р-262).
     assert.match(read('deploy/update.sh'), /cron-sync\.sh/u);
     const cron = read('deploy/cron-sync.sh');
     for (const job of ['outbox.sh', 'yandex-sync.sh', 'book-pull.sh']) {

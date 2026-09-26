@@ -23,6 +23,7 @@ describe('этапы и работы', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
   const projects = await import('../src/lib/cabinet/projects.ts');
   const { pendingActions, trafficLight } = await import('../src/lib/cabinet/queries.ts');
+  const { moscowToday } = await import('../src/lib/cabinet/clock.ts');
 
   const stamp = Date.now();
   const tail = String(stamp).slice(-6);
@@ -40,10 +41,10 @@ describe('этапы и работы', { skip: !enabled }, async () => {
   });
   const curator = () => who(ids.manager!, 'MANAGER');
 
-  const today = () => {
-    const at = new Date();
-    return new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
-  };
+  // «Сегодня» — московский день, как у сводки: с 21:00 до полуночи UTC
+  // UTC-день уже вчерашний, и срок «сегодня» по нему считался бы
+  // сорванным (решение Р-257).
+  const today = () => moscowToday();
 
   const newProject = async (suffix: string, status = 'ACTIVE') => {
     const project = await prisma.project.create({
