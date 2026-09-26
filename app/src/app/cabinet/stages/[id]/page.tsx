@@ -69,6 +69,14 @@ const STAFF_TODO: Record<StageStateKey, string> = {
 };
 
 /**
+ * Подсказка согласования без замечаний на модерации. Прежде «опубликуйте
+ * замечания» стояло на этапе всегда, и после публикации куратор искал на
+ * экране то, чего уже нет (решение Р-254).
+ */
+const IN_APPROVAL_CLEAR =
+  'Клиент смотрит материалы. Если он молчит дольше недели — напомните в переписке; согласовать этап за него можно кнопкой ниже.';
+
+/**
  * Сколько дней прошло с назначенного срока; до срока — ничего. День
  * берётся у часов кабинета, а не у системных: снимок не должен
  * зависеть от дня съёмки (решение Р-205).
@@ -174,7 +182,9 @@ export default async function StageScreen({
           <Heading level={2} size={3} style={{ marginBottom: 8 }}>
             Что сделать сейчас
           </Heading>
-          <Text style={{ marginBottom: 12 }}>{STAFF_TODO[state]}</Text>
+          <Text style={{ marginBottom: 12 }}>
+            {state === 'IN_APPROVAL' && pendingComments === 0 ? IN_APPROVAL_CLEAR : STAFF_TODO[state]}
+          </Text>
           <div
             style={{
               display: 'flex',
@@ -271,8 +281,11 @@ export default async function StageScreen({
               </Form>
             ))}
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {/* На согласование — только с материалом: пустой этап клиенту
+                нечего посмотреть, и перевод отказал бы (решение Р-254). */}
             {stageStateButtons(state)
               .filter((next) => next !== 'AWAITING_CLIENT')
+              .filter((next) => next !== 'IN_APPROVAL' || stage.materials.length > 0)
               .map((next) => (
                 <Form key={next} action={changeStageState} inline>
                   <input type="hidden" name="stageId" value={stage.id} />
@@ -281,6 +294,11 @@ export default async function StageScreen({
                 </Form>
               ))}
           </div>
+          {stageStateButtons(state).includes('IN_APPROVAL') && stage.materials.length === 0 ? (
+            <Text muted size={13} style={{ marginTop: 12 }}>
+              На согласование клиенту этап уходит, когда к нему приложен материал.
+            </Text>
+          ) : null}
         </Card>
       ) : null}
 

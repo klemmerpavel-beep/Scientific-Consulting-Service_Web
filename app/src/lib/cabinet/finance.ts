@@ -394,7 +394,10 @@ export async function markPayoutPaid(actor: Actor, payoutId: string, paidOn: Dat
 export interface ProjectMoney {
   readonly contractTotal: bigint;
   readonly received: bigint;
+  /** Остаток по договору — та же величина, что «к получению» на сводках (Р-254). */
   readonly awaiting: bigint;
+  /** Из остатка — заведено траншами «ожидается» и «выставлен». */
+  readonly scheduled: bigint;
   /** Только тому, кто ведёт оплаты: списание — внутреннее решение (Р-251). */
   readonly writtenOff?: bigint;
   /** Заполняется только для роли, допущенной к экономике. */
@@ -428,10 +431,18 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
   // Итоги того, кто оплаты не ведёт, складываются только из видимых ему
   // траншей: полученное и ожидаемое. Списанное в объект не попадает вовсе
   // — ни числом, ни нулём (решение Р-251).
+  //
+  // Остаток — по договору, как «к получению» на сводке финансов и главной
+  // (Р-244): прежде экран работы складывал только заведённые транши, и при
+  // договоре на 180 000 с одним оплаченным траншем на 60 000 показывал
+  // «ожидается 0 ₽», а сводка по той же работе — 120 000. Клиент читал это
+  // как «платить больше нечего» (решение Р-254). Списанное из остатка
+  // вычитается и клиенту: прощённое он платить не должен.
   const visible: ProjectMoney = {
     contractTotal: contract.totalAmount,
     received: sum('PAID'),
-    awaiting: sum('PLANNED') + sum('INVOICED'),
+    awaiting: outstandingOf(contract.totalAmount, contract.tranches),
+    scheduled: sum('PLANNED') + sum('INVOICED'),
   };
   if (!can(actor, 'PAYMENT_EDIT', ref)) return visible;
 

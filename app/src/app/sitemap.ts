@@ -26,10 +26,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // sitemap.xml недействительным целиком. Пустая карта честнее битой.
   if (!base) return [];
 
-  const now = new Date();
+  // Дата изменения не указывается: прежде стояло «сейчас» на каждый
+  // запрос, и поисковик, видя постоянно новую дату при неизменной странице,
+  // перестаёт доверять полю по всему сайту. Честной даты правки у страниц
+  // нет — макеты правятся в репозитории, а не в базе (решение Р-254).
   return PAGES.map(({ path, priority }) => ({
     url: `${base}${path === '/' ? '/' : path}`,
-    lastModified: now,
     changeFrequency: priority === 1 ? 'weekly' : 'monthly',
     priority,
   }));

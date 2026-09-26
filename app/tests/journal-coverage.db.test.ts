@@ -70,6 +70,8 @@ describe('журнал этапов и переписки', { skip: !enabled }, 
     await prisma.notificationOutbox.deleteMany({ where: { projectId: ids.project } });
     await prisma.message.deleteMany({ where: { projectId: ids.project } });
     await prisma.projectEvent.deleteMany({ where: { projectId: ids.project } });
+    await prisma.materialVersion.deleteMany({ where: { material: { projectId: ids.project } } });
+    await prisma.material.deleteMany({ where: { projectId: ids.project } });
     await prisma.stage.deleteMany({ where: { projectId: ids.project } });
     await prisma.project.delete({ where: { id: ids.project } });
     await prisma.clientProfile.delete({ where: { id: ids.profile } });
@@ -86,6 +88,27 @@ describe('журнал этапов и переписки', { skip: !enabled }, 
     const stage = await addStage(curator, { projectId: ids.project!, title: 'Глава Иванова' });
     ids.stage = stage.id;
     await setStageState(curator, stage.id, 'IN_PROGRESS');
+    // Пустой этап на согласование не уходит (решение Р-254).
+    await assert.rejects(() => setStageState(curator, stage.id, 'IN_APPROVAL'), /приложите хотя бы один файл/u);
+    await prisma.material.create({
+      data: {
+        projectId: ids.project!,
+        stageId: stage.id,
+        title: 'Черновик главы',
+        createdById: ids.manager!,
+        versions: {
+          create: {
+            number: 1,
+            storageKey: `journal-coverage/${stage.id}`,
+            originalName: 'glava.docx',
+            sizeBytes: 10n,
+            sha256: 'j'.repeat(64),
+            contentType: 'application/octet-stream',
+            uploadedById: ids.manager!,
+          },
+        },
+      },
+    });
     await setStageState(curator, stage.id, 'IN_APPROVAL');
 
     const created = await entries('STAGE_CREATED');

@@ -405,10 +405,15 @@ export async function serviceTypes(actor: Actor) {
   if (!can(actor, 'REQUEST_CREATE') && !can(actor, 'REQUEST_MODERATE')) {
     ensure(actor, 'REQUEST_CREATE');
   }
-  return prisma.serviceType.findMany({
+  const types = await prisma.serviceType.findMany({
     where: { isActive: true },
     orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    include: { _count: { select: { stageTemplates: { where: { isActive: true } } } } },
   });
+  // Есть ли у типа шаблон этапов: экран разбора заявки прежде показывал
+  // флажок «Применить шаблон» при пустом справочнике шаблонов, и флажок
+  // молча ничего не делал (решение Р-254).
+  return types.map(({ _count, ...type }) => ({ ...type, hasTemplate: _count.stageTemplates > 0 }));
 }
 
 /**
