@@ -217,11 +217,24 @@ export default async function LeadScreen({
                 <Select label="Тип сопровождения" name="serviceTypeId" required>
                   {types.map((type) => (
                     <option key={type.id} value={type.id}>
-                      {type.name}
+                      {type.hasTemplate ? `${type.name} · есть шаблон этапов` : type.name}
                     </option>
                   ))}
                 </Select>
-                <Checkbox name="applyTemplate" label="Применить шаблон этапов этого типа" />
+                {/* Флажок — только если шаблон есть хотя бы у одного типа: при
+                    пустом справочнике шаблонов он молча ничего не делал. Какие
+                    типы с шаблоном, видно в самом списке (решение Р-254). */}
+                {types.some((type) => type.hasTemplate) ? (
+                  <Checkbox
+                    name="applyTemplate"
+                    label="Применить шаблон этапов, если он есть у выбранного типа"
+                  />
+                ) : (
+                  <Text muted size={13} style={{ marginBottom: 16 }}>
+                    Шаблонов этапов в справочнике пока нет — план работ заводится на экране
+                    работы, а шаблон добавляет руководитель в разделе «Справочник».
+                  </Text>
+                )}
                 <FormActions>
                   <Button>Одобрить и создать работу</Button>
                 </FormActions>

@@ -91,6 +91,31 @@ describe('вложения заявки', { skip: !enabled }, async () => {
     // общей очереди стенда убираются: иначе они копятся и мешают набору
     // на саму очередь.
     await prisma.notificationOutbox.deleteMany({ where: { userId: ids.manager } });
+    // Набор заводил пользователей, карточку, заявки и работы на общей базе
+    // стенда и не убирал их: они копились от прогона к прогону и попадали
+    // в выборки других наборов (решение Р-254).
+    const users = [ids.manager!, ids.client!, ...(ids.head ? [ids.head] : [])];
+    const projects = (
+      await prisma.project.findMany({ where: { clientId: ids.profile }, select: { id: true } })
+    ).map((p) => p.id);
+    await prisma.lead.deleteMany({
+      where: {
+        OR: [
+          { projectId: { in: projects } },
+          { attachments: { some: { uploadedById: { in: users } } } },
+          { contact: { startsWith: 'lead-client-' } , createdAt: { gte: new Date(stamp) } },
+        ],
+      },
+    });
+    await prisma.notificationOutbox.deleteMany({ where: { OR: [{ userId: { in: users } }, { projectId: { in: projects } }] } });
+    await prisma.auditEvent.deleteMany({ where: { OR: [{ projectId: { in: projects } }, { actorId: { in: users } }] } });
+    await prisma.materialVersion.deleteMany({ where: { material: { projectId: { in: projects } } } });
+    await prisma.material.deleteMany({ where: { projectId: { in: projects } } });
+    await prisma.project.deleteMany({ where: { id: { in: projects } } });
+    await prisma.clientProfile.deleteMany({ where: { id: ids.profile } });
+    await prisma.session.deleteMany({ where: { userId: { in: users } } });
+    await prisma.user.deleteMany({ where: { id: { in: users } } });
+    await prisma.serviceType.deleteMany({ where: { id: ids.serviceType } });
   });
 
   const clientActor = (): Actor => ({
@@ -283,6 +308,7 @@ describe('вложения заявки', { skip: !enabled }, async () => {
         status: 'SUSPENDED',
       },
     });
+    ids.head = head.id;
     const actor = staff(head.id, 'HEAD');
 
     // Вторая заявка с файлом: первая свои вложения уже отдала работе.

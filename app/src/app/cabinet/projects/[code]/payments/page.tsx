@@ -155,7 +155,7 @@ export default async function PaymentsScreen({
                 </Text>
               </div>
               <div>
-                <Mono>Ожидается</Mono>
+                <Mono>Осталось оплатить</Mono>
                 <Text size={20} style={{ marginTop: 6, color: 'var(--pd-ink)' }}>
                   {formatAmount(money.awaiting)}
                 </Text>
@@ -189,6 +189,12 @@ export default async function PaymentsScreen({
             </div>
             <Text muted size={13} style={{ marginTop: 8 }}>
               Оплачено {progress}% суммы договора
+              {/* Остаток по договору, не разнесённый траншами, — подсказка
+                  тому, кто ведёт оплаты: без транша у суммы нет срока и
+                  счёта (решение Р-254). */}
+              {mayEdit && money.awaiting > money.scheduled
+                ? ` · не разнесено по траншам ${formatAmount(money.awaiting - money.scheduled)}`
+                : ''}
             </Text>
           </Card>
 

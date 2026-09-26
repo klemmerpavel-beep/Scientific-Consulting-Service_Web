@@ -827,6 +827,25 @@ export async function setStageState(
         'и от неё зависит, что и когда он пришлёт',
     );
   }
+  // На согласование уходит только этап, к которому приложен материал:
+  // клиент получает письмо «посмотрите материалы и подтвердите», и пустой
+  // этап оставлял его без предмета согласования (решение Р-254).
+  if (to === 'IN_APPROVAL') {
+    const materials = await prisma.material.count({
+      where: {
+        stageId,
+        kind: 'STAGE_MATERIAL',
+        deletedAt: null,
+        versions: { some: { purgedAt: null } },
+      },
+    });
+    if (materials === 0) {
+      throw new Error(
+        'На согласование этап уходит с материалом: приложите хотя бы один файл — ' +
+          'клиенту нечего посмотреть и подтвердить',
+      );
+    }
+  }
 
   const now = new Date();
   const saved = await prisma.$transaction(async (tx) => {

@@ -380,7 +380,9 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     const money = await finance.projectMoney(client(), ids.mine!);
     assert.ok(money !== null);
     assert.equal(money.received, 30_000n);
-    assert.equal(money.awaiting, 30_000n);
+    // Остаток — по договору без оплаченного и списанного (Р-254): 100 000 − 30 000 − 15 000.
+    assert.equal(money.awaiting, 55_000n);
+    assert.equal(money.scheduled, 30_000n);
     assert.equal('writtenOff' in money, false, 'клиенту отдано списанное');
 
     const forHead = await finance.projectContract(head(), ids.mine!);
