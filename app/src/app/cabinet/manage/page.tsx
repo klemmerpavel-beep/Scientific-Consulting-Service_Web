@@ -134,7 +134,7 @@ function owed(contract: {
 export default async function ManageQueue({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; attention?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
@@ -225,6 +225,7 @@ export default async function ManageQueue({
       const rest = maySeeMoney ? owed(stage.project.contract) : 0n;
       return {
         key: `overdue-${stage.id}`,
+        kind: 'overdue' as const,
         title: `${stage.title} · ${stage.project.title}`,
         mark: late === null ? 'срок сегодня' : `просрочено ${late} ${plural(late, 'день', 'дня', 'дней')}`,
         urgent: true,
@@ -254,6 +255,7 @@ export default async function ManageQueue({
       const rest = maySeeMoney ? owed(work.contract) : 0n;
       return {
         key: `late-${work.id}`,
+        kind: 'late' as const,
         title: work.title,
         mark:
           late === null
@@ -283,6 +285,7 @@ export default async function ManageQueue({
       )
       .map((stage: (typeof light.stalled)[number]) => ({
       key: `stalled-${stage.id}`,
+      kind: 'stalled' as const,
       step: 0 as const,
       title: `${stage.title} · ${stage.project.title}`,
       mark:
@@ -296,6 +299,7 @@ export default async function ManageQueue({
     })),
     ...unread.map((row) => ({
       key: `unread-${row.code}`,
+      kind: 'unread' as const,
       step: 0 as const,
       title: row.title,
       mark: `${row.count} ${plural(row.count, 'непрочитанное', 'непрочитанных', 'непрочитанных')}`,
@@ -306,6 +310,7 @@ export default async function ManageQueue({
     })),
     ...moderation.map((row) => ({
       key: `comment-${row.stageId ?? row.material}`,
+      kind: 'comment' as const,
       step: 0 as const,
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: `${row.count} ${plural(row.count, 'замечание', 'замечания', 'замечаний')} на модерации`,
@@ -318,6 +323,7 @@ export default async function ManageQueue({
       ? [
           {
             key: 'outbox',
+            kind: 'outbox' as const,
             step: 0 as const,
             title: 'Очередь уведомлений',
             mark: `не доставлено ${outbox.failed}`,
@@ -329,6 +335,27 @@ export default async function ManageQueue({
         ]
       : []),
   ];
+
+  // На сводке — не весь перечень, а первые дела каждого вида: при сотнях
+  // сорванных сроков главная вытягивалась в десятки тысяч пикселей, а
+  // непрочитанное сообщение клиента, стоящее в конце, пропадало под ними.
+  // Остальное — по ссылке «Показать все» (решение Р-256).
+  const ATTENTION_LIMIT: Record<(typeof attention)[number]['kind'], number> = {
+    overdue: 4,
+    late: 2,
+    stalled: 2,
+    unread: 3,
+    comment: 3,
+    outbox: 1,
+  };
+  const showAll = (await searchParams).attention === 'all' || attention.length <= 12;
+  const taken: Partial<Record<(typeof attention)[number]['kind'], number>> = {};
+  const shownAttention = showAll
+    ? attention
+    : attention.filter((row) => {
+        taken[row.kind] = (taken[row.kind] ?? 0) + 1;
+        return taken[row.kind]! <= ATTENTION_LIMIT[row.kind];
+      });
 
   // Ответ сводки одной фразой: сколько дел требуют решения и с чего
   // начать. Прежде его собирали глазами из плашек ниже (решение Р-207).
@@ -396,7 +423,7 @@ export default async function ManageQueue({
           экране прокрутки, — вопреки тому же решению; теперь она сразу
           под ответом, а витрина практики ниже (решение Р-210). */}
       {attention.length === 0 ? null : (
-        <Block style={{ marginBottom: 20 }}>
+        <Block id="attention" style={{ marginBottom: 20 }}>
           <Heading level={2} style={{ marginBottom: 12 }}>
             Требует внимания · {attention.length}
           </Heading>
@@ -411,7 +438,7 @@ export default async function ManageQueue({
               gap: 12,
             }}
           >
-            {attention.map((row) => (
+            {shownAttention.map((row) => (
               <Card
                 as="li"
                 key={row.key}
@@ -468,6 +495,13 @@ export default async function ManageQueue({
               </Card>
             ))}
           </ul>
+          {shownAttention.length < attention.length ? (
+            <div style={{ marginTop: 12 }}>
+              <ButtonLink href="/cabinet/manage?attention=all#attention" tone="quiet">
+                Показать все {attention.length}
+              </ButtonLink>
+            </div>
+          ) : null}
         </Block>
       )}
 

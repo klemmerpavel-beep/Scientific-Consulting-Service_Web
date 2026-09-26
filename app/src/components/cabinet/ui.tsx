@@ -591,14 +591,17 @@ export function Loading({
 export function Block({
   children,
   style,
+  id,
   as: Tag = 'section',
 }: {
   children: ReactNode;
   style?: CSSProperties;
+  /** Якорь блока — для ссылки, ведущей прямо к нему. */
+  id?: string;
   as?: 'section' | 'div' | 'ul';
 }) {
   return (
-    <Tag className="cab-block" style={style}>
+    <Tag className="cab-block" id={id} style={style}>
       {children}
     </Tag>
   );
