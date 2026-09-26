@@ -53,15 +53,20 @@ function collect(form: HTMLFormElement, source: string, formName: string) {
   };
 }
 
-/** Первое поле с ошибкой получает фокус — иначе на длинной форме её не найти */
-function focusFirstError(form: HTMLFormElement, fieldErrors: Record<string, string>) {
-  const first = Object.keys(fieldErrors)[0];
-  if (!first) return;
-  const el = form.querySelector<HTMLElement>(`[name="${CSS.escape(first)}"]`);
-  if (el) {
+/**
+ * Каждое поле с ошибкой помечается `aria-invalid`, первое получает фокус —
+ * иначе на длинной форме ошибку не найти. Прежде помечалось только первое:
+ * чтение экрана по полям не называло остальные ошибочными (решение Р-241).
+ */
+function markErrors(form: HTMLFormElement, fieldErrors: Record<string, string>) {
+  let first: HTMLElement | null = null;
+  for (const name of Object.keys(fieldErrors)) {
+    const el = form.querySelector<HTMLElement>(`[name="${CSS.escape(name)}"]`);
+    if (el === null) continue;
     el.setAttribute('aria-invalid', 'true');
-    el.focus({ preventScroll: false });
+    first ??= el;
   }
+  first?.focus({ preventScroll: false });
 }
 
 export type SubmitOutcome =
@@ -133,7 +138,7 @@ export async function submitLead(
   }
 
   const fieldErrors: Record<string, string> = body?.errors ?? {};
-  if (Object.keys(fieldErrors).length) focusFirstError(form, fieldErrors);
+  if (Object.keys(fieldErrors).length) markErrors(form, fieldErrors);
 
   const listed = Object.entries(fieldErrors)
     .map(([k, v]) => `${FIELD_LABELS[k] ?? k}: ${v}`)
