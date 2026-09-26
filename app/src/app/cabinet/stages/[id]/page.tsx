@@ -27,6 +27,10 @@ import { can } from '../../../../lib/cabinet/access';
 import { stageById } from '../../../../lib/cabinet/queries';
 import { daysPast } from '../../../../lib/cabinet/clock';
 import { stageStateButtons } from '../../../../lib/cabinet/stage-state';
+import {
+  PROJECT_STATUS_LABEL,
+  type ProjectStatusKey,
+} from '../../../../lib/cabinet/project-status';
 import { currentActor } from '../../../../lib/cabinet/session';
 import {
   approveStage,
@@ -80,8 +84,12 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
 
   const ref = stage.project;
   const state = stage.state as StageStateKey;
-  const mayEdit = can(actor, 'STAGE_SET_STATE', ref);
-  const mayApprove = state === 'IN_APPROVAL' && can(actor, 'STAGE_APPROVE', ref);
+  // Этапы меняются только у действующей работы (решение Р-240): у
+  // приостановленной, завершённой и отменённой кнопки перевода, переноса
+  // срока и согласования не показываются — действие всё равно отказало бы.
+  const live = stage.project.status === 'ACTIVE';
+  const mayEdit = live && can(actor, 'STAGE_SET_STATE', ref);
+  const mayApprove = live && state === 'IN_APPROVAL' && can(actor, 'STAGE_APPROVE', ref);
   // На закрытом этапе клиенту не предлагается приложить «первый» материал:
   // этап сдан, и новая загрузка в него ничего не сдвинет (решение Р-206).
   const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref) && (state !== 'DONE' || actor.role !== 'CLIENT');
@@ -136,6 +144,16 @@ export default async function StageScreen({ params }: { params: Promise<{ id: st
           </Notice>
         </Block>
       )}
+
+      {!live && can(actor, 'STAGE_SET_STATE', ref) ? (
+        <Block as="div" style={{ marginBottom: 24 }}>
+          <Notice tone="quiet" role="status">
+            {`Работа ${PROJECT_STATUS_LABEL[
+              stage.project.status as ProjectStatusKey
+            ].toLowerCase()}: этапы не меняются. Вернуть работу в действие можно на её экране, в разделе «Управление работой».`}
+          </Notice>
+        </Block>
+      ) : null}
 
       {/* Менеджер приходит сюда с вопросом «что тут делать», а экран
           начинался с механики перевода состояний. Теперь сверху — ответ:
