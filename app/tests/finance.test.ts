@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { formatAmount, formatRounded, parseAmount } from '../src/lib/cabinet/money.ts';
+import { formatAmount, formatRounded, outstandingOf, parseAmount } from '../src/lib/cabinet/money.ts';
 
 describe('разбор введённой суммы', () => {
   const cases: [string, bigint][] = [
@@ -97,5 +97,18 @@ describe('смена статуса транша (решение Р-224)', async
   it('статус проверяется по перечню', () => {
     assert.equal(isTrancheStatus('PAID'), true);
     assert.equal(isTrancheStatus('REFUNDED'), false);
+  });
+});
+
+describe('остаток долга по договору', () => {
+  it('списанное долгом не считается, переплата в минус не уходит (решение Р-240)', () => {
+    const tranches = [
+      { amount: 100_000n, status: 'PAID' },
+      { amount: 50_000n, status: 'WRITTEN_OFF' },
+      { amount: 70_000n, status: 'INVOICED' },
+    ];
+    assert.equal(outstandingOf(220_000n, tranches), 70_000n);
+    assert.equal(outstandingOf(120_000n, tranches), 0n);
+    assert.equal(outstandingOf(220_000n, []), 220_000n);
   });
 });

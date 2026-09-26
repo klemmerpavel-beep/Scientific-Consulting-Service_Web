@@ -12,6 +12,7 @@ import { financeSummary } from './finance.ts';
 import { prisma } from '../db.ts';
 import { scopeProjects } from './access.ts';
 import { now as today } from './clock.ts';
+import { outstandingOf } from './money.ts';
 
 /**
  * Доля издержек, вычитаемая из поступлений при расчёте прибыли.
@@ -106,8 +107,9 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
       contracted: money ? contracted : null,
       received: money ? received : null,
       // Переплату в задолженность не записываем: остаток не бывает
-      // отрицательным (то же правило, что в финансовом контуре).
-      outstanding: money ? (contracted > received ? contracted - received : 0n) : null,
+      // отрицательным (то же правило, что в финансовом контуре). Списанное
+      // долгом не считается (решение Р-240).
+      outstanding: money ? outstandingOf(contracted, tranches) : null,
       stage: current?.title ?? null,
       stageState: current?.state ?? null,
     };
@@ -186,7 +188,10 @@ export async function stageLoad(
 
   const counts = new Map<string, number>();
   const soon: DueSoon[] = [];
-  const horizon = new Date(now.getTime() + SOON_DAYS * 86_400_000);
+  // Срок — день: сравнение с началом суток, иначе срок «сегодня» числился
+  // сорванным с первой минуты (решение Р-240).
+  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const horizon = new Date(day.getTime() + SOON_DAYS * 86_400_000);
   let overdue = 0;
   let planless = 0;
 
@@ -200,16 +205,16 @@ export async function stageLoad(
     if (project.stages.length === 0) {
       planless += 1;
       counts.set('PLANLESS', (counts.get('PLANLESS') ?? 0) + 1);
-      if (project.dueOn !== null && project.dueOn < now) overdue += 1;
+      if (project.dueOn !== null && project.dueOn < day) overdue += 1;
       continue;
     }
     const key = current?.state ?? 'DONE';
     counts.set(key, (counts.get(key) ?? 0) + 1);
-    if (current?.dueOn != null && current.dueOn < now) overdue += 1;
+    if (current?.dueOn != null && current.dueOn < day) overdue += 1;
     // Срок ближайших двух недель берётся у того же текущего этапа: работа
     // стоит на нём, и его срок — это и есть ближайшее обязательство.
     // Просроченное сюда не попадает — оно названо выше отдельно.
-    if (current?.dueOn != null && current.dueOn >= now && current.dueOn <= horizon) {
+    if (current?.dueOn != null && current.dueOn >= day && current.dueOn <= horizon) {
       soon.push({
         id: current.id,
         code: project.code,

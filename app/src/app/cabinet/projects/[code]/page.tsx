@@ -170,6 +170,9 @@ export default async function ProjectScreen({
   };
   const forClient = actor.role === 'CLIENT';
   const mayEdit = can(actor, 'STAGE_EDIT', ref);
+  // План работ меняется только у действующей работы: этапы
+  // приостановленной, завершённой и отменённой не правятся (решение Р-240).
+  const mayEditStages = mayEdit && project.status === 'ACTIVE';
   const mayAssign = can(actor, 'PROJECT_ASSIGN_EXPERT', ref);
   const maySeeContacts = can(actor, 'CONTACTS_VIEW', ref);
   const mayWrite = can(actor, 'MESSAGE_READ', ref);
@@ -234,7 +237,7 @@ export default async function ProjectScreen({
     summary: stage.summary,
     // План работ составляет куратор, и правит он его здесь же: уходить за
     // этим на отдельный экран ради одной строки незачем.
-    edit: mayEdit ? (
+    edit: mayEditStages ? (
       <Form action={saveStage}>
         <input type="hidden" name="stageId" value={stage.id} />
         <input type="hidden" name="code" value={project.code} />
@@ -594,7 +597,7 @@ export default async function ProjectScreen({
       {mayEdit || mayAssign || maySetManager || maySeeContacts ? (
         <Disclosure title="Управление работой" style={{ marginTop: 10 }}>
             <div style={{ display: 'grid', gap: 20 }}>
-              {mayEdit ? (
+              {mayEditStages ? (
                 <Form action={createStage}>
                   <input type="hidden" name="projectId" value={project.id} />
                   <input type="hidden" name="code" value={project.code} />
