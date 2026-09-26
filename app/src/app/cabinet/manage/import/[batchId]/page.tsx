@@ -276,9 +276,12 @@ export default async function ImportBatchScreen({
               </td>
               <td style={TABLE_CELL}>
                 <Chip tone={row.action === 'SKIP' ? 'neutral' : 'accent'}>
-                  {ACTION_LABEL[row.action]}
+                  {row.erased ? 'не переносится' : ACTION_LABEL[row.action]}
                 </Chip>
                 {row.existingCode === null ? '' : ` ${row.existingCode}`}
+                {/* Почему строка не заведена, если это не видно из решения:
+                    заказчик стёрт либо похожих работ несколько (Р-252). */}
+                {row.note === null ? '' : ` · ${row.note}`}
               </td>
             </tr>
           ))}

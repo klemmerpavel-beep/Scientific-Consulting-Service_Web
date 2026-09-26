@@ -86,3 +86,38 @@ run "$SQL_TOKENS" > /dev/null
 run "$SQL_SESSIONS" > /dev/null
 run "$SQL_ATTEMPTS" > /dev/null
 echo "$(date -Is) кабинет: погашенные ссылки, истёкшие сессии и попытки входа старше срока удалены"
+
+# ── Очередь уведомлений: отработавшие строки ────────────────────────────────
+#
+# Строка очереди хранит тему и тело письма — с именем получателя и названием
+# работы — и текст ошибки доставки. Нужна она, пока письмо в пути и пока
+# руководитель разбирает отказ; потом это копия переписки без цели обработки
+# (решение Р-252). Ушедшие хранятся 90 дней, неудавшиеся — 180: отказ
+# разбирают дольше. Срок неудавшейся считается от последней попытки —
+# повтор с экрана очереди возвращает строку в работу.
+#
+# Письма заявителям (ответ на отказ, Р-217) здесь не трогаются: по ним экран
+# заявки показывает, дошёл ли ответ, и живут они сроком самой заявки —
+# уходят каскадом вместе с ней в первом блоке скрипта.
+SQL_OUTBOX_COUNT="SELECT count(*) FROM \"NotificationOutbox\" WHERE \"leadId\" IS NULL AND ((\"state\" = 'SENT' AND coalesce(\"sentAt\", \"createdAt\") < now() - interval '90 days') OR (\"state\" = 'FAILED' AND greatest(\"createdAt\", \"scheduledAt\") < now() - interval '180 days'));"
+SQL_OUTBOX="DELETE FROM \"NotificationOutbox\" WHERE \"leadId\" IS NULL AND ((\"state\" = 'SENT' AND coalesce(\"sentAt\", \"createdAt\") < now() - interval '90 days') OR (\"state\" = 'FAILED' AND greatest(\"createdAt\", \"scheduledAt\") < now() - interval '180 days'));"
+
+OUTBOX_DUE=$(run "$SQL_OUTBOX_COUNT" | tr -d '[:space:]')
+run "$SQL_OUTBOX" > /dev/null
+echo "$(date -Is) очередь уведомлений: удалено отработавших строк: ${OUTBOX_DUE:-?}"
+
+# ── Книга заказов: брошенные загрузки ───────────────────────────────────────
+#
+# Загрузка книги хранит значения ячеек — ФИО заказчиков и темы работ. У
+# зафиксированной они — след переноса и нужны сверке следующих загрузок.
+# Незафиксированная (брошенный предпросмотр, прогон моста с --dry,
+# оборвавшийся разбор) не нужна ни для чего: через 30 дней её строки
+# удаляются вместе с ней, связь с ON DELETE CASCADE (решение Р-252).
+# Зафиксированные не трогаются: в них же лежат надгробия строк, стёртых по
+# требованию субъекта, — без них мост завёл бы стёртого клиента заново.
+SQL_BATCHES_COUNT="SELECT count(*) FROM \"ImportBatch\" WHERE \"state\" <> 'APPLIED' AND \"createdAt\" < now() - interval '30 days';"
+SQL_BATCHES="DELETE FROM \"ImportBatch\" WHERE \"state\" <> 'APPLIED' AND \"createdAt\" < now() - interval '30 days';"
+
+BATCHES_DUE=$(run "$SQL_BATCHES_COUNT" | tr -d '[:space:]')
+run "$SQL_BATCHES" > /dev/null
+echo "$(date -Is) книга заказов: удалено брошенных загрузок старше 30 дней: ${BATCHES_DUE:-?}"

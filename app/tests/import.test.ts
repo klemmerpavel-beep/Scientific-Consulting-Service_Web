@@ -358,6 +358,8 @@ describe('книга целиком', () => {
       DUPLICATE_CLIENT_BY_NAME: 4,
       STATUS_FILL_CONFLICT: 2,
       AMOUNT_UNREADABLE: 0,
+      // Этот класс ставит сверка с перенесённым, а не разбор (Р-252).
+      PREVIOUS_WORK_UNCLEAR: 0,
     };
     assert.deepEqual(issueCounts, expected);
   });

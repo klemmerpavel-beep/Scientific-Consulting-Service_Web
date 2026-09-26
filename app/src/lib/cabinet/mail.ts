@@ -6,13 +6,41 @@ import { header, hideSecrets } from '../notify.ts';
  * Отправка письма участнику кабинета. От доставки заявок (`notify.ts`)
  * отличается адресатом: там письмо идёт ответственному на один известный
  * адрес, здесь — конкретному человеку, чей адрес является персональными
- * данными. Поэтому текст ошибки чистится от секретов перед любой записью,
- * а сам адрес в журнал не попадает.
+ * данными. Поэтому текст ошибки чистится от секретов и от адресов почты
+ * перед любой записью, а сам адрес в журнал не попадает.
  */
 
 export interface MailResult {
   readonly ok: boolean;
   readonly error?: string;
+  /**
+   * Отказ окончательный: сервер ответил кодом 5xx — ящика нет, адрес
+   * отвергнут, письмо не принято. Повтор через пять минут даст то же самое,
+   * поэтому очередь такую строку сразу помечает неудачей (решение Р-252).
+   */
+  readonly permanent?: boolean;
+}
+
+/**
+ * Текст ошибки без адресов почты.
+ *
+ * Почтовый сервер повторяет адрес получателя в отказе («550 5.1.1
+ * <ivanov@mail.ru>: user unknown»), и прежде он оседал в `lastError`
+ * очереди — а оттуда на экран очереди и в копии базы, отдельно от
+ * карточки, которую затирает обезличивание (решение Р-252).
+ */
+export function hideAddresses(text: string): string {
+  return text.replace(/[^\s<>()[\]"',;:@]+@[^\s<>()[\]"',;:@]+/gu, '<адрес>');
+}
+
+/**
+ * Окончательный ли отказ SMTP. Nodemailer кладёт код ответа сервера в
+ * `responseCode` ошибки (для отвергнутых получателей — код ответа на
+ * RCPT TO); сетевые сбои и тайм-ауты кода не имеют и повторяются.
+ */
+export function smtpPermanent(error: unknown): boolean {
+  const code = (error as { responseCode?: unknown } | null)?.responseCode;
+  return typeof code === 'number' && code >= 500 && code < 600;
 }
 
 /**
@@ -61,6 +89,10 @@ export async function sendMailTo(
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: hideSecrets(String(e)).slice(0, 500) };
+    return {
+      ok: false,
+      error: hideAddresses(hideSecrets(String(e))).slice(0, 500),
+      permanent: smtpPermanent(e),
+    };
   }
 }

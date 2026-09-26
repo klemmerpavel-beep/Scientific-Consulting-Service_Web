@@ -108,12 +108,17 @@ async function main(): Promise<number> {
 
   const preview = await previewBook(actor, { fileName: bookPath, bytes });
   // Строка с ошибкой разбора остаётся в предпросмотре: её разбирает человек.
+  // Туда же попадает строка, похожая сразу на несколько перенесённых работ:
+  // угадывать, какую из них поправили, мост не берётся (решение Р-252).
   const held = preview.rows.filter((row) => row.severity === 'ERROR').map((row) => row.rowNumber);
+  // Строки стёртых по требованию субъекта заказчиков не переносятся никогда:
+  // книга на Диске их ещё помнит, а кабинет — уже нет (решение Р-252).
+  const erased = preview.rows.filter((row) => row.erased).length;
 
   say(
     `строк ${preview.rows.length}: завести ${preview.counts.CREATE}, ` +
-      `обновить ${preview.counts.UPDATE}, уже перенесено ${preview.counts.SKIP}; ` +
-      `требуют разбора ${held.length}`,
+      `обновить ${preview.counts.UPDATE}, уже перенесено ${preview.counts.SKIP - erased}; ` +
+      `требуют разбора ${held.length}, стёрто по требованию субъекта ${erased}`,
   );
 
   if (dry) {
@@ -142,6 +147,7 @@ async function main(): Promise<number> {
       updated: report.updated,
       skipped: report.skipped,
       held: held.length,
+      erased,
       rejected: report.rejected.length,
     },
   });

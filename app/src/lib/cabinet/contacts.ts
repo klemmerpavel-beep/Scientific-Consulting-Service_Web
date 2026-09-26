@@ -63,3 +63,73 @@ export function findContacts(text: string): ContactHit[] {
 export function hasContacts(text: string): boolean {
   return findContacts(text).length > 0;
 }
+
+// ───────────────── Сверка контактов при обезличивании ──────────────────────
+
+/**
+ * Адрес почты в виде для сверки: без пробелов и без учёта регистра.
+ * `null` — значение адресом почты не является.
+ *
+ * Прежде заявки субъекта искались точным совпадением контакта, и
+ * «Ivanov@Mail.ru » в заявке не находилось по «ivanov@mail.ru» в карточке:
+ * заявка переживала обезличивание со всеми полями (решение Р-252).
+ */
+export function emailKey(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const compact = value.replace(/\s+/gu, '').toLowerCase();
+  return /^[^@]+@[^@]+$/u.test(compact) ? compact : null;
+}
+
+/**
+ * Телефон в виде для сверки: последние десять цифр. Так сходятся
+ * «+7 900 000-00-00», «8 (900) 000 00 00» и «9000000000». Меньше десяти
+ * цифр — не телефон, а обрывок: по нему сверять нельзя.
+ */
+export function phoneKey(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const digits = value.replace(/\D/gu, '');
+  return digits.length >= 10 ? digits.slice(-10) : null;
+}
+
+/** Контакты субъекта, сведённые к виду сверки. */
+export interface ContactKeys {
+  readonly emails: ReadonlySet<string>;
+  readonly phones: ReadonlySet<string>;
+}
+
+export function contactKeys(values: readonly (string | null | undefined)[]): ContactKeys {
+  const emails = new Set<string>();
+  const phones = new Set<string>();
+  for (const value of values) {
+    const email = emailKey(value);
+    if (email !== null) {
+      emails.add(email);
+      continue;
+    }
+    const phone = phoneKey(value);
+    if (phone !== null) phones.add(phone);
+  }
+  return { emails, phones };
+}
+
+/**
+ * Оставил ли заявку этот субъект: контакт заявки — его почта или телефон,
+ * либо телефон из заявки кабинета (`Lead.phone`) — его телефон.
+ *
+ * Цифры адреса почты за телефон не принимаются: «ivan9001234567@mail.ru»
+ * не должен совпасть с номером 900 123-45-67.
+ */
+export function leadMatchesContacts(
+  lead: { readonly contact: string; readonly phone: string | null },
+  keys: ContactKeys,
+): boolean {
+  const email = emailKey(lead.contact);
+  if (email !== null) {
+    if (keys.emails.has(email)) return true;
+  } else {
+    const phone = phoneKey(lead.contact);
+    if (phone !== null && keys.phones.has(phone)) return true;
+  }
+  const extra = phoneKey(lead.phone);
+  return extra !== null && keys.phones.has(extra);
+}
