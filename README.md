@@ -28,6 +28,7 @@
 |---|---|
 | **Порядок открытия: кто что делает** | [docs/RELEASE.md](docs/RELEASE.md) |
 | **Кабинет: как им пользоваться** | [docs/GUIDE-CABINET.md](docs/GUIDE-CABINET.md) |
+| **Подключение облачного хранилища** | [docs/GUIDE-CONNECT.md](docs/GUIDE-CONNECT.md) |
 | Как вносить правки | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Дизайн-система | [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) |
 | Сообщение об уязвимости | [SECURITY.md](SECURITY.md) |
