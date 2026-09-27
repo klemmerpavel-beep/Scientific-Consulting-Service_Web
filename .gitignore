@@ -72,3 +72,5 @@ deploy/exports/*
 # в next.config, но тогда их не будет и локально, где они полезны.
 app/AGENTS.md
 app/CLAUDE.md
+# Метки версий файлов Диска, скачанных tools/disk.mjs
+.disk-etags.json

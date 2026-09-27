@@ -40,7 +40,7 @@ export interface DiskStatus {
   readonly folder: string;
   readonly host: string;
   /** Что именно уходит: только таблицы или ещё и файлы материалов. */
-  readonly scope: 'tables' | 'all';
+  readonly scope: 'tables' | 'all' | 'anon';
   readonly last: DiskRun | null;
   readonly runs: readonly DiskRun[];
   /** Задан ли обратный мост: книга заказов с диска в базу. */
@@ -48,6 +48,12 @@ export interface DiskStatus {
   readonly pullPath: string;
   readonly pullLast: PullRun | null;
   readonly pullRuns: readonly PullRun[];
+}
+
+/** Режим выгрузки из окружения: неизвестное значение читается как `all`, так же как в скрипте. */
+function diskScope(raw: string | undefined): DiskStatus['scope'] {
+  const v = (raw?.trim() || 'all').toLowerCase();
+  return v === 'tables' || v === 'anon' ? v : 'all';
 }
 
 /** Сколько последних прогонов показывается на экране. */
@@ -120,9 +126,7 @@ export async function diskStatus(actor: Actor): Promise<DiskStatus> {
         process.env.YANDEX_DISK_CONFIGURED === 'yes'),
     folder: process.env.YANDEX_DISK_FOLDER?.trim() || 'ProDisser',
     host: process.env.YANDEX_DISK_WEBDAV?.trim() || 'https://webdav.yandex.ru',
-    scope: (process.env.YANDEX_DISK_SCOPE?.trim() || 'all').toLowerCase() === 'tables'
-      ? 'tables'
-      : 'all',
+    scope: diskScope(process.env.YANDEX_DISK_SCOPE),
     last: runs[0] ?? null,
     runs,
     pullConfigured: (process.env.BOOK_PULL_PATH?.trim() ?? '').length > 0,

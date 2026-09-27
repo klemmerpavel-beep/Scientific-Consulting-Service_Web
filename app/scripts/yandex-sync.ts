@@ -35,6 +35,7 @@ import {
   yearsTable,
   type Table,
 } from '../src/lib/disk/registry.ts';
+import { anonymize } from '../src/lib/disk/sheet.ts';
 
 const MANIFEST = '.opis-zerkala.tsv';
 
@@ -43,8 +44,13 @@ const user = process.env.YANDEX_DISK_USER?.trim() ?? '';
 const password = process.env.YANDEX_DISK_PASSWORD?.trim() ?? '';
 const folder = process.env.YANDEX_DISK_FOLDER?.trim() || 'ProDisser';
 const base = process.env.YANDEX_DISK_WEBDAV?.trim() || 'https://webdav.yandex.ru';
-/** `tables` — только таблицы, `all` — ещё и файлы материалов. */
+/**
+ * `tables` — только таблицы, `all` — ещё и файлы материалов, `anon` —
+ * только таблицы и без персональных данных: для проверки связки на
+ * личном Диске, пока нет хранилища организации (решение Р-265).
+ */
 const scope = (process.env.YANDEX_DISK_SCOPE?.trim() || 'all').toLowerCase();
+const anon = scope === 'anon';
 
 const say = (text: string) => console.log(`${new Date().toISOString()} ${text}`);
 
@@ -74,7 +80,7 @@ async function main(): Promise<number> {
   const files = scope === 'all' ? await materialFiles() : [];
   const actor = await headActor();
 
-  const tables: Table[] = [
+  const built: Table[] = [
     await leadsTable(),
     await reviewsTable(),
     await projectsTable(),
@@ -83,10 +89,12 @@ async function main(): Promise<number> {
     await materialsTable(files),
   ];
   if (actor !== null) {
-    tables.push(await yearsTable(actor));
+    built.push(await yearsTable(actor));
   } else {
     say('итоги по годам пропущены: в кабинете нет действующего руководителя');
   }
+  const tables = anon ? built.map(anonymize) : built;
+  if (anon) say('проверочный режим: таблицы без персональных данных, файлы материалов не выгружаются');
 
   // Таблицы участвуют в описи наравне с файлами: пересобранная, но не
   // изменившаяся таблица второй раз не уходит. Каждая уходит двумя файлами:
