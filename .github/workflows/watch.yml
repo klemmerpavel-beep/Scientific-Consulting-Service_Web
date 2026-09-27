@@ -1,0 +1,102 @@
+# Наблюдение за сайтом снаружи. Раз в полчаса GitHub проверяет prodisser.ru
+# так, как его видит посетитель: проверку здоровья, страницы сайта, вход в
+# кабинет, перенаправления и срок сертификата. При отказе задача падает, и
+# GitHub присылает письмо владельцу репозитория (решение Р-264).
+#
+# Прежде о том, что сайт лежит, узнавали от клиента или случайно: выкат
+# проверяет сайт только в момент выката, а между выкатами за ним не смотрел
+# никто. Истечение сертификата — самый частый способ уронить сайт без единой
+# правки: продление через certbot ломается молча.
+#
+# Сторонний сервис наблюдения не заводится: задача смотрит только открытые
+# страницы, персональных данных не касается, а письмо об отказе и так
+# приходит от GitHub. Репозиторий открытый — минуты GitHub Actions
+# бесплатны.
+#
+# Письмо о падении задачи по расписанию GitHub шлёт тому, кто последним
+# правил строку `cron` ниже. Если репозиторий 60 дней стоит без коммитов,
+# GitHub приостанавливает задачи по расписанию — включаются кнопкой на
+# странице Actions.
+
+name: Наблюдение за сайтом
+
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: watch-production
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SITE: https://prodisser.ru
+      # Сертификат Let's Encrypt живёт 90 дней, certbot продлевает его за 30.
+      # Меньше 14 дней — значит, продление уже дважды не прошло.
+      CERT_MIN_DAYS: 14
+    steps:
+      - name: Сайт, кабинет и сертификат
+        run: |
+          fail=0
+          say()  { echo "$*"; }
+          bad()  { echo "::error title=Наблюдение::$*"; fail=1; }
+
+          # Каждая проверка — до трёх попыток с паузой: одиночный обрыв
+          # сети между GitHub и сервером в России — не повод будить
+          # владельца письмом.
+          try() {
+            n=1
+            while [ "$n" -le 3 ]; do
+              if "$@"; then return 0; fi
+              sleep 20
+              n=$((n + 1))
+            done
+            return 1
+          }
+
+          code_is() {
+            got=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$2")
+            [ "$got" = "$1" ]
+          }
+          health_ok() {
+            curl -fsS --max-time 20 "$SITE/api/health" | grep -q '"ok":true'
+          }
+          redirects_to_main() {
+            loc=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 20 "$1")
+            [ "$loc" = "301 $SITE/" ]
+          }
+
+          if try health_ok; then say "здоровье: сайт, база и схема в порядке"
+          else bad "проверка здоровья $SITE/api/health не отвечает ok"; fi
+
+          for page in / /main /students /business /offer /privacy /consent /cabinet; do
+            if try code_is 200 "$SITE$page"; then say "страница $page: 200"
+            else bad "страница $page отвечает $got"; fi
+          done
+
+          if try redirects_to_main "http://prodisser.ru/"; then say "http → https: 301"
+          else bad "http://prodisser.ru/ не перенаправляет на $SITE/ ($loc)"; fi
+          if try redirects_to_main "https://www.prodisser.ru/"; then say "www → без www: 301"
+          else bad "https://www.prodisser.ru/ не перенаправляет на $SITE/ ($loc)"; fi
+
+          end=$(echo | openssl s_client -connect prodisser.ru:443 -servername prodisser.ru 2>/dev/null \
+            | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+          if [ -z "$end" ]; then
+            bad "сертификат не прочитан"
+          else
+            left=$(( ( $(date -d "$end" +%s) - $(date +%s) ) / 86400 ))
+            if [ "$left" -lt "$CERT_MIN_DAYS" ]; then
+              bad "сертификат истекает через $left дн. ($end): продление certbot не проходит (DEPLOY.md, раздел 4)"
+            else
+              say "сертификат: осталось $left дн."
+            fi
+          fi
+
+          exit $fail
