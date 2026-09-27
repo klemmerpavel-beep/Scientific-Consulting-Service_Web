@@ -5,8 +5,11 @@ import type { Actor } from '../cabinet/access.ts';
 import { STATUS_LABEL as TRANCHE_LABEL } from '../cabinet/money.ts';
 import { stageStateLabel } from '../cabinet/stage-state.ts';
 import { materialFolders, versionPath } from './paths.ts';
-import { csv, mskDay, mskMoment } from './table.ts';
-import { xlsx, type Money, type XlsxCell } from './xlsx.ts';
+import { mskDay, mskMoment } from './table.ts';
+import { table, type Table } from './sheet.ts';
+import type { Money } from './xlsx.ts';
+
+export type { Table } from './sheet.ts';
 
 /**
  * Таблицы реестров для зеркала на Диске.
@@ -39,35 +42,9 @@ const PROJECT_STATUS: Record<string, string> = {
   CANCELLED: 'отменена',
 };
 
-/**
- * Таблица реестра в двух видах (решение Р-260). Книга Excel — для людей:
- * Яндекс Документы и Excel открывают её таблицей с закреплённым
- * заголовком, фильтром и суммами-числами. CSV — для учётных программ:
- * «1С» и выгрузки бухгалтера принимают его без преобразований.
- */
-export interface Table {
-  /** Имя книги Excel, по-русски: так её находят на телефоне. */
-  readonly file: string;
-  /** Имя CSV, латиницей: учётные программы не любят кириллицу в путях. */
-  readonly name: string;
-  readonly rows: number;
-  readonly xlsx: Buffer;
-  readonly csv: string;
-}
-
 /** Сумма в копейках: в книге — число, в CSV — «12345,67». */
 function rub(kopecks: bigint | null | undefined): Money | '' {
   return kopecks === null || kopecks === undefined ? '' : { kopecks };
-}
-
-function table(
-  file: string,
-  name: string,
-  head: readonly string[],
-  rows: readonly (readonly XlsxCell[])[],
-): Table {
-  const title = file.replace(/\.xlsx$/, '');
-  return { file, name, rows: rows.length, xlsx: xlsx({ title, head, rows }), csv: csv(head, rows) };
 }
 
 export async function leadsTable(): Promise<Table> {
