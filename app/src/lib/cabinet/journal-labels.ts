@@ -36,6 +36,7 @@ const ACTIONS: Record<string, string> = {
   IMPORT_PREVIEWED: 'Книга заказов разобрана',
   JOURNAL_EXPORTED: 'Журнал выгружен',
   LEAD_APPROVED: 'Заявка одобрена',
+  ORDER_CREATED: 'Заведён заказ вручную',
   LEAD_DECLINED: 'Заявка отклонена',
   LEAD_EXPORT: 'Заявки выгружены',
   LEAD_FILE_DOWNLOADED: 'Скачано вложение заявки',

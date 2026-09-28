@@ -801,7 +801,10 @@ export function FormRow({ children, style }: { children: ReactNode; style?: CSSP
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: FORM_GAP,
-        alignItems: 'end',
+        // По верху, а не по низу: подсказка под одним полем опускала при
+        // выравнивании по низу все соседние поля ряда, и форма «скакала»
+        // (решение Р-269).
+        alignItems: 'start',
         ...style,
       }}
     >

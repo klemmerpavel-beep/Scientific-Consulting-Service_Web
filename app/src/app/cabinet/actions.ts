@@ -6,6 +6,7 @@ import { after } from 'next/server';
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { AccessDenied, ensure } from '../../lib/cabinet/access';
 import { withError } from '../../lib/cabinet/flash';
+import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
 import {
   consumeLoginToken,
   requestLoginLink,
@@ -591,6 +592,43 @@ function dateOrNull(value: FormDataEntryValue | null): Date | null {
   if (raw.length === 0) return null;
   const date = new Date(`${raw}T00:00:00Z`);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Новый заказ, заведённый руководителем или менеджером вручную (Р-269).
+ * При ошибке ввода форма возвращается с причиной, а не теряется.
+ */
+export async function createOrder(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const text = (name: string) => String(form.get(name) ?? '').trim();
+  let failure: string | null = null;
+  let code: string | null = null;
+  try {
+    const amountOf = (name: string): bigint | null => (text(name).length === 0 ? null : parseAmount(text(name)));
+    const status = text('status');
+    const created = await createManualOrder(actor, {
+      customer: text('customer'),
+      email: text('email') || null,
+      phone: text('phone') || null,
+      serviceTypeId: text('serviceTypeId'),
+      title: text('title'),
+      topic: text('topic') || null,
+      orderedOn: dateOrNull(form.get('orderedOn')),
+      dueOn: dateOrNull(form.get('dueOn')),
+      cost: amountOf('cost'),
+      paid: amountOf('paid'),
+      status: status === 'PAUSED' || status === 'COMPLETED' ? status : 'ACTIVE',
+      managerId: text('managerId') || null,
+    });
+    code = created.code;
+  } catch (error) {
+    failure =
+      error instanceof OrderInputError ? error.message : reasonOf(error, 'Не удалось завести заказ');
+  }
+  if (failure !== null || code === null) {
+    redirect(await withError('/cabinet/manage/orders/new', failure ?? 'Не удалось завести заказ'));
+  }
+  redirect(`/cabinet/projects/${code}?created=1`);
 }
 
 export async function saveProjectContract(form: FormData): Promise<void> {
