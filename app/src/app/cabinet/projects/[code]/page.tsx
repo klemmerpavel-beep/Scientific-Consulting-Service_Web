@@ -50,6 +50,8 @@ import {
   projectByCode,
   projectMaterials,
 } from '../../../../lib/cabinet/queries';
+import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
+import { formatAmount } from '../../../../lib/cabinet/money';
 import { currentActor } from '../../../../lib/cabinet/session';
 import {
   createStage,
@@ -320,6 +322,31 @@ export default async function ProjectScreen({
     { term: 'Куратор', value: project.manager.fullName },
   ].filter((row) => row !== null);
 
+  // Строка книги заказов, из которой заведена работа, — как записана в
+  // книге, со статусом и сроком словами (решение Р-269).
+  const bookRow = staff ? await bookRowOf(actor, project.id) : null;
+  const bookFacts =
+    bookRow === null
+      ? []
+      : [
+          { term: 'Дата заказа', value: formatDate(bookRow.orderDate) ?? '—' },
+          { term: 'Заказчик (ФИО)', value: bookRow.customer || '—' },
+          { term: 'Тип работы', value: bookRow.type || '—' },
+          { term: 'Описание работы', value: bookRow.description || '—' },
+          {
+            term: 'Дедлайн',
+            value:
+              /^\d{4,6}(\.\d+)?$/u.test(bookRow.deadline) && bookRow.deadlineDate !== null
+                ? (formatDate(bookRow.deadlineDate) ?? bookRow.deadline)
+                : bookRow.deadline || '—',
+          },
+          { term: 'Стоимость', value: formatAmount(bookRow.cost) },
+          { term: 'Оплачено', value: formatAmount(bookRow.paid) },
+          { term: 'Доля оплаты', value: paidShare(bookRow) ?? '—' },
+          { term: 'Статус в книге', value: bookRow.status || '—' },
+          { term: 'Источник', value: `${bookRow.fileName}, строка ${bookRow.rowNumber}` },
+        ];
+
   // Последнее слово каждой стороны: на чём разговор остановился, видно, не
   // уходя в переписку. Эксперту переписка закрыта, и здесь её тоже нет.
   const fromClient = thread.filter((message) => message.author.role === 'CLIENT');
@@ -416,6 +443,32 @@ export default async function ProjectScreen({
           </div>
         )}
       </Disclosure>
+
+      {bookFacts.length === 0 ? null : (
+        <Disclosure title="Строка книги заказов" tall style={{ marginTop: 10 }}>
+          <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
+            {bookFacts.map((row) => (
+              <div
+                key={row.term}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0,170px) minmax(0,1fr)',
+                  gap: 14,
+                }}
+              >
+                <dt style={{ margin: 0 }}>
+                  <Text muted size={13}>
+                    {row.term}
+                  </Text>
+                </dt>
+                <dd style={{ margin: 0 }}>
+                  <Text size={14}>{row.value}</Text>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Disclosure>
+      )}
 
       <ProgressPanel
           style={{ marginTop: 16, marginBottom: 20 }}

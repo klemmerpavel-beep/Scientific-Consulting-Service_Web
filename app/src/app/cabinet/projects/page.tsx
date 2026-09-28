@@ -37,6 +37,7 @@ import {
   type ProjectFilter,
 } from '../../../lib/cabinet/queries';
 import { daysPast } from '../../../lib/cabinet/clock';
+import { can } from '../../../lib/cabinet/access';
 import { currentActor } from '../../../lib/cabinet/session';
 
 export const dynamic = 'force-dynamic';
@@ -231,6 +232,10 @@ export default async function ProjectsScreen({
       {answer === undefined ? (
         <ScreenTop style={{ marginBottom: 24 }}>
           <Heading level={1}>{title}</Heading>
+          {/* Заказ звонком или письмом заводится здесь же (решение Р-269). */}
+          {can(actor, 'REQUEST_MODERATE') ? (
+            <ButtonLink href="/cabinet/manage/orders/new">Новый заказ</ButtonLink>
+          ) : null}
         </ScreenTop>
       ) : (
         <ScreenHead title={title} answer={answer} />

@@ -11,6 +11,7 @@ import {
   Field,
   Form,
   FormActions,
+  FormRow,
   Heading,
   Narrow,
   ScreenHead,
@@ -24,7 +25,8 @@ import { leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
 import { declineLetterNote, leadAddress } from '../../../../../lib/cabinet/lead-letter';
 import { leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
-import { moderateLead } from '../../../actions';
+import { commentLead, moderateLead, saveLead, switchLeadStatus } from '../../../actions';
+import { LeadStatusChip, LeadStatusSwitch } from '../../../../../components/cabinet/LeadStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,7 +75,12 @@ export default async function LeadScreen({
           backHref="/cabinet/manage"
           backLabel="к сводке"
           title={lead.name ?? 'Заявка без имени'}
-          chips={<Chip tone="accent">{leadSourceLabel(lead.source)}</Chip>}
+          chips={
+            <>
+              <Chip tone="accent">{leadSourceLabel(lead.source)}</Chip>
+              <LeadStatusChip status={lead.status} />
+            </>
+          }
           note={`${lead.contactKind === 'email' ? 'Почта' : 'Телефон'}: ${lead.contact}`}
           aside={formatDate(lead.createdAt)}
         />
@@ -168,6 +175,107 @@ export default async function LeadScreen({
               : 'Согласие на обработку персональных данных не отмечено.'}
           </Text>
         </Card>
+
+        {/* Работа с заявкой до решения: состояние плашкой и внутренние
+            комментарии — что сделано, о чём договорились, чего ждём
+            (решение Р-270). Заявителю это не показывается. */}
+        <Card style={{ marginBottom: 24 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+            Работа с заявкой
+          </Heading>
+          {lead.project === null ? (
+            <>
+              <LeadStatusSwitch
+                current={lead.status}
+                action={switchLeadStatus}
+                hidden={<input type="hidden" name="leadId" value={lead.id} />}
+              />
+              <Text muted size={13} style={{ marginTop: 10 }}>
+                Состояние меняется одним нажатием. «Договор заключён» ставит одобрение ниже — вместе
+                с работой, «Отказ» — форма отказа с причиной.
+              </Text>
+            </>
+          ) : (
+            <Text muted size={13}>
+              Заявка стала работой: дальше её ход ведётся в карточке работы.
+            </Text>
+          )}
+
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--pd-divider)' }}>
+            <Heading level={3} size={3} style={{ marginBottom: 10 }}>
+              Комментарии
+            </Heading>
+            {lead.comments.length === 0 ? (
+              <Text muted size={14} style={{ marginBottom: 12 }}>
+                Комментариев пока нет. Их видят только руководитель и менеджеры.
+              </Text>
+            ) : (
+              <ul style={{ margin: '0 0 16px', padding: 0, listStyle: 'none', display: 'grid', gap: 12 }}>
+                {lead.comments.map((comment) => (
+                  <li
+                    key={comment.id}
+                    style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--pd-surface-quiet)' }}
+                  >
+                    <Text muted size={13}>
+                      {comment.author.fullName} · {formatDate(comment.createdAt)},{' '}
+                      {comment.createdAt.toLocaleTimeString('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: 'Europe/Moscow',
+                      })}
+                    </Text>
+                    <Text size={14} style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>
+                      {comment.body}
+                    </Text>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Form action={commentLead}>
+              <input type="hidden" name="leadId" value={lead.id} />
+              <Field
+                label="Новый комментарий"
+                name="body"
+                required
+                multiline
+                placeholder="Позвонил, договорились о консультации в четверг"
+              />
+              <FormActions>
+                <Button tone="quiet">Добавить комментарий</Button>
+              </FormActions>
+            </Form>
+          </div>
+        </Card>
+
+        <Disclosure title="Исправить сведения заявки" style={{ marginBottom: 24 }}>
+          <Form action={saveLead}>
+            <input type="hidden" name="leadId" value={lead.id} />
+            <FormRow>
+              <Field label="Имя" name="name" defaultValue={lead.name ?? ''} />
+              <Field
+                label={lead.contactKind === 'email' ? 'Почта' : 'Телефон для связи'}
+                name="contact"
+                required
+                defaultValue={lead.contact}
+              />
+              <Field label="Дополнительный телефон" name="phone" defaultValue={lead.phone ?? ''} />
+            </FormRow>
+            <FormRow>
+              <Field label="Организация или вуз" name="organization" defaultValue={lead.organization ?? ''} />
+              <Field label="Желаемый срок" name="deadline" defaultValue={lead.deadline ?? ''} />
+            </FormRow>
+            <Field label="Тема" name="topic" defaultValue={lead.topic ?? ''} />
+            <Field label="Что нужно" name="need" defaultValue={lead.need ?? ''} />
+            <Field label="Текст обращения" name="message" multiline defaultValue={lead.message ?? ''} />
+            <Text muted size={13} style={{ marginBottom: 12 }}>
+              Отметки согласия не правятся: это журнал согласия заявителя. В журнал действий
+              попадают названия исправленных полей, а не их значения.
+            </Text>
+            <FormActions>
+              <Button>Сохранить сведения</Button>
+            </FormActions>
+          </Form>
+        </Disclosure>
 
         {/* Разобранная заявка показывает исход, а не формы. Прежде формы
             стояли всегда: отклонённую можно было «одобрить» вопреки

@@ -652,7 +652,7 @@ export interface ApplyReport {
  * Договор перенесённой работы: сумма из книги, поступление и остаток.
  * Общий для заведения работы и для правки, заставшей работу без договора.
  */
-async function openContract(
+export async function openContract(
   tx: Prisma.TransactionClient,
   input: {
     readonly projectId: string;
@@ -661,6 +661,8 @@ async function openContract(
     readonly deadline: Date | null;
     readonly rowCost: bigint;
     readonly rowPaid: bigint;
+    /** Название уже полученного поступления; заказ, заведённый вручную, — не книга. */
+    readonly paidTitle?: string;
   },
 ): Promise<void> {
   const contract = await tx.contract.create({
@@ -679,7 +681,7 @@ async function openContract(
     await tx.tranche.create({
       data: {
         contractId: contract.id,
-        title: 'Поступление по книге учёта',
+        title: input.paidTitle ?? 'Поступление по книге учёта',
         amount: input.rowPaid,
         status: 'PAID',
       },
