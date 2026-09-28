@@ -69,7 +69,7 @@ describe('пределы загрузки файлов', () => {
     // Иначе связка, готовая в коде, ждёт ручного crontab -e (решение Р-262).
     assert.match(read('deploy/update.sh'), /cron-sync\.sh/u);
     const cron = read('deploy/cron-sync.sh');
-    for (const job of ['outbox.sh', 'yandex-sync.sh', 'book-pull.sh']) {
+    for (const job of ['outbox.sh', 'yandex-sync.sh', 'book-pull.sh', 'retention.sh', 'restore-check.sh']) {
       assert.match(cron, new RegExp(`\\$DIR/${job.replace('.', '\\.')}`, 'u'));
     }
     // Прежний скрипт выгрузки снимается с расписания, а не ставится.
