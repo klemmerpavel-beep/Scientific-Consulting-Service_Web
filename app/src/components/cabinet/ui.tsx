@@ -639,10 +639,17 @@ export function Narrow({ width = 780, children }: { width?: number; children: Re
  * сроком у первого, с полосой отбора у второго, — и `ScreenHead` им не
  * подходит. Обёртка даёт им тот же признак, что и общей шапке, чтобы
  * правило о пяти блоках не считало их блоками (Р-183).
+ *
+ * Шапка — строка: заголовок слева, действие экрана справа. Прежде обёртка
+ * была простым блоком, и кнопка «Новый заказ» падала под заголовок
+ * вплотную к нему (решение Р-272).
  */
 export function ScreenTop({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (
-    <div className="cab-head" style={style}>
+    <div
+      className="cab-head"
+      style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', ...style }}
+    >
       {children}
     </div>
   );

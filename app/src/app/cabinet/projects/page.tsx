@@ -234,7 +234,9 @@ export default async function ProjectsScreen({
           <Heading level={1}>{title}</Heading>
           {/* Заказ звонком или письмом заводится здесь же (решение Р-269). */}
           {can(actor, 'REQUEST_MODERATE') ? (
-            <ButtonLink href="/cabinet/manage/orders/new">Новый заказ</ButtonLink>
+            <div style={{ marginLeft: 'auto' }}>
+              <ButtonLink href="/cabinet/manage/orders/new">Новый заказ</ButtonLink>
+            </div>
           ) : null}
         </ScreenTop>
       ) : (
@@ -361,8 +363,13 @@ export default async function ProjectsScreen({
             // три ужатые плашки наезжают друг на друга и читаются хуже
             // двух просторных (решение Р-189). Ниже 900 px ряд
             // становится одиночным сам собой.
-            gridTemplateColumns: 'repeat(auto-fill, minmax(min(420px,100%),1fr))',
-            maxWidth: 'calc(2 * 560px + 16px)',
+            // Трек не уже половины ряда: две плашки занимают всю ширину
+            // экрана и встают вровень с полосой отбора над ними. Прежний
+            // предел ширины перечня в 1136 px оставлял справа пустую
+            // полосу, и правый край плашек не совпадал с полем поиска
+            // (решение Р-272).
+            gridTemplateColumns:
+              'repeat(auto-fill, minmax(min(100%, max(420px, calc((100% - 16px) / 2))), 1fr))',
             // Плашки в ряду одного размера — требование заказчика: ряд
             // из карточек разной высоты читается как сбой раскладки
             // (решение Р-185). Чтобы выровненная плашка не пустовала,
@@ -406,42 +413,22 @@ export default async function ProjectsScreen({
                   ...(waiting === null ? {} : { borderColor: 'var(--pd-accent-edge)' }),
                 }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 10,
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    marginBottom: 8,
-                  }}
-                >
-                  {/* Код работы с экранов убран: он ничего не говорит
-                      человеку и сбивает при чтении плашки (замечание
-                      заказчика, решение Р-189). В адресе страницы код
-                      остаётся — он ключ маршрута. */}
-                  {/* Тип не дублируется чипом, когда он же стоит заголовком
-                      карточки: у всего, что перенесено из книги заказов, это
-                      одна и та же строка. */}
-                  {project.title === project.serviceType.name ? null : (
+                {/* Код работы с экранов убран: он ничего не говорит
+                    человеку и сбивает при чтении плашки (замечание
+                    заказчика, решение Р-189). В адресе страницы код
+                    остаётся — он ключ маршрута. */}
+                {/* Тип не дублируется чипом, когда он же стоит заголовком
+                    карточки: у всего, что перенесено из книги заказов, это
+                    одна и та же строка. */}
+                {/* Срок стоял в строке с чипом и при длинном типе
+                    сопровождения переносился под него к правому краю —
+                    у каждой плашки на своей высоте. Теперь он внизу, над
+                    строкой фактов (решение Р-272). */}
+                {project.title === project.serviceType.name ? null : (
+                  <div style={{ display: 'flex', marginBottom: 8 }}>
                     <Chip tone="accent">{project.serviceType.name}</Chip>
-                  )}
-                  {project.dueOn === null ? null : (
-                    <span
-                      style={{
-                        marginLeft: 'auto',
-                        fontFamily: MONO,
-                        fontSize: 13,
-                        lineHeight: 1.4,
-                        color: 'var(--pd-ink-muted)',
-                      }}
-                    >
-                      срок — {formatDate(project.dueOn)}
-                      {project.status === 'ACTIVE' && daysPast(project.dueOn) !== null
-                        ? ' · прошёл'
-                        : ''}
-                    </span>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Заголовок ведёт внутрь: отдельная строка «Открыть работу»
                     под каждой плашкой стоила у эксперта восемьсот пикселей
@@ -539,20 +526,6 @@ export default async function ProjectsScreen({
                   </Text>
                 )}
 
-                {/* Строка фактов прижата к низу: в ряду равной высоты
-                    она встаёт у всех плашек на одной линии, и ряд
-                    читается таблицей, а не лесенкой (решение Р-185). */}
-                {/* Пустая строка фактов прежде печаталась неразрывным
-                    пробелом ради ровного низа ряда — абзац без текста,
-                    который читалка объявляла пустым (решение Р-206). */}
-                {facts.length === 0 ? (
-                  <span aria-hidden="true" style={{ marginTop: 'auto' }} />
-                ) : (
-                  <Text muted size={13} style={{ marginTop: 'auto', paddingTop: 10 }}>
-                    {facts.join(' · ')}
-                  </Text>
-                )}
-
                 {/* Плашка раскрывается на месте: план работ виден без
                     ухода с перечня, а в саму работу ведёт её название.
                     Раскрытие неполное — этапы и сроки, остальное на
@@ -594,6 +567,39 @@ export default async function ProjectsScreen({
                       ))}
                     </ul>
                   </Disclosure>
+                )}
+                {/* Строка фактов прижата к низу: в ряду равной высоты
+                    она встаёт у всех плашек на одной линии, и ряд
+                    читается таблицей, а не лесенкой (решение Р-185). */}
+                {/* Пустая строка фактов прежде печаталась неразрывным
+                    пробелом ради ровного низа ряда — абзац без текста,
+                    который читалка объявляла пустым (решение Р-206). */}
+                {/* Срок и строка фактов — один прижатый к низу подвал,
+                    последний в плашке: раскрытие «Этапы» стоит над ним, и
+                    у плашек ряда подвал встаёт на одни линии, есть план
+                    или нет (Р-272). */}
+                {facts.length === 0 && project.dueOn === null ? (
+                  <span aria-hidden="true" style={{ marginTop: 'auto' }} />
+                ) : (
+                  <div style={{ marginTop: 'auto', paddingTop: 10, display: 'grid', gap: 2 }}>
+                    {project.dueOn === null ? null : (
+                      <Text
+                        muted
+                        size={13}
+                        style={{ margin: 0, fontFamily: MONO, lineHeight: 1.4 }}
+                      >
+                        срок — {formatDate(project.dueOn)}
+                        {project.status === 'ACTIVE' && daysPast(project.dueOn) !== null
+                          ? ' · прошёл'
+                          : ''}
+                      </Text>
+                    )}
+                    {facts.length === 0 ? null : (
+                      <Text muted size={13} style={{ margin: 0 }}>
+                        {facts.join(' · ')}
+                      </Text>
+                    )}
+                  </div>
                 )}
               </Card>
             );
