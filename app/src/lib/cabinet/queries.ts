@@ -350,6 +350,16 @@ export async function leadById(actor: Actor, id: string) {
         select: { state: true, lastError: true, sentAt: true },
         take: 1,
       },
+      // Внутренние комментарии — от старых к новым, как переписка (Р-270).
+      comments: {
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          body: true,
+          createdAt: true,
+          author: { select: { id: true, fullName: true, role: true } },
+        },
+      },
     },
   });
 }

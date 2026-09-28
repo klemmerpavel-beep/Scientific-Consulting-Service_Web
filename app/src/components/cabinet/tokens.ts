@@ -40,7 +40,17 @@ export const ROOT_TOKENS =
   // поверхностей и 3,23:1 к акцентной подложке, где стоит поле выданной
   // ссылки. Токен свой, кабинетный: `edge-neutral` общий с сайтом и там
   // несёт кромку карточки, а не поля (решение Р-253).
-  '--pd-field-edge:#7D8697}';
+  '--pd-field-edge:#7D8697;' +
+  // Состояния заявки — по прямому требованию заказчика различаются цветом
+  // (решение Р-270, пересматривает Р-146 для этих плашек). «Новая»,
+  // «Договор заключён» и «Спам» берут готовые пары акцента, успеха и
+  // тихой поверхности; четыре ступени ниже — свои. Красная пара ошибки
+  // не используется ни прямо, ни двойником (решение Р-208): отказ —
+  // приглушённый розово-серый. Текст к фону — от 5,6:1 до 7,4:1.
+  '--pd-lead-work-bg:#FFF3D6;--pd-lead-work-ink:#7A4A00;--pd-lead-work-edge:#F0D08A;' +
+  '--pd-lead-wait-bg:#F1ECFA;--pd-lead-wait-ink:#57399A;--pd-lead-wait-edge:#D3C6EE;' +
+  '--pd-lead-talk-bg:#E4F4F2;--pd-lead-talk-ink:#1C6A60;--pd-lead-talk-edge:#A8DAD2;' +
+  '--pd-lead-no-bg:#F5ECEE;--pd-lead-no-ink:#7B3A4A;--pd-lead-no-edge:#E2C7CE}';
 
 // Записано ровно так же, как на девяти страницах сайта: тот же набор и
 // тот же порядок, без пробелов после запятых. Гарнитуры совпадали и
@@ -199,6 +209,7 @@ a:hover{color:var(--pd-accent-press)}
 .cab-btn-primary:hover,.cab-btn-primary:focus-visible{background:var(--pd-accent-hover)!important}
 .cab-btn-primary:active{background:var(--pd-accent-active)!important}
 .cab-btn-quiet:hover,.cab-btn-quiet:focus-visible{border-color:var(--pd-accent)!important;color:var(--pd-accent)!important}
+.cab-lead-switch[aria-pressed=false]:hover,.cab-lead-switch[aria-pressed=false]:focus-visible{border-color:var(--pd-accent)!important}
 /* Поле выбора файла скрыто, и фокус с клавиатуры виден на метке-кнопке,
    которая стоит сразу за полем (решение Р-253). */
 .cab-file:focus-visible+label{outline:2px solid var(--pd-accent);outline-offset:2px}

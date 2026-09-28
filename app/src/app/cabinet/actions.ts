@@ -4,9 +4,17 @@ import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 
 import { CONSENT_VERSION } from '../../lib/lead-schema';
-import { AccessDenied, ensure } from '../../lib/cabinet/access';
+import { AccessDenied, ensure, type Actor } from '../../lib/cabinet/access';
 import { withError } from '../../lib/cabinet/flash';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
+import {
+  LEAD_EDIT_FIELDS,
+  LeadWorkError,
+  addLeadComment,
+  editLead,
+  setLeadStatus,
+  type LeadEditField,
+} from '../../lib/cabinet/lead-work';
 import {
   consumeLoginToken,
   requestLoginLink,
@@ -592,6 +600,42 @@ function dateOrNull(value: FormDataEntryValue | null): Date | null {
   if (raw.length === 0) return null;
   const date = new Date(`${raw}T00:00:00Z`);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Работа с заявкой до решения: состояние плашкой, правка сведений и
+ * внутренний комментарий (решение Р-270). Каждое действие возвращает на
+ * экран заявки; отказ — с причиной.
+ */
+async function leadStep(form: FormData, step: (actor: Actor, leadId: string) => Promise<void>, fallback: string) {
+  const actor = await actorOrRedirect();
+  const leadId = String(form.get('leadId') ?? '');
+  const back = `/cabinet/manage/leads/${leadId}`;
+  let failure: string | null = null;
+  try {
+    await step(actor, leadId);
+  } catch (error) {
+    failure = error instanceof LeadWorkError ? error.message : reasonOf(error, fallback);
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+export async function switchLeadStatus(form: FormData): Promise<void> {
+  await leadStep(form, (actor, id) => setLeadStatus(actor, id, String(form.get('status') ?? '')), 'Не удалось сменить состояние');
+}
+
+export async function saveLead(form: FormData): Promise<void> {
+  const values: Partial<Record<LeadEditField, string>> = {};
+  for (const field of LEAD_EDIT_FIELDS) {
+    const value = form.get(field);
+    if (value !== null) values[field] = String(value);
+  }
+  await leadStep(form, (actor, id) => editLead(actor, id, values), 'Не удалось сохранить заявку');
+}
+
+export async function commentLead(form: FormData): Promise<void> {
+  await leadStep(form, (actor, id) => addLeadComment(actor, id, String(form.get('body') ?? '')), 'Не удалось сохранить комментарий');
 }
 
 /**

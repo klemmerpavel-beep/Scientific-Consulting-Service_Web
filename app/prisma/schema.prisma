@@ -70,6 +70,8 @@ model Lead {
 
   deliveries    Delivery[]
   attachments   LeadAttachment[]
+  /// Внутренние комментарии руководителя и менеджеров (решение Р-270).
+  comments      LeadComment[]
   /// Ответ заявителю, у которого нет кабинета: письмо об отказе (Р-217).
   notifications NotificationOutbox[]
 
@@ -112,6 +114,8 @@ model LeadAttachment {
 enum LeadStatus {
   NEW
   IN_PROGRESS
+  /// Отработана, ждёт ответа заявителя: ход за ним (решение Р-270).
+  AWAITING_REPLY
   CONSULTED
   CONTRACTED
   DECLINED
@@ -216,6 +220,7 @@ model User {
   importBatches     ImportBatch[]
   yearlyFinance     YearlyFinance[]      @relation("YearlyFinanceAuthor")
   erasureApprovals  ErasureRequest[]
+  leadComments      LeadComment[]
 
   @@index([role, status])
 }
@@ -852,7 +857,7 @@ model NotifyRule {
   eventKind String
 
   channel NotificationChannel
-  enabled Boolean @default(true)
+  enabled Boolean             @default(true)
 
   @@unique([userId, eventKind, channel])
   @@index([userId])
@@ -1038,4 +1043,19 @@ model ImportRow {
 
   @@index([batchId, rowNumber])
   @@index([signature])
+}
+
+/// Внутренний комментарий к заявке: что сделано, о чём договорились, чего
+/// ждём. Заявителю не показывается и в письма не уходит. Удаляется вместе с
+/// заявкой — по сроку хранения и по требованию субъекта (решение Р-270).
+model LeadComment {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
 }

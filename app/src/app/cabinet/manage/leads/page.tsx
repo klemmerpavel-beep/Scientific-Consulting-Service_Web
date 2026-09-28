@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 
+import { LeadStatusChip } from '../../../../components/cabinet/LeadStatus';
 import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
 import {
@@ -7,7 +8,6 @@ import {
   Button,
   ButtonLink,
   Card,
-  Chip,
   Empty,
   Field,
   Form,
@@ -28,8 +28,7 @@ import {
   LEAD_SOURCE_LABEL,
   LEAD_STATUS_LABEL,
   leadSourceLabel,
-  leadStatusLabel,
-} from '../../../../lib/cabinet/lead-labels';
+  } from '../../../../lib/cabinet/lead-labels';
 import { LEAD_LIST_PAGE_SIZE, leadList } from '../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../lib/cabinet/session';
 
@@ -41,6 +40,10 @@ function pageHref(params: URLSearchParams, page: number): string {
   next.set('page', String(page));
   return `/cabinet/manage/leads?${next.toString()}`;
 }
+
+// Ячейки — по центру строки: у имени увеличенная цель нажатия (44 px), и
+// при выравнивании по верху оно стояло ниже соседних ячеек (Р-270).
+const CELL = { ...TABLE_CELL, verticalAlign: 'middle' } as const;
 
 export default async function AllLeadsScreen({
   searchParams,
@@ -167,20 +170,18 @@ export default async function AllLeadsScreen({
               {list.rows.map((lead) => (
                 <tr key={lead.id}>
                   {/* Мгновение — днём по Москве, как в выгрузке (Р-245). */}
-                  <td style={TABLE_CELL}>{formatDay(lead.createdAt)}</td>
-                  <td style={TABLE_CELL}>{leadSourceLabel(lead.source)}</td>
+                  <td style={CELL}>{formatDay(lead.createdAt)}</td>
+                  <td style={CELL}>{leadSourceLabel(lead.source)}</td>
                   {/* Имя ведёт на разбор: экран заявки заведён решением
                       Р-172, но ссылки на него отсюда не было вовсе, и
                       попасть туда можно было только со сводки (Р-183). */}
-                  <td style={TABLE_CELL}>
+                  <td style={CELL}>
                     <a className="cab-mark" href={`/cabinet/manage/leads/${lead.id}`}>{lead.name ?? 'Без имени'}</a>
                   </td>
-                  <td style={TABLE_CELL}>{lead.contact}</td>
-                  <td style={TABLE_CELL}>{lead.topic ?? lead.need ?? '—'}</td>
-                  <td style={TABLE_CELL}>
-                    <Chip tone={lead.projectId === null ? 'neutral' : 'accent'}>
-                      {leadStatusLabel(lead.status)}
-                    </Chip>
+                  <td style={CELL}>{lead.contact}</td>
+                  <td style={CELL}>{lead.topic ?? lead.need ?? '—'}</td>
+                  <td style={CELL}>
+                    <LeadStatusChip status={lead.status} />
                   </td>
                 </tr>
               ))}
