@@ -148,7 +148,7 @@ if (command === 'check') {
   if (!a || !b) fail('нужно: put <локальный файл> <на Диске>');
   const body = readFileSync(a);
   const meta = await propfind(b, 0);
-  const { all } = etagsFor(a);
+  const { file: etagFile, all } = etagsFor(a);
   const known = all[path.basename(a)];
   if (meta !== null && known && known.remote === b && known.etag && meta[0].etag && known.etag !== meta[0].etag) {
     fail(`«${b}» изменился на Диске после скачивания (${meta[0].modified}). Скачайте свежую версию и внесите правку в неё.`);
@@ -169,6 +169,12 @@ if (command === 'check') {
   const after = await propfind(b, 0);
   console.log(`выложено: ${a} → ${b} (${body.byteLength} Б)`);
   if (after?.[0]?.size && after[0].size !== body.byteLength) fail('размер на Диске не совпал с локальным');
+  // Выложенная версия — теперь известная: без новой метки следующая правка
+  // того же файла отказывала бы, приняв свою же выкладку за чужую (Р-267).
+  if (after?.[0]?.etag) {
+    all[path.basename(a)] = { remote: b, etag: after[0].etag, modified: after[0].modified };
+    writeFileSync(etagFile, JSON.stringify(all, null, 2));
+  }
 } else {
   console.log(readFileSync(new URL(import.meta.url), 'utf8').match(/Команды[\s\S]*?\n \*\n/u)?.[0] ?? '');
   process.exit(command ? 1 : 0);

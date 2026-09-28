@@ -128,6 +128,12 @@ heads=$(sql "SELECT count(*) FROM \"User\" WHERE role = 'HEAD' AND status = 'ACT
 if [ "${heads:-0}" -gt 0 ] 2>/dev/null; then ok "кабинет: учётная запись руководителя действует"
 else bad "кабинет: нет действующей учётной записи руководителя (DEPLOY.md, 5в-бис, шаг 4)"; fi
 
+# Справочник видов работ: без него одобрение заявки предлагает неполный
+# выбор, а мост книги отклоняет строки (решение Р-267). Заводится миграцией.
+kinds=$(sql "SELECT count(*) FROM \"ServiceType\" WHERE code IN ('dissertation','postgrad','consulting','research','article','diploma');")
+if [ "${kinds:-0}" = 6 ]; then ok "кабинет: справочник видов работ полон"
+else bad "кабинет: в справочнике видов работ ${kinds:-?} позиций из 6 — миграция 20260928120000_reference_catalog не легла"; fi
+
 if [ -z "$(read_env CABINET_CRON_SECRET)" ]; then
   off "рассылка кабинета: не включена (CABINET_CRON_SECRET)"
 else
@@ -209,6 +215,20 @@ if command -v crontab > /dev/null 2>&1; then
     ok "копии базы: ночная копия в расписании"
   else
     bad "копии базы: ночной копии в расписании нет (HOSTING.md, шаг 9)"
+  fi
+  # Срок хранения заявок — обязанность оператора персональных данных, а
+  # проверка восстановления — единственное доказательство, что копия
+  # годна. Обе ставит cron-sync.sh; прежде их ставили руками, и
+  # отсутствие не было видно (Р-267).
+  if crontab -l 2>/dev/null | grep -qE '^[^#]*deploy/retention\.sh'; then
+    ok "срок хранения заявок: чистка в расписании"
+  else
+    bad "срок хранения заявок: retention.sh в расписании нет — его ставит cron-sync.sh (DEPLOY.md, раздел 4)"
+  fi
+  if crontab -l 2>/dev/null | grep -qE '^[^#]*deploy/restore-check\.sh'; then
+    ok "копии базы: ежемесячная проверка восстановления в расписании"
+  else
+    bad "копии базы: проверки восстановления в расписании нет — её ставит cron-sync.sh (DEPLOY.md, раздел 4)"
   fi
 fi
 latest=$(ls -1 "$DIR"/backups/prodisser_*.sql.gz 2>/dev/null | sort | tail -n 1)

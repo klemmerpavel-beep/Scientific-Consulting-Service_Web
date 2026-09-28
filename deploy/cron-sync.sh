@@ -14,8 +14,11 @@
 # инструкции) удаляются, чтобы прогон не шёл дважды; вместе с ними уходит
 # строка прежнего yandex-upload.sh — иначе в папке на Диске лежали бы две
 # пары таблиц. Закомментированные строки и всё прочее расписание остаются
-# как были. Копии баз, срок хранения заявок и проверка восстановления сюда
-# не входят: это решения эксплуатации, и ставятся они по разделу 4.
+# как были. Срок хранения заявок и ежемесячная проверка восстановления
+# копии входят в блок по решению заказчика (Р-267): первая — обязанность
+# оператора персональных данных, вторая — единственное доказательство, что
+# копия годна, а руками они не ставились. Ночная копия базы в блок не
+# входит: она стоит с первого развёртывания и отчёт выката её видит.
 #
 # Отключить управление целиком: CRON_SYNC=off в deploy/.env — тогда скрипт
 # не трогает расписание вовсе. Выкат от исхода не зависит: код возврата
@@ -45,10 +48,14 @@ END="# <<< prodisser"
 
 # Сдвиг на :30 у моста — чтобы два прогона не спорили за один служебный
 # контейнер; рассылка уведомлений кабинета — раз в минуту (DEPLOY.md, 5в).
+# Срок хранения — по понедельникам в 03:30, после ночной копии в 03:00;
+# проверка восстановления — первого числа в 04:15, в стороне от выгрузки.
 BLOCK="$BEGIN
 * * * * * $DIR/outbox.sh >> /var/log/prodisser-outbox.log 2>&1
 0 * * * * $DIR/yandex-sync.sh >> /var/log/prodisser-yandex.log 2>&1
 30 * * * * $DIR/book-pull.sh >> /var/log/prodisser-book.log 2>&1
+30 3 * * 1 $DIR/retention.sh >> /var/log/prodisser-retention.log 2>&1
+15 4 1 * * $DIR/restore-check.sh >> /var/log/prodisser-restore.log 2>&1
 $END"
 
 CURRENT=$(crontab -l 2>/dev/null || true)
@@ -60,7 +67,7 @@ OUTSIDE=$(printf '%s\n' "$CURRENT" | awk -v b="$BEGIN" -v e="$END" '
   $0 == b { skip = 1; next }
   $0 == e { skip = 0; next }
   !skip')
-MANAGED='^[[:space:]]*[^#[:space:]].*deploy/(outbox|yandex-sync|yandex-upload|book-pull)\.sh'
+MANAGED='^[[:space:]]*[^#[:space:]].*deploy/(outbox|yandex-sync|yandex-upload|book-pull|retention|restore-check)\.sh'
 DROPPED=$(printf '%s\n' "$OUTSIDE" | grep -cE "$MANAGED" || true)
 REST=$(printf '%s\n' "$OUTSIDE" | grep -vE "$MANAGED" || true)
 
