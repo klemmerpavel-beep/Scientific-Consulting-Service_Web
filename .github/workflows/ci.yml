@@ -112,3 +112,53 @@ jobs:
         run: |
           diff -r design/assets app/public/assets \
             || { echo "::error::design/assets и app/public/assets разошлись. Синхронизируйте каталоги."; exit 1; }
+
+  # Проверки с базой: деньги, права, перенос книги, стирание данных, очередь
+  # уведомлений — две с половиной тысячи проверок, которые без базы
+  # пропускаются. Прежде они шли только на стенде разработчика, и сборка
+  # была зелёной при любом их исходе (решение Р-267). Миграции
+  # накатываются на пустую базу тем же `migrate deploy`, что и на сервере:
+  # заодно видно, что каталог миграций собирает схему с нуля.
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      - name: Миграции на пустую базу
+        run: npx prisma migrate deploy
+
+      # `test:db` читает app/.env. Почта, Telegram и Диск не задаются:
+      # проверки рассчитаны на стенд без внешних каналов.
+      - name: Проверки с базой
+        run: |
+          printf 'DATABASE_URL=%s\nSESSION_SECRET=%s\nCABINET_STORAGE_DIR=%s\n' \
+            "$DATABASE_URL" "ci-$(openssl rand -hex 24)" "$RUNNER_TEMP/storage" > .env
+          npm run test:db

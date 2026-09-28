@@ -21,4 +21,10 @@ describe('tools/disk.mjs', () => {
     assert.match(tool, /Архив\//u);
     assert.match(tool, /изменился на Диске после скачивания/u);
   });
+
+  it('после выкладки запоминает новую версию: вторая своя правка не отказывает (Р-267)', () => {
+    const put = tool.slice(tool.indexOf("command === 'put'"));
+    assert.match(put, /etag: after\[0\]\.etag/u);
+    assert.match(put, /writeFileSync\(etagFile/u);
+  });
 });
