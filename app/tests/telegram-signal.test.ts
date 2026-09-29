@@ -57,7 +57,10 @@ describe('сигнал о заявке с сайта', () => {
     assert.ok(text.includes('Компаниям') || text.includes('Бизнесу'), text);
     assert.ok(text.includes('hero'), 'не указана форма');
     assert.ok(text.includes('cmu8f230k00054y7d7vdfg843'), 'нет номера заявки');
-    assert.ok(text.includes('/cabinet/manage/leads'), 'нет пути к содержанию');
+    assert.ok(
+      text.includes('/cabinet/manage/leads/cmu8f230k00054y7d7vdfg843'),
+      'нет прямой ссылки на карточку заявки (Р-276)',
+    );
   });
 });
 
