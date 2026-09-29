@@ -103,14 +103,18 @@ fi
 # ── 3. Уведомление о заявке: Telegram и почта ───────────────────────────────
 # Отказ «канал не настроен» пишется в журнал доставок при каждой заявке —
 # это состояние, его показывает строка настройки, а не счётчик сбоев.
+# Считаются отказы после последней удачной доставки: починенный канал не
+# должен неделю числиться сломанным из-за отказа до починки (Р-275).
 fails() {
   sql "SELECT count(*) FROM \"Delivery\" WHERE channel = '$1' AND NOT ok
        AND coalesce(error, '') <> 'канал не настроен'
-       AND \"createdAt\" > $NOW - interval '7 days';"
+       AND \"createdAt\" > $NOW - interval '7 days'
+       AND \"createdAt\" > coalesce((SELECT max(\"createdAt\") FROM \"Delivery\"
+                                     WHERE channel = '$1' AND ok), '-infinity');"
 }
 if [ -n "$(read_env TELEGRAM_BOT_TOKEN)" ] && [ -n "$(read_env TELEGRAM_CHAT_ID)" ]; then
   f=$(fails telegram)
-  if [ "${f:-0}" -gt 0 ] 2>/dev/null; then bad "Telegram: отказов доставки за 7 дней — $f (кабинет → «Все заявки»)"
+  if [ "${f:-0}" -gt 0 ] 2>/dev/null; then bad "Telegram: отказов доставки после последней удачной — $f (кабинет → «Все заявки»)"
   else ok "Telegram: сигнал о заявке настроен"; fi
 else
   off "Telegram: не настроен (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID; DEPLOY.md, 5е)"
