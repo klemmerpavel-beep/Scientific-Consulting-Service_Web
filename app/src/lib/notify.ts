@@ -96,8 +96,12 @@ export function telegramSignal(lead: Lead, id: string): string {
     `<b>Форма:</b> ${escapeHtml(lead.form ?? 'request')}`,
     `<b>Время:</b> ${escapeHtml(at)} МСК`,
     '',
-    'Содержание — в кабинете, раздел «Все заявки»:',
-    base.length === 0 ? '/cabinet/manage/leads' : `${base}/cabinet/manage/leads`,
+    // Ссылка ведёт в карточку этой заявки: ФИО и контакт на телефоне — в
+    // одно нажатие, звонок — во второе. В мессенджер они сами не уходят:
+    // серверы Telegram за рубежом, а Политика до уведомления Роскомнадзора
+    // трансграничную передачу исключает (решения Р-187, Р-276).
+    'Имя и контакт — в карточке заявки:',
+    `${base}/cabinet/manage/leads/${encodeURIComponent(id)}`,
     '',
     `<code>${escapeHtml(id)}</code>`,
   ].join('\n');

@@ -4,6 +4,7 @@ import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
 import {
   Button,
+  ButtonLink,
   Card,
   Checkbox,
   Chip,
@@ -21,7 +22,7 @@ import {
   formatSize,
 } from '../../../../../components/cabinet/ui';
 import { ensure } from '../../../../../lib/cabinet/access';
-import { leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
+import { contactHref, leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
 import { declineLetterNote, leadAddress } from '../../../../../lib/cabinet/lead-letter';
 import { leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
@@ -58,6 +59,9 @@ export default async function LeadScreen({
   if (lead === null) notFound();
   const letter = lead.notifications[0] ?? null;
 
+  const callHref = contactHref(lead.contactKind, lead.contact);
+  const extraHref = lead.phone === null ? null : contactHref('phone', lead.phone);
+
   const facts = [
     lead.supervisorName === null
       ? null
@@ -88,6 +92,20 @@ export default async function LeadScreen({
         <ActionError id={flags.error} />
 
         <Card style={{ marginBottom: 24 }}>
+          {/* Связь в одно нажатие: сюда ведёт ссылка из сигнала в Telegram,
+              и на телефоне звонок или письмо — одна кнопка (решение Р-276). */}
+          {callHref === null && extraHref === null ? null : (
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+              {callHref === null ? null : (
+                <ButtonLink href={callHref} tone="primary">
+                  {lead.contactKind === 'email' ? 'Написать' : 'Позвонить'}
+                </ButtonLink>
+              )}
+              {extraHref === null ? null : (
+                <ButtonLink href={extraHref}>Позвонить по доп. телефону</ButtonLink>
+              )}
+            </div>
+          )}
           {lead.topic === null ? null : (
             <Text style={{ marginBottom: 12 }}>
               <strong style={{ fontWeight: 600 }}>Тема: </strong>

@@ -67,3 +67,23 @@ export const LEAD_STATUS_TONE: Record<string, { bg: string; ink: string; edge: s
 export function leadStatusTone(value: string) {
   return LEAD_STATUS_TONE[value] ?? LEAD_STATUS_TONE.SPAM!;
 }
+
+/**
+ * Ссылка для связи с заявителем: `tel:` или `mailto:`. На телефоне звонок
+ * из карточки заявки — одно нажатие (решение Р-276). Российский номер,
+ * записанный с восьмёрки, приводится к +7. Нечитаемое значение ссылки не
+ * получает: кнопка, открывающая пустой звонок, хуже её отсутствия.
+ */
+export function contactHref(kind: string, value: string): string | null {
+  const text = value.trim();
+  if (kind === 'email') {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(text) ? `mailto:${text}` : null;
+  }
+  const digits = text.replace(/[^\d+]/gu, '');
+  const number = /^8\d{10}$/u.test(digits)
+    ? `+7${digits.slice(1)}`
+    : /^7\d{10}$/u.test(digits)
+      ? `+${digits}`
+      : digits;
+  return /^\+?\d{7,15}$/u.test(number) ? `tel:${number}` : null;
+}
