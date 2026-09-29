@@ -103,14 +103,18 @@ fi
 # ── 3. Уведомление о заявке: Telegram и почта ───────────────────────────────
 # Отказ «канал не настроен» пишется в журнал доставок при каждой заявке —
 # это состояние, его показывает строка настройки, а не счётчик сбоев.
+# Считаются отказы после последней удачной доставки: починенный канал не
+# должен неделю числиться сломанным из-за отказа до починки (Р-275).
 fails() {
   sql "SELECT count(*) FROM \"Delivery\" WHERE channel = '$1' AND NOT ok
        AND coalesce(error, '') <> 'канал не настроен'
-       AND \"createdAt\" > $NOW - interval '7 days';"
+       AND \"createdAt\" > $NOW - interval '7 days'
+       AND \"createdAt\" > coalesce((SELECT max(\"createdAt\") FROM \"Delivery\"
+                                     WHERE channel = '$1' AND ok), '-infinity');"
 }
 if [ -n "$(read_env TELEGRAM_BOT_TOKEN)" ] && [ -n "$(read_env TELEGRAM_CHAT_ID)" ]; then
   f=$(fails telegram)
-  if [ "${f:-0}" -gt 0 ] 2>/dev/null; then bad "Telegram: отказов доставки за 7 дней — $f (кабинет → «Все заявки»)"
+  if [ "${f:-0}" -gt 0 ] 2>/dev/null; then bad "Telegram: отказов доставки после последней удачной — $f (кабинет → «Все заявки»)"
   else ok "Telegram: сигнал о заявке настроен"; fi
 else
   off "Telegram: не настроен (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID; DEPLOY.md, 5е)"
@@ -194,15 +198,20 @@ else
   else
     # Строки на разбор — по последнему переносу: неизменную книгу мост
     # пропускает по свёртке, и задержанная строка висит до исправления.
-    row=$(sql "SELECT to_char(\"occurredAt\" $MSK, 'DD.MM HH24:MI'), payload->>'held'
+    row=$(sql "SELECT to_char(\"occurredAt\" $MSK, 'DD.MM HH24:MI'), payload->>'held',
+                      extract(epoch FROM \"occurredAt\")::bigint
                FROM \"AuditEvent\" WHERE action = 'BOOK_PULL' ORDER BY \"occurredAt\" DESC LIMIT 1;")
     last=$(echo "$row" | cut -d'|' -f1); held=$(echo "$row" | cut -d'|' -f2)
+    lastok=$(echo "$row" | cut -d'|' -f3)
     # Последний прогон моста — по журналу: упавший прогон в базу не пишет,
     # и отчёт показывал давний удачный перенос, пока мост падал каждый час
     # (решение Р-274). Первая ошибка прогона называет причину.
     BOOK_LOG=${CHAIN_BOOK_LOG:-/var/log/prodisser-book.log}
+    # Журнал ведёт только прогон по расписанию; перенос, запущенный руками
+    # после падения, пишется в базу — и снимает отметку, если он позже.
     tailrun=$(grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T' "$BOOK_LOG" 2>/dev/null | tail -n 3)
-    if echo "$tailrun" | tail -n 1 | grep -q 'ОШИБКА'; then
+    failat=$(date -u -d "$(echo "$tailrun" | tail -n 1 | cut -c1-19)" +%s 2>/dev/null || echo 0)
+    if echo "$tailrun" | tail -n 1 | grep -q 'ОШИБКА' && [ "$failat" -gt "${lastok:-0}" ] 2>/dev/null; then
       ranat=$(echo "$tailrun" | tail -n 1 | cut -c1-16 | tr 'T' ' ')
       why=$(echo "$tailrun" | grep 'ОШИБКА' | head -n 1 | sed 's/^[^ ]* ОШИБКА: //' | cut -c1-240)
       bad "книга заказов: прогон моста $ranat UTC упал — $why (журнал: $BOOK_LOG)"

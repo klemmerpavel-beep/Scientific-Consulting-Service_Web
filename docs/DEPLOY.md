@@ -916,6 +916,30 @@ cd /opt/prodisser
 docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d
 ```
 
+### Если Telegram недоступен по IPv4
+
+С сервера практики адреса `api.telegram.org` по IPv4 не отвечают
+(тайм-аут), по IPv6 — отвечают; в журнале доставок это `TypeError: fetch
+failed`. Приложение поэтому подключено ко второй сети `outbound6` с IPv6
+(`docker-compose.yml`, решение Р-275). Хосту до первого выката с этой сетью
+нужна одна настройка ядра — иначе с включением пересылки IPv6 он перестанет
+принимать объявления маршрутизатора и примерно через полчаса потеряет IPv6
+целиком:
+
+```bash
+echo 'net.ipv6.conf.eth0.accept_ra = 2' > /etc/sysctl.d/60-prodisser-ipv6.conf
+sysctl --system > /dev/null && sysctl net.ipv6.conf.eth0.accept_ra
+```
+
+Проверка из контейнера после выката:
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml exec -T web \
+  node -e "fetch('https://api.telegram.org/').then(r=>console.log(r.status)).catch(e=>console.log(String(e.cause??e)))"
+```
+
+Ответ `302` — путь открыт.
+
 ### Telegram для пользователей кабинета — привязка по ссылке
 
 Шаги выше включают сигнал о заявках в один чат практики. Чтобы клиенты и
