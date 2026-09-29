@@ -123,9 +123,25 @@ function parseSheet(xml: string, shared: string[], styles: Styles): Row[] {
   return rows;
 }
 
+/**
+ * Снять префикс пространства имён с имён элементов: `<s:row>` → `<row>`.
+ *
+ * Стандарт разрешает писать SpreadsheetML с префиксом, и часть программ так
+ * и сохраняет книгу. Книгу заказов 28.09.2026 пересохранили именно так —
+ * `<s:sheet>`, `<s:row>`, `<s:c>`, — и разбор, ищущий имена без префикса,
+ * увидел ноль листов; мост падал каждый час (решение Р-274). Префиксы
+ * атрибутов (`r:id`, `xml:space`) не трогаются: по ним разбор и ищет.
+ */
+function unprefix(xml: string): string {
+  return xml.replace(/<(\/?)[A-Za-z_][\w.-]*:(?=[A-Za-z_])/g, '<$1');
+}
+
 export function readWorkbook(bytes: Buffer): Sheet[] {
   const files = unzip(bytes);
-  const text = (name: string) => files.get(name)?.toString('utf8') ?? null;
+  const text = (name: string) => {
+    const body = files.get(name)?.toString('utf8');
+    return body === undefined ? null : unprefix(body);
+  };
 
   const workbook = text('xl/workbook.xml');
   if (workbook === null) {
