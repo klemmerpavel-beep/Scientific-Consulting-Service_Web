@@ -413,10 +413,11 @@ describe('книга целиком', () => {
     assert.equal(rows.find((row) => row.rowNumber === 6)?.status, 'STOPPED');
   });
 
-  it('переплата помечена как ошибка, а не предупреждение', () => {
+  it('переплата при заданной стоимости — предупреждение: доплата за доп. услугу (Р-273)', () => {
     const row = parsed().rows.find((candidate) => candidate.rowNumber === 4);
     const issue = row?.issues.find((candidate) => candidate.code === 'PAYMENT_EXCEEDS_CONTRACT');
-    assert.equal(issue?.severity, 'ERROR');
+    assert.equal(issue?.severity, 'WARNING');
+    assert.match(issue?.note ?? '', /доплатой сверх договора/u);
   });
 
   it('закрытая работа с остатком помечена предупреждением', () => {

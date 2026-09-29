@@ -490,13 +490,28 @@ export function parseRow(
   }
   const cost = readCost ?? 0n;
   const paid = readPaid ?? 0n;
+  // Оплата сверх стоимости — не всегда опечатка: заказчик доплачивает за
+  // дополнительную услугу в той же работе, а в книге стоимость остаётся
+  // прежней. Такая строка переносится, разница заводится в договор
+  // отдельным поступлением, замечание остаётся предупреждением на экране
+  // переноса (решение Р-273). Ошибкой остаётся оплата без стоимости: договора
+  // не будет, и поступление потерялось бы.
   if (paid > cost) {
-    issues.push({
-      code: 'PAYMENT_EXCEEDS_CONTRACT',
-      severity: 'ERROR',
-      column: columns.paid ?? null,
-      note: `оплачено больше стоимости на ${Number(paid - cost) / 100} ₽`,
-    });
+    issues.push(
+      cost > 0n
+        ? {
+            code: 'PAYMENT_EXCEEDS_CONTRACT',
+            severity: 'WARNING',
+            column: columns.paid ?? null,
+            note: `оплачено больше стоимости на ${Number(paid - cost) / 100} ₽ — учтено доплатой сверх договора`,
+          }
+        : {
+            code: 'PAYMENT_EXCEEDS_CONTRACT',
+            severity: 'ERROR',
+            column: columns.cost ?? null,
+            note: `оплачено ${Number(paid) / 100} ₽ при пустой стоимости`,
+          },
+    );
   }
 
   const statusCell = cellOf(row, columns.status);

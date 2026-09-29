@@ -136,6 +136,36 @@ describe('заказ вручную', { skip: !enabled }, async () => {
     assert.equal(await bookRowOf(expert, projects[0]!), null);
   });
 
+  it('переплата по книге заводится доплатой сверх стоимости (Р-273)', async () => {
+    const { openContract, EXTRA_TITLE } = await import('../src/lib/cabinet/import/apply.ts');
+    const created = await createManualOrder(actor(ids.head!, 'HEAD'), {
+      customer: `Доплатин ${customer}`,
+      serviceTypeId: ids.type!,
+      title: 'Диссертация с доп. услугой',
+    });
+    projects.push(created.projectId);
+    await prisma.$transaction((tx) =>
+      openContract(tx, {
+        projectId: created.projectId,
+        code: created.code,
+        orderDate: null,
+        deadline: null,
+        rowCost: 2_500_000n,
+        rowPaid: 3_000_000n,
+      }),
+    );
+    const contract = await prisma.contract.findUniqueOrThrow({
+      where: { projectId: created.projectId },
+      include: { tranches: true },
+    });
+    assert.equal(contract.totalAmount, 3_000_000n, 'сумма договора — всё полученное');
+    const tranches = contract.tranches.map((t) => `${t.status}:${t.amount}:${t.title}`).sort();
+    assert.deepEqual(tranches, [
+      `PAID:2500000:Поступление по книге учёта`,
+      `PAID:500000:${EXTRA_TITLE}`,
+    ]);
+  });
+
   it('у заказа не из книги строки книги нет; доля оплаты считается как в книге', async () => {
     assert.equal(await bookRowOf(actor(ids.head!, 'HEAD'), projects[0]!), null);
     assert.equal(paidShare({ cost: 12_500_000n, paid: 4_166_700n }), '33 %');

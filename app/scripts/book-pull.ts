@@ -3,6 +3,7 @@
  *
  *   node --env-file=.env scripts/book-pull.ts          → забрать и зафиксировать
  *   node --env-file=.env scripts/book-pull.ts --dry    → показать, что перенеслось бы
+ *   node --env-file=.env scripts/book-pull.ts --force  → разобрать и неизменённую книгу
  *
  * Зачем он нужен, если аналитика уже онлайн. Аналитика кабинета читает базу
  * при каждом открытии — кэша нет ни на одной вкладке. Недостаёт другого:
@@ -37,6 +38,8 @@ import { YandexDisk } from '../src/lib/disk/webdav.ts';
 import { applyBatch, previewBook } from '../src/lib/cabinet/import/apply.ts';
 
 const dry = process.argv.includes('--dry');
+/** Разобрать книгу, даже если файл не менялся: после смены правил переноса (Р-273). */
+const force = process.argv.includes('--force');
 const user = process.env.YANDEX_DISK_USER?.trim() ?? '';
 const password = process.env.YANDEX_DISK_PASSWORD?.trim() ?? '';
 const folder = process.env.YANDEX_DISK_FOLDER?.trim() || 'ProDisser';
@@ -101,7 +104,7 @@ async function main(): Promise<number> {
     where: { sha256: digest, state: 'APPLIED' },
     select: { id: true, createdAt: true },
   });
-  if (known !== null) {
+  if (known !== null && !force) {
     say(`книга не менялась с прошлого прогона (загрузка ${known.id}) — перенос не нужен`);
     return 0;
   }

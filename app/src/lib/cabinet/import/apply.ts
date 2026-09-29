@@ -133,6 +133,8 @@ function valuesOf(row: ParsedRow) {
 
 /** Название транша, которым перенос заводит неоплаченный остаток договора. */
 const REST_TITLE = 'Остаток по договору';
+/** Поступление сверх стоимости из книги — доплата за дополнительную услугу (Р-273). */
+export const EXTRA_TITLE = 'Доплата сверх стоимости по книге (доп. услуги)';
 
 /** Маркер вместо стёртого заказчика — тот же, что у обезличивания. */
 const ERASED_CUSTOMER = '[удалено по требованию субъекта]';
@@ -665,26 +667,35 @@ export async function openContract(
     readonly paidTitle?: string;
   },
 ): Promise<void> {
+  // Оплачено больше стоимости — доплата за дополнительную услугу:
+  // сумма договора — всё полученное, а доплата стоит отдельным
+  // поступлением, чтобы стоимость по книге читалась в договоре (Р-273).
+  const extra = input.rowPaid > input.rowCost ? input.rowPaid - input.rowCost : 0n;
   const contract = await tx.contract.create({
     data: {
       projectId: input.projectId,
       number: input.code,
       signedOn: input.orderDate,
-      totalAmount: input.rowCost,
+      totalAmount: input.rowCost + extra,
     },
     select: { id: true },
   });
 
   // Дата поступления в книге не ведётся, поэтому у транша её нет:
   // пустое поле честнее подставленной даты заказа.
-  if (input.rowPaid > 0n) {
+  if (input.rowPaid - extra > 0n) {
     await tx.tranche.create({
       data: {
         contractId: contract.id,
         title: input.paidTitle ?? 'Поступление по книге учёта',
-        amount: input.rowPaid,
+        amount: input.rowPaid - extra,
         status: 'PAID',
       },
+    });
+  }
+  if (extra > 0n) {
+    await tx.tranche.create({
+      data: { contractId: contract.id, title: EXTRA_TITLE, amount: extra, status: 'PAID' },
     });
   }
   if (input.rowCost > input.rowPaid) {
@@ -933,7 +944,10 @@ export async function applyBatch(
             paid += rowPaid;
           }
           if (contract !== null) {
-            await tx.contract.update({ where: { id: contract.id }, data: { totalAmount: rowCost } });
+            // Сумма договора не ниже полученного: оплата сверх стоимости —
+            // доплата за дополнительную услугу (Р-273).
+            const total = rowPaid > rowCost ? rowPaid : rowCost;
+            await tx.contract.update({ where: { id: contract.id }, data: { totalAmount: total } });
             const paidSoFar = contract.tranches
               .filter((tranche) => tranche.status === 'PAID')
               .reduce((sum, tranche) => sum + tranche.amount, 0n);
@@ -955,7 +969,7 @@ export async function applyBatch(
             const others = contract.tranches
               .filter((tranche) => tranche.id !== rest?.id)
               .reduce((sum, tranche) => sum + tranche.amount, 0n);
-            const left = rowCost - others - received;
+            const left = total - others - received;
             if (rest !== undefined) {
               if (left > 0n) {
                 await tx.tranche.update({ where: { id: rest.id }, data: { amount: left } });
