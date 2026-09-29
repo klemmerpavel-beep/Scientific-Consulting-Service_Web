@@ -166,6 +166,11 @@ async function main(): Promise<number> {
 
 try {
   process.exitCode = await main();
+} catch (error) {
+  // Причина — одной строкой с отметкой времени: её читает отчёт цепочки
+  // (`chain-check.sh`), а трассировка стека в журнале её прятала (Р-274).
+  say(`ОШИБКА: ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
 } finally {
   await prisma.$disconnect();
 }

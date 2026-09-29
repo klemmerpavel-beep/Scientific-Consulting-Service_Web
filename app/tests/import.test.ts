@@ -139,6 +139,28 @@ describe('архив и книга', () => {
     );
   });
 
+  it('книга с префиксом пространства имён читается так же (Р-274)', () => {
+    // Так книгу заказов пересохранила сторонняя программа 28.09.2026:
+    // `<s:sheet>`, `<s:row>`, `<s:c>` вместо имён без префикса.
+    const prefixed = [...unzip(book())].map(([name, body]) => ({
+      name,
+      content: /^xl\/(workbook|styles|sharedStrings|worksheets\/sheet\d+)\.xml$/u.test(name)
+        ? body
+            .toString('utf8')
+            .replace(/ xmlns="http:\/\/schemas\.openxmlformats\.org\/spreadsheetml\/2006\/main"/u, ' xmlns:s="http://schemas.openxmlformats.org/spreadsheetml/2006/main"')
+            .replace(/<(\/?)([A-Za-z])/gu, '<$1s:$2')
+        : body,
+    }));
+    const plain = parseBook(readWorkbook(book()));
+    const again = parseBook(readWorkbook(zip(prefixed)));
+    assert.equal(again.rows.length, plain.rows.length);
+    assert.deepEqual(again.totals, plain.totals);
+    assert.deepEqual(
+      again.rows.map((row) => [row.customer, row.fill, row.status]),
+      plain.rows.map((row) => [row.customer, row.fill, row.status]),
+    );
+  });
+
   it('заливка ячейки доходит до разбора', () => {
     const [sheet] = readWorkbook(book());
     const row = sheet.rows.find((candidate) => candidate.number === 6);

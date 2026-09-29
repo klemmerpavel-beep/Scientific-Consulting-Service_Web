@@ -197,7 +197,16 @@ else
     row=$(sql "SELECT to_char(\"occurredAt\" $MSK, 'DD.MM HH24:MI'), payload->>'held'
                FROM \"AuditEvent\" WHERE action = 'BOOK_PULL' ORDER BY \"occurredAt\" DESC LIMIT 1;")
     last=$(echo "$row" | cut -d'|' -f1); held=$(echo "$row" | cut -d'|' -f2)
-    if [ "${held:-0}" -gt 0 ] 2>/dev/null; then
+    # Последний прогон моста — по журналу: упавший прогон в базу не пишет,
+    # и отчёт показывал давний удачный перенос, пока мост падал каждый час
+    # (решение Р-274). Первая ошибка прогона называет причину.
+    BOOK_LOG=${CHAIN_BOOK_LOG:-/var/log/prodisser-book.log}
+    tailrun=$(grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}T' "$BOOK_LOG" 2>/dev/null | tail -n 3)
+    if echo "$tailrun" | tail -n 1 | grep -q 'ОШИБКА'; then
+      ranat=$(echo "$tailrun" | tail -n 1 | cut -c1-16 | tr 'T' ' ')
+      why=$(echo "$tailrun" | grep 'ОШИБКА' | head -n 1 | sed 's/^[^ ]* ОШИБКА: //' | cut -c1-240)
+      bad "книга заказов: прогон моста $ranat UTC упал — $why (журнал: $BOOK_LOG)"
+    elif [ "${held:-0}" -gt 0 ] 2>/dev/null; then
       bad "книга заказов: перенос $last оставил на разбор строк — $held (кабинет → «Перенос книги»)"
     else
       ok "книга заказов: файл на месте, последний перенос — ${last:-ещё не было, ближайший в :30}"
