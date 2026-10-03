@@ -36,7 +36,7 @@ import {
   type ProjectRef,
   type Role,
 } from '../src/lib/cabinet/access.ts';
-import { activeItem, hasToolsScreen, homeFor, navFor } from '../src/lib/cabinet/nav.ts';
+import { activeItem, hasToolsScreen, homeFor, navFor, soleWorkTarget } from '../src/lib/cabinet/nav.ts';
 
 const NDA = new Date('2026-01-15T00:00:00Z');
 
@@ -623,5 +623,33 @@ describe('исполнитель на виду у практики (М-16, Р-29
     assert.equal(staffExpertLine({ fullName: 'Григорьев А. Э.', expertProfile: { ndaSignedAt: NDA } }), 'эксперт — Григорьев А. Э.');
     assert.equal(staffExpertLine(null, 'Петров (книга)'), 'эксперт — Петров (книга)');
     assert.equal(staffExpertLine(null, '  '), 'эксперт не назначен');
+  });
+});
+
+describe('одна работа — сразу карточка (Т-09, Р-311)', () => {
+  const base = {
+    role: 'CLIENT' as const,
+    welcomeOpen: false,
+    asked: false,
+    all: 1,
+    rows: [{ code: 'PD-2026-001', status: 'ACTIVE' }],
+  };
+
+  it('одна действующая или приостановленная работа — карточка', () => {
+    assert.equal(soleWorkTarget(base), '/cabinet/projects/PD-2026-001');
+    assert.equal(soleWorkTarget({ ...base, rows: [{ code: 'PD-2026-001', status: 'PAUSED' }] }), '/cabinet/projects/PD-2026-001');
+  });
+
+  it('иначе — перечень', () => {
+    assert.equal(soleWorkTarget({ ...base, all: 2 }), null);
+    assert.equal(soleWorkTarget({ ...base, rows: [{ code: 'PD-2026-001', status: 'COMPLETED' }] }), null);
+    assert.equal(soleWorkTarget({ ...base, welcomeOpen: true }), null, 'открытый блок первого входа');
+    assert.equal(soleWorkTarget({ ...base, asked: true }), null, 'отбор в адресе');
+    assert.equal(soleWorkTarget({ ...base, role: 'MANAGER' }), null);
+  });
+
+  it('на карточке подсвечены «Мои работы»', () => {
+    // Карточка передаёт каркасу адрес перечня работ.
+    assert.equal(activeItem(navFor(client), '/cabinet/projects'), '/cabinet/projects');
   });
 });

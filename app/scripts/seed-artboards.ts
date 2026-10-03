@@ -918,6 +918,50 @@ async function main() {
     });
   }
 
+  // ── Клиент с одной работой ──────────────────────────────────────────────
+  // Второй клиент с входом: у него ровно одна работа в действии или на паузе, и «Мои
+  // работы» ведут сразу на её карточку (требование Т-09, решение Р-311).
+  // Блок первого входа у него уже закрыт — иначе перенаправления нет (О-3).
+  // Карточка выбирается по книге, первая подходящая, — наполнение
+  // воспроизводимо.
+  // Повторное наполнение оставляет прежнюю привязку: у записи одна карточка.
+  const known = await prisma.user.findUnique({
+    where: { email: `single@${DOMAIN}` },
+    select: { id: true, clientProfile: { select: { id: true } } },
+  });
+  if (known !== null && known.clientProfile !== null) {
+    await prisma.user.update({ where: { id: known.id }, data: { welcomeClosedAt: day(59) } });
+  } else {
+    const counts = await prisma.project.groupBy({ by: ['clientId'], _count: { _all: true } });
+    const single = new Set(counts.filter((row) => row._count._all === 1).map((row) => row.clientId));
+    const candidate = await prisma.project.findFirst({
+      where: {
+        clientId: { in: [...single].filter((id) => id !== clientIds[showcaseClient] && id !== clientIds[11]) },
+        // Действующая или приостановленная (О-11): в книге у клиентов с
+        // одной работой действующих нет — берётся приостановленная.
+        status: { in: ['ACTIVE', 'PAUSED'] },
+        client: { userId: null },
+      },
+      orderBy: [{ status: 'asc' }, { code: 'asc' }],
+      select: { clientId: true, client: { select: { fullName: true } } },
+    });
+    if (candidate !== null) {
+      const single = await prisma.user.upsert({
+        where: { email: `single@${DOMAIN}` },
+        create: {
+          email: `single@${DOMAIN}`,
+          fullName: candidate.client.fullName,
+          role: 'CLIENT',
+          consentAcceptedAt: day(60),
+          consentVersion: '2026-08-21',
+          welcomeClosedAt: day(59),
+        },
+        update: { welcomeClosedAt: day(59) },
+      });
+      await prisma.clientProfile.update({ where: { id: candidate.clientId }, data: { userId: single.id } });
+    }
+  }
+
   // ── Ссылки входа для снимка ─────────────────────────────────────────────
   const links: Record<string, string> = {};
   for (const [role, user] of [

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../components/cabinet/tokens';
@@ -38,6 +39,7 @@ import {
 import { daysPast } from '../../../lib/cabinet/clock';
 import { can, staffExpertLine } from '../../../lib/cabinet/access';
 import { requireActor } from '../../../lib/cabinet/session';
+import { soleWorkTarget } from '../../../lib/cabinet/nav';
 import { welcomeState } from '../../../lib/cabinet/channels';
 import { dismissWelcome, startTelegramBind } from '../actions';
 
@@ -79,6 +81,18 @@ export default async function ProjectsScreen({
   // Блок первого входа — пока клиент его не закрыл (требование Т-10,
   // решение Р-310).
   const welcome = await welcomeState(actor);
+  // Одна действующая или приостановленная работа — сразу её карточка:
+  // перечень из одной строки — лишнее нажатие (требование Т-09, О-3, О-11,
+  // решение Р-311). Пока открыт блок первого входа, клиент видит его здесь;
+  // отбор в адресе — просьба о перечне, и она исполняется.
+  const sole = soleWorkTarget({
+    role: actor.role,
+    welcomeOpen: welcome.open,
+    asked: sp.state !== undefined || sp.q !== undefined || sp.page !== undefined,
+    all: list.all,
+    rows: projects,
+  });
+  if (sole !== null) redirect(sole);
   const forExpert = actor.role === 'EXPERT';
   const showFilters = list.all > PROJECT_FILTER_FROM;
   // Требуемое действие показывается там, где человек его ищет, — на самой

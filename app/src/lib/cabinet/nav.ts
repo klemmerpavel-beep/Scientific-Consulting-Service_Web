@@ -119,3 +119,22 @@ export function activeItem(items: readonly NavItem[], current: string): string |
   return best;
 }
 
+
+/**
+ * Карточка, на которую «Мои работы» ведут сразу (требование Т-09, решение
+ * Р-311): клиент, ровно одна работа, она действует или приостановлена
+ * (О-11), блок первого входа закрыт (О-3), отбора в адресе нет. Иначе —
+ * перечень (`null`).
+ */
+export function soleWorkTarget(input: {
+  readonly role: Actor['role'];
+  readonly welcomeOpen: boolean;
+  readonly asked: boolean;
+  readonly all: number;
+  readonly rows: readonly { readonly code: string; readonly status: string }[];
+}): string | null {
+  if (input.role !== 'CLIENT' || input.welcomeOpen || input.asked) return null;
+  if (input.all !== 1 || input.rows.length !== 1) return null;
+  const only = input.rows[0]!;
+  return only.status === 'ACTIVE' || only.status === 'PAUSED' ? `/cabinet/projects/${only.code}` : null;
+}
