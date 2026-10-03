@@ -506,6 +506,13 @@ export default async function ProjectScreen({
               ? 'материалы'
               : `материалы · ${materialCount}`
           }
+          // Договор и акты клиент находит здесь, а не через переписку; у
+          // сотрудников экран оплат — в «Управлении работой» (решение Р-280).
+          extra={
+            forClient && can(actor, 'CONTRACT_VIEW', ref)
+              ? { href: `/cabinet/projects/${project.code}/payments`, label: 'Оплаты и документы' }
+              : undefined
+          }
         >
           <Roadmap items={roadmap} staff={staff} />
         </BoardColumn>

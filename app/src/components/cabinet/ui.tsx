@@ -2000,6 +2000,7 @@ export function BoardColumn({
   title,
   href,
   hrefLabel,
+  extra,
   footer,
   anchor = 'start',
   fit = false,
@@ -2010,6 +2011,12 @@ export function BoardColumn({
   /** Полный перечень на своём экране: в колонке видно главное. */
   href?: string;
   hrefLabel?: string;
+  /**
+   * Вторая ссылка рядом с первой: клиенту — «Оплаты и документы» возле
+   * «материалы · N» (решение Р-280). Нового пункта меню ради экрана оплат
+   * не заводится: всё по работе — внутри карточки работы.
+   */
+  extra?: { readonly href: string; readonly label: string };
   /** Форма отправки: стоит под телом и с ним не прокручивается. */
   footer?: ReactNode;
   /**
@@ -2077,10 +2084,19 @@ export function BoardColumn({
         >
           {title}
         </h2>
-        {href === undefined ? null : (
-          <a className="cab-mark" href={href} style={{ fontFamily: SANS, fontSize: 14 }}>
-            {hrefLabel ?? 'весь список'}
-          </a>
+        {href === undefined && extra === undefined ? null : (
+          <span style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {href === undefined ? null : (
+              <a className="cab-mark" href={href} style={{ fontFamily: SANS, fontSize: 14 }}>
+                {hrefLabel ?? 'весь список'}
+              </a>
+            )}
+            {extra === undefined ? null : (
+              <a className="cab-mark" href={extra.href} style={{ fontFamily: SANS, fontSize: 14 }}>
+                {extra.label}
+              </a>
+            )}
+          </span>
         )}
       </div>
       <div

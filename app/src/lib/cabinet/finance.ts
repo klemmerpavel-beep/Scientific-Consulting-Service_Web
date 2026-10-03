@@ -4,6 +4,18 @@ import { record } from './audit.ts';
 import { moscowToday } from './clock.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
+import { siteUrl } from '../site-url.ts';
+
+/**
+ * Строка письма о платеже со ссылкой на экран оплат этой работы, а не на
+ * кабинет вообще (решение Р-280). Без адреса сайта — прежняя фраза.
+ */
+export function paymentsLine(code: string | null): string {
+  const base = siteUrl();
+  return base === null || code === null
+    ? 'Документы и состояние оплат видны в кабинете.'
+    : `Документы и состояние оплат: ${base}/cabinet/projects/${code}/payments`;
+}
 import {
   STATUS_LABEL,
   canChangeTrancheStatus,
@@ -271,7 +283,7 @@ export async function setTrancheStatus(
         body:
           `Проект ${project?.code} — ${project?.title}.\n` +
           `Транш «${row.title}» переведён в состояние «${STATUS_LABEL[status]}».\n` +
-          'Документы и состояние оплат видны в кабинете.',
+          paymentsLine(project?.code ?? null),
         // Ключ по моменту перехода: счёт, отозванный и выставленный снова,
         // прежде не доходил — строка с тем же ключом уже была (Р-244).
         dedupKey: `tranche:${trancheId}:${status.toLowerCase()}:${row.updatedAt.getTime()}`,
