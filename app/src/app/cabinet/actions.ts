@@ -7,6 +7,7 @@ import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { AccessDenied, ensure, type Actor } from '../../lib/cabinet/access';
 import { withError } from '../../lib/cabinet/flash';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
+import { ClientChoiceNeeded } from '../../lib/cabinet/client-match';
 import {
   LEAD_EDIT_FIELDS,
   LeadWorkError,
@@ -936,6 +937,7 @@ export async function createOrder(form: FormData): Promise<void> {
   const text = (name: string) => String(form.get(name) ?? '').trim();
   let failure: string | null = null;
   let code: string | null = null;
+  let choiceNeeded = false;
   try {
     const amountOf = (name: string): bigint | null => (text(name).length === 0 ? null : parseAmount(text(name)));
     const status = text('status');
@@ -952,14 +954,23 @@ export async function createOrder(form: FormData): Promise<void> {
       paid: amountOf('paid'),
       status: status === 'PAUSED' || status === 'COMPLETED' ? status : 'ACTIVE',
       managerId: text('managerId') || null,
+      clientChoice: text('clientChoice') || null,
     });
     code = created.code;
   } catch (error) {
     failure =
-      error instanceof OrderInputError ? error.message : reasonOf(error, 'Не удалось завести заказ');
+      error instanceof OrderInputError || error instanceof ClientChoiceNeeded
+        ? error.message
+        : reasonOf(error, 'Не удалось завести заказ');
+    choiceNeeded = error instanceof ClientChoiceNeeded;
   }
   if (failure !== null || code === null) {
-    redirect(await withError('/cabinet/manage/orders/new', failure ?? 'Не удалось завести заказ'));
+    // Набранное возвращается в форму; совпадение только по ФИО открывает
+    // выбор карточки заказчика (требование М-18, решение Р-308).
+    const fields = ['customer', 'email', 'phone', 'serviceTypeId', 'title', 'topic', 'orderedOn', 'dueOn', 'cost', 'paid', 'status', 'managerId'];
+    const draft: Record<string, string> = Object.fromEntries(fields.map((name) => [name, text(name)]));
+    if (choiceNeeded) draft.clientChoiceNeeded = '1';
+    redirect(await withError('/cabinet/manage/orders/new', failure ?? 'Не удалось завести заказ', { draft }));
   }
   redirect(`/cabinet/projects/${code}?created=1`);
 }

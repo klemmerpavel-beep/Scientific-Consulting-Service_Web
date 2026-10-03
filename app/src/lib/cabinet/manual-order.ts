@@ -1,8 +1,12 @@
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { moscowToday } from './clock.ts';
+import { ClientChoiceNeeded, NEW_CLIENT, orderEmail, type NameCandidate } from './client-match.ts';
+import { phoneKey } from './contacts.ts';
 import { normalizeName } from './import/etl.ts';
 import { openContract } from './import/apply.ts';
+import { formatAmount } from './money.ts';
+import { enqueue } from './outbox.ts';
 import { nextProjectCode } from './projects.ts';
 import { prisma } from '../db.ts';
 
@@ -16,10 +20,11 @@ import { prisma } from '../db.ts';
  * заказчик, вид и название работы, тема, дата заказа, срок, стоимость и
  * оплата, состояние.
  *
- * Карточка клиента ищется по ФИО так же, как при переносе книги: второй
- * заказ того же человека ложится в его карточку. Учётная запись клиенту
- * не заводится и писем не уходит — вход ему открывается отдельно, на экране
- * «Учётные записи», когда это нужно.
+ * Карточка клиента ищется по почте и телефону; совпадение только по ФИО
+ * менеджер решает сам — выбирает найденную карточку или заводит новую:
+ * прежде заказ однофамильца молча ложился в чужую карточку (требование
+ * М-18, решение Р-308). Учётная запись клиенту не заводится и писем не
+ * уходит — вход открывается кнопкой «Открыть клиенту вход».
  */
 export interface ManualOrderInput {
   readonly customer: string;
@@ -36,6 +41,67 @@ export interface ManualOrderInput {
   readonly status?: 'ACTIVE' | 'PAUSED' | 'COMPLETED';
   /** Куратор. Менеджер ведёт свои заказы: для него это всегда он сам. */
   readonly managerId?: string | null;
+  /**
+   * Выбор при совпадении только по ФИО: идентификатор найденной карточки
+   * или `NEW_CLIENT`. Без выбора такое совпадение — отказ
+   * `ClientChoiceNeeded` (решение Р-308).
+   */
+  readonly clientChoice?: string | null;
+}
+
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+const ALIVE = { mergedIntoId: null, erasedAt: null } as const;
+
+/** Карточка по почте или телефону — сильные признаки, выбора не требуют. */
+async function byContact(tx: Tx, email: string | null, phone: string | null): Promise<string | null> {
+  if (email !== null) {
+    const found = await tx.clientProfile.findFirst({
+      where: { ...ALIVE, OR: [{ email: { equals: email, mode: 'insensitive' } }, { user: { email } }] },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+    if (found !== null) return found.id;
+  }
+  const key = phoneKey(phone);
+  if (key === null) return null;
+  // Телефон хранится как ввели; сверка — по последним десяти цифрам.
+  const phones = await tx.clientProfile.findMany({
+    where: { ...ALIVE, phone: { not: null } },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, phone: true },
+  });
+  return phones.find((row) => phoneKey(row.phone) === key)?.id ?? null;
+}
+
+/**
+ * Карточки практики, совпавшие с заказчиком только по ФИО, — для выбора на
+ * экране «Новый заказ». Менеджер видит ФИО, маски контактов и число работ,
+ * без ссылок на карточки (ОМ-5).
+ */
+export async function nameCandidates(actor: Actor, customer: string): Promise<NameCandidate[]> {
+  ensure(actor, 'REQUEST_MODERATE');
+  const normalized = normalizeName(customer.replace(/\s+/gu, ' ').trim());
+  if (normalized.length === 0) return [];
+  const rows = await prisma.clientProfile.findMany({
+    where: { ...ALIVE, normalizedName: normalized },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      user: { select: { email: true } },
+      _count: { select: { projects: true } },
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    fullName: row.fullName,
+    email: row.email ?? row.user?.email ?? null,
+    phone: row.phone,
+    works: row._count.projects,
+  }));
 }
 
 export class OrderInputError extends Error {}
@@ -57,6 +123,21 @@ export async function createManualOrder(
     throw new OrderInputError('Оплачено больше стоимости: проверьте суммы.');
   }
 
+  // Почта — по формату и не сотрудника: работа на адресе сотрудника не
+  // видна ни ему, ни клиенту (требование М-18, решение Р-308).
+  const emailRaw = input.email?.trim() || null;
+  const email = emailRaw === null ? null : orderEmail(emailRaw);
+  if (emailRaw !== null && email === null) {
+    throw new OrderInputError('Почта заказчика записана с ошибкой: проверьте адрес.');
+  }
+  if (email !== null) {
+    const owner = await prisma.user.findUnique({ where: { email }, select: { role: true } });
+    if (owner !== null && owner.role !== 'CLIENT') {
+      throw new OrderInputError('Это адрес сотрудника практики: укажите почту заказчика.');
+    }
+  }
+  const phone = input.phone?.trim() || null;
+
   const managerId = actor.role === 'HEAD' ? (input.managerId || actor.id) : actor.id;
   const status = input.status ?? 'ACTIVE';
   const orderedOn = input.orderedOn ?? moscowToday();
@@ -72,14 +153,31 @@ export async function createManualOrder(
       throw new OrderInputError('Куратором может быть только действующий менеджер или руководитель.');
     }
 
-    const email = input.email?.trim().toLowerCase() || null;
-    const phone = input.phone?.trim() || null;
-    const existing = await tx.clientProfile.findFirst({
-      // Сведённая в другую и стёртая по требованию карточки заказы не принимают.
-      where: { normalizedName: normalized, mergedIntoId: null, erasedAt: null },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true, email: true, phone: true },
-    });
+    // Сведённая в другую и стёртая по требованию карточки заказы не
+    // принимают. Почта и телефон находят карточку сами; совпадение только
+    // по ФИО — выбор менеджера (решение Р-308).
+    let foundId = await byContact(tx, email, phone);
+    if (foundId === null) {
+      const namesakes = await tx.clientProfile.findMany({
+        where: { ...ALIVE, normalizedName: normalized },
+        select: { id: true },
+      });
+      const choice = input.clientChoice?.trim() || null;
+      if (namesakes.length > 0 && choice !== NEW_CLIENT) {
+        if (choice === null) throw new ClientChoiceNeeded();
+        if (!namesakes.some((row) => row.id === choice)) {
+          throw new OrderInputError('Выбранной карточки среди найденных нет: выберите снова.');
+        }
+        foundId = choice;
+      }
+    }
+    const existing =
+      foundId === null
+        ? null
+        : await tx.clientProfile.findUniqueOrThrow({
+            where: { id: foundId },
+            select: { id: true, email: true, phone: true },
+          });
     let clientId: string;
     if (existing === null) {
       const client = await tx.clientProfile.create({
@@ -142,5 +240,28 @@ export async function createManualOrder(
     projectId: created.projectId,
     payload: { code: created.code },
   });
+
+  // Деньги ведёт руководитель (Р-149), но договор при ручном заказе
+  // заводит и менеджер (В-9): руководитель узнаёт о нём сразу. Сумма — только
+  // в письме; в Telegram уходит событие и код работы (Р-187).
+  if (actor.role === 'MANAGER' && cost > 0n) {
+    const [me, heads] = await Promise.all([
+      prisma.user.findUnique({ where: { id: actor.id }, select: { fullName: true } }),
+      prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } }),
+    ]);
+    for (const head of heads) {
+      await enqueue(prisma, {
+        userId: head.id,
+        projectId: created.projectId,
+        eventKind: 'ORDER_WITH_CONTRACT',
+        subject: `Заведён заказ с договором: ${created.code}, ${formatAmount(cost)}`,
+        body:
+          `Куратор ${me?.fullName ?? ''} завёл заказ ${created.code} — ${title}.\n` +
+          `Сумма договора: ${formatAmount(cost)}; оплачено при заведении: ${formatAmount(paid)}.\n` +
+          'Менять суммы и оплаты дальше может только руководитель — на экране «Оплаты и документы» работы.',
+        dedupKey: `order-contract:${created.projectId}:${head.id}`,
+      });
+    }
+  }
   return created;
 }

@@ -18,7 +18,7 @@ import { siteUrl } from '../site-url.ts';
 import { now } from './clock.ts';
 import { moscowToday } from './admin.ts';
 import { STAGE_TRANSITIONS, stageLabel } from './stage-state.ts';
-import { hasContacts } from './contacts.ts';
+import { hasContacts, phoneKey } from './contacts.ts';
 import {
   APPROVAL_DAYS_MAX,
   APPROVAL_DAYS_MIN,
@@ -91,6 +91,34 @@ export interface ApproveLeadInput {
  * Одобрить заявку и развернуть её в проект. Заявка при этом не исчезает:
  * она получает ссылку на проект и остаётся в системе навсегда.
  */
+/**
+ * Карточка того же человека по почте или телефону заявки — живая, без
+ * учётной записи или с записью заявителя (требование М-18, решение Р-308).
+ */
+async function contactTwin(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  email: string | null,
+  phone: string | null,
+  userId: string | null,
+) {
+  const owner = { OR: [{ userId: null }, ...(userId === null ? [] : [{ userId }])] };
+  const alive = { mergedIntoId: null, erasedAt: null };
+  if (email !== null) {
+    const found = await tx.clientProfile.findFirst({
+      where: { AND: [alive, owner, { email: { equals: email, mode: 'insensitive' } }] },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (found !== null) return found;
+  }
+  const key = phoneKey(phone);
+  if (key === null) return null;
+  const rows = await tx.clientProfile.findMany({
+    where: { AND: [alive, owner, { phone: { not: null } }] },
+    orderBy: { createdAt: 'asc' },
+  });
+  return rows.find((row) => phoneKey(row.phone) === key) ?? null;
+}
+
 export async function approveLead(actor: Actor, input: ApproveLeadInput) {
   ensure(actor, 'REQUEST_MODERATE');
 
@@ -127,7 +155,10 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
   const fullName = lead.name?.trim() || 'Клиент без имени';
   const normalized = normalizeName(fullName);
   const email = lead.contactKind === 'email' ? lead.contact.trim().toLowerCase() : null;
-  const phone = lead.contactKind === 'phone' ? lead.contact.trim() : null;
+  // Доп. телефон и организация заявки переходят в карточку клиента: прежде
+  // они оставались в заявке и терялись (требование М-18, решение Р-308).
+  const phone = lead.contactKind === 'phone' ? lead.contact.trim() : lead.phone?.trim() || null;
+  const university = lead.organization?.trim() || null;
 
   const project = await prisma.$transaction(async (tx) => {
     // Заявка захватывается первой строкой транзакции, по состоянию, а не по
@@ -184,10 +215,32 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
       userId = user.id;
     }
 
-    const existing =
+    const own =
       userId === null
         ? null
         : await tx.clientProfile.findUnique({ where: { userId } });
+    // Дубль ищется и по почте и телефону карточки: заявка с адресом,
+    // совпавшим с карточкой без учётной записи (заказ вручную, перенос
+    // книги), заводила вторую карточку того же человека. Найденная карточка
+    // без записи привязывается к записи заявителя (решение Р-308).
+    const twin = own ?? (await contactTwin(tx, email, phone, userId));
+    if (twin !== null && twin.userId === null && userId !== null) {
+      await tx.clientProfile.update({ where: { id: twin.id }, data: { userId } });
+    }
+    const existing = twin;
+    if (existing !== null) {
+      // Пустые поля карточки дополняются сведениями заявки, заполненные не
+      // затираются.
+      const patch = {
+        ...(existing.email === null && email !== null ? { email } : {}),
+        ...(existing.phone === null && phone !== null ? { phone } : {}),
+        ...(existing.university === null && university !== null ? { university } : {}),
+        ...(existing.speciality === null && (lead.speciality ?? null) !== null ? { speciality: lead.speciality } : {}),
+      };
+      if (Object.keys(patch).length > 0) {
+        await tx.clientProfile.update({ where: { id: existing.id }, data: patch });
+      }
+    }
 
     const client =
       existing ??
@@ -198,7 +251,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
           normalizedName: normalized,
           email,
           phone,
-          university: null,
+          university,
           speciality: lead.speciality ?? null,
         },
       }));
