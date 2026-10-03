@@ -521,3 +521,79 @@ export function presentReturnText(
 
 /** Что видит эксперт вместо замечаний с контактом. */
 export const RETURN_TEXT_WITH_CURATOR = 'Замечания у куратора: в тексте были контакты.';
+
+// ─────────────────────── Представление участника работы ────────────────────
+
+/**
+ * Роль эксперта в работе — так его видит клиент (требование Т-11, О-10,
+ * решение Р-297). ФИО и контакты эксперта клиенту не показываются (Р-150);
+ * вместо «Специалиста практики» — роль из работы.
+ */
+export const EXPERT_ROLE_LABEL = {
+  SUBJECT_EXPERT: 'Эксперт по специальности',
+  METHODOLOGIST: 'Методолог',
+  SCIENCE_EDITOR: 'Научный редактор',
+} as const;
+
+export type ExpertRoleKey = keyof typeof EXPERT_ROLE_LABEL;
+
+export function expertRoleLabel(role: string | null | undefined): string {
+  return EXPERT_ROLE_LABEL[(role ?? 'SUBJECT_EXPERT') as ExpertRoleKey] ?? EXPERT_ROLE_LABEL.SUBJECT_EXPERT;
+}
+
+/**
+ * Как назвать автора файла, замечания или события. Себя смотрящий видит
+ * как «Вы», клиент эксперта — по роли из работы, остальных — по имени.
+ */
+export function presentAuthor(
+  author: { readonly fullName: string; readonly role: string },
+  viewer: { readonly id?: string; readonly role: string },
+  authorId?: string,
+  expertRole?: string | null,
+): string {
+  if (authorId !== undefined && authorId === viewer.id) return 'Вы';
+  if (viewer.role === 'CLIENT' && author.role === 'EXPERT') return expertRoleLabel(expertRole);
+  return author.fullName;
+}
+
+/** Регалии без пустых частей: «к. т. н., 2.8.6». */
+function regalia(parts: readonly (string | null | undefined)[]): string {
+  return parts.map((part) => (part ?? '').trim()).filter((part) => part !== '').join(', ');
+}
+
+/** «Куратор — ФИО, степень, специальность»: пустые части не выводятся. */
+export function curatorLine(manager: {
+  readonly fullName: string;
+  readonly expertProfile: { readonly degree: string | null; readonly specialization: string | null } | null;
+}): string {
+  return regalia([manager.fullName, manager.expertProfile?.degree, manager.expertProfile?.specialization]);
+}
+
+/** «Степень, шифр» эксперта для клиента — без ФИО и контактов. */
+export function expertLine(profile: { readonly degree: string | null; readonly specialtyCode: string | null } | null): string {
+  return regalia([profile?.degree, profile?.specialtyCode]);
+}
+
+/**
+ * Данные экрана клиента без ФИО эксперта (требование Т-11, решение Р-297).
+ *
+ * Экран клиента и прежде не печатал имени эксперта (Р-143, Р-277), но
+ * выборки брали его вместе с авторами версий и замечаний. Ограничение
+ * полей снимает его с данных: у любого вложенного объекта с ролью
+ * эксперта имя пустеет. Сотрудникам и эксперту данные отдаются как есть.
+ */
+export function withoutExpertNames<T>(viewer: Actor, value: T): T {
+  if (viewer.role !== 'CLIENT') return value;
+  const walk = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(walk);
+    if (node === null || typeof node !== 'object') return node;
+    const proto = Object.getPrototypeOf(node);
+    if (proto !== Object.prototype && proto !== null) return node;
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(node)) out[key] = walk(item);
+    if (out.role === 'EXPERT' && 'fullName' in out) out.fullName = '';
+    if (out.role === 'EXPERT' && 'email' in out) out.email = '';
+    return out;
+  };
+  return walk(value) as T;
+}

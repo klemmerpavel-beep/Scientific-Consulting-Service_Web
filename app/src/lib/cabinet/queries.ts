@@ -11,6 +11,7 @@ import {
   scopeMaterials,
   scopeProjects,
   scopeVersions,
+  withoutExpertNames,
   type Actor,
 } from './access.ts';
 import { fileRefusal } from './file-guard.ts';
@@ -140,14 +141,21 @@ export async function listProjects(
 export async function projectByCode(actor: Actor, code: string) {
   const scope = scopeProjects(actor);
   if (scope === null) return null;
-  return prisma.project.findFirst({
+  const project = await prisma.project.findFirst({
     where: { code, ...scope },
     include: {
       serviceType: true,
       client: true,
-      manager: { select: { id: true, fullName: true } },
+      // Регалии куратора и эксперта — для «О работе» (Т-11, Р-297).
+      manager: {
+        select: {
+          id: true,
+          fullName: true,
+          expertProfile: { select: { degree: true, specialization: true } },
+        },
+      },
       expert: {
-        select: { id: true, fullName: true, expertProfile: true },
+        select: { id: true, fullName: true, role: true, expertProfile: true },
       },
       stages: { orderBy: { position: 'asc' } },
       // История работы показывается целиком, а не последней дюжиной:
@@ -161,6 +169,8 @@ export async function projectByCode(actor: Actor, code: string) {
       },
     },
   });
+  // Клиенту — без ФИО эксперта и в данных, не только на экране (Р-297).
+  return withoutExpertNames(actor, project);
 }
 
 export async function stageById(actor: Actor, stageId: string) {
@@ -170,7 +180,7 @@ export async function stageById(actor: Actor, stageId: string) {
   const commentScope = scopeComments(actor) ?? {};
   // Версия эксперта видна клиенту после публикации (Т-18, Р-294).
   const versionScope = scopeVersions(actor) ?? {};
-  return prisma.stage.findFirst({
+  const stage = await prisma.stage.findFirst({
     where: { id: stageId, project: scope },
     include: {
       project: {
@@ -182,12 +192,14 @@ export async function stageById(actor: Actor, stageId: string) {
           clientId: true,
           managerId: true,
           expertId: true,
+          // Роль эксперта в работе — подпись его версий клиенту (Р-297).
+          expertRole: true,
           // Есть ли у клиента вход: без него срок согласования не идёт
           // (требование М-13, решение Р-291).
           client: { select: { userId: true } },
         },
       },
-      expert: { select: { fullName: true, expertProfile: { select: { degree: true } } } },
+      expert: { select: { fullName: true, role: true, expertProfile: { select: { degree: true } } } },
       // Последний возврат клиентом: текст замечаний под шапкой этапа
       // (решение Р-281). Эксперту текст отдаёт `presentReturnText`.
       changes: {
@@ -219,6 +231,7 @@ export async function stageById(actor: Actor, stageId: string) {
       },
     },
   });
+  return withoutExpertNames(actor, stage);
 }
 
 /** Условие «у материала есть видимая версия»; практике — без условия. */
@@ -243,7 +256,7 @@ export async function projectMaterials(actor: Actor, code: string) {
   // Версия эксперта видна клиенту после публикации (Т-18, Р-294).
   const versionScope = scopeVersions(actor) ?? {};
 
-  return prisma.project.findFirst({
+  const project = await prisma.project.findFirst({
     where: { code, ...scope },
     select: {
       id: true,
@@ -255,6 +268,7 @@ export async function projectMaterials(actor: Actor, code: string) {
       // Состояние работы и этапов: закрытая работа и завершённый этап —
       // только чтение (Т-17, М-10, решение Р-293).
       status: true,
+      expertRole: true,
       stages: {
         orderBy: { position: 'asc' },
         select: { id: true, position: true, title: true, state: true },
@@ -295,6 +309,7 @@ export async function projectMaterials(actor: Actor, code: string) {
       },
     },
   });
+  return withoutExpertNames(actor, project);
 }
 
 /**

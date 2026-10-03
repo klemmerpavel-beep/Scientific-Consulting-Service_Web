@@ -31,6 +31,7 @@ import {
   USER_PAGE_SIZE,
   accessLinkPeople,
   expertsForNda,
+  staffForRegalia,
   listUsers,
   type Role,
 } from '../../../../lib/cabinet/admin';
@@ -43,6 +44,7 @@ import {
   giveAccessLink,
   inviteUser,
   updateExpertNda,
+  updateRegalia,
 } from '../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -78,10 +80,11 @@ export default async function UsersScreen({
   // перечня в двадцать строк эксперты и нужные люди уходили на следующие
   // страницы (решение Р-225). Ссылка выдаётся только действующим записям:
   // приостановленной и обезличенной вход закрыт (решение Р-195).
-  const [list, experts, active] = await Promise.all([
+  const [list, experts, active, staffRegalia] = await Promise.all([
     listUsers(actor, { role, status, page: Number(flags.page ?? '1') }),
     expertsForNda(actor),
     accessLinkPeople(actor),
+    staffForRegalia(actor),
   ]);
   const users = list.rows;
   // Текст блока зависит от того, настроена ли почта: с ней ссылка отсюда
@@ -242,13 +245,15 @@ export default async function UsersScreen({
                       нём дату по настройкам системы, и «08/12/2025» рядом
                       с «подписан 12 августа 2025» читалось двояко
                       (решение Р-183). */}
+                  {/* Договор поручения — только у эксперта: профиль с
+                      регалиями теперь есть и у куратора (Т-11, Р-297). */}
                   <td style={TABLE_CELL}>
-                    {user.expertProfile === null
+                    {user.role !== 'EXPERT'
                       ? '—'
                       : nda === null
                         ? 'не подписан'
                         : formatDate(nda)}
-                    {user.expertProfile !== null && nda === null ? (
+                    {user.role === 'EXPERT' && nda === null ? (
                       <div style={{ fontSize: 13, color: 'var(--pd-ink-secondary)' }}>
                         без него материалы клиента не выдаются
                       </div>
@@ -361,6 +366,57 @@ export default async function UsersScreen({
                     dense
                   />
                   <Button tone="quiet">Сохранить</Button>
+                </Form>
+              </li>
+            ))}
+          </ul>
+        </Disclosure>
+      )}
+
+      {/* Регалии сотрудников: клиент видит куратора со степенью и
+          специальностью, эксперта — степенью и шифром без имени
+          (требование Т-11, решение Р-297). Формы — под свёрткой, как
+          договоры поручения (Р-183). */}
+      {staffRegalia.length === 0 ? null : (
+        <Disclosure title="Регалии сотрудников" style={{ marginTop: 20 }}>
+          <Text size={14} style={{ marginBottom: 14 }}>
+            Клиент видит куратора по имени со степенью и специальностью, эксперта — ролью в работе,
+            степенью и шифром специальности, без имени и контактов. Пустые поля не выводятся.
+          </Text>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
+            {staffRegalia.map((user) => (
+              <li key={user.id} style={{ display: 'grid', gap: 8 }}>
+                <Text size={14} style={{ margin: 0 }}>
+                  {user.fullName} · {ROLE_LABEL[user.role as Role]}
+                </Text>
+                <Form action={updateRegalia}>
+                  <input type="hidden" name="userId" value={user.id} />
+                  <FormRow>
+                    <Field
+                      label="Учёная степень"
+                      name="degree"
+                      scope={`regalia-${user.id}`}
+                      placeholder="кандидат технических наук"
+                      defaultValue={user.expertProfile?.degree ?? ''}
+                    />
+                    <Field
+                      label="Научная специальность"
+                      name="specialization"
+                      scope={`regalia-${user.id}`}
+                      placeholder="Горные машины"
+                      defaultValue={user.expertProfile?.specialization ?? ''}
+                    />
+                    <Field
+                      label="Шифр специальности"
+                      name="specialtyCode"
+                      scope={`regalia-${user.id}`}
+                      placeholder="2.8.6"
+                      defaultValue={user.expertProfile?.specialtyCode ?? ''}
+                    />
+                  </FormRow>
+                  <FormActions>
+                    <Button tone="quiet">Сохранить регалии</Button>
+                  </FormActions>
                 </Form>
               </li>
             ))}

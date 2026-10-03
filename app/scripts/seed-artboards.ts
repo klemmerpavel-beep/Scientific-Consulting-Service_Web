@@ -141,9 +141,17 @@ async function main() {
       degree: 'д.т.н.',
       academicTitle: 'профессор',
       specialization: 'теория надёжности технических систем',
+      specialtyCode: '2.8.6',
       ndaSignedAt: day(400),
     },
-    update: { ndaSignedAt: day(400) },
+    update: { ndaSignedAt: day(400), specialtyCode: '2.8.6' },
+  });
+  // Регалии куратора: клиент видит его со степенью и специальностью
+  // (требование Т-11, решение Р-297).
+  await prisma.expertProfile.upsert({
+    where: { userId: manager.id },
+    create: { userId: manager.id, degree: 'к.т.н.', specialization: 'горные машины и оборудование' },
+    update: { degree: 'к.т.н.', specialization: 'горные машины и оборудование' },
   });
 
   // ── Клиенты и проекты ───────────────────────────────────────────────────
@@ -587,7 +595,7 @@ async function main() {
   // эксперт.
   await prisma.project.update({
     where: { id: showcase },
-    data: { expertId: expertUser.id },
+    data: { expertId: expertUser.id, expertRole: 'SUBJECT_EXPERT' },
   });
 
   const material = await prisma.material.upsert({

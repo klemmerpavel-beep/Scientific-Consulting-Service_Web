@@ -14,6 +14,7 @@ import {
   SHADOW,
 } from './tokens.ts';
 import type { WaveMood } from '../../lib/cabinet/charts';
+import { presentAuthor } from '../../lib/cabinet/access';
 import {
   STAGE_STATE_LABEL,
   stageLabel,
@@ -404,10 +405,11 @@ export function authorName(
   author: { fullName: string; role: string },
   viewer: { id?: string; role: string },
   authorId?: string,
+  expertRole?: string | null,
 ): string {
-  if (authorId !== undefined && authorId === viewer.id) return 'Вы';
-  if (viewer.role === 'CLIENT' && author.role === 'EXPERT') return 'Эксперт по специальности';
-  return author.fullName;
+  // Правило — в модуле прав: роль эксперта в работе вместо имени
+  // (требование Т-11, решение Р-297).
+  return presentAuthor(author, viewer, authorId, expertRole);
 }
 
 /**

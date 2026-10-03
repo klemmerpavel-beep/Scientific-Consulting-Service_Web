@@ -46,6 +46,7 @@ import {
   removeAlias,
   removeCalendarDay,
   saveCalendarDay,
+  saveRegalia,
   removeStageTemplateItem,
   saveServiceType,
   saveStageTemplateItem,
@@ -524,10 +525,16 @@ export async function setExpert(form: FormData): Promise<void> {
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
   const expertId = String(form.get('expertId') ?? '');
+  const expertRole = String(form.get('expertRole') ?? '');
   try {
-    await assignExpert(actor, projectId, expertId || null);
+    await assignExpert(
+      actor,
+      projectId,
+      expertId || null,
+      (expertRole || null) as Parameters<typeof assignExpert>[3],
+    );
   } catch (error) {
-    await manageFailure(code, 'expert', error, { expertId });
+    await manageFailure(code, 'expert', error, { expertId, expertRole });
   }
   redirect(`/cabinet/projects/${code}`);
 }
@@ -1191,6 +1198,23 @@ export async function giveAccessLink(
       error: reasonOf(error, 'Не удалось выдать ссылку'),
     };
   }
+}
+
+/** Регалии сотрудника (требование Т-11, решение Р-297). */
+export async function updateRegalia(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  let failure: string | null = null;
+  try {
+    await saveRegalia(actor, String(form.get('userId') ?? ''), {
+      degree: String(form.get('degree') ?? ''),
+      specialization: String(form.get('specialization') ?? ''),
+      specialtyCode: String(form.get('specialtyCode') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить регалии');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/manage/users', failure));
+  redirect('/cabinet/manage/users');
 }
 
 export async function updateExpertNda(form: FormData): Promise<void> {

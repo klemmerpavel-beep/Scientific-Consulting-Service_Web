@@ -14,6 +14,7 @@ export default function CommentList({
   stageId,
   back,
   decide,
+  expertRole,
 }: {
   comments: readonly {
     id: string;
@@ -32,6 +33,8 @@ export default function CommentList({
   back?: string;
   /** Серверное действие решения: передаётся экраном, оформление о нём не знает. */
   decide: (form: FormData) => Promise<void>;
+  /** Роль эксперта в работе — подпись его замечаний клиенту (Т-11, Р-297). */
+  expertRole?: string | null;
 }) {
   if (comments.length === 0) return null;
   return (
@@ -50,7 +53,7 @@ export default function CommentList({
           <li key={comment.id}>
             <Text size={14}>{comment.body}</Text>
             <Text muted size={13} style={{ marginTop: 2 }}>
-              {authorName(comment.author, actor, comment.authorId)} ·{' '}
+              {authorName(comment.author, actor, comment.authorId, expertRole)} ·{' '}
               {formatDate(comment.createdAt)}
               {comment.moderationStatus === 'PENDING'
                 ? mayModerate && hasContacts(comment.body)

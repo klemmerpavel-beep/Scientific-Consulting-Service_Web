@@ -552,7 +552,7 @@ export default async function StageScreen({
                       >
                         <Chip mono>v{version.number}</Chip>
                         <Text size={14}>
-                          {authorName(version.uploadedBy, actor, version.uploadedById)} ·{' '}
+                          {authorName(version.uploadedBy, actor, version.uploadedById, stage.project.expertRole)} ·{' '}
                           {formatDate(version.uploadedAt)} · {formatSize(version.sizeBytes)}
                         </Text>
                         <span style={{ marginLeft: 'auto' }}>
@@ -610,6 +610,7 @@ export default async function StageScreen({
                         mayModerate={mayModerate}
                         stageId={stage.id}
                         decide={decideOnComment}
+                        expertRole={stage.project.expertRole}
                       />
 
                       {/* Поле комментария стояло раскрытым под свежей

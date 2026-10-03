@@ -122,7 +122,7 @@ export default async function ProjectMaterialsScreen({
                       </a>
                       <span>{formatSize(version.sizeBytes)}</span>
                       <span>{formatDate(version.uploadedAt)}</span>
-                      <span>{authorName(version.uploadedBy, actor, version.uploadedById)}</span>
+                      <span>{authorName(version.uploadedBy, actor, version.uploadedById, project.expertRole)}</span>
                       {/* Версия эксперта до публикации — с пометкой; клиенту
                           её здесь нет вовсе (Т-18, Р-294). */}
                       {version.moderation === null || version.moderation.status === 'PUBLISHED' ? null : (
@@ -202,6 +202,7 @@ export default async function ProjectMaterialsScreen({
                             mayModerate={mayModerate}
                             back={`/cabinet/projects/${project.code}/materials#material-${material.id}`}
                             decide={decideOnComment}
+                            expertRole={project.expertRole}
                           />
                         </div>
                       ))

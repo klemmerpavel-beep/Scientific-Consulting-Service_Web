@@ -339,6 +339,60 @@ export async function expertsForNda(actor: Actor) {
   });
 }
 
+/**
+ * Сотрудники с регалиями: эксперты, кураторы и руководители — все, а не
+ * страница перечня (требование Т-11, решение Р-297).
+ */
+export async function staffForRegalia(actor: Actor) {
+  ensure(actor, 'USER_MANAGE');
+  return prisma.user.findMany({
+    where: { role: { in: ['EXPERT', 'MANAGER', 'HEAD'] }, status: { not: 'ERASED' } },
+    orderBy: [{ role: 'asc' }, { fullName: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      fullName: true,
+      role: true,
+      expertProfile: { select: { degree: true, specialization: true, specialtyCode: true } },
+    },
+  });
+}
+
+/**
+ * Регалии сотрудника: учёная степень, научная специальность и её шифр.
+ * Профиль — носитель регалий и у куратора с руководителем; права решает
+ * роль, а не профиль. Пустые значения хранятся как `null` (Р-225).
+ */
+export async function saveRegalia(
+  actor: Actor,
+  userId: string,
+  input: { readonly degree: string; readonly specialization: string; readonly specialtyCode: string },
+) {
+  ensure(actor, 'USER_MANAGE');
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, status: true } });
+  if (user === null || user.status === 'ERASED') throw new Error('Учётная запись не найдена');
+  if (user.role === 'CLIENT') throw new Error('Регалии ведутся только у сотрудников');
+  const clean = (value: string, limit: number, what: string) => {
+    const text = value.trim();
+    if (text.length > limit) throw new Error(`${what} — не длиннее ${limit} знаков`);
+    return text === '' ? null : text;
+  };
+  const data = {
+    degree: clean(input.degree, 120, 'Учёная степень'),
+    specialization: clean(input.specialization, 200, 'Научная специальность'),
+    specialtyCode: clean(input.specialtyCode, 20, 'Шифр специальности'),
+  };
+  if (data.specialtyCode !== null && !/^\d+(\.\d+){1,3}$/u.test(data.specialtyCode)) {
+    throw new Error('Шифр специальности — цифрами через точку, например «1.3.8»');
+  }
+  await prisma.expertProfile.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+  await record(actor, {
+    action: 'STAFF_REGALIA_SAVED',
+    objectType: 'ExpertProfile',
+    objectId: userId,
+    payload: { degree: data.degree !== null, specialization: data.specialization !== null, code: data.specialtyCode },
+  });
+}
+
 /** Кому можно выдать ссылку входа: все действующие записи, а не страница. */
 export async function accessLinkPeople(actor: Actor) {
   ensure(actor, 'USER_MANAGE');

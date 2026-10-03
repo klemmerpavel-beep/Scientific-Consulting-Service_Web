@@ -38,6 +38,10 @@ import { SANS } from '../../../../components/cabinet/tokens';
 import {
   CLOSED_FOR_PRACTICE,
   can,
+  curatorLine,
+  EXPERT_ROLE_LABEL,
+  expertLine,
+  expertRoleLabel,
   presentReturnText,
   workClosed,
   type Actor,
@@ -376,7 +380,7 @@ export default async function ProjectScreen({
       who:
         event.actor === null
           ? null
-          : authorName(event.actor, actor, event.actorId ?? undefined),
+          : authorName(event.actor, actor, event.actorId ?? undefined, project.expertRole),
     }));
 
   // Короткое описание работы. На виду остаётся название и срок, остальное
@@ -392,7 +396,15 @@ export default async function ProjectScreen({
       : { term: 'Тип сопровождения', value: project.serviceType.name },
     project.topic === project.title ? null : { term: 'Тема', value: project.topic },
     { term: 'Срок работы', value: formatDate(project.dueOn) ?? 'не назначен' },
-    { term: 'Куратор', value: project.manager.fullName },
+    // Куратор — с регалиями, эксперт — ролью и регалиями без ФИО и
+    // контактов; пустые части не выводятся (требование Т-11, Р-297).
+    { term: 'Куратор', value: curatorLine(project.manager) },
+    project.expert === null
+      ? null
+      : {
+          term: expertRoleLabel(project.expertRole),
+          value: expertLine(project.expert.expertProfile) || 'назначен',
+        },
   ].filter((row) => row !== null);
 
   // Строка книги заказов, из которой заведена работа, — как записана в
@@ -871,6 +883,20 @@ export default async function ProjectScreen({
                         expert.expertProfile?.ndaSignedAt === undefined
                           ? ' — без договора поручения'
                           : ''}
+                      </option>
+                    ))}
+                  </Select>
+                  {/* Роль эксперта в работе — так его видит клиент вместо
+                      ФИО (требование Т-11, О-10, решение Р-297). */}
+                  <Select
+                    label="Роль эксперта в работе"
+                    name="expertRole"
+                    defaultValue={draft.expertRole ?? project.expertRole ?? 'SUBJECT_EXPERT'}
+                    hint="Клиент видит эксперта этой ролью, степенью и шифром специальности — без имени и контактов."
+                  >
+                    {(Object.keys(EXPERT_ROLE_LABEL) as (keyof typeof EXPERT_ROLE_LABEL)[]).map((role) => (
+                      <option key={role} value={role}>
+                        {EXPERT_ROLE_LABEL[role]}
                       </option>
                     ))}
                   </Select>

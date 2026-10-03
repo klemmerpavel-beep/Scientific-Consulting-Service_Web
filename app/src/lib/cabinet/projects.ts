@@ -1,5 +1,13 @@
 import { prisma } from '../db.ts';
-import { CLIENT_VISIBLE_VERSION, ensure, ensureWorkOpen, type Actor, type ProjectRef } from './access.ts';
+import {
+  CLIENT_VISIBLE_VERSION,
+  EXPERT_ROLE_LABEL,
+  ensure,
+  ensureWorkOpen,
+  type Actor,
+  type ExpertRoleKey,
+  type ProjectRef,
+} from './access.ts';
 import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
 import { enqueue, enqueueToLead, notifyCurator } from './outbox.ts';
@@ -452,12 +460,25 @@ export async function projectRef(projectId: string): Promise<ProjectRef | null> 
   });
 }
 
-export async function assignExpert(actor: Actor, projectId: string, expertId: string | null) {
+export async function assignExpert(
+  actor: Actor,
+  projectId: string,
+  expertId: string | null,
+  role?: ExpertRoleKey | null,
+) {
   const ref = await projectRef(projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PROJECT_ASSIGN_EXPERT', ref);
+  const current = await prisma.project.findUniqueOrThrow({
+    where: { id: projectId },
+    select: { status: true, expertRole: true },
+  });
   // Исполнитель закрытой работы не меняется (М-10, решение Р-293).
-  ensureWorkOpen((await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { status: true } })).status);
+  ensureWorkOpen(current.status);
+  // Роль эксперта в работе — из закрытого перечня; по умолчанию первая
+  // (требование Т-11, О-10, решение Р-297).
+  if (role != null && !Object.hasOwn(EXPERT_ROLE_LABEL, role)) throw new Error('Неизвестная роль эксперта');
+  const nextRole = expertId === null ? null : (role ?? current.expertRole ?? 'SUBJECT_EXPERT');
 
   // Экспертом работы может быть только действующий эксперт. Прежде в поле
   // ложился любой идентификатор формы: клиент или сотрудник становился
@@ -471,15 +492,26 @@ export async function assignExpert(actor: Actor, projectId: string, expertId: st
     if (target === null) throw new Error('Экспертом может быть только действующий эксперт');
   }
   // Повторное назначение того же эксперта ничего не меняет и в ленту
-  // клиента и журнал не пишется.
+  // клиента и журнал не пишется; смена одной роли — правка без события.
   if (expertId === ref.expertId) {
-    return prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+    if (nextRole === current.expertRole) {
+      return prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+    }
+    const updated = await prisma.project.update({ where: { id: projectId }, data: { expertRole: nextRole } });
+    await record(actor, {
+      action: 'PROJECT_EDITED',
+      objectType: 'Project',
+      objectId: projectId,
+      projectId,
+      payload: { expertRoleFrom: current.expertRole, expertRoleTo: nextRole },
+    });
+    return updated;
   }
 
   const project = await prisma.$transaction(async (tx) => {
     const updated = await tx.project.update({
       where: { id: projectId },
-      data: { expertId },
+      data: { expertId, expertRole: nextRole },
     });
     await tx.projectEvent.create({
       data: {

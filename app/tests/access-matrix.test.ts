@@ -13,6 +13,11 @@ import {
   ACTIONS,
   can,
   contributionRefusal,
+  curatorLine,
+  expertLine,
+  expertRoleLabel,
+  presentAuthor,
+  withoutExpertNames,
   ensure,
   scopeVersions,
   versionVisible,
@@ -506,5 +511,50 @@ describe('версия эксперта — после публикации (Т-
 
   it('приостановленной учётной записи — ничего', () => {
     assert.equal(scopeVersions({ ...as('CLIENT'), status: 'SUSPENDED' }), null);
+  });
+});
+
+describe('представление участника работы (Т-11, Р-297)', () => {
+  const as = (role: Role, id = 'x'): Actor => ({
+    id,
+    role,
+    status: 'ACTIVE',
+    clientProfileId: null,
+    expertNdaSignedAt: NDA,
+  });
+  const expert = { fullName: 'Григорьев Антон Эдуардович', role: 'EXPERT' };
+
+  it('клиент видит эксперта ролью из работы, практика — по имени', () => {
+    assert.equal(presentAuthor(expert, as('CLIENT')), 'Эксперт по специальности');
+    assert.equal(presentAuthor(expert, as('CLIENT'), 'e1', 'METHODOLOGIST'), 'Методолог');
+    assert.equal(presentAuthor(expert, as('CLIENT'), 'e1', 'SCIENCE_EDITOR'), 'Научный редактор');
+    assert.equal(presentAuthor(expert, as('MANAGER')), expert.fullName);
+    assert.equal(presentAuthor(expert, as('EXPERT', 'e1'), 'e1'), 'Вы');
+    assert.equal(expertRoleLabel(null), 'Эксперт по специальности');
+  });
+
+  it('строки «О работе»: пустые части не выводятся', () => {
+    assert.equal(
+      curatorLine({ fullName: 'Нечаева К. И.', expertProfile: { degree: 'к.т.н.', specialization: 'горные машины' } }),
+      'Нечаева К. И., к.т.н., горные машины',
+    );
+    assert.equal(curatorLine({ fullName: 'Нечаева К. И.', expertProfile: null }), 'Нечаева К. И.');
+    assert.equal(expertLine({ degree: 'д.т.н.', specialtyCode: '2.8.6' }), 'д.т.н., 2.8.6');
+    assert.equal(expertLine({ degree: ' ', specialtyCode: null }), '');
+  });
+
+  it('в данных экрана клиента нет ФИО и почты эксперта; у практики — есть', () => {
+    const data = {
+      manager: { fullName: 'Нечаева К. И.', role: 'MANAGER' },
+      expert: { id: 'e1', fullName: expert.fullName, role: 'EXPERT', email: 'expert@example.org' },
+      materials: [{ versions: [{ uploadedBy: { fullName: expert.fullName, role: 'EXPERT' }, uploadedAt: new Date(0) }] }],
+    };
+    const client = withoutExpertNames(as('CLIENT'), data);
+    const text = JSON.stringify(client);
+    assert.ok(!text.includes('Григорьев'), 'ФИО эксперта осталось в данных клиента');
+    assert.ok(!text.includes('expert@example.org'), 'почта эксперта осталась в данных клиента');
+    assert.ok(text.includes('Нечаева'), 'куратор пропал из данных клиента');
+    assert.ok(client.materials[0]!.versions[0]!.uploadedAt instanceof Date, 'дата испорчена');
+    assert.equal(withoutExpertNames(as('MANAGER'), data), data);
   });
 });
