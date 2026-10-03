@@ -56,7 +56,8 @@ export async function notifyCurator(
   db: Db,
   input: {
     readonly projectId: string;
-    readonly actorId: string;
+    /** Автор действия; `null` — система (автозакрытие этапа, Р-290). */
+    readonly actorId: string | null;
     readonly eventKind: EventKind;
     readonly subject: string;
     readonly body: string;
@@ -453,7 +454,10 @@ export async function enqueueDeadlineReminders(): Promise<number> {
 
   const stages = await prisma.stage.findMany({
     where: {
-      state: { in: ['IN_PROGRESS', 'AWAITING_CLIENT', 'IN_APPROVAL'] },
+      // Этап на согласовании напоминает о сроке согласования, а не о сроке
+      // этапа: два разных срока в двух письмах сбивали бы клиента (Т-15,
+      // решение Р-290).
+      state: { in: ['IN_PROGRESS', 'AWAITING_CLIENT'] },
       dueOn: { gte: now, lte: horizon },
       // Приостановленная, завершённая и отменённая работа о сроках этапов
       // не напоминает: прежде напоминания шли по любой (решение Р-235).

@@ -287,6 +287,7 @@ async function crawl(page, role, stabilize) {
     '/cabinet/manage/finance?set=all',
     '/cabinet/manage/directory?tab=stages',
     '/cabinet/manage/directory?tab=colors',
+    '/cabinet/manage/directory?tab=calendar',
   ];
   const many = [];
   const seen = new Set(plain);

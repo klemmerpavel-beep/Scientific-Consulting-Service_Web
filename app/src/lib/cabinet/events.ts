@@ -12,6 +12,7 @@ export type EventKind =
   | 'EXPERT_COMMENT_PUBLISHED'
   | 'STAGE_IN_APPROVAL'
   | 'DEADLINE_IN_3_DAYS'
+  | 'DEADLINE_APPROVAL_SOON'
   | 'PAYMENT_STATUS_CHANGED'
   | 'REQUEST_CREATED'
   | 'PROJECT_OPENED'
@@ -53,6 +54,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   EXPERT_COMMENT_PUBLISHED: 'опубликовано замечание',
   STAGE_IN_APPROVAL: 'этап на согласовании',
   DEADLINE_IN_3_DAYS: 'приближается срок',
+  DEADLINE_APPROVAL_SOON: 'подходит срок согласования',
   PAYMENT_STATUS_CHANGED: 'изменилась оплата',
   HELP_REQUESTED: 'куратор просит помощи',
   REQUEST_CREATED: 'новая заявка',

@@ -65,6 +65,8 @@ services:
       # (решение Р-248).
       CABINET_STORAGE_DIR: /app/storage
       CABINET_CRON_SECRET: ${CABINET_CRON_SECRET:-}
+      # Автозакрытие этапа по сроку согласования; пусто — выключено (Р-290).
+      APPROVAL_AUTO_ACCEPT: ${APPROVAL_AUTO_ACCEPT:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
       # Экран «Зеркало на Диске» показывает, настроено ли зеркало и мост.

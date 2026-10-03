@@ -444,6 +444,10 @@ model Project {
   dueOn     DateTime?
   closedOn  DateTime?
 
+  /// Срок согласования этапа, рабочих дней: от 5 (п. 7.2 оферты) до 20.
+  /// Действует со следующей сдачи этапа (требование Т-15, решение Р-290).
+  approvalDays Int @default(5)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -515,6 +519,14 @@ model Stage {
   /// закрыто (требование М-04).
   returnAckAt DateTime?
 
+  /// Срок согласования (требование Т-15, решение Р-290): момент сдачи и
+  /// последний день срока — московский день как полночь UTC. Пока работа
+  /// приостановлена, срока нет, а остаток рабочих дней лежит в
+  /// `approvalDaysLeft`. Клиенту без учётной записи срок не ставится.
+  approvalSentAt   DateTime?
+  approvalDueOn    DateTime?
+  approvalDaysLeft Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -524,6 +536,7 @@ model Stage {
 
   @@unique([projectId, position])
   @@index([state, dueOn])
+  @@index([state, approvalDueOn])
 }
 
 /// История переходов состояния. Нужна аналитике длительностей и служит
@@ -552,6 +565,22 @@ enum StageChangeVia {
   MANUAL
   CLIENT_APPROVE
   CLIENT_RETURN
+  /// Принят по истечении срока согласования, п. 7.3 оферты (Р-290).
+  AUTO_ACCEPT
+  /// Согласован практикой по подтверждению клиента (О-6, требование М-12).
+  STAFF_FOR_CLIENT
+}
+
+/// Производственный календарь: дни, где рабочий день расходится с
+/// правилом «понедельник–пятница без праздников ст. 112 ТК РФ» —
+/// переносы выходных и рабочие субботы. Правит руководитель в
+/// «Справочниках» (требование Т-15, решение Р-290).
+model CalendarDay {
+  /// Московский день как полночь UTC.
+  day       DateTime @id
+  workday   Boolean
+  note      String?
+  updatedAt DateTime @updatedAt
 }
 
 /// Лента событий проекта. Показывается клиенту с авторством и временем.

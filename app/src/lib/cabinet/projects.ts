@@ -10,6 +10,17 @@ import { moscowToday } from './admin.ts';
 import { STAGE_TRANSITIONS, stageLabel } from './stage-state.ts';
 import { hasContacts } from './contacts.ts';
 import {
+  APPROVAL_DAYS_MAX,
+  APPROVAL_DAYS_MIN,
+  approvalDeadline,
+  ensureApprovalOpen,
+  formatDay,
+  holdApprovalDeadlines,
+  loadCalendar,
+  resumeApprovalDeadlines,
+  stageLink,
+} from './approval.ts';
+import {
   PROJECT_STATUS_LABEL,
   canChangeProjectStatus,
   isClosedStatus,
@@ -639,6 +650,8 @@ export async function editProject(
     readonly topic?: string | null;
     readonly summary?: string | null;
     readonly dueOn?: Date | null;
+    /** Срок согласования этапа, рабочих дней; не передан — не меняется. */
+    readonly approvalDays?: number;
   },
 ) {
   const ref = await projectRef(input.projectId);
@@ -654,10 +667,22 @@ export async function editProject(
   if ((input.summary ?? '').trim().length > 2000) {
     throw new Error('Короткое описание задачи — не длиннее 2000 знаков');
   }
+  // Меньше пяти рабочих дней не принимается — п. 7.2 оферты; новое число
+  // действует со следующей сдачи этапа (Т-15, решение Р-290).
+  if (
+    input.approvalDays !== undefined &&
+    (!Number.isInteger(input.approvalDays) ||
+      input.approvalDays < APPROVAL_DAYS_MIN ||
+      input.approvalDays > APPROVAL_DAYS_MAX)
+  ) {
+    throw new Error(
+      `Срок согласования — от ${APPROVAL_DAYS_MIN} до ${APPROVAL_DAYS_MAX} рабочих дней: меньше пяти не допускает п. 7.2 оферты`,
+    );
+  }
 
   const before = await prisma.project.findUniqueOrThrow({
     where: { id: input.projectId },
-    select: { dueOn: true },
+    select: { dueOn: true, approvalDays: true },
   });
   const saved = await prisma.project.update({
     where: { id: input.projectId },
@@ -666,6 +691,7 @@ export async function editProject(
       topic: input.topic?.trim() || null,
       summary: input.summary?.trim() || null,
       dueOn: input.dueOn ?? null,
+      ...(input.approvalDays === undefined ? {} : { approvalDays: input.approvalDays }),
     },
   });
   await record(actor, {
@@ -673,7 +699,13 @@ export async function editProject(
     objectType: 'Project',
     objectId: input.projectId,
     projectId: input.projectId,
-    payload: { title, ...dueChange(before.dueOn, saved.dueOn) },
+    payload: {
+      title,
+      ...dueChange(before.dueOn, saved.dueOn),
+      ...(before.approvalDays === saved.approvalDays
+        ? {}
+        : { approvalDaysFrom: before.approvalDays, approvalDaysTo: saved.approvalDays }),
+    },
   });
   return saved;
 }
@@ -724,6 +756,11 @@ export async function setProjectStatus(actor: Actor, projectId: string, to: Proj
     if (claimed.count === 0) {
       throw new Error('Состояние работы уже изменено другим действием: обновите страницу');
     }
+    // Срок согласования стоит, пока работа не в действии: остаток рабочих
+    // дней сохраняется, а при возобновлении срок отсчитывается заново от
+    // дня возобновления (требование Т-15, решение Р-290).
+    if (from === 'ACTIVE' && to !== 'ACTIVE') await holdApprovalDeadlines(tx, projectId, new Date());
+    if (from !== 'ACTIVE' && to === 'ACTIVE') await resumeApprovalDeadlines(tx, projectId, new Date());
     await tx.projectEvent.create({
       data: { projectId, actorId: actor.id, kind: 'PROJECT_STATUS_CHANGED', payload: { from, to } },
     });
@@ -851,7 +888,15 @@ export async function setStageState(
     where: { id: stageId },
     include: {
       project: {
-        select: { id: true, clientId: true, managerId: true, expertId: true, status: true },
+        select: {
+          id: true,
+          clientId: true,
+          managerId: true,
+          expertId: true,
+          status: true,
+          approvalDays: true,
+          client: { select: { userId: true } },
+        },
       },
     },
   });
@@ -861,6 +906,9 @@ export async function setStageState(
   const action = stage.state === 'IN_APPROVAL' && to === 'DONE' ? 'STAGE_APPROVE' : 'STAGE_SET_STATE';
   ensure(actor, action, stage.project);
   if (stage.project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
+  // Клиент после срока при включённом автозакрытии: этап принят по п. 7.3
+  // оферты (Т-15, решение Р-290).
+  if (action === 'STAGE_APPROVE' && actor.role === 'CLIENT') ensureApprovalOpen(stage.approvalDueOn);
 
   const from = stage.state as StageState;
   if (!canTransition(from, to)) {
@@ -911,6 +959,24 @@ export async function setStageState(
   }
 
   const now = new Date();
+  // Срок согласования ставится при сдаче, если клиент может увидеть
+  // результат: без учётной записи «направления» не было, и срок пойдёт с
+  // открытия входа (Т-15, решение Р-290). Снятие с согласования и возврат
+  // срок гасят; у завершённого этапа он остаётся записью о сроке.
+  const approvalDueOn =
+    to === 'IN_APPROVAL' && stage.project.client.userId !== null
+      ? approvalDeadline(now, stage.project.approvalDays, await loadCalendar())
+      : null;
+  const approvalFields =
+    to === 'IN_APPROVAL'
+      ? {
+          approvalSentAt: approvalDueOn === null ? null : now,
+          approvalDueOn,
+          approvalDaysLeft: null,
+        }
+      : from === 'IN_APPROVAL' && to !== 'DONE'
+        ? { approvalSentAt: null, approvalDueOn: null, approvalDaysLeft: null }
+        : {};
   const saved = await prisma.$transaction(async (tx) => {
     // Перевод захватывает этап по прежнему состоянию. Прежде два
     // одновременных перевода проходили проверку по прочитанному и оба
@@ -927,6 +993,7 @@ export async function setStageState(
         // Повторная сдача гасит пометку «возвращён с замечаниями» и дело
         // куратора: замечания отработаны (решение Р-281).
         ...(to === 'IN_APPROVAL' ? { returnedAt: null, returnAckAt: null, outcome } : {}),
+        ...approvalFields,
       },
     });
     if (claimed.count === 0) {
@@ -1001,7 +1068,10 @@ export async function setStageState(
             (awaiting
               ? `${(reason ?? '').trim()}\n`
               : `Итог этапа: что сделано и что дальше.\n${outcome}\n\n` +
-                'Посмотрите последнюю версию материалов и согласуйте этап или верните его с замечаниями.\n') +
+                'Посмотрите последнюю версию материалов и согласуйте этап или верните его с замечаниями' +
+                (approvalDueOn === null
+                  ? '.\n'
+                  : ` до ${formatDay(approvalDueOn)} включительно (по московскому времени).\n`)) +
             'Открыть этап можно в личном кабинете.',
           dedupKey: `stage:${stageId}:${to.toLowerCase()}:${now.toISOString().slice(0, 16)}`,
         });
@@ -1057,12 +1127,6 @@ export async function acknowledgeReturn(actor: Actor, stageId: string) {
   });
 }
 
-/** Строка письма со ссылкой на экран этапа; без адреса сайта — общая. */
-function stageLink(stageId: string): string {
-  const base = siteUrl();
-  return base === null ? 'Открыть этап можно в личном кабинете.' : `Открыть этап: ${base}/cabinet/stages/${stageId}`;
-}
-
 /** Предел текста замечаний — как у сообщения в переписке. */
 const RETURN_TEXT_MAX = 10_000;
 
@@ -1097,6 +1161,9 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
   if (stage.state !== 'IN_APPROVAL') {
     throw new Error('Этап уже не на согласовании: обновите страницу');
   }
+  // После срока при включённом автозакрытии этап принят по п. 7.3
+  // оферты, и возврат опоздал (Т-15, решение Р-290).
+  ensureApprovalOpen(stage.approvalDueOn);
 
   const body = text.trim();
   if (body.length === 0) {
@@ -1120,6 +1187,10 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
         awaitingClientSince: null,
         returnedAt: now,
         returnAckAt: null,
+        // Возврат гасит срок согласования; повторная сдача даст новый.
+        approvalSentAt: null,
+        approvalDueOn: null,
+        approvalDaysLeft: null,
       },
     });
     if (claimed.count === 0) {

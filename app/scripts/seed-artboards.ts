@@ -25,6 +25,8 @@ import { createRawToken, digest } from '../src/lib/cabinet/token.ts';
 import { previewBook } from '../src/lib/cabinet/import/apply.ts';
 import type { Actor } from '../src/lib/cabinet/access.ts';
 import { excelSerial, makeWorkbook, type TestRow } from '../tests/helpers/make-workbook.ts';
+import { moscowToday } from '../src/lib/cabinet/clock.ts';
+import { addWorkdays } from '../src/lib/cabinet/workdays.ts';
 
 const DOMAIN = 'artboard.example';
 const GREEN = 'FF00B050';
@@ -550,6 +552,10 @@ async function main() {
         completedAt: stage.state === 'DONE' ? day(stage.offset) : null,
         awaitingClientSince: stage.state === 'AWAITING_CLIENT' ? day(18) : null,
         outcome: 'outcome' in stage ? stage.outcome : null,
+        // Срок согласования показательного этапа: сдан 21.09.2026, пять
+        // рабочих дней — до 28.09.2026 включительно (Т-15, Р-290).
+        approvalSentAt: stage.state === 'IN_APPROVAL' ? day(2) : null,
+        approvalDueOn: stage.state === 'IN_APPROVAL' ? addWorkdays(moscowToday(day(2)), 5, new Map()) : null,
       },
       // Этап показательной работы переписывается целиком при каждом
       // наполнении: состояние, срок и исполнитель — то, что снимок
@@ -564,6 +570,10 @@ async function main() {
         completedAt: stage.state === 'DONE' ? day(stage.offset) : null,
         awaitingClientSince: stage.state === 'AWAITING_CLIENT' ? day(18) : null,
         outcome: 'outcome' in stage ? stage.outcome : null,
+        // Срок согласования показательного этапа: сдан 21.09.2026, пять
+        // рабочих дней — до 28.09.2026 включительно (Т-15, Р-290).
+        approvalSentAt: stage.state === 'IN_APPROVAL' ? day(2) : null,
+        approvalDueOn: stage.state === 'IN_APPROVAL' ? addWorkdays(moscowToday(day(2)), 5, new Map()) : null,
       },
       select: { id: true },
     });

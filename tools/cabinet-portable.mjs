@@ -86,7 +86,9 @@ function rewrite(html, depth) {
     // Шапка прототипа ссылается на себя пустым адресом.
     if (target === '') return `href="${up}index.html"`;
     if (target === '/') return `href="${up}index.html"`;
-    if (SITE_PAGES.has(target)) return `href="${SITE}${target}"`;
+    // Правовая страница — и с якорем: карточка согласования ведёт на
+    // `/offer#delivery`, п. 7.2–7.3 оферты (решение Р-290).
+    if (SITE_PAGES.has(target.split('#')[0])) return `href="${SITE}${target}"`;
     if (/^(?:[a-z]+:|#|\/\/)/u.test(target)) return whole;
     // Каталожный адрес отдаётся сервером как index.html; на диске и на
     // сторонней площадке такого поведения нет — указываем файл прямо.

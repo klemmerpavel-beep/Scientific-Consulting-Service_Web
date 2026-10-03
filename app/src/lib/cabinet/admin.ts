@@ -659,6 +659,52 @@ export async function listColorMap(actor: Actor) {
   return prisma.importColorMap.findMany({ orderBy: { argb: 'asc' } });
 }
 
+// ───────────────────────── Производственный календарь ──────────────────────
+
+/**
+ * Дни производственного календаря для срока согласования (требование Т-15,
+ * решение Р-290): переносы выходных и рабочие субботы. Праздники ст. 112
+ * ТК РФ модуль рабочих дней знает сам; запись календаря сильнее правила.
+ */
+export async function listCalendarDays(actor: Actor) {
+  ensure(actor, 'DIRECTORY_EDIT');
+  return prisma.calendarDay.findMany({ orderBy: { day: 'asc' } });
+}
+
+export async function saveCalendarDay(
+  actor: Actor,
+  input: { readonly day: Date | null; readonly workday: boolean; readonly note?: string | null },
+) {
+  ensure(actor, 'DIRECTORY_EDIT');
+  if (input.day === null || Number.isNaN(input.day.getTime())) throw new Error('Укажите день');
+  const note = (input.note ?? '').trim();
+  if (note.length > 200) throw new Error('Примечание — не длиннее 200 знаков');
+  const day = new Date(`${input.day.toISOString().slice(0, 10)}T00:00:00Z`);
+  await prisma.calendarDay.upsert({
+    where: { day },
+    create: { day, workday: input.workday, note: note || null },
+    update: { workday: input.workday, note: note || null },
+  });
+  await record(actor, {
+    action: 'CALENDAR_DAY_SAVED',
+    objectType: 'CalendarDay',
+    objectId: day.toISOString().slice(0, 10),
+    payload: { workday: input.workday },
+  });
+}
+
+export async function removeCalendarDay(actor: Actor, rawDay: string) {
+  ensure(actor, 'DIRECTORY_EDIT');
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(rawDay)) throw new Error('День не найден');
+  const removed = await prisma.calendarDay.deleteMany({ where: { day: new Date(`${rawDay}T00:00:00Z`) } });
+  if (removed.count === 0) throw new Error('День уже снят: обновите страницу');
+  await record(actor, {
+    action: 'CALENDAR_DAY_REMOVED',
+    objectType: 'CalendarDay',
+    objectId: rawDay,
+  });
+}
+
 // ─────────────────────────── Шаблоны этапов ─────────────────────────────────
 
 /**

@@ -25,6 +25,7 @@ import {
 } from '../../../../components/cabinet/ui';
 import { SANS } from '../../../../components/cabinet/tokens';
 import { can, presentReturnText } from '../../../../lib/cabinet/access';
+import { autoAcceptEnabled, formatDay } from '../../../../lib/cabinet/approval';
 import { formDraft } from '../../../../lib/cabinet/flash';
 import { stageById } from '../../../../lib/cabinet/queries';
 import { daysPast } from '../../../../lib/cabinet/clock';
@@ -80,6 +81,13 @@ const IN_APPROVAL_CLEAR =
  */
 const overdueDays = (dueOn: Date | null): number | null => daysPast(dueOn);
 
+
+// Ссылка на оферту — строчная, как в форме заявки: подпись переносится как
+// текст, а цель нажатия добирается до 44 пикселей отступом (Р-253).
+const OFFER_LINK = {
+  color: 'var(--pd-accent)',
+  padding: '14px 0',
+} as const;
 
 export default async function StageScreen({
   params,
@@ -325,6 +333,30 @@ export default async function StageScreen({
             закрывается, и работа переходит к следующему.
             {mayReturn ? ' Если что-то нужно исправить, верните этап с замечаниями.' : ''}
           </Text>
+          {/* Срок согласования — по оферте: п. 7.2 всегда, п. 7.3 — когда
+              автозакрытие включено (требование Т-15, решение Р-290). */}
+          {stage.approvalDueOn === null ? null : (
+            <Text style={{ marginBottom: 16, fontWeight: 600 }}>
+              {`Согласовать до ${formatDay(stage.approvalDueOn)} включительно (по московскому времени).`}
+              {autoAcceptEnabled() ? (
+                <>
+                  {' Если до этой даты вы не согласуете этап и не вернёте его с замечаниями, он считается принятым — '}
+                  <a href="/offer#delivery" style={OFFER_LINK}>
+                    п. 7.3 оферты
+                  </a>
+                  .
+                </>
+              ) : (
+                <>
+                  {' Срок — по '}
+                  <a href="/offer#delivery" style={OFFER_LINK}>
+                    п. 7.2 оферты
+                  </a>
+                  .
+                </>
+              )}
+            </Text>
+          )}
           <Form action={approveStage} inline>
             <input type="hidden" name="stageId" value={stage.id} />
             <Button>Согласовать этап</Button>

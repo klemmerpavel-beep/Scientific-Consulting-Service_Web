@@ -262,7 +262,12 @@ export default async function ProjectScreen({
           first.state === 'AWAITING_CLIENT'
             ? `От вас ждут материалы к этапу «${first.title}».`
             : `От вас ждут согласования этапа «${first.title}».`,
-          first.dueOn === null ? null : `Срок этапа — ${formatDate(first.dueOn)}.`,
+          // Срок согласования вместо срока этапа (Т-15, решение Р-290).
+          first.state === 'IN_APPROVAL' && first.approvalDueOn !== null
+            ? `Срок согласования — до ${formatDate(first.approvalDueOn)} включительно.`
+            : first.dueOn === null
+              ? null
+              : `Срок этапа — ${formatDate(first.dueOn)}.`,
           yourTurn.length > 1 ? `Ещё дел: ${yourTurn.length - 1}.` : null,
         ]
           .filter((part) => part !== null)
@@ -794,6 +799,17 @@ export default async function ProjectScreen({
                     scope="project"
                     type="date"
                     defaultValue={draft.dueOn ?? project.dueOn?.toISOString().slice(0, 10) ?? ''}
+                  />
+                  {/* Срок согласования этапа — по п. 7.2 оферты не меньше
+                      пяти рабочих дней (требование Т-15, решение Р-290). */}
+                  <Field
+                    label="Срок согласования этапа, рабочих дней"
+                    name="approvalDays"
+                    scope="project"
+                    type="number"
+                    required
+                    defaultValue={draft.approvalDays ?? String(project.approvalDays)}
+                    hint="От 5 до 20. Новое число действует со следующей сдачи этапа на согласование."
                   />
                   <FormActions>
                     <Button tone="quiet">Сохранить карточку</Button>

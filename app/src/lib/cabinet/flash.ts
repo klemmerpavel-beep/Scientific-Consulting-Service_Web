@@ -92,5 +92,8 @@ export async function withError(
   options: { slot?: string; draft?: Readonly<Record<string, string>>; anchor?: string } = {},
 ): Promise<string> {
   const id = await flash(reason, options);
-  return `${path}?error=${id}${options.anchor === undefined ? '' : `#${options.anchor}`}`;
+  // Адрес с отбором («?tab=calendar») сохраняет его: отказ возвращает на
+  // ту же вкладку (решение Р-290).
+  const glue = path.includes('?') ? '&' : '?';
+  return `${path}${glue}error=${id}${options.anchor === undefined ? '' : `#${options.anchor}`}`;
 }

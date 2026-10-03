@@ -51,6 +51,8 @@ const ACTIONS: Record<string, string> = {
   SERVICE_TYPE_ALIAS_ADDED: 'Привязано историческое написание',
   SERVICE_TYPE_ALIAS_REMOVED: 'Снято историческое написание',
   SERVICE_TYPE_SAVED: 'Позиция справочника сохранена',
+  CALENDAR_DAY_SAVED: 'День производственного календаря сохранён',
+  CALENDAR_DAY_REMOVED: 'День производственного календаря снят',
   STAGE_TEMPLATE_REMOVED: 'Этап шаблона снят',
   STAGE_TEMPLATE_SAVED: 'Этап шаблона сохранён',
   TRANCHE_STATUS_CHANGED: 'Изменено состояние транша',
@@ -76,6 +78,7 @@ const ACTIONS: Record<string, string> = {
 };
 
 const OBJECTS: Record<string, string> = {
+  CalendarDay: 'день календаря',
   ClientProfile: 'карточка клиента',
   Contract: 'договор',
   ErasureRequest: 'требование об удалении',

@@ -43,6 +43,8 @@ import {
   addAlias,
   createUser,
   removeAlias,
+  removeCalendarDay,
+  saveCalendarDay,
   removeStageTemplateItem,
   saveServiceType,
   saveStageTemplateItem,
@@ -464,9 +466,18 @@ export async function saveProject(form: FormData): Promise<void> {
       topic: String(form.get('topic') ?? ''),
       summary: String(form.get('summary') ?? ''),
       dueOn: dateOrNull(form.get('dueOn')),
+      // Поле есть только у формы карточки; пустое значение не меняет срок.
+      ...(String(form.get('approvalDays') ?? '').trim() === ''
+        ? {}
+        : { approvalDays: Number(String(form.get('approvalDays')).trim()) }),
     });
   } catch (error) {
-    await manageFailure(code, 'project', error, fieldsOf(form, ['title', 'topic', 'summary', 'dueOn']));
+    await manageFailure(
+      code,
+      'project',
+      error,
+      fieldsOf(form, ['title', 'topic', 'summary', 'dueOn', 'approvalDays']),
+    );
   }
   redirect(`/cabinet/projects/${code}`);
 }
@@ -1157,6 +1168,37 @@ export async function detachAlias(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError('/cabinet/manage/directory', failure));
   redirect('/cabinet/manage/directory');
+}
+
+/** День производственного календаря (требование Т-15, решение Р-290). */
+export async function saveCalendar(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/directory?tab=calendar';
+  let failure: string | null = null;
+  try {
+    await saveCalendarDay(actor, {
+      day: dateOrNull(form.get('day')),
+      workday: String(form.get('workday') ?? '') === 'yes',
+      note: String(form.get('note') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить день календаря');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+export async function dropCalendarDay(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/directory?tab=calendar';
+  let failure: string | null = null;
+  try {
+    await removeCalendarDay(actor, String(form.get('day') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось снять день календаря');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 /**

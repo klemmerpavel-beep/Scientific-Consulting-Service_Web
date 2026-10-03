@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import {
+  autoAcceptExpired,
+  enqueueApprovalReminders,
+  startMissingDeadlines,
+} from '../../../../lib/cabinet/approval';
 import { dispatch, enqueueDeadlineReminders } from '../../../../lib/cabinet/outbox';
 import { sameSecret } from '../../../../lib/cabinet/token';
 
@@ -26,7 +31,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return new NextResponse('Не найдено', { status: 404 });
   }
 
+  // Сроки согласования: поставить недостающие, закрыть истёкшие (если
+  // автозакрытие включено), напомнить о подходящих — до рассылки, чтобы
+  // письма этого прогона ушли сразу (требование Т-15, решение Р-290).
+  const deadlinesStarted = await startMissingDeadlines();
+  const autoAccepted = await autoAcceptExpired();
+  const approvalReminders = await enqueueApprovalReminders();
   const reminders = await enqueueDeadlineReminders();
   const report = await dispatch();
-  return NextResponse.json({ ok: true, reminders, ...report });
+  return NextResponse.json({
+    ok: true,
+    reminders,
+    approvalReminders,
+    deadlinesStarted,
+    autoAccepted,
+    ...report,
+  });
 }

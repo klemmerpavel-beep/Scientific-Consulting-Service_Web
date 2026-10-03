@@ -170,7 +170,13 @@ export default async function ProjectsScreen({
             // Срок — первым: пояснение режется тремя строками, и на
             // телефоне срок уходил за многоточие (решение Р-213).
             detail: [
-              first.dueOn === null ? null : `Срок этапа — ${formatDate(first.dueOn)}.`,
+              // На согласовании клиента ждут к сроку согласования, а не к
+              // сроку этапа (требование Т-15, решение Р-290).
+              first.state === 'IN_APPROVAL' && first.approvalDueOn !== null
+                ? `Срок согласования — до ${formatDate(first.approvalDueOn)} включительно.`
+                : first.dueOn === null
+                  ? null
+                  : `Срок этапа — ${formatDate(first.dueOn)}.`,
               first.state === 'AWAITING_CLIENT'
                 ? `Работа «${clip(first.project.title, 60)}» стоит, пока их нет.`
                 : `Работа «${clip(first.project.title, 60)}» продолжится после вашего согласования.`,
@@ -304,7 +310,11 @@ export default async function ProjectsScreen({
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    {stage.dueOn === null ? null : (
+                    {/* У этапа на согласовании — срок согласования, а не
+                        срок этапа: ответ клиента ждут к нему (Т-15, Р-290). */}
+                    {stage.state === 'IN_APPROVAL' && stage.approvalDueOn !== null ? (
+                      <Chip>срок согласования — до {formatDate(stage.approvalDueOn)}</Chip>
+                    ) : stage.dueOn === null ? null : (
                       <Chip>до {formatDate(stage.dueOn)}</Chip>
                     )}
                     <ButtonLink href={`/cabinet/stages/${stage.id}`}>
