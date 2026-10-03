@@ -43,7 +43,8 @@ export async function setLeadStatus(actor: Actor, leadId: string, status: string
     throw new LeadWorkError('Заявка уже стала работой: её состояние ведётся в карточке работы');
   }
   if (lead.status === status) return;
-  await prisma.lead.update({ where: { id: lead.id }, data: { status } });
+  // Давность состояния — для дела «Заявки в разборе» (М-06, Р-304).
+  await prisma.lead.update({ where: { id: lead.id }, data: { status, statusChangedAt: new Date() } });
   await record(actor, {
     action: 'LEAD_STATUS_CHANGED',
     objectType: 'Lead',

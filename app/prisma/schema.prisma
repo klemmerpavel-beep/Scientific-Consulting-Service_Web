@@ -56,6 +56,9 @@ model Lead {
   userAgent String? @db.Text
 
   status LeadStatus @default(NEW)
+  /// Когда заявка последний раз сменила состояние — давность дела
+  /// «Заявки в разборе» на «Сегодня» (требование М-06, решение Р-304).
+  statusChangedAt DateTime @default(now())
   notes  String?    @db.Text
 
   /// Причина отказа, которую заявитель получает письмом (решение Р-217).

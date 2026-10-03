@@ -15,6 +15,9 @@ import {
   type Actor,
 } from './access.ts';
 import { fileRefusal } from './file-guard.ts';
+import { loadCalendar } from './approval.ts';
+import { previousWorkday } from './workdays.ts';
+import { turnLabel, type StageStateKey } from './stage-state.ts';
 import { moscowToday, now as today } from './clock.ts';
 import { LEAD_STATUS_LABEL } from './lead-labels.ts';
 
@@ -571,7 +574,7 @@ export async function experts(actor: Actor) {
 /**
  * Светофор по срокам. Три полосы, и каждая отвечает на свой вопрос: что уже
  * сорвано, что сорвётся на этой неделе и где работа стоит из-за клиента
- * дольше двух недель. Последняя полоса нужна отдельно: просрочки там может
+ * дольше недели (Р-304). Последняя полоса нужна отдельно: просрочки там может
  * ещё не быть, а проект уже фактически не движется.
  */
 export async function trafficLight(actor: Actor) {
@@ -595,7 +598,9 @@ export async function trafficLight(actor: Actor) {
   const moment = today();
   const now = moscowToday(moment);
   const inWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const twoWeeksAgo = new Date(moment.getTime() - 14 * 24 * 60 * 60 * 1000);
+  // Порог «ждёт клиента» — неделя, а не две: за две недели работа успевала
+  // встать (требование М-06, решение Р-304).
+  const weekAgo = new Date(moment.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   // Карточка «Требует внимания» должна отвечать на три вопроса сразу:
   // что просрочено, чей ход и сколько денег под угрозой. Состояние этапа
@@ -643,7 +648,7 @@ export async function trafficLight(actor: Actor) {
       include,
     }),
     prisma.stage.findMany({
-      where: { ...mine, state: 'AWAITING_CLIENT', awaitingClientSince: { lt: twoWeeksAgo } },
+      where: { ...mine, state: 'AWAITING_CLIENT', awaitingClientSince: { lt: weekAgo } },
       orderBy: { awaitingClientSince: 'asc' },
       include,
     }),
@@ -686,7 +691,32 @@ export async function trafficLight(actor: Actor) {
     },
   });
 
-  return { overdue, soon, stalled, lateWorks };
+  // Дело «ждёт клиента» гаснет, когда практика после этой даты написала
+  // клиенту в переписке: напоминание уже сделано (М-06, М-21, Р-304).
+  const nudged =
+    stalled.length === 0
+      ? []
+      : await prisma.message.findMany({
+          where: {
+            projectId: { in: stalled.map((stage) => stage.projectId) },
+            author: { role: { in: ['MANAGER', 'HEAD'] } },
+            createdAt: {
+              gt: new Date(Math.min(...stalled.map((stage) => stage.awaitingClientSince?.getTime() ?? Date.now()))),
+            },
+          },
+          select: { projectId: true, createdAt: true },
+        });
+  const stillStalled = stalled.filter(
+    (stage) =>
+      !nudged.some(
+        (message) =>
+          message.projectId === stage.projectId &&
+          stage.awaitingClientSince !== null &&
+          message.createdAt > stage.awaitingClientSince,
+      ),
+  );
+
+  return { overdue, soon, stalled: stillStalled, lateWorks };
 }
 
 /** Реестр клиентов. Контакты отдаются только ролям, которым они положены. */
@@ -1090,4 +1120,142 @@ export async function pendingReview(actor: Actor, projectId: string): Promise<{ 
     }),
   ]);
   return { comments, versions };
+}
+
+/**
+ * Новые дела рабочего экрана «Сегодня» (требование М-06, решение Р-304).
+ *
+ * Дела по работам — только по своим, где смотрящий куратор: экран общий с
+ * руководителем, и чужие работы заняли бы его делами других. Заявки — общие
+ * для всех, кто их разбирает. У каждого дела — экран, где его закрывают, и
+ * условие, при котором оно исчезает само.
+ */
+export async function todayItems(actor: Actor) {
+  const empty = {
+    accepted: [] as { stageTitle: string; projectTitle: string; nextTitle: string | null; href: string }[],
+    noPlan: [] as { code: string; title: string; client: string }[],
+    noExpert: [] as { code: string; title: string; client: string }[],
+    noNda: [] as { code: string; title: string; expert: string }[],
+    week: [] as { key: string; title: string; dueOn: Date; href: string; turn: string | null }[],
+    lateLeads: [] as { id: string; name: string | null; createdAt: Date }[],
+    reviewLeads: [] as { id: string; name: string | null; status: string; since: Date }[],
+  };
+  if (!can(actor, 'REQUEST_MODERATE')) return empty;
+  const at = new Date();
+  const today = moscowToday(at);
+  const DAY = 86_400_000;
+  const inWeek = new Date(today.getTime() + 7 * DAY);
+
+  const own = await prisma.project.findMany({
+    where: { managerId: actor.id, status: 'ACTIVE' },
+    orderBy: { code: 'asc' },
+    select: {
+      code: true,
+      title: true,
+      source: true,
+      dueOn: true,
+      expertId: true,
+      expertNameRaw: true,
+      client: { select: { fullName: true } },
+      expert: { select: { fullName: true, expertProfile: { select: { ndaSignedAt: true } } } },
+      stages: {
+        orderBy: { position: 'asc' },
+        select: {
+          id: true,
+          title: true,
+          state: true,
+          dueOn: true,
+          changes: {
+            where: { toState: 'DONE' },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { via: true },
+          },
+        },
+      },
+    },
+  });
+
+  const out = { ...empty, accepted: [...empty.accepted], noPlan: [...empty.noPlan], noExpert: [...empty.noExpert], noNda: [...empty.noNda], week: [...empty.week] };
+  for (const project of own) {
+    const stages = project.stages;
+    // Этап принят клиентом, по сроку или за клиента, а следующий не начат:
+    // его пора запускать; у последнего — закрывать работу.
+    const lastDone = stages.map((stage) => stage.state).lastIndexOf('DONE');
+    if (lastDone >= 0 && stages.slice(lastDone + 1).every((stage) => stage.state === 'NOT_STARTED')) {
+      const done = stages[lastDone]!;
+      const via = done.changes[0]?.via ?? null;
+      if (via === 'CLIENT_APPROVE' || via === 'AUTO_ACCEPT' || via === 'STAFF_FOR_CLIENT') {
+        const next = stages[lastDone + 1] ?? null;
+        out.accepted.push({
+          stageTitle: done.title,
+          projectTitle: project.title,
+          nextTitle: next?.title ?? null,
+          href: next === null ? `/cabinet/projects/${project.code}/status?to=COMPLETED` : `/cabinet/stages/${next.id}`,
+        });
+      }
+    }
+    // Работы из книги заказов этапов и эксперта в кабинете не заводят
+    // (ОМ-9): делами они не становятся.
+    if (project.source !== 'IMPORT' && stages.length === 0) {
+      out.noPlan.push({ code: project.code, title: project.title, client: project.client.fullName });
+    }
+    if (project.source !== 'IMPORT' && project.expertId === null && (project.expertNameRaw ?? '').trim() === '') {
+      out.noExpert.push({ code: project.code, title: project.title, client: project.client.fullName });
+    }
+    if (project.expert !== null && (project.expert.expertProfile?.ndaSignedAt ?? null) === null) {
+      out.noNda.push({ code: project.code, title: project.title, expert: project.expert.fullName });
+    }
+    for (const stage of stages) {
+      if (stage.state !== 'DONE' && stage.dueOn !== null && stage.dueOn >= today && stage.dueOn <= inWeek) {
+        out.week.push({
+          key: `stage-${stage.id}`,
+          title: `${stage.title} · ${project.title}`,
+          dueOn: stage.dueOn,
+          href: `/cabinet/stages/${stage.id}`,
+          // Подпись хода — та же, что на шкале и экране этапа (Р-288).
+          turn: turnLabel(
+            stage.state as StageStateKey,
+            'curator',
+            project.expertId !== null || (project.expertNameRaw ?? '').trim() !== '',
+          ),
+        });
+      }
+    }
+    if (project.dueOn !== null && project.dueOn >= today && project.dueOn <= inWeek) {
+      out.week.push({
+        key: `work-${project.code}`,
+        title: `Срок работы · ${project.title}`,
+        dueOn: project.dueOn,
+        href: `/cabinet/projects/${project.code}`,
+        turn: null,
+      });
+    }
+  }
+  out.week.sort((a, b) => a.dueOn.getTime() - b.dueOn.getTime());
+
+  // Заявки: новая без ответа дольше рабочего дня и заявки в разборе с
+  // давностью (Lead.statusChangedAt).
+  const leadScope = scopeLeads(actor) ?? {};
+  const calendar = await loadCalendar();
+  const lastWorkday = previousWorkday(today, calendar);
+  const [late, review] = await Promise.all([
+    prisma.lead.findMany({
+      where: { ...leadScope, status: 'NEW', projectId: null, form: { not: 'review' }, createdAt: { lt: new Date(lastWorkday.getTime() + DAY - 3 * 3_600_000) } },
+      orderBy: { createdAt: 'asc' },
+      take: 20,
+      select: { id: true, name: true, createdAt: true },
+    }),
+    prisma.lead.findMany({
+      where: { ...leadScope, status: { in: ['IN_PROGRESS', 'AWAITING_REPLY', 'CONSULTED'] }, projectId: null },
+      orderBy: { statusChangedAt: 'asc' },
+      take: 20,
+      select: { id: true, name: true, status: true, statusChangedAt: true },
+    }),
+  ]);
+  return {
+    ...out,
+    lateLeads: late,
+    reviewLeads: review.map((lead) => ({ id: lead.id, name: lead.name, status: lead.status, since: lead.statusChangedAt })),
+  };
 }

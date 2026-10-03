@@ -10,4 +10,4 @@
  * Проверка `schema-version.test.ts` не даёт забыть поднять имя вместе с
  * новой миграцией.
  */
-export const LATEST_MIGRATION = '20261003180000_expert_role';
+export const LATEST_MIGRATION = '20261003190000_lead_status_changed';

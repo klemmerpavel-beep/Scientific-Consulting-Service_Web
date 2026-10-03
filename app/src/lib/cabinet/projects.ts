@@ -138,7 +138,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
     // транзакции: второй ждёт и не находит заявку свободной.
     const claimed = await tx.lead.updateMany({
       where: { id: lead.id, projectId: null, status: { not: 'DECLINED' } },
-      data: { status: 'CONTRACTED' },
+      data: { status: 'CONTRACTED', statusChangedAt: new Date() },
     });
     if (claimed.count === 0) {
       throw new Error('Заявку уже разобрали: обновите страницу');
@@ -421,7 +421,7 @@ export async function declineLead(actor: Actor, leadId: string, reason: string) 
     // Р-240).
     const claimed = await tx.lead.updateMany({
       where: { id: leadId, projectId: null, status: { not: 'DECLINED' } },
-      data: { status: 'DECLINED', declineReason: trimmed },
+      data: { status: 'DECLINED', declineReason: trimmed, statusChangedAt: new Date() },
     });
     if (claimed.count === 0) {
       throw new Error('Заявку уже разобрали: обновите страницу');

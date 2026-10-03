@@ -31,7 +31,8 @@ import { formatAmount, formatPlain, outstandingOf, workMoneyNote } from '../../.
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments, pendingVersions } from '../../../lib/cabinet/materials';
-import { leadQueue, returnedStages, trafficLight } from '../../../lib/cabinet/queries';
+import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
+import { leadQueue, returnedStages, todayItems, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
 import { currentActor } from '../../../lib/cabinet/session';
@@ -160,6 +161,10 @@ export default async function ManageQueue({
   const versionsToPublish = await pendingVersions(actor);
   // Клиент вернул этап с замечаниями: ход за куратором (решение Р-283).
   const returned = await returnedStages(actor);
+  // Новые дела «Сегодня»: принятый этап, работа без плана, без
+  // исполнителя или с исполнителем без доступа, заявки без ответа и в
+  // разборе; «На этой неделе» — отдельным блоком (требование М-06, Р-304).
+  const today = await todayItems(actor);
   // Состояние очереди уведомлений видит только руководитель (решение Р-154):
   // менеджеру служебная кухня не нужна, а недоставленное письмо — забота
   // того, кто отвечает за практику целиком.
@@ -207,7 +212,7 @@ export default async function ManageQueue({
   );
 
   // «Требует внимания» — то, что нельзя оставить как есть: сорванный срок,
-  // работа, которая ждёт клиента дольше двух недель, и непрочитанное
+  // работа, которая ждёт клиента дольше недели (Р-304), и непрочитанное
   // сообщение. У менеджера это главный экран целиком, у руководителя —
   // раздел под сводкой (решение Р-149).
   // Заголовком записи стоит работа и этап, а вид беды — пометкой рядом:
@@ -337,6 +342,72 @@ export default async function ManageQueue({
           ? `/cabinet/projects/${row.projectCode}/materials#material-${row.materialId}`
           : `/cabinet/stages/${row.stageId}`,
     })),
+    ...today.accepted.map((row) => ({
+      key: `accepted-${row.href}`,
+      kind: 'accepted' as const,
+      step: 0 as const,
+      title: `${row.stageTitle} · ${row.projectTitle}`,
+      mark: 'этап принят',
+      urgent: false,
+      detail: null,
+      todo: row.nextTitle === null ? 'Все этапы приняты — завершить работу' : `Запустить следующий этап «${row.nextTitle}»`,
+      href: row.href,
+    })),
+    ...today.noNda.map((row) => ({
+      key: `nonda-${row.code}`,
+      kind: 'work' as const,
+      step: 0 as const,
+      title: row.title,
+      mark: 'исполнитель без доступа',
+      urgent: false,
+      detail: row.expert,
+      todo: 'Без договора поручения эксперт не видит материалов: договор отмечает руководитель',
+      href: `/cabinet/projects/${row.code}#manage`,
+    })),
+    ...today.noPlan.map((row) => ({
+      key: `noplan-${row.code}`,
+      kind: 'work' as const,
+      step: 0 as const,
+      title: row.title,
+      mark: 'нет плана этапов',
+      urgent: false,
+      detail: row.client,
+      todo: 'Завести план — по шаблону или вручную',
+      href: `/cabinet/projects/${row.code}#manage`,
+    })),
+    ...today.noExpert.map((row) => ({
+      key: `noexpert-${row.code}`,
+      kind: 'work' as const,
+      step: 0 as const,
+      title: row.title,
+      mark: 'нет исполнителя',
+      urgent: false,
+      detail: row.client,
+      todo: 'Назначить эксперта',
+      href: `/cabinet/projects/${row.code}#manage`,
+    })),
+    ...today.lateLeads.map((lead) => ({
+      key: `latelead-${lead.id}`,
+      kind: 'lead' as const,
+      step: 0 as const,
+      title: lead.name ?? 'Без имени',
+      mark: 'заявка без ответа дольше рабочего дня',
+      urgent: false,
+      detail: `пришла ${formatDate(lead.createdAt)}`,
+      todo: 'Разобрать заявку',
+      href: `/cabinet/manage/leads/${lead.id}`,
+    })),
+    ...today.reviewLeads.map((lead) => ({
+      key: `review-${lead.id}`,
+      kind: 'lead' as const,
+      step: 0 as const,
+      title: lead.name ?? 'Без имени',
+      mark: `${(LEAD_STATUS_LABEL[lead.status as keyof typeof LEAD_STATUS_LABEL] ?? lead.status).toLowerCase()} с ${formatDate(lead.since)}`,
+      urgent: false,
+      detail: null,
+      todo: 'Довести разбор до решения',
+      href: `/cabinet/manage/leads/${lead.id}`,
+    })),
     ...versionsToPublish.map((row) => ({
       key: `version-${row.stageId ?? row.materialId}`,
       kind: 'version' as const,
@@ -380,6 +451,9 @@ export default async function ManageQueue({
     unread: 3,
     comment: 3,
     version: 3,
+    accepted: 3,
+    work: 3,
+    lead: 3,
     outbox: 1,
   };
   const showAll = (await searchParams).attention === 'all' || attention.length <= 12;
@@ -539,6 +613,28 @@ export default async function ManageQueue({
               </ButtonLink>
             </div>
           ) : null}
+        </Block>
+      )}
+
+      {/* «На этой неделе» — отдельным блоком, в «N дел» не входит: срок ещё
+          не сорван, но подходит (требование М-06, ОМ-10, решение Р-304). */}
+      {today.week.length === 0 ? null : (
+        <Block style={{ marginBottom: 20 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+            На этой неделе · {today.week.length}
+          </Heading>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+            {today.week.slice(0, 8).map((row) => (
+              <li key={row.key} style={{ display: 'grid', gap: 2 }}>
+                <a href={row.href} className="cab-mark" style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
+                  {row.title}
+                </a>
+                <Text muted size={13}>
+                  {`до ${formatDate(row.dueOn)}${row.turn === null ? '' : ` · ${row.turn}`}`}
+                </Text>
+              </li>
+            ))}
+          </ul>
         </Block>
       )}
 
@@ -1001,6 +1097,25 @@ export default async function ManageQueue({
                 </li>
               ))}
             </ul>
+          )}
+          {/* Очередь листается: прежде видна была только первая страница
+              (требование М-06, решение Р-304). */}
+          {queue.pages <= 1 ? null : (
+            <nav aria-label="Страницы очереди заявок" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
+              {queue.page > 1 ? (
+                <a className="cab-mark" href={`/cabinet/manage?page=${queue.page - 1}`}>
+                  Предыдущие
+                </a>
+              ) : null}
+              <Text muted size={13} style={{ margin: 0 }}>
+                Страница {queue.page} из {queue.pages}
+              </Text>
+              {queue.page < queue.pages ? (
+                <a className="cab-mark" href={`/cabinet/manage?page=${queue.page + 1}`}>
+                  Следующие
+                </a>
+              ) : null}
+            </nav>
           )}
         </BoardColumn>
       </Board>
