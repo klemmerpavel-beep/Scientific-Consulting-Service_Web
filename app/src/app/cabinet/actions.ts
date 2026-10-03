@@ -635,25 +635,50 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
       })),
   );
 
-  const { filesLost } = await createCabinetRequest(
-    actor,
-    {
-      topic: String(form.get('topic') ?? '').trim(),
-      need: String(form.get('need') ?? '').trim() || null,
-      deadline: String(form.get('deadline') ?? '').trim() || null,
-      message: String(form.get('message') ?? '').trim() || null,
-      applicantName: String(form.get('applicantName') ?? '').trim() || null,
-      supervisorName: String(form.get('supervisorName') ?? '').trim() || null,
-      organization: String(form.get('organization') ?? '').trim() || null,
-      speciality: String(form.get('speciality') ?? '').trim() || null,
-      phone: String(form.get('phone') ?? '').trim() || null,
-      files,
-      ip: await requestIp(),
-      consent: form.get('consent') === 'on',
-      terms: form.get('terms') === 'on',
-    },
-    CONSENT_VERSION,
-  );
+  // Отказ — на экран заявки с набранным, а не общим экраном сбоя
+  // (требование Т-22, решения Р-279, Р-296).
+  let filesLost = 0;
+  let failure: string | null = null;
+  try {
+    ({ filesLost } = await createCabinetRequest(
+      actor,
+      {
+        topic: String(form.get('topic') ?? '').trim(),
+        need: String(form.get('need') ?? '').trim() || null,
+        deadline: String(form.get('deadline') ?? '').trim() || null,
+        message: String(form.get('message') ?? '').trim() || null,
+        applicantName: String(form.get('applicantName') ?? '').trim() || null,
+        supervisorName: String(form.get('supervisorName') ?? '').trim() || null,
+        organization: String(form.get('organization') ?? '').trim() || null,
+        speciality: String(form.get('speciality') ?? '').trim() || null,
+        phone: String(form.get('phone') ?? '').trim() || null,
+        files,
+        ip: await requestIp(),
+        consent: form.get('consent') === 'on',
+        terms: form.get('terms') === 'on',
+      },
+      CONSENT_VERSION,
+    ));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить заявку');
+  }
+  if (failure !== null) {
+    redirect(
+      await withError('/cabinet/request', failure, {
+        draft: fieldsOf(form, [
+          'applicantName',
+          'supervisorName',
+          'need',
+          'topic',
+          'deadline',
+          'message',
+          'organization',
+          'speciality',
+          'phone',
+        ]),
+      }),
+    );
+  }
 
   redirect(filesLost > 0 ? `/cabinet/request?sent=1&lost=${filesLost}` : '/cabinet/request?sent=1');
 }

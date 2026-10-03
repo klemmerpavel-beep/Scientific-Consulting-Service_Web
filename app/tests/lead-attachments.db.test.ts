@@ -165,6 +165,32 @@ describe('вложения заявки', { skip: !enabled }, async () => {
     assert.ok(!saved.attachments[0]!.storageKey.includes('черновик'));
   });
 
+  it('исполняемый файл не принимается, и заявка не заводится (Т-22, Р-296)', async () => {
+    const before = await prisma.lead.count({ where: { contact: { startsWith: 'lead-client-' } } });
+    await assert.rejects(
+      queries.createCabinetRequest(
+        clientActor(),
+        {
+          topic: 'Заявка с установщиком',
+          need: null,
+          deadline: null,
+          message: null,
+          files: [
+            { originalName: 'черновик.txt', contentType: 'text/plain', body: Buffer.from('глава') },
+            { originalName: 'setup.EXE', contentType: 'application/octet-stream', body: Buffer.from('x') },
+          ],
+          ip: '127.0.0.1',
+          consent: true,
+          terms: true,
+        },
+        'v1',
+      ),
+      /«setup\.EXE» не принят: исполняемые файлы и установщики загружать нельзя/u,
+    );
+    const after = await prisma.lead.count({ where: { contact: { startsWith: 'lead-client-' } } });
+    assert.equal(after, before, 'заявка заведена, хотя вложение отвергнуто');
+  });
+
   it('вложение читает только тот, кто разбирает заявки', async () => {
     const file = await prisma.leadAttachment.findFirstOrThrow({ where: { leadId: ids.lead! } });
 

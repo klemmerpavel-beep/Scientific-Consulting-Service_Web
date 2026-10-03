@@ -125,6 +125,18 @@ describe('закрытая работа — только чтение', { skip: 
     await addComment(curator(), version.id, 'Замечание практики');
   });
 
+  it('исполняемый файл не принимается ни от кого (Т-22, Р-296)', async () => {
+    await assert.rejects(
+      uploadVersion(curator(), { ...file(ids.open!), originalName: 'otchet.pdf\u202Eexe.bat' }),
+      /не принят: исполняемые файлы/u,
+    );
+    const elf = Buffer.from([0x7f, 0x45, 0x4c, 0x46, 2, 1, 1, 0]);
+    await assert.rejects(
+      uploadVersion(client(), { ...file(ids.open!), originalName: 'dannye.csv', body: elf }),
+      /не принят/u,
+    );
+  });
+
   it('приостановленная работа: материалы и замечания работают', async () => {
     await projects.setProjectStatus(curator(), ids.project!, 'PAUSED');
     const upload = await uploadVersion(client(), file(ids.open!));

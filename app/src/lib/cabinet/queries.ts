@@ -13,6 +13,7 @@ import {
   scopeVersions,
   type Actor,
 } from './access.ts';
+import { fileRefusal } from './file-guard.ts';
 import { moscowToday, now as today } from './clock.ts';
 import { LEAD_STATUS_LABEL } from './lead-labels.ts';
 
@@ -928,6 +929,12 @@ export async function createCabinetRequest(
     throw new Error(
       `Файл больше допустимых ${Math.round(REQUEST_FILE_MAX_BYTES / 1024 / 1024)} МБ`,
     );
+  }
+  // Исполняемые файлы — до заявки, как и предел размера: отказ не оставляет
+  // заявку без части вложений (требование Т-22, решение Р-296).
+  for (const file of files) {
+    const refusal = fileRefusal(file.originalName, file.body);
+    if (refusal !== null) throw new Error(refusal);
   }
 
   const user = await prisma.user.findUniqueOrThrow({

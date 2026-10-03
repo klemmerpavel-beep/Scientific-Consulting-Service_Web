@@ -25,6 +25,8 @@ import {
 } from '../../../lib/cabinet/queries';
 import { currentActor } from '../../../lib/cabinet/session';
 import { submitCabinetRequest } from '../actions';
+import ActionError from '../../../components/cabinet/ActionError';
+import { formDraft } from '../../../lib/cabinet/flash';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +42,7 @@ const LEGAL_LINK = {
 export default async function NewRequestScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ sent?: string; lost?: string }>;
+  searchParams: Promise<{ sent?: string; lost?: string; error?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
@@ -52,6 +54,9 @@ export default async function NewRequestScreen({
     requestDefaults(actor),
   ]);
 
+  // Отказ — с набранным: заявку не приходится заполнять заново (Т-22,
+  // решения Р-279, Р-296).
+  const draft = (await formDraft(params.error)) ?? {};
   // Число берётся из адреса, поэтому читается как число, а не как текст.
   const lost = Math.max(0, Number.parseInt(params.lost ?? '0', 10) || 0);
 
@@ -67,23 +72,25 @@ export default async function NewRequestScreen({
 
         {params.sent === undefined ? (
           <Card>
+            <ActionError id={params.error} />
             <Form action={submitCabinetRequest}>
                 <Field
                 label="Ваши ФИО"
                 name="applicantName"
                 required
-                defaultValue={defaults.fullName}
+                defaultValue={draft.applicantName ?? defaults.fullName}
                 hint="Подставлено из вашей карточки. Если работа оформляется на другого человека, укажите его ФИО."
               />
 
               <Field
                 label="ФИО научного руководителя"
                 name="supervisorName"
+                defaultValue={draft.supervisorName ?? ''}
                 placeholder="Соловьёв Дмитрий Викторович"
                 hint="Если руководитель назначен: его требования учитываются с первого этапа."
               />
 
-              <Select label="Тип сопровождения" name="need">
+              <Select label="Тип сопровождения" name="need" defaultValue={draft.need ?? ''}>
                 <option value="">— уточню при разговоре —</option>
                 {types.map((type) => (
                   <option key={type.id} value={type.name}>
@@ -96,12 +103,14 @@ export default async function NewRequestScreen({
                 label="Тема работы"
                 name="topic"
                 required
+                defaultValue={draft.topic ?? ''}
                 placeholder="Статистический анализ отказов оборудования карьерных экскаваторов"
               />
 
               <Field
                 label="Желаемый срок"
                 name="deadline"
+                defaultValue={draft.deadline ?? ''}
                 placeholder="до 15 января 2027"
                 hint="Достаточно ориентира: точные сроки этапов согласуем после разбора задачи."
               />
@@ -110,6 +119,7 @@ export default async function NewRequestScreen({
                 label="Что требуется"
                 name="message"
                 multiline
+                defaultValue={draft.message ?? ''}
                 hint="Коротко о задаче, о том, что уже сделано, и о требованиях кафедры или журнала."
               />
 
@@ -117,7 +127,7 @@ export default async function NewRequestScreen({
                 label="Приложить файлы"
                 name="files"
                 multiple
-                hint={`Черновик, требования кафедры, отзыв рецензента — до ${REQUEST_FILES_MAX} файлов по 25 МБ. Файлы видят только сотрудники ProDisser, разбирающие заявки; после одобрения они перейдут в материалы работы.`}
+                hint={`Черновик, требования кафедры, отзыв рецензента — до ${REQUEST_FILES_MAX} файлов по 25 МБ. Исполняемые файлы и установщики не принимаются. Файлы видят только сотрудники ProDisser, разбирающие заявки; после одобрения они перейдут в материалы работы.`}
               />
 
               {/* Место учёбы и контакт нужны не каждой заявке: у постоянного
@@ -127,20 +137,20 @@ export default async function NewRequestScreen({
                 <Field
                   label="Организация или вуз"
                   name="organization"
-                  defaultValue={defaults.organization}
+                  defaultValue={draft.organization ?? defaults.organization}
                   placeholder="Горный университет"
                 />
                 <Field
                   label="Направление подготовки"
                   name="speciality"
-                  defaultValue={defaults.speciality}
+                  defaultValue={draft.speciality ?? defaults.speciality}
                   placeholder="2.8.6 — Горные машины и оборудование"
                 />
                 <Field
                   label="Контактный телефон"
                   name="phone"
                   type="tel"
-                  defaultValue={defaults.phone}
+                  defaultValue={draft.phone ?? defaults.phone}
                   hint="Для срочной связи; письма по-прежнему идут на адрес, которым вы вошли."
                 />
               </Disclosure>

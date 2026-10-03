@@ -10,6 +10,7 @@ import {
 } from './access.ts';
 import { record } from './audit.ts';
 import { hasContacts } from './contacts.ts';
+import { fileRefusal } from './file-guard.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
 import { materialKey, openObject, sha256, storage } from './storage.ts';
@@ -164,6 +165,10 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   if (input.body.byteLength > MAX_UPLOAD_BYTES) {
     throw new Error(`Файл больше допустимых ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ`);
   }
+  // Исполняемые файлы и установщики не принимаются ни от кого — по
+  // расширению и по содержимому (требование Т-22, решение Р-296).
+  const refusal = fileRefusal(input.originalName, input.body);
+  if (refusal !== null) throw new Error(refusal);
 
   // Версия эксперта клиенту не видна до публикации куратором: строка
   // модерации ставится вместе с версией, а событие в истории клиента и
