@@ -31,7 +31,8 @@ export type EventKind =
   | 'CURATOR_ASSIGNED'
   | 'DEADLINE_MISSED'
   | 'WORK_ASSIGNED'
-  | 'EXPERT_DECISION';
+  | 'EXPERT_DECISION'
+  | 'STAGE_DUE_CHANGED';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -84,6 +85,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   DEADLINE_MISSED: 'срок этапа сорван',
   WORK_ASSIGNED: 'вас назначили на работу',
   EXPERT_DECISION: 'решение куратора по вашему материалу',
+  STAGE_DUE_CHANGED: 'изменён срок этапа',
 };
 
 /**

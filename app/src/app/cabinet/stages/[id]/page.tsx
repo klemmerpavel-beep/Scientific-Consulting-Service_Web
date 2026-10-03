@@ -308,14 +308,24 @@ export default async function StageScreen({
           <Disclosure title="Перенести срок этапа">
             <Form action={moveStageDue}>
               <input type="hidden" name="stageId" value={stage.id} />
-              <input type="hidden" name="title" value={stage.title} />
-              <input type="hidden" name="summary" value={stage.summary ?? ''} />
               <Field
                 label="Новый срок"
                 name="dueOn"
+                scope="due"
                 type="date"
-                defaultValue={stage.dueOn?.toISOString().slice(0, 10) ?? ''}
-                hint="Срок видит клиент: перенос без причины в переписке он читает как срыв."
+                required
+                defaultValue={draft.dueOn ?? stage.dueOn?.toISOString().slice(0, 10) ?? ''}
+              />
+              {/* Перенос — с причиной: клиент получает её письмом, эксперт
+                  этапа в работе — тоже (требование М-15, решение Р-302). */}
+              <Field
+                label="Причина переноса"
+                name="reason"
+                scope="due"
+                multiline
+                required
+                defaultValue={draft.dueReason ?? ''}
+                hint="Клиент получит её письмом; без причины перенос читается как срыв."
               />
               <FormActions>
                 <Button tone="quiet">Сохранить срок</Button>

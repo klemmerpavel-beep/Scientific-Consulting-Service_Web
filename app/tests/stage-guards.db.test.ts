@@ -300,10 +300,16 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     const stage = await prisma.stage.create({
       data: { projectId, position: 1, title: 'Срок', dueOn: new Date('2026-10-01T00:00:00Z') },
     });
+    // Смена срока на карточке — с причиной (М-15, Р-302).
+    await assert.rejects(
+      projects.editStage(curator(), { stageId: stage.id, title: 'Срок', dueOn: new Date('2026-10-15T00:00:00Z') }),
+      /с причиной/u,
+    );
     await projects.editStage(curator(), {
       stageId: stage.id,
       title: 'Срок',
       dueOn: new Date('2026-10-15T00:00:00Z'),
+      reason: 'Ждём данные эксперимента',
     });
     const stageEntry = await prisma.auditEvent.findFirstOrThrow({
       where: { objectId: stage.id, action: 'STAGE_EDITED' },
@@ -352,6 +358,49 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     projectIds.push(project.id);
     return { projectId: project.id, owner: who(user.id, 'CLIENT', { clientProfileId: profile.id }) };
   };
+
+  it('перенос срока с экрана этапа: только срок, с причиной, письма клиенту и эксперту (М-15, Р-302)', async () => {
+    const { projectId, owner } = await clientWithWork('DUE');
+    await prisma.expertProfile.upsert({
+      where: { userId: ids.expert! },
+      create: { userId: ids.expert!, ndaSignedAt: new Date('2026-01-01T00:00:00Z') },
+      update: { ndaSignedAt: new Date('2026-01-01T00:00:00Z') },
+    });
+    await prisma.project.update({ where: { id: projectId }, data: { expertId: ids.expert! } });
+    const stage = await prisma.stage.create({
+      data: { projectId, position: 1, title: 'Глава 4', state: 'IN_PROGRESS', dueOn: new Date('2026-11-01T00:00:00Z') },
+    });
+    // Название, изменённое в другом окне, перенос срока не откатывает.
+    await prisma.stage.update({ where: { id: stage.id }, data: { title: 'Глава 4, новая редакция' } });
+    const move = (dueOn: Date | null, reason: string) =>
+      projects.rescheduleStage(curator(), { stageId: stage.id, dueOn, reason });
+    await assert.rejects(move(new Date('2026-11-15T00:00:00Z'), ' '), /с причиной/u);
+    await assert.rejects(move(null, 'Без даты'), /Укажите новый срок/u);
+    await assert.rejects(move(new Date('2026-11-01T00:00:00Z'), 'Тот же'), /совпадает/u);
+    await move(new Date('2026-11-15T00:00:00Z'), 'Ждём ответ рецензента');
+    const saved = await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } });
+    assert.equal(saved.title, 'Глава 4, новая редакция');
+    assert.equal(saved.dueOn?.toISOString().slice(0, 10), '2026-11-15');
+    const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId, kind: 'STAGE_DUE_CHANGED' } });
+    assert.deepEqual(event.payload, {
+      stageId: stage.id,
+      dueFrom: '2026-11-01',
+      dueTo: '2026-11-15',
+      reason: 'Ждём ответ рецензента',
+    });
+    const toClient = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId, userId: owner.id, eventKind: 'STAGE_DUE_CHANGED', channel: 'EMAIL' },
+    });
+    assert.match(toClient.body, /Причина: Ждём ответ рецензента/u);
+    assert.ok(
+      (await prisma.notificationOutbox.count({
+        where: { projectId, userId: ids.expert!, eventKind: 'STAGE_DUE_CHANGED' },
+      })) >= 1,
+      'эксперт этапа в работе не узнал о переносе',
+    );
+    const journal = await prisma.auditEvent.findFirstOrThrow({ where: { objectId: stage.id, action: 'STAGE_EDITED' } });
+    assert.doesNotMatch(JSON.stringify(journal.payload), /рецензента/u, 'причина ушла в журнал');
+  });
 
   it('клиент возвращает этап с замечаниями; повторная сдача гасит пометку (Р-281)', async () => {
     const { projectId, owner } = await clientWithWork('RET');

@@ -93,6 +93,7 @@ const EVENT_LABEL: Record<string, string> = {
   PROJECT_CREATED: 'Работа взята в сопровождение',
   MANAGER_ASSIGNED: 'Работу принял другой куратор',
   EXPERT_ASSIGNED: 'Назначен исполнитель',
+  STAGE_DUE_CHANGED: 'Перенесён срок этапа',
   STAGE_STATE_CHANGED: 'Этап сменил состояние',
   STAGE_RETURNED: 'Этап возвращён с замечаниями',
   VERSION_UPLOADED: 'Приложена новая версия материала',
@@ -172,6 +173,14 @@ function eventLine(
     // требует штриховых значков, не символов. Причина перехода — следом
     // (решение Р-288).
     const line = from === null ? `${where} — ${to}` : `${where} — ${to} (было «${from}»)`;
+    return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
+  }
+
+  // Перенос срока — с датами и причиной (требование М-15, решение Р-302).
+  if (kind === 'STAGE_DUE_CHANGED') {
+    const where = stage === undefined ? 'Этап' : `Этап ${stage.position} «${stage.title}»`;
+    const to = typeof data.dueTo === 'string' ? formatDate(new Date(`${data.dueTo}T00:00:00Z`)) : null;
+    const line = to === null ? `${where} — срок снят` : `${where} — срок перенесён на ${to}`;
     return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
   }
 
@@ -356,6 +365,13 @@ export default async function ProjectScreen({
           scope={stage.id}
           type="date"
           defaultValue={stage.dueOn?.toISOString().slice(0, 10) ?? ''}
+        />
+        {/* Смена срока — с причиной для клиента (М-15, Р-302). */}
+        <Field
+          label="Причина переноса срока"
+          name="reason"
+          scope={stage.id}
+          hint="Нужна, только если срок меняется: клиент получит её письмом."
         />
         <FormActions>
           <Button tone="quiet">Сохранить этап</Button>

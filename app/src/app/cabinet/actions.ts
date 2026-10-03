@@ -84,6 +84,7 @@ import {
   setProjectStatus,
   setStageState,
   editStageOutcome,
+  rescheduleStage,
   returnStage,
   acknowledgeReturn,
 } from '../../lib/cabinet/projects';
@@ -424,6 +425,7 @@ export async function saveStage(form: FormData): Promise<void> {
       title: String(form.get('title') ?? ''),
       summary: String(form.get('summary') ?? ''),
       dueOn: dateOrNull(form.get('dueOn')),
+      reason: String(form.get('reason') ?? ''),
     });
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить этап');
@@ -441,18 +443,22 @@ export async function saveStage(form: FormData): Promise<void> {
 export async function moveStageDue(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const stageId = String(form.get('stageId') ?? '');
+  const reason = String(form.get('reason') ?? '');
   let failure: string | null = null;
   try {
-    await editStage(actor, {
-      stageId,
-      title: String(form.get('title') ?? ''),
-      summary: String(form.get('summary') ?? ''),
-      dueOn: dateOrNull(form.get('dueOn')),
-    });
+    // Меняется только срок: скрытые название и суть откатывали правку,
+    // сделанную в другом окне (требование М-15, решение Р-302).
+    await rescheduleStage(actor, { stageId, dueOn: dateOrNull(form.get('dueOn')), reason });
   } catch (error) {
     failure = reasonOf(error, 'Не удалось перенести срок');
   }
-  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
+  if (failure !== null) {
+    redirect(
+      await withError(`/cabinet/stages/${stageId}`, failure, {
+        draft: { dueOn: String(form.get('dueOn') ?? ''), dueReason: reason },
+      }),
+    );
+  }
   redirect(`/cabinet/stages/${stageId}`);
 }
 

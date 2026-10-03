@@ -719,6 +719,8 @@ export async function editStage(
     readonly title: string;
     readonly summary?: string | null;
     readonly dueOn?: Date | null;
+    /** Причина переноса срока: обязательна, если срок меняется (М-15). */
+    readonly reason?: string | null;
   },
 ) {
   const stage = await prisma.stage.findUnique({
@@ -733,10 +735,18 @@ export async function editStage(
 
   const title = input.title.trim();
   if (title.length === 0) throw new Error('Этап без названия не заводится');
+  const nextDue = input.dueOn ?? null;
+  const moved = dueKey(stage.dueOn) !== dueKey(nextDue);
+  const why = (input.reason ?? '').trim();
+  if (moved) ensureDueReason(why);
 
-  const saved = await prisma.stage.update({
-    where: { id: stage.id },
-    data: { title, summary: input.summary?.trim() || null, dueOn: input.dueOn ?? null },
+  const saved = await prisma.$transaction(async (tx) => {
+    const updated = await tx.stage.update({
+      where: { id: stage.id },
+      data: { title, summary: input.summary?.trim() || null, dueOn: nextDue },
+    });
+    if (moved) await announceDueChange(tx, actor, stage.id, stage.dueOn, nextDue, why);
+    return updated;
   });
   await record(actor, {
     action: 'STAGE_EDITED',
@@ -750,6 +760,130 @@ export async function editStage(
       to: title,
       ...dueChange(stage.dueOn, saved.dueOn),
     },
+  });
+  return saved;
+}
+
+/** День срока строкой — для сравнения и записи в историю. */
+function dueKey(value: Date | null): string | null {
+  return value?.toISOString().slice(0, 10) ?? null;
+}
+
+/** Причина переноса срока: её читает клиент (требование М-15, Р-302). */
+function ensureDueReason(reason: string): void {
+  if (reason === '') {
+    throw new Error('Срок этапа переносится с причиной: её получит клиент — без неё перенос читается как срыв');
+  }
+  if (reason.length > 1000) throw new Error('Причина переноса — не длиннее 1000 знаков');
+}
+
+/**
+ * Перенос срока этапа: событие в историю работы и письма (требование
+ * М-15, решение Р-302). Клиенту — если срок был и сменился, с причиной;
+ * эксперту — если этап в работе (ОМ-19). Причина хранится в данных
+ * события и затирается обезличиванием (Р-234).
+ */
+async function announceDueChange(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  actor: Actor,
+  stageId: string,
+  from: Date | null,
+  to: Date | null,
+  reason: string,
+): Promise<void> {
+  const stage = await tx.stage.findUniqueOrThrow({
+    where: { id: stageId },
+    select: {
+      title: true,
+      state: true,
+      project: {
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          client: { select: { userId: true } },
+          expert: { select: { id: true, status: true, expertProfile: { select: { ndaSignedAt: true } } } },
+        },
+      },
+    },
+  });
+  const project = stage.project;
+  await tx.projectEvent.create({
+    data: {
+      projectId: project.id,
+      actorId: actor.id,
+      kind: 'STAGE_DUE_CHANGED',
+      payload: { stageId, dueFrom: dueKey(from), dueTo: dueKey(to), reason },
+    },
+  });
+  const line = to === null ? 'Срок этапа снят.' : `Новый срок — ${formatDay(to)}.`;
+  if (from !== null && project.client.userId !== null) {
+    await enqueue(tx, {
+      userId: project.client.userId,
+      projectId: project.id,
+      eventKind: 'STAGE_DUE_CHANGED',
+      subject: `Срок этапа «${stage.title}» изменён`,
+      body: `Проект ${project.code} — ${project.title}.\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
+      dedupKey: `stage:${stageId}:due-changed:${dueKey(to) ?? 'none'}:${Date.now()}`,
+    });
+  }
+  const expert = project.expert;
+  if (
+    stage.state === 'IN_PROGRESS' &&
+    expert !== null &&
+    expert.status === 'ACTIVE' &&
+    (expert.expertProfile?.ndaSignedAt ?? null) !== null
+  ) {
+    await enqueue(tx, {
+      userId: expert.id,
+      projectId: project.id,
+      eventKind: 'STAGE_DUE_CHANGED',
+      subject: `Срок этапа «${stage.title}» изменён`,
+      body: `Работа ${project.code}.\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
+      dedupKey: `stage:${stageId}:due-changed-expert:${dueKey(to) ?? 'none'}:${Date.now()}`,
+    });
+  }
+}
+
+/**
+ * Перенести срок этапа с экрана этапа: меняется только срок, с причиной
+ * (требование М-15, решение Р-302). Прежде форма слала скрытые название
+ * и суть этапа, и правка, сделанная в другом окне, откатывалась.
+ */
+export async function rescheduleStage(
+  actor: Actor,
+  input: { readonly stageId: string; readonly dueOn: Date | null; readonly reason: string },
+) {
+  const stage = await prisma.stage.findUnique({
+    where: { id: input.stageId },
+    select: { id: true, projectId: true, dueOn: true },
+  });
+  if (stage === null) throw new Error('Этап не найден');
+  const ref = await projectRef(stage.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'STAGE_EDIT', ref);
+  await ensureProjectActive(ref.id);
+  if (input.dueOn === null) throw new Error('Укажите новый срок этапа');
+  if (dueKey(stage.dueOn) === dueKey(input.dueOn)) throw new Error('Новый срок совпадает с прежним');
+  const why = input.reason.trim();
+  ensureDueReason(why);
+
+  const saved = await prisma.$transaction(async (tx) => {
+    const claimed = await tx.stage.updateMany({
+      where: { id: stage.id, dueOn: stage.dueOn },
+      data: { dueOn: input.dueOn },
+    });
+    if (claimed.count === 0) throw new Error('Срок этапа уже изменён другим действием: обновите страницу');
+    await announceDueChange(tx, actor, stage.id, stage.dueOn, input.dueOn, why);
+    return tx.stage.findUniqueOrThrow({ where: { id: stage.id } });
+  });
+  // В журнал — даты без текста причины (решения Р-234, Р-239).
+  await record(actor, {
+    action: 'STAGE_EDITED',
+    objectType: 'Stage',
+    objectId: stage.id,
+    projectId: stage.projectId,
+    payload: dueChange(stage.dueOn, saved.dueOn),
   });
   return saved;
 }
