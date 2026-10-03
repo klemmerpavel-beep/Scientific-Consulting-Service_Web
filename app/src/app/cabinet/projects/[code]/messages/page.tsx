@@ -57,8 +57,11 @@ export default async function MessagesScreen({
   // завершённый.
   const sp = await searchParams;
   const current = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
+  // Напоминание о материалах называет этап, который ждёт клиента (М-21,
+  // Р-317); остальные заготовки — текущий этап.
+  const awaiting = project.stages.find((stage) => stage.state === 'AWAITING_CLIENT') ?? null;
   const draft = draftText(actor.role, sp.draft, {
-    stage: current?.title ?? null,
+    stage: (sp.draft === 'remind' ? (awaiting ?? current) : current)?.title ?? null,
     today: formatDate(clockNow()) ?? '',
   });
   // Подзаголовок называет собеседника, а не повторяет название работы:

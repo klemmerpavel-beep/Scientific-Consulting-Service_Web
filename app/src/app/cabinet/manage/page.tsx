@@ -315,7 +315,9 @@ export default async function ManageQueue({
       urgent: false,
       detail: stage.project.client.fullName,
       todo: 'Напомнить клиенту о материалах',
-      href: `/cabinet/stages/${stage.id}`,
+      // Дело открывает переписку с заготовкой напоминания; отправляет
+      // куратор, и письмо практики гасит дело (требование М-21, Р-317, М-06).
+      href: `/cabinet/projects/${stage.project.code}/messages?draft=remind#body`,
     })),
     ...returned.map((stage) => ({
       key: `returned-${stage.id}`,

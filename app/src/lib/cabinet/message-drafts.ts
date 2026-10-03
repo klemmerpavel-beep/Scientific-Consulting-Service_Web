@@ -1,5 +1,6 @@
 /**
- * Заготовки сообщений в переписке (требование Т-20, решение Р-316).
+ * Заготовки сообщений в переписке (требования Т-20 и М-21, решения Р-316 и
+ * Р-317).
  *
  * Заготовка — ссылка на тот же экран переписки с параметром `?draft=`:
  * страница подставляет текст в поле, отправляет только кнопка
@@ -9,7 +10,7 @@
 
 import type { Role } from './access.ts';
 
-export type DraftKey = 'call' | 'due';
+export type DraftKey = 'call' | 'due' | 'remind' | 'callnote' | 'reschedule';
 
 export interface DraftLink {
   readonly key: DraftKey;
@@ -22,9 +23,23 @@ const CLIENT_DRAFTS: readonly DraftLink[] = [
   { key: 'due', label: 'Попросить перенести срок этапа' },
 ];
 
+/**
+ * Заготовки куратора (М-21): напоминание о материалах, итог созвона, перенос
+ * срока. Перенос здесь — предложение клиенту; сам срок меняется на экране
+ * этапа с причиной (М-15). Итог созвона закрепляет договорённость письменно
+ * там, где её видят обе стороны.
+ */
+const STAFF_DRAFTS: readonly DraftLink[] = [
+  { key: 'remind', label: 'Напоминание о материалах' },
+  { key: 'callnote', label: 'Итог созвона' },
+  { key: 'reschedule', label: 'Перенос срока' },
+];
+
 /** Заготовки, доступные роли в переписке. */
 export function draftsFor(role: Role): readonly DraftLink[] {
-  return role === 'CLIENT' ? CLIENT_DRAFTS : [];
+  if (role === 'CLIENT') return CLIENT_DRAFTS;
+  if (role === 'MANAGER' || role === 'HEAD') return STAFF_DRAFTS;
+  return [];
 }
 
 /**
@@ -45,6 +60,12 @@ export function draftText(
       return 'Прошу созвониться по работе. Удобное время: ';
     case 'due':
       return `Прошу перенести срок ${stage} на . Причина: `;
+    case 'remind':
+      return `Напоминаем: для ${stage} ждём от вас материалы. Приложить их можно на экране этапа или в «Материалах работы». `;
+    case 'callnote':
+      return `Итог созвона ${context.today}: договорились — `;
+    case 'reschedule':
+      return `Предлагаем перенести срок ${stage} на . Причина: `;
   }
   return null;
 }

@@ -1,5 +1,5 @@
 /**
- * Заготовки сообщений (требование Т-20, решение Р-316): заготовка
+ * Заготовки сообщений (требования Т-20 и М-21, решения Р-316 и Р-317): заготовка
  * подставляет текст и ничего не отправляет; чужая роли заготовка не
  * открывается; ссылки заготовок — ссылки, а не кнопки.
  */
@@ -28,9 +28,31 @@ describe('заготовки клиента (Т-20)', () => {
   });
 
   it('неизвестный ключ и чужая роль — ничего', () => {
+    assert.equal(draftText('CLIENT', 'remind', context), null, 'заготовка куратора открылась клиенту');
     assert.equal(draftText('CLIENT', 'nope', context), null);
     assert.equal(draftText('CLIENT', undefined, context), null);
     assert.equal(draftText('EXPERT', 'call', context), null);
+  });
+});
+
+describe('заготовки куратора (М-21)', () => {
+  it('напоминание, итог созвона с датой по часам кабинета, перенос срока', () => {
+    assert.deepEqual(
+      draftsFor('MANAGER').map((draft) => draft.label),
+      ['Напоминание о материалах', 'Итог созвона', 'Перенос срока'],
+    );
+    assert.match(
+      draftText('MANAGER', 'remind', context) ?? '',
+      /^Напоминаем: для этапа «Обзор литературы» ждём от вас материалы/u,
+    );
+    assert.equal(draftText('MANAGER', 'callnote', context), 'Итог созвона 3 октября 2026: договорились — ');
+    assert.match(draftText('HEAD', 'reschedule', context) ?? '', /^Предлагаем перенести срок этапа «Обзор литературы»/u);
+    assert.equal(draftText('MANAGER', 'call', context), null, 'заготовка клиента открылась куратору');
+  });
+
+  it('дело «Напомнить клиенту» ведёт в переписку с заготовкой', () => {
+    const page = readFileSync(path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'manage', 'page.tsx'), 'utf8');
+    assert.match(page, /todo: 'Напомнить клиенту о материалах',[\s\S]{0,240}messages\?draft=remind/u);
   });
 });
 
