@@ -34,6 +34,12 @@ import {
   ownRules,
   type ContactKind,
 } from '../../../lib/cabinet/channels';
+import {
+  contactKindsFor,
+  contactLabelFor,
+  contactNoteFor,
+  settingsTexts,
+} from '../../../lib/cabinet/staff-texts';
 import { currentActor } from '../../../lib/cabinet/session';
 import {
   addContactChannel,
@@ -68,6 +74,9 @@ export default async function SettingsScreen({
   // практике: у клиента их несколько в месяц, и делить их по каналам
   // незачем (решение Р-198).
   const withRules = actor.role === 'HEAD' || actor.role === 'MANAGER';
+  // Тексты экрана — по роли: менеджеру не пишут как клиенту (требование
+  // М-20, решение Р-306).
+  const texts = settingsTexts(actor.role);
   const ruleOn = (kind: string, channel: 'EMAIL' | 'TELEGRAM'): boolean => {
     const exact = rules.find((rule) => rule.eventKind === kind && rule.channel === channel);
     return exact === undefined ? true : exact.enabled;
@@ -83,10 +92,7 @@ export default async function SettingsScreen({
     <Shell actor={actor} current="/cabinet/settings">
       <Narrow width={680}>
         <ScreenHead title="Как сообщать о ходе работы" />
-        <Text style={{ marginBottom: 24 }}>
-          Уведомления приходят о том, что требует действия: этап ждёт материалов, материал готов к
-          согласованию, приближается срок. Содержание переписки наружу не пересылается.
-        </Text>
+        <Text style={{ marginBottom: 24 }}>{texts.lead}</Text>
 
         {failure === undefined ? null : (
           <Outcome tone="error">{failure}</Outcome>
@@ -104,13 +110,12 @@ export default async function SettingsScreen({
             Как с вами связываться
           </Heading>
           <Text muted size={14} style={{ marginBottom: 16 }}>
-            Куратор видит этот список и держится его. Отметьте предпочтительный способ — с него
-            и начнут.
+            {texts.contactsLead}
           </Text>
 
           {contacts.length === 0 ? (
             <Text muted style={{ marginBottom: 16 }}>
-              Способ связи не указан — куратор будет писать на почту учётной записи.
+              {texts.contactsEmpty}
             </Text>
           ) : (
             <ul style={{ margin: '0 0 16px', padding: 0, listStyle: 'none', display: 'grid', gap: 12 }}>
@@ -128,11 +133,11 @@ export default async function SettingsScreen({
                 >
                   <div style={{ flex: '1 1 260px' }}>
                     <Text size={15}>
-                      {CONTACT_LABEL[contact.kind as ContactKind]}
+                      {contactLabelFor(actor.role, contact.kind as ContactKind, CONTACT_LABEL)}
                       {contact.value === null ? '' : ` — ${contact.value}`}
                     </Text>
                     <Text muted size={13} style={{ marginTop: 2 }}>
-                      {contact.note ?? CONTACT_NOTE[contact.kind as ContactKind]}
+                      {contact.note ?? contactNoteFor(actor.role, contact.kind as ContactKind, CONTACT_NOTE)}
                     </Text>
                   </div>
                   {contact.preferred ? (
@@ -155,9 +160,9 @@ export default async function SettingsScreen({
           <Disclosure title="Добавить способ связи">
             <Form action={addContactChannel}>
               <Select label="Способ" name="kind">
-                {(Object.keys(CONTACT_LABEL) as ContactKind[]).map((kind) => (
+                {contactKindsFor(actor.role, Object.keys(CONTACT_LABEL) as ContactKind[]).map((kind) => (
                   <option key={kind} value={kind}>
-                    {CONTACT_LABEL[kind]}
+                    {contactLabelFor(actor.role, kind, CONTACT_LABEL)}
                   </option>
                 ))}
               </Select>
@@ -186,8 +191,7 @@ export default async function SettingsScreen({
             Куда слать уведомления
           </Heading>
           <Text muted size={14} style={{ marginBottom: 16 }}>
-            Это то, что система шлёт сама. Звонки и сообщения в сетях делает куратор — их здесь
-            нет.
+            {texts.deliveryLead}
           </Text>
           <Form action={saveNotificationChannels}>
             <Checkbox
@@ -304,8 +308,7 @@ export default async function SettingsScreen({
         {user.consentAcceptedAt === null ? null : (
           <Text muted size={13} style={{ marginTop: 24 }}>
             Согласие на обработку персональных данных принято{' '}
-            {formatDate(user.consentAcceptedAt)}. Отозвать его и потребовать удаления данных
-            можно письмом куратору.
+            {formatDate(user.consentAcceptedAt)}. {texts.consentTail}
           </Text>
         )}
       </Narrow>

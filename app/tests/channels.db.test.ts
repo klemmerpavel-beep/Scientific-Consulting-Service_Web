@@ -195,4 +195,25 @@ describe('способы связи и правила уведомлений', {
     assert.ok(head.includes('HELP_REQUESTED') && head.includes('CLIENT_COMMENT'));
     assert.deepEqual(channels.rulesFor('CLIENT'), []);
   });
+
+  it('в письме вопроса — почта и предпочтительный способ связи менеджера (М-20, Р-306)', async () => {
+    const [manager, head] = await Promise.all([
+      prisma.user.create({ data: { email: `chan-mgr-${stamp}@example.org`, fullName: 'Куратор с вопросом', role: 'MANAGER' } }),
+      prisma.user.create({ data: { email: `chan-head2-${stamp}@example.org`, fullName: 'Руководитель на связи', role: 'HEAD' } }),
+    ]);
+    try {
+      const actor = who(manager.id, 'MANAGER');
+      await channels.addContact(actor, { kind: 'PHONE_CALL', value: '+7 900 111-22-33', note: 'после 18:00', preferred: true });
+      await channels.askForHelp(actor, 'Клиент просит сменить тему');
+      const letter = await prisma.notificationOutbox.findFirstOrThrow({
+        where: { userId: head.id, eventKind: 'HELP_REQUESTED', channel: 'EMAIL' },
+      });
+      assert.match(letter.body, /^Клиент просит сменить тему\n/u);
+      assert.match(letter.body, new RegExp(`Спрашивает: Куратор с вопросом, chan-mgr-${stamp}@example\\.org`, 'u'));
+      assert.match(letter.body, /Предпочтительный способ связи: Звонок — \+7 900 111-22-33 \(после 18:00\)/u);
+    } finally {
+      await prisma.notificationOutbox.deleteMany({ where: { dedupKey: { startsWith: `help:${manager.id}:` } } });
+      await prisma.user.update({ where: { id: head.id }, data: { status: 'SUSPENDED' } });
+    }
+  });
 });

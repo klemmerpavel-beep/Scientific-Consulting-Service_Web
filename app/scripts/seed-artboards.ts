@@ -236,7 +236,9 @@ async function main() {
         note: 'Отвечаю в течение дня',
         preferred: true,
       },
-      { userId: manager.id, kind: 'FULL_SUPPORT', preferred: true },
+      // Сотруднику «Полное сопровождение» не предлагается (требование
+      // М-20, решение Р-306): у менеджера — звонок с оговоркой.
+      { userId: manager.id, kind: 'PHONE_CALL', value: '+7 900 000-00-01', note: 'В рабочие часы', preferred: true },
     ],
   });
 

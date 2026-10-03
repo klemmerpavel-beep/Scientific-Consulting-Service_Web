@@ -44,6 +44,7 @@ import { currentActor } from '../../../lib/cabinet/session';
 import { homeFor } from '../../../lib/cabinet/nav';
 import { flashText, formDraft } from '../../../lib/cabinet/flash';
 import { requestHelp } from '../actions';
+import { HELP_CARD_NOTE } from '../../../lib/cabinet/staff-texts';
 import { byMonth, products } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
 import { activeWorks, moneyBrief, orderSummary, stageLoad } from '../../../lib/cabinet/summary';
@@ -1143,9 +1144,10 @@ export default async function ManageQueue({
           <Heading level={2} size={3} style={{ marginBottom: 4 }}>
             Спросить руководителя практики
           </Heading>
+          {/* Ответа в кабинете нет: карточка обещает только письмо или
+              Telegram руководителя (требование М-20, решение Р-306). */}
           <Text muted size={14} style={{ marginBottom: 14 }}>
-            Спорный случай, нестандартная просьба клиента, сомнение по срокам или цене — вопрос
-            уйдёт руководителю и вернётся ответом тем каналом, который он выбрал.
+            {HELP_CARD_NOTE}
           </Text>
           {helpParams.sent === undefined ? null : <Outcome>Вопрос отправлен руководителю практики.</Outcome>}
           {helpFailure === undefined ? null : <Outcome tone="error">{helpFailure}</Outcome>}

@@ -19,6 +19,7 @@
 
 import { ensure, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
+import { contactLabelFor, helpLetterBody } from './staff-texts.ts';
 import { prisma } from '../db.ts';
 
 export type ContactKind = 'EMAIL' | 'TELEGRAM' | 'PHONE_CALL' | 'MESSENGER' | 'FULL_SUPPORT';
@@ -301,9 +302,32 @@ export async function askForHelp(actor: Actor, text: string): Promise<void> {
   const { prisma: db } = await import('../db.ts');
   const { enqueue } = await import('./outbox.ts');
 
+  // В письме — как ответить спросившему: почта учётной записи и
+  // предпочтительный способ связи из настроек (требование М-20, Р-306).
   const me = await db.user.findUniqueOrThrow({
     where: { id: actor.id },
-    select: { fullName: true },
+    select: {
+      fullName: true,
+      email: true,
+      contactChannels: {
+        where: { preferred: true },
+        take: 1,
+        select: { kind: true, value: true, note: true },
+      },
+    },
+  });
+  const preferred = me.contactChannels[0];
+  const letter = helpLetterBody(body, {
+    fullName: me.fullName,
+    email: me.email,
+    preferred:
+      preferred === undefined
+        ? null
+        : {
+            label: contactLabelFor(actor.role, preferred.kind as ContactKind, CONTACT_LABEL),
+            value: preferred.value,
+            note: preferred.note,
+          },
   });
   const heads = await db.user.findMany({
     where: { role: 'HEAD', status: 'ACTIVE' },
@@ -319,7 +343,7 @@ export async function askForHelp(actor: Actor, text: string): Promise<void> {
       // Содержание вопроса в письме идёт целиком: это служебная переписка
       // практики, а не разговор с клиентом, чьё содержание наружу не
       // пересылается.
-      body,
+      body: letter,
       dedupKey: `help:${actor.id}:${stamp}:${head.id}`,
     });
   }
