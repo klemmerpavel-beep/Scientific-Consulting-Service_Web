@@ -1,4 +1,4 @@
-import { flashText } from '../../lib/cabinet/flash';
+import { flashEntry } from '../../lib/cabinet/flash';
 import { Outcome } from './ui';
 
 /**
@@ -14,8 +14,10 @@ import { Outcome } from './ui';
  * Блок собран общей частью исхода: он помечен как исход и в счёт пяти
  * блоков экрана не входит (решение Р-253).
  */
-export default async function ActionError({ id }: { id: string | undefined }) {
-  const text = await flashText(id);
-  if (text === undefined || text.trim() === '') return null;
-  return <Outcome tone="error">{text.slice(0, 300)}</Outcome>;
+export default async function ActionError({ id, slot }: { id: string | undefined; slot?: string }) {
+  // Причина с местом вывода показывается только у своей формы, без места —
+  // вверху экрана: одна причина не выводится дважды (решение Р-279).
+  const entry = await flashEntry(id);
+  if (entry === undefined || entry.text.trim() === '' || entry.slot !== slot) return null;
+  return <Outcome tone="error">{entry.text.slice(0, 300)}</Outcome>;
 }

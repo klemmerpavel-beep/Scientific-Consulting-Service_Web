@@ -370,17 +370,42 @@ export async function moveStageDue(form: FormData): Promise<void> {
   redirect(`/cabinet/stages/${stageId}`);
 }
 
+/**
+ * Отказ действия «Управления работой»: причина у своей формы, свёртка
+ * раскрыта, введённое сохранено (решение Р-279). Прежде четыре действия
+ * карточки работы отказывали общим экраном «Сбой» — менеджер не узнавал,
+ * что исправить.
+ */
+async function manageFailure(
+  code: string,
+  slot: 'project' | 'status' | 'expert' | 'manager',
+  error: unknown,
+  draft: Readonly<Record<string, string>>,
+): Promise<never> {
+  const reason = reasonOf(error, 'Не удалось сохранить: попробуйте ещё раз. Введённое сохранено в форме.');
+  redirect(await withError(`/cabinet/projects/${code}`, reason, { slot, draft, anchor: 'manage' }));
+}
+
+/** Значения полей формы — для черновика при отказе. */
+function fieldsOf(form: FormData, names: readonly string[]): Record<string, string> {
+  return Object.fromEntries(names.map((name) => [name, String(form.get(name) ?? '')]));
+}
+
 /** Правка карточки работы менеджером (решение Р-190). */
 export async function saveProject(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
-  await editProject(actor, {
-    projectId: String(form.get('projectId') ?? ''),
-    title: String(form.get('title') ?? ''),
-    topic: String(form.get('topic') ?? ''),
-    summary: String(form.get('summary') ?? ''),
-    dueOn: dateOrNull(form.get('dueOn')),
-  });
+  try {
+    await editProject(actor, {
+      projectId: String(form.get('projectId') ?? ''),
+      title: String(form.get('title') ?? ''),
+      topic: String(form.get('topic') ?? ''),
+      summary: String(form.get('summary') ?? ''),
+      dueOn: dateOrNull(form.get('dueOn')),
+    });
+  } catch (error) {
+    await manageFailure(code, 'project', error, fieldsOf(form, ['title', 'topic', 'summary', 'dueOn']));
+  }
   redirect(`/cabinet/projects/${code}`);
 }
 
@@ -388,11 +413,15 @@ export async function saveProject(form: FormData): Promise<void> {
 export async function changeProjectStatus(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
-  await setProjectStatus(
-    actor,
-    String(form.get('projectId') ?? ''),
-    String(form.get('status') ?? '') as ProjectStatusKey,
-  );
+  try {
+    await setProjectStatus(
+      actor,
+      String(form.get('projectId') ?? ''),
+      String(form.get('status') ?? '') as ProjectStatusKey,
+    );
+  } catch (error) {
+    await manageFailure(code, 'status', error, fieldsOf(form, ['status']));
+  }
   redirect(`/cabinet/projects/${code}`);
 }
 
@@ -401,7 +430,11 @@ export async function setExpert(form: FormData): Promise<void> {
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
   const expertId = String(form.get('expertId') ?? '');
-  await assignExpert(actor, projectId, expertId || null);
+  try {
+    await assignExpert(actor, projectId, expertId || null);
+  } catch (error) {
+    await manageFailure(code, 'expert', error, { expertId });
+  }
   redirect(`/cabinet/projects/${code}`);
 }
 
@@ -410,7 +443,12 @@ export async function setManager(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
-  await assignManager(actor, projectId, String(form.get('managerId') ?? ''));
+  const managerId = String(form.get('managerId') ?? '');
+  try {
+    await assignManager(actor, projectId, managerId);
+  } catch (error) {
+    await manageFailure(code, 'manager', error, { managerId });
+  }
   redirect(`/cabinet/projects/${code}`);
 }
 

@@ -7,7 +7,7 @@ import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
 import { now } from './clock.ts';
 import { moscowToday } from './admin.ts';
-import { STAGE_TRANSITIONS } from './stage-state.ts';
+import { STAGE_TRANSITIONS, stageLabel } from './stage-state.ts';
 import {
   PROJECT_STATUS_LABEL,
   canChangeProjectStatus,
@@ -646,6 +646,13 @@ export async function editProject(
 
   const title = input.title.trim();
   if (title.length === 0) throw new Error('Работа без названия не заводится');
+  // Пределы — по образцу Р-242: без них длинный текст молча ложился в базу,
+  // а отказ формы не мог вернуть его в поле (решение Р-279).
+  if (title.length > 300) throw new Error('Название работы — не длиннее 300 знаков');
+  if ((input.topic ?? '').trim().length > 500) throw new Error('Тема — не длиннее 500 знаков');
+  if ((input.summary ?? '').trim().length > 2000) {
+    throw new Error('Короткое описание задачи — не длиннее 2000 знаков');
+  }
 
   const before = await prisma.project.findUniqueOrThrow({
     where: { id: input.projectId },
@@ -824,7 +831,12 @@ export async function setStageState(
 
   const from = stage.state as StageState;
   if (!canTransition(from, to)) {
-    throw new Error(`Переход этапа из «${from}» в «${to}» не предусмотрен`);
+    // Подписи, а не имена состояний из базы: «IN_PROGRESS» человеку ничего
+    // не говорит (решение Р-279).
+    const staff = actor.role !== 'CLIENT';
+    throw new Error(
+      `Переход этапа из «${stageLabel(from, staff)}» в «${stageLabel(to, staff)}» не предусмотрен`,
+    );
   }
   if (to === 'AWAITING_CLIENT' && !(reason ?? '').trim()) {
     throw new Error(

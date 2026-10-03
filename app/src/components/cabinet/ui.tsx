@@ -2331,12 +2331,18 @@ export function Disclosure({
   title,
   children,
   tall = false,
+  open = false,
+  id,
   style,
 }: {
   title: string;
   children: ReactNode;
   /** Высокое тело: история работы длиннее прочих свёрток и требует места. */
   tall?: boolean;
+  /** Раскрыта при показе: отказ формы внутри свёртки виден сразу (Р-279). */
+  open?: boolean;
+  /** Якорь: возврат после отказа ведёт прямо к свёртке. */
+  id?: string;
   style?: CSSProperties;
 }) {
   // Раскрытая свёртка не должна выталкивать панель за край окна, поэтому
@@ -2354,6 +2360,8 @@ export function Disclosure({
     // (Р-183).
     <details
       className="cab-block"
+      open={open || undefined}
+      id={id}
       style={{
         background: 'var(--pd-ink-inverse)',
         border: '1px solid var(--pd-border)',

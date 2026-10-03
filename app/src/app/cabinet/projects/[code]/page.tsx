@@ -53,6 +53,7 @@ import {
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
 import { formatAmount } from '../../../../lib/cabinet/money';
 import { currentActor } from '../../../../lib/cabinet/session';
+import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import {
   createStage,
   postMessage,
@@ -162,6 +163,13 @@ export default async function ProjectScreen({
   if (actor === null) redirect('/cabinet');
 
   const { code } = await params;
+  // Отказ действия «Управления работой»: причина у своей формы, свёртка
+  // раскрыта, поля заполнены введённым (решение Р-279).
+  const errorId = (await searchParams).error;
+  const failure = await flashEntry(errorId);
+  const draft = (await formDraft(errorId)) ?? {};
+  const manageOpen =
+    failure?.slot !== undefined && ['project', 'status', 'expert', 'manager'].includes(failure.slot);
   const project = await projectByCode(actor, decodeURIComponent(code));
   // Чужой проект не отличается от несуществующего: иначе перебор кодов
   // показывал бы, какие проекты есть у практики.
@@ -391,7 +399,7 @@ export default async function ProjectScreen({
           </span>
         )}
       </ScreenTop>
-      <ActionError id={(await searchParams).error} />
+      <ActionError id={errorId} />
       <Disclosure title="О работе" style={{ marginTop: 12 }}>
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
           {about.map((row) => (
@@ -652,7 +660,7 @@ export default async function ProjectScreen({
       </Disclosure>
 
       {mayEdit || mayAssign || maySetManager || maySeeContacts ? (
-        <Disclosure title="Управление работой" style={{ marginTop: 10 }}>
+        <Disclosure title="Управление работой" open={manageOpen} id="manage" style={{ marginTop: 10 }}>
             <div style={{ display: 'grid', gap: 20 }}>
               {mayEditStages ? (
                 <Form action={createStage}>
@@ -685,10 +693,12 @@ export default async function ProjectScreen({
                 <Form action={changeProjectStatus}>
                   <input type="hidden" name="projectId" value={project.id} />
                   <input type="hidden" name="code" value={project.code} />
+                  <ActionError id={errorId} slot="status" />
                   <Select
                     label="Состояние работы"
                     name="status"
                     required
+                    defaultValue={draft.status}
                     hint={`Сейчас: ${PROJECT_STATUS_LABEL[project.status].toLowerCase()}. Завершённая и отменённая работа уходит в «Завершённые», дата закрытия ставится сегодняшняя.`}
                   >
                     {nextProjectStatuses(project.status).map((status) => (
@@ -707,25 +717,26 @@ export default async function ProjectScreen({
                 <Form action={saveProject}>
                   <input type="hidden" name="projectId" value={project.id} />
                   <input type="hidden" name="code" value={project.code} />
+                  <ActionError id={errorId} slot="project" />
                   <Field
                     label="Название работы"
                     name="title"
                     scope="project"
                     required
-                    defaultValue={project.title}
+                    defaultValue={draft.title ?? project.title}
                   />
                   <Field
                     label="Тема"
                     name="topic"
                     scope="project"
-                    defaultValue={project.topic ?? ''}
+                    defaultValue={draft.topic ?? project.topic ?? ''}
                   />
                   <Field
                     label="Короткое описание задачи"
                     name="summary"
                     scope="project"
                     multiline
-                    defaultValue={project.summary ?? ''}
+                    defaultValue={draft.summary ?? project.summary ?? ''}
                     hint="Видно клиенту под раскрытием «О работе»."
                   />
                   <Field
@@ -733,7 +744,7 @@ export default async function ProjectScreen({
                     name="dueOn"
                     scope="project"
                     type="date"
-                    defaultValue={project.dueOn?.toISOString().slice(0, 10) ?? ''}
+                    defaultValue={draft.dueOn ?? project.dueOn?.toISOString().slice(0, 10) ?? ''}
                   />
                   <FormActions>
                     <Button tone="quiet">Сохранить карточку</Button>
@@ -745,10 +756,11 @@ export default async function ProjectScreen({
                 <Form action={setExpert}>
                   <input type="hidden" name="projectId" value={project.id} />
                   <input type="hidden" name="code" value={project.code} />
+                  <ActionError id={errorId} slot="expert" />
                   <Select
                     label="Исполнитель"
                     name="expertId"
-                    defaultValue={project.expertId ?? ''}
+                    defaultValue={draft.expertId ?? project.expertId ?? ''}
                     hint="Без договора поручения обработки персональных данных исполнитель не получит доступа к материалам клиента, даже будучи назначенным."
                   >
                     <option value="">— не назначен —</option>
@@ -772,10 +784,11 @@ export default async function ProjectScreen({
                 <Form action={setManager}>
                   <input type="hidden" name="projectId" value={project.id} />
                   <input type="hidden" name="code" value={project.code} />
+                  <ActionError id={errorId} slot="manager" />
                   <Select
                     label="Передать работу"
                     name="managerId"
-                    defaultValue={project.managerId}
+                    defaultValue={draft.managerId ?? project.managerId}
                     hint="Клиент увидит смену куратора: меняется тот, кому он пишет."
                   >
                     {curatorList.map((curator) => (
