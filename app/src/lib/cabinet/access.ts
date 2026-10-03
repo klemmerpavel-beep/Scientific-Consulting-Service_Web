@@ -326,6 +326,40 @@ export function scopeMaterials(actor: Actor): Record<string, unknown> | null {
 }
 
 /**
+ * Версии, которые видит клиент: без строки модерации или опубликованные
+ * (требование Т-18, решение Р-294).
+ */
+export const CLIENT_VISIBLE_VERSION: Record<string, unknown> = {
+  OR: [{ moderation: { is: null } }, { moderation: { is: { status: 'PUBLISHED' } } }],
+};
+
+/**
+ * Условие видимости версий материалов (требование Т-18, решение Р-294).
+ * Версия эксперта видна клиенту только после публикации куратором:
+ * практике — всё, клиенту — опубликованные и не требующие публикации,
+ * эксперту — то же плюс свои. Сужается выборка, а не разметка — как у
+ * замечаний.
+ */
+export function scopeVersions(actor: Actor): Record<string, unknown> | null {
+  if (actor.status !== 'ACTIVE') return null;
+  if (isStaff(actor)) return {};
+  if (actor.role === 'EXPERT') {
+    return { OR: [CLIENT_VISIBLE_VERSION, { uploadedById: actor.id }] };
+  }
+  return CLIENT_VISIBLE_VERSION;
+}
+
+/** Видна ли версия этому человеку — то же правило для одной строки. */
+export function versionVisible(
+  actor: Actor,
+  version: { readonly uploadedById: string; readonly moderation: { readonly status: string } | null },
+): boolean {
+  if (isStaff(actor)) return true;
+  if (version.moderation === null || version.moderation.status === 'PUBLISHED') return true;
+  return actor.role === 'EXPERT' && version.uploadedById === actor.id;
+}
+
+/**
  * Условие видимости комментариев к версиям. Клиенту и эксперту видны только
  * опубликованные и собственные: комментарий эксперта не должен доходить до
  * клиента до модерации, и это обеспечивается сужением выборки, а не

@@ -91,7 +91,7 @@ describe('журнал этапов и переписки', { skip: !enabled }, 
     // Пустой этап на согласование не уходит (решение Р-254).
     await assert.rejects(
       () => setStageState(curator, stage.id, 'IN_APPROVAL', 'Глава написана'),
-      /приложите хотя бы один файл/u,
+      /который видит клиент/u,
     );
     await prisma.material.create({
       data: {

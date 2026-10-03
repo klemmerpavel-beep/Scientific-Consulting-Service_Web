@@ -47,6 +47,7 @@ import {
   saveStageOutcome,
   commentOnVersion,
   decideOnComment,
+  decideOnVersion,
   moveStageDue,
   uploadMaterial,
 } from '../../actions';
@@ -558,6 +559,49 @@ export default async function StageScreen({
                           <ButtonLink href={`/cabinet/files/${version.id}`}>Скачать</ButtonLink>
                         </span>
                       </div>
+
+                      {/* Версия эксперта видна клиенту после публикации
+                          куратором: клиенту её здесь нет вовсе, эксперту —
+                          с пометкой, куратору — с решением (Т-18, Р-294). */}
+                      {version.moderation === null ? null : version.moderation.status === 'PENDING' ? (
+                        <div style={{ marginTop: 10 }}>
+                          <Chip>{mayModerate ? 'ждёт публикации клиенту' : 'ждёт публикации куратором'}</Chip>
+                          {mayModerate ? (
+                            <>
+                              <Form action={decideOnVersion} inline style={{ marginTop: 10 }}>
+                                <input type="hidden" name="versionId" value={version.id} />
+                                <input type="hidden" name="stageId" value={stage.id} />
+                                <input type="hidden" name="decision" value="publish" />
+                                <Button tone="quiet">Опубликовать клиенту</Button>
+                              </Form>
+                              <Disclosure title="Не публиковать" style={{ marginTop: 10 }}>
+                                <Form action={decideOnVersion}>
+                                  <input type="hidden" name="versionId" value={version.id} />
+                                  <input type="hidden" name="stageId" value={stage.id} />
+                                  <input type="hidden" name="decision" value="reject" />
+                                  <Field
+                                    label="Причина"
+                                    name="note"
+                                    scope={`version-${version.id}`}
+                                    multiline
+                                    defaultValue={draft.note ?? ''}
+                                    hint="Причину увидит эксперт."
+                                  />
+                                  <FormActions>
+                                    <Button tone="quiet">Не публиковать</Button>
+                                  </FormActions>
+                                </Form>
+                              </Disclosure>
+                            </>
+                          ) : null}
+                        </div>
+                      ) : version.moderation.status === 'REJECTED' ? (
+                        <Text muted size={14} style={{ marginTop: 10 }}>
+                          {`Не опубликована клиенту${
+                            version.moderation.note === null ? '' : `: ${version.moderation.note}`
+                          }`}
+                        </Text>
+                      ) : null}
 
                       <CommentList
                         comments={version.comments}

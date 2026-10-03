@@ -1,5 +1,5 @@
 import { prisma } from '../db.ts';
-import { ensure, ensureWorkOpen, type Actor, type ProjectRef } from './access.ts';
+import { CLIENT_VISIBLE_VERSION, ensure, ensureWorkOpen, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
 import { enqueue, enqueueToLead, notifyCurator } from './outbox.ts';
@@ -966,18 +966,20 @@ export async function setStageState(
   // клиент получает письмо «посмотрите материалы и подтвердите», и пустой
   // этап оставлял его без предмета согласования (решение Р-254).
   if (to === 'IN_APPROVAL') {
+    // Материал — тот, что видит клиент: версия эксперта до публикации не
+    // в счёт (требование Т-18, решение Р-294).
     const materials = await prisma.material.count({
       where: {
         stageId,
         kind: 'STAGE_MATERIAL',
         deletedAt: null,
-        versions: { some: { purgedAt: null } },
+        versions: { some: { purgedAt: null, ...CLIENT_VISIBLE_VERSION } },
       },
     });
     if (materials === 0) {
       throw new Error(
-        'На согласование этап уходит с материалом: приложите хотя бы один файл — ' +
-          'клиенту нечего посмотреть и подтвердить',
+        'На согласование этап уходит с материалом, который видит клиент: приложите файл ' +
+          'или опубликуйте версию эксперта — клиенту нечего посмотреть и подтвердить',
       );
     }
   }

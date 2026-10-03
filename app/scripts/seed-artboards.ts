@@ -604,6 +604,9 @@ async function main() {
   for (const [number, author] of [
     [1, expertUser.id],
     [2, clientUser.id],
+    // Третья редакция эксперта ждёт публикации куратором: клиенту её не
+    // видно, куратору — с решением (Т-18, Р-294).
+    [3, expertUser.id],
   ] as const) {
     await prisma.materialVersion.upsert({
       where: { materialId_number: { materialId: material.id, number } },
@@ -616,11 +619,20 @@ async function main() {
         sha256: 'a'.repeat(64),
         contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         uploadedById: author,
-        uploadedAt: day(number === 1 ? 24 : 12),
+        uploadedAt: day(number === 1 ? 24 : number === 2 ? 12 : 1),
       },
       update: {},
     });
   }
+  const pendingVersion = await prisma.materialVersion.findFirstOrThrow({
+    where: { materialId: material.id, number: 3 },
+    select: { id: true },
+  });
+  await prisma.versionModeration.upsert({
+    where: { versionId: pendingVersion.id },
+    create: { versionId: pendingVersion.id, createdAt: day(1) },
+    update: { status: 'PENDING', decidedById: null, decidedAt: null, note: null },
+  });
   const version = await prisma.materialVersion.findFirst({
     where: { materialId: material.id, number: 2 },
     select: { id: true },

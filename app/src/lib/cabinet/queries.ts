@@ -3,7 +3,16 @@ import { prisma } from '../db.ts';
 import { enqueue } from './outbox.ts';
 import { record } from './audit.ts';
 import { leadAttachmentKey, openObject, sha256, storage } from './storage.ts';
-import { can, ensure, scopeComments, scopeLeads, scopeMaterials, scopeProjects, type Actor } from './access.ts';
+import {
+  can,
+  ensure,
+  scopeComments,
+  scopeLeads,
+  scopeMaterials,
+  scopeProjects,
+  scopeVersions,
+  type Actor,
+} from './access.ts';
 import { moscowToday, now as today } from './clock.ts';
 import { LEAD_STATUS_LABEL } from './lead-labels.ts';
 
@@ -111,7 +120,16 @@ export async function listProjects(
       // работе приложено, человек должен видеть, не заходя внутрь
       // (решение Р-169). Счётчик идёт тем же запросом, второго обращения
       // к базе не появляется.
-      _count: { select: { materials: true } },
+      // Считается видимое: материал, у которого видна хотя бы одна версия
+      // (требование Т-18, решение Р-294).
+      _count: {
+        select: {
+          materials:
+            scopeVersions(actor) === null || Object.keys(scopeVersions(actor)!).length === 0
+              ? true
+              : { where: { versions: { some: scopeVersions(actor)! } } },
+        },
+      },
     },
   });
 
@@ -149,6 +167,8 @@ export async function stageById(actor: Actor, stageId: string) {
   if (scope === null) return null;
   const materialScope = scopeMaterials(actor) ?? {};
   const commentScope = scopeComments(actor) ?? {};
+  // Версия эксперта видна клиенту после публикации (Т-18, Р-294).
+  const versionScope = scopeVersions(actor) ?? {};
   return prisma.stage.findFirst({
     where: { id: stageId, project: scope },
     include: {
@@ -180,9 +200,11 @@ export async function stageById(actor: Actor, stageId: string) {
         orderBy: { createdAt: 'asc' },
         include: {
           versions: {
+            where: versionScope,
             orderBy: { number: 'desc' },
             include: {
               uploadedBy: { select: { fullName: true, role: true } },
+              moderation: { select: { status: true, note: true } },
               comments: {
                 where: commentScope,
                 orderBy: { createdAt: 'asc' },
@@ -210,6 +232,8 @@ export async function projectMaterials(actor: Actor, code: string) {
   if (scope === null) return null;
   const materialScope = scopeMaterials(actor) ?? {};
   const commentScope = scopeComments(actor) ?? {};
+  // Версия эксперта видна клиенту после публикации (Т-18, Р-294).
+  const versionScope = scopeVersions(actor) ?? {};
 
   return prisma.project.findFirst({
     where: { code, ...scope },
@@ -234,9 +258,11 @@ export async function projectMaterials(actor: Actor, code: string) {
           stage: { select: { id: true, position: true, title: true, state: true } },
           createdBy: { select: { fullName: true, role: true } },
           versions: {
+            where: versionScope,
             orderBy: { number: 'desc' },
             include: {
               uploadedBy: { select: { fullName: true, role: true } },
+              moderation: { select: { status: true, note: true } },
               // Состояние модерации нужно эксперту: его замечание не
               // видно клиенту, пока куратор его не опубликовал, и ждущее
               // публикации он должен видеть у себя (решение Р-200).

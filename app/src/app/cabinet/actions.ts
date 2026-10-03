@@ -25,6 +25,7 @@ import {
 import {
   addComment,
   moderateComment,
+  moderateVersion,
   uploadVersion,
   type MaterialKind,
 } from '../../lib/cabinet/materials';
@@ -570,6 +571,38 @@ export async function decideOnComment(form: FormData): Promise<void> {
   if (failure !== null) {
     const [path, anchor] = target.split('#');
     redirect(await withError(path!, failure, anchor === undefined ? {} : { anchor }));
+  }
+  redirect(target);
+}
+
+/**
+ * Опубликовать версию эксперта клиенту или не публиковать (требование
+ * Т-18, решение Р-294). Возврат — на экран этапа или к материалу на
+ * «Материалах работы», как у замечаний (Р-284).
+ */
+export async function decideOnVersion(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const versionId = String(form.get('versionId') ?? '');
+  const stageId = String(form.get('stageId') ?? '');
+  const decision = String(form.get('decision') ?? '') === 'publish' ? 'PUBLISHED' : 'REJECTED';
+  const note = String(form.get('note') ?? '');
+  const back = String(form.get('back') ?? '');
+  const backMatch = /^\/cabinet\/projects\/[A-Za-zА-Яа-я0-9-]+\/materials(#material-[a-z0-9]+)?$/u.exec(back);
+  const target = stageId !== '' ? `/cabinet/stages/${stageId}` : backMatch !== null ? back : '/cabinet/projects';
+  let failure: string | null = null;
+  try {
+    await moderateVersion(actor, versionId, decision, note);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось разобрать версию');
+  }
+  if (failure !== null) {
+    const [path, anchor] = target.split('#');
+    redirect(
+      await withError(path!, failure, {
+        ...(anchor === undefined ? {} : { anchor }),
+        draft: { note },
+      }),
+    );
   }
   redirect(target);
 }

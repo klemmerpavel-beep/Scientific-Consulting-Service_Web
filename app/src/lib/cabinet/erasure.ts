@@ -425,6 +425,12 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
       where: { version: { material: { projectId: { in: projectIds } } } },
       data: { body: ERASED, moderationNote: null },
     });
+    // Причина «не публиковать» версию эксперта — свободный текст куратора
+    // о работе клиента (Т-18, решение Р-294).
+    await tx.versionModeration.updateMany({
+      where: { version: { material: { projectId: { in: projectIds } } } },
+      data: { note: null },
+    });
 
     // Содержимое событий: в нём лежат прежние и новые значения полей,
     // то есть те же имена и темы, только в другом виде.

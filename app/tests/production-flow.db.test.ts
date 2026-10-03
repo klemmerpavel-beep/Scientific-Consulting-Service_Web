@@ -240,6 +240,9 @@ describe('сквозной контур', { skip: !enabled }, async () => {
     assert.equal(v1.number, 1);
     // Исходное имя файла в ключ не попадает: оно может содержать фамилию.
     assert.ok(!v1.storageKey.includes('glava-2'));
+    // Версию эксперта клиент видит после публикации куратором (Т-18, Р-294).
+    assert.equal(await materials.readVersion(client, v1.id), null);
+    await materials.moderateVersion(staff(ids.manager, 'MANAGER'), v1.id, 'PUBLISHED');
 
     const v2 = await materials.uploadVersion(client, {
       projectId: ids.project,

@@ -14,6 +14,8 @@ import {
   can,
   contributionRefusal,
   ensure,
+  scopeVersions,
+  versionVisible,
   AccessDenied,
   hasContacts,
   presentProject,
@@ -465,5 +467,44 @@ describe('закрытая работа — только чтение (Т-17, М
     assert.match(contributionRefusal(as('EXPERT'), 'PAUSED', 'DONE') ?? '', /Этап завершён/u);
     assert.equal(contributionRefusal(as('MANAGER'), 'ACTIVE', 'DONE'), null);
     assert.equal(contributionRefusal(as('HEAD'), 'ACTIVE', 'DONE'), null);
+  });
+});
+
+describe('версия эксперта — после публикации (Т-18, Р-294)', () => {
+  const as = (role: Role, id = 'x'): Actor => ({
+    id,
+    role,
+    status: 'ACTIVE',
+    clientProfileId: null,
+    expertNdaSignedAt: NDA,
+  });
+  const pending = { uploadedById: 'e1', moderation: { status: 'PENDING' } };
+  const rejected = { uploadedById: 'e1', moderation: { status: 'REJECTED' } };
+  const published = { uploadedById: 'e1', moderation: { status: 'PUBLISHED' } };
+  const plain = { uploadedById: 'c1', moderation: null };
+
+  it('практике видно всё, выборка не сужается', () => {
+    assert.deepEqual(scopeVersions(as('MANAGER')), {});
+    assert.deepEqual(scopeVersions(as('HEAD')), {});
+    assert.equal(versionVisible(as('MANAGER'), pending), true);
+  });
+
+  it('клиенту — опубликованные и не требующие публикации', () => {
+    const client = as('CLIENT', 'c1');
+    assert.equal(versionVisible(client, plain), true);
+    assert.equal(versionVisible(client, published), true);
+    assert.equal(versionVisible(client, pending), false);
+    assert.equal(versionVisible(client, rejected), false);
+    assert.ok(!JSON.stringify(scopeVersions(client)).includes('uploadedById'));
+  });
+
+  it('эксперту — то же и свои', () => {
+    assert.equal(versionVisible(as('EXPERT', 'e1'), pending), true);
+    assert.equal(versionVisible(as('EXPERT', 'e2'), pending), false);
+    assert.match(JSON.stringify(scopeVersions(as('EXPERT', 'e1'))), /"uploadedById":"e1"/u);
+  });
+
+  it('приостановленной учётной записи — ничего', () => {
+    assert.equal(scopeVersions({ ...as('CLIENT'), status: 'SUSPENDED' }), null);
   });
 });

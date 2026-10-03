@@ -122,6 +122,13 @@ export default async function ProjectMaterialsScreen({
                       <span>{formatSize(version.sizeBytes)}</span>
                       <span>{formatDate(version.uploadedAt)}</span>
                       <span>{authorName(version.uploadedBy, actor, version.uploadedById)}</span>
+                      {/* Версия эксперта до публикации — с пометкой; клиенту
+                          её здесь нет вовсе (Т-18, Р-294). */}
+                      {version.moderation === null || version.moderation.status === 'PUBLISHED' ? null : (
+                        <span style={{ color: 'var(--pd-ink)' }}>
+                          {version.moderation.status === 'PENDING' ? 'ждёт публикации' : 'не опубликована'}
+                        </span>
+                      )}
                       {version.comments.length === 0 ? null : (
                         <span>
                           {version.comments.length}{' '}

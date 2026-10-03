@@ -5,6 +5,7 @@ import {
   ensureContributionOpen,
   scopeComments,
   scopeProjects,
+  versionVisible,
   type Actor,
 } from './access.ts';
 import { record } from './audit.ts';
@@ -164,6 +165,11 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     throw new Error(`Файл больше допустимых ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ`);
   }
 
+  // Версия эксперта клиенту не видна до публикации куратором: строка
+  // модерации ставится вместе с версией, а событие в истории клиента и
+  // письмо ему — в момент публикации (требование Т-18, решение Р-294).
+  const moderated = actor.role === 'EXPERT' && kind === 'STAGE_MATERIAL';
+
   // Номер версии вычисляется и занимается в одной транзакции; от гонки
   // защищает уникальность пары «материал — номер» на стороне базы.
   const { version, material, fresh, eventId } = await prisma.$transaction(async (tx) => {
@@ -205,18 +211,21 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
         uploadedById: actor.id,
       },
     });
+    if (moderated) await tx.versionModeration.create({ data: { versionId: created.id } });
 
-    const event = await tx.projectEvent.create({
-      data: {
-        projectId: input.projectId,
-        actorId: actor.id,
-        kind: 'VERSION_UPLOADED',
-        payload: { materialId: target.id, version: number },
-      },
-      select: { id: true },
-    });
+    const event = moderated
+      ? null
+      : await tx.projectEvent.create({
+          data: {
+            projectId: input.projectId,
+            actorId: actor.id,
+            kind: 'VERSION_UPLOADED',
+            payload: { materialId: target.id, version: number },
+          },
+          select: { id: true },
+        });
 
-    return { version: created, material: target, fresh: current === null, eventId: event.id };
+    return { version: created, material: target, fresh: current === null, eventId: event?.id ?? null };
   });
 
   // Байты пишутся после строки: ключ объекта строится от номера версии,
@@ -228,7 +237,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     await storage().put(version.storageKey, input.body, input.contentType);
   } catch (error) {
     await prisma.$transaction(async (tx) => {
-      await tx.projectEvent.delete({ where: { id: eventId } });
+      if (eventId !== null) await tx.projectEvent.delete({ where: { id: eventId } });
       await tx.materialVersion.delete({ where: { id: version.id } });
       if (fresh) await tx.material.delete({ where: { id: material.id } });
     });
@@ -281,6 +290,8 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
       },
     });
     const recipients = candidates
+      // Клиент о версии на публикации не узнаёт: она ему не видна (Р-294).
+      .filter((user) => !moderated || user.role !== 'CLIENT')
       .filter((user) =>
         can(
           {
@@ -303,7 +314,8 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
         subject: `Новая версия материала: ${material.title}`,
         body:
           `Проект ${project.code} — ${project.title}.\n` +
-          `Загружена версия v${version.number}. Открыть можно в личном кабинете.`,
+          `Загружена версия v${version.number}. Открыть можно в личном кабинете.` +
+          (moderated ? '\nВерсия эксперта ждёт публикации: клиент увидит её после вашего решения.' : ''),
         dedupKey: `version:${version.id}:uploaded:${userId}`,
       });
     }
@@ -313,11 +325,125 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     objectType: 'MaterialVersion',
     objectId: version.id,
     projectId: input.projectId,
-    payload: { material: material.id, version: version.number },
+    payload: { material: material.id, version: version.number, ...(moderated ? { moderated: true } : {}) },
     ip,
   });
 
   return version;
+}
+
+/**
+ * Опубликовать версию эксперта клиенту или не публиковать (требование
+ * Т-18, решение Р-294). Тот же круг, что у замечаний: куратор работы и
+ * руководитель (Р-220). В закрытой работе разбора нет (Р-293).
+ *
+ * При публикации клиент получает письмо «Новая версия материала», в
+ * истории работы появляется событие, а пояснения эксперта к этой версии
+ * без контактов публикуются вместе с ней: замечание к невидимой версии
+ * отдельно не публикуется.
+ */
+export async function moderateVersion(
+  actor: Actor,
+  versionId: string,
+  decision: 'PUBLISHED' | 'REJECTED',
+  note?: string | null,
+) {
+  ensure(actor, 'COMMENT_MODERATE');
+  const target = await prisma.versionModeration.findUnique({
+    where: { versionId },
+    select: {
+      version: {
+        select: {
+          id: true,
+          number: true,
+          uploadedById: true,
+          material: {
+            select: {
+              id: true,
+              title: true,
+              project: {
+                select: {
+                  id: true,
+                  code: true,
+                  title: true,
+                  status: true,
+                  clientId: true,
+                  managerId: true,
+                  expertId: true,
+                  client: { select: { userId: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (target === null) throw new Error('Версия не ждёт публикации');
+  const { version } = target;
+  const project = version.material.project;
+  ensure(actor, 'COMMENT_MODERATE', project);
+  ensureContributionOpen(actor, project.status, null);
+  const reason = note?.trim() || null;
+  if (reason !== null && reason.length > 2000) throw new Error('Причина — не длиннее 2000 знаков');
+
+  const now = new Date();
+  const published = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.versionModeration.updateMany({
+      where: { versionId, status: 'PENDING' },
+      data: {
+        status: decision,
+        decidedById: actor.id,
+        decidedAt: now,
+        note: decision === 'REJECTED' ? reason : null,
+      },
+    });
+    if (count === 0) throw new Error('Версия уже разобрана');
+    if (decision !== 'PUBLISHED') return 0;
+
+    await tx.projectEvent.create({
+      data: {
+        projectId: project.id,
+        actorId: version.uploadedById,
+        kind: 'VERSION_UPLOADED',
+        payload: { materialId: version.material.id, version: version.number },
+      },
+    });
+    // Пояснения эксперта к версии — вместе с ней; с контактами остаются на
+    // отдельный разбор (Р-242).
+    const notes = await tx.versionComment.findMany({
+      where: { versionId, authorId: version.uploadedById, moderationStatus: 'PENDING' },
+      select: { id: true, body: true },
+    });
+    const clean = notes.filter((comment) => !hasContacts(comment.body)).map((comment) => comment.id);
+    if (clean.length > 0) {
+      await tx.versionComment.updateMany({
+        where: { id: { in: clean }, moderationStatus: 'PENDING' },
+        data: { moderationStatus: 'PUBLISHED', moderatedById: actor.id, moderatedAt: now, publishedAt: now },
+      });
+    }
+    if (project.client.userId !== null) {
+      await enqueue(tx, {
+        userId: project.client.userId,
+        projectId: project.id,
+        eventKind: 'VERSION_UPLOADED',
+        subject: `Новая версия материала: ${version.material.title}`,
+        body:
+          `Проект ${project.code} — ${project.title}.\n` +
+          `Загружена версия v${version.number}. Открыть можно в личном кабинете.`,
+        dedupKey: `version:${version.id}:uploaded:${project.client.userId}`,
+      });
+    }
+    return clean.length;
+  });
+
+  await record(actor, {
+    action: decision === 'PUBLISHED' ? 'VERSION_PUBLISHED' : 'VERSION_REJECTED',
+    objectType: 'MaterialVersion',
+    objectId: version.id,
+    projectId: project.id,
+    payload: decision === 'PUBLISHED' ? { comments: published } : { withNote: reason !== null },
+  });
 }
 
 /**
@@ -333,6 +459,7 @@ export async function readVersion(actor: Actor, versionId: string, ip?: string |
           project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
         },
       },
+      moderation: { select: { status: true } },
     },
   });
   if (version === null) return null;
@@ -348,6 +475,9 @@ export async function readVersion(actor: Actor, versionId: string, ip?: string |
     version.material.kind === 'STAGE_MATERIAL' ? 'MATERIAL_VIEW' : 'CONTRACT_VIEW',
     version.material.project,
   );
+  // Неопубликованная версия эксперта — «не найдено», как и в перечнях
+  // (требование Т-18, решение Р-294).
+  if (!versionVisible(actor, version)) return null;
 
   await prisma.fileAccessLog.create({
     data: { versionId, userId: actor.id, action: 'DOWNLOAD', ip: ip ?? null },
@@ -385,10 +515,13 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
           stage: { select: { state: true } },
         },
       },
+      moderation: { select: { status: true } },
     },
   });
   if (version === null) throw new Error('Версия не найдена');
   ensure(actor, 'COMMENT_CREATE', version.material.project);
+  // К невидимой версии эксперта клиент замечаний не пишет (Т-18, Р-294).
+  if (!versionVisible(actor, version)) throw new Error('Версия не найдена');
   // Закрытая работа и завершённый этап — только чтение (Т-17, М-10, Р-293).
   ensureContributionOpen(actor, version.material.project.status, version.material.stage?.state ?? null);
   // Замечание — к тому, что можно открыть. Договор, счёт и акт видны по
@@ -457,6 +590,7 @@ export async function moderateComment(
       author: { select: { role: true } },
       version: {
         select: {
+          moderation: { select: { status: true } },
           material: {
             select: {
               project: {
@@ -472,6 +606,15 @@ export async function moderateComment(
   ensure(actor, 'COMMENT_MODERATE', target.version.material.project);
   // Разбор замечаний закрытой работы закрыт и практике (М-10, Р-293).
   ensureContributionOpen(actor, target.version.material.project.status, null);
+  // Замечание к версии, которую клиент не видит, отдельно не публикуется:
+  // оно уходит вместе с версией (требование Т-18, решение Р-294).
+  if (
+    decision === 'PUBLISHED' &&
+    target.version.moderation !== null &&
+    target.version.moderation.status !== 'PUBLISHED'
+  ) {
+    throw new Error('Замечание к неопубликованной версии публикуется вместе с версией');
+  }
   const now = new Date();
   // Разобрать можно только ждущее решения: вкладка, открытая до
   // публикации, иначе отклонила бы замечание, о котором клиенту уже
@@ -620,6 +763,59 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
     } else {
       byStage.set(key, { ...seen, count: seen.count + 1 });
     }
+  }
+  return [...byStage.values()];
+}
+
+/**
+ * Версии эксперта, ждущие публикации, — дело куратора на «Требует
+ * внимания» (требование Т-18, решение Р-294). Сводятся по этапу, как
+ * замечания: три версии одного этапа — одно дело.
+ */
+export async function pendingVersions(actor: Actor): Promise<PendingComment[]> {
+  if (!can(actor, 'COMMENT_MODERATE')) return [];
+  const scope = scopeProjects(actor);
+  if (scope === null) return [];
+  const rows = await prisma.versionModeration.findMany({
+    where: {
+      status: 'PENDING',
+      version: { purgedAt: null, material: { project: { ...scope, status: { in: ['ACTIVE', 'PAUSED'] } }, deletedAt: null } },
+    },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      version: {
+        select: {
+          material: {
+            select: {
+              id: true,
+              title: true,
+              stage: { select: { id: true, title: true } },
+              project: { select: { title: true, code: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+  const byStage = new Map<string, PendingComment>();
+  for (const row of rows) {
+    const material = row.version.material;
+    const key = material.stage?.id ?? `material:${material.id}`;
+    const seen = byStage.get(key);
+    byStage.set(
+      key,
+      seen === undefined
+        ? {
+            stageId: material.stage?.id ?? null,
+            projectCode: material.project.code,
+            materialId: material.id,
+            projectTitle: material.project.title,
+            stageTitle: material.stage?.title ?? material.title,
+            material: material.title,
+            count: 1,
+          }
+        : { ...seen, count: seen.count + 1 },
+    );
   }
   return [...byStage.values()];
 }

@@ -62,6 +62,8 @@ const ACTIONS: Record<string, string> = {
   USER_ROLE_CHANGED: 'Изменена роль',
   USER_STATUS_CHANGED: 'Изменено состояние доступа',
   VERSION_UPLOADED: 'Загружена версия материала',
+  VERSION_PUBLISHED: 'Версия эксперта опубликована клиенту',
+  VERSION_REJECTED: 'Версия эксперта не опубликована',
   COMMENT_CREATED: 'Оставлен комментарий',
   COMMENT_PUBLISHED: 'Комментарий опубликован',
   COMMENT_REJECTED: 'Комментарий отклонён',

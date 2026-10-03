@@ -30,7 +30,7 @@ import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
 import { formatAmount, formatPlain, outstandingOf, workMoneyNote } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { unreadInbox } from '../../../lib/cabinet/messages';
-import { pendingComments } from '../../../lib/cabinet/materials';
+import { pendingComments, pendingVersions } from '../../../lib/cabinet/materials';
 import { leadQueue, returnedStages, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
@@ -156,6 +156,8 @@ export default async function ManageQueue({
   // Замечание эксперта висит неопубликованным, пока его не пропустят, и
   // клиенту не видно. Прежде о нём не говорил ни один экран (Р-183).
   const moderation = await pendingComments(actor);
+  // Версия эксперта не видна клиенту до публикации (Т-18, Р-294).
+  const versionsToPublish = await pendingVersions(actor);
   // Клиент вернул этап с замечаниями: ход за куратором (решение Р-283).
   const returned = await returnedStages(actor);
   // Состояние очереди уведомлений видит только руководитель (решение Р-154):
@@ -335,6 +337,20 @@ export default async function ManageQueue({
           ? `/cabinet/projects/${row.projectCode}/materials#material-${row.materialId}`
           : `/cabinet/stages/${row.stageId}`,
     })),
+    ...versionsToPublish.map((row) => ({
+      key: `version-${row.stageId ?? row.materialId}`,
+      kind: 'version' as const,
+      step: 0 as const,
+      title: `${row.stageTitle} · ${row.projectTitle}`,
+      mark: `${row.count} ${plural(row.count, 'версия', 'версии', 'версий')} эксперта на публикации`,
+      urgent: false,
+      detail: row.material,
+      todo: 'Опубликовать клиенту или не публиковать — до этого клиент их не видит',
+      href:
+        row.stageId === null
+          ? `/cabinet/projects/${row.projectCode}/materials#material-${row.materialId}`
+          : `/cabinet/stages/${row.stageId}`,
+    })),
     ...(outbox !== null && outbox.failed > 0
       ? [
           {
@@ -363,6 +379,7 @@ export default async function ManageQueue({
     stalled: 2,
     unread: 3,
     comment: 3,
+    version: 3,
     outbox: 1,
   };
   const showAll = (await searchParams).attention === 'all' || attention.length <= 12;

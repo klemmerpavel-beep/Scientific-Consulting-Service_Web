@@ -674,6 +674,9 @@ model MaterialVersion {
 
   comments  VersionComment[]
   accessLog FileAccessLog[]
+  /// Публикация версии эксперта клиенту (Т-18, Р-294); у прочих версий
+  /// строки нет.
+  moderation VersionModeration?
 
   @@unique([materialId, number])
   @@index([materialId])
@@ -683,6 +686,27 @@ enum ModerationStatus {
   PENDING
   PUBLISHED
   REJECTED
+}
+
+/// Публикация версии эксперта клиенту (требование Т-18, решение Р-294).
+///
+/// Одна строка на версию, загруженную экспертом: клиент видит её только
+/// после публикации куратором. Версии без строки — клиента, практики и
+/// загруженные до решения — видны как прежде. Статус хранится, а не
+/// выводится из роли загрузившего: смена роли не раскроет неопубликованное.
+/// `MaterialVersion` остаётся «только вставка» (Р-122). Примечание
+/// затирается обезличиванием.
+model VersionModeration {
+  id          String           @id @default(cuid())
+  versionId   String           @unique
+  version     MaterialVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  status      ModerationStatus @default(PENDING)
+  decidedById String?
+  decidedAt   DateTime?
+  note        String?          @db.Text
+  createdAt   DateTime         @default(now())
+
+  @@index([status])
 }
 
 /// Комментарий привязан к версии, а не к файлу: клиент видит, что именно
