@@ -505,6 +505,31 @@ async function main() {
   }
 
   const showcase = projectIds[BOOK.orders.indexOf(showcaseOrder)]!;
+
+  // Списанная часть остатка на витринной работе: корректировка суммы видна
+  // клиенту и куратору, списание — руководителю (требования Т-19, М-22,
+  // решение Р-315). Остаток по договору уменьшается на ту же сумму — суммы
+  // траншей сходятся с договором. Повторное наполнение ничего не меняет.
+  {
+    const contract = await prisma.contract.findUnique({
+      where: { projectId: showcase },
+      select: { id: true, totalAmount: true, tranches: { select: { id: true, status: true, title: true, amount: true } } },
+    });
+    const rest = contract?.tranches.find((tranche) => tranche.status === 'PLANNED' && tranche.title === 'Остаток по договору');
+    const writtenOff = contract?.tranches.some((tranche) => tranche.status === 'WRITTEN_OFF') ?? true;
+    const cut = contract === null || contract === undefined ? 0n : (contract.totalAmount / 10n / 100_000n) * 100_000n;
+    if (contract != null && rest !== undefined && !writtenOff && cut > 0n && rest.amount > cut) {
+      await prisma.tranche.update({ where: { id: rest.id }, data: { amount: rest.amount - cut } });
+      await prisma.tranche.create({
+        data: {
+          contractId: contract.id,
+          title: 'Часть остатка, снятая по договорённости',
+          amount: cut,
+          status: 'WRITTEN_OFF',
+        },
+      });
+    }
+  }
   const stageRows = [
     {
       title: 'Постановка задачи и план исследования',

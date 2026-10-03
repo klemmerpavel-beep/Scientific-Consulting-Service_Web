@@ -68,6 +68,7 @@ import {
 } from '../../../../lib/cabinet/queries';
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
 import { formatAmount } from '../../../../lib/cabinet/money';
+import { paymentDocumentLines } from '../../../../lib/cabinet/finance';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import {
@@ -459,19 +460,29 @@ export default async function ProjectScreen({
       .map((event) => (event.payload as { expertId?: unknown } | null)?.expertId)
       .filter((id): id is string => typeof id === 'string'),
   );
+  // Документы оплат в истории — с названием транша; события о документах
+  // скрытых траншей не показываются (требование Т-19, решение Р-315).
+  const documents = await paymentDocumentLines(actor, project.id);
+  const documentOf = (payload: unknown): string | null => {
+    const id = (payload as { materialId?: unknown } | null)?.materialId;
+    return typeof id === 'string' ? id : null;
+  };
   const events = project.events
     .filter((event) => !forClient || !CLIENT_HIDDEN_EVENTS.has(event.kind))
+    .filter((event) => event.kind !== 'VERSION_UPLOADED' || !documents.hidden.has(documentOf(event.payload) ?? ''))
     .map((event) => ({
       id: event.id,
-      line: eventLine(
-        event.kind,
-        event.payload,
-        project.stages,
-        withMaterials?.materials ?? [],
-        staff,
-        actor,
-        executors,
-      ),
+      line:
+        (event.kind === 'VERSION_UPLOADED' ? documents.lines.get(documentOf(event.payload) ?? '') : undefined) ??
+        eventLine(
+          event.kind,
+          event.payload,
+          project.stages,
+          withMaterials?.materials ?? [],
+          staff,
+          actor,
+          executors,
+        ),
       at: `${formatDay(event.createdAt)}, ${formatTime(event.createdAt)}`,
       who:
         event.actor === null

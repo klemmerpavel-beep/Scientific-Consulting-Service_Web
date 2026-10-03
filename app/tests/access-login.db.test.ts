@@ -397,11 +397,74 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     assert.equal(money.awaiting, 55_000n);
     assert.equal(money.scheduled, 30_000n);
     assert.equal('writtenOff' in money, false, 'клиенту отдано списанное');
+    // Корректировка сводит арифметику экрана без раскрытия списания
+    // (требование Т-19, О-4, решение Р-315): 100 000 − 30 000 − 55 000.
+    assert.equal(money.adjustment, 15_000n);
+    assert.equal(money.contractTotal - money.adjustment - money.received, money.awaiting);
+
+    // Куратор работы видит ту же корректировку и тоже без списания (М-22).
+    const curatorMoney = await finance.projectMoney(mine(), ids.mine!);
+    assert.equal(curatorMoney?.adjustment, 15_000n);
+    assert.equal(curatorMoney !== null && 'writtenOff' in curatorMoney, false, 'куратору отдано списанное');
 
     const forHead = await finance.projectContract(head(), ids.mine!);
     assert.equal(forHead?.tranches.length, 5);
     const headMoney = await finance.projectMoney(head(), ids.mine!);
     assert.equal(headMoney?.writtenOff, 15_000n);
+  });
+
+  it('отменённая работа: корректировка — весь неоплаченный остаток, дата отмены видна (Т-19, Р-315)', async () => {
+    await prisma.project.update({
+      where: { id: ids.mine! },
+      data: { status: 'CANCELLED', closedOn: new Date('2026-09-30T00:00:00Z') },
+    });
+    try {
+      const money = await finance.projectMoney(client(), ids.mine!);
+      assert.ok(money !== null);
+      assert.equal(money.awaiting, 0n);
+      assert.equal(money.adjustment, 70_000n);
+      assert.equal(money.cancelledOn?.toISOString().slice(0, 10), '2026-09-30');
+    } finally {
+      await prisma.project.update({ where: { id: ids.mine! }, data: { status: 'ACTIVE', closedOn: null } });
+    }
+  });
+
+  it('история: документ видимого транша назван, документ списанного скрыт (Т-19, Р-315)', async () => {
+    const contract = await prisma.contract.findUniqueOrThrow({
+      where: { projectId: ids.mine! },
+      include: { tranches: true },
+    });
+    const paid = contract.tranches.find((t) => t.status === 'PAID')!;
+    const written = contract.tranches.find((t) => t.status === 'WRITTEN_OFF')!;
+    const doc = (trancheId: string, kind: 'INVOICE' | 'ACT') =>
+      prisma.material.create({
+        data: { projectId: ids.mine!, contractId: contract.id, trancheId, kind, title: `Документ ${kind}`, createdById: ids.head! },
+      });
+    const [invoice, hiddenAct] = [await doc(paid.id, 'INVOICE'), await doc(written.id, 'ACT')];
+    try {
+      const forClient = await finance.paymentDocumentLines(client(), ids.mine!);
+      assert.equal(forClient.lines.get(invoice.id), `Приложен счёт к траншу «${paid.title}»`);
+      assert.ok(forClient.hidden.has(hiddenAct.id), 'событие о документе списанного транша не скрыто');
+      const forHead = await finance.paymentDocumentLines(head(), ids.mine!);
+      assert.equal(forHead.lines.get(hiddenAct.id), `Приложен акт к траншу «${written.title}»`);
+      assert.equal(forHead.hidden.size, 0);
+    } finally {
+      await prisma.material.deleteMany({ where: { id: { in: [invoice.id, hiddenAct.id] } } });
+    }
+  });
+
+  it('оплачено сверх суммы договора — корректировка меньше нуля (ОМ-30)', async () => {
+    const contract = await prisma.contract.findUniqueOrThrow({ where: { projectId: ids.mine! } });
+    const extra = await prisma.tranche.create({
+      data: { contractId: contract.id, title: 'Доплата сверх договора', amount: 90_000n, status: 'PAID' },
+    });
+    try {
+      const money = await finance.projectMoney(client(), ids.mine!);
+      assert.ok(money !== null && money.adjustment < 0n);
+      assert.equal(money.contractTotal - money.adjustment - money.received, money.awaiting);
+    } finally {
+      await prisma.tranche.delete({ where: { id: extra.id } });
+    }
   });
 
   it('эксперт без договора видит суммы начислений, но не работу, этап и комментарий', async () => {

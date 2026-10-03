@@ -147,6 +147,23 @@ export default async function PaymentsScreen({
                   {formatAmount(money.contractTotal)}
                 </Text>
               </div>
+              {/* Корректировка сводит арифметику: «Сумма договора −
+                  Корректировка − Получено = Осталось оплатить». Видна тому,
+                  кто оплаты не ведёт, — ведущий видит списание в траншах
+                  (требования Т-19, М-22, О-4, ОМ-30, решение Р-315). */}
+              {mayEdit || money.adjustment === 0n ? null : (
+                <div>
+                  <Mono>{money.adjustment > 0n ? 'Корректировка суммы' : 'Оплачено сверх суммы договора'}</Mono>
+                  <Text size={20} style={{ marginTop: 6, color: 'var(--pd-ink)' }}>
+                    {formatAmount(money.adjustment > 0n ? money.adjustment : -money.adjustment)}
+                  </Text>
+                  {money.adjustment > 0n && !money.cancelled ? (
+                    <Text muted size={13} style={{ marginTop: 4 }}>
+                      сумма к оплате изменена по договорённости
+                    </Text>
+                  ) : null}
+                </div>
+              )}
               <div>
                 <Mono>Получено</Mono>
                 <Text size={20} style={{ marginTop: 6, color: 'var(--pd-ink)' }}>
@@ -161,9 +178,12 @@ export default async function PaymentsScreen({
                 {/* У отменённой работы остаток не ждут: он учтён в потерях,
                     и ноль здесь — не «оплачено», а решение. Сотруднику это
                     названо прямо (решение Р-257). */}
-                {mayEdit && money.cancelled ? (
+                {money.cancelled ? (
                   <Text muted size={13} style={{ marginTop: 4 }}>
-                    работа отменена — остаток учтён в потерях
+                    {/* Пометку отмены видит и клиент: ноль здесь — не
+                        «оплачено», а отмена (требование Т-19, Р-315). */}
+                    {money.cancelledOn === null ? 'Работа отменена' : `Работа отменена ${formatDate(money.cancelledOn)}`}
+                    {mayEdit ? ' — остаток учтён в потерях' : ''}
                   </Text>
                 ) : null}
               </div>

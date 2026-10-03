@@ -421,6 +421,15 @@ export interface ProjectMoney {
    * равен нулю (решение Р-257).
    */
   readonly cancelled: boolean;
+  /** День отмены работы; `null` — не отменена или дата не записана. */
+  readonly cancelledOn: Date | null;
+  /**
+   * Корректировка суммы = договор − получено − осталось оплатить (требование
+   * Т-19, О-4, решение Р-315). Это не «списано»: величина сводит арифметику
+   * экрана и при обрезке остатка нулём, и у отменённой работы. Меньше нуля —
+   * оплачено сверх суммы договора (ОМ-30).
+   */
+  readonly adjustment: bigint;
   /** Только тому, кто ведёт оплаты: списание — внутреннее решение (Р-251). */
   readonly writtenOff?: bigint;
   /** Заполняется только для роли, допущенной к экономике. */
@@ -442,7 +451,7 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
 
   const contract = await prisma.contract.findUnique({
     where: { projectId },
-    include: { tranches: true, project: { select: { status: true } } },
+    include: { tranches: true, project: { select: { status: true, closedOn: true } } },
   });
   if (contract === null) return null;
 
@@ -464,12 +473,17 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
   //
   // У отменённой работы остатка к оплате нет: его не ждут, он учтён в
   // потерях, и сводки его к получению не считают (решение Р-257).
+  const received = sum('PAID');
+  const awaiting = receivableOf(contract.project.status, contract.totalAmount, contract.tranches);
+  const cancelled = !expectsPayment(contract.project.status);
   const visible: ProjectMoney = {
     contractTotal: contract.totalAmount,
-    received: sum('PAID'),
-    awaiting: receivableOf(contract.project.status, contract.totalAmount, contract.tranches),
+    received,
+    awaiting,
     scheduled: sum('PLANNED') + sum('INVOICED'),
-    cancelled: !expectsPayment(contract.project.status),
+    cancelled,
+    cancelledOn: cancelled ? contract.project.closedOn : null,
+    adjustment: contract.totalAmount - received - awaiting,
   };
   if (!can(actor, 'PAYMENT_EDIT', ref)) return visible;
 
@@ -632,6 +646,40 @@ export async function projectContract(actor: Actor, projectId: string) {
       },
     },
   });
+}
+
+/**
+ * Строки истории работы о документах оплат (требование Т-19, решение Р-315):
+ * «Приложен счёт к траншу «…»», «Приложен акт к траншу «…»», «Приложен
+ * договор». Сопоставление — по документам видимых смотрящему траншей;
+ * события о документах скрытых траншей (списанных и сторнированных у того,
+ * кто оплаты не ведёт) из истории убираются. Без права на оплаты — ничего
+ * не меняется.
+ */
+export async function paymentDocumentLines(
+  actor: Actor,
+  projectId: string,
+): Promise<{ lines: Map<string, string>; hidden: Set<string> }> {
+  const lines = new Map<string, string>();
+  const ref = await projectRef(projectId);
+  if (ref === null || !can(actor, 'CONTRACT_VIEW', ref)) return { lines, hidden: new Set() };
+  const contract = await projectContract(actor, projectId);
+  const what = (kind: string): string =>
+    kind === 'INVOICE' ? 'счёт' : kind === 'ACT' ? 'акт' : kind === 'CONTRACT' ? 'договор' : 'документ';
+  for (const tranche of contract?.tranches ?? []) {
+    for (const document of tranche.documents) {
+      lines.set(document.id, `Приложен ${what(document.kind)} к траншу «${tranche.title}»`);
+    }
+  }
+  for (const document of contract?.documents ?? []) {
+    if (document.trancheId === null && !lines.has(document.id)) lines.set(document.id, `Приложен ${what(document.kind)}`);
+  }
+  // Документы оплат — материалы при договоре или транше.
+  const all = await prisma.material.findMany({
+    where: { projectId, OR: [{ contractId: { not: null } }, { trancheId: { not: null } }] },
+    select: { id: true },
+  });
+  return { lines, hidden: new Set(all.map((row) => row.id).filter((id) => !lines.has(id))) };
 }
 
 /**
