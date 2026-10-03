@@ -45,6 +45,53 @@ export interface Actor {
   readonly viaStaffLink?: boolean;
 }
 
+/**
+ * Закрытая работа — только чтение (требования Т-17 и М-10, решение Р-293).
+ *
+ * Прежде службы загрузки и замечаний состояния работы и этапа не
+ * проверяли: экраны прятали формы частично, а прямой вызов проходил. Одно
+ * правило для служб и экранов:
+ *
+ * - работа завершена или отменена — материалы, замечания и их разбор
+ *   закрыты всем ролям; карточка и исполнитель — тоже. Возобновить работу
+ *   можно, и это снимает запрет;
+ * - этап «Завершён» у действующей или приостановленной работы — клиенту и
+ *   эксперту файлы и замечания не принимаются, практике — да;
+ * - приостановленная работа — материалы, замечания и переписка работают.
+ *
+ * Документы оплат и переписка правилом не закрыты (Р-244).
+ */
+export function workClosed(projectStatus: string): boolean {
+  return projectStatus === 'COMPLETED' || projectStatus === 'CANCELLED';
+}
+
+export const CLOSED_FOR_PRACTICE = 'Работа закрыта: чтобы изменить, возобновите её';
+export const CLOSED_FOR_PARTY = 'Работа закрыта. Если нужно передать файл, напишите куратору';
+export const STAGE_DONE_FOR_PARTY = 'Этап завершён. Если нужно передать файл, напишите куратору';
+
+/** Текст отказа во вкладе в материалы и замечания или `null`, если можно. */
+export function contributionRefusal(
+  actor: Actor,
+  projectStatus: string,
+  stageState: string | null,
+): string | null {
+  const practice = actor.role === 'MANAGER' || actor.role === 'HEAD';
+  if (workClosed(projectStatus)) return practice ? CLOSED_FOR_PRACTICE : CLOSED_FOR_PARTY;
+  if (stageState === 'DONE' && !practice) return STAGE_DONE_FOR_PARTY;
+  return null;
+}
+
+/** То же правило для служб: отказ — обычной ошибкой с текстом. */
+export function ensureContributionOpen(actor: Actor, projectStatus: string, stageState: string | null): void {
+  const refusal = contributionRefusal(actor, projectStatus, stageState);
+  if (refusal !== null) throw new Error(refusal);
+}
+
+/** Карточка работы и исполнитель закрытой работы не правятся. */
+export function ensureWorkOpen(projectStatus: string): void {
+  if (workClosed(projectStatus)) throw new Error(CLOSED_FOR_PRACTICE);
+}
+
 /** Реквизиты проекта, достаточные для решения о доступе. */
 export interface ProjectRef {
   readonly id: string;

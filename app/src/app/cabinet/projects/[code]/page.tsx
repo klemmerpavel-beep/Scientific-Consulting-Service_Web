@@ -35,7 +35,13 @@ import {
   type StageStateKey,
 } from '../../../../components/cabinet/ui';
 import { SANS } from '../../../../components/cabinet/tokens';
-import { can, presentReturnText, type Actor } from '../../../../lib/cabinet/access';
+import {
+  CLOSED_FOR_PRACTICE,
+  can,
+  presentReturnText,
+  workClosed,
+  type Actor,
+} from '../../../../lib/cabinet/access';
 import { CONTACT_LABEL, contactsOf } from '../../../../lib/cabinet/channels';
 import { stageLabel } from '../../../../lib/cabinet/stage-state';
 import {
@@ -217,7 +223,10 @@ export default async function ProjectScreen({
   // План работ меняется только у действующей работы: этапы
   // приостановленной, завершённой и отменённой не правятся (решение Р-240).
   const mayEditStages = mayEdit && project.status === 'ACTIVE';
-  const mayAssign = can(actor, 'PROJECT_ASSIGN_EXPERT', ref);
+  // Закрытая работа — только чтение: карточка и исполнитель не правятся,
+  // остаётся «Возобновить» (требование М-10, решение Р-293).
+  const closed = workClosed(project.status);
+  const mayAssign = can(actor, 'PROJECT_ASSIGN_EXPERT', ref) && !closed;
   const maySeeContacts = can(actor, 'CONTACTS_VIEW', ref);
   const mayWrite = can(actor, 'MESSAGE_READ', ref);
   // Способы связи клиента видит тот же, кто видит его контакты: телефон и
@@ -786,7 +795,14 @@ export default async function ProjectScreen({
                 </Form>
               ) : null}
 
-              {mayEdit ? (
+              {mayEdit && closed ? (
+                <Text muted size={14}>
+                  {CLOSED_FOR_PRACTICE}. Карточка, исполнитель и этапы закрытой работы не
+                  меняются; переписка и документы оплат доступны.
+                </Text>
+              ) : null}
+
+              {mayEdit && !closed ? (
                 <Form action={saveProject}>
                   <input type="hidden" name="projectId" value={project.id} />
                   <input type="hidden" name="code" value={project.code} />

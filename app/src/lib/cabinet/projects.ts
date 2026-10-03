@@ -1,5 +1,5 @@
 import { prisma } from '../db.ts';
-import { ensure, type Actor, type ProjectRef } from './access.ts';
+import { ensure, ensureWorkOpen, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
 import { enqueue, enqueueToLead, notifyCurator } from './outbox.ts';
@@ -456,6 +456,8 @@ export async function assignExpert(actor: Actor, projectId: string, expertId: st
   const ref = await projectRef(projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PROJECT_ASSIGN_EXPERT', ref);
+  // Исполнитель закрытой работы не меняется (М-10, решение Р-293).
+  ensureWorkOpen((await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { status: true } })).status);
 
   // Экспертом работы может быть только действующий эксперт. Прежде в поле
   // ложился любой идентификатор формы: клиент или сотрудник становился
@@ -682,8 +684,10 @@ export async function editProject(
 
   const before = await prisma.project.findUniqueOrThrow({
     where: { id: input.projectId },
-    select: { dueOn: true, approvalDays: true },
+    select: { dueOn: true, approvalDays: true, status: true },
   });
+  // Карточка закрытой работы не правится (М-10, решение Р-293).
+  ensureWorkOpen(before.status);
   const saved = await prisma.project.update({
     where: { id: input.projectId },
     data: {

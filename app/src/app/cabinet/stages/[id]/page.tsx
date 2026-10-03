@@ -24,7 +24,7 @@ import {
   turnLabel,
 } from '../../../../components/cabinet/ui';
 import { SANS } from '../../../../components/cabinet/tokens';
-import { can, presentReturnText } from '../../../../lib/cabinet/access';
+import { can, contributionRefusal, presentReturnText } from '../../../../lib/cabinet/access';
 import { autoAcceptEnabled, formatDay } from '../../../../lib/cabinet/approval';
 import { approvalStaffLine } from '../../../../lib/cabinet/approval-text';
 import { formDraft } from '../../../../lib/cabinet/flash';
@@ -123,9 +123,13 @@ export default async function StageScreen({
   const returnText = lastReturn === undefined ? null : presentReturnText(actor, lastReturn);
   // На закрытом этапе клиенту не предлагается приложить «первый» материал:
   // этап сдан, и новая загрузка в него ничего не сдвинет (решение Р-206).
-  const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref) && (state !== 'DONE' || actor.role !== 'CLIENT');
+  // Закрытая работа — только чтение всем ролям, завершённый этап — клиенту
+  // и эксперту; правило одно для экрана и служб (Т-17, М-10, Р-293).
+  const refusal = contributionRefusal(actor, stage.project.status, state);
+  const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref) && refusal === null;
+  const mayComment = can(actor, 'COMMENT_CREATE', ref) && refusal === null;
   const staff = actor.role !== 'CLIENT';
-  const mayModerate = can(actor, 'COMMENT_MODERATE', ref);
+  const mayModerate = can(actor, 'COMMENT_MODERATE', ref) && refusal === null;
   const forStaff = actor.role !== 'CLIENT' && mayEdit;
   const late = overdueDays(stage.dueOn);
   // Срок согласования глазами практики: та же дата, что у клиента, и
@@ -567,7 +571,7 @@ export default async function StageScreen({
                           версией и занимало полтораста пикселей, хотя
                           пишут в него изредка. Раскрывается по нажатию
                           (решение Р-178). */}
-                      {index === 0 ? (
+                      {index === 0 && mayComment ? (
                         <Disclosure title="Оставить комментарий" style={{ marginTop: 14 }}>
                           <Form action={commentOnVersion}>
                             <input type="hidden" name="versionId" value={version.id} />
@@ -611,6 +615,13 @@ export default async function StageScreen({
             ))}
           </div>
         )}
+
+        {/* Вместо форм — почему их нет и что делать (Т-17, М-10, Р-293). */}
+        {refusal !== null && can(actor, 'MATERIAL_UPLOAD', ref) ? (
+          <Text muted size={14} style={{ marginTop: 16 }}>
+            {refusal}.
+          </Text>
+        ) : null}
 
         {mayUpload ? (
           <Disclosure title="Приложить новый материал" style={{ marginTop: 20 }}>

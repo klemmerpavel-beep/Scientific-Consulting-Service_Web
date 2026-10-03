@@ -220,12 +220,18 @@ export async function projectMaterials(actor: Actor, code: string) {
       clientId: true,
       managerId: true,
       expertId: true,
-      stages: { orderBy: { position: 'asc' }, select: { id: true, position: true, title: true } },
+      // Состояние работы и этапов: закрытая работа и завершённый этап —
+      // только чтение (Т-17, М-10, решение Р-293).
+      status: true,
+      stages: {
+        orderBy: { position: 'asc' },
+        select: { id: true, position: true, title: true, state: true },
+      },
       materials: {
         where: { ...materialScope, kind: 'STAGE_MATERIAL' },
         orderBy: { createdAt: 'desc' },
         include: {
-          stage: { select: { id: true, position: true, title: true } },
+          stage: { select: { id: true, position: true, title: true, state: true } },
           createdBy: { select: { fullName: true, role: true } },
           versions: {
             orderBy: { number: 'desc' },

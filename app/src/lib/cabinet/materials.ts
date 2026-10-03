@@ -1,5 +1,12 @@
 import { prisma } from '../db.ts';
-import { can, ensure, scopeComments, scopeProjects, type Actor } from './access.ts';
+import {
+  can,
+  ensure,
+  ensureContributionOpen,
+  scopeComments,
+  scopeProjects,
+  type Actor,
+} from './access.ts';
 import { record } from './audit.ts';
 import { hasContacts } from './contacts.ts';
 import { enqueue } from './outbox.ts';
@@ -66,7 +73,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
       ? null
       : await prisma.material.findUnique({
           where: { id: input.materialId },
-          select: { projectId: true, kind: true, deletedAt: true },
+          select: { projectId: true, kind: true, deletedAt: true, stageId: true },
         });
   if (
     input.materialId != null &&
@@ -87,6 +94,16 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   // бы приложить свой «акт» к чужому траншу.
   const kind = existing?.kind ?? input.kind ?? 'STAGE_MATERIAL';
   ensure(actor, kind === 'STAGE_MATERIAL' ? 'MATERIAL_UPLOAD' : 'PAYMENT_EDIT', ref);
+  // Закрытая работа и завершённый этап — только чтение; документы оплат
+  // правилом не закрыты (требования Т-17, М-10, решение Р-293).
+  if (kind === 'STAGE_MATERIAL') {
+    const stageId = existing === null ? (input.stageId ?? null) : existing.stageId;
+    const [work, stage] = await Promise.all([
+      prisma.project.findUnique({ where: { id: input.projectId }, select: { status: true } }),
+      stageId === null ? null : prisma.stage.findUnique({ where: { id: stageId }, select: { state: true } }),
+    ]);
+    ensureContributionOpen(actor, work?.status ?? 'ACTIVE', stage?.state ?? null);
+  }
 
   // Вид — из закрытого перечня, привязка документа — к договору и траншу
   // этой же работы. Прежде вид с формы шёл в базу как есть (мусорное
@@ -364,13 +381,16 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
     include: {
       material: {
         include: {
-          project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
+          project: { select: { id: true, clientId: true, managerId: true, expertId: true, status: true } },
+          stage: { select: { state: true } },
         },
       },
     },
   });
   if (version === null) throw new Error('Версия не найдена');
   ensure(actor, 'COMMENT_CREATE', version.material.project);
+  // Закрытая работа и завершённый этап — только чтение (Т-17, М-10, Р-293).
+  ensureContributionOpen(actor, version.material.project.status, version.material.stage?.state ?? null);
   // Замечание — к тому, что можно открыть. Договор, счёт и акт видны по
   // праву на договор, а не на материалы: эксперт, которому они закрыты,
   // зная номер версии, оставлял к ним замечание (решение Р-251).
@@ -439,7 +459,9 @@ export async function moderateComment(
         select: {
           material: {
             select: {
-              project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
+              project: {
+                select: { id: true, clientId: true, managerId: true, expertId: true, status: true },
+              },
             },
           },
         },
@@ -448,6 +470,8 @@ export async function moderateComment(
   });
   if (target === null) throw new Error('Замечание не найдено');
   ensure(actor, 'COMMENT_MODERATE', target.version.material.project);
+  // Разбор замечаний закрытой работы закрыт и практике (М-10, Р-293).
+  ensureContributionOpen(actor, target.version.material.project.status, null);
   const now = new Date();
   // Разобрать можно только ждущее решения: вкладка, открытая до
   // публикации, иначе отклонила бы замечание, о котором клиенту уже

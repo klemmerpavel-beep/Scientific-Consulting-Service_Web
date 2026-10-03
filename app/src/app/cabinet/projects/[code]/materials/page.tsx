@@ -23,7 +23,7 @@ import {
   formatSize,
   plural,
 } from '../../../../../components/cabinet/ui';
-import { can } from '../../../../../lib/cabinet/access';
+import { can, contributionRefusal } from '../../../../../lib/cabinet/access';
 import { projectMaterials } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
 import { addMaterialVersion, decideOnComment } from '../../../actions';
@@ -50,8 +50,14 @@ export default async function ProjectMaterialsScreen({
     managerId: project.managerId,
     expertId: project.expertId,
   };
-  const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref);
-  const mayModerate = can(actor, 'COMMENT_MODERATE', ref);
+  // Закрытая работа — только чтение всем ролям; завершённый этап клиенту и
+  // эксперту в выборе не предлагается (Т-17, М-10, решение Р-293).
+  const workRefusal = contributionRefusal(actor, project.status, null);
+  const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref) && workRefusal === null;
+  const mayModerate = can(actor, 'COMMENT_MODERATE', ref) && workRefusal === null;
+  const openStages = project.stages.filter(
+    (stage) => contributionRefusal(actor, project.status, stage.state) === null,
+  );
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -147,7 +153,7 @@ export default async function ProjectMaterialsScreen({
                       ))
                   : null}
 
-                {mayUpload ? (
+                {mayUpload && contributionRefusal(actor, project.status, material.stage?.state ?? null) === null ? (
                   <Form
                     action={addMaterialVersion}
                     style={{
@@ -176,6 +182,12 @@ export default async function ProjectMaterialsScreen({
         </ul>
       )}
 
+      {workRefusal !== null && can(actor, 'MATERIAL_UPLOAD', ref) ? (
+        <Text muted size={14} style={{ marginTop: 28 }}>
+          {workRefusal}.
+        </Text>
+      ) : null}
+
       {mayUpload ? (
         <Card style={{ marginTop: 28 }}>
           <Heading level={2} style={{ marginBottom: 16 }}>Приложить материал</Heading>
@@ -186,7 +198,7 @@ export default async function ProjectMaterialsScreen({
               <Field label="Название" name="title" placeholder="Черновик главы 2" />
               <Select label="Этап" name="stageId" defaultValue="">
                 <option value="">без привязки к этапу</option>
-                {project.stages.map((stage) => (
+                {openStages.map((stage) => (
                   <option key={stage.id} value={stage.id}>
                     {stage.position}. {stage.title}
                   </option>

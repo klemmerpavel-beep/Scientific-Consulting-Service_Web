@@ -12,6 +12,7 @@ import { describe, it } from 'node:test';
 import {
   ACTIONS,
   can,
+  contributionRefusal,
   ensure,
   AccessDenied,
   hasContacts,
@@ -430,3 +431,39 @@ describe('открыть клиенту вход (Р-285)', () => {
   });
 });
 
+describe('закрытая работа — только чтение (Т-17, М-10, Р-293)', () => {
+  const roles: Role[] = ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'];
+  const as = (role: Role): Actor => ({
+    id: 'x',
+    role,
+    status: 'ACTIVE',
+    clientProfileId: null,
+    expertNdaSignedAt: NDA,
+  });
+
+  it('действующая и приостановленная работа — вклад открыт всем ролям', () => {
+    for (const role of roles) {
+      for (const status of ['ACTIVE', 'PAUSED']) {
+        assert.equal(contributionRefusal(as(role), status, 'IN_PROGRESS'), null, `${role} ${status}`);
+      }
+    }
+  });
+
+  it('завершённая и отменённая работа — закрыта всем ролям', () => {
+    for (const role of roles) {
+      for (const status of ['COMPLETED', 'CANCELLED']) {
+        const refusal = contributionRefusal(as(role), status, 'IN_PROGRESS');
+        assert.ok(refusal !== null, `${role} ${status}`);
+        const practice = role === 'MANAGER' || role === 'HEAD';
+        assert.match(refusal!, practice ? /возобновите/u : /напишите куратору/u);
+      }
+    }
+  });
+
+  it('завершённый этап — клиенту и эксперту закрыт, практике открыт', () => {
+    assert.match(contributionRefusal(as('CLIENT'), 'ACTIVE', 'DONE') ?? '', /Этап завершён/u);
+    assert.match(contributionRefusal(as('EXPERT'), 'PAUSED', 'DONE') ?? '', /Этап завершён/u);
+    assert.equal(contributionRefusal(as('MANAGER'), 'ACTIVE', 'DONE'), null);
+    assert.equal(contributionRefusal(as('HEAD'), 'ACTIVE', 'DONE'), null);
+  });
+});
