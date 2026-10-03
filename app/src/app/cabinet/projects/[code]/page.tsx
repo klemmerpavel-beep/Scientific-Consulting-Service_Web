@@ -55,6 +55,7 @@ import {
   PROJECT_STATUS_LABEL,
   nextProjectStatuses,
 } from '../../../../lib/cabinet/project-status';
+import { templateLength } from '../../../../lib/cabinet/projects';
 import { daysPast } from '../../../../lib/cabinet/clock';
 import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import {
@@ -71,6 +72,9 @@ import { currentActor } from '../../../../lib/cabinet/session';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import {
   createStage,
+  dropStage,
+  shiftStage,
+  planFromTemplate,
   postMessage,
   saveProject,
   saveStage,
@@ -93,6 +97,7 @@ const EVENT_LABEL: Record<string, string> = {
   PROJECT_CREATED: 'Работа взята в сопровождение',
   MANAGER_ASSIGNED: 'Работу принял другой куратор',
   EXPERT_ASSIGNED: 'Назначен исполнитель',
+  PLAN_CHANGED: 'План работ изменён',
   STAGE_DUE_CHANGED: 'Перенесён срок этапа',
   STAGE_STATE_CHANGED: 'Этап сменил состояние',
   STAGE_RETURNED: 'Этап возвращён с замечаниями',
@@ -111,6 +116,14 @@ const CLIENT_HIDDEN_EVENTS = new Set(['EXPERT_ASSIGNED']);
  * этапа, его название, откуда и куда он перешёл, номер версии материала
  * (решение Р-197).
  */
+/**
+ * Номер этапа на момент события: перестановка не перенумеровывает прежние
+ * строки истории (требование М-11, решение Р-303).
+ */
+function atPosition(data: Record<string, unknown>, stage: { position: number }): number {
+  return typeof data.position === 'number' ? data.position : stage.position;
+}
+
 function eventLine(
   kind: string,
   payload: unknown,
@@ -134,7 +147,7 @@ function eventLine(
   // Возврат клиентом — с текстом замечаний; эксперту — без контактов
   // (решение Р-281, О-5).
   if (kind === 'STAGE_RETURNED') {
-    const where = stage === undefined ? 'Этап' : `Этап ${stage.position} «${stage.title}»`;
+    const where = stage === undefined ? 'Этап' : `Этап ${atPosition(data, stage)} «${stage.title}»`;
     const text = presentReturnText(actor, {
       reason: typeof data.text === 'string' ? data.text : null,
       contactHint: data.contactHint === true,
@@ -148,7 +161,7 @@ function eventLine(
     // Название этапа само нередко содержит двоеточие («Расчётная часть:
     // первая редакция»), поэтому оно берётся в кавычки, а не приписывается
     // через ещё одно двоеточие.
-    const where = stage === undefined ? 'Этап' : `Этап ${stage.position} «${stage.title}»`;
+    const where = stage === undefined ? 'Этап' : `Этап ${atPosition(data, stage)} «${stage.title}»`;
     // Согласование названо по способу: вами, куратором по вашему
     // подтверждению или по истечении срока (О-6, решения Р-290, Р-292).
     // Основание пишет практика, и в нём бывают контакты клиента, поэтому
@@ -176,9 +189,19 @@ function eventLine(
     return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
   }
 
+  // Состав плана — словами: что переставлено, удалено, заведено по шаблону
+  // (требование М-11, решение Р-303).
+  if (kind === 'PLAN_CHANGED') {
+    const title = typeof data.title === 'string' ? `«${data.title}»` : '';
+    if (data.action === 'moved') return `План работ изменён: этап ${title} перемещён с ${data.from} на ${data.to} место`;
+    if (data.action === 'removed') return `План работ изменён: удалён этап ${data.position} ${title}`;
+    if (data.action === 'template') return `План работ заведён по шаблону: этапов — ${data.count}`;
+    return 'План работ изменён';
+  }
+
   // Перенос срока — с датами и причиной (требование М-15, решение Р-302).
   if (kind === 'STAGE_DUE_CHANGED') {
-    const where = stage === undefined ? 'Этап' : `Этап ${stage.position} «${stage.title}»`;
+    const where = stage === undefined ? 'Этап' : `Этап ${atPosition(data, stage)} «${stage.title}»`;
     const to = typeof data.dueTo === 'string' ? formatDate(new Date(`${data.dueTo}T00:00:00Z`)) : null;
     const line = to === null ? `${where} — срок снят` : `${where} — срок перенесён на ${to}`;
     return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
@@ -248,6 +271,8 @@ export default async function ProjectScreen({
   // План работ меняется только у действующей работы: этапы
   // приостановленной, завершённой и отменённой не правятся (решение Р-240).
   const mayEditStages = mayEdit && project.status === 'ACTIVE';
+  // Шаблон типа — для кнопки «Завести план по шаблону» (М-11, Р-303).
+  const templateSize = mayEditStages && project.stages.length === 0 ? await templateLength(actor, project.id) : 0;
   // Закрытая работа — только чтение: карточка и исполнитель не правятся,
   // остаётся «Возобновить» (требование М-10, решение Р-293).
   const closed = workClosed(project.status);
@@ -327,7 +352,7 @@ export default async function ProjectScreen({
           .join(' ');
   const staff = !forClient;
 
-  const roadmap: RoadmapItem[] = stages.map((stage) => ({
+  const roadmap: RoadmapItem[] = stages.map((stage, index) => ({
     id: stage.id,
     title: stage.title,
     state: stage.state as StageStateKey,
@@ -341,6 +366,7 @@ export default async function ProjectScreen({
     // План работ составляет куратор, и правит он его здесь же: уходить за
     // этим на отдельный экран ради одной строки незачем.
     edit: mayEditStages ? (
+      <>
       <Form action={saveStage}>
         <input type="hidden" name="stageId" value={stage.id} />
         <input type="hidden" name="code" value={project.code} />
@@ -377,6 +403,34 @@ export default async function ProjectScreen({
           <Button tone="quiet">Сохранить этап</Button>
         </FormActions>
       </Form>
+      {/* Состав плана: перестановка и удаление не начатого этапа
+          (требование М-11, решение Р-303). */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+        {index > 0 ? (
+          <Form action={shiftStage} inline>
+            <input type="hidden" name="stageId" value={stage.id} />
+            <input type="hidden" name="code" value={project.code} />
+            <input type="hidden" name="direction" value="up" />
+            <Button tone="quiet">Выше</Button>
+          </Form>
+        ) : null}
+        {index < stages.length - 1 ? (
+          <Form action={shiftStage} inline>
+            <input type="hidden" name="stageId" value={stage.id} />
+            <input type="hidden" name="code" value={project.code} />
+            <input type="hidden" name="direction" value="down" />
+            <Button tone="quiet">Ниже</Button>
+          </Form>
+        ) : null}
+        {stage.state === 'NOT_STARTED' ? (
+          <Form action={dropStage} inline>
+            <input type="hidden" name="stageId" value={stage.id} />
+            <input type="hidden" name="code" value={project.code} />
+            <Button tone="quiet">Удалить этап</Button>
+          </Form>
+        ) : null}
+      </div>
+      </>
     ) : undefined,
   }));
 
@@ -811,6 +865,18 @@ export default async function ProjectScreen({
         <Disclosure title="Управление работой" open={manageOpen} id="manage" style={{ marginTop: 10 }}>
             <div style={{ display: 'grid', gap: 20 }}>
               {mayEditStages ? (
+                <>
+                {/* Пустой план заводится по шаблону типа одним действием
+                    (требование М-11, решение Р-303). */}
+                {stages.length === 0 && templateSize > 0 ? (
+                  <Form action={planFromTemplate} inline>
+                    <input type="hidden" name="projectId" value={project.id} />
+                    <input type="hidden" name="code" value={project.code} />
+                    <Button tone="quiet">
+                      {`Завести план по шаблону · ${templateSize} ${plural(templateSize, 'этап', 'этапа', 'этапов')}`}
+                    </Button>
+                  </Form>
+                ) : null}
                 <Form action={createStage}>
                   <input type="hidden" name="projectId" value={project.id} />
                   <input type="hidden" name="code" value={project.code} />
@@ -835,6 +901,7 @@ export default async function ProjectScreen({
                     <Button tone="quiet">Добавить этап</Button>
                   </FormActions>
                 </Form>
+                </>
               ) : null}
 
               {/* Смена состояния — в два шага: выбор здесь, последствия,

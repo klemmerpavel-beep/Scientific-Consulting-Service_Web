@@ -33,6 +33,7 @@ import {
 import { autoAcceptEnabled, formatDay } from '../../../../lib/cabinet/approval';
 import { approvalStaffLine } from '../../../../lib/cabinet/approval-text';
 import { formDraft } from '../../../../lib/cabinet/flash';
+import { stagePaperwork } from '../../../../lib/cabinet/projects';
 import { stageById } from '../../../../lib/cabinet/queries';
 import { daysPast } from '../../../../lib/cabinet/clock';
 import ActionError from '../../../../components/cabinet/ActionError';
@@ -46,6 +47,7 @@ import { currentActor } from '../../../../lib/cabinet/session';
 import {
   acknowledgeStageReturn,
   approveForClient,
+  reopenStageAction,
   approveStage,
   changeStageState,
   returnStageWithRemarks,
@@ -138,6 +140,11 @@ export default async function StageScreen({
   const mayModerate = can(actor, 'COMMENT_MODERATE', ref) && refusal === null;
   const forStaff = actor.role !== 'CLIENT' && mayEdit;
   const late = overdueDays(stage.dueOn);
+  // Акты и оплаченные транши — предупреждение перед возвратом этапа (ОМ-21).
+  const paperwork =
+    state === 'DONE' && live && can(actor, 'STAGE_SET_STATE', ref) && actor.role !== 'CLIENT'
+      ? await stagePaperwork(actor, stage.project.id)
+      : null;
   // Срок согласования глазами практики: та же дата, что у клиента, и
   // закроется ли этап сам (требование М-13, решение Р-291).
   const approvalLine =
@@ -332,6 +339,34 @@ export default async function StageScreen({
               </FormActions>
             </Form>
           </Disclosure>
+          {/* Завершённый этап возвращается в работу с причиной; перед этим —
+              сколько по работе актов и оплаченных траншей (требование М-11,
+              ОМ-21, решение Р-303). */}
+          {state === 'DONE' && paperwork !== null ? (
+            <Disclosure title="Вернуть этап в работу" style={{ marginTop: 12 }}>
+              <Form action={reopenStageAction}>
+                <input type="hidden" name="stageId" value={stage.id} />
+                {paperwork.acts + paperwork.paid > 0 ? (
+                  <Notice tone="quiet" role="status">
+                    {`По работе актов — ${paperwork.acts}, оплачено траншей — ${paperwork.paid}: проверьте, не закрывают ли они этот этап.`}
+                  </Notice>
+                ) : null}
+                <Field
+                  label="Причина возврата"
+                  name="reason"
+                  scope="reopen"
+                  multiline
+                  required
+                  defaultValue={draft.reopenReason ?? ''}
+                  hint="Клиент и руководитель получат её письмом. Приёмка этапа остаётся в истории, новая сдача даст новый срок согласования."
+                />
+                <Field label="Новый срок этапа" name="dueOn" scope="reopen" type="date" hint="Необязательно." />
+                <FormActions>
+                  <Button tone="quiet">Вернуть в работу</Button>
+                </FormActions>
+              </Form>
+            </Disclosure>
+          ) : null}
           {/* Итог правится, не снимая этап с согласования (решение Р-289). */}
           {state === 'IN_APPROVAL' ? (
             <Disclosure title="Поправить итог этапа" style={{ marginTop: 12 }}>

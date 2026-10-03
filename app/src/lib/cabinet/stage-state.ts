@@ -57,12 +57,16 @@ export const STAGE_TRANSITIONS: Record<StageStateKey, readonly StageStateKey[]> 
   IN_PROGRESS: ['AWAITING_CLIENT', 'IN_APPROVAL'],
   AWAITING_CLIENT: ['IN_PROGRESS', 'IN_APPROVAL'],
   IN_APPROVAL: ['DONE', 'IN_PROGRESS'],
-  DONE: [],
+  // Возврат завершённого этапа в работу — своим действием с причиной
+  // (требование М-11, решение Р-303); в общий набор кнопок не входит.
+  DONE: ['IN_PROGRESS'],
 };
 
 /** Переходы, которые экран этапа предлагает кнопками смены состояния. */
 export function stageStateButtons(from: StageStateKey): readonly StageStateKey[] {
-  // Завершение этапа — согласование, у него отдельная кнопка.
+  // Завершение этапа — согласование, у него отдельная кнопка; возврат
+  // завершённого — своя форма с причиной (Р-303).
+  if (from === 'DONE') return [];
   return STAGE_TRANSITIONS[from].filter((to) => to !== 'DONE');
 }
 

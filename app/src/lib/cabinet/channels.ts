@@ -225,6 +225,8 @@ export const RULE_EVENTS: readonly {
   { kind: 'HELP_REQUESTED', title: 'Куратор просит помощи', group: 'Руководителю', roles: ['HEAD'] },
   { kind: 'CLIENT_ACCESS_OPENED', title: 'Куратор открыл вход клиенту', group: 'Руководителю', roles: ['HEAD'] },
   { kind: 'NDA_NEEDED', title: 'Нужен договор поручения', group: 'Руководителю', roles: ['HEAD'] },
+  // Возврат завершённого этапа в работу — руководителю (М-11, Р-303).
+  { kind: 'STAGE_REOPENED', title: 'Этап возвращён в работу', group: 'Руководителю', roles: ['HEAD'] },
 ];
 
 /** Строки сетки для роли (требование М-07, решение Р-300). */

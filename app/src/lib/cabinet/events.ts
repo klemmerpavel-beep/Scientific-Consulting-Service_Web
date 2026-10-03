@@ -32,7 +32,8 @@ export type EventKind =
   | 'DEADLINE_MISSED'
   | 'WORK_ASSIGNED'
   | 'EXPERT_DECISION'
-  | 'STAGE_DUE_CHANGED';
+  | 'STAGE_DUE_CHANGED'
+  | 'STAGE_REOPENED';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -86,6 +87,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   WORK_ASSIGNED: 'вас назначили на работу',
   EXPERT_DECISION: 'решение куратора по вашему материалу',
   STAGE_DUE_CHANGED: 'изменён срок этапа',
+  STAGE_REOPENED: 'этап возвращён в работу',
 };
 
 /**

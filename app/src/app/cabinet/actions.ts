@@ -85,6 +85,10 @@ import {
   setStageState,
   editStageOutcome,
   rescheduleStage,
+  moveStage,
+  removeStage,
+  applyStageTemplate,
+  reopenStage,
   returnStage,
   acknowledgeReturn,
 } from '../../lib/cabinet/projects';
@@ -412,6 +416,65 @@ export async function createStage(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
   redirect(`/cabinet/projects/${code}`);
+}
+
+/** Перестановка этапа в плане (требование М-11, решение Р-303). */
+export async function shiftStage(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  let failure: string | null = null;
+  try {
+    await moveStage(actor, String(form.get('stageId') ?? ''), form.get('direction') === 'up' ? 'up' : 'down');
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось переставить этап');
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
+  redirect(`/cabinet/projects/${code}`);
+}
+
+/** Удаление не начатого этапа без материалов (М-11, Р-303). */
+export async function dropStage(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  let failure: string | null = null;
+  try {
+    await removeStage(actor, String(form.get('stageId') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось удалить этап');
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
+  redirect(`/cabinet/projects/${code}`);
+}
+
+/** План по шаблону типа на карточке, пока этапов нет (М-11, Р-303). */
+export async function planFromTemplate(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  let failure: string | null = null;
+  try {
+    await applyStageTemplate(actor, String(form.get('projectId') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось завести план по шаблону');
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
+  redirect(`/cabinet/projects/${code}`);
+}
+
+/** Возврат завершённого этапа в работу — с причиной (М-11, Р-303). */
+export async function reopenStageAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const reason = String(form.get('reason') ?? '');
+  let failure: string | null = null;
+  try {
+    await reopenStage(actor, { stageId, reason, dueOn: dateOrNull(form.get('dueOn')) });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось вернуть этап в работу');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { reopenReason: reason } }));
+  }
+  redirect(`/cabinet/stages/${stageId}`);
 }
 
 /** Правка этапа менеджером прямо в плане работ (решение Р-190). */
