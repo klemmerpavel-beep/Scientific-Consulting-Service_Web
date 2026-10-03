@@ -2169,7 +2169,15 @@ function panelAnswer(
   current: { state: StageStateKey } | null,
   total: number,
   staff: boolean,
+  projectStatus?: string,
 ): string {
+  // Состояние работы главнее состояния этапа: у приостановленной и
+  // закрытой работы клиент ничего не делает, сколько бы этапов ни было
+  // открыто (решения Р-240, Р-287).
+  if (!staff && projectStatus === 'PAUSED') return 'Работа приостановлена — сейчас от вас ничего не требуется.';
+  if (!staff && (projectStatus === 'COMPLETED' || projectStatus === 'CANCELLED')) {
+    return 'Работа закрыта. Материалы остаются доступны здесь.';
+  }
   if (current === null) {
     if (total === 0) {
       return staff ? 'План работ не заведён.' : 'План работ составляет куратор — этапы появятся здесь.';
@@ -2199,6 +2207,8 @@ export function ProgressPanel({
   action,
   actionHref,
   actionLabel,
+  waiting: waitingFor,
+  projectStatus,
   style,
 }: {
   done: number;
@@ -2214,13 +2224,20 @@ export function ProgressPanel({
   action?: string | null;
   actionHref?: string | null;
   actionLabel?: string;
+  /**
+   * Работа ждёт клиента — на любом этапе, а не только на первом
+   * незавершённом (решение Р-287). Без значения — по текущему этапу.
+   */
+  waiting?: boolean;
+  /** Состояние работы: у приостановленной и закрытой клиент ничего не делает. */
+  projectStatus?: string;
   style?: CSSProperties;
 }) {
   const share = total === 0 ? 0 : Math.round((done / total) * 100);
   // Ожидание человека подсвечивается: это единственное состояние, в котором
   // работа стоит из-за него, и оно не должно теряться среди прочих.
   const waiting =
-    !staff && (current?.state === 'AWAITING_CLIENT' || current?.state === 'IN_APPROVAL');
+    waitingFor ?? (!staff && (current?.state === 'AWAITING_CLIENT' || current?.state === 'IN_APPROVAL'));
   // Настроение шкалы: волна набегает, пока работа идёт, опадает до ряби,
   // когда она ждёт человека, и сходит в гладь, когда всё закрыто. Считается
   // из состояния, а не из текущего времени, — иначе снимок менялся бы ото
@@ -2293,7 +2310,7 @@ export function ProgressPanel({
             color: 'var(--pd-ink)',
           }}
         >
-          {action ?? panelAnswer(current, total, staff)}
+          {action ?? panelAnswer(current, total, staff, projectStatus)}
         </span>
         {actionHref == null ? null : (
           <ButtonLink href={actionHref} tone="primary">

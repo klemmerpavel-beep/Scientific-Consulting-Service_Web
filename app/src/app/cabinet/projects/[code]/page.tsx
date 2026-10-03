@@ -50,6 +50,7 @@ import {
   experts,
   projectByCode,
   projectMaterials,
+  pendingActions,
 } from '../../../../lib/cabinet/queries';
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
 import { formatAmount } from '../../../../lib/cabinet/money';
@@ -154,12 +155,6 @@ function eventLine(
   return EVENT_LABEL[kind] ?? kind;
 }
 
-/** Что требуется от клиента в этом состоянии этапа. */
-const ACTION_BY_STATE: Partial<Record<StageStateKey, string>> = {
-  AWAITING_CLIENT: 'От вас нужны материалы или данные — откройте этап и приложите их.',
-  IN_APPROVAL: 'Этап готов и ждёт вашего согласования: посмотрите материалы и подтвердите.',
-};
-
 /**
  * Материалов в колонке видно столько, сколько помещается; остальные —
  * прокруткой. Дюжины хватает: длиннее человек уходит на свой экран, где
@@ -248,8 +243,28 @@ export default async function ProjectScreen({
   // Действие клиента показывается только клиенту: загрузить материалы и
   // согласовать этап может лишь он, а эксперту и менеджеру та же фраза с
   // главной кнопкой читалась как задание им (решение Р-206).
+  //
+  // Ход клиента ищется на любом этапе, тем же перечнем, что у «Моих
+  // работ»: прежде карточка смотрела только на первый незавершённый этап и
+  // молчала, когда материалы ждал третий (решение Р-287). Перечень берёт
+  // только действующие работы — у приостановленной и закрытой клиент
+  // ничего не делает (Р-240).
+  const yourTurn = forClient
+    ? (await pendingActions(actor)).filter((stage) => stage.projectId === project.id)
+    : [];
+  const first = yourTurn[0] ?? null;
   const action =
-    current === null || !forClient ? null : (ACTION_BY_STATE[current.state as StageStateKey] ?? null);
+    first === null
+      ? null
+      : [
+          first.state === 'AWAITING_CLIENT'
+            ? `От вас ждут материалы к этапу «${first.title}».`
+            : `От вас ждут согласования этапа «${first.title}».`,
+          first.dueOn === null ? null : `Срок этапа — ${formatDate(first.dueOn)}.`,
+          yourTurn.length > 1 ? `Ещё дел: ${yourTurn.length - 1}.` : null,
+        ]
+          .filter((part) => part !== null)
+          .join(' ');
   const staff = !forClient;
 
   const roadmap: RoadmapItem[] = stages.map((stage) => ({
@@ -504,7 +519,9 @@ export default async function ProjectScreen({
           projectLate={current !== null && daysPast(project.dueOn) !== null}
           staff={staff}
           action={action}
-          actionHref={current === null || action === null ? null : `/cabinet/stages/${current.id}`}
+          actionHref={first === null ? null : `/cabinet/stages/${first.id}`}
+          waiting={forClient ? first !== null : undefined}
+          projectStatus={project.status}
         />
 
       {/* Две колонки, а не три: колонка «Материалы» с панели снята по
