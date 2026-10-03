@@ -66,7 +66,7 @@ export function leadAddress(lead: { contactKind: string; contact: string }): str
 
 /** Письмо об отказе, как его видит очередь. */
 export interface DeclineLetterRow {
-  readonly state: 'PENDING' | 'SENT' | 'FAILED';
+  readonly state: 'PENDING' | 'SENT' | 'FAILED' | 'EXPIRED';
   readonly lastError: string | null;
 }
 
@@ -87,6 +87,9 @@ export function declineLetterNote(
       : 'Письмо не ставилось: заявка была помечена как машинная либо отклонена до 24.09.2026, когда отказ ещё не уходил письмом.';
   }
   if (letter.state === 'SENT') return 'Письмо с причиной ушло заявителю';
+  // Письмо об отказе сроком не ограничено (`lifetimeMs`); ветка — на случай,
+  // если правило годности когда-нибудь его коснётся.
+  if (letter.state === 'EXPIRED') return 'Письмо устарело в очереди и не отправлено.';
   if (letter.state === 'FAILED') {
     return `Письмо не доставлено: ${letter.lastError ?? 'причина не записана'}. Повторить отправку можно на экране очереди уведомлений.`;
   }

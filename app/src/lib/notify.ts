@@ -196,7 +196,10 @@ export function leadMail(lead: Lead, id: string): { subject: string; html: strin
 async function sendMail(lead: Lead, id: string): Promise<DeliveryResult> {
   const host = process.env.SMTP_HOST;
   const to = process.env.LEAD_MAIL_TO;
-  if (!host || !to) return { channel: 'email', ok: false, error: 'канал не настроен' };
+  // `||`, а не `??`: пустая переменная из описания сервиса оставляла поле
+  // From пустым (решение Р-278).
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  if (!host || !to || !from) return { channel: 'email', ok: false, error: 'канал не настроен' };
 
   const { subject, html, text } = leadMail(lead, id);
 
@@ -216,7 +219,7 @@ async function sendMail(lead: Lead, id: string): Promise<DeliveryResult> {
         : undefined,
     });
     await transport.sendMail({
-      from: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? to,
+      from,
       to,
       replyTo: lead.contactKind === 'email' && lead.contact ? header(lead.contact) : undefined,
       subject,

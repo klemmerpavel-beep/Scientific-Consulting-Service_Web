@@ -11,6 +11,9 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 
 process.env.SESSION_SECRET ??= 'y'.repeat(48);
+// Почта считается настроенной только при известном отправителе (Р-278):
+// проверки, задающие `SMTP_HOST`, задают и его.
+process.env.SMTP_FROM ??= 'ProDisser <site@example.org>';
 
 const enabled = Boolean(process.env.DATABASE_URL);
 

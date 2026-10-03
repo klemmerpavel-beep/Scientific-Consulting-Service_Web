@@ -81,7 +81,11 @@ export default async function OutboxScreen({
         <Tile
           label="Не доставлено"
           value={String(digest.failed)}
-          note="после пяти попыток"
+          note={
+            digest.expiredLastDay > 0
+              ? `после пяти попыток; ещё ${digest.expiredLastDay} за сутки устарели в очереди и не отправлялись`
+              : 'после пяти попыток'
+          }
         />
       </Tiles>
 

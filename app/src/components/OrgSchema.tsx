@@ -1,3 +1,4 @@
+import { PRACTICE_EMAIL, PRACTICE_PHONE } from '../lib/practice-contacts';
 import { siteUrl } from '../lib/site-url';
 
 /**
@@ -21,8 +22,8 @@ const ORG = {
   description:
     'Научно-консультационное сопровождение диссертаций, публикаций и '
     + 'исследовательских работ: методология, экспертиза, подготовка к защите.',
-  email: 'info.prodisser@gmail.com',
-  telephone: '+7 495 456 43 23',
+  email: PRACTICE_EMAIL,
+  telephone: PRACTICE_PHONE,
   taxID: '9723254250',
   vatID: '9723254250',
   address: {

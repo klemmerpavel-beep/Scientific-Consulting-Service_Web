@@ -151,6 +151,29 @@ const NO_ADDRESS = 'адрес заявителя недоступен';
 /** Получатель закрыт или отключил канал после постановки (решение Р-246). */
 const RECIPIENT_OFF = 'получатель отключил канал или доступ закрыт';
 
+/** Причина, с которой закрывается устаревшая строка. */
+export const EXPIRED_NOTE = 'устарело до отправки';
+
+/**
+ * Сколько строка остаётся годной к отправке.
+ *
+ * Напоминание о сроке — сутки: «срок через три дня», дождавшееся настройки
+ * почты или долгого обрыва связи, после срока вводило бы в заблуждение.
+ * Прежде это правило знал только повтор отказавшей строки (решение Р-246);
+ * очередь же, накопленная до настройки почты, разошлась бы целиком. Прочие
+ * уведомления сроком не ограничены: письмо об отказе по заявке или о новом
+ * сообщении остаётся верным и через неделю (решение Р-278).
+ */
+export function lifetimeMs(eventKind: string): number | null {
+  return eventKind.startsWith('DEADLINE_') ? 24 * 60 * 60 * 1000 : null;
+}
+
+/** Устарела ли строка к моменту `at`. */
+export function isExpired(row: { eventKind: string; createdAt: Date }, at: Date): boolean {
+  const lifetime = lifetimeMs(row.eventKind);
+  return lifetime !== null && at.getTime() - row.createdAt.getTime() > lifetime;
+}
+
 /** Через сколько проверить строку, ждущую настройки канала. */
 const CHANNEL_OFF_DELAY_MS = 60 * 60 * 1000;
 
@@ -281,6 +304,14 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
   const down = new Set<string>();
 
   for (const item of pending) {
+    if (isExpired(item, now)) {
+      await prisma.notificationOutbox.update({
+        where: { id: item.id },
+        data: { state: 'EXPIRED', lastError: EXPIRED_NOTE, scheduledAt: now },
+      });
+      continue;
+    }
+
     if (down.has(item.channel)) {
       await prisma.notificationOutbox.update({
         where: { id: item.id },
@@ -449,6 +480,8 @@ export interface OutboxDigest {
   readonly failed: number;
   /** Ждут настройки канала: попытки им не наращиваются (см. `dispatch`). */
   readonly waitingChannel: number;
+  /** Закрыты без отправки за последние сутки: устарели в очереди. */
+  readonly expiredLastDay: number;
   readonly lastSentAt: Date | null;
   readonly failures: readonly OutboxFailure[];
 }
@@ -459,11 +492,12 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
   ensure(actor, 'AUDIT_VIEW');
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const [pending, sentLastDay, failed, waitingChannel, lastSent, failures] = await Promise.all([
+  const [pending, sentLastDay, failed, waitingChannel, expiredLastDay, lastSent, failures] = await Promise.all([
     prisma.notificationOutbox.count({ where: { state: 'PENDING' } }),
     prisma.notificationOutbox.count({ where: { state: 'SENT', sentAt: { gte: dayAgo } } }),
     prisma.notificationOutbox.count({ where: { state: 'FAILED' } }),
     prisma.notificationOutbox.count({ where: { state: 'PENDING', lastError: CHANNEL_OFF } }),
+    prisma.notificationOutbox.count({ where: { state: 'EXPIRED', scheduledAt: { gte: dayAgo } } }),
     prisma.notificationOutbox.findFirst({
       where: { state: 'SENT' },
       orderBy: { sentAt: 'desc' },
@@ -496,6 +530,7 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
     sentLastDay,
     failed,
     waitingChannel,
+    expiredLastDay,
     lastSentAt: lastSent?.sentAt ?? null,
     failures: failures.map((row) => ({
       id: row.id,
@@ -626,7 +661,7 @@ export async function retryFailed(actor: Actor, id: string, ip?: string | null):
   if (row === null || row.state !== 'FAILED') return;
   // Напоминание о сроке, повторённое через неделю, сообщало бы «срок через
   // три дня» после срока (решение Р-246).
-  if (row.eventKind.startsWith('DEADLINE_') && Date.now() - row.createdAt.getTime() > 86_400_000) {
+  if (isExpired(row, new Date())) {
     throw new Error('Напоминание о сроке старше суток не повторяется: срок уже другой');
   }
 

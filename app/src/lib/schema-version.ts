@@ -10,4 +10,4 @@
  * Проверка `schema-version.test.ts` не даёт забыть поднять имя вместе с
  * новой миграцией.
  */
-export const LATEST_MIGRATION = '20260928180000_lead_work';
+export const LATEST_MIGRATION = '20261003120000_outbox_expired';
