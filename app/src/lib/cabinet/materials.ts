@@ -324,6 +324,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
           `Загружена версия v${version.number}. Открыть можно в личном кабинете.` +
           (moderated ? '\nВерсия эксперта ждёт публикации: клиент увидит её после вашего решения.' : ''),
         dedupKey: `version:${version.id}:uploaded:${userId}`,
+        path: materialPath(project.code, material.stageId),
       });
     }
   }
@@ -368,6 +369,7 @@ export async function moderateVersion(
             select: {
               id: true,
               title: true,
+              stageId: true,
               project: {
                 select: {
                   id: true,
@@ -423,6 +425,7 @@ export async function moderateVersion(
           `Причина: ${reason}\n` +
           'Исправленную версию можно загрузить в личном кабинете.',
         dedupKey: `version:${version.id}:rejected`,
+        path: materialPath(project.code, version.material.stageId),
       });
       return 0;
     }
@@ -456,6 +459,7 @@ export async function moderateVersion(
       subject: `Версия v${version.number} опубликована: ${version.material.title}`,
       body: `Работа ${project.code}.\nКуратор опубликовал клиенту версию v${version.number} материала «${version.material.title}».`,
       dedupKey: `version:${version.id}:published:expert`,
+      path: materialPath(project.code, version.material.stageId),
     });
     if (project.client.userId !== null) {
       await enqueue(tx, {
@@ -467,6 +471,7 @@ export async function moderateVersion(
           `Проект ${project.code} — ${project.title}.\n` +
           `Загружена версия v${version.number}. Открыть можно в личном кабинете.`,
         dedupKey: `version:${version.id}:uploaded:${project.client.userId}`,
+        path: materialPath(project.code, version.material.stageId),
       });
     }
     return clean.length;
@@ -637,6 +642,7 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
           'Появились замечания или версии эксперта, которые ждут вашего решения: до него клиент их не видит.\n' +
           where,
         key: `moderation:${project.id}:${comment.id}`,
+        path: materialPath(project.code, version.material.stageId),
       });
     }
   } else if (actor.role === 'CLIENT') {
@@ -650,6 +656,7 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
         `Клиент оставил замечание к версии v${version.number} материала «${version.material.title}». Текст — в кабинете.\n` +
         where,
       key: `comment:${comment.id}:client`,
+      path: materialPath(project.code, version.material.stageId),
     });
   }
 
@@ -690,6 +697,7 @@ export async function moderateComment(
           material: {
             select: {
               title: true,
+              stageId: true,
               project: {
                 select: { id: true, code: true, clientId: true, managerId: true, expertId: true, status: true },
               },
@@ -759,6 +767,7 @@ export async function moderateComment(
       // Своё пространство ключей: письма клиенту о замечании начинаются с
       // `comment:<id>` (решение Р-242).
       dedupKey: `expert-decision:comment:${commentId}`,
+      path: materialPath(material.project.code, material.stageId),
     });
   }
 
@@ -773,6 +782,7 @@ export async function moderateComment(
             material: {
               select: {
                 title: true,
+                stageId: true,
                 project: {
                   select: { id: true, code: true, title: true, client: { select: { userId: true } } },
                 },
@@ -794,6 +804,7 @@ export async function moderateComment(
           `Проект ${project.code} — ${project.title}.\n` +
           `Материал «${context?.version.material.title}». Замечание видно в кабинете.`,
         dedupKey: `comment:${commentId}:published`,
+        path: materialPath(project.code, context?.version.material.stageId ?? null),
       });
     }
   }
@@ -945,6 +956,14 @@ export async function pendingVersions(actor: Actor): Promise<PendingComment[]> {
 }
 
 /** Строка письма со ссылкой на «Материалы работы» (решение Р-300). */
+/**
+ * Экран материала для кнопки письма: этап, если материал к этапу, иначе
+ * «Материалы работы» (требование Т-06, решение Р-309).
+ */
+function materialPath(code: string, stageId: string | null): string {
+  return stageId === null ? `/cabinet/projects/${code}/materials` : `/cabinet/stages/${stageId}`;
+}
+
 function materialsLink(code: string): string {
   const base = siteUrl();
   return base === null

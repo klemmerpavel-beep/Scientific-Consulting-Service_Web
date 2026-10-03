@@ -10,7 +10,7 @@ import {
   Text,
 } from '../../../../components/cabinet/ui';
 import { can, type Action } from '../../../../lib/cabinet/access';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
 import { hasToolsScreen, homeFor } from '../../../../lib/cabinet/nav';
 
 export const dynamic = 'force-dynamic';
@@ -198,8 +198,7 @@ const TOOLS: readonly {
 ];
 
 export default async function ToolsScreen() {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/tools');
 
   // Менеджеру промежуточный экран не показывается: заявки и реестры стоят у
   // него в меню, а вопрос руководителю — внизу «Сегодня» (требование М-05,

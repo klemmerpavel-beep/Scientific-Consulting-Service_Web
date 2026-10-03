@@ -35,7 +35,7 @@ import {
 } from '../../../../lib/cabinet/admin';
 import { formatDay } from '../../../../lib/cabinet/approval';
 import { formatAmount } from '../../../../lib/cabinet/money';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import {
   attachAlias,
@@ -80,8 +80,7 @@ export default async function DirectoryScreen({
 }: {
   searchParams: Promise<{ tab?: string; error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/directory');
   if (!can(actor, 'DIRECTORY_EDIT')) redirect(homeFor(actor));
 
   const sp = await searchParams;

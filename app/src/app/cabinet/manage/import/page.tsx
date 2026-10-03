@@ -23,7 +23,7 @@ import {
 import { can } from '../../../../lib/cabinet/access';
 import { listBatches } from '../../../../lib/cabinet/import/apply';
 import { formatAmount } from '../../../../lib/cabinet/money';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { uploadOrderBook } from '../../actions';
 
@@ -50,8 +50,7 @@ export default async function ImportScreen({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/import');
   // Перенос исторических данных ведёт руководитель: менеджеру раздел закрыт.
   if (!can(actor, 'IMPORT_RUN')) redirect(homeFor(actor));
 

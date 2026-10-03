@@ -287,6 +287,7 @@ export async function setTrancheStatus(
         // Ключ по моменту перехода: счёт, отозванный и выставленный снова,
         // прежде не доходил — строка с тем же ключом уже была (Р-244).
         dedupKey: `tranche:${trancheId}:${status.toLowerCase()}:${row.updatedAt.getTime()}`,
+        path: project === null ? null : `/cabinet/projects/${project.code}/payments`,
       });
     }
     return row;

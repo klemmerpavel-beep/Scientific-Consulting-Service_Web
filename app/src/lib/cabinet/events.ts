@@ -6,6 +6,8 @@
  * потому что именно здесь решается, что уходит за пределы сервера.
  */
 
+import { openPath } from './next-path.ts';
+
 export type EventKind =
   | 'STAGE_AWAITING_CLIENT'
   | 'VERSION_UPLOADED'
@@ -107,12 +109,13 @@ export function eventLabel(eventKind: string): string {
   return EVENT_LABEL[eventKind as EventKind] ?? eventKind;
 }
 
-export function telegramNote(eventKind: string, projectCode: string | null): string {
+export function telegramNote(eventKind: string, projectCode: string | null, path: string | null = null): string {
   const base = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') ?? '';
   const what = eventLabel(eventKind);
   const where = projectCode === null ? '' : ` · ${projectCode}`;
-  return (
-    `ProDisser · ${what}${where}\n\n` +
-    `Подробности в кабинете: ${base.length === 0 ? '/cabinet' : `${base}/cabinet`}`
-  );
+  // Ссылка ведёт на экран события через `/cabinet/open` — без адреса почты:
+  // сигнал уходит за пределы России и содержания не несёт (Т-06, Р-309,
+  // Р-187). Путь без кода работы ничего о человеке не говорит.
+  const target = path === null ? '/cabinet' : openPath(path);
+  return `ProDisser · ${what}${where}\n\n` + `Подробности в кабинете: ${base}${target}`;
 }

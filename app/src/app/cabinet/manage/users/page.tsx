@@ -35,7 +35,7 @@ import {
   listUsers,
   type Role,
 } from '../../../../lib/cabinet/admin';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { AccessLink } from '../../../../components/cabinet/AccessLink';
 import { mailConfigured } from '../../../../lib/cabinet/mail';
@@ -66,8 +66,7 @@ export default async function UsersScreen({
     page?: string;
   }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/users');
   if (!can(actor, 'USER_MANAGE')) redirect(homeFor(actor));
 
   const flags = await searchParams;

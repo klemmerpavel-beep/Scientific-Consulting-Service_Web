@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
@@ -33,7 +33,7 @@ import {
   type TrancheStatus,
 } from '../../../../../lib/cabinet/money';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
-import { currentActor } from '../../../../../lib/cabinet/session';
+import { requireActor } from '../../../../../lib/cabinet/session';
 import {
   accruePayout,
   addContractTranche,
@@ -75,8 +75,7 @@ export default async function PaymentsScreen({
   params: Promise<{ code: string }>;
   searchParams: Promise<{ exceeds?: string; error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor(`/cabinet/projects/${(await params).code}/payments`);
 
   const { code } = await params;
   const flags = await searchParams;

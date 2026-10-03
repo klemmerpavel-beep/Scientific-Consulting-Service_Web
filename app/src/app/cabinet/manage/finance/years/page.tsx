@@ -25,7 +25,7 @@ import {
 import { can } from '../../../../../lib/cabinet/access';
 import { yearlyRows } from '../../../../../lib/cabinet/finance-years';
 import { formatAmount } from '../../../../../lib/cabinet/money';
-import { currentActor } from '../../../../../lib/cabinet/session';
+import { requireActor } from '../../../../../lib/cabinet/session';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { saveFinanceYear } from '../../../actions';
 
@@ -43,8 +43,7 @@ export default async function FinanceYearsScreen({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/finance/years');
   if (!can(actor, 'MARGIN_VIEW')) redirect(homeFor(actor));
 
   const { rows, datedByContract, undated } = await yearlyRows(actor);

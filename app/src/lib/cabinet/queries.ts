@@ -1078,6 +1078,7 @@ export async function createCabinetRequest(
       subject: 'Новая заявка из кабинета',
       body: `${user.fullName}: ${draft.topic}\nЗаявка ждёт в очереди модерации.`,
       dedupKey: `lead:${lead.id}:created:${moderator.id}`,
+      path: `/cabinet/manage/leads/${lead.id}`,
     });
   }
 

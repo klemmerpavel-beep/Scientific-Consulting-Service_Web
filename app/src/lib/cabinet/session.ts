@@ -1,7 +1,9 @@
 import { cookies, headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 import { resolveSession } from './auth.ts';
 import type { Actor } from './access.ts';
+import { OPEN_COOKIE, openPath, unpackOpen } from './next-path.ts';
 import { SESSION_COOKIE, SESSION_MAX_DAYS } from './token.ts';
 
 /**
@@ -11,6 +13,30 @@ import { SESSION_COOKIE, SESSION_MAX_DAYS } from './token.ts';
  */
 export async function currentActor(): Promise<Actor | null> {
   return resolveSession(await currentSessionValue());
+}
+
+/**
+ * Действующее лицо экрана `path`. Без сессии человек идёт через
+ * `/cabinet/open` и после входа возвращается на этот экран (требование
+ * Т-06, решение Р-309). Прежде каждый экран вёл на общий `/cabinet`, и
+ * после входа человек оказывался на начальном экране, а не там, куда шёл.
+ */
+export async function requireActor(path: string): Promise<Actor> {
+  const actor = await currentActor();
+  if (actor === null) redirect(openPath(path));
+  return actor;
+}
+
+/** Куда человек шёл и с каким адресом — из cookie обработчика открытия. */
+export async function openIntent(): Promise<{ to: string; email: string | null } | null> {
+  const jar = await cookies();
+  return unpackOpen(jar.get(OPEN_COOKIE)?.value);
+}
+
+/** Стереть намерение: после входа оно исполнено. */
+export async function clearOpenIntent(): Promise<void> {
+  const jar = await cookies();
+  jar.set(OPEN_COOKIE, '', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/cabinet', maxAge: 0 });
 }
 
 /** Значение cookie сессии, с которым пришёл браузер. */

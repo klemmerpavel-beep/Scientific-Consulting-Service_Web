@@ -17,7 +17,7 @@ import {
   type LeadEditField,
 } from '../../lib/cabinet/lead-work';
 import {
-  consumeLoginToken,
+  enterWithToken,
   requestLoginLink,
   revokeSession,
   createTelegramBindLink,
@@ -95,6 +95,7 @@ import {
 } from '../../lib/cabinet/projects';
 import type { ProjectStatusKey } from '../../lib/cabinet/project-status';
 import {
+  clearOpenIntent,
   currentActor,
   currentSessionValue,
   requestIp,
@@ -149,7 +150,12 @@ export async function requestLink(form: FormData): Promise<void> {
   if (email.trim().length > 0) {
     // Письмо уходит после ответа: знакомый адрес иначе отвечал бы на
     // время отправки дольше незнакомого (решение Р-239).
-    outcome = await requestLoginLink(email, await requestIp(), { defer: after });
+    // Путь возврата — с формы, куда его положил обработчик открытия; чужой
+    // путь отбрасывается при записи (требование Т-06, решение Р-309).
+    outcome = await requestLoginLink(email, await requestIp(), {
+      defer: after,
+      next: String(form.get('next') ?? '') || null,
+    });
   }
   // Ответ один на все исходы, кроме одного: ненастроенная почта — состояние
   // системы, а не человека, и от адреса оно не зависит. Молчать о нём
@@ -167,13 +173,15 @@ export async function requestLink(form: FormData): Promise<void> {
  */
 export async function enterByLink(form: FormData): Promise<void> {
   const token = String(form.get('token') ?? '');
-  const session = await consumeLoginToken(token, await requestIp(), await userAgent());
-  if (session === null) redirect('/cabinet?error=link');
+  const entered = await enterWithToken(token, await requestIp(), await userAgent());
+  if (entered === null) redirect('/cabinet?error=link');
   await revokeSession(await currentSessionValue());
-  await setSessionCookie(session);
-  // Вход ведёт на начальный экран роли: адрес `/cabinet` при открытой сессии
-  // перенаправляет туда сам (требование М-05, решение Р-305).
-  redirect('/cabinet');
+  await setSessionCookie(entered.session);
+  await clearOpenIntent();
+  // Вход ведёт туда, куда человек шёл, — на экран из письма или сигнала
+  // (требование Т-06, решение Р-309); без пути — на начальный экран роли:
+  // адрес `/cabinet` при открытой сессии перенаправляет туда сам (М-05).
+  redirect(entered.returnPath ?? '/cabinet');
 }
 
 export async function approveStage(form: FormData): Promise<void> {

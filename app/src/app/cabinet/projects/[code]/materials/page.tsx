@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
 import CommentList from '../../../../../components/cabinet/CommentList';
@@ -26,7 +26,7 @@ import {
 } from '../../../../../components/cabinet/ui';
 import { can, contributionRefusal } from '../../../../../lib/cabinet/access';
 import { projectMaterials } from '../../../../../lib/cabinet/queries';
-import { currentActor } from '../../../../../lib/cabinet/session';
+import { requireActor } from '../../../../../lib/cabinet/session';
 import { addMaterialVersion, decideOnComment, decideOnVersion } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -38,8 +38,7 @@ export default async function ProjectMaterialsScreen({
   params: Promise<{ code: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor(`/cabinet/projects/${(await params).code}/materials`);
 
   const { code } = await params;
   const project = await projectMaterials(actor, decodeURIComponent(code));

@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import Shell from '../../../components/cabinet/Shell';
@@ -38,7 +37,7 @@ import {
 } from '../../../lib/cabinet/queries';
 import { daysPast } from '../../../lib/cabinet/clock';
 import { can, staffExpertLine } from '../../../lib/cabinet/access';
-import { currentActor } from '../../../lib/cabinet/session';
+import { requireActor } from '../../../lib/cabinet/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,8 +58,7 @@ export default async function ProjectsScreen({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/projects');
 
   const sp = await searchParams;
   const query = sp.q ?? '';

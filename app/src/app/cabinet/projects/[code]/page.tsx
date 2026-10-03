@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 import { MONO } from '../../../../components/cabinet/tokens';
 import ActionError from '../../../../components/cabinet/ActionError';
@@ -68,7 +68,7 @@ import {
 } from '../../../../lib/cabinet/queries';
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
 import { formatAmount } from '../../../../lib/cabinet/money';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import {
   createStage,
@@ -244,8 +244,7 @@ export default async function ProjectScreen({
   params: Promise<{ code: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor(`/cabinet/projects/${(await params).code}`);
 
   const { code } = await params;
   // Отказ действия «Управления работой»: причина у своей формы, свёртка

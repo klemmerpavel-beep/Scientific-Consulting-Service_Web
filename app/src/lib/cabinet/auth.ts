@@ -1,4 +1,5 @@
 import { prisma } from '../db.ts';
+import { safeNext } from './next-path.ts';
 import type { Actor } from './access.ts';
 import { record } from './audit.ts';
 import { now } from './clock.ts';
@@ -57,6 +58,12 @@ export async function requestLoginLink(
      * отправляется сразу — так проверяют исход отправки.
      */
     readonly defer?: (task: () => Promise<void>) => void;
+    /**
+     * Экран, на который человек вернётся после входа: с него он пришёл на
+     * форму (требование Т-06, решение Р-309). Хранится в токене — вход с
+     * другого устройства ведёт туда же. Чужой путь отбрасывается.
+     */
+    readonly next?: string | null;
   } = {},
 ): Promise<LoginRequestOutcome> {
   const email = normalizeEmail(rawEmail);
@@ -144,6 +151,7 @@ export async function requestLoginLink(
           purpose: 'LOGIN',
           expiresAt: new Date(Date.now() + TOKEN_TTL_MINUTES * 60 * 1000),
           requestIp: ip,
+          returnPath: safeNext(options.next),
         },
       });
       const { id } = await attempt('issued');
@@ -219,6 +227,19 @@ export async function consumeLoginToken(
   ip: string,
   userAgent: string | null,
 ): Promise<string | null> {
+  return (await enterWithToken(value, ip, userAgent))?.session ?? null;
+}
+
+/**
+ * То же, что `consumeLoginToken`, и вдобавок экран, на который вести после
+ * входа (требование Т-06, решение Р-309). Путь повторно проверяется: в
+ * базу он лёг проверенным, но читается снаружи кода, который его писал.
+ */
+export async function enterWithToken(
+  value: string,
+  ip: string,
+  userAgent: string | null,
+): Promise<{ session: string; returnPath: string | null } | null> {
   const parsed = splitToken(value);
   if (parsed === null) return null;
 
@@ -239,7 +260,8 @@ export async function consumeLoginToken(
 
   // Ссылку выдал сотрудник: сессия помечается, и согласование этапа в ней
   // записывается с пометкой (ОМ-3, решение Р-292).
-  return createSession(token.userId, ip, userAgent, { viaStaffLink: token.issuedById !== null });
+  const session = await createSession(token.userId, ip, userAgent, { viaStaffLink: token.issuedById !== null });
+  return { session, returnPath: safeNext(token.returnPath) };
 }
 
 /**

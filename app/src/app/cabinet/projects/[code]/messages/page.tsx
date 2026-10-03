@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
@@ -15,7 +15,7 @@ import {
 import { can } from '../../../../../lib/cabinet/access';
 import { listMessages, markRead } from '../../../../../lib/cabinet/messages';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
-import { currentActor } from '../../../../../lib/cabinet/session';
+import { requireActor } from '../../../../../lib/cabinet/session';
 import { postMessage } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -27,8 +27,7 @@ export default async function MessagesScreen({
   params: Promise<{ code: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor(`/cabinet/projects/${(await params).code}/messages`);
 
   const { code } = await params;
   const project = await projectByCode(actor, decodeURIComponent(code));

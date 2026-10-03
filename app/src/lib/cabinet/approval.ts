@@ -166,6 +166,7 @@ export async function startMissingDeadlines(at: Date = new Date()): Promise<numb
             `до ${formatDay(dueOn)} включительно (по московскому времени).\n` +
             stageLink(stage.id),
           dedupKey: `stage:${stage.id}:approval-due:${dayKey(dueOn)}`,
+          path: `/cabinet/stages/${stage.id}`,
         });
       }
       return true;
@@ -219,6 +220,7 @@ export async function enqueueApprovalReminders(at: Date = new Date()): Promise<n
           : '') +
         stageLink(stage.id),
       dedupKey: `stage:${stage.id}:approval-soon:${dayKey(dueOn)}`,
+      path: `/cabinet/stages/${stage.id}`,
     });
   }
   return queued;
@@ -291,6 +293,7 @@ export async function autoAcceptExpired(at: Date = new Date()): Promise<number> 
             `Срок согласования этапа «${stage.title}» истёк ${formatDay(dueOn)}: этап принят по п. 7.3 оферты.\n` +
             stageLink(stage.id),
           dedupKey: `stage:${stage.id}:auto-accepted:${change.id}`,
+          path: `/cabinet/stages/${stage.id}`,
         });
       }
       await notifyCurator(tx, {
@@ -300,6 +303,7 @@ export async function autoAcceptExpired(at: Date = new Date()): Promise<number> 
         subject: `Этап «${stage.title}» принят по истечении срока`,
         body: `${AUTO_ACCEPT_NOTE}: «${stage.title}».\nМожно запускать следующий этап.\n${stageLink(stage.id)}`,
         key: `stage:${stage.id}:auto-accepted:${change.id}`,
+        path: `/cabinet/stages/${stage.id}`,
       });
       return true;
     });

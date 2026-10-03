@@ -34,7 +34,7 @@ import {
   journalActions,
   journalActors,
 } from '../../../../lib/cabinet/journals';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 
 export const dynamic = 'force-dynamic';
@@ -64,8 +64,7 @@ export default async function AuditScreen({
     projectTitle?: string;
   }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/audit');
   // Журналы читает руководитель: в них видны действия всех и по всем проектам.
   if (!can(actor, 'AUDIT_VIEW')) redirect(homeFor(actor));
 

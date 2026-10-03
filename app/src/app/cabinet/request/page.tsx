@@ -23,7 +23,7 @@ import {
   requestDefaults,
   serviceTypes,
 } from '../../../lib/cabinet/queries';
-import { currentActor } from '../../../lib/cabinet/session';
+import { requireActor } from '../../../lib/cabinet/session';
 import { homeFor } from '../../../lib/cabinet/nav';
 import { submitCabinetRequest } from '../actions';
 import ActionError from '../../../components/cabinet/ActionError';
@@ -45,8 +45,7 @@ export default async function NewRequestScreen({
 }: {
   searchParams: Promise<{ sent?: string; lost?: string; error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/request');
   if (!can(actor, 'REQUEST_CREATE')) redirect(homeFor(actor));
 
   const [params, types, defaults] = await Promise.all([

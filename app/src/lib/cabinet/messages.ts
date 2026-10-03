@@ -108,6 +108,8 @@ async function signalMessage(
     subject: `Новое сообщение по работе ${project.code}`,
     body: 'В переписке по работе новое сообщение. Прочитать и ответить можно в кабинете.',
     dedupKey: `message:${messageId}:${userId}`,
+    // Кнопка письма — в переписку работы (Т-06, Р-309).
+    path: `/cabinet/projects/${project.code}/messages`,
   });
 }
 

@@ -23,7 +23,7 @@ describe('вход по ссылке', () => {
 
   it('страница только показывает кнопку и ключ не гасит', () => {
     const page = readFileSync(path.join(ENTER, 'page.tsx'), 'utf8');
-    assert.doesNotMatch(page, /consumeLoginToken/u);
+    assert.doesNotMatch(page, /consumeLoginToken|enterWithToken/u);
     assert.match(page, /action=\{enterByLink\}/u);
     assert.match(page, /referrer: 'no-referrer'/u);
   });
@@ -33,7 +33,8 @@ describe('вход по ссылке', () => {
     const body = actions.slice(actions.indexOf('export async function enterByLink'));
     const end = body.indexOf('\n}\n');
     const fn = body.slice(0, end);
-    assert.match(fn, /consumeLoginToken/u);
+    // Погашение возвращает и путь возврата после входа (Т-06, Р-309).
+    assert.match(fn, /enterWithToken|consumeLoginToken/u);
     assert.match(fn, /revokeSession/u);
   });
 

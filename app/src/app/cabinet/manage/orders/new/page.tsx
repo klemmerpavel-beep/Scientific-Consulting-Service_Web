@@ -19,7 +19,7 @@ import { curators, serviceTypes } from '../../../../../lib/cabinet/queries';
 import { NEW_CLIENT, candidateLine } from '../../../../../lib/cabinet/client-match';
 import { formDraft } from '../../../../../lib/cabinet/flash';
 import { nameCandidates } from '../../../../../lib/cabinet/manual-order';
-import { currentActor } from '../../../../../lib/cabinet/session';
+import { requireActor } from '../../../../../lib/cabinet/session';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { createOrder } from '../../../actions';
 
@@ -36,8 +36,7 @@ export default async function NewOrderScreen({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/orders/new');
   if (!can(actor, 'REQUEST_MODERATE')) redirect(homeFor(actor));
 
   const head = actor.role === 'HEAD';

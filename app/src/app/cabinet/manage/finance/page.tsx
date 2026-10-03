@@ -32,7 +32,7 @@ import { financeSummary } from '../../../../lib/cabinet/finance';
 import { byMonth } from '../../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../../lib/cabinet/analytics/data';
 import { formatAmount } from '../../../../lib/cabinet/money';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { now as clockNow } from '../../../../lib/cabinet/clock';
 
@@ -56,8 +56,7 @@ export default async function FinanceScreen({
 }: {
   searchParams: Promise<{ set?: string; page?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/finance');
   // Финансовый контур ведёт руководитель: менеджер не видит ни начислений,
   // ни маржи (PD-LK-FUNC-002, п. 3.2).
   if (!can(actor, 'MARGIN_VIEW')) redirect(homeFor(actor));

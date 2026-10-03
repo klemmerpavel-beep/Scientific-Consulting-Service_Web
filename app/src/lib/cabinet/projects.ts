@@ -969,6 +969,7 @@ export async function reopenStage(
         subject: `Этап «${stage.title}» возвращён в работу`,
         body,
         dedupKey: `stage:${stage.id}:reopened:${Date.now()}`,
+        path: `/cabinet/stages/${stage.id}`,
       });
     }
     const heads = await tx.user.findMany({
@@ -983,6 +984,7 @@ export async function reopenStage(
         subject: `Этап «${stage.title}» возвращён в работу: ${project.code}`,
         body,
         dedupKey: `stage:${stage.id}:reopened:${head.id}:${Date.now()}`,
+        path: `/cabinet/stages/${stage.id}`,
       });
     }
   });
@@ -1116,6 +1118,7 @@ async function announceDueChange(
       subject: `Срок этапа «${stage.title}» изменён`,
       body: `Проект ${project.code} — ${project.title}.\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
       dedupKey: `stage:${stageId}:due-changed:${dueKey(to) ?? 'none'}:${Date.now()}`,
+      path: `/cabinet/stages/${stageId}`,
     });
   }
   const expert = project.expert;
@@ -1132,6 +1135,7 @@ async function announceDueChange(
       subject: `Срок этапа «${stage.title}» изменён`,
       body: `Работа ${project.code}.\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
       dedupKey: `stage:${stageId}:due-changed-expert:${dueKey(to) ?? 'none'}:${Date.now()}`,
+      path: `/cabinet/stages/${stageId}`,
     });
   }
 }
@@ -1649,6 +1653,7 @@ export async function setStageState(
           'Если вы этого не подтверждали, напишите куратору в кабинете.\n' +
           stageLink(stageId),
         dedupKey: `stage:${stageId}:approved-for-client:${change.id}`,
+        path: `/cabinet/stages/${stageId}`,
       });
     }
 
@@ -1665,6 +1670,7 @@ export async function setStageState(
           'Можно запускать следующий этап.\n' +
           stageLink(stageId),
         key: `stage:${stageId}:approved:${change.id}`,
+        path: `/cabinet/stages/${stageId}`,
       });
     }
     await tx.projectEvent.create({
@@ -1721,6 +1727,8 @@ export async function setStageState(
                   : ` до ${formatDay(approvalDueOn)} включительно (по московскому времени).\n`)) +
             'Открыть этап можно в личном кабинете.',
           dedupKey: `stage:${stageId}:${to.toLowerCase()}:${now.toISOString().slice(0, 16)}`,
+          // Кнопка письма ведёт на этот этап — и после входа (Т-06, Р-309).
+          path: `/cabinet/stages/${stageId}`,
         });
       }
     }
@@ -1871,6 +1879,7 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
         'Текст замечаний — на экране этапа.\n' +
         stageLink(stageId),
       key: `stage:${stageId}:returned:${created.id}`,
+      path: `/cabinet/stages/${stageId}`,
     });
 
     // Текст замечаний — в данных события ленты: история работы показывает

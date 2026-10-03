@@ -43,7 +43,7 @@ import {
   PROJECT_STATUS_LABEL,
   type ProjectStatusKey,
 } from '../../../../lib/cabinet/project-status';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
 import {
   acknowledgeStageReturn,
   approveForClient,
@@ -106,8 +106,7 @@ export default async function StageScreen({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor(`/cabinet/stages/${(await params).id}`);
 
   const { id } = await params;
   const stage = await stageById(actor, id);

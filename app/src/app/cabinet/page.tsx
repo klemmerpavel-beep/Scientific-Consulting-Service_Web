@@ -13,7 +13,7 @@ import {
   Outcome,
   Text,
 } from '../../components/cabinet/ui';
-import { currentActor } from '../../lib/cabinet/session';
+import { currentActor, openIntent } from '../../lib/cabinet/session';
 import { homeFor } from '../../lib/cabinet/nav';
 import { requestLink } from './actions';
 
@@ -36,6 +36,9 @@ export default async function CabinetEntrance({
   if (actor !== null) redirect(homeFor(actor));
 
   const params = await searchParams;
+  // Пришёл из письма или сигнала: адрес почты подставлен, а после входа
+  // человек вернётся на экран события (требование Т-06, решение Р-309).
+  const intent = await openIntent();
 
   return (
     <Shell actor={null} center>
@@ -64,6 +67,7 @@ export default async function CabinetEntrance({
         {params.sent === undefined ? (
           <Card>
             <Form action={requestLink}>
+              {intent === null ? null : <input type="hidden" name="next" value={intent.to} />}
               <Field
                 label="Электронная почта"
                 name="email"
@@ -71,6 +75,7 @@ export default async function CabinetEntrance({
                 required
                 placeholder="you@example.ru"
                 hint="Тот адрес, на который оформлено сопровождение."
+                defaultValue={intent?.email ?? undefined}
               />
               <FormActions>
                 <Button>Прислать ссылку</Button>

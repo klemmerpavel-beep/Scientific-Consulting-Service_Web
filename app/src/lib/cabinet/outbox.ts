@@ -4,6 +4,8 @@ import { ensure, scopeLeads, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { CHANNEL_OFF, telegramNote, telegramPermanent, type EventKind } from './events.ts';
 import { leadAddress } from './lead-letter.ts';
+import { defaultPath, openLink, safeNext } from './next-path.ts';
+import { siteUrl } from '../site-url.ts';
 import { sendMailTo } from './mail.ts';
 import { escapeHtml } from './token.ts';
 import { formatDay } from './approval-text.ts';
@@ -36,6 +38,12 @@ export interface OutboxItem {
    * напоминание о сроке не должно приходить дважды за день.
    */
   readonly dedupKey: string;
+  /**
+   * Экран события: на него ведут кнопка «Открыть кабинет» в письме и ссылка
+   * сигнала Telegram (требование Т-06, решение Р-309). Без пути — экран
+   * работы, если работа известна, иначе кабинет.
+   */
+  readonly path?: string | null;
 }
 
 /** Клиент Prisma или транзакция — уведомление ставится вместе с изменением. */
@@ -64,6 +72,8 @@ export async function notifyCurator(
     readonly subject: string;
     readonly body: string;
     readonly key: string;
+    /** Экран события (Т-06, Р-309). */
+    readonly path?: string | null;
   },
 ): Promise<number> {
   const project = await db.project.findUnique({
@@ -78,6 +88,7 @@ export async function notifyCurator(
     subject: input.subject,
     body: input.body,
     dedupKey: `${input.key}:${project.managerId}`,
+    path: input.path ?? null,
   });
 }
 
@@ -130,6 +141,7 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
         subject: item.subject,
         body: item.body,
         dedupKey: `${item.dedupKey}:${channel.toLowerCase()}`,
+        path: safeNext(item.path) ?? null,
       },
       skipDuplicates: true,
     });
@@ -270,16 +282,26 @@ export async function telegramSay(chatId: string, text: string): Promise<void> {
 const FOOTER_MEMBER = 'Письмо отправлено личным кабинетом ProDisser. Ход работы виден в кабинете.';
 const FOOTER_APPLICANT = 'Письмо отправлено ProDisser в ответ на вашу заявку.';
 
-function letter(subject: string, body: string, footer: string): string {
+export function renderLetter(subject: string, body: string, footer: string, open: string | null = null): string {
   const paragraphs = body
     .split('\n')
     .filter((line) => line.trim().length > 0)
     .map((line) => `<p style="margin:0 0 14px">${escapeHtml(line)}</p>`)
     .join('');
+  // Кнопка ведёт на экран события через `/cabinet/open`: с сессией — сразу,
+  // без неё — на форму входа с готовым адресом (требование Т-06, Р-309).
+  // Это не ссылка входа: ссылка входа в письме о событии запрещена (Р-162).
+  const button =
+    open === null
+      ? ''
+      : `<p style="margin:6px 0 18px"><a href="${escapeHtml(open)}" ` +
+        `style="display:inline-block;padding:12px 22px;border-radius:999px;background:#14417A;` +
+        `color:#FFFFFF;text-decoration:none;font-weight:600">Открыть кабинет</a></p>`;
   return (
     `<div style="font:15px/1.6 'Helvetica Neue',Arial,sans-serif;color:#14161C">` +
     `<p style="margin:0 0 16px;font-size:17px;font-weight:600">${escapeHtml(subject)}</p>` +
     paragraphs +
+    button +
     `<p style="margin:20px 0 0;color:#5C6474;font-size:13px">${escapeHtml(footer)}</p></div>`
   );
 }
@@ -378,14 +400,19 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     const address = item.user?.email ?? (item.lead === null ? null : leadAddress(item.lead));
     const footer = item.user === null ? FOOTER_APPLICANT : FOOTER_MEMBER;
     const chatId = item.user?.telegramChatId ?? null;
+    // Экран события; заявителю кабинета нет — и кнопки нет (Т-06, Р-309).
+    const screen = item.path ?? defaultPath(item.project?.code ?? null);
+    const base = siteUrl();
+    const open = item.user === null || base === null ? null : openLink(base, screen, address);
+    const text = open === null ? item.body : `${item.body}\n\nОткрыть кабинет: ${open}`;
     const result: SendResult =
       address === null && item.channel === 'EMAIL'
         ? { ok: false, error: NO_ADDRESS }
         : item.channel === 'EMAIL'
-          ? await sendMailTo(address!, item.subject, letter(item.subject, item.body, footer), item.body)
+          ? await sendMailTo(address!, item.subject, renderLetter(item.subject, item.body, footer, open), text)
           : chatId === null
             ? { ok: false, error: 'привязка Telegram снята' }
-            : await sendTelegram(chatId, telegramNote(item.eventKind, item.project?.code ?? null));
+            : await sendTelegram(chatId, telegramNote(item.eventKind, item.project?.code ?? null, screen));
 
     // Без адреса повторять нечего: строка сразу помечается неудачей.
     if (result.error === NO_ADDRESS) {
@@ -527,6 +554,7 @@ export async function enqueueDeadlineReminders(at: Date = new Date()): Promise<n
             ? 'Этап ждёт ваших материалов: что нужно, видно на главном экране кабинета.'
             : 'Ход по этапу виден на его экране в личном кабинете.'),
         dedupKey: `stage:${stage.id}:${missed ? 'missed' : 'due-soon'}:${dueOn.toISOString().slice(0, 10)}:${userId}`,
+        path: `/cabinet/stages/${stage.id}`,
       });
     }
   }

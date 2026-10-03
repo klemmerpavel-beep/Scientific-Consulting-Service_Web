@@ -23,7 +23,7 @@ import {
   type ProjectStatusKey,
 } from '../../../../../lib/cabinet/project-status';
 import { pendingReview, projectByCode } from '../../../../../lib/cabinet/queries';
-import { currentActor } from '../../../../../lib/cabinet/session';
+import { requireActor } from '../../../../../lib/cabinet/session';
 import { changeProjectStatus } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -66,8 +66,7 @@ export default async function ProjectStatusScreen({
   params: Promise<{ code: string }>;
   searchParams: Promise<{ to?: string; error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor(`/cabinet/projects/${(await params).code}/status`);
 
   const { code } = await params;
   const project = await projectByCode(actor, decodeURIComponent(code));

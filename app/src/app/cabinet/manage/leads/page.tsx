@@ -30,7 +30,7 @@ import {
   leadSourceLabel,
   } from '../../../../lib/cabinet/lead-labels';
 import { LEAD_LIST_PAGE_SIZE, leadList } from '../../../../lib/cabinet/queries';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 
 export const dynamic = 'force-dynamic';
@@ -51,8 +51,7 @@ export default async function AllLeadsScreen({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/leads');
   if (!can(actor, 'REQUEST_MODERATE')) redirect(homeFor(actor));
 
   const sp = await searchParams;

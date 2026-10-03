@@ -40,7 +40,7 @@ import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
 import { leadQueue, returnedStages, todayItems, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
-import { currentActor } from '../../../lib/cabinet/session';
+import { requireActor } from '../../../lib/cabinet/session';
 import { homeFor } from '../../../lib/cabinet/nav';
 import { flashText, formDraft } from '../../../lib/cabinet/flash';
 import { requestHelp } from '../actions';
@@ -137,8 +137,7 @@ export default async function ManageQueue({
 }: {
   searchParams: Promise<{ page?: string; attention?: string; sent?: string; error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage');
   if (!can(actor, 'REQUEST_MODERATE')) redirect(homeFor(actor));
 
   const requested = Number((await searchParams).page ?? '1');

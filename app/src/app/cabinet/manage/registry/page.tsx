@@ -22,7 +22,7 @@ import {
 import { can } from '../../../../lib/cabinet/access';
 import { flaggedMessages } from '../../../../lib/cabinet/messages';
 import { clientRegistry, expertRegistry } from '../../../../lib/cabinet/queries';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 
 export const dynamic = 'force-dynamic';
@@ -48,8 +48,7 @@ export default async function RegistryScreen({
 }: {
   searchParams: Promise<{ tab?: string; q?: string; page?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/registry');
   if (!can(actor, 'REGISTRY_VIEW')) redirect(homeFor(actor));
 
   const sp = await searchParams;

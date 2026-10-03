@@ -1,6 +1,5 @@
 import { Fragment } from 'react';
 import { flashText } from '../../../lib/cabinet/flash';
-import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
 import {
@@ -40,7 +39,7 @@ import {
   contactNoteFor,
   settingsTexts,
 } from '../../../lib/cabinet/staff-texts';
-import { currentActor } from '../../../lib/cabinet/session';
+import { requireActor } from '../../../lib/cabinet/session';
 import {
   addContactChannel,
   dropTelegram,
@@ -58,8 +57,7 @@ export default async function SettingsScreen({
 }: {
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/settings');
 
   const [params, user, contacts, rules] = await Promise.all([
     searchParams,

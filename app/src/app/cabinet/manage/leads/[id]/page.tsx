@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
@@ -26,7 +26,7 @@ import { ensure } from '../../../../../lib/cabinet/access';
 import { contactHref, leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
 import { declineLetterNote, leadAddress } from '../../../../../lib/cabinet/lead-letter';
 import { leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
-import { currentActor } from '../../../../../lib/cabinet/session';
+import { requireActor } from '../../../../../lib/cabinet/session';
 import { commentLead, moderateLead, resendDeclineLetter, saveLead, switchLeadStatus } from '../../../actions';
 import { LeadStatusChip, LeadStatusSwitch } from '../../../../../components/cabinet/LeadStatus';
 
@@ -50,8 +50,7 @@ export default async function LeadScreen({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; resent?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor(`/cabinet/manage/leads/${(await params).id}`);
   ensure(actor, 'REQUEST_MODERATE');
 
   const { id } = await params;

@@ -260,6 +260,7 @@ export async function createManualOrder(
           `Сумма договора: ${formatAmount(cost)}; оплачено при заведении: ${formatAmount(paid)}.\n` +
           'Менять суммы и оплаты дальше может только руководитель — на экране «Оплаты и документы» работы.',
         dedupKey: `order-contract:${created.projectId}:${head.id}`,
+        path: `/cabinet/projects/${created.code}/payments`,
       });
     }
   }
