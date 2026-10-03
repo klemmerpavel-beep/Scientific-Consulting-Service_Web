@@ -37,9 +37,13 @@ const PROTOTYPE = path.join(ROOT, 'design', 'cabinet-prototype');
 /** Куда пишет запуск без аргумента. */
 const DEFAULT_OUT = path.join(os.tmpdir(), 'cabinet-portable');
 
-/** Правовые страницы сайта существуют и открываются — ведём на них. */
+/**
+ * Страницы сайта существуют и открываются — ведём на них: правовые и
+ * главная с формой заявки (ссылка «Оставить заявку» на странице входа,
+ * Т-07, Р-313).
+ */
 const SITE = 'https://prodisser.ru';
-const SITE_PAGES = new Set(['/offer', '/privacy']);
+const SITE_PAGES = new Set(['/offer', '/privacy', '/']);
 
 /**
  * Артборды лежат рядом с прототипом и собираются тем же кодом, что и для

@@ -10,6 +10,7 @@ import {
   escapeHtml,
   loginLink,
   loginRateExceeded,
+  RESEND_PAUSE_MS,
   maskEmail,
   normalizeEmail,
   RATE_WINDOW_MS,
@@ -98,7 +99,7 @@ export async function requestLoginLink(
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LOCK_IP}::int, hashtext(${ip}))`;
 
       const user = await tx.user.findUnique({ where: { email } });
-      const [byPair, byEmail, byIp, knownIp] = await Promise.all([
+      const [byPair, byEmail, byIp, knownIp, lastMinute] = await Promise.all([
         // Отказы по частоте в счёт адреса не идут: иначе пять запросов с
         // любых узлов запирали человека, а каждая его попытка продлевала
         // запор ещё на час (решение Р-232).
@@ -124,12 +125,21 @@ export async function requestLoginLink(
                 },
               })
               .then((n) => n > 0),
+        // Ссылка на этот адрес за последнюю минуту — с любого узла (Т-07,
+        // решение Р-313). Считаются выданные ссылки, а не отказы.
+        tx.loginAttempt.count({
+          where: {
+            emailNormalized: email,
+            occurredAt: { gte: new Date(Date.now() - RESEND_PAUSE_MS) },
+            outcome: { in: ['issued', 'sent', 'send_failed'] },
+          },
+        }),
       ]);
 
       const attempt = (outcome: string) =>
         tx.loginAttempt.create({ data: { emailNormalized: email, ip, outcome }, select: { id: true } });
 
-      if (loginRateExceeded({ byPair, byEmail, byIp, knownIp })) {
+      if (loginRateExceeded({ byPair, byEmail, byIp, knownIp, lastMinute })) {
         await attempt('rate_limited');
         return { outcome: 'rate_limited' as const };
       }
@@ -215,6 +225,32 @@ async function deliverLoginLink(
     `Ссылка действует ${TOKEN_TTL_MINUTES} минут и срабатывает один раз.\n`;
   const result = await sendMailTo(email, 'Вход в личный кабинет ProDisser', html, text);
   return result.ok;
+}
+
+/**
+ * Прислать новую ссылку владельцу устаревшей или использованной (требование
+ * Т-07, решение Р-313).
+ *
+ * Ключ проверяется целиком — селектор и проверочная часть, — но срок и
+ * погашение не важны: ссылка и так мёртвая. Новая ссылка уходит на адрес
+ * учётной записи и с тем же путём возврата; адрес наружу не выдаётся, а
+ * ответ одинаков для любой ссылки, в том числе поддельной: тогда просто
+ * ничего не отправляется. Пределы частоты — те же, что у формы входа.
+ */
+export async function resendForStaleLink(
+  value: string,
+  ip: string,
+  options: { readonly defer?: (task: () => Promise<void>) => void } = {},
+): Promise<LoginRequestOutcome | null> {
+  const parsed = splitToken(value);
+  if (parsed === null) return null;
+  const token = await prisma.loginToken.findUnique({
+    where: { selector: parsed.selector },
+    select: { purpose: true, verifierHash: true, returnPath: true, user: { select: { email: true } } },
+  });
+  if (token === null || token.purpose !== 'LOGIN') return null;
+  if (!sameDigest(token.verifierHash, digest(parsed.verifier))) return null;
+  return requestLoginLink(token.user.email, ip, { defer: options.defer, next: token.returnPath });
 }
 
 /**

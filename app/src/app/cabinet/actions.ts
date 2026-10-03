@@ -19,6 +19,7 @@ import {
 } from '../../lib/cabinet/lead-work';
 import {
   enterWithToken,
+  resendForStaleLink,
   requestLoginLink,
   revokeSession,
   createTelegramBindLink,
@@ -98,10 +99,14 @@ import {
 import type { ProjectStatusKey } from '../../lib/cabinet/project-status';
 import {
   clearOpenIntent,
+  clearStaleLink,
   currentActor,
   currentSessionValue,
+  rememberEmail,
+  rememberStaleLink,
   requestIp,
   setSessionCookie,
+  staleLink,
   userAgent,
 } from '../../lib/cabinet/session';
 
@@ -154,14 +159,26 @@ export async function requestLink(form: FormData): Promise<void> {
     // время отправки дольше незнакомого (решение Р-239).
     // Путь возврата — с формы, куда его положил обработчик открытия; чужой
     // путь отбрасывается при записи (требование Т-06, решение Р-309).
-    outcome = await requestLoginLink(email, await requestIp(), {
-      defer: after,
-      next: String(form.get('next') ?? '') || null,
-    });
+    const next = String(form.get('next') ?? '') || null;
+    outcome = await requestLoginLink(email, await requestIp(), { defer: after, next });
+    // Адрес — для кнопки «Прислать ещё раз» на той же странице (Т-07, Р-313).
+    if (outcome !== 'channel_off') await rememberEmail(email.trim(), next);
   }
   // Ответ один на все исходы, кроме одного: ненастроенная почта — состояние
   // системы, а не человека, и от адреса оно не зависит. Молчать о нём
   // значило бы обещать письмо, которого не будет (решение Р-163).
+  redirect(outcome === 'channel_off' ? '/cabinet?channel=off' : '/cabinet?sent=1');
+}
+
+/**
+ * «Прислать новую ссылку» на экране мёртвой ссылки (требование Т-07,
+ * решение Р-313): новая ссылка уходит владельцу старой. Ответ один для
+ * любой ссылки — адрес владельца не раскрывается ни страницей, ни исходом.
+ */
+export async function resendStaleLink(): Promise<void> {
+  const value = await staleLink();
+  await clearStaleLink();
+  const outcome = value === null ? null : await resendForStaleLink(value, await requestIp(), { defer: after });
   redirect(outcome === 'channel_off' ? '/cabinet?channel=off' : '/cabinet?sent=1');
 }
 
@@ -176,7 +193,12 @@ export async function requestLink(form: FormData): Promise<void> {
 export async function enterByLink(form: FormData): Promise<void> {
   const token = String(form.get('token') ?? '');
   const entered = await enterWithToken(token, await requestIp(), await userAgent());
-  if (entered === null) redirect('/cabinet?error=link');
+  if (entered === null) {
+    // Мёртвая ссылка: страница предложит прислать новую её владельцу, не
+    // раскрывая адреса (требование Т-07, решение Р-313).
+    await rememberStaleLink(token);
+    redirect('/cabinet?error=link');
+  }
   await revokeSession(await currentSessionValue());
   await setSessionCookie(entered.session);
   await clearOpenIntent();

@@ -36,6 +36,8 @@ describe('вход по ссылке', () => {
     // Погашение возвращает и путь возврата после входа (Т-06, Р-309).
     assert.match(fn, /enterWithToken|consumeLoginToken/u);
     assert.match(fn, /revokeSession/u);
+    // Мёртвая ссылка запоминается для «Прислать новую ссылку» (Т-07, Р-313).
+    assert.match(fn, /rememberStaleLink\(token\)/u);
   });
 
   it('cookie сессии стирается тем же набором свойств, что выдаётся', () => {

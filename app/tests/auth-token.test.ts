@@ -150,6 +150,11 @@ describe('частота ссылок входа (Р-251)', () => {
 
   it('предел узла действует на любые адреса', () => {
     assert.equal(loginRateExceeded({ ...calm, byIp: RATE_PER_IP }), true);
+    // Ссылка на адрес за последнюю минуту — повтор отклоняется, в том числе
+    // с узла владельца (требование Т-07, решение Р-313).
+    assert.equal(loginRateExceeded({ ...calm, lastMinute: 1 }), true);
+    assert.equal(loginRateExceeded({ ...calm, lastMinute: 1, knownIp: true }), true);
+    assert.equal(loginRateExceeded({ ...calm, lastMinute: 0 }), false);
     assert.equal(loginRateExceeded({ ...calm, byIp: RATE_PER_IP, knownIp: true }), true);
   });
 });

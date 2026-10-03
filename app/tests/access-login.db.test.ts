@@ -172,9 +172,10 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     prisma.loginToken.count({ where: { userId, purpose: 'LOGIN', createdAt: { gte: new Date(stamp) } } });
   const loginEmail = () => emails[5]!;
 
-  it('двадцать параллельных запросов с одного узла дают не больше предела ссылок', async () => {
+  it('двадцать параллельных запросов на адрес дают одну ссылку: пауза в минуту (Т-07, Р-313)', async () => {
     // Прежде строка попытки писалась в отложенной отправке, после ответа:
     // параллельные запросы видели пустой счётчик и получали по ссылке.
+    // Теперь сверх предела пары действует пауза: одна ссылка в минуту.
     process.env.SMTP_HOST = 'smtp.invalid';
     try {
       const outcomes = await Promise.all(
@@ -183,13 +184,13 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
         ),
       );
       const issued = await issuedTo(ids.login!);
-      assert.equal(issued, token.RATE_PER_EMAIL_IP, `выдано ${issued} ссылок`);
-      assert.equal(outcomes.filter((o) => o === 'rate_limited').length, 20 - token.RATE_PER_EMAIL_IP);
+      assert.equal(issued, 1, `выдано ${issued} ссылок`);
+      assert.equal(outcomes.filter((o) => o === 'rate_limited').length, 19);
       // Попытка записана до отправки: исход «выдано» дописывается потом.
       const pending = await prisma.loginAttempt.count({
         where: { emailNormalized: loginEmail(), ip: `${net}.1`, outcome: 'issued' },
       });
-      assert.equal(pending, token.RATE_PER_EMAIL_IP);
+      assert.equal(pending, 1);
     } finally {
       delete process.env.SMTP_HOST;
     }
@@ -197,7 +198,7 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     await prisma.loginAttempt.deleteMany({ where: { emailNormalized: loginEmail() } });
   });
 
-  it('параллельные запросы с разных узлов упираются в потолок адреса', async () => {
+  it('с разных узлов — тоже одна ссылка в минуту; через минуту — следующая', async () => {
     process.env.SMTP_HOST = 'smtp.invalid';
     try {
       await Promise.all(
@@ -205,18 +206,27 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
           auth.requestLoginLink(loginEmail(), `${net}.${10 + i}`, { defer: () => undefined }),
         ),
       );
+      assert.equal(await issuedTo(ids.login!), 1);
+      // Прежняя ссылка — больше минуты назад: следующая выдаётся.
+      await prisma.loginAttempt.updateMany({
+        where: { emailNormalized: loginEmail() },
+        data: { occurredAt: new Date(Date.now() - token.RESEND_PAUSE_MS - 1000) },
+      });
+      assert.equal(await auth.requestLoginLink(loginEmail(), `${net}.40`, { defer: () => undefined }), 'sent');
+      assert.equal(await issuedTo(ids.login!), 2);
     } finally {
       delete process.env.SMTP_HOST;
     }
-    assert.equal(await issuedTo(ids.login!), token.RATE_PER_EMAIL);
     await prisma.loginToken.deleteMany({ where: { userId: ids.login } });
     await prisma.loginAttempt.deleteMany({ where: { emailNormalized: loginEmail() } });
   });
 
   it('чужие узлы, исчерпав потолок адреса, не запирают владельца на его узле', async () => {
+    // Попытки — раньше минуты назад: пауза Р-313 здесь не при чём.
+    const earlier = new Date(Date.now() - 2 * token.RESEND_PAUSE_MS);
     for (let i = 0; i < token.RATE_PER_EMAIL; i += 1) {
       await prisma.loginAttempt.create({
-        data: { emailNormalized: loginEmail(), ip: `${net}.${100 + i}`, outcome: 'sent' },
+        data: { emailNormalized: loginEmail(), ip: `${net}.${100 + i}`, outcome: 'sent', occurredAt: earlier },
       });
     }
     // Новый узел — отказ: потолок исчерпан.
