@@ -57,7 +57,7 @@ function NotReady({ missing }: { missing: readonly string[] }) {
           Раздел готовится
         </Heading>
         <Text style={{ marginBottom: 16 }}>
-          Личный кабинет ещё не открыт. Ход работы по вашему сопровождению сообщит менеджер —
+          Личный кабинет ещё не открыт. Ход работы по вашему сопровождению сообщит куратор —
           напишите на <a href="mailto:info@prodisser.ru">info@prodisser.ru</a>.
         </Text>
         {local ? (

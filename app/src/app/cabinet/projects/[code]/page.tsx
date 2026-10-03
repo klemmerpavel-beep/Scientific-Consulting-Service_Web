@@ -74,7 +74,7 @@ export const dynamic = 'force-dynamic';
  * дело практики.
  */
 const EVENT_LABEL: Record<string, string> = {
-  PROJECT_CREATED: 'Работа принята в сопровождение',
+  PROJECT_CREATED: 'Работа взята в сопровождение',
   MANAGER_ASSIGNED: 'Работу принял другой куратор',
   EXPERT_ASSIGNED: 'Назначен исполнитель',
   STAGE_STATE_CHANGED: 'Этап сменил состояние',

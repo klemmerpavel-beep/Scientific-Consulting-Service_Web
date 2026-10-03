@@ -293,7 +293,7 @@ export default async function SettingsScreen({
           <Text muted size={13} style={{ marginTop: 24 }}>
             Согласие на обработку персональных данных принято{' '}
             {formatDate(user.consentAcceptedAt)}. Отозвать его и потребовать удаления данных
-            можно письмом менеджеру.
+            можно письмом куратору.
           </Text>
         )}
       </Narrow>

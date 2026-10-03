@@ -190,7 +190,7 @@ export default async function ProjectsScreen({
             }
           : {
               lead: 'Действующих работ нет.',
-              detail: 'Новую работу можно заказать здесь же: заявка уйдёт куратору.',
+              detail: 'Заявку на сопровождение новой работы можно оставить здесь же.',
               action: <ButtonLink href="/cabinet/request">Новая заявка</ButtonLink>,
             };
   } else if (forExpert && !awaitingNda) {
