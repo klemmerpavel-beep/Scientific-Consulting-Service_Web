@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 
 import { MONO } from '../../../../components/cabinet/tokens';
 import ActionError from '../../../../components/cabinet/ActionError';
+import { AccessLink } from '../../../../components/cabinet/AccessLink';
 import Shell from '../../../../components/cabinet/Shell';
 import {
   Board,
@@ -63,6 +64,7 @@ import {
   setExpert,
   setManager,
   uploadMaterialWithNote,
+  openAccessForClient,
 } from '../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -868,6 +870,31 @@ export default async function ProjectScreen({
                       ))}
                     </ul>
                   )}
+                  {/* Вход клиенту открывает куратор работы: прежде это умел
+                      только руководитель, и клиенты ручных заказов в кабинет
+                      не попадали (решение Р-285). */}
+                  {can(actor, 'CLIENT_ACCESS_OPEN', ref) ? (
+                    <div style={{ marginTop: 14 }}>
+                      {project.client.userId === null && (project.client.email ?? '').trim() === '' ? (
+                        <Text muted size={13}>
+                          Чтобы открыть клиенту вход в кабинет, нужен адрес почты в его карточке.
+                        </Text>
+                      ) : (
+                        <AccessLink
+                          people={[
+                            {
+                              id: project.id,
+                              label: `${project.client.fullName}${project.client.email === null ? '' : ` · ${project.client.email}`}`,
+                            },
+                          ]}
+                          action={openAccessForClient}
+                          field="projectId"
+                          selectLabel="Открыть вход в кабинет"
+                          submitLabel="Открыть клиенту вход"
+                        />
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 

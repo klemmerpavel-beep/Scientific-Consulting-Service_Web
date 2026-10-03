@@ -64,6 +64,7 @@ export const ACTIONS = [
   'MESSAGE_READ',
   'MESSAGE_WRITE',
   'CONTACTS_VIEW',
+  'CLIENT_ACCESS_OPEN',
   'CONTRACT_VIEW',
   'PAYMENT_EDIT',
   'PAYOUT_VIEW_OWN',
@@ -180,6 +181,14 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     // ── Персональные данные ───────────────────────────────────────────────
     case 'CONTACTS_VIEW':
       return practice;
+
+    // Открыть клиенту своей работы вход в кабинет: создать учётную запись
+    // по почте карточки и выдать разовую ссылку. Прежде это умел только
+    // руководитель (Р-195); решение владельца В-9 отдаёт это куратору
+    // работы (решение Р-285). Без работы действие не разрешается:
+    // `practice` при `project = null` разрешил бы менеджеру любое.
+    case 'CLIENT_ACCESS_OPEN':
+      return project !== null && practice;
 
     // ── Финансы ───────────────────────────────────────────────────────────
     // Клиент видит свой договор и статус оплаты; эксперт не видит ничего,

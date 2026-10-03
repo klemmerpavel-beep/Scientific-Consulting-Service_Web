@@ -19,7 +19,8 @@ export type EventKind =
   | 'MESSAGE_RECEIVED'
   | 'HELP_REQUESTED'
   | 'STAGE_APPROVED'
-  | 'STAGE_RETURNED';
+  | 'STAGE_RETURNED'
+  | 'CLIENT_ACCESS_OPENED';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -60,6 +61,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   MESSAGE_RECEIVED: 'новое сообщение',
   STAGE_APPROVED: 'этап согласован',
   STAGE_RETURNED: 'этап возвращён с замечаниями',
+  CLIENT_ACCESS_OPENED: 'куратор открыл вход клиенту',
 };
 
 /**

@@ -37,9 +37,16 @@ export interface AccessLinkState {
 export function AccessLink({
   people,
   action,
+  field = 'userId',
+  selectLabel = 'Кому открыть вход',
+  submitLabel = 'Выдать ссылку',
 }: {
   people: readonly { id: string; label: string }[];
   action: (state: AccessLinkState, form: FormData) => Promise<AccessLinkState>;
+  /** Имя поля выбора: у руководителя — учётная запись, на карточке работы — работа (Р-285). */
+  field?: string;
+  selectLabel?: string;
+  submitLabel?: string;
 }) {
   const [state, submit, pending] = useActionState<AccessLinkState, FormData>(action, {
     link: null,
@@ -66,9 +73,9 @@ export function AccessLink({
       <form action={submit} style={{ display: 'grid', gap: 14, maxWidth: 520 }}>
         <div>
           <label htmlFor="access-link-user" style={label}>
-            Кому открыть вход
+            {selectLabel}
           </label>
-          <select id="access-link-user" name="userId" required style={control}>
+          <select id="access-link-user" name={field} required style={control}>
             {people.map((person) => (
               <option key={person.id} value={person.id}>
                 {person.label}
@@ -83,7 +90,7 @@ export function AccessLink({
             className="cab-btn cab-btn-primary"
             style={{ ...BUTTON_PRIMARY, cursor: pending ? 'progress' : 'pointer' }}
           >
-            {pending ? 'Выдаём…' : state.link === null ? 'Выдать ссылку' : 'Выдать новую ссылку'}
+            {pending ? 'Выдаём…' : state.link === null ? submitLabel : 'Выдать новую ссылку'}
           </button>
         </div>
       </form>

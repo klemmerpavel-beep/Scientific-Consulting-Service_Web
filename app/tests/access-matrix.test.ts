@@ -103,6 +103,8 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   MESSAGE_READ: [true, false, true, true],
   MESSAGE_WRITE: [true, false, true, true],
   CONTACTS_VIEW: [false, false, true, true],
+  // Открыть клиенту вход — куратору своей работы и руководителю (Р-285).
+  CLIENT_ACCESS_OPEN: [false, false, true, true],
   CONTRACT_VIEW: [true, false, true, true],
   PAYMENT_EDIT: [false, false, false, true],
   PAYOUT_VIEW_OWN: [false, true, false, true],
@@ -191,6 +193,7 @@ describe('работа другого куратора', () => {
     'MESSAGE_READ',
     'MESSAGE_WRITE',
     'CONTACTS_VIEW',
+    'CLIENT_ACCESS_OPEN',
     'CONTRACT_VIEW',
   ];
 
@@ -202,7 +205,9 @@ describe('работа другого куратора', () => {
   }
 
   it('без работы менеджеру разрешено то же, что прежде: перечни сужает выборка', () => {
-    for (const action of projectBound) {
+    // «Открыть клиенту вход» — не перечень, а действие над одной работой:
+    // без работы оно запрещено намеренно (Р-285), см. отдельную проверку.
+    for (const action of projectBound.filter((item) => item !== 'CLIENT_ACCESS_OPEN')) {
       assert.equal(can(manager, action, null), true, action);
     }
   });
@@ -415,6 +420,13 @@ describe('замечания клиента при возврате этапа (
   it('эксперт видит текст без контактов, а с контактом — строку о кураторе', () => {
     assert.equal(presentReturnText(expert, plain), plain.reason);
     assert.equal(presentReturnText(expert, withContact), RETURN_TEXT_WITH_CURATOR);
+  });
+});
+
+describe('открыть клиенту вход (Р-285)', () => {
+  it('без работы действие не разрешается никому, даже менеджеру', () => {
+    assert.equal(can(manager, 'CLIENT_ACCESS_OPEN', null), false);
+    assert.equal(can(head, 'CLIENT_ACCESS_OPEN', null), false);
   });
 });
 

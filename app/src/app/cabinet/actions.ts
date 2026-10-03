@@ -49,6 +49,7 @@ import {
   saveOwnChannels,
   setUserRole,
   issueAccessLink,
+  openClientAccess,
   setUserStatus,
   signExpertNda,
   type Role,
@@ -1018,6 +1019,31 @@ export async function changeUserStatus(form: FormData): Promise<void> {
     redirect(await withError(`/cabinet/manage/users`, reason));
   }
   redirect('/cabinet/manage/users');
+}
+
+/** «Открыть клиенту вход» с карточки работы (требование М-03, решение Р-285). */
+export async function openAccessForClient(
+  _previous: AccessLinkState,
+  form: FormData,
+): Promise<AccessLinkState> {
+  const actor = await actorOrRedirect();
+  try {
+    const issued = await openClientAccess(actor, String(form.get('projectId') ?? ''), await requestIp());
+    const until = issued.expiresAt.toLocaleTimeString('ru-RU', {
+      timeZone: 'Europe/Moscow',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return {
+      link: issued.link,
+      note:
+        `Ссылка для «${issued.fullName}» действует до ${until} по Москве и срабатывает один раз. ` +
+        'Передайте её клиенту тем каналом, которым с ним разговариваете; на экране входа он увидит свой адрес.',
+      error: null,
+    };
+  } catch (error) {
+    return { link: null, note: null, error: reasonOf(error, 'Не удалось открыть вход') };
+  }
 }
 
 export async function giveAccessLink(

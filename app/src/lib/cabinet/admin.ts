@@ -11,6 +11,7 @@ import { record } from './audit.ts';
 import { moscowToday } from './clock.ts';
 import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
+import { enqueue } from './outbox.ts';
 
 export type Role = 'CLIENT' | 'EXPERT' | 'MANAGER' | 'HEAD';
 export type Status = 'ACTIVE' | 'SUSPENDED' | 'ERASED';
@@ -84,18 +85,7 @@ export async function issueAccessLink(
     throw new Error('Доступ приостановлен или запись обезличена: ссылка не выдаётся');
   }
 
-  const { createRawToken, digest, loginLink } = await import('./token.ts');
-  const token = createRawToken();
-  const expiresAt = new Date(Date.now() + ACCESS_LINK_TTL_MS);
-  await prisma.loginToken.create({
-    data: {
-      selector: token.selector,
-      verifierHash: digest(token.verifier),
-      userId: user.id,
-      expiresAt,
-      requestIp: ip ?? 'cabinet',
-    },
-  });
+  const { link, expiresAt } = await manualToken(user.id, ip);
 
   await record(actor, {
     action: 'ACCESS_LINK_ISSUED',
@@ -105,7 +95,189 @@ export async function issueAccessLink(
     payload: { expiresAt: expiresAt.toISOString() },
   });
 
-  return { link: loginLink(token.value), expiresAt, fullName: user.fullName };
+  return { link, expiresAt, fullName: user.fullName };
+}
+
+/**
+ * Разовая ссылка на два часа — общий помощник выдачи руководителем и
+ * куратором (решение Р-285). Прежние непогашенные ссылки входа того же
+ * человека гасятся: живой должна быть одна, последняя выданная — ссылка,
+ * переданная не тому, перестаёт работать с выдачей новой.
+ */
+async function manualToken(userId: string, ip?: string | null): Promise<{ link: string; expiresAt: Date }> {
+  const { createRawToken, digest, loginLink } = await import('./token.ts');
+  const now = new Date();
+  await prisma.loginToken.updateMany({
+    where: { userId, usedAt: null, expiresAt: { gt: now }, purpose: 'LOGIN' },
+    data: { expiresAt: now },
+  });
+  const token = createRawToken();
+  const expiresAt = new Date(now.getTime() + ACCESS_LINK_TTL_MS);
+  await prisma.loginToken.create({
+    data: {
+      selector: token.selector,
+      verifierHash: digest(token.verifier),
+      userId,
+      expiresAt,
+      requestIp: ip ?? 'cabinet',
+    },
+  });
+  return { link: loginLink(token.value), expiresAt };
+}
+
+/** Пределы выдачи куратором: на клиента и на сотрудника за сутки (Р-285). */
+const CLIENT_LINKS_PER_DAY = 3;
+const STAFF_LINKS_PER_DAY = 20;
+
+/** Адрес почты, годный для учётной записи. */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
+
+/**
+ * «Открыть клиенту вход» — куратор работы или руководитель (требование
+ * М-03, решение Р-285).
+ *
+ * Клиенты ручных заказов и перенесённой книги заказов учётной записи не
+ * имели, и вход им не открывал никто: руководитель мог завести запись, но
+ * не привязать её к карточке клиента, и клиент входил в пустой кабинет.
+ * Здесь запись заводится по почте карточки и сразу привязывается к ней, а
+ * ссылка на два часа возвращается один раз — тем же порядком, что у
+ * руководителя (Р-195).
+ *
+ * Отказы с причиной: карточка обезличена или сведена; адреса нет или он
+ * негоден; адрес принадлежит сотруднику; запись закрыта; адрес уже у
+ * другой карточки клиента — их сводит руководитель.
+ *
+ * Согласие на обработку ПДн здесь не спрашивается: основание для
+ * заказчика — договор (п. 5 ч. 1 ст. 6 152-ФЗ, так это и сказано в
+ * Политике); новую заявку из кабинета клиент подаёт с отметками, как
+ * прежде (Р-238). Решение ОМ-4 требует подтверждения юриста до первого
+ * такого входа.
+ */
+export async function openClientAccess(
+  actor: Actor,
+  projectId: string,
+  ip?: string | null,
+): Promise<{ link: string; expiresAt: Date; fullName: string }> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      code: true,
+      clientId: true,
+      managerId: true,
+      expertId: true,
+      client: {
+        select: { id: true, fullName: true, email: true, userId: true, erasedAt: true, mergedIntoId: true },
+      },
+    },
+  });
+  if (project === null) throw new Error('Работа не найдена');
+  ensure(actor, 'CLIENT_ACCESS_OPEN', project);
+  const client = project.client;
+  if (client.erasedAt !== null || client.mergedIntoId !== null) {
+    throw new Error('Карточка клиента обезличена или сведена с другой: вход не открывается');
+  }
+
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const byActor = await prisma.auditEvent.count({
+    where: { actorId: actor.id, action: 'ACCESS_LINK_ISSUED', occurredAt: { gte: dayAgo } },
+  });
+  if (actor.role !== 'HEAD' && byActor >= STAFF_LINKS_PER_DAY) {
+    throw new Error(`За сутки выдано ${STAFF_LINKS_PER_DAY} ссылок: следующие — завтра или через руководителя`);
+  }
+
+  // Учётная запись: своя у карточки, найденная по адресу или новая.
+  let userId: string;
+  let created = false;
+  if (client.userId !== null) {
+    const user = await prisma.user.findUnique({
+      where: { id: client.userId },
+      select: { role: true, status: true },
+    });
+    if (user === null || user.role !== 'CLIENT') throw new Error('Карточка привязана не к учётной записи клиента');
+    if (user.status !== 'ACTIVE') throw new Error('Учётная запись клиента закрыта: вход не открывается');
+    userId = client.userId;
+  } else {
+    const email = normalizeEmail(client.email ?? '');
+    if (email === '' || !EMAIL_SHAPE.test(email)) {
+      throw new Error('В карточке клиента нет адреса почты: впишите его, и вход можно будет открыть');
+    }
+    const existing = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, role: true, status: true, clientProfile: { select: { id: true } } },
+    });
+    if (existing !== null) {
+      if (existing.role !== 'CLIENT') {
+        throw new Error('Этот адрес принадлежит сотруднику: вход клиенту на него не открывается');
+      }
+      if (existing.status !== 'ACTIVE') throw new Error('Учётная запись с этим адресом закрыта: вход не открывается');
+      if (existing.clientProfile !== null && existing.clientProfile.id !== client.id) {
+        throw new Error('Этот адрес уже у другой карточки клиента: карточки сводит руководитель');
+      }
+      userId = existing.id;
+    } else {
+      const user = await prisma.user.create({
+        data: { email, fullName: client.fullName, role: 'CLIENT' },
+        select: { id: true },
+      });
+      userId = user.id;
+      created = true;
+    }
+    // Привязка — условием «карточка ещё без записи»: два одновременных
+    // нажатия не привяжут карточку к двум записям.
+    const linked = await prisma.clientProfile.updateMany({
+      where: { id: client.id, userId: null },
+      data: { userId },
+    });
+    if (linked.count === 0) throw new Error('Карточку только что привязали другим действием: обновите страницу');
+  }
+
+  const forClient = await prisma.auditEvent.count({
+    where: { objectId: userId, action: 'ACCESS_LINK_ISSUED', occurredAt: { gte: dayAgo } },
+  });
+  if (forClient >= CLIENT_LINKS_PER_DAY) {
+    throw new Error(
+      `Клиенту сегодня уже выдано ${CLIENT_LINKS_PER_DAY} ссылки: дождитесь, пока он войдёт по последней`,
+    );
+  }
+
+  const { link, expiresAt } = await manualToken(userId, ip);
+
+  if (created) {
+    await record(actor, { action: 'USER_CREATED', objectType: 'User', objectId: userId, projectId: project.id, ip });
+  }
+  await record(actor, {
+    action: 'ACCESS_LINK_ISSUED',
+    objectType: 'User',
+    objectId: userId,
+    projectId: project.id,
+    ip,
+    payload: { expiresAt: expiresAt.toISOString(), via: 'project' },
+  });
+
+  // Выдача куратором — доступ к чужой учётной записи: руководитель о ней
+  // узнаёт (решение ОМ-3).
+  if (actor.role === 'MANAGER') {
+    const [curator, heads] = await Promise.all([
+      prisma.user.findUnique({ where: { id: actor.id }, select: { fullName: true } }),
+      prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } }),
+    ]);
+    for (const head of heads) {
+      await enqueue(prisma, {
+        userId: head.id,
+        projectId: project.id,
+        eventKind: 'CLIENT_ACCESS_OPENED',
+        subject: `Куратор открыл вход клиенту: ${project.code}`,
+        body:
+          `${curator?.fullName ?? 'Куратор'} выдал(а) ссылку входа клиенту работы ${project.code}` +
+          `${created ? '; учётная запись заведена по почте карточки' : ''}.\n` +
+          'Ссылка действует два часа и срабатывает один раз.',
+        dedupKey: `access:${userId}:${expiresAt.getTime()}:${head.id}`,
+      });
+    }
+  }
+
+  return { link, expiresAt, fullName: client.fullName };
 }
 
 export async function listUsers(actor: Actor, filter: UserFilter = {}) {
