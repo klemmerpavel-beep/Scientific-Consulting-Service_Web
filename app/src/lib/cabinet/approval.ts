@@ -1,6 +1,7 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { siteUrl } from '../site-url.ts';
+import { formatDay } from './approval-text.ts';
 import { record } from './audit.ts';
 import { moscowToday } from './clock.ts';
 import { enqueue, notifyCurator } from './outbox.ts';
@@ -46,17 +47,7 @@ export function autoAcceptEnabled(): boolean {
   return /^(1|true|on|yes)$/iu.test(process.env.APPROVAL_AUTO_ACCEPT?.trim() ?? '');
 }
 
-/** День для письма и экрана: «28 сентября 2026». */
-export function formatDay(day: Date): string {
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-    .format(day)
-    .replace(/\s*г\.$/u, '');
-}
+export { formatDay };
 
 /** Строка письма со ссылкой на экран этапа; без адреса сайта — общая. */
 export function stageLink(stageId: string): string {

@@ -26,6 +26,7 @@ import {
 import { SANS } from '../../../../components/cabinet/tokens';
 import { can, presentReturnText } from '../../../../lib/cabinet/access';
 import { autoAcceptEnabled, formatDay } from '../../../../lib/cabinet/approval';
+import { approvalStaffLine } from '../../../../lib/cabinet/approval-text';
 import { formDraft } from '../../../../lib/cabinet/flash';
 import { stageById } from '../../../../lib/cabinet/queries';
 import { daysPast } from '../../../../lib/cabinet/clock';
@@ -126,6 +127,17 @@ export default async function StageScreen({
   const mayModerate = can(actor, 'COMMENT_MODERATE', ref);
   const forStaff = actor.role !== 'CLIENT' && mayEdit;
   const late = overdueDays(stage.dueOn);
+  // Срок согласования глазами практики: та же дата, что у клиента, и
+  // закроется ли этап сам (требование М-13, решение Р-291).
+  const approvalLine =
+    can(actor, 'STAGE_SET_STATE', ref) && state === 'IN_APPROVAL'
+      ? approvalStaffLine({
+          dueOn: stage.approvalDueOn,
+          daysLeft: stage.approvalDaysLeft,
+          clientHasLogin: stage.project.client.userId !== null,
+          autoAccept: autoAcceptEnabled(),
+        })
+      : null;
   const pendingComments = stage.materials.reduce(
     (sum, material) =>
       sum +
@@ -217,6 +229,9 @@ export default async function StageScreen({
             {`Работа ${PROJECT_STATUS_LABEL[
               stage.project.status as ProjectStatusKey
             ].toLowerCase()}: этапы не меняются. Вернуть работу в действие можно на её экране, в разделе «Управление работой».`}
+            {approvalLine === null ? null : (
+              <span style={{ display: 'block', marginTop: 6 }}>{approvalLine}.</span>
+            )}
           </Notice>
         </Block>
       ) : null}
@@ -233,6 +248,11 @@ export default async function StageScreen({
           <Text style={{ marginBottom: 12 }}>
             {state === 'IN_APPROVAL' && pendingComments === 0 ? IN_APPROVAL_CLEAR : STAFF_TODO[state]}
           </Text>
+          {approvalLine === null ? null : (
+            <Text size={14} style={{ marginBottom: 12, fontWeight: 600 }}>
+              {approvalLine}.
+            </Text>
+          )}
           <div
             style={{
               display: 'flex',

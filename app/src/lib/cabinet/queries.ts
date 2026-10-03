@@ -161,6 +161,9 @@ export async function stageById(actor: Actor, stageId: string) {
           clientId: true,
           managerId: true,
           expertId: true,
+          // Есть ли у клиента вход: без него срок согласования не идёт
+          // (требование М-13, решение Р-291).
+          client: { select: { userId: true } },
         },
       },
       expert: { select: { fullName: true, expertProfile: { select: { degree: true } } } },
