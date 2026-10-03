@@ -23,6 +23,7 @@ import {
   clip,
   formatDate,
   plural,
+  turnLabel,
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
@@ -77,16 +78,6 @@ function alertStep(late: number | null): 0 | 1 | 2 | 3 | 4 {
   return 4;
 }
 
-/**
- * Чей сейчас ход. Состояние этапа названо не своим именем, а ответом на
- * вопрос менеджера: делать это ему, ждать ли клиента или исполнителя.
- */
-const TURN_BY_STATE: Partial<Record<StageStateKey, string>> = {
-  NOT_STARTED: 'ход за вами: этап не начат',
-  IN_PROGRESS: 'ход за исполнителем',
-  AWAITING_CLIENT: 'ход за клиентом',
-  IN_APPROVAL: 'ход за клиентом: ждёт согласования',
-};
 
 /**
  * Кромка плашки по ступени тревоги. Ноль — кромки нет.
@@ -237,11 +228,13 @@ export default async function ManageQueue({
         // Чей ход — первое, что нужно знать: своё дело менеджер закрывает
         // сам, чужое требует письма или звонка.
         detail: [
-          // Руководителю «ход за вами» по чужой работе говорил неправду:
-          // этап начинает куратор (решение Р-206).
-          stage.state === 'NOT_STARTED' && stage.project.managerId !== actor.id
-            ? 'ход за куратором: этап не начат'
-            : (TURN_BY_STATE[stage.state as StageStateKey] ?? null),
+          // Чей ход — той же подписью, что на шкале и экране этапа;
+          // руководителю по чужой работе — «за куратором» (Р-206, Р-288).
+          turnLabel(
+            stage.state as StageStateKey,
+            stage.project.managerId !== actor.id ? 'foreign-head' : 'curator',
+            stage.project.expertId !== null || (stage.project.expertNameRaw ?? '').trim() !== '',
+          ),
           stage.project.client.fullName,
           rest > 0n ? `не получено ${formatAmount(rest)}` : null,
         ]

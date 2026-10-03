@@ -65,3 +65,35 @@ export function stageStateButtons(from: StageStateKey): readonly StageStateKey[]
   // Завершение этапа — согласование, у него отдельная кнопка.
   return STAGE_TRANSITIONS[from].filter((to) => to !== 'DONE');
 }
+
+/** Кто смотрит на ход работы — от этого зависит «за вами» или «за куратором». */
+export type TurnViewer = 'curator' | 'foreign-head' | 'expert';
+
+/**
+ * Чей сейчас ход — одна подпись на шкале, на экране этапа и на рабочем
+ * экране (требование М-17, решение Р-288).
+ *
+ * Прежде шкала писала «Ход за практикой» и «Ход за исполнителем», а экран
+ * этапа и «Требует внимания» — «ход за вами»; эксперт читал о себе «ход за
+ * исполнителем». Подписи — со стороны смотрящего (Р-206): «Ход за вами»,
+ * «Ход за экспертом», «Ход за клиентом»; руководителю по чужой работе —
+ * «Ход за куратором». Не начатый этап — ход и куратора, и эксперта:
+ * главная эксперта так и считает (Р-207). Этап «в работе» без эксперта —
+ * дело куратора: назначить эксперта.
+ */
+export function turnLabel(state: StageStateKey, viewer: TurnViewer, hasExpert: boolean): string {
+  const curatorTurn = viewer === 'foreign-head' ? 'Ход за куратором' : 'Ход за вами';
+  switch (state) {
+    case 'NOT_STARTED':
+      return `${curatorTurn}: этап не начат`;
+    case 'IN_PROGRESS':
+      if (viewer === 'expert') return 'Ход за вами: этап в работе';
+      return hasExpert ? 'Ход за экспертом: этап в работе' : `${curatorTurn}: назначьте эксперта`;
+    case 'AWAITING_CLIENT':
+      return 'Ход за клиентом: ждём материалов';
+    case 'IN_APPROVAL':
+      return 'Ход за клиентом: этап на согласовании';
+    case 'DONE':
+      return 'Этап закрыт';
+  }
+}

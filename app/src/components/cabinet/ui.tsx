@@ -14,7 +14,15 @@ import {
   SHADOW,
 } from './tokens.ts';
 import type { WaveMood } from '../../lib/cabinet/charts';
-import { STAGE_STATE_LABEL, stageLabel, type StageStateKey } from '../../lib/cabinet/stage-state';
+import {
+  STAGE_STATE_LABEL,
+  stageLabel,
+  turnLabel,
+  type StageStateKey,
+  type TurnViewer,
+} from '../../lib/cabinet/stage-state';
+
+export { turnLabel, type TurnViewer };
 
 /**
  * Составные части экранов кабинета. Пишутся вручную и типизированно —
@@ -2170,6 +2178,8 @@ function panelAnswer(
   total: number,
   staff: boolean,
   projectStatus?: string,
+  turnViewer: TurnViewer = 'curator',
+  hasExpert = true,
 ): string {
   // Состояние работы главнее состояния этапа: у приостановленной и
   // закрытой работы клиент ничего не делает, сколько бы этапов ни было
@@ -2185,14 +2195,7 @@ function panelAnswer(
     return staff ? 'Все этапы закрыты.' : 'Работа закрыта. Материалы остаются доступны здесь.';
   }
   if (!staff) return 'Сейчас от вас ничего не требуется — работа идёт.';
-  const turn: Record<StageStateKey, string> = {
-    NOT_STARTED: 'Ход за практикой: этап не начат.',
-    IN_PROGRESS: 'Ход за исполнителем: этап в работе.',
-    AWAITING_CLIENT: 'Ход за клиентом: ждём материалов.',
-    IN_APPROVAL: 'Ход за клиентом: этап на согласовании.',
-    DONE: 'Этап закрыт.',
-  };
-  return turn[current.state];
+  return `${turnLabel(current.state, turnViewer, hasExpert)}.`;
 }
 
 export function ProgressPanel({
@@ -2209,6 +2212,8 @@ export function ProgressPanel({
   actionLabel,
   waiting: waitingFor,
   projectStatus,
+  turnViewer,
+  hasExpert,
   style,
 }: {
   done: number;
@@ -2231,6 +2236,9 @@ export function ProgressPanel({
   waiting?: boolean;
   /** Состояние работы: у приостановленной и закрытой клиент ничего не делает. */
   projectStatus?: string;
+  /** Кто смотрит и назначен ли эксперт — для подписи хода (Р-288). */
+  turnViewer?: TurnViewer;
+  hasExpert?: boolean;
   style?: CSSProperties;
 }) {
   const share = total === 0 ? 0 : Math.round((done / total) * 100);
@@ -2310,7 +2318,7 @@ export function ProgressPanel({
             color: 'var(--pd-ink)',
           }}
         >
-          {action ?? panelAnswer(current, total, staff, projectStatus)}
+          {action ?? panelAnswer(current, total, staff, projectStatus, turnViewer, hasExpert)}
         </span>
         {actionHref == null ? null : (
           <ButtonLink href={actionHref} tone="primary">

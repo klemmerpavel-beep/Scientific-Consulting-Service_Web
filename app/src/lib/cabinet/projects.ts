@@ -919,7 +919,10 @@ export async function setStageState(
         projectId: stage.projectId,
         actorId: actor.id,
         kind: 'STAGE_STATE_CHANGED',
-        payload: { stageId, from, to },
+        // Причина — в данных события: история работы называет её рядом с
+        // переходом (требование М-17, решение Р-288). Обезличивание
+        // затирает данные событий целиком (Р-234).
+        payload: { stageId, from, to, ...((reason ?? '').trim() === '' ? {} : { reason: (reason ?? '').trim() }) },
       },
     });
 

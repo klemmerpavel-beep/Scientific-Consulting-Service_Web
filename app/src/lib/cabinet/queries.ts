@@ -546,6 +546,9 @@ export async function trafficLight(actor: Actor) {
         // Куратор нужен, чтобы сказать руководителю, чей ход по чужой
         // работе: «ход за вами» у него значил не то (решение Р-206).
         managerId: true,
+        // Чей ход у этапа «в работе» — эксперта, если он назначен (Р-288).
+        expertId: true,
+        expertNameRaw: true,
         client: { select: { fullName: true } },
         manager: { select: { fullName: true } },
         contract: {

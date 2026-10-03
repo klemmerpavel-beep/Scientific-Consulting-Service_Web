@@ -130,8 +130,10 @@ function eventLine(
     const where = stage === undefined ? 'Этап' : `Этап ${stage.position} «${stage.title}»`;
     if (to === null) return `${where} — состояние изменено`;
     // Переход описан словами: знак-стрелка — украшение, а правило облика
-    // требует штриховых значков, не символов.
-    return from === null ? `${where} — ${to}` : `${where} — ${to} (было «${from}»)`;
+    // требует штриховых значков, не символов. Причина перехода — следом
+    // (решение Р-288).
+    const line = from === null ? `${where} — ${to}` : `${where} — ${to} (было «${from}»)`;
+    return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
   }
 
   if (kind === 'PROJECT_STATUS_CHANGED') {
@@ -522,6 +524,14 @@ export default async function ProjectScreen({
           actionHref={first === null ? null : `/cabinet/stages/${first.id}`}
           waiting={forClient ? first !== null : undefined}
           projectStatus={project.status}
+          turnViewer={
+            actor.role === 'EXPERT'
+              ? 'expert'
+              : actor.role === 'HEAD' && project.managerId !== actor.id
+                ? 'foreign-head'
+                : 'curator'
+          }
+          hasExpert={project.expertId !== null || (project.expertNameRaw ?? '').trim() !== ''}
         />
 
       {/* Две колонки, а не три: колонка «Материалы» с панели снята по

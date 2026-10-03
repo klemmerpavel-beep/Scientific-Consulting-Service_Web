@@ -21,6 +21,7 @@ import {
   formatSize,
   plural,
   type StageStateKey,
+  turnLabel,
 } from '../../../../components/cabinet/ui';
 import { SANS } from '../../../../components/cabinet/tokens';
 import { can, presentReturnText } from '../../../../lib/cabinet/access';
@@ -49,14 +50,6 @@ import {
 export const dynamic = 'force-dynamic';
 
 /** Переходы, которые менеджер может выполнить с этого состояния. */
-/** Чей сейчас ход — тем же языком, что на сводке (решение Р-199). */
-const TURN_BY_STATE: Partial<Record<StageStateKey, string>> = {
-  NOT_STARTED: 'ход за вами: этап не начат',
-  IN_PROGRESS: 'ход за исполнителем',
-  AWAITING_CLIENT: 'ход за клиентом',
-  IN_APPROVAL: 'ход за клиентом: ждёт согласования',
-  DONE: 'этап закрыт',
-};
 
 /** Что делать куратору в этом состоянии этапа. */
 const STAFF_TODO: Record<StageStateKey, string> = {
@@ -242,7 +235,14 @@ export default async function StageScreen({
               marginBottom: 14,
             }}
           >
-            <span>{TURN_BY_STATE[state] ?? 'ход за практикой'}</span>
+            {/* Та же подпись хода, что на шкале и на сводке (решение Р-288). */}
+            <span>
+              {turnLabel(
+                state,
+                actor.role === 'HEAD' && stage.project.managerId !== actor.id ? 'foreign-head' : 'curator',
+                stage.project.expertId !== null,
+              )}
+            </span>
             {late === null ? null : (
               <span style={{ color: 'var(--pd-ink)', fontWeight: 600 }}>
                 просрочено {late} {plural(late, 'день', 'дня', 'дней')}
