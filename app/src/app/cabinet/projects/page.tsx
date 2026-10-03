@@ -37,7 +37,7 @@ import {
   type ProjectFilter,
 } from '../../../lib/cabinet/queries';
 import { daysPast } from '../../../lib/cabinet/clock';
-import { can } from '../../../lib/cabinet/access';
+import { can, staffExpertLine } from '../../../lib/cabinet/access';
 import { currentActor } from '../../../lib/cabinet/session';
 
 export const dynamic = 'force-dynamic';
@@ -407,6 +407,8 @@ export default async function ProjectsScreen({
                 ? null
                 : `${newMessages} ${plural(newMessages, 'новое сообщение', 'новых сообщения', 'новых сообщений')}`,
               forClient ? null : project.client.fullName,
+              // Исполнитель на виду у практики (требование М-16, ОМ-23).
+              forClient || forExpert ? null : staffExpertLine(project.expert, project.expertNameRaw),
             ].filter((fact) => fact !== null);
 
             const waiting = onPage.get(project.code) ?? null;

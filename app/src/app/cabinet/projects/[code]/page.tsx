@@ -5,6 +5,7 @@ import ActionError from '../../../../components/cabinet/ActionError';
 import { AccessLink } from '../../../../components/cabinet/AccessLink';
 import Shell from '../../../../components/cabinet/Shell';
 import {
+  Notice,
   Board,
   BoardColumn,
   Button,
@@ -38,6 +39,7 @@ import { SANS } from '../../../../components/cabinet/tokens';
 import {
   CLOSED_FOR_PRACTICE,
   can,
+  staffExpertLine,
   curatorLine,
   EXPERT_ROLE_LABEL,
   expertLine,
@@ -57,6 +59,7 @@ import { daysPast } from '../../../../lib/cabinet/clock';
 import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import {
   curators,
+  executorNames,
   experts,
   projectByCode,
   projectMaterials,
@@ -115,8 +118,16 @@ function eventLine(
   materials: readonly { id: string; title: string }[],
   staff: boolean,
   actor: Actor,
+  executors: ReadonlyMap<string, string> = new Map(),
 ): string {
   const data = (payload ?? {}) as Record<string, unknown>;
+  // Назначение исполнителя куратору и руководителю — с именем, снятие —
+  // словами (требование М-16, ОМ-24, решение Р-298).
+  if (kind === 'EXPERT_ASSIGNED' && (actor.role === 'MANAGER' || actor.role === 'HEAD')) {
+    if (data.expertId === null) return 'Исполнитель снят';
+    const name = typeof data.expertId === 'string' ? executors.get(data.expertId) : undefined;
+    return name === undefined ? 'Назначен исполнитель' : `Назначен исполнитель: ${name}`;
+  }
   const stage = stages.find((item) => item.id === data.stageId);
   const material = materials.find((item) => item.id === data.materialId);
 
@@ -371,11 +382,26 @@ export default async function ProjectScreen({
       };
     });
 
+  const executors = await executorNames(
+    actor,
+    project.events
+      .filter((event) => event.kind === 'EXPERT_ASSIGNED')
+      .map((event) => (event.payload as { expertId?: unknown } | null)?.expertId)
+      .filter((id): id is string => typeof id === 'string'),
+  );
   const events = project.events
     .filter((event) => !forClient || !CLIENT_HIDDEN_EVENTS.has(event.kind))
     .map((event) => ({
       id: event.id,
-      line: eventLine(event.kind, event.payload, project.stages, withMaterials?.materials ?? [], staff, actor),
+      line: eventLine(
+        event.kind,
+        event.payload,
+        project.stages,
+        withMaterials?.materials ?? [],
+        staff,
+        actor,
+        executors,
+      ),
       at: `${formatDay(event.createdAt)}, ${formatTime(event.createdAt)}`,
       who:
         event.actor === null
@@ -399,11 +425,16 @@ export default async function ProjectScreen({
     // Куратор — с регалиями, эксперт — ролью и регалиями без ФИО и
     // контактов; пустые части не выводятся (требование Т-11, Р-297).
     { term: 'Куратор', value: curatorLine(project.manager) },
+    // Практике — исполнитель по имени и с отметкой о договоре поручения
+    // (требование М-16, решение Р-298); клиенту — роль и регалии (Р-297).
     project.expert === null
       ? null
       : {
           term: expertRoleLabel(project.expertRole),
-          value: expertLine(project.expert.expertProfile) || 'назначен',
+          value:
+            actor.role === 'MANAGER' || actor.role === 'HEAD'
+              ? `${project.expert.fullName}${project.expert.expertProfile?.ndaSignedAt == null ? ' · без договора поручения' : ''}`
+              : expertLine(project.expert.expertProfile) || 'назначен',
         },
   ].filter((row) => row !== null);
 
@@ -569,6 +600,12 @@ export default async function ProjectScreen({
           actionHref={first === null ? null : `/cabinet/stages/${first.id}`}
           waiting={forClient ? first !== null : undefined}
           projectStatus={project.status}
+          // Исполнитель под шкалой — у практики (требование М-16, ОМ-23).
+          executor={
+            actor.role === 'MANAGER' || actor.role === 'HEAD'
+              ? staffExpertLine(project.expert, project.expertNameRaw)
+              : null
+          }
           turnViewer={
             actor.role === 'EXPERT'
               ? 'expert'
@@ -886,6 +923,17 @@ export default async function ProjectScreen({
                       </option>
                     ))}
                   </Select>
+                  {/* Назначен без договора поручения: работа молча вставала —
+                      эксперт не видел материалов (требование М-16, Р-298). */}
+                  {project.expert !== null && project.expert.expertProfile?.ndaSignedAt == null ? (
+                    <Notice tone="quiet" role="status">
+                      {`${project.expert.fullName} назначен без договора поручения: материалов клиента он не увидит, пока руководитель не отметит договор. ${
+                        actor.role === 'MANAGER'
+                          ? 'Руководителю отправлен вопрос.'
+                          : 'Отметить договор можно в «Учётных записях».'
+                      }`}
+                    </Notice>
+                  ) : null}
                   {/* Роль эксперта в работе — так его видит клиент вместо
                       ФИО (требование Т-11, О-10, решение Р-297). */}
                   <Select

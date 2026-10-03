@@ -24,7 +24,12 @@ import {
   turnLabel,
 } from '../../../../components/cabinet/ui';
 import { SANS } from '../../../../components/cabinet/tokens';
-import { can, contributionRefusal, presentReturnText } from '../../../../lib/cabinet/access';
+import {
+  can,
+  contributionRefusal,
+  presentReturnText,
+  staffExpertLine,
+} from '../../../../lib/cabinet/access';
 import { autoAcceptEnabled, formatDay } from '../../../../lib/cabinet/approval';
 import { approvalStaffLine } from '../../../../lib/cabinet/approval-text';
 import { formDraft } from '../../../../lib/cabinet/flash';
@@ -166,10 +171,12 @@ export default async function StageScreen({
         // строкой ниже, оно занимало ярус и ничего не добавляло
         // (решение Р-206). Состав привлечённых специалистов клиенту не
         // показывается: для него работу ведёт куратор (решение Р-140).
+        // Исполнитель — работы, а не этапа: поле этапа не заполнялось, и
+        // строка пустовала (требование М-16, решение Р-298).
         note={
-          stage.expert === null || actor.role === 'CLIENT'
+          actor.role === 'CLIENT' || actor.role === 'EXPERT'
             ? null
-            : `исполнитель ${stage.expert.fullName}`
+            : staffExpertLine(stage.project.expert, stage.project.expertNameRaw)
         }
         // Просрочка называется всем ролям, а не только куратору: эксперт
         // не узнавал о сорванном сроке своего же этапа (решение Р-206).

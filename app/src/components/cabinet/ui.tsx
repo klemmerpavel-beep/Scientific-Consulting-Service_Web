@@ -2216,6 +2216,7 @@ export function ProgressPanel({
   projectStatus,
   turnViewer,
   hasExpert,
+  executor,
   style,
 }: {
   done: number;
@@ -2241,6 +2242,8 @@ export function ProgressPanel({
   /** Кто смотрит и назначен ли эксперт — для подписи хода (Р-288). */
   turnViewer?: TurnViewer;
   hasExpert?: boolean;
+  /** Исполнитель работы — практике, в нижней строке (М-16, Р-298). */
+  executor?: string | null;
   style?: CSSProperties;
 }) {
   const share = total === 0 ? 0 : Math.round((done / total) * 100);
@@ -2357,6 +2360,7 @@ export function ProgressPanel({
             {projectLate ? ' · прошёл' : ''}
           </span>
         )}
+        {executor == null ? null : <span>{executor}</span>}
       </div>
     </section>
   );

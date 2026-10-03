@@ -531,6 +531,32 @@ export async function assignExpert(
     projectId,
     payload: { from: ref.expertId, to: expertId },
   });
+
+  // Эксперт без договора поручения материалов не увидит: руководитель
+  // получает вопрос сам, а не узнаёт о нём от куратора (требование М-16,
+  // ОМ-25, решение Р-298). Назначил руководитель — он и так знает.
+  if (expertId !== null && actor.role === 'MANAGER') {
+    const expert = await prisma.user.findUnique({
+      where: { id: expertId },
+      select: { fullName: true, expertProfile: { select: { ndaSignedAt: true } } },
+    });
+    if (expert !== null && (expert.expertProfile?.ndaSignedAt ?? null) === null) {
+      const heads = await prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
+      for (const head of heads) {
+        await enqueue(prisma, {
+          userId: head.id,
+          projectId,
+          eventKind: 'NDA_NEEDED',
+          subject: `Нужен договор поручения: ${expert.fullName}, работа ${project.code}`,
+          body:
+            `Куратор назначил эксперта ${expert.fullName} на работу ${project.code} — ${project.title}.\n` +
+            'Договора поручения обработки персональных данных с ним нет: материалы клиента ему закрыты.\n' +
+            'Отметить договор можно в «Учётных записях».',
+          dedupKey: `nda-needed:${projectId}:${expertId}:${head.id}`,
+        });
+      }
+    }
+  }
   return project;
 }
 

@@ -22,7 +22,8 @@ export type EventKind =
   | 'STAGE_APPROVED'
   | 'STAGE_RETURNED'
   | 'CLIENT_ACCESS_OPENED'
-  | 'VERSION_REJECTED';
+  | 'VERSION_REJECTED'
+  | 'NDA_NEEDED';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -66,6 +67,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   STAGE_RETURNED: 'этап возвращён с замечаниями',
   CLIENT_ACCESS_OPENED: 'куратор открыл вход клиенту',
   VERSION_REJECTED: 'версия не опубликована',
+  NDA_NEEDED: 'нужен договор поручения',
 };
 
 /**

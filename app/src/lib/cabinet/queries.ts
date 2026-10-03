@@ -117,6 +117,8 @@ export async function listProjects(
     include: {
       serviceType: { select: { name: true } },
       client: { select: { fullName: true } },
+      // Исполнитель — в строке фактов у практики (требование М-16, Р-298).
+      expert: { select: { fullName: true, role: true, expertProfile: { select: { ndaSignedAt: true } } } },
       stages: { orderBy: { position: 'asc' } },
       // Число материалов показывается прямо в плашке перечня: сколько по
       // работе приложено, человек должен видеть, не заходя внутрь
@@ -135,7 +137,7 @@ export async function listProjects(
     },
   });
 
-  return { rows, total, page: current, pages, all, filter: applied };
+  return { rows: withoutExpertNames(actor, rows), total, page: current, pages, all, filter: applied };
 }
 
 export async function projectByCode(actor: Actor, code: string) {
@@ -194,12 +196,16 @@ export async function stageById(actor: Actor, stageId: string) {
           expertId: true,
           // Роль эксперта в работе — подпись его версий клиенту (Р-297).
           expertRole: true,
+          // Исполнитель работы — в шапке этапа у практики; поле этапа
+          // скрыто (требование М-16, решение Р-298).
+          expertNameRaw: true,
+          expert: { select: { fullName: true, role: true, expertProfile: { select: { ndaSignedAt: true } } } },
           // Есть ли у клиента вход: без него срок согласования не идёт
           // (требование М-13, решение Р-291).
           client: { select: { userId: true } },
         },
       },
-      expert: { select: { fullName: true, role: true, expertProfile: { select: { degree: true } } } },
+
       // Последний возврат клиентом: текст замечаний под шапкой этапа
       // (решение Р-281). Эксперту текст отдаёт `presentReturnText`.
       changes: {
@@ -1046,4 +1052,19 @@ export async function createCabinetRequest(
   }
 
   return { id: lead.id, authorName: user.fullName, filesLost };
+}
+
+/**
+ * Имена назначенных исполнителей для истории работы — только куратору и
+ * руководителю (требование М-16, ОМ-24, решение Р-298). Имя берётся по
+ * идентификатору при показе и в событие не пишется: иначе оно пережило бы
+ * обезличивание.
+ */
+export async function executorNames(actor: Actor, ids: readonly string[]): Promise<ReadonlyMap<string, string>> {
+  if (ids.length === 0 || !can(actor, 'PROJECT_ASSIGN_EXPERT')) return new Map();
+  const rows = await prisma.user.findMany({
+    where: { id: { in: [...new Set(ids)] }, role: 'EXPERT' },
+    select: { id: true, fullName: true },
+  });
+  return new Map(rows.map((row) => [row.id, row.fullName]));
 }

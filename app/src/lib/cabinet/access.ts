@@ -597,3 +597,19 @@ export function withoutExpertNames<T>(viewer: Actor, value: T): T {
   };
   return walk(value) as T;
 }
+
+/**
+ * Исполнитель работы для практики: «эксперт — ФИО · без договора
+ * поручения» (требование М-16, решение Р-298). Клиенту не показывается.
+ */
+export function staffExpertLine(
+  expert: { readonly fullName: string; readonly expertProfile: { readonly ndaSignedAt: Date | null } | null } | null,
+  expertNameRaw?: string | null,
+): string {
+  if (expert !== null) {
+    const nda = expert.expertProfile?.ndaSignedAt ?? null;
+    return `эксперт — ${expert.fullName}${nda === null ? ' · без договора поручения' : ''}`;
+  }
+  const raw = (expertNameRaw ?? '').trim();
+  return raw === '' ? 'эксперт не назначен' : `эксперт — ${raw}`;
+}

@@ -17,6 +17,7 @@ import {
   expertLine,
   expertRoleLabel,
   presentAuthor,
+  staffExpertLine,
   withoutExpertNames,
   ensure,
   scopeVersions,
@@ -556,5 +557,17 @@ describe('представление участника работы (Т-11, Р-
     assert.ok(text.includes('Нечаева'), 'куратор пропал из данных клиента');
     assert.ok(client.materials[0]!.versions[0]!.uploadedAt instanceof Date, 'дата испорчена');
     assert.equal(withoutExpertNames(as('MANAGER'), data), data);
+  });
+});
+
+describe('исполнитель на виду у практики (М-16, Р-298)', () => {
+  it('ФИО и отметка о договоре; книга заказов; не назначен', () => {
+    assert.equal(
+      staffExpertLine({ fullName: 'Григорьев А. Э.', expertProfile: { ndaSignedAt: null } }),
+      'эксперт — Григорьев А. Э. · без договора поручения',
+    );
+    assert.equal(staffExpertLine({ fullName: 'Григорьев А. Э.', expertProfile: { ndaSignedAt: NDA } }), 'эксперт — Григорьев А. Э.');
+    assert.equal(staffExpertLine(null, 'Петров (книга)'), 'эксперт — Петров (книга)');
+    assert.equal(staffExpertLine(null, '  '), 'эксперт не назначен');
   });
 });

@@ -72,11 +72,12 @@ describe('регалии и роль эксперта', { skip: !enabled }, asyn
 
   after(async () => {
     await prisma.projectEvent.deleteMany({ where: { projectId: ids.project } });
+    await prisma.notificationOutbox.deleteMany({ where: { projectId: ids.project } });
     await prisma.auditEvent.deleteMany({ where: { projectId: ids.project } });
     await prisma.project.deleteMany({ where: { id: ids.project } });
     await prisma.clientProfile.deleteMany({ where: { id: ids.client } });
     await prisma.serviceType.deleteMany({ where: { id: ids.type } });
-    const users = [ids.head!, ids.manager!, ids.clientUser!, ids.expert!];
+    const users = [ids.head!, ids.manager!, ids.clientUser!, ids.expert!, ...(ids.fresh ? [ids.fresh] : [])];
     await prisma.auditEvent.deleteMany({ where: { actorId: { in: users } } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
   });
@@ -109,6 +110,33 @@ describe('регалии и роль эксперта', { skip: !enabled }, asyn
       projects.assignExpert(curator(), ids.project!, ids.expert!, 'BOSS' as never),
       /Неизвестная роль/u,
     );
+  });
+
+  it('эксперт без договора: вопрос руководителю, если назначил куратор (М-16, Р-298)', async () => {
+    const { executorNames } = await import('../src/lib/cabinet/queries.ts');
+    const fresh = await prisma.user.create({
+      data: { email: `rg-nonda-${stamp}@example.org`, fullName: 'Петров Без Договора', role: 'EXPERT' },
+    });
+    ids.fresh = fresh.id;
+    await projects.assignExpert(curator(), ids.project!, fresh.id);
+    const asked = await prisma.notificationOutbox.findMany({
+      where: { projectId: ids.project, userId: ids.head, eventKind: 'NDA_NEEDED', channel: 'EMAIL' },
+    });
+    assert.equal(asked.length, 1);
+    assert.match(asked[0]!.subject, /Нужен договор поручения: Петров Без Договора, работа PD-RG-/u);
+
+    // Назначил руководитель — вопроса себе нет.
+    await projects.assignExpert(curator(), ids.project!, ids.expert!);
+    await projects.assignExpert(head(), ids.project!, fresh.id);
+    assert.equal(
+      await prisma.notificationOutbox.count({ where: { projectId: ids.project, eventKind: 'NDA_NEEDED' } }),
+      1,
+    );
+
+    // Имена исполнителей для истории — практике, клиенту — нет.
+    assert.equal((await executorNames(curator(), [fresh.id])).get(fresh.id), 'Петров Без Договора');
+    assert.equal((await executorNames(client(), [fresh.id])).size, 0);
+    await projects.assignExpert(head(), ids.project!, ids.expert!, 'METHODOLOGIST');
   });
 
   it('данные экрана клиента — без ФИО эксперта; куратор — со степенью', async () => {
