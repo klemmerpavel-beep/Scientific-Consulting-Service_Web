@@ -79,6 +79,7 @@ import {
   declineLead,
   setProjectStatus,
   setStageState,
+  editStageOutcome,
   returnStage,
   acknowledgeReturn,
 } from '../../lib/cabinet/projects';
@@ -218,7 +219,34 @@ export async function changeStageState(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сменить состояние этапа');
   }
-  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
+  // Набранный итог возвращается в форму вместе с причиной отказа
+  // (решения Р-279, Р-289).
+  if (failure !== null) {
+    redirect(
+      await withError(
+        `/cabinet/stages/${stageId}`,
+        failure,
+        to === 'IN_APPROVAL' ? { draft: { outcome: reason } } : {},
+      ),
+    );
+  }
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Правка итога этапа на согласовании (требование Т-14, решение Р-289). */
+export async function saveStageOutcome(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const text = String(form.get('outcome') ?? '');
+  let failure: string | null = null;
+  try {
+    await editStageOutcome(actor, stageId, text);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить итог этапа');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { outcome: text } }));
+  }
   redirect(`/cabinet/stages/${stageId}`);
 }
 

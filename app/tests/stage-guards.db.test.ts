@@ -406,9 +406,22 @@ describe('этапы и работы', { skip: !enabled }, async () => {
         uploadedById: ids.manager!,
       },
     });
-    await projects.setStageState(curator(), stage.id, 'IN_APPROVAL');
+    await projects.setStageState(curator(), stage.id, 'IN_APPROVAL', 'Замечания учтены: добавлено сравнение');
     const resubmitted = await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } });
     assert.equal(resubmitted.returnedAt, null, 'пометка возврата пережила повторную сдачу');
+    // Итог сдачи — в поле этапа и в письме клиенту (Т-14, Р-289).
+    assert.equal(resubmitted.outcome, 'Замечания учтены: добавлено сравнение');
+    const ready = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId, userId: owner.id, eventKind: 'STAGE_IN_APPROVAL', channel: 'EMAIL' },
+    });
+    assert.match(ready.body, /Замечания учтены: добавлено сравнение/u, 'итог не ушёл в письмо');
+    // Итог правит куратор, не снимая этап с согласования; клиент — нет.
+    await assert.rejects(projects.editStageOutcome(owner, stage.id, 'Иначе'), /не разрешено/u);
+    await assert.rejects(projects.editStageOutcome(curator(), stage.id, '  '), /не может быть пустым/u);
+    await projects.editStageOutcome(curator(), stage.id, 'Сравнение добавлено; дальше — глава 2');
+    const edited = await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } });
+    assert.equal(edited.state, 'IN_APPROVAL');
+    assert.equal(edited.outcome, 'Сравнение добавлено; дальше — глава 2');
   });
 
   it('согласование клиентом отмечается способом перехода (Р-281)', async () => {

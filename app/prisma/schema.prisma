@@ -494,6 +494,11 @@ model Stage {
   /// название, и клиент догадывался о содержании сам (решение Р-190).
   summary String? @db.Text
 
+  /// Итог этапа: что сделано и что дальше. Куратор пишет его при переводе
+  /// на согласование; клиент читает его над кнопками и в письме
+  /// (требование Т-14, решение Р-289). Обезличивание затирает поле.
+  outcome String? @db.Text
+
   expertId String?
   expert   User?   @relation("StageExpert", fields: [expertId], references: [id], onDelete: SetNull)
 

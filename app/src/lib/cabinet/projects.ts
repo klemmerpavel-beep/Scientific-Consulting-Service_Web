@@ -809,6 +809,38 @@ function dueChange(from: Date | null, to: Date | null) {
   return a === b ? {} : { dueFrom: a ?? 'без срока', dueTo: b ?? 'без срока' };
 }
 
+/** Предел итога этапа: письмо и карточка согласования, а не отчёт. */
+export const OUTCOME_LIMIT = 2000;
+
+/**
+ * Правка итога этапа на согласовании: куратор уточняет текст, не снимая
+ * этап с согласования (требование Т-14, решение Р-289). Только у
+ * действующей работы — как и любой перевод этапа.
+ */
+export async function editStageOutcome(actor: Actor, stageId: string, text: string) {
+  const stage = await prisma.stage.findUnique({
+    where: { id: stageId },
+    include: {
+      project: {
+        select: { id: true, clientId: true, managerId: true, expertId: true, status: true },
+      },
+    },
+  });
+  if (stage === null) throw new Error('Этап не найден');
+  ensure(actor, 'STAGE_SET_STATE', stage.project);
+  if (stage.project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
+  const outcome = text.trim();
+  if (outcome === '') throw new Error('Итог этапа не может быть пустым: клиент решает о согласовании по нему');
+  if (outcome.length > OUTCOME_LIMIT) {
+    throw new Error(`Итог этапа длиннее ${OUTCOME_LIMIT} знаков: сократите его`);
+  }
+  const saved = await prisma.stage.updateMany({
+    where: { id: stageId, state: 'IN_APPROVAL' },
+    data: { outcome },
+  });
+  if (saved.count === 0) throw new Error('Этап уже не на согласовании: обновите страницу');
+}
+
 export async function setStageState(
   actor: Actor,
   stageId: string,
@@ -844,6 +876,19 @@ export async function setStageState(
       'Остановка этапа без причины не принимается: причину читает клиент, ' +
         'и от неё зависит, что и когда он пришлёт',
     );
+  }
+  // Без итога клиент получал письмо «посмотрите материалы» и решал о
+  // приёмке, не зная, что сделано и что будет дальше (требование Т-14,
+  // решение Р-289).
+  const outcome = (reason ?? '').trim();
+  if (to === 'IN_APPROVAL' && outcome === '') {
+    throw new Error(
+      'На согласование этап уходит с итогом: напишите, что сделано и что дальше — ' +
+        'клиент решает о согласовании по нему',
+    );
+  }
+  if (to === 'IN_APPROVAL' && outcome.length > OUTCOME_LIMIT) {
+    throw new Error(`Итог этапа длиннее ${OUTCOME_LIMIT} знаков: сократите его`);
   }
   // На согласование уходит только этап, к которому приложен материал:
   // клиент получает письмо «посмотрите материалы и подтвердите», и пустой
@@ -881,7 +926,7 @@ export async function setStageState(
         completedAt: to === 'DONE' ? now : null,
         // Повторная сдача гасит пометку «возвращён с замечаниями» и дело
         // куратора: замечания отработаны (решение Р-281).
-        ...(to === 'IN_APPROVAL' ? { returnedAt: null, returnAckAt: null } : {}),
+        ...(to === 'IN_APPROVAL' ? { returnedAt: null, returnAckAt: null, outcome } : {}),
       },
     });
     if (claimed.count === 0) {
@@ -922,7 +967,14 @@ export async function setStageState(
         // Причина — в данных события: история работы называет её рядом с
         // переходом (требование М-17, решение Р-288). Обезличивание
         // затирает данные событий целиком (Р-234).
-        payload: { stageId, from, to, ...((reason ?? '').trim() === '' ? {} : { reason: (reason ?? '').trim() }) },
+        // Итог сдачи в историю работы не идёт: он длинный и стоит в
+        // карточке согласования и в истории этапа (решение Р-289).
+        payload: {
+          stageId,
+          from,
+          to,
+          ...((reason ?? '').trim() === '' || to === 'IN_APPROVAL' ? {} : { reason: (reason ?? '').trim() }),
+        },
       },
     });
 
@@ -948,7 +1000,8 @@ export async function setStageState(
             `Проект ${project?.code} — ${project?.title}.\n` +
             (awaiting
               ? `${(reason ?? '').trim()}\n`
-              : 'Посмотрите последнюю версию материалов и комментарии к ней.\n') +
+              : `Итог этапа: что сделано и что дальше.\n${outcome}\n\n` +
+                'Посмотрите последнюю версию материалов и согласуйте этап или верните его с замечаниями.\n') +
             'Открыть этап можно в личном кабинете.',
           dedupKey: `stage:${stageId}:${to.toLowerCase()}:${now.toISOString().slice(0, 16)}`,
         });

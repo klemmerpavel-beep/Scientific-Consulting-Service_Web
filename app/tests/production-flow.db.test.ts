@@ -347,7 +347,12 @@ describe('сквозной контур', { skip: !enabled }, async () => {
     assert.match(waiting.blockedReason ?? '', /протокол испытаний/);
 
     await projects.setStageState(manager, ids.stage, 'IN_PROGRESS');
-    await projects.setStageState(manager, ids.stage, 'IN_APPROVAL');
+    await projects.setStageState(
+      manager,
+      ids.stage,
+      'IN_APPROVAL',
+      'Обзор литературы готов; дальше — методика расчёта.',
+    );
 
     const done = await projects.setStageState(client, ids.stage, 'DONE');
     assert.equal(done.state, 'DONE');

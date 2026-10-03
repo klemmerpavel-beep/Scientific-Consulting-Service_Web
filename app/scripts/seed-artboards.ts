@@ -514,6 +514,10 @@ async function main() {
       offset: 20,
       summary:
         'Получены расчётные зависимости и проведена проверка на контрольном примере. Этап закончится вашим согласованием редакции.',
+      // Итог сдачи — над кнопками согласования (требование Т-14, Р-289).
+      outcome:
+        'Расчётная часть написана: зависимости выведены, контрольный пример сошёлся с опубликованными данными. ' +
+        'Дальше — апробация: после согласования готовим статью и доклад.',
     },
     {
       title: 'Апробация: статья и конференция',
@@ -545,6 +549,7 @@ async function main() {
         startedAt: stage.state === 'NOT_STARTED' ? null : day(stage.offset + 20),
         completedAt: stage.state === 'DONE' ? day(stage.offset) : null,
         awaitingClientSince: stage.state === 'AWAITING_CLIENT' ? day(18) : null,
+        outcome: 'outcome' in stage ? stage.outcome : null,
       },
       // Этап показательной работы переписывается целиком при каждом
       // наполнении: состояние, срок и исполнитель — то, что снимок
@@ -558,6 +563,7 @@ async function main() {
         startedAt: stage.state === 'NOT_STARTED' ? null : day(stage.offset + 20),
         completedAt: stage.state === 'DONE' ? day(stage.offset) : null,
         awaitingClientSince: stage.state === 'AWAITING_CLIENT' ? day(18) : null,
+        outcome: 'outcome' in stage ? stage.outcome : null,
       },
       select: { id: true },
     });

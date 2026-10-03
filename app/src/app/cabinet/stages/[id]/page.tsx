@@ -41,6 +41,7 @@ import {
   approveStage,
   changeStageState,
   returnStageWithRemarks,
+  saveStageOutcome,
   commentOnVersion,
   decideOnComment,
   moveStageDue,
@@ -106,8 +107,9 @@ export default async function StageScreen({
   const mayReturn = live && state === 'IN_APPROVAL' && can(actor, 'STAGE_RETURN', ref);
   // Пометка «возвращён с замечаниями» стоит до новой сдачи этапа.
   const lastReturn = stage.returnedAt === null ? undefined : stage.changes[0];
-  // Отказ возврата возвращает набранные замечания в поле (решение Р-279).
-  const returnDraft = (await formDraft((await searchParams).error)) ?? {};
+  // Отказ возвращает набранные замечания или итог этапа в поле
+  // (решения Р-279, Р-289).
+  const draft = (await formDraft((await searchParams).error)) ?? {};
   const returnText = lastReturn === undefined ? null : presentReturnText(actor, lastReturn);
   // На закрытом этапе клиенту не предлагается приложить «первый» материал:
   // этап сдан, и новая загрузка в него ничего не сдвинет (решение Р-206).
@@ -279,6 +281,25 @@ export default async function StageScreen({
               </FormActions>
             </Form>
           </Disclosure>
+          {/* Итог правится, не снимая этап с согласования (решение Р-289). */}
+          {state === 'IN_APPROVAL' ? (
+            <Disclosure title="Поправить итог этапа" style={{ marginTop: 12 }}>
+              <Form action={saveStageOutcome}>
+                <input type="hidden" name="stageId" value={stage.id} />
+                <Field
+                  label="Итог этапа: что сделано и что дальше"
+                  name="outcome"
+                  multiline
+                  required
+                  defaultValue={draft.outcome ?? stage.outcome ?? ''}
+                  hint="Итог клиент читает над кнопками согласования."
+                />
+                <FormActions>
+                  <Button tone="quiet">Сохранить итог</Button>
+                </FormActions>
+              </Form>
+            </Disclosure>
+          ) : null}
         </Card>
       ) : null}
 
@@ -287,6 +308,18 @@ export default async function StageScreen({
           <Heading level={2} size={3} style={{ marginBottom: 8 }}>
             Этап ждёт вашего согласования
           </Heading>
+          {/* Итог — над кнопками: клиент решает о согласовании, зная, что
+              сделано и что дальше (требование Т-14, решение Р-289). */}
+          {(stage.outcome ?? '').trim() === '' ? null : (
+            <>
+              <Text muted size={13} style={{ marginBottom: 4 }}>
+                Итог этапа: что сделано и что дальше
+              </Text>
+              <Text size={15} style={{ whiteSpace: 'pre-wrap', marginBottom: 14 }}>
+                {stage.outcome}
+              </Text>
+            </>
+          )}
           <Text style={{ marginBottom: 16 }}>
             Посмотрите последнюю версию материалов и комментарии. После согласования этап
             закрывается, и работа переходит к следующему.
@@ -309,7 +342,7 @@ export default async function StageScreen({
                   scope="return"
                   multiline
                   required
-                  defaultValue={returnDraft.remarks ?? ''}
+                  defaultValue={draft.remarks ?? ''}
                   hint="Замечания увидит куратор; этап вернётся в работу."
                 />
                 <FormActions>
@@ -348,12 +381,34 @@ export default async function StageScreen({
                 </FormActions>
               </Form>
             ))}
+          {/* На согласование — с итогом: его клиент читает над кнопками и
+              в письме (требование Т-14, решение Р-289). Подставляется
+              прежний итог: после возврата его достаточно поправить. */}
+          {stageStateButtons(state)
+            .filter((next) => next === 'IN_APPROVAL' && stage.materials.length > 0)
+            .map((next) => (
+              <Form key={next} action={changeStageState} style={{ marginBottom: 16 }}>
+                <input type="hidden" name="stageId" value={stage.id} />
+                <input type="hidden" name="state" value={next} />
+                <Field
+                  label="Итог этапа: что сделано и что дальше"
+                  name="reason"
+                  scope="submit"
+                  multiline
+                  required
+                  defaultValue={draft.outcome ?? stage.outcome ?? ''}
+                  hint="Итог клиент читает над кнопками согласования и в письме."
+                />
+                <FormActions>
+                  <Button tone="quiet">Перевести в «{stageLabel(next, true)}»</Button>
+                </FormActions>
+              </Form>
+            ))}
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {/* На согласование — только с материалом: пустой этап клиенту
                 нечего посмотреть, и перевод отказал бы (решение Р-254). */}
             {stageStateButtons(state)
-              .filter((next) => next !== 'AWAITING_CLIENT')
-              .filter((next) => next !== 'IN_APPROVAL' || stage.materials.length > 0)
+              .filter((next) => next !== 'AWAITING_CLIENT' && next !== 'IN_APPROVAL')
               .map((next) => (
                 <Form key={next} action={changeStageState} inline>
                   <input type="hidden" name="stageId" value={stage.id} />
