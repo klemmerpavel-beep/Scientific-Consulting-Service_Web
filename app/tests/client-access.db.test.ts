@@ -129,4 +129,28 @@ describe('открыть клиенту вход', { skip: !enabled }, async () 
     const foreign = await work('D', ids.other!, `client-d-${stamp}@example.org`);
     await assert.rejects(openClientAccess(staff(ids.manager!, 'MANAGER'), foreign.projectId), AccessDenied);
   });
+
+  it('сессия по ссылке куратора помечена; согласование в ней — с пометкой (ОМ-3, Р-292)', async () => {
+    const { consumeLoginToken, resolveSession } = await import('../src/lib/cabinet/auth.ts');
+    const projectsLib = await import('../src/lib/cabinet/projects.ts');
+    const { projectId } = await work('E', ids.manager!, `client-e-${stamp}@example.org`);
+    const issued = await openClientAccess(staff(ids.manager!, 'MANAGER'), projectId, '127.0.0.1');
+    const value = decodeURIComponent(issued.link.split('/cabinet/enter/')[1]!);
+    const raw = await consumeLoginToken(value, '127.0.0.1', 'test');
+    assert.ok(raw !== null, 'ссылка куратора не открыла сессию');
+    const client = await resolveSession(raw!);
+    assert.equal(client?.viaStaffLink, true, 'сессия по ссылке куратора не помечена');
+
+    const stage = await prisma.stage.create({
+      data: { projectId, position: 1, title: 'Глава 1', state: 'IN_APPROVAL' },
+    });
+    await projectsLib.setStageState(client!, stage.id, 'DONE');
+    const change = await prisma.stageStateChange.findFirstOrThrow({ where: { stageId: stage.id } });
+    assert.equal(change.via, 'CLIENT_APPROVE');
+    assert.equal(change.reason, projectsLib.STAFF_LINK_NOTE);
+    const journal = await prisma.auditEvent.findFirstOrThrow({
+      where: { objectId: stage.id, action: 'STAGE_APPROVED' },
+    });
+    assert.equal((journal.payload as { staffLink?: boolean }).staffLink, true);
+  });
 });

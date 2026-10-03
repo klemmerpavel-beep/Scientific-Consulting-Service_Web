@@ -38,6 +38,11 @@ export interface Actor {
   readonly status: AccountStatus;
   readonly clientProfileId: string | null;
   readonly expertNdaSignedAt: Date | null;
+  /**
+   * Сессия открыта ссылкой, которую выдал сотрудник (ОМ-3, Р-292). Прав
+   * не меняет: согласование этапа в такой сессии записывается с пометкой.
+   */
+  readonly viaStaffLink?: boolean;
 }
 
 /** Реквизиты проекта, достаточные для решения о доступе. */

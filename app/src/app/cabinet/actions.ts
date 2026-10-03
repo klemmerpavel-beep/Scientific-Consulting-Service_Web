@@ -179,6 +179,26 @@ export async function approveStage(form: FormData): Promise<void> {
   redirect(`/cabinet/stages/${stageId}`);
 }
 
+/**
+ * Практика согласует этап за клиента — только с основанием (требование
+ * М-12, О-6, решение Р-292).
+ */
+export async function approveForClient(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const basis = String(form.get('basis') ?? '');
+  let failure: string | null = null;
+  try {
+    await setStageState(actor, stageId, 'DONE', basis);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось согласовать этап за клиента');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { basis } }));
+  }
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
 /** Клиент возвращает этап с замечаниями (требование Т-03, решение Р-281). */
 export async function returnStageWithRemarks(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();

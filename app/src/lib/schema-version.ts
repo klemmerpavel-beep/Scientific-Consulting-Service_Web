@@ -10,4 +10,4 @@
  * Проверка `schema-version.test.ts` не даёт забыть поднять имя вместе с
  * новой миграцией.
  */
-export const LATEST_MIGRATION = '20261003150000_approval_deadline';
+export const LATEST_MIGRATION = '20261003160000_staff_link_session';

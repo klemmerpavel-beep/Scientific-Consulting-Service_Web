@@ -270,7 +270,13 @@ export async function autoAcceptExpired(at: Date = new Date()): Promise<number> 
           projectId: stage.projectId,
           actorId: null,
           kind: 'STAGE_STATE_CHANGED',
-          payload: { stageId: stage.id, from: 'IN_APPROVAL', to: 'DONE', reason: AUTO_ACCEPT_NOTE },
+          payload: {
+            stageId: stage.id,
+            from: 'IN_APPROVAL',
+            to: 'DONE',
+            reason: AUTO_ACCEPT_NOTE,
+            via: 'AUTO_ACCEPT',
+          },
         },
       });
       const userId = stage.project.client.userId;

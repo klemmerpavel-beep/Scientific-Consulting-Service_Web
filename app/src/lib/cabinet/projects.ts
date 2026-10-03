@@ -846,6 +846,12 @@ function dueChange(from: Date | null, to: Date | null) {
   return a === b ? {} : { dueFrom: a ?? 'без срока', dueTo: b ?? 'без срока' };
 }
 
+/** Предел основания согласования за клиента (Р-292). */
+const BASIS_LIMIT = 500;
+
+/** Пометка согласования в сессии, открытой ссылкой сотрудника (ОМ-3). */
+export const STAFF_LINK_NOTE = 'Согласовано во входе по ссылке, которую выдал сотрудник';
+
 /** Предел итога этапа: письмо и карточка согласования, а не отчёт. */
 export const OUTCOME_LIMIT = 2000;
 
@@ -909,6 +915,20 @@ export async function setStageState(
   // Клиент после срока при включённом автозакрытии: этап принят по п. 7.3
   // оферты (Т-15, решение Р-290).
   if (action === 'STAGE_APPROVE' && actor.role === 'CLIENT') ensureApprovalOpen(stage.approvalDueOn);
+  // Практика согласует за клиента только с основанием: согласование
+  // закрывает этап по оферте, и клиент видит, на каком основании это
+  // сделано от его имени (требование М-12, О-6, решение Р-292).
+  const forClient = action === 'STAGE_APPROVE' && actor.role !== 'CLIENT';
+  if (forClient && (reason ?? '').trim() === '') {
+    throw new Error(
+      'Согласовать за клиента можно только с основанием: укажите, как клиент подтвердил согласие',
+    );
+  }
+  if (forClient && (reason ?? '').trim().length > BASIS_LIMIT) {
+    throw new Error(`Основание — не длиннее ${BASIS_LIMIT} знаков`);
+  }
+  const via =
+    action !== 'STAGE_APPROVE' ? 'MANUAL' : forClient ? 'STAFF_FOR_CLIENT' : 'CLIENT_APPROVE';
 
   const from = stage.state as StageState;
   if (!canTransition(from, to)) {
@@ -1006,10 +1026,33 @@ export async function setStageState(
         fromState: from,
         toState: to,
         actorId: actor.id,
-        reason: reason ?? null,
-        via: action === 'STAGE_APPROVE' && actor.role === 'CLIENT' ? 'CLIENT_APPROVE' : 'MANUAL',
+        // Согласование в сессии, открытой ссылкой сотрудника, — с пометкой
+        // для практики (ОМ-3, решение Р-292).
+        reason: via === 'CLIENT_APPROVE' && actor.viaStaffLink === true ? STAFF_LINK_NOTE : (reason ?? null),
+        via,
       },
     });
+
+    // Клиент узнаёт письмом, что этап согласован от его имени и на каком
+    // основании (требование М-12, решение Р-292).
+    if (forClient && stage.project.client.userId !== null) {
+      const project = await tx.project.findUnique({
+        where: { id: stage.projectId },
+        select: { code: true, title: true },
+      });
+      await enqueue(tx, {
+        userId: stage.project.client.userId,
+        projectId: stage.projectId,
+        eventKind: 'STAGE_APPROVED',
+        subject: `Этап «${stage.title}» согласован`,
+        body:
+          `Проект ${project?.code} — ${project?.title}.\n` +
+          `Этап «${stage.title}» согласован куратором по вашему подтверждению: ${(reason ?? '').trim()}.\n` +
+          'Если вы этого не подтверждали, напишите куратору в кабинете.\n' +
+          stageLink(stageId),
+        dedupKey: `stage:${stageId}:approved-for-client:${change.id}`,
+      });
+    }
 
     // Куратор узнаёт о приёмке этапа письмом: следующий этап и оплата
     // зависят от неё (требование Т-16, решение Р-282).
@@ -1041,6 +1084,9 @@ export async function setStageState(
           from,
           to,
           ...((reason ?? '').trim() === '' || to === 'IN_APPROVAL' ? {} : { reason: (reason ?? '').trim() }),
+          // Кто согласовал: история различает «согласован вами» и
+          // «согласован куратором по вашему подтверждению» (О-6, Р-292).
+          ...(via === 'MANUAL' ? {} : { via }),
         },
       },
     });
@@ -1091,7 +1137,12 @@ export async function setStageState(
     objectType: 'Stage',
     objectId: stageId,
     projectId: stage.projectId,
-    payload: { from, to },
+    payload: {
+      from,
+      to,
+      ...(via === 'MANUAL' ? {} : { via }),
+      ...(via === 'CLIENT_APPROVE' && actor.viaStaffLink === true ? { staffLink: true } : {}),
+    },
   });
   return saved;
 }

@@ -441,10 +441,26 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     const second = await prisma.stage.create({
       data: { projectId, position: 2, title: 'Глава 3', state: 'IN_APPROVAL' },
     });
-    await projects.setStageState(curator(), second.id, 'DONE');
+    // За клиента — только с основанием (М-12, О-6, Р-292).
+    await assert.rejects(projects.setStageState(curator(), second.id, 'DONE'), /только с основанием/u);
+    await assert.rejects(projects.setStageState(curator(), second.id, 'DONE', '   '), /только с основанием/u);
+    await projects.setStageState(curator(), second.id, 'DONE', 'Клиент подтвердил письмом 02.10');
     const own = await prisma.notificationOutbox.count({
       where: { projectId, userId: ids.manager!, eventKind: 'STAGE_APPROVED', body: { contains: 'Глава 3' } },
     });
     assert.equal(own, 0, 'куратору пришло письмо о собственном действии');
+    const forClient = await prisma.stageStateChange.findFirstOrThrow({ where: { stageId: second.id } });
+    assert.equal(forClient.via, 'STAFF_FOR_CLIENT');
+    assert.equal(forClient.reason, 'Клиент подтвердил письмом 02.10');
+    // Клиент получает письмо с основанием.
+    const letter = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId, userId: owner.id, eventKind: 'STAGE_APPROVED', channel: 'EMAIL' },
+    });
+    assert.match(letter.body, /согласован куратором по вашему подтверждению: Клиент подтвердил письмом 02\.10/u);
+    // История различает способ согласования.
+    const event = await prisma.projectEvent.findFirstOrThrow({
+      where: { projectId, kind: 'STAGE_STATE_CHANGED', payload: { path: ['stageId'], equals: second.id } },
+    });
+    assert.equal((event.payload as { via?: string }).via, 'STAFF_FOR_CLIENT');
   });
 });

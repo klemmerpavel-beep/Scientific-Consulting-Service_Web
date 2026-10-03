@@ -40,6 +40,7 @@ import {
 import { currentActor } from '../../../../lib/cabinet/session';
 import {
   acknowledgeStageReturn,
+  approveForClient,
   approveStage,
   changeStageState,
   returnStageWithRemarks,
@@ -331,7 +332,41 @@ export default async function StageScreen({
         </Card>
       ) : null}
 
-      {mayApprove ? (
+      {/* Практике — своя карточка: согласует клиент, а за него — только с
+          основанием, которое клиент увидит (требование М-12, Р-292). */}
+      {mayApprove && actor.role !== 'CLIENT' ? (
+        <Card style={{ marginBottom: 24 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+            {`Этап ждёт согласования клиента${
+              stage.approvalDueOn === null ? '' : ` · до ${formatDay(stage.approvalDueOn)}`
+            }`}
+          </Heading>
+          <Text style={{ marginBottom: 16 }}>
+            Согласует этап клиент. Согласовать за него можно, только если он подтвердил согласие вне
+            кабинета — письмом, в мессенджере или по телефону. Основание клиент увидит в истории
+            работы и в письме.
+          </Text>
+          <Disclosure title="Согласовать за клиента">
+            <Form action={approveForClient}>
+              <input type="hidden" name="stageId" value={stage.id} />
+              <Field
+                label="Основание"
+                name="basis"
+                scope="for-client"
+                required
+                placeholder="Клиент подтвердил письмом 02.10"
+                defaultValue={draft.basis ?? ''}
+                hint="Клиент прочитает: «Этап согласован куратором по вашему подтверждению: …»."
+              />
+              <FormActions>
+                <Button tone="quiet">Согласовать за клиента</Button>
+              </FormActions>
+            </Form>
+          </Disclosure>
+        </Card>
+      ) : null}
+
+      {mayApprove && actor.role === 'CLIENT' ? (
         <Card style={{ marginBottom: 24, borderColor: 'var(--pd-accent-edge)' }}>
           <Heading level={2} size={3} style={{ marginBottom: 8 }}>
             Этап ждёт вашего согласования

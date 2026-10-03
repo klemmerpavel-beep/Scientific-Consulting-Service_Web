@@ -237,7 +237,9 @@ export async function consumeLoginToken(
   });
   if (consumed.count !== 1) return null;
 
-  return createSession(token.userId, ip, userAgent);
+  // Ссылку выдал сотрудник: сессия помечается, и согласование этапа в ней
+  // записывается с пометкой (ОМ-3, решение Р-292).
+  return createSession(token.userId, ip, userAgent, { viaStaffLink: token.issuedById !== null });
 }
 
 /**
@@ -279,6 +281,7 @@ export async function createSession(
   userId: string,
   ip: string,
   userAgent: string | null,
+  options: { readonly viaStaffLink?: boolean } = {},
 ): Promise<string> {
   const raw = createSessionValue();
   await prisma.$transaction([
@@ -289,6 +292,7 @@ export async function createSession(
         expiresAt: new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000),
         ip,
         userAgent,
+        viaStaffLink: options.viaStaffLink ?? false,
       },
     }),
     // Отметка последнего входа — подпись на экранах учётных записей и
@@ -350,6 +354,7 @@ export async function resolveSession(raw: string | undefined): Promise<Actor | n
     status: user.status,
     clientProfileId: user.clientProfile?.id ?? null,
     expertNdaSignedAt: user.expertProfile?.ndaSignedAt ?? null,
+    viaStaffLink: session.viaStaffLink,
   };
 }
 

@@ -247,6 +247,9 @@ model LoginToken {
   expiresAt    DateTime
   usedAt       DateTime?
   requestIp    String?
+  /// Ссылку выдал сотрудник (М-03, «Выдать ссылку»), а не сам человек
+  /// запросил её на свою почту: сессия по ней помечается (ОМ-3, Р-292).
+  issuedById   String?
 
   @@index([userId])
   @@index([expiresAt])
@@ -279,6 +282,9 @@ model Session {
   revokedAt  DateTime?
   ip         String?
   userAgent  String?   @db.Text
+  /// Сессия открыта ссылкой, которую выдал сотрудник: согласование этапа
+  /// в ней записывается с пометкой (ОМ-3, решение Р-292).
+  viaStaffLink Boolean @default(false)
 
   @@index([userId])
   @@index([expiresAt])
@@ -540,8 +546,10 @@ model Stage {
 }
 
 /// История переходов состояния. Нужна аналитике длительностей и служит
-/// источником событий уведомлений. Согласование этапа клиентом — это
-/// переход IN_APPROVAL → DONE с автором-клиентом.
+/// источником событий уведомлений. Согласование этапа — переход
+/// IN_APPROVAL → DONE: клиентом (`CLIENT_APPROVE`), практикой по
+/// подтверждению клиента с основанием (`STAFF_FOR_CLIENT`, Р-292) или
+/// по истечении срока без автора (`AUTO_ACCEPT`, Р-290).
 model StageStateChange {
   id        String      @id @default(cuid())
   stageId   String

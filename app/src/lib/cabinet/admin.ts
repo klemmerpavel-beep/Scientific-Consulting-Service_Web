@@ -85,7 +85,7 @@ export async function issueAccessLink(
     throw new Error('Доступ приостановлен или запись обезличена: ссылка не выдаётся');
   }
 
-  const { link, expiresAt } = await manualToken(user.id, ip);
+  const { link, expiresAt } = await manualToken(user.id, actor.id, ip);
 
   await record(actor, {
     action: 'ACCESS_LINK_ISSUED',
@@ -104,7 +104,11 @@ export async function issueAccessLink(
  * человека гасятся: живой должна быть одна, последняя выданная — ссылка,
  * переданная не тому, перестаёт работать с выдачей новой.
  */
-async function manualToken(userId: string, ip?: string | null): Promise<{ link: string; expiresAt: Date }> {
+async function manualToken(
+  userId: string,
+  issuedById: string,
+  ip?: string | null,
+): Promise<{ link: string; expiresAt: Date }> {
   const { createRawToken, digest, loginLink } = await import('./token.ts');
   const now = new Date();
   await prisma.loginToken.updateMany({
@@ -120,6 +124,8 @@ async function manualToken(userId: string, ip?: string | null): Promise<{ link: 
       userId,
       expiresAt,
       requestIp: ip ?? 'cabinet',
+      // Кто выдал: сессия по такой ссылке помечается (ОМ-3, Р-292).
+      issuedById,
     },
   });
   return { link: loginLink(token.value), expiresAt };
@@ -241,7 +247,7 @@ export async function openClientAccess(
     );
   }
 
-  const { link, expiresAt } = await manualToken(userId, ip);
+  const { link, expiresAt } = await manualToken(userId, actor.id, ip);
 
   if (created) {
     await record(actor, { action: 'USER_CREATED', objectType: 'User', objectId: userId, projectId: project.id, ip });
