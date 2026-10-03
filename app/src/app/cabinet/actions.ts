@@ -79,6 +79,7 @@ import {
   setProjectStatus,
   setStageState,
   returnStage,
+  acknowledgeReturn,
 } from '../../lib/cabinet/projects';
 import type { ProjectStatusKey } from '../../lib/cabinet/project-status';
 import {
@@ -188,6 +189,20 @@ export async function returnStageWithRemarks(form: FormData): Promise<void> {
   if (failure !== null) {
     redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { remarks: text } }));
   }
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Куратор принял замечания клиента в работу (требование М-04, решение Р-283). */
+export async function acknowledgeStageReturn(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  let failure: string | null = null;
+  try {
+    await acknowledgeReturn(actor, stageId);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отметить замечания');
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
 }
 

@@ -30,7 +30,7 @@ import { formatAmount, formatPlain, outstandingOf, workMoneyNote } from '../../.
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments } from '../../../lib/cabinet/materials';
-import { leadQueue, trafficLight } from '../../../lib/cabinet/queries';
+import { leadQueue, returnedStages, trafficLight } from '../../../lib/cabinet/queries';
 import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
 import { currentActor } from '../../../lib/cabinet/session';
@@ -165,6 +165,8 @@ export default async function ManageQueue({
   // Замечание эксперта висит неопубликованным, пока его не пропустят, и
   // клиенту не видно. Прежде о нём не говорил ни один экран (Р-183).
   const moderation = await pendingComments(actor);
+  // Клиент вернул этап с замечаниями: ход за куратором (решение Р-283).
+  const returned = await returnedStages(actor);
   // Состояние очереди уведомлений видит только руководитель (решение Р-154):
   // менеджеру служебная кухня не нужна, а недоставленное письмо — забота
   // того, кто отвечает за практику целиком.
@@ -302,6 +304,17 @@ export default async function ManageQueue({
       todo: 'Напомнить клиенту о материалах',
       href: `/cabinet/stages/${stage.id}`,
     })),
+    ...returned.map((stage) => ({
+      key: `returned-${stage.id}`,
+      kind: 'returned' as const,
+      step: 0 as const,
+      title: `${stage.title} · ${stage.project.title}`,
+      mark: `клиент вернул с замечаниями ${formatDate(stage.returnedAt)}`,
+      urgent: false,
+      detail: stage.project.client.fullName,
+      todo: 'Разобрать замечания и отметить «Замечания приняты в работу»',
+      href: `/cabinet/stages/${stage.id}`,
+    })),
     ...unread.map((row) => ({
       key: `unread-${row.code}`,
       kind: 'unread' as const,
@@ -348,6 +361,7 @@ export default async function ManageQueue({
   const ATTENTION_LIMIT: Record<(typeof attention)[number]['kind'], number> = {
     overdue: 4,
     late: 2,
+    returned: 3,
     stalled: 2,
     unread: 3,
     comment: 3,

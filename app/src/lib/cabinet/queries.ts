@@ -269,6 +269,32 @@ export async function liveWorks(actor: Actor) {
 }
 
 /**
+ * Этапы, которые клиент вернул с замечаниями и куратор ещё не принял в
+ * работу (требование М-04, решение Р-283). Дело уходит с «Требует
+ * внимания», когда куратор нажал «Замечания приняты в работу» или сдал
+ * этап заново.
+ */
+export async function returnedStages(actor: Actor) {
+  const scope = scopeProjects(actor);
+  if (scope === null) return [];
+  return prisma.stage.findMany({
+    where: {
+      returnedAt: { not: null },
+      returnAckAt: null,
+      state: { not: 'IN_APPROVAL' },
+      project: { ...scope, status: 'ACTIVE' },
+    },
+    orderBy: [{ returnedAt: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      title: true,
+      returnedAt: true,
+      project: { select: { code: true, title: true, client: { select: { fullName: true } } } },
+    },
+  });
+}
+
+/**
  * Блок «сейчас от вас требуется» — композиционный центр главного экрана.
  * Собирается из состояний этапов: ожидание материалов от клиента и этапы,
  * ждущие его согласования. Основная потеря календарного времени в проектах

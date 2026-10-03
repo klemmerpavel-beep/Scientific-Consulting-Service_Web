@@ -22,7 +22,7 @@ const DAY = 86_400_000;
 describe('этапы и работы', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
   const projects = await import('../src/lib/cabinet/projects.ts');
-  const { pendingActions, trafficLight } = await import('../src/lib/cabinet/queries.ts');
+  const { pendingActions, returnedStages, trafficLight } = await import('../src/lib/cabinet/queries.ts');
   const { moscowToday } = await import('../src/lib/cabinet/clock.ts');
 
   const stamp = Date.now();
@@ -380,6 +380,15 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     assert.doesNotMatch(letter.body, /Монте-Карло/u, 'текст замечаний ушёл в письмо');
 
     await assert.rejects(projects.returnStage(owner, stage.id, 'Ещё раз'), /уже не на согласовании/u);
+
+    // Дело куратора «Клиент вернул этап» — до отметки (М-04, Р-283).
+    const before = await returnedStages(curator());
+    assert.ok(before.some((row) => row.id === stage.id), 'возврат не стал делом куратора');
+    const expertActor = who(ids.expert!, 'EXPERT', { expertNdaSignedAt: new Date() });
+    await assert.rejects(projects.acknowledgeReturn(expertActor, stage.id));
+    await projects.acknowledgeReturn(curator(), stage.id);
+    const after = await returnedStages(curator());
+    assert.equal(after.some((row) => row.id === stage.id), false, 'дело не ушло после отметки');
 
     // Повторная сдача: этап снова на согласовании, пометка снята.
     const material = await prisma.material.create({

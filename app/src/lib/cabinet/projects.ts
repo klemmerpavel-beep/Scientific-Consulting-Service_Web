@@ -970,6 +970,37 @@ export async function setStageState(
   return saved;
 }
 
+/**
+ * Куратор принял замечания клиента в работу: дело «Клиент вернул этап»
+ * уходит с «Требует внимания» (требование М-04, решение Р-283). Пометка
+ * «возвращён с замечаниями» на этапе остаётся до новой сдачи.
+ */
+export async function acknowledgeReturn(actor: Actor, stageId: string) {
+  const stage = await prisma.stage.findUnique({
+    where: { id: stageId },
+    include: {
+      project: {
+        select: { id: true, clientId: true, managerId: true, expertId: true, status: true },
+      },
+    },
+  });
+  if (stage === null) throw new Error('Этап не найден');
+  ensure(actor, 'STAGE_SET_STATE', stage.project);
+  if (stage.project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
+  if (stage.returnedAt === null) throw new Error('Этап не возвращался клиентом');
+  const marked = await prisma.stage.updateMany({
+    where: { id: stageId, returnedAt: { not: null }, returnAckAt: null },
+    data: { returnAckAt: new Date() },
+  });
+  if (marked.count === 0) return;
+  await record(actor, {
+    action: 'STAGE_RETURN_ACKNOWLEDGED',
+    objectType: 'Stage',
+    objectId: stageId,
+    projectId: stage.projectId,
+  });
+}
+
 /** Строка письма со ссылкой на экран этапа; без адреса сайта — общая. */
 function stageLink(stageId: string): string {
   const base = siteUrl();

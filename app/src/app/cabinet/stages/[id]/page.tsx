@@ -36,6 +36,7 @@ import {
 } from '../../../../lib/cabinet/project-status';
 import { currentActor } from '../../../../lib/cabinet/session';
 import {
+  acknowledgeStageReturn,
   approveStage,
   changeStageState,
   returnStageWithRemarks,
@@ -176,6 +177,14 @@ export default async function StageScreen({
               )}
             </Notice>
           )}
+          {/* Дело куратора гаснет отметкой, а не ответом в переписке:
+              «приняты в работу» — решение, а не реплика (решение Р-283). */}
+          {lastReturn !== undefined && stage.returnAckAt === null && mayEdit ? (
+            <Form action={acknowledgeStageReturn} inline style={{ marginTop: 12 }}>
+              <input type="hidden" name="stageId" value={stage.id} />
+              <Button tone="quiet">Замечания приняты в работу</Button>
+            </Form>
+          ) : null}
           {stage.blockedReason === null ? null : (
             <div style={{ marginTop: lastReturn === undefined ? 0 : 12 }}>
               <Notice tone="quiet" role="status">
