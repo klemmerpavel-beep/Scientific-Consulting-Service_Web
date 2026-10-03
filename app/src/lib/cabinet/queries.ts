@@ -196,7 +196,9 @@ export async function stageById(actor: Actor, stageId: string) {
         select: { reason: true, contactHint: true, createdAt: true },
       },
       materials: {
-        where: materialScope,
+        // Материал без единой видимой версии не показывается: у клиента он
+        // висел бы пустым до публикации версии эксперта (М-14, Р-295).
+        where: { ...materialScope, ...visibleMaterial(versionScope) },
         orderBy: { createdAt: 'asc' },
         include: {
           versions: {
@@ -216,6 +218,11 @@ export async function stageById(actor: Actor, stageId: string) {
       },
     },
   });
+}
+
+/** Условие «у материала есть видимая версия»; практике — без условия. */
+function visibleMaterial(versionScope: Record<string, unknown>): Record<string, unknown> {
+  return Object.keys(versionScope).length === 0 ? {} : { versions: { some: versionScope } };
 }
 
 /**
@@ -252,7 +259,7 @@ export async function projectMaterials(actor: Actor, code: string) {
         select: { id: true, position: true, title: true, state: true },
       },
       materials: {
-        where: { ...materialScope, kind: 'STAGE_MATERIAL' },
+        where: { ...materialScope, kind: 'STAGE_MATERIAL', ...visibleMaterial(versionScope) },
         orderBy: { createdAt: 'desc' },
         include: {
           stage: { select: { id: true, position: true, title: true, state: true } },

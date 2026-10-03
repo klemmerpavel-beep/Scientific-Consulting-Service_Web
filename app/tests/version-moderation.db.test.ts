@@ -124,6 +124,9 @@ describe('версия эксперта — после публикации', { 
     assert.equal(moderation.status, 'PENDING');
 
     assert.equal(await clientSees(version.id), false, 'клиент видит версию до публикации');
+    // Материал без видимой версии клиенту не показывается (М-14, Р-295).
+    const clientStage = await stageById(client(), ids.stage!);
+    assert.equal(clientStage?.materials.some((material) => material.id === version.materialId), false);
     assert.equal(await materials.readVersion(client(), version.id), null, 'прямое скачивание прошло');
     const own = await stageById(expert(), ids.stage!);
     assert.ok(own?.materials.some((material) => material.versions.some((v) => v.id === version.id)));
@@ -181,7 +184,7 @@ describe('версия эксперта — после публикации', { 
       })) >= 1,
       'клиент не получил письма при публикации',
     );
-    await assert.rejects(materials.moderateVersion(curator(), ids.version!, 'REJECTED'), /уже разобрана/u);
+    await assert.rejects(materials.moderateVersion(curator(), ids.version!, 'REJECTED', 'Поздно'), /уже разобрана/u);
 
     // Теперь этап уходит на согласование.
     await projects.setStageState(curator(), ids.stage!, 'IN_APPROVAL', 'Глава готова');
@@ -191,7 +194,13 @@ describe('версия эксперта — после публикации', { 
   it('«Не публиковать» — с причиной для эксперта; клиент версию не видит', async () => {
     const next = await upload(ids.material!);
     await assert.rejects(materials.moderateVersion(client(), next.id, 'PUBLISHED'), /не разрешено/u);
+    // Без причины — отказ (М-14, ОМ-15).
+    await assert.rejects(materials.moderateVersion(curator(), next.id, 'REJECTED', '  '), /только с причиной/u);
     await materials.moderateVersion(curator(), next.id, 'REJECTED', 'Нет списка литературы');
+    const letter = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId: ids.project, userId: ids.expert, eventKind: 'VERSION_REJECTED', channel: 'EMAIL' },
+    });
+    assert.match(letter.body, /Причина: Нет списка литературы/u);
     const row = await prisma.versionModeration.findUniqueOrThrow({ where: { versionId: next.id } });
     assert.equal(row.status, 'REJECTED');
     assert.equal(row.note, 'Нет списка литературы');

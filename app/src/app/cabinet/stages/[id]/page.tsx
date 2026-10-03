@@ -584,8 +584,9 @@ export default async function StageScreen({
                                     name="note"
                                     scope={`version-${version.id}`}
                                     multiline
+                                    required
                                     defaultValue={draft.note ?? ''}
-                                    hint="Причину увидит эксперт."
+                                    hint="Причину эксперт получит письмом."
                                   />
                                   <FormActions>
                                     <Button tone="quiet">Не публиковать</Button>

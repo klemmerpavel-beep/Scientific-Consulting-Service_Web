@@ -386,6 +386,11 @@ export async function moderateVersion(
   ensureContributionOpen(actor, project.status, null);
   const reason = note?.trim() || null;
   if (reason !== null && reason.length > 2000) throw new Error('Причина — не длиннее 2000 знаков');
+  // «Не публиковать» — с причиной: эксперт получает её письмом и
+  // исправляет версию (требование М-14, ОМ-15).
+  if (decision === 'REJECTED' && reason === null) {
+    throw new Error('Не публиковать версию можно только с причиной: эксперт получит её письмом');
+  }
 
   const now = new Date();
   const published = await prisma.$transaction(async (tx) => {
@@ -399,7 +404,21 @@ export async function moderateVersion(
       },
     });
     if (count === 0) throw new Error('Версия уже разобрана');
-    if (decision !== 'PUBLISHED') return 0;
+    if (decision !== 'PUBLISHED') {
+      await enqueue(tx, {
+        userId: version.uploadedById,
+        projectId: project.id,
+        eventKind: 'VERSION_REJECTED',
+        subject: `Версия v${version.number} не опубликована: ${version.material.title}`,
+        body:
+          `Проект ${project.code} — ${project.title}.\n` +
+          `Куратор не опубликовал клиенту версию v${version.number} материала «${version.material.title}».\n` +
+          `Причина: ${reason}\n` +
+          'Исправленную версию можно загрузить в личном кабинете.',
+        dedupKey: `version:${version.id}:rejected`,
+      });
+      return 0;
+    }
 
     await tx.projectEvent.create({
       data: {

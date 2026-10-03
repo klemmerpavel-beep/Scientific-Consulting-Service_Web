@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   Chip,
+  Disclosure,
   Empty,
   Field,
   FileField,
@@ -26,7 +27,7 @@ import {
 import { can, contributionRefusal } from '../../../../../lib/cabinet/access';
 import { projectMaterials } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
-import { addMaterialVersion, decideOnComment } from '../../../actions';
+import { addMaterialVersion, decideOnComment, decideOnVersion } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -138,6 +139,52 @@ export default async function ProjectMaterialsScreen({
                     </li>
                   ))}
                 </ul>
+
+                {/* Версии эксперта на публикации разбираются и здесь:
+                    у материала вне этапов экрана этапа нет (М-14, Р-295). */}
+                {mayModerate
+                  ? material.versions
+                      .filter((version) => version.moderation?.status === 'PENDING')
+                      .map((version) => (
+                        <div key={`publish-${version.id}`} style={{ marginTop: 14 }}>
+                          <Text muted size={13}>
+                            v{version.number} эксперта ждёт публикации клиенту
+                          </Text>
+                          <Form action={decideOnVersion} inline style={{ marginTop: 8 }}>
+                            <input type="hidden" name="versionId" value={version.id} />
+                            <input type="hidden" name="decision" value="publish" />
+                            <input
+                              type="hidden"
+                              name="back"
+                              value={`/cabinet/projects/${project.code}/materials#material-${material.id}`}
+                            />
+                            <Button tone="quiet">Опубликовать клиенту</Button>
+                          </Form>
+                          <Disclosure title="Не публиковать" style={{ marginTop: 10 }}>
+                            <Form action={decideOnVersion}>
+                              <input type="hidden" name="versionId" value={version.id} />
+                              <input type="hidden" name="decision" value="reject" />
+                              <input
+                                type="hidden"
+                                name="back"
+                                value={`/cabinet/projects/${project.code}/materials#material-${material.id}`}
+                              />
+                              <Field
+                                label="Причина"
+                                name="note"
+                                scope={`version-${version.id}`}
+                                multiline
+                                required
+                                hint="Причину эксперт получит письмом."
+                              />
+                              <FormActions>
+                                <Button tone="quiet">Не публиковать</Button>
+                              </FormActions>
+                            </Form>
+                          </Disclosure>
+                        </div>
+                      ))
+                  : null}
 
                 {/* Замечания к материалу вне этапов читаются и разбираются
                     здесь: экрана этапа у него нет (решение Р-284). */}
