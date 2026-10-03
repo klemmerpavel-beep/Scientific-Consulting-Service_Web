@@ -165,10 +165,23 @@ export default async function StageScreen({
 
       <ActionError id={(await searchParams).error} />
 
-      {/* Причина остановки и замечания клиента — одним блоком: на экране
-          куратора и без них до четырёх блоков (решения Р-183, Р-281). */}
-      {stage.blockedReason === null && lastReturn === undefined ? null : (
+      {/* Описание этапа, замечания клиента и причина остановки — одним
+          блоком: на экране куратора и без них до четырёх блоков (решения
+          Р-183, Р-281). Описание целиком: клиент решает о согласовании,
+          зная, что входило в этап (Р-190, Р-286). */}
+      {(stage.summary ?? '').trim() === '' && stage.blockedReason === null && lastReturn === undefined ? null : (
         <Block as="div" style={{ marginBottom: 24 }}>
+          {(stage.summary ?? '').trim() === '' ? null : (
+            <Text
+              size={15}
+              style={{
+                whiteSpace: 'pre-wrap',
+                marginBottom: stage.blockedReason === null && lastReturn === undefined ? 0 : 14,
+              }}
+            >
+              {stage.summary}
+            </Text>
+          )}
           {lastReturn === undefined ? null : (
             <Notice tone="quiet" role="status">
               {`Возвращён с замечаниями ${formatDate(lastReturn.createdAt)}`}
