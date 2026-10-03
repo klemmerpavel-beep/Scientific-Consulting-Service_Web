@@ -174,6 +174,18 @@ describe('менеджер начинает с «Сегодня» (М-05, Р-305
   });
 });
 
+describe('на узком экране свёртки без вложенной прокрутки (Т-23, Р-320)', () => {
+  it('ниже 1024 px пределы высоты свёрток сняты', () => {
+    const start = CABINET_CSS.indexOf('@media (max-width:1024px){.cab-board-main');
+    assert.ok(start >= 0, 'правила складывания экрана-панели нет');
+    const media = CABINET_CSS.slice(start, CABINET_CSS.indexOf('}}', start) + 2);
+    assert.ok(
+      media.includes('.cab-board-main .cab-fold-body,.cab-board-main .cab-fold-tall{max-height:none!important;overflow:visible!important}'),
+      'свёртки «О работе» и «История» прокручиваются внутри себя на узком экране',
+    );
+  });
+});
+
 describe('день — у часов кабинета', () => {
   // Экраны считали просрочку от настоящего «сейчас», а наполнение снимков —
   // от постоянной точки: снимок менялся ото дня ко дню (решение Р-205).

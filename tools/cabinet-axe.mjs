@@ -1,7 +1,8 @@
 /**
  * Проверка доступности снимков прототипа axe-core (решения Р-168, Р-214).
  *
- * Полный набор правил WCAG 2.0—2.2 уровней A и AA на 1440×900 и 390×844.
+ * Полный набор правил WCAG 2.0—2.2 уровней A и AA на 1440×900, 390×844 и
+ * 360×640 (требование Т-23, решение Р-320).
  * Снимок проверяется через 300 мс после открытия: блок статуса появляется
  * за 220 мс, и проверка контраста, заставшая его прозрачным, даёт ложное
  * нарушение. axe-core в `package.json` не заводится (Р-168): он берётся из
@@ -20,7 +21,7 @@ const pages = [];
 (function walk(d) { for (const e of readdirSync(d)) { const p = path.join(d, e); if (statSync(p).isDirectory()) walk(p); else if (e === 'index.html') pages.push(p); } })(ROOT);
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 let total = 0;
-for (const [w, h] of [[1440, 900], [390, 844]]) {
+for (const [w, h] of [[1440, 900], [390, 844], [360, 640]]) {
   const p = await b.newPage({ viewport: { width: w, height: h } });
   for (const file of pages) {
     await p.goto('file://' + file);
