@@ -14,6 +14,9 @@ export interface NavItem {
   readonly label: string;
 }
 
+/** Промежуточный экран служебных разделов — пункт «Управление». */
+const TOOLS_HREF = '/cabinet/manage/tools';
+
 /**
  * Разделы роли.
  *
@@ -40,24 +43,51 @@ export function navFor(actor: Actor): NavItem[] {
       settings,
     ];
   }
-  // Главный экран у ролей разный по существу: руководителю — сводка
-  // практики с деньгами, менеджеру — то, что требует вмешательства по его
-  // работам (решение Р-149). Маршрут один, название честное для каждой.
+  // Менеджеру — то, с чем он работает каждый день: дела на сегодня, свои
+  // работы, заявки и реестры. Промежуточного «Управления» у него нет: из
+  // служебного контура ему открыты только заявки и реестры, и они стоят в
+  // меню сами (требование М-05, решение Р-305).
+  if (actor.role === 'MANAGER') {
+    return [
+      { href: '/cabinet/manage', label: 'Сегодня' },
+      { href: '/cabinet/projects', label: 'Мои работы' },
+      { href: '/cabinet/manage/leads', label: 'Заявки' },
+      { href: '/cabinet/manage/registry', label: 'Реестры' },
+      settings,
+    ];
+  }
+  // Главный экран руководителя — сводка практики с деньгами (решения Р-149,
+  // Р-172).
   const staff: NavItem[] = [
-    { href: '/cabinet/manage', label: actor.role === 'HEAD' ? 'Сводка' : 'Требует внимания' },
+    { href: '/cabinet/manage', label: 'Сводка' },
     { href: '/cabinet/projects', label: 'Работы' },
   ];
-  if (actor.role === 'HEAD') {
-    staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
-    staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
-  }
+  staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
+  staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
   // Служебный контур — реестры, учётные записи, справочники, перенос книги,
   // журналы, очередь уведомлений, удаление данных — собран за одним пунктом
   // (решение Р-158). В первый ряд эти разделы не выносятся по Р-140: они
   // нужны изредка. Но и доступными только по набранному вручную адресу они
   // быть не должны — о них тогда знает лишь тот, кто писал код.
-  staff.push({ href: '/cabinet/manage/tools', label: 'Управление' });
+  staff.push({ href: TOOLS_HREF, label: 'Управление' });
   return [...staff, settings];
+}
+
+/**
+ * Начальный экран роли: куда ведёт вход, адрес `/cabinet` при открытой
+ * сессии и экран, на который у человека нет права.
+ *
+ * Прежде все три вели на перечень работ, хотя первым экраном служебных
+ * ролей решение Р-172 называет сводку: менеджер после входа видел перечень,
+ * а дела на сегодня искал в меню (требование М-05, решение Р-305).
+ */
+export function homeFor(actor: Actor): string {
+  return actor.role === 'MANAGER' || actor.role === 'HEAD' ? '/cabinet/manage' : '/cabinet/projects';
+}
+
+/** Есть ли в меню роли промежуточный экран служебных разделов. */
+export function hasToolsScreen(actor: Actor): boolean {
+  return navFor(actor).some((item) => item.href === TOOLS_HREF);
 }
 
 /**
@@ -72,7 +102,7 @@ export function navFor(actor: Actor): NavItem[] {
  * (решение Р-183).
  */
 export function activeItem(items: readonly NavItem[], current: string): string | null {
-  const tools = '/cabinet/manage/tools';
+  const tools = TOOLS_HREF;
   let best: string | null = null;
   for (const item of items) {
     const hit =

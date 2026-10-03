@@ -20,6 +20,7 @@ import {
 import { can } from '../../../../lib/cabinet/access';
 import { diskStatus } from '../../../../lib/cabinet/disk-status';
 import { currentActor } from '../../../../lib/cabinet/session';
+import { homeFor } from '../../../../lib/cabinet/nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,7 @@ export const dynamic = 'force-dynamic';
 export default async function DiskScreen() {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'AUDIT_VIEW')) redirect('/cabinet/projects');
+  if (!can(actor, 'AUDIT_VIEW')) redirect(homeFor(actor));
 
   const status = await diskStatus(actor);
   const last = status.last;

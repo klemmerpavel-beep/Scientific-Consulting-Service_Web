@@ -14,6 +14,7 @@ import {
   Text,
 } from '../../components/cabinet/ui';
 import { currentActor } from '../../lib/cabinet/session';
+import { homeFor } from '../../lib/cabinet/nav';
 import { requestLink } from './actions';
 
 export const metadata: Metadata = {
@@ -31,7 +32,8 @@ export default async function CabinetEntrance({
   searchParams: Promise<{ sent?: string; error?: string; channel?: string }>;
 }) {
   const actor = await currentActor();
-  if (actor !== null) redirect('/cabinet/projects');
+  // Открытая сессия ведёт на начальный экран роли (требование М-05, Р-305).
+  if (actor !== null) redirect(homeFor(actor));
 
   const params = await searchParams;
 

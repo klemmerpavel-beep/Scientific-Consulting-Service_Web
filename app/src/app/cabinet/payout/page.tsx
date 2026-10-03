@@ -18,6 +18,7 @@ import { can } from '../../../lib/cabinet/access';
 import { ownPayouts } from '../../../lib/cabinet/finance';
 import { formatAmount } from '../../../lib/cabinet/money';
 import { currentActor } from '../../../lib/cabinet/session';
+import { homeFor } from '../../../lib/cabinet/nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,7 @@ export const dynamic = 'force-dynamic';
 export default async function PayoutScreen() {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'PAYOUT_VIEW_OWN')) redirect('/cabinet/projects');
+  if (!can(actor, 'PAYOUT_VIEW_OWN')) redirect(homeFor(actor));
 
   const { rows, accrued, paid } = await ownPayouts(actor);
 

@@ -7,12 +7,17 @@ import {
   Block,
   Board,
   BoardColumn,
+  Button,
   ButtonLink,
   Card,
   Chip,
   Disclosure,
+  Field,
+  Form,
+  FormActions,
   Heading,
   Mono,
+  Outcome,
   ScreenHead,
   TABLE_CELL,
   TABLE_HEAD,
@@ -36,6 +41,9 @@ import { leadQueue, returnedStages, todayItems, trafficLight } from '../../../li
 import { outboxDigest } from '../../../lib/cabinet/outbox';
 import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
 import { currentActor } from '../../../lib/cabinet/session';
+import { homeFor } from '../../../lib/cabinet/nav';
+import { flashText, formDraft } from '../../../lib/cabinet/flash';
+import { requestHelp } from '../actions';
 import { byMonth, products } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
 import { activeWorks, moneyBrief, orderSummary, stageLoad } from '../../../lib/cabinet/summary';
@@ -126,13 +134,18 @@ function owed(contract: {
 export default async function ManageQueue({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; attention?: string }>;
+  searchParams: Promise<{ page?: string; attention?: string; sent?: string; error?: string }>;
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'REQUEST_MODERATE')) redirect('/cabinet/projects');
+  if (!can(actor, 'REQUEST_MODERATE')) redirect(homeFor(actor));
 
   const requested = Number((await searchParams).page ?? '1');
+  // Вопрос руководителю задаётся внизу «Сегодня»: промежуточного экрана
+  // «Управление» у менеджера больше нет (требование М-05, решение Р-305).
+  const helpParams = await searchParams;
+  const helpFailure = await flashText(helpParams.error);
+  const helpDraft = (await formDraft(helpParams.error)) ?? {};
   // Справочник типов сопровождения на сводке больше не нужен: формы
   // одобрения уехали на экран заявки (решение Р-172).
   const [queue, light] = await Promise.all([
@@ -1119,6 +1132,38 @@ export default async function ManageQueue({
           )}
         </BoardColumn>
       </Board>
+
+      {/* Спросить руководителя было негде: переписка в кабинете — только с
+          клиентом. Вопрос идёт той же очередью уведомлений, что и всё
+          прочее (решение Р-199); карточка перенесена сюда с экрана
+          «Управление», которого у менеджера нет (требование М-05,
+          решение Р-305). Руководителю спрашивать некого. */}
+      {actor.role === 'HEAD' || !can(actor, 'REGISTRY_VIEW') ? null : (
+        <Card id="help" style={{ marginTop: 20 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 4 }}>
+            Спросить руководителя практики
+          </Heading>
+          <Text muted size={14} style={{ marginBottom: 14 }}>
+            Спорный случай, нестандартная просьба клиента, сомнение по срокам или цене — вопрос
+            уйдёт руководителю и вернётся ответом тем каналом, который он выбрал.
+          </Text>
+          {helpParams.sent === undefined ? null : <Outcome>Вопрос отправлен руководителю практики.</Outcome>}
+          {helpFailure === undefined ? null : <Outcome tone="error">{helpFailure}</Outcome>}
+          <Form action={requestHelp}>
+            <Field
+              label="В чём нужна помощь"
+              name="text"
+              required
+              multiline
+              defaultValue={helpDraft.text}
+              placeholder="Клиент просит перенести защиту на месяц и сменить тему. Стоит ли пересматривать договор?"
+            />
+            <FormActions>
+              <Button>Отправить вопрос</Button>
+            </FormActions>
+          </Form>
+        </Card>
+      )}
     </Shell>
   );
 }

@@ -17,6 +17,7 @@ import { can } from '../../../../../lib/cabinet/access';
 import { moscowToday } from '../../../../../lib/cabinet/clock';
 import { curators, serviceTypes } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
+import { homeFor } from '../../../../../lib/cabinet/nav';
 import { createOrder } from '../../../actions';
 
 export const metadata: Metadata = { title: 'Новый заказ — ProDisser' };
@@ -34,7 +35,7 @@ export default async function NewOrderScreen({
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'REQUEST_MODERATE')) redirect('/cabinet/projects');
+  if (!can(actor, 'REQUEST_MODERATE')) redirect(homeFor(actor));
 
   const head = actor.role === 'HEAD';
   const [types, staff] = await Promise.all([serviceTypes(actor), head ? curators(actor) : Promise.resolve([])]);

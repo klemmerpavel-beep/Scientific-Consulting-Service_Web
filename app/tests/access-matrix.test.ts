@@ -36,7 +36,7 @@ import {
   type ProjectRef,
   type Role,
 } from '../src/lib/cabinet/access.ts';
-import { activeItem, navFor } from '../src/lib/cabinet/nav.ts';
+import { activeItem, hasToolsScreen, homeFor, navFor } from '../src/lib/cabinet/nav.ts';
 
 const NDA = new Date('2026-01-15T00:00:00Z');
 
@@ -412,6 +412,60 @@ describe('меню подсвечивает раздел, в котором че
 
   it('чужой адрес не подсвечивает ничего', () => {
     assert.equal(activeItem(items, '/cabinet/enter/abc'), null);
+  });
+});
+
+describe('меню менеджера и начальный экран роли (М-05, Р-305)', () => {
+  const manager: Actor = {
+    id: 'manager-nav',
+    role: 'MANAGER',
+    status: 'ACTIVE',
+    clientProfileId: null,
+    expertNdaSignedAt: null,
+  };
+  const head: Actor = { ...manager, id: 'head-home', role: 'HEAD' };
+  const items = navFor(manager);
+
+  it('пункты менеджера: Сегодня, Мои работы, Заявки, Реестры, настройки', () => {
+    assert.deepEqual(
+      items.map((item) => [item.href, item.label]),
+      [
+        ['/cabinet/manage', 'Сегодня'],
+        ['/cabinet/projects', 'Мои работы'],
+        ['/cabinet/manage/leads', 'Заявки'],
+        ['/cabinet/manage/registry', 'Реестры'],
+        ['/cabinet/settings', 'Уведомления'],
+      ],
+    );
+    assert.equal(hasToolsScreen(manager), false, 'менеджеру остался промежуточный экран');
+    assert.equal(hasToolsScreen(head), true, 'руководитель потерял «Управление»');
+  });
+
+  const cases: readonly [string, string][] = [
+    ['/cabinet/manage', '/cabinet/manage'],
+    ['/cabinet/manage/leads', '/cabinet/manage/leads'],
+    ['/cabinet/manage/leads/lead-1', '/cabinet/manage/leads'],
+    ['/cabinet/manage/registry', '/cabinet/manage/registry'],
+    // «Новый заказ» передаёт каркасу адрес перечня работ.
+    ['/cabinet/projects', '/cabinet/projects'],
+    ['/cabinet/settings', '/cabinet/settings'],
+  ];
+  for (const [current, expected] of cases) {
+    it(`${current} → ${expected}`, () => {
+      assert.equal(activeItem(items, current), expected);
+    });
+  }
+
+  it('начальный экран: штатным ролям — «Сегодня» или сводка, клиенту и эксперту — работы', () => {
+    assert.equal(homeFor(manager), '/cabinet/manage');
+    assert.equal(homeFor(head), '/cabinet/manage');
+    assert.equal(homeFor(client), '/cabinet/projects');
+    assert.equal(homeFor(expert), '/cabinet/projects');
+  });
+
+  it('начальный экран доступен самой роли — перенаправление не зацикливается', () => {
+    for (const actor of [manager, head]) assert.equal(can(actor, 'REQUEST_MODERATE'), true);
+    for (const actor of [client, expert]) assert.equal(can(actor, 'PROJECT_VIEW', project), true);
   });
 });
 

@@ -170,7 +170,9 @@ export async function enterByLink(form: FormData): Promise<void> {
   if (session === null) redirect('/cabinet?error=link');
   await revokeSession(await currentSessionValue());
   await setSessionCookie(session);
-  redirect('/cabinet/projects');
+  // Вход ведёт на начальный экран роли: адрес `/cabinet` при открытой сессии
+  // перенаправляет туда сам (требование М-05, решение Р-305).
+  redirect('/cabinet');
 }
 
 export async function approveStage(form: FormData): Promise<void> {
@@ -851,9 +853,15 @@ export async function requestHelp(form: FormData): Promise<void> {
     await askForHelp(actor, String(form.get('text') ?? ''));
   } catch (error) {
     const text = reasonOf(error, 'Не удалось отправить вопрос');
-    redirect(await withError(`/cabinet/manage/tools`, text));
+    redirect(
+      await withError('/cabinet/manage', text, {
+        anchor: 'help',
+        draft: { text: String(form.get('text') ?? '') },
+      }),
+    );
   }
-  redirect('/cabinet/manage/tools?sent=1');
+  // Карточка вопроса — внизу «Сегодня» (требование М-05, решение Р-305).
+  redirect('/cabinet/manage?sent=1#help');
 }
 
 /**

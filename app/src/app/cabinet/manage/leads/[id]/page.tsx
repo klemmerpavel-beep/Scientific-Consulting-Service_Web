@@ -73,7 +73,7 @@ export default async function LeadScreen({
   ].filter((fact) => fact !== null);
 
   return (
-    <Shell actor={actor} current="/cabinet/manage">
+    <Shell actor={actor} current="/cabinet/manage/leads">
       <Narrow width={780}>
         <ScreenHead
           backHref="/cabinet/manage"

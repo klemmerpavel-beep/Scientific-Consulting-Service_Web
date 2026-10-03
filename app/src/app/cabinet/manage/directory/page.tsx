@@ -36,6 +36,7 @@ import {
 import { formatDay } from '../../../../lib/cabinet/approval';
 import { formatAmount } from '../../../../lib/cabinet/money';
 import { currentActor } from '../../../../lib/cabinet/session';
+import { homeFor } from '../../../../lib/cabinet/nav';
 import {
   attachAlias,
   detachAlias,
@@ -81,7 +82,7 @@ export default async function DirectoryScreen({
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'DIRECTORY_EDIT')) redirect('/cabinet/projects');
+  if (!can(actor, 'DIRECTORY_EDIT')) redirect(homeFor(actor));
 
   const sp = await searchParams;
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).

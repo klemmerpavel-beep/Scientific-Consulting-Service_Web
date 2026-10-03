@@ -58,15 +58,19 @@ export function Card({
   style,
   as: Tag = 'section',
   link = false,
+  id,
 }: {
   children: ReactNode;
   style?: CSSProperties;
   as?: 'section' | 'article' | 'div' | 'li';
   /** Карточка целиком ведёт куда-то: подсвечивается при наведении и фокусе. */
   link?: boolean;
+  /** Якорь: отказ формы возвращает к карточке, а не в начало экрана. */
+  id?: string;
 }) {
   return (
     <Tag
+      id={id}
       className={link ? 'cab-block cab-card cab-link-card' : 'cab-block cab-card'}
       style={{
         background: 'var(--pd-ink-inverse)',

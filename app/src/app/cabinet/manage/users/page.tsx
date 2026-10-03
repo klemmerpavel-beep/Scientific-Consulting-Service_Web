@@ -36,6 +36,7 @@ import {
   type Role,
 } from '../../../../lib/cabinet/admin';
 import { currentActor } from '../../../../lib/cabinet/session';
+import { homeFor } from '../../../../lib/cabinet/nav';
 import { AccessLink } from '../../../../components/cabinet/AccessLink';
 import { mailConfigured } from '../../../../lib/cabinet/mail';
 import {
@@ -67,7 +68,7 @@ export default async function UsersScreen({
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'USER_MANAGE')) redirect('/cabinet/projects');
+  if (!can(actor, 'USER_MANAGE')) redirect(homeFor(actor));
 
   const flags = await searchParams;
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).

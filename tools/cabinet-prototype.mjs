@@ -465,7 +465,11 @@ async function main() {
       const page = await context.newPage();
       // Ключ гасится нажатием, а не открытием ссылки (решение Р-232).
       await page.goto(`${BASE}/cabinet/enter/${links[role.key]}`, { waitUntil: 'networkidle' });
-      await Promise.all([page.waitForURL(/\/cabinet\/projects/u), page.click('button[type=submit]')]);
+      // Вход ведёт на начальный экран роли (требование М-05, решение Р-305).
+      await Promise.all([
+        page.waitForURL((url) => url.pathname === role.home),
+        page.click('button[type=submit]'),
+      ]);
 
       const tree = await crawl(page, role, stabilize);
       trees.set(role.key, tree);

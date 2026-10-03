@@ -24,6 +24,7 @@ import {
   outboxDigest,
 } from '../../../../lib/cabinet/outbox';
 import { currentActor } from '../../../../lib/cabinet/session';
+import { homeFor } from '../../../../lib/cabinet/nav';
 import { retryNotification } from '../../actions';
 import ActionError from '../../../../components/cabinet/ActionError';
 
@@ -42,7 +43,7 @@ export default async function OutboxScreen({
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
   // Состояние очереди — служебная кухня практики; менеджеру она не нужна.
-  if (!can(actor, 'AUDIT_VIEW')) redirect('/cabinet/projects');
+  if (!can(actor, 'AUDIT_VIEW')) redirect(homeFor(actor));
 
   const [digest, leads] = await Promise.all([outboxDigest(actor), leadDeliveryDigest(actor)]);
 

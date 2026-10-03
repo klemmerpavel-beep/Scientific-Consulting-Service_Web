@@ -148,6 +148,32 @@ describe('начальный экран роли отвечает на свой 
   }
 });
 
+describe('менеджер начинает с «Сегодня» (М-05, Р-305)', () => {
+  it('промежуточного экрана «Управление» в снимках менеджера нет', () => {
+    assert.equal(existsSync(path.join(PROTOTYPE, 'manager', 'manage', 'tools')), false);
+  });
+
+  it('на начальном экране менеджера подсвечено «Сегодня»', () => {
+    const html = body(path.join(PROTOTYPE, 'manager/manage/index.html'));
+    assert.match(html, /aria-current="page"[^>]*>Сегодня</u);
+  });
+
+  it('экран без права ведёт на начальный экран роли, а не на перечень работ', () => {
+    const stray: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (/\.tsx?$/u.test(entry.name) && /redirect\((['"])\/cabinet\/projects\1\)/u.test(readFileSync(full, 'utf8'))) {
+          stray.push(path.relative(SCREENS, full));
+        }
+      }
+    };
+    walk(SCREENS);
+    assert.deepEqual(stray, []);
+  });
+});
+
 describe('день — у часов кабинета', () => {
   // Экраны считали просрочку от настоящего «сейчас», а наполнение снимков —
   // от постоянной точки: снимок менялся ото дня ко дню (решение Р-205).

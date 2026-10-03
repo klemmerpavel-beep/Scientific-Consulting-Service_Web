@@ -306,7 +306,12 @@ async function main() {
       const page = await context.newPage();
       // Ключ гасится нажатием, а не открытием ссылки (решение Р-232).
       await page.goto(`${BASE}/cabinet/enter/${token}`, { waitUntil: 'networkidle' });
-      await Promise.all([page.waitForURL(/\/cabinet\/projects/u), page.click('button[type=submit]')]);
+      // Вход ведёт на начальный экран роли: работы или «Сегодня» и сводка
+      // (требование М-05, решение Р-305).
+      await Promise.all([
+        page.waitForURL((url) => url.pathname === '/cabinet/projects' || url.pathname === '/cabinet/manage'),
+        page.click('button[type=submit]'),
+      ]);
       contexts[role] = page;
     }
 

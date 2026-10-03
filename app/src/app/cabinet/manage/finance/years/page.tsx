@@ -26,6 +26,7 @@ import { can } from '../../../../../lib/cabinet/access';
 import { yearlyRows } from '../../../../../lib/cabinet/finance-years';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { currentActor } from '../../../../../lib/cabinet/session';
+import { homeFor } from '../../../../../lib/cabinet/nav';
 import { saveFinanceYear } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +45,7 @@ export default async function FinanceYearsScreen({
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'MARGIN_VIEW')) redirect('/cabinet/projects');
+  if (!can(actor, 'MARGIN_VIEW')) redirect(homeFor(actor));
 
   const { rows, datedByContract, undated } = await yearlyRows(actor);
   const editable = can(actor, 'PAYMENT_EDIT');

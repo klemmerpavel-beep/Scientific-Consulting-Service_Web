@@ -25,6 +25,7 @@ import {
   roundRuble,
 } from "../../../../lib/cabinet/money";
 import { currentActor } from "../../../../lib/cabinet/session";
+import { homeFor } from "../../../../lib/cabinet/nav";
 import { loadRows } from "../../../../lib/cabinet/analytics/data";
 import {
   byMonth,
@@ -101,7 +102,7 @@ export default async function ReportScreen({
 }) {
   const actor = await currentActor();
   if (actor === null) redirect("/cabinet");
-  if (!can(actor, "ANALYTICS_VIEW")) redirect("/cabinet/projects");
+  if (!can(actor, "ANALYTICS_VIEW")) redirect(homeFor(actor));
 
   const asked = (await searchParams).period;
   const period = PERIODS.find((item) => item.key === asked) ?? PERIODS[0];

@@ -1,23 +1,17 @@
-import { flashText } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
 import {
-  Button,
   Card,
   Chip,
-  Field,
-  Form,
-  FormActions,
   Heading,
-  Outcome,
   ScreenHead,
   Text,
 } from '../../../../components/cabinet/ui';
 import { can, type Action } from '../../../../lib/cabinet/access';
 import { currentActor } from '../../../../lib/cabinet/session';
-import { requestHelp } from '../../actions';
+import { hasToolsScreen, homeFor } from '../../../../lib/cabinet/nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -203,19 +197,16 @@ const TOOLS: readonly {
   },
 ];
 
-export default async function ToolsScreen({
-  searchParams,
-}: {
-  searchParams: Promise<{ sent?: string; error?: string }>;
-}) {
+export default async function ToolsScreen() {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
-  const params = await searchParams;
-  // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
-  const failure = await flashText(params.error);
 
+  // Менеджеру промежуточный экран не показывается: заявки и реестры стоят у
+  // него в меню, а вопрос руководителю — внизу «Сегодня» (требование М-05,
+  // решение Р-305).
+  if (!hasToolsScreen(actor)) redirect(homeFor(actor));
   const allowed = TOOLS.filter((tool) => can(actor, tool.action));
-  if (allowed.length === 0) redirect('/cabinet/projects');
+  if (allowed.length === 0) redirect(homeFor(actor));
 
   const groups = GROUPS.map((group) => ({
     ...group,
@@ -224,11 +215,6 @@ export default async function ToolsScreen({
       .slice()
       .sort((a, b) => OFTEN_ORDER[a.often] - OFTEN_ORDER[b.often]),
   })).filter((group) => group.tools.length > 0);
-
-  // Менеджеру открыты не все разделы, и пустое место на экране читается как
-  // поломка. Строка называет причину прямо: остальное ведёт руководитель
-  // практики (решение Р-192).
-  const partial = allowed.length < TOOLS.length;
 
   return (
     <Shell actor={actor} current="/cabinet/manage/tools">
@@ -258,12 +244,6 @@ export default async function ToolsScreen({
         </ol>
       </Card>
 
-      {params.sent === undefined ? null : (
-        <Outcome>Вопрос отправлен руководителю практики.</Outcome>
-      )}
-      {failure === undefined ? null : (
-        <Outcome tone="error">{failure}</Outcome>
-      )}
 
       {groups.map((group) => (
         // Группа набрана `div`, а не `section`: сценарий движения сайта
@@ -324,41 +304,6 @@ export default async function ToolsScreen({
           </ul>
         </div>
       ))}
-
-      {partial ? (
-        <Text muted size={14} style={{ marginBottom: 24 }}>
-          Остальные служебные разделы — справочники, журналы, перенос книги заказов, учётные
-          записи — ведёт руководитель практики.
-        </Text>
-      ) : null}
-
-      {/* Спросить руководителя было негде: переписка в кабинете — только с
-          клиентом. Вопрос идёт той же очередью уведомлений, что и всё
-          прочее, и приходит выбранным руководителем каналом
-          (решение Р-199). */}
-      {actor.role === 'HEAD' ? null : (
-        <Card>
-          <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-            Спросить руководителя практики
-          </Heading>
-          <Text muted size={14} style={{ marginBottom: 14 }}>
-            Спорный случай, нестандартная просьба клиента, сомнение по срокам или цене — вопрос
-            уйдёт руководителю и вернётся ответом тем каналом, который он выбрал.
-          </Text>
-          <Form action={requestHelp}>
-            <Field
-              label="В чём нужна помощь"
-              name="text"
-              required
-              multiline
-              placeholder="Клиент просит перенести защиту на месяц и сменить тему. Стоит ли пересматривать договор?"
-            />
-            <FormActions>
-              <Button>Отправить вопрос</Button>
-            </FormActions>
-          </Form>
-        </Card>
-      )}
     </Shell>
   );
 }

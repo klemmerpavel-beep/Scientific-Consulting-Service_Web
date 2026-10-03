@@ -31,6 +31,7 @@ import { curators } from '../../../../../lib/cabinet/queries';
 import { loadBatch, mergeCandidates } from '../../../../../lib/cabinet/import/apply';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { currentActor } from '../../../../../lib/cabinet/session';
+import { homeFor } from '../../../../../lib/cabinet/nav';
 import { applyOrderBook, mergeClientCards } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -59,7 +60,7 @@ export default async function ImportBatchScreen({
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'IMPORT_RUN')) redirect('/cabinet/projects');
+  if (!can(actor, 'IMPORT_RUN')) redirect(homeFor(actor));
 
   const { batchId } = await params;
   const flags = await searchParams;
