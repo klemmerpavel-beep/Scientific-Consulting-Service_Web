@@ -2,6 +2,7 @@ import { prisma } from '../db.ts';
 import {
   CLIENT_VISIBLE_VERSION,
   EXPERT_ROLE_LABEL,
+  curatorLine,
   ensure,
   ensureWorkOpen,
   type Actor,
@@ -577,15 +578,37 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
   // работа ушла бы к клиенту или к приостановленной учётной записи.
   const target = await prisma.user.findFirst({
     where: { id: managerId, status: 'ACTIVE', role: { in: ['MANAGER', 'HEAD'] } },
-    select: { id: true },
+    select: { id: true, fullName: true, expertProfile: { select: { degree: true, specialization: true } } },
   });
   if (target === null) throw new Error('Куратором может быть менеджер или руководитель');
+  if (managerId === ref.managerId) {
+    return prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+  }
 
   const project = await prisma.$transaction(async (tx) => {
-    const updated = await tx.project.update({ where: { id: projectId }, data: { managerId } });
+    const updated = await tx.project.update({
+      where: { id: projectId },
+      data: { managerId },
+      include: { client: { select: { userId: true } } },
+    });
     await tx.projectEvent.create({
       data: { projectId, actorId: actor.id, kind: 'MANAGER_ASSIGNED', payload: { managerId } },
     });
+    // Клиент узнаёт, с кем теперь переписывается: куратор — его собеседник
+    // (требование Т-21, решение Р-299). Регалии — по Т-11 (Р-297).
+    if (updated.client.userId !== null) {
+      await enqueue(tx, {
+        userId: updated.client.userId,
+        projectId,
+        eventKind: 'CURATOR_CHANGED',
+        subject: `У работы «${updated.title}» новый куратор`,
+        body:
+          `Проект ${updated.code} — ${updated.title}.\n` +
+          `Новый куратор: ${curatorLine(target)}.\n` +
+          'Писать ему можно в переписке по работе в личном кабинете.',
+        dedupKey: `project:${projectId}:curator:${managerId}:${Date.now()}`,
+      });
+    }
     return updated;
   });
 
@@ -772,6 +795,17 @@ export async function editProject(
   return saved;
 }
 
+/** Письмо клиенту о смене состояния работы (требование Т-21, решение Р-299). */
+const STATUS_LETTER: Record<ProjectStatusKey, (title: string, reason: string) => { subject: string; body: string }> = {
+  PAUSED: (title, reason) => ({ subject: `Работа «${title}» приостановлена`, body: `Причина: ${reason}` }),
+  COMPLETED: (title) => ({
+    subject: `Работа «${title}» завершена`,
+    body: 'Материалы остаются доступны в кабинете.',
+  }),
+  CANCELLED: (title, reason) => ({ subject: `Работа «${title}» отменена`, body: `Причина: ${reason}` }),
+  ACTIVE: (title) => ({ subject: `Работа «${title}» возобновлена`, body: 'Работа снова идёт.' }),
+};
+
 /**
  * Сменить состояние работы: приостановить, завершить, отменить, вернуть в
  * действие (решение Р-223).
@@ -782,7 +816,12 @@ export async function editProject(
  * попадала в «Завершённые», в отчёт о закрытых за период и в сроки
  * выполнения аналитики, а после срока висела в «Требует внимания».
  */
-export async function setProjectStatus(actor: Actor, projectId: string, to: ProjectStatusKey) {
+export async function setProjectStatus(
+  actor: Actor,
+  projectId: string,
+  to: ProjectStatusKey,
+  reason?: string | null,
+) {
   const ref = await projectRef(projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PROJECT_EDIT', ref);
@@ -798,6 +837,13 @@ export async function setProjectStatus(actor: Actor, projectId: string, to: Proj
       `Из состояния «${PROJECT_STATUS_LABEL[from]}» в «${PROJECT_STATUS_LABEL[to]}» работа не переводится`,
     );
   }
+  // Приостановка и отмена — с причиной для клиента: без неё он узнавал о
+  // них, только открыв кабинет (требования Т-21, М-09, решение Р-299).
+  const why = (reason ?? '').trim();
+  if ((to === 'PAUSED' || to === 'CANCELLED') && why === '') {
+    throw new Error('Приостановить или отменить работу можно только с причиной: её получит клиент');
+  }
+  if (why.length > 2000) throw new Error('Причина — не длиннее 2000 знаков');
 
   // Дата закрытия — день, а не мгновение: так её пишет и перенос книги.
   // День московский: по UTC работа, закрытая до трёх часов ночи, получала
@@ -823,10 +869,34 @@ export async function setProjectStatus(actor: Actor, projectId: string, to: Proj
     // дня возобновления (требование Т-15, решение Р-290).
     if (from === 'ACTIVE' && to !== 'ACTIVE') await holdApprovalDeadlines(tx, projectId, new Date());
     if (from !== 'ACTIVE' && to === 'ACTIVE') await resumeApprovalDeadlines(tx, projectId, new Date());
+    // Причина — в данных события: история работы называет её, а
+    // обезличивание затирает данные событий целиком (Р-234).
     await tx.projectEvent.create({
-      data: { projectId, actorId: actor.id, kind: 'PROJECT_STATUS_CHANGED', payload: { from, to } },
+      data: {
+        projectId,
+        actorId: actor.id,
+        kind: 'PROJECT_STATUS_CHANGED',
+        payload: { from, to, ...(why === '' ? {} : { reason: why }) },
+      },
     });
-    return tx.project.findUniqueOrThrow({ where: { id: projectId } });
+    const saved = await tx.project.findUniqueOrThrow({
+      where: { id: projectId },
+      include: { client: { select: { userId: true } } },
+    });
+    // Клиенту — письмо в той же транзакции; в мессенджер уходит только
+    // сигнал без причины (Р-187).
+    if (saved.client.userId !== null) {
+      const letter = STATUS_LETTER[to](saved.title, why);
+      await enqueue(tx, {
+        userId: saved.client.userId,
+        projectId,
+        eventKind: 'PROJECT_STATUS_CHANGED',
+        subject: letter.subject,
+        body: `Проект ${saved.code} — ${saved.title}.\n${letter.body}\nОткрыть работу можно в личном кабинете.`,
+        dedupKey: `project:${projectId}:status:${from}-${to}:${Date.now()}`,
+      });
+    }
+    return saved;
   });
 
   await record(actor, {

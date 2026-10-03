@@ -73,7 +73,6 @@ import {
   createStage,
   postMessage,
   saveProject,
-  changeProjectStatus,
   saveStage,
   setExpert,
   setManager,
@@ -184,7 +183,9 @@ function eventLine(
       COMPLETED: 'Работа завершена',
       CANCELLED: 'Работа отменена',
     };
-    return (to === null ? undefined : line[to]) ?? EVENT_LABEL[kind]!;
+    // Причина приостановки и отмены видна в истории (Т-21, Р-299).
+    const said = (to === null ? undefined : line[to]) ?? EVENT_LABEL[kind]!;
+    return typeof data.reason === 'string' && data.reason !== '' ? `${said}: ${data.reason}` : said;
   }
 
   if (kind === 'VERSION_UPLOADED') {
@@ -820,18 +821,19 @@ export default async function ProjectScreen({
                 </Form>
               ) : null}
 
+              {/* Смена состояния — в два шага: выбор здесь, последствия,
+                  причина для клиента и подтверждение — на отдельном экране
+                  (требование М-09, решение Р-299). */}
               {mayEdit ? (
-                <Form action={changeProjectStatus}>
-                  <input type="hidden" name="projectId" value={project.id} />
-                  <input type="hidden" name="code" value={project.code} />
-                  <ActionError id={errorId} slot="status" />
+                <Form action={`/cabinet/projects/${project.code}/status`} method="get">
                   <Select
                     label="Состояние работы"
-                    name="status"
+                    name="to"
                     required
-                    defaultValue={draft.status}
-                    hint={`Сейчас: ${PROJECT_STATUS_LABEL[project.status].toLowerCase()}. Завершённая и отменённая работа уходит в «Завершённые», дата закрытия ставится сегодняшняя.`}
+                    defaultValue=""
+                    hint={`Сейчас: ${PROJECT_STATUS_LABEL[project.status].toLowerCase()}. На следующем шаге — последствия, причина для клиента и подтверждение.`}
                   >
+                    <option value="">— выберите действие —</option>
                     {nextProjectStatuses(project.status).map((status) => (
                       <option key={status} value={status}>
                         {PROJECT_STATUS_ACTION[status]}
@@ -839,7 +841,7 @@ export default async function ProjectScreen({
                     ))}
                   </Select>
                   <FormActions>
-                    <Button tone="quiet">Сменить состояние</Button>
+                    <Button tone="quiet">Продолжить</Button>
                   </FormActions>
                 </Form>
               ) : null}

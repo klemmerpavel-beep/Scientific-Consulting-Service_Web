@@ -91,6 +91,27 @@ describe('состояние работы', { skip: !enabled }, async () => {
     assert.equal(back.closedOn, null);
   });
 
+  it('приостановка — только с причиной; причина в истории и в письме клиенту (Т-21, М-09, Р-299)', async () => {
+    await assert.rejects(() => setProjectStatus(curator(), ids.project!, 'PAUSED'), /только с причиной/u);
+    await assert.rejects(() => setProjectStatus(curator(), ids.project!, 'PAUSED', '   '), /только с причиной/u);
+    await setProjectStatus(curator(), ids.project!, 'PAUSED', 'Ждём решения диссовета');
+    const event = await prisma.projectEvent.findFirstOrThrow({
+      where: { projectId: ids.project!, kind: 'PROJECT_STATUS_CHANGED' },
+      orderBy: { createdAt: 'desc' },
+    });
+    assert.deepEqual(event.payload, { from: 'ACTIVE', to: 'PAUSED', reason: 'Ждём решения диссовета' });
+    const clientUser = (await prisma.clientProfile.findUniqueOrThrow({ where: { id: ids.client! } })).userId;
+    if (clientUser !== null) {
+      const letter = await prisma.notificationOutbox.findFirstOrThrow({
+        where: { projectId: ids.project!, userId: clientUser, eventKind: 'PROJECT_STATUS_CHANGED', channel: 'EMAIL' },
+        orderBy: { createdAt: 'desc' },
+      });
+      assert.match(letter.subject, /приостановлена/u);
+      assert.match(letter.body, /Причина: Ждём решения диссовета/u);
+    }
+    await setProjectStatus(curator(), ids.project!, 'ACTIVE');
+  });
+
   it('неизвестное состояние не принимается', async () => {
     await assert.rejects(
       () => setProjectStatus(curator(), ids.project!, 'ARCHIVED' as never),

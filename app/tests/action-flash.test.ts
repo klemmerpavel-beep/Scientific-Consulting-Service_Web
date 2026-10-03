@@ -83,12 +83,21 @@ describe('отказ у своей формы и черновик (решени�
 
   it('четыре действия «Управления работой» отказывают причиной, а не экраном сбоя', () => {
     const source = readFileSync(path.join(CABINET, 'actions.ts'), 'utf8');
-    for (const name of ['saveProject', 'changeProjectStatus', 'setExpert', 'setManager']) {
+    const body = (name: string) => {
       const start = source.indexOf(`export async function ${name}(`);
       assert.ok(start >= 0, `нет действия ${name}`);
-      const body = source.slice(start, source.indexOf('\nexport ', start + 1));
-      assert.match(body, /catch \(error\)[\s\S]*manageFailure\(/u, `${name} без перехвата отказа`);
+      return source.slice(start, source.indexOf('\nexport ', start + 1));
+    };
+    for (const name of ['saveProject', 'setExpert', 'setManager']) {
+      assert.match(body(name), /catch \(error\)[\s\S]*manageFailure\(/u, `${name} без перехвата отказа`);
     }
+    // Смена состояния отказывает на экране подтверждения, с набранной
+    // причиной (требование М-09, решение Р-299).
+    assert.match(
+      body('changeProjectStatus'),
+      /catch \(error\)[\s\S]*withError\(`\/cabinet\/projects\/\$\{code\}\/status/u,
+      'changeProjectStatus без перехвата отказа',
+    );
   });
 
   it('ошибка перехода этапа называет состояния подписями, а не именами из базы', () => {

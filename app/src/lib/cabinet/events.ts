@@ -23,7 +23,9 @@ export type EventKind =
   | 'STAGE_RETURNED'
   | 'CLIENT_ACCESS_OPENED'
   | 'VERSION_REJECTED'
-  | 'NDA_NEEDED';
+  | 'NDA_NEEDED'
+  | 'PROJECT_STATUS_CHANGED'
+  | 'CURATOR_CHANGED';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -68,6 +70,8 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   CLIENT_ACCESS_OPENED: 'куратор открыл вход клиенту',
   VERSION_REJECTED: 'версия не опубликована',
   NDA_NEEDED: 'нужен договор поручения',
+  PROJECT_STATUS_CHANGED: 'изменилось состояние работы',
+  CURATOR_CHANGED: 'у работы новый куратор',
 };
 
 /**

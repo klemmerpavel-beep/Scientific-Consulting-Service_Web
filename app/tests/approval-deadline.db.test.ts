@@ -284,7 +284,7 @@ describe('срок согласования этапа', { skip: !enabled }, asy
     const calendar = await approval.loadCalendar();
     const left = workdaysBetween(new Date(today().getTime() + DAY), stage.approvalDueOn!, calendar);
 
-    await projects.setProjectStatus(curator(), projectId, 'PAUSED');
+    await projects.setProjectStatus(curator(), projectId, 'PAUSED', 'Ждём выписку из протокола кафедры');
     const held = await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } });
     assert.equal(held.approvalDueOn, null, 'срок не снят на паузе');
     assert.equal(held.approvalDaysLeft, left);

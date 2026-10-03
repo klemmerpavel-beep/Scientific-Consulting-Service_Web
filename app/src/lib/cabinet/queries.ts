@@ -1068,3 +1068,26 @@ export async function executorNames(actor: Actor, ids: readonly string[]): Promi
   });
   return new Map(rows.map((row) => [row.id, row.fullName]));
 }
+
+/**
+ * Неразобранное по работе — для экрана подтверждения смены состояния
+ * (требование М-09, ОМ-17, решение Р-299): после закрытия разобрать его
+ * будет нельзя (Р-293).
+ */
+export async function pendingReview(actor: Actor, projectId: string): Promise<{ comments: number; versions: number }> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, clientId: true, managerId: true, expertId: true },
+  });
+  if (project === null) return { comments: 0, versions: 0 };
+  ensure(actor, 'PROJECT_EDIT', project);
+  const [comments, versions] = await Promise.all([
+    prisma.versionComment.count({
+      where: { moderationStatus: 'PENDING', version: { material: { projectId, deletedAt: null } } },
+    }),
+    prisma.versionModeration.count({
+      where: { status: 'PENDING', version: { purgedAt: null, material: { projectId, deletedAt: null } } },
+    }),
+  ]);
+  return { comments, versions };
+}

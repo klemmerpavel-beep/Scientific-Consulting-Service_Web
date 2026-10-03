@@ -288,6 +288,9 @@ async function crawl(page, role, stabilize) {
     '/cabinet/manage/directory?tab=stages',
     '/cabinet/manage/directory?tab=colors',
     '/cabinet/manage/directory?tab=calendar',
+    // Экран подтверждения смены состояния работы — за формой с запросом,
+    // обходом не находится (требование М-09, решение Р-299).
+    '/cabinet/projects/PD-2026-047/status?to=PAUSED',
   ];
   const many = [];
   const seen = new Set(plain);

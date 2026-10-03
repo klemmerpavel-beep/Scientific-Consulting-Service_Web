@@ -138,12 +138,26 @@ describe('закрытая работа — только чтение', { skip: 
   });
 
   it('приостановленная работа: материалы и замечания работают', async () => {
-    await projects.setProjectStatus(curator(), ids.project!, 'PAUSED');
+    await projects.setProjectStatus(curator(), ids.project!, 'PAUSED', 'Клиент в отпуске до 20 октября');
     const upload = await uploadVersion(client(), file(ids.open!));
     const version = await prisma.materialVersion.findFirstOrThrow({ where: { materialId: upload.materialId } });
     await addComment(client(), version.id, 'Посмотрите таблицу 2');
     await projects.editProject(curator(), { projectId: ids.project!, title: 'Работа для проверки закрытия' });
+    // Клиенту — письмо с причиной (Т-21, Р-299).
+    const paused = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId: ids.project, userId: ids.clientUser, eventKind: 'PROJECT_STATUS_CHANGED', channel: 'EMAIL' },
+    });
+    assert.match(paused.subject, /приостановлена/u);
+    assert.match(paused.body, /Причина: Клиент в отпуске до 20 октября/u);
     await projects.setProjectStatus(curator(), ids.project!, 'ACTIVE');
+
+    // Новый куратор — письмо клиенту с именем (Т-21, Р-299).
+    await projects.assignManager(head(), ids.project!, ids.head!);
+    const curatorLetter = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId: ids.project, userId: ids.clientUser, eventKind: 'CURATOR_CHANGED', channel: 'EMAIL' },
+    });
+    assert.match(curatorLetter.body, /Новый куратор: HEAD/u);
+    await projects.assignManager(head(), ids.project!, ids.manager!);
   });
 
   it('завершённая работа: только чтение всем ролям; документы оплат — да; возобновление снимает запрет', async () => {

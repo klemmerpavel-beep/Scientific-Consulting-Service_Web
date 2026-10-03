@@ -508,14 +508,21 @@ export async function saveProject(form: FormData): Promise<void> {
 export async function changeProjectStatus(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
+  const status = String(form.get('status') ?? '');
+  const reason = String(form.get('reason') ?? '');
+  let failure: string | null = null;
   try {
-    await setProjectStatus(
-      actor,
-      String(form.get('projectId') ?? ''),
-      String(form.get('status') ?? '') as ProjectStatusKey,
-    );
+    await setProjectStatus(actor, String(form.get('projectId') ?? ''), status as ProjectStatusKey, reason);
   } catch (error) {
-    await manageFailure(code, 'status', error, fieldsOf(form, ['status']));
+    failure = reasonOf(error, 'Не удалось сменить состояние работы');
+  }
+  // Отказ — на экране подтверждения, с набранной причиной (М-09, Р-279).
+  if (failure !== null) {
+    redirect(
+      await withError(`/cabinet/projects/${code}/status?to=${encodeURIComponent(status)}`, failure, {
+        draft: { reason },
+      }),
+    );
   }
   redirect(`/cabinet/projects/${code}`);
 }

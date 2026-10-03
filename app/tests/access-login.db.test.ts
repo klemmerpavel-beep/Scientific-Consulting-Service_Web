@@ -513,7 +513,7 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     const project = await newProject('S', ids.manager!);
     const results = await Promise.allSettled([
       projects.setProjectStatus(mine(), project, 'COMPLETED'),
-      projects.setProjectStatus(mine(), project, 'CANCELLED'),
+      projects.setProjectStatus(mine(), project, 'CANCELLED', 'Клиент отказался от работы'),
     ]);
     const done = results.filter((r) => r.status === 'fulfilled');
     const refused = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
