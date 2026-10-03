@@ -2,7 +2,7 @@ import { prisma } from '../db.ts';
 import { ensure, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
-import { enqueue, enqueueToLead } from './outbox.ts';
+import { enqueue, enqueueToLead, notifyCurator } from './outbox.ts';
 import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
 import { now } from './clock.ts';
@@ -888,7 +888,7 @@ export async function setStageState(
       throw new Error('Этап уже переведён другим действием: обновите страницу');
     }
     const updated = await tx.stage.findUniqueOrThrow({ where: { id: stageId } });
-    await tx.stageStateChange.create({
+    const change = await tx.stageStateChange.create({
       data: {
         stageId,
         fromState: from,
@@ -898,6 +898,22 @@ export async function setStageState(
         via: action === 'STAGE_APPROVE' && actor.role === 'CLIENT' ? 'CLIENT_APPROVE' : 'MANUAL',
       },
     });
+
+    // Куратор узнаёт о приёмке этапа письмом: следующий этап и оплата
+    // зависят от неё (требование Т-16, решение Р-282).
+    if (action === 'STAGE_APPROVE') {
+      await notifyCurator(tx, {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        eventKind: 'STAGE_APPROVED',
+        subject: `Этап «${stage.title}» согласован`,
+        body:
+          `${actor.role === 'CLIENT' ? 'Клиент согласовал этап' : 'Этап согласован за клиента'} «${stage.title}».\n` +
+          'Можно запускать следующий этап.\n' +
+          stageLink(stageId),
+        key: `stage:${stageId}:approved:${change.id}`,
+      });
+    }
     await tx.projectEvent.create({
       data: {
         projectId: stage.projectId,
@@ -952,6 +968,12 @@ export async function setStageState(
     payload: { from, to },
   });
   return saved;
+}
+
+/** Строка письма со ссылкой на экран этапа; без адреса сайта — общая. */
+function stageLink(stageId: string): string {
+  const base = siteUrl();
+  return base === null ? 'Открыть этап можно в личном кабинете.' : `Открыть этап: ${base}/cabinet/stages/${stageId}`;
 }
 
 /** Предел текста замечаний — как у сообщения в переписке. */
@@ -1027,6 +1049,20 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
         contactHint,
       },
     });
+    // Куратору — сигнал без текста замечаний: текст читается в кабинете,
+    // как и сообщения переписки (решение Р-282).
+    await notifyCurator(tx, {
+      projectId: stage.projectId,
+      actorId: actor.id,
+      eventKind: 'STAGE_RETURNED',
+      subject: `Клиент вернул этап «${stage.title}» с замечаниями`,
+      body:
+        `Клиент вернул этап «${stage.title}» с замечаниями; этап снова «В работе».\n` +
+        'Текст замечаний — на экране этапа.\n' +
+        stageLink(stageId),
+      key: `stage:${stageId}:returned:${created.id}`,
+    });
+
     // Текст замечаний — в данных события ленты: история работы показывает
     // его без похода в историю этапа, а обезличивание затирает данные
     // событий целиком (решение Р-234).

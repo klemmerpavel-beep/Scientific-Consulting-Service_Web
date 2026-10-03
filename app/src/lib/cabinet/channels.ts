@@ -196,6 +196,10 @@ export interface RuleRow {
  */
 export const RULE_EVENTS: readonly { kind: string; title: string }[] = [
   { kind: 'MESSAGE_RECEIVED', title: 'Клиент написал в переписке' },
+  // Приёмка этапа: следующий этап и оплата зависят от неё, а куратор
+  // прежде узнавал о ней, только открыв кабинет (решение Р-282).
+  { kind: 'STAGE_APPROVED', title: 'Этап согласован' },
+  { kind: 'STAGE_RETURNED', title: 'Клиент вернул этап с замечаниями' },
   { kind: 'VERSION_UPLOADED', title: 'Приложена новая версия материала' },
   // Обращения с сайта идут своим путём, сразу в оба канала практики, и
   // правилами не разводятся (Р-161).

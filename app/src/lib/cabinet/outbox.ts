@@ -44,6 +44,40 @@ type Db = Prisma.TransactionClient | typeof prisma;
  * проверяется: адресата определяет вызывающий сценарий, который уже прошёл
  * через модуль прав.
  */
+/**
+ * Уведомить куратора работы о действии другого человека (решение Р-282).
+ *
+ * О собственном действии куратору не пишется: согласовав этап за клиента,
+ * он и так знает об этом. Ключ повтора содержит адресата: у одного
+ * события бывает несколько адресатов, и ключ без адресата отбросил бы
+ * второго.
+ */
+export async function notifyCurator(
+  db: Db,
+  input: {
+    readonly projectId: string;
+    readonly actorId: string;
+    readonly eventKind: EventKind;
+    readonly subject: string;
+    readonly body: string;
+    readonly key: string;
+  },
+): Promise<number> {
+  const project = await db.project.findUnique({
+    where: { id: input.projectId },
+    select: { managerId: true },
+  });
+  if (project === null || project.managerId === input.actorId) return 0;
+  return enqueue(db, {
+    userId: project.managerId,
+    projectId: input.projectId,
+    eventKind: input.eventKind,
+    subject: input.subject,
+    body: input.body,
+    dedupKey: `${input.key}:${project.managerId}`,
+  });
+}
+
 /** Возвращает число поставленных строк: повтор по ключу не считается. */
 export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
   const user = await db.user.findUnique({

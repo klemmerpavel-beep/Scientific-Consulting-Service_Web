@@ -373,6 +373,11 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     assert.match(change.reason ?? '', /Монте-Карло/u);
     const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId, kind: 'STAGE_RETURNED' } });
     assert.equal((event.payload as { changeId?: string }).changeId, change.id);
+    // Куратору — сигнал без текста замечаний (Т-16, Р-282).
+    const letter = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId, userId: ids.manager!, eventKind: 'STAGE_RETURNED', channel: 'EMAIL' },
+    });
+    assert.doesNotMatch(letter.body, /Монте-Карло/u, 'текст замечаний ушёл в письмо');
 
     await assert.rejects(projects.returnStage(owner, stage.id, 'Ещё раз'), /уже не на согласовании/u);
 
@@ -405,5 +410,19 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     await projects.setStageState(owner, stage.id, 'DONE');
     const change = await prisma.stageStateChange.findFirstOrThrow({ where: { stageId: stage.id } });
     assert.equal(change.via, 'CLIENT_APPROVE');
+    const letters = await prisma.notificationOutbox.count({
+      where: { projectId, userId: ids.manager!, eventKind: 'STAGE_APPROVED' },
+    });
+    assert.ok(letters >= 1, 'куратор не узнал о согласовании (Т-16)');
+
+    // Согласовав этап сам, куратор письма себе не получает.
+    const second = await prisma.stage.create({
+      data: { projectId, position: 2, title: 'Глава 3', state: 'IN_APPROVAL' },
+    });
+    await projects.setStageState(curator(), second.id, 'DONE');
+    const own = await prisma.notificationOutbox.count({
+      where: { projectId, userId: ids.manager!, eventKind: 'STAGE_APPROVED', body: { contains: 'Глава 3' } },
+    });
+    assert.equal(own, 0, 'куратору пришло письмо о собственном действии');
   });
 });

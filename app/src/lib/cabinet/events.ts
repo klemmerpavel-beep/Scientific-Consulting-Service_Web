@@ -17,7 +17,9 @@ export type EventKind =
   | 'PROJECT_OPENED'
   | 'LEAD_DECLINED'
   | 'MESSAGE_RECEIVED'
-  | 'HELP_REQUESTED';
+  | 'HELP_REQUESTED'
+  | 'STAGE_APPROVED'
+  | 'STAGE_RETURNED';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -56,6 +58,8 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   PROJECT_OPENED: 'работа заведена',
   LEAD_DECLINED: 'ответ на отклонённую заявку',
   MESSAGE_RECEIVED: 'новое сообщение',
+  STAGE_APPROVED: 'этап согласован',
+  STAGE_RETURNED: 'этап возвращён с замечаниями',
 };
 
 /**
