@@ -34,7 +34,7 @@ import {
   type StageStateKey,
 } from '../../../../components/cabinet/ui';
 import { SANS } from '../../../../components/cabinet/tokens';
-import { can } from '../../../../lib/cabinet/access';
+import { can, presentReturnText, type Actor } from '../../../../lib/cabinet/access';
 import { CONTACT_LABEL, contactsOf } from '../../../../lib/cabinet/channels';
 import { stageLabel } from '../../../../lib/cabinet/stage-state';
 import {
@@ -79,6 +79,7 @@ const EVENT_LABEL: Record<string, string> = {
   MANAGER_ASSIGNED: 'Работу принял другой куратор',
   EXPERT_ASSIGNED: 'Назначен исполнитель',
   STAGE_STATE_CHANGED: 'Этап сменил состояние',
+  STAGE_RETURNED: 'Этап возвращён с замечаниями',
   VERSION_UPLOADED: 'Приложена новая версия материала',
   PROJECT_STATUS_CHANGED: 'Состояние работы изменено',
 };
@@ -100,10 +101,22 @@ function eventLine(
   stages: readonly { id: string; position: number; title: string }[],
   materials: readonly { id: string; title: string }[],
   staff: boolean,
+  actor: Actor,
 ): string {
   const data = (payload ?? {}) as Record<string, unknown>;
   const stage = stages.find((item) => item.id === data.stageId);
   const material = materials.find((item) => item.id === data.materialId);
+
+  // Возврат клиентом — с текстом замечаний; эксперту — без контактов
+  // (решение Р-281, О-5).
+  if (kind === 'STAGE_RETURNED') {
+    const where = stage === undefined ? 'Этап' : `Этап ${stage.position} «${stage.title}»`;
+    const text = presentReturnText(actor, {
+      reason: typeof data.text === 'string' ? data.text : null,
+      contactHint: data.contactHint === true,
+    });
+    return text === null ? `${where} возвращён с замечаниями` : `${where} возвращён с замечаниями: ${text}`;
+  }
 
   if (kind === 'STAGE_STATE_CHANGED') {
     const from = typeof data.from === 'string' ? stageLabel(data.from as StageStateKey, staff) : null;
@@ -306,7 +319,7 @@ export default async function ProjectScreen({
     .filter((event) => !forClient || !CLIENT_HIDDEN_EVENTS.has(event.kind))
     .map((event) => ({
       id: event.id,
-      line: eventLine(event.kind, event.payload, project.stages, withMaterials?.materials ?? [], staff),
+      line: eventLine(event.kind, event.payload, project.stages, withMaterials?.materials ?? [], staff, actor),
       at: `${formatDay(event.createdAt)}, ${formatTime(event.createdAt)}`,
       who:
         event.actor === null

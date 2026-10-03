@@ -94,6 +94,8 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   STAGE_EDIT: [false, false, true, true],
   STAGE_SET_STATE: [false, false, true, true],
   STAGE_APPROVE: [true, false, true, true],
+  // Вернуть этап с замечаниями — право самого клиента (Р-281).
+  STAGE_RETURN: [true, false, false, false],
   MATERIAL_VIEW: [true, true, true, true],
   MATERIAL_UPLOAD: [true, true, true, true],
   COMMENT_CREATE: [true, true, true, true],
@@ -142,6 +144,7 @@ describe('чужой проект', () => {
       'MATERIAL_UPLOAD',
       'COMMENT_CREATE',
       'STAGE_APPROVE',
+      'STAGE_RETURN',
       'MESSAGE_READ',
       'MESSAGE_WRITE',
       'CONTRACT_VIEW',
@@ -397,3 +400,21 @@ describe('меню подсвечивает раздел, в котором че
     assert.equal(activeItem(items, '/cabinet/enter/abc'), null);
   });
 });
+
+describe('замечания клиента при возврате этапа (Р-281)', async () => {
+  const { presentReturnText, RETURN_TEXT_WITH_CURATOR } = await import('../src/lib/cabinet/access.ts');
+  const plain = { reason: 'В главе 2 нет сравнения с методом Монте-Карло', contactHint: false };
+  const withContact = { reason: 'Позвоните мне: +7 900 000-00-00', contactHint: true };
+
+  it('клиент и практика видят текст всегда', () => {
+    for (const actor of [client, manager, head]) {
+      assert.equal(presentReturnText(actor, withContact), withContact.reason);
+    }
+  });
+
+  it('эксперт видит текст без контактов, а с контактом — строку о кураторе', () => {
+    assert.equal(presentReturnText(expert, plain), plain.reason);
+    assert.equal(presentReturnText(expert, withContact), RETURN_TEXT_WITH_CURATOR);
+  });
+});
+

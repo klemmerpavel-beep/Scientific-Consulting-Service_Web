@@ -65,6 +65,7 @@ const ACTIONS: Record<string, string> = {
   COMMENT_REJECTED: 'Комментарий отклонён',
   STAGE_STATE_CHANGED: 'Изменено состояние этапа',
   STAGE_APPROVED: 'Этап согласован',
+  STAGE_RETURNED: 'Этап возвращён клиентом с замечаниями',
   STAGE_CREATED: 'Заведён этап',
   STAGE_EDITED: 'Этап изменён',
   PROJECT_EDITED: 'Карточка работы изменена',

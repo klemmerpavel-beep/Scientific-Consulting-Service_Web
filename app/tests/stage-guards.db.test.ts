@@ -332,4 +332,78 @@ describe('этапы и работы', { skip: !enabled }, async () => {
       dueTo: '2026-12-01',
     });
   });
+  /** Клиент с учётной записью и своей работой: автор перехода — настоящий человек. */
+  const clientWithWork = async (suffix: string) => {
+    const user = await prisma.user.create({
+      data: { email: `sg-cl-${suffix}-${stamp}@example.org`, fullName: 'Клиент возврата', role: 'CLIENT' },
+    });
+    const profile = await prisma.clientProfile.create({
+      data: { fullName: 'Клиент возврата', normalizedName: `sg возврат ${suffix} ${stamp}`, userId: user.id },
+    });
+    const project = await prisma.project.create({
+      data: {
+        code: `PD-SG-${tail}-${suffix}`,
+        clientId: profile.id,
+        serviceTypeId: ids.type!,
+        title: `Работа ${suffix}`,
+        managerId: ids.manager!,
+      },
+    });
+    projectIds.push(project.id);
+    return { projectId: project.id, owner: who(user.id, 'CLIENT', { clientProfileId: profile.id }) };
+  };
+
+  it('клиент возвращает этап с замечаниями; повторная сдача гасит пометку (Р-281)', async () => {
+    const { projectId, owner } = await clientWithWork('RET');
+    const stage = await prisma.stage.create({
+      data: { projectId, position: 1, title: 'Глава 1', state: 'IN_APPROVAL' },
+    });
+
+    await assert.rejects(projects.returnStage(owner, stage.id, '   '), /Без замечаний этап не возвращается/u);
+    await assert.rejects(projects.returnStage(curator(), stage.id, 'Переделать'), /не разрешено/u);
+
+    await projects.returnStage(owner, stage.id, 'Нет сравнения с методом Монте-Карло; звоните +7 900 000-00-00');
+    const returned = await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } });
+    assert.equal(returned.state, 'IN_PROGRESS');
+    assert.ok(returned.returnedAt !== null, 'пометка возврата не поставлена');
+    const change = await prisma.stageStateChange.findFirstOrThrow({
+      where: { stageId: stage.id, via: 'CLIENT_RETURN' },
+    });
+    assert.equal(change.contactHint, true, 'контакт в замечаниях не помечен');
+    assert.match(change.reason ?? '', /Монте-Карло/u);
+    const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId, kind: 'STAGE_RETURNED' } });
+    assert.equal((event.payload as { changeId?: string }).changeId, change.id);
+
+    await assert.rejects(projects.returnStage(owner, stage.id, 'Ещё раз'), /уже не на согласовании/u);
+
+    // Повторная сдача: этап снова на согласовании, пометка снята.
+    const material = await prisma.material.create({
+      data: { projectId, stageId: stage.id, title: 'Глава 1, вторая редакция', createdById: ids.manager! },
+    });
+    await prisma.materialVersion.create({
+      data: {
+        materialId: material.id,
+        number: 1,
+        storageKey: `sg-return-${stamp}`,
+        originalName: 'glava1.docx',
+        sizeBytes: 10n,
+        sha256: '0'.repeat(64),
+        contentType: 'application/octet-stream',
+        uploadedById: ids.manager!,
+      },
+    });
+    await projects.setStageState(curator(), stage.id, 'IN_APPROVAL');
+    const resubmitted = await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } });
+    assert.equal(resubmitted.returnedAt, null, 'пометка возврата пережила повторную сдачу');
+  });
+
+  it('согласование клиентом отмечается способом перехода (Р-281)', async () => {
+    const { projectId, owner } = await clientWithWork('APR');
+    const stage = await prisma.stage.create({
+      data: { projectId, position: 1, title: 'Глава 2', state: 'IN_APPROVAL' },
+    });
+    await projects.setStageState(owner, stage.id, 'DONE');
+    const change = await prisma.stageStateChange.findFirstOrThrow({ where: { stageId: stage.id } });
+    assert.equal(change.via, 'CLIENT_APPROVE');
+  });
 });

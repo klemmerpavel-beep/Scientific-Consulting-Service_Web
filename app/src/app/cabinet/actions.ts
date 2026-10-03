@@ -78,6 +78,7 @@ import {
   declineLead,
   setProjectStatus,
   setStageState,
+  returnStage,
 } from '../../lib/cabinet/projects';
 import type { ProjectStatusKey } from '../../lib/cabinet/project-status';
 import {
@@ -170,6 +171,23 @@ export async function approveStage(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось согласовать этап');
   }
   if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Клиент возвращает этап с замечаниями (требование Т-03, решение Р-281). */
+export async function returnStageWithRemarks(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const text = String(form.get('remarks') ?? '');
+  let failure: string | null = null;
+  try {
+    await returnStage(actor, stageId, text);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось вернуть этап');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { remarks: text } }));
+  }
   redirect(`/cabinet/stages/${stageId}`);
 }
 

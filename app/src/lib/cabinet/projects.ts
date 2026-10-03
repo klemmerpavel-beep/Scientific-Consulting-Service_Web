@@ -8,6 +8,7 @@ import { siteUrl } from '../site-url.ts';
 import { now } from './clock.ts';
 import { moscowToday } from './admin.ts';
 import { STAGE_TRANSITIONS, stageLabel } from './stage-state.ts';
+import { hasContacts } from './contacts.ts';
 import {
   PROJECT_STATUS_LABEL,
   canChangeProjectStatus,
@@ -878,6 +879,9 @@ export async function setStageState(
         awaitingClientSince: to === 'AWAITING_CLIENT' ? now : null,
         startedAt: from === 'NOT_STARTED' && to === 'IN_PROGRESS' ? now : stage.startedAt,
         completedAt: to === 'DONE' ? now : null,
+        // Повторная сдача гасит пометку «возвращён с замечаниями» и дело
+        // куратора: замечания отработаны (решение Р-281).
+        ...(to === 'IN_APPROVAL' ? { returnedAt: null, returnAckAt: null } : {}),
       },
     });
     if (claimed.count === 0) {
@@ -885,7 +889,14 @@ export async function setStageState(
     }
     const updated = await tx.stage.findUniqueOrThrow({ where: { id: stageId } });
     await tx.stageStateChange.create({
-      data: { stageId, fromState: from, toState: to, actorId: actor.id, reason: reason ?? null },
+      data: {
+        stageId,
+        fromState: from,
+        toState: to,
+        actorId: actor.id,
+        reason: reason ?? null,
+        via: action === 'STAGE_APPROVE' && actor.role === 'CLIENT' ? 'CLIENT_APPROVE' : 'MANUAL',
+      },
     });
     await tx.projectEvent.create({
       data: {
@@ -941,4 +952,102 @@ export async function setStageState(
     payload: { from, to },
   });
   return saved;
+}
+
+/** Предел текста замечаний — как у сообщения в переписке. */
+const RETURN_TEXT_MAX = 10_000;
+
+/**
+ * Клиент возвращает этап с замечаниями (требование Т-03, решение Р-281).
+ *
+ * Оферта (п. 7.2) даёт заказчику право на мотивированные замечания вместо
+ * подписания акта; прежде у клиента была одна кнопка — «Согласовать», и
+ * несогласие выражалось только комментарием или сообщением. Этап уходит
+ * «В работу» с пометкой «возвращён с замечаниями»; текст хранится в
+ * истории этапа и видим клиенту и практике, эксперту — без контактов
+ * (`presentReturnText`). Текст с контактом не блокируется, как и в
+ * переписке, а помечается: куратор видит его в реестре «Контакты в
+ * переписке».
+ *
+ * Отдельная служба, а не `setStageState`: у возврата свои текст, пометка и
+ * адресаты уведомлений. Новое состояние этапа не вводится — таблица
+ * переходов (Р-229) уже знает «На согласовании → В работе».
+ */
+export async function returnStage(actor: Actor, stageId: string, text: string) {
+  const stage = await prisma.stage.findUnique({
+    where: { id: stageId },
+    include: {
+      project: {
+        select: { id: true, clientId: true, managerId: true, expertId: true, status: true },
+      },
+    },
+  });
+  if (stage === null) throw new Error('Этап не найден');
+  ensure(actor, 'STAGE_RETURN', stage.project);
+  if (stage.project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
+  if (stage.state !== 'IN_APPROVAL') {
+    throw new Error('Этап уже не на согласовании: обновите страницу');
+  }
+
+  const body = text.trim();
+  if (body.length === 0) {
+    throw new Error('Без замечаний этап не возвращается: напишите, что нужно исправить или дополнить');
+  }
+  if (body.length > RETURN_TEXT_MAX) {
+    throw new Error(`Замечания — не длиннее ${RETURN_TEXT_MAX.toLocaleString('ru-RU')} знаков`);
+  }
+  const contactHint = hasContacts(body);
+
+  const now = new Date();
+  const change = await prisma.$transaction(async (tx) => {
+    // Захват по состоянию: возврат и согласование, нажатые одновременно,
+    // не проходят оба (как в Р-240).
+    const claimed = await tx.stage.updateMany({
+      where: { id: stageId, state: 'IN_APPROVAL' },
+      data: {
+        state: 'IN_PROGRESS',
+        completedAt: null,
+        blockedReason: null,
+        awaitingClientSince: null,
+        returnedAt: now,
+        returnAckAt: null,
+      },
+    });
+    if (claimed.count === 0) {
+      throw new Error('Этап уже переведён другим действием: обновите страницу');
+    }
+    const created = await tx.stageStateChange.create({
+      data: {
+        stageId,
+        fromState: 'IN_APPROVAL',
+        toState: 'IN_PROGRESS',
+        actorId: actor.id,
+        reason: body,
+        via: 'CLIENT_RETURN',
+        contactHint,
+      },
+    });
+    // Текст замечаний — в данных события ленты: история работы показывает
+    // его без похода в историю этапа, а обезличивание затирает данные
+    // событий целиком (решение Р-234).
+    await tx.projectEvent.create({
+      data: {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        kind: 'STAGE_RETURNED',
+        payload: { stageId, changeId: created.id, text: body, contactHint },
+      },
+    });
+    return created;
+  });
+
+  // В журнал — без текста, как и остальные переходы этапа (решение Р-239).
+  await record(actor, {
+    action: 'STAGE_RETURNED',
+    objectType: 'Stage',
+    objectId: stageId,
+    projectId: stage.projectId,
+    payload: { from: 'IN_APPROVAL', to: 'IN_PROGRESS', contactHint },
+  });
+  return change;
 }

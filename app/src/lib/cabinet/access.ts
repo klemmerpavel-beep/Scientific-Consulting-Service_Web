@@ -56,6 +56,7 @@ export const ACTIONS = [
   'STAGE_EDIT',
   'STAGE_SET_STATE',
   'STAGE_APPROVE',
+  'STAGE_RETURN',
   'MATERIAL_VIEW',
   'MATERIAL_UPLOAD',
   'COMMENT_CREATE',
@@ -161,6 +162,12 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     // закрыть этап за него, эксперт — нет: он же его и выполнял.
     case 'STAGE_APPROVE':
       return own || practice;
+
+    // Вернуть этап с замечаниями может только сам клиент: это его право по
+    // п. 7.2 оферты. Практика возвращает этап обычным переводом
+    // (решение Р-281).
+    case 'STAGE_RETURN':
+      return own;
 
     // ── Переписка ─────────────────────────────────────────────────────────
     // Канал один: клиент — менеджер. Эксперт высказывается комментариями
@@ -398,3 +405,24 @@ export function presentProject(actor: Actor, project: ProjectRecord): ProjectVie
 export function hasContacts(view: ProjectView): boolean {
   return 'phone' in view.client || 'email' in view.client;
 }
+
+/**
+ * Текст замечаний клиента при возврате этапа — так, как его можно показать
+ * смотрящему (решение Р-281, О-5).
+ *
+ * Клиент и практика видят текст всегда. Эксперт видит его, только если в
+ * тексте нет телефона, почты или ссылки на мессенджер: прямого канала
+ * «клиент — эксперт» нет (Р-150), и замечание с контактом стало бы им.
+ * Вместо такого текста эксперту — строка «Замечания у куратора».
+ */
+export function presentReturnText(
+  actor: Actor,
+  change: { readonly reason: string | null; readonly contactHint: boolean },
+): string | null {
+  if (change.reason === null) return null;
+  if (actor.role === 'EXPERT' && change.contactHint) return RETURN_TEXT_WITH_CURATOR;
+  return change.reason;
+}
+
+/** Что видит эксперт вместо замечаний с контактом. */
+export const RETURN_TEXT_WITH_CURATOR = 'Замечания у куратора: в тексте были контакты.';

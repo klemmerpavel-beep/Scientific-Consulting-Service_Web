@@ -164,6 +164,14 @@ export async function stageById(actor: Actor, stageId: string) {
         },
       },
       expert: { select: { fullName: true, expertProfile: { select: { degree: true } } } },
+      // Последний возврат клиентом: текст замечаний под шапкой этапа
+      // (решение Р-281). Эксперту текст отдаёт `presentReturnText`.
+      changes: {
+        where: { via: 'CLIENT_RETURN' },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { reason: true, contactHint: true, createdAt: true },
+      },
       materials: {
         where: materialScope,
         orderBy: { createdAt: 'asc' },

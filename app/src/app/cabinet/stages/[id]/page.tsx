@@ -23,7 +23,8 @@ import {
   type StageStateKey,
 } from '../../../../components/cabinet/ui';
 import { SANS } from '../../../../components/cabinet/tokens';
-import { can } from '../../../../lib/cabinet/access';
+import { can, presentReturnText } from '../../../../lib/cabinet/access';
+import { formDraft } from '../../../../lib/cabinet/flash';
 import { stageById } from '../../../../lib/cabinet/queries';
 import { daysPast } from '../../../../lib/cabinet/clock';
 import { hasContacts } from '../../../../lib/cabinet/contacts';
@@ -37,6 +38,7 @@ import { currentActor } from '../../../../lib/cabinet/session';
 import {
   approveStage,
   changeStageState,
+  returnStageWithRemarks,
   commentOnVersion,
   decideOnComment,
   moveStageDue,
@@ -106,6 +108,13 @@ export default async function StageScreen({
   const live = stage.project.status === 'ACTIVE';
   const mayEdit = live && can(actor, 'STAGE_SET_STATE', ref);
   const mayApprove = live && state === 'IN_APPROVAL' && can(actor, 'STAGE_APPROVE', ref);
+  // Вернуть с замечаниями может только сам клиент (решение Р-281).
+  const mayReturn = live && state === 'IN_APPROVAL' && can(actor, 'STAGE_RETURN', ref);
+  // Пометка «возвращён с замечаниями» стоит до новой сдачи этапа.
+  const lastReturn = stage.returnedAt === null ? undefined : stage.changes[0];
+  // Отказ возврата возвращает набранные замечания в поле (решение Р-279).
+  const returnDraft = (await formDraft((await searchParams).error)) ?? {};
+  const returnText = lastReturn === undefined ? null : presentReturnText(actor, lastReturn);
   // На закрытом этапе клиенту не предлагается приложить «первый» материал:
   // этап сдан, и новая загрузка в него ничего не сдвинет (решение Р-206).
   const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref) && (state !== 'DONE' || actor.role !== 'CLIENT');
@@ -155,11 +164,25 @@ export default async function StageScreen({
 
       <ActionError id={(await searchParams).error} />
 
-      {stage.blockedReason === null ? null : (
+      {/* Причина остановки и замечания клиента — одним блоком: на экране
+          куратора и без них до четырёх блоков (решения Р-183, Р-281). */}
+      {stage.blockedReason === null && lastReturn === undefined ? null : (
         <Block as="div" style={{ marginBottom: 24 }}>
-          <Notice tone="quiet" role="status">
-            {stage.blockedReason}
-          </Notice>
+          {lastReturn === undefined ? null : (
+            <Notice tone="quiet" role="status">
+              {`Возвращён с замечаниями ${formatDate(lastReturn.createdAt)}`}
+              {returnText === null ? null : (
+                <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnText}</span>
+              )}
+            </Notice>
+          )}
+          {stage.blockedReason === null ? null : (
+            <div style={{ marginTop: lastReturn === undefined ? 0 : 12 }}>
+              <Notice tone="quiet" role="status">
+                {stage.blockedReason}
+              </Notice>
+            </div>
+          )}
         </Block>
       )}
 
@@ -245,11 +268,34 @@ export default async function StageScreen({
           <Text style={{ marginBottom: 16 }}>
             Посмотрите последнюю версию материалов и комментарии. После согласования этап
             закрывается, и работа переходит к следующему.
+            {mayReturn ? ' Если что-то нужно исправить, верните этап с замечаниями.' : ''}
           </Text>
           <Form action={approveStage} inline>
             <input type="hidden" name="stageId" value={stage.id} />
             <Button>Согласовать этап</Button>
           </Form>
+          {/* Второе действие — нейтральное и под раскрытием: акцент на
+              экране один, а форма замечаний нужна не каждому
+              (решения Р-165, Р-178, Р-281). */}
+          {mayReturn ? (
+            <Disclosure title="Вернуть с замечаниями" style={{ marginTop: 16 }}>
+              <Form action={returnStageWithRemarks}>
+                <input type="hidden" name="stageId" value={stage.id} />
+                <Field
+                  label="Что исправить или дополнить"
+                  name="remarks"
+                  scope="return"
+                  multiline
+                  required
+                  defaultValue={returnDraft.remarks ?? ''}
+                  hint="Замечания увидит куратор; этап вернётся в работу."
+                />
+                <FormActions>
+                  <Button tone="quiet">Вернуть с замечаниями</Button>
+                </FormActions>
+              </Form>
+            </Disclosure>
+          ) : null}
         </Card>
       ) : null}
 
