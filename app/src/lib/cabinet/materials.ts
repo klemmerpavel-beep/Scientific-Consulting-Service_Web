@@ -11,7 +11,9 @@ import {
 import { record } from './audit.ts';
 import { hasContacts } from './contacts.ts';
 import { fileRefusal } from './file-guard.ts';
-import { enqueue } from './outbox.ts';
+import { enqueue, notifyCurator } from './outbox.ts';
+import { stageLink } from './approval.ts';
+import { siteUrl } from '../site-url.ts';
 import { projectRef } from './projects.ts';
 import { materialKey, openObject, sha256, storage } from './storage.ts';
 
@@ -535,7 +537,17 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
     include: {
       material: {
         include: {
-          project: { select: { id: true, clientId: true, managerId: true, expertId: true, status: true } },
+          project: {
+            select: {
+              id: true,
+              code: true,
+              title: true,
+              clientId: true,
+              managerId: true,
+              expertId: true,
+              status: true,
+            },
+          },
           stage: { select: { state: true } },
         },
       },
@@ -584,6 +596,54 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
       publishedAt: published ? new Date() : null,
     },
   });
+  // Куратору — сигнал без текста (требование М-07, решение Р-300):
+  // замечание на модерации — одно письмо, пока в работе есть неразобранное;
+  // замечание клиента, опубликованное сразу, — каждое.
+  const project = version.material.project;
+  const where =
+    version.material.stageId === null
+      ? materialsLink(project.code)
+      : stageLink(version.material.stageId);
+  if (held) {
+    const [otherComments, versions] = await Promise.all([
+      prisma.versionComment.count({
+        where: {
+          id: { not: comment.id },
+          moderationStatus: 'PENDING',
+          version: { material: { projectId: project.id, deletedAt: null } },
+        },
+      }),
+      prisma.versionModeration.count({
+        where: { status: 'PENDING', version: { material: { projectId: project.id, deletedAt: null } } },
+      }),
+    ]);
+    if (otherComments + versions === 0) {
+      await notifyCurator(prisma, {
+        projectId: project.id,
+        actorId: actor.id,
+        eventKind: 'MODERATION_PENDING',
+        subject: `Ждут публикации: ${project.code}`,
+        body:
+          `Работа ${project.code} — ${project.title}.\n` +
+          'Появились замечания или версии эксперта, которые ждут вашего решения: до него клиент их не видит.\n' +
+          where,
+        key: `moderation:${project.id}:${comment.id}`,
+      });
+    }
+  } else if (actor.role === 'CLIENT') {
+    await notifyCurator(prisma, {
+      projectId: project.id,
+      actorId: actor.id,
+      eventKind: 'CLIENT_COMMENT',
+      subject: `Клиент оставил замечание: ${version.material.title}`,
+      body:
+        `Работа ${project.code} — ${project.title}.\n` +
+        `Клиент оставил замечание к версии v${version.number} материала «${version.material.title}». Текст — в кабинете.\n` +
+        where,
+      key: `comment:${comment.id}:client`,
+    });
+  }
+
   // В журнал — факт и признаки, без текста (решения Р-234, Р-239).
   await record(actor, {
     action: 'COMMENT_CREATED',
@@ -842,4 +902,12 @@ export async function pendingVersions(actor: Actor): Promise<PendingComment[]> {
     );
   }
   return [...byStage.values()];
+}
+
+/** Строка письма со ссылкой на «Материалы работы» (решение Р-300). */
+function materialsLink(code: string): string {
+  const base = siteUrl();
+  return base === null
+    ? 'Открыть материалы можно в личном кабинете.'
+    : `Открыть материалы: ${base}/cabinet/projects/${code}/materials`;
 }

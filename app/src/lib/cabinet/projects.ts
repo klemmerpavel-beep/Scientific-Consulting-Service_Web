@@ -594,6 +594,18 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
     await tx.projectEvent.create({
       data: { projectId, actorId: actor.id, kind: 'MANAGER_ASSIGNED', payload: { managerId } },
     });
+    // Новому куратору — письмо: работа стала его, а узнавал он об этом,
+    // только открыв перечень (требование М-07, решение Р-300).
+    if (managerId !== actor.id) {
+      await enqueue(tx, {
+        userId: managerId,
+        projectId,
+        eventKind: 'CURATOR_ASSIGNED',
+        subject: `Вам передана работа ${updated.code}`,
+        body: `${updated.code} — ${updated.title}.\nРаботу передал руководитель; она уже в вашем перечне «Работы практики».`,
+        dedupKey: `project:${projectId}:curator-assigned:${managerId}:${Date.now()}`,
+      });
+    }
     // Клиент узнаёт, с кем теперь переписывается: куратор — его собеседник
     // (требование Т-21, решение Р-299). Регалии — по Т-11 (Р-297).
     if (updated.client.userId !== null) {

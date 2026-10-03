@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { flashText } from '../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
@@ -27,7 +28,7 @@ import { ownChannels } from '../../../lib/cabinet/admin';
 import {
   CONTACT_LABEL,
   CONTACT_NOTE,
-  RULE_EVENTS,
+  rulesFor,
   needsValue,
   ownContacts,
   ownRules,
@@ -236,8 +237,18 @@ export default async function SettingsScreen({
                   </tr>
                 </thead>
                 <tbody>
-                  {RULE_EVENTS.map((event) => (
-                    <tr key={event.kind}>
+                  {/* Строки — по роли и группами: менеджеру не показываются
+                      события, которые ему не приходят (М-07, Р-300). */}
+                  {rulesFor(actor.role).map((event, index, rows) => (
+                    <Fragment key={event.kind}>
+                    {index === 0 || rows[index - 1]!.group !== event.group ? (
+                      <tr>
+                        <th scope="row" colSpan={3} style={{ ...TABLE_CELL, fontWeight: 600 }}>
+                          {event.group}
+                        </th>
+                      </tr>
+                    ) : null}
+                    <tr>
                       <td style={TABLE_CELL}>{event.title}</td>
                       {(['EMAIL', 'TELEGRAM'] as const).map((channel) => (
                         <td key={channel} style={TABLE_CELL}>
@@ -249,6 +260,7 @@ export default async function SettingsScreen({
                         </td>
                       ))}
                     </tr>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

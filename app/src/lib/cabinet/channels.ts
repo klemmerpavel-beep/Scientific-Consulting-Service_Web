@@ -194,24 +194,39 @@ export interface RuleRow {
  * очередь не ставила вовсе: снятая галочка ничем не управляла (решение
  * Р-228).
  */
-export const RULE_EVENTS: readonly { kind: string; title: string }[] = [
-  { kind: 'MESSAGE_RECEIVED', title: 'Клиент написал в переписке' },
+export const RULE_EVENTS: readonly {
+  readonly kind: string;
+  readonly title: string;
+  /** Группа строк сетки (требование М-07, решение Р-300). */
+  readonly group: string;
+  /** Кому строка показывается: событие, которое роли не приходит, ею не правится. */
+  readonly roles: readonly ('MANAGER' | 'HEAD')[];
+}[] = [
   // Приёмка этапа: следующий этап и оплата зависят от неё, а куратор
   // прежде узнавал о ней, только открыв кабинет (решение Р-282).
-  { kind: 'STAGE_APPROVED', title: 'Этап согласован или принят по сроку' },
-  { kind: 'STAGE_RETURNED', title: 'Клиент вернул этап с замечаниями' },
-  { kind: 'VERSION_UPLOADED', title: 'Приложена новая версия материала' },
+  { kind: 'STAGE_APPROVED', title: 'Этап согласован или принят по сроку', group: 'Приёмка этапа', roles: ['MANAGER', 'HEAD'] },
+  { kind: 'STAGE_RETURNED', title: 'Клиент вернул этап с замечаниями', group: 'Приёмка этапа', roles: ['MANAGER', 'HEAD'] },
+  // Материалы и замечания: замечание клиента и то, что ждёт публикации,
+  // прежде до куратора не доходили (требование М-07, решение Р-300).
+  { kind: 'VERSION_UPLOADED', title: 'Приложена новая версия материала', group: 'Материалы и замечания', roles: ['MANAGER', 'HEAD'] },
+  { kind: 'MODERATION_PENDING', title: 'Замечания или версии эксперта ждут публикации', group: 'Материалы и замечания', roles: ['MANAGER', 'HEAD'] },
+  { kind: 'CLIENT_COMMENT', title: 'Клиент оставил замечание к версии', group: 'Материалы и замечания', roles: ['MANAGER', 'HEAD'] },
+  { kind: 'MESSAGE_RECEIVED', title: 'Клиент написал в переписке', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
+  { kind: 'CURATOR_ASSIGNED', title: 'Вам передана работа', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   // Обращения с сайта идут своим путём, сразу в оба канала практики, и
   // правилами не разводятся (Р-161).
-  { kind: 'REQUEST_CREATED', title: 'Новое обращение из кабинета' },
-  { kind: 'HELP_REQUESTED', title: 'Куратор просит помощи (руководителю)' },
-  // Выдача ссылки входа куратором — доступ к чужой учётной записи; его
-  // видит руководитель (решение Р-285, ОМ-3).
-  { kind: 'CLIENT_ACCESS_OPENED', title: 'Куратор открыл вход клиенту (руководителю)' },
-  // Эксперт назначен без договора поручения: материалы ему закрыты, пока
-  // руководитель не отметит договор (требование М-16, ОМ-25, Р-298).
-  { kind: 'NDA_NEEDED', title: 'Нужен договор поручения (руководителю)' },
+  { kind: 'REQUEST_CREATED', title: 'Новое обращение из кабинета', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
+  // Только руководителю: вопрос куратора, выдача входа клиенту (Р-285) и
+  // договор поручения (Р-298). Менеджеру эти строки ничем не управляли.
+  { kind: 'HELP_REQUESTED', title: 'Куратор просит помощи', group: 'Руководителю', roles: ['HEAD'] },
+  { kind: 'CLIENT_ACCESS_OPENED', title: 'Куратор открыл вход клиенту', group: 'Руководителю', roles: ['HEAD'] },
+  { kind: 'NDA_NEEDED', title: 'Нужен договор поручения', group: 'Руководителю', roles: ['HEAD'] },
 ];
+
+/** Строки сетки для роли (требование М-07, решение Р-300). */
+export function rulesFor(role: string): readonly (typeof RULE_EVENTS)[number][] {
+  return RULE_EVENTS.filter((event) => (event.roles as readonly string[]).includes(role));
+}
 
 /** Правила своей учётной записи. */
 export async function ownRules(actor: Actor): Promise<RuleRow[]> {
@@ -231,7 +246,7 @@ export async function saveRules(
   actor: Actor,
   rules: readonly { eventKind: string; channel: Channel; enabled: boolean }[],
 ): Promise<void> {
-  const known = new Set(RULE_EVENTS.map((event) => event.kind));
+  const known = new Set(rulesFor(actor.role).map((event) => event.kind));
   const clean = rules.filter((rule) => known.has(rule.eventKind));
 
   await prisma.$transaction(async (tx) => {

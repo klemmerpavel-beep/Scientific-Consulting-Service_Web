@@ -25,7 +25,10 @@ export type EventKind =
   | 'VERSION_REJECTED'
   | 'NDA_NEEDED'
   | 'PROJECT_STATUS_CHANGED'
-  | 'CURATOR_CHANGED';
+  | 'CURATOR_CHANGED'
+  | 'MODERATION_PENDING'
+  | 'CLIENT_COMMENT'
+  | 'CURATOR_ASSIGNED';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -72,6 +75,9 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   NDA_NEEDED: 'нужен договор поручения',
   PROJECT_STATUS_CHANGED: 'изменилось состояние работы',
   CURATOR_CHANGED: 'у работы новый куратор',
+  MODERATION_PENDING: 'ждут публикации замечания или версии',
+  CLIENT_COMMENT: 'клиент оставил замечание',
+  CURATOR_ASSIGNED: 'вам передана работа',
 };
 
 /**

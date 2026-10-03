@@ -192,4 +192,18 @@ describe('закрытая работа — только чтение', { skip: 
     await projects.editProject(curator(), { projectId: ids.project!, title: 'Работа для проверки закрытия' });
     await moderateComment(curator(), pending.id, 'PUBLISHED');
   });
+
+  it('куратору — сигналы о замечании клиента, о модерации и о передаче работы (М-07, Р-300)', async () => {
+    const count = (eventKind: string) =>
+      prisma.notificationOutbox.count({
+        where: { projectId: ids.project, userId: ids.manager, eventKind, channel: 'EMAIL' },
+      });
+    assert.ok((await count('CLIENT_COMMENT')) >= 1, 'замечание клиента не дошло до куратора');
+    assert.equal(await count('MODERATION_PENDING'), 1, 'сигнал о модерации — не один');
+    assert.equal(await count('CURATOR_ASSIGNED'), 1, 'куратор не узнал о передаче работы');
+    const letter = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId: ids.project, userId: ids.manager, eventKind: 'CLIENT_COMMENT', channel: 'EMAIL' },
+    });
+    assert.doesNotMatch(letter.body, /Посмотрите таблицу 2/u, 'текст замечания ушёл в письмо');
+  });
 });

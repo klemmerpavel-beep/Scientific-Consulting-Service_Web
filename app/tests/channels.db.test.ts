@@ -123,7 +123,9 @@ describe('способы связи и правила уведомлений', {
       where: { id: ids.client! },
       data: { notifyEmail: true, notifyTelegram: true, telegramChatId: `chan-${stamp}` },
     });
-    await channels.saveRules(who(ids.client!, 'CLIENT'), [
+    // Сетка правил — у практики: строки по роли сохраняющего (Р-300).
+    // Механизм проверяется на той же записи, сохранённой как сотрудником.
+    await channels.saveRules(who(ids.client!, 'MANAGER'), [
       { eventKind: 'VERSION_UPLOADED', channel: 'EMAIL', enabled: false },
       { eventKind: 'VERSION_UPLOADED', channel: 'TELEGRAM', enabled: true },
     ]);
@@ -183,5 +185,14 @@ describe('способы связи и правила уведомлений', {
       ['EMAIL'],
       'событие, о котором правил нет, не ушло почтой',
     );
+  });
+
+  it('строки сетки — по роли: менеджеру нет событий руководителя (М-07, Р-300)', () => {
+    const manager = channels.rulesFor('MANAGER').map((event) => event.kind);
+    const head = channels.rulesFor('HEAD').map((event) => event.kind);
+    assert.ok(!manager.includes('HELP_REQUESTED'));
+    assert.ok(!manager.includes('NDA_NEEDED'));
+    assert.ok(head.includes('HELP_REQUESTED') && head.includes('CLIENT_COMMENT'));
+    assert.deepEqual(channels.rulesFor('CLIENT'), []);
   });
 });

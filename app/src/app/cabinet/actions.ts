@@ -60,7 +60,7 @@ import {
 } from '../../lib/cabinet/admin';
 import type { AccessLinkState } from '../../components/cabinet/AccessLink';
 import {
-  RULE_EVENTS,
+  rulesFor,
   addContact,
   askForHelp,
   dropContact,
@@ -765,7 +765,7 @@ export async function saveNotifyRules(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   // Форма присылает состояние всей решётки: у каждой клетки своё имя
   // вида `rule:<событие>:<канал>`, и снятая галочка просто не приходит.
-  const rules = RULE_EVENTS.flatMap((event) =>
+  const rules = rulesFor(actor.role).flatMap((event) =>
     (['EMAIL', 'TELEGRAM'] as const).map((channel) => ({
       eventKind: event.kind,
       channel,
