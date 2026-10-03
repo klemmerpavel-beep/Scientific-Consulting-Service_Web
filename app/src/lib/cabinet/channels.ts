@@ -211,6 +211,10 @@ export const RULE_EVENTS: readonly {
   { kind: 'VERSION_UPLOADED', title: 'Приложена новая версия материала', group: 'Материалы и замечания', roles: ['MANAGER', 'HEAD'] },
   { kind: 'MODERATION_PENDING', title: 'Замечания или версии эксперта ждут публикации', group: 'Материалы и замечания', roles: ['MANAGER', 'HEAD'] },
   { kind: 'CLIENT_COMMENT', title: 'Клиент оставил замечание к версии', group: 'Материалы и замечания', roles: ['MANAGER', 'HEAD'] },
+  // Сроки этапов теперь приходят и куратору: за три дня и при срыве
+  // (требование М-08, решение Р-301).
+  { kind: 'DEADLINE_IN_3_DAYS', title: 'Срок этапа через три дня', group: 'Сроки', roles: ['MANAGER', 'HEAD'] },
+  { kind: 'DEADLINE_MISSED', title: 'Срок этапа сорван', group: 'Сроки', roles: ['MANAGER', 'HEAD'] },
   { kind: 'MESSAGE_RECEIVED', title: 'Клиент написал в переписке', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   { kind: 'CURATOR_ASSIGNED', title: 'Вам передана работа', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   // Обращения с сайта идут своим путём, сразу в оба канала практики, и

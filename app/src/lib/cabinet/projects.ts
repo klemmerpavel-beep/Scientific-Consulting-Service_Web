@@ -533,6 +533,28 @@ export async function assignExpert(
     payload: { from: ref.expertId, to: expertId },
   });
 
+  // Эксперт узнаёт о назначении письмом. Без договора поручения — письмо
+  // нейтральное: код работы и что доступ откроется после договора, без
+  // названия и данных клиента (требование М-08, ОМ-13, решения Р-237,
+  // Р-301).
+  if (expertId !== null) {
+    const assigned = await prisma.user.findUnique({
+      where: { id: expertId },
+      select: { expertProfile: { select: { ndaSignedAt: true } } },
+    });
+    const signed = (assigned?.expertProfile?.ndaSignedAt ?? null) !== null;
+    await enqueue(prisma, {
+      userId: expertId,
+      projectId,
+      eventKind: 'WORK_ASSIGNED',
+      subject: `Вы назначены на работу ${project.code}`,
+      body: signed
+        ? `${project.code} — ${project.title}.\nМатериалы работы открыты вам в личном кабинете.`
+        : `Работа ${project.code}.\nДоступ к материалам откроется после договора поручения обработки персональных данных.`,
+      dedupKey: `project:${projectId}:expert-assigned:${expertId}:${Date.now()}`,
+    });
+  }
+
   // Эксперт без договора поручения материалов не увидит: руководитель
   // получает вопрос сам, а не узнаёт о нём от куратора (требование М-16,
   // ОМ-25, решение Р-298). Назначил руководитель — он и так знает.

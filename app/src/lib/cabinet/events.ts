@@ -28,7 +28,10 @@ export type EventKind =
   | 'CURATOR_CHANGED'
   | 'MODERATION_PENDING'
   | 'CLIENT_COMMENT'
-  | 'CURATOR_ASSIGNED';
+  | 'CURATOR_ASSIGNED'
+  | 'DEADLINE_MISSED'
+  | 'WORK_ASSIGNED'
+  | 'EXPERT_DECISION';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -78,6 +81,9 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   MODERATION_PENDING: 'ждут публикации замечания или версии',
   CLIENT_COMMENT: 'клиент оставил замечание',
   CURATOR_ASSIGNED: 'вам передана работа',
+  DEADLINE_MISSED: 'срок этапа сорван',
+  WORK_ASSIGNED: 'вас назначили на работу',
+  EXPERT_DECISION: 'решение куратора по вашему материалу',
 };
 
 /**

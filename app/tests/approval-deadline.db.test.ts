@@ -219,9 +219,13 @@ describe('срок согласования этапа', { skip: !enabled }, asy
 
     await enqueueDeadlineReminders();
     assert.equal(
-      await prisma.notificationOutbox.count({ where: { projectId, eventKind: 'DEADLINE_IN_3_DAYS' } }),
+      // Клиенту — только срок согласования; куратору о сроке этапа
+      // напоминается при любом ходе (М-08, Р-301).
+      await prisma.notificationOutbox.count({
+        where: { projectId, eventKind: 'DEADLINE_IN_3_DAYS', userId: { not: ids.manager } },
+      }),
       0,
-      'срок этапа на согласовании напомнил вторым сроком',
+      'срок этапа на согласовании напомнил клиенту вторым сроком',
     );
   });
 

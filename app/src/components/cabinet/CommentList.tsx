@@ -96,8 +96,10 @@ export default function CommentList({
                     placeholder={
                       comment.author.role === 'CLIENT'
                         ? 'Причина — её увидит клиент'
-                        : 'Причина — её увидит эксперт'
+                        : 'Причина — эксперт получит её письмом'
                     }
+                    // У замечания эксперта причина обязательна (М-08, ОМ-15).
+                    required={comment.author.role === 'EXPERT'}
                     minWidth={220}
                   />
                   <Button tone="quiet">Отклонить</Button>

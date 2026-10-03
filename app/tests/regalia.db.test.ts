@@ -119,6 +119,13 @@ describe('регалии и роль эксперта', { skip: !enabled }, asyn
     });
     ids.fresh = fresh.id;
     await projects.assignExpert(curator(), ids.project!, fresh.id);
+    // Эксперту без договора — нейтральное письмо: код работы, без названия
+    // и данных клиента (М-08, ОМ-13, Р-301).
+    const assigned = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId: ids.project, userId: fresh.id, eventKind: 'WORK_ASSIGNED', channel: 'EMAIL' },
+    });
+    assert.match(assigned.body, /откроется после договора поручения/u);
+    assert.doesNotMatch(assigned.body, /Работа для проверки регалий/u, 'название работы ушло эксперту без договора');
     const asked = await prisma.notificationOutbox.findMany({
       where: { projectId: ids.project, userId: ids.head, eventKind: 'NDA_NEEDED', channel: 'EMAIL' },
     });

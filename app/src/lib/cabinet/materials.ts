@@ -448,6 +448,15 @@ export async function moderateVersion(
         data: { moderationStatus: 'PUBLISHED', moderatedById: actor.id, moderatedAt: now, publishedAt: now },
       });
     }
+    // Эксперту — что версия ушла клиенту (требование М-08, решение Р-301).
+    await enqueue(tx, {
+      userId: version.uploadedById,
+      projectId: project.id,
+      eventKind: 'EXPERT_DECISION',
+      subject: `Версия v${version.number} опубликована: ${version.material.title}`,
+      body: `Работа ${project.code}.\nКуратор опубликовал клиенту версию v${version.number} материала «${version.material.title}».`,
+      dedupKey: `version:${version.id}:published:expert`,
+    });
     if (project.client.userId !== null) {
       await enqueue(tx, {
         userId: project.client.userId,
@@ -671,14 +680,18 @@ export async function moderateComment(
   const target = await prisma.versionComment.findUnique({
     where: { id: commentId },
     select: {
+      authorId: true,
+      moderationStatus: true,
       author: { select: { role: true } },
       version: {
         select: {
+          number: true,
           moderation: { select: { status: true } },
           material: {
             select: {
+              title: true,
               project: {
-                select: { id: true, clientId: true, managerId: true, expertId: true, status: true },
+                select: { id: true, code: true, clientId: true, managerId: true, expertId: true, status: true },
               },
             },
           },
@@ -704,6 +717,12 @@ export async function moderateComment(
   // публикации, иначе отклонила бы замечание, о котором клиенту уже
   // сообщили (решение Р-226).
   const reason = note?.trim() || null;
+  if (target.moderationStatus !== 'PENDING') throw new Error('Замечание уже разобрано');
+  // Замечание эксперта отклоняется с причиной: эксперт получает её письмом
+  // (требование М-08, ОМ-15, решение Р-301).
+  if (decision === 'REJECTED' && target.author.role === 'EXPERT' && reason === null) {
+    throw new Error('Не публиковать замечание эксперта можно только с причиной: эксперт получит её письмом');
+  }
   const { count } = await prisma.versionComment.updateMany({
     where: { id: commentId, moderationStatus: 'PENDING' },
     data: {
@@ -721,6 +740,27 @@ export async function moderateComment(
     objectType: 'VersionComment',
     objectId: commentId,
   });
+  // Эксперт узнаёт решение по своему замечанию (М-08, Р-301).
+  if (target.author.role === 'EXPERT') {
+    const { material } = target.version;
+    await enqueue(prisma, {
+      userId: target.authorId,
+      projectId: material.project.id,
+      eventKind: 'EXPERT_DECISION',
+      subject:
+        decision === 'PUBLISHED'
+          ? `Ваше замечание опубликовано: ${material.title}`
+          : `Ваше замечание не опубликовано: ${material.title}`,
+      body:
+        `Работа ${material.project.code}.\n` +
+        (decision === 'PUBLISHED'
+          ? `Куратор опубликовал клиенту ваше замечание к версии v${target.version.number} материала «${material.title}».`
+          : `Куратор не опубликовал ваше замечание к версии v${target.version.number} материала «${material.title}».\nПричина: ${reason}`),
+      // Своё пространство ключей: письма клиенту о замечании начинаются с
+      // `comment:<id>` (решение Р-242).
+      dedupKey: `expert-decision:comment:${commentId}`,
+    });
+  }
 
   // Письмо «эксперт оставил замечание» уходит клиенту, только если автор —
   // эксперт: своё же замечание клиенту пересылать незачем (решение Р-242).

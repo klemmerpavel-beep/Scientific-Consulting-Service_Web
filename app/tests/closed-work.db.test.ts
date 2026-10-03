@@ -191,6 +191,11 @@ describe('закрытая работа — только чтение', { skip: 
     await projects.setProjectStatus(curator(), ids.project!, 'ACTIVE');
     await projects.editProject(curator(), { projectId: ids.project!, title: 'Работа для проверки закрытия' });
     await moderateComment(curator(), pending.id, 'PUBLISHED');
+    // Эксперт узнаёт решение по своему замечанию (М-08, Р-301).
+    const decided = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId: ids.project, userId: ids.expert, eventKind: 'EXPERT_DECISION', channel: 'EMAIL' },
+    });
+    assert.match(decided.subject, /опубликовано/u);
   });
 
   it('куратору — сигналы о замечании клиента, о модерации и о передаче работы (М-07, Р-300)', async () => {

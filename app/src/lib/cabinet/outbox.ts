@@ -6,6 +6,8 @@ import { CHANNEL_OFF, telegramNote, telegramPermanent, type EventKind } from './
 import { leadAddress } from './lead-letter.ts';
 import { sendMailTo } from './mail.ts';
 import { escapeHtml } from './token.ts';
+import { formatDay } from './approval-text.ts';
+import { moscowToday } from './clock.ts';
 
 /**
  * Очередь исходящих уведомлений.
@@ -444,51 +446,89 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
 }
 
 /**
- * Напоминания о приближающемся сроке. Выполняются той же командой, что и
- * рассылка: отдельного расписания для них заводить незачем, а ключ
- * дедупликации с датой не даёт напомнить дважды за сутки.
+ * Напоминания о сроке этапа (требование М-08, ОМ-14, решение Р-301).
+ *
+ * Адресат — тот, чей ход: клиенту — только когда этап ждёт его данных
+ * (на согласовании ему напоминает срок согласования, Р-290); эксперту с
+ * договором поручения — пока этап в работе; куратору — всегда. Прежде
+ * клиенту приходило «срок этапа подходит» и тогда, когда от него ничего не
+ * ждали, а куратор и эксперт не получали ничего.
+ *
+ * Одно письмо за три дня до срока и одно при срыве — вместо ежедневных.
+ * Ключ — этап, срок и адресат: перенос срока даёт новое напоминание. День
+ * считается по Москве, этап со сроком «сегодня» тоже напоминается.
+ * «Срок сорван» берёт только вчерашние сроки: первый прогон после выката
+ * не рассылает его по давно сорванным этапам.
  */
-export async function enqueueDeadlineReminders(): Promise<number> {
-  const now = new Date();
-  const horizon = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+export async function enqueueDeadlineReminders(at: Date = new Date()): Promise<number> {
+  const today = moscowToday(at);
+  const DAY = 24 * 60 * 60 * 1000;
+  const yesterday = new Date(today.getTime() - DAY);
+  const horizon = new Date(today.getTime() + 3 * DAY);
 
   const stages = await prisma.stage.findMany({
     where: {
-      // Этап на согласовании напоминает о сроке согласования, а не о сроке
-      // этапа: два разных срока в двух письмах сбивали бы клиента (Т-15,
-      // решение Р-290).
-      state: { in: ['IN_PROGRESS', 'AWAITING_CLIENT'] },
-      dueOn: { gte: now, lte: horizon },
+      state: { in: ['NOT_STARTED', 'IN_PROGRESS', 'AWAITING_CLIENT', 'IN_APPROVAL'] },
+      dueOn: { gte: yesterday, lte: horizon },
       // Приостановленная, завершённая и отменённая работа о сроках этапов
-      // не напоминает: прежде напоминания шли по любой (решение Р-235).
+      // не напоминает (решение Р-235).
       project: { status: 'ACTIVE' },
     },
     include: {
       project: {
-        select: { id: true, code: true, title: true, client: { select: { userId: true } } },
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          managerId: true,
+          client: { select: { userId: true } },
+          expert: {
+            select: { id: true, status: true, role: true, expertProfile: { select: { ndaSignedAt: true } } },
+          },
+        },
       },
     },
   });
 
-  const today = now.toISOString().slice(0, 10);
   let queued = 0;
   for (const stage of stages) {
-    const userId = stage.project.client.userId;
-    if (userId === null) continue;
-    // Считаются новые строки, а не попытки: прежде счётчик рос на каждом
-    // прогоне, и сценарий расписания писал строку в журнал каждую минуту
-    // (решение Р-246).
-    queued += await enqueue(prisma, {
-      userId,
-      projectId: stage.project.id,
-      eventKind: 'DEADLINE_IN_3_DAYS',
-      subject: `Срок этапа «${stage.title}» подходит`,
-      body:
-        `Работа: ${stage.project.title}.\n` +
-        `Этап «${stage.title}» должен быть закрыт до ${stage.dueOn?.toISOString().slice(0, 10)}.\n` +
-        'Если от вас что-то требуется, это видно на главном экране кабинета.',
-      dedupKey: `stage:${stage.id}:deadline:${today}`,
-    });
+    const dueOn = stage.dueOn!;
+    const missed = dueOn.getTime() < today.getTime();
+    const { project } = stage;
+    // Эксперт — только с договором поручения: без него название этапа
+    // ему не показывается (решение Р-237).
+    const expert =
+      project.expert !== null &&
+      project.expert.status === 'ACTIVE' &&
+      project.expert.role === 'EXPERT' &&
+      (project.expert.expertProfile?.ndaSignedAt ?? null) !== null
+        ? project.expert.id
+        : null;
+    const recipients = new Set<string>([project.managerId]);
+    if (stage.state === 'AWAITING_CLIENT' && project.client.userId !== null) recipients.add(project.client.userId);
+    if (stage.state === 'IN_PROGRESS' && expert !== null) recipients.add(expert);
+
+    for (const userId of recipients) {
+      const forClient = userId === project.client.userId;
+      // Считаются новые строки, а не попытки (решение Р-246).
+      queued += await enqueue(prisma, {
+        userId,
+        projectId: project.id,
+        eventKind: missed ? 'DEADLINE_MISSED' : 'DEADLINE_IN_3_DAYS',
+        subject: missed
+          ? `Срок этапа «${stage.title}» сорван`
+          : `Срок этапа «${stage.title}» — ${formatDay(dueOn)}`,
+        body:
+          `${forClient ? 'Работа' : `Работа ${project.code} —`} ${project.title}.\n` +
+          (missed
+            ? `Срок этапа «${stage.title}» был ${formatDay(dueOn)}.\n`
+            : `Этап «${stage.title}» должен быть закрыт до ${formatDay(dueOn)} включительно.\n`) +
+          (forClient
+            ? 'Этап ждёт ваших материалов: что нужно, видно на главном экране кабинета.'
+            : 'Ход по этапу виден на его экране в личном кабинете.'),
+        dedupKey: `stage:${stage.id}:${missed ? 'missed' : 'due-soon'}:${dueOn.toISOString().slice(0, 10)}:${userId}`,
+      });
+    }
   }
   return queued;
 }
