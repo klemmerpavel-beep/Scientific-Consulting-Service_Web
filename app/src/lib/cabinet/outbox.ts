@@ -1,6 +1,6 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
-import { ensure, type Actor } from './access.ts';
+import { ensure, scopeLeads, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { CHANNEL_OFF, telegramNote, telegramPermanent, type EventKind } from './events.ts';
 import { leadAddress } from './lead-letter.ts';
@@ -723,6 +723,69 @@ export async function leadDeliveryDigest(actor: Actor): Promise<LeadDeliveryDige
       leadCreatedAt: row.lead.createdAt,
     })),
   };
+}
+
+/** Пауза между повторами одного письма отказа (требование М-19, Р-307). */
+export const LEAD_RETRY_PAUSE_MS = 10 * 60 * 1000;
+
+/**
+ * Отправить ещё раз письмо отказа по заявке — с её карточки (требование
+ * М-19, решение Р-307).
+ *
+ * Прежде экран заявки советовал «повторить отправку на экране очереди
+ * уведомлений», а очередь менеджеру закрыта. Повторяется только письмо
+ * отказа, не доставленное после всех попыток (ОМ-6): доставленное и
+ * ждущее остаются как есть, и служба возвращает `false`. Адрес рассылка
+ * читает из заявки при отправке, поэтому исправленный в сведениях адрес
+ * действует сразу. Один и тот же отказ повторяется не чаще раза в десять
+ * минут: иначе кнопка становится способом слать письма на чужой ящик.
+ */
+export async function retryLeadLetter(actor: Actor, leadId: string, ip?: string | null): Promise<boolean> {
+  ensure(actor, 'REQUEST_MODERATE');
+  const scope = scopeLeads(actor);
+  const lead =
+    scope === null
+      ? null
+      : await prisma.lead.findFirst({
+          where: { AND: [{ id: leadId }, scope] },
+          select: { id: true, contactKind: true, contact: true },
+        });
+  if (lead === null) throw new Error('Заявка не найдена');
+  const row = await prisma.notificationOutbox.findFirst({
+    where: { leadId: lead.id, eventKind: 'LEAD_DECLINED', channel: 'EMAIL' },
+    select: { id: true, state: true, projectId: true, eventKind: true },
+  });
+  if (row === null || row.state !== 'FAILED') return false;
+  if (leadAddress(lead) === null) {
+    throw new Error('В заявке нет адреса почты: исправьте адрес в сведениях заявки и отправьте ещё раз');
+  }
+  const recent = await prisma.auditEvent.findFirst({
+    where: {
+      action: 'OUTBOX_RETRY',
+      objectType: 'NotificationOutbox',
+      objectId: row.id,
+      occurredAt: { gt: new Date(Date.now() - LEAD_RETRY_PAUSE_MS) },
+    },
+    select: { id: true },
+  });
+  if (recent !== null) {
+    throw new Error('Письмо уже отправлено заново: повторить можно через десять минут');
+  }
+  // Захват по состоянию: второе нажатие в соседнем окне строку не тронет.
+  const claimed = await prisma.notificationOutbox.updateMany({
+    where: { id: row.id, state: 'FAILED' },
+    data: { state: 'PENDING', attempts: 0, lastError: null, scheduledAt: new Date() },
+  });
+  if (claimed.count === 0) return false;
+  await record(actor, {
+    action: 'OUTBOX_RETRY',
+    objectType: 'NotificationOutbox',
+    objectId: row.id,
+    projectId: row.projectId,
+    payload: { eventKind: row.eventKind, leadId: lead.id },
+    ip,
+  });
+  return true;
 }
 
 /**

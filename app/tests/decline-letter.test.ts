@@ -59,6 +59,10 @@ describe('судьба письма на экране заявки', () => {
     assert.match(waiting, /почтового канала/u);
     assert.match(queued, /в очереди/u);
     assert.match(failed, /не доставлено: 550 ящик не существует/u);
+    // Повтор — кнопкой на карточке заявки, а не на закрытом менеджеру
+    // экране очереди (требование М-19, решение Р-307).
+    assert.match(failed, /Исправьте адрес в сведениях заявки и отправьте ещё раз\.$/u);
+    assert.doesNotMatch(failed, /очереди уведомлений/u);
     assert.match(declineLetterNote(mail, { state: 'SENT', lastError: null }), /ушло/u);
   });
 });

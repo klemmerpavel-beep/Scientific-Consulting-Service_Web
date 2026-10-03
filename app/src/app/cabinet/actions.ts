@@ -72,7 +72,7 @@ import { ActiveWorkError, executeErasure, requestErasure } from '../../lib/cabin
 import { createCabinetRequest, REQUEST_FILES_MAX } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
-import { enqueue, retryFailed } from '../../lib/cabinet/outbox';
+import { enqueue, retryFailed, retryLeadLetter } from '../../lib/cabinet/outbox';
 import {
   addStage,
   editProject,
@@ -1494,6 +1494,25 @@ export async function dropStageTemplate(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError('/cabinet/manage/directory', failure));
   redirect('/cabinet/manage/directory');
+}
+
+/**
+ * Отправить ещё раз письмо отказа — с карточки заявки (требование М-19,
+ * решение Р-307). Отказ службы — у кнопки, а не общим экраном сбоя.
+ */
+export async function resendDeclineLetter(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const leadId = String(form.get('leadId') ?? '');
+  let failure: string | null = null;
+  let resent = false;
+  try {
+    resent = await retryLeadLetter(actor, leadId, await requestIp());
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить письмо ещё раз');
+  }
+  const path = `/cabinet/manage/leads/${leadId}`;
+  if (failure !== null) redirect(await withError(path, failure, { slot: 'resend', anchor: 'decline' }));
+  redirect(resent ? `${path}?resent=1#decline` : `${path}#decline`);
 }
 
 /**

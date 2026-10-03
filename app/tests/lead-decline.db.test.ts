@@ -20,7 +20,9 @@ const enabled = Boolean(process.env.DATABASE_URL);
 describe('ответ заявителю при отказе', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
   const { declineLead } = await import('../src/lib/cabinet/projects.ts');
-  const { CHANNEL_OFF, dispatch, outboxDigest } = await import('../src/lib/cabinet/outbox.ts');
+  const { CHANNEL_OFF, dispatch, lifetimeMs, outboxDigest, retryLeadLetter } = await import(
+    '../src/lib/cabinet/outbox.ts'
+  );
 
   const stamp = Date.now();
   const leadIds: string[] = [];
@@ -219,6 +221,62 @@ describe('ответ заявителю при отказе', { skip: !enabled }
     const row = await prisma.notificationOutbox.findFirstOrThrow({ where: { leadId } });
     assert.equal(row.state, 'FAILED', 'строка без адреса осталась в очереди');
     assert.notEqual(row.lastError, CHANNEL_OFF);
+  });
+
+  it('повтор письма отказа — с карточки заявки, с исправленным адресом (М-19, Р-307)', async () => {
+    const leadId = leadIds[0]!;
+    const row = await prisma.notificationOutbox.findFirstOrThrow({ where: { leadId } });
+    assert.equal(row.state, 'FAILED');
+    assert.equal(lifetimeMs('LEAD_DECLINED'), null, 'письмо отказа истекает по сроку годности');
+
+    // Адреса нет — повтор бесполезен, менеджеру сказано, что исправить.
+    await assert.rejects(() => retryLeadLetter(manager(), leadId), /исправьте адрес в сведениях заявки/u);
+
+    await prisma.lead.update({ where: { id: leadId }, data: { contact: `decline-fixed-${stamp}@example.org` } });
+    assert.equal(await retryLeadLetter(manager(), leadId, '203.0.113.7'), true);
+    const back = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: row.id } });
+    assert.equal(back.state, 'PENDING');
+    assert.equal(back.attempts, 0);
+    const journal = await prisma.auditEvent.findFirstOrThrow({
+      where: { action: 'OUTBOX_RETRY', objectId: row.id, actorId: managerId },
+    });
+    assert.deepEqual(journal.payload, { eventKind: 'LEAD_DECLINED', leadId });
+
+    // Ждущее письмо не трогается.
+    assert.equal(await retryLeadLetter(manager(), leadId), false);
+    // Второй повтор того же письма — не раньше чем через десять минут.
+    await prisma.notificationOutbox.update({ where: { id: row.id }, data: { state: 'FAILED' } });
+    await assert.rejects(() => retryLeadLetter(manager(), leadId), /через десять минут/u);
+  });
+
+  it('повтор: доставленное — без действия, заявка чужой работы — отказ', async () => {
+    const sentLead = await newLead('email', `decline-sent-${stamp}@example.org`);
+    await declineLead(manager(), sentLead, 'Не наш профиль.');
+    await prisma.notificationOutbox.updateMany({ where: { leadId: sentLead }, data: { state: 'SENT', sentAt: new Date() } });
+    assert.equal(await retryLeadLetter(manager(), sentLead), false);
+
+    const type = await prisma.serviceType.create({ data: { code: `decline-f-${stamp}`, name: 'Чужая работа' } });
+    const client = await prisma.clientProfile.create({ data: { fullName: 'Чужой клиент', normalizedName: 'чужой клиент' } });
+    const foreign = await prisma.project.create({
+      data: {
+        code: `PD-DECF-${stamp}`,
+        clientId: client.id,
+        serviceTypeId: type.id,
+        title: 'Чужая работа',
+        managerId: headId,
+        source: 'WEB',
+      },
+    });
+    const foreignLead = await newLead('email', `decline-foreign-${stamp}@example.org`);
+    try {
+      await prisma.lead.update({ where: { id: foreignLead }, data: { projectId: foreign.id } });
+      await assert.rejects(() => retryLeadLetter(manager(), foreignLead), /не найдена/u);
+    } finally {
+      await prisma.lead.update({ where: { id: foreignLead }, data: { projectId: null } });
+      await prisma.project.delete({ where: { id: foreign.id } });
+      await prisma.clientProfile.delete({ where: { id: client.id } });
+      await prisma.serviceType.delete({ where: { id: type.id } });
+    }
   });
 
   it('сводка очереди называет заявителя, а не пустое место', async () => {
