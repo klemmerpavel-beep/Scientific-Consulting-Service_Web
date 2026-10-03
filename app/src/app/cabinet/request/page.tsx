@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
+import { SANS } from '../../../components/cabinet/tokens';
 import {
   Button,
   ButtonLink,
@@ -11,6 +12,7 @@ import {
   FileField,
   Form,
   FormActions,
+  Heading,
   Notice,
   Narrow,
   ScreenHead,
@@ -204,6 +206,25 @@ export default async function NewRequestScreen({
               Заявка принята и передана куратору. Ответ придёт на вашу почту, а ход работы будет
               виден в разделе «Мои работы».
             </Notice>
+            {/* Тот же блок шагов, что после формы заявки на сайте; третий
+                шаг — для того, у кого кабинет уже есть (требование Т-24,
+                решение Р-318). */}
+            <Card style={{ marginTop: 16 }}>
+              <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+                Что будет дальше
+              </Heading>
+              <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
+                <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+                  Куратор разберёт заявку и ответит в течение рабочего дня.
+                </li>
+                <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+                  Свяжемся удобным вам способом, чтобы уточнить задачу.
+                </li>
+                <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+                  После согласования работа появится в «Моих работах».
+                </li>
+              </ol>
+            </Card>
             {lost === 0 ? null : (
               <Notice tone="error">
                 Не сохранились приложенные файлы: {lost}. Заявка принята без них — приложите

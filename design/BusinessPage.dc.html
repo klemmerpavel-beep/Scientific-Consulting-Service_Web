@@ -182,6 +182,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div role="status" tabindex="{{ -1 }}" data-sent="top" style="grid-column:span 2;display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята. Ответим в рабочее время, Пн—Пт 10:00—19:00.</span>
 </div>
+<div data-next="top" style="margin-top:12px;grid-column:span 2;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-surface-quiet);padding:12px 16px">
+<span style="display:block;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);margin-bottom:8px">Что будет дальше</span>
+<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
+<li>Куратор разберёт заявку и ответит в течение рабочего дня</li>
+<li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
+<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+</ol>
+</div>
 </sc-if>
 <sc-if value="{{ errorTop }}" hint-placeholder-val="{{ false }}">
 <div role="alert" style="grid-column:span 2;display:flex;gap:8px;align-items:flex-start;background:var(--pd-err-bg);border:1px solid var(--pd-err-border);border-radius:10px;padding:12px 16px">
@@ -617,6 +625,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <sc-if value="{{ sentMain }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="-1" data-sent="main" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята. Пришлём NDA и предложим время установочной сессии.</span>
+</div>
+<div data-next="main" style="margin-top:12px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-surface-quiet);padding:12px 16px">
+<span style="display:block;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);margin-bottom:8px">Что будет дальше</span>
+<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
+<li>Куратор разберёт заявку и ответит в течение рабочего дня</li>
+<li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
+<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+</ol>
 </div>
 </sc-if>
 <sc-if value="{{ errorMain }}" hint-placeholder-val="{{ false }}">
