@@ -38,6 +38,8 @@ import {
 import { daysPast } from '../../../lib/cabinet/clock';
 import { can, staffExpertLine } from '../../../lib/cabinet/access';
 import { requireActor } from '../../../lib/cabinet/session';
+import { welcomeState } from '../../../lib/cabinet/channels';
+import { dismissWelcome, startTelegramBind } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,6 +76,9 @@ export default async function ProjectsScreen({
   const pendingAll = await pendingActions(actor);
   const unread = await unreadByProject(actor, projects.map((p) => p.id));
   const forClient = actor.role === 'CLIENT';
+  // Блок первого входа — пока клиент его не закрыл (требование Т-10,
+  // решение Р-310).
+  const welcome = await welcomeState(actor);
   const forExpert = actor.role === 'EXPERT';
   const showFilters = list.all > PROJECT_FILTER_FROM;
   // Требуемое действие показывается там, где человек его ищет, — на самой
@@ -249,6 +254,38 @@ export default async function ProjectsScreen({
       ) : (
         <ScreenHead title={title} answer={answer} />
       )}
+
+      {/* Первый вход: три строки вместо пошагового тура, под ответом, а не
+          поверх экрана; «Понятно» закрывает блок навсегда (требование Т-10,
+          решение Р-310). */}
+      {welcome.open ? (
+        <Card style={{ marginBottom: 24 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 10 }}>
+            Как устроен кабинет
+          </Heading>
+          <ul style={{ margin: '0 0 16px', paddingLeft: 20, display: 'grid', gap: 6 }}>
+            <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+              Что от вас нужно — в верхней строке «Моих работ» и на карточке работы.
+            </li>
+            <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+              Материалы прикладываются на экране этапа или в «Материалах работы».
+            </li>
+            <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+              Куратору пишите в переписке на карточке работы.
+            </li>
+          </ul>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {welcome.telegram ? (
+              <Form action={startTelegramBind} inline>
+                <Button tone="quiet">Подключить Telegram</Button>
+              </Form>
+            ) : null}
+            <Form action={dismissWelcome} inline>
+              <Button>Понятно</Button>
+            </Form>
+          </div>
+        </Card>
+      ) : null}
 
       {showFilters ? (
         <FilterBar>

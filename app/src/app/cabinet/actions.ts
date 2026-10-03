@@ -8,6 +8,7 @@ import { AccessDenied, ensure, type Actor } from '../../lib/cabinet/access';
 import { withError } from '../../lib/cabinet/flash';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
 import { ClientChoiceNeeded } from '../../lib/cabinet/client-match';
+import { homeFor } from '../../lib/cabinet/nav';
 import {
   LEAD_EDIT_FIELDS,
   LeadWorkError,
@@ -64,6 +65,7 @@ import {
   rulesFor,
   addContact,
   askForHelp,
+  closeWelcome,
   dropContact,
   preferContact,
   saveRules,
@@ -877,6 +879,13 @@ export async function requestHelp(form: FormData): Promise<void> {
  * Ссылка привязки Telegram — по нажатию (решение Р-245): метка заводится
  * здесь, и человек сразу уходит в бота.
  */
+/** «Понятно» в блоке первого входа (требование Т-10, решение Р-310). */
+export async function dismissWelcome(): Promise<void> {
+  const actor = await actorOrRedirect();
+  await closeWelcome(actor);
+  redirect(homeFor(actor));
+}
+
 export async function startTelegramBind(): Promise<void> {
   const actor = await actorOrRedirect();
   const link = await createTelegramBindLink(actor.id);

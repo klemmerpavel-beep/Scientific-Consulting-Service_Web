@@ -193,6 +193,9 @@ model User {
 
   createdAt   DateTime  @default(now())
   lastLoginAt DateTime?
+  /// Клиент закрыл блок первого входа «Как устроен кабинет» (Т-10, Р-310):
+  /// блок больше не показывается.
+  welcomeClosedAt DateTime?
   erasedAt    DateTime?
 
   clientProfile ClientProfile?

@@ -357,3 +357,28 @@ export async function askForHelp(actor: Actor, text: string): Promise<void> {
     payload: { heads: heads.length },
   });
 }
+
+/**
+ * Блок первого входа на «Моих работах» (требование Т-10, решение Р-310):
+ * показывается клиенту, пока тот его не закрыл; кнопка «Подключить
+ * Telegram» — только если бот настроен и Telegram ещё не подключён.
+ * Только своя запись: идентификатор берётся из сессии.
+ */
+export async function welcomeState(actor: Actor): Promise<{ open: boolean; telegram: boolean }> {
+  if (actor.role !== 'CLIENT' || actor.status !== 'ACTIVE') return { open: false, telegram: false };
+  const user = await prisma.user.findUnique({
+    where: { id: actor.id },
+    select: { welcomeClosedAt: true, telegramChatId: true },
+  });
+  if (user === null || user.welcomeClosedAt !== null) return { open: false, telegram: false };
+  const { telegramBindAvailable } = await import('./auth.ts');
+  return { open: true, telegram: user.telegramChatId === null && telegramBindAvailable() };
+}
+
+/** «Понятно»: блок первого входа закрыт навсегда (Т-10, Р-310). */
+export async function closeWelcome(actor: Actor): Promise<void> {
+  await prisma.user.updateMany({
+    where: { id: actor.id, welcomeClosedAt: null },
+    data: { welcomeClosedAt: new Date() },
+  });
+}
