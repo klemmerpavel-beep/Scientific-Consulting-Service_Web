@@ -41,7 +41,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (payload.length === 0) {
     await telegramSay(
       String(chatId),
-      'Чтобы получать уведомления, откройте в личном кабинете ProDisser раздел «Уведомления» и нажмите «Привязать Telegram».',
+      'Чтобы получать уведомления, откройте в личном кабинете ProDisser раздел «Настройки» и нажмите «Привязать Telegram».',
     );
     return NextResponse.json({ ok: true });
   }
@@ -50,8 +50,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   await telegramSay(
     String(chatId),
     bound
-      ? 'Готово: уведомления личного кабинета ProDisser будут приходить сюда. Отключить их можно в кабинете, в разделе «Уведомления».'
-      : 'Ссылка устарела или уже использована. Получите новую в личном кабинете, в разделе «Уведомления».',
+      ? 'Готово: уведомления личного кабинета ProDisser будут приходить сюда. Отключить их можно в кабинете, в разделе «Настройки».'
+      : 'Ссылка устарела или уже использована. Получите новую в личном кабинете, в разделе «Настройки».',
   );
   return NextResponse.json({ ok: true });
 }

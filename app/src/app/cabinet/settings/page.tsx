@@ -40,6 +40,7 @@ import {
   settingsTexts,
 } from '../../../lib/cabinet/staff-texts';
 import { requireActor } from '../../../lib/cabinet/session';
+import { PRACTICE_EMAIL } from '../../../lib/practice-contacts';
 import {
   addContactChannel,
   dropTelegram,
@@ -89,7 +90,9 @@ export default async function SettingsScreen({
   return (
     <Shell actor={actor} current="/cabinet/settings">
       <Narrow width={680}>
-        <ScreenHead title="Как сообщать о ходе работы" />
+        {/* «Настройки» — как пункт меню; подзаголовок говорит, о чём экран
+            (требование Т-08, решение Р-314). */}
+        <ScreenHead title="Настройки" note="Как сообщать о ходе работы" />
         <Text style={{ marginBottom: 24 }}>{texts.lead}</Text>
 
         {failure === undefined ? null : (
@@ -306,7 +309,11 @@ export default async function SettingsScreen({
         {user.consentAcceptedAt === null ? null : (
           <Text muted size={13} style={{ marginTop: 24 }}>
             Согласие на обработку персональных данных принято{' '}
-            {formatDate(user.consentAcceptedAt)}. {texts.consentTail}
+            {formatDate(user.consentAcceptedAt)}. {texts.consentTail}{' '}
+            <a className="cab-mark" href={`mailto:${PRACTICE_EMAIL}`}>
+              {PRACTICE_EMAIL}
+            </a>
+            .
           </Text>
         )}
       </Narrow>

@@ -28,7 +28,9 @@ const TOOLS_HREF = '/cabinet/manage/tools';
  * удаление данных субъекта.
  */
 export function navFor(actor: Actor): NavItem[] {
-  const settings: NavItem = { href: '/cabinet/settings', label: 'Уведомления' };
+  // «Настройки», а не «Уведомления»: на экране и способы связи, и каналы,
+  // и согласие (требование Т-08, решение Р-314). Состав меню не меняется.
+  const settings: NavItem = { href: '/cabinet/settings', label: 'Настройки' };
   if (actor.role === 'CLIENT') {
     return [
       { href: '/cabinet/projects', label: 'Мои работы' },

@@ -426,7 +426,7 @@ describe('меню менеджера и начальный экран роли 
   const head: Actor = { ...manager, id: 'head-home', role: 'HEAD' };
   const items = navFor(manager);
 
-  it('пункты менеджера: Сегодня, Мои работы, Заявки, Реестры, настройки', () => {
+  it('пункты менеджера: Сегодня, Мои работы, Заявки, Реестры, Настройки', () => {
     assert.deepEqual(
       items.map((item) => [item.href, item.label]),
       [
@@ -434,7 +434,7 @@ describe('меню менеджера и начальный экран роли 
         ['/cabinet/projects', 'Мои работы'],
         ['/cabinet/manage/leads', 'Заявки'],
         ['/cabinet/manage/registry', 'Реестры'],
-        ['/cabinet/settings', 'Уведомления'],
+        ['/cabinet/settings', 'Настройки'],
       ],
     );
     assert.equal(hasToolsScreen(manager), false, 'менеджеру остался промежуточный экран');

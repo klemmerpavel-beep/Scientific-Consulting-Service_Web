@@ -44,7 +44,8 @@ describe('тексты экрана настроек по роли', () => {
 
   it('клиенту тексты прежние', () => {
     assert.match(settingsTexts('CLIENT').contactsLead, /^Куратор видит этот список/u);
-    assert.match(settingsTexts('CLIENT').consentTail, /письмом куратору\.$/u);
+    // Адрес практики дописывает экран ссылкой (Т-08, Р-314).
+    assert.match(settingsTexts('CLIENT').consentTail, /письмом куратору или на$/u);
   });
 
   it('подписи способов связи менеджера — без куратора и без полного сопровождения', () => {
