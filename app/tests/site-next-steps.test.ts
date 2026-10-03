@@ -66,3 +66,16 @@ describe('«Что будет дальше» после отправки зая�
     for (const page of Object.keys(FORMS)) assert.doesNotMatch(read(page), /data-next="review"/u);
   });
 });
+
+describe('сайт не обещает того, чего кабинет не делает (Т-25, Р-319)', () => {
+  it('«Состав команды и зоны ответственности», а не «имена»', () => {
+    const start = read('StartPage');
+    assert.match(start, /Состав команды и зоны ответственности вы получаете до старта работы\./u);
+    assert.doesNotMatch(start, /Имена и зоны ответственности/u);
+  });
+
+  it('публикации обещаны куратору, а не эксперту: имя эксперта клиенту не раскрывается', () => {
+    for (const page of PAGES) assert.doesNotMatch(read(page), /профиль эксперта/iu, page);
+    assert.match(read('BusinessPage'), /профиль куратора и список его публикаций вы получаете до договора/u);
+  });
+});
