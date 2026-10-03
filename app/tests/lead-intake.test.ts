@@ -122,7 +122,12 @@ describe('счётчик частоты', () => {
 describe('ответ формы и разметка ошибок', () => {
   it('доставка идёт после ответа и получает очищенную запись', () => {
     const route = readFileSync(path.join(APP, 'src/app/api/lead/route.ts'), 'utf8');
-    assert.match(route, /after\(async \(\) => \{\s*const results = await deliver\(lead, id\)/u);
+    // Перед доставкой ответственному — письмо «Заявка получена» заявителю,
+    // тоже после ответа и только не машинной заявке (Т-05, Р-312).
+    assert.match(
+      route,
+      /if \(!automated\) \{\s*after\(async \(\) => \{[\s\S]*?enqueueLeadReceived\(id\)[\s\S]*?const results = await deliver\(lead, id\)/u,
+    );
     assert.match(route, /const lead = forIntake\(parsed\.data\)/u);
     assert.doesNotMatch(route, /lead\.form === 'review' \? '' :/u);
   });

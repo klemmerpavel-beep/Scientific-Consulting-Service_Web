@@ -3,7 +3,7 @@ import { prisma } from '../db.ts';
 import { ensure, scopeLeads, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { CHANNEL_OFF, telegramNote, telegramPermanent, type EventKind } from './events.ts';
-import { leadAddress } from './lead-letter.ts';
+import { leadAddress, receivedLetter } from './lead-letter.ts';
 import { defaultPath, openLink, safeNext } from './next-path.ts';
 import { siteUrl } from '../site-url.ts';
 import { sendMailTo } from './mail.ts';
@@ -191,6 +191,34 @@ export async function enqueueToLead(
   return true;
 }
 
+/**
+ * Письмо «Заявка получена» заявителю (требование Т-05, решение Р-312).
+ *
+ * Ставится заявке с почтой, которая не машинная и не отзыв. Адрес в заявке
+ * с сайта не подтверждён: без потолка форма стала бы рассыльщиком на чужие
+ * ящики, поэтому на один адрес — не больше одного такого письма в сутки.
+ * Возвращает, поставлено ли письмо.
+ */
+export async function enqueueLeadReceived(leadId: string): Promise<boolean> {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: { id: true, form: true, status: true, contactKind: true, contact: true },
+  });
+  if (lead === null || lead.status === 'SPAM' || lead.form === 'review') return false;
+  const address = leadAddress(lead);
+  if (address === null) return false;
+  const recent = await prisma.notificationOutbox.count({
+    where: {
+      eventKind: 'LEAD_RECEIVED',
+      createdAt: { gt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      lead: { contact: { equals: address, mode: 'insensitive' } },
+    },
+  });
+  if (recent > 0) return false;
+  const { subject, body } = receivedLetter();
+  return enqueueToLead(prisma, { leadId: lead.id, eventKind: 'LEAD_RECEIVED', subject, body, dedupKey: `lead:${lead.id}:received` });
+}
+
 /** Сколько раз пробуем доставить, прежде чем признать отправку неудачной. */
 const MAX_ATTEMPTS = 5;
 
@@ -214,7 +242,9 @@ export const EXPIRED_NOTE = 'устарело до отправки';
  * сообщении остаётся верным и через неделю (решение Р-278).
  */
 export function lifetimeMs(eventKind: string): number | null {
-  return eventKind.startsWith('DEADLINE_') ? 24 * 60 * 60 * 1000 : null;
+  // «Заявка получена» обещает ответ в течение рабочего дня: письмо, не
+  // ушедшее за сутки, это обещание уже нарушает (Т-05, Р-312).
+  return eventKind.startsWith('DEADLINE_') || eventKind === 'LEAD_RECEIVED' ? 24 * 60 * 60 * 1000 : null;
 }
 
 /** Устарела ли строка к моменту `at`. */
