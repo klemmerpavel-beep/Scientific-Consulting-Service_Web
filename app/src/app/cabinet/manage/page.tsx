@@ -327,7 +327,7 @@ export default async function ManageQueue({
       href: `/cabinet/projects/${row.code}/messages`,
     })),
     ...moderation.map((row) => ({
-      key: `comment-${row.stageId ?? row.material}`,
+      key: `comment-${row.stageId ?? row.materialId}`,
       kind: 'comment' as const,
       step: 0 as const,
       title: `${row.stageTitle} · ${row.projectTitle}`,
@@ -335,7 +335,12 @@ export default async function ManageQueue({
       urgent: false,
       detail: row.material,
       todo: 'Опубликовать или отклонить — до этого клиент их не видит',
-      href: row.stageId === null ? '/cabinet/projects' : `/cabinet/stages/${row.stageId}`,
+      // Замечание вне этапа разбирается на «Материалах работы», у своего
+      // материала (решение Р-284).
+      href:
+        row.stageId === null
+          ? `/cabinet/projects/${row.projectCode}/materials#material-${row.materialId}`
+          : `/cabinet/stages/${row.stageId}`,
     })),
     ...(outbox !== null && outbox.failed > 0
       ? [

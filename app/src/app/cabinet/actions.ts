@@ -495,14 +495,23 @@ export async function decideOnComment(form: FormData): Promise<void> {
   const commentId = String(form.get('commentId') ?? '');
   const stageId = String(form.get('stageId') ?? '');
   const decision = String(form.get('decision') ?? '') === 'publish' ? 'PUBLISHED' : 'REJECTED';
+  // Замечание вне этапа разбирается на «Материалах работы»: возврат туда,
+  // к своему материалу. Адрес возврата — только экран материалов работы:
+  // поле формы иначе стало бы перенаправлением куда угодно (решение Р-284).
+  const back = String(form.get('back') ?? '');
+  const backMatch = /^\/cabinet\/projects\/[A-Za-zА-Яа-я0-9-]+\/materials(#material-[a-z0-9]+)?$/u.exec(back);
+  const target = stageId !== '' ? `/cabinet/stages/${stageId}` : backMatch !== null ? back : '/cabinet/projects';
   let failure: string | null = null;
   try {
     await moderateComment(actor, commentId, decision, String(form.get('note') ?? ''));
   } catch (error) {
     failure = reasonOf(error, 'Не удалось разобрать замечание');
   }
-  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
-  redirect(`/cabinet/stages/${stageId}`);
+  if (failure !== null) {
+    const [path, anchor] = target.split('#');
+    redirect(await withError(path!, failure, anchor === undefined ? {} : { anchor }));
+  }
+  redirect(target);
 }
 
 /**

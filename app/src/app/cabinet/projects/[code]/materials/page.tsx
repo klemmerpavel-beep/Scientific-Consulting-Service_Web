@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
+import CommentList from '../../../../../components/cabinet/CommentList';
 import Shell from '../../../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../../../components/cabinet/tokens';
 import {
@@ -25,7 +26,7 @@ import {
 import { can } from '../../../../../lib/cabinet/access';
 import { projectMaterials } from '../../../../../lib/cabinet/queries';
 import { currentActor } from '../../../../../lib/cabinet/session';
-import { addMaterialVersion } from '../../../actions';
+import { addMaterialVersion, decideOnComment } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,7 @@ export default async function ProjectMaterialsScreen({
     expertId: project.expertId,
   };
   const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref);
+  const mayModerate = can(actor, 'COMMENT_MODERATE', ref);
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -66,7 +68,7 @@ export default async function ProjectMaterialsScreen({
       ) : (
         <ul className="cab-block" style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
           {project.materials.map((material) => (
-            <li key={material.id}>
+            <li key={material.id} id={`material-${material.id}`}>
               <Card>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
                   <Heading level={2} style={{ fontSize: 18 }}>
@@ -123,6 +125,27 @@ export default async function ProjectMaterialsScreen({
                     </li>
                   ))}
                 </ul>
+
+                {/* Замечания к материалу вне этапов читаются и разбираются
+                    здесь: экрана этапа у него нет (решение Р-284). */}
+                {material.stage === null
+                  ? material.versions
+                      .filter((version) => version.comments.length > 0)
+                      .map((version) => (
+                        <div key={`comments-${version.id}`} style={{ marginTop: 14 }}>
+                          <Text muted size={13}>
+                            Замечания к v{version.number}
+                          </Text>
+                          <CommentList
+                            comments={version.comments}
+                            actor={actor}
+                            mayModerate={mayModerate}
+                            back={`/cabinet/projects/${project.code}/materials#material-${material.id}`}
+                            decide={decideOnComment}
+                          />
+                        </div>
+                      ))
+                  : null}
 
                 {mayUpload ? (
                   <Form

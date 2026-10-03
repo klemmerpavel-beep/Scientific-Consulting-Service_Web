@@ -523,6 +523,9 @@ export async function listComments(actor: Actor, versionId: string) {
 /** Замечание, ждущее публикации: работа, этап и кто его оставил. */
 export interface PendingComment {
   readonly stageId: string | null;
+  /** Код работы и материал — для ссылки на «Материалы работы» (решение Р-284). */
+  readonly projectCode: string;
+  readonly materialId: string;
   readonly projectTitle: string;
   readonly stageTitle: string;
   readonly material: string;
@@ -549,7 +552,9 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
   const rows = await prisma.versionComment.findMany({
     where: {
       moderationStatus: 'PENDING',
-      version: { material: { project: scope } },
+      // Замечания к документам оплат разобрать негде, и делом они не
+      // становятся (решение Р-284).
+      version: { material: { project: scope, kind: 'STAGE_MATERIAL' } },
     },
     orderBy: { createdAt: 'asc' },
     select: {
@@ -557,10 +562,11 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
         select: {
           material: {
             select: {
+              id: true,
               title: true,
               stageId: true,
               stage: { select: { id: true, title: true } },
-              project: { select: { title: true } },
+              project: { select: { title: true, code: true } },
             },
           },
         },
@@ -573,11 +579,15 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
   const byStage = new Map<string, PendingComment>();
   for (const row of rows) {
     const material = row.version.material;
-    const key = material.stage?.id ?? `material:${material.title}`;
+    // Вне этапа — по материалу, а не по его названию: одноимённые
+    // материалы разных работ сливались в одно дело (решение Р-284).
+    const key = material.stage?.id ?? `material:${material.id}`;
     const seen = byStage.get(key);
     if (seen === undefined) {
       byStage.set(key, {
         stageId: material.stage?.id ?? null,
+        projectCode: material.project.code,
+        materialId: material.id,
         projectTitle: material.project.title,
         stageTitle: material.stage?.title ?? material.title,
         material: material.title,

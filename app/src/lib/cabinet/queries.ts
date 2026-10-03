@@ -231,9 +231,20 @@ export async function projectMaterials(actor: Actor, code: string) {
               // Состояние модерации нужно эксперту: его замечание не
               // видно клиенту, пока куратор его не опубликовал, и ждущее
               // публикации он должен видеть у себя (решение Р-200).
+              // Текст и автор — для материалов вне этапов: их замечания
+              // читаются и разбираются на этом экране (решение Р-284).
               comments: {
                 where: commentScope,
-                select: { id: true, authorId: true, moderationStatus: true },
+                orderBy: { createdAt: 'asc' },
+                select: {
+                  id: true,
+                  authorId: true,
+                  body: true,
+                  createdAt: true,
+                  moderationStatus: true,
+                  moderationNote: true,
+                  author: { select: { fullName: true, role: true } },
+                },
               },
             },
           },

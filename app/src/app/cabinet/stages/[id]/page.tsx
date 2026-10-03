@@ -27,8 +27,8 @@ import { can, presentReturnText } from '../../../../lib/cabinet/access';
 import { formDraft } from '../../../../lib/cabinet/flash';
 import { stageById } from '../../../../lib/cabinet/queries';
 import { daysPast } from '../../../../lib/cabinet/clock';
-import { hasContacts } from '../../../../lib/cabinet/contacts';
 import ActionError from '../../../../components/cabinet/ActionError';
+import CommentList from '../../../../components/cabinet/CommentList';
 import { stageStateButtons } from '../../../../lib/cabinet/stage-state';
 import {
   PROJECT_STATUS_LABEL,
@@ -400,74 +400,13 @@ export default async function StageScreen({
                         </span>
                       </div>
 
-                      {version.comments.length === 0 ? null : (
-                        <ul
-                          style={{
-                            margin: '14px 0 0',
-                            padding: '0 0 0 16px',
-                            listStyle: 'none',
-                            borderLeft: '2px solid var(--pd-art-line)',
-                            display: 'grid',
-                            gap: 12,
-                          }}
-                        >
-                          {version.comments.map((comment) => (
-                            <li key={comment.id}>
-                              <Text size={14}>{comment.body}</Text>
-                              <Text muted size={13} style={{ marginTop: 2 }}>
-                                {authorName(comment.author, actor, comment.authorId)} ·{' '}
-                                {formatDate(comment.createdAt)}
-                                {comment.moderationStatus === 'PENDING'
-                                  ? mayModerate && hasContacts(comment.body)
-                                    ? ' · ожидает публикации · есть контакты'
-                                    : ' · ожидает публикации'
-                                  : comment.moderationStatus === 'REJECTED'
-                                    ? ' · не опубликовано куратором'
-                                    : ''}
-                              </Text>
-                              {/* Отклонённое прежде выглядело опубликованным:
-                                  эксперт не узнавал, что клиент его не
-                                  видел, и почему (решение Р-226). */}
-                              {comment.moderationStatus === 'REJECTED' &&
-                              comment.moderationNote !== null ? (
-                                <Text muted size={13} style={{ marginTop: 2 }}>
-                                  Причина: {comment.moderationNote}
-                                </Text>
-                              ) : null}
-                              {mayModerate && comment.moderationStatus === 'PENDING' ? (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
-                                  <Form action={decideOnComment} inline>
-                                    <input type="hidden" name="commentId" value={comment.id} />
-                                    <input type="hidden" name="stageId" value={stage.id} />
-                                    <input type="hidden" name="decision" value="publish" />
-                                    <Button tone="quiet">
-                                      {comment.author.role === 'CLIENT' ? 'Опубликовать' : 'Опубликовать клиенту'}
-                                    </Button>
-                                  </Form>
-                                  <Form action={decideOnComment} inline>
-                                    <input type="hidden" name="commentId" value={comment.id} />
-                                    <input type="hidden" name="stageId" value={stage.id} />
-                                    <input type="hidden" name="decision" value="reject" />
-                                    <Field
-                                      label={`Причина отклонения: ${comment.body.slice(0, 40)}`}
-                                      labelHidden
-                                      name="note"
-                                      scope={comment.id}
-                                      placeholder={
-                                        comment.author.role === 'CLIENT'
-                                          ? 'Причина — её увидит клиент'
-                                          : 'Причина — её увидит эксперт'
-                                      }
-                                      minWidth={220}
-                                    />
-                                    <Button tone="quiet">Отклонить</Button>
-                                  </Form>
-                                </div>
-                              ) : null}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      <CommentList
+                        comments={version.comments}
+                        actor={actor}
+                        mayModerate={mayModerate}
+                        stageId={stage.id}
+                        decide={decideOnComment}
+                      />
 
                       {/* Поле комментария стояло раскрытым под свежей
                           версией и занимало полтораста пикселей, хотя
