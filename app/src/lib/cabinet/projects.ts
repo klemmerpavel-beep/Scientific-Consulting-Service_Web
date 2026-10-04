@@ -806,6 +806,22 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
         path: '/cabinet/projects',
       });
     }
+    // Другим руководителям — сигнал о передаче (требование РК-13, решение
+    // Р-347): тот, кто передал, и так знает.
+    const heads = await tx.user.findMany({
+      where: { role: 'HEAD', status: 'ACTIVE', id: { notIn: [actor.id, managerId, ref.managerId] } },
+      select: { id: true },
+    });
+    for (const head of heads) {
+      await enqueue(tx, {
+        userId: head.id,
+        projectId,
+        eventKind: 'WORK_TRANSFERRED',
+        subject: `Работа ${updated.code} передана другому менеджеру`,
+        body: `${updated.code} — ${updated.title}.\nРаботу передал ${by.fullName} менеджеру ${target.fullName}: ${reason}.`,
+        dedupKey: `project:${projectId}:transferred:${head.id}:${stamp}`,
+      });
+    }
     // Куратору — с кем теперь работать: имя менеджера ему известно и
     // прежде (С-4). Без договора поручения — без названия работы (Р-237).
     if (updated.expertId !== null) {

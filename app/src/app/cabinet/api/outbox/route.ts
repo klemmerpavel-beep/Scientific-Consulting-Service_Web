@@ -6,6 +6,7 @@ import {
   startMissingDeadlines,
 } from '../../../../lib/cabinet/approval';
 import { dispatch, enqueueDeadlineReminders } from '../../../../lib/cabinet/outbox';
+import { enqueueHeadDigest, enqueueTrancheOverdue } from '../../../../lib/cabinet/head-digest';
 import { sameSecret } from '../../../../lib/cabinet/token';
 
 export const runtime = 'nodejs';
@@ -38,10 +39,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const autoAccepted = await autoAcceptExpired();
   const approvalReminders = await enqueueApprovalReminders();
   const reminders = await enqueueDeadlineReminders();
+  // Утренняя сводка и сигнал о просроченном платеже руководителю
+  // (требование РК-13, решение Р-347). Ключи по дню и траншу: повторный
+  // прогон расписания дублей не ставит.
+  const headDigest = await enqueueHeadDigest();
+  const overdueSignals = await enqueueTrancheOverdue();
   const report = await dispatch();
   return NextResponse.json({
     ok: true,
     reminders,
+    headDigest,
+    overdueSignals,
     approvalReminders,
     deadlinesStarted,
     autoAccepted,

@@ -171,10 +171,10 @@ describe('заказ вручную', { skip: !enabled }, async () => {
     });
     const mail = rows.find((row) => row.channel === 'EMAIL');
     assert.ok(mail !== undefined, 'руководитель не узнал о договоре');
-    const { formatAmount } = await import('../src/lib/cabinet/money.ts');
-    assert.equal(mail.subject, `Заведён заказ с договором: ${byManager.code}, ${formatAmount(12_500_000n)}`);
-    for (const row of rows.filter((item) => item.channel === 'TELEGRAM')) {
-      assert.doesNotMatch(row.body, /125/u, 'сумма ушла в Telegram');
+    // Суммы в письме нет: она — в деле «Проверьте договор» (РК-13, Р-347).
+    assert.equal(mail.subject, `Заведён заказ с договором: ${byManager.code}`);
+    for (const row of rows) {
+      assert.doesNotMatch(`${row.subject} ${row.body}`, /125|₽/u, 'сумма в уведомлении');
     }
 
     const byHead = await createManualOrder(actor(ids.head!, 'HEAD'), {

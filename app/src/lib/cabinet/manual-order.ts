@@ -5,7 +5,6 @@ import { ClientChoiceNeeded, NEW_CLIENT, orderEmail, type NameCandidate } from '
 import { phoneKey } from './contacts.ts';
 import { normalizeName } from './import/etl.ts';
 import { openContract } from './import/apply.ts';
-import { formatAmount } from './money.ts';
 import { enqueue } from './outbox.ts';
 import { managerAssignedLetter, nextProjectCode } from './projects.ts';
 import { prisma } from '../db.ts';
@@ -243,8 +242,9 @@ export async function createManualOrder(
   });
 
   // Деньги ведёт руководитель (Р-149), но договор при ручном заказе
-  // заводит и менеджер (В-9): руководитель узнаёт о нём сразу. Сумма — только
-  // в письме; в Telegram уходит событие и код работы (Р-187).
+  // заводит и менеджер (В-9): руководитель узнаёт о нём сразу. Суммы в
+  // письме нет: она — в деле «Проверьте договор» на «Сводке» (требование
+  // РК-13, решение Р-347; Р-308 дополняется).
   if (actor.role === 'MANAGER' && cost > 0n) {
     // Дело «Проверьте договор» — до проверки руководителем (РК-12, Р-338).
     await openContractCheck(prisma, created.projectId);
@@ -257,11 +257,11 @@ export async function createManualOrder(
         userId: head.id,
         projectId: created.projectId,
         eventKind: 'ORDER_WITH_CONTRACT',
-        subject: `Заведён заказ с договором: ${created.code}, ${formatAmount(cost)}`,
+        subject: `Заведён заказ с договором: ${created.code}`,
         body:
           `Менеджер ${me?.fullName ?? ''} завёл заказ ${created.code} — ${title}.\n` +
-          `Сумма договора: ${formatAmount(cost)}; оплачено при заведении: ${formatAmount(paid)}.\n` +
-          'Менять суммы и оплаты дальше может только руководитель — на экране «Оплаты и документы» работы.',
+          'Договор и оплаты при заведении — на экране «Оплаты и документы» работы; дело «Проверьте договор» — на «Сводке».\n' +
+          'Менять суммы и оплаты дальше может только руководитель.',
         dedupKey: `order-contract:${created.projectId}:${head.id}`,
         path: `/cabinet/projects/${created.code}/payments`,
       });

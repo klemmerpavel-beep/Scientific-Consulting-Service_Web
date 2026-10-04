@@ -53,7 +53,9 @@ export type EventKind =
   | 'HEAD_REPLY'
   | 'STAGE_ACCEPTED'
   | 'WORK_TRANSFERRED'
-  | 'MANAGER_CHANGED';
+  | 'MANAGER_CHANGED'
+  | 'HEAD_DIGEST'
+  | 'TRANCHE_OVERDUE';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -126,6 +128,8 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   STAGE_ACCEPTED: 'этап принят: акт и счёт',
   WORK_TRANSFERRED: 'работа передана другому менеджеру',
   MANAGER_CHANGED: 'сменился менеджер работы',
+  HEAD_DIGEST: 'утренняя сводка дел',
+  TRANCHE_OVERDUE: 'просрочен платёж',
 };
 
 /**
