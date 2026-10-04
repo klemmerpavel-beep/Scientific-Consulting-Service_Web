@@ -14,6 +14,7 @@ import { normalizeEmail } from './token.ts';
 import { parseAmount } from './money.ts';
 import { enqueue } from './outbox.ts';
 import { invitationLetter, ndaSignedLetter } from './curator-letters.ts';
+import { ndaRequestOpen, ndaWaitingLetter } from './curator-welcome.ts';
 
 export type Role = 'CLIENT' | 'EXPERT' | 'MANAGER' | 'HEAD';
 export type Status = 'ACTIVE' | 'SUSPENDED' | 'ERASED';
@@ -337,7 +338,7 @@ export async function expertsForNda(actor: Actor) {
   return prisma.user.findMany({
     where: { role: 'EXPERT', status: { not: 'ERASED' } },
     orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
-    select: { id: true, fullName: true, expertProfile: { select: { ndaSignedAt: true } } },
+    select: { id: true, fullName: true, expertProfile: { select: { ndaSignedAt: true, ndaRequestedAt: true } } },
   });
 }
 
@@ -715,10 +716,12 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
   // Профиля может не быть у записи, ставшей экспертом до решения Р-225:
   // договор заводит его сам, а не падает.
   const before = await prisma.expertProfile.findUnique({ where: { userId }, select: { ndaSignedAt: true } });
+  // Отметка договора гасит «Сообщить руководителю» и дело руководителя
+  // (требование Э-12, решение Р-331).
   await prisma.expertProfile.upsert({
     where: { userId },
     create: { userId, ndaSignedAt: signedOn },
-    update: { ndaSignedAt: signedOn },
+    update: { ndaSignedAt: signedOn, ...(signedOn === null ? {} : { ndaRequestedAt: null }) },
   });
   await record(actor, {
     action: 'EXPERT_NDA_UPDATED',
@@ -741,6 +744,65 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
       path: '/cabinet/projects',
     });
   }
+}
+
+/**
+ * «Сообщить руководителю» с экрана без договора поручения (требование
+ * Э-12, решение Р-331). Только своя запись куратора без договора; не чаще
+ * раза в сутки. Всем действующим руководителям — уведомление; дело на
+ * «Сегодня» строится по `ndaRequestedAt` и гаснет при отметке договора.
+ * Возвращает время, которое экран показывает строкой «Руководитель получил
+ * уведомление».
+ */
+export async function requestNda(actor: Actor, at: Date = new Date()): Promise<Date> {
+  if (actor.role !== 'EXPERT' || actor.status !== 'ACTIVE') throw new Error('Действие не разрешено');
+  const me = await prisma.user.findUniqueOrThrow({
+    where: { id: actor.id },
+    select: { fullName: true, email: true, expertProfile: { select: { ndaSignedAt: true, ndaRequestedAt: true } } },
+  });
+  if ((me.expertProfile?.ndaSignedAt ?? null) !== null) throw new Error('Договор поручения уже отмечен');
+  const before = me.expertProfile?.ndaRequestedAt ?? null;
+  if (!ndaRequestOpen(before, at)) {
+    throw new Error('Руководитель уже получил уведомление: повторно сообщить можно через сутки');
+  }
+  // Захват по прежнему значению: два нажатия подряд не дают двух писем.
+  const claimed = await prisma.expertProfile.updateMany({
+    where: { userId: actor.id, ndaSignedAt: null, ndaRequestedAt: before },
+    data: { ndaRequestedAt: at },
+  });
+  if (claimed.count === 0) {
+    if (me.expertProfile !== null) throw new Error('Руководитель уже получил уведомление: обновите страницу');
+    await prisma.expertProfile.create({ data: { userId: actor.id, ndaRequestedAt: at } });
+  }
+  const [works, heads] = await Promise.all([
+    prisma.project.count({ where: { expertId: actor.id, status: 'ACTIVE' } }),
+    prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } }),
+  ]);
+  const letter = ndaWaitingLetter({ fullName: me.fullName, email: me.email }, works);
+  for (const head of heads) {
+    await enqueue(prisma, {
+      userId: head.id,
+      eventKind: 'NDA_WAITING',
+      subject: letter.subject,
+      body: letter.body,
+      dedupKey: `nda-waiting:${actor.id}:${at.toISOString()}:${head.id}`,
+      path: `/cabinet/manage/users#nda-${actor.id}`,
+    });
+  }
+  await record(actor, {
+    action: 'NDA_REQUESTED',
+    objectType: 'ExpertProfile',
+    objectId: actor.id,
+    payload: { heads: heads.length },
+  });
+  return at;
+}
+
+/** Когда куратор в последний раз сообщил руководителю — для строки экрана. */
+export async function ndaRequestedAt(actor: Actor): Promise<Date | null> {
+  if (actor.role !== 'EXPERT') return null;
+  const profile = await prisma.expertProfile.findUnique({ where: { userId: actor.id }, select: { ndaRequestedAt: true } });
+  return profile?.ndaRequestedAt ?? null;
 }
 
 /**

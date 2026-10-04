@@ -45,7 +45,8 @@ export type EventKind =
   | 'CURATOR_TURN'
   | 'WORK_UNASSIGNED'
   | 'PAYOUT_ACCRUED'
-  | 'PAYOUT_PAID';
+  | 'PAYOUT_PAID'
+  | 'NDA_WAITING';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -110,6 +111,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   WORK_UNASSIGNED: 'работа передана другому куратору',
   PAYOUT_ACCRUED: 'начислено вознаграждение',
   PAYOUT_PAID: 'вознаграждение выплачено',
+  NDA_WAITING: 'куратор ждёт договор поручения',
 };
 
 /**

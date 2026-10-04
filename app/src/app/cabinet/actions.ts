@@ -61,6 +61,7 @@ import {
   openClientAccess,
   setUserStatus,
   signExpertNda,
+  requestNda,
   type Role,
 } from '../../lib/cabinet/admin';
 import type { AccessLinkState } from '../../components/cabinet/AccessLink';
@@ -1411,6 +1412,22 @@ export async function updateRegalia(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError('/cabinet/manage/users', failure));
   redirect('/cabinet/manage/users');
+}
+
+/**
+ * «Сообщить руководителю» с экрана без договора поручения (требование
+ * Э-12, решение Р-331).
+ */
+export async function requestNdaAction(): Promise<void> {
+  const actor = await actorOrRedirect();
+  let failure: string | null = null;
+  try {
+    await requestNda(actor);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить уведомление руководителю');
+  }
+  if (failure !== null) redirect(await withError(homeFor(actor), failure));
+  redirect(homeFor(actor));
 }
 
 /** Профиль куратора — правит руководитель (требование Э-11). */

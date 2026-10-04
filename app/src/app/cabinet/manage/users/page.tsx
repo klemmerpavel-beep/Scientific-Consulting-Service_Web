@@ -352,12 +352,16 @@ export default async function UsersScreen({
         <Disclosure title="Договоры поручения обработки данных" style={{ marginTop: 20 }}>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
             {experts.map((user) => (
-              <li key={user.id} style={{ display: 'grid', gap: 8 }}>
+              <li key={user.id} id={`nda-${user.id}`} style={{ display: 'grid', gap: 8 }}>
                 <Text size={14} style={{ margin: 0 }}>
                   {user.fullName}
                   {user.expertProfile?.ndaSignedAt == null
                     ? ' · без договора материалы клиента не выдаются'
                     : ` · подписан ${formatDate(user.expertProfile.ndaSignedAt)}`}
+                  {/* Куратор сообщил, что ждёт договор (Э-12, Р-331). */}
+                  {user.expertProfile?.ndaSignedAt == null && user.expertProfile?.ndaRequestedAt != null
+                    ? ` · ждёт договор с ${formatDate(user.expertProfile.ndaRequestedAt)}`
+                    : ''}
                 </Text>
                 <Form action={updateExpertNda} inline>
                   <input type="hidden" name="userId" value={user.id} />

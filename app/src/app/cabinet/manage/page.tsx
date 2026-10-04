@@ -379,6 +379,21 @@ export default async function ManageQueue({
       todo: row.nextTitle === null ? 'Все этапы приняты — завершить работу' : `Запустить следующий этап «${row.nextTitle}»`,
       href: row.href,
     })),
+    // Куратор ждёт договор поручения — руководителю (Э-12, Р-331).
+    ...today.ndaWaiting.map((row) => ({
+      key: `nda-${row.id}`,
+      kind: 'work' as const,
+      step: 0 as const,
+      title: `Нужен договор поручения: ${row.fullName}`,
+      mark: row.requestedAt === null ? 'куратор без договора' : 'куратор ждёт договор',
+      urgent: false,
+      detail:
+        row.requestedAt === null
+          ? `назначен на ${row.works} ${plural(row.works, 'работу', 'работы', 'работ')}`
+          : `сообщил ${formatDate(row.requestedAt)}`,
+      todo: 'Оформить договор поручения и отметить его в «Учётных записях»',
+      href: `/cabinet/manage/users#nda-${row.id}`,
+    })),
     ...today.noNda.map((row) => ({
       key: `nonda-${row.code}`,
       kind: 'work' as const,

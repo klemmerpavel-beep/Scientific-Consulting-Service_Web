@@ -240,7 +240,9 @@ export default async function StageScreen({
             Задание
           </Text>
           <Text size={15} style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>
-            {(stage.summary ?? '').trim() === '' ? 'Менеджер не описал этап.' : stage.summary}
+            {(stage.summary ?? '').trim() === ''
+              ? 'Менеджер не описал этап: спросите его письмом, почта — в «О работе» на карточке работы.'
+              : stage.summary}
           </Text>
           <Text size={14} style={{ marginBottom: 12 }}>
             {stage.dueOn === null

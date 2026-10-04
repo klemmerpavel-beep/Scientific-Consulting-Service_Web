@@ -158,6 +158,9 @@ export async function projectByCode(actor: Actor, code: string) {
         select: {
           id: true,
           fullName: true,
+          // Почта менеджера — куратору в «О работе» (Э-12, С-4); клиенту её
+          // затирает `withoutStaffNames`.
+          email: true,
           role: true,
           expertProfile: { select: { degree: true, specialization: true } },
         },
@@ -1226,6 +1229,7 @@ export async function todayItems(actor: Actor) {
     noPlan: [] as { code: string; title: string; client: string }[],
     noExpert: [] as { code: string; title: string; client: string }[],
     noNda: [] as { code: string; title: string; expert: string }[],
+    ndaWaiting: [] as { id: string; fullName: string; requestedAt: Date | null; works: number }[],
     week: [] as { key: string; title: string; dueOn: Date; href: string; turn: string | null }[],
     lateLeads: [] as { id: string; name: string | null; createdAt: Date }[],
     reviewLeads: [] as { id: string; name: string | null; status: string; since: Date }[],
@@ -1267,7 +1271,7 @@ export async function todayItems(actor: Actor) {
     },
   });
 
-  const out = { ...empty, accepted: [...empty.accepted], handedOver: [...empty.handedOver], noPlan: [...empty.noPlan], noExpert: [...empty.noExpert], noNda: [...empty.noNda], week: [...empty.week] };
+  const out = { ...empty, accepted: [...empty.accepted], handedOver: [...empty.handedOver], noPlan: [...empty.noPlan], noExpert: [...empty.noExpert], noNda: [...empty.noNda], ndaWaiting: [...empty.ndaWaiting], week: [...empty.week] };
   for (const project of own) {
     const stages = project.stages;
     // Этап принят клиентом, по сроку или за клиента, а следующий не начат:
@@ -1306,7 +1310,13 @@ export async function todayItems(actor: Actor) {
     if (project.source !== 'IMPORT' && project.expertId === null && (project.expertNameRaw ?? '').trim() === '') {
       out.noExpert.push({ code: project.code, title: project.title, client: project.client.fullName });
     }
-    if (project.expert !== null && (project.expert.expertProfile?.ndaSignedAt ?? null) === null) {
+    // Руководителю то же дело приходит одним на куратора — «Нужен договор
+    // поручения» ниже (Э-12, Р-331): по работе его не дублируем.
+    if (
+      actor.role !== 'HEAD' &&
+      project.expert !== null &&
+      (project.expert.expertProfile?.ndaSignedAt ?? null) === null
+    ) {
       out.noNda.push({ code: project.code, title: project.title, expert: project.expert.fullName });
     }
     for (const stage of stages) {
@@ -1336,6 +1346,43 @@ export async function todayItems(actor: Actor) {
     }
   }
   out.week.sort((a, b) => a.dueOn.getTime() - b.dueOn.getTime());
+
+  // Руководителю — кураторы без договора поручения: сообщили, что ждут
+  // его, или назначены на действующую работу. Дело ведёт к строке
+  // куратора в «Учётных записях» и гаснет при отметке договора
+  // (требование Э-12, решение Р-331; дело РК-09).
+  if (actor.role === 'HEAD') {
+    const waiting = await prisma.user.findMany({
+      where: {
+        role: 'EXPERT',
+        status: 'ACTIVE',
+        AND: [
+          { OR: [{ expertProfile: null }, { expertProfile: { ndaSignedAt: null } }] },
+          {
+            OR: [
+              { expertProfile: { ndaRequestedAt: { not: null } } },
+              { expertProjects: { some: { status: 'ACTIVE' } } },
+            ],
+          },
+        ],
+      },
+      orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        fullName: true,
+        expertProfile: { select: { ndaRequestedAt: true } },
+        _count: { select: { expertProjects: { where: { status: 'ACTIVE' } } } },
+      },
+    });
+    for (const user of waiting) {
+      out.ndaWaiting.push({
+        id: user.id,
+        fullName: user.fullName,
+        requestedAt: user.expertProfile?.ndaRequestedAt ?? null,
+        works: user._count.expertProjects,
+      });
+    }
+  }
 
   // Заявки: новая без ответа дольше рабочего дня и заявки в разборе с
   // давностью (Lead.statusChangedAt).

@@ -244,6 +244,8 @@ export const RULE_EVENTS: readonly {
   { kind: 'HELP_REQUESTED', title: 'Менеджер просит помощи', group: 'Руководителю', roles: ['HEAD'] },
   { kind: 'CLIENT_ACCESS_OPENED', title: 'Менеджер открыл вход клиенту', group: 'Руководителю', roles: ['HEAD'] },
   { kind: 'NDA_NEEDED', title: 'Нужен договор поручения', group: 'Руководителю', roles: ['HEAD'] },
+  // Куратор сам сообщил, что ждёт договор (Э-12, Р-331).
+  { kind: 'NDA_WAITING', title: 'Куратор ждёт договор поручения', group: 'Руководителю', roles: ['HEAD'] },
   // Возврат завершённого этапа в работу — руководителю (М-11, Р-303).
   { kind: 'STAGE_REOPENED', title: 'Этап возвращён в работу', group: 'Руководителю', roles: ['HEAD'] },
   // Договор, заведённый менеджером в «Новом заказе» (М-18, Р-308).
@@ -397,10 +399,14 @@ export async function askForHelp(actor: Actor, text: string): Promise<void> {
  * Блок первого входа на «Моих работах» (требование Т-10, решение Р-310):
  * показывается клиенту, пока тот его не закрыл; кнопка «Подключить
  * Telegram» — только если бот настроен и Telegram ещё не подключён.
- * Только своя запись: идентификатор берётся из сессии.
+ * Только своя запись: идентификатор берётся из сессии. Куратору — свой
+ * блок на «Назначенных работах» и на экране без доступа (требование Э-12,
+ * решение Р-331).
  */
 export async function welcomeState(actor: Actor): Promise<{ open: boolean; telegram: boolean }> {
-  if (actor.role !== 'CLIENT' || actor.status !== 'ACTIVE') return { open: false, telegram: false };
+  if ((actor.role !== 'CLIENT' && actor.role !== 'EXPERT') || actor.status !== 'ACTIVE') {
+    return { open: false, telegram: false };
+  }
   const user = await prisma.user.findUnique({
     where: { id: actor.id },
     select: { welcomeClosedAt: true, telegramChatId: true },
@@ -410,7 +416,7 @@ export async function welcomeState(actor: Actor): Promise<{ open: boolean; teleg
   return { open: true, telegram: user.telegramChatId === null && telegramBindAvailable() };
 }
 
-/** «Понятно»: блок первого входа закрыт навсегда (Т-10, Р-310). */
+/** «Понятно»: блок первого входа закрыт навсегда (Т-10, Р-310; Э-12, Р-331). */
 export async function closeWelcome(actor: Actor): Promise<void> {
   await prisma.user.updateMany({
     where: { id: actor.id, welcomeClosedAt: null },

@@ -24,6 +24,8 @@ import {
   clip,
   plural,
   Text,
+  formatDay,
+  formatTime,
   formatDate,
   stageLabel,
   type StageStateKey,
@@ -37,12 +39,15 @@ import {
   pendingActions,
   type ProjectFilter,
 } from '../../../lib/cabinet/queries';
-import { daysPast } from '../../../lib/cabinet/clock';
+import { daysPast, now } from '../../../lib/cabinet/clock';
 import { can, staffExpertLine } from '../../../lib/cabinet/access';
 import { requireActor } from '../../../lib/cabinet/session';
 import { soleWorkTarget } from '../../../lib/cabinet/nav';
 import { welcomeState } from '../../../lib/cabinet/channels';
-import { dismissWelcome, startTelegramBind } from '../actions';
+import { dismissWelcome, requestNdaAction, startTelegramBind } from '../actions';
+import ActionError from '../../../components/cabinet/ActionError';
+import { ndaRequestedAt } from '../../../lib/cabinet/admin';
+import { CURATOR_WELCOME, ndaRequestOpen } from '../../../lib/cabinet/curator-welcome';
 
 export const dynamic = 'force-dynamic';
 
@@ -152,6 +157,9 @@ export default async function ProjectsScreen({
   // человек ждёт назначения, которого уже дождался, — причину надо назвать
   // (решение Р-150).
   const awaitingNda = forExpert && actor.expertNdaSignedAt === null;
+  // «Сообщить руководителю» — не чаще раза в сутки; после нажатия —
+  // строка о том, когда руководитель получил уведомление (Э-12, Р-331).
+  const askedAt = awaitingNda ? await ndaRequestedAt(actor) : null;
   // Эксперт в канал переписки не входит, поэтому перехода к нему не видит.
   const mayWrite = actor.role !== 'EXPERT';
 
@@ -274,7 +282,43 @@ export default async function ProjectsScreen({
       {/* Первый вход: три строки вместо пошагового тура, под ответом, а не
           поверх экрана; «Понятно» закрывает блок навсегда (требование Т-10,
           решение Р-310). */}
-      {welcome.open ? (
+      {/* Куратору — свой блок: где ход за ним, как сдать этап, как
+          спросить менеджера, и два правила работы (требование Э-12,
+          решение Р-331). */}
+      {welcome.open && forExpert ? (
+        <Card style={{ marginBottom: 24 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 10 }}>
+            {CURATOR_WELCOME.title}
+          </Heading>
+          <ul style={{ margin: '0 0 12px', paddingLeft: 20, display: 'grid', gap: 6 }}>
+            {CURATOR_WELCOME.lines.map((line) => (
+              <li key={line} style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+                {line}
+              </li>
+            ))}
+          </ul>
+          <Text muted size={14} style={{ marginBottom: 6 }}>
+            Два правила:
+          </Text>
+          <ul style={{ margin: '0 0 16px', paddingLeft: 20, display: 'grid', gap: 6 }}>
+            {CURATOR_WELCOME.rules.map((rule) => (
+              <li key={rule} style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+                {rule}
+              </li>
+            ))}
+          </ul>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {welcome.telegram ? (
+              <Form action={startTelegramBind} inline>
+                <Button tone="quiet">Подключить Telegram</Button>
+              </Form>
+            ) : null}
+            <Form action={dismissWelcome} inline>
+              <Button>Понятно</Button>
+            </Form>
+          </div>
+        </Card>
+      ) : welcome.open ? (
         <Card style={{ marginBottom: 24 }}>
           <Heading level={2} size={3} style={{ marginBottom: 10 }}>
             Как устроен кабинет
@@ -382,11 +426,25 @@ export default async function ProjectsScreen({
         </Block>
       )}
 
+      {awaitingNda ? <ActionError id={sp.error} /> : null}
       {awaitingNda ? (
-        <Empty title="Доступ к материалам ещё не открыт">
-          Он открывается после подписания договора поручения обработки персональных данных.
-          Напишите руководителю практики — отметка ставится в кабинете.
-        </Empty>
+        <>
+          <Empty title="Доступ к материалам ещё не открыт">
+            Он открывается после подписания договора поручения обработки персональных данных.
+            Договор оформляет руководитель практики и отмечает его в кабинете.
+          </Empty>
+          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center', textAlign: 'center' }}>
+            {askedAt !== null && !ndaRequestOpen(askedAt, now()) ? (
+              <Text size={14}>
+                {`Руководитель получил уведомление ${formatDay(askedAt)} в ${formatTime(askedAt)}. Повторно сообщить можно через сутки.`}
+              </Text>
+            ) : (
+              <Form action={requestNdaAction} inline>
+                <Button>Сообщить руководителю</Button>
+              </Form>
+            )}
+          </div>
+        </>
       ) : projects.length === 0 ? (
         list.all === 0 ? (
           <Empty
