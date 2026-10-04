@@ -273,9 +273,9 @@ export async function openClientAccess(
         userId: head.id,
         projectId: project.id,
         eventKind: 'CLIENT_ACCESS_OPENED',
-        subject: `Куратор открыл вход клиенту: ${project.code}`,
+        subject: `Менеджер открыл вход клиенту: ${project.code}`,
         body:
-          `${curator?.fullName ?? 'Куратор'} выдал(а) ссылку входа клиенту работы ${project.code}` +
+          `${curator?.fullName ?? 'Менеджер'} выдал(а) ссылку входа клиенту работы ${project.code}` +
           `${created ? '; учётная запись заведена по почте карточки' : ''}.\n` +
           'Ссылка действует два часа и срабатывает один раз.',
         dedupKey: `access:${userId}:${expiresAt.getTime()}:${head.id}`,
@@ -428,7 +428,7 @@ async function ensureNoOpenWorks(userId: string): Promise<void> {
   const shown = open.slice(0, 5).map((project) => project.code).join(', ');
   throw new Error(
     `За человеком открытые работы: ${shown}${open.length > 5 ? ' и другие' : ''}. ` +
-      'Сначала передайте их другому куратору или эксперту',
+      'Сначала передайте их другому менеджеру или эксперту',
   );
 }
 

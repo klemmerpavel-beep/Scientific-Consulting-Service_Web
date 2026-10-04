@@ -751,7 +751,7 @@ export async function applyBatch(
     where: { id: input.managerId, status: 'ACTIVE', role: { in: ['MANAGER', 'HEAD'] } },
     select: { id: true },
   });
-  if (curator === null) throw new Error('Куратором может быть менеджер или руководитель');
+  if (curator === null) throw new Error('Менеджером работы может быть менеджер или руководитель');
 
   const stored = (await prisma.importRow.findMany({
     where: { batchId },

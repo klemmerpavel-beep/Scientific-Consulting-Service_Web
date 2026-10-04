@@ -66,8 +66,8 @@ export function workClosed(projectStatus: string): boolean {
 }
 
 export const CLOSED_FOR_PRACTICE = 'Работа закрыта: чтобы изменить, возобновите её';
-export const CLOSED_FOR_PARTY = 'Работа закрыта. Если нужно передать файл, напишите куратору';
-export const STAGE_DONE_FOR_PARTY = 'Этап завершён. Если нужно передать файл, напишите куратору';
+export const CLOSED_FOR_PARTY = 'Работа закрыта. Если нужно передать файл, напишите менеджеру';
+export const STAGE_DONE_FOR_PARTY = 'Этап завершён. Если нужно передать файл, напишите менеджеру';
 
 /** Текст отказа во вкладе в материалы и замечания или `null`, если можно. */
 export function contributionRefusal(
@@ -520,7 +520,7 @@ export function presentReturnText(
 }
 
 /** Что видит эксперт вместо замечаний с контактом. */
-export const RETURN_TEXT_WITH_CURATOR = 'Замечания у куратора: в тексте были контакты.';
+export const RETURN_TEXT_WITH_CURATOR = 'Замечания у менеджера: в тексте были контакты.';
 
 // ─────────────────────── Представление участника работы ────────────────────
 
@@ -543,7 +543,8 @@ export function expertRoleLabel(role: string | null | undefined): string {
 
 /**
  * Как назвать автора файла, замечания или события. Себя смотрящий видит
- * как «Вы», клиент эксперта — по роли из работы, остальных — по имени.
+ * как «Вы», клиент эксперта — по роли из работы, менеджера и руководителя —
+ * «Менеджер» без имени (Э-01, ответы ОЭ-3б и С-3), остальных — по имени.
  */
 export function presentAuthor(
   author: { readonly fullName: string; readonly role: string },
@@ -553,6 +554,7 @@ export function presentAuthor(
 ): string {
   if (authorId !== undefined && authorId === viewer.id) return 'Вы';
   if (viewer.role === 'CLIENT' && author.role === 'EXPERT') return expertRoleLabel(expertRole);
+  if (viewer.role === 'CLIENT' && (author.role === 'MANAGER' || author.role === 'HEAD')) return 'Менеджер';
   return author.fullName;
 }
 
@@ -574,15 +576,20 @@ export function expertLine(profile: { readonly degree: string | null; readonly s
   return regalia([profile?.degree, profile?.specialtyCode]);
 }
 
+/** Роли, чьё имя и почта не попадают в данные экрана клиента. */
+const HIDDEN_FROM_CLIENT: readonly string[] = ['EXPERT', 'MANAGER', 'HEAD'];
+
 /**
- * Данные экрана клиента без ФИО эксперта (требование Т-11, решение Р-297).
+ * Данные экрана клиента без ФИО и почты сотрудников (требование Т-11,
+ * решение Р-297; Э-01, ответ ОЭ-3б).
  *
- * Экран клиента и прежде не печатал имени эксперта (Р-143, Р-277), но
- * выборки брали его вместе с авторами версий и замечаний. Ограничение
- * полей снимает его с данных: у любого вложенного объекта с ролью
- * эксперта имя пустеет. Сотрудникам и эксперту данные отдаются как есть.
+ * Экран клиента не печатает имени эксперта (Р-143, Р-277), а с Э-01 — и
+ * имени менеджера: клиент видит «Менеджер». Выборки брали имена вместе с
+ * авторами версий, замечаний, сообщений и событий. Ограничение полей
+ * снимает их с данных: у любого вложенного объекта с ролью сотрудника имя
+ * и почта пустеют. Сотрудникам и эксперту данные отдаются как есть.
  */
-export function withoutExpertNames<T>(viewer: Actor, value: T): T {
+export function withoutStaffNames<T>(viewer: Actor, value: T): T {
   if (viewer.role !== 'CLIENT') return value;
   const walk = (node: unknown): unknown => {
     if (Array.isArray(node)) return node.map(walk);
@@ -591,8 +598,9 @@ export function withoutExpertNames<T>(viewer: Actor, value: T): T {
     if (proto !== Object.prototype && proto !== null) return node;
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(node)) out[key] = walk(item);
-    if (out.role === 'EXPERT' && 'fullName' in out) out.fullName = '';
-    if (out.role === 'EXPERT' && 'email' in out) out.email = '';
+    const hidden = typeof out.role === 'string' && HIDDEN_FROM_CLIENT.includes(out.role);
+    if (hidden && 'fullName' in out) out.fullName = '';
+    if (hidden && 'email' in out) out.email = '';
     return out;
   };
   return walk(value) as T;

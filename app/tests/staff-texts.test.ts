@@ -21,43 +21,43 @@ const KINDS: readonly ContactKind[] = ['EMAIL', 'TELEGRAM', 'PHONE_CALL', 'MESSE
 const LABEL: Record<ContactKind, string> = {
   EMAIL: 'Письмо на почту',
   TELEGRAM: 'Сообщение в Telegram',
-  PHONE_CALL: 'Звонок куратора',
+  PHONE_CALL: 'Звонок менеджера',
   MESSENGER: 'Мессенджер или социальная сеть',
   FULL_SUPPORT: 'Полное сопровождение',
 };
 const NOTE: Record<ContactKind, string> = {
-  EMAIL: 'Уведомления и ответы куратора приходят письмом.',
+  EMAIL: 'Уведомления и ответы менеджера приходят письмом.',
   TELEGRAM: 'То же, но сообщением в Telegram — быстрее письма.',
-  PHONE_CALL: 'Куратор звонит по важным поворотам работы, а не по каждой мелочи.',
-  MESSENGER: 'Куратор пишет туда, где вам удобно отвечать.',
-  FULL_SUPPORT: 'Куратор ведёт работу сам и связывается первым, не дожидаясь вопросов.',
+  PHONE_CALL: 'Менеджер звонит по важным поворотам работы, а не по каждой мелочи.',
+  MESSENGER: 'Менеджер пишет туда, где вам удобно отвечать.',
+  FULL_SUPPORT: 'Менеджер ведёт работу сам и связывается первым, не дожидаясь вопросов.',
 };
 
 describe('тексты экрана настроек по роли', () => {
   it('у менеджера нет обращений к клиенту', () => {
     const texts = Object.values(settingsTexts('MANAGER'));
     for (const text of texts) {
-      assert.doesNotMatch(text, /[Кк]уратор/u, `текст для клиента у менеджера: ${text}`);
+      assert.doesNotMatch(text, /[Мм]енеджер/u, `текст для клиента у менеджера: ${text}`);
     }
     assert.match(settingsTexts('MANAGER').contactsLead, /^Руководитель видит этот список, когда вы задаёте вопрос/u);
   });
 
-  it('клиенту тексты прежние', () => {
-    assert.match(settingsTexts('CLIENT').contactsLead, /^Куратор видит этот список/u);
+  it('клиенту — тексты о менеджере (Э-01)', () => {
+    assert.match(settingsTexts('CLIENT').contactsLead, /^Менеджер видит этот список/u);
     // Адрес практики дописывает экран ссылкой (Т-08, Р-314).
-    assert.match(settingsTexts('CLIENT').consentTail, /письмом куратору или на$/u);
+    assert.match(settingsTexts('CLIENT').consentTail, /письмом менеджеру или на$/u);
   });
 
-  it('подписи способов связи менеджера — без куратора и без полного сопровождения', () => {
+  it('подписи способов связи менеджера — без обращения к нему самому и без полного сопровождения', () => {
     const kinds = contactKindsFor('MANAGER', KINDS);
     assert.ok(!kinds.includes('FULL_SUPPORT'));
     // Заведённое прежде «Полное сопровождение» тоже подписано не для клиента.
     for (const kind of KINDS) {
-      assert.doesNotMatch(contactLabelFor('MANAGER', kind, LABEL), /куратор/iu);
-      assert.doesNotMatch(contactNoteFor('MANAGER', kind, NOTE), /[Кк]уратор/u);
+      assert.doesNotMatch(contactLabelFor('MANAGER', kind, LABEL), /менеджер/iu);
+      assert.doesNotMatch(contactNoteFor('MANAGER', kind, NOTE), /[Мм]енеджер/u);
     }
     assert.deepEqual(contactKindsFor('CLIENT', KINDS), [...KINDS]);
-    assert.equal(contactLabelFor('CLIENT', 'PHONE_CALL', LABEL), 'Звонок куратора');
+    assert.equal(contactLabelFor('CLIENT', 'PHONE_CALL', LABEL), 'Звонок менеджера');
   });
 });
 

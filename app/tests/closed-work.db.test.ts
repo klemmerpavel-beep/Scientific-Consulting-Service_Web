@@ -151,12 +151,13 @@ describe('закрытая работа — только чтение', { skip: 
     assert.match(paused.body, /Причина: Клиент в отпуске до 20 октября/u);
     await projects.setProjectStatus(curator(), ids.project!, 'ACTIVE');
 
-    // Новый куратор — письмо клиенту с именем (Т-21, Р-299).
+    // Новый менеджер — письмо клиенту без имени (Т-21, Р-299; Э-01, ОЭ-3б).
     await projects.assignManager(head(), ids.project!, ids.head!);
     const curatorLetter = await prisma.notificationOutbox.findFirstOrThrow({
       where: { projectId: ids.project, userId: ids.clientUser, eventKind: 'CURATOR_CHANGED', channel: 'EMAIL' },
     });
-    assert.match(curatorLetter.body, /Новый куратор: HEAD/u);
+    assert.match(curatorLetter.body, /У работы новый менеджер/u);
+    assert.doesNotMatch(curatorLetter.body, /HEAD/u, 'имя менеджера в письме клиенту');
     await projects.assignManager(head(), ids.project!, ids.manager!);
   });
 

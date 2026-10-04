@@ -150,7 +150,7 @@ export async function createManualOrder(
     ]);
     if (type === null) throw new OrderInputError('Выберите вид работы из справочника.');
     if (manager === null || manager.status !== 'ACTIVE' || (manager.role !== 'MANAGER' && manager.role !== 'HEAD')) {
-      throw new OrderInputError('Куратором может быть только действующий менеджер или руководитель.');
+      throw new OrderInputError('Менеджером работы может быть только действующий менеджер или руководитель.');
     }
 
     // Сведённая в другую и стёртая по требованию карточки заказы не
@@ -256,7 +256,7 @@ export async function createManualOrder(
         eventKind: 'ORDER_WITH_CONTRACT',
         subject: `Заведён заказ с договором: ${created.code}, ${formatAmount(cost)}`,
         body:
-          `Куратор ${me?.fullName ?? ''} завёл заказ ${created.code} — ${title}.\n` +
+          `Менеджер ${me?.fullName ?? ''} завёл заказ ${created.code} — ${title}.\n` +
           `Сумма договора: ${formatAmount(cost)}; оплачено при заведении: ${formatAmount(paid)}.\n` +
           'Менять суммы и оплаты дальше может только руководитель — на экране «Оплаты и документы» работы.',
         dedupKey: `order-contract:${created.projectId}:${head.id}`,

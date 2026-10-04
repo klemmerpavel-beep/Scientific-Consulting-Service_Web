@@ -203,7 +203,7 @@ export default async function NewRequestScreen({
         ) : (
           <>
             <Notice>
-              Заявка принята и передана куратору. Ответ придёт на вашу почту, а ход работы будет
+              Заявка принята и передана менеджеру. Ответ придёт на вашу почту, а ход работы будет
               виден в разделе «Мои работы».
             </Notice>
             {/* Тот же блок шагов, что после формы заявки на сайте; третий
@@ -215,7 +215,7 @@ export default async function NewRequestScreen({
               </Heading>
               <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
                 <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
-                  Куратор разберёт заявку и ответит в течение рабочего дня.
+                  Менеджер разберёт заявку и ответит в течение рабочего дня.
                 </li>
                 <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
                   Свяжемся удобным вам способом, чтобы уточнить задачу.

@@ -96,7 +96,7 @@ export const dynamic = 'force-dynamic';
  */
 const EVENT_LABEL: Record<string, string> = {
   PROJECT_CREATED: 'Работа взята в сопровождение',
-  MANAGER_ASSIGNED: 'Работу принял другой куратор',
+  MANAGER_ASSIGNED: 'Работу принял другой менеджер',
   EXPERT_ASSIGNED: 'Назначен исполнитель',
   PLAN_CHANGED: 'План работ изменён',
   STAGE_DUE_CHANGED: 'Перенесён срок этапа',
@@ -173,7 +173,7 @@ function eventLine(
     }
     if (data.via === 'STAFF_FOR_CLIENT') {
       if (actor.role === 'CLIENT') {
-        return `${where} согласован куратором по вашему подтверждению${basis === null ? '' : `: ${basis}`}`;
+        return `${where} согласован менеджером по вашему подтверждению${basis === null ? '' : `: ${basis}`}`;
       }
       return actor.role === 'EXPERT' || basis === null
         ? `${where} согласован за клиента`
@@ -503,9 +503,10 @@ export default async function ProjectScreen({
       : { term: 'Тип сопровождения', value: project.serviceType.name },
     project.topic === project.title ? null : { term: 'Тема', value: project.topic },
     { term: 'Срок работы', value: formatDate(project.dueOn) ?? 'не назначен' },
-    // Куратор — с регалиями, эксперт — ролью и регалиями без ФИО и
-    // контактов; пустые части не выводятся (требование Т-11, Р-297).
-    { term: 'Куратор', value: curatorLine(project.manager) },
+    // Менеджер — с регалиями, но только практике: клиенту имя менеджера не
+    // показывается (Э-01, ответ ОЭ-3б). Эксперт — ролью и регалиями без ФИО
+    // и контактов; пустые части не выводятся (требование Т-11, Р-297).
+    forClient ? null : { term: 'Менеджер', value: curatorLine(project.manager) },
     // Практике — исполнитель по имени и с отметкой о договоре поручения
     // (требование М-16, решение Р-298); клиенту — роль и регалии (Р-297).
     project.expert === null
@@ -724,7 +725,7 @@ export default async function ProjectScreen({
 
         {mayWrite ? (
           <BoardColumn
-            title={forClient ? 'Переписка с куратором' : 'Переписка с клиентом'}
+            title={forClient ? 'Переписка с менеджером' : 'Переписка с клиентом'}
             href={`/cabinet/projects/${project.code}/messages`}
             hrefLabel={
               unread > 0
@@ -743,7 +744,7 @@ export default async function ProjectScreen({
                   name="body"
                   required
                   labelHidden
-                  placeholder={forClient ? 'Написать куратору' : 'Написать клиенту'}
+                  placeholder={forClient ? 'Написать менеджеру' : 'Написать клиенту'}
                   minWidth={140}
                 />
                 <Button>Отправить</Button>
@@ -755,7 +756,7 @@ export default async function ProjectScreen({
               messages={thread}
               viewer={actor}
               flagContacts={can(actor, 'COMMENT_MODERATE', ref)}
-              empty={forClient ? 'Переписки пока нет — напишите куратору.' : 'Переписки пока нет.'}
+              empty={forClient ? 'Переписки пока нет — напишите менеджеру.' : 'Переписки пока нет.'}
             />
           </BoardColumn>
         ) : forExpert ? (
@@ -784,7 +785,7 @@ export default async function ProjectScreen({
                   name="note"
                   multiline
                   placeholder="Что сделано в этой редакции и на что смотреть в первую очередь"
-                  hint="Пояснение уходит замечанием к версии: клиент увидит его после публикации куратором."
+                  hint="Пояснение уходит замечанием к версии: клиент увидит его после публикации менеджером."
                 />
                 <FormActions>
                   <Button>Приложить материал</Button>
@@ -798,9 +799,9 @@ export default async function ProjectScreen({
                 <Text size={15} style={{ marginTop: 6 }}>
                   {current === null
                     ? stages.length === 0
-                      ? 'План работ ещё не заведён: этапы и задание назначит куратор.'
+                      ? 'План работ ещё не заведён: этапы и задание назначит менеджер.'
                       : 'Все этапы закрыты — новых заданий по этой работе нет.'
-                    : (current.summary ?? 'Куратор не описал этап: спросите его, что требуется.')}
+                    : (current.summary ?? 'Менеджер не описал этап: спросите его, что требуется.')}
                 </Text>
                 {current === null ? null : (
                   <Text muted size={13} style={{ marginTop: 6 }}>
@@ -837,7 +838,7 @@ export default async function ProjectScreen({
                 <Text size={14} style={{ marginTop: 6 }}>
                   {myPending === 0
                     ? 'Замечаний, ждущих публикации, нет.'
-                    : `Ждут публикации куратором: ${myPending}. До неё клиент их не видит.`}
+                    : `Ждут публикации менеджером: ${myPending}. До неё клиент их не видит.`}
                 </Text>
               </div>
 
@@ -1058,7 +1059,7 @@ export default async function ProjectScreen({
                     label="Передать работу"
                     name="managerId"
                     defaultValue={draft.managerId ?? project.managerId}
-                    hint="Клиент увидит смену куратора: меняется тот, кому он пишет."
+                    hint="Клиент увидит смену менеджера: меняется тот, кому он пишет."
                   >
                     {curatorList.map((curator) => (
                       <option key={curator.id} value={curator.id}>
@@ -1068,7 +1069,7 @@ export default async function ProjectScreen({
                     ))}
                   </Select>
                   <FormActions>
-                    <Button tone="quiet">Сохранить куратора</Button>
+                    <Button tone="quiet">Сохранить менеджера</Button>
                   </FormActions>
                 </Form>
               ) : null}

@@ -3,7 +3,6 @@ import {
   CLIENT_VISIBLE_VERSION,
   EXPERT_ROLE_LABEL,
   can,
-  curatorLine,
   ensure,
   ensureWorkOpen,
   type Actor,
@@ -324,7 +323,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
         body:
           `${title}${created.topic === null ? '' : ` — ${created.topic}`}.\n` +
           (firstTime
-            ? 'Ход работы, материалы и переписка с куратором собраны в личном кабинете.\n' +
+            ? 'Ход работы, материалы и переписка с менеджером собраны в личном кабинете.\n' +
               `Откройте ${entrance} и укажите этот адрес почты — придёт ссылка для входа.\n` +
               'Пароль не нужен: вход только по ссылке на почту.'
             : `Работа добавлена в ваш личный кабинет: ${entrance}.`),
@@ -626,7 +625,7 @@ export async function assignExpert(
           eventKind: 'NDA_NEEDED',
           subject: `Нужен договор поручения: ${expert.fullName}, работа ${project.code}`,
           body:
-            `Куратор назначил эксперта ${expert.fullName} на работу ${project.code} — ${project.title}.\n` +
+            `Менеджер назначил эксперта ${expert.fullName} на работу ${project.code} — ${project.title}.\n` +
             'Договора поручения обработки персональных данных с ним нет: материалы клиента ему закрыты.\n' +
             'Отметить договор можно в «Учётных записях».',
           dedupKey: `nda-needed:${projectId}:${expertId}:${head.id}`,
@@ -656,7 +655,7 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
     where: { id: managerId, status: 'ACTIVE', role: { in: ['MANAGER', 'HEAD'] } },
     select: { id: true, fullName: true, expertProfile: { select: { degree: true, specialization: true } } },
   });
-  if (target === null) throw new Error('Куратором может быть менеджер или руководитель');
+  if (target === null) throw new Error('Менеджером работы может быть менеджер или руководитель');
   if (managerId === ref.managerId) {
     return prisma.project.findUniqueOrThrow({ where: { id: projectId } });
   }
@@ -682,18 +681,18 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
         dedupKey: `project:${projectId}:curator-assigned:${managerId}:${Date.now()}`,
       });
     }
-    // Клиент узнаёт, с кем теперь переписывается: куратор — его собеседник
-    // (требование Т-21, решение Р-299). Регалии — по Т-11 (Р-297).
+    // Клиент узнаёт, что у работы новый менеджер — его собеседник
+    // (требование Т-21, решение Р-299). Имени менеджера клиент не видит
+    // (Э-01, ответ ОЭ-3б).
     if (updated.client.userId !== null) {
       await enqueue(tx, {
         userId: updated.client.userId,
         projectId,
         eventKind: 'CURATOR_CHANGED',
-        subject: `У работы «${updated.title}» новый куратор`,
+        subject: `У работы «${updated.title}» новый менеджер`,
         body:
           `Проект ${updated.code} — ${updated.title}.\n` +
-          `Новый куратор: ${curatorLine(target)}.\n` +
-          'Писать ему можно в переписке по работе в личном кабинете.',
+          'У работы новый менеджер. Писать ему можно в переписке по работе в личном кабинете.',
         dedupKey: `project:${projectId}:curator:${managerId}:${Date.now()}`,
       });
     }
@@ -1649,8 +1648,8 @@ export async function setStageState(
         subject: `Этап «${stage.title}» согласован`,
         body:
           `Проект ${project?.code} — ${project?.title}.\n` +
-          `Этап «${stage.title}» согласован куратором по вашему подтверждению: ${(reason ?? '').trim()}.\n` +
-          'Если вы этого не подтверждали, напишите куратору в кабинете.\n' +
+          `Этап «${stage.title}» согласован менеджером по вашему подтверждению: ${(reason ?? '').trim()}.\n` +
+          'Если вы этого не подтверждали, напишите менеджеру в кабинете.\n' +
           stageLink(stageId),
         dedupKey: `stage:${stageId}:approved-for-client:${change.id}`,
         path: `/cabinet/stages/${stageId}`,

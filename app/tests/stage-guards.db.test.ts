@@ -505,7 +505,7 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     const letter = await prisma.notificationOutbox.findFirstOrThrow({
       where: { projectId, userId: owner.id, eventKind: 'STAGE_APPROVED', channel: 'EMAIL' },
     });
-    assert.match(letter.body, /согласован куратором по вашему подтверждению: Клиент подтвердил письмом 02\.10/u);
+    assert.match(letter.body, /согласован менеджером по вашему подтверждению: Клиент подтвердил письмом 02\.10/u);
     // История различает способ согласования.
     const event = await prisma.projectEvent.findFirstOrThrow({
       where: { projectId, kind: 'STAGE_STATE_CHANGED', payload: { path: ['stageId'], equals: second.id } },

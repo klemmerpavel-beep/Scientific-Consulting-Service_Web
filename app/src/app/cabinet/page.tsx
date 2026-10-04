@@ -69,7 +69,7 @@ export default async function CabinetEntrance({
         {params.channel === undefined ? null : (
           <Outcome tone="error">
             Вход по ссылке пока недоступен: отправка писем ProDisser ещё не настроена. Напишите
-            куратору работы — он откроет доступ другим способом.
+            менеджеру работы — он откроет доступ другим способом.
           </Outcome>
         )}
 

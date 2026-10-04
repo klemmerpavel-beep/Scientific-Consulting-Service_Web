@@ -86,7 +86,7 @@ export type TurnViewer = 'curator' | 'foreign-head' | 'expert';
  * дело куратора: назначить эксперта.
  */
 export function turnLabel(state: StageStateKey, viewer: TurnViewer, hasExpert: boolean): string {
-  const curatorTurn = viewer === 'foreign-head' ? 'Ход за куратором' : 'Ход за вами';
+  const curatorTurn = viewer === 'foreign-head' ? 'Ход за менеджером' : 'Ход за вами';
   switch (state) {
     case 'NOT_STARTED':
       return `${curatorTurn}: этап не начат`;

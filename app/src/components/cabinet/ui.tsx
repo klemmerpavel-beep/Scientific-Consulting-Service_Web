@@ -875,7 +875,7 @@ export interface ThreadMessage {
 const ROLE_LABEL: Record<string, string> = {
   CLIENT: 'клиент',
   EXPERT: 'эксперт',
-  MANAGER: 'куратор',
+  MANAGER: 'менеджер',
   HEAD: 'руководитель',
 };
 
@@ -975,8 +975,10 @@ export function Thread({
                   >
                     {authorName(message.author, viewer, message.author.id)}
                     {/* Свою роль человек знает: «Вы · клиент» читалось как
-                        пометка системы о нём самом (решение Р-206). */}
-                    {mine ? null : (
+                        пометка системы о нём самом (решение Р-206). Клиенту
+                        сотрудник подписан ролью вместо имени — «Менеджер», и
+                        повтор «· менеджер» не нужен (Э-01, ОЭ-3б, С-3). */}
+                    {mine || viewer.role === 'CLIENT' ? null : (
                       <span style={{ fontWeight: 400, color: 'var(--pd-ink-muted)' }}>
                         {' · '}
                         {ROLE_LABEL[message.author.role] ?? message.author.role}
@@ -1620,7 +1622,7 @@ export function Roadmap({
       <Text muted>
         {staff
           ? 'План работ ещё не заведён.'
-          : 'Этапы ещё не заведены — куратор добавит их после согласования плана.'}
+          : 'Этапы ещё не заведены — менеджер добавит их после согласования плана.'}
       </Text>
     );
   }
@@ -2200,7 +2202,7 @@ function panelAnswer(
   }
   if (current === null) {
     if (total === 0) {
-      return staff ? 'План работ не заведён.' : 'План работ составляет куратор — этапы появятся здесь.';
+      return staff ? 'План работ не заведён.' : 'План работ составляет менеджер — этапы появятся здесь.';
     }
     return staff ? 'Все этапы закрыты.' : 'Работа закрыта. Материалы остаются доступны здесь.';
   }

@@ -1,6 +1,6 @@
 import { prisma } from '../db.ts';
 import { record } from './audit.ts';
-import { ensure, scopeProjects, type Actor } from './access.ts';
+import { ensure, scopeProjects, withoutStaffNames, type Actor } from './access.ts';
 import { hasContacts } from './contacts.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
@@ -18,11 +18,13 @@ export async function listMessages(actor: Actor, projectId: string) {
   const ref = await projectRef(projectId);
   if (ref === null) return [];
   ensure(actor, 'MESSAGE_READ', ref);
-  return prisma.message.findMany({
+  const messages = await prisma.message.findMany({
     where: { projectId },
     orderBy: { createdAt: 'asc' },
     include: { author: { select: { id: true, fullName: true, role: true } } },
   });
+  // Клиенту — без имени менеджера и руководителя в данных (Э-01, ОЭ-3б).
+  return withoutStaffNames(actor, messages);
 }
 
 /** Предел длины сообщения в переписке. */

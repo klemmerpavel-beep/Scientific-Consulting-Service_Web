@@ -542,13 +542,13 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     batches.push(batch.id);
     await assert.rejects(
       () => applyBatch(head(), batch.id, { managerId: ids.clientUser! }),
-      /Куратором может быть менеджер или руководитель/u,
+      /Менеджером работы может быть менеджер или руководитель/u,
     );
     await prisma.user.update({ where: { id: ids.other }, data: { status: 'SUSPENDED' } });
     try {
       await assert.rejects(
         () => applyBatch(head(), batch.id, { managerId: ids.other! }),
-        /Куратором может быть/u,
+        /Менеджером работы может быть/u,
       );
     } finally {
       await prisma.user.update({ where: { id: ids.other }, data: { status: 'ACTIVE' } });

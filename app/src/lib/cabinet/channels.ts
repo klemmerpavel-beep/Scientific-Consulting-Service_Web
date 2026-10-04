@@ -27,18 +27,18 @@ export type ContactKind = 'EMAIL' | 'TELEGRAM' | 'PHONE_CALL' | 'MESSENGER' | 'F
 export const CONTACT_LABEL: Record<ContactKind, string> = {
   EMAIL: 'Письмо на почту',
   TELEGRAM: 'Сообщение в Telegram',
-  PHONE_CALL: 'Звонок куратора',
+  PHONE_CALL: 'Звонок менеджера',
   MESSENGER: 'Мессенджер или социальная сеть',
   FULL_SUPPORT: 'Полное сопровождение',
 };
 
 /** Что человек получит, выбрав этот способ. Пишется на экране под строкой. */
 export const CONTACT_NOTE: Record<ContactKind, string> = {
-  EMAIL: 'Уведомления и ответы куратора приходят письмом.',
+  EMAIL: 'Уведомления и ответы менеджера приходят письмом.',
   TELEGRAM: 'То же, но сообщением в Telegram — быстрее письма.',
-  PHONE_CALL: 'Куратор звонит по важным поворотам работы, а не по каждой мелочи.',
-  MESSENGER: 'Куратор пишет туда, где вам удобно отвечать.',
-  FULL_SUPPORT: 'Куратор ведёт работу сам и связывается первым, не дожидаясь вопросов.',
+  PHONE_CALL: 'Менеджер звонит по важным поворотам работы, а не по каждой мелочи.',
+  MESSENGER: 'Менеджер пишет туда, где вам удобно отвечать.',
+  FULL_SUPPORT: 'Менеджер ведёт работу сам и связывается первым, не дожидаясь вопросов.',
 };
 
 /** Нужен ли этому способу адрес или номер. */
@@ -223,13 +223,13 @@ export const RULE_EVENTS: readonly {
   { kind: 'REQUEST_CREATED', title: 'Новое обращение из кабинета', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   // Только руководителю: вопрос куратора, выдача входа клиенту (Р-285) и
   // договор поручения (Р-298). Менеджеру эти строки ничем не управляли.
-  { kind: 'HELP_REQUESTED', title: 'Куратор просит помощи', group: 'Руководителю', roles: ['HEAD'] },
-  { kind: 'CLIENT_ACCESS_OPENED', title: 'Куратор открыл вход клиенту', group: 'Руководителю', roles: ['HEAD'] },
+  { kind: 'HELP_REQUESTED', title: 'Менеджер просит помощи', group: 'Руководителю', roles: ['HEAD'] },
+  { kind: 'CLIENT_ACCESS_OPENED', title: 'Менеджер открыл вход клиенту', group: 'Руководителю', roles: ['HEAD'] },
   { kind: 'NDA_NEEDED', title: 'Нужен договор поручения', group: 'Руководителю', roles: ['HEAD'] },
   // Возврат завершённого этапа в работу — руководителю (М-11, Р-303).
   { kind: 'STAGE_REOPENED', title: 'Этап возвращён в работу', group: 'Руководителю', roles: ['HEAD'] },
   // Договор, заведённый менеджером в «Новом заказе» (М-18, Р-308).
-  { kind: 'ORDER_WITH_CONTRACT', title: 'Куратор завёл заказ с договором', group: 'Руководителю', roles: ['HEAD'] },
+  { kind: 'ORDER_WITH_CONTRACT', title: 'Менеджер завёл заказ с договором', group: 'Руководителю', roles: ['HEAD'] },
 ];
 
 /** Строки сетки для роли (требование М-07, решение Р-300). */
@@ -341,7 +341,7 @@ export async function askForHelp(actor: Actor, text: string): Promise<void> {
     await enqueue(db, {
       userId: head.id,
       eventKind: 'HELP_REQUESTED',
-      subject: `Вопрос от куратора: ${me.fullName}`,
+      subject: `Вопрос от менеджера: ${me.fullName}`,
       // Содержание вопроса в письме идёт целиком: это служебная переписка
       // практики, а не разговор с клиентом, чьё содержание наружу не
       // пересылается.

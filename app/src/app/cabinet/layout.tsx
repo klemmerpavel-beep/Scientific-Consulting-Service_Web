@@ -58,7 +58,7 @@ function NotReady({ missing }: { missing: readonly string[] }) {
           Раздел готовится
         </Heading>
         <Text style={{ marginBottom: 16 }}>
-          Личный кабинет ещё не открыт. Ход работы по вашему сопровождению сообщит куратор —
+          Личный кабинет ещё не открыт. Ход работы по вашему сопровождению сообщит менеджер —
           напишите на <a href={`mailto:${PRACTICE_EMAIL}`}>{PRACTICE_EMAIL}</a>.
         </Text>
         {local ? (

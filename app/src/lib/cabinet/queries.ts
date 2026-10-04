@@ -11,7 +11,7 @@ import {
   scopeMaterials,
   scopeProjects,
   scopeVersions,
-  withoutExpertNames,
+  withoutStaffNames,
   type Actor,
 } from './access.ts';
 import { fileRefusal } from './file-guard.ts';
@@ -140,7 +140,7 @@ export async function listProjects(
     },
   });
 
-  return { rows: withoutExpertNames(actor, rows), total, page: current, pages, all, filter: applied };
+  return { rows: withoutStaffNames(actor, rows), total, page: current, pages, all, filter: applied };
 }
 
 export async function projectByCode(actor: Actor, code: string) {
@@ -151,11 +151,13 @@ export async function projectByCode(actor: Actor, code: string) {
     include: {
       serviceType: true,
       client: true,
-      // Регалии куратора и эксперта — для «О работе» (Т-11, Р-297).
+      // Регалии менеджера и эксперта — для «О работе» (Т-11, Р-297). Роль
+      // нужна, чтобы снять имя менеджера с данных клиента (ОЭ-3б).
       manager: {
         select: {
           id: true,
           fullName: true,
+          role: true,
           expertProfile: { select: { degree: true, specialization: true } },
         },
       },
@@ -174,8 +176,8 @@ export async function projectByCode(actor: Actor, code: string) {
       },
     },
   });
-  // Клиенту — без ФИО эксперта и в данных, не только на экране (Р-297).
-  return withoutExpertNames(actor, project);
+  // Клиенту — без ФИО сотрудников и в данных, не только на экране (Р-297, ОЭ-3б).
+  return withoutStaffNames(actor, project);
 }
 
 export async function stageById(actor: Actor, stageId: string) {
@@ -240,7 +242,7 @@ export async function stageById(actor: Actor, stageId: string) {
       },
     },
   });
-  return withoutExpertNames(actor, stage);
+  return withoutStaffNames(actor, stage);
 }
 
 /** Условие «у материала есть видимая версия»; практике — без условия. */
@@ -318,7 +320,7 @@ export async function projectMaterials(actor: Actor, code: string) {
       },
     },
   });
-  return withoutExpertNames(actor, project);
+  return withoutStaffNames(actor, project);
 }
 
 /**

@@ -146,11 +146,11 @@ describe('регалии и роль эксперта', { skip: !enabled }, asyn
     await projects.assignExpert(head(), ids.project!, ids.expert!, 'METHODOLOGIST');
   });
 
-  it('данные экрана клиента — без ФИО эксперта; куратор — со степенью', async () => {
+  it('данные экрана клиента — без ФИО эксперта и менеджера (ОЭ-3б)', async () => {
     const seen = await projectByCode(client(), ids.code!);
     const text = JSON.stringify(seen, (_key, value) => (typeof value === 'bigint' ? String(value) : value));
     assert.ok(!text.includes('Григорьев'), 'ФИО эксперта попало в данные клиента');
-    assert.equal(seen?.manager.expertProfile?.degree, 'к.т.н.');
+    assert.equal(seen?.manager.fullName, '', 'ФИО менеджера попало в данные клиента');
     assert.equal(seen?.expert?.expertProfile?.specialtyCode, '2.8.6');
     const staff = await projectByCode(curator(), ids.code!);
     assert.equal(staff?.expert?.fullName, 'Григорьев Антон Эдуардович');

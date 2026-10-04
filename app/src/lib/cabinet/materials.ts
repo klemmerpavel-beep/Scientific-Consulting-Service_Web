@@ -421,7 +421,7 @@ export async function moderateVersion(
         subject: `Версия v${version.number} не опубликована: ${version.material.title}`,
         body:
           `Проект ${project.code} — ${project.title}.\n` +
-          `Куратор не опубликовал клиенту версию v${version.number} материала «${version.material.title}».\n` +
+          `Менеджер не опубликовал клиенту версию v${version.number} материала «${version.material.title}».\n` +
           `Причина: ${reason}\n` +
           'Исправленную версию можно загрузить в личном кабинете.',
         dedupKey: `version:${version.id}:rejected`,
@@ -457,7 +457,7 @@ export async function moderateVersion(
       projectId: project.id,
       eventKind: 'EXPERT_DECISION',
       subject: `Версия v${version.number} опубликована: ${version.material.title}`,
-      body: `Работа ${project.code}.\nКуратор опубликовал клиенту версию v${version.number} материала «${version.material.title}».`,
+      body: `Работа ${project.code}.\nМенеджер опубликовал клиенту версию v${version.number} материала «${version.material.title}».`,
       dedupKey: `version:${version.id}:published:expert`,
       path: materialPath(project.code, version.material.stageId),
     });
@@ -762,8 +762,8 @@ export async function moderateComment(
       body:
         `Работа ${material.project.code}.\n` +
         (decision === 'PUBLISHED'
-          ? `Куратор опубликовал клиенту ваше замечание к версии v${target.version.number} материала «${material.title}».`
-          : `Куратор не опубликовал ваше замечание к версии v${target.version.number} материала «${material.title}».\nПричина: ${reason}`),
+          ? `Менеджер опубликовал клиенту ваше замечание к версии v${target.version.number} материала «${material.title}».`
+          : `Менеджер не опубликовал ваше замечание к версии v${target.version.number} материала «${material.title}».\nПричина: ${reason}`),
       // Своё пространство ключей: письма клиенту о замечании начинаются с
       // `comment:<id>` (решение Р-242).
       dedupKey: `expert-decision:comment:${commentId}`,

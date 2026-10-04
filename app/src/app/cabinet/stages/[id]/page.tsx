@@ -412,7 +412,7 @@ export default async function StageScreen({
                 required
                 placeholder="Клиент подтвердил письмом 02.10"
                 defaultValue={draft.basis ?? ''}
-                hint="Клиент прочитает: «Этап согласован куратором по вашему подтверждению: …»."
+                hint="Клиент прочитает: «Этап согласован менеджером по вашему подтверждению: …»."
               />
               <FormActions>
                 <Button tone="quiet">Согласовать за клиента</Button>
@@ -486,7 +486,7 @@ export default async function StageScreen({
                   multiline
                   required
                   defaultValue={draft.remarks ?? ''}
-                  hint="Замечания увидит куратор; этап вернётся в работу."
+                  hint="Замечания увидит менеджер; этап вернётся в работу."
                 />
                 <FormActions>
                   <Button tone="quiet">Вернуть с замечаниями</Button>
@@ -616,7 +616,7 @@ export default async function StageScreen({
                           с пометкой, куратору — с решением (Т-18, Р-294). */}
                       {version.moderation === null ? null : version.moderation.status === 'PENDING' ? (
                         <div style={{ marginTop: 10 }}>
-                          <Chip>{mayModerate ? 'ждёт публикации клиенту' : 'ждёт публикации куратором'}</Chip>
+                          <Chip>{mayModerate ? 'ждёт публикации клиенту' : 'ждёт публикации менеджером'}</Chip>
                           {mayModerate ? (
                             <>
                               <Form action={decideOnVersion} inline style={{ marginTop: 10 }}>

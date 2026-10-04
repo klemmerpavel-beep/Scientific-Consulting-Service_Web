@@ -238,7 +238,7 @@ export default async function ProjectsScreen({
             detail:
               live.length === 0
                 ? 'Действующих назначений нет.'
-                : 'Этапы ваших работ ждут клиента или закрыты; куратор сообщит, когда продолжать.',
+                : 'Этапы ваших работ ждут клиента или закрыты; менеджер сообщит, когда продолжать.',
           }
         : {
             lead: `Ход за вами в ${mine.length} ${plural(mine.length, 'работе', 'работах', 'работах')}.`,
@@ -285,7 +285,7 @@ export default async function ProjectsScreen({
               Материалы прикладываются на экране этапа или в «Материалах работы».
             </li>
             <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
-              Куратору пишите в переписке на карточке работы.
+              Менеджеру пишите в переписке на карточке работы.
             </li>
           </ul>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -558,7 +558,7 @@ export default async function ProjectsScreen({
                 {project.stages.length > 0 || project.status !== 'ACTIVE' ? null : (
                   <Text muted size={13} style={{ margin: '0 0 2px' }}>
                     {forClient || forExpert
-                      ? 'План работ ещё составляется: куратор заведёт этапы и сообщит.'
+                      ? 'План работ ещё составляется: менеджер заведёт этапы и сообщит.'
                       : 'План работ не заведён: этапы задаются на экране работы.'}
                   </Text>
                 )}

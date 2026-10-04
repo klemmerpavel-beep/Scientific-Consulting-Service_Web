@@ -103,6 +103,6 @@ export function fileRefusal(name: string, body: Buffer): string | null {
   const shown = name.replace(BIDI, '').slice(0, 120);
   return (
     `Файл «${shown}» не принят: исполняемые файлы и установщики загружать нельзя. ` +
-    'Если файл нужен для работы, напишите куратору'
+    'Если файл нужен для работы, напишите менеджеру'
   );
 }

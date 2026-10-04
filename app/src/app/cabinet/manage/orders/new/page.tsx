@@ -135,7 +135,7 @@ export default async function NewOrderScreen({
               <option value="COMPLETED">завершена</option>
             </Select>
             {head ? (
-              <Select label="Куратор" name="managerId" defaultValue={draft.managerId || actor.id}>
+              <Select label="Менеджер работы" name="managerId" defaultValue={draft.managerId || actor.id}>
                 {staff.map((person) => (
                   <option key={person.id} value={person.id}>
                     {person.fullName}

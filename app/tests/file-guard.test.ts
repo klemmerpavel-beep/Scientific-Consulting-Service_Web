@@ -80,6 +80,6 @@ describe('исполняемые файлы', () => {
   });
 
   it('отказ называет файл и говорит, что делать', () => {
-    assert.match(fileRefusal('setup.msi', text) ?? '', /«setup\.msi» не принят.*напишите куратору/u);
+    assert.match(fileRefusal('setup.msi', text) ?? '', /«setup\.msi» не принят.*напишите менеджеру/u);
   });
 });

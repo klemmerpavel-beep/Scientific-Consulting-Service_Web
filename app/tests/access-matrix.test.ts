@@ -18,7 +18,7 @@ import {
   expertRoleLabel,
   presentAuthor,
   staffExpertLine,
-  withoutExpertNames,
+  withoutStaffNames,
   ensure,
   scopeVersions,
   versionVisible,
@@ -517,7 +517,7 @@ describe('закрытая работа — только чтение (Т-17, М
         const refusal = contributionRefusal(as(role), status, 'IN_PROGRESS');
         assert.ok(refusal !== null, `${role} ${status}`);
         const practice = role === 'MANAGER' || role === 'HEAD';
-        assert.match(refusal!, practice ? /возобновите/u : /напишите куратору/u);
+        assert.match(refusal!, practice ? /возобновите/u : /напишите менеджеру/u);
       }
     }
   });
@@ -585,6 +585,10 @@ describe('представление участника работы (Т-11, Р-
     assert.equal(presentAuthor(expert, as('CLIENT'), 'e1', 'SCIENCE_EDITOR'), 'Научный редактор');
     assert.equal(presentAuthor(expert, as('MANAGER')), expert.fullName);
     assert.equal(presentAuthor(expert, as('EXPERT', 'e1'), 'e1'), 'Вы');
+    // Менеджера и руководителя клиент видит «Менеджер», без имени (ОЭ-3б, С-3).
+    assert.equal(presentAuthor({ fullName: 'Нечаева К. И.', role: 'MANAGER' }, as('CLIENT')), 'Менеджер');
+    assert.equal(presentAuthor({ fullName: 'Орлов П. С.', role: 'HEAD' }, as('CLIENT')), 'Менеджер');
+    assert.equal(presentAuthor({ fullName: 'Нечаева К. И.', role: 'MANAGER' }, as('EXPERT')), 'Нечаева К. И.');
     assert.equal(expertRoleLabel(null), 'Эксперт по специальности');
   });
 
@@ -598,19 +602,19 @@ describe('представление участника работы (Т-11, Р-
     assert.equal(expertLine({ degree: ' ', specialtyCode: null }), '');
   });
 
-  it('в данных экрана клиента нет ФИО и почты эксперта; у практики — есть', () => {
+  it('в данных экрана клиента нет ФИО и почты сотрудников; у практики — есть', () => {
     const data = {
       manager: { fullName: 'Нечаева К. И.', role: 'MANAGER' },
       expert: { id: 'e1', fullName: expert.fullName, role: 'EXPERT', email: 'expert@example.org' },
       materials: [{ versions: [{ uploadedBy: { fullName: expert.fullName, role: 'EXPERT' }, uploadedAt: new Date(0) }] }],
     };
-    const client = withoutExpertNames(as('CLIENT'), data);
+    const client = withoutStaffNames(as('CLIENT'), data);
     const text = JSON.stringify(client);
     assert.ok(!text.includes('Григорьев'), 'ФИО эксперта осталось в данных клиента');
     assert.ok(!text.includes('expert@example.org'), 'почта эксперта осталась в данных клиента');
-    assert.ok(text.includes('Нечаева'), 'куратор пропал из данных клиента');
+    assert.ok(!text.includes('Нечаева'), 'ФИО менеджера осталось в данных клиента (ОЭ-3б)');
     assert.ok(client.materials[0]!.versions[0]!.uploadedAt instanceof Date, 'дата испорчена');
-    assert.equal(withoutExpertNames(as('MANAGER'), data), data);
+    assert.equal(withoutStaffNames(as('MANAGER'), data), data);
   });
 });
 

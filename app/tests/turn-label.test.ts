@@ -9,9 +9,9 @@ import { describe, it } from 'node:test';
 import { turnLabel } from '../src/lib/cabinet/stage-state.ts';
 
 describe('подпись хода', () => {
-  it('куратору — «за вами», руководителю по чужой работе — «за куратором»', () => {
+  it('куратору — «за вами», руководителю по чужой работе — «за менеджером»', () => {
     assert.equal(turnLabel('NOT_STARTED', 'curator', true), 'Ход за вами: этап не начат');
-    assert.equal(turnLabel('NOT_STARTED', 'foreign-head', true), 'Ход за куратором: этап не начат');
+    assert.equal(turnLabel('NOT_STARTED', 'foreign-head', true), 'Ход за менеджером: этап не начат');
   });
 
   it('этап в работе: эксперту — «за вами», практике — «за экспертом»', () => {

@@ -67,7 +67,7 @@ export default async function MessagesScreen({
   // Подзаголовок называет собеседника, а не повторяет название работы:
   // оно уже стоит строкой возврата над заголовком (решение Р-190).
   const counterpart = forClient
-    ? `с куратором · ${project.manager.fullName}`
+    ? 'с менеджером'
     : `с клиентом · ${project.client.fullName}`;
 
   return (
@@ -89,7 +89,7 @@ export default async function MessagesScreen({
             flagContacts={mayModerate}
             empty={
               forClient
-                ? 'Переписки пока нет — напишите куратору, он ответит в рабочее время.'
+                ? 'Переписки пока нет — напишите менеджеру, он ответит в рабочее время.'
                 : 'Переписки пока нет.'
             }
           />
@@ -109,7 +109,7 @@ export default async function MessagesScreen({
               name="body"
               multiline
               required
-              placeholder={forClient ? 'Написать куратору' : 'Написать клиенту'}
+              placeholder={forClient ? 'Написать менеджеру' : 'Написать клиенту'}
               hint="Переписка ведётся внутри кабинета: она остаётся при работе и доступна обеим сторонам."
               defaultValue={draft ?? undefined}
             />
