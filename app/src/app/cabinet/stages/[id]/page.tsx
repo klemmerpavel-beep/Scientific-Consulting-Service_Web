@@ -453,11 +453,16 @@ export default async function StageScreen({
               marginBottom: 14,
             }}
           >
-            {/* Та же подпись хода, что на шкале и на сводке (решение Р-288). */}
+            {/* Та же подпись хода, что на шкале и на сводке (решение Р-288);
+                куратор читает её со своей стороны (Э-04, Р-329). */}
             <span>
               {turnLabel(
                 state,
-                actor.role === 'HEAD' && stage.project.managerId !== actor.id ? 'foreign-head' : 'curator',
+                curatorView
+                  ? 'expert'
+                  : actor.role === 'HEAD' && stage.project.managerId !== actor.id
+                    ? 'foreign-head'
+                    : 'curator',
                 stage.project.expertId !== null,
                 stage.handedOverAt,
               )}

@@ -32,6 +32,7 @@ import { unreadByProject } from '../../../lib/cabinet/messages';
 import {
   PROJECT_FILTER_FROM,
   listProjects,
+  curatorTasksData,
   liveWorks,
   pendingActions,
   type ProjectFilter,
@@ -220,36 +221,34 @@ export default async function ProjectsScreen({
               action: <ButtonLink href="/cabinet/request">Новая заявка</ButtonLink>,
             };
   } else if (forExpert && !awaitingNda) {
-    // Ход за куратором — этап не начат или в работе и не сдан менеджеру;
-    // остальное ждёт клиента или менеджера, и заданием ему не является
-    // (требование Э-05, решение Р-325).
-    const mine = live.filter(
-      (row) =>
-        row.stage !== null &&
-        ((row.stage.state === 'IN_PROGRESS' && row.stage.handedOverAt === null) || row.stage.state === 'NOT_STARTED'),
-    );
-    const next =
-      mine
-        .filter((row) => row.stage?.dueOn != null)
-        .sort((a, b) => a.stage!.dueOn!.getTime() - b.stage!.dueOn!.getTime())[0] ??
-      mine[0] ??
-      null;
+    // Ответ куратору — главное дело по ближайшему сроку, число остальных и
+    // кнопка на экран, где дело закрывается. «Не начат» делом не является:
+    // этап запускает менеджер (требование Э-04, решение Р-329).
+    const tasks = await curatorTasksData(actor);
+    const main = tasks[0] ?? null;
     answer =
-      mine.length === 0
+      main === null
         ? {
             lead: 'Сейчас ход не за вами.',
             detail:
               live.length === 0
                 ? 'Действующих назначений нет.'
-                : 'Этапы ваших работ сданы менеджеру, ждут клиента или закрыты; менеджер сообщит, когда продолжать.',
+                : 'Этапы ваших работ сданы менеджеру, ждут клиента, ещё не запущены или закрыты; менеджер сообщит, когда продолжать.',
           }
         : {
-            lead: `Ход за вами в ${mine.length} ${plural(mine.length, 'работе', 'работах', 'работах')}.`,
-            detail: dueLine(next),
-            action:
-              next?.stage == null ? undefined : (
-                <ButtonLink href={`/cabinet/stages/${next.stage.id}`}>Открыть этап</ButtonLink>
-              ),
+            lead: `${main.label}.`,
+            detail: [
+              `Работа «${clip(main.work, 60)}».`,
+              main.dueOn === null
+                ? null
+                : daysPast(main.dueOn) === null
+                  ? `Срок этапа — ${formatDate(main.dueOn)}.`
+                  : `Срок этапа прошёл ${formatDate(main.dueOn)}.`,
+              tasks.length > 1 ? `Ещё дел: ${tasks.length - 1}.` : null,
+            ]
+              .filter((part) => part !== null)
+              .join(' '),
+            action: <ButtonLink href={main.href}>{main.action}</ButtonLink>,
           };
   }
 

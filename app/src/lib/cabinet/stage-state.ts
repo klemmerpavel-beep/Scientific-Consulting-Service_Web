@@ -89,6 +89,10 @@ export type TurnViewer = 'curator' | 'foreign-head' | 'expert';
  * Этап, сданный куратором (`handedOverAt`, требование Э-05, решение
  * Р-325), остаётся «В работе», но ход у менеджера: куратор читает «Этап
  * сдан {дата}: ход за менеджером».
+ *
+ * Этап «Не начат» запускает менеджер: куратор читает «Ход за менеджером:
+ * этап ещё не запущен», а не «Ход за вами» (требование Э-04, решение
+ * Р-329; ответ ОМ-26 и строка Р-207 о кураторе заменены).
  */
 export function turnLabel(
   state: StageStateKey,
@@ -99,7 +103,7 @@ export function turnLabel(
   const curatorTurn = viewer === 'foreign-head' ? 'Ход за менеджером' : 'Ход за вами';
   switch (state) {
     case 'NOT_STARTED':
-      return `${curatorTurn}: этап не начат`;
+      return viewer === 'expert' ? 'Ход за менеджером: этап ещё не запущен' : `${curatorTurn}: этап не начат`;
     case 'IN_PROGRESS':
       if (handedOverAt !== null) {
         const day = formatDay(handedOverAt);

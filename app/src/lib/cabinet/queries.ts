@@ -18,6 +18,7 @@ import { fileRefusal } from './file-guard.ts';
 import { loadCalendar } from './approval.ts';
 import { previousWorkday } from './workdays.ts';
 import { turnLabel, type StageStateKey } from './stage-state.ts';
+import { curatorTasks } from './curator-tasks.ts';
 import { moscowToday, now as today } from './clock.ts';
 import { LEAD_STATUS_LABEL } from './lead-labels.ts';
 
@@ -347,6 +348,90 @@ export async function liveWorks(actor: Actor) {
       },
     },
   });
+}
+
+/**
+ * Дела куратора (требование Э-04, решение Р-329): этапы его работ,
+ * действующих и приостановленных (Д-4), свои версии и замечания с решением
+ * менеджера — одной выборкой на вид. Правила — в `curatorTasks`.
+ */
+export async function curatorTasksData(actor: Actor) {
+  const scope = scopeProjects(actor);
+  if (actor.role !== 'EXPERT' || scope === null) return curatorTasks([]);
+  const openWork = { ...scope, status: { in: ['ACTIVE' as const, 'PAUSED' as const] } };
+  const stageRef = { select: { id: true, dueOn: true } };
+  const [works, versions, comments] = await Promise.all([
+    prisma.project.findMany({
+      where: openWork,
+      orderBy: { code: 'asc' },
+      select: {
+        code: true,
+        title: true,
+        status: true,
+        stages: {
+          where: { state: 'IN_PROGRESS', handedOverAt: null },
+          orderBy: { position: 'asc' },
+          select: {
+            id: true,
+            title: true,
+            state: true,
+            dueOn: true,
+            handedOverAt: true,
+            handbackAt: true,
+            returnedAt: true,
+          },
+        },
+      },
+    }),
+    prisma.materialVersion.findMany({
+      where: {
+        uploadedById: actor.id,
+        purgedAt: null,
+        moderation: { isNot: null },
+        material: { deletedAt: null, kind: 'STAGE_MATERIAL', project: openWork },
+      },
+      select: {
+        id: true,
+        number: true,
+        moderation: { select: { status: true } },
+        material: { select: { id: true, title: true, project: { select: { code: true } }, stage: stageRef } },
+      },
+    }),
+    prisma.versionComment.findMany({
+      where: {
+        authorId: actor.id,
+        version: { purgedAt: null, material: { deletedAt: null, project: openWork } },
+      },
+      select: {
+        versionId: true,
+        createdAt: true,
+        moderationStatus: true,
+        version: {
+          select: { material: { select: { title: true, project: { select: { code: true } }, stage: stageRef } } },
+        },
+      },
+    }),
+  ]);
+  return curatorTasks(
+    works,
+    versions.map((version) => ({
+      versionId: version.id,
+      materialId: version.material.id,
+      materialTitle: version.material.title,
+      number: version.number,
+      status: version.moderation?.status ?? 'PUBLISHED',
+      code: version.material.project.code,
+      stage: version.material.stage,
+    })),
+    comments.map((comment) => ({
+      versionId: comment.versionId,
+      createdAt: comment.createdAt,
+      status: comment.moderationStatus,
+      materialTitle: comment.version.material.title,
+      code: comment.version.material.project.code,
+      stage: comment.version.material.stage,
+    })),
+  );
 }
 
 /**

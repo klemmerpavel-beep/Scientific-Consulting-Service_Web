@@ -1421,19 +1421,8 @@ export function Empty({
   );
 }
 
-/**
- * Сократить строку до `max` знаков по границе слова, с многоточием.
- *
- * Нужна ответу экрана: название этапа или работы в нём ничем не
- * ограничено, и длинное выталкивало ответ за нижний край телефона — тот
- * же дефект, что закрывало решение Р-167 для темы работы (решение Р-210).
- */
-export function clip(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max - 1);
-  const space = cut.lastIndexOf(' ');
-  return `${(space > max / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
-}
+/** Сокращение строки — в чистом модуле: его берут и дела куратора (Р-329). */
+export { clip } from '../../lib/cabinet/text-clip';
 
 /** Согласование числительного: «1 этап», «2 этапа», «5 этапов». */
 export function plural(count: number, one: string, few: string, many: string): string {
@@ -2198,6 +2187,9 @@ function panelAnswer(
   if (!staff && (projectStatus === 'COMPLETED' || projectStatus === 'CANCELLED')) {
     return 'Работа закрыта. Материалы остаются доступны здесь.';
   }
+  // Куратору приостановленная работа не пишет «Ход за вами»: сроки стоят,
+  // хотя материалы прикладывать можно (Э-04, Д-4, решение Р-329).
+  if (turnViewer === 'expert' && projectStatus === 'PAUSED') return 'Работа приостановлена.';
   if (current === null) {
     if (total === 0) {
       return staff ? 'План работ не заведён.' : 'План работ составляет менеджер — этапы появятся здесь.';
