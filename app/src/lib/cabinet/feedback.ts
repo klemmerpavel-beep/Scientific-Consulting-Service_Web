@@ -18,6 +18,7 @@ import {
   type FeedbackSeverity,
   type FeedbackStatus,
 } from '../feedback.ts';
+import { EXPORT_LIMIT, type ExportService } from '../feedback-export.ts';
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { openObject, storage, type OpenedObject } from './storage.ts';
@@ -152,6 +153,15 @@ export interface FeedbackReview {
  */
 export async function reviewFeedback(actor: Actor, id: string, input: FeedbackReview): Promise<void> {
   ensure(actor, 'FEEDBACK_REVIEW');
+  await applyReview(actor, id, input);
+}
+
+/**
+ * Разбор без проверки права: его делают `reviewFeedback` (право
+ * руководителя) и `feedbackExportService` (ключ выгрузки, Р-279). Во втором
+ * случае действующего лица нет, и в журнал пишется пометка «по ключу».
+ */
+async function applyReview(actor: Actor | null, id: string, input: FeedbackReview): Promise<void> {
   if (!isSeverity(input.severity)) throw new Error('Выберите критичность из перечня');
   if (!isStatus(input.status)) throw new Error('Выберите состояние из перечня');
   const note = input.note.replace(/\u0000/gu, '').trim();
@@ -194,6 +204,7 @@ export async function reviewFeedback(actor: Actor, id: string, input: FeedbackRe
       status: { from: current.status, to: status },
       severity: { from: current.severity, to: severity },
       note: nextNote !== null,
+      ...(actor === null ? { via: 'key' } : {}),
     },
   });
 }
@@ -210,6 +221,12 @@ export async function openFeedbackScreenshot(
   id: string,
 ): Promise<(OpenedObject & { contentType: string; fileName: string }) | null> {
   ensure(actor, 'FEEDBACK_REVIEW');
+  return openScreenshot(id);
+}
+
+async function openScreenshot(
+  id: string,
+): Promise<(OpenedObject & { contentType: string; fileName: string }) | null> {
   const row = await prisma.feedback.findUnique({
     where: { id },
     select: { id: true, screenshotKey: true, screenshotType: true },
@@ -242,3 +259,46 @@ export async function feedbackWorkbook(actor: Actor, ip: string | null): Promise
   });
   return book;
 }
+
+// ───────────────────────────── Выгрузка по ключу ──────────────────────────
+
+/**
+ * Служба выгрузки по ключу (решение Р-279): перечень, снимок и разбор для
+ * `/api/feedback/export`. Право здесь не проверяется — его заменяет ключ,
+ * который проверяет маршрут (`lib/feedback-export.ts`). Каждая выгрузка
+ * перечня пишется в журнал числом строк с пометкой «по ключу», разбор — как
+ * обычный, с той же пометкой.
+ */
+export const feedbackExportService: ExportService = {
+  async list(statuses) {
+    const rows = await prisma.feedback.findMany({
+      where: statuses === null ? {} : { status: { in: statuses } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: EXPORT_LIMIT,
+    });
+    await record(null, {
+      action: 'FEEDBACK_EXPORTED',
+      objectType: 'Feedback',
+      payload: { rows: rows.length, via: 'key' },
+    });
+    return rows;
+  },
+
+  async screenshot(id) {
+    return openScreenshot(id);
+  },
+
+  async review(id, patch) {
+    const current = await prisma.feedback.findUnique({
+      where: { id },
+      select: { status: true, severity: true, note: true },
+    });
+    if (current === null) return null;
+    await applyReview(null, id, {
+      status: patch.status ?? current.status,
+      severity: patch.severity ?? current.severity,
+      note: patch.note ?? current.note ?? '',
+    });
+    return prisma.feedback.findUnique({ where: { id } });
+  },
+};

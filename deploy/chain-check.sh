@@ -127,6 +127,21 @@ else
   off "почта: не настроена (SMTP_HOST, LEAD_MAIL_TO; DEPLOY.md, 5е)"
 fi
 
+# Выгрузка замечаний для исполнителя правок (Р-279). Ключ сверяется с тем,
+# что видит работающий контейнер, — значение не печатается, только длина:
+# ключ, дописанный в .env без перезапуска, до приложения не доходит.
+key=$(read_env FEEDBACK_EXPORT_TOKEN)
+seen=$($COMPOSE exec -T web sh -c 'printf %s "$FEEDBACK_EXPORT_TOKEN" | wc -c' 2>/dev/null | tr -d ' \r')
+if [ "${#key}" -eq 0 ]; then
+  off "замечания: выгрузка для правок выключена (FEEDBACK_EXPORT_TOKEN; DEPLOY.md, 5ж)"
+elif [ "${#key}" -lt 32 ]; then
+  bad "замечания: ключ выгрузки короче 32 знаков — адрес выключен (DEPLOY.md, 5ж)"
+elif [ "${seen:-0}" != "${#key}" ]; then
+  bad "замечания: ключ задан в .env, но приложение его не видит — перезапустите контейнер (DEPLOY.md, 5ж)"
+else
+  ok "замечания: выгрузка для правок включена"
+fi
+
 # ── 4. Кабинет: руководитель и рассылка уведомлений ─────────────────────────
 heads=$(sql "SELECT count(*) FROM \"User\" WHERE role = 'HEAD' AND status = 'ACTIVE';")
 if [ "${heads:-0}" -gt 0 ] 2>/dev/null; then ok "кабинет: учётная запись руководителя действует"
