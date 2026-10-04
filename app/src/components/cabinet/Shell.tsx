@@ -2,8 +2,9 @@ import type { ReactNode } from 'react';
 
 import type { Actor } from '../../lib/cabinet/access.ts';
 import { BUTTON_QUIET, CONTAINER, GUTTER, MONO, SANS, SERIF } from './tokens.ts';
-import { activeItem, navFor, SUMMARY_HREF, type NavItem } from '../../lib/cabinet/nav.ts';
+import { activeItem, navFor, RECOMMENDATIONS_HREF, SUMMARY_HREF, type NavItem } from '../../lib/cabinet/nav.ts';
 import { headAttentionCount } from '../../lib/cabinet/attention.ts';
+import { headRecommendationCount } from '../../lib/cabinet/recommendations.ts';
 import { Chip, VISUALLY_HIDDEN, plural } from './ui.tsx';
 
 /**
@@ -95,8 +96,14 @@ export default async function Shell({
   // Число дел у «Сводки» руководителя — один раз на запрос, тем же
   // набором, что строит «Требует внимания» (требование РК-04, Р-342).
   const count = actor === null ? null : await headAttentionCount(actor);
+  // Неотмеченные рекомендации — у пункта «Рекомендации» (РК-17, Р-350).
+  const advice = actor === null ? null : await headRecommendationCount(actor);
   const items = (actor === null ? [] : navFor(actor)).map((item) =>
-    item.href === SUMMARY_HREF && count !== null && count > 0 ? { ...item, count } : item,
+    item.href === SUMMARY_HREF && count !== null && count > 0
+      ? { ...item, count }
+      : item.href === RECOMMENDATIONS_HREF && advice !== null && advice > 0
+        ? { ...item, count: advice }
+        : item,
   );
   const active = activeItem(items, current ?? '');
   return (
@@ -157,7 +164,9 @@ export default async function Shell({
                         <Chip mono>
                           {item.count}
                           <span style={VISUALLY_HIDDEN}>
-                            {` ${plural(item.count, 'дело требует', 'дела требуют', 'дел требуют')} решения`}
+                            {item.href === RECOMMENDATIONS_HREF
+                              ? ` ${plural(item.count, 'рекомендация не отмечена', 'рекомендации не отмечены', 'рекомендаций не отмечено')}`
+                              : ` ${plural(item.count, 'дело требует', 'дела требуют', 'дел требуют')} решения`}
                           </span>
                         </Chip>
                       )}

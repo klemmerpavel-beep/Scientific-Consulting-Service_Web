@@ -71,6 +71,7 @@ describe('заголовки экранов руководителя — как 
     ['projects/index.html', 'Работы'],
     ['manage/finance/index.html', 'Деньги'],
     ['manage/analytics/index.html', 'Аналитика'],
+    ['manage/recommendations/index.html', 'Рекомендации'],
     ['manage/tools/index.html', 'Управление'],
     ['settings/index.html', 'Настройки'],
   ] as const) {

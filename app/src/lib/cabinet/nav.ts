@@ -13,14 +13,18 @@ export interface NavItem {
   readonly href: string;
   readonly label: string;
   /**
-   * Число дел у пункта «Сводка» руководителя — то же, что «N дел требуют
-   * решения» (требование РК-04, решение Р-342). Считает оболочка.
+   * Число у пункта руководителя: у «Сводки» — то же, что «N дел требуют
+   * решения» (требование РК-04, решение Р-342), у «Рекомендаций» —
+   * неотмеченные (РК-17, Р-350). Считает оболочка.
    */
   readonly count?: number;
 }
 
 /** Начальный экран штатных ролей — «Сводка» руководителя, «Сегодня» менеджера. */
 export const SUMMARY_HREF = '/cabinet/manage';
+
+/** Раздел «Рекомендации» руководителя (требование РК-17, решение Р-350). */
+export const RECOMMENDATIONS_HREF = '/cabinet/manage/recommendations';
 
 /** Промежуточный экран служебных разделов — пункт «Управление». */
 export const TOOLS_HREF = '/cabinet/manage/tools';
@@ -73,6 +77,9 @@ export function navFor(actor: Actor): NavItem[] {
     { href: '/cabinet/projects', label: 'Работы' },
   ];
   staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
+  // «Рекомендации» — между «Деньгами» и «Аналитикой», с числом
+  // неотмеченных (требование РК-17, решение Р-350).
+  staff.push({ href: RECOMMENDATIONS_HREF, label: 'Рекомендации' });
   staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
   // Служебный контур — реестры, учётные записи, справочники, перенос книги,
   // журналы, очередь уведомлений, удаление данных — собран за одним пунктом
@@ -123,6 +130,7 @@ export function activeItem(items: readonly NavItem[], current: string): string |
       (item.href === tools &&
         current.startsWith('/cabinet/manage/') &&
         !current.startsWith('/cabinet/manage/finance') &&
+        !current.startsWith(RECOMMENDATIONS_HREF) &&
         !current.startsWith('/cabinet/manage/analytics'));
     if (hit && (best === null || item.href.length > best.length)) best = item.href;
   }

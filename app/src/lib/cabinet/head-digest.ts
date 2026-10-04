@@ -24,6 +24,7 @@ import { attentionParts, attentionSources } from './attention.ts';
 import { moscowToday, now as clockNow } from './clock.ts';
 import { overdueTrancheWhere } from './money.ts';
 import { enqueue } from './outbox.ts';
+import { recommendationsFor } from './recommendations.ts';
 import { dayKey, isWorkday } from './workdays.ts';
 
 type Parts = ReturnType<typeof attentionParts>;
@@ -126,6 +127,39 @@ export async function enqueueTrancheOverdue(at: Date = clockNow()): Promise<numb
         path: '/cabinet/manage/finance/debtors',
       });
     }
+  }
+  return queued;
+}
+
+/**
+ * Письмо 1-го числа — рекомендации на месяц (требование РК-17, решение
+ * Р-350): «Рекомендация месяца» и число неотмеченных по блокам, без сумм.
+ * Уходит в первые три дня месяца, один раз на месяц: пропуск расписания
+ * 1-го числа письмо не теряет. Без неотмеченных рекомендаций не уходит.
+ */
+export async function enqueueHeadMonthly(at: Date = clockNow()): Promise<number> {
+  const today = moscowToday(at);
+  if (today.getUTCDate() > 3) return 0;
+  const month = dayKey(today).slice(0, 7);
+  const heads = await prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
+  let queued = 0;
+  for (const head of heads) {
+    const actor: Actor = { id: head.id, role: 'HEAD', status: 'ACTIVE', clientProfileId: null, expertNdaSignedAt: null };
+    const advice = await recommendationsFor(actor, at);
+    if (advice.unmarked === 0 || advice.month === null) continue;
+    const open = <T extends { key: string }>(rows: readonly T[]) => rows.filter((row) => !advice.marks.has(row.key)).length;
+    queued += await enqueue(prisma, {
+      userId: head.id,
+      eventKind: 'HEAD_MONTHLY',
+      subject: `Рекомендации на месяц: ${advice.unmarked}`,
+      body:
+        `Рекомендация месяца: ${advice.month.title}.\n` +
+        `Календарь продвижения — ${advice.calendar.now.length}, цена и пакеты — ${open(advice.price)}, ` +
+        `возврат клиентов — ${open(advice.returns)}.\n` +
+        'Это описательные правила по истории практики, не прогноз. Подробности и отметки — в разделе «Рекомендации».',
+      dedupKey: `head-monthly:${month}:${head.id}`,
+      path: '/cabinet/manage/recommendations',
+    });
   }
   return queued;
 }

@@ -417,6 +417,9 @@ describe('меню подсвечивает раздел, в котором че
     ['/cabinet/manage/finance/years', '/cabinet/manage/finance'],
     ['/cabinet/manage/analytics', '/cabinet/manage/analytics'],
     ['/cabinet/manage/analytics/money', '/cabinet/manage/analytics'],
+    // «Рекомендации» — свой пункт (РК-17, Р-350).
+    ['/cabinet/manage/recommendations', '/cabinet/manage/recommendations'],
+    ['/cabinet/manage/recommendations/calendar', '/cabinet/manage/recommendations'],
     ['/cabinet/projects', '/cabinet/projects'],
     ['/cabinet/settings', '/cabinet/settings'],
   ];

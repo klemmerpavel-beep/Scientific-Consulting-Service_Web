@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
+import RecommendationMarks from '../../../../../components/cabinet/RecommendationMarks';
 import Shell from '../../../../../components/cabinet/Shell';
 import {
   Button,
@@ -28,9 +29,9 @@ import {
 import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { homeFor } from '../../../../../lib/cabinet/nav';
-import { MARK_LABEL, calendarFor, type Mark } from '../../../../../lib/cabinet/recommendations';
-import { requireActor } from '../../../../../lib/cabinet/session';
+import { calendarFor } from '../../../../../lib/cabinet/recommendations';
 import { markRecommendationAction } from '../../../actions';
+import { requireActor } from '../../../../../lib/cabinet/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,30 +49,6 @@ function action(row: CalendarRow): string {
     return `Подготовить продвижение «${row.typeName}»: окно открыто, главное — с ${formatDate(row.mainStart)}`;
   }
   return `Окно «${row.typeName}» откроется ${formatDate(row.windowStart)}: подготовить материалы`;
-}
-
-/** Отметка окна: «Сделано», «Отложить» или снятие отметки. */
-function MarkControls({ row, mark }: { row: CalendarRow; mark: Mark | undefined }) {
-  const key = calendarKey(row);
-  if (key === null) return null;
-  const form = (status: string, label: string) => (
-    <Form action={markRecommendationAction} inline>
-      <input type="hidden" name="key" value={key} />
-      <input type="hidden" name="status" value={status} />
-      <Button tone="quiet">{label}</Button>
-    </Form>
-  );
-  return mark === undefined ? (
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      {form('DONE', 'Сделано')}
-      {form('POSTPONED', 'Отложить')}
-    </div>
-  ) : (
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-      <Chip>{`${MARK_LABEL[mark.status]} ${formatDate(mark.at)}`}</Chip>
-      {form('', 'Снять отметку')}
-    </div>
-  );
 }
 
 /**
@@ -108,10 +85,10 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
   };
 
   return (
-    <Shell actor={actor} current="/cabinet/manage/analytics">
+    <Shell actor={actor} current="/cabinet/manage/recommendations">
       <ScreenHead
-        backHref="/cabinet/manage/analytics"
-        backLabel="Аналитика"
+        backHref="/cabinet/manage/recommendations"
+        backLabel="Рекомендации"
         title="Календарь продвижения"
         note="Когда продвигать каждый вид работ: от сроков сдачи и медианы выполнения. Это ориентир по истории практики, не прогноз."
       />
@@ -136,7 +113,7 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
                 <Text muted size={13}>
                   {`уверенность — ${CONFIDENCE_LABEL[row.confidence]}${row.weight === null ? '' : ` · вес ${formatAmount(row.weight)}`}`}
                 </Text>
-                <MarkControls row={row} mark={marks.get(calendarKey(row) ?? '')} />
+                <RecommendationMarks markKey={calendarKey(row)} mark={marks.get(calendarKey(row) ?? '')} back="calendar" action={markRecommendationAction} />
               </li>
             ))}
           </ul>
@@ -234,7 +211,7 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
                 <td style={TABLE_NUM}>{row.weight === null ? '—' : formatAmount(row.weight)}</td>
                 <td style={TABLE_CELL}>{CONFIDENCE_LABEL[row.confidence]}</td>
                 <td style={TABLE_CELL}>
-                  <MarkControls row={row} mark={marks.get(calendarKey(row) ?? '')} />
+                  <RecommendationMarks markKey={calendarKey(row)} mark={marks.get(calendarKey(row) ?? '')} back="calendar" action={markRecommendationAction} />
                 </td>
               </tr>
             ))}

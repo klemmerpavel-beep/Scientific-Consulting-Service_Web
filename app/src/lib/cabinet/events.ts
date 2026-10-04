@@ -55,7 +55,8 @@ export type EventKind =
   | 'WORK_TRANSFERRED'
   | 'MANAGER_CHANGED'
   | 'HEAD_DIGEST'
-  | 'TRANCHE_OVERDUE';
+  | 'TRANCHE_OVERDUE'
+  | 'HEAD_MONTHLY';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -130,6 +131,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   MANAGER_CHANGED: 'сменился менеджер работы',
   HEAD_DIGEST: 'утренняя сводка дел',
   TRANCHE_OVERDUE: 'просрочен платёж',
+  HEAD_MONTHLY: 'рекомендации на месяц',
 };
 
 /**

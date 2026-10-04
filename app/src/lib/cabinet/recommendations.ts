@@ -1,6 +1,8 @@
 /**
  * Рекомендации руководителю: календарь продвижения и отметки «сделано» и
- * «отложено» (требование РК-16, решение Р-349).
+ * «отложено» (требование РК-16, решение Р-349); раздел «Рекомендации» —
+ * календарь, цена и пакеты, возврат клиентов, «Рекомендация месяца» и
+ * счётчик неотмеченных (требование РК-17, решение Р-350).
  *
  * Расчёт — чистый модуль `analytics/calendar.ts`; здесь — данные
  * практики, настройки (дата начала учёта, пороги уверенности) и отметки.
@@ -8,11 +10,14 @@
  * сезона свой ключ.
  */
 
+import { cache } from 'react';
+
 import type { RecommendationMarkStatus } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
-import { calendarNow, promoCalendar, type CalendarRow } from './analytics/calendar.ts';
+import { priceAdvice, returnAdvice, type PriceAdvice, type ReturnAdvice } from './analytics/advice.ts';
+import { calendarKey, calendarNow, promoCalendar, type CalendarRow } from './analytics/calendar.ts';
 import { loadRows } from './analytics/data.ts';
 import { now as clockNow } from './clock.ts';
 import { analyticsSince, confidenceThresholds, type ConfidenceThresholds } from './practice-settings.ts';
@@ -95,3 +100,81 @@ export async function calendarFor(
     skipped: data.filter((row) => row.startedOn === null || row.startedOn.getTime() < since.getTime()).length,
   };
 }
+
+export interface ReturnItem extends ReturnAdvice {
+  /** Согласие на рассылку — из последней заявки клиента (ОР-10). */
+  readonly consent: boolean;
+}
+
+export interface Recommendations {
+  readonly calendar: Awaited<ReturnType<typeof calendarFor>>;
+  readonly price: readonly PriceAdvice[];
+  readonly returns: readonly ReturnItem[];
+  readonly marks: Map<string, Mark>;
+  /** Неотмеченных рекомендаций — число у пункта меню. */
+  readonly unmarked: number;
+  /** «Рекомендация месяца» — главная из неотмеченных. */
+  readonly month: { readonly title: string; readonly href: string } | null;
+}
+
+/** Согласие на рассылку по клиентам — из последней заявки, ставшей его работой (ОР-10). */
+async function consentOf(clientIds: readonly string[]): Promise<Map<string, boolean>> {
+  if (clientIds.length === 0) return new Map();
+  const leads = await prisma.lead.findMany({
+    where: { project: { clientId: { in: [...clientIds] } } },
+    orderBy: { createdAt: 'desc' },
+    select: { marketingOptIn: true, project: { select: { clientId: true } } },
+  });
+  const out = new Map<string, boolean>();
+  for (const lead of leads) {
+    const clientId = lead.project?.clientId;
+    if (clientId !== undefined && !out.has(clientId)) out.set(clientId, lead.marketingOptIn);
+  }
+  return out;
+}
+
+/** Раздел «Рекомендации»: три блока, отметки, счётчик и рекомендация месяца. */
+export async function recommendationsFor(actor: Actor, at: Date = clockNow()): Promise<Recommendations> {
+  ensure(actor, 'ANALYTICS_VIEW');
+  const [calendar, data] = await Promise.all([calendarFor(actor, at), loadRows(actor)]);
+  const marks = calendar.marks;
+  const price = priceAdvice(data, calendar.rows, at);
+  const silent = returnAdvice(data, at);
+  const consent = await consentOf(silent.map((row) => row.clientId));
+  const returns = silent.map((row) => ({ ...row, consent: consent.get(row.clientId) ?? false }));
+  const open = <T extends { key: string }>(rows: readonly T[]) => rows.filter((row) => !marks.has(row.key));
+  const unmarked = calendar.now.length + open(price).length + open(returns).length;
+  const lead = calendar.now[0];
+  const firstPrice = open(price)[0];
+  const firstReturn = open(returns)[0];
+  const month =
+    lead !== undefined
+      ? {
+          title:
+            lead.state === 'main'
+              ? `Запустить продвижение «${lead.typeName}»: главное окно идёт`
+              : `Подготовить продвижение «${lead.typeName}»`,
+          href: '/cabinet/manage/recommendations/calendar',
+        }
+      : firstPrice !== undefined
+        ? { title: `Зафиксировать цену «${firstPrice.typeName}» по медиане`, href: '/cabinet/manage/recommendations#price' }
+        : firstReturn !== undefined
+          ? { title: `Вернуться к клиенту: ${firstReturn.clientName}`, href: '/cabinet/manage/recommendations#returns' }
+          : null;
+  return { calendar, price, returns, marks, unmarked, month };
+}
+
+/**
+ * Число у пункта «Рекомендации» — только руководителю, один раз на запрос.
+ * Сбой выборки оставляет пункт без числа.
+ */
+export const headRecommendationCount = cache(async (actor: Actor): Promise<number | null> => {
+  if (actor.role !== 'HEAD') return null;
+  try {
+    return (await recommendationsFor(actor)).unmarked;
+  } catch {
+    return null;
+  }
+});
+
+export { calendarKey };

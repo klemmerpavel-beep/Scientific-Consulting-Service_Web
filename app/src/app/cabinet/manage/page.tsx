@@ -45,6 +45,7 @@ import { byMonth, products, receivedBetween } from '../../../lib/cabinet/analyti
 import { loadRows } from '../../../lib/cabinet/analytics/data';
 import { activeWorks, moneyBrief, orderSummary, stageLoad, upcomingDeadlines } from '../../../lib/cabinet/summary';
 import { teamBrief, teamLoad } from '../../../lib/cabinet/team';
+import { recommendationsFor } from '../../../lib/cabinet/recommendations';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -156,6 +157,8 @@ export default async function ManageQueue({
   const term = actor.role === 'HEAD' ? await reactionDays() : 0;
   // «Команда» — до пяти строк после «Требует внимания» (РК-06, Р-343; ОР-2).
   const team = actor.role === 'HEAD' ? teamBrief(await teamLoad(actor)) : [];
+  // «Рекомендация месяца» — под ответом сводки (РК-17, Р-350).
+  const advice = actor.role === 'HEAD' && can(actor, 'ANALYTICS_VIEW') ? (await recommendationsFor(actor)).month : null;
   const queue = await leadQueue(actor, Number.isFinite(requested) ? requested : 1);
   const leads = queue.rows;
 
@@ -679,6 +682,15 @@ export default async function ManageQueue({
           dashboard ? <ButtonLink href="/cabinet/manage/report">Отчёт за период</ButtonLink> : undefined
         }
       />
+
+      {advice === null ? null : (
+        <Text size={14} style={{ marginBottom: 20 }}>
+          Рекомендация месяца:{' '}
+          <a className="cab-mark" href={advice.href}>
+            {advice.title}
+          </a>
+        </Text>
+      )}
 
       {/* Ни почта, ни бот не настроены — уведомления копятся в очереди;
           плашка стоит, пока не настроен хотя бы один канал (требование
