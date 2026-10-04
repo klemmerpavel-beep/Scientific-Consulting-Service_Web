@@ -6,7 +6,7 @@ import { CHANNEL_OFF, telegramNote, telegramPermanent, type EventKind } from './
 import { leadAddress, receivedLetter } from './lead-letter.ts';
 import { defaultPath, openLink, safeNext } from './next-path.ts';
 import { siteUrl } from '../site-url.ts';
-import { sendMailTo } from './mail.ts';
+import { mailConfigured, sendMailTo } from './mail.ts';
 import { escapeHtml } from './token.ts';
 import { formatDay } from './approval-text.ts';
 import { moscowToday } from './clock.ts';
@@ -44,6 +44,11 @@ export interface OutboxItem {
    * работы, если работа известна, иначе кабинет.
    */
   readonly path?: string | null;
+  /**
+   * Только этот канал: сигнал о сбое идёт тем каналом, который работает
+   * (требование РК-02, решение Р-334).
+   */
+  readonly only?: 'EMAIL' | 'TELEGRAM';
 }
 
 /** Клиент Prisma или транзакция — уведомление ставится вместе с изменением. */
@@ -161,7 +166,7 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
   if (user.notifyEmail) allowed.push('EMAIL');
   if (user.notifyTelegram && user.telegramChatId !== null) allowed.push('TELEGRAM');
 
-  const channels = allowed.filter((channel) => {
+  const channels = allowed.filter((channel) => item.only === undefined || channel === item.only).filter((channel) => {
     // Точное правило сильнее общего; когда правил нет вовсе, канал
     // работает — иначе включение разбора по событиям молча обрубило бы
     // все уведомления.
@@ -274,6 +279,8 @@ const MAX_ATTEMPTS = 5;
 const NO_ADDRESS = 'адрес заявителя недоступен';
 /** Получатель закрыт или отключил канал после постановки (решение Р-246). */
 const RECIPIENT_OFF = 'получатель отключил канал или доступ закрыт';
+/** Привязка Telegram снята получателем — отказ на его стороне, не сбой канала. */
+const TG_UNBOUND = 'привязка Telegram снята';
 
 /** Причина, с которой закрывается устаревшая строка. */
 export const EXPIRED_NOTE = 'устарело до отправки';
@@ -467,7 +474,7 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     if (recipientOff) {
       await prisma.notificationOutbox.update({
         where: { id: item.id },
-        data: { state: 'FAILED', lastError: RECIPIENT_OFF, scheduledAt: new Date() },
+        data: { state: 'FAILED', failure: 'RECIPIENT_OFF', lastError: RECIPIENT_OFF, scheduledAt: new Date() },
       });
       continue;
     }
@@ -488,14 +495,14 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
         : item.channel === 'EMAIL'
           ? await sendMailTo(address!, item.subject, renderLetter(item.subject, item.body, footer, open), text)
           : chatId === null
-            ? { ok: false, error: 'привязка Telegram снята' }
+            ? { ok: false, error: TG_UNBOUND }
             : await sendTelegram(chatId, telegramNote(item.eventKind, item.project?.code ?? null, screen));
 
     // Без адреса повторять нечего: строка сразу помечается неудачей.
     if (result.error === NO_ADDRESS) {
       await prisma.notificationOutbox.update({
         where: { id: item.id },
-        data: { state: 'FAILED', attempts: { increment: 1 }, lastError: NO_ADDRESS },
+        data: { state: 'FAILED', failure: 'NO_ADDRESS', attempts: { increment: 1 }, lastError: NO_ADDRESS },
       });
       failed += 1;
       continue;
@@ -532,10 +539,14 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     if (result.unreachable === true) down.add(item.channel);
     const attempts = item.attempts + 1;
     const giveUp = attempts >= MAX_ATTEMPTS || result.permanent === true;
+    // Снятая привязка — отказ получателя; остальное — отказ доставки, о
+    // котором руководитель узнаёт делом и сигналом (РК-02, Р-334).
+    const failure = !giveUp ? null : result.error === TG_UNBOUND ? 'RECIPIENT_OFF' : 'DELIVERY';
     await prisma.notificationOutbox.update({
       where: { id: item.id },
       data: {
         state: giveUp ? 'FAILED' : 'PENDING',
+        failure,
         attempts,
         lastError: result.error ?? null,
         // Отступ растёт с числом попыток: временная недоступность почты не
@@ -543,10 +554,49 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
         scheduledAt: giveUp ? now : new Date(Date.now() + attempts * 5 * 60 * 1000),
       },
     });
+    // Сбой самого сигнала нового сигнала не порождает.
+    if (failure === 'DELIVERY' && item.eventKind !== 'OUTBOX_FAILED') await signalFailure(item.channel, now);
     failed += 1;
   }
 
   return { taken: pending.length, sent, failed };
+}
+
+const CHANNEL_NAME: Record<'EMAIL' | 'TELEGRAM', string> = { EMAIL: 'почта', TELEGRAM: 'Telegram' };
+
+/**
+ * Сигнал руководителям о сбое отправки — тем каналом, который работает:
+ * сбой почты — в Telegram, сбой Telegram — письмом (требование РК-02,
+ * решение Р-334). Не чаще раза в сутки на канал: ключ — канал и
+ * московский день. Пока второй канал у руководителя не подключён, сигнал
+ * не ставится — остаются дело на «Сводке» и плашка.
+ */
+async function signalFailure(channel: 'EMAIL' | 'TELEGRAM', at: Date): Promise<void> {
+  const other = channel === 'EMAIL' ? 'TELEGRAM' : 'EMAIL';
+  const day = moscowToday(at).toISOString().slice(0, 10);
+  const heads = await prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
+  for (const head of heads) {
+    await enqueue(prisma, {
+      userId: head.id,
+      eventKind: 'OUTBOX_FAILED',
+      subject: `Уведомления не доставлены: ${CHANNEL_NAME[channel]}`,
+      body:
+        `Канал «${CHANNEL_NAME[channel]}» не доставил уведомление после всех попыток.\n` +
+        'Причина и строки очереди — в «Управление → Очередь уведомлений».',
+      dedupKey: `outbox-failed:${channel.toLowerCase()}:${day}:${head.id}`,
+      path: '/cabinet/manage/outbox',
+      only: other,
+    });
+  }
+}
+
+/**
+ * Не настроен ни один канал — ни почта, ни бот. Тогда на «Сводке» —
+ * постоянная плашка «Уведомления не уходят: настройте почту» (требование
+ * РК-02, решение Р-334).
+ */
+export function notifyChannelsDown(): boolean {
+  return !mailConfigured() && !(process.env.TELEGRAM_BOT_TOKEN ?? '').trim();
 }
 
 /**
@@ -662,6 +712,8 @@ export interface OutboxDigest {
   readonly pending: number;
   readonly sentLastDay: number;
   readonly failed: number;
+  /** Из неудач — отказы доставки: по ним дело на «Сводке» (РК-02, Р-334). */
+  readonly deliveryFailed: number;
   /** Ждут настройки канала: попытки им не наращиваются (см. `dispatch`). */
   readonly waitingChannel: number;
   /** Закрыты без отправки за последние сутки: устарели в очереди. */
@@ -676,10 +728,11 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
   ensure(actor, 'AUDIT_VIEW');
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const [pending, sentLastDay, failed, waitingChannel, expiredLastDay, lastSent, failures] = await Promise.all([
+  const [pending, sentLastDay, failed, deliveryFailed, waitingChannel, expiredLastDay, lastSent, failures] = await Promise.all([
     prisma.notificationOutbox.count({ where: { state: 'PENDING' } }),
     prisma.notificationOutbox.count({ where: { state: 'SENT', sentAt: { gte: dayAgo } } }),
     prisma.notificationOutbox.count({ where: { state: 'FAILED' } }),
+    prisma.notificationOutbox.count({ where: { state: 'FAILED', failure: 'DELIVERY' } }),
     prisma.notificationOutbox.count({ where: { state: 'PENDING', lastError: CHANNEL_OFF } }),
     prisma.notificationOutbox.count({ where: { state: 'EXPIRED', scheduledAt: { gte: dayAgo } } }),
     prisma.notificationOutbox.findFirst({
@@ -713,6 +766,7 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
     pending,
     sentLastDay,
     failed,
+    deliveryFailed,
     waitingChannel,
     expiredLastDay,
     lastSentAt: lastSent?.sentAt ?? null,
@@ -880,7 +934,7 @@ export async function retryLeadLetter(actor: Actor, leadId: string, ip?: string 
   // Захват по состоянию: второе нажатие в соседнем окне строку не тронет.
   const claimed = await prisma.notificationOutbox.updateMany({
     where: { id: row.id, state: 'FAILED' },
-    data: { state: 'PENDING', attempts: 0, lastError: null, scheduledAt: new Date() },
+    data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
   });
   if (claimed.count === 0) return false;
   await record(actor, {
@@ -914,7 +968,7 @@ export async function retryFailed(actor: Actor, id: string, ip?: string | null):
 
   await prisma.notificationOutbox.update({
     where: { id: row.id },
-    data: { state: 'PENDING', attempts: 0, lastError: null, scheduledAt: new Date() },
+    data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
   });
   await record(actor, {
     action: 'OUTBOX_RETRY',

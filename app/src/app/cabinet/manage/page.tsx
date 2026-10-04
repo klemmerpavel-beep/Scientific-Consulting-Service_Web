@@ -38,7 +38,7 @@ import { unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments, pendingVersions } from '../../../lib/cabinet/materials';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
 import { leadQueue, returnedStages, todayItems, trafficLight } from '../../../lib/cabinet/queries';
-import { outboxDigest } from '../../../lib/cabinet/outbox';
+import { notifyChannelsDown, outboxDigest } from '../../../lib/cabinet/outbox';
 import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
 import { requireActor } from '../../../lib/cabinet/session';
 import { homeFor } from '../../../lib/cabinet/nav';
@@ -463,14 +463,16 @@ export default async function ManageQueue({
           ? `/cabinet/projects/${row.projectCode}/materials#material-${row.materialId}`
           : `/cabinet/stages/${row.stageId}`,
     })),
-    ...(outbox !== null && outbox.failed > 0
+    // Дело — только по отказам доставки: отключённый получателем канал и
+    // отсутствие адреса чинить нечего (требование РК-02, решение Р-334).
+    ...(outbox !== null && outbox.deliveryFailed > 0
       ? [
           {
             key: 'outbox',
             kind: 'outbox' as const,
             step: 0 as const,
             title: 'Очередь уведомлений',
-            mark: `не доставлено ${outbox.failed}`,
+            mark: `не доставлено ${outbox.deliveryFailed}`,
             urgent: true,
             detail: 'Письма и сообщения, не ушедшие после пяти попыток',
             todo: 'Разобрать очередь и отправить заново',
@@ -567,6 +569,16 @@ export default async function ManageQueue({
           dashboard ? <ButtonLink href="/cabinet/manage/report">Отчёт за период</ButtonLink> : undefined
         }
       />
+
+      {/* Ни почта, ни бот не настроены — уведомления копятся в очереди;
+          плашка стоит, пока не настроен хотя бы один канал (требование
+          РК-02, решение Р-334). */}
+      {outbox !== null && notifyChannelsDown() ? (
+        <Outcome tone="error">
+          Уведомления не уходят: настройте почту. Пока не настроены ни почта, ни бот Telegram, письма и
+          сигналы копятся в очереди.
+        </Outcome>
+      ) : null}
 
       {/* «Требует внимания» — верхней полосой отдельными плашками, а не
           колонкой: заказчик смотрит сводку сверху вниз, и то, что нельзя

@@ -996,6 +996,17 @@ enum NotificationState {
   EXPIRED
 }
 
+/// Почему строка очереди не ушла (требование РК-02, решение Р-334): дело на
+/// «Сводке» и сигнал руководителю — только по отказу доставки.
+enum OutboxFailure {
+  /// Сервер канала отказал или не ответил после всех попыток.
+  DELIVERY
+  /// Получатель отключил канал, снял привязку Telegram или доступ закрыт.
+  RECIPIENT_OFF
+  /// У заявителя нет адреса.
+  NO_ADDRESS
+}
+
 /// Очередь исходящих уведомлений. Строка пишется в той же транзакции, что и
 /// само изменение: отказ почты или Telegram не откатывает бизнес-операцию,
 /// а недоставленное уведомление видно руководителю.
@@ -1026,6 +1037,8 @@ model NotificationOutbox {
   path      String?
 
   state       NotificationState @default(PENDING)
+  /// Причина неудачи; задана только у `FAILED` (РК-02, Р-334).
+  failure     OutboxFailure?
   attempts    Int               @default(0)
   lastError   String?           @db.Text
   scheduledAt DateTime          @default(now())
