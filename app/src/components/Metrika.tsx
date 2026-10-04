@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
 
+import { LEAD_SENT_EVENT } from './LeadThanks';
+
 /**
  * Счётчик посещаемости и уведомление о файлах cookies.
  *
@@ -25,6 +27,9 @@ import { usePathname } from 'next/navigation';
  * строка в уведомлении Роскомнадзора.
  */
 const METRIKA_ID = process.env.NEXT_PUBLIC_METRIKA_ID;
+
+/** Идентификатор цели «Заявка отправлена» в Метрике (Р-283). */
+export const LEAD_GOAL = 'lead';
 
 /** Ключ выбора посетителя. Хранится у него в браузере и никуда не уходит. */
 const KEY = 'pd-analytics';
@@ -58,6 +63,21 @@ export default function Metrika() {
   useEffect(() => {
     if (METRIKA_ID && !cabinet) setChoice(readChoice());
   }, [cabinet]);
+
+  // Цель «Заявка отправлена» (идентификатор `lead`) — по тому же событию,
+  // что открывает окно благодарности (Р-280): только успешная отправка,
+  // только при включённом счётчике и данном согласии. Нужна Директу, чтобы
+  // считать заявки и учиться на них (решение Р-283). В цель не кладётся
+  // ничего из формы: ни контакта, ни текста — только сам факт отправки.
+  useEffect(() => {
+    if (!METRIKA_ID || cabinet || choice !== 'yes') return;
+    const onSent = () => {
+      const ym = (window as unknown as { ym?: (...args: unknown[]) => void }).ym;
+      if (typeof ym === 'function') ym(Number(METRIKA_ID), 'reachGoal', LEAD_GOAL);
+    };
+    window.addEventListener(LEAD_SENT_EVENT, onSent);
+    return () => window.removeEventListener(LEAD_SENT_EVENT, onSent);
+  }, [cabinet, choice]);
 
   if (!METRIKA_ID || cabinet || choice === undefined) return null;
 
