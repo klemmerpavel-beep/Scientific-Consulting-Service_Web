@@ -1203,6 +1203,7 @@ export async function accruePayout(form: FormData): Promise<void> {
   try {
     await addPayout(actor, {
       projectId: String(form.get('projectId') ?? ''),
+      stageId: String(form.get('stageId') ?? '') || null,
       amount: parseAmount(String(form.get('amount') ?? '')),
       comment: String(form.get('comment') ?? '') || null,
     });

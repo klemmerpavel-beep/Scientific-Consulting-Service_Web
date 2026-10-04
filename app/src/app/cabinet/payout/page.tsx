@@ -30,6 +30,9 @@ export const dynamic = 'force-dynamic';
 export default async function PayoutScreen() {
   const actor = await requireActor('/cabinet/payout');
   if (!can(actor, 'PAYOUT_VIEW_OWN')) redirect(homeFor(actor));
+  // Руководителю — свод по кураторам, а не перечень с текстами для
+  // куратора (требование РК-11, решение Р-339).
+  if (can(actor, 'PAYOUT_MANAGE')) redirect('/cabinet/manage/finance/payouts');
 
   const { rows, accrued, paid } = await ownPayouts(actor);
 

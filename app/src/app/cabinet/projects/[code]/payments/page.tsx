@@ -631,6 +631,18 @@ export default async function PaymentsScreen({
                     />
                     <Field label="За что" name="comment" scope="payout" placeholder="Глава 2" />
                   </FormRow>
+                  {/* Начисление по этапу — куратор видит его с названием
+                      этапа (требование РК-11, решение Р-339). */}
+                  {project.stages.length === 0 ? null : (
+                    <Select label="Этап" name="stageId" scope="payout" defaultValue="">
+                      <option value="">По работе в целом</option>
+                      {project.stages.map((stage) => (
+                        <option key={stage.id} value={stage.id}>
+                          {`Этап ${stage.position}: ${stage.title}`}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
                   <FormActions>
                     <Button tone="quiet">Начислить</Button>
                   </FormActions>

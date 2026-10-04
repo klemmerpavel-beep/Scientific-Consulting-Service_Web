@@ -127,7 +127,9 @@ export default async function FinanceScreen({
       />
       <Text style={{ marginBottom: 24 }}>
         <a href="/cabinet/manage/finance/years">Итоги по годам</a> — выручка и прибыль по годам:
-        введённые вами рядом с посчитанными кабинетом.
+        введённые вами рядом с посчитанными кабинетом.{' '}
+        <a href="/cabinet/manage/finance/payouts">Вознаграждение кураторов</a> — начислено, выплачено и
+        к выплате по каждому куратору.
       </Text>
 
       <Tiles>

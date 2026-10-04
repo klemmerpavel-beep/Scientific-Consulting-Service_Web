@@ -372,6 +372,11 @@ export async function addPayout(
   const comment = input.comment?.trim() || null;
   if (comment !== null && comment.length > 500) throw new Error('Комментарий — не длиннее 500 знаков');
   await ensureMoneyWritable(input.projectId, true);
+  // Этап начисления — из этой же работы (требование РК-11, решение Р-339).
+  if (input.stageId) {
+    const stage = await prisma.stage.findUnique({ where: { id: input.stageId }, select: { projectId: true } });
+    if (stage === null || stage.projectId !== input.projectId) throw new Error('Этап не из этой работы');
+  }
 
   const payout = await prisma.expertPayout.create({
     data: {
@@ -622,6 +627,71 @@ export async function financeSummary(actor: Actor) {
       margin: total((r) => r.margin) - accruedWithoutContract,
     },
   };
+}
+
+export interface CuratorPayoutRow {
+  readonly expertId: string;
+  readonly fullName: string;
+  readonly accrued: bigint;
+  readonly paid: bigint;
+  /** К выплате — сумма невыплаченных начислений. */
+  readonly toPay: bigint;
+  readonly works: number;
+}
+
+/**
+ * «Деньги → Вознаграждение кураторов» (требование РК-11, решение Р-339):
+ * по каждому куратору — начислено, выплачено, к выплате. Определения те
+ * же, что у `projectMoney.payoutsAccrued`: начислено — все начисления,
+ * выплачено — со статусом «выплачено». Только руководителю.
+ */
+export async function payoutsByCurator(actor: Actor): Promise<CuratorPayoutRow[]> {
+  ensure(actor, 'PAYOUT_MANAGE');
+  const rows = await prisma.expertPayout.groupBy({
+    by: ['expertId', 'status'],
+    where: { expertId: { not: null } },
+    _sum: { amount: true },
+  });
+  const works = await prisma.expertPayout.groupBy({
+    by: ['expertId', 'projectId'],
+    where: { expertId: { not: null } },
+  });
+  const ids = [...new Set(rows.map((row) => row.expertId!))];
+  const people = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, fullName: true } });
+  return people
+    .map((person) => {
+      const mine = rows.filter((row) => row.expertId === person.id);
+      const accrued = mine.reduce((acc, row) => acc + (row._sum.amount ?? 0n), 0n);
+      const paid = mine.filter((row) => row.status === 'PAID').reduce((acc, row) => acc + (row._sum.amount ?? 0n), 0n);
+      return {
+        expertId: person.id,
+        fullName: person.fullName,
+        accrued,
+        paid,
+        toPay: accrued - paid,
+        works: works.filter((row) => row.expertId === person.id).length,
+      };
+    })
+    .sort((a, b) => (b.toPay > a.toPay ? 1 : b.toPay < a.toPay ? -1 : a.fullName.localeCompare(b.fullName)));
+}
+
+/** Начисления одного куратора по работам — раскрытие строки свода (РК-11). */
+export async function curatorPayoutLines(actor: Actor, expertId: string) {
+  ensure(actor, 'PAYOUT_MANAGE');
+  return prisma.expertPayout.findMany({
+    where: { expertId },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: {
+      id: true,
+      amount: true,
+      status: true,
+      paidOn: true,
+      comment: true,
+      createdAt: true,
+      project: { select: { code: true, title: true } },
+      stage: { select: { title: true } },
+    },
+  });
 }
 
 /**
