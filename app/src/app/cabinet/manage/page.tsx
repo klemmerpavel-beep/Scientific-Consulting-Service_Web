@@ -17,6 +17,7 @@ import {
   FormActions,
   Heading,
   Mono,
+  Notice,
   Outcome,
   ScreenHead,
   TABLE_CELL,
@@ -574,10 +575,12 @@ export default async function ManageQueue({
           плашка стоит, пока не настроен хотя бы один канал (требование
           РК-02, решение Р-334). */}
       {outbox !== null && notifyChannelsDown() ? (
-        <Outcome tone="error">
-          Уведомления не уходят: настройте почту. Пока не настроены ни почта, ни бот Telegram, письма и
-          сигналы копятся в очереди.
-        </Outcome>
+        <div style={{ marginBottom: 20 }}>
+          <Notice tone="quiet" role="alert">
+            Уведомления не уходят: настройте почту. Пока не настроены ни почта, ни бот Telegram, письма и
+            сигналы копятся в очереди.
+          </Notice>
+        </div>
       ) : null}
 
       {/* «Требует внимания» — верхней полосой отдельными плашками, а не

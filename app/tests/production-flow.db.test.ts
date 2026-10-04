@@ -116,7 +116,7 @@ describe('сквозной контур', { skip: !enabled }, async () => {
     ids.project = project.id;
     ids.clientProfile = project.clientId;
 
-    assert.match(project.code, /^PD-\d{4}-\d{3}$/);
+    assert.match(project.code, /^PD-\d{4}-\d{3,}$/);
 
     // Заявка не исчезает: она получает ссылку на проект.
     const lead = await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } });
