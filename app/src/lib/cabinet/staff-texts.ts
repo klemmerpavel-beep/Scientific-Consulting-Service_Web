@@ -114,34 +114,3 @@ export function contactNoteFor(role: Role, kind: ContactKind, base: Record<Conta
   const own = role === 'MANAGER' ? MANAGER_NOTE[kind] : role === 'EXPERT' ? CURATOR_NOTE[kind] : undefined;
   return own ?? base[kind];
 }
-
-/** Текст карточки вопроса руководителю: обещает только то, что есть. */
-export const HELP_CARD_NOTE =
-  'Спорный случай, нестандартная просьба клиента, сомнение по срокам или цене. Руководитель получит уведомление и ответит по почте или в Telegram.';
-
-/**
- * Письмо руководителю с вопросом: сам вопрос и как ответить спросившему —
- * почта учётной записи и предпочтительный способ связи из настроек.
- * Прежде в письме был только текст, и отвечать приходилось наугад.
- */
-export function helpLetterBody(
-  question: string,
-  from: {
-    fullName: string;
-    email: string;
-    preferred: { label: string; value: string | null; note: string | null } | null;
-  },
-): string {
-  const preferred =
-    from.preferred === null
-      ? 'не указан — почта учётной записи'
-      : `${from.preferred.label}${from.preferred.value === null ? '' : ` — ${from.preferred.value}`}${
-          from.preferred.note === null ? '' : ` (${from.preferred.note})`
-        }`;
-  return [
-    question,
-    '',
-    `Спрашивает: ${from.fullName}, ${from.email}`,
-    `Предпочтительный способ связи: ${preferred}`,
-  ].join('\n');
-}

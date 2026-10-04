@@ -9,11 +9,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  HELP_CARD_NOTE,
   contactKindsFor,
   contactLabelFor,
   contactNoteFor,
-  helpLetterBody,
   settingsTexts,
 } from '../src/lib/cabinet/staff-texts.ts';
 import type { ContactKind } from '../src/lib/cabinet/channels.ts';
@@ -82,25 +80,5 @@ describe('тексты экрана настроек куратора (Э-10)', 
     for (const kind of KINDS) {
       assert.doesNotMatch(contactNoteFor('EXPERT', kind, NOTE), /ведёт работу сам|по важным поворотам работы/u, kind);
     }
-  });
-});
-
-describe('вопрос руководителю', () => {
-  it('карточка обещает ответ по почте или в Telegram', () => {
-    assert.match(HELP_CARD_NOTE, /Руководитель получит уведомление и ответит по почте или в Telegram\.$/u);
-    assert.doesNotMatch(HELP_CARD_NOTE, /который он выбрал/u);
-  });
-
-  it('в письме — почта и предпочтительный способ связи спросившего', () => {
-    const body = helpLetterBody('Клиент просит перенести защиту', {
-      fullName: 'Нечаева Ксения Ильинична',
-      email: 'nechaeva@example.org',
-      preferred: { label: 'Звонок', value: '+7 900 000-00-00', note: 'после 18:00' },
-    });
-    assert.match(body, /^Клиент просит перенести защиту\n\n/u);
-    assert.match(body, /Спрашивает: Нечаева Ксения Ильинична, nechaeva@example\.org/u);
-    assert.match(body, /Предпочтительный способ связи: Звонок — \+7 900 000-00-00 \(после 18:00\)/u);
-    const plain = helpLetterBody('Вопрос', { fullName: 'Ф', email: 'f@example.org', preferred: null });
-    assert.match(plain, /Предпочтительный способ связи: не указан — почта учётной записи/u);
   });
 });

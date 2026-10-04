@@ -723,9 +723,31 @@ async function main() {
           createdAt: day(2),
           containsContactHint: true,
         },
+        // Внутренняя ветка по работе — менеджер и руководитель; клиенту её
+        // нет (требование РК-07, решение Р-336).
+        {
+          projectId: showcase,
+          thread: 'WORK_INTERNAL',
+          authorId: head.id,
+          body: 'Клиент оставил телефон в переписке: напомните ему, что общение — в кабинете.',
+          createdAt: day(2),
+        },
       ],
     });
   }
+  // Ветка «руководитель — сотрудник»: вопрос менеджера без ответа — дело
+  // «Вопрос сотрудника» на «Сводке» руководителя (РК-07, Р-336).
+  await prisma.message.deleteMany({ where: { thread: 'HEAD_STAFF', staffId: manager.id } });
+  await prisma.messageThreadRead.deleteMany({ where: { userId: { in: [head.id, manager.id] } } });
+  await prisma.message.create({
+    data: {
+      thread: 'HEAD_STAFF',
+      staffId: manager.id,
+      authorId: manager.id,
+      body: 'Клиент просит перенести защиту на месяц. Пересматриваем договор?',
+      createdAt: day(1),
+    },
+  });
 
   // ── Этап, сданный куратором менеджеру ───────────────────────────────────
   // Первый этап «В работе» по действующим работам куратора — с пометкой

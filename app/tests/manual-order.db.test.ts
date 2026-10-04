@@ -75,7 +75,7 @@ describe('заказ вручную', { skip: !enabled }, async () => {
       managerId: ids.manager!,
     });
     projects.push(created.projectId);
-    assert.match(created.code, /^PD-2026-\d{3}$/u);
+    assert.match(created.code, /^PD-2026-\d{3,}$/u);
     const project = await prisma.project.findUniqueOrThrow({
       where: { id: created.projectId },
       include: { client: true, contract: { include: { tranches: true } } },

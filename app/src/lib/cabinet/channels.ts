@@ -19,7 +19,7 @@
 
 import { ensure, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
-import { contactLabelFor, helpLetterBody } from './staff-texts.ts';
+
 import { prisma } from '../db.ts';
 
 export type ContactKind = 'EMAIL' | 'TELEGRAM' | 'PHONE_CALL' | 'MESSENGER' | 'FULL_SUPPORT';
@@ -239,9 +239,13 @@ export const RULE_EVENTS: readonly {
   // Обращения с сайта идут своим путём, сразу в оба канала практики, и
   // правилами не разводятся (Р-161).
   { kind: 'REQUEST_CREATED', title: 'Новое обращение из кабинета', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
-  // Только руководителю: вопрос куратора, выдача входа клиенту (Р-285) и
-  // договор поручения (Р-298). Менеджеру эти строки ничем не управляли.
-  { kind: 'HELP_REQUESTED', title: 'Менеджер просит помощи', group: 'Руководителю', roles: ['HEAD'] },
+  // Внутренняя переписка по работе и ветка с руководителем (РК-07, Р-336).
+  { kind: 'INTERNAL_MESSAGE', title: 'Сообщение во внутренней переписке по работе', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
+  { kind: 'HEAD_REPLY', title: 'Руководитель ответил в переписке', group: 'Переписка и работы', roles: ['MANAGER'] },
+  // Только руководителю: вопрос сотрудника (вместо «Менеджер просит
+  // помощи», РК-07), выдача входа клиенту (Р-285) и договор поручения
+  // (Р-298). Менеджеру эти строки ничем не управляли.
+  { kind: 'STAFF_QUESTION', title: 'Вопрос сотрудника', group: 'Руководителю', roles: ['HEAD'] },
   { kind: 'CLIENT_ACCESS_OPENED', title: 'Менеджер открыл вход клиенту', group: 'Руководителю', roles: ['HEAD'] },
   { kind: 'NDA_NEEDED', title: 'Нужен договор поручения', group: 'Руководителю', roles: ['HEAD'] },
   // Куратор сам сообщил, что ждёт договор (Э-12, Р-331).
@@ -316,84 +320,6 @@ export async function saveRules(
     objectType: 'NotifyRule',
     objectId: actor.id,
     payload: { rules: clean.filter((rule) => rule.enabled).length },
-  });
-}
-
-/* ------------------------------------------------------------------ */
-/* Обращение куратора за помощью                                       */
-/* ------------------------------------------------------------------ */
-
-/**
- * Куратор спрашивает руководителя практики.
- *
- * Прежде спросить было негде: переписка в кабинете — только с клиентом,
- * а служебные разделы молчали. Вопрос кладётся в ту же очередь, что и
- * прочие уведомления, и приходит руководителю выбранным им каналом
- * (решение Р-199).
- */
-export async function askForHelp(actor: Actor, text: string): Promise<void> {
-  // Вопрос руководителю задаёт сотрудник практики. Прежде право не
-  // проверялось: любой вошедший, в том числе клиент, мог слать
-  // руководителю письма с произвольным текстом (решение Р-242).
-  ensure(actor, 'REGISTRY_VIEW');
-  const body = text.trim();
-  if (body.length === 0) throw new Error('Напишите, в чём нужна помощь');
-  if (body.length > 10_000) throw new Error('Вопрос длиннее 10 000 знаков: сократите его');
-
-  const { prisma: db } = await import('../db.ts');
-  const { enqueue } = await import('./outbox.ts');
-
-  // В письме — как ответить спросившему: почта учётной записи и
-  // предпочтительный способ связи из настроек (требование М-20, Р-306).
-  const me = await db.user.findUniqueOrThrow({
-    where: { id: actor.id },
-    select: {
-      fullName: true,
-      email: true,
-      contactChannels: {
-        where: { preferred: true },
-        take: 1,
-        select: { kind: true, value: true, note: true },
-      },
-    },
-  });
-  const preferred = me.contactChannels[0];
-  const letter = helpLetterBody(body, {
-    fullName: me.fullName,
-    email: me.email,
-    preferred:
-      preferred === undefined
-        ? null
-        : {
-            label: contactLabelFor(actor.role, preferred.kind as ContactKind, CONTACT_LABEL),
-            value: preferred.value,
-            note: preferred.note,
-          },
-  });
-  const heads = await db.user.findMany({
-    where: { role: 'HEAD', status: 'ACTIVE' },
-    select: { id: true },
-  });
-
-  const stamp = new Date().toISOString().slice(0, 16);
-  for (const head of heads) {
-    await enqueue(db, {
-      userId: head.id,
-      eventKind: 'HELP_REQUESTED',
-      subject: `Вопрос от менеджера: ${me.fullName}`,
-      // Содержание вопроса в письме идёт целиком: это служебная переписка
-      // практики, а не разговор с клиентом, чьё содержание наружу не
-      // пересылается.
-      body: letter,
-      dedupKey: `help:${actor.id}:${stamp}:${head.id}`,
-    });
-  }
-
-  await record(actor, {
-    action: 'HELP_REQUESTED',
-    objectType: 'User',
-    objectId: actor.id,
-    payload: { heads: heads.length },
   });
 }
 

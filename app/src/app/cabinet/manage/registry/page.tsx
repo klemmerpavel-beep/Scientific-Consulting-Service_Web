@@ -265,7 +265,7 @@ export default async function RegistryScreen({
                 <li key={message.id}>
                   <Text size={14}>{message.body}</Text>
                   <Text muted size={13} style={{ marginTop: 4 }}>
-                    {message.author.fullName} · {message.project.title} ·{' '}
+                    {message.author.fullName} · {message.project?.title ?? ''} ·{' '}
                     {formatDay(message.createdAt)}
                   </Text>
                 </li>

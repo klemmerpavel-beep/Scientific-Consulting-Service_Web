@@ -12,13 +12,9 @@ import {
   Card,
   Chip,
   Disclosure,
-  Field,
-  Form,
-  FormActions,
   Heading,
   Mono,
   Notice,
-  Outcome,
   ScreenHead,
   TABLE_CELL,
   TABLE_HEAD,
@@ -35,7 +31,7 @@ import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
 import { formatAmount, formatPlain, outstandingOf, workMoneyNote } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
-import { unreadInbox } from '../../../lib/cabinet/messages';
+import { staffThreadUnread, staffThreads, unreadInbox } from '../../../lib/cabinet/messages';
 import { pendingComments, pendingVersions } from '../../../lib/cabinet/materials';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
 import { leadQueue, returnedStages, todayItems, trafficLight } from '../../../lib/cabinet/queries';
@@ -43,9 +39,6 @@ import { notifyChannelsDown, outboxDigest } from '../../../lib/cabinet/outbox';
 import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
 import { requireActor } from '../../../lib/cabinet/session';
 import { homeFor } from '../../../lib/cabinet/nav';
-import { flashText, formDraft } from '../../../lib/cabinet/flash';
-import { requestHelp } from '../actions';
-import { HELP_CARD_NOTE } from '../../../lib/cabinet/staff-texts';
 import { byMonth, products } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
 import { activeWorks, moneyBrief, orderSummary, stageLoad } from '../../../lib/cabinet/summary';
@@ -144,9 +137,9 @@ export default async function ManageQueue({
   const requested = Number((await searchParams).page ?? '1');
   // Вопрос руководителю задаётся внизу «Сегодня»: промежуточного экрана
   // «Управление» у менеджера больше нет (требование М-05, решение Р-305).
-  const helpParams = await searchParams;
-  const helpFailure = await flashText(helpParams.error);
-  const helpDraft = (await formDraft(helpParams.error)) ?? {};
+  // Новые ответы руководителя в ветке менеджера (РК-07, Р-336).
+  const headReplies = actor.role === 'MANAGER' ? await staffThreadUnread(actor, actor.id) : 0;
+  const staffQuestions = actor.role === 'HEAD' ? (await staffThreads(actor)).filter((row) => row.unread > 0) : [];
   // Справочник типов сопровождения на сводке больше не нужен: формы
   // одобрения уехали на экран заявки (решение Р-172).
   const [queue, light] = await Promise.all([
@@ -330,6 +323,18 @@ export default async function ManageQueue({
       detail: stage.project.client.fullName,
       todo: 'Разобрать замечания и отметить «Замечания приняты в работу»',
       href: `/cabinet/stages/${stage.id}`,
+    })),
+    // Вопрос сотрудника — пока руководитель его не прочитал (РК-07, Р-336).
+    ...staffQuestions.map((row) => ({
+      key: `staff-${row.staffId}`,
+      kind: 'unread' as const,
+      step: 0 as const,
+      title: `Вопрос сотрудника: ${row.fullName}`,
+      mark: `${row.unread} ${plural(row.unread, 'новое', 'новых', 'новых')}`,
+      urgent: false,
+      detail: null,
+      todo: 'Прочитать и ответить в кабинете',
+      href: `/cabinet/manage/team/${row.staffId}`,
     })),
     ...unread.map((row) => ({
       key: `unread-${row.code}`,
@@ -1177,36 +1182,21 @@ export default async function ManageQueue({
         </BoardColumn>
       </Board>
 
-      {/* Спросить руководителя было негде: переписка в кабинете — только с
-          клиентом. Вопрос идёт той же очередью уведомлений, что и всё
-          прочее (решение Р-199); карточка перенесена сюда с экрана
-          «Управление», которого у менеджера нет (требование М-05,
-          решение Р-305). Руководителю спрашивать некого. */}
-      {actor.role === 'HEAD' || !can(actor, 'REGISTRY_VIEW') ? null : (
+      {/* «Спросить руководителя» заменён веткой «руководитель — сотрудник»:
+          вопрос и ответ остаются в кабинете (требование РК-07, решение
+          Р-336; прежде — письмо, Р-199, Р-306). Руководителю спрашивать
+          некого. */}
+      {actor.role !== 'MANAGER' ? null : (
         <Card id="help" style={{ marginTop: 20 }}>
           <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-            Спросить руководителя практики
+            Руководитель практики
           </Heading>
-          {/* Ответа в кабинете нет: карточка обещает только письмо или
-              Telegram руководителя (требование М-20, решение Р-306). */}
           <Text muted size={14} style={{ marginBottom: 14 }}>
-            {HELP_CARD_NOTE}
+            Спорный случай, нестандартная просьба клиента, сомнение по срокам или цене — напишите руководителю
+            в кабинете; ответ придёт сюда же.
+            {headReplies === 0 ? '' : ` Новых ответов: ${headReplies}.`}
           </Text>
-          {helpParams.sent === undefined ? null : <Outcome>Вопрос отправлен руководителю практики.</Outcome>}
-          {helpFailure === undefined ? null : <Outcome tone="error">{helpFailure}</Outcome>}
-          <Form action={requestHelp}>
-            <Field
-              label="В чём нужна помощь"
-              name="text"
-              required
-              multiline
-              defaultValue={helpDraft.text}
-              placeholder="Клиент просит перенести защиту на месяц и сменить тему. Стоит ли пересматривать договор?"
-            />
-            <FormActions>
-              <Button>Отправить вопрос</Button>
-            </FormActions>
-          </Form>
+          <ButtonLink href="/cabinet/head">Написать руководителю</ButtonLink>
         </Card>
       )}
     </Shell>

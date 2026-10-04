@@ -114,6 +114,8 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   COMMENT_MODERATE: [false, false, true, true],
   MESSAGE_READ: [true, false, true, true],
   MESSAGE_WRITE: [true, false, true, true],
+  // Внутренняя переписка — менеджеру работы и руководителю (РК-07, Р-336).
+  INTERNAL_MESSAGE: [false, false, true, true],
   CONTACTS_VIEW: [false, false, true, true],
   // Способы связи куратора — практике работы (Э-10, Р-330).
   CURATOR_CONTACTS_VIEW: [false, false, true, true],
@@ -207,6 +209,7 @@ describe('работа другого куратора', () => {
     'COMMENT_MODERATE',
     'MESSAGE_READ',
     'MESSAGE_WRITE',
+    'INTERNAL_MESSAGE',
     'CONTACTS_VIEW',
     'CURATOR_CONTACTS_VIEW',
     'CLIENT_ACCESS_OPEN',
@@ -224,7 +227,7 @@ describe('работа другого куратора', () => {
     // «Открыть клиенту вход» и способы связи куратора — не перечни, а
     // действия над одной работой: без работы они запрещены намеренно
     // (Р-285, Р-330), см. отдельные проверки.
-    const single: Action[] = ['CLIENT_ACCESS_OPEN', 'CURATOR_CONTACTS_VIEW'];
+    const single: Action[] = ['CLIENT_ACCESS_OPEN', 'CURATOR_CONTACTS_VIEW', 'INTERNAL_MESSAGE'];
     for (const action of projectBound.filter((item) => !single.includes(item))) {
       assert.equal(can(manager, action, null), true, action);
     }

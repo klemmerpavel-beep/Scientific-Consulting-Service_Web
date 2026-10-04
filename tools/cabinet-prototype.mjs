@@ -296,6 +296,8 @@ async function crawl(page, role, stabilize) {
     // Только менеджеру: эксперту экран отвечает «не найдено» с кодом 200,
     // и такой снимок в дерево попадать не должен.
     ...(role.key === 'manager' ? ['/cabinet/projects/PD-2026-047/payments'] : []),
+    // Внутренняя ветка переписки — за вкладкой с запросом (РК-07, Р-336).
+    ...(role.key === 'manager' || role.key === 'head' ? ['/cabinet/projects/PD-2026-047/messages?tab=internal'] : []),
   ];
   const many = [];
   const seen = new Set(plain);

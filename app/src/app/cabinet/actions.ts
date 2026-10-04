@@ -32,7 +32,7 @@ import {
   uploadVersion,
   type MaterialKind,
 } from '../../lib/cabinet/materials';
-import { sendMessage } from '../../lib/cabinet/messages';
+import { sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages';
 import { handBackStage, handOverStage, recallHandover } from '../../lib/cabinet/handover';
 import {
   addPayout,
@@ -68,7 +68,6 @@ import type { AccessLinkState } from '../../components/cabinet/AccessLink';
 import {
   rulesFor,
   addContact,
-  askForHelp,
   closeWelcome,
   dropContact,
   preferContact,
@@ -941,21 +940,42 @@ export async function saveNotifyRules(form: FormData): Promise<void> {
   redirect('/cabinet/settings?saved=1');
 }
 
-export async function requestHelp(form: FormData): Promise<void> {
+/**
+ * Сообщение во внутренней переписке по работе (требование РК-07, решение
+ * Р-336). При отказе текст возвращается в поле.
+ */
+export async function postInternalMessage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const body = String(form.get('body') ?? '');
+  const target = `/cabinet/projects/${code}/messages?tab=internal`;
+  let failure: string | null = null;
   try {
-    await askForHelp(actor, String(form.get('text') ?? ''));
+    await sendInternal(actor, String(form.get('projectId') ?? ''), body);
   } catch (error) {
-    const text = reasonOf(error, 'Не удалось отправить вопрос');
-    redirect(
-      await withError('/cabinet/manage', text, {
-        anchor: 'help',
-        draft: { text: String(form.get('text') ?? '') },
-      }),
-    );
+    failure = reasonOf(error, 'Не удалось отправить сообщение');
   }
-  // Карточка вопроса — внизу «Сегодня» (требование М-05, решение Р-305).
-  redirect('/cabinet/manage?sent=1#help');
+  if (failure !== null) redirect(await withError(target, failure, { draft: { body } }));
+  redirect(target);
+}
+
+/**
+ * Сообщение в ветке «руководитель — сотрудник» (РК-07, Р-336): менеджер
+ * пишет со своего экрана «Руководитель», руководитель — с экрана ветки.
+ */
+export async function postStaffMessage(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const staffId = String(form.get('staffId') ?? '');
+  const body = String(form.get('body') ?? '');
+  const target = actor.role === 'HEAD' ? `/cabinet/manage/team/${staffId}` : '/cabinet/head';
+  let failure: string | null = null;
+  try {
+    await sendStaff(actor, staffId, body);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить сообщение');
+  }
+  if (failure !== null) redirect(await withError(target, failure, { draft: { body } }));
+  redirect(target);
 }
 
 /**

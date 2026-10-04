@@ -248,8 +248,9 @@ describe('переписка и учётные записи', { skip: !enabled }
     );
   });
 
-  it('вопрос руководителю задаёт только сотрудник', async () => {
-    await assert.rejects(() => channels.askForHelp(client(), 'Помогите'), AccessDenied);
+  it('вопрос руководителю задаёт только сотрудник (ветка РК-07)', async () => {
+    const { sendStaff } = await import('../src/lib/cabinet/messages.ts');
+    await assert.rejects(() => sendStaff(client(), ids.clientUser!, 'Помогите'), /не разрешено/u);
   });
 
   it('каналы уведомлений и отвязка Telegram пишутся в журнал', async () => {

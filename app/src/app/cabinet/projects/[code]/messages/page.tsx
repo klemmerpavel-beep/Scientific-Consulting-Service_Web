@@ -10,16 +10,24 @@ import {
   FormActions,
   Narrow,
   ScreenHead,
+  Tabs,
   Thread,
   formatDate,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
-import { listMessages, markRead } from '../../../../../lib/cabinet/messages';
+import {
+  internalUnread,
+  listInternal,
+  listMessages,
+  markRead,
+  readInternal,
+} from '../../../../../lib/cabinet/messages';
+import { formDraft } from '../../../../../lib/cabinet/flash';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { draftsFor, draftText } from '../../../../../lib/cabinet/message-drafts';
 import { now as clockNow } from '../../../../../lib/cabinet/clock';
-import { postMessage } from '../../../actions';
+import { postInternalMessage, postMessage } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +36,7 @@ export default async function MessagesScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string; draft?: string }>;
+  searchParams: Promise<{ error?: string; draft?: string; tab?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}/messages`);
 
@@ -45,10 +53,18 @@ export default async function MessagesScreen({
   // Эксперту канал недоступен: чужой раздел не отличается от несуществующего.
   if (!can(actor, 'MESSAGE_READ', ref)) notFound();
 
-  const messages = await listMessages(actor, project.id);
+  // Внутренняя переписка по работе — вкладка менеджера работы и
+  // руководителя; клиенту и куратору её нет (требование РК-07, решение
+  // Р-336).
+  const mayInternal = can(actor, 'INTERNAL_MESSAGE', ref);
+  const internalTab = mayInternal && (await searchParams).tab === 'internal';
+  const messages = internalTab ? await listInternal(actor, project.id) : await listMessages(actor, project.id);
   // Открытие экрана и есть прочтение: отдельная кнопка «отметить прочитанным»
   // ничего не добавляет, а счётчик без неё не обнулялся бы.
-  await markRead(actor, project.id);
+  if (internalTab) await readInternal(actor, project.id);
+  else await markRead(actor, project.id);
+  const internalNew = mayInternal && !internalTab ? await internalUnread(actor, project.id) : 0;
+  const internalDraft = internalTab ? ((await formDraft((await searchParams).error)) ?? {}) : {};
 
   const mayModerate = can(actor, 'COMMENT_MODERATE', ref);
   const forClient = actor.role === 'CLIENT';
@@ -68,7 +84,9 @@ export default async function MessagesScreen({
   // оно уже стоит строкой возврата над заголовком (решение Р-190).
   const counterpart = forClient
     ? 'с менеджером'
-    : `с клиентом · ${project.client.fullName}`;
+    : internalTab
+      ? 'внутренняя: менеджер работы и руководитель; клиент её не видит'
+      : `с клиентом · ${project.client.fullName}`;
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -82,6 +100,44 @@ export default async function MessagesScreen({
 
         <ActionError id={sp.error} />
 
+        {mayInternal ? (
+          <Tabs
+            label="Ветки переписки"
+            items={[
+              { href: `/cabinet/projects/${project.code}/messages`, label: 'С клиентом', active: !internalTab },
+              {
+                href: `/cabinet/projects/${project.code}/messages?tab=internal`,
+                label: internalNew === 0 ? 'Внутренняя' : `Внутренняя · ${internalNew}`,
+                active: internalTab,
+              },
+            ]}
+          />
+        ) : null}
+
+        {internalTab ? (
+          <Card>
+            <Thread messages={messages} viewer={actor} empty="Внутренней переписки пока нет." />
+            <Form
+              action={postInternalMessage}
+              style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--pd-divider)' }}
+            >
+              <input type="hidden" name="projectId" value={project.id} />
+              <input type="hidden" name="code" value={project.code} />
+              <Field
+                label="Новое сообщение"
+                name="body"
+                multiline
+                required
+                placeholder={actor.role === 'HEAD' ? 'Написать менеджеру работы' : 'Написать руководителю'}
+                hint="Клиент и куратор этой переписки не видят. До 10 000 знаков; файлы — в материалах работы."
+                defaultValue={internalDraft.body}
+              />
+              <FormActions>
+                <Button>Отправить</Button>
+              </FormActions>
+            </Form>
+          </Card>
+        ) : (
         <Card>
           <Thread
             messages={messages}
@@ -135,6 +191,7 @@ export default async function MessagesScreen({
             </FormActions>
           </Form>
         </Card>
+        )}
       </Narrow>
     </Shell>
   );

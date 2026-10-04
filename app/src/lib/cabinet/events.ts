@@ -47,7 +47,10 @@ export type EventKind =
   | 'PAYOUT_ACCRUED'
   | 'PAYOUT_PAID'
   | 'NDA_WAITING'
-  | 'OUTBOX_FAILED';
+  | 'OUTBOX_FAILED'
+  | 'INTERNAL_MESSAGE'
+  | 'STAFF_QUESTION'
+  | 'HEAD_REPLY';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -114,6 +117,9 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   PAYOUT_PAID: 'вознаграждение выплачено',
   NDA_WAITING: 'куратор ждёт договор поручения',
   OUTBOX_FAILED: 'уведомления не доставлены',
+  INTERNAL_MESSAGE: 'внутренняя переписка по работе',
+  STAFF_QUESTION: 'вопрос сотрудника',
+  HEAD_REPLY: 'ответ руководителя',
 };
 
 /**

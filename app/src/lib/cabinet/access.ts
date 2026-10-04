@@ -87,6 +87,17 @@ export function ensureContributionOpen(actor: Actor, projectStatus: string, stag
   if (refusal !== null) throw new Error(refusal);
 }
 
+/**
+ * Ветка «руководитель — сотрудник» (требование РК-07, решение Р-336):
+ * руководитель — с любым менеджером, менеджер — только своя ветка. Куратор
+ * в ветках не участвует (ответ С-2).
+ */
+export function staffThreadAllowed(actor: Actor, staffId: string): boolean {
+  if (actor.status !== 'ACTIVE') return false;
+  if (actor.role === 'HEAD') return true;
+  return actor.role === 'MANAGER' && actor.id === staffId;
+}
+
 /** Карточка работы и исполнитель закрытой работы не правятся. */
 export function ensureWorkOpen(projectStatus: string): void {
   if (workClosed(projectStatus)) throw new Error(CLOSED_FOR_PRACTICE);
@@ -117,6 +128,7 @@ export const ACTIONS = [
   'COMMENT_MODERATE',
   'MESSAGE_READ',
   'MESSAGE_WRITE',
+  'INTERNAL_MESSAGE',
   'CONTACTS_VIEW',
   'CURATOR_CONTACTS_VIEW',
   'CLIENT_ACCESS_OPEN',
@@ -242,6 +254,12 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     case 'MESSAGE_READ':
     case 'MESSAGE_WRITE':
       return own || practice;
+
+    // Внутренняя переписка по работе — менеджер работы и руководитель;
+    // клиенту и куратору — нет (требование РК-07, решение Р-336; Р-150,
+    // ответ ОЭ-1, С-2). Без работы ветки нет.
+    case 'INTERNAL_MESSAGE':
+      return project !== null && practice;
 
     // ── Персональные данные ───────────────────────────────────────────────
     case 'CONTACTS_VIEW':

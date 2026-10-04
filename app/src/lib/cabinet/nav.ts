@@ -15,7 +15,7 @@ export interface NavItem {
 }
 
 /** Промежуточный экран служебных разделов — пункт «Управление». */
-const TOOLS_HREF = '/cabinet/manage/tools';
+export const TOOLS_HREF = '/cabinet/manage/tools';
 
 /**
  * Разделы роли.
