@@ -65,7 +65,7 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
   if (!can(actor, 'ANALYTICS_VIEW')) redirect(homeFor(actor));
   const flags = await searchParams;
   const at = clockNow();
-  const { rows, now, marks, since, skipped } = await calendarFor(actor, at);
+  const { rows, now, marks, since, skipped, leads } = await calendarFor(actor, at);
   const today = moscowToday(at);
   const strip = Array.from({ length: 12 }, (_, index) => {
     const first = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + index, 1));
@@ -239,6 +239,12 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
               Уверенность — по числу наблюдений; при двух сезонах месяца сдачи — не выше «вероятно».
             </Text>
           </li>
+          <li>
+            <Text size={14}>
+              Заявки — справочно: вид заявки берётся по направлению формы сайта, одно направление
+              объединяет несколько видов. Заявок без направления: {[...leads.values()][0]?.undirected ?? 0}.
+            </Text>
+          </li>
         </ul>
         {rows.map((row) => (
           <div key={row.typeCode} style={{ marginBottom: 16 }}>
@@ -247,6 +253,8 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
             </Text>
             <Text muted size={13} style={{ marginBottom: 6 }}>
               {`медиана ${row.medianDays === null ? '—' : `${days(row.medianDays)} дн.`} · средний чек ${row.averageCheck === null ? '—' : formatAmount(row.averageCheck)}`}
+              {/* Заявки — по направлению формы сайта, к которому относится вид (РК-18). */}
+              {leads.get(row.typeCode)?.direction == null ? '' : ` · заявки — по направлению «${leads.get(row.typeCode)!.direction}»`}
             </Text>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -254,6 +262,7 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
                   <th style={TABLE_HEAD} scope="col">Месяц</th>
                   <th style={TABLE_NUM_HEAD} scope="col">Норма заказов</th>
                   <th style={TABLE_HEAD} scope="col">По годам</th>
+                  <th style={TABLE_NUM_HEAD} scope="col">Заявок направления, справочно</th>
                 </tr>
               </thead>
               <tbody>
@@ -264,6 +273,7 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
                       <td style={TABLE_CELL}>{MONTH_NAMES[month.month - 1]}</td>
                       <td style={TABLE_NUM}>{norm(month.norm)}</td>
                       <td style={TABLE_CELL}>{month.years.map((year) => `${year.year}: ${year.orders}`).join(' · ')}</td>
+                      <td style={TABLE_NUM}>{leads.get(row.typeCode)?.direction === null ? '—' : (leads.get(row.typeCode)?.byMonth[month.month - 1] ?? 0)}</td>
                     </tr>
                   ))}
               </tbody>

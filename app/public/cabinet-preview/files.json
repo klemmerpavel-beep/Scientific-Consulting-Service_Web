@@ -80,6 +80,7 @@
   "head/manage/orders/new/index.html",
   "head/manage/outbox/index.html",
   "head/manage/recommendations/calendar/index.html",
+  "head/manage/recommendations/index.html",
   "head/manage/registry-tab-experts/index.html",
   "head/manage/registry-tab-flagged/index.html",
   "head/manage/registry/index.html",

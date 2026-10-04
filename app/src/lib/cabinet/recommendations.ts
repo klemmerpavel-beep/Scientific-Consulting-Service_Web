@@ -19,6 +19,7 @@ import { record } from './audit.ts';
 import { priceAdvice, returnAdvice, type PriceAdvice, type ReturnAdvice } from './analytics/advice.ts';
 import { calendarKey, calendarNow, promoCalendar, type CalendarRow } from './analytics/calendar.ts';
 import { loadRows } from './analytics/data.ts';
+import { leadRows, leadsForType } from './analytics/leads.ts';
 import { now as clockNow } from './clock.ts';
 import { analyticsSince, confidenceThresholds, type ConfidenceThresholds } from './practice-settings.ts';
 
@@ -82,15 +83,19 @@ export async function calendarFor(
   readonly thresholds: ConfidenceThresholds;
   /** Работы без даты заказа или до начала учёта: в расчёт не вошли. */
   readonly skipped: number;
+  /** Заявки вида по месяцам — справочно (РК-18, Р-351). */
+  readonly leads: Map<string, ReturnType<typeof leadsForType>>;
 }> {
   ensure(actor, 'ANALYTICS_VIEW');
-  const [data, since, thresholds, marks] = await Promise.all([
+  const [data, since, thresholds, marks, requests] = await Promise.all([
     loadRows(actor),
     analyticsSince(),
     confidenceThresholds(),
     recommendationMarks(actor),
+    leadRows(actor),
   ]);
   const rows = promoCalendar(data, at, { since, thresholds });
+  const leads = new Map(rows.map((row) => [row.typeCode, leadsForType(requests, row.typeCode)]));
   return {
     rows,
     now: calendarNow(rows, new Set(marks.keys())),
@@ -98,6 +103,7 @@ export async function calendarFor(
     since,
     thresholds,
     skipped: data.filter((row) => row.startedOn === null || row.startedOn.getTime() < since.getTime()).length,
+    leads,
   };
 }
 
