@@ -184,13 +184,13 @@ describe('сдача этапа куратором (Э-05)', { skip: !enabled },
     await handover.handOverStage(curator(), ids.stage!, 'Глава 2 готова');
     await assert.rejects(handover.handBackStage(manager(), ids.stage!, ' '), /обязательна/u);
     await assert.rejects(handover.handBackStage(curator(), ids.stage!, 'Причина'), /не разрешено/u);
-    const before = await outbox(ids.curator!, 'STAGE_HANDED_BACK');
+    const before = await outbox(ids.curator!, 'CURATOR_TURN');
     await handover.handBackStage(manager(), ids.stage!, 'Добавьте выводы к главе');
     const row = await stage();
     assert.equal(row.handedOverAt, null);
     assert.equal(row.handbackReason, 'Добавьте выводы к главе');
     assert.ok(row.handbackAt !== null);
-    assert.equal(await outbox(ids.curator!, 'STAGE_HANDED_BACK'), before + 1);
+    assert.equal(await outbox(ids.curator!, 'CURATOR_TURN'), before + 1);
     await assert.rejects(handover.recallHandover(curator(), ids.stage!), /Отозвать нечего/u);
   });
 

@@ -14,7 +14,7 @@ import { prisma } from '../db.ts';
 import { ensure, ensureContributionOpen, type Actor } from './access.ts';
 import { stageLink } from './approval.ts';
 import { record } from './audit.ts';
-import { enqueue, notifyCurator } from './outbox.ts';
+import { notifyCurator, notifyExpert } from './outbox.ts';
 import { OUTCOME_LIMIT } from './projects.ts';
 
 /** Предел записки и причины возврата — тот же, что у «Итога этапа». */
@@ -160,20 +160,19 @@ export async function handBackStage(actor: Actor, stageId: string, reason: strin
         payload: { stageId, position: stage.position, reason: text },
       },
     });
-    if (stage.project.expertId !== null) {
-      await enqueue(tx, {
-        userId: stage.project.expertId,
-        projectId: stage.projectId,
-        eventKind: 'STAGE_HANDED_BACK',
+    // Возврат — ход куратора: строка «Ход за вами» его настроек
+    // (требование Э-09, решение Р-328).
+    await notifyExpert(tx, {
+      projectId: stage.projectId,
+      actorId: actor.id,
+      eventKind: 'CURATOR_TURN',
+      letter: (work) => ({
         subject: `Этап «${stage.title}» возвращён вам`,
-        body:
-          `Работа ${stage.project.code}.\n` +
-          `Менеджер вернул этап «${stage.title}». Причина: ${text}\n` +
-          stageLink(stageId),
-        dedupKey: `stage:${stageId}:handed-back:${now.toISOString()}`,
-        path: `/cabinet/stages/${stageId}`,
-      });
-    }
+        body: `Работа ${work.code}.\nМенеджер вернул этап «${stage.title}». Причина: ${text}\n` + stageLink(stageId),
+      }),
+      key: `stage:${stageId}:handed-back:${now.toISOString()}`,
+      path: `/cabinet/stages/${stageId}`,
+    });
   });
   await record(actor, {
     action: 'STAGE_HANDED_BACK',

@@ -72,7 +72,8 @@ export default async function SettingsScreen({
   // Разбор по событиям нужен тому, кто получает уведомления обо всей
   // практике: у клиента их несколько в месяц, и делить их по каналам
   // незачем (решение Р-198).
-  const withRules = actor.role === 'HEAD' || actor.role === 'MANAGER';
+  // Куратору — строки его работ (требование Э-09, решение Р-328).
+  const withRules = actor.role === 'HEAD' || actor.role === 'MANAGER' || actor.role === 'EXPERT';
   // Тексты экрана — по роли: менеджеру не пишут как клиенту (требование
   // М-20, решение Р-306).
   const texts = settingsTexts(actor.role);
@@ -222,8 +223,10 @@ export default async function SettingsScreen({
               Какое событие каким каналом
             </Heading>
             <Text muted size={14} style={{ marginBottom: 16 }}>
-              Уведомлений о практике много; срочное удобно получать в Telegram, а остальное —
-              письмом. Снятая всюду строка означает, что о таком событии не сообщать вовсе.
+              {actor.role === 'EXPERT'
+                ? 'Уведомления о ваших работах: срочное удобно получать в Telegram, а остальное — письмом. '
+                : 'Уведомлений о практике много; срочное удобно получать в Telegram, а остальное — письмом. '}
+              Снятая всюду строка означает, что о таком событии не сообщать вовсе.
             </Text>
             <Form action={saveNotifyRules}>
               <TableScroll label="Какое событие каким каналом">

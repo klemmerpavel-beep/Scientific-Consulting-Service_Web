@@ -92,6 +92,53 @@ export async function notifyCurator(
   });
 }
 
+/**
+ * Уведомить куратора работы — роль `EXPERT` (требование Э-09, решение
+ * Р-328). О собственном действии куратору не пишется. Письмо называет
+ * работу и этап, поэтому уходит только куратору с договором поручения
+ * (Р-237); нейтральные события — назначение, снятие с работы,
+ * вознаграждение — ставятся напрямую своим текстом. Текст собирается от
+ * кода и названия работы, чтобы вызывающему не читать их отдельно.
+ */
+export async function notifyExpert(
+  db: Db,
+  input: {
+    readonly projectId: string;
+    /** Автор действия; `null` — система (автозакрытие этапа, Р-290). */
+    readonly actorId: string | null;
+    readonly eventKind: EventKind;
+    readonly letter: (work: { readonly code: string; readonly title: string }) => {
+      readonly subject: string;
+      readonly body: string;
+    };
+    readonly key: string;
+    /** Экран события (Т-06, Р-309). */
+    readonly path?: string | null;
+  },
+): Promise<number> {
+  const project = await db.project.findUnique({
+    where: { id: input.projectId },
+    select: {
+      code: true,
+      title: true,
+      expertId: true,
+      expert: { select: { role: true, expertProfile: { select: { ndaSignedAt: true } } } },
+    },
+  });
+  if (project === null || project.expertId === null || project.expertId === input.actorId) return 0;
+  if (project.expert?.role !== 'EXPERT' || (project.expert.expertProfile?.ndaSignedAt ?? null) === null) return 0;
+  const letter = input.letter(project);
+  return enqueue(db, {
+    userId: project.expertId,
+    projectId: input.projectId,
+    eventKind: input.eventKind,
+    subject: letter.subject,
+    body: letter.body,
+    dedupKey: `${input.key}:${project.expertId}`,
+    path: input.path ?? null,
+  });
+}
+
 /** Возвращает число поставленных строк: повтор по ключу не считается. */
 export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
   const user = await db.user.findUnique({
@@ -507,7 +554,8 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
  *
  * Адресат — тот, чей ход: клиенту — только когда этап ждёт его данных
  * (на согласовании ему напоминает срок согласования, Р-290); эксперту с
- * договором поручения — пока этап в работе; куратору — всегда. Прежде
+ * договором поручения — пока этап в работе и не сдан менеджеру: сданный
+ * этап — ход менеджера (требование Э-09, решение Р-328); куратору — всегда. Прежде
  * клиенту приходило «срок этапа подходит» и тогда, когда от него ничего не
  * ждали, а куратор и эксперт не получали ничего.
  *
@@ -563,7 +611,7 @@ export async function enqueueDeadlineReminders(at: Date = new Date()): Promise<n
         : null;
     const recipients = new Set<string>([project.managerId]);
     if (stage.state === 'AWAITING_CLIENT' && project.client.userId !== null) recipients.add(project.client.userId);
-    if (stage.state === 'IN_PROGRESS' && expert !== null) recipients.add(expert);
+    if (stage.state === 'IN_PROGRESS' && stage.handedOverAt === null && expert !== null) recipients.add(expert);
 
     for (const userId of recipients) {
       const forClient = userId === project.client.userId;

@@ -4,7 +4,7 @@ import { siteUrl } from '../site-url.ts';
 import { formatDay } from './approval-text.ts';
 import { record } from './audit.ts';
 import { moscowToday } from './clock.ts';
-import { enqueue, notifyCurator } from './outbox.ts';
+import { enqueue, notifyCurator, notifyExpert } from './outbox.ts';
 import {
   addWorkdays,
   dayKey,
@@ -303,6 +303,18 @@ export async function autoAcceptExpired(at: Date = new Date()): Promise<number> 
         subject: `Этап «${stage.title}» принят по истечении срока`,
         body: `${AUTO_ACCEPT_NOTE}: «${stage.title}».\nМожно запускать следующий этап.\n${stageLink(stage.id)}`,
         key: `stage:${stage.id}:auto-accepted:${change.id}`,
+        path: `/cabinet/stages/${stage.id}`,
+      });
+      // Куратору работы — тоже (требование Э-09, решение Р-328).
+      await notifyExpert(tx, {
+        projectId: stage.projectId,
+        actorId: null,
+        eventKind: 'STAGE_APPROVED',
+        letter: (work) => ({
+          subject: `Этап «${stage.title}» принят по истечении срока`,
+          body: `Работа ${work.code}.\n${AUTO_ACCEPT_NOTE}: «${stage.title}».\n${stageLink(stage.id)}`,
+        }),
+        key: `stage:${stage.id}:auto-accepted-expert:${change.id}`,
         path: `/cabinet/stages/${stage.id}`,
       });
       return true;

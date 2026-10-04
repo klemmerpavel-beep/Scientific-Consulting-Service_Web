@@ -41,7 +41,11 @@ export type EventKind =
   | 'CURATOR_INVITED'
   | 'NDA_SIGNED'
   | 'STAGE_HANDED_OVER'
-  | 'STAGE_HANDED_BACK';
+  | 'STAGE_HANDED_BACK'
+  | 'CURATOR_TURN'
+  | 'WORK_UNASSIGNED'
+  | 'PAYOUT_ACCRUED'
+  | 'PAYOUT_PAID';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -102,6 +106,10 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   NDA_SIGNED: 'доступ к материалам открыт',
   STAGE_HANDED_OVER: 'куратор сдал этап',
   STAGE_HANDED_BACK: 'этап возвращён вам',
+  CURATOR_TURN: 'ход за вами',
+  WORK_UNASSIGNED: 'работа передана другому куратору',
+  PAYOUT_ACCRUED: 'начислено вознаграждение',
+  PAYOUT_PAID: 'вознаграждение выплачено',
 };
 
 /**

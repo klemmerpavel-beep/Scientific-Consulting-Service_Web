@@ -11,8 +11,8 @@ import {
 } from './access.ts';
 import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
-import { enqueue, enqueueToLead, notifyCurator } from './outbox.ts';
-import { assignmentLetter } from './curator-letters.ts';
+import { enqueue, enqueueToLead, notifyCurator, notifyExpert } from './outbox.ts';
+import { assignmentLetter, unassignedLetter } from './curator-letters.ts';
 import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
 import { now } from './clock.ts';
@@ -637,6 +637,22 @@ export async function assignExpert(
     });
   }
 
+  // Прежнему куратору — что работа ему больше не принадлежит. Событие
+  // нейтральное и уходит без договора поручения: без названия работы
+  // (требование Э-09, решение Р-328; Р-237).
+  if (ref.expertId !== null) {
+    const letter = unassignedLetter(project.code, expertId !== null);
+    await enqueue(prisma, {
+      userId: ref.expertId,
+      projectId,
+      eventKind: 'WORK_UNASSIGNED',
+      subject: letter.subject,
+      body: letter.body,
+      dedupKey: `project:${projectId}:expert-unassigned:${ref.expertId}:${Date.now()}`,
+      path: '/cabinet/projects',
+    });
+  }
+
   // Эксперт без договора поручения материалов не увидит: руководитель
   // получает вопрос сам, а не узнаёт о нём от куратора (требование М-16,
   // ОМ-25, решение Р-298). Назначил руководитель — он и так знает.
@@ -989,6 +1005,22 @@ export async function reopenStage(
     const body =
       `Проект ${project.code} — ${project.title}.\n` +
       `Этап «${stage.title}» снова в работе.\nПричина: ${why}\n${stageLink(stage.id)}`;
+    // Куратору — ход за ним: этап снова «В работе» (Э-09, Р-328). Причина
+    // написана клиенту и в письмо куратору не идёт.
+    await notifyExpert(tx, {
+      projectId: stage.projectId,
+      actorId: actor.id,
+      eventKind: 'CURATOR_TURN',
+      letter: (work) => ({
+        subject: `Ход за вами: этап «${stage.title}»`,
+        body:
+          `Работа ${work.code}.\n` +
+          `Завершённый этап «${stage.title}» возвращён в работу. Задание и срок — в блоке «Что сделать сейчас» на экране этапа.\n` +
+          stageLink(stage.id),
+      }),
+      key: `stage:${stage.id}:reopened-turn:${Date.now()}`,
+      path: `/cabinet/stages/${stage.id}`,
+    });
     if (project.client.userId !== null) {
       await enqueue(tx, {
         userId: project.client.userId,
@@ -1297,6 +1329,21 @@ const STATUS_LETTER: Record<ProjectStatusKey, (title: string, reason: string) =>
   ACTIVE: (title) => ({ subject: `Работа «${title}» возобновлена`, body: 'Работа снова идёт.' }),
 };
 
+/** Письмо куратору о смене состояния работы (требование Э-09, решение Р-328). */
+const EXPERT_STATUS_PHRASE: Record<ProjectStatusKey, string> = {
+  ACTIVE: 'возобновлена',
+  PAUSED: 'приостановлена',
+  COMPLETED: 'завершена',
+  CANCELLED: 'отменена',
+};
+
+const EXPERT_STATUS_NOTE: Record<ProjectStatusKey, string> = {
+  ACTIVE: 'Задания этапов — на карточке работы.',
+  PAUSED: 'Материалы по-прежнему можно прикладывать; о сроках этапов кабинет не напоминает.',
+  COMPLETED: 'Материалы остаются доступны для чтения.',
+  CANCELLED: 'Материалы остаются доступны для чтения.',
+};
+
 /**
  * Сменить состояние работы: приостановить, завершить, отменить, вернуть в
  * действие (решение Р-223).
@@ -1387,6 +1434,18 @@ export async function setProjectStatus(
         dedupKey: `project:${projectId}:status:${from}-${to}:${Date.now()}`,
       });
     }
+    // Куратору — без причины: она написана клиенту (Э-09, Р-328).
+    await notifyExpert(tx, {
+      projectId,
+      actorId: actor.id,
+      eventKind: 'PROJECT_STATUS_CHANGED',
+      letter: (work) => ({
+        subject: `Работа ${work.code} ${EXPERT_STATUS_PHRASE[to]}`,
+        body: `Работа ${work.code} — ${work.title}.\nРабота ${EXPERT_STATUS_PHRASE[to]}. ${EXPERT_STATUS_NOTE[to]}`,
+      }),
+      key: `project:${projectId}:status-expert:${from}-${to}:${Date.now()}`,
+      path: `/cabinet/projects/${saved.code}`,
+    });
     return saved;
   });
 
@@ -1706,6 +1765,45 @@ export async function setStageState(
         key: `stage:${stageId}:approved:${change.id}`,
         path: `/cabinet/stages/${stageId}`,
       });
+      // Куратору работы — тоже: этап его работы закрыт (требование Э-09,
+      // решение Р-328).
+      await notifyExpert(tx, {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        eventKind: 'STAGE_APPROVED',
+        letter: (work) => ({
+          subject: `Этап «${stage.title}» согласован`,
+          body:
+            `Работа ${work.code}.\n` +
+            (forClient
+              ? `Этап «${stage.title}» согласован менеджером по подтверждению клиента.\n`
+              : `Клиент согласовал этап «${stage.title}».\n`) +
+            stageLink(stageId),
+        }),
+        key: `stage:${stageId}:approved-expert:${change.id}`,
+        path: `/cabinet/stages/${stageId}`,
+      });
+    }
+    // Этап «В работе» — ход куратора: запущен или возвращён менеджером
+    // (требование Э-09, решение Р-328).
+    if (to === 'IN_PROGRESS') {
+      await notifyExpert(tx, {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        eventKind: 'CURATOR_TURN',
+        letter: (work) => ({
+          subject: `Ход за вами: этап «${stage.title}»`,
+          body:
+            `Работа ${work.code}.\n` +
+            (from === 'NOT_STARTED'
+              ? `Менеджер запустил этап «${stage.title}».`
+              : `Этап «${stage.title}» снова «В работе».`) +
+            ' Задание и срок — в блоке «Что сделать сейчас» на экране этапа.\n' +
+            stageLink(stageId),
+        }),
+        key: `stage:${stageId}:turn:${change.id}`,
+        path: `/cabinet/stages/${stageId}`,
+      });
     }
     await tx.projectEvent.create({
       data: {
@@ -1913,6 +2011,22 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
         'Текст замечаний — на экране этапа.\n' +
         stageLink(stageId),
       key: `stage:${stageId}:returned:${created.id}`,
+      path: `/cabinet/stages/${stageId}`,
+    });
+    // Куратору — тот же сигнал: ход снова за ним (Э-09, Р-328).
+    await notifyExpert(tx, {
+      projectId: stage.projectId,
+      actorId: actor.id,
+      eventKind: 'STAGE_RETURNED',
+      letter: (work) => ({
+        subject: `Клиент вернул этап «${stage.title}» с замечаниями`,
+        body:
+          `Работа ${work.code}.\n` +
+          `Клиент вернул этап «${stage.title}» с замечаниями; этап снова «В работе».\n` +
+          'Текст замечаний — в блоке «Что сделать сейчас» на экране этапа.\n' +
+          stageLink(stageId),
+      }),
+      key: `stage:${stageId}:returned-expert:${created.id}`,
       path: `/cabinet/stages/${stageId}`,
     });
 

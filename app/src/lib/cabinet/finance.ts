@@ -3,6 +3,7 @@ import { can, ensure, scopePayouts, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { moscowToday } from './clock.ts';
 import { enqueue } from './outbox.ts';
+import { payoutLetter } from './curator-letters.ts';
 import { projectRef } from './projects.ts';
 import { siteUrl } from '../site-url.ts';
 
@@ -380,6 +381,7 @@ export async function addPayout(
     projectId: input.projectId,
     payload: { amount: money(input.amount) },
   });
+  await notifyPayout(payout.id, false);
   return payout;
 }
 
@@ -406,7 +408,39 @@ export async function markPayoutPaid(actor: Actor, payoutId: string, paidOn: Dat
     projectId: payout.projectId,
     payload: { amount: money(payout.amount), paidOn: paidOn.toISOString().slice(0, 10) },
   });
+  await notifyPayout(payoutId, true);
   return updated;
+}
+
+/**
+ * Куратору — о начислении и выплате, без суммы (требование Э-09, решение
+ * Р-328). Событие нейтральное: уходит и без договора поручения, тогда без
+ * названия работы и этапа (Р-237).
+ */
+async function notifyPayout(payoutId: string, paid: boolean): Promise<void> {
+  const payout = await prisma.expertPayout.findUniqueOrThrow({
+    where: { id: payoutId },
+    select: {
+      expert: { select: { id: true, role: true, expertProfile: { select: { ndaSignedAt: true } } } },
+      project: { select: { id: true, code: true, title: true } },
+      stage: { select: { title: true } },
+    },
+  });
+  if (payout.expert === null || payout.expert.role !== 'EXPERT') return;
+  const letter = payoutLetter(
+    { code: payout.project.code, title: payout.project.title, stage: payout.stage?.title ?? null },
+    paid,
+    (payout.expert.expertProfile?.ndaSignedAt ?? null) !== null,
+  );
+  await enqueue(prisma, {
+    userId: payout.expert.id,
+    projectId: payout.project.id,
+    eventKind: paid ? 'PAYOUT_PAID' : 'PAYOUT_ACCRUED',
+    subject: letter.subject,
+    body: letter.body,
+    dedupKey: `payout:${payoutId}:${paid ? 'paid' : 'accrued'}`,
+    path: '/cabinet/payout',
+  });
 }
 
 export interface ProjectMoney {
