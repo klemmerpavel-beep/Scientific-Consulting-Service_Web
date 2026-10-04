@@ -18,7 +18,7 @@ export type Status = 'ACTIVE' | 'SUSPENDED' | 'ERASED';
 
 export const ROLE_LABEL: Record<Role, string> = {
   CLIENT: 'клиент',
-  EXPERT: 'эксперт',
+  EXPERT: 'куратор',
   MANAGER: 'менеджер',
   HEAD: 'руководитель',
 };
@@ -428,7 +428,7 @@ async function ensureNoOpenWorks(userId: string): Promise<void> {
   const shown = open.slice(0, 5).map((project) => project.code).join(', ');
   throw new Error(
     `За человеком открытые работы: ${shown}${open.length > 5 ? ' и другие' : ''}. ` +
-      'Сначала передайте их другому менеджеру или эксперту',
+      'Сначала передайте их другому менеджеру или куратору',
   );
 }
 
@@ -576,7 +576,7 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
   ensure(actor, 'USER_MANAGE');
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
   if (user === null) throw new Error('Учётная запись не найдена');
-  if (user.role !== 'EXPERT') throw new Error('Договор поручения отмечается только у эксперта');
+  if (user.role !== 'EXPERT') throw new Error('Договор поручения отмечается только у куратора');
   if (signedOn !== null && signedOn.getTime() > moscowToday().getTime()) {
     throw new Error('Дата договора не может быть позже сегодняшней');
   }

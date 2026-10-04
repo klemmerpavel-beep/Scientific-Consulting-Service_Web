@@ -531,7 +531,7 @@ export async function assignExpert(
   ensureWorkOpen(current.status);
   // Роль эксперта в работе — из закрытого перечня; по умолчанию первая
   // (требование Т-11, О-10, решение Р-297).
-  if (role != null && !Object.hasOwn(EXPERT_ROLE_LABEL, role)) throw new Error('Неизвестная роль эксперта');
+  if (role != null && !Object.hasOwn(EXPERT_ROLE_LABEL, role)) throw new Error('Неизвестная роль куратора');
   const nextRole = expertId === null ? null : (role ?? current.expertRole ?? 'SUBJECT_EXPERT');
 
   // Экспертом работы может быть только действующий эксперт. Прежде в поле
@@ -543,7 +543,7 @@ export async function assignExpert(
       where: { id: expertId, status: 'ACTIVE', role: 'EXPERT' },
       select: { id: true },
     });
-    if (target === null) throw new Error('Экспертом может быть только действующий эксперт');
+    if (target === null) throw new Error('Куратором может быть только действующий сотрудник с ролью куратора');
   }
   // Повторное назначение того же эксперта ничего не меняет и в ленту
   // клиента и журнал не пишется; смена одной роли — правка без события.
@@ -625,7 +625,7 @@ export async function assignExpert(
           eventKind: 'NDA_NEEDED',
           subject: `Нужен договор поручения: ${expert.fullName}, работа ${project.code}`,
           body:
-            `Менеджер назначил эксперта ${expert.fullName} на работу ${project.code} — ${project.title}.\n` +
+            `Менеджер назначил куратора ${expert.fullName} на работу ${project.code} — ${project.title}.\n` +
             'Договора поручения обработки персональных данных с ним нет: материалы клиента ему закрыты.\n' +
             'Отметить договор можно в «Учётных записях».',
           dedupKey: `nda-needed:${projectId}:${expertId}:${head.id}`,
@@ -830,7 +830,7 @@ export async function removeStage(actor: Actor, stageId: string) {
     prisma.expertPayout.count({ where: { stageId } }),
   ]);
   if (materials > 0) throw new Error('У этапа есть материалы: удалить его нельзя');
-  if (payouts > 0) throw new Error('По этапу есть начисления эксперту: удалить его нельзя');
+  if (payouts > 0) throw new Error('По этапу есть начисления куратору: удалить его нельзя');
   await prisma.$transaction(async (tx) => {
     const removed = await tx.stage.deleteMany({ where: { id: stageId, state: 'NOT_STARTED' } });
     if (removed.count === 0) throw new Error('План уже изменён: обновите страницу');
@@ -1574,7 +1574,7 @@ export async function setStageState(
     if (materials === 0) {
       throw new Error(
         'На согласование этап уходит с материалом, который видит клиент: приложите файл ' +
-          'или опубликуйте версию эксперта — клиенту нечего посмотреть и подтвердить',
+          'или опубликуйте версию куратора — клиенту нечего посмотреть и подтвердить',
       );
     }
   }

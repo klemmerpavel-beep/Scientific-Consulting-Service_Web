@@ -92,7 +92,7 @@ export function turnLabel(state: StageStateKey, viewer: TurnViewer, hasExpert: b
       return `${curatorTurn}: этап не начат`;
     case 'IN_PROGRESS':
       if (viewer === 'expert') return 'Ход за вами: этап в работе';
-      return hasExpert ? 'Ход за экспертом: этап в работе' : `${curatorTurn}: назначьте эксперта`;
+      return hasExpert ? 'Ход за куратором: этап в работе' : `${curatorTurn}: назначьте куратора`;
     case 'AWAITING_CLIENT':
       return 'Ход за клиентом: ждём материалов';
     case 'IN_APPROVAL':

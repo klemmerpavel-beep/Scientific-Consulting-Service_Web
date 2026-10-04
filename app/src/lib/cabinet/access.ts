@@ -525,12 +525,13 @@ export const RETURN_TEXT_WITH_CURATOR = 'Замечания у менеджер�
 // ─────────────────────── Представление участника работы ────────────────────
 
 /**
- * Роль эксперта в работе — так его видит клиент (требование Т-11, О-10,
- * решение Р-297). ФИО и контакты эксперта клиенту не показываются (Р-150);
- * вместо «Специалиста практики» — роль из работы.
+ * Роль куратора в работе — для практики (требование Т-11, решение Р-297).
+ * Клиент роли не видит: для него куратор при любой роли — «Куратор»
+ * (Э-01, ответ ОЭ-3а). ФИО и контакты куратора клиенту не показываются
+ * (Р-150).
  */
 export const EXPERT_ROLE_LABEL = {
-  SUBJECT_EXPERT: 'Эксперт по специальности',
+  SUBJECT_EXPERT: 'Куратор по специальности',
   METHODOLOGIST: 'Методолог',
   SCIENCE_EDITOR: 'Научный редактор',
 } as const;
@@ -541,19 +542,22 @@ export function expertRoleLabel(role: string | null | undefined): string {
   return EXPERT_ROLE_LABEL[(role ?? 'SUBJECT_EXPERT') as ExpertRoleKey] ?? EXPERT_ROLE_LABEL.SUBJECT_EXPERT;
 }
 
+/** Как клиент называет куратора — при любой роли в работе (ОЭ-3а). */
+export const CURATOR_FOR_CLIENT = 'Куратор';
+
 /**
  * Как назвать автора файла, замечания или события. Себя смотрящий видит
- * как «Вы», клиент эксперта — по роли из работы, менеджера и руководителя —
- * «Менеджер» без имени (Э-01, ответы ОЭ-3б и С-3), остальных — по имени.
+ * как «Вы»; клиент куратора — «Куратор», менеджера и руководителя —
+ * «Менеджер», без имён (Э-01, ответы ОЭ-3а, ОЭ-3б и С-3); остальные видят
+ * имя.
  */
 export function presentAuthor(
   author: { readonly fullName: string; readonly role: string },
   viewer: { readonly id?: string; readonly role: string },
   authorId?: string,
-  expertRole?: string | null,
 ): string {
   if (authorId !== undefined && authorId === viewer.id) return 'Вы';
-  if (viewer.role === 'CLIENT' && author.role === 'EXPERT') return expertRoleLabel(expertRole);
+  if (viewer.role === 'CLIENT' && author.role === 'EXPERT') return CURATOR_FOR_CLIENT;
   if (viewer.role === 'CLIENT' && (author.role === 'MANAGER' || author.role === 'HEAD')) return 'Менеджер';
   return author.fullName;
 }
@@ -616,8 +620,8 @@ export function staffExpertLine(
 ): string {
   if (expert !== null) {
     const nda = expert.expertProfile?.ndaSignedAt ?? null;
-    return `эксперт — ${expert.fullName}${nda === null ? ' · без договора поручения' : ''}`;
+    return `куратор — ${expert.fullName}${nda === null ? ' · без договора поручения' : ''}`;
   }
   const raw = (expertNameRaw ?? '').trim();
-  return raw === '' ? 'эксперт не назначен' : `эксперт — ${raw}`;
+  return raw === '' ? 'куратор не назначен' : `куратор — ${raw}`;
 }

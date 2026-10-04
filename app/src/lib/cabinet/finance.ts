@@ -359,7 +359,7 @@ export async function addPayout(
   // Начисление без исполнителя уменьшало маржу, а видеть его было некому
   // (решение Р-244).
   const expertId = input.expertId ?? ref.expertId;
-  if (expertId === null) throw new Error('Сначала назначьте исполнителя работы');
+  if (expertId === null) throw new Error('Сначала назначьте куратора работы');
   const comment = input.comment?.trim() || null;
   if (comment !== null && comment.length > 500) throw new Error('Комментарий — не длиннее 500 знаков');
   await ensureMoneyWritable(input.projectId, true);

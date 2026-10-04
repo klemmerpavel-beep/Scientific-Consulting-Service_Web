@@ -90,7 +90,7 @@ export default async function RegistryScreen({
     <Shell actor={actor} current="/cabinet/manage/registry">
       <ScreenHead
         title="Реестры"
-        note="Клиенты, эксперты и сообщения с признаком передачи контактов."
+        note="Клиенты, кураторы и сообщения с признаком передачи контактов."
       />
 
       {/* Вкладки и поиск стоят одной полосой: прежде они шли двумя
@@ -102,7 +102,7 @@ export default async function RegistryScreen({
           label="Разделы реестра"
           items={[
             { href: href('clients'), label: 'Клиенты', active: tab === 'clients' },
-            { href: href('experts'), label: 'Эксперты', active: tab === 'experts' },
+            { href: href('experts'), label: 'Кураторы', active: tab === 'experts' },
             { href: href('flagged'), label: 'Контакты в переписке', active: tab === 'flagged' },
           ]}
         />
@@ -207,11 +207,11 @@ export default async function RegistryScreen({
 
       {tab === 'experts' ? (
         <>
-          <TableCard label="Эксперты">
+          <TableCard label="Кураторы">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>
                 <tr>
-                  <th style={TABLE_HEAD} scope="col">Эксперт</th>
+                  <th style={TABLE_HEAD} scope="col">Куратор</th>
                   <th style={TABLE_HEAD} scope="col">Специализация</th>
                   <th style={TABLE_HEAD} scope="col">Договор поручения</th>
                   <th style={TABLE_HEAD} scope="col">Загрузка</th>
@@ -221,7 +221,7 @@ export default async function RegistryScreen({
                 {experts.length === 0 ? (
                   <tr>
                     <td style={TABLE_CELL} colSpan={4}>
-                      Экспертов пока нет.
+                      Кураторов пока нет.
                     </td>
                   </tr>
                 ) : (
@@ -249,7 +249,7 @@ export default async function RegistryScreen({
             </table>
           </TableCard>
           <Text muted size={13} style={{ marginTop: 10 }}>
-            Без подписанного договора поручения обработки персональных данных эксперт не получает
+            Без подписанного договора поручения обработки персональных данных куратор не получает
             доступа к материалам клиента, даже будучи назначенным на работу.
           </Text>
         </>

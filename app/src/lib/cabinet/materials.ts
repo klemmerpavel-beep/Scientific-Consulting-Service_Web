@@ -322,7 +322,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
         body:
           `Проект ${project.code} — ${project.title}.\n` +
           `Загружена версия v${version.number}. Открыть можно в личном кабинете.` +
-          (moderated ? '\nВерсия эксперта ждёт публикации: клиент увидит её после вашего решения.' : ''),
+          (moderated ? '\nВерсия куратора ждёт публикации: клиент увидит её после вашего решения.' : ''),
         dedupKey: `version:${version.id}:uploaded:${userId}`,
         path: materialPath(project.code, material.stageId),
       });
@@ -398,7 +398,7 @@ export async function moderateVersion(
   // «Не публиковать» — с причиной: эксперт получает её письмом и
   // исправляет версию (требование М-14, ОМ-15).
   if (decision === 'REJECTED' && reason === null) {
-    throw new Error('Не публиковать версию можно только с причиной: эксперт получит её письмом');
+    throw new Error('Не публиковать версию можно только с причиной: куратор получит её письмом');
   }
 
   const now = new Date();
@@ -639,7 +639,7 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
         subject: `Ждут публикации: ${project.code}`,
         body:
           `Работа ${project.code} — ${project.title}.\n` +
-          'Появились замечания или версии эксперта, которые ждут вашего решения: до него клиент их не видит.\n' +
+          'Появились замечания или версии куратора, которые ждут вашего решения: до него клиент их не видит.\n' +
           where,
         key: `moderation:${project.id}:${comment.id}`,
         path: materialPath(project.code, version.material.stageId),
@@ -729,7 +729,7 @@ export async function moderateComment(
   // Замечание эксперта отклоняется с причиной: эксперт получает её письмом
   // (требование М-08, ОМ-15, решение Р-301).
   if (decision === 'REJECTED' && target.author.role === 'EXPERT' && reason === null) {
-    throw new Error('Не публиковать замечание эксперта можно только с причиной: эксперт получит её письмом');
+    throw new Error('Не публиковать замечание куратора можно только с причиной: куратор получит её письмом');
   }
   const { count } = await prisma.versionComment.updateMany({
     where: { id: commentId, moderationStatus: 'PENDING' },
@@ -799,7 +799,7 @@ export async function moderateComment(
         userId,
         projectId: project.id,
         eventKind: 'EXPERT_COMMENT_PUBLISHED',
-        subject: 'Эксперт оставил замечание по материалу',
+        subject: 'Куратор оставил замечание по материалу',
         body:
           `Проект ${project.code} — ${project.title}.\n` +
           `Материал «${context?.version.material.title}». Замечание видно в кабинете.`,

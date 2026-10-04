@@ -58,7 +58,7 @@ if (!/artboard/i.test(DB)) {
  */
 const ROLES = [
   { key: 'client', label: 'Клиент', home: '/cabinet/projects' },
-  { key: 'expert', label: 'Эксперт', home: '/cabinet/projects' },
+  { key: 'expert', label: 'Куратор', home: '/cabinet/projects' },
   { key: 'manager', label: 'Менеджер', home: '/cabinet/manage' },
   { key: 'head', label: 'Руководитель', home: '/cabinet/manage' },
 ];

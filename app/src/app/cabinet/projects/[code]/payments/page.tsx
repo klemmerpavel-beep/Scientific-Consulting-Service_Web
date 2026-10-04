@@ -498,11 +498,11 @@ export default async function PaymentsScreen({
 
           {maySeeEconomy ? (
             <Block>
-              <Heading level={2} size={3}>Вознаграждение эксперта</Heading>
+              <Heading level={2} size={3}>Вознаграждение куратора</Heading>
               <Card style={{ marginTop: 12 }}>
                 {payouts.length === 0 ? (
                   <Text muted>
-                    Начислений нет. У исторических проектов исполнитель не указан, и маржа равна
+                    Начислений нет. У исторических проектов куратор не указан, и маржа равна
                     сумме договора.
                   </Text>
                 ) : (
@@ -521,7 +521,7 @@ export default async function PaymentsScreen({
                       >
                         <div style={{ flex: '1 1 220px' }}>
                           <Text size={15} style={{ color: 'var(--pd-ink)' }}>
-                            {payout.expert?.fullName ?? 'исполнитель не указан'}
+                            {payout.expert?.fullName ?? 'куратор не указан'}
                           </Text>
                           {payout.comment === null ? null : (
                             <Text muted size={13}>

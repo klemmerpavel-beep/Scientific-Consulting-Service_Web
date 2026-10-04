@@ -277,11 +277,11 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     const projectId = await newProject('E');
     await assert.rejects(
       () => projects.assignExpert(curator(), projectId, ids.manager!),
-      /действующий эксперт/u,
+      /действующий сотрудник с ролью куратора/u,
     );
     await assert.rejects(
       () => projects.assignExpert(curator(), projectId, ids.idle!),
-      /действующий эксперт/u,
+      /действующий сотрудник с ролью куратора/u,
     );
     await projects.assignExpert(curator(), projectId, ids.expert!);
     await projects.assignExpert(curator(), projectId, ids.expert!);

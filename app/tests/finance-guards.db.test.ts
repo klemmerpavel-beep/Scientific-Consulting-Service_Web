@@ -150,7 +150,7 @@ describe('защиты финансового контура', { skip: !enabled 
     assert.equal(row.paidOn?.toISOString().slice(0, 10), '2025-12-30');
 
     const orphan = await newProject('O', { expertId: null });
-    await assert.rejects(() => finance.addPayout(head(), { projectId: orphan, amount: 100n }), /исполнителя/u);
+    await assert.rejects(() => finance.addPayout(head(), { projectId: orphan, amount: 100n }), /куратора работы/u);
   });
 
   it('номер договора другой работы и сумма ниже полученного отклоняются с причиной', async () => {

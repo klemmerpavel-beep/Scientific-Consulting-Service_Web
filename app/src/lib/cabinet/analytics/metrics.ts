@@ -861,7 +861,7 @@ export function conclusions(rows: readonly ProjectRow[], controlDate: Date): Con
         `${peak.map((month) => month.norm.toFixed(1).replace('.', ',')).join(', ')} заказа в месяц.`,
       action:
         `Готовить предложение по этой позиции к ${peak[0]!.label} и держать под неё свободного ` +
-        'исполнителя: спрос приходит в те же месяцы, что и в прошлые годы.',
+        'куратора: спрос приходит в те же месяцы, что и в прошлые годы.',
       confidence: 'likely',
       term: 'к началу сезона',
       effect: null,

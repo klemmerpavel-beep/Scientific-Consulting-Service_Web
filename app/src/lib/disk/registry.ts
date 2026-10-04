@@ -97,7 +97,7 @@ export async function projectsTable(): Promise<Table> {
   });
   return table(
     'Работы.xlsx', 'raboty.csv',
-    ['Код', 'Название', 'Тема', 'Клиент', 'Тип сопровождения', 'Менеджер', 'Исполнитель',
+    ['Код', 'Название', 'Тема', 'Клиент', 'Тип сопровождения', 'Менеджер', 'Куратор',
      'Состояние', 'Начата', 'Срок', 'Закрыта', 'Договор', 'Сумма договора', 'Оплачено',
      'Этапов', 'Материалов'],
     rows.map((p) => {
@@ -126,7 +126,7 @@ export async function stagesTable(): Promise<Table> {
   });
   return table(
     'Этапы.xlsx', 'etapy.csv',
-    ['Работа', '№', 'Этап', 'Состояние', 'Срок', 'Исполнитель', 'Начат (МСК)', 'Завершён (МСК)'],
+    ['Работа', '№', 'Этап', 'Состояние', 'Срок', 'Куратор', 'Начат (МСК)', 'Завершён (МСК)'],
     rows.map((s) => [
       s.project.code, s.position, s.title, stageStateLabel(s.state),
       day(s.dueOn), s.project.expert?.fullName ?? s.project.expertNameRaw ?? '', day(s.startedAt), day(s.completedAt),

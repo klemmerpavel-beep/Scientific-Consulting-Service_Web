@@ -97,7 +97,7 @@ export const dynamic = 'force-dynamic';
 const EVENT_LABEL: Record<string, string> = {
   PROJECT_CREATED: 'Работа взята в сопровождение',
   MANAGER_ASSIGNED: 'Работу принял другой менеджер',
-  EXPERT_ASSIGNED: 'Назначен исполнитель',
+  EXPERT_ASSIGNED: 'Назначен куратор',
   PLAN_CHANGED: 'План работ изменён',
   STAGE_DUE_CHANGED: 'Перенесён срок этапа',
   STAGE_STATE_CHANGED: 'Этап сменил состояние',
@@ -138,9 +138,9 @@ function eventLine(
   // Назначение исполнителя куратору и руководителю — с именем, снятие —
   // словами (требование М-16, ОМ-24, решение Р-298).
   if (kind === 'EXPERT_ASSIGNED' && (actor.role === 'MANAGER' || actor.role === 'HEAD')) {
-    if (data.expertId === null) return 'Исполнитель снят';
+    if (data.expertId === null) return 'Куратор снят';
     const name = typeof data.expertId === 'string' ? executors.get(data.expertId) : undefined;
-    return name === undefined ? 'Назначен исполнитель' : `Назначен исполнитель: ${name}`;
+    return name === undefined ? 'Назначен куратор' : `Назначен куратор: ${name}`;
   }
   const stage = stages.find((item) => item.id === data.stageId);
   const material = materials.find((item) => item.id === data.materialId);
@@ -487,7 +487,7 @@ export default async function ProjectScreen({
       who:
         event.actor === null
           ? null
-          : authorName(event.actor, actor, event.actorId ?? undefined, project.expertRole),
+          : authorName(event.actor, actor, event.actorId ?? undefined),
     }));
 
   // Короткое описание работы. На виду остаётся название и срок, остальное
@@ -504,18 +504,19 @@ export default async function ProjectScreen({
     project.topic === project.title ? null : { term: 'Тема', value: project.topic },
     { term: 'Срок работы', value: formatDate(project.dueOn) ?? 'не назначен' },
     // Менеджер — с регалиями, но только практике: клиенту имя менеджера не
-    // показывается (Э-01, ответ ОЭ-3б). Эксперт — ролью и регалиями без ФИО
-    // и контактов; пустые части не выводятся (требование Т-11, Р-297).
+    // показывается (Э-01, ответ ОЭ-3б). Куратор — регалиями без ФИО и
+    // контактов; пустые части не выводятся (требование Т-11, Р-297).
     forClient ? null : { term: 'Менеджер', value: curatorLine(project.manager) },
-    // Практике — исполнитель по имени и с отметкой о договоре поручения
-    // (требование М-16, решение Р-298); клиенту — роль и регалии (Р-297).
+    // Практике — куратор по имени, с ролью в работе и отметкой о договоре
+    // поручения (требование М-16, решение Р-298); клиенту и самому куратору —
+    // «Куратор» и регалии при любой роли (Э-01, ответ ОЭ-3а).
     project.expert === null
       ? null
       : {
-          term: expertRoleLabel(project.expertRole),
+          term: 'Куратор',
           value:
             actor.role === 'MANAGER' || actor.role === 'HEAD'
-              ? `${project.expert.fullName}${project.expert.expertProfile?.ndaSignedAt == null ? ' · без договора поручения' : ''}`
+              ? `${project.expert.fullName} · ${expertRoleLabel(project.expertRole).toLowerCase()}${project.expert.expertProfile?.ndaSignedAt == null ? ' · без договора поручения' : ''}`
               : expertLine(project.expert.expertProfile) || 'назначен',
         },
   ].filter((row) => row !== null);
@@ -942,7 +943,7 @@ export default async function ProjectScreen({
 
               {mayEdit && closed ? (
                 <Text muted size={14}>
-                  {CLOSED_FOR_PRACTICE}. Карточка, исполнитель и этапы закрытой работы не
+                  {CLOSED_FOR_PRACTICE}. Карточка, куратор и этапы закрытой работы не
                   меняются; переписка и документы оплат доступны.
                 </Text>
               ) : null}
@@ -1003,10 +1004,10 @@ export default async function ProjectScreen({
                   <input type="hidden" name="code" value={project.code} />
                   <ActionError id={errorId} slot="expert" />
                   <Select
-                    label="Исполнитель"
+                    label="Куратор"
                     name="expertId"
                     defaultValue={draft.expertId ?? project.expertId ?? ''}
-                    hint="Без договора поручения обработки персональных данных исполнитель не получит доступа к материалам клиента, даже будучи назначенным."
+                    hint="Без договора поручения обработки персональных данных куратор не получит доступа к материалам клиента, даже будучи назначенным."
                   >
                     <option value="">— не назначен —</option>
                     {expertList.map((expert) => (
@@ -1033,10 +1034,10 @@ export default async function ProjectScreen({
                   {/* Роль эксперта в работе — так его видит клиент вместо
                       ФИО (требование Т-11, О-10, решение Р-297). */}
                   <Select
-                    label="Роль эксперта в работе"
+                    label="Роль куратора в работе"
                     name="expertRole"
                     defaultValue={draft.expertRole ?? project.expertRole ?? 'SUBJECT_EXPERT'}
-                    hint="Клиент видит эксперта этой ролью, степенью и шифром специальности — без имени и контактов."
+                    hint="Роль — для практики. Клиент видит «Куратор», степень и специальность — без имени и контактов."
                   >
                     {(Object.keys(EXPERT_ROLE_LABEL) as (keyof typeof EXPERT_ROLE_LABEL)[]).map((role) => (
                       <option key={role} value={role}>
@@ -1045,7 +1046,7 @@ export default async function ProjectScreen({
                     ))}
                   </Select>
                   <FormActions>
-                    <Button tone="quiet">Сохранить исполнителя</Button>
+                    <Button tone="quiet">Сохранить куратора</Button>
                   </FormActions>
                 </Form>
               ) : null}

@@ -66,13 +66,13 @@ export const dynamic = 'force-dynamic';
 /** Что делать куратору в этом состоянии этапа. */
 const STAFF_TODO: Record<StageStateKey, string> = {
   NOT_STARTED:
-    'Этап не начат: назначьте исполнителя на работе и переведите этап в работу, когда он приступил.',
+    'Этап не начат: назначьте куратора на работе и переведите этап в работу, когда он приступил.',
   IN_PROGRESS:
-    'Работа идёт. Следите за сроком: если исполнитель не успевает, перенесите срок сейчас, а не в день сдачи.',
+    'Работа идёт. Следите за сроком: если куратор не успевает, перенесите срок сейчас, а не в день сдачи.',
   AWAITING_CLIENT:
     'Ждём материалы от клиента. Если молчит дольше недели — напишите в переписке: причина остановки ему видна, но напоминание работает лучше.',
   IN_APPROVAL:
-    'Клиент смотрит материалы. Замечания эксперта на модерации опубликуйте: до этого клиент их не видит.',
+    'Клиент смотрит материалы. Замечания куратора на модерации опубликуйте: до этого клиент их не видит.',
   DONE: 'Этап закрыт. Проверьте, что следующий начат и у него есть срок.',
 };
 
@@ -603,7 +603,7 @@ export default async function StageScreen({
                       >
                         <Chip mono>v{version.number}</Chip>
                         <Text size={14}>
-                          {authorName(version.uploadedBy, actor, version.uploadedById, stage.project.expertRole)} ·{' '}
+                          {authorName(version.uploadedBy, actor, version.uploadedById)} ·{' '}
                           {formatDate(version.uploadedAt)} · {formatSize(version.sizeBytes)}
                         </Text>
                         <span style={{ marginLeft: 'auto' }}>
@@ -637,7 +637,7 @@ export default async function StageScreen({
                                     multiline
                                     required
                                     defaultValue={draft.note ?? ''}
-                                    hint="Причину эксперт получит письмом."
+                                    hint="Причину куратор получит письмом."
                                   />
                                   <FormActions>
                                     <Button tone="quiet">Не публиковать</Button>
@@ -661,7 +661,6 @@ export default async function StageScreen({
                         mayModerate={mayModerate}
                         stageId={stage.id}
                         decide={decideOnComment}
-                        expertRole={stage.project.expertRole}
                       />
 
                       {/* Поле комментария стояло раскрытым под свежей

@@ -579,17 +579,17 @@ describe('представление участника работы (Т-11, Р-
   });
   const expert = { fullName: 'Григорьев Антон Эдуардович', role: 'EXPERT' };
 
-  it('клиент видит эксперта ролью из работы, практика — по имени', () => {
-    assert.equal(presentAuthor(expert, as('CLIENT')), 'Эксперт по специальности');
-    assert.equal(presentAuthor(expert, as('CLIENT'), 'e1', 'METHODOLOGIST'), 'Методолог');
-    assert.equal(presentAuthor(expert, as('CLIENT'), 'e1', 'SCIENCE_EDITOR'), 'Научный редактор');
+  it('клиент видит куратора словом «Куратор», практика — по имени (ОЭ-3а)', () => {
+    assert.equal(presentAuthor(expert, as('CLIENT')), 'Куратор');
+    assert.equal(presentAuthor(expert, as('CLIENT'), 'e1'), 'Куратор');
     assert.equal(presentAuthor(expert, as('MANAGER')), expert.fullName);
     assert.equal(presentAuthor(expert, as('EXPERT', 'e1'), 'e1'), 'Вы');
     // Менеджера и руководителя клиент видит «Менеджер», без имени (ОЭ-3б, С-3).
     assert.equal(presentAuthor({ fullName: 'Нечаева К. И.', role: 'MANAGER' }, as('CLIENT')), 'Менеджер');
     assert.equal(presentAuthor({ fullName: 'Орлов П. С.', role: 'HEAD' }, as('CLIENT')), 'Менеджер');
     assert.equal(presentAuthor({ fullName: 'Нечаева К. И.', role: 'MANAGER' }, as('EXPERT')), 'Нечаева К. И.');
-    assert.equal(expertRoleLabel(null), 'Эксперт по специальности');
+    assert.equal(expertRoleLabel(null), 'Куратор по специальности');
+    assert.equal(expertRoleLabel('METHODOLOGIST'), 'Методолог');
   });
 
   it('строки «О работе»: пустые части не выводятся', () => {
@@ -622,11 +622,11 @@ describe('исполнитель на виду у практики (М-16, Р-29
   it('ФИО и отметка о договоре; книга заказов; не назначен', () => {
     assert.equal(
       staffExpertLine({ fullName: 'Григорьев А. Э.', expertProfile: { ndaSignedAt: null } }),
-      'эксперт — Григорьев А. Э. · без договора поручения',
+      'куратор — Григорьев А. Э. · без договора поручения',
     );
-    assert.equal(staffExpertLine({ fullName: 'Григорьев А. Э.', expertProfile: { ndaSignedAt: NDA } }), 'эксперт — Григорьев А. Э.');
-    assert.equal(staffExpertLine(null, 'Петров (книга)'), 'эксперт — Петров (книга)');
-    assert.equal(staffExpertLine(null, '  '), 'эксперт не назначен');
+    assert.equal(staffExpertLine({ fullName: 'Григорьев А. Э.', expertProfile: { ndaSignedAt: NDA } }), 'куратор — Григорьев А. Э.');
+    assert.equal(staffExpertLine(null, 'Петров (книга)'), 'куратор — Петров (книга)');
+    assert.equal(staffExpertLine(null, '  '), 'куратор не назначен');
   });
 });
 

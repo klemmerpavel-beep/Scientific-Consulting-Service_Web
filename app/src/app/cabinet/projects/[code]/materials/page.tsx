@@ -121,7 +121,7 @@ export default async function ProjectMaterialsScreen({
                       </a>
                       <span>{formatSize(version.sizeBytes)}</span>
                       <span>{formatDate(version.uploadedAt)}</span>
-                      <span>{authorName(version.uploadedBy, actor, version.uploadedById, project.expertRole)}</span>
+                      <span>{authorName(version.uploadedBy, actor, version.uploadedById)}</span>
                       {/* Версия эксперта до публикации — с пометкой; клиенту
                           её здесь нет вовсе (Т-18, Р-294). */}
                       {version.moderation === null || version.moderation.status === 'PUBLISHED' ? null : (
@@ -147,7 +147,7 @@ export default async function ProjectMaterialsScreen({
                       .map((version) => (
                         <div key={`publish-${version.id}`} style={{ marginTop: 14 }}>
                           <Text muted size={13}>
-                            v{version.number} эксперта ждёт публикации клиенту
+                            v{version.number} куратора ждёт публикации клиенту
                           </Text>
                           <Form action={decideOnVersion} inline style={{ marginTop: 8 }}>
                             <input type="hidden" name="versionId" value={version.id} />
@@ -174,7 +174,7 @@ export default async function ProjectMaterialsScreen({
                                 scope={`version-${version.id}`}
                                 multiline
                                 required
-                                hint="Причину эксперт получит письмом."
+                                hint="Причину куратор получит письмом."
                               />
                               <FormActions>
                                 <Button tone="quiet">Не публиковать</Button>
@@ -201,7 +201,6 @@ export default async function ProjectMaterialsScreen({
                             mayModerate={mayModerate}
                             back={`/cabinet/projects/${project.code}/materials#material-${material.id}`}
                             decide={decideOnComment}
-                            expertRole={project.expertRole}
                           />
                         </div>
                       ))

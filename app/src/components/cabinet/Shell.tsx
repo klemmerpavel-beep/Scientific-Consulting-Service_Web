@@ -13,7 +13,7 @@ import { activeItem, navFor, type NavItem } from '../../lib/cabinet/nav.ts';
 
 const ROLE_LABEL: Record<Actor['role'], string> = {
   CLIENT: 'Клиент',
-  EXPERT: 'Эксперт',
+  EXPERT: 'Куратор',
   MANAGER: 'Менеджер',
   HEAD: 'Руководитель',
 };

@@ -16,11 +16,11 @@ describe('подпись хода', () => {
 
   it('этап в работе: эксперту — «за вами», практике — «за экспертом»', () => {
     assert.equal(turnLabel('IN_PROGRESS', 'expert', true), 'Ход за вами: этап в работе');
-    assert.equal(turnLabel('IN_PROGRESS', 'curator', true), 'Ход за экспертом: этап в работе');
+    assert.equal(turnLabel('IN_PROGRESS', 'curator', true), 'Ход за куратором: этап в работе');
   });
 
   it('этап в работе без эксперта — дело куратора', () => {
-    assert.equal(turnLabel('IN_PROGRESS', 'curator', false), 'Ход за вами: назначьте эксперта');
+    assert.equal(turnLabel('IN_PROGRESS', 'curator', false), 'Ход за вами: назначьте куратора');
   });
 
   it('ожидание клиента называется одинаково для всех', () => {

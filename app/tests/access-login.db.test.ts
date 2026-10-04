@@ -572,7 +572,7 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
   it('договор поручения — только эксперту и не будущей датой', async () => {
     await assert.rejects(
       () => admin.signExpertNda(head(), ids.clientUser!, new Date('2026-01-01')),
-      /только у эксперта/u,
+      /только у куратора/u,
     );
     const tomorrow = new Date(admin.moscowToday().getTime() + 24 * 60 * 60 * 1000);
     await assert.rejects(() => admin.signExpertNda(head(), ids.expert!, tomorrow), /позже сегодняшней/u);
