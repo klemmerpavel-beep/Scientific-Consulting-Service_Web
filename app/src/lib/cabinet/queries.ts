@@ -887,7 +887,10 @@ export async function expertRegistry(actor: Actor) {
     degree: row.expertProfile?.degree || null,
     specialization: row.expertProfile?.specialization || null,
     ndaSignedAt: row.expertProfile?.ndaSignedAt ?? null,
-    active: row.expertProjects.filter((p) => p.status === 'ACTIVE').length,
+    // Действующие — идущие и приостановленные, как на «Сводке»; число
+    // приостановленных — пометкой (Р-257; требование РК-04, решение Р-342).
+    active: row.expertProjects.filter((p) => p.status === 'ACTIVE' || p.status === 'PAUSED').length,
+    paused: row.expertProjects.filter((p) => p.status === 'PAUSED').length,
     total: row.expertProjects.length,
   }));
 }

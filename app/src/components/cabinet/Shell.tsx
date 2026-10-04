@@ -2,7 +2,9 @@ import type { ReactNode } from 'react';
 
 import type { Actor } from '../../lib/cabinet/access.ts';
 import { BUTTON_QUIET, CONTAINER, GUTTER, MONO, SANS, SERIF } from './tokens.ts';
-import { activeItem, navFor, type NavItem } from '../../lib/cabinet/nav.ts';
+import { activeItem, navFor, SUMMARY_HREF, type NavItem } from '../../lib/cabinet/nav.ts';
+import { headAttentionCount } from '../../lib/cabinet/attention.ts';
+import { Chip, VISUALLY_HIDDEN, plural } from './ui.tsx';
 
 /**
  * Каркас раздела: шапка с вордмарком и навигацией, рабочая область, подвал
@@ -57,7 +59,7 @@ function Wordmark() {
 export { navFor, activeItem };
 export type { NavItem };
 
-export default function Shell({
+export default async function Shell({
   actor,
   current,
   center = false,
@@ -90,7 +92,12 @@ export default function Shell({
   board?: boolean;
   children: ReactNode;
 }) {
-  const items = actor === null ? [] : navFor(actor);
+  // Число дел у «Сводки» руководителя — один раз на запрос, тем же
+  // набором, что строит «Требует внимания» (требование РК-04, Р-342).
+  const count = actor === null ? null : await headAttentionCount(actor);
+  const items = (actor === null ? [] : navFor(actor)).map((item) =>
+    item.href === SUMMARY_HREF && count !== null && count > 0 ? { ...item, count } : item,
+  );
   const active = activeItem(items, current ?? '');
   return (
     <>
@@ -139,12 +146,21 @@ export default function Shell({
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
+                        gap: 8,
                         minHeight: 44,
                         fontFamily: SANS,
                         fontSize: 15,
                       }}
                     >
                       {item.label}
+                      {item.count === undefined ? null : (
+                        <Chip mono>
+                          {item.count}
+                          <span style={VISUALLY_HIDDEN}>
+                            {` ${plural(item.count, 'дело требует', 'дела требуют', 'дел требуют')} решения`}
+                          </span>
+                        </Chip>
+                      )}
                     </a>
                   </li>
                 ))}

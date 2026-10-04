@@ -12,7 +12,15 @@ import type { Actor } from './access.ts';
 export interface NavItem {
   readonly href: string;
   readonly label: string;
+  /**
+   * Число дел у пункта «Сводка» руководителя — то же, что «N дел требуют
+   * решения» (требование РК-04, решение Р-342). Считает оболочка.
+   */
+  readonly count?: number;
 }
+
+/** Начальный экран штатных ролей — «Сводка» руководителя, «Сегодня» менеджера. */
+export const SUMMARY_HREF = '/cabinet/manage';
 
 /** Промежуточный экран служебных разделов — пункт «Управление». */
 export const TOOLS_HREF = '/cabinet/manage/tools';

@@ -271,7 +271,7 @@ export { BUTTON_PRIMARY, BUTTON_QUIET };
  * «правка», а голосовое управление не найдёт его по имени. Поэтому подпись
  * остаётся той же, только не занимает места.
  */
-const VISUALLY_HIDDEN: CSSProperties = {
+export const VISUALLY_HIDDEN: CSSProperties = {
   position: 'absolute',
   width: 1,
   height: 1,

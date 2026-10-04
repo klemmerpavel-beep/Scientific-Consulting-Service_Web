@@ -240,7 +240,9 @@ export default async function RegistryScreen({
                         )}
                       </td>
                       <td style={TABLE_CELL}>
-                        {expert.active} в работе из {expert.total}
+                        {`действующих — ${expert.active} из ${expert.total}${
+                          expert.paused === 0 ? '' : `, из них приостановлено ${expert.paused}`
+                        }`}
                       </td>
                     </tr>
                   ))

@@ -31,20 +31,19 @@ import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
 import { formatAmount, formatPlain, outstandingOf, workMoneyNote } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
-import { staffThreadUnread, staffThreads, unreadInbox } from '../../../lib/cabinet/messages';
-import { pendingComments, pendingVersions } from '../../../lib/cabinet/materials';
+import { staffThreadUnread } from '../../../lib/cabinet/messages';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
-import { leadQueue, returnedStages, todayItems, trafficLight } from '../../../lib/cabinet/queries';
-import { controlItems } from '../../../lib/cabinet/control';
-import { CHECK_TITLE, openChecks } from '../../../lib/cabinet/head-checks';
+import { leadQueue } from '../../../lib/cabinet/queries';
+import { attentionParts, attentionSources } from '../../../lib/cabinet/attention';
+import { CHECK_TITLE } from '../../../lib/cabinet/head-checks';
 import { reactionDays } from '../../../lib/cabinet/practice-settings';
-import { notifyChannelsDown, outboxDigest } from '../../../lib/cabinet/outbox';
+import { notifyChannelsDown } from '../../../lib/cabinet/outbox';
 import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
 import { requireActor } from '../../../lib/cabinet/session';
 import { homeFor } from '../../../lib/cabinet/nav';
-import { byMonth, products } from '../../../lib/cabinet/analytics/metrics';
+import { byMonth, products, receivedBetween } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
-import { activeWorks, moneyBrief, orderSummary, stageLoad } from '../../../lib/cabinet/summary';
+import { activeWorks, moneyBrief, orderSummary, stageLoad, upcomingDeadlines } from '../../../lib/cabinet/summary';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -54,11 +53,13 @@ export const dynamic = 'force-dynamic';
  * мало, зависит от того, сколько было кварталом раньше (решение Р-196).
  */
 function delta(now: number, before: number): string {
-  if (before === 0) return now === 0 ? 'кварталом раньше тоже ноль' : 'кварталом раньше не было';
+  // Окно скользящее — 90 дней, а не календарный квартал: подпись говорит
+  // то, что считается (требование РК-04, решение Р-342).
+  if (before === 0) return now === 0 ? '90 днями раньше тоже ноль' : '90 днями раньше не было';
   const change = now - before;
-  if (change === 0) return `столько же, сколько кварталом раньше`;
+  if (change === 0) return `столько же, сколько 90 днями раньше`;
   const percent = Math.round((Math.abs(change) / before) * 100);
-  return `${change > 0 ? '+' : '−'}${Math.abs(change)} к прошлому кварталу (${percent} %)`;
+  return `${change > 0 ? '+' : '−'}${Math.abs(change)} к прежним 90 дням (${percent} %)`;
 }
 
 /**
@@ -132,7 +133,7 @@ function owed(contract: {
 export default async function ManageQueue({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; attention?: string; sent?: string; error?: string }>;
+  searchParams: Promise<{ page?: string; attention?: string; sent?: string; error?: string; received?: string }>;
 }) {
   const actor = await requireActor('/cabinet/manage');
   if (!can(actor, 'REQUEST_MODERATE')) redirect(homeFor(actor));
@@ -142,22 +143,17 @@ export default async function ManageQueue({
   // «Управление» у менеджера больше нет (требование М-05, решение Р-305).
   // Новые ответы руководителя в ветке менеджера (РК-07, Р-336).
   const headReplies = actor.role === 'MANAGER' ? await staffThreadUnread(actor, actor.id) : 0;
-  const staffQuestions = actor.role === 'HEAD' ? (await staffThreads(actor)).filter((row) => row.unread > 0) : [];
   // Справочник типов сопровождения на сводке больше не нужен: формы
   // одобрения уехали на экран заявки (решение Р-172).
-  // «Мои» дела руководителя — тот же набор, что у менеджера, по работам,
-  // где он сам менеджер; задержки остальных — «Контроль» после срока
-  // реакции (требование РК-05, решение Р-337). Набор строится выборками
-  // менеджера: роль здесь задаёт только сужение до своих работ.
-  const mine: typeof actor = actor.role === 'HEAD' ? { ...actor, role: 'MANAGER' } : actor;
-  const control = await controlItems(actor);
-  // Дела «акт и счёт» и «проверьте договор» — руководителю (РК-12, Р-338).
-  const checks = await openChecks(actor);
+  // Выборки «Требует внимания» — одним набором с числом у пункта меню
+  // «Сводка» (требование РК-04, решение Р-342): «Мои» дела руководителя по
+  // его работам и «Контроль» по остальным (РК-05, Р-337), дела «акт и
+  // счёт» (РК-12, Р-338), вопросы сотрудников (РК-07, Р-336).
+  const sources = await attentionSources(actor);
+  const parts = attentionParts(sources);
+  const { light, unread, today, outbox } = sources;
   const term = actor.role === 'HEAD' ? await reactionDays() : 0;
-  const [queue, light] = await Promise.all([
-    leadQueue(actor, Number.isFinite(requested) ? requested : 1),
-    trafficLight(mine),
-  ]);
+  const queue = await leadQueue(actor, Number.isFinite(requested) ? requested : 1);
   const leads = queue.rows;
 
   // Состояние заказов без денег: заказчик запретил выносить деньги на
@@ -172,22 +168,9 @@ export default async function ManageQueue({
   // менеджеру `scopeProjects` оставляет те, где он куратор. Деньги в строке
   // появляются только при праве на маржу (решение Р-175).
   const works = await activeWorks(actor);
-  const unread = await unreadInbox(mine);
-  // Замечание эксперта висит неопубликованным, пока его не пропустят, и
-  // клиенту не видно. Прежде о нём не говорил ни один экран (Р-183).
-  const moderation = await pendingComments(mine);
-  // Версия эксперта не видна клиенту до публикации (Т-18, Р-294).
-  const versionsToPublish = await pendingVersions(mine);
-  // Клиент вернул этап с замечаниями: ход за куратором (решение Р-283).
-  const returned = await returnedStages(mine);
-  // Новые дела «Сегодня»: принятый этап, работа без плана, без
-  // исполнителя или с исполнителем без доступа, заявки без ответа и в
-  // разборе; «На этой неделе» — отдельным блоком (требование М-06, Р-304).
-  const today = await todayItems(actor);
   // Состояние очереди уведомлений видит только руководитель (решение Р-154):
   // менеджеру служебная кухня не нужна, а недоставленное письмо — забота
   // того, кто отвечает за практику целиком.
-  const outbox = can(actor, 'AUDIT_VIEW') ? await outboxDigest(actor) : null;
 
   // Дашборд собирается только руководителю: деньги практики и её загрузка
   // целиком — его предмет, менеджеру на главной нужны свои дела
@@ -221,6 +204,19 @@ export default async function ManageQueue({
   const demand = demandAll.slice(0, 6);
   const demandTotal = demandAll.reduce((acc, item) => acc + item.orders, 0);
   const load = dashboard ? await stageLoad(actor) : null;
+  // «Ближайшие сроки» — все этапы действующих работ и срок работы без
+  // плана, сорванные сверху (требование РК-04, решение Р-342).
+  const deadlines = dashboard ? await upcomingDeadlines(actor) : [];
+  // «Получено» — с подписью периода: за 90 дней, как плитки, или за всё
+  // время. 90 дней — по дате поступления той же функцией, что отчёт за
+  // период (Р-236); за всё время — итог по траншам (Р-201).
+  const receivedAll = (await searchParams).received === 'all';
+  const received =
+    money === null
+      ? null
+      : receivedAll || !dashboard
+      ? money.received
+      : receivedBetween(analyticsRows, new Date(clockNow().getTime() - 90 * 86_400_000), clockNow());
   // Итоги по тому же ряду, что и столбцы: считать их заново неоткуда.
   const yearOrders = months.reduce((acc, month) => acc + month.orders, 0);
   const monthAverage =
@@ -241,7 +237,7 @@ export default async function ManageQueue({
   // без него оставляет решение на угадывание. Просрочка считается днями —
   // дату пришлось бы держать в уме.
   const attention = [
-    ...light.overdue.map((stage: (typeof light.overdue)[number]) => {
+    ...parts.overdue.map((stage: (typeof light.overdue)[number]) => {
       const late = overdueDays(stage.dueOn);
       const rest = maySeeMoney ? owed(stage.project.contract) : 0n;
       return {
@@ -273,7 +269,7 @@ export default async function ManageQueue({
     // Работа, у которой прошёл срок работы, а просроченного этапа нет, —
     // почти вся перенесённая книга: этапов у неё нет. Прежде такие работы
     // на сводку не попадали вовсе (решение Р-216).
-    ...light.lateWorks.map((work: (typeof light.lateWorks)[number]) => {
+    ...parts.late.map((work: (typeof light.lateWorks)[number]) => {
       const late = overdueDays(work.dueOn);
       const rest = maySeeMoney ? owed(work.contract) : 0n;
       return {
@@ -305,11 +301,7 @@ export default async function ManageQueue({
     }),
     // Этап, уже названный просроченным, второй плашкой «ждёт клиента» не
     // повторяется: одна работа стояла на сводке дважды (решение Р-206).
-    ...light.stalled
-      .filter((stage: (typeof light.stalled)[number]) =>
-        light.overdue.every((late: (typeof light.overdue)[number]) => late.id !== stage.id),
-      )
-      .map((stage: (typeof light.stalled)[number]) => ({
+    ...parts.stalled.map((stage: (typeof light.stalled)[number]) => ({
       key: `stalled-${stage.id}`,
       kind: 'stalled' as const,
       step: 0 as const,
@@ -325,7 +317,7 @@ export default async function ManageQueue({
       // куратор, и письмо практики гасит дело (требование М-21, Р-317, М-06).
       href: `/cabinet/projects/${stage.project.code}/messages?draft=remind#body`,
     })),
-    ...returned.map((stage) => ({
+    ...parts.returned.map((stage) => ({
       key: `returned-${stage.id}`,
       kind: 'returned' as const,
       step: 0 as const,
@@ -337,7 +329,7 @@ export default async function ManageQueue({
       href: `/cabinet/stages/${stage.id}`,
     })),
     // Вопрос сотрудника — пока руководитель его не прочитал (РК-07, Р-336).
-    ...staffQuestions.map((row) => ({
+    ...parts.staff.map((row) => ({
       key: `staff-${row.staffId}`,
       kind: 'unread' as const,
       step: 0 as const,
@@ -348,7 +340,7 @@ export default async function ManageQueue({
       todo: 'Прочитать и ответить в кабинете',
       href: `/cabinet/manage/team/${row.staffId}`,
     })),
-    ...unread.map((row) => ({
+    ...parts.unread.map((row) => ({
       key: `unread-${row.code}`,
       kind: 'unread' as const,
       step: 0 as const,
@@ -359,7 +351,7 @@ export default async function ManageQueue({
       todo: 'Ответить клиенту',
       href: `/cabinet/projects/${row.code}/messages`,
     })),
-    ...moderation.map((row) => ({
+    ...parts.comment.map((row) => ({
       key: `comment-${row.stageId ?? row.materialId}`,
       kind: 'comment' as const,
       step: 0 as const,
@@ -375,7 +367,7 @@ export default async function ManageQueue({
           ? `/cabinet/projects/${row.projectCode}/materials#material-${row.materialId}`
           : `/cabinet/stages/${row.stageId}`,
     })),
-    ...today.handedOver.map((row) => ({
+    ...parts.handover.map((row) => ({
       key: `handover-${row.href}`,
       kind: 'handover' as const,
       step: 0 as const,
@@ -386,7 +378,7 @@ export default async function ManageQueue({
       todo: 'Посмотреть материалы и записку куратора: на согласование или вернуть куратору',
       href: row.href,
     })),
-    ...today.accepted.map((row) => ({
+    ...parts.accepted.map((row) => ({
       key: `accepted-${row.href}`,
       kind: 'accepted' as const,
       step: 0 as const,
@@ -398,7 +390,7 @@ export default async function ManageQueue({
       href: row.href,
     })),
     // Куратор ждёт договор поручения — руководителю (Э-12, Р-331).
-    ...today.ndaWaiting.map((row) => ({
+    ...parts.ndaWaiting.map((row) => ({
       key: `nda-${row.id}`,
       kind: 'work' as const,
       step: 0 as const,
@@ -412,7 +404,7 @@ export default async function ManageQueue({
       todo: 'Оформить договор поручения и отметить его в «Учётных записях»',
       href: `/cabinet/manage/users#nda-${row.id}`,
     })),
-    ...today.noNda.map((row) => ({
+    ...parts.noNda.map((row) => ({
       key: `nonda-${row.code}`,
       kind: 'work' as const,
       step: 0 as const,
@@ -423,7 +415,7 @@ export default async function ManageQueue({
       todo: 'Без договора поручения куратор не видит материалов: договор отмечает руководитель',
       href: `/cabinet/projects/${row.code}#manage`,
     })),
-    ...today.noPlan.map((row) => ({
+    ...parts.noPlan.map((row) => ({
       key: `noplan-${row.code}`,
       kind: 'work' as const,
       step: 0 as const,
@@ -434,7 +426,7 @@ export default async function ManageQueue({
       todo: 'Завести план — по шаблону или вручную',
       href: `/cabinet/projects/${row.code}#manage`,
     })),
-    ...today.noExpert.map((row) => ({
+    ...parts.noExpert.map((row) => ({
       key: `noexpert-${row.code}`,
       kind: 'work' as const,
       step: 0 as const,
@@ -445,7 +437,7 @@ export default async function ManageQueue({
       todo: 'Назначить куратора',
       href: `/cabinet/projects/${row.code}#manage`,
     })),
-    ...today.lateLeads.map((lead) => ({
+    ...parts.lateLeads.map((lead) => ({
       key: `latelead-${lead.id}`,
       kind: 'lead' as const,
       step: 0 as const,
@@ -456,7 +448,7 @@ export default async function ManageQueue({
       todo: 'Разобрать заявку',
       href: `/cabinet/manage/leads/${lead.id}`,
     })),
-    ...today.reviewLeads.map((lead) => ({
+    ...parts.reviewLeads.map((lead) => ({
       key: `review-${lead.id}`,
       kind: 'lead' as const,
       step: 0 as const,
@@ -467,7 +459,7 @@ export default async function ManageQueue({
       todo: 'Довести разбор до решения',
       href: `/cabinet/manage/leads/${lead.id}`,
     })),
-    ...versionsToPublish.map((row) => ({
+    ...parts.version.map((row) => ({
       key: `version-${row.stageId ?? row.materialId}`,
       kind: 'version' as const,
       step: 0 as const,
@@ -483,22 +475,18 @@ export default async function ManageQueue({
     })),
     // Дело — только по отказам доставки: отключённый получателем канал и
     // отсутствие адреса чинить нечего (требование РК-02, решение Р-334).
-    ...(outbox !== null && outbox.deliveryFailed > 0
-      ? [
-          {
-            key: 'outbox',
-            kind: 'outbox' as const,
-            step: 0 as const,
-            title: 'Очередь уведомлений',
-            mark: `не доставлено ${outbox.deliveryFailed}`,
-            urgent: true,
-            detail: 'Письма и сообщения, не ушедшие после пяти попыток',
-            todo: 'Разобрать очередь и отправить заново',
-            href: '/cabinet/manage/outbox',
-          },
-        ]
-      : []),
-    ...checks.map((check) => ({
+    ...parts.outbox.map((digest) => ({
+      key: 'outbox',
+      kind: 'outbox' as const,
+      step: 0 as const,
+      title: 'Очередь уведомлений',
+      mark: `не доставлено ${digest.deliveryFailed}`,
+      urgent: true,
+      detail: 'Письма и сообщения, не ушедшие после пяти попыток',
+      todo: 'Разобрать очередь и отправить заново',
+      href: '/cabinet/manage/outbox',
+    })),
+    ...parts.check.map((check) => ({
       key: `check-${check.id}`,
       kind: 'check' as const,
       step: 0 as const,
@@ -513,7 +501,7 @@ export default async function ManageQueue({
       href: `/cabinet/projects/${check.project.code}/payments`,
     })),
     // «Контроль» — дело менеджера, не закрытое за срок реакции (РК-05).
-    ...control.map((row) => ({
+    ...parts.control.map((row) => ({
       key: row.key,
       kind: 'control' as const,
       step: 0 as const,
@@ -722,10 +710,10 @@ export default async function ManageQueue({
                 Мои · {shownAttention.filter((row) => row.kind !== 'control').length}
               </Heading>
               {attentionList(shownAttention.filter((row) => row.kind !== 'control'))}
-              {control.length === 0 ? null : (
+              {parts.control.length === 0 ? null : (
                 <>
                   <Heading level={3} size={3} style={{ margin: '20px 0 4px' }}>
-                    Контроль · {control.length}
+                    Контроль · {parts.control.length}
                   </Heading>
                   <Text muted size={13} style={{ marginBottom: 10 }}>
                     {`Дела менеджеров, не закрытые за ${term} ${plural(term, 'рабочий день', 'рабочих дня', 'рабочих дней')}: закрыть можно самому — ответить, опубликовать или разобрать.`}
@@ -785,14 +773,16 @@ export default async function ManageQueue({
               note={summary.paused > 0 ? `из них приостановлено ${summary.paused}` : 'сейчас ведутся'}
             />
             <Tile
-              label="Принято за квартал"
+              label="Принято за 90 дней"
               value={String(summary.startedLastQuarter)}
               note={delta(summary.startedLastQuarter, summary.startedPrevQuarter)}
             />
+            {/* Две цифры: сданная работа и отказ одним числом читались
+                одинаково (требование РК-04, решение Р-342). */}
             <Tile
-              label="Закрыто за квартал"
+              label="Закрыто за 90 дней"
               value={String(summary.closedLastQuarter)}
-              note={delta(summary.closedLastQuarter, summary.closedPrevQuarter)}
+              note={`завершено ${summary.completedLastQuarter} · отменено ${summary.cancelledLastQuarter}; ${delta(summary.closedLastQuarter, summary.closedPrevQuarter)}`}
             />
           </Tiles>
         </div>
@@ -926,6 +916,8 @@ export default async function ManageQueue({
                   они не повторяются (решение Р-216). */}
             </div>
             <Text muted size={13} style={{ marginTop: 10 }}>
+              {/* Тот же набор действующих, что у плиток (РК-04, Р-342). */}
+              {load.paused === 0 ? '' : `Из действующих приостановлено ${load.paused}. `}
               Состояние берётся у первого незавершённого этапа: он и есть то, где работа стоит
               сейчас. Работы, перенесённые из книги без плана, стоят своей строкой.
             </Text>
@@ -1006,40 +998,57 @@ export default async function ManageQueue({
                 Ближайшие сроки и деньги
               </Heading>
 
-              {load === null || load.soon.length === 0 ? (
+              {/* Этапы действующих работ и срок работы без плана — в окне
+                  двух недель и сорванные; у строки — чей ход, менеджер,
+                  куратор, пометка приостановленной (РК-04, Р-342). */}
+              {deadlines.length === 0 ? (
                 <Text muted size={14}>
-                  В ближайшие две недели сроков не назначено.
+                  В ближайшие две недели сроков нет, сорванных сроков нет.
                 </Text>
               ) : (
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
-                  {load.soon.slice(0, 5).map((row) => (
-                    <li
-                      key={row.id}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(0,1fr) auto',
-                        gap: 12,
-                        alignItems: 'baseline',
-                      }}
-                    >
-                      <a
-                        href={`/cabinet/stages/${row.id}`}
-                        className="cab-mark"
-                        style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
+                  {deadlines.slice(0, 5).map((row) => (
+                    <li key={row.key} style={{ display: 'grid', gap: 2 }}>
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'minmax(0,1fr) auto',
+                          gap: 12,
+                          alignItems: 'baseline',
+                        }}
                       >
-                        {row.stage} · {row.title}
-                      </a>
-                      <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
-                        {formatDate(row.dueOn)}
+                        <a
+                          href={row.href}
+                          className="cab-mark"
+                          style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
+                        >
+                          {row.stage === null ? row.title : `${row.stage} · ${row.title}`}
+                        </a>
+                        <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
+                          {formatDate(row.dueOn)}
+                        </Text>
+                      </div>
+                      <Text muted size={13}>
+                        {[
+                          row.late === null
+                            ? null
+                            : `просрочено ${row.late} ${plural(row.late, 'день', 'дня', 'дней')}`,
+                          row.stage === null ? 'срок работы, плана нет' : row.turn,
+                          `менеджер — ${row.manager}`,
+                          row.curator === null ? null : `куратор — ${row.curator}`,
+                          row.paused ? 'приостановлена' : null,
+                        ]
+                          .filter((part) => part !== null)
+                          .join(' · ')}
                       </Text>
                     </li>
                   ))}
                 </ul>
               )}
-              {load === null || load.soon.length <= 5 ? null : (
+              {deadlines.length <= 5 ? null : (
                 <Text muted size={13} style={{ marginTop: 10 }}>
-                  И ещё {load.soon.length - 5}{' '}
-                  {plural(load.soon.length - 5, 'срок', 'срока', 'сроков')} в том же окне.
+                  И ещё {deadlines.length - 5}{' '}
+                  {plural(deadlines.length - 5, 'срок', 'срока', 'сроков')} в том же окне.
                 </Text>
               )}
 
@@ -1054,7 +1063,11 @@ export default async function ManageQueue({
                 }}
               >
                 {[
-                  { key: 'got', label: 'Получено', value: formatPlain(money.received) },
+                  {
+                    key: 'got',
+                    label: receivedAll || !dashboard ? 'Получено за всё время' : 'Получено за 90 дней',
+                    value: formatPlain(received ?? money.received),
+                  },
                   { key: 'wait', label: 'К получению', value: formatPlain(money.awaiting) },
                   // Платежи со сроком раньше сегодняшнего дня. Не «остаток по
                   // работам с прошедшим сроком» отчёта и аналитики — там мера
@@ -1093,6 +1106,27 @@ export default async function ManageQueue({
                   </div>
                 ))}
               </dl>
+              {/* Переключатель периода «Получено» (РК-04, Р-342). */}
+              {!dashboard ? null : (
+                <Text muted size={13} style={{ marginTop: 10 }}>
+                  Получено:{' '}
+                  <a
+                    className="cab-mark"
+                    href="/cabinet/manage?received=90"
+                    aria-current={receivedAll ? undefined : 'true'}
+                  >
+                    за 90 дней
+                  </a>
+                  {' · '}
+                  <a
+                    className="cab-mark"
+                    href="/cabinet/manage?received=all"
+                    aria-current={receivedAll ? 'true' : undefined}
+                  >
+                    за всё время
+                  </a>
+                </Text>
+              )}
               <Text muted size={13} style={{ marginTop: 10 }}>
                 Суммы в рублях; остаток отменённых работ к получению не считается. Остаток
                 по каждой работе — на экране денег; просроченные платежи — на экранах оплат
@@ -1111,9 +1145,9 @@ export default async function ManageQueue({
           колонка ужимала все три и заставляла строки рваться посреди
           слова (решение Р-189). */}
       <Board columns={2}>
-        {/* «Ведутся сейчас» — только идущие работы: приостановленные сюда
-            не входят, и под «В работе» число расходилось с плиткой
-            «Действующих работ» выше (решение Р-257). */}
+        {/* «Ведутся сейчас» — тот же набор действующих, что у плитки
+            «Действующих работ»: идущие и приостановленные, приостановленные
+            — пометкой (Р-257; требование РК-04, решение Р-342). */}
         <BoardColumn
           title={`${summary === null ? 'Мои работы' : 'Ведутся сейчас'} · ${works.length}`}
           href="/cabinet/projects"
@@ -1122,6 +1156,12 @@ export default async function ManageQueue({
           {works.length === 0 ? (
             <Text muted>Действующих работ нет.</Text>
           ) : (
+            <>
+            {works.some((work) => work.paused) ? (
+              <Text muted size={13} style={{ marginBottom: 10 }}>
+                из них приостановлено {works.filter((work) => work.paused).length}
+              </Text>
+            ) : null}
             <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
               {works.map((work, index) => {
                 const late = overdueDays(work.dueOn);
@@ -1153,6 +1193,7 @@ export default async function ManageQueue({
                     <Text muted size={13}>
                       {work.client}
                       {work.stage === null ? '' : ` · ${work.stage}`}
+                      {work.paused ? ' · приостановлена' : ''}
                     </Text>
                     {/* Кто ведёт работу — руководителю, ссылкой на «Работы»
                         с отбором (требование РК-03, решение Р-341). */}
@@ -1202,6 +1243,7 @@ export default async function ManageQueue({
                 );
               })}
             </ul>
+            </>
           )}
         </BoardColumn>
 
