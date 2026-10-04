@@ -54,7 +54,7 @@ export default async function AnalyticsOverview() {
     <Frame
       actor={actor}
       current="/cabinet/manage/analytics"
-      title="Обзор практики"
+      title="Аналитика"
       lead="Величины считаются по данным системы: ни одна не введена вручную."
     >
       {rows.length === 0 ? (

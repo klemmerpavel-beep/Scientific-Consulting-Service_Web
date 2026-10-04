@@ -681,7 +681,8 @@ export default async function ManageQueue({
           (решение Р-201). Менеджеру аналитика закрыта, и кнопки у него
           нет вовсе. */}
       <ScreenHead
-        title={summary === null ? 'Работа на сегодня' : 'Практика'}
+        // Заголовок руководителя — как пункт меню (требование РК-14, Р-340).
+        title={summary === null ? 'Работа на сегодня' : 'Сводка'}
         answer={answer}
         action={
           dashboard ? <ButtonLink href="/cabinet/manage/report">Отчёт за период</ButtonLink> : undefined

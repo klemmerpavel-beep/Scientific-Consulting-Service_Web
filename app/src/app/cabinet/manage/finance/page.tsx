@@ -122,7 +122,7 @@ export default async function FinanceScreen({
   return (
     <Shell actor={actor} current="/cabinet/manage/finance">
       <ScreenHead
-        title="Договоры и расчёты"
+        title="Деньги"
         note="Маржа — сумма договора за вычетом списанного и начислений куратору; у исторических работ, где куратор не указан, начислений нет. «К получению» не считает отменённые работы: их неоплаченное учтено в потерях."
       />
       <Text style={{ marginBottom: 24 }}>

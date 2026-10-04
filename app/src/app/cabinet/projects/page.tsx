@@ -170,7 +170,7 @@ export default async function ProjectsScreen({
   // Менеджер видит только свои работы, и заголовок говорит это прямо — как
   // пункт меню (требование М-05, решение Р-305).
   const title =
-    forClient || actor.role === 'MANAGER' ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы практики';
+    forClient || actor.role === 'MANAGER' ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы';
   const live = (forClient || forExpert ? await liveWorks(actor) : [])
     .map((project) => ({
       project,

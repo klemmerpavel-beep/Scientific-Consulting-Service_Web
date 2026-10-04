@@ -57,3 +57,24 @@ describe('названия ролей у руководителя (РК-01)', ()
     }
   });
 });
+
+describe('заголовки экранов руководителя — как пункты меню (РК-14)', () => {
+  /** Текст заголовка первого уровня снимка. */
+  const h1 = (name: string) => {
+    const html = readFileSync(path.join(HEAD, name), 'utf8');
+    const match = /<h1[^>]*>([\s\S]*?)<\/h1>/u.exec(html);
+    return match === null ? null : match[1]!.replace(/<[^>]+>/gu, '').trim();
+  };
+  for (const [file, title] of [
+    ['manage/index.html', 'Сводка'],
+    ['projects/index.html', 'Работы'],
+    ['manage/finance/index.html', 'Деньги'],
+    ['manage/analytics/index.html', 'Аналитика'],
+    ['manage/tools/index.html', 'Управление'],
+    ['settings/index.html', 'Настройки'],
+  ] as const) {
+    it(`${file} — «${title}»`, () => {
+      assert.equal(h1(file), title);
+    });
+  }
+});
