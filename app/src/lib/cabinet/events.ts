@@ -39,7 +39,9 @@ export type EventKind =
   | 'ORDER_WITH_CONTRACT'
   | 'LEAD_RECEIVED'
   | 'CURATOR_INVITED'
-  | 'NDA_SIGNED';
+  | 'NDA_SIGNED'
+  | 'STAGE_HANDED_OVER'
+  | 'STAGE_HANDED_BACK';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -98,6 +100,8 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   LEAD_RECEIVED: 'заявка получена',
   CURATOR_INVITED: 'вам открыт кабинет куратора',
   NDA_SIGNED: 'доступ к материалам открыт',
+  STAGE_HANDED_OVER: 'куратор сдал этап',
+  STAGE_HANDED_BACK: 'этап возвращён вам',
 };
 
 /**

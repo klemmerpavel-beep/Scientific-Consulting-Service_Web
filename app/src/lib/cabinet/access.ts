@@ -109,6 +109,8 @@ export const ACTIONS = [
   'STAGE_SET_STATE',
   'STAGE_APPROVE',
   'STAGE_RETURN',
+  'STAGE_HAND_OVER',
+  'STAGE_HAND_BACK',
   'MATERIAL_VIEW',
   'MATERIAL_UPLOAD',
   'COMMENT_CREATE',
@@ -221,6 +223,16 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     // (решение Р-281).
     case 'STAGE_RETURN':
       return own;
+
+    // Сдать этап менеджеру и отозвать сдачу — действие назначенного
+    // куратора с договором поручения; вернуть сданный этап куратору с
+    // причиной — практики работы. Состояние этапа куратор по-прежнему не
+    // меняет (требование Э-05, решение Р-325).
+    case 'STAGE_HAND_OVER':
+      return assigned;
+
+    case 'STAGE_HAND_BACK':
+      return practice;
 
     // ── Переписка ─────────────────────────────────────────────────────────
     // Канал один: клиент — менеджер. Эксперт высказывается комментариями
@@ -584,6 +596,13 @@ export function expertLine(profile: { readonly degree: string | null; readonly s
 const HIDDEN_FROM_CLIENT: readonly string[] = ['EXPERT', 'MANAGER', 'HEAD'];
 
 /**
+ * Поля этапа, которые клиенту не отдаются: сдача этапа куратором
+ * менеджеру — внутреннее дело практики, для клиента этап остаётся «В
+ * работе» (требование Э-05, решение Р-325).
+ */
+const INTERNAL_FOR_CLIENT: readonly string[] = ['handedOverAt', 'handoverNote', 'handbackAt', 'handbackReason'];
+
+/**
  * Данные экрана клиента без ФИО и почты сотрудников (требование Т-11,
  * решение Р-297; Э-01, ответ ОЭ-3б).
  *
@@ -591,7 +610,8 @@ const HIDDEN_FROM_CLIENT: readonly string[] = ['EXPERT', 'MANAGER', 'HEAD'];
  * имени менеджера: клиент видит «Менеджер». Выборки брали имена вместе с
  * авторами версий, замечаний, сообщений и событий. Ограничение полей
  * снимает их с данных: у любого вложенного объекта с ролью сотрудника имя
- * и почта пустеют. Сотрудникам и эксперту данные отдаются как есть.
+ * и почта пустеют. Заодно снимаются служебные поля сдачи этапа куратором
+ * (Э-05, Р-325). Сотрудникам и куратору данные отдаются как есть.
  */
 export function withoutStaffNames<T>(viewer: Actor, value: T): T {
   if (viewer.role !== 'CLIENT') return value;
@@ -601,7 +621,9 @@ export function withoutStaffNames<T>(viewer: Actor, value: T): T {
     const proto = Object.getPrototypeOf(node);
     if (proto !== Object.prototype && proto !== null) return node;
     const out: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(node)) out[key] = walk(item);
+    for (const [key, item] of Object.entries(node)) {
+      if (!INTERNAL_FOR_CLIENT.includes(key)) out[key] = walk(item);
+    }
     const hidden = typeof out.role === 'string' && HIDDEN_FROM_CLIENT.includes(out.role);
     if (hidden && 'fullName' in out) out.fullName = '';
     if (hidden && 'email' in out) out.email = '';

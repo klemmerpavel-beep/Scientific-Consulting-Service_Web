@@ -2184,7 +2184,7 @@ export function BoardColumn({
  * (решение Р-206).
  */
 function panelAnswer(
-  current: { state: StageStateKey } | null,
+  current: { state: StageStateKey; handedOverAt?: Date | null } | null,
   total: number,
   staff: boolean,
   projectStatus?: string,
@@ -2205,7 +2205,7 @@ function panelAnswer(
     return staff ? 'Все этапы закрыты.' : 'Работа закрыта. Материалы остаются доступны здесь.';
   }
   if (!staff) return 'Сейчас от вас ничего не требуется — работа идёт.';
-  return `${turnLabel(current.state, turnViewer, hasExpert)}.`;
+  return `${turnLabel(current.state, turnViewer, hasExpert, current.handedOverAt ?? null)}.`;
 }
 
 export function ProgressPanel({
@@ -2229,7 +2229,8 @@ export function ProgressPanel({
 }: {
   done: number;
   total: number;
-  current: { title: string; state: StageStateKey } | null;
+  /** Этап, сданный куратором, — с датой сдачи (Э-05, Р-325). */
+  current: { title: string; state: StageStateKey; handedOverAt?: Date | null } | null;
   stageDueOn?: string | null;
   projectDueOn?: string | null;
   /** Срок прошёл: называется словом, не цветом (решение Р-206). */

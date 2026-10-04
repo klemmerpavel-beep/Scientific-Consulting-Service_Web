@@ -13,6 +13,8 @@
  * данных»». Служебным ролям и выгрузкам для практики поэтому отдаётся
  * свой перечень, где названо, кого ждут (решение Р-206).
  */
+import { formatDay } from './approval-text.ts';
+
 export const STAGE_STATE_LABEL = {
   NOT_STARTED: 'Не начат',
   IN_PROGRESS: 'В работе',
@@ -78,19 +80,31 @@ export type TurnViewer = 'curator' | 'foreign-head' | 'expert';
  * экране (требование М-17, решение Р-288).
  *
  * Прежде шкала писала «Ход за практикой» и «Ход за исполнителем», а экран
- * этапа и «Требует внимания» — «ход за вами»; эксперт читал о себе «ход за
- * исполнителем». Подписи — со стороны смотрящего (Р-206): «Ход за вами»,
- * «Ход за экспертом», «Ход за клиентом»; руководителю по чужой работе —
- * «Ход за куратором». Не начатый этап — ход и куратора, и эксперта:
- * главная эксперта так и считает (Р-207). Этап «в работе» без эксперта —
- * дело куратора: назначить эксперта.
+ * этапа и «Требует внимания» — «ход за вами». Подписи — со стороны
+ * смотрящего (Р-206): «Ход за вами», «Ход за куратором», «Ход за
+ * клиентом»; руководителю по чужой работе — «Ход за менеджером» (названия
+ * ролей — Р-321, Р-322). Этап «в работе» без куратора — дело менеджера:
+ * назначить куратора.
+ *
+ * Этап, сданный куратором (`handedOverAt`, требование Э-05, решение
+ * Р-325), остаётся «В работе», но ход у менеджера: куратор читает «Этап
+ * сдан {дата}: ход за менеджером».
  */
-export function turnLabel(state: StageStateKey, viewer: TurnViewer, hasExpert: boolean): string {
+export function turnLabel(
+  state: StageStateKey,
+  viewer: TurnViewer,
+  hasExpert: boolean,
+  handedOverAt: Date | null = null,
+): string {
   const curatorTurn = viewer === 'foreign-head' ? 'Ход за менеджером' : 'Ход за вами';
   switch (state) {
     case 'NOT_STARTED':
       return `${curatorTurn}: этап не начат`;
     case 'IN_PROGRESS':
+      if (handedOverAt !== null) {
+        const day = formatDay(handedOverAt);
+        return viewer === 'expert' ? `Этап сдан ${day}: ход за менеджером` : `${curatorTurn}: куратор сдал этап ${day}`;
+      }
       if (viewer === 'expert') return 'Ход за вами: этап в работе';
       return hasExpert ? 'Ход за куратором: этап в работе' : `${curatorTurn}: назначьте куратора`;
     case 'AWAITING_CLIENT':
@@ -100,4 +114,21 @@ export function turnLabel(state: StageStateKey, viewer: TurnViewer, hasExpert: b
     case 'DONE':
       return 'Этап закрыт';
   }
+}
+
+/** Где этап по сдаче куратором: не сдан, сдан или возвращён менеджером. */
+export type Handover = 'none' | 'handed' | 'handed-back';
+
+/**
+ * Пометка «сдан куратором» без нового состояния этапа (требование Э-05,
+ * решение Р-325): действует только у этапа «В работе».
+ */
+export function handoverOf(stage: {
+  readonly state: string;
+  readonly handedOverAt: Date | null;
+  readonly handbackAt: Date | null;
+}): Handover {
+  if (stage.state !== 'IN_PROGRESS') return 'none';
+  if (stage.handedOverAt !== null) return 'handed';
+  return stage.handbackAt !== null ? 'handed-back' : 'none';
 }

@@ -568,6 +568,12 @@ export async function assignExpert(
       where: { id: projectId },
       data: { expertId, expertRole: nextRole },
     });
+    // Новый куратор начинает со своего хода: сдача прежнего куратора гаснет
+    // (требование Э-05, решение Д-6 плана куратора).
+    await tx.stage.updateMany({
+      where: { projectId, handedOverAt: { not: null } },
+      data: { handedOverAt: null },
+    });
     await tx.projectEvent.create({
       data: {
         projectId,
@@ -1637,6 +1643,12 @@ export async function setStageState(
         // Повторная сдача гасит пометку «возвращён с замечаниями» и дело
         // куратора: замечания отработаны (решение Р-281).
         ...(to === 'IN_APPROVAL' ? { returnedAt: null, returnAckAt: null, outcome } : {}),
+        // Уход из «В работе» — решение менеджера по сдаче куратора: пометка
+        // «сдан», записка и возврат гаснут, отозвать сдачу уже нельзя
+        // (требование Э-05, решение Р-325).
+        ...(from === 'IN_PROGRESS'
+          ? { handedOverAt: null, handoverNote: null, handbackAt: null, handbackReason: null }
+          : {}),
         ...approvalFields,
       },
     });

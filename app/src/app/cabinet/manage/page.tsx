@@ -357,6 +357,17 @@ export default async function ManageQueue({
           ? `/cabinet/projects/${row.projectCode}/materials#material-${row.materialId}`
           : `/cabinet/stages/${row.stageId}`,
     })),
+    ...today.handedOver.map((row) => ({
+      key: `handover-${row.href}`,
+      kind: 'handover' as const,
+      step: 0 as const,
+      title: `${row.stageTitle} · ${row.projectTitle}`,
+      mark: 'куратор сдал этап',
+      urgent: false,
+      detail: `сдан ${formatDate(row.handedOverAt)}`,
+      todo: 'Посмотреть материалы и записку куратора: на согласование или вернуть куратору',
+      href: row.href,
+    })),
     ...today.accepted.map((row) => ({
       key: `accepted-${row.href}`,
       kind: 'accepted' as const,
@@ -467,6 +478,7 @@ export default async function ManageQueue({
     comment: 3,
     version: 3,
     accepted: 3,
+    handover: 3,
     work: 3,
     lead: 3,
     outbox: 1,

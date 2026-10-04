@@ -342,7 +342,8 @@ export async function liveWorks(actor: Actor) {
       status: true,
       stages: {
         orderBy: { position: 'asc' },
-        select: { id: true, title: true, state: true, dueOn: true },
+        // Сданный куратором этап — ход за менеджером (Э-05, Р-325).
+        select: { id: true, title: true, state: true, dueOn: true, handedOverAt: true },
       },
     },
   });
@@ -1136,6 +1137,7 @@ export async function pendingReview(actor: Actor, projectId: string): Promise<{ 
 export async function todayItems(actor: Actor) {
   const empty = {
     accepted: [] as { stageTitle: string; projectTitle: string; nextTitle: string | null; href: string }[],
+    handedOver: [] as { stageTitle: string; projectTitle: string; handedOverAt: Date; href: string }[],
     noPlan: [] as { code: string; title: string; client: string }[],
     noExpert: [] as { code: string; title: string; client: string }[],
     noNda: [] as { code: string; title: string; expert: string }[],
@@ -1168,6 +1170,7 @@ export async function todayItems(actor: Actor) {
           title: true,
           state: true,
           dueOn: true,
+          handedOverAt: true,
           changes: {
             where: { toState: 'DONE' },
             orderBy: { createdAt: 'desc' },
@@ -1179,7 +1182,7 @@ export async function todayItems(actor: Actor) {
     },
   });
 
-  const out = { ...empty, accepted: [...empty.accepted], noPlan: [...empty.noPlan], noExpert: [...empty.noExpert], noNda: [...empty.noNda], week: [...empty.week] };
+  const out = { ...empty, accepted: [...empty.accepted], handedOver: [...empty.handedOver], noPlan: [...empty.noPlan], noExpert: [...empty.noExpert], noNda: [...empty.noNda], week: [...empty.week] };
   for (const project of own) {
     const stages = project.stages;
     // Этап принят клиентом, по сроку или за клиента, а следующий не начат:
@@ -1195,6 +1198,18 @@ export async function todayItems(actor: Actor) {
           projectTitle: project.title,
           nextTitle: next?.title ?? null,
           href: next === null ? `/cabinet/projects/${project.code}/status?to=COMPLETED` : `/cabinet/stages/${next.id}`,
+        });
+      }
+    }
+    // Куратор сдал этап: решение за менеджером — на согласование или
+    // вернуть куратору с причиной (требование Э-05, решение Р-325).
+    for (const stage of stages) {
+      if (stage.state === 'IN_PROGRESS' && stage.handedOverAt !== null) {
+        out.handedOver.push({
+          stageTitle: stage.title,
+          projectTitle: project.title,
+          handedOverAt: stage.handedOverAt,
+          href: `/cabinet/stages/${stage.id}`,
         });
       }
     }

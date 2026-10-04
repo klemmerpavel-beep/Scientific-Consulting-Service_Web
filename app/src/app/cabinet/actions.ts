@@ -33,6 +33,7 @@ import {
   type MaterialKind,
 } from '../../lib/cabinet/materials';
 import { sendMessage } from '../../lib/cabinet/messages';
+import { handBackStage, handOverStage, recallHandover } from '../../lib/cabinet/handover';
 import {
   addPayout,
   addTranche,
@@ -270,6 +271,54 @@ export async function acknowledgeStageReturn(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось отметить замечания');
   }
   if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Сдать этап менеджеру с запиской (требование Э-05, решение Р-325). */
+export async function handOverStageAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const note = String(form.get('note') ?? '');
+  let failure: string | null = null;
+  try {
+    await handOverStage(actor, stageId, note);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сдать этап');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { note } }));
+  }
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Отозвать сдачу, пока менеджер не принял решение (Э-05). */
+export async function recallHandoverAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  let failure: string | null = null;
+  try {
+    await recallHandover(actor, stageId);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отозвать сдачу');
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Вернуть сданный этап куратору с причиной (Э-05, сторона М-25). */
+export async function handBackStageAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const reason = String(form.get('reason') ?? '');
+  let failure: string | null = null;
+  try {
+    await handBackStage(actor, stageId, reason);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось вернуть этап куратору');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { handback: reason } }));
+  }
   redirect(`/cabinet/stages/${stageId}`);
 }
 

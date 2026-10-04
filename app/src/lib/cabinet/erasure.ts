@@ -361,7 +361,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     });
     const stages = await tx.stage.updateMany({
       where: { projectId: { in: projectIds } },
-      data: { title: ERASED, blockedReason: null, summary: null, outcome: null },
+      data: { title: ERASED, blockedReason: null, summary: null, outcome: null, handoverNote: null, handbackReason: null },
     });
     // Назначение транша и комментарий начисления — тоже свободный текст:
     // туда писали «оплата Ивановой за гл. 2», а комментарий начисления

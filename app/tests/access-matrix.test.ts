@@ -105,6 +105,9 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   STAGE_APPROVE: [true, false, true, true],
   // Вернуть этап с замечаниями — право самого клиента (Р-281).
   STAGE_RETURN: [true, false, false, false],
+  // Сдать этап — куратору, вернуть куратору — практике (Э-05, Р-325).
+  STAGE_HAND_OVER: [false, true, false, false],
+  STAGE_HAND_BACK: [false, false, true, true],
   MATERIAL_VIEW: [true, true, true, true],
   MATERIAL_UPLOAD: [true, true, true, true],
   COMMENT_CREATE: [true, true, true, true],
@@ -195,6 +198,7 @@ describe('работа другого куратора', () => {
     'STAGE_EDIT',
     'STAGE_SET_STATE',
     'STAGE_APPROVE',
+    'STAGE_HAND_BACK',
     'MATERIAL_VIEW',
     'MATERIAL_UPLOAD',
     'COMMENT_CREATE',

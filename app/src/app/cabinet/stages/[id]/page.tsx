@@ -38,7 +38,7 @@ import { stageById } from '../../../../lib/cabinet/queries';
 import { daysPast } from '../../../../lib/cabinet/clock';
 import ActionError from '../../../../components/cabinet/ActionError';
 import CommentList from '../../../../components/cabinet/CommentList';
-import { stageStateButtons } from '../../../../lib/cabinet/stage-state';
+import { handoverOf, stageStateButtons } from '../../../../lib/cabinet/stage-state';
 import {
   PROJECT_STATUS_LABEL,
   type ProjectStatusKey,
@@ -47,6 +47,9 @@ import { requireActor } from '../../../../lib/cabinet/session';
 import {
   acknowledgeStageReturn,
   approveForClient,
+  handBackStageAction,
+  handOverStageAction,
+  recallHandoverAction,
   reopenStageAction,
   approveStage,
   changeStageState,
@@ -155,6 +158,22 @@ export default async function StageScreen({
           autoAccept: autoAcceptEnabled(),
         })
       : null;
+  // Сдача этапа куратором менеджеру — пометка без нового состояния
+  // (требование Э-05, решение Р-325).
+  const handover = handoverOf(stage);
+  const curatorView = actor.role === 'EXPERT';
+  const mayHandOver = state === 'IN_PROGRESS' && refusal === null && can(actor, 'STAGE_HAND_OVER', ref);
+  const mayHandBack = handover === 'handed' && can(actor, 'STAGE_HAND_BACK', ref);
+  // Сдать можно, когда приложена своя версия, не отклонённая менеджером (Д-3).
+  const ownVersions = stage.materials
+    .flatMap((material) => material.versions)
+    .filter((version) => version.uploadedById === actor.id && version.moderation?.status !== 'REJECTED').length;
+  // Последние материалы клиента — до трёх версий, новые сверху (Д-5).
+  const clientVersions = stage.materials
+    .flatMap((material) => material.versions.map((version) => ({ material, version })))
+    .filter((row) => row.version.uploadedBy.role === 'CLIENT')
+    .sort((a, b) => b.version.uploadedAt.getTime() - a.version.uploadedAt.getTime())
+    .slice(0, 3);
   const pendingComments = stage.materials.reduce(
     (sum, material) =>
       sum +
@@ -203,7 +222,115 @@ export default async function StageScreen({
           блоком: на экране куратора и без них до четырёх блоков (решения
           Р-183, Р-281). Описание целиком: клиент решает о согласовании,
           зная, что входило в этап (Р-190, Р-286). */}
-      {(stage.summary ?? '').trim() === '' && stage.blockedReason === null && lastReturn === undefined ? null : (
+      {/* Куратору — один блок «Что сделать сейчас»: задание, срок, причина
+          возврата, последние материалы клиента и сдача этапа менеджеру
+          (требование Э-05, решение Р-325). */}
+      {curatorView ? (
+        <Card style={{ marginBottom: 24, borderColor: 'var(--pd-accent-edge)' }}>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+            Что сделать сейчас
+          </Heading>
+          <Text muted size={13} style={{ marginBottom: 4 }}>
+            Задание
+          </Text>
+          <Text size={15} style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>
+            {(stage.summary ?? '').trim() === '' ? 'Менеджер не описал этап.' : stage.summary}
+          </Text>
+          <Text size={14} style={{ marginBottom: 12 }}>
+            {stage.dueOn === null
+              ? 'Срок этапа не назначен.'
+              : `Срок этапа — ${formatDate(stage.dueOn)}${
+                  late === null || state === 'DONE' ? '' : ` · прошёл ${late} ${plural(late, 'день', 'дня', 'дней')} назад`
+                }.`}
+          </Text>
+          {lastReturn === undefined ? null : (
+            <div style={{ marginBottom: 12 }}>
+              <Notice tone="quiet" role="status">
+                {`Клиент вернул этап с замечаниями ${formatDate(lastReturn.createdAt)}`}
+                {returnText === null ? null : (
+                  <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnText}</span>
+                )}
+              </Notice>
+            </div>
+          )}
+          {handover !== 'handed-back' || stage.handbackAt === null ? null : (
+            <div style={{ marginBottom: 12 }}>
+              <Notice tone="quiet" role="status">
+                {`Менеджер вернул этап ${formatDate(stage.handbackAt)}`}
+                <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>
+                  {stage.handbackReason}
+                </span>
+              </Notice>
+            </div>
+          )}
+          {stage.blockedReason === null ? null : (
+            <div style={{ marginBottom: 12 }}>
+              <Notice tone="quiet" role="status">
+                {stage.blockedReason}
+              </Notice>
+            </div>
+          )}
+          <Text muted size={13} style={{ marginBottom: 4 }}>
+            Последние материалы клиента
+          </Text>
+          {clientVersions.length === 0 ? (
+            <Text size={14} style={{ marginBottom: 12 }}>
+              Клиент материалов к этапу не прикладывал.
+            </Text>
+          ) : (
+            <ul style={{ margin: '0 0 12px', paddingLeft: 18 }}>
+              {clientVersions.map(({ material, version }) => (
+                <li key={version.id}>
+                  <Text size={14} style={{ margin: 0 }}>
+                    {material.title} · v{version.number} · {formatDate(version.uploadedAt)}
+                  </Text>
+                </li>
+              ))}
+            </ul>
+          )}
+          {handover === 'handed' && stage.handedOverAt !== null ? (
+            <>
+              <Notice tone="quiet" role="status">
+                {`Этап сдан ${formatDate(stage.handedOverAt)}: ход за менеджером.`}
+                {(stage.handoverNote ?? '').trim() === '' ? null : (
+                  <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>
+                    {stage.handoverNote}
+                  </span>
+                )}
+              </Notice>
+              {can(actor, 'STAGE_HAND_OVER', ref) && refusal === null ? (
+                <Form action={recallHandoverAction} inline style={{ marginTop: 12 }}>
+                  <input type="hidden" name="stageId" value={stage.id} />
+                  <Button tone="quiet">Отозвать сдачу</Button>
+                </Form>
+              ) : null}
+            </>
+          ) : mayHandOver ? (
+            ownVersions === 0 ? (
+              <Text muted size={13}>
+                Сдать этап менеджеру можно, когда к нему приложена ваша версия материала — загрузите её
+                ниже.
+              </Text>
+            ) : (
+              <Form action={handOverStageAction}>
+                <input type="hidden" name="stageId" value={stage.id} />
+                <Field
+                  label="Что сделано и на что обратить внимание клиента"
+                  name="note"
+                  scope="handover"
+                  multiline
+                  required
+                  defaultValue={draft.note ?? stage.handoverNote ?? ''}
+                  hint="Менеджер получит записку вместе с этапом; из неё он соберёт «Итог этапа» для клиента."
+                />
+                <FormActions>
+                  <Button>Сдать этап менеджеру</Button>
+                </FormActions>
+              </Form>
+            )
+          ) : null}
+        </Card>
+      ) : (stage.summary ?? '').trim() === '' && stage.blockedReason === null && lastReturn === undefined ? null : (
         <Block as="div" style={{ marginBottom: 24 }}>
           {(stage.summary ?? '').trim() === '' ? null : (
             <Text
@@ -241,6 +368,42 @@ export default async function StageScreen({
           )}
         </Block>
       )}
+
+      {/* Куратор сдал этап: записка, черновик итога и возврат с причиной
+          (требование Э-05, решение Р-325; сторона менеджера — М-25). */}
+      {mayHandBack && stage.handedOverAt !== null ? (
+        <Card style={{ marginBottom: 24, borderColor: 'var(--pd-accent-edge)' }}>
+          <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+            {`Куратор сдал этап ${formatDate(stage.handedOverAt)}`}
+          </Heading>
+          {(stage.handoverNote ?? '').trim() === '' ? null : (
+            <Text size={15} style={{ whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+              {stage.handoverNote}
+            </Text>
+          )}
+          <Text muted size={13} style={{ marginBottom: 12 }}>
+            Записка подставлена черновиком «Итога этапа» в форму перевода на согласование. Для клиента
+            этап остаётся «В работе».
+          </Text>
+          <Disclosure title="Вернуть куратору">
+            <Form action={handBackStageAction}>
+              <input type="hidden" name="stageId" value={stage.id} />
+              <Field
+                label="Причина возврата"
+                name="reason"
+                scope="handback"
+                multiline
+                required
+                defaultValue={draft.handback ?? ''}
+                hint="Куратор получит её письмом и увидит на экране этапа."
+              />
+              <FormActions>
+                <Button tone="quiet">Вернуть куратору</Button>
+              </FormActions>
+            </Form>
+          </Disclosure>
+        </Card>
+      ) : null}
 
       {!live && can(actor, 'STAGE_SET_STATE', ref) ? (
         <Block as="div" style={{ marginBottom: 24 }}>
@@ -290,6 +453,7 @@ export default async function StageScreen({
                 state,
                 actor.role === 'HEAD' && stage.project.managerId !== actor.id ? 'foreign-head' : 'curator',
                 stage.project.expertId !== null,
+                stage.handedOverAt,
               )}
             </span>
             {late === null ? null : (
@@ -539,7 +703,7 @@ export default async function StageScreen({
                   scope="submit"
                   multiline
                   required
-                  defaultValue={draft.outcome ?? stage.outcome ?? ''}
+                  defaultValue={draft.outcome ?? stage.outcome ?? stage.handoverNote ?? ''}
                   hint="Итог клиент читает над кнопками согласования и в письме."
                 />
                 <FormActions>

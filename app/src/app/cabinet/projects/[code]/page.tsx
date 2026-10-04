@@ -104,9 +104,21 @@ const EVENT_LABEL: Record<string, string> = {
   STAGE_RETURNED: 'Этап возвращён с замечаниями',
   VERSION_UPLOADED: 'Приложена новая версия материала',
   PROJECT_STATUS_CHANGED: 'Состояние работы изменено',
+  STAGE_HANDED_OVER: 'Куратор сдал этап менеджеру',
+  STAGE_HANDOVER_RECALLED: 'Куратор отозвал сдачу этапа',
+  STAGE_HANDED_BACK: 'Этап возвращён куратору',
 };
 
-const CLIENT_HIDDEN_EVENTS = new Set(['EXPERT_ASSIGNED']);
+/**
+ * Сдача этапа куратором — внутреннее дело практики: для клиента этап
+ * остаётся «В работе» (требование Э-05, решение Р-325).
+ */
+const CLIENT_HIDDEN_EVENTS = new Set([
+  'EXPERT_ASSIGNED',
+  'STAGE_HANDED_OVER',
+  'STAGE_HANDOVER_RECALLED',
+  'STAGE_HANDED_BACK',
+]);
 
 /**
  * Строка истории: что именно произошло, а не какого рода было событие.
@@ -154,6 +166,16 @@ function eventLine(
       contactHint: data.contactHint === true,
     });
     return text === null ? `${where} возвращён с замечаниями` : `${where} возвращён с замечаниями: ${text}`;
+  }
+
+  // Сдача этапа куратором и возврат ему — с номером и названием этапа;
+  // причина возврата — в строке (требование Э-05, решение Р-325).
+  if (kind === 'STAGE_HANDED_OVER' || kind === 'STAGE_HANDOVER_RECALLED' || kind === 'STAGE_HANDED_BACK') {
+    const where = stage === undefined ? 'этап' : `этап ${atPosition(data, stage)} «${stage.title}»`;
+    if (kind === 'STAGE_HANDED_OVER') return `Куратор сдал менеджеру ${where}`;
+    if (kind === 'STAGE_HANDOVER_RECALLED') return `Куратор отозвал сдачу: ${where}`;
+    const reason = typeof data.reason === 'string' && data.reason !== '' ? `: ${data.reason}` : '';
+    return `Менеджер вернул куратору ${where}${reason}`;
   }
 
   if (kind === 'STAGE_STATE_CHANGED') {
@@ -673,7 +695,11 @@ export default async function ProjectScreen({
           style={{ marginTop: 16, marginBottom: 20 }}
           done={done}
           total={stages.length}
-          current={current === null ? null : { title: current.title, state: current.state as StageStateKey }}
+          current={
+            current === null
+              ? null
+              : { title: current.title, state: current.state as StageStateKey, handedOverAt: current.handedOverAt ?? null }
+          }
           stageDueOn={current === null ? null : formatDate(current.dueOn)}
           projectDueOn={formatDate(project.dueOn)}
           stageLate={current !== null && daysPast(current.dueOn) !== null}

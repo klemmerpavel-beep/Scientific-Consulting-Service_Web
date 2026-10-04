@@ -207,6 +207,7 @@ export const RULE_EVENTS: readonly {
   // прежде узнавал о ней, только открыв кабинет (решение Р-282).
   { kind: 'STAGE_APPROVED', title: 'Этап согласован или принят по сроку', group: 'Приёмка этапа', roles: ['MANAGER', 'HEAD'] },
   { kind: 'STAGE_RETURNED', title: 'Клиент вернул этап с замечаниями', group: 'Приёмка этапа', roles: ['MANAGER', 'HEAD'] },
+  { kind: 'STAGE_HANDED_OVER', title: 'Куратор сдал этап', group: 'Приёмка этапа', roles: ['MANAGER', 'HEAD'] },
   // Материалы и замечания: замечание клиента и то, что ждёт публикации,
   // прежде до куратора не доходили (требование М-07, решение Р-300).
   { kind: 'VERSION_UPLOADED', title: 'Приложена новая версия материала', group: 'Материалы и замечания', roles: ['MANAGER', 'HEAD'] },

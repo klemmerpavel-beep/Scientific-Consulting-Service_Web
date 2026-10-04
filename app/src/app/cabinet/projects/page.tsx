@@ -220,10 +220,13 @@ export default async function ProjectsScreen({
               action: <ButtonLink href="/cabinet/request">Новая заявка</ButtonLink>,
             };
   } else if (forExpert && !awaitingNda) {
-    // Ход за экспертом — этап не начат или в работе; остальное ждёт
-    // клиента, и заданием ему не является.
+    // Ход за куратором — этап не начат или в работе и не сдан менеджеру;
+    // остальное ждёт клиента или менеджера, и заданием ему не является
+    // (требование Э-05, решение Р-325).
     const mine = live.filter(
-      (row) => row.stage !== null && (row.stage.state === 'IN_PROGRESS' || row.stage.state === 'NOT_STARTED'),
+      (row) =>
+        row.stage !== null &&
+        ((row.stage.state === 'IN_PROGRESS' && row.stage.handedOverAt === null) || row.stage.state === 'NOT_STARTED'),
     );
     const next =
       mine
@@ -238,7 +241,7 @@ export default async function ProjectsScreen({
             detail:
               live.length === 0
                 ? 'Действующих назначений нет.'
-                : 'Этапы ваших работ ждут клиента или закрыты; менеджер сообщит, когда продолжать.',
+                : 'Этапы ваших работ сданы менеджеру, ждут клиента или закрыты; менеджер сообщит, когда продолжать.',
           }
         : {
             lead: `Ход за вами в ${mine.length} ${plural(mine.length, 'работе', 'работах', 'работах')}.`,
