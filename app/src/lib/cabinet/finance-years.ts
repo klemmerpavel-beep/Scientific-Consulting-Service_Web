@@ -188,12 +188,31 @@ export async function saveYear(actor: Actor, input: YearInput): Promise<void> {
   });
 }
 
+/**
+ * Удалить введённые величины года (требование РК-15, решение Р-346).
+ * Посчитанные кабинетом величины остаются: удаляется только ввод. В журнал
+ * уходят прежние величины — спорную цифру и после удаления можно отнести к
+ * автору и дате (Р-156).
+ */
 export async function removeYear(actor: Actor, year: number): Promise<void> {
   ensure(actor, 'PAYMENT_EDIT');
-  await prisma.yearlyFinance.deleteMany({ where: { year } });
+  if (!Number.isInteger(year)) throw new Error('Год указывается числом');
+  const entered = await prisma.yearlyFinance.findUnique({
+    where: { year },
+    select: { revenue: true, costs: true, note: true },
+  });
+  if (entered === null) throw new Error(`Введённых величин за ${year} год нет: удалять нечего`);
+  const removed = await prisma.yearlyFinance.deleteMany({ where: { year } });
+  if (removed.count === 0) throw new Error('Год уже удалён: обновите страницу');
   await record(actor, {
     action: 'FINANCE_YEAR_REMOVE',
     objectType: 'YearlyFinance',
     objectId: String(year),
+    payload: {
+      year,
+      revenue: entered.revenue.toString(),
+      costs: entered.costs.toString(),
+      note: entered.note,
+    },
   });
 }

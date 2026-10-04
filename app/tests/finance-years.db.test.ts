@@ -172,6 +172,20 @@ describe('итоги по годам', { skip: !enabled }, async () => {
     assert.equal(row.counted.revenue, 100_000_00n);
   });
 
+  it('удаление года — запись в журнале с прежними величинами; повтор — отказ (РК-15, Р-346)', async () => {
+    const entry = await prisma.auditEvent.findFirst({
+      where: { action: 'FINANCE_YEAR_REMOVE', objectId: String(YEAR_PAID) },
+      orderBy: { occurredAt: 'desc' },
+    });
+    assert.ok(entry !== null, 'записи в журнале нет');
+    const payload = entry.payload as Record<string, unknown>;
+    assert.equal(payload.revenue, (130_000_00n).toString());
+    assert.equal(payload.costs, (30_000_00n).toString());
+    await assert.rejects(removeYear(head(), YEAR_PAID), /удалять нечего/u);
+    const manager: Actor = { ...head(), role: 'MANAGER' };
+    await assert.rejects(() => removeYear(manager, YEAR_PAID), AccessDenied);
+  });
+
   it('сводка закрыта всем, кроме руководителя', async () => {
     const manager: Actor = { ...head(), role: 'MANAGER' };
     await assert.rejects(() => yearlyRows(manager), AccessDenied);

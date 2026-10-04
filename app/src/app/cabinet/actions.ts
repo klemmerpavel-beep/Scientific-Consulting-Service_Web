@@ -45,7 +45,7 @@ import {
   setTrancheStatus,
   rescheduleTranche,
 } from '../../lib/cabinet/finance';
-import { saveYear } from '../../lib/cabinet/finance-years';
+import { removeYear, saveYear } from '../../lib/cabinet/finance-years';
 import { parseAmount, type TrancheStatus } from '../../lib/cabinet/money';
 import {
   addAlias,
@@ -1163,6 +1163,20 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);
+}
+
+/** Удалить введённый год — после подтверждения второй формой (РК-15, Р-346). */
+export async function removeFinanceYear(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/finance/years';
+  let failure: string | null = null;
+  try {
+    await removeYear(actor, Number(String(form.get('year') ?? '')));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось удалить год');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(`${back}?removed=1`);
 }
 
 /** «Должники»: перенести плановую дату транша с причиной (РК-10, Р-345). */

@@ -13,6 +13,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 
 const HEAD = path.join(import.meta.dirname, '..', '..', 'design', 'cabinet-prototype', 'head');
+const SRC_APP = path.join(import.meta.dirname, '..', 'src', 'app');
 
 /** Видимый текст снимка — без разметки и полосы прототипа. */
 function text(file: string): string {
@@ -77,4 +78,13 @@ describe('заголовки экранов руководителя — как 
       assert.equal(h1(file), title);
     });
   }
+});
+
+describe('экран этапа без строки исполнителя (РК-15, Р-346; Р-298)', () => {
+  it('строки «исполнитель» и поля исполнителя этапа на экране нет', () => {
+    const page = readFileSync(path.join(SRC_APP, 'cabinet', 'stages', '[id]', 'page.tsx'), 'utf8');
+    const visible = page.replace(/\/\/.*$/gmu, '').replace(/\/\*[\s\S]*?\*\//gu, '');
+    assert.doesNotMatch(visible, /исполнител/iu, 'на экране этапа есть «исполнитель»');
+    assert.doesNotMatch(visible, /stage\.expertId|stage\.expert\b/u, 'экран этапа выводит исполнителя этапа');
+  });
 });

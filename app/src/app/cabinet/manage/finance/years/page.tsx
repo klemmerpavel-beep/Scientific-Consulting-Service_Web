@@ -5,6 +5,7 @@ import Shell from '../../../../../components/cabinet/Shell';
 import { SANS } from '../../../../../components/cabinet/tokens';
 import {
   Button,
+  ButtonLink,
   Card,
   Empty,
   Field,
@@ -13,6 +14,7 @@ import {
   FormRow,
   Heading,
   LongTable,
+  Notice,
   ScreenHead,
   Text,
   plural,
@@ -27,7 +29,7 @@ import { yearlyRows } from '../../../../../lib/cabinet/finance-years';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { homeFor } from '../../../../../lib/cabinet/nav';
-import { saveFinanceYear } from '../../../actions';
+import { removeFinanceYear, saveFinanceYear } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,13 +43,18 @@ function gap(value: bigint | null): string {
 export default async function FinanceYearsScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; confirm?: string; removed?: string }>;
 }) {
   const actor = await requireActor('/cabinet/manage/finance/years');
   if (!can(actor, 'MARGIN_VIEW')) redirect(homeFor(actor));
 
   const { rows, datedByContract, undated } = await yearlyRows(actor);
   const editable = can(actor, 'PAYMENT_EDIT');
+  const flags = await searchParams;
+  // Удаление года — второй формой: ссылка «Удалить» открывает
+  // подтверждение с величинами года (требование РК-15, решение Р-346).
+  const entered = rows.filter((row) => row.entered !== null);
+  const confirming = editable ? (entered.find((row) => String(row.year) === flags.confirm) ?? null) : null;
 
   return (
     <Shell actor={actor} current="/cabinet/manage/finance">
@@ -58,7 +65,31 @@ export default async function FinanceYearsScreen({
         note="В строке года две величины рядом: введённая вами и посчитанная кабинетом по оплаченным траншам и выплатам кураторам. Пока история прошлых лет ведётся отдельно, они расходятся — колонка «расхождение» показывает, насколько, и считается по выручке. «Прибыль в кабинете» — выручка за вычетом выплаченного кураторам, без прочих расходов, поэтому с введённой прибылью она сопоставима лишь приблизительно."
       />
 
-      <ActionError id={(await searchParams).error} />
+      <ActionError id={flags.error} />
+      {flags.removed === '1' ? (
+        <div style={{ marginBottom: 16 }}>
+          <Notice tone="quiet">Введённые величины года удалены; запись — в журнале.</Notice>
+        </div>
+      ) : null}
+      {confirming === null || confirming.entered === null ? null : (
+        <Card style={{ marginBottom: 20 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+            Удалить введённые величины {confirming.year} года?
+          </Heading>
+          <Text style={{ marginBottom: 12 }}>
+            Выручка {formatAmount(confirming.entered.revenue)}, расходы{' '}
+            {formatAmount(confirming.entered.costs)}. Посчитанные кабинетом величины останутся; прежние
+            цифры сохранятся в журнале.
+          </Text>
+          <Form action={removeFinanceYear} inline>
+            <input type="hidden" name="year" value={confirming.year} />
+            <Button>Удалить год</Button>
+            <ButtonLink href="/cabinet/manage/finance/years" tone="quiet">
+              Отмена
+            </ButtonLink>
+          </Form>
+        </Card>
+      )}
 
       {rows.length === 0 ? (
         <Empty title="Годовых итогов пока нет">
@@ -147,6 +178,20 @@ export default async function FinanceYearsScreen({
               <Button>Сохранить год</Button>
             </FormActions>
           </Form>
+          {entered.length === 0 ? null : (
+            <Text muted size={13} style={{ marginTop: 16 }}>
+              Удалить введённый год:{' '}
+              {entered.map((row, index) => (
+                <span key={row.year}>
+                  {index === 0 ? '' : ' · '}
+                  <a className="cab-mark" href={`/cabinet/manage/finance/years?confirm=${row.year}`}>
+                    {row.year}
+                  </a>
+                </span>
+              ))}
+              . Сначала откроется подтверждение.
+            </Text>
+          )}
         </Card>
       ) : null}
     </Shell>
