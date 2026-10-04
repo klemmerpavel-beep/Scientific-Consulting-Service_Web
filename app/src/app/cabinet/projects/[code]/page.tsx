@@ -324,7 +324,8 @@ export default async function ProjectScreen({
   // здесь не помечается — отметку ставит открытие самой переписки.
   const thread = mayWrite ? (await listMessages(actor, project.id)).slice(-8) : [];
   const expertList = mayAssign ? await experts(actor) : [];
-  // Передать работу другому куратору может только руководитель (Р-149).
+  // Передать работу другому менеджеру может только руководитель (Р-149;
+  // названия ролей — РК-01).
   const maySetManager = can(actor, 'PROJECT_SET_MANAGER', ref);
   const curatorList = maySetManager ? await curators(actor) : [];
   // Материалы берутся своей выборкой: она уже сужает и сами материалы, и
@@ -1170,7 +1171,7 @@ export default async function ProjectScreen({
                   <input type="hidden" name="code" value={project.code} />
                   <ActionError id={errorId} slot="manager" />
                   <Select
-                    label="Передать работу"
+                    label="Передать работу другому менеджеру"
                     name="managerId"
                     defaultValue={draft.managerId ?? project.managerId}
                     hint="Клиент увидит смену менеджера: меняется тот, кому он пишет."
