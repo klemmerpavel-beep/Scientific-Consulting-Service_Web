@@ -633,15 +633,42 @@ export async function ownPayouts(actor: Actor) {
   const found = await prisma.expertPayout.findMany({
     where: scope,
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    include: { project: { select: { code: true, title: true } }, stage: { select: { title: true } } },
+    include: { project: { select: { code: true, title: true, expertId: true } }, stage: { select: { title: true } } },
   });
-  const rows = found.map((row) =>
-    closed ? { ...row, projectId: null, stageId: null, project: null, stage: null, comment: null } : row,
-  );
+  // Работа, переданная другому куратору, остаётся в истории начислений, но
+  // ссылкой на неё не служит: карточка куратору закрыта, и ссылка вела в
+  // «не найдено» (требование Э-13, решение Р-332). Чей теперь куратор —
+  // не отдаётся, только признак.
+  const rows = found.map(({ project, ...row }) => {
+    const handedOff = actor.role === 'EXPERT' && project.expertId !== actor.id;
+    return closed
+      ? { ...row, projectId: null, stageId: null, project: null, stage: null, comment: null, handedOff }
+      : { ...row, project: { code: project.code, title: project.title }, handedOff };
+  });
   return {
     rows,
     accrued: rows.reduce((acc, r) => acc + r.amount, 0n),
     paid: rows.filter((r) => r.status === 'PAID').reduce((acc, r) => acc + r.amount, 0n),
+  };
+}
+
+/**
+ * Своё вознаграждение куратора по одной работе — строка «Ваша работа» на
+ * карточке (требование Э-13, решение Р-332). `null` — начислений нет.
+ */
+export async function ownPayoutTotals(
+  actor: Actor,
+  projectId: string,
+): Promise<{ accrued: bigint; paid: bigint } | null> {
+  if (actor.role !== 'EXPERT' || !can(actor, 'PAYOUT_VIEW_OWN')) return null;
+  const rows = await prisma.expertPayout.findMany({
+    where: { expertId: actor.id, projectId },
+    select: { amount: true, status: true },
+  });
+  if (rows.length === 0) return null;
+  return {
+    accrued: rows.reduce((acc, row) => acc + row.amount, 0n),
+    paid: rows.filter((row) => row.status === 'PAID').reduce((acc, row) => acc + row.amount, 0n),
   };
 }
 

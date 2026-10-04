@@ -71,7 +71,7 @@ import {
 } from '../../../../lib/cabinet/queries';
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
 import { formatAmount } from '../../../../lib/cabinet/money';
-import { paymentDocumentLines } from '../../../../lib/cabinet/finance';
+import { ownPayoutTotals, paymentDocumentLines } from '../../../../lib/cabinet/finance';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import {
@@ -316,6 +316,8 @@ export default async function ProjectScreen({
   const expertContacts =
     project.expertId !== null && can(actor, 'CURATOR_CONTACTS_VIEW', ref) ? await curatorContacts(actor, ref) : [];
   const forExpert = actor.role === 'EXPERT';
+  // Своё вознаграждение по этой работе — в «Ваша работа» (Э-13, Р-332).
+  const myPayout = forExpert ? await ownPayoutTotals(actor, project.id) : null;
   const unread = mayWrite ? await unreadCount(actor, project.id) : 0;
   // Короткий разговор виден прямо на экране заказа: уходить за ним на
   // отдельный экран, чтобы прочитать три строки, незачем. Прочитанным он
@@ -927,6 +929,11 @@ export default async function ProjectScreen({
                 <span>
                   {materialCount} {plural(materialCount, 'материал', 'материала', 'материалов')}
                 </span>
+                {myPayout === null ? null : (
+                  <span>
+                    {`Вознаграждение по этой работе: начислено ${formatAmount(myPayout.accrued)} · выплачено ${formatAmount(myPayout.paid)}`}
+                  </span>
+                )}
               </div>
 
               <div>

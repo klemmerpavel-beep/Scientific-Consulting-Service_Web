@@ -73,6 +73,13 @@ export default async function PayoutScreen() {
                         её не отдаёт (решение Р-251). */}
                     {row.project === null ? (
                       <span style={{ color: 'var(--pd-ink-muted)' }}>откроется после договора поручения</span>
+                    ) : row.handedOff ? (
+                      /* Переданная работа куратору закрыта: ссылки нет,
+                         есть пометка (требование Э-13, решение Р-332). */
+                      <>
+                        {row.project.title}
+                        <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>работа передана</div>
+                      </>
                     ) : (
                       <a className="cab-mark" href={`/cabinet/projects/${row.project.code}`}>{row.project.title}</a>
                     )}
