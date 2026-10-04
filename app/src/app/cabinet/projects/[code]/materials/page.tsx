@@ -21,6 +21,7 @@ import {
   Text,
   authorName,
   formatDate,
+  versionState,
   formatSize,
   plural,
 } from '../../../../../components/cabinet/ui';
@@ -123,8 +124,12 @@ export default async function ProjectMaterialsScreen({
                       <span>{formatDate(version.uploadedAt)}</span>
                       <span>{authorName(version.uploadedBy, actor, version.uploadedById)}</span>
                       {/* Версия эксперта до публикации — с пометкой; клиенту
-                          её здесь нет вовсе (Т-18, Р-294). */}
-                      {version.moderation === null || version.moderation.status === 'PUBLISHED' ? null : (
+                          её здесь нет вовсе (Т-18, Р-294). У своей версии
+                          куратор видит и день публикации, и причину отказа
+                          (Э-06, Р-326). */}
+                      {version.moderation !== null && version.uploadedById === actor.id ? (
+                        <span style={{ color: 'var(--pd-ink)' }}>{versionState(version.moderation)}</span>
+                      ) : version.moderation === null || version.moderation.status === 'PUBLISHED' ? null : (
                         <span style={{ color: 'var(--pd-ink)' }}>
                           {version.moderation.status === 'PENDING' ? 'ждёт публикации' : 'не опубликована'}
                         </span>

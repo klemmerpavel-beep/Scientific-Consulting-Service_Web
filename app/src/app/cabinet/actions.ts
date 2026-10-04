@@ -420,35 +420,45 @@ export async function uploadMaterial(form: FormData): Promise<void> {
  * замечанием к той же версии — отдельной формы для этого не нужно
  * (решение Р-200).
  */
+/**
+ * Материал с пояснением из колонки «Ваша работа». Файл и пояснение
+ * проверяются до записи и сохраняются одной операцией; при отказе не
+ * сохраняется ничего, а название, пояснение и этап возвращаются в форму —
+ * файл браузер заново не подставляет (требование Э-06, решение Р-326).
+ */
 export async function uploadMaterialWithNote(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const file = form.get('file');
   const code = String(form.get('code') ?? '');
-  if (!(file instanceof File) || file.size === 0) {
-    redirect(await withError(`/cabinet/projects/${code}`, 'Файл не выбран'));
-  }
   const stageId = String(form.get('stageId') ?? '');
+  const title = String(form.get('title') ?? '');
+  const note = String(form.get('note') ?? '');
+  const draft = { title, note, stageId: stageId === '' ? 'none' : stageId };
+  if (!(file instanceof File) || file.size === 0) {
+    redirect(await withError(`/cabinet/projects/${code}`, 'Файл не выбран', { draft }));
+  }
   let failure: string | null = null;
   try {
-    const version = await uploadVersion(
+    await uploadVersion(
       actor,
       {
         projectId: String(form.get('projectId') ?? ''),
         stageId: stageId || null,
         materialId: null,
-        title: String(form.get('title') ?? '') || undefined,
+        title: title || undefined,
+        note,
         originalName: (file as File).name,
         contentType: (file as File).type || 'application/octet-stream',
         body: Buffer.from(await (file as File).arrayBuffer()),
       },
       await requestIp(),
     );
-    const note = String(form.get('note') ?? '').trim();
-    if (note.length > 0) await addComment(actor, version.id, note);
   } catch (error) {
     failure = reasonOf(error, UPLOAD_FAILED);
   }
-  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/projects/${code}`, `${failure}. Выберите файл ещё раз.`, { draft }));
+  }
 
   redirect(`/cabinet/projects/${code}`);
 }

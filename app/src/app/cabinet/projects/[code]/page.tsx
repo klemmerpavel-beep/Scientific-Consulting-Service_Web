@@ -29,6 +29,7 @@ import {
   plural,
   formatDate,
   formatDay,
+  versionState,
   formatSize,
   formatTime,
   type MaterialRow,
@@ -39,6 +40,7 @@ import { SANS } from '../../../../components/cabinet/tokens';
 import {
   CLOSED_FOR_PRACTICE,
   can,
+  contributionRefusal,
   staffExpertLine,
   curatorLine,
   EXPERT_ROLE_LABEL,
@@ -342,6 +344,34 @@ export default async function ProjectScreen({
   const done = stages.filter((stage) => stage.state === 'DONE').length;
   // Текущий этап — первый незавершённый; он и отвечает на вопрос «где работа».
   const current = stages.find((stage) => stage.state !== 'DONE') ?? null;
+  // Форма «Ваша работа» (требование Э-06, решение Р-326). В закрытой
+  // работе её нет; в поле «Этап» — этапы, открытые для загрузки. По
+  // умолчанию — этап, где ход за куратором: «В работе» и не сдан
+  // менеджеру; иначе текущий. «Без привязки к этапу» — явный выбор.
+  const workRefusal = contributionRefusal(actor, project.status, null);
+  const uploadStages = stages.filter(
+    (stage) => contributionRefusal(actor, project.status, stage.state) === null,
+  );
+  const curatorStage =
+    uploadStages.find((stage) => stage.state === 'IN_PROGRESS' && stage.handedOverAt === null) ??
+    (current !== null && uploadStages.includes(current) ? current : null);
+  const uploadStage = draft.stageId === 'none' ? '' : (draft.stageId ?? curatorStage?.id ?? '');
+  // Свои версии с состоянием: что ждёт публикации, что опубликовано и что
+  // отклонено с причиной — последние три по дате загрузки.
+  const myVersions = (withMaterials?.materials ?? [])
+    .flatMap((material) =>
+      material.versions
+        .filter((version) => version.uploadedById === actor.id && version.moderation !== null)
+        .map((version) => ({ material, version })),
+    )
+    .sort((a, b) => b.version.uploadedAt.getTime() - a.version.uploadedAt.getTime());
+  const myPendingVersions = myVersions.filter(({ version }) => version.moderation?.status === 'PENDING').length;
+  const pendingParts = [
+    myPendingVersions === 0
+      ? null
+      : `${myPendingVersions} ${plural(myPendingVersions, 'версия', 'версии', 'версий')}`,
+    myPending === 0 ? null : `${myPending} ${plural(myPending, 'замечание', 'замечания', 'замечаний')}`,
+  ].filter((part) => part !== null);
   // Действие клиента показывается только клиенту: загрузить материалы и
   // согласовать этап может лишь он, а эксперту и менеджеру та же фраза с
   // главной кнопкой читалась как задание им (решение Р-206).
@@ -796,28 +826,43 @@ export default async function ProjectScreen({
             href="/cabinet/payout"
             hrefLabel="вознаграждение"
             footer={
-              <Form action={uploadMaterialWithNote} encType="multipart/form-data">
-                <input type="hidden" name="projectId" value={project.id} />
-                <input type="hidden" name="code" value={project.code} />
-                <input type="hidden" name="stageId" value={current?.id ?? ''} />
-                <Field
-                  label="Название материала"
-                  name="title"
-                  required
-                  placeholder="Глава 2 диссертации"
-                />
-                <FileField label="Файл" name="file" required />
-                <Field
-                  label="Пояснение"
-                  name="note"
-                  multiline
-                  placeholder="Что сделано в этой редакции и на что смотреть в первую очередь"
-                  hint="Пояснение уходит замечанием к версии: клиент увидит его после публикации менеджером."
-                />
-                <FormActions>
-                  <Button>Приложить материал</Button>
-                </FormActions>
-              </Form>
+              mayUpload && workRefusal === null ? (
+                <Form action={uploadMaterialWithNote} encType="multipart/form-data">
+                  <input type="hidden" name="projectId" value={project.id} />
+                  <input type="hidden" name="code" value={project.code} />
+                  <Field
+                    label="Название материала"
+                    name="title"
+                    required
+                    placeholder="Глава 2 диссертации"
+                    defaultValue={draft.title ?? ''}
+                  />
+                  <Select label="Этап" name="stageId" defaultValue={uploadStage}>
+                    {uploadStages.map((stage) => (
+                      <option key={stage.id} value={stage.id}>
+                        {`Этап ${stage.position}: ${stage.title}`}
+                      </option>
+                    ))}
+                    <option value="">Без привязки к этапу</option>
+                  </Select>
+                  <FileField label="Файл" name="file" required />
+                  <Field
+                    label="Пояснение"
+                    name="note"
+                    multiline
+                    placeholder="Что сделано в этой редакции и на что смотреть в первую очередь"
+                    hint="Пояснение уходит замечанием к версии: клиент увидит его после публикации менеджером."
+                    defaultValue={draft.note ?? ''}
+                  />
+                  <FormActions>
+                    <Button>Приложить материал</Button>
+                  </FormActions>
+                </Form>
+              ) : workRefusal !== null && mayUpload ? (
+                <Text muted size={14}>
+                  {workRefusal}.
+                </Text>
+              ) : undefined
             }
           >
             <div style={{ display: 'grid', gap: 14 }}>
@@ -861,12 +906,23 @@ export default async function ProjectScreen({
               </div>
 
               <div>
-                <Mono>Ваши замечания</Mono>
+                <Mono>Ваши версии и замечания</Mono>
                 <Text size={14} style={{ marginTop: 6 }}>
-                  {myPending === 0
-                    ? 'Замечаний, ждущих публикации, нет.'
-                    : `Ждут публикации менеджером: ${myPending}. До неё клиент их не видит.`}
+                  {pendingParts.length === 0
+                    ? 'Версий и замечаний, ждущих публикации, нет.'
+                    : `Ждут публикации менеджером: ${pendingParts.join(' и ')}. До неё клиент их не видит.`}
                 </Text>
+                {myVersions.length === 0 ? null : (
+                  <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 4 }}>
+                    {myVersions.slice(0, 3).map(({ material, version }) => (
+                      <li key={version.id}>
+                        <Text muted size={13}>
+                          {`${material.title} · v${version.number} — ${versionState(version.moderation)}`}
+                        </Text>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               {current === null ? null : (

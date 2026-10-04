@@ -596,11 +596,18 @@ export function expertLine(profile: { readonly degree: string | null; readonly s
 const HIDDEN_FROM_CLIENT: readonly string[] = ['EXPERT', 'MANAGER', 'HEAD'];
 
 /**
- * Поля этапа, которые клиенту не отдаются: сдача этапа куратором
- * менеджеру — внутреннее дело практики, для клиента этап остаётся «В
- * работе» (требование Э-05, решение Р-325).
+ * Поля, которые клиенту не отдаются. Сдача этапа куратором менеджеру —
+ * внутреннее дело практики, для клиента этап остаётся «В работе»
+ * (требование Э-05, решение Р-325). День решения о публикации версии
+ * куратора — след модерации, его видит только куратор (Э-06, Р-326).
  */
-const INTERNAL_FOR_CLIENT: readonly string[] = ['handedOverAt', 'handoverNote', 'handbackAt', 'handbackReason'];
+const INTERNAL_FOR_CLIENT: readonly string[] = [
+  'handedOverAt',
+  'handoverNote',
+  'handbackAt',
+  'handbackReason',
+  'decidedAt',
+];
 
 /**
  * Данные экрана клиента без ФИО и почты сотрудников (требование Т-11,

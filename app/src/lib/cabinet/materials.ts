@@ -58,6 +58,12 @@ export interface UploadInput {
   readonly contractId?: string | null;
   /** Транш, к которому относятся счёт и акт. */
   readonly trancheId?: string | null;
+  /**
+   * Пояснение к версии — сохраняется замечанием к ней в той же операции:
+   * при отказе не сохраняется ни файл, ни пояснение (требование Э-06,
+   * решение Р-326).
+   */
+  readonly note?: string | null;
   readonly originalName: string;
   readonly contentType: string;
   readonly body: Buffer;
@@ -163,6 +169,14 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     }
   }
 
+  // Пояснение проверяется до записи: прежде файл ложился первым, а длинное
+  // пояснение отказывало потом — файл оставался, введённое терялось, и
+  // повтор давал дубль (требование Э-06, решение Р-326).
+  const note = (input.note ?? '').trim();
+  if (note.length > COMMENT_MAX) {
+    throw new Error(`Пояснение длиннее ${COMMENT_MAX} знаков: сократите его — ни файл, ни пояснение не сохранены`);
+  }
+
   if (input.body.byteLength === 0) throw new Error('Пустой файл не принимается');
   if (input.body.byteLength > MAX_UPLOAD_BYTES) {
     throw new Error(`Файл больше допустимых ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ`);
@@ -179,7 +193,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
 
   // Номер версии вычисляется и занимается в одной транзакции; от гонки
   // защищает уникальность пары «материал — номер» на стороне базы.
-  const { version, material, fresh, eventId } = await prisma.$transaction(async (tx) => {
+  const { version, material, fresh, eventId, comment } = await prisma.$transaction(async (tx) => {
     const current =
       input.materialId == null
         ? null
@@ -219,6 +233,10 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
       },
     });
     if (moderated) await tx.versionModeration.create({ data: { versionId: created.id } });
+    // Пояснение — замечанием к этой версии, в той же транзакции; откат
+    // версии при отказе записи байтов удаляет и его (каскад).
+    const remark = note === '' ? null : commentRow(actor, created.id, note);
+    const comment = remark === null ? null : await tx.versionComment.create({ data: remark.data, select: { id: true } });
 
     const event = moderated
       ? null
@@ -232,7 +250,13 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
           select: { id: true },
         });
 
-    return { version: created, material: target, fresh: current === null, eventId: event?.id ?? null };
+    return {
+      version: created,
+      material: target,
+      fresh: current === null,
+      eventId: event?.id ?? null,
+      comment: comment === null || remark === null ? null : { id: comment.id, held: remark.held, contactHint: remark.contactHint },
+    };
   });
 
   // Байты пишутся после строки: ключ объекта строится от номера версии,
@@ -336,8 +360,119 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     payload: { material: material.id, version: version.number, ...(moderated ? { moderated: true } : {}) },
     ip,
   });
+  if (comment !== null && project !== null) {
+    await commentAftermath(
+      actor,
+      {
+        projectId: input.projectId,
+        code: project.code,
+        title: project.title,
+        stageId: material.stageId,
+        materialTitle: material.title,
+        versionNumber: version.number,
+      },
+      comment,
+    );
+  }
 
   return version;
+}
+
+/**
+ * Строка замечания по правилам модерации. Замечание эксперта всегда
+ * проходит модерацию; замечание клиента с телефоном, адресом или ссылкой на
+ * мессенджер — тоже: прежде оно сразу становилось видно назначенному
+ * эксперту, и контакт уходил в обход куратора (решение Р-242). Автор видит
+ * своё замечание с отметкой «ожидает публикации».
+ */
+function commentRow(actor: Actor, versionId: string, text: string) {
+  const contactHint = hasContacts(text);
+  const held = actor.role === 'EXPERT' || (actor.role === 'CLIENT' && contactHint);
+  const published = !held;
+  const now = new Date();
+  return {
+    held,
+    contactHint,
+    data: {
+      versionId,
+      authorId: actor.id,
+      body: text,
+      moderationStatus: published ? ('PUBLISHED' as const) : ('PENDING' as const),
+      moderatedById: published ? actor.id : null,
+      moderatedAt: published ? now : null,
+      publishedAt: published ? now : null,
+    },
+  };
+}
+
+/**
+ * Сигналы и журнал после замечания — общие для замечания и пояснения к
+ * загруженной версии. Менеджеру — сигнал без текста (требование М-07,
+ * решение Р-300): замечание на модерации — одно письмо, пока в работе есть
+ * неразобранное; замечание клиента, опубликованное сразу, — каждое.
+ */
+async function commentAftermath(
+  actor: Actor,
+  ctx: {
+    readonly projectId: string;
+    readonly code: string;
+    readonly title: string;
+    readonly stageId: string | null;
+    readonly materialTitle: string;
+    readonly versionNumber: number;
+  },
+  comment: { readonly id: string; readonly held: boolean; readonly contactHint: boolean },
+): Promise<void> {
+  const where = ctx.stageId === null ? materialsLink(ctx.code) : stageLink(ctx.stageId);
+  if (comment.held) {
+    const [otherComments, versions] = await Promise.all([
+      prisma.versionComment.count({
+        where: {
+          id: { not: comment.id },
+          moderationStatus: 'PENDING',
+          version: { material: { projectId: ctx.projectId, deletedAt: null } },
+        },
+      }),
+      prisma.versionModeration.count({
+        where: { status: 'PENDING', version: { material: { projectId: ctx.projectId, deletedAt: null } } },
+      }),
+    ]);
+    if (otherComments + versions === 0) {
+      await notifyCurator(prisma, {
+        projectId: ctx.projectId,
+        actorId: actor.id,
+        eventKind: 'MODERATION_PENDING',
+        subject: `Ждут публикации: ${ctx.code}`,
+        body:
+          `Работа ${ctx.code} — ${ctx.title}.\n` +
+          'Появились замечания или версии куратора, которые ждут вашего решения: до него клиент их не видит.\n' +
+          where,
+        key: `moderation:${ctx.projectId}:${comment.id}`,
+        path: materialPath(ctx.code, ctx.stageId),
+      });
+    }
+  } else if (actor.role === 'CLIENT') {
+    await notifyCurator(prisma, {
+      projectId: ctx.projectId,
+      actorId: actor.id,
+      eventKind: 'CLIENT_COMMENT',
+      subject: `Клиент оставил замечание: ${ctx.materialTitle}`,
+      body:
+        `Работа ${ctx.code} — ${ctx.title}.\n` +
+        `Клиент оставил замечание к версии v${ctx.versionNumber} материала «${ctx.materialTitle}». Текст — в кабинете.\n` +
+        where,
+      key: `comment:${comment.id}:client`,
+      path: materialPath(ctx.code, ctx.stageId),
+    });
+  }
+  // В журнал — факт и признаки, без текста (решения Р-234, Р-239).
+  await record(actor, {
+    action: 'COMMENT_CREATED',
+    objectType: 'VersionComment',
+    objectId: comment.id,
+    projectId: ctx.projectId,
+    payload: { held: comment.held, contactHint: comment.contactHint },
+  });
 }
 
 /**
@@ -591,83 +726,21 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
     throw new Error(`Замечание длиннее ${COMMENT_MAX} знаков: разделите его на несколько`);
   }
 
-  // Замечание эксперта всегда проходит модерацию. Замечание клиента с
-  // телефоном, адресом или ссылкой на мессенджер — тоже: прежде оно сразу
-  // становилось видно назначенному эксперту, и контакт уходил в обход
-  // куратора (решение Р-242). Автор видит своё замечание с отметкой
-  // «ожидает публикации».
-  const contactHint = hasContacts(text);
-  const held = actor.role === 'EXPERT' || (actor.role === 'CLIENT' && contactHint);
-  const published = !held;
-  const comment = await prisma.versionComment.create({
-    data: {
-      versionId,
-      authorId: actor.id,
-      body: text,
-      moderationStatus: published ? 'PUBLISHED' : 'PENDING',
-      moderatedById: published ? actor.id : null,
-      moderatedAt: published ? new Date() : null,
-      publishedAt: published ? new Date() : null,
-    },
-  });
-  // Куратору — сигнал без текста (требование М-07, решение Р-300):
-  // замечание на модерации — одно письмо, пока в работе есть неразобранное;
-  // замечание клиента, опубликованное сразу, — каждое.
+  const remark = commentRow(actor, versionId, text);
+  const comment = await prisma.versionComment.create({ data: remark.data });
   const project = version.material.project;
-  const where =
-    version.material.stageId === null
-      ? materialsLink(project.code)
-      : stageLink(version.material.stageId);
-  if (held) {
-    const [otherComments, versions] = await Promise.all([
-      prisma.versionComment.count({
-        where: {
-          id: { not: comment.id },
-          moderationStatus: 'PENDING',
-          version: { material: { projectId: project.id, deletedAt: null } },
-        },
-      }),
-      prisma.versionModeration.count({
-        where: { status: 'PENDING', version: { material: { projectId: project.id, deletedAt: null } } },
-      }),
-    ]);
-    if (otherComments + versions === 0) {
-      await notifyCurator(prisma, {
-        projectId: project.id,
-        actorId: actor.id,
-        eventKind: 'MODERATION_PENDING',
-        subject: `Ждут публикации: ${project.code}`,
-        body:
-          `Работа ${project.code} — ${project.title}.\n` +
-          'Появились замечания или версии куратора, которые ждут вашего решения: до него клиент их не видит.\n' +
-          where,
-        key: `moderation:${project.id}:${comment.id}`,
-        path: materialPath(project.code, version.material.stageId),
-      });
-    }
-  } else if (actor.role === 'CLIENT') {
-    await notifyCurator(prisma, {
+  await commentAftermath(
+    actor,
+    {
       projectId: project.id,
-      actorId: actor.id,
-      eventKind: 'CLIENT_COMMENT',
-      subject: `Клиент оставил замечание: ${version.material.title}`,
-      body:
-        `Работа ${project.code} — ${project.title}.\n` +
-        `Клиент оставил замечание к версии v${version.number} материала «${version.material.title}». Текст — в кабинете.\n` +
-        where,
-      key: `comment:${comment.id}:client`,
-      path: materialPath(project.code, version.material.stageId),
-    });
-  }
-
-  // В журнал — факт и признаки, без текста (решения Р-234, Р-239).
-  await record(actor, {
-    action: 'COMMENT_CREATED',
-    objectType: 'VersionComment',
-    objectId: comment.id,
-    projectId: version.material.project.id,
-    payload: { held, contactHint },
-  });
+      code: project.code,
+      title: project.title,
+      stageId: version.material.stageId,
+      materialTitle: version.material.title,
+      versionNumber: version.number,
+    },
+    { id: comment.id, held: remark.held, contactHint: remark.contactHint },
+  );
   return comment;
 }
 

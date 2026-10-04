@@ -2632,6 +2632,23 @@ export function formatDay(value: Date): string {
   return `${day} ${MONTHS[month - 1]} ${year}`;
 }
 
+/**
+ * Состояние своей версии у куратора (требование Э-06, решение Р-326):
+ * «ждёт публикации», «опубликована {дата}» — днём решения менеджера по
+ * Москве, «отклонена: {причина}». `null` — у версии нет модерации: её
+ * загрузил менеджер или клиент.
+ */
+export function versionState(
+  moderation: { status: string; decidedAt?: Date | null; note: string | null } | null,
+): string | null {
+  if (moderation === null) return null;
+  if (moderation.status === 'PENDING') return 'ждёт публикации';
+  if (moderation.status === 'PUBLISHED') {
+    return moderation.decidedAt == null ? 'опубликована' : `опубликована ${formatDay(moderation.decidedAt)}`;
+  }
+  return moderation.note === null ? 'отклонена' : `отклонена: ${moderation.note}`;
+}
+
 /** Ключ дня: два сообщения одного дня дают одну строку. */
 function dayKey(value: Date): string {
   const { day, month, year } = moscow(value);

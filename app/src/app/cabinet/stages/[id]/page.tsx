@@ -17,6 +17,7 @@ import {
   stageLabel,
   Text,
   formatDate,
+  versionState,
   authorName,
   formatSize,
   plural,
@@ -101,6 +102,11 @@ const OFFER_LINK = {
   color: 'var(--pd-accent)',
   padding: '14px 0',
 } as const;
+
+/** Подпись состояния стоит отдельной строкой — с прописной буквы. */
+function sentence(text: string | null): string {
+  return text === null ? '' : text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 export default async function StageScreen({
   params,
@@ -811,6 +817,12 @@ export default async function StageScreen({
                             </>
                           ) : null}
                         </div>
+                      ) : version.uploadedById === actor.id ? (
+                        /* У своей версии куратор видит день публикации и
+                           причину отказа (Э-06, Р-326). */
+                        <Text muted size={14} style={{ marginTop: 10 }}>
+                          {sentence(versionState(version.moderation))}
+                        </Text>
                       ) : version.moderation.status === 'REJECTED' ? (
                         <Text muted size={14} style={{ marginTop: 10 }}>
                           {`Не опубликована клиенту${
