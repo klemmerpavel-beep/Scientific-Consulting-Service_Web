@@ -78,6 +78,11 @@ describe('замечания с виджета', { skip: !enabled }, async () =>
     if (root !== '') await rm(root, { recursive: true, force: true });
     await prisma.feedback.deleteMany({ where: { OR: [{ id: { in: created } }, { text: { contains: marker } }] } });
     await prisma.auditEvent.deleteMany({ where: { actorId: { in: users } } });
+    // Разбор и выгрузка по ключу идут без действующего лица (Р-279).
+    await prisma.auditEvent.deleteMany({ where: { actorId: null, objectId: { in: created } } });
+    await prisma.auditEvent.deleteMany({
+      where: { actorId: null, action: 'FEEDBACK_EXPORTED', occurredAt: { gte: new Date(stamp) } },
+    });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
   });
 
@@ -257,5 +262,68 @@ describe('замечания с виджета', { skip: !enabled }, async () =>
     const event = await prisma.auditEvent.findFirst({ where: { actorId: head.id, action: 'FEEDBACK_EXPORTED' } });
     assert.ok(event !== null);
     assert.equal((event.payload as { rows: number }).rows, book.rows);
+  });
+
+  describe('выгрузка и разбор по ключу (Р-279)', () => {
+    it('перечень: свежие сверху, отбор по состоянию, выгрузка в журнале без лица', async () => {
+      const all = await service.feedbackExportService.list(null);
+      const mine = all.filter((row) => row.text.includes(marker));
+      assert.equal(mine.length, created.length);
+      for (let i = 1; i < all.length; i += 1) {
+        assert.ok(all[i - 1]!.createdAt.getTime() >= all[i]!.createdAt.getTime());
+      }
+      const open = await service.feedbackExportService.list(['NEW', 'IN_WORK']);
+      assert.ok(open.every((row) => row.status === 'NEW' || row.status === 'IN_WORK'));
+      const event = await prisma.auditEvent.findFirst({
+        where: { actorId: null, action: 'FEEDBACK_EXPORTED', occurredAt: { gte: new Date(stamp) } },
+        orderBy: { occurredAt: 'desc' },
+      });
+      assert.ok(event !== null);
+      assert.equal((event.payload as { via: string }).via, 'key');
+    });
+
+    it('разбор частью полей: прочее остаётся, закрытие ставится, журнал помечен', async () => {
+      const id = await submit({ text: `Ключ: опечатка в подвале ${marker}`, path: '/students' });
+      const before = await prisma.feedback.findUniqueOrThrow({ where: { id } });
+
+      const fixed = await service.feedbackExportService.review(id, { status: 'FIXED', note: 'Исправлено в макете' });
+      assert.ok(fixed !== null);
+      assert.equal(fixed.status, 'FIXED');
+      assert.equal(fixed.severity, before.severity);
+      assert.equal(fixed.note, 'Исправлено в макете');
+      assert.ok(fixed.resolvedAt !== null);
+
+      const graded = await service.feedbackExportService.review(id, { severity: 'HIGH' });
+      assert.equal(graded!.status, 'FIXED');
+      assert.equal(graded!.note, 'Исправлено в макете');
+      assert.equal(graded!.resolvedAt!.getTime(), fixed.resolvedAt.getTime());
+
+      const reopened = await service.feedbackExportService.review(id, { status: 'IN_WORK' });
+      assert.equal(reopened!.resolvedAt, null);
+
+      const events = await prisma.auditEvent.findMany({ where: { objectId: id, action: 'FEEDBACK_REVIEWED' } });
+      assert.equal(events.length, 3);
+      assert.ok(events.every((e) => e.actorId === null && (e.payload as { via?: string }).via === 'key'));
+    });
+
+    it('разбор несуществующего — null, руководительский разбор журнал не помечает', async () => {
+      assert.equal(await service.feedbackExportService.review('нет-такого', { status: 'FIXED' }), null);
+      const id = await submit({ text: `Ключ: руководитель разбирает ${marker}`, path: '/main' });
+      await service.reviewFeedback(head, id, { status: 'REJECTED', severity: 'LOW', note: '' });
+      const event = await prisma.auditEvent.findFirstOrThrow({ where: { objectId: id, action: 'FEEDBACK_REVIEWED' } });
+      assert.equal(event.actorId, head.id);
+      assert.equal((event.payload as { via?: string }).via, undefined);
+    });
+
+    it('снимок по ключу — тот же, что у руководителя', async () => {
+      const id = await submit({ text: `Ключ: снимок ${marker}`, path: '/main', screenshot: PNG });
+      const file = await service.feedbackExportService.screenshot(id);
+      assert.ok(file !== null);
+      assert.equal(file.contentType, 'image/png');
+      assert.equal(file.sizeBytes, PNG.byteLength);
+      await file.stream.cancel();
+      const none = await submit({ text: `Ключ: без снимка ${marker}`, path: '/main' });
+      assert.equal(await service.feedbackExportService.screenshot(none), null);
+    });
   });
 });

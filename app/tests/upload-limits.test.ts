@@ -86,13 +86,29 @@ describe('пределы загрузки файлов', () => {
     const check = read('deploy/chain-check.sh').split('\n');
     for (const line of check) {
       if (!/PASSWORD|TOKEN|SECRET/u.test(line) || /^\s*#/u.test(line)) continue;
+      // Ключ выгрузки замечаний (Р-279) читается ради длины: отчёт сверяет,
+      // видит ли его работающее приложение, и печатает только итог.
       assert.match(
         line,
-        /\[ -[nz] "\$\(read_env [A-Z_]+\)" \]|^\s*pass=\$\(read_env YANDEX_DISK_PASSWORD\)$|^\s*(ok|off|bad) "/u,
+        new RegExp(
+          [
+            String.raw`\[ -[nz] "\$\(read_env [A-Z_]+\)" \]`,
+            String.raw`^\s*pass=\$\(read_env YANDEX_DISK_PASSWORD\)$`,
+            String.raw`^\s*key=\$\(read_env FEEDBACK_EXPORT_TOKEN\)$`,
+            String.raw`^\s*seen=\$\(\$COMPOSE exec -T web sh -c 'printf %s "\$FEEDBACK_EXPORT_TOKEN" \| wc -c' 2>/dev/null \| tr -d ' \\r'\)$`,
+            String.raw`^\s*(ok|off|bad) "`,
+          ].join('|'),
+          'u',
+        ),
         line,
       );
       // Строка отчёта называет переменную, но не подставляет значение.
       if (/^\s*(ok|off|bad) "/u.test(line)) assert.doesNotMatch(line, /\$\(read_env|\$pass|\$user/u, line);
+    }
+    // Значение ключа выгрузки не выводится нигде — только его длина `${#key}`.
+    for (const line of check) {
+      if (/^\s*#/u.test(line)) continue;
+      assert.doesNotMatch(line, /\$key\b|\$\{key\}/u, line);
     }
   });
 });
