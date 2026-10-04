@@ -58,7 +58,13 @@ export type ProjectFilter = 'active' | 'waiting' | 'done' | 'all';
  */
 export async function listProjects(
   actor: Actor,
-  { filter, query = '', page = 1 }: { filter?: ProjectFilter; query?: string; page?: number } = {},
+  {
+    filter,
+    query = '',
+    page = 1,
+    manager,
+    curator,
+  }: { filter?: ProjectFilter; query?: string; page?: number; manager?: string; curator?: string } = {},
 ) {
   const scope = scopeProjects(actor);
   if (scope === null) {
@@ -105,7 +111,14 @@ export async function listProjects(
           ],
         };
 
-  const where = { ...scope, ...byFilter, ...byQuery };
+  // Отбор по сотруднику — только руководителю: у менеджера выборка и так
+  // ограничена его работами, и параметр её не расширяет (требование
+  // РК-03, решение Р-341).
+  const byPerson =
+    actor.role === 'HEAD'
+      ? { ...(manager ? { managerId: manager } : {}), ...(curator ? { expertId: curator } : {}) }
+      : {};
+  const where = { ...scope, ...byFilter, ...byQuery, ...byPerson };
   const total = await prisma.project.count({ where });
   const pages = Math.max(1, Math.ceil(total / PROJECT_PAGE_SIZE));
   const current = Math.min(Math.max(1, Math.trunc(page) || 1), pages);
@@ -122,7 +135,9 @@ export async function listProjects(
       serviceType: { select: { name: true } },
       client: { select: { fullName: true } },
       // Исполнитель — в строке фактов у практики (требование М-16, Р-298).
-      expert: { select: { fullName: true, role: true, expertProfile: { select: { ndaSignedAt: true } } } },
+      expert: { select: { id: true, fullName: true, role: true, expertProfile: { select: { ndaSignedAt: true } } } },
+      // Менеджер — в строке фактов руководителя (РК-03, Р-341).
+      manager: { select: { id: true, fullName: true, role: true } },
       stages: { orderBy: { position: 'asc' } },
       // Число материалов показывается прямо в плашке перечня: сколько по
       // работе приложено, человек должен видеть, не заходя внутрь

@@ -17,6 +17,7 @@ import {
   Progress,
   ScreenHead,
   ScreenTop,
+  Select,
   Block,
   FilterBar,
   FilterSearch,
@@ -35,6 +36,8 @@ import {
   PROJECT_FILTER_FROM,
   listProjects,
   curatorTasksData,
+  curators,
+  experts,
   liveWorks,
   pendingActions,
   type ProjectFilter,
@@ -78,6 +81,8 @@ export default async function ProjectsScreen({
     filter: FILTERS.includes(sp.state as ProjectFilter) ? (sp.state as ProjectFilter) : undefined,
     query,
     page: Number(sp.page) || 1,
+    manager: sp.manager,
+    curator: sp.curator,
   });
   const filter = list.filter;
   const projects = list.rows;
@@ -142,11 +147,17 @@ export default async function ProjectsScreen({
       : stage.state === 'AWAITING_CLIENT'
         ? `Ждём материалов клиента: ${stage.title}`
         : `На согласовании у клиента: ${stage.title}`;
+  const forHead = actor.role === 'HEAD';
+  // Отбор по сотруднику — руководителю; сохраняется в адресе (РК-03, Р-341).
+  const person = forHead ? { manager: sp.manager ?? '', curator: sp.curator ?? '' } : { manager: '', curator: '' };
+  const [managerList, curatorChoices] = forHead ? await Promise.all([curators(actor), experts(actor)]) : [[], []];
   const href = (next: { state?: ProjectFilter; page?: number }) => {
     const params = new URLSearchParams();
     const state = next.state ?? filter;
     if (state !== 'all') params.set('state', state);
     if (query !== '') params.set('q', query);
+    if (person.manager !== '') params.set('manager', person.manager);
+    if (person.curator !== '') params.set('curator', person.curator);
     if ((next.page ?? 1) > 1) params.set('page', String(next.page));
     const tail = params.toString();
     return tail === '' ? '/cabinet/projects' : `/cabinet/projects?${tail}`;
@@ -347,7 +358,7 @@ export default async function ProjectsScreen({
         </Card>
       ) : null}
 
-      {showFilters ? (
+      {showFilters || forHead ? (
         <FilterBar>
           <Tabs
             flush
@@ -364,6 +375,27 @@ export default async function ProjectsScreen({
           <FilterSearch>
             <Form method="get" inline>
               {filter === 'all' ? null : <input type="hidden" name="state" value={filter} />}
+              {/* Отбор по менеджеру и куратору — руководителю (РК-03). */}
+              {forHead ? (
+                <>
+                  <Select label="Менеджер" name="manager" labelHidden defaultValue={person.manager} minWidth={180}>
+                    <option value="">Все менеджеры</option>
+                    {managerList.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.fullName}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select label="Куратор" name="curator" labelHidden defaultValue={person.curator} minWidth={180}>
+                    <option value="">Все кураторы</option>
+                    {curatorChoices.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.fullName}
+                      </option>
+                    ))}
+                  </Select>
+                </>
+              ) : null}
               <Field
                 label="Поиск по работам"
                 name="q"
@@ -519,8 +551,9 @@ export default async function ProjectsScreen({
                 ? null
                 : `${newMessages} ${plural(newMessages, 'новое сообщение', 'новых сообщения', 'новых сообщений')}`,
               forClient ? null : project.client.fullName,
-              // Исполнитель на виду у практики (требование М-16, ОМ-23).
-              forClient || forExpert ? null : staffExpertLine(project.expert, project.expertNameRaw),
+              // Исполнитель на виду у практики (требование М-16, ОМ-23);
+              // руководителю — менеджер и куратор ссылками ниже (РК-03).
+              forClient || forExpert || forHead ? null : staffExpertLine(project.expert, project.expertNameRaw),
             ].filter((fact) => fact !== null);
 
             const waiting = onPage.get(project.code) ?? null;
@@ -702,7 +735,7 @@ export default async function ProjectsScreen({
                     последний в плашке: раскрытие «Этапы» стоит над ним, и
                     у плашек ряда подвал встаёт на одни линии, есть план
                     или нет (Р-272). */}
-                {facts.length === 0 && project.dueOn === null ? (
+                {facts.length === 0 && project.dueOn === null && !forHead ? (
                   <span aria-hidden="true" style={{ marginTop: 'auto' }} />
                 ) : (
                   <div style={{ marginTop: 'auto', paddingTop: 10, display: 'grid', gap: 2 }}>
@@ -721,6 +754,37 @@ export default async function ProjectsScreen({
                     {facts.length === 0 ? null : (
                       <Text muted size={13} style={{ margin: 0 }}>
                         {facts.join(' · ')}
+                      </Text>
+                    )}
+                    {/* Руководителю — менеджер и куратор ссылками на
+                        «Работы» с отбором; ссылки поверх растянутой ссылки
+                        плашки (требование РК-03, решение Р-341). */}
+                    {!forHead ? null : (
+                      <Text muted size={13} style={{ margin: 0 }}>
+                        менеджер —{' '}
+                        <a
+                          className="cab-mark"
+                          style={{ position: 'relative', zIndex: 1 }}
+                          href={`/cabinet/projects?state=all&manager=${project.managerId}`}
+                        >
+                          {project.manager.fullName}
+                        </a>
+                        {' · '}
+                        {project.expert === null ? (
+                          staffExpertLine(null, project.expertNameRaw)
+                        ) : (
+                          <>
+                            {'куратор — '}
+                            <a
+                              className="cab-mark"
+                              style={{ position: 'relative', zIndex: 1 }}
+                              href={`/cabinet/projects?state=all&curator=${project.expertId}`}
+                            >
+                              {project.expert.fullName}
+                            </a>
+                            {project.expert.expertProfile?.ndaSignedAt == null ? ' · без договора поручения' : ''}
+                          </>
+                        )}
                       </Text>
                     )}
                   </div>

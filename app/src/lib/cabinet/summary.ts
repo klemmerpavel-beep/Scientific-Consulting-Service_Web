@@ -17,6 +17,9 @@ export interface ActiveWork {
   readonly code: string;
   readonly title: string;
   readonly client: string;
+  /** Менеджер и куратор работы — у руководителя (РК-03, Р-341). */
+  readonly manager: { readonly id: string; readonly fullName: string };
+  readonly expert: { readonly id: string; readonly fullName: string } | null;
   readonly dueOn: Date | null;
   /**
    * Деньги стоят `null` у того, кому они не открыты. Поля нет в объекте по
@@ -62,6 +65,9 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
       title: true,
       dueOn: true,
       client: { select: { fullName: true } },
+      // Кто ведёт работу — у руководителя в «Ведутся сейчас» (РК-03, Р-341).
+      manager: { select: { id: true, fullName: true } },
+      expert: { select: { id: true, fullName: true } },
       contract: { select: { totalAmount: true, tranches: { select: { amount: true, status: true } } } },
       stages: { orderBy: { position: 'asc' }, select: { title: true, state: true } },
     },
@@ -78,6 +84,8 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
       code: project.code,
       title: project.title,
       client: project.client.fullName,
+      manager: project.manager,
+      expert: project.expert,
       dueOn: project.dueOn,
       contracted: money ? contracted : null,
       received: money ? received : null,

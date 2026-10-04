@@ -304,7 +304,24 @@ export default async function FinanceScreen({
                       {row.title}
                     </a>
                   </td>
-                  <td style={TABLE_CELL}>{row.client}</td>
+                  <td style={TABLE_CELL}>
+                    {row.client}
+                    {/* Кто ведёт работу — ссылкой на «Работы» с отбором (РК-03). */}
+                    <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                      менеджер —{' '}
+                      <a className="cab-mark" href={`/cabinet/projects?state=all&manager=${row.manager.id}`}>
+                        {row.manager.fullName}
+                      </a>
+                      {row.expert === null ? null : (
+                        <>
+                          {' · куратор — '}
+                          <a className="cab-mark" href={`/cabinet/projects?state=all&curator=${row.expert.id}`}>
+                            {row.expert.fullName}
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  </td>
                   <td style={TABLE_NUM}>{formatAmount(row.contracted)}</td>
                   <td style={TABLE_NUM}>{formatAmount(row.received)}</td>
                   <td style={TABLE_NUM}>{formatAmount(row.awaiting)}</td>

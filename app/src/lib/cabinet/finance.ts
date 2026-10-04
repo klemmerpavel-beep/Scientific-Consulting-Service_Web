@@ -566,7 +566,17 @@ export async function financeSummary(actor: Actor) {
       orderBy: { project: { code: 'asc' } },
       include: {
         tranches: true,
-        project: { select: { code: true, title: true, status: true, client: { select: { fullName: true } } } },
+        project: {
+          select: {
+            code: true,
+            title: true,
+            status: true,
+            client: { select: { fullName: true } },
+            // Кто ведёт работу — в «Деньгах по работам» (РК-03, Р-341).
+            manager: { select: { id: true, fullName: true } },
+            expert: { select: { id: true, fullName: true } },
+          },
+        },
       },
     }),
     prisma.expertPayout.groupBy({ by: ['projectId'], _sum: { amount: true } }),
@@ -594,6 +604,8 @@ export async function financeSummary(actor: Actor) {
       code: contract.project.code,
       title: contract.project.title,
       client: contract.project.client.fullName,
+      manager: contract.project.manager,
+      expert: contract.project.expert,
       status: contract.project.status,
       contracted: contract.totalAmount,
       received,

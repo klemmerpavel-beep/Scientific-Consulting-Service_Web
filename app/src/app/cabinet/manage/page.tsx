@@ -1154,6 +1154,24 @@ export default async function ManageQueue({
                       {work.client}
                       {work.stage === null ? '' : ` · ${work.stage}`}
                     </Text>
+                    {/* Кто ведёт работу — руководителю, ссылкой на «Работы»
+                        с отбором (требование РК-03, решение Р-341). */}
+                    {actor.role !== 'HEAD' ? null : (
+                      <Text muted size={13}>
+                        менеджер —{' '}
+                        <a className="cab-mark" href={`/cabinet/projects?state=all&manager=${work.manager.id}`}>
+                          {work.manager.fullName}
+                        </a>
+                        {work.expert === null ? null : (
+                          <>
+                            {' · куратор — '}
+                            <a className="cab-mark" href={`/cabinet/projects?state=all&curator=${work.expert.id}`}>
+                              {work.expert.fullName}
+                            </a>
+                          </>
+                        )}
+                      </Text>
+                    )}
                     {/* Срок работы — строкой, без пилюли «просрочено N
                         дней»: число считалось от срока работы, а рядом
                         стояло название этапа, и та же работа выше, в
