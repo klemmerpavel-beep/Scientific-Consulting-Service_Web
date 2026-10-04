@@ -848,13 +848,24 @@ export default async function StageScreen({
                           <Form action={commentOnVersion}>
                             <input type="hidden" name="versionId" value={version.id} />
                             <input type="hidden" name="stageId" value={stage.id} />
+                            {/* У куратора — три подсказки (Э-07 в составе
+                                ответа С-1, решение Р-327): как писать
+                                замечание, когда его увидит клиент и где
+                                граница работы куратора. */}
                             <Field
                               label="Комментарий к текущей версии"
                               name="body"
                               scope={version.id}
                               multiline
                               required
+                              placeholder={curatorView ? 'Раздел — что не так — как исправить' : undefined}
+                              hint={curatorView ? 'Клиент увидит замечание после проверки менеджером.' : undefined}
                             />
+                            {curatorView ? (
+                              <Text muted size={13}>
+                                Замечания объясняют, что и почему исправить; текст работы пишет автор.
+                              </Text>
+                            ) : null}
                             <FormActions>
                               <Button tone="quiet">Отправить</Button>
                             </FormActions>
