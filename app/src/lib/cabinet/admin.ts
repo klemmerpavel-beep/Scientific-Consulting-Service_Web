@@ -11,6 +11,7 @@ import { record } from './audit.ts';
 import { moscowToday } from './clock.ts';
 import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
+import { parseAmount } from './money.ts';
 import { enqueue } from './outbox.ts';
 import { invitationLetter, ndaSignedLetter } from './curator-letters.ts';
 
@@ -341,13 +342,15 @@ export async function expertsForNda(actor: Actor) {
 }
 
 /**
- * Сотрудники с регалиями: эксперты, кураторы и руководители — все, а не
- * страница перечня (требование Т-11, решение Р-297).
+ * Менеджеры и руководители с регалиями — все, а не страница перечня
+ * (требование Т-11, решение Р-297). Форма остаётся для служебного учёта
+ * (ответ ОЭ-3в); профиль куратора правится отдельно — `curatorProfiles`
+ * (требование Э-11).
  */
 export async function staffForRegalia(actor: Actor) {
   ensure(actor, 'USER_MANAGE');
   return prisma.user.findMany({
-    where: { role: { in: ['EXPERT', 'MANAGER', 'HEAD'] }, status: { not: 'ERASED' } },
+    where: { role: { in: ['MANAGER', 'HEAD'] }, status: { not: 'ERASED' } },
     orderBy: [{ role: 'asc' }, { fullName: 'asc' }, { id: 'asc' }],
     select: {
       id: true,
@@ -391,6 +394,107 @@ export async function saveRegalia(
     objectType: 'ExpertProfile',
     objectId: userId,
     payload: { degree: data.degree !== null, specialization: data.specialization !== null, code: data.specialtyCode },
+  });
+}
+
+/** Кураторы с полным профилем — все, а не страница перечня (требование Э-11). */
+export async function curatorProfiles(actor: Actor) {
+  ensure(actor, 'USER_MANAGE');
+  return prisma.user.findMany({
+    where: { role: 'EXPERT', status: { not: 'ERASED' } },
+    orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      fullName: true,
+      expertProfile: {
+        select: {
+          degree: true,
+          academicTitle: true,
+          position: true,
+          specialtyCode: true,
+          specialization: true,
+          university: true,
+          defaultPayout: true,
+        },
+      },
+    },
+  });
+}
+
+export interface CuratorProfileInput {
+  readonly degree: string;
+  readonly academicTitle: string;
+  readonly position: string;
+  readonly specialtyCode: string;
+  readonly specialization: string;
+  readonly university: string;
+  /** Ставка по умолчанию в рублях; пустая строка — ставки нет. */
+  readonly defaultPayout: string;
+}
+
+/**
+ * Профиль куратора правит руководитель (требование Э-11): степень, звание,
+ * должность, научная специальность (шифр и название), вуз, ставка по
+ * умолчанию. Степень и специальность видит клиент (Т-11), поэтому их
+ * вносит тот, кто может их подтвердить; сам куратор профиль не правит.
+ * Пустые значения хранятся как `null` и клиенту не выводятся (Р-225).
+ * Ставка — подсказка: в начисление она не подставляется (Р-150). В журнал
+ * пишется перечень изменённых полей, ставка — суммой (Р-244).
+ */
+export async function saveCuratorProfile(actor: Actor, userId: string, input: CuratorProfileInput) {
+  ensure(actor, 'USER_MANAGE');
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      role: true,
+      status: true,
+      expertProfile: {
+        select: {
+          degree: true,
+          academicTitle: true,
+          position: true,
+          specialtyCode: true,
+          specialization: true,
+          university: true,
+          defaultPayout: true,
+        },
+      },
+    },
+  });
+  if (user === null || user.status === 'ERASED') throw new Error('Учётная запись не найдена');
+  if (user.role !== 'EXPERT') throw new Error('Профиль куратора ведётся только у куратора');
+  const clean = (value: string, limit: number, what: string) => {
+    const text = value.trim();
+    if (text.length > limit) throw new Error(`${what} — не длиннее ${limit} знаков`);
+    return text === '' ? null : text;
+  };
+  const payout = input.defaultPayout.trim();
+  const data = {
+    degree: clean(input.degree, 120, 'Учёная степень'),
+    academicTitle: clean(input.academicTitle, 120, 'Учёное звание'),
+    position: clean(input.position, 200, 'Должность'),
+    specialtyCode: clean(input.specialtyCode, 20, 'Шифр специальности'),
+    specialization: clean(input.specialization, 200, 'Научная специальность'),
+    university: clean(input.university, 300, 'Вуз'),
+    defaultPayout: payout === '' ? null : parseAmount(payout),
+  };
+  if (data.specialtyCode !== null && !/^\d+(\.\d+){1,3}$/u.test(data.specialtyCode)) {
+    throw new Error('Шифр специальности — цифрами через точку, например «1.3.8»');
+  }
+  const before = user.expertProfile;
+  const changed = (Object.keys(data) as (keyof typeof data)[]).filter(
+    (key) => (before?.[key] ?? null) !== data[key],
+  );
+  if (changed.length === 0) return;
+  await prisma.expertProfile.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+  await record(actor, {
+    action: 'CURATOR_PROFILE_SAVED',
+    objectType: 'ExpertProfile',
+    objectId: userId,
+    payload: {
+      changed,
+      ...(changed.includes('defaultPayout') ? { defaultPayout: data.defaultPayout?.toString() ?? null } : {}),
+    },
   });
 }
 

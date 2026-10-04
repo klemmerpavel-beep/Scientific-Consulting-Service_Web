@@ -50,6 +50,7 @@ import {
   removeCalendarDay,
   saveCalendarDay,
   saveRegalia,
+  saveCuratorProfile,
   removeStageTemplateItem,
   saveServiceType,
   saveStageTemplateItem,
@@ -1348,6 +1349,28 @@ export async function updateRegalia(form: FormData): Promise<void> {
     });
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить регалии');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/manage/users', failure));
+  redirect('/cabinet/manage/users');
+}
+
+/** Профиль куратора — правит руководитель (требование Э-11). */
+export async function updateCuratorProfile(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const field = (name: string) => String(form.get(name) ?? '');
+  let failure: string | null = null;
+  try {
+    await saveCuratorProfile(actor, field('userId'), {
+      degree: field('degree'),
+      academicTitle: field('academicTitle'),
+      position: field('position'),
+      specialtyCode: field('specialtyCode'),
+      specialization: field('specialization'),
+      university: field('university'),
+      defaultPayout: field('defaultPayout'),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить профиль куратора');
   }
   if (failure !== null) redirect(await withError('/cabinet/manage/users', failure));
   redirect('/cabinet/manage/users');

@@ -30,12 +30,14 @@ import {
   STATUS_LABEL,
   USER_PAGE_SIZE,
   accessLinkPeople,
+  curatorProfiles,
   expertsForNda,
   staffForRegalia,
   listUsers,
   type Role,
 } from '../../../../lib/cabinet/admin';
 import { requireActor } from '../../../../lib/cabinet/session';
+import { formatPlain } from '../../../../lib/cabinet/money';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { AccessLink } from '../../../../components/cabinet/AccessLink';
 import { mailConfigured } from '../../../../lib/cabinet/mail';
@@ -46,6 +48,7 @@ import {
   inviteUser,
   updateExpertNda,
   updateRegalia,
+  updateCuratorProfile,
 } from '../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -80,11 +83,12 @@ export default async function UsersScreen({
   // перечня в двадцать строк эксперты и нужные люди уходили на следующие
   // страницы (решение Р-225). Ссылка выдаётся только действующим записям:
   // приостановленной и обезличенной вход закрыт (решение Р-195).
-  const [list, experts, active, staffRegalia] = await Promise.all([
+  const [list, experts, active, staffRegalia, curators] = await Promise.all([
     listUsers(actor, { role, status, page: Number(flags.page ?? '1') }),
     expertsForNda(actor),
     accessLinkPeople(actor),
     staffForRegalia(actor),
+    curatorProfiles(actor),
   ]);
   const users = list.rows;
   // Текст блока зависит от того, настроена ли почта: с ней ссылка отсюда
@@ -375,16 +379,103 @@ export default async function UsersScreen({
         </Disclosure>
       )}
 
-      {/* Регалии сотрудников: клиент видит куратора со степенью и
-          специальностью, эксперта — степенью и шифром без имени
-          (требование Т-11, решение Р-297). Формы — под свёрткой, как
-          договоры поручения (Р-183). */}
+      {/* Профиль куратора правит руководитель: степень и специальность
+          видит клиент, поэтому их вносит тот, кто может их подтвердить
+          (требование Э-11, решение Р-324). Под свёрткой, как договоры
+          поручения (Р-183). */}
+      {curators.length === 0 ? null : (
+        <Disclosure title="Профиль куратора" style={{ marginTop: 20 }}>
+          <Text size={14} style={{ marginBottom: 14 }}>
+            Клиент видит куратора словом «Куратор», степенью и шифром специальности — без имени и
+            контактов; пустые поля не выводятся. Звание, должность, вуз и ставка — для практики. Ставка
+            по умолчанию — подсказка при начислении, в расчёт она не подставляется. Куратор свой профиль
+            не правит.
+          </Text>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
+            {curators.map((user) => (
+              <li key={user.id} id={`profile-${user.id}`} style={{ display: 'grid', gap: 8 }}>
+                <Text size={14} style={{ margin: 0 }}>
+                  {user.fullName}
+                </Text>
+                <Form action={updateCuratorProfile}>
+                  <input type="hidden" name="userId" value={user.id} />
+                  <FormRow>
+                    <Field
+                      label="Учёная степень"
+                      name="degree"
+                      scope={`profile-${user.id}`}
+                      placeholder="доктор технических наук"
+                      defaultValue={user.expertProfile?.degree ?? ''}
+                    />
+                    <Field
+                      label="Учёное звание"
+                      name="academicTitle"
+                      scope={`profile-${user.id}`}
+                      placeholder="профессор"
+                      defaultValue={user.expertProfile?.academicTitle ?? ''}
+                    />
+                    <Field
+                      label="Должность"
+                      name="position"
+                      scope={`profile-${user.id}`}
+                      placeholder="заведующий кафедрой"
+                      defaultValue={user.expertProfile?.position ?? ''}
+                    />
+                  </FormRow>
+                  <FormRow>
+                    <Field
+                      label="Шифр специальности"
+                      name="specialtyCode"
+                      scope={`profile-${user.id}`}
+                      placeholder="2.8.6"
+                      defaultValue={user.expertProfile?.specialtyCode ?? ''}
+                    />
+                    <Field
+                      label="Научная специальность"
+                      name="specialization"
+                      scope={`profile-${user.id}`}
+                      placeholder="Геомеханика, разрушение горных пород"
+                      defaultValue={user.expertProfile?.specialization ?? ''}
+                    />
+                  </FormRow>
+                  <FormRow>
+                    <Field
+                      label="Вуз"
+                      name="university"
+                      scope={`profile-${user.id}`}
+                      placeholder="Санкт-Петербургский горный университет"
+                      defaultValue={user.expertProfile?.university ?? ''}
+                    />
+                    <Field
+                      label="Ставка по умолчанию, ₽"
+                      name="defaultPayout"
+                      scope={`profile-${user.id}`}
+                      placeholder="15 000"
+                      defaultValue={
+                        user.expertProfile?.defaultPayout == null
+                          ? ''
+                          : formatPlain(user.expertProfile.defaultPayout)
+                      }
+                    />
+                  </FormRow>
+                  <FormActions>
+                    <Button tone="quiet">Сохранить профиль</Button>
+                  </FormActions>
+                </Form>
+              </li>
+            ))}
+          </ul>
+        </Disclosure>
+      )}
+
+      {/* Регалии менеджеров и руководителей — для служебного учёта:
+          клиенту имя и регалии менеджера не выводятся (Э-01, ответы ОЭ-3б
+          и ОЭ-3в; Т-11, Р-297). Формы — под свёрткой (Р-183). */}
       {staffRegalia.length === 0 ? null : (
         <Disclosure title="Регалии сотрудников" style={{ marginTop: 20 }}>
           <Text size={14} style={{ marginBottom: 14 }}>
-            Регалии менеджера ведутся для служебного учёта, клиенту они и имя менеджера не выводятся.
-            Куратора клиент видит словом «Куратор», степенью и специальностью, без имени и контактов.
-            Пустые поля не выводятся.
+            Регалии менеджера и руководителя ведутся для служебного учёта, клиенту они и имя менеджера
+            не выводятся. Пустые поля не выводятся.
           </Text>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
             {staffRegalia.map((user) => (
