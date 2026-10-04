@@ -45,11 +45,24 @@ const FOR_MANAGER: SettingsTexts = {
 };
 
 /**
- * Тексты экрана настроек для роли. Менеджеру — свои; руководителю и
- * эксперту пока прежние: требование М-20 касается экранов менеджера.
+ * Куратору — о событиях его работ; список способов связи видят менеджер
+ * его работ и руководитель (требование Э-10, решение Р-330).
+ */
+const FOR_CURATOR: SettingsTexts = {
+  lead: 'Уведомления приходят о событиях ваших работ: ход за вами, решение менеджера по вашей версии или замечанию, срок этапа, вознаграждение. Сумм и текстов материалов в уведомлениях нет.',
+  contactsLead: 'Менеджер ваших работ и руководитель видят этот список. Отметьте предпочтительный способ — с него и начнут.',
+  contactsEmpty: 'Способ связи не указан — менеджер напишет на почту учётной записи.',
+  deliveryLead: 'Это то, что система шлёт сама: письмо и Telegram. Звонков и сообщений в сетях здесь нет.',
+  consentTail: 'Отозвать его и потребовать удаления данных можно письмом руководителю практики или на',
+};
+
+/**
+ * Тексты экрана настроек для роли. Менеджеру и куратору — свои;
+ * руководителю пока прежние: требования М-20 и Э-10 касаются экранов
+ * менеджера и куратора.
  */
 export function settingsTexts(role: Role): SettingsTexts {
-  return role === 'MANAGER' ? FOR_MANAGER : FOR_CLIENT;
+  return role === 'MANAGER' ? FOR_MANAGER : role === 'EXPERT' ? FOR_CURATOR : FOR_CLIENT;
 }
 
 /**
@@ -70,19 +83,36 @@ const MANAGER_NOTE: Partial<Record<ContactKind, string>> = {
   FULL_SUPPORT: 'Услуга клиенту, сотруднику она не нужна — этот способ можно убрать.',
 };
 
+/**
+ * Пояснения для куратора: звонит и пишет ему менеджер его работ
+ * (требование Э-10, решение Р-330). Подписи — те же, что у менеджера:
+ * без «Звонка менеджера» и «Полного сопровождения».
+ */
+const CURATOR_NOTE: Partial<Record<ContactKind, string>> = {
+  EMAIL: 'Вопросы менеджера и уведомления приходят письмом.',
+  TELEGRAM: 'Уведомления — сообщением в Telegram, быстрее письма.',
+  PHONE_CALL: 'Менеджер звонит, когда вопрос по заданию быстрее решить голосом.',
+  MESSENGER: 'Менеджер пишет туда, где вам удобно отвечать.',
+  FULL_SUPPORT: 'Услуга клиенту, куратору она не нужна — этот способ можно убрать.',
+};
+
+/** Сотрудник практики: менеджер или куратор — подписи не для клиента. */
+const staffSide = (role: Role) => role === 'MANAGER' || role === 'EXPERT';
+
 /** Способы связи, которые роль может себе завести. */
 export function contactKindsFor(role: Role, kinds: readonly ContactKind[]): ContactKind[] {
-  return role === 'MANAGER' ? kinds.filter((kind) => kind !== 'FULL_SUPPORT') : [...kinds];
+  return staffSide(role) ? kinds.filter((kind) => kind !== 'FULL_SUPPORT') : [...kinds];
 }
 
 /** Подпись способа связи для роли; `base` — общая подпись. */
 export function contactLabelFor(role: Role, kind: ContactKind, base: Record<ContactKind, string>): string {
-  return (role === 'MANAGER' ? MANAGER_LABEL[kind] : undefined) ?? base[kind];
+  return (staffSide(role) ? MANAGER_LABEL[kind] : undefined) ?? base[kind];
 }
 
 /** Пояснение под способом связи для роли; `base` — общее пояснение. */
 export function contactNoteFor(role: Role, kind: ContactKind, base: Record<ContactKind, string>): string {
-  return (role === 'MANAGER' ? MANAGER_NOTE[kind] : undefined) ?? base[kind];
+  const own = role === 'MANAGER' ? MANAGER_NOTE[kind] : role === 'EXPERT' ? CURATOR_NOTE[kind] : undefined;
+  return own ?? base[kind];
 }
 
 /** Текст карточки вопроса руководителю: обещает только то, что есть. */

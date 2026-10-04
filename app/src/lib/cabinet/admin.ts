@@ -397,6 +397,27 @@ export async function saveRegalia(
   });
 }
 
+/**
+ * Свой профиль куратора — только чтение (требование Э-10, решение Р-330):
+ * регалии ведёт руководитель (Э-11, Р-324), куратор видит их и строку
+ * «Так вас видит клиент». Только своя запись: идентификатор — из сессии.
+ */
+export async function ownCuratorProfile(actor: Actor) {
+  if (actor.role !== 'EXPERT') return null;
+  return prisma.expertProfile.findUnique({
+    where: { userId: actor.id },
+    select: {
+      degree: true,
+      academicTitle: true,
+      position: true,
+      specialtyCode: true,
+      specialization: true,
+      university: true,
+      ndaSignedAt: true,
+    },
+  });
+}
+
 /** Кураторы с полным профилем — все, а не страница перечня (требование Э-11). */
 export async function curatorProfiles(actor: Actor) {
   ensure(actor, 'USER_MANAGE');

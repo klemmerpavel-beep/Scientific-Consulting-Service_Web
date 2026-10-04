@@ -115,6 +115,8 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   MESSAGE_READ: [true, false, true, true],
   MESSAGE_WRITE: [true, false, true, true],
   CONTACTS_VIEW: [false, false, true, true],
+  // Способы связи куратора — практике работы (Э-10, Р-330).
+  CURATOR_CONTACTS_VIEW: [false, false, true, true],
   // Открыть клиенту вход — куратору своей работы и руководителю (Р-285).
   CLIENT_ACCESS_OPEN: [false, false, true, true],
   CONTRACT_VIEW: [true, false, true, true],
@@ -206,6 +208,7 @@ describe('работа другого куратора', () => {
     'MESSAGE_READ',
     'MESSAGE_WRITE',
     'CONTACTS_VIEW',
+    'CURATOR_CONTACTS_VIEW',
     'CLIENT_ACCESS_OPEN',
     'CONTRACT_VIEW',
   ];
@@ -218,11 +221,18 @@ describe('работа другого куратора', () => {
   }
 
   it('без работы менеджеру разрешено то же, что прежде: перечни сужает выборка', () => {
-    // «Открыть клиенту вход» — не перечень, а действие над одной работой:
-    // без работы оно запрещено намеренно (Р-285), см. отдельную проверку.
-    for (const action of projectBound.filter((item) => item !== 'CLIENT_ACCESS_OPEN')) {
+    // «Открыть клиенту вход» и способы связи куратора — не перечни, а
+    // действия над одной работой: без работы они запрещены намеренно
+    // (Р-285, Р-330), см. отдельные проверки.
+    const single: Action[] = ['CLIENT_ACCESS_OPEN', 'CURATOR_CONTACTS_VIEW'];
+    for (const action of projectBound.filter((item) => !single.includes(item))) {
       assert.equal(can(manager, action, null), true, action);
     }
+  });
+
+  it('способы связи куратора без работы не открываются никому (Э-10, Р-330)', () => {
+    assert.equal(can(manager, 'CURATOR_CONTACTS_VIEW', null), false);
+    assert.equal(can(head, 'CURATOR_CONTACTS_VIEW', null), false);
   });
 
   it('дела практики без работы остаются менеджеру доступны', () => {

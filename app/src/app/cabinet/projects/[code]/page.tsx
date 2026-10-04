@@ -50,7 +50,8 @@ import {
   workClosed,
   type Actor,
 } from '../../../../lib/cabinet/access';
-import { CONTACT_LABEL, contactsOf } from '../../../../lib/cabinet/channels';
+import { CONTACT_LABEL, contactsOf, curatorContacts } from '../../../../lib/cabinet/channels';
+import { contactLabelFor } from '../../../../lib/cabinet/staff-texts';
 import { stageLabel } from '../../../../lib/cabinet/stage-state';
 import {
   PROJECT_STATUS_ACTION,
@@ -310,6 +311,10 @@ export default async function ProjectScreen({
       ? await contactsOf(actor, ref, project.client.userId)
       : [];
   const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref);
+  // Способы связи куратора — практике работы, в «О работе» рядом с ним
+  // (требование Э-10, решение Р-330; Р-298).
+  const expertContacts =
+    project.expertId !== null && can(actor, 'CURATOR_CONTACTS_VIEW', ref) ? await curatorContacts(actor, ref) : [];
   const forExpert = actor.role === 'EXPERT';
   const unread = mayWrite ? await unreadCount(actor, project.id) : 0;
   // Короткий разговор виден прямо на экране заказа: уходить за ним на
@@ -570,6 +575,18 @@ export default async function ProjectScreen({
             actor.role === 'MANAGER' || actor.role === 'HEAD'
               ? `${project.expert.fullName} · ${expertRoleLabel(project.expertRole).toLowerCase()}${project.expert.expertProfile?.ndaSignedAt == null ? ' · без договора поручения' : ''}`
               : expertLine(project.expert.expertProfile) || 'назначен',
+        },
+    expertContacts.length === 0
+      ? null
+      : {
+          term: 'Связь с куратором',
+          value: expertContacts
+            .map(
+              (contact) =>
+                `${contactLabelFor('EXPERT', contact.kind, CONTACT_LABEL)}${contact.value === null ? '' : ` — ${contact.value}`}` +
+                `${contact.preferred ? ' (предпочтительный)' : ''}${contact.note === null ? '' : `, ${contact.note}`}`,
+            )
+            .join('; '),
         },
   ].filter((row) => row !== null);
 

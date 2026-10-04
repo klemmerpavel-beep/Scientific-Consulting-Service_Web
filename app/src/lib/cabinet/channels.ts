@@ -86,6 +86,22 @@ export async function contactsOf(
   return rows as ContactRow[];
 }
 
+/**
+ * Способы связи куратора работы — менеджеру этой работы и руководителю
+ * (требование Э-10, решение Р-330; Р-298). Клиенту они не отдаются ни на
+ * экране, ни в данных: связь с куратором идёт через менеджера.
+ */
+export async function curatorContacts(actor: Actor, project: ProjectRef): Promise<ContactRow[]> {
+  ensure(actor, 'CURATOR_CONTACTS_VIEW', project);
+  if (project.expertId === null) return [];
+  const rows = await prisma.contactChannel.findMany({
+    where: { userId: project.expertId },
+    orderBy: [{ preferred: 'desc' }, { createdAt: 'asc' }],
+    select: { id: true, kind: true, value: true, note: true, preferred: true },
+  });
+  return rows as ContactRow[];
+}
+
 export interface ContactInput {
   readonly kind: ContactKind;
   readonly value?: string | null;

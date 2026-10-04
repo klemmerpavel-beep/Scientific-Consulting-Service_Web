@@ -1,7 +1,8 @@
 /**
  * Тексты по роли (требование М-20, решение Р-306): на экране настроек
  * менеджера нет обращений клиента; карточка вопроса не обещает ответа,
- * которого нет; в письме вопроса — как ответить спросившему.
+ * которого нет; в письме вопроса — как ответить спросившему. У куратора —
+ * свои тексты, без обращений к клиенту (требование Э-10, решение Р-330).
  */
 
 import assert from 'node:assert/strict';
@@ -58,6 +59,29 @@ describe('тексты экрана настроек по роли', () => {
     }
     assert.deepEqual(contactKindsFor('CLIENT', KINDS), [...KINDS]);
     assert.equal(contactLabelFor('CLIENT', 'PHONE_CALL', LABEL), 'Звонок менеджера');
+  });
+});
+
+describe('тексты экрана настроек куратора (Э-10)', () => {
+  it('без обращений к клиенту: список видят менеджер работ и руководитель', () => {
+    const texts = settingsTexts('EXPERT');
+    assert.notDeepEqual(texts, settingsTexts('CLIENT'));
+    assert.match(texts.contactsLead, /^Менеджер ваших работ и руководитель видят этот список/u);
+    for (const text of Object.values(texts)) {
+      for (const phrase of [/держится его/u, /менеджер будет писать/u, /Звонки и сообщения в сетях делает менеджер/u, /письмом менеджеру/u]) {
+        assert.doesNotMatch(text, phrase, `текст для клиента у куратора: ${text}`);
+      }
+    }
+  });
+
+  it('подписи способов связи куратора — без «Звонка менеджера» и «Полного сопровождения»', () => {
+    const kinds = contactKindsFor('EXPERT', KINDS);
+    assert.ok(!kinds.includes('FULL_SUPPORT'));
+    assert.equal(contactLabelFor('EXPERT', 'PHONE_CALL', LABEL), 'Звонок');
+    assert.match(contactNoteFor('EXPERT', 'PHONE_CALL', NOTE), /^Менеджер звонит, когда вопрос по заданию/u);
+    for (const kind of KINDS) {
+      assert.doesNotMatch(contactNoteFor('EXPERT', kind, NOTE), /ведёт работу сам|по важным поворотам работы/u, kind);
+    }
   });
 });
 

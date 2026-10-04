@@ -23,7 +23,8 @@ import {
   TableScroll,
 } from '../../../components/cabinet/ui';
 import { telegramBindAvailable } from '../../../lib/cabinet/auth';
-import { ownChannels } from '../../../lib/cabinet/admin';
+import { ownChannels, ownCuratorProfile } from '../../../lib/cabinet/admin';
+import { CURATOR_FOR_CLIENT, expertLine } from '../../../lib/cabinet/access';
 import {
   CONTACT_LABEL,
   CONTACT_NOTE,
@@ -60,11 +61,12 @@ export default async function SettingsScreen({
 }) {
   const actor = await requireActor('/cabinet/settings');
 
-  const [params, user, contacts, rules] = await Promise.all([
+  const [params, user, contacts, rules, profile] = await Promise.all([
     searchParams,
     ownChannels(actor),
     ownContacts(actor),
     ownRules(actor),
+    ownCuratorProfile(actor),
   ]);
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
   const failure = await flashText(params.error);
@@ -102,6 +104,57 @@ export default async function SettingsScreen({
 
         {params.saved === undefined ? null : (
           <Outcome>Настройки сохранены.</Outcome>
+        )}
+
+        {/* Профиль куратора — только чтение: регалии ведёт руководитель
+            (Э-11). Строка «Так вас видит клиент» собирается той же
+            функцией, что строка клиента в «О работе» (требование Э-10,
+            решение Р-330). */}
+        {actor.role !== 'EXPERT' ? null : (
+          <Card style={{ marginBottom: 20 }}>
+            <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+              Мой профиль
+            </Heading>
+            <Text muted size={14} style={{ marginBottom: 16 }}>
+              Профиль ведёт руководитель практики: если что-то указано неверно, напишите ему.
+            </Text>
+            <dl style={{ margin: '0 0 16px', display: 'grid', gap: 10 }}>
+              {[
+                { term: 'Учёная степень', value: profile?.degree },
+                { term: 'Учёное звание', value: profile?.academicTitle },
+                { term: 'Должность', value: profile?.position },
+                {
+                  term: 'Научная специальность',
+                  value: [profile?.specialtyCode, profile?.specialization].filter(Boolean).join(' — '),
+                },
+                { term: 'Вуз', value: profile?.university },
+                {
+                  term: 'Договор поручения',
+                  value:
+                    profile?.ndaSignedAt == null
+                      ? 'не отмечен — материалы клиентов закрыты'
+                      : `отмечен ${formatDate(profile.ndaSignedAt)}`,
+                },
+              ].map((row) => (
+                <div
+                  key={row.term}
+                  style={{ display: 'grid', gridTemplateColumns: 'minmax(0,170px) minmax(0,1fr)', gap: 14 }}
+                >
+                  <dt style={{ margin: 0 }}>
+                    <Text muted size={13}>
+                      {row.term}
+                    </Text>
+                  </dt>
+                  <dd style={{ margin: 0 }}>
+                    <Text size={14}>{row.value || 'не указано'}</Text>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <Text size={14}>
+              {`Так вас видит клиент: ${[CURATOR_FOR_CLIENT, expertLine(profile ?? null)].filter(Boolean).join(', ')}.`}
+            </Text>
+          </Card>
         )}
 
         {/* Способ связи — не канал доставки: звонить и писать в соцсети

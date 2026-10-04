@@ -118,6 +118,7 @@ export const ACTIONS = [
   'MESSAGE_READ',
   'MESSAGE_WRITE',
   'CONTACTS_VIEW',
+  'CURATOR_CONTACTS_VIEW',
   'CLIENT_ACCESS_OPEN',
   'CONTRACT_VIEW',
   'PAYMENT_EDIT',
@@ -245,6 +246,12 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     // ── Персональные данные ───────────────────────────────────────────────
     case 'CONTACTS_VIEW':
       return practice;
+
+    // Способы связи куратора — менеджеру работ, где он назначен, и
+    // руководителю; клиенту и другим кураторам — нет (требование Э-10,
+    // решение Р-330; Р-298).
+    case 'CURATOR_CONTACTS_VIEW':
+      return project !== null && practice;
 
     // Открыть клиенту своей работы вход в кабинет: создать учётную запись
     // по почте карточки и выдать разовую ссылку. Прежде это умел только
