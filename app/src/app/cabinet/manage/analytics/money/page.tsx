@@ -35,6 +35,7 @@ import {
   num,
 } from '../shared';
 import { now as clockNow } from '../../../../../lib/cabinet/clock';
+import { analyticsSince } from '../../../../../lib/cabinet/practice-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,8 @@ export default async function AnalyticsMoney() {
 
   const total = overview(rows);
   const months = byMonth(rows, now);
-  const season = seasonalNorm(rows, now);
+  // Окно нормы — с даты начала учёта по последний полный месяц (РК-16, Р-349).
+  const season = seasonalNorm(rows, now, await analyticsSince());
   const debts = receivables(rows, now);
   const overdue = debts.filter((debt) => debt.overdueDays !== null && debt.overdueDays > 0);
 
@@ -148,7 +150,7 @@ export default async function AnalyticsMoney() {
               </table>
             }
             title="Сезонная норма заказов"
-            note="Среднее число заказов месяца по наблюдавшимся годам. Знаменатель — фактически наблюдавшиеся месяцы, а не календарные годы: история начинается и заканчивается в середине года, и деление на число лет занижало бы крайние месяцы."
+            note="Среднее число заказов месяца по наблюдавшимся годам. Знаменатель — фактически наблюдавшиеся месяцы, а не календарные годы: история начинается и заканчивается в середине года, и деление на число лет занижало бы крайние месяцы. Учёт — с даты начала из «Справочников» по последний полный месяц; текущий неполный месяц не считается."
           >
             <BarChart
               title="Сезонная норма заказов"

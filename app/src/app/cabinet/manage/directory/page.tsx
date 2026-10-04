@@ -44,10 +44,11 @@ import {
   dropStageTemplate,
   saveCalendar,
   saveReaction,
+  saveAnalyticsSettings,
   saveStageTemplate,
   saveType,
 } from '../../actions';
-import { reactionDays } from '../../../../lib/cabinet/practice-settings';
+import { analyticsSince, confidenceThresholds, reactionDays } from '../../../../lib/cabinet/practice-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,6 +98,10 @@ export default async function DirectoryScreen({
   const colors = tab === 'colors' ? await listColorMap(actor) : [];
   const calendar = tab === 'calendar' ? await listCalendarDays(actor) : [];
   const reaction = tab === 'calendar' ? await reactionDays() : 1;
+  // Дата начала учёта и пороги уверенности календаря продвижения
+  // (требование РК-16, решение Р-349).
+  const since = tab === 'calendar' ? await analyticsSince() : null;
+  const thresholds = tab === 'calendar' ? await confidenceThresholds() : null;
 
   const href = (next: Tab) =>
     next === 'types' ? '/cabinet/manage/directory' : `/cabinet/manage/directory?tab=${next}`;
@@ -388,6 +393,28 @@ export default async function DirectoryScreen({
               <Button tone="quiet">Сохранить</Button>
             </Form>
           </Card>
+          {since === null || thresholds === null ? null : (
+            <Card style={{ marginBottom: 20 }}>
+              <Form action={saveAnalyticsSettings} inline>
+                <Field
+                  label="Дата начала учёта"
+                  name="since"
+                  type="date"
+                  defaultValue={since.toISOString().slice(0, 10)}
+                  hint="С неё считаются сезонные нормы и календарь продвижения; текущий неполный месяц не считается."
+                  minWidth={170}
+                />
+                <Field
+                  label="Пороги уверенности, наблюдений"
+                  name="thresholds"
+                  defaultValue={`${thresholds.sure}, ${thresholds.likely}, ${thresholds.maybe}`}
+                  hint="«Уверенно», «вероятно», «предположительно»; меньше последнего — «мало данных»."
+                  minWidth={170}
+                />
+                <Button tone="quiet">Сохранить</Button>
+              </Form>
+            </Card>
+          )}
           {calendar.length === 0 ? (
             <Empty title="Переносов нет">
               Срок согласования считается по правилу: понедельник–пятница без нерабочих праздничных

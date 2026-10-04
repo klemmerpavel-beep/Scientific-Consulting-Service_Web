@@ -42,6 +42,7 @@ import {
   type ProjectRow,
 } from "../../../../lib/cabinet/analytics/metrics";
 import { moscowToday, now as clockNow } from "../../../../lib/cabinet/clock";
+import { analyticsSince } from "../../../../lib/cabinet/practice-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -148,8 +149,10 @@ export default async function ReportScreen({
     (debt) => (debt.overdueDays ?? 0) > 0,
   );
   const debtSum = debts.reduce((acc, debt) => acc + debt.debt, 0n);
-  const advice = conclusions(all, today);
-  const digest = verdict(all, today);
+  // Сезонная норма — от даты начала учёта практики (РК-16, Р-349; ОР-6).
+  const since = await analyticsSince();
+  const advice = conclusions(all, today, since);
+  const digest = verdict(all, today, since);
 
   return (
     <Shell actor={actor} current="/cabinet/manage">

@@ -11,6 +11,7 @@ import { byMonth, collectionPercent, conclusions, overview, products, verdict } 
 import { formatAmount, formatRounded } from '../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num } from './shared';
 import { now as clockNow } from '../../../../lib/cabinet/clock';
+import { analyticsSince } from '../../../../lib/cabinet/practice-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,8 +43,10 @@ export default async function AnalyticsOverview() {
   const total = overview(rows);
   const months = byMonth(rows, now);
   const productRows = products(rows);
-  const outputs = conclusions(rows, now);
-  const digest = verdict(rows, now);
+  // Сезонная норма — от даты начала учёта практики (РК-16, Р-349; ОР-6).
+  const since = await analyticsSince();
+  const outputs = conclusions(rows, now, since);
+  const digest = verdict(rows, now, since);
 
   const period =
     total.period.from === null
@@ -111,7 +114,12 @@ export default async function AnalyticsOverview() {
             Каждый вывод несёт действие, срок и — где величина считается честно — оценку
             эффекта. Уверенность: «подтверждено числами» — прямой счёт по своим данным,
             «вероятно» — спрос проверен, но повторение не гарантировано, «под вопросом» —
-            решение спорное, зато потенциал наибольший.
+            решение спорное, зато потенциал наибольший. Когда продвигать каждый вид работ — в{' '}
+            {/* Календарь продвижения (требование РК-16, решение Р-349). */}
+            <a className="cab-mark" href="/cabinet/manage/recommendations/calendar">
+              «Календаре продвижения»
+            </a>
+            .
           </Text>
           {/* Не больше двух плашек в ряду (решение Р-189). */}
           <div

@@ -407,6 +407,40 @@ export interface SeasonalNorm {
   readonly norm: number;
   readonly orders: number;
   readonly yearsObserved: number;
+  /** Заказы месяца по годам, в которых он наблюдался: «по годам 3 и 1». */
+  readonly years: readonly { readonly year: number; readonly orders: number }[];
+}
+
+/**
+ * Дата начала учёта по умолчанию — 1 сентября 2024 года: строки книги до
+ * этой даты единичны, и их месяцы занижали нормы (требование РК-16,
+ * решение Р-349; ответ ОР-6). Практика меняет её в «Справочниках».
+ */
+export const ANALYTICS_SINCE_DEFAULT = new Date(Date.UTC(2024, 8, 1));
+
+const monthKey = (date: Date) => date.getUTCFullYear() * 12 + date.getUTCMonth();
+
+/**
+ * Окно наблюдения сезонной нормы — одно правило для всех экранов (ОР-6):
+ * - с месяца даты начала учёта, а если заказы начались позже — с месяца
+ *   первого заказа;
+ * - по последний полный месяц: текущий неполный не считается;
+ * - месяц — московский.
+ * Возвращает ключи месяцев `год × 12 + месяц`; окна нет — `null`.
+ */
+export function normWindow(
+  rows: readonly ProjectRow[],
+  controlDate: Date,
+  since: Date = ANALYTICS_SINCE_DEFAULT,
+): { readonly startKey: number; readonly endKey: number } | null {
+  const sinceKey = monthKey(since);
+  const endKey = monthKey(moscowToday(controlDate)) - 1;
+  const keys = rows
+    .filter((row) => row.startedOn !== null && row.startedOn.getTime() >= since.getTime())
+    .map((row) => monthKey(row.startedOn!));
+  if (keys.length === 0) return null;
+  const startKey = Math.max(sinceKey, Math.min(...keys));
+  return startKey > endKey ? null : { startKey, endKey };
 }
 
 /**
@@ -416,25 +450,33 @@ export interface SeasonalNorm {
  * история начинается и заканчивается в середине года, и у крайних месяцев
  * наблюдений меньше. Знаменатель считается по фактически наблюдавшимся
  * месяцам, иначе январь первого неполного года занижал бы норму.
+ *
+ * Окно — `normWindow`: с даты начала учёта по последний полный месяц, по
+ * московскому дню (требование РК-16, решение Р-349). Прежде окно шло с
+ * самой ранней даты и включало текущий неполный месяц по UTC: пустые
+ * месяцы 2024 года и три дня октября занижали нормы на треть.
  */
-export function seasonalNorm(rows: readonly ProjectRow[], controlDate: Date): SeasonalNorm[] {
-  const dated = rows.filter((row) => row.startedOn !== null);
-  if (dated.length === 0) return [];
-
-  const times = dated.map((row) => row.startedOn!.getTime());
-  const first = new Date(Math.min(...times));
-  const startKey = first.getUTCFullYear() * 12 + first.getUTCMonth();
-  const endKey = controlDate.getUTCFullYear() * 12 + controlDate.getUTCMonth();
-
+export function seasonalNorm(
+  rows: readonly ProjectRow[],
+  controlDate: Date,
+  since: Date = ANALYTICS_SINCE_DEFAULT,
+): SeasonalNorm[] {
+  const window = normWindow(rows, controlDate, since);
   return MONTHS_SHORT.map((label, index) => {
-    const orders = dated.filter((row) => row.startedOn!.getUTCMonth() === index).length;
-    let observed = 0;
-    for (let year = first.getUTCFullYear(); year <= controlDate.getUTCFullYear(); year += 1) {
-      const key = year * 12 + index;
-      if (key >= startKey && key <= endKey) observed += 1;
+    if (window === null) return { month: index + 1, label, orders: 0, yearsObserved: 1, norm: 0, years: [] };
+    const inside = rows.filter((row) => {
+      if (row.startedOn === null) return false;
+      const key = monthKey(row.startedOn);
+      return key >= window.startKey && key <= window.endKey && row.startedOn.getUTCMonth() === index;
+    });
+    const years: { year: number; orders: number }[] = [];
+    for (let key = window.startKey; key <= window.endKey; key += 1) {
+      if (key % 12 !== index) continue;
+      const year = Math.floor(key / 12);
+      years.push({ year, orders: inside.filter((row) => row.startedOn!.getUTCFullYear() === year).length });
     }
-    const yearsObserved = observed === 0 ? 1 : observed;
-    return { month: index + 1, label, orders, yearsObserved, norm: orders / yearsObserved };
+    const yearsObserved = years.length === 0 ? 1 : years.length;
+    return { month: index + 1, label, orders: inside.length, yearsObserved, norm: inside.length / yearsObserved, years };
   });
 }
 
@@ -789,14 +831,18 @@ export interface Conclusion {
  * собственной медиане — разница медианы и среднего на числе заказов.
  * Где честной величины нет, стоит `null`, а не выдуманный процент роста.
  */
-export function conclusions(rows: readonly ProjectRow[], controlDate: Date): Conclusion[] {
+export function conclusions(
+  rows: readonly ProjectRow[],
+  controlDate: Date,
+  since: Date = ANALYTICS_SINCE_DEFAULT,
+): Conclusion[] {
   const out: Conclusion[] = [];
   if (rows.length === 0) return out;
 
   const money = overview(rows);
   const clientReport = clients(rows, controlDate);
   const productRows = products(rows);
-  const season = seasonalNorm(rows, controlDate);
+  const season = seasonalNorm(rows, controlDate, since);
   const debts = receivables(rows, controlDate);
 
   // 1. Остаток по работам с прошедшим сроком — деньги, которые уже
@@ -990,14 +1036,18 @@ export interface Verdict {
   readonly first: string | null;
 }
 
-export function verdict(rows: readonly ProjectRow[], controlDate: Date): Verdict | null {
+export function verdict(
+  rows: readonly ProjectRow[],
+  controlDate: Date,
+  since: Date = ANALYTICS_SINCE_DEFAULT,
+): Verdict | null {
   if (rows.length === 0) return null;
 
   const money = overview(rows);
   const debts = receivables(rows, controlDate).filter((debt) => (debt.overdueDays ?? 0) > 0);
   const overdueSum = sum(debts.map((debt) => debt.debt));
   const late = lateOpen(rows, controlDate);
-  const advice = conclusions(rows, controlDate);
+  const advice = conclusions(rows, controlDate, since);
 
   // «Действующих» — идущие и приостановленные, как на главной и во
   // вкладке перечня; «в работе» здесь прежде значило одни идущие, а на

@@ -33,7 +33,8 @@ import {
   type MaterialKind,
 } from '../../lib/cabinet/materials';
 import { sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages';
-import { saveReactionDays } from '../../lib/cabinet/practice-settings';
+import { saveAnalyticsSince, saveConfidenceThresholds, saveReactionDays } from '../../lib/cabinet/practice-settings';
+import { markRecommendation } from '../../lib/cabinet/recommendations';
 import { closeCheck } from '../../lib/cabinet/head-checks';
 import { handBackStage, handOverStage, recallHandover } from '../../lib/cabinet/handover';
 import {
@@ -1607,6 +1608,40 @@ export async function saveReaction(form: FormData): Promise<void> {
     await saveReactionDays(actor, String(form.get('days') ?? ''));
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить срок реакции');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** Дата начала учёта и пороги уверенности (требование РК-16, решение Р-349). */
+export async function saveAnalyticsSettings(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/directory?tab=calendar';
+  let failure: string | null = null;
+  try {
+    await saveAnalyticsSince(actor, String(form.get('since') ?? ''));
+    await saveConfidenceThresholds(actor, String(form.get('thresholds') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить настройки учёта');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** Отметка рекомендации «сделано», «отложено» или снятие (РК-16, Р-349). */
+export async function markRecommendationAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = String(form.get('back') ?? '') === 'recommendations' ? '/cabinet/manage/recommendations' : '/cabinet/manage/recommendations/calendar';
+  const raw = String(form.get('status') ?? '');
+  let failure: string | null = null;
+  try {
+    await markRecommendation(
+      actor,
+      String(form.get('key') ?? ''),
+      raw === 'DONE' || raw === 'POSTPONED' ? raw : null,
+    );
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отметить рекомендацию');
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);
