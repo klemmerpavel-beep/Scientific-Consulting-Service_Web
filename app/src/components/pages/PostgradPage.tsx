@@ -7,6 +7,12 @@ import { submitLead } from '../../lib/submit-lead';
 import PhotoSlot from '../PhotoSlot';
 import { ABOVE_THE_FOLD } from '../photos';
 
+/** Текст благодарности по обработчику формы заявки — из макета (Р-280). */
+const LEAD_THANKS: Record<string, string> = {
+  "submit": "Заявка принята — свяжемся, чтобы согласовать время консультации.",
+  "submitTop": "Заявка принята — свяжемся, чтобы согласовать разбор."
+};
+
 const css = `
 
 /* Токены палитры. Значения здесь, а не в каждом объявлении: страница
@@ -426,6 +432,13 @@ state = { revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false,
       const outcome = await submitLead(e, "postgrad", key.slice('submit'.length).toLowerCase() || 'request');
       if (outcome.ok) {
         this.setState((s: any) => ({ __ui: { ...(s.__ui ?? {}), pending: false } }));
+        // Заявка: благодарность всплывает поверх страницы, форма уже
+        // очищена (components/LeadThanks.tsx, Р-280). Прочее — как в макете.
+        const thanks = LEAD_THANKS[key];
+        if (thanks && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('pd:lead-sent', { detail: { text: thanks, form } }));
+          return;
+        }
         if (typeof original === 'function') original({ preventDefault() {}, currentTarget: form });
         return;
       }
