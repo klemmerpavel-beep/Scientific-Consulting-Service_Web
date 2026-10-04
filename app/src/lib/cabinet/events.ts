@@ -37,7 +37,9 @@ export type EventKind =
   | 'STAGE_DUE_CHANGED'
   | 'STAGE_REOPENED'
   | 'ORDER_WITH_CONTRACT'
-  | 'LEAD_RECEIVED';
+  | 'LEAD_RECEIVED'
+  | 'CURATOR_INVITED'
+  | 'NDA_SIGNED';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -88,12 +90,14 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   CLIENT_COMMENT: 'клиент оставил замечание',
   CURATOR_ASSIGNED: 'вам передана работа',
   DEADLINE_MISSED: 'срок этапа сорван',
-  WORK_ASSIGNED: 'вас назначили на работу',
+  WORK_ASSIGNED: 'вас назначили куратором работы',
   EXPERT_DECISION: 'решение менеджера по вашему материалу',
   STAGE_DUE_CHANGED: 'изменён срок этапа',
   STAGE_REOPENED: 'этап возвращён в работу',
   ORDER_WITH_CONTRACT: 'заведён заказ с договором',
   LEAD_RECEIVED: 'заявка получена',
+  CURATOR_INVITED: 'вам открыт кабинет куратора',
+  NDA_SIGNED: 'доступ к материалам открыт',
 };
 
 /**

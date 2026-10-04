@@ -12,6 +12,7 @@ import {
 import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
 import { enqueue, enqueueToLead, notifyCurator } from './outbox.ts';
+import { assignmentLetter } from './curator-letters.ts';
 import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
 import { now } from './clock.ts';
@@ -586,25 +587,47 @@ export async function assignExpert(
     payload: { from: ref.expertId, to: expertId },
   });
 
-  // Эксперт узнаёт о назначении письмом. Без договора поручения — письмо
-  // нейтральное: код работы и что доступ откроется после договора, без
-  // названия и данных клиента (требование М-08, ОМ-13, решения Р-237,
-  // Р-301).
+  // Куратор узнаёт о назначении письмом: тип сопровождения, срок и
+  // менеджер, с договором поручения — ещё название и тема. Без договора —
+  // без названия и темы, и кнопка ведёт на перечень, где сказано, когда
+  // откроется доступ (требование Э-03, ответ ОЭ-5; Р-237, Р-301). Данных
+  // клиента в письме нет.
   if (expertId !== null) {
     const assigned = await prisma.user.findUnique({
       where: { id: expertId },
       select: { expertProfile: { select: { ndaSignedAt: true } } },
     });
     const signed = (assigned?.expertProfile?.ndaSignedAt ?? null) !== null;
+    const work = await prisma.project.findUniqueOrThrow({
+      where: { id: projectId },
+      select: {
+        code: true,
+        title: true,
+        topic: true,
+        dueOn: true,
+        serviceType: { select: { name: true } },
+        manager: { select: { fullName: true } },
+      },
+    });
+    const letter = assignmentLetter(
+      {
+        code: work.code,
+        title: work.title,
+        topic: work.topic,
+        serviceType: work.serviceType.name,
+        dueOn: work.dueOn,
+        manager: work.manager.fullName,
+      },
+      signed,
+    );
     await enqueue(prisma, {
       userId: expertId,
       projectId,
       eventKind: 'WORK_ASSIGNED',
-      subject: `Вы назначены на работу ${project.code}`,
-      body: signed
-        ? `${project.code} — ${project.title}.\nМатериалы работы открыты вам в личном кабинете.`
-        : `Работа ${project.code}.\nДоступ к материалам откроется после договора поручения обработки персональных данных.`,
+      subject: letter.subject,
+      body: letter.body,
       dedupKey: `project:${projectId}:expert-assigned:${expertId}:${Date.now()}`,
+      path: signed ? `/cabinet/projects/${work.code}` : '/cabinet/projects',
     });
   }
 

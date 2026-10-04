@@ -12,6 +12,7 @@ import { moscowToday } from './clock.ts';
 import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
 import { enqueue } from './outbox.ts';
+import { invitationLetter, ndaSignedLetter } from './curator-letters.ts';
 
 export type Role = 'CLIENT' | 'EXPERT' | 'MANAGER' | 'HEAD';
 export type Status = 'ACTIVE' | 'SUSPENDED' | 'ERASED';
@@ -465,6 +466,7 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
   // клетку специализации (решение Р-225).
   if (input.role === 'EXPERT') {
     await prisma.expertProfile.create({ data: { userId: user.id } });
+    await inviteCurator(user.id, false);
   }
 
   // Адрес почты в журнал не пишется: запись ссылается на учётную запись
@@ -517,6 +519,11 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
       data: { usedAt: new Date() },
     });
   });
+  // Новый куратор узнаёт о кабинете письмом (требование Э-03).
+  if (role === 'EXPERT') {
+    const profile = await prisma.expertProfile.findUnique({ where: { userId }, select: { ndaSignedAt: true } });
+    await inviteCurator(userId, (profile?.ndaSignedAt ?? null) !== null);
+  }
 
   await record(actor, {
     action: 'USER_ROLE_CHANGED',
@@ -582,6 +589,7 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
   }
   // Профиля может не быть у записи, ставшей экспертом до решения Р-225:
   // договор заводит его сам, а не падает.
+  const before = await prisma.expertProfile.findUnique({ where: { userId }, select: { ndaSignedAt: true } });
   await prisma.expertProfile.upsert({
     where: { userId },
     create: { userId, ndaSignedAt: signedOn },
@@ -592,6 +600,38 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
     objectType: 'ExpertProfile',
     objectId: userId,
     payload: { signedOn: signedOn?.toISOString() ?? null },
+  });
+  // Письмо «Доступ к материалам открыт» — только при первой отметке:
+  // исправление даты письма не даёт (требование Э-03, решение Д-7 плана
+  // куратора). Ключ по учётной записи не даёт второго письма и при
+  // повторной отметке после снятия.
+  if ((before?.ndaSignedAt ?? null) === null && signedOn !== null) {
+    const letter = ndaSignedLetter();
+    await enqueue(prisma, {
+      userId,
+      eventKind: 'NDA_SIGNED',
+      subject: letter.subject,
+      body: letter.body,
+      dedupKey: `nda-signed:${userId}`,
+      path: '/cabinet/projects',
+    });
+  }
+}
+
+/**
+ * Письмо «Вам открыт кабинет куратора ProDisser» (требование Э-03). Уходит
+ * один раз на учётную запись: ключ не даёт второго письма, если роль
+ * сменили туда и обратно.
+ */
+async function inviteCurator(userId: string, ndaSigned: boolean): Promise<void> {
+  const letter = invitationLetter(ndaSigned);
+  await enqueue(prisma, {
+    userId,
+    eventKind: 'CURATOR_INVITED',
+    subject: letter.subject,
+    body: letter.body,
+    dedupKey: `curator-invited:${userId}`,
+    path: '/cabinet/projects',
   });
 }
 

@@ -1238,22 +1238,24 @@ export async function executeErasureRequest(form: FormData): Promise<void> {
 // ─────────────────────────── Учётные записи ─────────────────────────────────
 
 /**
- * Завести учётную запись. Ссылку входа человек запрашивает сам: письмо,
- * отправленное без его действия, — рассылка, а не вход.
+ * Завести учётную запись. Ссылку входа человек запрашивает сам: письмо со
+ * ссылкой, отправленное без его действия, — рассылка, а не вход. Куратору
+ * уходит приглашение без ссылки — с кнопкой «Открыть кабинет» (Э-03).
  */
 export async function inviteUser(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
+  const role = String(form.get('role') ?? 'EXPERT') as Role;
   try {
     await createUser(actor, {
       email: String(form.get('email') ?? ''),
       fullName: String(form.get('fullName') ?? ''),
-      role: String(form.get('role') ?? 'EXPERT') as Role,
+      role,
     });
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось завести запись');
     redirect(await withError(`/cabinet/manage/users`, reason));
   }
-  redirect('/cabinet/manage/users?created=1');
+  redirect(`/cabinet/manage/users?created=${role === 'EXPERT' ? 'curator' : '1'}`);
 }
 
 export async function changeUserRole(form: FormData): Promise<void> {
