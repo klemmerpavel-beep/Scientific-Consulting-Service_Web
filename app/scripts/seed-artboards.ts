@@ -735,6 +735,19 @@ async function main() {
       ],
     });
   }
+  // Дело руководителя «Этап принят: акт и счёт» по последнему принятому
+  // этапу витринной работы (требование РК-12, решение Р-338).
+  await prisma.headCheck.deleteMany({});
+  const accepted = await prisma.stage.findFirst({
+    where: { projectId: showcase, state: 'DONE' },
+    orderBy: { position: 'desc' },
+    select: { id: true },
+  });
+  if (accepted !== null) {
+    await prisma.headCheck.create({
+      data: { kind: 'ACT_AFTER_ACCEPT', projectId: showcase, stageId: accepted.id, createdAt: day(1) },
+    });
+  }
   // Ветка «руководитель — сотрудник»: вопрос менеджера без ответа — дело
   // «Вопрос сотрудника» на «Сводке» руководителя (РК-07, Р-336).
   await prisma.message.deleteMany({ where: { thread: 'HEAD_STAFF', staffId: manager.id } });

@@ -5,6 +5,7 @@ import { formatDay } from './approval-text.ts';
 import { record } from './audit.ts';
 import { moscowToday } from './clock.ts';
 import { enqueue, notifyCurator, notifyExpert } from './outbox.ts';
+import { openAcceptCheck } from './head-checks.ts';
 import {
   addWorkdays,
   dayKey,
@@ -305,6 +306,8 @@ export async function autoAcceptExpired(at: Date = new Date()): Promise<number> 
         key: `stage:${stage.id}:auto-accepted:${change.id}`,
         path: `/cabinet/stages/${stage.id}`,
       });
+      // Руководителю — дело «акт и счёт» (РК-12, Р-338).
+      await openAcceptCheck(tx, stage.id, 'AUTO_ACCEPT');
       // Куратору работы — тоже (требование Э-09, решение Р-328).
       await notifyExpert(tx, {
         projectId: stage.projectId,

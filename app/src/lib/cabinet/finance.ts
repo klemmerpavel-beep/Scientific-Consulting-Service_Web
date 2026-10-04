@@ -158,6 +158,8 @@ export interface TrancheInput {
   readonly title: string;
   readonly amount: bigint;
   readonly plannedDate?: Date | null;
+  /** Этап, за который транш (РК-12, Р-338); `null` — по работе в целом. */
+  readonly stageId?: string | null;
 }
 
 /**
@@ -180,6 +182,11 @@ export async function addTranche(actor: Actor, input: TrancheInput) {
   if (title.length === 0) throw new Error('Назначение транша не указано');
   if (title.length > 300) throw new Error('Назначение транша — не длиннее 300 знаков');
   await ensureMoneyWritable(contract.projectId, true);
+  const stageId = input.stageId || null;
+  if (stageId !== null) {
+    const stage = await prisma.stage.findUnique({ where: { id: stageId }, select: { projectId: true } });
+    if (stage === null || stage.projectId !== contract.projectId) throw new Error('Этап не из этой работы');
+  }
 
   const tranche = await prisma.tranche.create({
     data: {
@@ -187,6 +194,7 @@ export async function addTranche(actor: Actor, input: TrancheInput) {
       title,
       amount: input.amount,
       plannedDate: input.plannedDate ?? null,
+      stageId,
     },
   });
   // Заведение транша прежде не оставляло следа в журнале вовсе (Р-244).
@@ -695,6 +703,8 @@ export async function projectContract(actor: Actor, projectId: string) {
         where: mayEdit ? {} : { status: { in: [...CLIENT_TRANCHE_STATUSES] } },
         orderBy: [{ plannedDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         include: {
+          // Этап транша (РК-12, Р-338).
+          stage: { select: { title: true, position: true } },
           documents: {
             where: { deletedAt: null },
             include: { versions: { orderBy: { number: 'desc' }, take: 1 } },

@@ -223,6 +223,7 @@ model User {
   staffMessages     Message[]            @relation("StaffThread")
   threadReads       MessageThreadRead[]
   practiceSettings  PracticeSetting[]
+  closedChecks      HeadCheck[]
   payouts           ExpertPayout[]
   notifications     NotificationOutbox[]
   auditEvents       AuditEvent[]
@@ -499,6 +500,7 @@ model Project {
   payouts       ExpertPayout[]
   notifications NotificationOutbox[]
   importRows    ImportRow[]
+  headChecks    HeadCheck[]
 
   @@index([status, dueOn])
   @@index([clientId])
@@ -584,6 +586,8 @@ model Stage {
   changes   StageStateChange[]
   materials Material[]
   payouts   ExpertPayout[]
+  tranches  Tranche[]
+  checks    HeadCheck[]
 
   @@unique([projectId, position])
   @@index([state, dueOn])
@@ -922,6 +926,10 @@ model Tranche {
   plannedDate DateTime?
   status      TrancheStatus @default(PLANNED)
   paidOn      DateTime?
+  /// Этап, за который транш (требование РК-12, решение Р-338): по нему
+  /// подсказка «Следующий этап не оплачен».
+  stageId     String?
+  stage       Stage?        @relation(fields: [stageId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -929,6 +937,33 @@ model Tranche {
   documents Material[]
 
   @@index([status, plannedDate])
+  @@index([stageId])
+}
+
+/// Дело руководителя, которое закрывается действием (требование РК-12,
+/// решение Р-338): акт после приёмки или возврата этапа, проверка договора,
+/// заведённого менеджером.
+enum HeadCheckKind {
+  ACT_AFTER_ACCEPT
+  ACT_AFTER_REOPEN
+  CONTRACT_BY_MANAGER
+}
+
+model HeadCheck {
+  id         String        @id @default(cuid())
+  kind       HeadCheckKind
+  projectId  String
+  project    Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stageId    String?
+  stage      Stage?        @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  createdAt  DateTime      @default(now())
+  closedAt   DateTime?
+  closedById String?
+  closedBy   User?         @relation(fields: [closedById], references: [id], onDelete: SetNull)
+  closeNote  String?
+
+  @@index([closedAt, createdAt])
+  @@index([projectId])
 }
 
 /// Начисление эксперту. Сумма вводится вручную по этапу или по проекту.

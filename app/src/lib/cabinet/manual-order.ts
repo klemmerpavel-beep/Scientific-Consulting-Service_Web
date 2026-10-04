@@ -9,6 +9,7 @@ import { formatAmount } from './money.ts';
 import { enqueue } from './outbox.ts';
 import { nextProjectCode } from './projects.ts';
 import { prisma } from '../db.ts';
+import { openContractCheck } from './head-checks.ts';
 
 /**
  * Заказ, заведённый руководителем или менеджером вручную.
@@ -245,6 +246,8 @@ export async function createManualOrder(
   // заводит и менеджер (В-9): руководитель узнаёт о нём сразу. Сумма — только
   // в письме; в Telegram уходит событие и код работы (Р-187).
   if (actor.role === 'MANAGER' && cost > 0n) {
+    // Дело «Проверьте договор» — до проверки руководителем (РК-12, Р-338).
+    await openContractCheck(prisma, created.projectId);
     const [me, heads] = await Promise.all([
       prisma.user.findUnique({ where: { id: actor.id }, select: { fullName: true } }),
       prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } }),

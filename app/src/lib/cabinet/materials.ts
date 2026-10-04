@@ -1,4 +1,5 @@
 import { prisma } from '../db.ts';
+import { closeActChecks } from './head-checks.ts';
 import {
   can,
   ensure,
@@ -360,6 +361,8 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     payload: { material: material.id, version: version.number, ...(moderated ? { moderated: true } : {}) },
     ip,
   });
+  // Акт по работе закрывает дела руководителя об акте (РК-12, Р-338).
+  if (input.kind === 'ACT') await closeActChecks(prisma, input.projectId, actor.id);
   if (comment !== null && project !== null) {
     await commentAftermath(
       actor,

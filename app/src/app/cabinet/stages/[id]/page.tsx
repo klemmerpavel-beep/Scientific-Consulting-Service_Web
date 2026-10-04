@@ -63,6 +63,8 @@ import {
   uploadMaterial,
 } from '../../actions';
 
+import { nextStageUnpaid } from '../../../../lib/cabinet/head-checks';
+
 export const dynamic = 'force-dynamic';
 
 /** Переходы, которые менеджер может выполнить с этого состояния. */
@@ -170,6 +172,9 @@ export default async function StageScreen({
   const curatorView = actor.role === 'EXPERT';
   const mayHandOver = state === 'IN_PROGRESS' && refusal === null && can(actor, 'STAGE_HAND_OVER', ref);
   const mayHandBack = handover === 'handed' && can(actor, 'STAGE_HAND_BACK', ref);
+  // Транш следующего этапа не оплачен — подсказка практике; перевод этапа
+  // она не запрещает (требование РК-12, решение Р-338).
+  const nextUnpaid = mayEdit && state !== 'DONE' ? await nextStageUnpaid(actor, stage.id) : false;
   // Сдать можно, когда приложена своя версия, не отклонённая менеджером (Д-3).
   const ownVersions = stage.materials
     .flatMap((material) => material.versions)
@@ -411,6 +416,15 @@ export default async function StageScreen({
             </Form>
           </Disclosure>
         </Card>
+      ) : null}
+
+      {nextUnpaid ? (
+        <Block as="div" style={{ marginBottom: 24 }}>
+          <Notice tone="quiet" role="status">
+            Следующий этап не оплачен: его транш ещё не поступил. Перевести этап можно — подсказка только напоминает
+            об оплате.
+          </Notice>
+        </Block>
       ) : null}
 
       {!live && can(actor, 'STAGE_SET_STATE', ref) ? (

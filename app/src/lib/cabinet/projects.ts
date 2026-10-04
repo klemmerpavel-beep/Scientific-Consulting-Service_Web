@@ -13,6 +13,7 @@ import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
 import { enqueue, enqueueToLead, notifyCurator, notifyExpert } from './outbox.ts';
 import { assignmentLetter, unassignedLetter } from './curator-letters.ts';
+import { openAcceptCheck, openReopenCheck } from './head-checks.ts';
 import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
 import { now } from './clock.ts';
@@ -1005,6 +1006,8 @@ export async function reopenStage(
     const body =
       `Проект ${project.code} — ${project.title}.\n` +
       `Этап «${stage.title}» снова в работе.\nПричина: ${why}\n${stageLink(stage.id)}`;
+    // Руководителю — дело «проверьте акт и транш» (РК-12, Р-338).
+    await openReopenCheck(tx, stage.id, stage.projectId);
     // Куратору — ход за ним: этап снова «В работе» (Э-09, Р-328). Причина
     // написана клиенту и в письмо куратору не идёт.
     await notifyExpert(tx, {
@@ -1784,6 +1787,8 @@ export async function setStageState(
         path: `/cabinet/stages/${stageId}`,
       });
     }
+    // Этап принят — дело руководителю «акт и счёт» (РК-12, Р-338).
+    if (action === 'STAGE_APPROVE') await openAcceptCheck(tx, stageId, via);
     // Этап «В работе» — ход куратора: запущен или возвращён менеджером
     // (требование Э-09, решение Р-328).
     if (to === 'IN_PROGRESS') {

@@ -33,10 +33,12 @@ import {
   type TrancheStatus,
 } from '../../../../../lib/cabinet/money';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
+import { CHECK_TITLE, openChecks } from '../../../../../lib/cabinet/head-checks';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import {
   accruePayout,
   addContractTranche,
+  closeHeadCheck,
   changeTrancheStatus,
   dropTranche,
   payPayout,
@@ -98,10 +100,12 @@ export default async function PaymentsScreen({
   // Экран не ходит в базу сам: и договор, и начисления читаются службами,
   // которые сами спрашивают разрешение. Прежде условие доступа стояло
   // здесь, а выборка знала о нём только понаслышке (решение Р-185).
-  const [money, contract, payouts] = await Promise.all([
+  const [money, contract, payouts, checks] = await Promise.all([
     projectMoney(actor, project.id),
     projectContract(actor, project.id),
     maySeeEconomy ? projectPayouts(actor, project.id) : Promise.resolve([]),
+    // Дела руководителя по работе — акт и договор (РК-12, Р-338).
+    openChecks(actor, project.id),
   ]);
 
   const progress =
@@ -118,6 +122,42 @@ export default async function PaymentsScreen({
       />
 
       <ActionError id={flags.error} />
+
+      {/* Дела руководителя по работе: закрываются актом или отметкой
+          (требование РК-12, решение Р-338). */}
+      {checks.length === 0 ? null : (
+        <Card style={{ marginBottom: 20 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 10 }}>
+            Дела по работе
+          </Heading>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 12 }}>
+            {checks.map((check) => (
+              <li key={check.id} style={{ display: 'grid', gap: 6 }}>
+                <Text size={14}>
+                  {check.kind === 'CONTRACT_BY_MANAGER' && check.project.contract !== null
+                    ? `${CHECK_TITLE[check.kind]}: ${check.project.code}, ${formatAmount(check.project.contract.totalAmount)}`
+                    : `${CHECK_TITLE[check.kind]}${check.stage === null ? '' : ` · «${check.stage.title}»`}`}
+                </Text>
+                <Text muted size={13}>
+                  {check.kind === 'CONTRACT_BY_MANAGER'
+                    ? `заведён ${formatDate(check.createdAt)}`
+                    : `с ${formatDate(check.createdAt)}; закроется, когда будет приложен акт по работе`}
+                </Text>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {(check.kind === 'CONTRACT_BY_MANAGER' ? ['проверено'] : check.kind === 'ACT_AFTER_REOPEN' ? ['проверено', 'не требуется'] : ['не требуется']).map((note) => (
+                    <Form key={note} action={closeHeadCheck} inline>
+                      <input type="hidden" name="checkId" value={check.id} />
+                      <input type="hidden" name="code" value={project.code} />
+                      <input type="hidden" name="note" value={note} />
+                      <Button tone="quiet">{note === 'проверено' ? 'Проверено' : 'Не требуется'}</Button>
+                    </Form>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {contract === null || money === null ? (
         <Card>
@@ -247,6 +287,7 @@ export default async function PaymentsScreen({
                       <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                         <Text size={15} style={{ color: 'var(--pd-ink)' }}>
                           {tranche.title}
+                          {tranche.stage === null ? '' : ` · этап ${tranche.stage.position}: ${tranche.stage.title}`}
                         </Text>
                         <Text muted size={13} style={{ marginTop: 2 }}>
                           {tranche.plannedDate === null
@@ -426,6 +467,18 @@ export default async function PaymentsScreen({
                     <Field label="Сумма" name="amount" scope="tranche" required placeholder="240 000" />
                     <Field label="Плановая дата" name="plannedDate" scope="tranche" type="date" />
                   </FormRow>
+                  {/* Этап, за который транш: по нему подсказка «Следующий
+                      этап не оплачен» (требование РК-12, решение Р-338). */}
+                  {project.stages.length === 0 ? null : (
+                    <Select label="Этап" name="stageId" scope="tranche" defaultValue="">
+                      <option value="">По работе в целом</option>
+                      {project.stages.map((stage) => (
+                        <option key={stage.id} value={stage.id}>
+                          {`Этап ${stage.position}: ${stage.title}`}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
                   <FormActions>
                     <Button tone="quiet">Добавить транш</Button>
                   </FormActions>

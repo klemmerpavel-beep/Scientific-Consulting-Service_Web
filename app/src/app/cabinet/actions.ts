@@ -34,6 +34,7 @@ import {
 } from '../../lib/cabinet/materials';
 import { sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages';
 import { saveReactionDays } from '../../lib/cabinet/practice-settings';
+import { closeCheck } from '../../lib/cabinet/head-checks';
 import { handBackStage, handOverStage, recallHandover } from '../../lib/cabinet/handover';
 import {
   addPayout,
@@ -1128,6 +1129,7 @@ export async function addContractTranche(form: FormData): Promise<void> {
       title: String(form.get('title') ?? ''),
       amount: parseAmount(String(form.get('amount') ?? '')),
       plannedDate: dateOrNull(form.get('plannedDate')),
+      stageId: String(form.get('stageId') ?? '') || null,
     });
     exceeds = exceedsContract;
   } catch (error) {
@@ -1526,6 +1528,21 @@ export async function detachAlias(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError('/cabinet/manage/directory', failure));
   redirect('/cabinet/manage/directory');
+}
+
+/** Закрыть дело руководителя «Не требуется» / «Проверено» (РК-12, Р-338). */
+export async function closeHeadCheck(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const back = `/cabinet/projects/${code}/payments`;
+  let failure: string | null = null;
+  try {
+    await closeCheck(actor, String(form.get('checkId') ?? ''), String(form.get('note') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось закрыть дело');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 /** Срок реакции в рабочих днях (требование РК-05, решение Р-337). */

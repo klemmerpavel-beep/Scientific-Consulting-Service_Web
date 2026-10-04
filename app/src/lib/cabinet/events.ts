@@ -50,7 +50,8 @@ export type EventKind =
   | 'OUTBOX_FAILED'
   | 'INTERNAL_MESSAGE'
   | 'STAFF_QUESTION'
-  | 'HEAD_REPLY';
+  | 'HEAD_REPLY'
+  | 'STAGE_ACCEPTED';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -120,6 +121,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   INTERNAL_MESSAGE: 'внутренняя переписка по работе',
   STAFF_QUESTION: 'вопрос сотрудника',
   HEAD_REPLY: 'ответ руководителя',
+  STAGE_ACCEPTED: 'этап принят: акт и счёт',
 };
 
 /**

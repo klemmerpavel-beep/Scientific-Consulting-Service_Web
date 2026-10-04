@@ -36,6 +36,7 @@ import { pendingComments, pendingVersions } from '../../../lib/cabinet/materials
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
 import { leadQueue, returnedStages, todayItems, trafficLight } from '../../../lib/cabinet/queries';
 import { controlItems } from '../../../lib/cabinet/control';
+import { CHECK_TITLE, openChecks } from '../../../lib/cabinet/head-checks';
 import { reactionDays } from '../../../lib/cabinet/practice-settings';
 import { notifyChannelsDown, outboxDigest } from '../../../lib/cabinet/outbox';
 import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
@@ -150,6 +151,8 @@ export default async function ManageQueue({
   // менеджера: роль здесь задаёт только сужение до своих работ.
   const mine: typeof actor = actor.role === 'HEAD' ? { ...actor, role: 'MANAGER' } : actor;
   const control = await controlItems(actor);
+  // Дела «акт и счёт» и «проверьте договор» — руководителю (РК-12, Р-338).
+  const checks = await openChecks(actor);
   const term = actor.role === 'HEAD' ? await reactionDays() : 0;
   const [queue, light] = await Promise.all([
     leadQueue(actor, Number.isFinite(requested) ? requested : 1),
@@ -495,6 +498,20 @@ export default async function ManageQueue({
           },
         ]
       : []),
+    ...checks.map((check) => ({
+      key: `check-${check.id}`,
+      kind: 'check' as const,
+      step: 0 as const,
+      title: check.stage === null ? check.project.title : `${check.stage.title} · ${check.project.title}`,
+      mark: check.kind === 'CONTRACT_BY_MANAGER' ? 'проверьте договор' : check.kind === 'ACT_AFTER_REOPEN' ? 'этап возвращён в работу' : 'этап принят',
+      urgent: false,
+      detail:
+        check.kind === 'CONTRACT_BY_MANAGER' && check.project.contract !== null
+          ? `${check.project.code}, ${formatAmount(check.project.contract.totalAmount)}`
+          : null,
+      todo: CHECK_TITLE[check.kind],
+      href: `/cabinet/projects/${check.project.code}/payments`,
+    })),
     // «Контроль» — дело менеджера, не закрытое за срок реакции (РК-05).
     ...control.map((row) => ({
       key: row.key,
@@ -527,6 +544,7 @@ export default async function ManageQueue({
     lead: 3,
     outbox: 1,
     control: 6,
+    check: 3,
   };
   const showAll = (await searchParams).attention === 'all' || attention.length <= 12;
   const taken: Partial<Record<(typeof attention)[number]['kind'], number>> = {};
