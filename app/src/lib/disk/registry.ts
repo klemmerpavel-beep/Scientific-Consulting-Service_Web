@@ -1,6 +1,7 @@
 import { prisma } from '../db.ts';
 import { leadSourceLabel, leadStatusLabel } from '../cabinet/lead-labels.ts';
 import { yearlyRows } from '../cabinet/finance-years.ts';
+import { AREA_LABEL, SEVERITY_LABEL, STATUS_LABEL } from '../feedback.ts';
 import type { Actor } from '../cabinet/access.ts';
 import { STATUS_LABEL as TRANCHE_LABEL } from '../cabinet/money.ts';
 import { stageStateLabel } from '../cabinet/stage-state.ts';
@@ -176,6 +177,27 @@ export async function yearsTable(actor: Actor): Promise<Table> {
       r.year, rub(r.entered?.revenue ?? null), rub(r.entered?.costs ?? null),
       rub(r.entered?.profit ?? null), rub(r.counted.revenue), rub(r.counted.costs),
       rub(r.counted.profit), r.counted.orders, rub(r.revenueGap), r.entered?.note ?? '',
+    ]),
+  );
+}
+
+/**
+ * Замечания с виджета (решение Р-277): по этой таблице раз в неделю
+ * делаются точечные правки, и её же руководитель выгружает с экрана
+ * разбора. Людей в ней нет по устройству — ни учётной записи, ни адреса,
+ * ни строки браузера замечание не хранит, страница записана шаблоном.
+ */
+export async function feedbackTable(): Promise<Table> {
+  const rows = await prisma.feedback.findMany({ orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] });
+  return table(
+    'Замечания.xlsx', 'zamechaniya.csv',
+    ['Дата (МСК)', 'Область', 'Страница', 'Устройство', 'Ширина окна', 'Замечание',
+     'Критичность (авто)', 'Критичность', 'Состояние', 'Что сделано', 'Закрыто (МСК)',
+     'Снимок', 'Идентификатор'],
+    rows.map((r) => [
+      moment(r.createdAt), AREA_LABEL[r.area], r.pathTemplate, r.device, r.viewportWidth ?? '',
+      r.text, SEVERITY_LABEL[r.severityAuto], SEVERITY_LABEL[r.severity], STATUS_LABEL[r.status],
+      r.note ?? '', moment(r.resolvedAt), r.screenshotKey === null ? 'нет' : 'есть', r.id,
     ]),
   );
 }

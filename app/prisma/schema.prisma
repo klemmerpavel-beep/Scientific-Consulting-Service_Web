@@ -1059,3 +1059,61 @@ model LeadComment {
 
   @@index([leadId, createdAt])
 }
+
+enum FeedbackArea {
+  SITE
+  CABINET
+}
+
+enum FeedbackSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum FeedbackStatus {
+  NEW
+  IN_WORK
+  FIXED
+  REJECTED
+}
+
+/// Замечание о странице, оставленное кнопкой справа внизу на время запуска
+/// сайта и кабинета (решение Р-277). Персональных данных здесь нет по
+/// устройству, а не по договорённости: ни учётной записи, ни сессии, ни
+/// адреса, ни строки браузера, ни cookies запись не знает; страница
+/// хранится шаблоном без идентификаторов и ключей входа, текст с
+/// телефоном, почтой или ссылкой на мессенджер не принимается. Поэтому
+/// замечание не участвует в удалении данных субъекта: связать его с
+/// человеком нечем.
+model Feedback {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  area          FeedbackArea
+  /// Шаблон пути: `/cabinet/stages/[id]`, а не адрес с идентификатором.
+  pathTemplate  String
+  text          String       @db.Text
+  /// «телефон», «планшет», «компьютер» — по ширине окна, считает сервер.
+  device        String
+  viewportWidth Int?
+
+  /// Снимок экрана — только с публичных страниц. Ключ — случайный, без
+  /// исходного имени файла; тип — по сигнатуре байтов, а не по заголовку.
+  screenshotKey  String?
+  screenshotType String?
+  screenshotSize Int?
+
+  /// Критичность по правилам при отправке и текущая — после разбора.
+  severityAuto FeedbackSeverity
+  severity     FeedbackSeverity
+  status       FeedbackStatus   @default(NEW)
+  /// Что сделано — пишет руководитель на еженедельном разборе.
+  note         String?          @db.Text
+  resolvedAt   DateTime?
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+}

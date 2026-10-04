@@ -37,7 +37,11 @@ export async function flashText(id: string | undefined): Promise<string | undefi
   return unpackFlash((await cookies()).get(NAME)?.value, id);
 }
 
-/** Адрес возврата на экран с меткой отказа. */
+/**
+ * Адрес возврата на экран с меткой отказа. Адрес с отбором (`?status=…`)
+ * получает метку через `&`: экран замечаний возвращает на ту же страницу
+ * перечня с тем же отбором (решение Р-277).
+ */
 export async function withError(path: string, reason: string): Promise<string> {
-  return `${path}?error=${await flash(reason)}`;
+  return `${path}${path.includes('?') ? '&' : '?'}error=${await flash(reason)}`;
 }
