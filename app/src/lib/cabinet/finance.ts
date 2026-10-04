@@ -985,3 +985,162 @@ export async function trancheForReminder(
     select: { title: true, plannedDate: true },
   });
 }
+
+// ─────────────────────────── Поступления (РК-20) ────────────────────────────
+
+/** Месяцев вперёд в «Поступлениях»; позже — колонка «Далее» (ДР-2). */
+export const RECEIPTS_MONTHS = 6;
+
+const MONTH_NAMES = [
+  'январь',
+  'февраль',
+  'март',
+  'апрель',
+  'май',
+  'июнь',
+  'июль',
+  'август',
+  'сентябрь',
+  'октябрь',
+  'ноябрь',
+  'декабрь',
+] as const;
+
+export type ReceiptBucket = 'overdue' | 'month' | 'later' | 'undated';
+
+export interface ReceiptCell {
+  readonly amount: bigint;
+  readonly count: number;
+}
+
+export interface ReceiptLine {
+  readonly trancheId: string;
+  readonly code: string;
+  readonly work: string;
+  readonly title: string;
+  /** Учтённая сумма: не больше остатка договора работы. */
+  readonly amount: bigint;
+  readonly plannedDate: Date | null;
+  readonly bucket: ReceiptBucket;
+  /** Ключ месяца `ГГГГ-ММ` у строки месяца. */
+  readonly month: string | null;
+}
+
+export interface ReceiptsPlan {
+  readonly months: readonly (ReceiptCell & { readonly key: string; readonly label: string })[];
+  readonly later: ReceiptCell;
+  readonly overdue: ReceiptCell;
+  readonly undated: ReceiptCell;
+  /** Остаток работ, не разнесённый по траншам. */
+  readonly unallocated: ReceiptCell;
+  /**
+   * Незакрытые транши сверх остатка договора: в сумму не входят, иначе
+   * итог разошёлся бы с «К получению».
+   */
+  readonly excess: ReceiptCell;
+  /** Итог — равен «К получению» по построению. */
+  readonly total: bigint;
+  readonly lines: readonly ReceiptLine[];
+}
+
+/**
+ * «Деньги → Поступления» (требование РК-20, решение Р-348).
+ *
+ * Незакрытые транши по плановым датам на шесть месяцев вперёд и колонка
+ * «Далее»; отдельно — просроченные (условие «Должников», Р-345), без даты
+ * и остаток работ, не разнесённый по траншам. Остаток работы — то же
+ * «К получению», что на «Деньгах» и «Сводке» (`receivableOf`, Р-244,
+ * Р-257); транши распределяются в его пределах по порядку сроков, и итог
+ * равен «К получению» по построению. Это обязательства клиентов, а не
+ * прогноз спроса.
+ */
+export async function receiptsPlan(actor: Actor, at: Date = clockNow()): Promise<ReceiptsPlan> {
+  ensure(actor, 'MARGIN_VIEW');
+  const day = moscowToday(at);
+  const start = { year: day.getUTCFullYear(), month: day.getUTCMonth() };
+  const keyOf = (date: Date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  const months = Array.from({ length: RECEIPTS_MONTHS }, (_, index) => {
+    const first = new Date(Date.UTC(start.year, start.month + index, 1));
+    return { key: keyOf(first), label: `${MONTH_NAMES[first.getUTCMonth()]} ${first.getUTCFullYear()}`, amount: 0n, count: 0 };
+  });
+  const horizon = new Date(Date.UTC(start.year, start.month + RECEIPTS_MONTHS, 1));
+  const cell = () => ({ amount: 0n, count: 0 });
+  const later = cell();
+  const overdue = cell();
+  const undated = cell();
+  const unallocated = cell();
+  const excess = cell();
+  const lines: ReceiptLine[] = [];
+
+  const contracts = await prisma.contract.findMany({
+    orderBy: { project: { code: 'asc' } },
+    select: {
+      totalAmount: true,
+      project: { select: { code: true, title: true, status: true } },
+      tranches: {
+        select: { id: true, title: true, amount: true, status: true, plannedDate: true },
+      },
+    },
+  });
+
+  let total = 0n;
+  for (const contract of contracts) {
+    let rest = receivableOf(contract.project.status, contract.totalAmount, contract.tranches);
+    total += rest;
+    // Сначала датированные по сроку, затем без даты: в пределах остатка
+    // договора учитываются ранние обязательства.
+    const open = contract.tranches
+      .filter((tranche) => tranche.status === 'PLANNED' || tranche.status === 'INVOICED')
+      .sort((a, b) => {
+        if (a.plannedDate === null) return b.plannedDate === null ? a.id.localeCompare(b.id) : 1;
+        if (b.plannedDate === null) return -1;
+        return a.plannedDate.getTime() - b.plannedDate.getTime() || a.id.localeCompare(b.id);
+      });
+    for (const tranche of open) {
+      const counted = tranche.amount < rest ? tranche.amount : rest;
+      rest -= counted;
+      if (counted < tranche.amount) {
+        excess.amount += tranche.amount - counted;
+        excess.count += 1;
+      }
+      if (counted === 0n) continue;
+      const date = tranche.plannedDate;
+      let bucket: ReceiptBucket;
+      let month: string | null = null;
+      if (date === null) {
+        bucket = 'undated';
+        undated.amount += counted;
+        undated.count += 1;
+      } else if (date.getTime() < day.getTime()) {
+        bucket = 'overdue';
+        overdue.amount += counted;
+        overdue.count += 1;
+      } else if (date.getTime() >= horizon.getTime()) {
+        bucket = 'later';
+        later.amount += counted;
+        later.count += 1;
+      } else {
+        bucket = 'month';
+        month = keyOf(date);
+        const target = months.find((row) => row.key === month)!;
+        target.amount += counted;
+        target.count += 1;
+      }
+      lines.push({
+        trancheId: tranche.id,
+        code: contract.project.code,
+        work: contract.project.title,
+        title: tranche.title,
+        amount: counted,
+        plannedDate: date,
+        bucket,
+        month,
+      });
+    }
+    if (rest > 0n) {
+      unallocated.amount += rest;
+      unallocated.count += 1;
+    }
+  }
+  return { months, later, overdue, undated, unallocated, excess, total, lines };
+}

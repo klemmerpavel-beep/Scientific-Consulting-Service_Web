@@ -131,7 +131,9 @@ export default async function FinanceScreen({
         <a href="/cabinet/manage/finance/payouts">Вознаграждение кураторов</a> — начислено, выплачено и
         к выплате по каждому куратору.{' '}
         <a href="/cabinet/manage/finance/debtors">Должники</a> — просроченные платежи: напомнить,
-        перенести дату или списать.
+        перенести дату или списать.{' '}
+        <a href="/cabinet/manage/finance/receipts">Поступления</a> — когда придут деньги по
+        заключённым договорам, по месяцам.
       </Text>
 
       <Tiles>
