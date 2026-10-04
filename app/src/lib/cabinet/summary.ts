@@ -10,7 +10,7 @@ import { can, ensure, type Actor } from './access.ts';
 import { prisma } from '../db.ts';
 import { scopeProjects } from './access.ts';
 import { daysPast, moscowToday, now as today } from './clock.ts';
-import { PAYMENT_CLOSED_STATUSES, outstandingOf, receivableOf } from './money.ts';
+import { outstandingOf, overdueTrancheWhere, receivableOf } from './money.ts';
 import { turnLabel, type StageStateKey } from './stage-state.ts';
 
 /**
@@ -452,7 +452,6 @@ export async function moneyBrief(actor: Actor): Promise<{
   const day = moscowToday(today());
   // Отменённая работа денег не ждёт: её неоплаченное — потеря, и ни в «к
   // получению», ни в просроченное оно не входит (решение Р-257).
-  const expecting = { project: { status: { notIn: [...PAYMENT_CLOSED_STATUSES] } } };
   const [received, contracts, overdue] = await Promise.all([
     prisma.tranche.aggregate({ _sum: { amount: true }, where: { status: 'PAID' } }),
     // «К получению» — договор без полученного и списанного, той же функцией,
@@ -466,14 +465,8 @@ export async function moneyBrief(actor: Actor): Promise<{
         tranches: { select: { amount: true, status: true } },
       },
     }),
-    prisma.tranche.aggregate({
-      _sum: { amount: true },
-      where: {
-        status: { in: ['PLANNED', 'INVOICED'] },
-        plannedDate: { lt: day },
-        contract: expecting,
-      },
-    }),
+    // Условие — общее с «Должниками» (требование РК-10, решение Р-345).
+    prisma.tranche.aggregate({ _sum: { amount: true }, where: overdueTrancheWhere(day) }),
   ]);
   return {
     received: received._sum.amount ?? 0n,

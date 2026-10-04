@@ -129,7 +129,9 @@ export default async function FinanceScreen({
         <a href="/cabinet/manage/finance/years">Итоги по годам</a> — выручка и прибыль по годам:
         введённые вами рядом с посчитанными кабинетом.{' '}
         <a href="/cabinet/manage/finance/payouts">Вознаграждение кураторов</a> — начислено, выплачено и
-        к выплате по каждому куратору.
+        к выплате по каждому куратору.{' '}
+        <a href="/cabinet/manage/finance/debtors">Должники</a> — просроченные платежи: напомнить,
+        перенести дату или списать.
       </Text>
 
       <Tiles>

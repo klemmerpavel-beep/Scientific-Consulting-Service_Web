@@ -1,7 +1,7 @@
 import { prisma } from '../db.ts';
 import { can, ensure, scopePayouts, type Actor } from './access.ts';
 import { record } from './audit.ts';
-import { moscowToday } from './clock.ts';
+import { daysPast, moscowToday, now as clockNow } from './clock.ts';
 import { enqueue } from './outbox.ts';
 import { payoutLetter } from './curator-letters.ts';
 import { projectRef } from './projects.ts';
@@ -22,6 +22,7 @@ import {
   canChangeTrancheStatus,
   expectsPayment,
   isTrancheStatus,
+  overdueTrancheWhere,
   receivableOf,
   type TrancheStatus,
 } from './money.ts';
@@ -850,5 +851,137 @@ export async function projectPayouts(actor: Actor, projectId: string) {
     where: { projectId },
     orderBy: { createdAt: 'desc' },
     include: { expert: { select: { fullName: true } } },
+  });
+}
+
+// ─────────────────────────── Должники (РК-10) ───────────────────────────────
+
+/** Строка «Должников»: просроченный транш и чья работа. */
+export interface DebtorRow {
+  readonly trancheId: string;
+  readonly title: string;
+  readonly amount: bigint;
+  readonly plannedDate: Date;
+  /** Дней после плановой даты. */
+  readonly late: number;
+  readonly status: TrancheStatus;
+  readonly code: string;
+  readonly work: string;
+  /** Состояние работы: идущую можно приостановить до оплаты (п. 8.5 оферты). */
+  readonly workStatus: string;
+  readonly client: string;
+  readonly manager: string;
+}
+
+/**
+ * «Деньги → Должники» (требование РК-10, решение Р-345): просроченные
+ * транши — тем же условием, что плитка «Просрочено по траншам»
+ * (`overdueTrancheWhere`); сумма перечня равна плитке по построению.
+ * Давние сверху. Деньги практики — только руководителю (Р-149).
+ */
+export async function overdueTranches(actor: Actor, at: Date = clockNow()): Promise<DebtorRow[]> {
+  ensure(actor, 'MARGIN_VIEW');
+  const day = moscowToday(at);
+  const rows = await prisma.tranche.findMany({
+    where: overdueTrancheWhere(day),
+    orderBy: [{ plannedDate: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      title: true,
+      amount: true,
+      plannedDate: true,
+      status: true,
+      contract: {
+        select: {
+          project: {
+            select: {
+              code: true,
+              title: true,
+              status: true,
+              client: { select: { fullName: true } },
+              manager: { select: { fullName: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+  return rows.map((row) => ({
+    trancheId: row.id,
+    title: row.title,
+    amount: row.amount,
+    plannedDate: row.plannedDate!,
+    late: daysPast(row.plannedDate, at) ?? 0,
+    status: row.status as TrancheStatus,
+    code: row.contract.project.code,
+    work: row.contract.project.title,
+    workStatus: row.contract.project.status,
+    client: row.contract.project.client.fullName,
+    manager: row.contract.project.manager.fullName,
+  }));
+}
+
+/** Предел длины причины переноса даты транша. */
+export const RESCHEDULE_REASON_MAX = 500;
+
+/**
+ * Перенести плановую дату транша (требование РК-10, решение Р-345).
+ * Причина обязательна и пишется в журнал: схема не меняется. Оплаченный,
+ * списанный и сторнированный транш не переносится — у него нет срока.
+ */
+export async function rescheduleTranche(actor: Actor, trancheId: string, date: Date | null, reasonRaw: string) {
+  const tranche = await prisma.tranche.findUnique({
+    where: { id: trancheId },
+    select: { status: true, plannedDate: true, title: true, contract: { select: { projectId: true } } },
+  });
+  if (tranche === null) throw new Error('Транш не найден');
+  const ref = await projectRef(tranche.contract.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'PAYMENT_EDIT', ref);
+  if (tranche.status !== 'PLANNED' && tranche.status !== 'INVOICED') {
+    throw new Error('Переносится только запланированный платёж или выставленный счёт');
+  }
+  if (date === null || Number.isNaN(date.getTime())) throw new Error('Укажите новую плановую дату');
+  if (date.getUTCFullYear() < 2000) throw new Error('Плановая дата указана неверно');
+  const reason = reasonRaw.replace(/\s+/gu, ' ').trim();
+  if (reason.length === 0) throw new Error('Укажите причину переноса: она останется в журнале');
+  if (reason.length > RESCHEDULE_REASON_MAX) {
+    throw new Error(`Причина переноса — не длиннее ${RESCHEDULE_REASON_MAX} знаков`);
+  }
+  await ensureMoneyWritable(tranche.contract.projectId, false);
+  const moved = await prisma.tranche.updateMany({
+    where: { id: trancheId, status: tranche.status },
+    data: { plannedDate: date },
+  });
+  if (moved.count === 0) throw new Error('Статус транша уже изменён другим действием: обновите страницу');
+  await record(actor, {
+    action: 'TRANCHE_RESCHEDULED',
+    objectType: 'Tranche',
+    objectId: trancheId,
+    projectId: tranche.contract.projectId,
+    payload: {
+      title: tranche.title,
+      from: tranche.plannedDate?.toISOString().slice(0, 10) ?? null,
+      to: date.toISOString().slice(0, 10),
+      reason,
+    },
+  });
+}
+
+/**
+ * Назначение и плановая дата транша — для заготовки «Напоминание об
+ * оплате» (РК-10). Транш должен принадлежать этой работе; пишущий в
+ * переписку видит её оплаты.
+ */
+export async function trancheForReminder(
+  actor: Actor,
+  projectId: string,
+  trancheId: string,
+): Promise<{ title: string; plannedDate: Date | null } | null> {
+  const ref = await projectRef(projectId);
+  if (ref === null || !can(actor, 'MESSAGE_WRITE', ref)) return null;
+  return prisma.tranche.findFirst({
+    where: { id: trancheId, contract: { projectId } },
+    select: { title: true, plannedDate: true },
   });
 }

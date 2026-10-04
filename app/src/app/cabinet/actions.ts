@@ -43,6 +43,7 @@ import {
   saveContract,
   removeTranche,
   setTrancheStatus,
+  rescheduleTranche,
 } from '../../lib/cabinet/finance';
 import { saveYear } from '../../lib/cabinet/finance-years';
 import { parseAmount, type TrancheStatus } from '../../lib/cabinet/money';
@@ -1159,6 +1160,40 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
     );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сменить статус транша');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** «Должники»: перенести плановую дату транша с причиной (РК-10, Р-345). */
+export async function moveTrancheDate(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/finance/debtors';
+  let failure: string | null = null;
+  try {
+    await rescheduleTranche(
+      actor,
+      String(form.get('trancheId') ?? ''),
+      dateOrNull(form.get('plannedDate')),
+      String(form.get('reason') ?? ''),
+    );
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось перенести дату транша');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(`${back}?moved=1`);
+}
+
+/** «Должники»: списать долг — только с подтверждением (РК-10, Р-345; Р-244). */
+export async function writeOffDebt(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/finance/debtors';
+  let failure: string | null = null;
+  try {
+    if (form.get('confirm') !== 'on') throw new Error('Подтвердите списание: долг больше не будет ждать оплаты');
+    await setTrancheStatus(actor, String(form.get('trancheId') ?? ''), 'WRITTEN_OFF');
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось списать транш');
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);

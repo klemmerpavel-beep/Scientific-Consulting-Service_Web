@@ -39,7 +39,7 @@ describe('заготовки куратора (М-21)', () => {
   it('напоминание, итог созвона с датой по часам кабинета, перенос срока', () => {
     assert.deepEqual(
       draftsFor('MANAGER').map((draft) => draft.label),
-      ['Напоминание о материалах', 'Итог созвона', 'Перенос срока'],
+      ['Напоминание о материалах', 'Итог созвона', 'Перенос срока', 'Напоминание об оплате'],
     );
     assert.match(
       draftText('MANAGER', 'remind', context) ?? '',
@@ -48,6 +48,14 @@ describe('заготовки куратора (М-21)', () => {
     assert.equal(draftText('MANAGER', 'callnote', context), 'Итог созвона 3 октября 2026: договорились — ');
     assert.match(draftText('HEAD', 'reschedule', context) ?? '', /^Предлагаем перенести срок этапа «Обзор литературы»/u);
     assert.equal(draftText('MANAGER', 'call', context), null, 'заготовка клиента открылась куратору');
+  });
+
+  it('напоминание об оплате — назначение и срок, без сумм (РК-10, Р-345)', () => {
+    const text = draftText('HEAD', 'payment', { ...context, payment: { title: 'Аванс за главу 2', date: '1 октября 2026' } }) ?? '';
+    assert.match(text, /^Напоминаем: срок оплаты «Аванс за главу 2» прошёл 1 октября 2026\./u);
+    assert.doesNotMatch(text, /\d[\d\s]*₽|руб/u, 'сумма в заготовке');
+    assert.match(draftText('MANAGER', 'payment', context) ?? '', /срок очередной оплаты по договору прошёл/u);
+    assert.equal(draftText('CLIENT', 'payment', context), null, 'заготовка практики открылась клиенту');
   });
 
   it('дело «Напомнить клиенту» ведёт в переписку с заготовкой', () => {

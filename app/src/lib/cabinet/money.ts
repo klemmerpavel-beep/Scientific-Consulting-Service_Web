@@ -86,6 +86,35 @@ export function outstandingOf(
  */
 export const PAYMENT_CLOSED_STATUSES = ['CANCELLED'] as const;
 
+/**
+ * Просроченный транш (требование РК-10, решение Р-345): счёт
+ * выставлен или платёж запланирован, плановая дата — раньше московского
+ * сегодня, работа не отменена. Одно условие на плитку «Просрочено по
+ * траншам» и перечень «Должники»: суммы совпадают по построению.
+ * `day` — начало сегодняшнего дня по Москве (`moscowToday`).
+ */
+export function overdueTrancheWhere(day: Date) {
+  return {
+    status: { in: ['PLANNED' as const, 'INVOICED' as const] },
+    plannedDate: { lt: day },
+    contract: { project: { status: { notIn: [...PAYMENT_CLOSED_STATUSES] } } },
+  };
+}
+
+/** То же условие для строки на экране: транш и состояние его работы. */
+export function isTrancheOverdue(
+  tranche: { readonly status: string; readonly plannedDate: Date | null },
+  projectStatus: string,
+  day: Date,
+): boolean {
+  return (
+    (tranche.status === 'PLANNED' || tranche.status === 'INVOICED') &&
+    tranche.plannedDate !== null &&
+    tranche.plannedDate.getTime() < day.getTime() &&
+    !(PAYMENT_CLOSED_STATUSES as readonly string[]).includes(projectStatus)
+  );
+}
+
 /** Ждёт ли практика денег по работе в этом состоянии (решение Р-257). */
 export function expectsPayment(status: string): boolean {
   return !(PAYMENT_CLOSED_STATUSES as readonly string[]).includes(status);

@@ -28,10 +28,12 @@ import { projectContract, projectMoney, projectPayouts } from '../../../../../li
 import { MATERIAL_KIND_LABEL, type MaterialKind } from '../../../../../lib/cabinet/materials';
 import {
   formatAmount,
+  isTrancheOverdue,
   nextTrancheStatuses,
   STATUS_LABEL,
   type TrancheStatus,
 } from '../../../../../lib/cabinet/money';
+import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { CHECK_TITLE, openChecks } from '../../../../../lib/cabinet/head-checks';
 import { requireActor } from '../../../../../lib/cabinet/session';
@@ -108,6 +110,9 @@ export default async function PaymentsScreen({
     openChecks(actor, project.id),
   ]);
 
+  // Просроченный платёж — тем же условием, что «Должники» и плитка
+  // «Сводки» (требование РК-10, решение Р-345).
+  const today = moscowToday(clockNow());
   const progress =
     money === null || money.contractTotal === 0n
       ? 0
@@ -292,7 +297,11 @@ export default async function PaymentsScreen({
                         <Text muted size={13} style={{ marginTop: 2 }}>
                           {tranche.plannedDate === null
                             ? 'срок не задан'
-                            : `срок ${formatDate(tranche.plannedDate)}`}
+                            : !isTrancheOverdue(tranche, project.status, today)
+                              ? `срок ${formatDate(tranche.plannedDate)}`
+                              : actor.role === 'CLIENT'
+                                ? `срок оплаты прошёл ${formatDate(tranche.plannedDate)}`
+                                : `срок ${formatDate(tranche.plannedDate)} · просрочен`}
                           {tranche.paidOn === null
                             ? ''
                             : ` · оплачен ${formatDate(tranche.paidOn)}`}

@@ -10,7 +10,7 @@
 
 import type { Role } from './access.ts';
 
-export type DraftKey = 'call' | 'due' | 'remind' | 'callnote' | 'reschedule';
+export type DraftKey = 'call' | 'due' | 'remind' | 'callnote' | 'reschedule' | 'payment';
 
 export interface DraftLink {
   readonly key: DraftKey;
@@ -33,6 +33,8 @@ const STAFF_DRAFTS: readonly DraftLink[] = [
   { key: 'remind', label: 'Напоминание о материалах' },
   { key: 'callnote', label: 'Итог созвона' },
   { key: 'reschedule', label: 'Перенос срока' },
+  // Напоминание о просроченном платеже — из «Должников» (РК-10, Р-345).
+  { key: 'payment', label: 'Напоминание об оплате' },
 ];
 
 /** Заготовки, доступные роли в переписке. */
@@ -50,7 +52,12 @@ export function draftsFor(role: Role): readonly DraftLink[] {
 export function draftText(
   role: Role,
   key: string | null | undefined,
-  context: { readonly stage: string | null; readonly today: string },
+  context: {
+    readonly stage: string | null;
+    readonly today: string;
+    /** Транш для напоминания об оплате: назначение и плановая дата словами. */
+    readonly payment?: { readonly title: string; readonly date: string | null } | null;
+  },
 ): string | null {
   if (key === null || key === undefined) return null;
   if (!draftsFor(role).some((draft) => draft.key === key)) return null;
@@ -66,6 +73,15 @@ export function draftText(
       return `Итог созвона ${context.today}: договорились — `;
     case 'reschedule':
       return `Предлагаем перенести срок ${stage} на . Причина: `;
+    case 'payment': {
+      // Без сумм и расчётов практики: назначение платежа и дата срока.
+      const payment = context.payment ?? null;
+      if (payment === null) {
+        return 'Напоминаем: срок очередной оплаты по договору прошёл. Счёт и реквизиты — в «Оплатах и документах» работы. ';
+      }
+      const when = payment.date === null ? '' : ` ${payment.date}`;
+      return `Напоминаем: срок оплаты «${payment.title}» прошёл${when}. Счёт и реквизиты — в «Оплатах и документах» работы. `;
+    }
   }
   return null;
 }

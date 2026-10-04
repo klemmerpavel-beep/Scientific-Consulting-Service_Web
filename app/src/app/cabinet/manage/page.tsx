@@ -1139,7 +1139,13 @@ export default async function ManageQueue({
                         fontVariantNumeric: 'tabular-nums',
                       }}
                     >
-                      {row.value}
+                      {row.key === 'debt' && money.overdue > 0n ? (
+                        <a className="cab-mark" href="/cabinet/manage/finance/debtors">
+                          {row.value}
+                        </a>
+                      ) : (
+                        row.value
+                      )}
                     </dd>
                   </div>
                 ))}
@@ -1167,8 +1173,12 @@ export default async function ManageQueue({
               )}
               <Text muted size={13} style={{ marginTop: 10 }}>
                 Суммы в рублях; остаток отменённых работ к получению не считается. Остаток
-                по каждой работе — на экране денег; просроченные платежи — на экранах оплат
-                работ.
+                по каждой работе — на экране денег; просроченные платежи —{' '}
+                {/* «Просрочено по траншам» ведёт в «Должники» (РК-10, Р-345). */}
+                <a className="cab-mark" href="/cabinet/manage/finance/debtors">
+                  в «Должниках»
+                </a>
+                .
               </Text>
               <div style={{ marginTop: 'auto' }} />
               <div style={{ marginTop: 12 }}>

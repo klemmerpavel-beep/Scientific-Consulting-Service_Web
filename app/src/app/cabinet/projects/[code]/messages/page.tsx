@@ -26,6 +26,7 @@ import { formDraft } from '../../../../../lib/cabinet/flash';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { draftsFor, draftText } from '../../../../../lib/cabinet/message-drafts';
+import { trancheForReminder } from '../../../../../lib/cabinet/finance';
 import { now as clockNow } from '../../../../../lib/cabinet/clock';
 import { postInternalMessage, postMessage } from '../../../actions';
 
@@ -36,7 +37,7 @@ export default async function MessagesScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string; draft?: string; tab?: string }>;
+  searchParams: Promise<{ error?: string; draft?: string; tab?: string; tranche?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}/messages`);
 
@@ -76,9 +77,13 @@ export default async function MessagesScreen({
   // Напоминание о материалах называет этап, который ждёт клиента (М-21,
   // Р-317); остальные заготовки — текущий этап.
   const awaiting = project.stages.find((stage) => stage.state === 'AWAITING_CLIENT') ?? null;
+  // Напоминание об оплате называет транш из «Должников» (РК-10, Р-345).
+  const tranche =
+    sp.draft === 'payment' && sp.tranche !== undefined ? await trancheForReminder(actor, project.id, sp.tranche) : null;
   const draft = draftText(actor.role, sp.draft, {
     stage: (sp.draft === 'remind' ? (awaiting ?? current) : current)?.title ?? null,
     today: formatDate(clockNow()) ?? '',
+    payment: tranche === null ? null : { title: tranche.title, date: formatDate(tranche.plannedDate) },
   });
   // Подзаголовок называет собеседника, а не повторяет название работы:
   // оно уже стоит строкой возврата над заголовком (решение Р-190).
