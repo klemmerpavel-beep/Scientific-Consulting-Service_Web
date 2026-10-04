@@ -172,6 +172,20 @@ export interface Deadline {
 const SOON_DAYS = 14;
 
 /**
+ * Где стоят работы — по состоянию текущего этапа. Порядок — ход работы, а
+ * не убывание числа: перечень читается как путь от «не начат» до «на
+ * согласовании». Тот же перечень — у «Команды» (РК-06, Р-343).
+ */
+export const LOAD_ORDER: readonly { key: string; label: string }[] = [
+  { key: 'NOT_STARTED', label: 'Не начаты' },
+  { key: 'IN_PROGRESS', label: 'В работе' },
+  { key: 'AWAITING_CLIENT', label: 'Ждут клиента' },
+  { key: 'IN_APPROVAL', label: 'На согласовании' },
+  { key: 'DONE', label: 'Все этапы пройдены' },
+  { key: 'PLANLESS', label: 'Без плана работ' },
+];
+
+/**
  * Загрузка практики по состоянию текущего этапа.
  *
  * Плитки отвечают на вопрос «сколько денег», но не на вопрос «чем занята
@@ -232,19 +246,8 @@ export async function stageLoad(
     if (current?.dueOn != null && current.dueOn < day) overdue += 1;
   }
 
-  // Порядок — ход работы, а не убывание числа: перечень читается как
-  // путь от «не начат» до «на согласовании».
-  const ORDER: readonly { key: string; label: string }[] = [
-    { key: 'NOT_STARTED', label: 'Не начаты' },
-    { key: 'IN_PROGRESS', label: 'В работе' },
-    { key: 'AWAITING_CLIENT', label: 'Ждут клиента' },
-    { key: 'IN_APPROVAL', label: 'На согласовании' },
-    { key: 'DONE', label: 'Все этапы пройдены' },
-    { key: 'PLANLESS', label: 'Без плана работ' },
-  ];
-
   return {
-    points: ORDER.map((row) => ({ ...row, count: counts.get(row.key) ?? 0 })).filter(
+    points: LOAD_ORDER.map((row) => ({ ...row, count: counts.get(row.key) ?? 0 })).filter(
       (row) => row.count > 0,
     ),
     overdue,

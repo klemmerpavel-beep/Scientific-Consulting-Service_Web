@@ -44,6 +44,7 @@ import { homeFor } from '../../../lib/cabinet/nav';
 import { byMonth, products, receivedBetween } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
 import { activeWorks, moneyBrief, orderSummary, stageLoad, upcomingDeadlines } from '../../../lib/cabinet/summary';
+import { teamBrief, teamLoad } from '../../../lib/cabinet/team';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -153,6 +154,8 @@ export default async function ManageQueue({
   const parts = attentionParts(sources);
   const { light, unread, today, outbox } = sources;
   const term = actor.role === 'HEAD' ? await reactionDays() : 0;
+  // «Команда» — до пяти строк после «Требует внимания» (РК-06, Р-343; ОР-2).
+  const team = actor.role === 'HEAD' ? teamBrief(await teamLoad(actor)) : [];
   const queue = await leadQueue(actor, Number.isFinite(requested) ? requested : 1);
   const leads = queue.rows;
 
@@ -732,6 +735,41 @@ export default async function ManageQueue({
               </ButtonLink>
             </div>
           ) : null}
+        </Block>
+      )}
+
+      {/* «Команда»: строка на человека — работ, просрочено, ждёт его
+          решения; первыми — у кого больше просроченного и ждущего
+          (требование РК-06, решение Р-343). */}
+      {team.length === 0 ? null : (
+        <Block style={{ marginBottom: 20 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 10 }}>
+            Команда
+          </Heading>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
+            {team.map((row) => (
+              <li key={`${row.side}-${row.id}`}>
+                <a className="cab-mark" href={row.href} style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
+                  {row.fullName}
+                </a>
+                <Text muted size={13}>
+                  {[
+                    row.side,
+                    `работ ${row.works}`,
+                    row.overdue === 0 ? null : `просрочено ${row.overdue}`,
+                    row.decide === 0 ? null : `ждёт решения ${row.decide}`,
+                  ]
+                    .filter((part) => part !== null)
+                    .join(' · ')}
+                </Text>
+              </li>
+            ))}
+          </ul>
+          <div style={{ marginTop: 12 }}>
+            <ButtonLink href="/cabinet/manage/team" tone="quiet">
+              Вся команда
+            </ButtonLink>
+          </div>
         </Block>
       )}
 

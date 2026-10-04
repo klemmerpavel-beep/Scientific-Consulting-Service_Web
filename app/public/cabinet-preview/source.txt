@@ -1,3 +1,3 @@
-a20de80fd80cb4d0fd8ad120b10b7bce63b9c1ab828e1634964e0234a926902d
+5bd21103d929925eee4739247650b8ebee869d52574e809f4e3e602895acabdb
 # Свёртка исходников, с которых снят этот снимок (решение Р-214).
 # Пересъёмка: node tools/cabinet-artboards.mjs, затем node tools/cabinet-prototype.mjs

@@ -298,6 +298,8 @@ async function crawl(page, role, stabilize) {
     ...(role.key === 'manager' ? ['/cabinet/projects/PD-2026-047/payments'] : []),
     // Внутренняя ветка переписки — за вкладкой с запросом (РК-07, Р-336).
     ...(role.key === 'manager' || role.key === 'head' ? ['/cabinet/projects/PD-2026-047/messages?tab=internal'] : []),
+    // Переписка «Команды» — за вкладкой с запросом (РК-06, Р-343).
+    ...(role.key === 'head' ? ['/cabinet/manage/team?tab=threads'] : []),
   ];
   const many = [];
   const seen = new Set(plain);
