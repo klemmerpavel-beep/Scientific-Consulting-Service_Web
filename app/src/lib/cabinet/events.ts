@@ -51,7 +51,9 @@ export type EventKind =
   | 'INTERNAL_MESSAGE'
   | 'STAFF_QUESTION'
   | 'HEAD_REPLY'
-  | 'STAGE_ACCEPTED';
+  | 'STAGE_ACCEPTED'
+  | 'WORK_TRANSFERRED'
+  | 'MANAGER_CHANGED';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -97,7 +99,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   VERSION_REJECTED: 'версия не опубликована',
   NDA_NEEDED: 'нужен договор поручения',
   PROJECT_STATUS_CHANGED: 'изменилось состояние работы',
-  CURATOR_CHANGED: 'у работы новый менеджер',
+  CURATOR_CHANGED: 'сменился менеджер работы',
   MODERATION_PENDING: 'ждут публикации замечания или версии',
   CLIENT_COMMENT: 'клиент оставил замечание',
   CURATOR_ASSIGNED: 'вам передана работа',
@@ -122,6 +124,8 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   STAFF_QUESTION: 'вопрос сотрудника',
   HEAD_REPLY: 'ответ руководителя',
   STAGE_ACCEPTED: 'этап принят: акт и счёт',
+  WORK_TRANSFERRED: 'работа передана другому менеджеру',
+  MANAGER_CHANGED: 'сменился менеджер работы',
 };
 
 /**

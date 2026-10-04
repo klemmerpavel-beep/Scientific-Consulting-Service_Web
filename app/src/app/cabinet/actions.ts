@@ -481,7 +481,9 @@ export async function moderateLead(form: FormData): Promise<void> {
       const project = await approveLead(actor, {
         leadId,
         serviceTypeId: String(form.get('serviceTypeId') ?? ''),
-        managerId: actor.id,
+        // Руководитель выбирает менеджера работы; менеджер ведёт её сам
+        // (требование РК-08, решение Р-344).
+        managerId: String(form.get('managerId') ?? ''),
         title: String(form.get('title') ?? ''),
         applyStageTemplate: form.get('applyTemplate') === 'on',
       });
@@ -712,16 +714,17 @@ export async function setExpert(form: FormData): Promise<void> {
   redirect(`/cabinet/projects/${code}`);
 }
 
-/** Смена куратора работы. Доступна руководителю. */
+/** Передача работы другому менеджеру — с причиной. Доступна руководителю. */
 export async function setManager(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
   const managerId = String(form.get('managerId') ?? '');
+  const reason = String(form.get('reason') ?? '');
   try {
-    await assignManager(actor, projectId, managerId);
+    await assignManager(actor, projectId, managerId, reason);
   } catch (error) {
-    await manageFailure(code, 'manager', error, { managerId });
+    await manageFailure(code, 'manager', error, { managerId, reason });
   }
   redirect(`/cabinet/projects/${code}`);
 }

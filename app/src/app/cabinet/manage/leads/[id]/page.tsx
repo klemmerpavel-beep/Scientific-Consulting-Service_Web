@@ -25,7 +25,7 @@ import {
 import { ensure } from '../../../../../lib/cabinet/access';
 import { contactHref, leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
 import { declineLetterNote, leadAddress } from '../../../../../lib/cabinet/lead-letter';
-import { leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
+import { curators, leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { commentLead, moderateLead, resendDeclineLetter, saveLead, switchLeadStatus } from '../../../actions';
 import { LeadStatusChip, LeadStatusSwitch } from '../../../../../components/cabinet/LeadStatus';
@@ -57,6 +57,12 @@ export default async function LeadScreen({
   const flags = await searchParams;
   const [lead, types] = await Promise.all([leadById(actor, id), serviceTypes(actor)]);
   if (lead === null) notFound();
+  // Менеджера работы выбирает руководитель: единственный действующий
+  // менеджер стоит по умолчанию, из нескольких выбор обязателен
+  // (требование РК-08, решение Р-344; ДР-1, ОР-1).
+  const managers = actor.role === 'HEAD' ? await curators(actor) : [];
+  const onlyManager = managers.filter((row) => row.role === 'MANAGER');
+  const managerDefault = onlyManager.length === 1 ? onlyManager[0]!.id : '';
   const letter = lead.notifications[0] ?? null;
 
   const callHref = contactHref(lead.contactKind, lead.contact);
@@ -363,6 +369,23 @@ export default async function LeadScreen({
                     </option>
                   ))}
                 </Select>
+                {managers.length === 0 ? null : (
+                  <Select
+                    label="Менеджер работы"
+                    name="managerId"
+                    required
+                    defaultValue={managerDefault}
+                    hint="Работу ведёт и отвечает клиенту выбранный менеджер; ему придёт письмо."
+                  >
+                    <option value="">Выберите менеджера</option>
+                    {managers.map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {row.fullName}
+                        {row.role === 'HEAD' ? ' — руководитель' : ''}
+                      </option>
+                    ))}
+                  </Select>
+                )}
                 {/* Флажок — только если шаблон есть хотя бы у одного типа: при
                     пустом справочнике шаблонов он молча ничего не делал. Какие
                     типы с шаблоном, видно в самом списке (решение Р-254). */}

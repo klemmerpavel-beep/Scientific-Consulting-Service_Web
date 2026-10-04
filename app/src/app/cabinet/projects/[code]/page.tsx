@@ -157,6 +157,15 @@ function eventLine(
     const name = typeof data.expertId === 'string' ? executors.get(data.expertId) : undefined;
     return name === undefined ? 'Назначен куратор' : `Назначен куратор: ${name}`;
   }
+  // Передача работы: практике — кто, кому и почему; куратору — кому;
+  // клиенту — без имён и причины (требование РК-08, решение Р-344; ОЭ-3б).
+  if (kind === 'MANAGER_ASSIGNED' && typeof data.to === 'string') {
+    if (actor.role === 'CLIENT') return 'Сменился менеджер работы';
+    if (actor.role === 'EXPERT') return `Работу ведёт другой менеджер: ${data.to}`;
+    const by = typeof data.by === 'string' ? data.by : 'руководитель';
+    const reason = typeof data.reason === 'string' && data.reason !== '' ? `: ${data.reason}` : '';
+    return `Работу передал ${by} менеджеру ${data.to}${reason}`;
+  }
   const stage = stages.find((item) => item.id === data.stageId);
   const material = materials.find((item) => item.id === data.materialId);
 
@@ -1183,6 +1192,15 @@ export default async function ProjectScreen({
                       </option>
                     ))}
                   </Select>
+                  {/* Причина — в истории для практики; клиенту — без неё
+                      (требование РК-08, решение Р-344). */}
+                  <Field
+                    label="Причина передачи"
+                    name="reason"
+                    required
+                    defaultValue={draft.reason ?? ''}
+                    hint="Не длиннее 1000 знаков. Видна практике в истории работы и в письмах менеджерам; клиенту — только «Сменился менеджер работы»."
+                  />
                   <FormActions>
                     <Button tone="quiet">Сохранить менеджера</Button>
                   </FormActions>

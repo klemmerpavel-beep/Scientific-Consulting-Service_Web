@@ -152,6 +152,19 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
   if (!serviceType.isActive) {
     throw new Error('Тип сопровождения выведен из оборота: выберите действующий');
   }
+  // Менеджера работы выбирает руководитель; одобривший менеджер ведёт её
+  // сам (требование РК-08, решение Р-344; ответ ОР-1, Р-149).
+  const managerId = actor.role === 'HEAD' ? input.managerId.trim() : actor.id;
+  if (managerId === '') throw new Error('Выберите менеджера работы');
+  // Выбранного другого сотрудника проверяем по базе; одобряющий — сам
+  // вошедший сотрудник, его запись проверена входом.
+  if (managerId !== actor.id) {
+    const manager = await prisma.user.findFirst({
+      where: { id: managerId, status: 'ACTIVE', role: { in: ['MANAGER', 'HEAD'] } },
+      select: { id: true },
+    });
+    if (manager === null) throw new Error('Менеджером работы может быть действующий менеджер или руководитель');
+  }
 
   const fullName = lead.name?.trim() || 'Клиент без имени';
   const normalized = normalizeName(fullName);
@@ -266,7 +279,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
         serviceTypeId: input.serviceTypeId,
         title,
         topic: input.topic ?? lead.topic ?? null,
-        managerId: input.managerId,
+        managerId,
         dueOn: input.dueOn ?? null,
         // День начала — день одобрения по Москве. Прежде его ставил только
         // перенос книги, и работы, заведённые в кабинете, выпадали из
@@ -343,8 +356,22 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
     objectType: 'Lead',
     objectId: lead.id,
     projectId: project.id,
-    payload: { code: project.code },
+    payload: { code: project.code, managerId },
   });
+
+  // Работу ведёт не тот, кто одобрил, — менеджеру письмо (РК-08, Р-344).
+  if (managerId !== actor.id) {
+    const by = await prisma.user.findUniqueOrThrow({ where: { id: actor.id }, select: { fullName: true } });
+    const letter = managerAssignedLetter(project.code, project.title, `Заявку одобрил и передал вам ${by.fullName}`);
+    await enqueue(prisma, {
+      userId: managerId,
+      projectId: project.id,
+      eventKind: 'CURATOR_ASSIGNED',
+      subject: letter.subject,
+      body: letter.body,
+      dedupKey: `project:${project.id}:curator-assigned:${managerId}:approved`,
+    });
+  }
 
   await moveLeadAttachments(actor, lead.id, project.id);
 
@@ -690,21 +717,51 @@ export async function assignExpert(
  * передаёт её другому — клиент видит смену в ленте событий, потому что
  * меняется тот, кому он пишет.
  */
-export async function assignManager(actor: Actor, projectId: string, managerId: string) {
+/** Предел длины причины передачи работы. */
+export const TRANSFER_REASON_MAX = 1000;
+
+/**
+ * Письмо менеджеру, которому передана работа: при передаче, при одобрении
+ * заявки и в ручном заказе с другим менеджером (требование РК-08, решение
+ * Р-344). Перечень у менеджера — «Мои работы» (М-05).
+ */
+export function managerAssignedLetter(code: string, title: string, by: string): { subject: string; body: string } {
+  return {
+    subject: `Вам передана работа ${code}`,
+    body: `${code} — ${title}.\n${by}; работа уже в ваших «Моих работах».`,
+  };
+}
+
+/**
+ * Передать работу другому менеджеру (требование РК-08, решение Р-344).
+ *
+ * Причина обязательна: она стоит в истории для практики — «Работу передал
+ * {кто} менеджеру {ФИО}: {причина}»; клиенту — строка «Сменился менеджер
+ * работы» без имён и причины (ОЭ-3б). Уведомления — четырём адресатам:
+ * новому менеджеру, прежнему, куратору и клиенту (Т-21). Закрытую работу
+ * передавать можно (ОМ-20): её ведут до последнего письма.
+ */
+export async function assignManager(actor: Actor, projectId: string, managerId: string, reasonRaw = '') {
   const ref = await projectRef(projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PROJECT_SET_MANAGER', ref);
 
-  // Куратором может быть только действующий сотрудник практики: иначе
+  // Менеджером может быть только действующий сотрудник практики: иначе
   // работа ушла бы к клиенту или к приостановленной учётной записи.
   const target = await prisma.user.findFirst({
     where: { id: managerId, status: 'ACTIVE', role: { in: ['MANAGER', 'HEAD'] } },
-    select: { id: true, fullName: true, expertProfile: { select: { degree: true, specialization: true } } },
+    select: { id: true, fullName: true },
   });
   if (target === null) throw new Error('Менеджером работы может быть менеджер или руководитель');
   if (managerId === ref.managerId) {
     return prisma.project.findUniqueOrThrow({ where: { id: projectId } });
   }
+  const reason = reasonRaw.replace(/\s+/gu, ' ').trim();
+  if (reason.length === 0) throw new Error('Укажите причину передачи: она останется в истории работы');
+  if (reason.length > TRANSFER_REASON_MAX) {
+    throw new Error(`Причина передачи — не длиннее ${TRANSFER_REASON_MAX} знаков`);
+  }
+  const by = await prisma.user.findUniqueOrThrow({ where: { id: actor.id }, select: { fullName: true } });
 
   const project = await prisma.$transaction(async (tx) => {
     const updated = await tx.project.update({
@@ -713,33 +770,74 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
       include: { client: { select: { userId: true } } },
     });
     await tx.projectEvent.create({
-      data: { projectId, actorId: actor.id, kind: 'MANAGER_ASSIGNED', payload: { managerId } },
+      data: {
+        projectId,
+        actorId: actor.id,
+        kind: 'MANAGER_ASSIGNED',
+        payload: { managerId, from: ref.managerId, by: by.fullName, to: target.fullName, reason },
+      },
     });
-    // Новому куратору — письмо: работа стала его, а узнавал он об этом,
-    // только открыв перечень (требование М-07, решение Р-300).
+    const stamp = Date.now();
+    // Новому менеджеру — работа стала его, а узнавал он об этом, только
+    // открыв перечень (требование М-07, решение Р-300).
     if (managerId !== actor.id) {
+      const letter = managerAssignedLetter(updated.code, updated.title, `Работу передал ${by.fullName}: ${reason}`);
       await enqueue(tx, {
         userId: managerId,
         projectId,
         eventKind: 'CURATOR_ASSIGNED',
-        subject: `Вам передана работа ${updated.code}`,
-        body: `${updated.code} — ${updated.title}.\nРаботу передал руководитель; она уже в вашем перечне «Работы практики».`,
-        dedupKey: `project:${projectId}:curator-assigned:${managerId}:${Date.now()}`,
+        subject: letter.subject,
+        body: letter.body,
+        dedupKey: `project:${projectId}:curator-assigned:${managerId}:${stamp}`,
       });
     }
-    // Клиент узнаёт, что у работы новый менеджер — его собеседник
-    // (требование Т-21, решение Р-299). Имени менеджера клиент не видит
-    // (Э-01, ответ ОЭ-3б).
+    // Прежнему менеджеру — работа ушла из его перечня.
+    if (ref.managerId !== actor.id) {
+      await enqueue(tx, {
+        userId: ref.managerId,
+        projectId,
+        eventKind: 'WORK_TRANSFERRED',
+        subject: `Работа ${updated.code} передана другому менеджеру`,
+        body:
+          `${updated.code} — ${updated.title}.\n` +
+          `Работу передал ${by.fullName} менеджеру ${target.fullName}: ${reason}.\n` +
+          'В ваших «Моих работах» её больше нет.',
+        dedupKey: `project:${projectId}:transferred:${ref.managerId}:${stamp}`,
+        path: '/cabinet/projects',
+      });
+    }
+    // Куратору — с кем теперь работать: имя менеджера ему известно и
+    // прежде (С-4). Без договора поручения — без названия работы (Р-237).
+    if (updated.expertId !== null) {
+      const curator = await tx.user.findUnique({
+        where: { id: updated.expertId },
+        select: { expertProfile: { select: { ndaSignedAt: true } } },
+      });
+      const signed = (curator?.expertProfile?.ndaSignedAt ?? null) !== null;
+      await enqueue(tx, {
+        userId: updated.expertId,
+        projectId,
+        eventKind: 'MANAGER_CHANGED',
+        subject: `Сменился менеджер работы ${updated.code}`,
+        body:
+          `${signed ? `${updated.code} — ${updated.title}` : `Работа ${updated.code}`}.\n` +
+          `Работу теперь ведёт менеджер ${target.fullName}: сдача этапов и вопросы — ему.`,
+        dedupKey: `project:${projectId}:manager-changed:${updated.expertId}:${stamp}`,
+        path: signed ? `/cabinet/projects/${updated.code}` : '/cabinet/projects',
+      });
+    }
+    // Клиент узнаёт, что сменился его собеседник (требование Т-21, решение
+    // Р-299). Ни имён, ни причины клиент не видит (Э-01, ответ ОЭ-3б).
     if (updated.client.userId !== null) {
       await enqueue(tx, {
         userId: updated.client.userId,
         projectId,
         eventKind: 'CURATOR_CHANGED',
-        subject: `У работы «${updated.title}» новый менеджер`,
+        subject: `Сменился менеджер работы «${updated.title}»`,
         body:
           `Проект ${updated.code} — ${updated.title}.\n` +
-          'У работы новый менеджер. Писать ему можно в переписке по работе в личном кабинете.',
-        dedupKey: `project:${projectId}:curator:${managerId}:${Date.now()}`,
+          'Сменился менеджер работы. Писать ему можно в переписке по работе в личном кабинете.',
+        dedupKey: `project:${projectId}:curator:${managerId}:${stamp}`,
       });
     }
     return updated;
@@ -750,7 +848,7 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
     objectType: 'Project',
     objectId: projectId,
     projectId,
-    payload: { from: ref.managerId, to: managerId },
+    payload: { from: ref.managerId, to: managerId, reason },
   });
   return project;
 }

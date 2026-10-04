@@ -236,6 +236,8 @@ export const RULE_EVENTS: readonly {
   { kind: 'DEADLINE_MISSED', title: 'Срок этапа сорван', group: 'Сроки', roles: ['MANAGER', 'HEAD'] },
   { kind: 'MESSAGE_RECEIVED', title: 'Клиент написал в переписке', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   { kind: 'CURATOR_ASSIGNED', title: 'Вам передана работа', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
+  // Прежнему менеджеру — работа ушла к другому (РК-08, Р-344).
+  { kind: 'WORK_TRANSFERRED', title: 'Ваша работа передана другому менеджеру', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   // Обращения с сайта идут своим путём, сразу в оба канала практики, и
   // правилами не разводятся (Р-161).
   { kind: 'REQUEST_CREATED', title: 'Новое обращение из кабинета', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
@@ -273,6 +275,7 @@ export const RULE_EVENTS: readonly {
   { kind: 'PROJECT_STATUS_CHANGED', title: 'Работа приостановлена, возобновлена, завершена или отменена', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'WORK_ASSIGNED', title: 'Вас назначили куратором работы', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'WORK_UNASSIGNED', title: 'Работа передана другому куратору', group: 'Работа куратора', roles: ['EXPERT'] },
+  { kind: 'MANAGER_CHANGED', title: 'Сменился менеджер работы', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'PAYOUT_ACCRUED', title: 'Начислено вознаграждение', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'PAYOUT_PAID', title: 'Вознаграждение выплачено', group: 'Работа куратора', roles: ['EXPERT'] },
 ];

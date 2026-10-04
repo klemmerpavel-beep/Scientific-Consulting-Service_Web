@@ -7,7 +7,7 @@ import { normalizeName } from './import/etl.ts';
 import { openContract } from './import/apply.ts';
 import { formatAmount } from './money.ts';
 import { enqueue } from './outbox.ts';
-import { nextProjectCode } from './projects.ts';
+import { managerAssignedLetter, nextProjectCode } from './projects.ts';
 import { prisma } from '../db.ts';
 import { openContractCheck } from './head-checks.ts';
 
@@ -266,6 +266,21 @@ export async function createManualOrder(
         path: `/cabinet/projects/${created.code}/payments`,
       });
     }
+  }
+
+  // Руководитель завёл заказ на другого менеджера — тому письмо: прежде
+  // работа появлялась у него молча (требование РК-08, решение Р-344).
+  if (managerId !== actor.id) {
+    const by = await prisma.user.findUniqueOrThrow({ where: { id: actor.id }, select: { fullName: true } });
+    const letter = managerAssignedLetter(created.code, title, `Заказ завёл и передал вам ${by.fullName}`);
+    await enqueue(prisma, {
+      userId: managerId,
+      projectId: created.projectId,
+      eventKind: 'CURATOR_ASSIGNED',
+      subject: letter.subject,
+      body: letter.body,
+      dedupKey: `project:${created.projectId}:curator-assigned:${managerId}:manual`,
+    });
   }
   return created;
 }
