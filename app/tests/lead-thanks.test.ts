@@ -99,3 +99,24 @@ describe('окно благодарности', () => {
     assert.match(layout, /<FeedbackWidget \/>[\s\S]*<LeadThanks \/>/u);
   });
 });
+
+describe('страницы после выката не застревают в кэшах (Р-281)', () => {
+  const nginx = read('deploy', 'nginx.conf');
+
+  it('годовой s-maxage готовых страниц заменяется на no-cache, прочие заголовки проходят', () => {
+    assert.match(nginx, /map \$upstream_http_cache_control \$prodisser_cache_control \{\s*"~s-maxage" "no-cache";\s*default\s+\$upstream_http_cache_control;\s*\}/u);
+  });
+
+  it('общий адрес подставляет заголовок из карты и сохраняет HSTS', () => {
+    const root = /location \/ \{([\s\S]*?)\n {4}\}/u.exec(nginx.slice(nginx.lastIndexOf('location / {')));
+    assert.ok(root);
+    const block = root[1]!;
+    assert.match(block, /proxy_hide_header Cache-Control;/u);
+    assert.match(block, /add_header Cache-Control \$prodisser_cache_control always;/u);
+    assert.match(block, /add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;/u);
+  });
+
+  it('статика с хэшем в имени по-прежнему хранится год', () => {
+    assert.match(nginx, /location \/_next\/static\/ \{[\s\S]*?Cache-Control "public, max-age=31536000, immutable"/u);
+  });
+});
