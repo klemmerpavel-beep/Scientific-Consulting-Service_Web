@@ -43,9 +43,11 @@ import {
   dropCalendarDay,
   dropStageTemplate,
   saveCalendar,
+  saveReaction,
   saveStageTemplate,
   saveType,
 } from '../../actions';
+import { reactionDays } from '../../../../lib/cabinet/practice-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +96,7 @@ export default async function DirectoryScreen({
   const templates = tab === 'stages' ? await listStageTemplates(actor) : [];
   const colors = tab === 'colors' ? await listColorMap(actor) : [];
   const calendar = tab === 'calendar' ? await listCalendarDays(actor) : [];
+  const reaction = tab === 'calendar' ? await reactionDays() : 1;
 
   const href = (next: Tab) =>
     next === 'types' ? '/cabinet/manage/directory' : `/cabinet/manage/directory?tab=${next}`;
@@ -369,6 +372,22 @@ export default async function DirectoryScreen({
           расхождения с ним (требование Т-15, решение Р-290). */}
       {tab === 'calendar' ? (
         <>
+          {/* Срок реакции: через столько рабочих дней неразобранное дело
+              менеджера становится контрольным делом руководителя
+              (требование РК-05, решение Р-337). */}
+          <Card style={{ marginBottom: 20 }}>
+            <Form action={saveReaction} inline>
+              <Field
+                label="Срок реакции, рабочих дней"
+                name="days"
+                type="number"
+                defaultValue={String(reaction)}
+                hint="Сообщение клиента, публикация, заявка или сданный этап, не разобранные за этот срок, поднимаются руководителю в «Контроль»."
+                minWidth={140}
+              />
+              <Button tone="quiet">Сохранить</Button>
+            </Form>
+          </Card>
           {calendar.length === 0 ? (
             <Empty title="Переносов нет">
               Срок согласования считается по правилу: понедельник–пятница без нерабочих праздничных

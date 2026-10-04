@@ -55,6 +55,7 @@ const ACTIONS: Record<string, string> = {
   STAFF_REGALIA_SAVED: 'Регалии сотрудника сохранены',
   CURATOR_PROFILE_SAVED: 'Профиль куратора изменён',
   NDA_REQUESTED: 'Куратор сообщил руководителю, что ждёт договор поручения',
+  PRACTICE_SETTING_SAVED: 'Изменена настройка практики',
   CALENDAR_DAY_REMOVED: 'День производственного календаря снят',
   STAGE_TEMPLATE_REMOVED: 'Этап шаблона снят',
   STAGE_TEMPLATE_SAVED: 'Этап шаблона сохранён',

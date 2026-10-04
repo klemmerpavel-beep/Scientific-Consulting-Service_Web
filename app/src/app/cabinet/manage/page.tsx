@@ -35,6 +35,8 @@ import { staffThreadUnread, staffThreads, unreadInbox } from '../../../lib/cabin
 import { pendingComments, pendingVersions } from '../../../lib/cabinet/materials';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
 import { leadQueue, returnedStages, todayItems, trafficLight } from '../../../lib/cabinet/queries';
+import { controlItems } from '../../../lib/cabinet/control';
+import { reactionDays } from '../../../lib/cabinet/practice-settings';
 import { notifyChannelsDown, outboxDigest } from '../../../lib/cabinet/outbox';
 import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
 import { requireActor } from '../../../lib/cabinet/session';
@@ -142,9 +144,16 @@ export default async function ManageQueue({
   const staffQuestions = actor.role === 'HEAD' ? (await staffThreads(actor)).filter((row) => row.unread > 0) : [];
   // Справочник типов сопровождения на сводке больше не нужен: формы
   // одобрения уехали на экран заявки (решение Р-172).
+  // «Мои» дела руководителя — тот же набор, что у менеджера, по работам,
+  // где он сам менеджер; задержки остальных — «Контроль» после срока
+  // реакции (требование РК-05, решение Р-337). Набор строится выборками
+  // менеджера: роль здесь задаёт только сужение до своих работ.
+  const mine: typeof actor = actor.role === 'HEAD' ? { ...actor, role: 'MANAGER' } : actor;
+  const control = await controlItems(actor);
+  const term = actor.role === 'HEAD' ? await reactionDays() : 0;
   const [queue, light] = await Promise.all([
     leadQueue(actor, Number.isFinite(requested) ? requested : 1),
-    trafficLight(actor),
+    trafficLight(mine),
   ]);
   const leads = queue.rows;
 
@@ -160,14 +169,14 @@ export default async function ManageQueue({
   // менеджеру `scopeProjects` оставляет те, где он куратор. Деньги в строке
   // появляются только при праве на маржу (решение Р-175).
   const works = await activeWorks(actor);
-  const unread = await unreadInbox(actor);
+  const unread = await unreadInbox(mine);
   // Замечание эксперта висит неопубликованным, пока его не пропустят, и
   // клиенту не видно. Прежде о нём не говорил ни один экран (Р-183).
-  const moderation = await pendingComments(actor);
+  const moderation = await pendingComments(mine);
   // Версия эксперта не видна клиенту до публикации (Т-18, Р-294).
-  const versionsToPublish = await pendingVersions(actor);
+  const versionsToPublish = await pendingVersions(mine);
   // Клиент вернул этап с замечаниями: ход за куратором (решение Р-283).
-  const returned = await returnedStages(actor);
+  const returned = await returnedStages(mine);
   // Новые дела «Сегодня»: принятый этап, работа без плана, без
   // исполнителя или с исполнителем без доступа, заявки без ответа и в
   // разборе; «На этой неделе» — отдельным блоком (требование М-06, Р-304).
@@ -486,6 +495,18 @@ export default async function ManageQueue({
           },
         ]
       : []),
+    // «Контроль» — дело менеджера, не закрытое за срок реакции (РК-05).
+    ...control.map((row) => ({
+      key: row.key,
+      kind: 'control' as const,
+      step: 0 as const,
+      title: row.title,
+      mark: `${row.manager === null ? 'заявка' : row.manager} · ждёт ${row.waitDays} ${plural(row.waitDays, 'день', 'дня', 'дней')}`,
+      urgent: false,
+      detail: null,
+      todo: row.todo,
+      href: row.href,
+    })),
   ];
 
   // На сводке — не весь перечень, а первые дела каждого вида: при сотнях
@@ -505,6 +526,7 @@ export default async function ManageQueue({
     work: 3,
     lead: 3,
     outbox: 1,
+    control: 6,
   };
   const showAll = (await searchParams).attention === 'all' || attention.length <= 12;
   const taken: Partial<Record<(typeof attention)[number]['kind'], number>> = {};
@@ -556,6 +578,78 @@ export default async function ManageQueue({
       ),
   };
 
+  // Плашки «Требует внимания» — одна разметка для «Моих» и «Контроля».
+  const attentionList = (rows: typeof shownAttention) => (
+    <ul
+      style={{
+        margin: 0,
+        padding: 0,
+        listStyle: 'none',
+        display: 'grid',
+        // Не более двух плашек в ряду — общее правило облика.
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(420px,100%),1fr))',
+        gap: 12,
+      }}
+    >
+      {rows.map((row) => (
+        <Card
+          as="li"
+          key={row.key}
+          link
+          style={{
+            position: 'relative',
+            padding: row.step > 0 ? '14px 16px 16px 24px' : '14px 16px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            ...(row.urgent && row.step === 0 ? { borderColor: 'var(--pd-accent-edge)' } : {}),
+          }}
+        >
+          {/* Ступень тревоги — кромкой слева, от серой к графитовой;
+              плашка остаётся белой (решение Р-208). */}
+          {row.step === 0 ? null : (
+            <span
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: 10,
+                top: 14,
+                bottom: 14,
+                width: ALERT_WIDTH[row.step],
+                borderRadius: RADIUS.pill,
+                background: ALERT_EDGE[row.step],
+              }}
+            />
+          )}
+          {/* Вид беды — моноширинной меткой над названием, как метки
+              разделов на страницах сайта; пилюля на цветном фоне
+              спорила с заливкой и дублировала её (решение Р-208). */}
+          <Mono style={row.urgent ? { color: 'var(--pd-ink)', fontWeight: 500 } : undefined}>
+            {row.mark}
+          </Mono>
+          {/* Ссылка растянута на всю плашку: подсвечивается плашка
+              целиком, и нажиматься должна она же, а не строка в
+              шестнадцать пикселей (решение Р-209). */}
+          <a
+            href={row.href}
+            className="cab-stretch"
+            style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}
+          >
+            {row.title}
+          </a>
+          {row.detail === null ? null : (
+            <Text muted size={13}>
+              {row.detail}
+            </Text>
+          )}
+          <Text size={13} style={{ marginTop: 'auto', paddingTop: 4 }}>
+            {row.todo}
+          </Text>
+        </Card>
+      ))}
+    </ul>
+  );
+
   return (
     <Shell actor={actor} current="/cabinet/manage" board>
       {/* Сводка — первый экран после входа обеих служебных ролей, и она
@@ -600,74 +694,30 @@ export default async function ManageQueue({
           <Heading level={2} style={{ marginBottom: 12 }}>
             Требует внимания · {attention.length}
           </Heading>
-          <ul
-            style={{
-              margin: 0,
-              padding: 0,
-              listStyle: 'none',
-              display: 'grid',
-              // Не более двух плашек в ряду — общее правило облика.
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(420px,100%),1fr))',
-              gap: 12,
-            }}
-          >
-            {shownAttention.map((row) => (
-              <Card
-                as="li"
-                key={row.key}
-                link
-                style={{
-                  position: 'relative',
-                  padding: row.step > 0 ? '14px 16px 16px 24px' : '14px 16px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                  ...(row.urgent && row.step === 0 ? { borderColor: 'var(--pd-accent-edge)' } : {}),
-                }}
-              >
-                {/* Ступень тревоги — кромкой слева, от серой к графитовой;
-                    плашка остаётся белой (решение Р-208). */}
-                {row.step === 0 ? null : (
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      position: 'absolute',
-                      left: 10,
-                      top: 14,
-                      bottom: 14,
-                      width: ALERT_WIDTH[row.step],
-                      borderRadius: RADIUS.pill,
-                      background: ALERT_EDGE[row.step],
-                    }}
-                  />
-                )}
-                {/* Вид беды — моноширинной меткой над названием, как метки
-                    разделов на страницах сайта; пилюля на цветном фоне
-                    спорила с заливкой и дублировала её (решение Р-208). */}
-                <Mono style={row.urgent ? { color: 'var(--pd-ink)', fontWeight: 500 } : undefined}>
-                  {row.mark}
-                </Mono>
-                {/* Ссылка растянута на всю плашку: подсвечивается плашка
-                    целиком, и нажиматься должна она же, а не строка в
-                    шестнадцать пикселей (решение Р-209). */}
-                <a
-                  href={row.href}
-                  className="cab-stretch"
-                  style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}
-                >
-                  {row.title}
-                </a>
-                {row.detail === null ? null : (
-                  <Text muted size={13}>
-                    {row.detail}
+          {actor.role === 'HEAD' ? (
+            <>
+              {/* «Мои» и «Контроль» разделены (требование РК-05, решение
+                  Р-337): свои дела руководителя — как у менеджера; чужие —
+                  только после срока реакции. */}
+              <Heading level={3} size={3} style={{ marginBottom: 10 }}>
+                Мои · {shownAttention.filter((row) => row.kind !== 'control').length}
+              </Heading>
+              {attentionList(shownAttention.filter((row) => row.kind !== 'control'))}
+              {control.length === 0 ? null : (
+                <>
+                  <Heading level={3} size={3} style={{ margin: '20px 0 4px' }}>
+                    Контроль · {control.length}
+                  </Heading>
+                  <Text muted size={13} style={{ marginBottom: 10 }}>
+                    {`Дела менеджеров, не закрытые за ${term} ${plural(term, 'рабочий день', 'рабочих дня', 'рабочих дней')}: закрыть можно самому — ответить, опубликовать или разобрать.`}
                   </Text>
-                )}
-                <Text size={13} style={{ marginTop: 'auto', paddingTop: 4 }}>
-                  {row.todo}
-                </Text>
-              </Card>
-            ))}
-          </ul>
+                  {attentionList(shownAttention.filter((row) => row.kind === 'control'))}
+                </>
+              )}
+            </>
+          ) : (
+            attentionList(shownAttention)
+          )}
           {shownAttention.length < attention.length ? (
             <div style={{ marginTop: 12 }}>
               <ButtonLink href="/cabinet/manage?attention=all#attention" tone="quiet">

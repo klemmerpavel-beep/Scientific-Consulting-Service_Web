@@ -222,6 +222,7 @@ model User {
   messages          Message[]            @relation("MessageAuthor")
   staffMessages     Message[]            @relation("StaffThread")
   threadReads       MessageThreadRead[]
+  practiceSettings  PracticeSetting[]
   payouts           ExpertPayout[]
   notifications     NotificationOutbox[]
   auditEvents       AuditEvent[]
@@ -853,6 +854,15 @@ model Message {
   @@index([containsContactHint, createdAt])
   @@index([thread, projectId, createdAt])
   @@index([thread, staffId, createdAt])
+}
+
+/// Настройка практики «ключ — значение» (требование РК-05, решение Р-337).
+model PracticeSetting {
+  key         String   @id
+  value       String
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt   DateTime @default(now())
 }
 
 /// Курсор прочтения участника ветки (РК-07, Р-336). Ключ ветки —

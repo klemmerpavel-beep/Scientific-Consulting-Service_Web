@@ -33,6 +33,7 @@ import {
   type MaterialKind,
 } from '../../lib/cabinet/materials';
 import { sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages';
+import { saveReactionDays } from '../../lib/cabinet/practice-settings';
 import { handBackStage, handOverStage, recallHandover } from '../../lib/cabinet/handover';
 import {
   addPayout,
@@ -1525,6 +1526,20 @@ export async function detachAlias(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError('/cabinet/manage/directory', failure));
   redirect('/cabinet/manage/directory');
+}
+
+/** Срок реакции в рабочих днях (требование РК-05, решение Р-337). */
+export async function saveReaction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/directory?tab=calendar';
+  let failure: string | null = null;
+  try {
+    await saveReactionDays(actor, String(form.get('days') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить срок реакции');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 /** День производственного календаря (требование Т-15, решение Р-290). */

@@ -149,12 +149,58 @@ function otherSide(actor: Actor) {
     : { author: { role: 'CLIENT' as const } };
 }
 
+/**
+ * Счётчик руководителя по чужой работе — по его курсору прочтения: отметку
+ * `readAt` ставит менеджер работы (Р-221), и чужое непрочитанное у
+ * руководителя прежде не гасло, сколько бы он его ни открывал. Теперь
+ * сообщение клиента у руководителя новое, пока его не прочёл менеджер и
+ * пока не открыл сам руководитель (требование РК-05, ответ ОР-3, решение
+ * Р-337).
+ */
+async function headUnread(actor: Actor, projectIds: readonly string[]): Promise<Map<string, number>> {
+  if (projectIds.length === 0) return new Map();
+  const cursors = await prisma.messageThreadRead.findMany({
+    where: { userId: actor.id, threadKey: { in: projectIds.map((id) => `CLIENT_MANAGER:${id}`) } },
+    select: { threadKey: true, readAt: true },
+  });
+  const since = new Map(cursors.map((row) => [row.threadKey.slice('CLIENT_MANAGER:'.length), row.readAt]));
+  const out = new Map<string, number>();
+  for (const projectId of projectIds) {
+    const cursor = since.get(projectId);
+    const count = await prisma.message.count({
+      where: {
+        projectId,
+        ...CLIENT_THREAD,
+        author: { role: 'CLIENT' },
+        // Прочитанное менеджером — разобрано; открытое руководителем — тоже.
+        readAt: null,
+        ...(cursor === undefined ? {} : { createdAt: { gt: cursor } }),
+      },
+    });
+    if (count > 0) out.set(projectId, count);
+  }
+  return out;
+}
+
+/** Работы из перечня, где руководитель не менеджер. */
+async function foreignWorks(actor: Actor, projectIds: readonly string[]): Promise<string[]> {
+  if (actor.role !== 'HEAD' || projectIds.length === 0) return [];
+  const rows = await prisma.project.findMany({
+    where: { id: { in: [...projectIds] }, managerId: { not: actor.id } },
+    select: { id: true },
+  });
+  return rows.map((row) => row.id);
+}
+
 export async function unreadCount(actor: Actor, projectId: string): Promise<number> {
   // Принадлежность работы проверяется здесь, а не оставляется на совесть
   // вызывающего: выборка обязана держать разграничение сама, иначе чужой
   // код работы отдаёт число сообщений в чужом канале (решение Р-185).
   const scope = scopeProjects(actor);
   if (scope === null) return 0;
+  if ((await foreignWorks(actor, [projectId])).length > 0) {
+    return (await headUnread(actor, [projectId])).get(projectId) ?? 0;
+  }
   return prisma.message.count({
     where: {
       readAt: null,
@@ -176,17 +222,24 @@ export async function unreadByProject(
   // (решение Р-185).
   const scope = scopeProjects(actor);
   if (scope === null) return new Map();
+  // Руководителю по чужим работам — по его курсору (РК-05, ОР-3).
+  const foreign = await foreignWorks(actor, projectIds);
+  const own = projectIds.filter((id) => !foreign.includes(id));
   const rows = await prisma.message.groupBy({
     by: ['projectId'],
     where: {
       readAt: null,
       ...CLIENT_THREAD,
       ...otherSide(actor),
-      project: { id: { in: [...projectIds] }, ...scope },
+      project: { id: { in: own }, ...scope },
     },
     _count: { _all: true },
   });
-  return new Map(rows.flatMap((row) => (row.projectId === null ? [] : [[row.projectId, row._count._all] as const])));
+  const out = new Map<string, number>(
+    rows.flatMap((row) => (row.projectId === null ? [] : [[row.projectId, row._count._all] as const])),
+  );
+  for (const [projectId, count] of await headUnread(actor, foreign)) out.set(projectId, count);
+  return out;
 }
 
 /**
@@ -239,9 +292,20 @@ export async function markRead(actor: Actor, projectId: string): Promise<void> {
   const ref = await projectRef(projectId);
   if (ref === null) return;
   ensure(actor, 'MESSAGE_READ', ref);
-  // За практику прочтение отмечает куратор работы. Руководитель, открывший
-  // чужую работу, отметки не ставит: иначе письмо клиента, которое куратор
-  // ещё не видел, перестало бы быть для него новым (решение Р-221).
+  // За практику прочтение отмечает менеджер работы. Руководитель, открывший
+  // чужую работу, отметки не ставит: иначе письмо клиента, которое менеджер
+  // ещё не видел, перестало бы быть для него новым (решение Р-221). Его
+  // собственный счётчик гасит курсор прочтения (РК-05, ОР-3, Р-337).
+  if (actor.role === 'HEAD' && ref.managerId !== actor.id) {
+    const key = `CLIENT_MANAGER:${projectId}`;
+    const now = new Date();
+    await prisma.messageThreadRead.upsert({
+      where: { userId_threadKey: { userId: actor.id, threadKey: key } },
+      create: { userId: actor.id, threadKey: key, readAt: now },
+      update: { readAt: now },
+    });
+    return;
+  }
   if (actor.role !== 'CLIENT' && ref.managerId !== actor.id) return;
   await prisma.message.updateMany({
     where: { projectId, readAt: null, ...CLIENT_THREAD, ...otherSide(actor) },
