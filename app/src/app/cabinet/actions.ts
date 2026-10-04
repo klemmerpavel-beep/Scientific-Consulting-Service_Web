@@ -68,6 +68,7 @@ import { createCabinetRequest, REQUEST_FILES_MAX } from '../../lib/cabinet/queri
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue, retryFailed } from '../../lib/cabinet/outbox';
+import { reviewFeedback } from '../../lib/cabinet/feedback';
 import {
   addStage,
   editProject,
@@ -1148,4 +1149,29 @@ export async function retryNotification(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError('/cabinet/manage/outbox', failure));
   redirect('/cabinet/manage/outbox');
+}
+
+/**
+ * Разбор замечания с виджета (решение Р-277): критичность, состояние и что
+ * сделано. Возврат — на ту же страницу перечня с тем же отбором; адрес
+ * возврата приходит с формы и потому принимается только внутри экрана
+ * замечаний. Право проверяет служба.
+ */
+export async function saveFeedbackReview(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const base = '/cabinet/manage/feedback';
+  const raw = String(form.get('back') ?? '');
+  const back = raw === base || raw.startsWith(`${base}?`) ? raw : base;
+  let failure: string | null = null;
+  try {
+    await reviewFeedback(actor, String(form.get('id') ?? ''), {
+      severity: String(form.get('severity') ?? ''),
+      status: String(form.get('status') ?? ''),
+      note: String(form.get('note') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить разбор');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(`${back}${back.includes('?') ? '&' : '?'}saved=1`);
 }

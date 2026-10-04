@@ -101,6 +101,10 @@ ym(${Number(METRIKA_ID)},"init",{clickmap:true,trackLinks:true,accurateTrackBoun
     <div
       role="region"
       aria-label="Уведомление о файлах cookies"
+      // По этой метке кнопка замечаний поднимается над уведомлением, пока
+      // оно открыто: иначе на телефоне она закрывала бы «Разрешить»
+      // (решение Р-277).
+      data-pd-consent=""
       style={{
         position: 'fixed',
         left: 16,

@@ -25,6 +25,7 @@ import { YandexDisk } from '../src/lib/disk/webdav.ts';
 import { formatManifest, parseManifest, planSync, type MirrorEntry } from '../src/lib/disk/plan.ts';
 import { tablePath } from '../src/lib/disk/paths.ts';
 import {
+  feedbackTable,
   leadsTable,
   materialFiles,
   materialsTable,
@@ -87,6 +88,8 @@ async function main(): Promise<number> {
     await stagesTable(),
     await paymentsTable(),
     await materialsTable(files),
+    // Замечания с виджета — по ним раз в неделю делаются правки (Р-277).
+    await feedbackTable(),
   ];
   if (actor !== null) {
     built.push(await yearsTable(actor));

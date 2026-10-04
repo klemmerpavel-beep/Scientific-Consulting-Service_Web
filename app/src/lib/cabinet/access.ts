@@ -77,6 +77,7 @@ export const ACTIONS = [
   'DIRECTORY_EDIT',
   'USER_MANAGE',
   'ERASURE_EXECUTE',
+  'FEEDBACK_REVIEW',
 ] as const;
 
 export type Action = (typeof ACTIONS)[number];
@@ -208,6 +209,13 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     case 'DIRECTORY_EDIT':
     case 'USER_MANAGE':
     case 'ERASURE_EXECUTE':
+      return head;
+
+    // Разбор замечаний с виджета — раз в неделю, у руководителя: он решает,
+    // что править и в каком порядке (решение Р-277). Отдельное действие, а
+    // не право на журналы: журналы — надзор, замечания — работа над сайтом,
+    // и смешивать их значило бы выдавать одно вместе с другим.
+    case 'FEEDBACK_REVIEW':
       return head;
 
     default: {
