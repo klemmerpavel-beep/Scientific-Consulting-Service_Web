@@ -35,8 +35,8 @@ import { autoAcceptEnabled, formatDay } from '../../../../lib/cabinet/approval';
 import { approvalStaffLine } from '../../../../lib/cabinet/approval-text';
 import { formDraft } from '../../../../lib/cabinet/flash';
 import { stagePaperwork } from '../../../../lib/cabinet/projects';
-import { stageById } from '../../../../lib/cabinet/queries';
-import { daysPast } from '../../../../lib/cabinet/clock';
+import { stageById, stageClientWait } from '../../../../lib/cabinet/queries';
+import { daysPast, now as clockNow } from '../../../../lib/cabinet/clock';
 import ActionError from '../../../../components/cabinet/ActionError';
 import CommentList from '../../../../components/cabinet/CommentList';
 import { handoverOf, stageStateButtons } from '../../../../lib/cabinet/stage-state';
@@ -166,6 +166,12 @@ export default async function StageScreen({
           autoAccept: autoAcceptEnabled(),
         })
       : null;
+  // Этап ждал клиента — срок можно перенести на те же дни по п. 8.2
+  // оферты (часть F, МП-05, решение Р-381).
+  const waited =
+    forStaff && state !== 'DONE' && stage.dueOn !== null
+      ? await stageClientWait(actor, stage.id, clockNow())
+      : { days: 0, until: null };
   // Сдача этапа куратором менеджеру — пометка без нового состояния
   // (требование Э-05, решение Р-325).
   const handover = handoverOf(stage);
@@ -467,6 +473,11 @@ export default async function StageScreen({
           {approvalLine === null ? null : (
             <Text size={14} style={{ marginBottom: 12, fontWeight: 600 }}>
               {approvalLine}.
+            </Text>
+          )}
+          {waited.until === null ? null : (
+            <Text size={14} style={{ marginBottom: 12 }}>
+              {`Этап ждал материалов клиента ${waited.days} ${plural(waited.days, 'день', 'дня', 'дней')}. По п. 8.2 оферты срок этапа можно перенести на столько же — до ${formatDate(waited.until)}: «Перенести срок этапа» ниже.`}
             </Text>
           )}
           <div

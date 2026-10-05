@@ -136,3 +136,32 @@ export function handoverOf(stage: {
   if (stage.handedOverAt !== null) return 'handed';
   return stage.handbackAt !== null ? 'handed-back' : 'none';
 }
+
+/**
+ * Сколько полных дней этап ждал материалов клиента после последнего
+ * переноса срока (часть F, МП-05, решение Р-381): сумма отрезков в
+ * состоянии «Ждёт материалов клиента», включая идущий. По п. 8.2 оферты на
+ * столько же можно перенести срок этапа. `changes` — переходы этапа в
+ * любом порядке; отрезок, начатый до переноса, считается с переноса.
+ */
+export function clientWaitDays(
+  changes: readonly { readonly toState: string; readonly createdAt: Date }[],
+  since: Date | null,
+  now: Date,
+): number {
+  const DAY = 86_400_000;
+  const sorted = [...changes].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const floor = since?.getTime() ?? Number.NEGATIVE_INFINITY;
+  let total = 0;
+  let start: number | null = null;
+  for (const change of sorted) {
+    const at = change.createdAt.getTime();
+    if (start !== null) {
+      total += Math.max(0, at - Math.max(start, floor));
+      start = null;
+    }
+    if (change.toState === 'AWAITING_CLIENT') start = at;
+  }
+  if (start !== null) total += Math.max(0, now.getTime() - Math.max(start, floor));
+  return Math.floor(total / DAY);
+}

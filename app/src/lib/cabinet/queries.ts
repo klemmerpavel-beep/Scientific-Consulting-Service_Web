@@ -17,7 +17,7 @@ import {
 import { fileRefusal } from './file-guard.ts';
 import { loadCalendar } from './approval.ts';
 import { previousWorkday } from './workdays.ts';
-import { turnLabel, type StageStateKey } from './stage-state.ts';
+import { clientWaitDays, turnLabel, type StageStateKey } from './stage-state.ts';
 import { curatorTasks } from './curator-tasks.ts';
 import { moscowToday, now as today } from './clock.ts';
 import { LEAD_STATUS_LABEL } from './lead-labels.ts';
@@ -284,6 +284,37 @@ export function materialCountWhere(actor: Actor): Record<string, unknown> {
 
 function visibleMaterial(versionScope: Record<string, unknown>): Record<string, unknown> {
   return Object.keys(versionScope).length === 0 ? {} : { versions: { some: versionScope } };
+}
+
+/**
+ * Ожидание клиента на этапе после последнего переноса срока — для
+ * подсказки менеджеру (часть F, МП-05, решение Р-381). Только тому, кто
+ * правит этап.
+ */
+export async function stageClientWait(
+  actor: Actor,
+  stageId: string,
+  now: Date,
+): Promise<{ days: number; until: Date | null }> {
+  const stage = await prisma.stage.findUnique({
+    where: { id: stageId },
+    select: {
+      projectId: true,
+      dueOn: true,
+      project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
+      changes: { select: { toState: true, createdAt: true } },
+    },
+  });
+  if (stage === null || !can(actor, 'STAGE_EDIT', stage.project)) return { days: 0, until: null };
+  const moved = await prisma.projectEvent.findFirst({
+    where: { projectId: stage.projectId, kind: 'STAGE_DUE_CHANGED', payload: { path: ['stageId'], equals: stageId } },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true },
+  });
+  const days = clientWaitDays(stage.changes, moved?.createdAt ?? null, now);
+  // Срок, перенесённый на те же дни: календарные дни, как в оферте.
+  const until = stage.dueOn === null || days === 0 ? null : new Date(stage.dueOn.getTime() + days * 86_400_000);
+  return { days, until };
 }
 
 /**

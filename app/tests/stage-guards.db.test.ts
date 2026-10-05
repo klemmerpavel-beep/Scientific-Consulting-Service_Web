@@ -309,6 +309,24 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     assert.equal((await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } })).title, 'Глава, правка первого');
   });
 
+  it('МП-05: подсказка о переносе — дни ожидания клиента и срок до (Р-381)', async () => {
+    const { stageClientWait } = await import('../src/lib/cabinet/queries.ts');
+    const projectId = await newProject('W');
+    const stage = await prisma.stage.create({
+      data: { projectId, position: 1, title: 'Ждёт', state: 'IN_PROGRESS', dueOn: new Date('2026-11-01T00:00:00Z') },
+    });
+    const at = (iso: string) => new Date(iso);
+    await prisma.stageStateChange.createMany({
+      data: [
+        { stageId: stage.id, toState: 'AWAITING_CLIENT', createdAt: at('2026-10-01T09:00:00Z') },
+        { stageId: stage.id, toState: 'IN_PROGRESS', createdAt: at('2026-10-05T09:00:00Z') },
+      ],
+    });
+    const waited = await stageClientWait(curator(), stage.id, at('2026-10-06T09:00:00Z'));
+    assert.equal(waited.days, 4);
+    assert.equal(waited.until?.toISOString().slice(0, 10), '2026-11-05');
+  });
+
   it('перенос срока этапа и работы попадает в журнал', async () => {
     const projectId = await newProject('D');
     const stage = await prisma.stage.create({
