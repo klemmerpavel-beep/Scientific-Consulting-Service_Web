@@ -1720,6 +1720,12 @@ export async function setStageState(
   });
   if (stage === null) throw new Error('Этап не найден');
 
+  // Клиент согласует этап, который уже переведён (вторая вкладка, правка
+  // менеджера): причина — состояние этапа, а не права. Прежде он читал
+  // «недоступно для вашей роли» (улучшение УМ-03, решение Р-361).
+  if (actor.role === 'CLIENT' && to === 'DONE' && stage.state !== 'IN_APPROVAL' && can(actor, 'STAGE_APPROVE', stage.project)) {
+    throw new Error('Этап уже не на согласовании: обновите страницу');
+  }
   // Согласование этапа — действие клиента, остальные переходы ведёт менеджер.
   const action = stage.state === 'IN_APPROVAL' && to === 'DONE' ? 'STAGE_APPROVE' : 'STAGE_SET_STATE';
   ensure(actor, action, stage.project);

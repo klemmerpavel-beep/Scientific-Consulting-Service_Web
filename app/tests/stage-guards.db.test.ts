@@ -487,6 +487,15 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     assert.equal(edited.outcome, 'Сравнение добавлено; дальше — глава 2');
   });
 
+  it('УМ-03: согласование уже переведённого этапа — причина в состоянии, а не в правах (Р-361)', async () => {
+    const { projectId, owner } = await clientWithWork('MOV');
+    const stage = await prisma.stage.create({ data: { projectId, position: 1, title: 'Глава 3', state: 'IN_PROGRESS' } });
+    await assert.rejects(projects.setStageState(owner, stage.id, 'DONE'), /уже не на согласовании/u);
+    // Чужой клиент по-прежнему получает отказ в доступе, а не сведения об этапе.
+    const stranger = await clientWithWork('MOV2');
+    await assert.rejects(projects.setStageState(stranger.owner, stage.id, 'DONE'), /не разрешено/u);
+  });
+
   it('согласование клиентом отмечается способом перехода (Р-281)', async () => {
     const { projectId, owner } = await clientWithWork('APR');
     const stage = await prisma.stage.create({
