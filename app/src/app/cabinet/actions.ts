@@ -894,13 +894,33 @@ export async function postMessage(form: FormData): Promise<void> {
   redirect(target);
 }
 
+/**
+ * Шаг экрана настроек: отказ — причиной на экране настроек, а не экраном
+ * «Сбой» (улучшение УМ-02, решение Р-373; приём Р-279).
+ */
+async function settingsStep<T>(task: () => Promise<T>, fallback: string): Promise<T> {
+  let failure: string | null = null;
+  let result: T | undefined;
+  try {
+    result = await task();
+  } catch (error) {
+    failure = reasonOf(error, fallback);
+  }
+  if (failure !== null) redirect(await withError('/cabinet/settings', failure));
+  return result as T;
+}
+
 /** Каналы уведомлений. Выбор за получателем, а не за системой. */
 export async function saveNotificationChannels(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await saveOwnChannels(actor, {
-    email: form.get('notifyEmail') === 'on',
-    telegram: form.get('notifyTelegram') === 'on',
-  });
+  await settingsStep(
+    () =>
+      saveOwnChannels(actor, {
+        email: form.get('notifyEmail') === 'on',
+        telegram: form.get('notifyTelegram') === 'on',
+      }),
+    'Не удалось сохранить каналы уведомлений',
+  );
   redirect('/cabinet/settings?saved=1');
 }
 
@@ -923,13 +943,13 @@ export async function addContactChannel(form: FormData): Promise<void> {
 
 export async function removeContactChannel(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await dropContact(actor, String(form.get('id') ?? ''));
+  await settingsStep(() => dropContact(actor, String(form.get('id') ?? '')), 'Не удалось убрать способ связи');
   redirect('/cabinet/settings?saved=1');
 }
 
 export async function makeContactPreferred(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await preferContact(actor, String(form.get('id') ?? ''));
+  await settingsStep(() => preferContact(actor, String(form.get('id') ?? '')), 'Не удалось отметить способ связи');
   redirect('/cabinet/settings?saved=1');
 }
 
@@ -944,7 +964,7 @@ export async function saveNotifyRules(form: FormData): Promise<void> {
       enabled: form.get(`rule:${event.kind}:${channel}`) === 'on',
     })),
   );
-  await saveRules(actor, rules);
+  await settingsStep(() => saveRules(actor, rules), 'Не удалось сохранить правила уведомлений');
   redirect('/cabinet/settings?saved=1');
 }
 
@@ -999,7 +1019,10 @@ export async function dismissWelcome(): Promise<void> {
 
 export async function startTelegramBind(): Promise<void> {
   const actor = await actorOrRedirect();
-  const link = await createTelegramBindLink(actor.id);
+  const link = await settingsStep(
+    () => createTelegramBindLink(actor.id),
+    'Не удалось подготовить подключение Telegram',
+  );
   if (link === null) {
     redirect(await withError('/cabinet/settings', 'Telegram не настроен на стороне сервиса'));
   }
@@ -1008,7 +1031,7 @@ export async function startTelegramBind(): Promise<void> {
 
 export async function dropTelegram(): Promise<void> {
   const actor = await actorOrRedirect();
-  await unbindTelegram(actor);
+  await settingsStep(() => unbindTelegram(actor), 'Не удалось отключить Telegram');
   redirect('/cabinet/settings?saved=1');
 }
 

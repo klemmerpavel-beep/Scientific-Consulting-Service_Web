@@ -100,6 +100,26 @@ describe('отказ у своей формы и черновик (решени�
     );
   });
 
+  it('действия настроек отказывают причиной на экране настроек (УМ-02, Р-373)', () => {
+    const source = readFileSync(path.join(CABINET, 'actions.ts'), 'utf8');
+    const body = (name: string) => {
+      const start = source.indexOf(`export async function ${name}(`);
+      assert.ok(start >= 0, `нет действия ${name}`);
+      return source.slice(start, source.indexOf('\nexport ', start + 1));
+    };
+    for (const name of [
+      'saveNotificationChannels',
+      'removeContactChannel',
+      'makeContactPreferred',
+      'saveNotifyRules',
+      'startTelegramBind',
+      'dropTelegram',
+    ]) {
+      assert.match(body(name), /settingsStep\(/u, `${name} без перехвата отказа`);
+    }
+    assert.match(source, /async function settingsStep[\s\S]{0,400}catch \(error\)[\s\S]{0,200}withError\('\/cabinet\/settings'/u);
+  });
+
   it('ошибка перехода этапа называет состояния подписями, а не именами из базы', () => {
     const source = readFileSync(path.join(APP, 'src/lib/cabinet/projects.ts'), 'utf8');
     assert.doesNotMatch(source, /Переход этапа из «\$\{from\}»/u);
