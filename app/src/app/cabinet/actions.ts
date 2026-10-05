@@ -938,6 +938,8 @@ export async function saveNotificationChannels(form: FormData): Promise<void> {
       saveOwnChannels(actor, {
         email: form.get('notifyEmail') === 'on',
         telegram: form.get('notifyTelegram') === 'on',
+        // Поле есть только у куратора (УЭ-01, Р-398).
+        ...(form.has('digestShown') ? { dailyDigest: form.get('dailyDigest') === 'on' } : {}),
       }),
     'Не удалось сохранить каналы уведомлений',
   );

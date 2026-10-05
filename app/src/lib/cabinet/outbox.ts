@@ -10,7 +10,7 @@ import { siteUrl } from '../site-url.ts';
 import { mailConfigured, sendMailTo } from './mail.ts';
 import { escapeHtml } from './token.ts';
 import { formatDay } from './approval-text.ts';
-import { moscowToday } from './clock.ts';
+import { DAILY_MAIL_HOUR, moscowToday, now as clockNow } from './clock.ts';
 
 /**
  * Очередь исходящих уведомлений.
@@ -146,11 +146,69 @@ export async function notifyExpert(
 }
 
 /** Возвращает число поставленных строк: повтор по ключу не считается. */
+/** Письма куратору, которые в сводку не откладываются (УЭ-01, Р-398). */
+const DIGEST_EXEMPT: ReadonlySet<string> = new Set(['CURATOR_INVITED', 'NDA_SIGNED', 'CURATOR_DIGEST']);
+
+/**
+ * Ближайшие 09:00 по Москве — время сводки куратора (улучшение УЭ-01,
+ * решение Р-398). Москва — UTC+3 без перевода часов.
+ */
+export function nextDigestAt(at: Date): Date {
+  const today = moscowToday(at).getTime() + (DAILY_MAIL_HOUR - 3) * 3_600_000;
+  return new Date(at.getTime() < today ? today : today + 86_400_000);
+}
+
+/**
+ * Сводка куратору: отложенные письма о работах — одним письмом в 09:00 по
+ * Москве (улучшение УЭ-01, решение Р-398). Отложенные строки получают
+ * состояние «вошло в сводку». Ключ — по дню: повторный прогон второй
+ * сводки не ставит.
+ */
+export async function enqueueCuratorDigest(at: Date = clockNow()): Promise<number> {
+  const curators = await prisma.user.findMany({
+    where: { role: 'EXPERT', status: 'ACTIVE', dailyDigest: true },
+    select: { id: true },
+  });
+  let queued = 0;
+  for (const curator of curators) {
+    const rows = await prisma.notificationOutbox.findMany({
+      where: {
+        userId: curator.id,
+        channel: 'EMAIL',
+        state: 'PENDING',
+        // Приглашение, доступ и сама сводка в сводку не входят.
+        eventKind: { notIn: [...DIGEST_EXEMPT] },
+        scheduledAt: { lte: at },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, subject: true },
+    });
+    if (rows.length === 0) continue;
+    const claimed = await prisma.notificationOutbox.updateMany({
+      where: { id: { in: rows.map((row) => row.id) }, state: 'PENDING' },
+      data: { state: 'MERGED', lastError: 'вошло в сводку куратора', scheduledAt: at },
+    });
+    if (claimed.count === 0) continue;
+    queued += await enqueue(prisma, {
+      userId: curator.id,
+      eventKind: 'CURATOR_DIGEST',
+      subject: `Сводка по вашим работам: ${rows.length} ${rows.length % 10 === 1 && rows.length % 100 !== 11 ? 'событие' : [2, 3, 4].includes(rows.length % 10) && ![12, 13, 14].includes(rows.length % 100) ? 'события' : 'событий'}`,
+      body: `${rows.map((row) => `— ${row.subject}`).join('\n')}\nПодробности — в личном кабинете.`,
+      dedupKey: `curator-digest:${moscowToday(at).toISOString().slice(0, 10)}:${curator.id}`,
+      only: 'EMAIL',
+      path: '/cabinet/projects',
+    });
+  }
+  return queued;
+}
+
 export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
   const user = await db.user.findUnique({
     where: { id: item.userId },
     select: {
       status: true,
+      role: true,
+      dailyDigest: true,
       notifyEmail: true,
       notifyTelegram: true,
       telegramChatId: true,
@@ -158,6 +216,9 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
     },
   });
   if (user === null || user.status !== 'ACTIVE') return 0;
+  // Куратор со сводкой: письмо о работе ждёт утренней сводки (улучшение
+  // УЭ-01, решение Р-398); приглашение, доступ и сама сводка — сразу.
+  const held = user.role === 'EXPERT' && user.dailyDigest && !DIGEST_EXEMPT.has(item.eventKind);
 
   // Общие переключатели решают, каким каналом человек вообще согласен
   // получать уведомления. Правила решают, какие события каким каналом —
@@ -195,6 +256,7 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
         body: item.body,
         dedupKey: `${item.dedupKey}:${channel.toLowerCase()}`,
         path: safeNext(item.path) ?? null,
+        ...(held && channel === 'EMAIL' ? { scheduledAt: nextDigestAt(new Date()) } : {}),
       },
       skipDuplicates: true,
     });

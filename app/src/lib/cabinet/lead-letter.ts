@@ -87,7 +87,7 @@ export function leadAddress(lead: { contactKind: string; contact: string }): str
 
 /** Письмо об отказе, как его видит очередь. */
 export interface DeclineLetterRow {
-  readonly state: 'PENDING' | 'SENT' | 'FAILED' | 'EXPIRED';
+  readonly state: 'PENDING' | 'SENT' | 'FAILED' | 'EXPIRED' | 'MERGED';
   readonly lastError: string | null;
 }
 

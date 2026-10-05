@@ -1158,6 +1158,7 @@ export async function ownChannels(actor: Actor) {
       notifyTelegram: true,
       telegramChatId: true,
       consentAcceptedAt: true,
+      dailyDigest: true,
     },
   });
 }
@@ -1170,11 +1171,16 @@ export async function ownChannels(actor: Actor) {
  */
 export async function saveOwnChannels(
   actor: Actor,
-  channels: { email: boolean; telegram: boolean },
+  channels: { email: boolean; telegram: boolean; dailyDigest?: boolean },
 ): Promise<void> {
   await prisma.user.update({
     where: { id: actor.id },
-    data: { notifyEmail: channels.email, notifyTelegram: channels.telegram },
+    data: {
+      notifyEmail: channels.email,
+      notifyTelegram: channels.telegram,
+      // Сводка раз в день — выбор куратора (улучшение УЭ-01, решение Р-398).
+      ...(actor.role === 'EXPERT' && channels.dailyDigest !== undefined ? { dailyDigest: channels.dailyDigest } : {}),
+    },
   });
   // Отключённый канал — ответ на вопрос «почему не пришло письмо»; прежде
   // следа не оставалось (решение Р-242).
@@ -1182,6 +1188,10 @@ export async function saveOwnChannels(
     action: 'NOTIFY_CHANNELS_SAVED',
     objectType: 'User',
     objectId: actor.id,
-    payload: { email: channels.email, telegram: channels.telegram },
+    payload: {
+      email: channels.email,
+      telegram: channels.telegram,
+      ...(actor.role === 'EXPERT' && channels.dailyDigest !== undefined ? { dailyDigest: channels.dailyDigest } : {}),
+    },
   });
 }

@@ -6,7 +6,7 @@ import {
   enqueueApprovalReminders,
   startMissingDeadlines,
 } from '../../../../lib/cabinet/approval';
-import { dispatch, enqueueDeadlineReminders } from '../../../../lib/cabinet/outbox';
+import { dispatch, enqueueCuratorDigest, enqueueDeadlineReminders } from '../../../../lib/cabinet/outbox';
 import { enqueueHeadDigest, enqueueHeadMonthly, enqueueTrancheOverdue } from '../../../../lib/cabinet/head-digest';
 import { enqueueAssignmentReminders } from '../../../../lib/cabinet/assignments';
 import { sameSecret } from '../../../../lib/cabinet/token';
@@ -53,6 +53,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const monthly = morning ? await enqueueHeadMonthly() : 0;
   // Напоминание сотруднику за день до срока поручения (РК-19, Р-352).
   const assignmentReminders = morning ? await enqueueAssignmentReminders() : 0;
+  // Сводка куратору — отложенные письма о его работах одним письмом
+  // (улучшение УЭ-01, решение Р-398).
+  const curatorDigest = morning ? await enqueueCuratorDigest() : 0;
   const report = await dispatch();
   return NextResponse.json({
     ok: true,
@@ -61,6 +64,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     overdueSignals,
     monthly,
     assignmentReminders,
+    curatorDigest,
     approvalReminders,
     deadlinesStarted,
     autoAccepted,

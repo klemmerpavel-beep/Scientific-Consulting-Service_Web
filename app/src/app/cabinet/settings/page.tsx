@@ -262,8 +262,19 @@ export default async function SettingsScreen({
               name="notifyTelegram"
               defaultChecked={user.notifyTelegram}
               disabled={!bound}
-              label={`Telegram${bound ? '' : ' — сначала привяжите аккаунт'}`}
+              label={`Telegram${bound ? '' : ' — сначала подключите Telegram ниже'}`}
             />
+            {/* Сводка писем о работах раз в день — выбор куратора (УЭ-01, Р-398). */}
+            {actor.role === 'EXPERT' ? (
+              <>
+                <input type="hidden" name="digestShown" value="1" />
+                <Checkbox
+                  name="dailyDigest"
+                  defaultChecked={user.dailyDigest}
+                  label="Письма о работах — одной сводкой в 09:00 по Москве; Telegram — сразу"
+                />
+              </>
+            ) : null}
             <FormActions>
               <Button>Сохранить</Button>
             </FormActions>
