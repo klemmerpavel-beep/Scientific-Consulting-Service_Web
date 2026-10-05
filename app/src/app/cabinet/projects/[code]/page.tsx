@@ -439,6 +439,8 @@ export default async function ProjectScreen({
       <Form action={saveStage}>
         <input type="hidden" name="stageId" value={stage.id} />
         <input type="hidden" name="code" value={project.code} />
+        {/* Отметка прочитанной правки: чужая правка не затирается (УМ-11, Р-360). */}
+        <input type="hidden" name="updatedAt" value={stage.updatedAt.toISOString()} />
         <Field
           label="Название этапа"
           name="title"

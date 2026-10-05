@@ -295,6 +295,20 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     assert.equal(saved.expertId, null);
   });
 
+  it('УМ-11: правка этапа по устаревшей форме не затирает чужую (Р-360)', async () => {
+    const projectId = await newProject('U');
+    const stage = await prisma.stage.create({ data: { projectId, position: 1, title: 'Глава' } });
+    const seen = stage.updatedAt.toISOString();
+    // Первый сохранил правку по открытой форме.
+    await projects.editStage(curator(), { stageId: stage.id, title: 'Глава, правка первого', updatedAt: seen });
+    // Второй открыл форму тогда же — его правка отклоняется.
+    await assert.rejects(
+      projects.editStage(curator(), { stageId: stage.id, title: 'Глава, правка второго', updatedAt: seen }),
+      /уже изменён другим действием/u,
+    );
+    assert.equal((await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } })).title, 'Глава, правка первого');
+  });
+
   it('перенос срока этапа и работы попадает в журнал', async () => {
     const projectId = await newProject('D');
     const stage = await prisma.stage.create({

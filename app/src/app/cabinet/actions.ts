@@ -592,6 +592,7 @@ export async function saveStage(form: FormData): Promise<void> {
       summary: String(form.get('summary') ?? ''),
       dueOn: dateOrNull(form.get('dueOn')),
       reason: String(form.get('reason') ?? ''),
+      updatedAt: String(form.get('updatedAt') ?? '') || null,
     });
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить этап');

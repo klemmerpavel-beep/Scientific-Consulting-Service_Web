@@ -1191,11 +1191,17 @@ export async function editStage(
     readonly dueOn?: Date | null;
     /** Причина переноса срока: обязательна, если срок меняется (М-15). */
     readonly reason?: string | null;
+    /**
+     * Когда этап был изменён на момент открытия формы. Правка, сделанная
+     * за это время другим человеком, не затирается (улучшение УМ-11,
+     * решение Р-360).
+     */
+    readonly updatedAt?: string | null;
   },
 ) {
   const stage = await prisma.stage.findUnique({
     where: { id: input.stageId },
-    select: { id: true, projectId: true, title: true, dueOn: true },
+    select: { id: true, projectId: true, title: true, dueOn: true, updatedAt: true },
   });
   if (stage === null) throw new Error('Этап не найден');
   const ref = await projectRef(stage.projectId);
@@ -1210,13 +1216,19 @@ export async function editStage(
   const why = (input.reason ?? '').trim();
   if (moved) ensureDueReason(why);
 
+  const seen = input.updatedAt ? new Date(input.updatedAt) : null;
+  if (seen !== null && Number.isNaN(seen.getTime())) throw new Error('Форма этапа устарела: обновите страницу');
+
   const saved = await prisma.$transaction(async (tx) => {
-    const updated = await tx.stage.update({
-      where: { id: stage.id },
+    // Запись захватывает этап по отметке прочитанной правки, как перенос
+    // срока (Р-302): вторая из двух одновременных правок не проходит.
+    const claimed = await tx.stage.updateMany({
+      where: { id: stage.id, ...(seen === null ? {} : { updatedAt: seen }) },
       data: { title, summary: input.summary?.trim() || null, dueOn: nextDue },
     });
+    if (claimed.count === 0) throw new Error('Этап уже изменён другим действием: обновите страницу');
     if (moved) await announceDueChange(tx, actor, stage.id, stage.dueOn, nextDue, why);
-    return updated;
+    return tx.stage.findUniqueOrThrow({ where: { id: stage.id } });
   });
   await record(actor, {
     action: 'STAGE_EDITED',
