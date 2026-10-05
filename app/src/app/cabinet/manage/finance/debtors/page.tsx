@@ -146,6 +146,14 @@ export default async function DebtorsScreen({
                         <Disclosure title="Списать">
                           <Form action={writeOffDebt}>
                             <input type="hidden" name="trancheId" value={row.trancheId} />
+                            {/* Причина списания — в журнал (УР-05, Р-388). */}
+                            <Field
+                              label="Причина списания"
+                              name="reason"
+                              scope={`writeoff-${row.trancheId}`}
+                              required
+                              hint="Записывается в журнал."
+                            />
                             <Checkbox name="confirm" required label="Подтверждаю: долг списывается и больше не ждёт оплаты" />
                             <Button tone="quiet">Списать</Button>
                           </Form>

@@ -120,7 +120,7 @@ describe('защиты финансового контура', { skip: !enabled 
     await finance.setTrancheStatus(head(), tranche.id, 'INVOICED');
     const results = await Promise.allSettled([
       finance.setTrancheStatus(head(), tranche.id, 'PAID', new Date('2026-09-01T00:00:00Z')),
-      finance.setTrancheStatus(head(), tranche.id, 'WRITTEN_OFF'),
+      finance.setTrancheStatus(head(), tranche.id, 'WRITTEN_OFF', null, 'Безнадёжный долг'),
     ]);
     assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
     const row = await prisma.tranche.findUniqueOrThrow({ where: { id: tranche.id } });
@@ -260,7 +260,7 @@ describe('защиты финансового контура', { skip: !enabled 
     const projectId = await newProject('G');
     const contract = await newContract(projectId, 10_000_000n);
     const { tranche: lost } = await finance.addTranche(head(), { contractId: contract.id, title: 'Долг', amount: 6_000_000n });
-    await finance.setTrancheStatus(head(), lost.id, 'WRITTEN_OFF');
+    await finance.setTrancheStatus(head(), lost.id, 'WRITTEN_OFF', null, 'Клиент отказался платить');
     await finance.addPayout(head(), { projectId, amount: 5_000_000n });
     const money = await finance.projectMoney(head(), projectId);
     assert.equal(money?.margin, -1_000_000n);

@@ -132,7 +132,9 @@ describe('«Должники» (РК-10)', { skip: !enabled }, async () => {
     assert.deepEqual(await mine(), []);
     await finance.rescheduleTranche(head(), ids.invoiced!, day(-2), 'Ошибка в дате');
     assert.deepEqual((await mine()).map((row) => row.trancheId), [ids.invoiced]);
-    await finance.setTrancheStatus(head(), ids.invoiced!, 'WRITTEN_OFF');
+    await finance.setTrancheStatus(head(), ids.invoiced!, 'WRITTEN_OFF', null, 'Клиент закрыл работу');
+    const entry = await prisma.auditEvent.findFirst({ where: { action: 'TRANCHE_STATUS_CHANGED', objectId: ids.invoiced }, orderBy: { occurredAt: 'desc' } });
+    assert.equal((entry?.payload as { reason?: string } | null)?.reason, 'Клиент закрыл работу');
     assert.deepEqual(await mine(), []);
     const letters = await prisma.notificationOutbox.findMany({ where: { userId: ids.clientUser, body: { contains: 'списан' } } });
     assert.deepEqual(letters, []);

@@ -337,20 +337,21 @@ export default async function PaymentsScreen({
                                 />
                                 <Button tone="quiet">Отметить оплату</Button>
                               </Form>
-                            ) : next === 'REVERSED' ? (
+                            ) : next === 'REVERSED' || next === 'WRITTEN_OFF' ? (
                               // Сторно — с причиной: ошибка отметки или
-                              // возврат клиенту (решение Р-249).
+                              // возврат клиенту (решение Р-249); списание —
+                              // тоже (улучшение УР-05, решение Р-388).
                               <Form key={next} action={changeTrancheStatus} inline>
                                 <input type="hidden" name="trancheId" value={tranche.id} />
                                 <input type="hidden" name="code" value={project.code} />
-                                <input type="hidden" name="status" value="REVERSED" />
+                                <input type="hidden" name="status" value={next} />
                                 <Field
-                                  label={`Причина сторно: ${tranche.title}`}
+                                  label={`${next === 'REVERSED' ? 'Причина сторно' : 'Причина списания'}: ${tranche.title}`}
                                   labelHidden
                                   name="reason"
-                                  scope={`reverse-${tranche.id}`}
+                                  scope={`${next === 'REVERSED' ? 'reverse' : 'writeoff'}-${tranche.id}`}
                                   required
-                                  placeholder="Причина: ошибка отметки или возврат"
+                                  placeholder={next === 'REVERSED' ? 'Причина: ошибка отметки или возврат' : 'Причина списания'}
                                   minWidth={240}
                                 />
                                 <Button tone="quiet">{TRANCHE_ACTION[next]}</Button>

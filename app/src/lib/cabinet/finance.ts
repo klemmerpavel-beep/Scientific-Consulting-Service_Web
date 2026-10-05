@@ -256,6 +256,11 @@ export async function setTrancheStatus(
   if (status === 'REVERSED' && note.length === 0) {
     throw new Error('Сторно без причины не принимается: укажите, ошибка ли это отметки или возврат');
   }
+  // Списание — тоже с причиной: она нужна при разборе потерь (улучшение
+  // УР-05, решение Р-388), как причина переноса даты (Р-345).
+  if (status === 'WRITTEN_OFF' && note.length === 0) {
+    throw new Error('Списание без причины не принимается: укажите, почему долг не ждёт оплаты');
+  }
   if (note.length > 500) throw new Error('Причина — не длиннее 500 знаков');
   await ensureMoneyWritable(tranche.contract.projectId, false);
 
@@ -314,7 +319,7 @@ export async function setTrancheStatus(
       to: status,
       amount: money(tranche.amount),
       paidOn: status === 'PAID' ? paidOn!.toISOString().slice(0, 10) : null,
-      ...(status === 'REVERSED' ? { reason: note } : {}),
+      ...(status === 'REVERSED' || status === 'WRITTEN_OFF' ? { reason: note } : {}),
     },
   });
   return updated;

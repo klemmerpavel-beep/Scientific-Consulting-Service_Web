@@ -1231,7 +1231,7 @@ export async function writeOffDebt(form: FormData): Promise<void> {
   let failure: string | null = null;
   try {
     if (form.get('confirm') !== 'on') throw new Error('Подтвердите списание: долг больше не будет ждать оплаты');
-    await setTrancheStatus(actor, String(form.get('trancheId') ?? ''), 'WRITTEN_OFF');
+    await setTrancheStatus(actor, String(form.get('trancheId') ?? ''), 'WRITTEN_OFF', null, String(form.get('reason') ?? ''));
   } catch (error) {
     failure = reasonOf(error, 'Не удалось списать транш');
   }
