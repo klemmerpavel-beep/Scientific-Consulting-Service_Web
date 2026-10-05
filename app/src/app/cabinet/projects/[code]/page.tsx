@@ -731,33 +731,37 @@ export default async function ProjectScreen({
             ))}
           </div>
         )}
+        {/* Строка книги заказов — частью «О работе», а не отдельным блоком:
+            у работы из книги их было шесть (УМ-01, Р-372; Р-183, Р-269). */}
+        {bookRow === null ? null : (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--pd-divider)' }}>
+            <Text muted size={13} style={{ marginBottom: 10 }}>
+              {`Строка книги заказов — как в книге на ${formatDate(bookRow.appliedAt)}`}
+            </Text>
+            <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
+              {bookFacts.map((row) => (
+                <div
+                  key={row.term}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0,170px) minmax(0,1fr)',
+                    gap: 14,
+                  }}
+                >
+                  <dt style={{ margin: 0 }}>
+                    <Text muted size={13}>
+                      {row.term}
+                    </Text>
+                  </dt>
+                  <dd style={{ margin: 0 }}>
+                    <Text size={14}>{row.value}</Text>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
       </Disclosure>
-
-      {bookFacts.length === 0 ? null : (
-        <Disclosure title="Строка книги заказов" tall style={{ marginTop: 10 }}>
-          <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
-            {bookFacts.map((row) => (
-              <div
-                key={row.term}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(0,170px) minmax(0,1fr)',
-                  gap: 14,
-                }}
-              >
-                <dt style={{ margin: 0 }}>
-                  <Text muted size={13}>
-                    {row.term}
-                  </Text>
-                </dt>
-                <dd style={{ margin: 0 }}>
-                  <Text size={14}>{row.value}</Text>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </Disclosure>
-      )}
 
       <ProgressPanel
           style={{ marginTop: 16, marginBottom: 20 }}
