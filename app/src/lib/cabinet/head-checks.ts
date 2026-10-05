@@ -19,6 +19,7 @@ import { ensure, scopeProjects, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
+import { moscowToday, now as clockNow } from './clock.ts';
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -151,4 +152,38 @@ export async function nextStageUnpaid(actor: Actor, stageId: string): Promise<bo
     where: { stageId: next.id, status: { in: ['PLANNED', 'INVOICED'] } },
   });
   return unpaid > 0;
+}
+
+/**
+ * Годы, которые нужно проверить на заполненный календарь: год срока
+ * каждого этапа на согласовании и — в декабре — следующий год, куда сроки
+ * вот-вот перейдут (улучшение УК-15, решение Р-394). Чистая функция.
+ */
+export function calendarYearsToCheck(today: Date, approvalDues: readonly Date[]): number[] {
+  const years = new Set<number>(approvalDues.map((due) => due.getUTCFullYear()));
+  if (today.getUTCMonth() === 11) years.add(today.getUTCFullYear() + 1);
+  return [...years].sort((a, b) => a - b);
+}
+
+/**
+ * Годы без производственного календаря, в которые попадают сроки
+ * согласования (улучшение УК-15, решение Р-394). В таком году срок
+ * считается по общему правилу: выходные и федеральные праздники без
+ * переносов. Только руководителю.
+ */
+export async function calendarGaps(actor: Actor, at: Date = clockNow()): Promise<{ year: number }[]> {
+  const scope = scopeProjects(actor);
+  if (scope === null || actor.role !== 'HEAD') return [];
+  const stages = await prisma.stage.findMany({
+    where: { state: 'IN_APPROVAL', approvalDueOn: { not: null }, project: { ...scope, status: 'ACTIVE' } },
+    select: { approvalDueOn: true },
+  });
+  const gaps: { year: number }[] = [];
+  for (const year of calendarYearsToCheck(moscowToday(at), stages.map((stage) => stage.approvalDueOn!))) {
+    const listed = await prisma.calendarDay.count({
+      where: { day: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) } },
+    });
+    if (listed === 0) gaps.push({ year });
+  }
+  return gaps;
 }

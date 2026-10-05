@@ -494,6 +494,18 @@ export default async function ManageQueue({
       todo: 'Разобрать очередь и отправить заново',
       href: '/cabinet/manage/outbox',
     })),
+    // Год срока согласования без производственного календаря (УК-15, Р-394).
+    ...parts.calendar.map((gap) => ({
+      key: `calendar-${gap.year}`,
+      kind: 'calendar' as const,
+      step: 0 as const,
+      title: `Производственный календарь ${gap.year} года`,
+      mark: 'не заполнен',
+      urgent: false,
+      detail: 'Сроки согласования в этом году считаются без переносов выходных',
+      todo: 'Заполнить календарь года в «Справочниках»',
+      href: '/cabinet/manage/directory?tab=calendar',
+    })),
     ...parts.check.map((check) => ({
       key: `check-${check.id}`,
       kind: 'check' as const,
@@ -572,6 +584,7 @@ export default async function ManageQueue({
     control: 6,
     check: 3,
     assignment: 4,
+    calendar: 2,
   };
   const showAll = (await searchParams).attention === 'all' || attention.length <= 12;
   const taken: Partial<Record<(typeof attention)[number]['kind'], number>> = {};

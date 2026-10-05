@@ -229,6 +229,19 @@ describe('срок согласования этапа', { skip: !enabled }, asy
     );
   });
 
+  it('УК-15: год без календаря — дело руководителю; менеджеру — нет (Р-394)', async () => {
+    const { calendarGaps, calendarYearsToCheck } = await import('../src/lib/cabinet/head-checks.ts');
+    const headActor: Actor = { id: ids.head!, role: 'HEAD', status: 'ACTIVE', clientProfileId: null, expertNdaSignedAt: null };
+    // Годы проверки: год срока каждого этапа и в декабре — следующий.
+    assert.deepEqual(calendarYearsToCheck(new Date(Date.UTC(2026, 9, 5)), [new Date(Date.UTC(2041, 0, 15))]), [2041]);
+    assert.deepEqual(calendarYearsToCheck(new Date(Date.UTC(2040, 11, 10)), []), [2041]);
+    // В декабре дальнего года следующий пуст — дело есть; заполненный 2026 — нет.
+    const december = await calendarGaps(headActor, new Date('2040-12-10T09:00:00Z'));
+    assert.ok(december.some((gap) => gap.year === 2041));
+    assert.ok(!(await calendarGaps(headActor, new Date('2025-12-10T09:00:00Z'))).some((gap) => gap.year === 2026));
+    assert.deepEqual(await calendarGaps({ ...headActor, id: ids.manager!, role: 'MANAGER' }), []);
+  });
+
   it('автозакрытие: выключено — этап стоит; включено — закрыт один раз, без автора, с письмами', async () => {
     const { projectId } = await clientWithWork('AUTO');
     const stage = await submit(projectId);

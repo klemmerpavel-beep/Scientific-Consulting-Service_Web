@@ -18,7 +18,7 @@ import { cache } from 'react';
 import { can, type Actor } from './access.ts';
 import { myAssignments, overdueAssignments } from './assignments.ts';
 import { controlItems } from './control.ts';
-import { openChecks } from './head-checks.ts';
+import { calendarGaps, openChecks } from './head-checks.ts';
 import { pendingComments, pendingVersions } from './materials.ts';
 import { staffThreads, unreadInbox } from './messages.ts';
 import { outboxDigest } from './outbox.ts';
@@ -30,7 +30,7 @@ async function collect(actor: Actor) {
   // реакции (требование РК-05, решение Р-337). Набор строится выборками
   // менеджера: роль здесь задаёт только сужение до своих работ.
   const mine: Actor = actor.role === 'HEAD' ? { ...actor, role: 'MANAGER' } : actor;
-  const [light, returned, threads, unread, moderation, versions, today, outbox, checks, control, mineAssigned, lateAssigned] =
+  const [light, returned, threads, unread, moderation, versions, today, outbox, checks, control, mineAssigned, lateAssigned, calendar] =
     await Promise.all([
       trafficLight(mine),
       // Клиент вернул этап с замечаниями: ход за куратором (решение Р-283).
@@ -54,6 +54,8 @@ async function collect(actor: Actor) {
       // (требование РК-19, решение Р-352).
       myAssignments(actor),
       overdueAssignments(actor),
+      // Год срока согласования без производственного календаря (УК-15, Р-394).
+      calendarGaps(actor),
     ]);
   return {
     light,
@@ -68,6 +70,7 @@ async function collect(actor: Actor) {
     control,
     mineAssigned,
     lateAssigned,
+    calendar,
   };
 }
 
@@ -108,6 +111,7 @@ export function attentionParts(sources: AttentionSources) {
     control: sources.control,
     assignment: sources.mineAssigned,
     assignmentOverdue: sources.lateAssigned,
+    calendar: sources.calendar,
   };
 }
 
