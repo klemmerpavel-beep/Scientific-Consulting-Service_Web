@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { DAILY_MAIL_HOUR, moscowHour } from '../../../../lib/cabinet/clock';
 
 import {
   autoAcceptExpired,
@@ -37,18 +38,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // автозакрытие включено), напомнить о подходящих — до рассылки, чтобы
   // письма этого прогона ушли сразу (требование Т-15, решение Р-290).
   const deadlinesStarted = await startMissingDeadlines();
-  const autoAccepted = await autoAcceptExpired();
-  const approvalReminders = await enqueueApprovalReminders();
-  const reminders = await enqueueDeadlineReminders();
+  // Плановые письма дня — с 09:00 по Москве, а не в первую минуту суток:
+  // напоминания, автозакрытие, сводка и сигналы (улучшение УК-14, решение
+  // Р-393). Ключи у всех по дню: поздний прогон дублей не ставит.
+  const morning = moscowHour() >= DAILY_MAIL_HOUR;
+  const autoAccepted = morning ? await autoAcceptExpired() : 0;
+  const approvalReminders = morning ? await enqueueApprovalReminders() : 0;
+  const reminders = morning ? await enqueueDeadlineReminders() : 0;
   // Утренняя сводка и сигнал о просроченном платеже руководителю
-  // (требование РК-13, решение Р-347). Ключи по дню и траншу: повторный
-  // прогон расписания дублей не ставит.
-  const headDigest = await enqueueHeadDigest();
-  const overdueSignals = await enqueueTrancheOverdue();
+  // (требование РК-13, решение Р-347).
+  const headDigest = morning ? await enqueueHeadDigest() : 0;
+  const overdueSignals = morning ? await enqueueTrancheOverdue() : 0;
   // Письмо 1-го числа — рекомендации на месяц (РК-17, Р-350).
-  const monthly = await enqueueHeadMonthly();
-  // Напоминание исполнителю за день до срока поручения (РК-19, Р-352).
-  const assignmentReminders = await enqueueAssignmentReminders();
+  const monthly = morning ? await enqueueHeadMonthly() : 0;
+  // Напоминание сотруднику за день до срока поручения (РК-19, Р-352).
+  const assignmentReminders = morning ? await enqueueAssignmentReminders() : 0;
   const report = await dispatch();
   return NextResponse.json({
     ok: true,
