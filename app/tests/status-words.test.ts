@@ -75,3 +75,15 @@ describe('«Мои работы» с карточки клиента — на п
     assert.equal(soleWorkTarget({ role: 'CLIENT', welcomeOpen: false, asked: true, all: 1, rows }), null);
   });
 });
+
+describe('смена куратора у сданного этапа — предупреждение (УЭ-07, Р-384)', () => {
+  it('у формы куратора названы сданные этапы и что пометка погаснет', () => {
+    const card = readFileSync(
+      path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'projects', '[code]', 'page.tsx'),
+      'utf8',
+    );
+    const form = card.slice(card.indexOf('<Form action={setExpert}>'), card.indexOf('</Form>', card.indexOf('<Form action={setExpert}>')));
+    assert.match(form, /stage\.handedOverAt !== null/u);
+    assert.match(form, /пометка сдачи погаснет/u);
+  });
+});

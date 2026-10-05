@@ -1170,6 +1170,17 @@ export default async function ProjectScreen({
                       }`}
                     </Notice>
                   ) : null}
+                  {/* Сданный куратором этап: при смене куратора пометка сдачи
+                      гаснет (Э-05, Р-325) — предупреждение до сохранения
+                      (улучшение УЭ-07, решение Р-384). */}
+                  {project.expertId === null || !project.stages.some((stage) => stage.handedOverAt !== null) ? null : (
+                    <Notice tone="quiet" role="status">
+                      {`Сдано куратором и ждёт вашей проверки: ${project.stages
+                        .filter((stage) => stage.handedOverAt !== null)
+                        .map((stage) => `«${stage.title}»`)
+                        .join(', ')}. При смене куратора пометка сдачи погаснет, и новый куратор начнёт с хода за собой.`}
+                    </Notice>
+                  )}
                   {/* Роль эксперта в работе — так его видит клиент вместо
                       ФИО (требование Т-11, О-10, решение Р-297). */}
                   <Select
