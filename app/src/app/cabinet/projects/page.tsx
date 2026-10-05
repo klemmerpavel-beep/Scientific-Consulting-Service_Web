@@ -671,7 +671,8 @@ export default async function ProjectsScreen({
                       ? 'Работа завершена.'
                       : project.status === 'PAUSED'
                         ? 'Работа приостановлена.'
-                        : 'Работа остановлена.'}
+                        : // Одно слово с меткой состояния и историей (УК-10, Р-366).
+                          'Работа отменена.'}
                   </Text>
                 ) : null}
                 {project.stages.length > 0 || project.status !== 'ACTIVE' ? null : (
