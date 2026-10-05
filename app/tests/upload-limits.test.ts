@@ -86,7 +86,7 @@ describe('пределы загрузки файлов', () => {
     const check = read('deploy/chain-check.sh').split('\n');
     for (const line of check) {
       if (!/PASSWORD|TOKEN|SECRET/u.test(line) || /^\s*#/u.test(line)) continue;
-      // Ключ выгрузки замечаний (Р-279) читается ради длины: отчёт сверяет,
+      // Ключ выгрузки замечаний (Р-405) читается ради длины: отчёт сверяет,
       // видит ли его работающее приложение, и печатает только итог.
       assert.match(
         line,

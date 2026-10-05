@@ -35,6 +35,18 @@ export interface ProjectRow {
   readonly dueOn: Date | null;
   readonly closedOn: Date | null;
   /**
+   * Дата закрытия — плановый срок: перенесённая книга заказов и ручной
+   * заказ, заведённый завершённым. Длительность такой работы — плановая,
+   * в долю «в срок» она не входит (требование РК-23, решение Р-355).
+   */
+  readonly closedOnPlanned: boolean;
+  /**
+   * Первая дата закрытия: «закрыто за период» считается по ней — повторное
+   * закрытие после возобновления работу в новый период не переносит
+   * (улучшение УМ-13, решение Р-392).
+   */
+  readonly firstClosedOn: Date | null;
+  /**
    * День подписания договора; `null` — договора нет или дата не указана.
    * По нему работа относится к периоду в «законтрактовано за период»
    * (решение Р-257).
@@ -407,6 +419,40 @@ export interface SeasonalNorm {
   readonly norm: number;
   readonly orders: number;
   readonly yearsObserved: number;
+  /** Заказы месяца по годам, в которых он наблюдался: «по годам 3 и 1». */
+  readonly years: readonly { readonly year: number; readonly orders: number }[];
+}
+
+/**
+ * Дата начала учёта по умолчанию — 1 сентября 2024 года: строки книги до
+ * этой даты единичны, и их месяцы занижали нормы (требование РК-16,
+ * решение Р-349; ответ ОР-6). Практика меняет её в «Справочниках».
+ */
+export const ANALYTICS_SINCE_DEFAULT = new Date(Date.UTC(2024, 8, 1));
+
+const monthKey = (date: Date) => date.getUTCFullYear() * 12 + date.getUTCMonth();
+
+/**
+ * Окно наблюдения сезонной нормы — одно правило для всех экранов (ОР-6):
+ * - с месяца даты начала учёта, а если заказы начались позже — с месяца
+ *   первого заказа;
+ * - по последний полный месяц: текущий неполный не считается;
+ * - месяц — московский.
+ * Возвращает ключи месяцев `год × 12 + месяц`; окна нет — `null`.
+ */
+export function normWindow(
+  rows: readonly ProjectRow[],
+  controlDate: Date,
+  since: Date = ANALYTICS_SINCE_DEFAULT,
+): { readonly startKey: number; readonly endKey: number } | null {
+  const sinceKey = monthKey(since);
+  const endKey = monthKey(moscowToday(controlDate)) - 1;
+  const keys = rows
+    .filter((row) => row.startedOn !== null && row.startedOn.getTime() >= since.getTime())
+    .map((row) => monthKey(row.startedOn!));
+  if (keys.length === 0) return null;
+  const startKey = Math.max(sinceKey, Math.min(...keys));
+  return startKey > endKey ? null : { startKey, endKey };
 }
 
 /**
@@ -416,25 +462,33 @@ export interface SeasonalNorm {
  * история начинается и заканчивается в середине года, и у крайних месяцев
  * наблюдений меньше. Знаменатель считается по фактически наблюдавшимся
  * месяцам, иначе январь первого неполного года занижал бы норму.
+ *
+ * Окно — `normWindow`: с даты начала учёта по последний полный месяц, по
+ * московскому дню (требование РК-16, решение Р-349). Прежде окно шло с
+ * самой ранней даты и включало текущий неполный месяц по UTC: пустые
+ * месяцы 2024 года и три дня октября занижали нормы на треть.
  */
-export function seasonalNorm(rows: readonly ProjectRow[], controlDate: Date): SeasonalNorm[] {
-  const dated = rows.filter((row) => row.startedOn !== null);
-  if (dated.length === 0) return [];
-
-  const times = dated.map((row) => row.startedOn!.getTime());
-  const first = new Date(Math.min(...times));
-  const startKey = first.getUTCFullYear() * 12 + first.getUTCMonth();
-  const endKey = controlDate.getUTCFullYear() * 12 + controlDate.getUTCMonth();
-
+export function seasonalNorm(
+  rows: readonly ProjectRow[],
+  controlDate: Date,
+  since: Date = ANALYTICS_SINCE_DEFAULT,
+): SeasonalNorm[] {
+  const window = normWindow(rows, controlDate, since);
   return MONTHS_SHORT.map((label, index) => {
-    const orders = dated.filter((row) => row.startedOn!.getUTCMonth() === index).length;
-    let observed = 0;
-    for (let year = first.getUTCFullYear(); year <= controlDate.getUTCFullYear(); year += 1) {
-      const key = year * 12 + index;
-      if (key >= startKey && key <= endKey) observed += 1;
+    if (window === null) return { month: index + 1, label, orders: 0, yearsObserved: 1, norm: 0, years: [] };
+    const inside = rows.filter((row) => {
+      if (row.startedOn === null) return false;
+      const key = monthKey(row.startedOn);
+      return key >= window.startKey && key <= window.endKey && row.startedOn.getUTCMonth() === index;
+    });
+    const years: { year: number; orders: number }[] = [];
+    for (let key = window.startKey; key <= window.endKey; key += 1) {
+      if (key % 12 !== index) continue;
+      const year = Math.floor(key / 12);
+      years.push({ year, orders: inside.filter((row) => row.startedOn!.getUTCFullYear() === year).length });
     }
-    const yearsObserved = observed === 0 ? 1 : observed;
-    return { month: index + 1, label, orders, yearsObserved, norm: orders / yearsObserved };
+    const yearsObserved = years.length === 0 ? 1 : years.length;
+    return { month: index + 1, label, orders: inside.length, yearsObserved, norm: inside.length / yearsObserved, years };
   });
 }
 
@@ -660,14 +714,31 @@ export interface CycleRow {
   readonly typeCode: string;
   readonly typeName: string;
   readonly estimate: CycleEstimate;
+  /** Из завершённых — с плановой датой закрытия (РК-23, Р-355). */
+  readonly planned: number;
+}
+
+/**
+ * Работы с плановой датой закрытия — одно определение для «Сроков» и
+ * «Денег» (требование РК-23, решение Р-355).
+ */
+export function plannedClosures(rows: readonly ProjectRow[]): number {
+  return rows.filter((row) => row.closedOn !== null && row.closedOnPlanned).length;
 }
 
 export interface CyclesReport {
   readonly overall: CycleEstimate;
   readonly byType: readonly CycleRow[];
-  /** Завершённые в срок, из числа тех, у кого срок был задан. */
+  /**
+   * Завершённые в срок, из числа тех, у кого срок был задан и дата закрытия
+   * фактическая: плановая дата закрытия совпадает со сроком, и такая работа
+   * всегда была бы «в срок» (требование РК-23, решение Р-355; ОР-7).
+   * `withDue === 0` — «мало данных».
+   */
   readonly onTime: number;
   readonly withDue: number;
+  /** Завершённых с плановой датой закрытия: длительность у них плановая. */
+  readonly planned: number;
   /** Незакрытых работ с прошедшим сроком — `lateOpen` (решение Р-257). */
   readonly overdueOpen: number;
   /** Отменённых работ с датой начала: они цензурируют кривую, а не завершают её. */
@@ -687,8 +758,10 @@ export function cycles(rows: readonly ProjectRow[], controlDate: Date): CyclesRe
   }
 
   const closedWithDue = rows.filter(
-    (row) => row.status === 'COMPLETED' && row.dueOn !== null && row.closedOn !== null,
+    (row) => row.status === 'COMPLETED' && row.dueOn !== null && row.closedOn !== null && !row.closedOnPlanned,
   );
+  const completedPlanned = (list: readonly ProjectRow[]) =>
+    plannedClosures(list.filter((row) => row.status === 'COMPLETED'));
 
   return {
     overall: cycleMedian(durations),
@@ -701,10 +774,12 @@ export function cycles(rows: readonly ProjectRow[], controlDate: Date): CyclesRe
             .map((row) => durationOf(row, controlDate))
             .filter((duration): duration is Duration => duration !== null),
         ),
+        planned: completedPlanned(list),
       }))
       .sort((a, b) => b.estimate.observations - a.estimate.observations),
     onTime: closedWithDue.filter((row) => row.closedOn!.getTime() <= row.dueOn!.getTime()).length,
     withDue: closedWithDue.length,
+    planned: completedPlanned(rows),
     overdueOpen: lateOpen(rows, controlDate).length,
     cancelled: rows.filter((row) => row.status === 'CANCELLED' && row.startedOn !== null).length,
   };
@@ -789,14 +864,18 @@ export interface Conclusion {
  * собственной медиане — разница медианы и среднего на числе заказов.
  * Где честной величины нет, стоит `null`, а не выдуманный процент роста.
  */
-export function conclusions(rows: readonly ProjectRow[], controlDate: Date): Conclusion[] {
+export function conclusions(
+  rows: readonly ProjectRow[],
+  controlDate: Date,
+  since: Date = ANALYTICS_SINCE_DEFAULT,
+): Conclusion[] {
   const out: Conclusion[] = [];
   if (rows.length === 0) return out;
 
   const money = overview(rows);
   const clientReport = clients(rows, controlDate);
   const productRows = products(rows);
-  const season = seasonalNorm(rows, controlDate);
+  const season = seasonalNorm(rows, controlDate, since);
   const debts = receivables(rows, controlDate);
 
   // 1. Остаток по работам с прошедшим сроком — деньги, которые уже
@@ -861,7 +940,7 @@ export function conclusions(rows: readonly ProjectRow[], controlDate: Date): Con
         `${peak.map((month) => month.norm.toFixed(1).replace('.', ',')).join(', ')} заказа в месяц.`,
       action:
         `Готовить предложение по этой позиции к ${peak[0]!.label} и держать под неё свободного ` +
-        'исполнителя: спрос приходит в те же месяцы, что и в прошлые годы.',
+        'куратора: спрос приходит в те же месяцы, что и в прошлые годы.',
       confidence: 'likely',
       term: 'к началу сезона',
       effect: null,
@@ -990,14 +1069,18 @@ export interface Verdict {
   readonly first: string | null;
 }
 
-export function verdict(rows: readonly ProjectRow[], controlDate: Date): Verdict | null {
+export function verdict(
+  rows: readonly ProjectRow[],
+  controlDate: Date,
+  since: Date = ANALYTICS_SINCE_DEFAULT,
+): Verdict | null {
   if (rows.length === 0) return null;
 
   const money = overview(rows);
   const debts = receivables(rows, controlDate).filter((debt) => (debt.overdueDays ?? 0) > 0);
   const overdueSum = sum(debts.map((debt) => debt.debt));
   const late = lateOpen(rows, controlDate);
-  const advice = conclusions(rows, controlDate);
+  const advice = conclusions(rows, controlDate, since);
 
   // «Действующих» — идущие и приостановленные, как на главной и во
   // вкладке перечня; «в работе» здесь прежде значило одни идущие, а на

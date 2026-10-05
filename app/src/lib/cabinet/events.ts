@@ -6,18 +6,64 @@
  * потому что именно здесь решается, что уходит за пределы сервера.
  */
 
+import { openPath } from './next-path.ts';
+
 export type EventKind =
   | 'STAGE_AWAITING_CLIENT'
   | 'VERSION_UPLOADED'
   | 'EXPERT_COMMENT_PUBLISHED'
   | 'STAGE_IN_APPROVAL'
   | 'DEADLINE_IN_3_DAYS'
+  | 'DEADLINE_APPROVAL_SOON'
   | 'PAYMENT_STATUS_CHANGED'
   | 'REQUEST_CREATED'
   | 'PROJECT_OPENED'
   | 'LEAD_DECLINED'
   | 'MESSAGE_RECEIVED'
-  | 'HELP_REQUESTED';
+  | 'HELP_REQUESTED'
+  | 'STAGE_APPROVED'
+  | 'STAGE_RETURNED'
+  | 'CLIENT_ACCESS_OPENED'
+  | 'VERSION_REJECTED'
+  | 'NDA_NEEDED'
+  | 'PROJECT_STATUS_CHANGED'
+  | 'CURATOR_CHANGED'
+  | 'MODERATION_PENDING'
+  | 'CLIENT_COMMENT'
+  | 'CURATOR_ASSIGNED'
+  | 'DEADLINE_MISSED'
+  | 'WORK_ASSIGNED'
+  | 'EXPERT_DECISION'
+  | 'STAGE_DUE_CHANGED'
+  | 'STAGE_REOPENED'
+  | 'ORDER_WITH_CONTRACT'
+  | 'LEAD_RECEIVED'
+  | 'CURATOR_INVITED'
+  | 'NDA_SIGNED'
+  | 'CLIENT_ERASURE_REQUEST'
+  | 'CURATOR_DIGEST'
+  | 'PROJECT_DUE_CHANGED'
+  | 'CURATOR_NDA_SIGNED'
+  | 'STAGE_HANDED_OVER'
+  | 'STAGE_HANDED_BACK'
+  | 'CURATOR_TURN'
+  | 'WORK_UNASSIGNED'
+  | 'PAYOUT_ACCRUED'
+  | 'PAYOUT_PAID'
+  | 'NDA_WAITING'
+  | 'OUTBOX_FAILED'
+  | 'INTERNAL_MESSAGE'
+  | 'STAFF_QUESTION'
+  | 'HEAD_REPLY'
+  | 'STAGE_ACCEPTED'
+  | 'WORK_TRANSFERRED'
+  | 'MANAGER_CHANGED'
+  | 'HEAD_DIGEST'
+  | 'TRANCHE_OVERDUE'
+  | 'HEAD_MONTHLY'
+  | 'ASSIGNMENT_CREATED'
+  | 'ASSIGNMENT_DUE'
+  | 'ASSIGNMENT_DONE';
 
 /**
  * Причина, которую отправители возвращают при незаданных настройках канала.
@@ -50,12 +96,56 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   EXPERT_COMMENT_PUBLISHED: 'опубликовано замечание',
   STAGE_IN_APPROVAL: 'этап на согласовании',
   DEADLINE_IN_3_DAYS: 'приближается срок',
+  DEADLINE_APPROVAL_SOON: 'подходит срок согласования',
   PAYMENT_STATUS_CHANGED: 'изменилась оплата',
-  HELP_REQUESTED: 'куратор просит помощи',
+  HELP_REQUESTED: 'менеджер просит помощи',
   REQUEST_CREATED: 'новая заявка',
   PROJECT_OPENED: 'работа заведена',
   LEAD_DECLINED: 'ответ на отклонённую заявку',
   MESSAGE_RECEIVED: 'новое сообщение',
+  STAGE_APPROVED: 'этап согласован',
+  STAGE_RETURNED: 'этап возвращён с замечаниями',
+  CLIENT_ACCESS_OPENED: 'менеджер открыл вход клиенту',
+  VERSION_REJECTED: 'версия не опубликована',
+  NDA_NEEDED: 'нужен договор поручения',
+  PROJECT_STATUS_CHANGED: 'изменилось состояние работы',
+  CURATOR_CHANGED: 'сменился менеджер работы',
+  MODERATION_PENDING: 'ждут публикации замечания или версии',
+  CLIENT_COMMENT: 'клиент оставил замечание',
+  CURATOR_ASSIGNED: 'вам передана работа',
+  DEADLINE_MISSED: 'срок этапа сорван',
+  WORK_ASSIGNED: 'вас назначили куратором работы',
+  EXPERT_DECISION: 'решение менеджера по вашему материалу',
+  STAGE_DUE_CHANGED: 'изменён срок этапа',
+  STAGE_REOPENED: 'этап возвращён в работу',
+  ORDER_WITH_CONTRACT: 'заведён заказ с договором',
+  LEAD_RECEIVED: 'заявка получена',
+  CURATOR_INVITED: 'вам открыт кабинет куратора',
+  NDA_SIGNED: 'доступ к материалам открыт',
+  CLIENT_ERASURE_REQUEST: 'клиент просит удалить данные',
+  CURATOR_DIGEST: 'сводка по вашим работам',
+  PROJECT_DUE_CHANGED: 'изменён срок работы',
+  CURATOR_NDA_SIGNED: 'куратору открыт доступ к материалам',
+  STAGE_HANDED_OVER: 'куратор сдал этап',
+  STAGE_HANDED_BACK: 'этап возвращён вам',
+  CURATOR_TURN: 'ход за вами',
+  WORK_UNASSIGNED: 'работа передана другому куратору',
+  PAYOUT_ACCRUED: 'начислено вознаграждение',
+  PAYOUT_PAID: 'вознаграждение выплачено',
+  NDA_WAITING: 'куратор ждёт договор поручения',
+  OUTBOX_FAILED: 'уведомления не доставлены',
+  INTERNAL_MESSAGE: 'внутренняя переписка по работе',
+  STAFF_QUESTION: 'вопрос сотрудника',
+  HEAD_REPLY: 'ответ руководителя',
+  STAGE_ACCEPTED: 'этап принят: акт и счёт',
+  WORK_TRANSFERRED: 'работа передана другому менеджеру',
+  MANAGER_CHANGED: 'сменился менеджер работы',
+  HEAD_DIGEST: 'утренняя сводка дел',
+  TRANCHE_OVERDUE: 'просрочен платёж',
+  HEAD_MONTHLY: 'рекомендации на месяц',
+  ASSIGNMENT_CREATED: 'поручение руководителя',
+  ASSIGNMENT_DUE: 'завтра срок поручения',
+  ASSIGNMENT_DONE: 'поручение выполнено',
 };
 
 /**
@@ -73,12 +163,22 @@ export function eventLabel(eventKind: string): string {
   return EVENT_LABEL[eventKind as EventKind] ?? eventKind;
 }
 
-export function telegramNote(eventKind: string, projectCode: string | null): string {
+/**
+ * Сигнал получателю, а не очереди: событие, которое уходит только клиенту,
+ * в мессенджере говорит с ним на «вы». На экране очереди руководитель
+ * читает прежнее название (улучшение УК-07, решение Р-363).
+ */
+const TELEGRAM_LABEL: Partial<Record<EventKind, string>> = {
+  STAGE_AWAITING_CLIENT: 'этап ждёт ваших материалов',
+};
+
+export function telegramNote(eventKind: string, projectCode: string | null, path: string | null = null): string {
   const base = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') ?? '';
-  const what = eventLabel(eventKind);
+  const what = TELEGRAM_LABEL[eventKind as EventKind] ?? eventLabel(eventKind);
   const where = projectCode === null ? '' : ` · ${projectCode}`;
-  return (
-    `ProDisser · ${what}${where}\n\n` +
-    `Подробности в кабинете: ${base.length === 0 ? '/cabinet' : `${base}/cabinet`}`
-  );
+  // Ссылка ведёт на экран события через `/cabinet/open` — без адреса почты:
+  // сигнал уходит за пределы России и содержания не несёт (Т-06, Р-309,
+  // Р-187). Путь без кода работы ничего о человеке не говорит.
+  const target = path === null ? '/cabinet' : openPath(path);
+  return `ProDisser · ${what}${where}\n\n` + `Подробности в кабинете: ${base}${target}`;
 }

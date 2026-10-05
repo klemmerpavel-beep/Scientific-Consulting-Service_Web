@@ -27,10 +27,28 @@ import {
   Text,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
-import { listColorMap, listServiceTypes, listStageTemplates } from '../../../../lib/cabinet/admin';
+import {
+  listCalendarDays,
+  listColorMap,
+  listServiceTypes,
+  listStageTemplates,
+} from '../../../../lib/cabinet/admin';
+import { formatDay } from '../../../../lib/cabinet/approval';
 import { formatAmount } from '../../../../lib/cabinet/money';
-import { currentActor } from '../../../../lib/cabinet/session';
-import { attachAlias, detachAlias, dropStageTemplate, saveStageTemplate, saveType } from '../../actions';
+import { requireActor } from '../../../../lib/cabinet/session';
+import { homeFor } from '../../../../lib/cabinet/nav';
+import {
+  attachAlias,
+  detachAlias,
+  dropCalendarDay,
+  dropStageTemplate,
+  saveCalendar,
+  saveReaction,
+  saveAnalyticsSettings,
+  saveStageTemplate,
+  saveType,
+} from '../../actions';
+import { analyticsSince, confidenceThresholds, reactionDays } from '../../../../lib/cabinet/practice-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,9 +62,9 @@ const VISUALLY_HIDDEN_INLINE: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-type Tab = 'types' | 'stages' | 'colors';
+type Tab = 'types' | 'stages' | 'colors' | 'calendar';
 
-const TABS: readonly Tab[] = ['types', 'stages', 'colors'];
+const TABS: readonly Tab[] = ['types', 'stages', 'colors', 'calendar'];
 
 /**
  * Справочники: типы сопровождения, шаблоны этапов и заливка книги.
@@ -65,9 +83,8 @@ export default async function DirectoryScreen({
 }: {
   searchParams: Promise<{ tab?: string; error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'DIRECTORY_EDIT')) redirect('/cabinet/projects');
+  const actor = await requireActor('/cabinet/manage/directory');
+  if (!can(actor, 'DIRECTORY_EDIT')) redirect(homeFor(actor));
 
   const sp = await searchParams;
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
@@ -79,6 +96,12 @@ export default async function DirectoryScreen({
   const types = tab === 'types' || tab === 'stages' ? await listServiceTypes(actor) : [];
   const templates = tab === 'stages' ? await listStageTemplates(actor) : [];
   const colors = tab === 'colors' ? await listColorMap(actor) : [];
+  const calendar = tab === 'calendar' ? await listCalendarDays(actor) : [];
+  const reaction = tab === 'calendar' ? await reactionDays() : 1;
+  // Дата начала учёта и пороги уверенности календаря продвижения
+  // (требование РК-16, решение Р-349).
+  const since = tab === 'calendar' ? await analyticsSince() : null;
+  const thresholds = tab === 'calendar' ? await confidenceThresholds() : null;
 
   const href = (next: Tab) =>
     next === 'types' ? '/cabinet/manage/directory' : `/cabinet/manage/directory?tab=${next}`;
@@ -87,7 +110,7 @@ export default async function DirectoryScreen({
     <Shell actor={actor} current="/cabinet/manage/directory">
       <ScreenHead
         title="Справочники"
-        note="Справочники задают единые названия, которыми кабинет пользуется везде. Типы сопровождения — перечень видов работ: из него выбирают вид при одобрении заявки, по нему считается аналитика. Исторические написания — как тот же вид записан в книге заказов («Диссертция», «Статья ВАК»): при переносе книги такие строки сами сводятся к нужной позиции. Шаблоны этапов — готовый план работ для вида, который заводится в работу одним действием. Заливка книги — что означает цвет строки в книге заказов. Заходить сюда нужно редко: когда появляется новый вид работ или перенос книги сообщает о несведённом написании."
+        note="Справочники задают единые названия, которыми кабинет пользуется везде. Типы сопровождения — перечень видов работ: из него выбирают вид при одобрении заявки, по нему считается аналитика. Исторические написания — как тот же вид записан в книге заказов («Диссертция», «Статья ВАК»): при переносе книги такие строки сами сводятся к нужной позиции. Шаблоны этапов — готовый план работ для вида, который заводится в работу одним действием. Заливка книги — что означает цвет строки в книге заказов. Производственный календарь — переносы выходных, по которым считается срок согласования этапа. Заходить сюда нужно редко: когда появляется новый вид работ или перенос книги сообщает о несведённом написании."
       />
 
       <FilterBar>
@@ -98,6 +121,8 @@ export default async function DirectoryScreen({
             { href: href('types'), label: 'Типы сопровождения', active: tab === 'types' },
             { href: href('stages'), label: 'Шаблоны этапов', active: tab === 'stages' },
             { href: href('colors'), label: 'Заливка книги', active: tab === 'colors' },
+            // Срок согласования этапа считается в рабочих днях (Т-15, Р-290).
+            { href: href('calendar'), label: 'Производственный календарь', active: tab === 'calendar' },
           ]}
         />
       </FilterBar>
@@ -344,6 +369,118 @@ export default async function DirectoryScreen({
             решает только у строк без заливки. Расхождение цвета с текстом выводится отдельным
             перечнем предпросмотра.
           </Text>
+        </>
+      ) : null}
+
+      {/* Производственный календарь для срока согласования этапа: правило —
+          понедельник–пятница без праздников ст. 112 ТК РФ, здесь — только
+          расхождения с ним (требование Т-15, решение Р-290). */}
+      {tab === 'calendar' ? (
+        <>
+          {/* Срок реакции: через столько рабочих дней неразобранное дело
+              менеджера становится контрольным делом руководителя
+              (требование РК-05, решение Р-337). */}
+          <Card style={{ marginBottom: 20 }}>
+            <Form action={saveReaction} inline>
+              <Field
+                label="Срок реакции, рабочих дней"
+                name="days"
+                type="number"
+                defaultValue={String(reaction)}
+                hint="Сообщение клиента, публикация, заявка или сданный этап, не разобранные за этот срок, поднимаются руководителю в «Контроль»."
+                minWidth={140}
+              />
+              <Button tone="quiet">Сохранить</Button>
+            </Form>
+          </Card>
+          {since === null || thresholds === null ? null : (
+            <Card style={{ marginBottom: 20 }}>
+              <Form action={saveAnalyticsSettings} inline>
+                <Field
+                  label="Дата начала учёта"
+                  name="since"
+                  type="date"
+                  defaultValue={since.toISOString().slice(0, 10)}
+                  hint="С неё считаются сезонные нормы и календарь продвижения; текущий неполный месяц не считается."
+                  minWidth={170}
+                />
+                <Field
+                  label="Пороги уверенности, наблюдений"
+                  name="thresholds"
+                  defaultValue={`${thresholds.sure}, ${thresholds.likely}, ${thresholds.maybe}`}
+                  hint="«Уверенно», «вероятно», «предположительно»; меньше последнего — «мало данных»."
+                  minWidth={170}
+                />
+                <Button tone="quiet">Сохранить</Button>
+              </Form>
+            </Card>
+          )}
+          {calendar.length === 0 ? (
+            <Empty title="Переносов нет">
+              Срок согласования считается по правилу: понедельник–пятница без нерабочих праздничных
+              дней ст. 112 ТК РФ.
+            </Empty>
+          ) : (
+            <TableCard label="Производственный календарь">
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+                <thead>
+                  <tr>
+                    <th style={TABLE_HEAD} scope="col">День</th>
+                    <th style={TABLE_HEAD} scope="col">Вид</th>
+                    <th style={TABLE_HEAD} scope="col">Примечание</th>
+                    <th style={TABLE_HEAD} scope="col">
+                      <span style={VISUALLY_HIDDEN_INLINE}>Действие</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {calendar.map((entry) => (
+                    <tr key={entry.day.toISOString()}>
+                      <td style={TABLE_CELL}>{formatDay(entry.day)}</td>
+                      <td style={TABLE_CELL}>{entry.workday ? 'рабочий' : 'нерабочий'}</td>
+                      <td style={TABLE_CELL}>{entry.note ?? '—'}</td>
+                      <td style={TABLE_CELL}>
+                        <Form action={dropCalendarDay} inline>
+                          <input type="hidden" name="day" value={entry.day.toISOString().slice(0, 10)} />
+                          <Button tone="quiet">Убрать</Button>
+                        </Form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableCard>
+          )}
+
+          <Text muted size={13} style={{ marginTop: 12, marginBottom: 12 }}>
+            Праздники ст. 112 ТК РФ учтены сами. Сюда вносятся переносы выходных по постановлению
+            Правительства и рабочие субботы — раз в год, когда постановление выходит. Без них срок
+            согласования этапа разойдётся с производственным календарём.
+          </Text>
+
+          <Disclosure title="Добавить день">
+            <Form action={saveCalendar}>
+              <FormRow>
+                <Field label="День" name="day" scope="calendar" type="date" required />
+                <Select label="Вид дня" name="workday" scope="calendar" defaultValue="no">
+                  <option value="no">нерабочий</option>
+                  <option value="yes">рабочий</option>
+                </Select>
+                <Field
+                  label="Примечание"
+                  name="note"
+                  scope="calendar"
+                  placeholder="Перенос выходного с 2 января"
+                />
+              </FormRow>
+              <FormActions>
+                <Button tone="quiet">Сохранить</Button>
+              </FormActions>
+              <Text muted size={13} style={{ marginTop: 12 }}>
+                День, уже внесённый в календарь, перезаписывается.
+              </Text>
+            </Form>
+          </Disclosure>
         </>
       ) : null}
     </Shell>

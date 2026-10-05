@@ -47,3 +47,21 @@ export function canChangeProjectStatus(from: ProjectStatusKey, to: ProjectStatus
 export function isClosedStatus(status: ProjectStatusKey): boolean {
   return status === 'COMPLETED' || status === 'CANCELLED';
 }
+
+/**
+ * Причина приостановки для шапки карточки — из последнего перевода в
+ * «Приостановлена» (улучшение УК-13, решение Р-379). Куратору — без
+ * причины, как в его письмах (Р-328); у не приостановленной работы — нет.
+ */
+export function pauseReasonOf(
+  status: string,
+  events: readonly { readonly kind: string; readonly payload: unknown }[],
+  forCurator: boolean,
+): string | null {
+  if (status !== 'PAUSED' || forCurator) return null;
+  const event = events.find(
+    (row) => row.kind === 'PROJECT_STATUS_CHANGED' && (row.payload as { to?: unknown } | null)?.to === 'PAUSED',
+  );
+  const reason = (event?.payload as { reason?: unknown } | null)?.reason;
+  return typeof reason === 'string' && reason.trim() !== '' ? reason.trim() : null;
+}

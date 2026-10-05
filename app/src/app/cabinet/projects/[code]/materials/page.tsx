@@ -1,12 +1,14 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
+import CommentList from '../../../../../components/cabinet/CommentList';
 import Shell from '../../../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../../../components/cabinet/tokens';
 import {
   Button,
   Card,
   Chip,
+  Disclosure,
   Empty,
   Field,
   FileField,
@@ -19,13 +21,14 @@ import {
   Text,
   authorName,
   formatDate,
+  versionState,
   formatSize,
   plural,
 } from '../../../../../components/cabinet/ui';
-import { can } from '../../../../../lib/cabinet/access';
+import { can, contributionRefusal } from '../../../../../lib/cabinet/access';
 import { projectMaterials } from '../../../../../lib/cabinet/queries';
-import { currentActor } from '../../../../../lib/cabinet/session';
-import { addMaterialVersion } from '../../../actions';
+import { requireActor } from '../../../../../lib/cabinet/session';
+import { addMaterialVersion, decideOnComment, decideOnVersion } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,8 +39,7 @@ export default async function ProjectMaterialsScreen({
   params: Promise<{ code: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor(`/cabinet/projects/${(await params).code}/materials`);
 
   const { code } = await params;
   const project = await projectMaterials(actor, decodeURIComponent(code));
@@ -49,7 +51,14 @@ export default async function ProjectMaterialsScreen({
     managerId: project.managerId,
     expertId: project.expertId,
   };
-  const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref);
+  // Закрытая работа — только чтение всем ролям; завершённый этап клиенту и
+  // эксперту в выборе не предлагается (Т-17, М-10, решение Р-293).
+  const workRefusal = contributionRefusal(actor, project.status, null);
+  const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref) && workRefusal === null;
+  const mayModerate = can(actor, 'COMMENT_MODERATE', ref) && workRefusal === null;
+  const openStages = project.stages.filter(
+    (stage) => contributionRefusal(actor, project.status, stage.state) === null,
+  );
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -66,7 +75,7 @@ export default async function ProjectMaterialsScreen({
       ) : (
         <ul className="cab-block" style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
           {project.materials.map((material) => (
-            <li key={material.id}>
+            <li key={material.id} id={`material-${material.id}`}>
               <Card>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
                   <Heading level={2} style={{ fontSize: 18 }}>
@@ -114,6 +123,17 @@ export default async function ProjectMaterialsScreen({
                       <span>{formatSize(version.sizeBytes)}</span>
                       <span>{formatDate(version.uploadedAt)}</span>
                       <span>{authorName(version.uploadedBy, actor, version.uploadedById)}</span>
+                      {/* Версия эксперта до публикации — с пометкой; клиенту
+                          её здесь нет вовсе (Т-18, Р-294). У своей версии
+                          куратор видит и день публикации, и причину отказа
+                          (Э-06, Р-326). */}
+                      {version.moderation !== null && version.uploadedById === actor.id ? (
+                        <span style={{ color: 'var(--pd-ink)' }}>{versionState(version.moderation)}</span>
+                      ) : version.moderation === null || version.moderation.status === 'PUBLISHED' ? null : (
+                        <span style={{ color: 'var(--pd-ink)' }}>
+                          {version.moderation.status === 'PENDING' ? 'ждёт публикации' : 'не опубликована'}
+                        </span>
+                      )}
                       {version.comments.length === 0 ? null : (
                         <span>
                           {version.comments.length}{' '}
@@ -124,7 +144,81 @@ export default async function ProjectMaterialsScreen({
                   ))}
                 </ul>
 
-                {mayUpload ? (
+                {/* Версии эксперта на публикации разбираются и здесь:
+                    у материала вне этапов экрана этапа нет (М-14, Р-295). */}
+                {mayModerate
+                  ? material.versions
+                      .filter((version) => version.moderation?.status === 'PENDING')
+                      .map((version) => (
+                        <div key={`publish-${version.id}`} style={{ marginTop: 14 }}>
+                          <Text muted size={13}>
+                            v{version.number} куратора ждёт публикации клиенту
+                          </Text>
+                          {/* ФИО куратора в файле (УК-03, Р-396). */}
+                          {version.moderation?.identityHint ? (
+                            <Text size={13} style={{ marginTop: 6, color: 'var(--pd-ink-secondary)' }}>
+                              В имени файла или в свойствах документа (автор) — фамилия куратора: клиент её
+                              увидит. Попросите куратора убрать её или не публикуйте.
+                            </Text>
+                          ) : null}
+                          <Form action={decideOnVersion} inline style={{ marginTop: 8 }}>
+                            <input type="hidden" name="versionId" value={version.id} />
+                            <input type="hidden" name="decision" value="publish" />
+                            <input
+                              type="hidden"
+                              name="back"
+                              value={`/cabinet/projects/${project.code}/materials#material-${material.id}`}
+                            />
+                            <Button tone="quiet">Опубликовать клиенту</Button>
+                          </Form>
+                          <Disclosure title="Не публиковать" style={{ marginTop: 10 }}>
+                            <Form action={decideOnVersion}>
+                              <input type="hidden" name="versionId" value={version.id} />
+                              <input type="hidden" name="decision" value="reject" />
+                              <input
+                                type="hidden"
+                                name="back"
+                                value={`/cabinet/projects/${project.code}/materials#material-${material.id}`}
+                              />
+                              <Field
+                                label="Причина"
+                                name="note"
+                                scope={`version-${version.id}`}
+                                multiline
+                                required
+                                hint="Причину куратор получит письмом."
+                              />
+                              <FormActions>
+                                <Button tone="quiet">Не публиковать</Button>
+                              </FormActions>
+                            </Form>
+                          </Disclosure>
+                        </div>
+                      ))
+                  : null}
+
+                {/* Замечания к материалу вне этапов читаются и разбираются
+                    здесь: экрана этапа у него нет (решение Р-284). */}
+                {material.stage === null
+                  ? material.versions
+                      .filter((version) => version.comments.length > 0)
+                      .map((version) => (
+                        <div key={`comments-${version.id}`} style={{ marginTop: 14 }}>
+                          <Text muted size={13}>
+                            Замечания к v{version.number}
+                          </Text>
+                          <CommentList
+                            comments={version.comments}
+                            actor={actor}
+                            mayModerate={mayModerate}
+                            back={`/cabinet/projects/${project.code}/materials#material-${material.id}`}
+                            decide={decideOnComment}
+                          />
+                        </div>
+                      ))
+                  : null}
+
+                {mayUpload && contributionRefusal(actor, project.status, material.stage?.state ?? null) === null ? (
                   <Form
                     action={addMaterialVersion}
                     style={{
@@ -153,6 +247,12 @@ export default async function ProjectMaterialsScreen({
         </ul>
       )}
 
+      {workRefusal !== null && can(actor, 'MATERIAL_UPLOAD', ref) ? (
+        <Text muted size={14} style={{ marginTop: 28 }}>
+          {workRefusal}.
+        </Text>
+      ) : null}
+
       {mayUpload ? (
         <Card style={{ marginTop: 28 }}>
           <Heading level={2} style={{ marginBottom: 16 }}>Приложить материал</Heading>
@@ -163,7 +263,7 @@ export default async function ProjectMaterialsScreen({
               <Field label="Название" name="title" placeholder="Черновик главы 2" />
               <Select label="Этап" name="stageId" defaultValue="">
                 <option value="">без привязки к этапу</option>
-                {project.stages.map((stage) => (
+                {openStages.map((stage) => (
                   <option key={stage.id} value={stage.id}>
                     {stage.position}. {stage.title}
                   </option>

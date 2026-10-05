@@ -128,6 +128,18 @@ const nextConfig = {
                 { key: 'Content-Security-Policy', value: CSP },
               ],
             },
+            // Кабинет не отдаёт адрес страницы наружу заголовком Referer:
+            // в ссылке «Открыть кабинет» стоит адрес почты получателя
+            // (требование Т-06, О-12, решение Р-309). Правило идёт после
+            // общего: при совпадении ключа действует последнее.
+            {
+              source: '/cabinet',
+              headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }],
+            },
+            {
+              source: '/cabinet/:path*',
+              headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }],
+            },
           ];
         },
       }),

@@ -43,12 +43,15 @@ fi
 # Строка в журнал пишется, только когда что-то произошло: иначе расписание
 # наполняло бы журнал полутора тысячами строк «ничего не делалось» в сутки,
 # и настоящая ошибка терялась бы среди них.
-case "$ANSWER" in
-  *'"reminders":0'*) case "$ANSWER" in
-      *'"sent":0'*) case "$ANSWER" in
-          *'"failed":0'*) exit 0 ;;
-        esac ;;
-    esac ;;
-esac
+# Сроки согласования (Р-290) — тоже событие: поставленный срок и этап,
+# принятый по п. 7.3 оферты, в журнале видны всегда.
+quiet=1
+for key in reminders approvalReminders deadlinesStarted autoAccepted sent failed; do
+  case "$ANSWER" in
+    *"\"$key\":0"*) ;;
+    *) quiet=0 ;;
+  esac
+done
+[ "$quiet" -eq 1 ] && exit 0
 
 echo "$(date -Is) рассылка: $ANSWER"

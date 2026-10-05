@@ -149,7 +149,7 @@ describe('разграничение между кураторами', { skip: !
       AccessDenied,
     );
 
-    await projects.assignManager(staff(ids.boss!, 'HEAD'), ids.own!, ids.other!);
+    await projects.assignManager(staff(ids.boss!, 'HEAD'), ids.own!, ids.other!, 'Перераспределение нагрузки');
     const moved = await prisma.project.findUnique({
       where: { id: ids.own },
       select: { managerId: true },

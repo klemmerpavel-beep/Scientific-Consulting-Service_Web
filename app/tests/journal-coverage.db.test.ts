@@ -89,7 +89,10 @@ describe('журнал этапов и переписки', { skip: !enabled }, 
     ids.stage = stage.id;
     await setStageState(curator, stage.id, 'IN_PROGRESS');
     // Пустой этап на согласование не уходит (решение Р-254).
-    await assert.rejects(() => setStageState(curator, stage.id, 'IN_APPROVAL'), /приложите хотя бы один файл/u);
+    await assert.rejects(
+      () => setStageState(curator, stage.id, 'IN_APPROVAL', 'Глава написана'),
+      /который видит клиент/u,
+    );
     await prisma.material.create({
       data: {
         projectId: ids.project!,
@@ -109,7 +112,9 @@ describe('журнал этапов и переписки', { skip: !enabled }, 
         },
       },
     });
-    await setStageState(curator, stage.id, 'IN_APPROVAL');
+    // Без итога этап на согласование не уходит (решение Р-289).
+    await assert.rejects(() => setStageState(curator, stage.id, 'IN_APPROVAL', '  '), /с итогом/u);
+    await setStageState(curator, stage.id, 'IN_APPROVAL', 'Глава написана; дальше — расчёты');
 
     const created = await entries('STAGE_CREATED');
     assert.equal(created.length, 1);

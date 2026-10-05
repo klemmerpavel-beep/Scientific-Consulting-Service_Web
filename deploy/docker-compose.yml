@@ -54,6 +54,7 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
       LEAD_MAIL_TO: ${LEAD_MAIL_TO:-}
+      MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
       # Личный кабинет. Секрет свёрток обязателен: без него кабинет отвечает
       # ошибкой на каждый запрос, а раздел доступен по ссылке с посадочной —
       # молчаливая пятисотка хуже, чем отказ развернуть с понятным текстом.
@@ -65,9 +66,11 @@ services:
       # (решение Р-248).
       CABINET_STORAGE_DIR: /app/storage
       CABINET_CRON_SECRET: ${CABINET_CRON_SECRET:-}
+      # Автозакрытие этапа по сроку согласования; пусто — выключено (Р-290).
+      APPROVAL_AUTO_ACCEPT: ${APPROVAL_AUTO_ACCEPT:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
-      # Ключ выгрузки замечаний для исполнителя правок (решение Р-279):
+      # Ключ выгрузки замечаний для исполнителя правок (решение Р-405):
       # пусто — адреса /api/feedback/export нет.
       FEEDBACK_EXPORT_TOKEN: ${FEEDBACK_EXPORT_TOKEN:-}
       # Экран «Зеркало на Диске» показывает, настроено ли зеркало и мост.

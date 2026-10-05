@@ -1,11 +1,10 @@
 /**
- * Ближайшие сроки на сводке руководителя (решение Р-182).
+ * Ближайшие сроки на сводке руководителя (решение Р-182; требование
+ * РК-04, решение Р-342).
  *
- * Карточка «Чем занята практика» показывает не только, чем практика
- * занята, но и когда наступает следующий срок. Окно — две недели, и
- * граница окна здесь и проверяется: просроченное в перечень не попадает
- * (оно названо выше отдельно), далёкое — тоже, а порядок идёт от
- * ближайшего срока к дальнему.
+ * Окно — две недели, и граница окна здесь и проверяется: далёкое в
+ * перечень не попадает, сорванное — попадает сверху с числом дней
+ * просрочки, а порядок идёт от раннего срока к позднему.
  *
  * Пропускается без заданного адреса базы: запускается `npm run test:db`.
  */
@@ -21,7 +20,7 @@ const enabled = Boolean(process.env.DATABASE_URL);
 
 describe('ближайшие сроки на сводке', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
-  const { stageLoad } = await import('../src/lib/cabinet/summary.ts');
+  const { stageLoad, upcomingDeadlines } = await import('../src/lib/cabinet/summary.ts');
 
   const stamp = Date.now();
   const ids: Record<string, string> = {};
@@ -91,24 +90,26 @@ describe('ближайшие сроки на сводке', { skip: !enabled }, 
     await prisma.$disconnect();
   });
 
-  it('в окно попадают только сроки ближайших двух недель', async () => {
-    const load = await stageLoad(head(ids.boss!));
-    const mine = load.soon.filter((row) => row.code.startsWith(`PD-SOON-${stamp}-`));
+  it('в окно попадают сроки ближайших двух недель и сорванные — сорванные сверху', async () => {
+    const soon = await upcomingDeadlines(head(ids.boss!));
+    const mine = soon.filter((row) => row.code.startsWith(`PD-SOON-${stamp}-`));
     assert.deepEqual(
       mine.map((row) => row.code),
-      [`PD-SOON-${stamp}-nearer`, `PD-SOON-${stamp}-near`],
+      [`PD-SOON-${stamp}-late`, `PD-SOON-${stamp}-nearer`, `PD-SOON-${stamp}-near`],
     );
   });
 
-  it('просроченное считается отдельно и в ближайшие сроки не попадает', async () => {
+  it('сорванное — с числом дней просрочки; в счёте просрочки «Чем занята практика» тоже', async () => {
     const load = await stageLoad(head(ids.boss!));
     assert.ok(load.overdue > 0);
-    assert.ok(!load.soon.some((row) => row.code === `PD-SOON-${stamp}-late`));
+    const late = (await upcomingDeadlines(head(ids.boss!))).find((row) => row.code === `PD-SOON-${stamp}-late`);
+    assert.ok(late !== undefined && late.late !== null && late.late >= 2);
+    const nearer = (await upcomingDeadlines(head(ids.boss!))).find((row) => row.code === `PD-SOON-${stamp}-nearer`);
+    assert.equal(nearer?.late, null);
   });
 
   it('в записи стоит и этап, и клиент: по одному коду работу не узнать', async () => {
-    const load = await stageLoad(head(ids.boss!));
-    const row = load.soon.find((item) => item.code === `PD-SOON-${stamp}-nearer`);
+    const row = (await upcomingDeadlines(head(ids.boss!))).find((item) => item.code === `PD-SOON-${stamp}-nearer`);
     assert.ok(row !== undefined);
     assert.equal(row.stage, 'Этап nearer');
     assert.equal(row.client, `Клиент ${stamp}`);

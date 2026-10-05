@@ -25,6 +25,8 @@ import { createRawToken, digest } from '../src/lib/cabinet/token.ts';
 import { previewBook } from '../src/lib/cabinet/import/apply.ts';
 import type { Actor } from '../src/lib/cabinet/access.ts';
 import { excelSerial, makeWorkbook, type TestRow } from '../tests/helpers/make-workbook.ts';
+import { moscowToday } from '../src/lib/cabinet/clock.ts';
+import { addWorkdays } from '../src/lib/cabinet/workdays.ts';
 
 const DOMAIN = 'artboard.example';
 const GREEN = 'FF00B050';
@@ -139,9 +141,17 @@ async function main() {
       degree: 'д.т.н.',
       academicTitle: 'профессор',
       specialization: 'теория надёжности технических систем',
+      specialtyCode: '2.8.6',
       ndaSignedAt: day(400),
     },
-    update: { ndaSignedAt: day(400) },
+    update: { ndaSignedAt: day(400), specialtyCode: '2.8.6' },
+  });
+  // Регалии куратора: клиент видит его со степенью и специальностью
+  // (требование Т-11, решение Р-297).
+  await prisma.expertProfile.upsert({
+    where: { userId: manager.id },
+    create: { userId: manager.id, degree: 'к.т.н.', specialization: 'горные машины и оборудование' },
+    update: { degree: 'к.т.н.', specialization: 'горные машины и оборудование' },
   });
 
   // ── Клиенты и проекты ───────────────────────────────────────────────────
@@ -226,7 +236,9 @@ async function main() {
         note: 'Отвечаю в течение дня',
         preferred: true,
       },
-      { userId: manager.id, kind: 'FULL_SUPPORT', preferred: true },
+      // Сотруднику «Полное сопровождение» не предлагается (требование
+      // М-20, решение Р-306): у менеджера — звонок с оговоркой.
+      { userId: manager.id, kind: 'PHONE_CALL', value: '+7 900 000-00-01', note: 'В рабочие часы', preferred: true },
     ],
   });
 
@@ -298,6 +310,8 @@ async function main() {
     const base = startedOn ?? day(0);
     const dueOn = row.dueOn ?? new Date(base.getTime() + 120 * 86_400_000);
     const closedOn = row.status === 'COMPLETED' ? dueOn : null;
+    // Дата закрытия строки книги — плановый срок (требование РК-23, решение Р-355).
+    const closedOnPlanned = closedOn !== null;
     const year = base.getUTCFullYear();
     const code = `PD-${year}-${String(index + 1).padStart(3, '0')}`;
 
@@ -321,6 +335,8 @@ async function main() {
         startedOn,
         dueOn,
         closedOn,
+        closedOnPlanned,
+        firstClosedOn: closedOn,
         summary: SUMMARY[row.type] ?? SUMMARY.consulting!,
       },
       // Куратор переназначается при каждом наполнении: правка распределения
@@ -338,6 +354,8 @@ async function main() {
         startedOn,
         dueOn,
         closedOn,
+        closedOnPlanned,
+        firstClosedOn: closedOn,
       },
       select: { id: true },
     });
@@ -493,6 +511,31 @@ async function main() {
   }
 
   const showcase = projectIds[BOOK.orders.indexOf(showcaseOrder)]!;
+
+  // Списанная часть остатка на витринной работе: корректировка суммы видна
+  // клиенту и куратору, списание — руководителю (требования Т-19, М-22,
+  // решение Р-315). Остаток по договору уменьшается на ту же сумму — суммы
+  // траншей сходятся с договором. Повторное наполнение ничего не меняет.
+  {
+    const contract = await prisma.contract.findUnique({
+      where: { projectId: showcase },
+      select: { id: true, totalAmount: true, tranches: { select: { id: true, status: true, title: true, amount: true } } },
+    });
+    const rest = contract?.tranches.find((tranche) => tranche.status === 'PLANNED' && tranche.title === 'Остаток по договору');
+    const writtenOff = contract?.tranches.some((tranche) => tranche.status === 'WRITTEN_OFF') ?? true;
+    const cut = contract === null || contract === undefined ? 0n : (contract.totalAmount / 10n / 100_000n) * 100_000n;
+    if (contract != null && rest !== undefined && !writtenOff && cut > 0n && rest.amount > cut) {
+      await prisma.tranche.update({ where: { id: rest.id }, data: { amount: rest.amount - cut } });
+      await prisma.tranche.create({
+        data: {
+          contractId: contract.id,
+          title: 'Часть остатка, снятая по договорённости',
+          amount: cut,
+          status: 'WRITTEN_OFF',
+        },
+      });
+    }
+  }
   const stageRows = [
     {
       title: 'Постановка задачи и план исследования',
@@ -514,6 +557,10 @@ async function main() {
       offset: 20,
       summary:
         'Получены расчётные зависимости и проведена проверка на контрольном примере. Этап закончится вашим согласованием редакции.',
+      // Итог сдачи — над кнопками согласования (требование Т-14, Р-289).
+      outcome:
+        'Расчётная часть написана: зависимости выведены, контрольный пример сошёлся с опубликованными данными. ' +
+        'Дальше — апробация: после согласования готовим статью и доклад.',
     },
     {
       title: 'Апробация: статья и конференция',
@@ -545,6 +592,11 @@ async function main() {
         startedAt: stage.state === 'NOT_STARTED' ? null : day(stage.offset + 20),
         completedAt: stage.state === 'DONE' ? day(stage.offset) : null,
         awaitingClientSince: stage.state === 'AWAITING_CLIENT' ? day(18) : null,
+        outcome: 'outcome' in stage ? stage.outcome : null,
+        // Срок согласования показательного этапа: сдан 21.09.2026, пять
+        // рабочих дней — до 28.09.2026 включительно (Т-15, Р-290).
+        approvalSentAt: stage.state === 'IN_APPROVAL' ? day(2) : null,
+        approvalDueOn: stage.state === 'IN_APPROVAL' ? addWorkdays(moscowToday(day(2)), 5, new Map()) : null,
       },
       // Этап показательной работы переписывается целиком при каждом
       // наполнении: состояние, срок и исполнитель — то, что снимок
@@ -558,6 +610,11 @@ async function main() {
         startedAt: stage.state === 'NOT_STARTED' ? null : day(stage.offset + 20),
         completedAt: stage.state === 'DONE' ? day(stage.offset) : null,
         awaitingClientSince: stage.state === 'AWAITING_CLIENT' ? day(18) : null,
+        outcome: 'outcome' in stage ? stage.outcome : null,
+        // Срок согласования показательного этапа: сдан 21.09.2026, пять
+        // рабочих дней — до 28.09.2026 включительно (Т-15, Р-290).
+        approvalSentAt: stage.state === 'IN_APPROVAL' ? day(2) : null,
+        approvalDueOn: stage.state === 'IN_APPROVAL' ? addWorkdays(moscowToday(day(2)), 5, new Map()) : null,
       },
       select: { id: true },
     });
@@ -571,7 +628,7 @@ async function main() {
   // эксперт.
   await prisma.project.update({
     where: { id: showcase },
-    data: { expertId: expertUser.id },
+    data: { expertId: expertUser.id, expertRole: 'SUBJECT_EXPERT' },
   });
 
   const material = await prisma.material.upsert({
@@ -588,6 +645,9 @@ async function main() {
   for (const [number, author] of [
     [1, expertUser.id],
     [2, clientUser.id],
+    // Третья редакция эксперта ждёт публикации куратором: клиенту её не
+    // видно, куратору — с решением (Т-18, Р-294).
+    [3, expertUser.id],
   ] as const) {
     await prisma.materialVersion.upsert({
       where: { materialId_number: { materialId: material.id, number } },
@@ -600,11 +660,20 @@ async function main() {
         sha256: 'a'.repeat(64),
         contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         uploadedById: author,
-        uploadedAt: day(number === 1 ? 24 : 12),
+        uploadedAt: day(number === 1 ? 24 : number === 2 ? 12 : 1),
       },
       update: {},
     });
   }
+  const pendingVersion = await prisma.materialVersion.findFirstOrThrow({
+    where: { materialId: material.id, number: 3 },
+    select: { id: true },
+  });
+  await prisma.versionModeration.upsert({
+    where: { versionId: pendingVersion.id },
+    create: { versionId: pendingVersion.id, createdAt: day(1) },
+    update: { status: 'PENDING', decidedById: null, decidedAt: null, note: null },
+  });
   const version = await prisma.materialVersion.findFirst({
     where: { materialId: material.id, number: 2 },
     select: { id: true },
@@ -660,7 +729,85 @@ async function main() {
           createdAt: day(2),
           containsContactHint: true,
         },
+        // Внутренняя ветка по работе — менеджер и руководитель; клиенту её
+        // нет (требование РК-07, решение Р-336).
+        {
+          projectId: showcase,
+          thread: 'WORK_INTERNAL',
+          authorId: head.id,
+          body: 'Клиент оставил телефон в переписке: напомните ему, что общение — в кабинете.',
+          createdAt: day(2),
+        },
       ],
+    });
+  }
+  // Дело руководителя «Этап принят: акт и счёт» по последнему принятому
+  // этапу витринной работы (требование РК-12, решение Р-338).
+  await prisma.headCheck.deleteMany({});
+  const accepted = await prisma.stage.findFirst({
+    where: { projectId: showcase, state: 'DONE' },
+    orderBy: { position: 'desc' },
+    select: { id: true },
+  });
+  if (accepted !== null) {
+    await prisma.headCheck.create({
+      data: { kind: 'ACT_AFTER_ACCEPT', projectId: showcase, stageId: accepted.id, createdAt: day(1) },
+    });
+  }
+  // Поручение руководителя менеджеру по витринной работе — дело «Сегодня»
+  // менеджера и строка «Поручений» (требование РК-19, решение Р-352).
+  await prisma.assignment.deleteMany({});
+  await prisma.assignment.create({
+    data: {
+      assigneeId: manager.id,
+      createdById: head.id,
+      projectId: showcase,
+      text: 'Согласовать с клиентом перенос срока главы 3 и записать договорённость в переписке.',
+      dueOn: day(-3),
+      createdAt: day(1),
+    },
+  });
+  // Ветка «руководитель — сотрудник»: вопрос менеджера без ответа — дело
+  // «Вопрос сотрудника» на «Сводке» руководителя (РК-07, Р-336).
+  await prisma.message.deleteMany({ where: { thread: 'HEAD_STAFF', staffId: manager.id } });
+  await prisma.messageThreadRead.deleteMany({ where: { userId: { in: [head.id, manager.id] } } });
+  await prisma.message.create({
+    data: {
+      thread: 'HEAD_STAFF',
+      staffId: manager.id,
+      authorId: manager.id,
+      body: 'Клиент просит перенести защиту на месяц. Пересматриваем договор?',
+      createdAt: day(1),
+    },
+  });
+
+  // ── Этап, сданный куратором менеджеру ───────────────────────────────────
+  // Первый этап «В работе» по действующим работам куратора — с пометкой
+  // «сдан» и запиской: снимки показывают пометку у куратора и дело
+  // «Куратор сдал этап» у того, кто ведёт работу (требование Э-05, решение
+  // Р-325). Прочие пометки снимаются: снимок не зависит от истории базы
+  // (Р-213).
+  await prisma.stage.updateMany({
+    where: { handedOverAt: { not: null } },
+    data: { handedOverAt: null, handoverNote: null },
+  });
+  const handed = await prisma.stage.findFirst({
+    where: {
+      state: 'IN_PROGRESS',
+      project: { expertId: expertUser.id, status: 'ACTIVE' },
+    },
+    orderBy: [{ project: { code: 'asc' } }, { position: 'asc' }],
+    select: { id: true },
+  });
+  if (handed !== null) {
+    await prisma.stage.update({
+      where: { id: handed.id },
+      data: {
+        handedOverAt: day(1),
+        handoverNote:
+          'Раздел написан полностью, расчёты сведены в таблицы 2.1–2.4. Клиенту стоит обратить ' +
+          'внимание на допущения в п. 2.3: они взяты из методики кафедры.',
+      },
     });
   }
 
@@ -878,6 +1025,50 @@ async function main() {
         { actorId: head.id, actorRole: 'HEAD', action: 'IMPORT_PREVIEWED', objectType: 'ImportBatch', occurredAt: day(1) },
       ],
     });
+  }
+
+  // ── Клиент с одной работой ──────────────────────────────────────────────
+  // Второй клиент с входом: у него ровно одна работа в действии или на паузе, и «Мои
+  // работы» ведут сразу на её карточку (требование Т-09, решение Р-311).
+  // Блок первого входа у него уже закрыт — иначе перенаправления нет (О-3).
+  // Карточка выбирается по книге, первая подходящая, — наполнение
+  // воспроизводимо.
+  // Повторное наполнение оставляет прежнюю привязку: у записи одна карточка.
+  const known = await prisma.user.findUnique({
+    where: { email: `single@${DOMAIN}` },
+    select: { id: true, clientProfile: { select: { id: true } } },
+  });
+  if (known !== null && known.clientProfile !== null) {
+    await prisma.user.update({ where: { id: known.id }, data: { welcomeClosedAt: day(59) } });
+  } else {
+    const counts = await prisma.project.groupBy({ by: ['clientId'], _count: { _all: true } });
+    const single = new Set(counts.filter((row) => row._count._all === 1).map((row) => row.clientId));
+    const candidate = await prisma.project.findFirst({
+      where: {
+        clientId: { in: [...single].filter((id) => id !== clientIds[showcaseClient] && id !== clientIds[11]) },
+        // Действующая или приостановленная (О-11): в книге у клиентов с
+        // одной работой действующих нет — берётся приостановленная.
+        status: { in: ['ACTIVE', 'PAUSED'] },
+        client: { userId: null },
+      },
+      orderBy: [{ status: 'asc' }, { code: 'asc' }],
+      select: { clientId: true, client: { select: { fullName: true } } },
+    });
+    if (candidate !== null) {
+      const single = await prisma.user.upsert({
+        where: { email: `single@${DOMAIN}` },
+        create: {
+          email: `single@${DOMAIN}`,
+          fullName: candidate.client.fullName,
+          role: 'CLIENT',
+          consentAcceptedAt: day(60),
+          consentVersion: '2026-08-21',
+          welcomeClosedAt: day(59),
+        },
+        update: { welcomeClosedAt: day(59) },
+      });
+      await prisma.clientProfile.update({ where: { id: candidate.clientId }, data: { userId: single.id } });
+    }
   }
 
   // ── Ссылки входа для снимка ─────────────────────────────────────────────

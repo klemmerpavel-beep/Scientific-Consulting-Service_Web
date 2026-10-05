@@ -182,6 +182,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div role="status" tabindex="{{ -1 }}" data-sent="top" style="grid-column:span 2;display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята. Ответим в рабочее время, Пн—Пт 10:00—19:00.</span>
 </div>
+<div data-next="top" style="margin-top:12px;grid-column:span 2;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-surface-quiet);padding:12px 16px">
+<span style="display:block;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);margin-bottom:8px">Что будет дальше</span>
+<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
+<li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
+<li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
+<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+</ol>
+</div>
 </sc-if>
 <sc-if value="{{ errorTop }}" hint-placeholder-val="{{ false }}">
 <div role="alert" style="grid-column:span 2;display:flex;gap:8px;align-items:flex-start;background:var(--pd-err-bg);border:1px solid var(--pd-err-border);border-radius:10px;padding:12px 16px">
@@ -617,6 +625,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <sc-if value="{{ sentMain }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="-1" data-sent="main" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята. Пришлём NDA и предложим время установочной сессии.</span>
+</div>
+<div data-next="main" style="margin-top:12px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-surface-quiet);padding:12px 16px">
+<span style="display:block;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);margin-bottom:8px">Что будет дальше</span>
+<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
+<li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
+<li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
+<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+</ol>
 </div>
 </sc-if>
 <sc-if value="{{ errorMain }}" hint-placeholder-val="{{ false }}">
@@ -1141,7 +1157,7 @@ class Component extends DCLogic {
         ['01', 'Получатель документа фиксируется до старта', 'До подписания договора определяем, кто принимает результат: фонд, банк, налоговая, комиссия заказчика или ведомство. Его требования становятся критерием готовности.', 'чек-лист требований получателя прикладывается к техническому заданию и к акту сдачи этапа.'],
         ['02', 'Патентный поиск идёт до утверждения техзадания', 'Сначала выясняем, свободна ли ниша, затем считаем смету на работы.', 'отчёт о патентном поиске — отдельный первый этап с собственным актом.'],
         ['03', 'Исключительные права принадлежат заказчику', 'Всё, что создано в проекте, переходит вам. NDA подписывает каждый участник команды до доступа к материалам.', 'пункт договора об отчуждении прав, NDA с каждым исполнителем, акт передачи материалов.'],
-        ['04', 'Работу ведёт отраслевой эксперт со степенью', 'Кандидат или доктор наук в вашей области с публикациями по теме проекта.', 'профиль эксперта и список его публикаций вы получаете до договора.'],
+        ['04', 'Работу ведёт отраслевой эксперт со степенью', 'Кандидат или доктор наук в вашей области с публикациями по теме проекта.', 'профиль куратора и список его публикаций вы получаете до договора.'],
         ['05', 'Оплата за этап только после приёмки', 'Этап не сдан в срок — оплата за него возвращается по заявлению. Вы не платите за работу вперёд.', 'календарный план с датами, акт по каждому этапу, порядок возврата в договоре.'],
         ['06', 'Предмет договора — соответствие требованиям', 'Решение принимают фонд, ведомство и налоговый орган, и мы его не обещаем. Отвечаем за соответствие документа требованиям на дату подачи.', 'формулировка предмета договора и чек-лист требований получателя.']
       ].map(([num, title, text, proof], i) => {

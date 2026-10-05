@@ -120,6 +120,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:var(--pd-ok-ink);-webkit-mask:url('./assets/icons/check.svg') center/contain no-repeat;mask:url('./assets/icons/check.svg') center/contain no-repeat"></span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята. Менеджер ответит в рабочее время.</span>
 </div>
+<div data-next="top" style="margin-top:12px;max-width:392px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-surface-quiet);padding:12px 16px">
+<span style="display:block;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);margin-bottom:8px">Что будет дальше</span>
+<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
+<li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
+<li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
+<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+</ol>
+</div>
 </sc-if>
 <sc-if value="{{ errorTop }}" hint-placeholder-val="{{ false }}">
 <div role="alert" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-err-bg);border:1px solid var(--pd-err-border);border-radius:10px;padding:12px 16px">
@@ -255,7 +263,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-team.svg') center/contain no-repeat;mask:url('./assets/icons/pd-team.svg') center/contain no-repeat"></span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:15px;line-height:1.4;letter-spacing:.02em;color:var(--pd-accent)">05</span></span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Четыре роли на проекте</h3>
 <p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Куратор по специальности, методолог, научный редактор и менеджер проекта. Каждый отвечает за свой участок и подписывает NDA.</p>
-<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink)">Имена и зоны ответственности вы получаете до старта работы.</p>
+<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink)">Состав команды и зоны ответственности вы получаете до старта работы.</p>
 </article>
 <article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-edge-neutral),0 1px 2px rgba(20,22,28,.05)">
 <span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-tracker.svg') center/contain no-repeat;mask:url('./assets/icons/pd-tracker.svg') center/contain no-repeat"></span><span style="font-family:'JetBrains Mono','SFMono-Regular',monospace;font-size:15px;line-height:1.4;letter-spacing:.02em;color:var(--pd-accent)">06</span></span>
@@ -374,6 +382,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div role="status" tabindex="{{ -1 }}" data-sent="bottom" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
 <span style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:var(--pd-ok-ink);-webkit-mask:url('./assets/icons/check.svg') center/contain no-repeat;mask:url('./assets/icons/check.svg') center/contain no-repeat"></span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята. Менеджер ответит в рабочее время.</span>
+</div>
+<div data-next="bottom" style="margin-top:12px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-surface-quiet);padding:12px 16px">
+<span style="display:block;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);margin-bottom:8px">Что будет дальше</span>
+<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
+<li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
+<li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
+<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+</ol>
 </div>
 </sc-if>
 <sc-if value="{{ errorBottom }}" hint-placeholder-val="{{ false }}">

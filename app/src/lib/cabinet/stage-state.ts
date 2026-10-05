@@ -13,6 +13,8 @@
  * данных»». Служебным ролям и выгрузкам для практики поэтому отдаётся
  * свой перечень, где названо, кого ждут (решение Р-206).
  */
+import { formatDay } from './approval-text.ts';
+
 export const STAGE_STATE_LABEL = {
   NOT_STARTED: 'Не начат',
   IN_PROGRESS: 'В работе',
@@ -57,11 +59,109 @@ export const STAGE_TRANSITIONS: Record<StageStateKey, readonly StageStateKey[]> 
   IN_PROGRESS: ['AWAITING_CLIENT', 'IN_APPROVAL'],
   AWAITING_CLIENT: ['IN_PROGRESS', 'IN_APPROVAL'],
   IN_APPROVAL: ['DONE', 'IN_PROGRESS'],
-  DONE: [],
+  // Возврат завершённого этапа в работу — своим действием с причиной
+  // (требование М-11, решение Р-303); в общий набор кнопок не входит.
+  DONE: ['IN_PROGRESS'],
 };
 
 /** Переходы, которые экран этапа предлагает кнопками смены состояния. */
 export function stageStateButtons(from: StageStateKey): readonly StageStateKey[] {
-  // Завершение этапа — согласование, у него отдельная кнопка.
+  // Завершение этапа — согласование, у него отдельная кнопка; возврат
+  // завершённого — своя форма с причиной (Р-303).
+  if (from === 'DONE') return [];
   return STAGE_TRANSITIONS[from].filter((to) => to !== 'DONE');
+}
+
+/** Кто смотрит на ход работы — от этого зависит «за вами» или «за куратором». */
+export type TurnViewer = 'curator' | 'foreign-head' | 'expert';
+
+/**
+ * Чей сейчас ход — одна подпись на шкале, на экране этапа и на рабочем
+ * экране (требование М-17, решение Р-288).
+ *
+ * Прежде шкала писала «Ход за практикой» и «Ход за исполнителем», а экран
+ * этапа и «Требует внимания» — «ход за вами». Подписи — со стороны
+ * смотрящего (Р-206): «Ход за вами», «Ход за куратором», «Ход за
+ * клиентом»; руководителю по чужой работе — «Ход за менеджером» (названия
+ * ролей — Р-321, Р-322). Этап «в работе» без куратора — дело менеджера:
+ * назначить куратора.
+ *
+ * Этап, сданный куратором (`handedOverAt`, требование Э-05, решение
+ * Р-325), остаётся «В работе», но ход у менеджера: куратор читает «Этап
+ * сдан {дата}: ход за менеджером».
+ *
+ * Этап «Не начат» запускает менеджер: куратор читает «Ход за менеджером:
+ * этап ещё не запущен», а не «Ход за вами» (требование Э-04, решение
+ * Р-329; ответ ОМ-26 и строка Р-207 о кураторе заменены).
+ */
+export function turnLabel(
+  state: StageStateKey,
+  viewer: TurnViewer,
+  hasExpert: boolean,
+  handedOverAt: Date | null = null,
+): string {
+  const curatorTurn = viewer === 'foreign-head' ? 'Ход за менеджером' : 'Ход за вами';
+  switch (state) {
+    case 'NOT_STARTED':
+      return viewer === 'expert' ? 'Ход за менеджером: этап ещё не запущен' : `${curatorTurn}: этап не начат`;
+    case 'IN_PROGRESS':
+      if (handedOverAt !== null) {
+        const day = formatDay(handedOverAt);
+        return viewer === 'expert' ? `Этап сдан ${day}: ход за менеджером` : `${curatorTurn}: куратор сдал этап ${day}`;
+      }
+      if (viewer === 'expert') return 'Ход за вами: этап в работе';
+      return hasExpert ? 'Ход за куратором: этап в работе' : `${curatorTurn}: назначьте куратора`;
+    case 'AWAITING_CLIENT':
+      return 'Ход за клиентом: ждём материалов';
+    case 'IN_APPROVAL':
+      return 'Ход за клиентом: этап на согласовании';
+    case 'DONE':
+      return 'Этап закрыт';
+  }
+}
+
+/** Где этап по сдаче куратором: не сдан, сдан или возвращён менеджером. */
+export type Handover = 'none' | 'handed' | 'handed-back';
+
+/**
+ * Пометка «сдан куратором» без нового состояния этапа (требование Э-05,
+ * решение Р-325): действует только у этапа «В работе».
+ */
+export function handoverOf(stage: {
+  readonly state: string;
+  readonly handedOverAt: Date | null;
+  readonly handbackAt: Date | null;
+}): Handover {
+  if (stage.state !== 'IN_PROGRESS') return 'none';
+  if (stage.handedOverAt !== null) return 'handed';
+  return stage.handbackAt !== null ? 'handed-back' : 'none';
+}
+
+/**
+ * Сколько полных дней этап ждал материалов клиента после последнего
+ * переноса срока (часть F, МП-05, решение Р-381): сумма отрезков в
+ * состоянии «Ждёт материалов клиента», включая идущий. По п. 8.2 оферты на
+ * столько же можно перенести срок этапа. `changes` — переходы этапа в
+ * любом порядке; отрезок, начатый до переноса, считается с переноса.
+ */
+export function clientWaitDays(
+  changes: readonly { readonly toState: string; readonly createdAt: Date }[],
+  since: Date | null,
+  now: Date,
+): number {
+  const DAY = 86_400_000;
+  const sorted = [...changes].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const floor = since?.getTime() ?? Number.NEGATIVE_INFINITY;
+  let total = 0;
+  let start: number | null = null;
+  for (const change of sorted) {
+    const at = change.createdAt.getTime();
+    if (start !== null) {
+      total += Math.max(0, at - Math.max(start, floor));
+      start = null;
+    }
+    if (change.toState === 'AWAITING_CLIENT') start = at;
+  }
+  if (start !== null) total += Math.max(0, now.getTime() - Math.max(start, floor));
+  return Math.floor(total / DAY);
 }

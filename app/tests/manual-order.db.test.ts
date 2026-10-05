@@ -17,6 +17,7 @@ describe('заказ вручную', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
   const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
   const { createManualOrder, OrderInputError } = await import('../src/lib/cabinet/manual-order.ts');
+  const { ClientChoiceNeeded, NEW_CLIENT } = await import('../src/lib/cabinet/client-match.ts');
   const { bookRowOf, paidShare } = await import('../src/lib/cabinet/book-row.ts');
 
   const stamp = Date.now();
@@ -49,6 +50,7 @@ describe('заказ вручную', { skip: !enabled }, async () => {
   after(async () => {
     await prisma.tranche.deleteMany({ where: { contract: { projectId: { in: projects } } } });
     await prisma.contract.deleteMany({ where: { projectId: { in: projects } } });
+    await prisma.notificationOutbox.deleteMany({ where: { projectId: { in: projects } } });
     await prisma.projectEvent.deleteMany({ where: { projectId: { in: projects } } });
     await prisma.auditEvent.deleteMany({ where: { projectId: { in: projects } } });
     const clients = await prisma.project.findMany({ where: { id: { in: projects } }, select: { clientId: true } });
@@ -73,7 +75,7 @@ describe('заказ вручную', { skip: !enabled }, async () => {
       managerId: ids.manager!,
     });
     projects.push(created.projectId);
-    assert.match(created.code, /^PD-2026-\d{3}$/u);
+    assert.match(created.code, /^PD-2026-\d{3,}$/u);
     const project = await prisma.project.findUniqueOrThrow({
       where: { id: created.projectId },
       include: { client: true, contract: { include: { tranches: true } } },
@@ -87,20 +89,103 @@ describe('заказ вручную', { skip: !enabled }, async () => {
     assert.deepEqual(tranches, ['PAID:2000000', 'PLANNED:3000000']);
   });
 
-  it('повторный заказ того же человека ложится в его карточку', async () => {
-    const created = await createManualOrder(actor(ids.head!, 'HEAD'), {
-      customer: `  ${customer.replace(/ /gu, '  ')} `,
-      serviceTypeId: ids.type!,
-      title: 'Доработка',
+  it('совпадение только по ФИО — выбор менеджера; почта находит карточку сама (М-18, Р-308)', async () => {
+    const head = actor(ids.head!, 'HEAD');
+    const first = await prisma.project.findUniqueOrThrow({ where: { id: projects[0]! }, select: { clientId: true } });
+    const before = await prisma.clientProfile.findUniqueOrThrow({ where: { id: first.clientId } });
+
+    // Однофамилец без почты и телефона — отказ с выбором; карточка не тронута.
+    await assert.rejects(
+      createManualOrder(head, { customer: `  ${customer.replace(/ /gu, '  ')} `, phone: '+7 900 555-44-33', serviceTypeId: ids.type!, title: 'Доработка' }),
+      ClientChoiceNeeded,
+    );
+    const untouched = await prisma.clientProfile.findUniqueOrThrow({ where: { id: first.clientId } });
+    assert.equal(untouched.phone, before.phone, 'карточка однофамильца изменена без выбора');
+
+    // Кандидаты — ФИО, маски, число работ; без полной почты.
+    const { nameCandidates } = await import('../src/lib/cabinet/manual-order.ts');
+    const { candidateLine } = await import('../src/lib/cabinet/client-match.ts');
+    const found = await nameCandidates(actor(ids.manager!, 'MANAGER'), customer);
+    assert.ok(found.some((row) => row.id === first.clientId && row.works >= 1));
+    assert.ok(found.every((row) => !candidateLine(row).includes('client@example.org')));
+
+    // Выбор «новая карточка» — однофамилец получает свою.
+    const fresh = await createManualOrder(head, {
+      customer, serviceTypeId: ids.type!, title: 'Другой человек', clientChoice: NEW_CLIENT,
     });
-    projects.push(created.projectId);
-    const [first, second] = await prisma.project.findMany({
-      where: { id: { in: projects } },
-      orderBy: { createdAt: 'asc' },
-      select: { clientId: true, contract: { select: { id: true } } },
+    projects.push(fresh.projectId);
+    const freshProject = await prisma.project.findUniqueOrThrow({ where: { id: fresh.projectId } });
+    assert.notEqual(freshProject.clientId, first.clientId);
+
+    // Выбор найденной карточки — заказ ложится в неё, пустой телефон дополняется.
+    const chosen = await createManualOrder(head, {
+      customer, phone: '+7 900 555-44-33', serviceTypeId: ids.type!, title: 'Доработка', clientChoice: first.clientId,
     });
-    assert.equal(second!.clientId, first!.clientId);
-    assert.equal(second!.contract, null, 'без стоимости договор не заводится');
+    projects.push(chosen.projectId);
+    const chosenProject = await prisma.project.findUniqueOrThrow({ where: { id: chosen.projectId }, include: { client: true } });
+    assert.equal(chosenProject.clientId, first.clientId);
+    assert.equal(chosenProject.client.phone, '+7 900 555-44-33');
+
+    // Чужой идентификатор в выборе не принимается.
+    await assert.rejects(
+      createManualOrder(head, { customer, serviceTypeId: ids.type!, title: 'Статья', clientChoice: 'nope' }),
+      /среди найденных нет/u,
+    );
+
+    // Почта и телефон находят карточку и при другом написании ФИО.
+    const byMail = await createManualOrder(head, {
+      customer: 'Совсем Другое Имя', email: 'CLIENT@example.org', serviceTypeId: ids.type!, title: 'По почте',
+    });
+    projects.push(byMail.projectId);
+    const byPhone = await createManualOrder(head, {
+      customer: 'Ещё Одно Имя', phone: '8 (900) 555 44 33', serviceTypeId: ids.type!, title: 'По телефону',
+    });
+    projects.push(byPhone.projectId);
+    const [mailProject, phoneProject] = await Promise.all([
+      prisma.project.findUniqueOrThrow({ where: { id: byMail.projectId } }),
+      prisma.project.findUniqueOrThrow({ where: { id: byPhone.projectId } }),
+    ]);
+    assert.equal(mailProject.clientId, first.clientId);
+    assert.equal(phoneProject.clientId, first.clientId);
+  });
+
+  it('почта — по формату и не сотрудника', async () => {
+    const head = actor(ids.head!, 'HEAD');
+    await assert.rejects(
+      createManualOrder(head, { customer: `Почтовый ${customer}`, email: 'кто-то@почта', serviceTypeId: ids.type!, title: 'Статья' }),
+      /с ошибкой/u,
+    );
+    await assert.rejects(
+      createManualOrder(head, { customer: `Почтовый ${customer}`, email: `order-mgr-${stamp}@example.org`, serviceTypeId: ids.type!, title: 'Статья' }),
+      /адрес сотрудника/u,
+    );
+  });
+
+  it('договор менеджера — письмо руководителю с суммой; в Telegram суммы нет; от руководителя — нет', async () => {
+    const byManager = await createManualOrder(actor(ids.manager!, 'MANAGER'), {
+      customer: `Договорной ${customer}`, serviceTypeId: ids.type!, title: 'Статья', cost: 12_500_000n, paid: 2_500_000n,
+    });
+    projects.push(byManager.projectId);
+    const rows = await prisma.notificationOutbox.findMany({
+      where: { projectId: byManager.projectId, eventKind: 'ORDER_WITH_CONTRACT', userId: ids.head! },
+    });
+    const mail = rows.find((row) => row.channel === 'EMAIL');
+    assert.ok(mail !== undefined, 'руководитель не узнал о договоре');
+    // Суммы в письме нет: она — в деле «Проверьте договор» (РК-13, Р-347).
+    assert.equal(mail.subject, `Заведён заказ с договором: ${byManager.code}`);
+    for (const row of rows) {
+      assert.doesNotMatch(`${row.subject} ${row.body}`, /125|₽/u, 'сумма в уведомлении');
+    }
+
+    const byHead = await createManualOrder(actor(ids.head!, 'HEAD'), {
+      customer: `Договорной ${customer}`, email: `contract-${stamp}@example.org`, serviceTypeId: ids.type!, title: 'Статья', cost: 100_00n,
+      clientChoice: NEW_CLIENT,
+    });
+    projects.push(byHead.projectId);
+    assert.equal(
+      await prisma.notificationOutbox.count({ where: { projectId: byHead.projectId, eventKind: 'ORDER_WITH_CONTRACT' } }),
+      0,
+    );
   });
 
   it('менеджер заводит заказ только на себя', async () => {

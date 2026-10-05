@@ -18,11 +18,13 @@ import {
   formatDate,
   formatDay,
   plural,
+  Pager,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { flaggedMessages } from '../../../../lib/cabinet/messages';
 import { clientRegistry, expertRegistry } from '../../../../lib/cabinet/queries';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
+import { homeFor } from '../../../../lib/cabinet/nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,9 +49,8 @@ export default async function RegistryScreen({
 }: {
   searchParams: Promise<{ tab?: string; q?: string; page?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'REGISTRY_VIEW')) redirect('/cabinet/projects');
+  const actor = await requireActor('/cabinet/manage/registry');
+  if (!can(actor, 'REGISTRY_VIEW')) redirect(homeFor(actor));
 
   const sp = await searchParams;
   const tab: Tab = TABS.includes(sp.tab as Tab) ? (sp.tab as Tab) : 'clients';
@@ -90,7 +91,7 @@ export default async function RegistryScreen({
     <Shell actor={actor} current="/cabinet/manage/registry">
       <ScreenHead
         title="Реестры"
-        note="Клиенты, эксперты и сообщения с признаком передачи контактов."
+        note="Клиенты, кураторы и сообщения с признаком передачи контактов."
       />
 
       {/* Вкладки и поиск стоят одной полосой: прежде они шли двумя
@@ -102,7 +103,7 @@ export default async function RegistryScreen({
           label="Разделы реестра"
           items={[
             { href: href('clients'), label: 'Клиенты', active: tab === 'clients' },
-            { href: href('experts'), label: 'Эксперты', active: tab === 'experts' },
+            { href: href('experts'), label: 'Кураторы', active: tab === 'experts' },
             { href: href('flagged'), label: 'Контакты в переписке', active: tab === 'flagged' },
           ]}
         />
@@ -175,43 +176,24 @@ export default async function RegistryScreen({
             </table>
           </TableCard>
 
-          {pages <= 1 ? null : (
-            <nav
-              aria-label="Страницы реестра клиентов"
-              style={{
-                display: 'flex',
-                gap: 20,
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                marginTop: 20,
-              }}
-            >
-              {page > 1 ? (
-                <a className="cab-mark" href={href('clients', page - 1)}>
-                  Предыдущие
-                </a>
-              ) : null}
-              <Text muted size={14}>
-                Страница {page} из {pages} · всего {matched.length}{' '}
-                {plural(matched.length, 'клиент', 'клиента', 'клиентов')}
-              </Text>
-              {page < pages ? (
-                <a className="cab-mark" href={href('clients', page + 1)}>
-                  Следующие
-                </a>
-              ) : null}
-            </nav>
-          )}
+          {/* Постраничность — общей частью (УМ-08, Р-390). */}
+          <Pager
+            label="Страницы реестра клиентов"
+            page={page}
+            pages={pages}
+            hrefFor={(next) => href('clients', next)}
+            total={`${matched.length} ${plural(matched.length, 'клиент', 'клиента', 'клиентов')}`}
+          />
         </>
       ) : null}
 
       {tab === 'experts' ? (
         <>
-          <TableCard label="Эксперты">
+          <TableCard label="Кураторы">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>
                 <tr>
-                  <th style={TABLE_HEAD} scope="col">Эксперт</th>
+                  <th style={TABLE_HEAD} scope="col">Куратор</th>
                   <th style={TABLE_HEAD} scope="col">Специализация</th>
                   <th style={TABLE_HEAD} scope="col">Договор поручения</th>
                   <th style={TABLE_HEAD} scope="col">Загрузка</th>
@@ -221,7 +203,7 @@ export default async function RegistryScreen({
                 {experts.length === 0 ? (
                   <tr>
                     <td style={TABLE_CELL} colSpan={4}>
-                      Экспертов пока нет.
+                      Кураторов пока нет.
                     </td>
                   </tr>
                 ) : (
@@ -240,7 +222,9 @@ export default async function RegistryScreen({
                         )}
                       </td>
                       <td style={TABLE_CELL}>
-                        {expert.active} в работе из {expert.total}
+                        {`действующих — ${expert.active} из ${expert.total}${
+                          expert.paused === 0 ? '' : `, из них приостановлено ${expert.paused}`
+                        }`}
                       </td>
                     </tr>
                   ))
@@ -249,7 +233,7 @@ export default async function RegistryScreen({
             </table>
           </TableCard>
           <Text muted size={13} style={{ marginTop: 10 }}>
-            Без подписанного договора поручения обработки персональных данных эксперт не получает
+            Без подписанного договора поручения обработки персональных данных куратор не получает
             доступа к материалам клиента, даже будучи назначенным на работу.
           </Text>
         </>
@@ -265,7 +249,7 @@ export default async function RegistryScreen({
                 <li key={message.id}>
                   <Text size={14}>{message.body}</Text>
                   <Text muted size={13} style={{ marginTop: 4 }}>
-                    {message.author.fullName} · {message.project.title} ·{' '}
+                    {message.author.fullName} · {message.project?.title ?? ''} ·{' '}
                     {formatDay(message.createdAt)}
                   </Text>
                 </li>

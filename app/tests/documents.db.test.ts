@@ -397,6 +397,31 @@ describe('документы, материалы и шаблоны', { skip: !en
       assert.equal(await noticesFor(invoice.id, ids.clientUser), 1, 'клиенту о счёте не сообщили');
     });
 
+    it('УК-01: документ списанного транша клиенту не выдаётся и по прямой ссылке (Р-356)', async () => {
+      const { addComment } = await import('../src/lib/cabinet/materials.ts');
+      const written = await prisma.tranche.create({
+        data: { contractId: ids.contract!, title: 'Списанный транш', amount: 10_000n, status: 'WRITTEN_OFF' },
+      });
+      try {
+        const act = await uploadVersion(head(), {
+          projectId: ids.project,
+          kind: 'ACT',
+          trancheId: written.id,
+          title: 'Акт списанного транша',
+          originalName: 'act.pdf',
+          contentType: 'application/pdf',
+          body: Buffer.from('акт', 'utf8'),
+        });
+        const client = actor(ids.clientUser, 'CLIENT', { clientProfileId: ids.client });
+        assert.equal(await readVersion(client, act.id), null, 'клиент скачал акт списанного транша');
+        await assert.rejects(addComment(client, act.id, 'Вопрос по акту'), /не найдена/u);
+        assert.ok((await readVersion(head(), act.id)) !== null, 'руководителю акт не выдан');
+      } finally {
+        await prisma.material.deleteMany({ where: { trancheId: written.id } });
+        await prisma.tranche.delete({ where: { id: written.id } });
+      }
+    });
+
     it('эксперт без соглашения о неразглашении о материалах не узнаёт', async () => {
       await prisma.expertProfile.update({ where: { userId: expertId }, data: { ndaSignedAt: null } });
       try {

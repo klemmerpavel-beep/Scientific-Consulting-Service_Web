@@ -23,7 +23,8 @@ import {
   leadDeliveryDigest,
   outboxDigest,
 } from '../../../../lib/cabinet/outbox';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
+import { homeFor } from '../../../../lib/cabinet/nav';
 import { retryNotification } from '../../actions';
 import ActionError from '../../../../components/cabinet/ActionError';
 
@@ -39,10 +40,9 @@ export default async function OutboxScreen({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/outbox');
   // Состояние очереди — служебная кухня практики; менеджеру она не нужна.
-  if (!can(actor, 'AUDIT_VIEW')) redirect('/cabinet/projects');
+  if (!can(actor, 'AUDIT_VIEW')) redirect(homeFor(actor));
 
   const [digest, leads] = await Promise.all([outboxDigest(actor), leadDeliveryDigest(actor)]);
 
@@ -81,7 +81,11 @@ export default async function OutboxScreen({
         <Tile
           label="Не доставлено"
           value={String(digest.failed)}
-          note="после пяти попыток"
+          note={
+            digest.expiredLastDay > 0
+              ? `после пяти попыток; ещё ${digest.expiredLastDay} за сутки устарели в очереди и не отправлялись`
+              : 'после пяти попыток'
+          }
         />
       </Tiles>
 

@@ -233,6 +233,7 @@ describe('перенос книги заказов', { skip: !enabled }, async (
         status: true,
         source: true,
         startedOn: true,
+        closedOnPlanned: true,
         contract: { select: { totalAmount: true, tranches: true } },
       },
       orderBy: { code: 'asc' },
@@ -243,6 +244,8 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     // Код выдаётся по году заказа, а не по году переноса.
     assert.match(projects[0]?.code ?? '', /^PD-2024-\d{3}$/u);
     assert.equal(projects[0]?.status, 'COMPLETED');
+    // Дата закрытия книги — плановый срок; незавершённые без пометки (РК-23, Р-355).
+    for (const project of projects) assert.equal(project.closedOnPlanned, project.status === 'COMPLETED');
     assert.equal(projects[0]?.contract?.totalAmount, 15_000_000n);
     assert.deepEqual(
       projects[0]?.contract?.tranches.map((tranche) => [tranche.status, tranche.amount]),

@@ -80,13 +80,26 @@ describe('способы связи и правила уведомлений', {
     assert.equal(rows[0]?.kind, 'EMAIL', 'предпочтение не перешло к последнему выбранному');
   });
 
-  it('полное сопровождение не требует адреса', async () => {
+  it('полное сопровождение — отдельной отметкой, не строкой перечня (П-09, Р-401)', async () => {
     const actor = who(ids.client!, 'CLIENT');
-    await channels.addContact(actor, { kind: 'FULL_SUPPORT' });
-    const rows = await channels.ownContacts(actor);
-    const support = rows.find((row) => row.kind === 'FULL_SUPPORT');
-    assert.ok(support !== undefined, 'полное сопровождение не завелось');
-    assert.equal(support?.value, null, 'у порядка работы откуда-то взялся адрес');
+    await assert.rejects(channels.addContact(actor, { kind: 'FULL_SUPPORT' }), /отдельной отметкой/u);
+    await channels.setFullSupport(actor, true);
+    await channels.setFullSupport(actor, true);
+    let rows = await channels.ownContacts(actor);
+    const support = rows.filter((row) => row.kind === 'FULL_SUPPORT');
+    assert.equal(support.length, 1, 'повторное включение завело вторую строку');
+    assert.equal(support[0]?.value, null, 'у порядка работы откуда-то взялся адрес');
+    assert.equal(support[0]?.preferred, false, 'сопровождение стало предпочтительным способом');
+    assert.ok(channels.fullSupportOn(rows));
+    assert.ok(channels.listedContacts(rows).every((row) => row.kind !== 'FULL_SUPPORT'));
+    // Предпочтительным сопровождение не становится и прежнее предпочтение не снимает.
+    await channels.preferContact(actor, support[0]!.id);
+    rows = await channels.ownContacts(actor);
+    assert.equal(rows.find((row) => row.kind === 'FULL_SUPPORT')?.preferred, false);
+    assert.equal(rows.filter((row) => row.preferred).length, 1);
+    await channels.setFullSupport(actor, false);
+    assert.ok(!channels.fullSupportOn(await channels.ownContacts(actor)));
+    await assert.rejects(channels.setFullSupport(who(ids.expert!, 'EXPERT'), true), /не разрешено/u);
   });
 
   // Реквизиты работы, к которой относится вопрос о контактах: куратор —
@@ -123,7 +136,9 @@ describe('способы связи и правила уведомлений', {
       where: { id: ids.client! },
       data: { notifyEmail: true, notifyTelegram: true, telegramChatId: `chan-${stamp}` },
     });
-    await channels.saveRules(who(ids.client!, 'CLIENT'), [
+    // Сетка правил — у практики: строки по роли сохраняющего (Р-300).
+    // Механизм проверяется на той же записи, сохранённой как сотрудником.
+    await channels.saveRules(who(ids.client!, 'MANAGER'), [
       { eventKind: 'VERSION_UPLOADED', channel: 'EMAIL', enabled: false },
       { eventKind: 'VERSION_UPLOADED', channel: 'TELEGRAM', enabled: true },
     ]);
@@ -183,5 +198,21 @@ describe('способы связи и правила уведомлений', {
       ['EMAIL'],
       'событие, о котором правил нет, не ушло почтой',
     );
+  });
+
+  it('строки сетки — по роли: менеджеру нет событий руководителя (М-07, Р-300)', () => {
+    const manager = channels.rulesFor('MANAGER').map((event) => event.kind);
+    const head = channels.rulesFor('HEAD').map((event) => event.kind);
+    assert.ok(!manager.includes('STAFF_QUESTION'));
+    assert.ok(!manager.includes('NDA_NEEDED'));
+    assert.ok(head.includes('STAFF_QUESTION') && head.includes('CLIENT_COMMENT'));
+    assert.deepEqual(channels.rulesFor('CLIENT'), []);
+  });
+
+  it('вопрос руководителю — строка «Вопрос сотрудника» вместо «Менеджер просит помощи» (РК-07, Р-336)', () => {
+    const head = channels.rulesFor('HEAD').map((event) => event.kind);
+    assert.ok(head.includes('STAFF_QUESTION'));
+    assert.ok(!head.includes('HELP_REQUESTED'));
+    assert.ok(channels.rulesFor('MANAGER').some((event) => event.kind === 'HEAD_REPLY'));
   });
 });

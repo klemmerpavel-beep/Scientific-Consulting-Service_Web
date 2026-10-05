@@ -1,4 +1,5 @@
 import { prisma } from '../db.ts';
+import { safeNext } from './next-path.ts';
 import type { Actor } from './access.ts';
 import { record } from './audit.ts';
 import { now } from './clock.ts';
@@ -9,6 +10,7 @@ import {
   escapeHtml,
   loginLink,
   loginRateExceeded,
+  RESEND_PAUSE_MS,
   maskEmail,
   normalizeEmail,
   RATE_WINDOW_MS,
@@ -57,6 +59,12 @@ export async function requestLoginLink(
      * отправляется сразу — так проверяют исход отправки.
      */
     readonly defer?: (task: () => Promise<void>) => void;
+    /**
+     * Экран, на который человек вернётся после входа: с него он пришёл на
+     * форму (требование Т-06, решение Р-309). Хранится в токене — вход с
+     * другого устройства ведёт туда же. Чужой путь отбрасывается.
+     */
+    readonly next?: string | null;
   } = {},
 ): Promise<LoginRequestOutcome> {
   const email = normalizeEmail(rawEmail);
@@ -91,7 +99,7 @@ export async function requestLoginLink(
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LOCK_IP}::int, hashtext(${ip}))`;
 
       const user = await tx.user.findUnique({ where: { email } });
-      const [byPair, byEmail, byIp, knownIp] = await Promise.all([
+      const [byPair, byEmail, byIp, knownIp, lastMinute] = await Promise.all([
         // Отказы по частоте в счёт адреса не идут: иначе пять запросов с
         // любых узлов запирали человека, а каждая его попытка продлевала
         // запор ещё на час (решение Р-232).
@@ -117,12 +125,21 @@ export async function requestLoginLink(
                 },
               })
               .then((n) => n > 0),
+        // Ссылка на этот адрес за последнюю минуту — с любого узла (Т-07,
+        // решение Р-313). Считаются выданные ссылки, а не отказы.
+        tx.loginAttempt.count({
+          where: {
+            emailNormalized: email,
+            occurredAt: { gte: new Date(Date.now() - RESEND_PAUSE_MS) },
+            outcome: { in: ['issued', 'sent', 'send_failed'] },
+          },
+        }),
       ]);
 
       const attempt = (outcome: string) =>
         tx.loginAttempt.create({ data: { emailNormalized: email, ip, outcome }, select: { id: true } });
 
-      if (loginRateExceeded({ byPair, byEmail, byIp, knownIp })) {
+      if (loginRateExceeded({ byPair, byEmail, byIp, knownIp, lastMinute })) {
         await attempt('rate_limited');
         return { outcome: 'rate_limited' as const };
       }
@@ -135,6 +152,14 @@ export async function requestLoginLink(
         return { outcome: 'not_active' as const };
       }
 
+      // Прежние непогашенные ссылки входа гасятся: живой остаётся одна,
+      // последняя выданная, как у ссылок от сотрудника (Р-164, Р-285;
+      // улучшение УК-04, решение Р-358).
+      const issuedAt = new Date();
+      await tx.loginToken.updateMany({
+        where: { userId: user.id, usedAt: null, expiresAt: { gt: issuedAt }, purpose: 'LOGIN' },
+        data: { expiresAt: issuedAt },
+      });
       const token = createRawToken();
       await tx.loginToken.create({
         data: {
@@ -144,6 +169,7 @@ export async function requestLoginLink(
           purpose: 'LOGIN',
           expiresAt: new Date(Date.now() + TOKEN_TTL_MINUTES * 60 * 1000),
           requestIp: ip,
+          returnPath: safeNext(options.next),
         },
       });
       const { id } = await attempt('issued');
@@ -210,6 +236,32 @@ async function deliverLoginLink(
 }
 
 /**
+ * Прислать новую ссылку владельцу устаревшей или использованной (требование
+ * Т-07, решение Р-313).
+ *
+ * Ключ проверяется целиком — селектор и проверочная часть, — но срок и
+ * погашение не важны: ссылка и так мёртвая. Новая ссылка уходит на адрес
+ * учётной записи и с тем же путём возврата; адрес наружу не выдаётся, а
+ * ответ одинаков для любой ссылки, в том числе поддельной: тогда просто
+ * ничего не отправляется. Пределы частоты — те же, что у формы входа.
+ */
+export async function resendForStaleLink(
+  value: string,
+  ip: string,
+  options: { readonly defer?: (task: () => Promise<void>) => void } = {},
+): Promise<LoginRequestOutcome | null> {
+  const parsed = splitToken(value);
+  if (parsed === null) return null;
+  const token = await prisma.loginToken.findUnique({
+    where: { selector: parsed.selector },
+    select: { purpose: true, verifierHash: true, returnPath: true, user: { select: { email: true } } },
+  });
+  if (token === null || token.purpose !== 'LOGIN') return null;
+  if (!sameDigest(token.verifierHash, digest(parsed.verifier))) return null;
+  return requestLoginLink(token.user.email, ip, { defer: options.defer, next: token.returnPath });
+}
+
+/**
  * Погасить ссылку и открыть сессию. Возвращает значение cookie либо `null`,
  * если ссылка недействительна: просрочена, уже использована или подделана.
  * Причина наружу не сообщается — разные сообщения дали бы подсказку.
@@ -219,6 +271,19 @@ export async function consumeLoginToken(
   ip: string,
   userAgent: string | null,
 ): Promise<string | null> {
+  return (await enterWithToken(value, ip, userAgent))?.session ?? null;
+}
+
+/**
+ * То же, что `consumeLoginToken`, и вдобавок экран, на который вести после
+ * входа (требование Т-06, решение Р-309). Путь повторно проверяется: в
+ * базу он лёг проверенным, но читается снаружи кода, который его писал.
+ */
+export async function enterWithToken(
+  value: string,
+  ip: string,
+  userAgent: string | null,
+): Promise<{ session: string; returnPath: string | null } | null> {
   const parsed = splitToken(value);
   if (parsed === null) return null;
 
@@ -237,7 +302,10 @@ export async function consumeLoginToken(
   });
   if (consumed.count !== 1) return null;
 
-  return createSession(token.userId, ip, userAgent);
+  // Ссылку выдал сотрудник: сессия помечается, и согласование этапа в ней
+  // записывается с пометкой (ОМ-3, решение Р-292).
+  const session = await createSession(token.userId, ip, userAgent, { viaStaffLink: token.issuedById !== null });
+  return { session, returnPath: safeNext(token.returnPath) };
 }
 
 /**
@@ -279,6 +347,7 @@ export async function createSession(
   userId: string,
   ip: string,
   userAgent: string | null,
+  options: { readonly viaStaffLink?: boolean } = {},
 ): Promise<string> {
   const raw = createSessionValue();
   await prisma.$transaction([
@@ -289,6 +358,7 @@ export async function createSession(
         expiresAt: new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000),
         ip,
         userAgent,
+        viaStaffLink: options.viaStaffLink ?? false,
       },
     }),
     // Отметка последнего входа — подпись на экранах учётных записей и
@@ -350,6 +420,7 @@ export async function resolveSession(raw: string | undefined): Promise<Actor | n
     status: user.status,
     clientProfileId: user.clientProfile?.id ?? null,
     expertNdaSignedAt: user.expertProfile?.ndaSignedAt ?? null,
+    viaStaffLink: session.viaStaffLink,
   };
 }
 

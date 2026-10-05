@@ -751,7 +751,7 @@ export async function applyBatch(
     where: { id: input.managerId, status: 'ACTIVE', role: { in: ['MANAGER', 'HEAD'] } },
     select: { id: true },
   });
-  if (curator === null) throw new Error('Куратором может быть менеджер или руководитель');
+  if (curator === null) throw new Error('Менеджером работы может быть менеджер или руководитель');
 
   const stored = (await prisma.importRow.findMany({
     where: { batchId },
@@ -926,8 +926,17 @@ export async function applyBatch(
               status,
               dueOn: deadline,
               closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
+              // Дата закрытия книги — плановый срок (РК-23, Р-355).
+              closedOnPlanned: status === 'COMPLETED',
             },
           });
+          // Первая дата закрытия — один раз (УМ-13, Р-392).
+          if (status === 'COMPLETED') {
+            await tx.project.updateMany({
+              where: { id: projectId, firstClosedOn: null },
+              data: { firstClosedOn: deadline ?? orderDate },
+            });
+          }
           const contract = await tx.contract.findFirst({
             where: { projectId },
             select: { id: true, tranches: { select: { id: true, title: true, amount: true, status: true } } },
@@ -1065,6 +1074,8 @@ export async function applyBatch(
             startedOn: orderDate,
             dueOn: deadline,
             closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
+            closedOnPlanned: status === 'COMPLETED',
+            firstClosedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
           },
           select: { id: true },
         });

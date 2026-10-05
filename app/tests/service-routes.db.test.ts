@@ -15,6 +15,9 @@ import { after, before, describe, it } from 'node:test';
 import type { Actor } from '../src/lib/cabinet/access.ts';
 
 process.env.SESSION_SECRET ??= 's'.repeat(48);
+// Почта считается настроенной только при известном отправителе (Р-278):
+// проверки, задающие `SMTP_HOST`, задают и его.
+process.env.SMTP_FROM ??= 'ProDisser <site@example.org>';
 
 const ROOT = path.join(import.meta.dirname, '..', '..');
 const APP = path.join(ROOT, 'app');

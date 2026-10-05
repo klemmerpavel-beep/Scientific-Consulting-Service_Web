@@ -22,6 +22,9 @@ import { after, before, describe, it } from 'node:test';
 import type { Actor } from '../src/lib/cabinet/access.ts';
 
 process.env.SESSION_SECRET ??= 'l'.repeat(48);
+// Почта считается настроенной только при известном отправителе (Р-278):
+// проверки, задающие `SMTP_HOST`, задают и его.
+process.env.SMTP_FROM ??= 'ProDisser <site@example.org>';
 process.env.CABINET_STORAGE_DIR ??= mkdtempSync(path.join(tmpdir(), 'pd-acl-'));
 
 const enabled = Boolean(process.env.DATABASE_URL);
@@ -169,9 +172,10 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     prisma.loginToken.count({ where: { userId, purpose: 'LOGIN', createdAt: { gte: new Date(stamp) } } });
   const loginEmail = () => emails[5]!;
 
-  it('двадцать параллельных запросов с одного узла дают не больше предела ссылок', async () => {
+  it('двадцать параллельных запросов на адрес дают одну ссылку: пауза в минуту (Т-07, Р-313)', async () => {
     // Прежде строка попытки писалась в отложенной отправке, после ответа:
     // параллельные запросы видели пустой счётчик и получали по ссылке.
+    // Теперь сверх предела пары действует пауза: одна ссылка в минуту.
     process.env.SMTP_HOST = 'smtp.invalid';
     try {
       const outcomes = await Promise.all(
@@ -180,13 +184,13 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
         ),
       );
       const issued = await issuedTo(ids.login!);
-      assert.equal(issued, token.RATE_PER_EMAIL_IP, `выдано ${issued} ссылок`);
-      assert.equal(outcomes.filter((o) => o === 'rate_limited').length, 20 - token.RATE_PER_EMAIL_IP);
+      assert.equal(issued, 1, `выдано ${issued} ссылок`);
+      assert.equal(outcomes.filter((o) => o === 'rate_limited').length, 19);
       // Попытка записана до отправки: исход «выдано» дописывается потом.
       const pending = await prisma.loginAttempt.count({
         where: { emailNormalized: loginEmail(), ip: `${net}.1`, outcome: 'issued' },
       });
-      assert.equal(pending, token.RATE_PER_EMAIL_IP);
+      assert.equal(pending, 1);
     } finally {
       delete process.env.SMTP_HOST;
     }
@@ -194,7 +198,7 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     await prisma.loginAttempt.deleteMany({ where: { emailNormalized: loginEmail() } });
   });
 
-  it('параллельные запросы с разных узлов упираются в потолок адреса', async () => {
+  it('с разных узлов — тоже одна ссылка в минуту; через минуту — следующая', async () => {
     process.env.SMTP_HOST = 'smtp.invalid';
     try {
       await Promise.all(
@@ -202,18 +206,27 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
           auth.requestLoginLink(loginEmail(), `${net}.${10 + i}`, { defer: () => undefined }),
         ),
       );
+      assert.equal(await issuedTo(ids.login!), 1);
+      // Прежняя ссылка — больше минуты назад: следующая выдаётся.
+      await prisma.loginAttempt.updateMany({
+        where: { emailNormalized: loginEmail() },
+        data: { occurredAt: new Date(Date.now() - token.RESEND_PAUSE_MS - 1000) },
+      });
+      assert.equal(await auth.requestLoginLink(loginEmail(), `${net}.40`, { defer: () => undefined }), 'sent');
+      assert.equal(await issuedTo(ids.login!), 2);
     } finally {
       delete process.env.SMTP_HOST;
     }
-    assert.equal(await issuedTo(ids.login!), token.RATE_PER_EMAIL);
     await prisma.loginToken.deleteMany({ where: { userId: ids.login } });
     await prisma.loginAttempt.deleteMany({ where: { emailNormalized: loginEmail() } });
   });
 
   it('чужие узлы, исчерпав потолок адреса, не запирают владельца на его узле', async () => {
+    // Попытки — раньше минуты назад: пауза Р-313 здесь не при чём.
+    const earlier = new Date(Date.now() - 2 * token.RESEND_PAUSE_MS);
     for (let i = 0; i < token.RATE_PER_EMAIL; i += 1) {
       await prisma.loginAttempt.create({
-        data: { emailNormalized: loginEmail(), ip: `${net}.${100 + i}`, outcome: 'sent' },
+        data: { emailNormalized: loginEmail(), ip: `${net}.${100 + i}`, outcome: 'sent', occurredAt: earlier },
       });
     }
     // Новый узел — отказ: потолок исчерпан.
@@ -384,11 +397,118 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     assert.equal(money.awaiting, 55_000n);
     assert.equal(money.scheduled, 30_000n);
     assert.equal('writtenOff' in money, false, 'клиенту отдано списанное');
+    // Корректировка сводит арифметику экрана без раскрытия списания
+    // (требование Т-19, О-4, решение Р-315): 100 000 − 30 000 − 55 000.
+    assert.equal(money.adjustment, 15_000n);
+    assert.equal(money.contractTotal - money.adjustment - money.received, money.awaiting);
+
+    // Куратор работы видит ту же корректировку и тоже без списания (М-22).
+    const curatorMoney = await finance.projectMoney(mine(), ids.mine!);
+    assert.equal(curatorMoney?.adjustment, 15_000n);
+    assert.equal(curatorMoney !== null && 'writtenOff' in curatorMoney, false, 'куратору отдано списанное');
 
     const forHead = await finance.projectContract(head(), ids.mine!);
     assert.equal(forHead?.tranches.length, 5);
     const headMoney = await finance.projectMoney(head(), ids.mine!);
     assert.equal(headMoney?.writtenOff, 15_000n);
+    // Руководитель видит ту же корректировку: одна арифметика для всех ролей (УМ-07, Р-376).
+    assert.equal(headMoney?.adjustment, 15_000n);
+    assert.ok(headMoney !== null && headMoney.contractTotal - headMoney.adjustment - headMoney.received === headMoney.awaiting);
+  });
+
+  it('отменённая работа: корректировка — весь неоплаченный остаток, дата отмены видна (Т-19, Р-315)', async () => {
+    await prisma.project.update({
+      where: { id: ids.mine! },
+      data: { status: 'CANCELLED', closedOn: new Date('2026-09-30T00:00:00Z') },
+    });
+    try {
+      const money = await finance.projectMoney(client(), ids.mine!);
+      assert.ok(money !== null);
+      assert.equal(money.awaiting, 0n);
+      assert.equal(money.adjustment, 70_000n);
+      assert.equal(money.cancelledOn?.toISOString().slice(0, 10), '2026-09-30');
+    } finally {
+      await prisma.project.update({ where: { id: ids.mine! }, data: { status: 'ACTIVE', closedOn: null } });
+    }
+  });
+
+  it('история: документ видимого транша назван, документ списанного скрыт (Т-19, Р-315)', async () => {
+    const contract = await prisma.contract.findUniqueOrThrow({
+      where: { projectId: ids.mine! },
+      include: { tranches: true },
+    });
+    const paid = contract.tranches.find((t) => t.status === 'PAID')!;
+    const written = contract.tranches.find((t) => t.status === 'WRITTEN_OFF')!;
+    const doc = (trancheId: string, kind: 'INVOICE' | 'ACT') =>
+      prisma.material.create({
+        data: { projectId: ids.mine!, contractId: contract.id, trancheId, kind, title: `Документ ${kind}`, createdById: ids.head! },
+      });
+    const [invoice, hiddenAct] = [await doc(paid.id, 'INVOICE'), await doc(written.id, 'ACT')];
+    try {
+      const forClient = await finance.paymentDocumentLines(client(), ids.mine!);
+      assert.equal(forClient.lines.get(invoice.id), `Приложен счёт к траншу «${paid.title}»`);
+      assert.ok(forClient.hidden.has(hiddenAct.id), 'событие о документе списанного транша не скрыто');
+      const forHead = await finance.paymentDocumentLines(head(), ids.mine!);
+      assert.equal(forHead.lines.get(hiddenAct.id), `Приложен акт к траншу «${written.title}»`);
+      assert.equal(forHead.hidden.size, 0);
+      // Куратор без права на договор событий о документах оплат не видит (УК-02, Р-357).
+      const forExpert = await finance.paymentDocumentLines(expert(), ids.mine!);
+      assert.ok(forExpert.hidden.has(invoice.id) && forExpert.hidden.has(hiddenAct.id), 'куратору видны документы оплат');
+      assert.equal(forExpert.lines.size, 0);
+    } finally {
+      await prisma.material.deleteMany({ where: { id: { in: [invoice.id, hiddenAct.id] } } });
+    }
+  });
+
+  it('УК-12: число материалов в перечне — как в карточке: без удалённых и документов оплат (Р-359)', async () => {
+    const project = await prisma.project.findUniqueOrThrow({ where: { id: ids.mine! }, select: { code: true } });
+    const make = (title: string, extra: Record<string, unknown> = {}) =>
+      prisma.material.create({
+        data: {
+          projectId: ids.mine!,
+          title,
+          createdById: ids.manager!,
+          ...extra,
+          versions: {
+            create: {
+              number: 1,
+              storageKey: `acl/${tail}/${title}`,
+              originalName: 'file.pdf',
+              sizeBytes: 1n,
+              sha256: 'c'.repeat(64),
+              contentType: 'application/pdf',
+              uploadedById: ids.manager!,
+            },
+          },
+        },
+      });
+    const made = [await make('Глава'), await make('Удалённая', { deletedAt: new Date() }), await make('Акт', { kind: 'ACT' })];
+    try {
+      const list = await queries.listProjects(client(), { filter: 'all' });
+      const row = list.rows.find((item) => item.id === ids.mine);
+      const card = await queries.projectMaterials(client(), project.code);
+      assert.ok(row !== undefined && card !== null);
+      assert.ok(card.materials.some((material) => material.title === 'Глава'));
+      assert.equal(row._count.materials, card.materials.length);
+    } finally {
+      const materialIds = made.map((material) => material.id);
+      await prisma.materialVersion.deleteMany({ where: { materialId: { in: materialIds } } });
+      await prisma.material.deleteMany({ where: { id: { in: materialIds } } });
+    }
+  });
+
+  it('оплачено сверх суммы договора — корректировка меньше нуля (ОМ-30)', async () => {
+    const contract = await prisma.contract.findUniqueOrThrow({ where: { projectId: ids.mine! } });
+    const extra = await prisma.tranche.create({
+      data: { contractId: contract.id, title: 'Доплата сверх договора', amount: 90_000n, status: 'PAID' },
+    });
+    try {
+      const money = await finance.projectMoney(client(), ids.mine!);
+      assert.ok(money !== null && money.adjustment < 0n);
+      assert.equal(money.contractTotal - money.adjustment - money.received, money.awaiting);
+    } finally {
+      await prisma.tranche.delete({ where: { id: extra.id } });
+    }
   });
 
   it('эксперт без договора видит суммы начислений, но не работу, этап и комментарий', async () => {
@@ -466,13 +586,13 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     batches.push(batch.id);
     await assert.rejects(
       () => applyBatch(head(), batch.id, { managerId: ids.clientUser! }),
-      /Куратором может быть менеджер или руководитель/u,
+      /Менеджером работы может быть менеджер или руководитель/u,
     );
     await prisma.user.update({ where: { id: ids.other }, data: { status: 'SUSPENDED' } });
     try {
       await assert.rejects(
         () => applyBatch(head(), batch.id, { managerId: ids.other! }),
-        /Куратором может быть/u,
+        /Менеджером работы может быть/u,
       );
     } finally {
       await prisma.user.update({ where: { id: ids.other }, data: { status: 'ACTIVE' } });
@@ -496,7 +616,7 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
   it('договор поручения — только эксперту и не будущей датой', async () => {
     await assert.rejects(
       () => admin.signExpertNda(head(), ids.clientUser!, new Date('2026-01-01')),
-      /только у эксперта/u,
+      /только у куратора/u,
     );
     const tomorrow = new Date(admin.moscowToday().getTime() + 24 * 60 * 60 * 1000);
     await assert.rejects(() => admin.signExpertNda(head(), ids.expert!, tomorrow), /позже сегодняшней/u);
@@ -510,7 +630,7 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     const project = await newProject('S', ids.manager!);
     const results = await Promise.allSettled([
       projects.setProjectStatus(mine(), project, 'COMPLETED'),
-      projects.setProjectStatus(mine(), project, 'CANCELLED'),
+      projects.setProjectStatus(mine(), project, 'CANCELLED', 'Клиент отказался от работы'),
     ]);
     const done = results.filter((r) => r.status === 'fulfilled');
     const refused = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');

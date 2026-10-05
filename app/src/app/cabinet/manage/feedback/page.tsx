@@ -14,6 +14,7 @@ import {
   FormActions,
   FormRow,
   Outcome,
+  Pager,
   ScreenHead,
   Select,
   TABLE_CELL,
@@ -25,6 +26,7 @@ import {
   plural,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
+import { homeFor } from '../../../../lib/cabinet/nav';
 import { FEEDBACK_PAGE_SIZE, feedbackDigest, feedbackList } from '../../../../lib/cabinet/feedback';
 import { formatMoment } from '../../../../lib/cabinet/journals';
 import { currentActor } from '../../../../lib/cabinet/session';
@@ -54,7 +56,7 @@ function pageHref(kept: URLSearchParams, page: number): string {
 }
 
 /**
- * Замечания с виджета (решение Р-277).
+ * Замечания с виджета (решение Р-403).
  *
  * Раз в неделю руководитель проходит перечень сверху вниз: уточняет
  * критичность, переводит в работу, после правки отмечает «исправлено» и
@@ -68,7 +70,8 @@ export default async function FeedbackScreen({
 }) {
   const actor = await currentActor();
   if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'FEEDBACK_REVIEW')) redirect('/cabinet/projects');
+  // Без права — на начальный экран роли, как с остальных экранов (М-05, Р-305).
+  if (!can(actor, 'FEEDBACK_REVIEW')) redirect(homeFor(actor));
 
   const sp = await searchParams;
   const filter: { status: FeedbackStatus | ''; severity: FeedbackSeverity | ''; page: number } = {
@@ -269,26 +272,8 @@ export default async function FeedbackScreen({
         </TableCard>
       )}
 
-      {list.pages > 1 ? (
-        <nav
-          aria-label="Страницы перечня"
-          style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 20 }}
-        >
-          {list.page > 1 ? (
-            <a className="cab-mark" href={pageHref(kept, list.page - 1)}>
-              Предыдущие
-            </a>
-          ) : null}
-          <Text muted style={{ margin: 0 }}>
-            Страница {list.page} из {list.pages}
-          </Text>
-          {list.page < list.pages ? (
-            <a className="cab-mark" href={pageHref(kept, list.page + 1)}>
-              Следующие
-            </a>
-          ) : null}
-        </nav>
-      ) : null}
+      {/* Постраничность — общей частью (УМ-08, Р-390). */}
+      <Pager label="Страницы перечня" page={list.page} pages={list.pages} hrefFor={(page) => pageHref(kept, page)} />
     </Shell>
   );
 }

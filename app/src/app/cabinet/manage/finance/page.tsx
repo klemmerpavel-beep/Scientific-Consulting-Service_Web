@@ -26,13 +26,15 @@ import {
   TABLE_NUM_HEAD,
   TableCard,
   plural,
+  Pager,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { financeSummary } from '../../../../lib/cabinet/finance';
 import { byMonth } from '../../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../../lib/cabinet/analytics/data';
 import { formatAmount } from '../../../../lib/cabinet/money';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
+import { homeFor } from '../../../../lib/cabinet/nav';
 import { now as clockNow } from '../../../../lib/cabinet/clock';
 
 export const dynamic = 'force-dynamic';
@@ -55,11 +57,10 @@ export default async function FinanceScreen({
 }: {
   searchParams: Promise<{ set?: string; page?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/finance');
   // Финансовый контур ведёт руководитель: менеджер не видит ни начислений,
   // ни маржи (PD-LK-FUNC-002, п. 3.2).
-  if (!can(actor, 'MARGIN_VIEW')) redirect('/cabinet/projects');
+  if (!can(actor, 'MARGIN_VIEW')) redirect(homeFor(actor));
 
   const sp = await searchParams;
   const { rows, totals } = await financeSummary(actor);
@@ -122,12 +123,20 @@ export default async function FinanceScreen({
   return (
     <Shell actor={actor} current="/cabinet/manage/finance">
       <ScreenHead
-        title="Договоры и расчёты"
-        note="Маржа — сумма договора за вычетом списанного и начислений эксперту; у исторических работ, где исполнитель не указан, начислений нет. «К получению» не считает отменённые работы: их неоплаченное учтено в потерях."
+        title="Деньги"
+        note="Маржа — сумма договора за вычетом списанного и начислений куратору; у исторических работ, где куратор не указан, начислений нет. «К получению» не считает отменённые работы: их неоплаченное учтено в потерях."
       />
       <Text style={{ marginBottom: 24 }}>
         <a href="/cabinet/manage/finance/years">Итоги по годам</a> — выручка и прибыль по годам:
-        введённые вами рядом с посчитанными кабинетом.
+        введённые вами рядом с посчитанными кабинетом.{' '}
+        <a href="/cabinet/manage/finance/payouts">Вознаграждение кураторов</a> — начислено, выплачено и
+        к выплате по каждому куратору.{' '}
+        <a href="/cabinet/manage/finance/debtors">Должники</a> — просроченные платежи: напомнить,
+        перенести дату или списать.{' '}
+        <a href="/cabinet/manage/finance/receipts">Поступления</a> — когда придут деньги по
+        заключённым договорам, по месяцам.{' '}
+        <a href="/cabinet/manage/finance/profit">Прибыль по месяцам</a> — поступления, выплаты
+        кураторам и расходы по статьям; здесь же вносятся расходы.
       </Text>
 
       <Tiles>
@@ -302,7 +311,24 @@ export default async function FinanceScreen({
                       {row.title}
                     </a>
                   </td>
-                  <td style={TABLE_CELL}>{row.client}</td>
+                  <td style={TABLE_CELL}>
+                    {row.client}
+                    {/* Кто ведёт работу — ссылкой на «Работы» с отбором (РК-03). */}
+                    <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                      менеджер —{' '}
+                      <a className="cab-mark" href={`/cabinet/projects?state=all&manager=${row.manager.id}`}>
+                        {row.manager.fullName}
+                      </a>
+                      {row.expert === null ? null : (
+                        <>
+                          {' · куратор — '}
+                          <a className="cab-mark" href={`/cabinet/projects?state=all&curator=${row.expert.id}`}>
+                            {row.expert.fullName}
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  </td>
                   <td style={TABLE_NUM}>{formatAmount(row.contracted)}</td>
                   <td style={TABLE_NUM}>{formatAmount(row.received)}</td>
                   <td style={TABLE_NUM}>{formatAmount(row.awaiting)}</td>
@@ -315,27 +341,14 @@ export default async function FinanceScreen({
         </table>
       </TableCard>
 
-      {pages <= 1 ? null : (
-        <nav
-          aria-label="Страницы расчётов"
-          style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', marginTop: 20 }}
-        >
-          {page > 1 ? (
-            <a className="cab-mark" href={href(all ? 'all' : 'owing', page - 1)}>
-              Предыдущие
-            </a>
-          ) : null}
-          <Text muted size={14}>
-            Страница {page} из {pages} · всего {chosen.length}{' '}
-            {plural(chosen.length, 'работа', 'работы', 'работ')}
-          </Text>
-          {page < pages ? (
-            <a className="cab-mark" href={href(all ? 'all' : 'owing', page + 1)}>
-              Следующие
-            </a>
-          ) : null}
-        </nav>
-      )}
+      {/* Постраничность — общей частью (УМ-08, Р-390). */}
+      <Pager
+        label="Страницы расчётов"
+        page={page}
+        pages={pages}
+        hrefFor={(next) => href(all ? 'all' : 'owing', next)}
+        total={`${chosen.length} ${plural(chosen.length, 'работа', 'работы', 'работ')}`}
+      />
     </Shell>
   );
 }

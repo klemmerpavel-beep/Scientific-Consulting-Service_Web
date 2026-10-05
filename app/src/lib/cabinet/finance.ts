@@ -1,14 +1,29 @@
 import { prisma } from '../db.ts';
+import { workLine } from './work-line.ts';
 import { can, ensure, scopePayouts, type Actor } from './access.ts';
 import { record } from './audit.ts';
-import { moscowToday } from './clock.ts';
+import { daysPast, moscowToday, now as clockNow } from './clock.ts';
 import { enqueue } from './outbox.ts';
+import { payoutLetter } from './curator-letters.ts';
 import { projectRef } from './projects.ts';
+import { siteUrl } from '../site-url.ts';
+
+/**
+ * Строка письма о платеже со ссылкой на экран оплат этой работы, а не на
+ * кабинет вообще (решение Р-280). Без адреса сайта — прежняя фраза.
+ */
+export function paymentsLine(code: string | null): string {
+  const base = siteUrl();
+  return base === null || code === null
+    ? 'Документы и состояние оплат видны в кабинете.'
+    : `Документы и состояние оплат: ${base}/cabinet/projects/${code}/payments`;
+}
 import {
   STATUS_LABEL,
   canChangeTrancheStatus,
   expectsPayment,
   isTrancheStatus,
+  overdueTrancheWhere,
   receivableOf,
   type TrancheStatus,
 } from './money.ts';
@@ -145,6 +160,8 @@ export interface TrancheInput {
   readonly title: string;
   readonly amount: bigint;
   readonly plannedDate?: Date | null;
+  /** Этап, за который транш (РК-12, Р-338); `null` — по работе в целом. */
+  readonly stageId?: string | null;
 }
 
 /**
@@ -167,6 +184,11 @@ export async function addTranche(actor: Actor, input: TrancheInput) {
   if (title.length === 0) throw new Error('Назначение транша не указано');
   if (title.length > 300) throw new Error('Назначение транша — не длиннее 300 знаков');
   await ensureMoneyWritable(contract.projectId, true);
+  const stageId = input.stageId || null;
+  if (stageId !== null) {
+    const stage = await prisma.stage.findUnique({ where: { id: stageId }, select: { projectId: true } });
+    if (stage === null || stage.projectId !== contract.projectId) throw new Error('Этап не из этой работы');
+  }
 
   const tranche = await prisma.tranche.create({
     data: {
@@ -174,6 +196,7 @@ export async function addTranche(actor: Actor, input: TrancheInput) {
       title,
       amount: input.amount,
       plannedDate: input.plannedDate ?? null,
+      stageId,
     },
   });
   // Заведение транша прежде не оставляло следа в журнале вовсе (Р-244).
@@ -233,6 +256,11 @@ export async function setTrancheStatus(
   if (status === 'REVERSED' && note.length === 0) {
     throw new Error('Сторно без причины не принимается: укажите, ошибка ли это отметки или возврат');
   }
+  // Списание — тоже с причиной: она нужна при разборе потерь (улучшение
+  // УР-05, решение Р-388), как причина переноса даты (Р-345).
+  if (status === 'WRITTEN_OFF' && note.length === 0) {
+    throw new Error('Списание без причины не принимается: укажите, почему долг не ждёт оплаты');
+  }
   if (note.length > 500) throw new Error('Причина — не длиннее 500 знаков');
   await ensureMoneyWritable(tranche.contract.projectId, false);
 
@@ -269,12 +297,13 @@ export async function setTrancheStatus(
         eventKind: 'PAYMENT_STATUS_CHANGED',
         subject: `Статус платежа изменился: ${row.title}`,
         body:
-          `Проект ${project?.code} — ${project?.title}.\n` +
+          `${project === null ? '' : `${workLine(project, true)}\n`}` +
           `Транш «${row.title}» переведён в состояние «${STATUS_LABEL[status]}».\n` +
-          'Документы и состояние оплат видны в кабинете.',
+          paymentsLine(project?.code ?? null),
         // Ключ по моменту перехода: счёт, отозванный и выставленный снова,
         // прежде не доходил — строка с тем же ключом уже была (Р-244).
         dedupKey: `tranche:${trancheId}:${status.toLowerCase()}:${row.updatedAt.getTime()}`,
+        path: project === null ? null : `/cabinet/projects/${project.code}/payments`,
       });
     }
     return row;
@@ -290,7 +319,7 @@ export async function setTrancheStatus(
       to: status,
       amount: money(tranche.amount),
       paidOn: status === 'PAID' ? paidOn!.toISOString().slice(0, 10) : null,
-      ...(status === 'REVERSED' ? { reason: note } : {}),
+      ...(status === 'REVERSED' || status === 'WRITTEN_OFF' ? { reason: note } : {}),
     },
   });
   return updated;
@@ -346,10 +375,15 @@ export async function addPayout(
   // Начисление без исполнителя уменьшало маржу, а видеть его было некому
   // (решение Р-244).
   const expertId = input.expertId ?? ref.expertId;
-  if (expertId === null) throw new Error('Сначала назначьте исполнителя работы');
+  if (expertId === null) throw new Error('Сначала назначьте куратора работы');
   const comment = input.comment?.trim() || null;
   if (comment !== null && comment.length > 500) throw new Error('Комментарий — не длиннее 500 знаков');
   await ensureMoneyWritable(input.projectId, true);
+  // Этап начисления — из этой же работы (требование РК-11, решение Р-339).
+  if (input.stageId) {
+    const stage = await prisma.stage.findUnique({ where: { id: input.stageId }, select: { projectId: true } });
+    if (stage === null || stage.projectId !== input.projectId) throw new Error('Этап не из этой работы');
+  }
 
   const payout = await prisma.expertPayout.create({
     data: {
@@ -367,6 +401,7 @@ export async function addPayout(
     projectId: input.projectId,
     payload: { amount: money(input.amount) },
   });
+  await notifyPayout(payout.id, false);
   return payout;
 }
 
@@ -393,7 +428,39 @@ export async function markPayoutPaid(actor: Actor, payoutId: string, paidOn: Dat
     projectId: payout.projectId,
     payload: { amount: money(payout.amount), paidOn: paidOn.toISOString().slice(0, 10) },
   });
+  await notifyPayout(payoutId, true);
   return updated;
+}
+
+/**
+ * Куратору — о начислении и выплате, без суммы (требование Э-09, решение
+ * Р-328). Событие нейтральное: уходит и без договора поручения, тогда без
+ * названия работы и этапа (Р-237).
+ */
+async function notifyPayout(payoutId: string, paid: boolean): Promise<void> {
+  const payout = await prisma.expertPayout.findUniqueOrThrow({
+    where: { id: payoutId },
+    select: {
+      expert: { select: { id: true, role: true, expertProfile: { select: { ndaSignedAt: true } } } },
+      project: { select: { id: true, code: true, title: true } },
+      stage: { select: { title: true } },
+    },
+  });
+  if (payout.expert === null || payout.expert.role !== 'EXPERT') return;
+  const letter = payoutLetter(
+    { code: payout.project.code, title: payout.project.title, stage: payout.stage?.title ?? null },
+    paid,
+    (payout.expert.expertProfile?.ndaSignedAt ?? null) !== null,
+  );
+  await enqueue(prisma, {
+    userId: payout.expert.id,
+    projectId: payout.project.id,
+    eventKind: paid ? 'PAYOUT_PAID' : 'PAYOUT_ACCRUED',
+    subject: letter.subject,
+    body: letter.body,
+    dedupKey: `payout:${payoutId}:${paid ? 'paid' : 'accrued'}`,
+    path: '/cabinet/payout',
+  });
 }
 
 export interface ProjectMoney {
@@ -408,6 +475,15 @@ export interface ProjectMoney {
    * равен нулю (решение Р-257).
    */
   readonly cancelled: boolean;
+  /** День отмены работы; `null` — не отменена или дата не записана. */
+  readonly cancelledOn: Date | null;
+  /**
+   * Корректировка суммы = договор − получено − осталось оплатить (требование
+   * Т-19, О-4, решение Р-315). Это не «списано»: величина сводит арифметику
+   * экрана и при обрезке остатка нулём, и у отменённой работы. Меньше нуля —
+   * оплачено сверх суммы договора (ОМ-30).
+   */
+  readonly adjustment: bigint;
   /** Только тому, кто ведёт оплаты: списание — внутреннее решение (Р-251). */
   readonly writtenOff?: bigint;
   /** Заполняется только для роли, допущенной к экономике. */
@@ -429,7 +505,7 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
 
   const contract = await prisma.contract.findUnique({
     where: { projectId },
-    include: { tranches: true, project: { select: { status: true } } },
+    include: { tranches: true, project: { select: { status: true, closedOn: true } } },
   });
   if (contract === null) return null;
 
@@ -451,12 +527,17 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
   //
   // У отменённой работы остатка к оплате нет: его не ждут, он учтён в
   // потерях, и сводки его к получению не считают (решение Р-257).
+  const received = sum('PAID');
+  const awaiting = receivableOf(contract.project.status, contract.totalAmount, contract.tranches);
+  const cancelled = !expectsPayment(contract.project.status);
   const visible: ProjectMoney = {
     contractTotal: contract.totalAmount,
-    received: sum('PAID'),
-    awaiting: receivableOf(contract.project.status, contract.totalAmount, contract.tranches),
+    received,
+    awaiting,
     scheduled: sum('PLANNED') + sum('INVOICED'),
-    cancelled: !expectsPayment(contract.project.status),
+    cancelled,
+    cancelledOn: cancelled ? contract.project.closedOn : null,
+    adjustment: contract.totalAmount - received - awaiting,
   };
   if (!can(actor, 'PAYMENT_EDIT', ref)) return visible;
 
@@ -492,7 +573,17 @@ export async function financeSummary(actor: Actor) {
       orderBy: { project: { code: 'asc' } },
       include: {
         tranches: true,
-        project: { select: { code: true, title: true, status: true, client: { select: { fullName: true } } } },
+        project: {
+          select: {
+            code: true,
+            title: true,
+            status: true,
+            client: { select: { fullName: true } },
+            // Кто ведёт работу — в «Деньгах по работам» (РК-03, Р-341).
+            manager: { select: { id: true, fullName: true } },
+            expert: { select: { id: true, fullName: true } },
+          },
+        },
       },
     }),
     prisma.expertPayout.groupBy({ by: ['projectId'], _sum: { amount: true } }),
@@ -520,6 +611,8 @@ export async function financeSummary(actor: Actor) {
       code: contract.project.code,
       title: contract.project.title,
       client: contract.project.client.fullName,
+      manager: contract.project.manager,
+      expert: contract.project.expert,
       status: contract.project.status,
       contracted: contract.totalAmount,
       received,
@@ -555,6 +648,79 @@ export async function financeSummary(actor: Actor) {
   };
 }
 
+export interface CuratorPayoutRow {
+  readonly expertId: string;
+  readonly fullName: string;
+  readonly accrued: bigint;
+  readonly paid: bigint;
+  /** К выплате — сумма невыплаченных начислений. */
+  readonly toPay: bigint;
+  readonly works: number;
+}
+
+/**
+ * «Деньги → Вознаграждение кураторов» (требование РК-11, решение Р-339):
+ * по каждому куратору — начислено, выплачено, к выплате. Определения те
+ * же, что у `projectMoney.payoutsAccrued`: начислено — все начисления,
+ * выплачено — со статусом «выплачено». Только руководителю.
+ */
+export async function payoutsByCurator(actor: Actor): Promise<CuratorPayoutRow[]> {
+  ensure(actor, 'PAYOUT_MANAGE');
+  const rows = await prisma.expertPayout.groupBy({
+    by: ['expertId', 'status'],
+    where: { expertId: { not: null } },
+    _sum: { amount: true },
+  });
+  const works = await prisma.expertPayout.groupBy({
+    by: ['expertId', 'projectId'],
+    where: { expertId: { not: null } },
+  });
+  const ids = [...new Set(rows.map((row) => row.expertId!))];
+  const people = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, fullName: true } });
+  return people
+    .map((person) => {
+      const mine = rows.filter((row) => row.expertId === person.id);
+      const accrued = mine.reduce((acc, row) => acc + (row._sum.amount ?? 0n), 0n);
+      const paid = mine.filter((row) => row.status === 'PAID').reduce((acc, row) => acc + (row._sum.amount ?? 0n), 0n);
+      return {
+        expertId: person.id,
+        fullName: person.fullName,
+        accrued,
+        paid,
+        toPay: accrued - paid,
+        works: works.filter((row) => row.expertId === person.id).length,
+      };
+    })
+    .sort((a, b) => (b.toPay > a.toPay ? 1 : b.toPay < a.toPay ? -1 : a.fullName.localeCompare(b.fullName)));
+}
+
+/** Начисления одного куратора по работам — раскрытие строки свода (РК-11). */
+export async function curatorPayoutLines(actor: Actor, expertId: string) {
+  ensure(actor, 'PAYOUT_MANAGE');
+  const rows = await prisma.expertPayout.findMany({
+    where: { expertId },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: {
+      id: true,
+      amount: true,
+      status: true,
+      paidOn: true,
+      comment: true,
+      createdAt: true,
+      project: { select: { code: true, title: true, expertId: true } },
+      stage: { select: { title: true } },
+    },
+  });
+  // «Работа передана» — тем же признаком, что у куратора (Э-13, Р-332):
+  // начисление по работе, которую ведёт уже другой куратор (улучшение
+  // УЭ-06, решение Р-383). Руководителю работа открыта, ссылка остаётся.
+  return rows.map(({ project, ...row }) => ({
+    ...row,
+    project: { code: project.code, title: project.title },
+    handedOff: project.expertId !== expertId,
+  }));
+}
+
 /**
  * Собственные начисления эксперта. Маржу он не видит — только своё.
  *
@@ -572,15 +738,42 @@ export async function ownPayouts(actor: Actor) {
   const found = await prisma.expertPayout.findMany({
     where: scope,
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    include: { project: { select: { code: true, title: true } }, stage: { select: { title: true } } },
+    include: { project: { select: { code: true, title: true, expertId: true } }, stage: { select: { title: true } } },
   });
-  const rows = found.map((row) =>
-    closed ? { ...row, projectId: null, stageId: null, project: null, stage: null, comment: null } : row,
-  );
+  // Работа, переданная другому куратору, остаётся в истории начислений, но
+  // ссылкой на неё не служит: карточка куратору закрыта, и ссылка вела в
+  // «не найдено» (требование Э-13, решение Р-332). Чей теперь куратор —
+  // не отдаётся, только признак.
+  const rows = found.map(({ project, ...row }) => {
+    const handedOff = actor.role === 'EXPERT' && project.expertId !== actor.id;
+    return closed
+      ? { ...row, projectId: null, stageId: null, project: null, stage: null, comment: null, handedOff }
+      : { ...row, project: { code: project.code, title: project.title }, handedOff };
+  });
   return {
     rows,
     accrued: rows.reduce((acc, r) => acc + r.amount, 0n),
     paid: rows.filter((r) => r.status === 'PAID').reduce((acc, r) => acc + r.amount, 0n),
+  };
+}
+
+/**
+ * Своё вознаграждение куратора по одной работе — строка «Ваша работа» на
+ * карточке (требование Э-13, решение Р-332). `null` — начислений нет.
+ */
+export async function ownPayoutTotals(
+  actor: Actor,
+  projectId: string,
+): Promise<{ accrued: bigint; paid: bigint } | null> {
+  if (actor.role !== 'EXPERT' || !can(actor, 'PAYOUT_VIEW_OWN')) return null;
+  const rows = await prisma.expertPayout.findMany({
+    where: { expertId: actor.id, projectId },
+    select: { amount: true, status: true },
+  });
+  if (rows.length === 0) return null;
+  return {
+    accrued: rows.reduce((acc, row) => acc + row.amount, 0n),
+    paid: rows.filter((row) => row.status === 'PAID').reduce((acc, row) => acc + row.amount, 0n),
   };
 }
 
@@ -607,6 +800,8 @@ export async function projectContract(actor: Actor, projectId: string) {
         where: mayEdit ? {} : { status: { in: [...CLIENT_TRANCHE_STATUSES] } },
         orderBy: [{ plannedDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         include: {
+          // Этап транша (РК-12, Р-338).
+          stage: { select: { title: true, position: true } },
           documents: {
             where: { deletedAt: null },
             include: { versions: { orderBy: { number: 'desc' }, take: 1 } },
@@ -619,6 +814,47 @@ export async function projectContract(actor: Actor, projectId: string) {
       },
     },
   });
+}
+
+/**
+ * Строки истории работы о документах оплат (требование Т-19, решение Р-315):
+ * «Приложен счёт к траншу «…»», «Приложен акт к траншу «…»», «Приложен
+ * договор». Сопоставление — по документам видимых смотрящему траншей;
+ * события о документах скрытых траншей (списанных и сторнированных у того,
+ * кто оплаты не ведёт) из истории убираются. Без права на договор скрыты
+ * все события о документах оплат (УК-02, Р-357).
+ */
+export async function paymentDocumentLines(
+  actor: Actor,
+  projectId: string,
+): Promise<{ lines: Map<string, string>; hidden: Set<string> }> {
+  const lines = new Map<string, string>();
+  const ref = await projectRef(projectId);
+  if (ref === null) return { lines, hidden: new Set() };
+  // Документы оплат — материалы при договоре или транше и не материалы этапа.
+  const all = await prisma.material.findMany({
+    where: {
+      projectId,
+      OR: [{ contractId: { not: null } }, { trancheId: { not: null } }, { kind: { not: 'STAGE_MATERIAL' } }],
+    },
+    select: { id: true },
+  });
+  // Без права на договор скрыты все события о документах оплат: куратор
+  // видел в истории «Приложена версия N материала» о счёте и акте
+  // (улучшение УК-02, решение Р-357).
+  if (!can(actor, 'CONTRACT_VIEW', ref)) return { lines, hidden: new Set(all.map((row) => row.id)) };
+  const contract = await projectContract(actor, projectId);
+  const what = (kind: string): string =>
+    kind === 'INVOICE' ? 'счёт' : kind === 'ACT' ? 'акт' : kind === 'CONTRACT' ? 'договор' : 'документ';
+  for (const tranche of contract?.tranches ?? []) {
+    for (const document of tranche.documents) {
+      lines.set(document.id, `Приложен ${what(document.kind)} к траншу «${tranche.title}»`);
+    }
+  }
+  for (const document of contract?.documents ?? []) {
+    if (document.trancheId === null && !lines.has(document.id)) lines.set(document.id, `Приложен ${what(document.kind)}`);
+  }
+  return { lines, hidden: new Set(all.map((row) => row.id).filter((id) => !lines.has(id))) };
 }
 
 /**
@@ -637,4 +873,295 @@ export async function projectPayouts(actor: Actor, projectId: string) {
     orderBy: { createdAt: 'desc' },
     include: { expert: { select: { fullName: true } } },
   });
+}
+
+// ─────────────────────────── Должники (РК-10) ───────────────────────────────
+
+/** Строка «Должников»: просроченный транш и чья работа. */
+export interface DebtorRow {
+  readonly trancheId: string;
+  readonly title: string;
+  readonly amount: bigint;
+  readonly plannedDate: Date;
+  /** Дней после плановой даты. */
+  readonly late: number;
+  readonly status: TrancheStatus;
+  readonly code: string;
+  readonly work: string;
+  /** Состояние работы: идущую можно приостановить до оплаты (п. 8.5 оферты). */
+  readonly workStatus: string;
+  readonly client: string;
+  readonly manager: string;
+}
+
+/**
+ * «Деньги → Должники» (требование РК-10, решение Р-345): просроченные
+ * транши — тем же условием, что плитка «Просрочено по траншам»
+ * (`overdueTrancheWhere`); сумма перечня равна плитке по построению.
+ * Давние сверху. Деньги практики — только руководителю (Р-149).
+ */
+export async function overdueTranches(actor: Actor, at: Date = clockNow()): Promise<DebtorRow[]> {
+  ensure(actor, 'MARGIN_VIEW');
+  const day = moscowToday(at);
+  const rows = await prisma.tranche.findMany({
+    where: overdueTrancheWhere(day),
+    orderBy: [{ plannedDate: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      title: true,
+      amount: true,
+      plannedDate: true,
+      status: true,
+      contract: {
+        select: {
+          project: {
+            select: {
+              code: true,
+              title: true,
+              status: true,
+              client: { select: { fullName: true } },
+              manager: { select: { fullName: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+  return rows.map((row) => ({
+    trancheId: row.id,
+    title: row.title,
+    amount: row.amount,
+    plannedDate: row.plannedDate!,
+    late: daysPast(row.plannedDate, at) ?? 0,
+    status: row.status as TrancheStatus,
+    code: row.contract.project.code,
+    work: row.contract.project.title,
+    workStatus: row.contract.project.status,
+    client: row.contract.project.client.fullName,
+    manager: row.contract.project.manager.fullName,
+  }));
+}
+
+/** Предел длины причины переноса даты транша. */
+export const RESCHEDULE_REASON_MAX = 500;
+
+/**
+ * Перенести плановую дату транша (требование РК-10, решение Р-345).
+ * Причина обязательна и пишется в журнал: схема не меняется. Оплаченный,
+ * списанный и сторнированный транш не переносится — у него нет срока.
+ */
+export async function rescheduleTranche(actor: Actor, trancheId: string, date: Date | null, reasonRaw: string) {
+  const tranche = await prisma.tranche.findUnique({
+    where: { id: trancheId },
+    select: { status: true, plannedDate: true, title: true, contract: { select: { projectId: true } } },
+  });
+  if (tranche === null) throw new Error('Транш не найден');
+  const ref = await projectRef(tranche.contract.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'PAYMENT_EDIT', ref);
+  if (tranche.status !== 'PLANNED' && tranche.status !== 'INVOICED') {
+    throw new Error('Переносится только запланированный платёж или выставленный счёт');
+  }
+  if (date === null || Number.isNaN(date.getTime())) throw new Error('Укажите новую плановую дату');
+  if (date.getUTCFullYear() < 2000) throw new Error('Плановая дата указана неверно');
+  const reason = reasonRaw.replace(/\s+/gu, ' ').trim();
+  if (reason.length === 0) throw new Error('Укажите причину переноса: она останется в журнале');
+  if (reason.length > RESCHEDULE_REASON_MAX) {
+    throw new Error(`Причина переноса — не длиннее ${RESCHEDULE_REASON_MAX} знаков`);
+  }
+  await ensureMoneyWritable(tranche.contract.projectId, false);
+  const moved = await prisma.tranche.updateMany({
+    where: { id: trancheId, status: tranche.status },
+    data: { plannedDate: date },
+  });
+  if (moved.count === 0) throw new Error('Статус транша уже изменён другим действием: обновите страницу');
+  await record(actor, {
+    action: 'TRANCHE_RESCHEDULED',
+    objectType: 'Tranche',
+    objectId: trancheId,
+    projectId: tranche.contract.projectId,
+    payload: {
+      title: tranche.title,
+      from: tranche.plannedDate?.toISOString().slice(0, 10) ?? null,
+      to: date.toISOString().slice(0, 10),
+      reason,
+    },
+  });
+}
+
+/**
+ * Назначение и плановая дата транша — для заготовки «Напоминание об
+ * оплате» (РК-10). Транш должен принадлежать этой работе; пишущий в
+ * переписку видит её оплаты.
+ */
+export async function trancheForReminder(
+  actor: Actor,
+  projectId: string,
+  trancheId: string,
+): Promise<{ title: string; plannedDate: Date | null } | null> {
+  const ref = await projectRef(projectId);
+  if (ref === null || !can(actor, 'MESSAGE_WRITE', ref)) return null;
+  return prisma.tranche.findFirst({
+    where: { id: trancheId, contract: { projectId } },
+    select: { title: true, plannedDate: true },
+  });
+}
+
+// ─────────────────────────── Поступления (РК-20) ────────────────────────────
+
+/** Месяцев вперёд в «Поступлениях»; позже — колонка «Далее» (ДР-2). */
+export const RECEIPTS_MONTHS = 6;
+
+const MONTH_NAMES = [
+  'январь',
+  'февраль',
+  'март',
+  'апрель',
+  'май',
+  'июнь',
+  'июль',
+  'август',
+  'сентябрь',
+  'октябрь',
+  'ноябрь',
+  'декабрь',
+] as const;
+
+export type ReceiptBucket = 'overdue' | 'month' | 'later' | 'undated';
+
+export interface ReceiptCell {
+  readonly amount: bigint;
+  readonly count: number;
+}
+
+export interface ReceiptLine {
+  readonly trancheId: string;
+  readonly code: string;
+  readonly work: string;
+  readonly title: string;
+  /** Учтённая сумма: не больше остатка договора работы. */
+  readonly amount: bigint;
+  readonly plannedDate: Date | null;
+  readonly bucket: ReceiptBucket;
+  /** Ключ месяца `ГГГГ-ММ` у строки месяца. */
+  readonly month: string | null;
+}
+
+export interface ReceiptsPlan {
+  readonly months: readonly (ReceiptCell & { readonly key: string; readonly label: string })[];
+  readonly later: ReceiptCell;
+  readonly overdue: ReceiptCell;
+  readonly undated: ReceiptCell;
+  /** Остаток работ, не разнесённый по траншам. */
+  readonly unallocated: ReceiptCell;
+  /**
+   * Незакрытые транши сверх остатка договора: в сумму не входят, иначе
+   * итог разошёлся бы с «К получению».
+   */
+  readonly excess: ReceiptCell;
+  /** Итог — равен «К получению» по построению. */
+  readonly total: bigint;
+  readonly lines: readonly ReceiptLine[];
+}
+
+/**
+ * «Деньги → Поступления» (требование РК-20, решение Р-348).
+ *
+ * Незакрытые транши по плановым датам на шесть месяцев вперёд и колонка
+ * «Далее»; отдельно — просроченные (условие «Должников», Р-345), без даты
+ * и остаток работ, не разнесённый по траншам. Остаток работы — то же
+ * «К получению», что на «Деньгах» и «Сводке» (`receivableOf`, Р-244,
+ * Р-257); транши распределяются в его пределах по порядку сроков, и итог
+ * равен «К получению» по построению. Это обязательства клиентов, а не
+ * прогноз спроса.
+ */
+export async function receiptsPlan(actor: Actor, at: Date = clockNow()): Promise<ReceiptsPlan> {
+  ensure(actor, 'MARGIN_VIEW');
+  const day = moscowToday(at);
+  const start = { year: day.getUTCFullYear(), month: day.getUTCMonth() };
+  const keyOf = (date: Date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  const months = Array.from({ length: RECEIPTS_MONTHS }, (_, index) => {
+    const first = new Date(Date.UTC(start.year, start.month + index, 1));
+    return { key: keyOf(first), label: `${MONTH_NAMES[first.getUTCMonth()]} ${first.getUTCFullYear()}`, amount: 0n, count: 0 };
+  });
+  const horizon = new Date(Date.UTC(start.year, start.month + RECEIPTS_MONTHS, 1));
+  const cell = () => ({ amount: 0n, count: 0 });
+  const later = cell();
+  const overdue = cell();
+  const undated = cell();
+  const unallocated = cell();
+  const excess = cell();
+  const lines: ReceiptLine[] = [];
+
+  const contracts = await prisma.contract.findMany({
+    orderBy: { project: { code: 'asc' } },
+    select: {
+      totalAmount: true,
+      project: { select: { code: true, title: true, status: true } },
+      tranches: {
+        select: { id: true, title: true, amount: true, status: true, plannedDate: true },
+      },
+    },
+  });
+
+  let total = 0n;
+  for (const contract of contracts) {
+    let rest = receivableOf(contract.project.status, contract.totalAmount, contract.tranches);
+    total += rest;
+    // Сначала датированные по сроку, затем без даты: в пределах остатка
+    // договора учитываются ранние обязательства.
+    const open = contract.tranches
+      .filter((tranche) => tranche.status === 'PLANNED' || tranche.status === 'INVOICED')
+      .sort((a, b) => {
+        if (a.plannedDate === null) return b.plannedDate === null ? a.id.localeCompare(b.id) : 1;
+        if (b.plannedDate === null) return -1;
+        return a.plannedDate.getTime() - b.plannedDate.getTime() || a.id.localeCompare(b.id);
+      });
+    for (const tranche of open) {
+      const counted = tranche.amount < rest ? tranche.amount : rest;
+      rest -= counted;
+      if (counted < tranche.amount) {
+        excess.amount += tranche.amount - counted;
+        excess.count += 1;
+      }
+      if (counted === 0n) continue;
+      const date = tranche.plannedDate;
+      let bucket: ReceiptBucket;
+      let month: string | null = null;
+      if (date === null) {
+        bucket = 'undated';
+        undated.amount += counted;
+        undated.count += 1;
+      } else if (date.getTime() < day.getTime()) {
+        bucket = 'overdue';
+        overdue.amount += counted;
+        overdue.count += 1;
+      } else if (date.getTime() >= horizon.getTime()) {
+        bucket = 'later';
+        later.amount += counted;
+        later.count += 1;
+      } else {
+        bucket = 'month';
+        month = keyOf(date);
+        const target = months.find((row) => row.key === month)!;
+        target.amount += counted;
+        target.count += 1;
+      }
+      lines.push({
+        trancheId: tranche.id,
+        code: contract.project.code,
+        work: contract.project.title,
+        title: tranche.title,
+        amount: counted,
+        plannedDate: date,
+        bucket,
+        month,
+      });
+    }
+    if (rest > 0n) {
+      unallocated.amount += rest;
+      unallocated.count += 1;
+    }
+  }
+  return { months, later, overdue, undated, unallocated, excess, total, lines };
 }

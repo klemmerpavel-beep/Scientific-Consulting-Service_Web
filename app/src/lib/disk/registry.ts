@@ -98,7 +98,7 @@ export async function projectsTable(): Promise<Table> {
   });
   return table(
     'Работы.xlsx', 'raboty.csv',
-    ['Код', 'Название', 'Тема', 'Клиент', 'Тип сопровождения', 'Куратор', 'Исполнитель',
+    ['Код', 'Название', 'Тема', 'Клиент', 'Тип сопровождения', 'Менеджер', 'Куратор',
      'Состояние', 'Начата', 'Срок', 'Закрыта', 'Договор', 'Сумма договора', 'Оплачено',
      'Этапов', 'Материалов'],
     rows.map((p) => {
@@ -119,17 +119,18 @@ export async function projectsTable(): Promise<Table> {
 export async function stagesTable(): Promise<Table> {
   const rows = await prisma.stage.findMany({
     orderBy: [{ project: { code: 'desc' } }, { position: 'asc' }],
+    // Исполнитель — работы, а не этапа: поле этапа не заполняется
+    // (требование М-16, решение Р-298).
     include: {
-      project: { select: { code: true } },
-      expert: { select: { fullName: true } },
+      project: { select: { code: true, expertNameRaw: true, expert: { select: { fullName: true } } } },
     },
   });
   return table(
     'Этапы.xlsx', 'etapy.csv',
-    ['Работа', '№', 'Этап', 'Состояние', 'Срок', 'Исполнитель', 'Начат (МСК)', 'Завершён (МСК)'],
+    ['Работа', '№', 'Этап', 'Состояние', 'Срок', 'Куратор', 'Начат (МСК)', 'Завершён (МСК)'],
     rows.map((s) => [
       s.project.code, s.position, s.title, stageStateLabel(s.state),
-      day(s.dueOn), s.expert?.fullName ?? '', day(s.startedAt), day(s.completedAt),
+      day(s.dueOn), s.project.expert?.fullName ?? s.project.expertNameRaw ?? '', day(s.startedAt), day(s.completedAt),
     ]),
   );
 }
@@ -182,7 +183,7 @@ export async function yearsTable(actor: Actor): Promise<Table> {
 }
 
 /**
- * Замечания с виджета (решение Р-277): по этой таблице раз в неделю
+ * Замечания с виджета (решение Р-403): по этой таблице раз в неделю
  * делаются точечные правки, и её же руководитель выгружает с экрана
  * разбора. Людей в ней нет по устройству — ни учётной записи, ни адреса,
  * ни строки браузера замечание не хранит, страница записана шаблоном.

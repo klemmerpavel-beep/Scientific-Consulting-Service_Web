@@ -20,7 +20,8 @@ import {
 import { can, type Actor } from '../../../../lib/cabinet/access';
 import { loadRows } from '../../../../lib/cabinet/analytics/data';
 import type { ProjectRow } from '../../../../lib/cabinet/analytics/metrics';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
+import { homeFor } from '../../../../lib/cabinet/nav';
 
 /**
  * Общая часть вкладок аналитики: проверка доступа, выборка и каркас.
@@ -31,9 +32,8 @@ import { currentActor } from '../../../../lib/cabinet/session';
  * даже если этот каркас обойти.
  */
 export async function analyticsScreen(): Promise<{ actor: Actor; rows: ProjectRow[] }> {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'ANALYTICS_VIEW')) redirect('/cabinet/projects');
+  const actor = await requireActor('/cabinet/manage/analytics');
+  if (!can(actor, 'ANALYTICS_VIEW')) redirect(homeFor(actor));
   return { actor, rows: await loadRows(actor) };
 }
 

@@ -6,11 +6,15 @@ import {
   compactNumber,
   seriesColor,
 } from '../../../../components/cabinet/Charts';
-import { Card, Chip, Empty, Heading, Mono, Text, plural } from '../../../../components/cabinet/ui';
+import { Card, Chip, Empty, Heading, Mono, TableScroll, Text, plural } from '../../../../components/cabinet/ui';
 import { byMonth, collectionPercent, conclusions, overview, products, verdict } from '../../../../lib/cabinet/analytics/metrics';
 import { formatAmount, formatRounded } from '../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num } from './shared';
 import { now as clockNow } from '../../../../lib/cabinet/clock';
+import { analyticsSince } from '../../../../lib/cabinet/practice-settings';
+import { leadConversion, leadRows, leadsByMonth, leadsBySource } from '../../../../lib/cabinet/analytics/leads';
+import { leadSourceLabel } from '../../../../lib/cabinet/lead-labels';
+import { MONTHS_SHORT } from '../../../../lib/cabinet/analytics/metrics';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,8 +46,16 @@ export default async function AnalyticsOverview() {
   const total = overview(rows);
   const months = byMonth(rows, now);
   const productRows = products(rows);
-  const outputs = conclusions(rows, now);
-  const digest = verdict(rows, now);
+  // Сезонная норма — от даты начала учёта практики (РК-16, Р-349; ОР-6).
+  const since = await analyticsSince();
+  const outputs = conclusions(rows, now, since);
+  const digest = verdict(rows, now, since);
+  // Заявки: по месяцам, по страницам сайта и конверсия «заявка → заказ»;
+  // спам и отзывы не входят (требование РК-18, решение Р-351).
+  const leads = await leadRows(actor);
+  const leadMonths = leadsByMonth(leads, now);
+  const leadSources = leadsBySource(leads);
+  const conversion = leadConversion(leads);
 
   const period =
     total.period.from === null
@@ -54,7 +66,7 @@ export default async function AnalyticsOverview() {
     <Frame
       actor={actor}
       current="/cabinet/manage/analytics"
-      title="Обзор практики"
+      title="Аналитика"
       lead="Величины считаются по данным системы: ни одна не введена вручную."
     >
       {rows.length === 0 ? (
@@ -111,7 +123,12 @@ export default async function AnalyticsOverview() {
             Каждый вывод несёт действие, срок и — где величина считается честно — оценку
             эффекта. Уверенность: «подтверждено числами» — прямой счёт по своим данным,
             «вероятно» — спрос проверен, но повторение не гарантировано, «под вопросом» —
-            решение спорное, зато потенциал наибольший.
+            решение спорное, зато потенциал наибольший. Когда продвигать каждый вид работ — в{' '}
+            {/* Календарь продвижения (требование РК-16, решение Р-349). */}
+            <a className="cab-mark" href="/cabinet/manage/recommendations/calendar">
+              «Календаре продвижения»
+            </a>
+            .
           </Text>
           {/* Не больше двух плашек в ряду (решение Р-189). */}
           <div
@@ -210,6 +227,76 @@ export default async function AnalyticsOverview() {
               }))}
               format={(value) => compactNumber(value, 0)}
             />
+          </ChartCard>
+
+          <ChartCard
+            title="Заявки"
+            note={`Заявки с сайта и из кабинета без спама и отзывов, по месяцу поступления, двенадцать месяцев по текущий. Стали заказом ${conversion.converted} из ${conversion.leads}${conversion.conversion === null ? '' : ` — ${Math.round(conversion.conversion * 100)} %`}: заявка, развёрнутая в работу.`}
+            numbers={
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={head} scope="col">Месяц</th>
+                    <th style={{ ...head, textAlign: 'right' }} scope="col">Заявок</th>
+                    <th style={{ ...head, textAlign: 'right' }} scope="col">Стали заказом</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leadMonths.map((month) => (
+                    <tr key={month.key}>
+                      <td style={cell}>{`${MONTHS_SHORT[month.month - 1]} ${month.year}`}</td>
+                      <td style={num}>{month.leads}</td>
+                      <td style={num}>{month.converted}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            }
+          >
+            {leads.length === 0 ? (
+              <Text muted>Заявок пока нет.</Text>
+            ) : (
+              <>
+                <BarChart
+                  title="Заявки по месяцам"
+                  width={1000}
+                  unit="заявок"
+                  data={leadMonths.map((month) => ({
+                    label: `${MONTHS_SHORT[month.month - 1]} ${String(month.year).slice(2)}`,
+                    value: month.leads,
+                  }))}
+                  format={(value) => String(Math.round(value))}
+                />
+                {/* Откуда приходят заказы: страница сайта и конверсия (РК-18). */}
+                <div style={{ marginTop: 16 }}>
+                <TableScroll label="Заявки по страницам сайта">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 460 }}>
+                  <caption style={{ ...cell, textAlign: 'left', color: 'var(--pd-ink-secondary)' }}>
+                    По страницам сайта
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th style={head} scope="col">Страница</th>
+                      <th style={{ ...head, textAlign: 'right' }} scope="col">Заявок</th>
+                      <th style={{ ...head, textAlign: 'right' }} scope="col">Стали заказом</th>
+                      <th style={{ ...head, textAlign: 'right' }} scope="col">Конверсия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leadSources.map((source) => (
+                      <tr key={source.source}>
+                        <td style={cell}>{leadSourceLabel(source.source)}</td>
+                        <td style={num}>{source.leads}</td>
+                        <td style={num}>{source.converted}</td>
+                        <td style={num}>{source.conversion === null ? '—' : `${Math.round(source.conversion * 100)} %`}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                </TableScroll>
+                </div>
+              </>
+            )}
           </ChartCard>
 
           <ChartCard title="Структура по типам сопровождения" note="Доля в сумме договоров.">

@@ -127,7 +127,33 @@ else
   off "почта: не настроена (SMTP_HOST, LEAD_MAIL_TO; DEPLOY.md, 5е)"
 fi
 
-# Выгрузка замечаний для исполнителя правок (Р-279). Ключ сверяется с тем,
+# ── 3а. Почтовый домен: SPF, DKIM, DMARC ────────────────────────────────────
+# Без записей домена письма кабинета уходят в «Спам» или не доходят
+# (улучшение УК-05, решение Р-395; DEPLOY.md, раздел о почте). Домен
+# отправителя в отчёт не печатается: только есть ли запись.
+txt() {
+  if command -v dig >/dev/null 2>&1; then dig +short TXT "$1" 2>/dev/null
+  elif command -v host >/dev/null 2>&1; then host -t TXT "$1" 2>/dev/null
+  fi
+}
+sender=$(read_env SMTP_FROM); [ -n "$sender" ] || sender=$(read_env SMTP_USER)
+domain=$(printf '%s' "$sender" | sed -n 's/.*@\([^>]*\).*/\1/p')
+if [ -z "$domain" ]; then
+  off "почтовый домен: отправитель не задан (SMTP_FROM; DEPLOY.md, 5е)"
+elif ! command -v dig >/dev/null 2>&1 && ! command -v host >/dev/null 2>&1; then
+  off "почтовый домен: записи не проверены — на сервере нет dig или host"
+else
+  if txt "$domain" | grep -q 'v=spf1'; then ok "почтовый домен: запись SPF есть"
+  else bad "почтовый домен: нет записи SPF — письма кабинета уйдут в «Спам»"; fi
+  if txt "_dmarc.$domain" | grep -q 'v=DMARC1'; then ok "почтовый домен: запись DMARC есть"
+  else bad "почтовый домен: нет записи DMARC (_dmarc)"; fi
+  selector=$(read_env DKIM_SELECTOR)
+  if [ -z "$selector" ]; then off "почтовый домен: DKIM не проверен — селектор не задан (DKIM_SELECTOR)"
+  elif txt "$selector._domainkey.$domain" | grep -q 'p='; then ok "почтовый домен: ключ DKIM опубликован"
+  else bad "почтовый домен: нет ключа DKIM для селектора из DKIM_SELECTOR"; fi
+fi
+
+# Выгрузка замечаний для исполнителя правок (Р-405). Ключ сверяется с тем,
 # что видит работающий контейнер, — значение не печатается, только длина:
 # ключ, дописанный в .env без перезапуска, до приложения не доходит.
 key=$(read_env FEEDBACK_EXPORT_TOKEN)

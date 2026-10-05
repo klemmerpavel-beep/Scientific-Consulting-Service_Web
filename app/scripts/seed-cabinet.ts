@@ -106,7 +106,7 @@ async function main() {
   const links = {
     Менеджер: await issueLink(manager.id),
     Руководитель: await issueLink(head.id),
-    Эксперт: await issueLink(expert.id),
+    Куратор: await issueLink(expert.id),
   };
 
   process.stdout.write(`Стенд наполнен. Заявка в очереди: ${lead.id}\n\n`);

@@ -51,6 +51,7 @@ import { contactKeys, leadMatchesContacts } from './contacts.ts';
 import { ERASED_KEY_PREFIX, erasedKey, normalizeName, signatureBase } from './import/etl.ts';
 import { prisma } from '../db.ts';
 import { storage } from './storage.ts';
+import { enqueue } from './outbox.ts';
 
 /**
  * У клиента есть действующие работы. Затирать данные, пока по работе идёт
@@ -118,6 +119,62 @@ export async function requestErasure(
     payload: { clientId, scope },
   });
   return request;
+}
+
+/**
+ * Запрос клиента на удаление своих персональных данных из «Настроек»
+ * (часть F, П-08, решение Р-400): требование ложится на экран «Удаление
+ * данных» руководителя, руководителям — письмо. Открытое требование одно:
+ * повторный запрос до исполнения не принимается. Исполняет руководитель
+ * (Р-195 и решения об удалении данных): договоры и платёжные документы,
+ * которые закон обязывает хранить, остаются.
+ */
+export async function requestOwnErasure(actor: Actor): Promise<Date> {
+  if (actor.role !== 'CLIENT' || actor.clientProfileId === null || actor.status !== 'ACTIVE') {
+    throw new Error('Действие не разрешено');
+  }
+  const open = await prisma.erasureRequest.findFirst({
+    where: { clientId: actor.clientProfileId, executedAt: null },
+    select: { id: true },
+  });
+  if (open !== null) throw new Error('Запрос уже отправлен: мы его рассматриваем');
+  const profile = await prisma.clientProfile.findUniqueOrThrow({
+    where: { id: actor.clientProfileId },
+    select: { fullName: true },
+  });
+  const request = await prisma.erasureRequest.create({
+    data: { clientId: actor.clientProfileId, scope: 'PERSONAL_DATA_AND_FILES' },
+    select: { id: true, requestedAt: true },
+  });
+  await record(actor, {
+    action: 'ERASURE_REQUESTED',
+    objectType: 'ErasureRequest',
+    objectId: request.id,
+    payload: { clientId: actor.clientProfileId, scope: 'PERSONAL_DATA_AND_FILES', byClient: true },
+  });
+  const heads = await prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
+  for (const head of heads) {
+    await enqueue(prisma, {
+      userId: head.id,
+      eventKind: 'CLIENT_ERASURE_REQUEST',
+      subject: 'Клиент просит удалить персональные данные',
+      body: `Клиент ${profile.fullName} запросил удаление персональных данных из личного кабинета.\nТребование — на экране «Удаление данных».`,
+      dedupKey: `erasure-request:${request.id}:${head.id}`,
+      path: '/cabinet/manage/erasure',
+    });
+  }
+  return request.requestedAt;
+}
+
+/** Открытое требование клиента об удалении — для строки «Настроек» (П-08). */
+export async function ownErasureRequest(actor: Actor): Promise<Date | null> {
+  if (actor.role !== 'CLIENT' || actor.clientProfileId === null) return null;
+  const open = await prisma.erasureRequest.findFirst({
+    where: { clientId: actor.clientProfileId, executedAt: null },
+    orderBy: { requestedAt: 'desc' },
+    select: { requestedAt: true },
+  });
+  return open?.requestedAt ?? null;
 }
 
 /**
@@ -361,7 +418,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     });
     const stages = await tx.stage.updateMany({
       where: { projectId: { in: projectIds } },
-      data: { title: ERASED, blockedReason: null, summary: null },
+      data: { title: ERASED, blockedReason: null, summary: null, outcome: null, handoverNote: null, handbackReason: null },
     });
     // Назначение транша и комментарий начисления — тоже свободный текст:
     // туда писали «оплата Ивановой за гл. 2», а комментарий начисления
@@ -424,6 +481,12 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     const comments = await tx.versionComment.updateMany({
       where: { version: { material: { projectId: { in: projectIds } } } },
       data: { body: ERASED, moderationNote: null },
+    });
+    // Причина «не публиковать» версию эксперта — свободный текст куратора
+    // о работе клиента (Т-18, решение Р-294).
+    await tx.versionModeration.updateMany({
+      where: { version: { material: { projectId: { in: projectIds } } } },
+      data: { note: null },
     });
 
     // Содержимое событий: в нём лежат прежние и новые значения полей,

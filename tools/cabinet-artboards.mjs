@@ -58,7 +58,7 @@ const BOARDS = [
   { file: '04-stage', role: 'client', path: '__stage__', title: 'Этап и материалы', about: 'Версии с автором, датой и размером; опубликованные комментарии; согласование этапа клиентом.' },
   { file: '05-materials', role: 'client', path: '__materials__', title: 'Материалы работы', about: 'Все материалы работы в одном перечне, включая не привязанные к этапу: версии с автором, размером и датой. Закрывающие документы сюда не попадают — их место на экране оплат.' },
   { file: '06-messages', role: 'client', path: '__messages__', title: 'Переписка', about: 'Единственный канал — с менеджером. Сообщение с телефоном помечено детектором, но не заблокировано.' },
-  { file: '07-payments', role: 'client', path: '__payments__', title: 'Счета и документы', about: 'Договор, транши с состоянием оплаты, документы. Начислений эксперту и маржи на экране клиента нет.' },
+  { file: '07-payments', role: 'client', path: '__payments__', title: 'Счета и документы', about: 'Договор, транши с состоянием оплаты, документы. Начислений куратору и маржи на экране клиента нет.' },
   { file: '08-request', role: 'client', path: '/cabinet/request', title: 'Новая заявка', about: 'Заявка из кабинета пишется тем же маршрутом, что и заявка с сайта; состав полей заморожен журналом согласий.' },
   { file: '09-states', role: 'client', path: '/cabinet/projects/PD-0000-000', title: 'Состояния', about: 'Работа не найдена: состояние называет причину и следующий шаг, а не сообщает «здесь пусто». Тем же экраном отвечает обращение к чужому проекту — существование чужой работы не подтверждается.' },
   { file: '10-queue', role: 'manager', path: '/cabinet/manage', title: 'Очередь заявок', about: 'Модерация заявок и светофор по срокам: что сорвано, что сорвётся, где работа стоит из-за клиента.' },
@@ -306,7 +306,12 @@ async function main() {
       const page = await context.newPage();
       // Ключ гасится нажатием, а не открытием ссылки (решение Р-232).
       await page.goto(`${BASE}/cabinet/enter/${token}`, { waitUntil: 'networkidle' });
-      await Promise.all([page.waitForURL(/\/cabinet\/projects/u), page.click('button[type=submit]')]);
+      // Вход ведёт на начальный экран роли: работы или «Сегодня» и сводка
+      // (требование М-05, решение Р-305).
+      await Promise.all([
+        page.waitForURL((url) => url.pathname === '/cabinet/projects' || url.pathname === '/cabinet/manage'),
+        page.click('button[type=submit]'),
+      ]);
       contexts[role] = page;
     }
 

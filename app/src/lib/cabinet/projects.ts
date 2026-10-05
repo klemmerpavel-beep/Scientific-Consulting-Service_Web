@@ -1,13 +1,37 @@
 import { prisma } from '../db.ts';
-import { ensure, type Actor, type ProjectRef } from './access.ts';
+import { workLine } from './work-line.ts';
+import {
+  CLIENT_VISIBLE_VERSION,
+  EXPERT_ROLE_LABEL,
+  can,
+  ensure,
+  ensureWorkOpen,
+  type Actor,
+  type ExpertRoleKey,
+  type ProjectRef,
+} from './access.ts';
 import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
-import { enqueue, enqueueToLead } from './outbox.ts';
+import { enqueue, enqueueToLead, notifyCurator, notifyExpert } from './outbox.ts';
+import { assignmentLetter, unassignedLetter } from './curator-letters.ts';
+import { openAcceptCheck, openReopenCheck } from './head-checks.ts';
 import { materialKey, storage } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
 import { now } from './clock.ts';
 import { moscowToday } from './admin.ts';
-import { STAGE_TRANSITIONS } from './stage-state.ts';
+import { STAGE_TRANSITIONS, stageLabel } from './stage-state.ts';
+import { hasContacts, phoneKey } from './contacts.ts';
+import {
+  APPROVAL_DAYS_MAX,
+  APPROVAL_DAYS_MIN,
+  approvalDeadline,
+  ensureApprovalOpen,
+  formatDay,
+  holdApprovalDeadlines,
+  loadCalendar,
+  resumeApprovalDeadlines,
+  stageLink,
+} from './approval.ts';
 import {
   PROJECT_STATUS_LABEL,
   canChangeProjectStatus,
@@ -69,6 +93,34 @@ export interface ApproveLeadInput {
  * Одобрить заявку и развернуть её в проект. Заявка при этом не исчезает:
  * она получает ссылку на проект и остаётся в системе навсегда.
  */
+/**
+ * Карточка того же человека по почте или телефону заявки — живая, без
+ * учётной записи или с записью заявителя (требование М-18, решение Р-308).
+ */
+async function contactTwin(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  email: string | null,
+  phone: string | null,
+  userId: string | null,
+) {
+  const owner = { OR: [{ userId: null }, ...(userId === null ? [] : [{ userId }])] };
+  const alive = { mergedIntoId: null, erasedAt: null };
+  if (email !== null) {
+    const found = await tx.clientProfile.findFirst({
+      where: { AND: [alive, owner, { email: { equals: email, mode: 'insensitive' } }] },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (found !== null) return found;
+  }
+  const key = phoneKey(phone);
+  if (key === null) return null;
+  const rows = await tx.clientProfile.findMany({
+    where: { AND: [alive, owner, { phone: { not: null } }] },
+    orderBy: { createdAt: 'asc' },
+  });
+  return rows.find((row) => phoneKey(row.phone) === key) ?? null;
+}
+
 export async function approveLead(actor: Actor, input: ApproveLeadInput) {
   ensure(actor, 'REQUEST_MODERATE');
 
@@ -101,11 +153,27 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
   if (!serviceType.isActive) {
     throw new Error('Тип сопровождения выведен из оборота: выберите действующий');
   }
+  // Менеджера работы выбирает руководитель; одобривший менеджер ведёт её
+  // сам (требование РК-08, решение Р-344; ответ ОР-1, Р-149).
+  const managerId = actor.role === 'HEAD' ? input.managerId.trim() : actor.id;
+  if (managerId === '') throw new Error('Выберите менеджера работы');
+  // Выбранного другого сотрудника проверяем по базе; одобряющий — сам
+  // вошедший сотрудник, его запись проверена входом.
+  if (managerId !== actor.id) {
+    const manager = await prisma.user.findFirst({
+      where: { id: managerId, status: 'ACTIVE', role: { in: ['MANAGER', 'HEAD'] } },
+      select: { id: true },
+    });
+    if (manager === null) throw new Error('Менеджером работы может быть действующий менеджер или руководитель');
+  }
 
   const fullName = lead.name?.trim() || 'Клиент без имени';
   const normalized = normalizeName(fullName);
   const email = lead.contactKind === 'email' ? lead.contact.trim().toLowerCase() : null;
-  const phone = lead.contactKind === 'phone' ? lead.contact.trim() : null;
+  // Доп. телефон и организация заявки переходят в карточку клиента: прежде
+  // они оставались в заявке и терялись (требование М-18, решение Р-308).
+  const phone = lead.contactKind === 'phone' ? lead.contact.trim() : lead.phone?.trim() || null;
+  const university = lead.organization?.trim() || null;
 
   const project = await prisma.$transaction(async (tx) => {
     // Заявка захватывается первой строкой транзакции, по состоянию, а не по
@@ -116,7 +184,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
     // транзакции: второй ждёт и не находит заявку свободной.
     const claimed = await tx.lead.updateMany({
       where: { id: lead.id, projectId: null, status: { not: 'DECLINED' } },
-      data: { status: 'CONTRACTED' },
+      data: { status: 'CONTRACTED', statusChangedAt: new Date() },
     });
     if (claimed.count === 0) {
       throw new Error('Заявку уже разобрали: обновите страницу');
@@ -162,10 +230,32 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
       userId = user.id;
     }
 
-    const existing =
+    const own =
       userId === null
         ? null
         : await tx.clientProfile.findUnique({ where: { userId } });
+    // Дубль ищется и по почте и телефону карточки: заявка с адресом,
+    // совпавшим с карточкой без учётной записи (заказ вручную, перенос
+    // книги), заводила вторую карточку того же человека. Найденная карточка
+    // без записи привязывается к записи заявителя (решение Р-308).
+    const twin = own ?? (await contactTwin(tx, email, phone, userId));
+    if (twin !== null && twin.userId === null && userId !== null) {
+      await tx.clientProfile.update({ where: { id: twin.id }, data: { userId } });
+    }
+    const existing = twin;
+    if (existing !== null) {
+      // Пустые поля карточки дополняются сведениями заявки, заполненные не
+      // затираются.
+      const patch = {
+        ...(existing.email === null && email !== null ? { email } : {}),
+        ...(existing.phone === null && phone !== null ? { phone } : {}),
+        ...(existing.university === null && university !== null ? { university } : {}),
+        ...(existing.speciality === null && (lead.speciality ?? null) !== null ? { speciality: lead.speciality } : {}),
+      };
+      if (Object.keys(patch).length > 0) {
+        await tx.clientProfile.update({ where: { id: existing.id }, data: patch });
+      }
+    }
 
     const client =
       existing ??
@@ -176,7 +266,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
           normalizedName: normalized,
           email,
           phone,
-          university: null,
+          university,
           speciality: lead.speciality ?? null,
         },
       }));
@@ -190,7 +280,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
         serviceTypeId: input.serviceTypeId,
         title,
         topic: input.topic ?? lead.topic ?? null,
-        managerId: input.managerId,
+        managerId,
         dueOn: input.dueOn ?? null,
         // День начала — день одобрения по Москве. Прежде его ставил только
         // перенос книги, и работы, заведённые в кабинете, выпадали из
@@ -249,7 +339,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
         body:
           `${title}${created.topic === null ? '' : ` — ${created.topic}`}.\n` +
           (firstTime
-            ? 'Ход работы, материалы и переписка с куратором собраны в личном кабинете.\n' +
+            ? 'Ход работы, материалы и переписка с менеджером собраны в личном кабинете.\n' +
               `Откройте ${entrance} и укажите этот адрес почты — придёт ссылка для входа.\n` +
               'Пароль не нужен: вход только по ссылке на почту.'
             : `Работа добавлена в ваш личный кабинет: ${entrance}.`),
@@ -267,8 +357,22 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
     objectType: 'Lead',
     objectId: lead.id,
     projectId: project.id,
-    payload: { code: project.code },
+    payload: { code: project.code, managerId },
   });
+
+  // Работу ведёт не тот, кто одобрил, — менеджеру письмо (РК-08, Р-344).
+  if (managerId !== actor.id) {
+    const by = await prisma.user.findUniqueOrThrow({ where: { id: actor.id }, select: { fullName: true } });
+    const letter = managerAssignedLetter(project.code, project.title, `Заявку одобрил и передал вам ${by.fullName}`);
+    await enqueue(prisma, {
+      userId: managerId,
+      projectId: project.id,
+      eventKind: 'CURATOR_ASSIGNED',
+      subject: letter.subject,
+      body: letter.body,
+      dedupKey: `project:${project.id}:curator-assigned:${managerId}:approved`,
+    });
+  }
 
   await moveLeadAttachments(actor, lead.id, project.id);
 
@@ -399,7 +503,7 @@ export async function declineLead(actor: Actor, leadId: string, reason: string) 
     // Р-240).
     const claimed = await tx.lead.updateMany({
       where: { id: leadId, projectId: null, status: { not: 'DECLINED' } },
-      data: { status: 'DECLINED', declineReason: trimmed },
+      data: { status: 'DECLINED', declineReason: trimmed, statusChangedAt: new Date() },
     });
     if (claimed.count === 0) {
       throw new Error('Заявку уже разобрали: обновите страницу');
@@ -440,10 +544,25 @@ export async function projectRef(projectId: string): Promise<ProjectRef | null> 
   });
 }
 
-export async function assignExpert(actor: Actor, projectId: string, expertId: string | null) {
+export async function assignExpert(
+  actor: Actor,
+  projectId: string,
+  expertId: string | null,
+  role?: ExpertRoleKey | null,
+) {
   const ref = await projectRef(projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PROJECT_ASSIGN_EXPERT', ref);
+  const current = await prisma.project.findUniqueOrThrow({
+    where: { id: projectId },
+    select: { status: true, expertRole: true },
+  });
+  // Исполнитель закрытой работы не меняется (М-10, решение Р-293).
+  ensureWorkOpen(current.status);
+  // Роль эксперта в работе — из закрытого перечня; по умолчанию первая
+  // (требование Т-11, О-10, решение Р-297).
+  if (role != null && !Object.hasOwn(EXPERT_ROLE_LABEL, role)) throw new Error('Неизвестная роль куратора');
+  const nextRole = expertId === null ? null : (role ?? current.expertRole ?? 'SUBJECT_EXPERT');
 
   // Экспертом работы может быть только действующий эксперт. Прежде в поле
   // ложился любой идентификатор формы: клиент или сотрудник становился
@@ -454,18 +573,35 @@ export async function assignExpert(actor: Actor, projectId: string, expertId: st
       where: { id: expertId, status: 'ACTIVE', role: 'EXPERT' },
       select: { id: true },
     });
-    if (target === null) throw new Error('Экспертом может быть только действующий эксперт');
+    if (target === null) throw new Error('Куратором может быть только действующий сотрудник с ролью куратора');
   }
   // Повторное назначение того же эксперта ничего не меняет и в ленту
-  // клиента и журнал не пишется.
+  // клиента и журнал не пишется; смена одной роли — правка без события.
   if (expertId === ref.expertId) {
-    return prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+    if (nextRole === current.expertRole) {
+      return prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+    }
+    const updated = await prisma.project.update({ where: { id: projectId }, data: { expertRole: nextRole } });
+    await record(actor, {
+      action: 'PROJECT_EDITED',
+      objectType: 'Project',
+      objectId: projectId,
+      projectId,
+      payload: { expertRoleFrom: current.expertRole, expertRoleTo: nextRole },
+    });
+    return updated;
   }
 
   const project = await prisma.$transaction(async (tx) => {
     const updated = await tx.project.update({
       where: { id: projectId },
-      data: { expertId },
+      data: { expertId, expertRole: nextRole },
+    });
+    // Новый куратор начинает со своего хода: сдача прежнего куратора гаснет
+    // (требование Э-05, решение Д-6 плана куратора).
+    await tx.stage.updateMany({
+      where: { projectId, handedOverAt: { not: null } },
+      data: { handedOverAt: null },
     });
     await tx.projectEvent.create({
       data: {
@@ -485,6 +621,92 @@ export async function assignExpert(actor: Actor, projectId: string, expertId: st
     projectId,
     payload: { from: ref.expertId, to: expertId },
   });
+
+  // Куратор узнаёт о назначении письмом: тип сопровождения, срок и
+  // менеджер, с договором поручения — ещё название и тема. Без договора —
+  // без названия и темы, и кнопка ведёт на перечень, где сказано, когда
+  // откроется доступ (требование Э-03, ответ ОЭ-5; Р-237, Р-301). Данных
+  // клиента в письме нет.
+  if (expertId !== null) {
+    const assigned = await prisma.user.findUnique({
+      where: { id: expertId },
+      select: { expertProfile: { select: { ndaSignedAt: true } } },
+    });
+    const signed = (assigned?.expertProfile?.ndaSignedAt ?? null) !== null;
+    const work = await prisma.project.findUniqueOrThrow({
+      where: { id: projectId },
+      select: {
+        code: true,
+        title: true,
+        topic: true,
+        dueOn: true,
+        serviceType: { select: { name: true } },
+        manager: { select: { fullName: true } },
+      },
+    });
+    const letter = assignmentLetter(
+      {
+        code: work.code,
+        title: work.title,
+        topic: work.topic,
+        serviceType: work.serviceType.name,
+        dueOn: work.dueOn,
+        manager: work.manager.fullName,
+      },
+      signed,
+    );
+    await enqueue(prisma, {
+      userId: expertId,
+      projectId,
+      eventKind: 'WORK_ASSIGNED',
+      subject: letter.subject,
+      body: letter.body,
+      dedupKey: `project:${projectId}:expert-assigned:${expertId}:${Date.now()}`,
+      path: signed ? `/cabinet/projects/${work.code}` : '/cabinet/projects',
+    });
+  }
+
+  // Прежнему куратору — что работа ему больше не принадлежит. Событие
+  // нейтральное и уходит без договора поручения: без названия работы
+  // (требование Э-09, решение Р-328; Р-237).
+  if (ref.expertId !== null) {
+    const letter = unassignedLetter(project.code, expertId !== null);
+    await enqueue(prisma, {
+      userId: ref.expertId,
+      projectId,
+      eventKind: 'WORK_UNASSIGNED',
+      subject: letter.subject,
+      body: letter.body,
+      dedupKey: `project:${projectId}:expert-unassigned:${ref.expertId}:${Date.now()}`,
+      path: '/cabinet/projects',
+    });
+  }
+
+  // Эксперт без договора поручения материалов не увидит: руководитель
+  // получает вопрос сам, а не узнаёт о нём от куратора (требование М-16,
+  // ОМ-25, решение Р-298). Назначил руководитель — он и так знает.
+  if (expertId !== null && actor.role === 'MANAGER') {
+    const expert = await prisma.user.findUnique({
+      where: { id: expertId },
+      select: { fullName: true, expertProfile: { select: { ndaSignedAt: true } } },
+    });
+    if (expert !== null && (expert.expertProfile?.ndaSignedAt ?? null) === null) {
+      const heads = await prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
+      for (const head of heads) {
+        await enqueue(prisma, {
+          userId: head.id,
+          projectId,
+          eventKind: 'NDA_NEEDED',
+          subject: `Нужен договор поручения: ${expert.fullName}, работа ${project.code}`,
+          body:
+            `Менеджер назначил куратора ${expert.fullName} на работу ${project.code} — ${project.title}.\n` +
+            'Договора поручения обработки персональных данных с ним нет: материалы клиента ему закрыты.\n' +
+            'Отметить договор можно в «Учётных записях».',
+          dedupKey: `nda-needed:${projectId}:${expertId}:${head.id}`,
+        });
+      }
+    }
+  }
   return project;
 }
 
@@ -496,24 +718,179 @@ export async function assignExpert(actor: Actor, projectId: string, expertId: st
  * передаёт её другому — клиент видит смену в ленте событий, потому что
  * меняется тот, кому он пишет.
  */
-export async function assignManager(actor: Actor, projectId: string, managerId: string) {
+/** Предел длины причины передачи работы. */
+export const TRANSFER_REASON_MAX = 1000;
+
+/**
+ * Письмо менеджеру, которому передана работа: при передаче, при одобрении
+ * заявки и в ручном заказе с другим менеджером (требование РК-08, решение
+ * Р-344). Перечень у менеджера — «Мои работы» (М-05).
+ */
+export function managerAssignedLetter(code: string, title: string, by: string): { subject: string; body: string } {
+  return {
+    subject: `Вам передана работа ${code}`,
+    body: `${code} — ${title}.\n${by}; работа уже в ваших «Моих работах».`,
+  };
+}
+
+/**
+ * Передать все действующие работы одного менеджера другому — при уходе
+ * или отпуске (улучшение УР-07, решение Р-397). Только руководитель; одна
+ * причина на все работы; каждая работа передаётся тем же путём, что по
+ * одной (`assignManager`, РК-08): событие, письма, журнал. Работы
+ * передаются по очереди; отказ на одной не отменяет уже переданные —
+ * возвращается число переданных и первая причина отказа.
+ */
+export async function transferAllWorks(
+  actor: Actor,
+  fromManagerId: string,
+  toManagerId: string,
+  reasonRaw: string,
+): Promise<{ moved: number; failed: string | null }> {
+  if (actor.role !== 'HEAD') throw new Error('Передать работы менеджера может только руководитель');
+  if (fromManagerId === toManagerId) throw new Error('Работы передаются другому менеджеру');
+  if (reasonRaw.trim() === '') throw new Error('Укажите причину передачи: она останется в истории каждой работы');
+  const works = await prisma.project.findMany({
+    where: { managerId: fromManagerId, status: { in: ['ACTIVE', 'PAUSED'] } },
+    orderBy: { code: 'asc' },
+    select: { id: true, code: true },
+  });
+  let moved = 0;
+  for (const work of works) {
+    try {
+      await assignManager(actor, work.id, toManagerId, reasonRaw);
+      moved += 1;
+    } catch (error) {
+      return { moved, failed: `${work.code}: ${error instanceof Error ? error.message : 'не передана'}` };
+    }
+  }
+  return { moved, failed: null };
+}
+
+/**
+ * Передать работу другому менеджеру (требование РК-08, решение Р-344).
+ *
+ * Причина обязательна: она стоит в истории для практики — «Работу передал
+ * {кто} менеджеру {ФИО}: {причина}»; клиенту — строка «Сменился менеджер
+ * работы» без имён и причины (ОЭ-3б). Уведомления — четырём адресатам:
+ * новому менеджеру, прежнему, куратору и клиенту (Т-21). Закрытую работу
+ * передавать можно (ОМ-20): её ведут до последнего письма.
+ */
+export async function assignManager(actor: Actor, projectId: string, managerId: string, reasonRaw = '') {
   const ref = await projectRef(projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PROJECT_SET_MANAGER', ref);
 
-  // Куратором может быть только действующий сотрудник практики: иначе
+  // Менеджером может быть только действующий сотрудник практики: иначе
   // работа ушла бы к клиенту или к приостановленной учётной записи.
   const target = await prisma.user.findFirst({
     where: { id: managerId, status: 'ACTIVE', role: { in: ['MANAGER', 'HEAD'] } },
-    select: { id: true },
+    select: { id: true, fullName: true },
   });
-  if (target === null) throw new Error('Куратором может быть менеджер или руководитель');
+  if (target === null) throw new Error('Менеджером работы может быть менеджер или руководитель');
+  if (managerId === ref.managerId) {
+    return prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+  }
+  const reason = reasonRaw.replace(/\s+/gu, ' ').trim();
+  if (reason.length === 0) throw new Error('Укажите причину передачи: она останется в истории работы');
+  if (reason.length > TRANSFER_REASON_MAX) {
+    throw new Error(`Причина передачи — не длиннее ${TRANSFER_REASON_MAX} знаков`);
+  }
+  const by = await prisma.user.findUniqueOrThrow({ where: { id: actor.id }, select: { fullName: true } });
 
   const project = await prisma.$transaction(async (tx) => {
-    const updated = await tx.project.update({ where: { id: projectId }, data: { managerId } });
-    await tx.projectEvent.create({
-      data: { projectId, actorId: actor.id, kind: 'MANAGER_ASSIGNED', payload: { managerId } },
+    const updated = await tx.project.update({
+      where: { id: projectId },
+      data: { managerId },
+      include: { client: { select: { userId: true } } },
     });
+    await tx.projectEvent.create({
+      data: {
+        projectId,
+        actorId: actor.id,
+        kind: 'MANAGER_ASSIGNED',
+        payload: { managerId, from: ref.managerId, by: by.fullName, to: target.fullName, reason },
+      },
+    });
+    const stamp = Date.now();
+    // Новому менеджеру — работа стала его, а узнавал он об этом, только
+    // открыв перечень (требование М-07, решение Р-300).
+    if (managerId !== actor.id) {
+      const letter = managerAssignedLetter(updated.code, updated.title, `Работу передал ${by.fullName}: ${reason}`);
+      await enqueue(tx, {
+        userId: managerId,
+        projectId,
+        eventKind: 'CURATOR_ASSIGNED',
+        subject: letter.subject,
+        body: letter.body,
+        dedupKey: `project:${projectId}:curator-assigned:${managerId}:${stamp}`,
+      });
+    }
+    // Прежнему менеджеру — работа ушла из его перечня.
+    if (ref.managerId !== actor.id) {
+      await enqueue(tx, {
+        userId: ref.managerId,
+        projectId,
+        eventKind: 'WORK_TRANSFERRED',
+        subject: `Работа ${updated.code} передана другому менеджеру`,
+        body:
+          `${updated.code} — ${updated.title}.\n` +
+          `Работу передал ${by.fullName} менеджеру ${target.fullName}: ${reason}.\n` +
+          'В ваших «Моих работах» её больше нет.',
+        dedupKey: `project:${projectId}:transferred:${ref.managerId}:${stamp}`,
+        path: '/cabinet/projects',
+      });
+    }
+    // Другим руководителям — сигнал о передаче (требование РК-13, решение
+    // Р-347): тот, кто передал, и так знает.
+    const heads = await tx.user.findMany({
+      where: { role: 'HEAD', status: 'ACTIVE', id: { notIn: [actor.id, managerId, ref.managerId] } },
+      select: { id: true },
+    });
+    for (const head of heads) {
+      await enqueue(tx, {
+        userId: head.id,
+        projectId,
+        eventKind: 'WORK_TRANSFERRED',
+        subject: `Работа ${updated.code} передана другому менеджеру`,
+        body: `${updated.code} — ${updated.title}.\nРаботу передал ${by.fullName} менеджеру ${target.fullName}: ${reason}.`,
+        dedupKey: `project:${projectId}:transferred:${head.id}:${stamp}`,
+      });
+    }
+    // Куратору — с кем теперь работать: имя менеджера ему известно и
+    // прежде (С-4). Без договора поручения — без названия работы (Р-237).
+    if (updated.expertId !== null) {
+      const curator = await tx.user.findUnique({
+        where: { id: updated.expertId },
+        select: { expertProfile: { select: { ndaSignedAt: true } } },
+      });
+      const signed = (curator?.expertProfile?.ndaSignedAt ?? null) !== null;
+      await enqueue(tx, {
+        userId: updated.expertId,
+        projectId,
+        eventKind: 'MANAGER_CHANGED',
+        subject: `Сменился менеджер работы ${updated.code}`,
+        body:
+          `${signed ? `${updated.code} — ${updated.title}` : `Работа ${updated.code}`}.\n` +
+          `Работу теперь ведёт менеджер ${target.fullName}: сдача этапов и вопросы — ему.`,
+        dedupKey: `project:${projectId}:manager-changed:${updated.expertId}:${stamp}`,
+        path: signed ? `/cabinet/projects/${updated.code}` : '/cabinet/projects',
+      });
+    }
+    // Клиент узнаёт, что сменился его собеседник (требование Т-21, решение
+    // Р-299). Ни имён, ни причины клиент не видит (Э-01, ответ ОЭ-3б).
+    if (updated.client.userId !== null) {
+      await enqueue(tx, {
+        userId: updated.client.userId,
+        projectId,
+        eventKind: 'CURATOR_CHANGED',
+        subject: `Сменился менеджер работы «${updated.title}»`,
+        body:
+          `${workLine(updated, true)}\n` +
+          'Сменился менеджер работы. Писать ему можно в переписке по работе в личном кабинете.',
+        dedupKey: `project:${projectId}:curator:${managerId}:${stamp}`,
+      });
+    }
     return updated;
   });
 
@@ -522,7 +899,7 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
     objectType: 'Project',
     objectId: projectId,
     projectId,
-    payload: { from: ref.managerId, to: managerId },
+    payload: { from: ref.managerId, to: managerId, reason },
   });
   return project;
 }
@@ -575,6 +952,263 @@ export async function addStage(actor: Actor, input: AddStageInput) {
   return stage;
 }
 
+/** План работ меняется только у действующей работы — общая проверка М-11. */
+async function planStage(actor: Actor, stageId: string, action: 'STAGE_EDIT' | 'STAGE_SET_STATE') {
+  const stage = await prisma.stage.findUnique({
+    where: { id: stageId },
+    select: { id: true, projectId: true, position: true, title: true, state: true, dueOn: true, completedAt: true },
+  });
+  if (stage === null) throw new Error('Этап не найден');
+  const ref = await projectRef(stage.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, action, ref);
+  await ensureProjectActive(ref.id);
+  return stage;
+}
+
+/**
+ * Переставить этап выше или ниже (требование М-11, решение Р-303). Две
+ * позиции меняются в одной транзакции в два шага — сначала уводятся в
+ * отрицательные, затем ставятся окончательные: иначе мешает уникальный
+ * ключ `[projectId, position]`. План, изменённый в другом окне, — отказ.
+ */
+export async function moveStage(actor: Actor, stageId: string, direction: 'up' | 'down') {
+  const stage = await planStage(actor, stageId, 'STAGE_EDIT');
+  const target = direction === 'up' ? stage.position - 1 : stage.position + 1;
+  await prisma.$transaction(async (tx) => {
+    const neighbour = await tx.stage.findFirst({
+      where: { projectId: stage.projectId, position: target },
+      select: { id: true },
+    });
+    if (neighbour === null) {
+      throw new Error(direction === 'up' ? 'Этап и так первый' : 'Этап и так последний');
+    }
+    const first = await tx.stage.updateMany({
+      where: { id: stage.id, position: stage.position },
+      data: { position: -stage.position },
+    });
+    const second = await tx.stage.updateMany({
+      where: { id: neighbour.id, position: target },
+      data: { position: -target },
+    });
+    if (first.count === 0 || second.count === 0) throw new Error('План уже изменён: обновите страницу');
+    await tx.stage.update({ where: { id: stage.id }, data: { position: target } });
+    await tx.stage.update({ where: { id: neighbour.id }, data: { position: stage.position } });
+    await tx.projectEvent.create({
+      data: {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        kind: 'PLAN_CHANGED',
+        payload: { action: 'moved', stageId: stage.id, title: stage.title, from: stage.position, to: target },
+      },
+    });
+  });
+  await record(actor, {
+    action: 'PLAN_CHANGED',
+    objectType: 'Stage',
+    objectId: stage.id,
+    projectId: stage.projectId,
+    payload: { moved: { from: stage.position, to: target } },
+  });
+}
+
+/**
+ * Удалить этап, который не начат, без материалов (в том числе удалённых)
+ * и без начислений (требование М-11, решение Р-303). Позиции следующих
+ * этапов уплотняются.
+ */
+export async function removeStage(actor: Actor, stageId: string) {
+  const stage = await planStage(actor, stageId, 'STAGE_EDIT');
+  if (stage.state !== 'NOT_STARTED') throw new Error('Удалить можно только не начатый этап');
+  const [materials, payouts] = await Promise.all([
+    prisma.material.count({ where: { stageId } }),
+    prisma.expertPayout.count({ where: { stageId } }),
+  ]);
+  if (materials > 0) throw new Error('У этапа есть материалы: удалить его нельзя');
+  if (payouts > 0) throw new Error('По этапу есть начисления куратору: удалить его нельзя');
+  await prisma.$transaction(async (tx) => {
+    const removed = await tx.stage.deleteMany({ where: { id: stageId, state: 'NOT_STARTED' } });
+    if (removed.count === 0) throw new Error('План уже изменён: обновите страницу');
+    const later = await tx.stage.findMany({
+      where: { projectId: stage.projectId, position: { gt: stage.position } },
+      orderBy: { position: 'asc' },
+      select: { id: true, position: true },
+    });
+    for (const row of later) {
+      await tx.stage.update({ where: { id: row.id }, data: { position: row.position - 1 } });
+    }
+    await tx.projectEvent.create({
+      data: {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        kind: 'PLAN_CHANGED',
+        payload: { action: 'removed', title: stage.title, position: stage.position },
+      },
+    });
+  });
+  await record(actor, {
+    action: 'PLAN_CHANGED',
+    objectType: 'Stage',
+    objectId: stageId,
+    projectId: stage.projectId,
+    payload: { removed: stage.position },
+  });
+}
+
+/**
+ * Завести план по шаблону типа сопровождения прямо на карточке, пока
+ * этапов нет (требование М-11, решение Р-303). Прежде шаблон применялся
+ * только при одобрении заявки.
+ */
+export async function applyStageTemplate(actor: Actor, projectId: string) {
+  const ref = await projectRef(projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'STAGE_EDIT', ref);
+  await ensureProjectActive(ref.id);
+  const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { serviceTypeId: true } });
+  const template = await prisma.stageTemplate.findMany({
+    where: { serviceTypeId: project.serviceTypeId, isActive: true },
+    orderBy: { position: 'asc' },
+  });
+  if (template.length === 0) throw new Error('У типа сопровождения нет шаблона этапов');
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.stage.count({ where: { projectId } });
+    if (existing > 0) throw new Error('План уже заведён: шаблон применяется только к пустому плану');
+    await tx.stage.createMany({ data: templateStages(projectId, template, now()) });
+    await tx.projectEvent.create({
+      data: { projectId, actorId: actor.id, kind: 'PLAN_CHANGED', payload: { action: 'template', count: template.length } },
+    });
+  });
+  await record(actor, {
+    action: 'PLAN_CHANGED',
+    objectType: 'Project',
+    objectId: projectId,
+    projectId,
+    payload: { template: template.length },
+  });
+}
+
+/** Сколько этапов в шаблоне типа работы — для кнопки на карточке (Р-303). */
+export async function templateLength(actor: Actor, projectId: string): Promise<number> {
+  const ref = await projectRef(projectId);
+  if (ref === null || !can(actor, 'STAGE_EDIT', ref)) return 0;
+  const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { serviceTypeId: true } });
+  return prisma.stageTemplate.count({ where: { serviceTypeId: project.serviceTypeId, isActive: true } });
+}
+
+/** Акты и оплаченные транши работы — предупреждение перед возвратом этапа (ОМ-21). */
+export async function stagePaperwork(actor: Actor, projectId: string): Promise<{ acts: number; paid: number }> {
+  const ref = await projectRef(projectId);
+  if (ref === null) return { acts: 0, paid: 0 };
+  ensure(actor, 'STAGE_SET_STATE', ref);
+  const [acts, paid] = await Promise.all([
+    prisma.material.count({ where: { projectId, kind: 'ACT', deletedAt: null } }),
+    prisma.tranche.count({ where: { contract: { projectId }, status: 'PAID' } }),
+  ]);
+  return { acts, paid };
+}
+
+/**
+ * Вернуть завершённый этап в работу — с причиной (требование М-11,
+ * решение Р-303). Приёмку этапа, в том числе по п. 7.3 оферты, возврат не
+ * отменяет: история хранит обе записи, а при новой сдаче срок согласования
+ * идёт заново. Клиенту и руководителю — письма.
+ */
+export async function reopenStage(
+  actor: Actor,
+  input: { readonly stageId: string; readonly reason: string; readonly dueOn?: Date | null },
+) {
+  const stage = await planStage(actor, input.stageId, 'STAGE_SET_STATE');
+  if (stage.state !== 'DONE') throw new Error('Вернуть в работу можно только завершённый этап');
+  const why = input.reason.trim();
+  if (why === '') throw new Error('Вернуть этап в работу можно только с причиной: её получит клиент');
+  if (why.length > 2000) throw new Error('Причина — не длиннее 2000 знаков');
+
+  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.stage.updateMany({
+      where: { id: stage.id, state: 'DONE' },
+      data: {
+        state: 'IN_PROGRESS',
+        completedAt: null,
+        approvalSentAt: null,
+        approvalDueOn: null,
+        approvalDaysLeft: null,
+        ...(input.dueOn == null ? {} : { dueOn: input.dueOn }),
+      },
+    });
+    if (claimed.count === 0) throw new Error('Этап уже переведён другим действием: обновите страницу');
+    await tx.stageStateChange.create({
+      data: { stageId: stage.id, fromState: 'DONE', toState: 'IN_PROGRESS', actorId: actor.id, reason: why },
+    });
+    await tx.projectEvent.create({
+      data: {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        kind: 'STAGE_STATE_CHANGED',
+        payload: { stageId: stage.id, position: stage.position, from: 'DONE', to: 'IN_PROGRESS', reason: why },
+      },
+    });
+    const project = await tx.project.findUniqueOrThrow({
+      where: { id: stage.projectId },
+      select: { code: true, title: true, client: { select: { userId: true } } },
+    });
+    const body =
+      `${workLine(project, true)}\n` +
+      `Этап «${stage.title}» снова в работе.\nПричина: ${why}\n${stageLink(stage.id)}`;
+    // Руководителю — дело «проверьте акт и транш» (РК-12, Р-338).
+    await openReopenCheck(tx, stage.id, stage.projectId);
+    // Куратору — ход за ним: этап снова «В работе» (Э-09, Р-328). Причина
+    // написана клиенту и в письмо куратору не идёт.
+    await notifyExpert(tx, {
+      projectId: stage.projectId,
+      actorId: actor.id,
+      eventKind: 'CURATOR_TURN',
+      letter: (work) => ({
+        subject: `Ход за вами: этап «${stage.title}»`,
+        body:
+          `Работа ${work.code}.\n` +
+          `Завершённый этап «${stage.title}» возвращён в работу. Задание и срок — в блоке «Что сделать сейчас» на экране этапа.\n` +
+          stageLink(stage.id),
+      }),
+      key: `stage:${stage.id}:reopened-turn:${Date.now()}`,
+      path: `/cabinet/stages/${stage.id}`,
+    });
+    if (project.client.userId !== null) {
+      await enqueue(tx, {
+        userId: project.client.userId,
+        projectId: stage.projectId,
+        eventKind: 'STAGE_REOPENED',
+        subject: `Этап «${stage.title}» возвращён в работу`,
+        body,
+        dedupKey: `stage:${stage.id}:reopened:${Date.now()}`,
+        path: `/cabinet/stages/${stage.id}`,
+      });
+    }
+    const heads = await tx.user.findMany({
+      where: { role: 'HEAD', status: 'ACTIVE', id: { not: actor.id } },
+      select: { id: true },
+    });
+    for (const head of heads) {
+      await enqueue(tx, {
+        userId: head.id,
+        projectId: stage.projectId,
+        eventKind: 'STAGE_REOPENED',
+        subject: `Этап «${stage.title}» возвращён в работу: ${project.code}`,
+        body,
+        dedupKey: `stage:${stage.id}:reopened:${head.id}:${Date.now()}`,
+        path: `/cabinet/stages/${stage.id}`,
+      });
+    }
+  });
+  await record(actor, {
+    action: 'STAGE_REOPENED',
+    objectType: 'Stage',
+    objectId: stage.id,
+    projectId: stage.projectId,
+    payload: { from: 'DONE', to: 'IN_PROGRESS', ...dueChange(stage.dueOn, input.dueOn ?? stage.dueOn) },
+  });
+}
+
 /**
  * Правка этапа менеджером: название, суть выполнения, срок.
  *
@@ -590,11 +1224,19 @@ export async function editStage(
     readonly title: string;
     readonly summary?: string | null;
     readonly dueOn?: Date | null;
+    /** Причина переноса срока: обязательна, если срок меняется (М-15). */
+    readonly reason?: string | null;
+    /**
+     * Когда этап был изменён на момент открытия формы. Правка, сделанная
+     * за это время другим человеком, не затирается (улучшение УМ-11,
+     * решение Р-360).
+     */
+    readonly updatedAt?: string | null;
   },
 ) {
   const stage = await prisma.stage.findUnique({
     where: { id: input.stageId },
-    select: { id: true, projectId: true, title: true, dueOn: true },
+    select: { id: true, projectId: true, title: true, dueOn: true, updatedAt: true },
   });
   if (stage === null) throw new Error('Этап не найден');
   const ref = await projectRef(stage.projectId);
@@ -604,10 +1246,24 @@ export async function editStage(
 
   const title = input.title.trim();
   if (title.length === 0) throw new Error('Этап без названия не заводится');
+  const nextDue = input.dueOn ?? null;
+  const moved = dueKey(stage.dueOn) !== dueKey(nextDue);
+  const why = (input.reason ?? '').trim();
+  if (moved) ensureDueReason(why);
 
-  const saved = await prisma.stage.update({
-    where: { id: stage.id },
-    data: { title, summary: input.summary?.trim() || null, dueOn: input.dueOn ?? null },
+  const seen = input.updatedAt ? new Date(input.updatedAt) : null;
+  if (seen !== null && Number.isNaN(seen.getTime())) throw new Error('Форма этапа устарела: обновите страницу');
+
+  const saved = await prisma.$transaction(async (tx) => {
+    // Запись захватывает этап по отметке прочитанной правки, как перенос
+    // срока (Р-302): вторая из двух одновременных правок не проходит.
+    const claimed = await tx.stage.updateMany({
+      where: { id: stage.id, ...(seen === null ? {} : { updatedAt: seen }) },
+      data: { title, summary: input.summary?.trim() || null, dueOn: nextDue },
+    });
+    if (claimed.count === 0) throw new Error('Этап уже изменён другим действием: обновите страницу');
+    if (moved) await announceDueChange(tx, actor, stage.id, stage.dueOn, nextDue, why);
+    return tx.stage.findUniqueOrThrow({ where: { id: stage.id } });
   });
   await record(actor, {
     action: 'STAGE_EDITED',
@@ -625,6 +1281,184 @@ export async function editStage(
   return saved;
 }
 
+/** День срока строкой — для сравнения и записи в историю. */
+function dueKey(value: Date | null): string | null {
+  return value?.toISOString().slice(0, 10) ?? null;
+}
+
+/** Причина переноса срока: её читает клиент (требование М-15, Р-302). */
+/**
+ * Перенос срока работы: событие в историю и письма клиенту и куратору с
+ * причиной — как перенос срока этапа (улучшение УМ-12, решение Р-391).
+ * Куратору — без названия и темы работы до договора поручения не пишется.
+ */
+async function announceWorkDueChange(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  actor: Actor,
+  projectId: string,
+  from: Date | null,
+  to: Date | null,
+  reason: string,
+): Promise<void> {
+  const project = await tx.project.findUniqueOrThrow({
+    where: { id: projectId },
+    select: {
+      code: true,
+      title: true,
+      client: { select: { userId: true } },
+      expert: { select: { id: true, status: true, expertProfile: { select: { ndaSignedAt: true } } } },
+    },
+  });
+  await tx.projectEvent.create({
+    data: { projectId, actorId: actor.id, kind: 'PROJECT_DUE_CHANGED', payload: { dueFrom: dueKey(from), dueTo: dueKey(to), reason } },
+  });
+  const line = to === null ? 'Срок работы снят.' : `Новый срок работы — ${formatDay(to)}.`;
+  const stamp = `${dueKey(to) ?? 'none'}:${Date.now()}`;
+  if (project.client.userId !== null) {
+    await enqueue(tx, {
+      userId: project.client.userId,
+      projectId,
+      eventKind: 'PROJECT_DUE_CHANGED',
+      subject: `Срок работы «${project.title}» изменён`,
+      body: `${workLine(project, true)}\n${line}\nПричина: ${reason}\nОткрыть работу можно в личном кабинете.`,
+      dedupKey: `project:${projectId}:due-changed:${stamp}`,
+      path: `/cabinet/projects/${project.code}`,
+    });
+  }
+  const expert = project.expert;
+  if (expert !== null && expert.status === 'ACTIVE' && (expert.expertProfile?.ndaSignedAt ?? null) !== null) {
+    await enqueue(tx, {
+      userId: expert.id,
+      projectId,
+      eventKind: 'PROJECT_DUE_CHANGED',
+      subject: `Срок работы ${project.code} изменён`,
+      body: `${workLine(project, false)}\n${line}\nПричина: ${reason}`,
+      dedupKey: `project:${projectId}:due-changed-expert:${stamp}`,
+      path: `/cabinet/projects/${project.code}`,
+    });
+  }
+}
+
+function ensureDueReason(reason: string): void {
+  if (reason === '') {
+    throw new Error('Срок этапа переносится с причиной: её получит клиент — без неё перенос читается как срыв');
+  }
+  if (reason.length > 1000) throw new Error('Причина переноса — не длиннее 1000 знаков');
+}
+
+/**
+ * Перенос срока этапа: событие в историю работы и письма (требование
+ * М-15, решение Р-302). Клиенту — если срок был и сменился, с причиной;
+ * эксперту — если этап в работе (ОМ-19). Причина хранится в данных
+ * события и затирается обезличиванием (Р-234).
+ */
+async function announceDueChange(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  actor: Actor,
+  stageId: string,
+  from: Date | null,
+  to: Date | null,
+  reason: string,
+): Promise<void> {
+  const stage = await tx.stage.findUniqueOrThrow({
+    where: { id: stageId },
+    select: {
+      title: true,
+      state: true,
+      project: {
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          client: { select: { userId: true } },
+          expert: { select: { id: true, status: true, expertProfile: { select: { ndaSignedAt: true } } } },
+        },
+      },
+    },
+  });
+  const project = stage.project;
+  await tx.projectEvent.create({
+    data: {
+      projectId: project.id,
+      actorId: actor.id,
+      kind: 'STAGE_DUE_CHANGED',
+      payload: { stageId, dueFrom: dueKey(from), dueTo: dueKey(to), reason },
+    },
+  });
+  const line = to === null ? 'Срок этапа снят.' : `Новый срок — ${formatDay(to)}.`;
+  if (from !== null && project.client.userId !== null) {
+    await enqueue(tx, {
+      userId: project.client.userId,
+      projectId: project.id,
+      eventKind: 'STAGE_DUE_CHANGED',
+      subject: `Срок этапа «${stage.title}» изменён`,
+      body: `${workLine(project, true)}\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
+      dedupKey: `stage:${stageId}:due-changed:${dueKey(to) ?? 'none'}:${Date.now()}`,
+      path: `/cabinet/stages/${stageId}`,
+    });
+  }
+  const expert = project.expert;
+  if (
+    stage.state === 'IN_PROGRESS' &&
+    expert !== null &&
+    expert.status === 'ACTIVE' &&
+    (expert.expertProfile?.ndaSignedAt ?? null) !== null
+  ) {
+    await enqueue(tx, {
+      userId: expert.id,
+      projectId: project.id,
+      eventKind: 'STAGE_DUE_CHANGED',
+      subject: `Срок этапа «${stage.title}» изменён`,
+      body: `Работа ${project.code}.\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
+      dedupKey: `stage:${stageId}:due-changed-expert:${dueKey(to) ?? 'none'}:${Date.now()}`,
+      path: `/cabinet/stages/${stageId}`,
+    });
+  }
+}
+
+/**
+ * Перенести срок этапа с экрана этапа: меняется только срок, с причиной
+ * (требование М-15, решение Р-302). Прежде форма слала скрытые название
+ * и суть этапа, и правка, сделанная в другом окне, откатывалась.
+ */
+export async function rescheduleStage(
+  actor: Actor,
+  input: { readonly stageId: string; readonly dueOn: Date | null; readonly reason: string },
+) {
+  const stage = await prisma.stage.findUnique({
+    where: { id: input.stageId },
+    select: { id: true, projectId: true, dueOn: true },
+  });
+  if (stage === null) throw new Error('Этап не найден');
+  const ref = await projectRef(stage.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'STAGE_EDIT', ref);
+  await ensureProjectActive(ref.id);
+  if (input.dueOn === null) throw new Error('Укажите новый срок этапа');
+  if (dueKey(stage.dueOn) === dueKey(input.dueOn)) throw new Error('Новый срок совпадает с прежним');
+  const why = input.reason.trim();
+  ensureDueReason(why);
+
+  const saved = await prisma.$transaction(async (tx) => {
+    const claimed = await tx.stage.updateMany({
+      where: { id: stage.id, dueOn: stage.dueOn },
+      data: { dueOn: input.dueOn },
+    });
+    if (claimed.count === 0) throw new Error('Срок этапа уже изменён другим действием: обновите страницу');
+    await announceDueChange(tx, actor, stage.id, stage.dueOn, input.dueOn, why);
+    return tx.stage.findUniqueOrThrow({ where: { id: stage.id } });
+  });
+  // В журнал — даты без текста причины (решения Р-234, Р-239).
+  await record(actor, {
+    action: 'STAGE_EDITED',
+    objectType: 'Stage',
+    objectId: stage.id,
+    projectId: stage.projectId,
+    payload: dueChange(stage.dueOn, saved.dueOn),
+  });
+  return saved;
+}
+
 /**
  * Правка карточки работы менеджером: название, тема, короткое описание,
  * срок. Прежде карточка заполнялась один раз при одобрении заявки и
@@ -638,6 +1472,13 @@ export async function editProject(
     readonly topic?: string | null;
     readonly summary?: string | null;
     readonly dueOn?: Date | null;
+    /** Срок согласования этапа, рабочих дней; не передан — не меняется. */
+    readonly approvalDays?: number;
+    /**
+     * Причина смены срока работы: обязательна, если срок уже был и
+     * меняется или снимается (улучшение УМ-12, решение Р-391).
+     */
+    readonly reason?: string | null;
   },
 ) {
   const ref = await projectRef(input.projectId);
@@ -646,29 +1487,97 @@ export async function editProject(
 
   const title = input.title.trim();
   if (title.length === 0) throw new Error('Работа без названия не заводится');
+  // Пределы — по образцу Р-242: без них длинный текст молча ложился в базу,
+  // а отказ формы не мог вернуть его в поле (решение Р-279).
+  if (title.length > 300) throw new Error('Название работы — не длиннее 300 знаков');
+  if ((input.topic ?? '').trim().length > 500) throw new Error('Тема — не длиннее 500 знаков');
+  if ((input.summary ?? '').trim().length > 2000) {
+    throw new Error('Короткое описание задачи — не длиннее 2000 знаков');
+  }
+  // Меньше пяти рабочих дней не принимается — п. 7.2 оферты; новое число
+  // действует со следующей сдачи этапа (Т-15, решение Р-290).
+  if (
+    input.approvalDays !== undefined &&
+    (!Number.isInteger(input.approvalDays) ||
+      input.approvalDays < APPROVAL_DAYS_MIN ||
+      input.approvalDays > APPROVAL_DAYS_MAX)
+  ) {
+    throw new Error(
+      `Срок согласования — от ${APPROVAL_DAYS_MIN} до ${APPROVAL_DAYS_MAX} рабочих дней: меньше пяти не допускает п. 7.2 оферты`,
+    );
+  }
 
   const before = await prisma.project.findUniqueOrThrow({
     where: { id: input.projectId },
-    select: { dueOn: true },
+    select: { dueOn: true, approvalDays: true, status: true },
   });
-  const saved = await prisma.project.update({
-    where: { id: input.projectId },
-    data: {
-      title,
-      topic: input.topic?.trim() || null,
-      summary: input.summary?.trim() || null,
-      dueOn: input.dueOn ?? null,
-    },
+  // Карточка закрытой работы не правится (М-10, решение Р-293).
+  ensureWorkOpen(before.status);
+  // Срок работы, который уже был, меняется с причиной — как срок этапа
+  // (М-15, Р-302). Первый срок — планирование, причины не требует
+  // (улучшение УМ-12, решение Р-391).
+  const nextDue = input.dueOn ?? null;
+  const shifted = before.dueOn !== null && dueKey(before.dueOn) !== dueKey(nextDue);
+  const why = (input.reason ?? '').trim();
+  if (shifted) {
+    if (why === '') throw new Error('Срок работы переносится с причиной: её получит клиент — без неё перенос читается как срыв');
+    if (why.length > 1000) throw new Error('Причина переноса — не длиннее 1000 знаков');
+  }
+  const saved = await prisma.$transaction(async (tx) => {
+    const updated = await tx.project.update({
+      where: { id: input.projectId },
+      data: {
+        title,
+        topic: input.topic?.trim() || null,
+        summary: input.summary?.trim() || null,
+        dueOn: nextDue,
+        ...(input.approvalDays === undefined ? {} : { approvalDays: input.approvalDays }),
+      },
+    });
+    if (shifted) await announceWorkDueChange(tx, actor, input.projectId, before.dueOn, nextDue, why);
+    return updated;
   });
   await record(actor, {
     action: 'PROJECT_EDITED',
     objectType: 'Project',
     objectId: input.projectId,
     projectId: input.projectId,
-    payload: { title, ...dueChange(before.dueOn, saved.dueOn) },
+    payload: {
+      title,
+      ...dueChange(before.dueOn, saved.dueOn),
+      ...(before.approvalDays === saved.approvalDays
+        ? {}
+        : { approvalDaysFrom: before.approvalDays, approvalDaysTo: saved.approvalDays }),
+    },
   });
   return saved;
 }
+
+/** Письмо клиенту о смене состояния работы (требование Т-21, решение Р-299). */
+const STATUS_LETTER: Record<ProjectStatusKey, (title: string, reason: string) => { subject: string; body: string }> = {
+  PAUSED: (title, reason) => ({ subject: `Работа «${title}» приостановлена`, body: `Причина: ${reason}` }),
+  COMPLETED: (title) => ({
+    subject: `Работа «${title}» завершена`,
+    body: 'Материалы остаются доступны в кабинете.',
+  }),
+  CANCELLED: (title, reason) => ({ subject: `Работа «${title}» отменена`, body: `Причина: ${reason}` }),
+  ACTIVE: (title) => ({ subject: `Работа «${title}» возобновлена`, body: 'Работа снова идёт.' }),
+};
+
+/** Письмо куратору о смене состояния работы (требование Э-09, решение Р-328). */
+const EXPERT_STATUS_PHRASE: Record<ProjectStatusKey, string> = {
+  ACTIVE: 'возобновлена',
+  PAUSED: 'приостановлена',
+  COMPLETED: 'завершена',
+  CANCELLED: 'отменена',
+};
+
+const EXPERT_STATUS_NOTE: Record<ProjectStatusKey, string> = {
+  ACTIVE: 'Задания этапов — на карточке работы.',
+  PAUSED: 'Материалы по-прежнему можно прикладывать; о сроках этапов кабинет не напоминает.',
+  COMPLETED: 'Материалы остаются доступны для чтения.',
+  CANCELLED: 'Материалы остаются доступны для чтения.',
+};
 
 /**
  * Сменить состояние работы: приостановить, завершить, отменить, вернуть в
@@ -680,7 +1589,12 @@ export async function editProject(
  * попадала в «Завершённые», в отчёт о закрытых за период и в сроки
  * выполнения аналитики, а после срока висела в «Требует внимания».
  */
-export async function setProjectStatus(actor: Actor, projectId: string, to: ProjectStatusKey) {
+export async function setProjectStatus(
+  actor: Actor,
+  projectId: string,
+  to: ProjectStatusKey,
+  reason?: string | null,
+) {
   const ref = await projectRef(projectId);
   if (ref === null) throw new Error('Проект не найден');
   ensure(actor, 'PROJECT_EDIT', ref);
@@ -696,6 +1610,13 @@ export async function setProjectStatus(actor: Actor, projectId: string, to: Proj
       `Из состояния «${PROJECT_STATUS_LABEL[from]}» в «${PROJECT_STATUS_LABEL[to]}» работа не переводится`,
     );
   }
+  // Приостановка и отмена — с причиной для клиента: без неё он узнавал о
+  // них, только открыв кабинет (требования Т-21, М-09, решение Р-299).
+  const why = (reason ?? '').trim();
+  if ((to === 'PAUSED' || to === 'CANCELLED') && why === '') {
+    throw new Error('Приостановить или отменить работу можно только с причиной: её получит клиент');
+  }
+  if (why.length > 2000) throw new Error('Причина — не длиннее 2000 знаков');
 
   // Дата закрытия — день, а не мгновение: так её пишет и перенос книги.
   // День московский: по UTC работа, закрытая до трёх часов ночи, получала
@@ -711,15 +1632,61 @@ export async function setProjectStatus(actor: Actor, projectId: string, to: Proj
     // Р-251).
     const claimed = await tx.project.updateMany({
       where: { id: projectId, status: from },
-      data: { status: to, closedOn },
+      // Дата закрытия перевода — фактическая (РК-23, Р-355).
+      data: { status: to, closedOn, closedOnPlanned: false },
     });
     if (claimed.count === 0) {
       throw new Error('Состояние работы уже изменено другим действием: обновите страницу');
     }
+    // Первая дата закрытия ставится один раз (УМ-13, Р-392).
+    if (closedOn !== null) {
+      await tx.project.updateMany({ where: { id: projectId, firstClosedOn: null }, data: { firstClosedOn: closedOn } });
+    }
+    // Срок согласования стоит, пока работа не в действии: остаток рабочих
+    // дней сохраняется, а при возобновлении срок отсчитывается заново от
+    // дня возобновления (требование Т-15, решение Р-290).
+    if (from === 'ACTIVE' && to !== 'ACTIVE') await holdApprovalDeadlines(tx, projectId, new Date());
+    if (from !== 'ACTIVE' && to === 'ACTIVE') await resumeApprovalDeadlines(tx, projectId, new Date());
+    // Причина — в данных события: история работы называет её, а
+    // обезличивание затирает данные событий целиком (Р-234).
     await tx.projectEvent.create({
-      data: { projectId, actorId: actor.id, kind: 'PROJECT_STATUS_CHANGED', payload: { from, to } },
+      data: {
+        projectId,
+        actorId: actor.id,
+        kind: 'PROJECT_STATUS_CHANGED',
+        payload: { from, to, ...(why === '' ? {} : { reason: why }) },
+      },
     });
-    return tx.project.findUniqueOrThrow({ where: { id: projectId } });
+    const saved = await tx.project.findUniqueOrThrow({
+      where: { id: projectId },
+      include: { client: { select: { userId: true } } },
+    });
+    // Клиенту — письмо в той же транзакции; в мессенджер уходит только
+    // сигнал без причины (Р-187).
+    if (saved.client.userId !== null) {
+      const letter = STATUS_LETTER[to](saved.title, why);
+      await enqueue(tx, {
+        userId: saved.client.userId,
+        projectId,
+        eventKind: 'PROJECT_STATUS_CHANGED',
+        subject: letter.subject,
+        body: `${workLine(saved, true)}\n${letter.body}\nОткрыть работу можно в личном кабинете.`,
+        dedupKey: `project:${projectId}:status:${from}-${to}:${Date.now()}`,
+      });
+    }
+    // Куратору — без причины: она написана клиенту (Э-09, Р-328).
+    await notifyExpert(tx, {
+      projectId,
+      actorId: actor.id,
+      eventKind: 'PROJECT_STATUS_CHANGED',
+      letter: (work) => ({
+        subject: `Работа ${work.code} ${EXPERT_STATUS_PHRASE[to]}`,
+        body: `Работа ${work.code} — ${work.title}.\nРабота ${EXPERT_STATUS_PHRASE[to]}. ${EXPERT_STATUS_NOTE[to]}`,
+      }),
+      key: `project:${projectId}:status-expert:${from}-${to}:${Date.now()}`,
+      path: `/cabinet/projects/${saved.code}`,
+    });
+    return saved;
   });
 
   await record(actor, {
@@ -801,6 +1768,44 @@ function dueChange(from: Date | null, to: Date | null) {
   return a === b ? {} : { dueFrom: a ?? 'без срока', dueTo: b ?? 'без срока' };
 }
 
+/** Предел основания согласования за клиента (Р-292). */
+const BASIS_LIMIT = 500;
+
+/** Пометка согласования в сессии, открытой ссылкой сотрудника (ОМ-3). */
+export const STAFF_LINK_NOTE = 'Согласовано во входе по ссылке, которую выдал сотрудник';
+
+/** Предел итога этапа: письмо и карточка согласования, а не отчёт. */
+export const OUTCOME_LIMIT = 2000;
+
+/**
+ * Правка итога этапа на согласовании: куратор уточняет текст, не снимая
+ * этап с согласования (требование Т-14, решение Р-289). Только у
+ * действующей работы — как и любой перевод этапа.
+ */
+export async function editStageOutcome(actor: Actor, stageId: string, text: string) {
+  const stage = await prisma.stage.findUnique({
+    where: { id: stageId },
+    include: {
+      project: {
+        select: { id: true, clientId: true, managerId: true, expertId: true, status: true },
+      },
+    },
+  });
+  if (stage === null) throw new Error('Этап не найден');
+  ensure(actor, 'STAGE_SET_STATE', stage.project);
+  if (stage.project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
+  const outcome = text.trim();
+  if (outcome === '') throw new Error('Итог этапа не может быть пустым: клиент решает о согласовании по нему');
+  if (outcome.length > OUTCOME_LIMIT) {
+    throw new Error(`Итог этапа длиннее ${OUTCOME_LIMIT} знаков: сократите его`);
+  }
+  const saved = await prisma.stage.updateMany({
+    where: { id: stageId, state: 'IN_APPROVAL' },
+    data: { outcome },
+  });
+  if (saved.count === 0) throw new Error('Этап уже не на согласовании: обновите страницу');
+}
+
 export async function setStageState(
   actor: Actor,
   stageId: string,
@@ -811,20 +1816,61 @@ export async function setStageState(
     where: { id: stageId },
     include: {
       project: {
-        select: { id: true, clientId: true, managerId: true, expertId: true, status: true },
+        select: {
+          id: true,
+          clientId: true,
+          managerId: true,
+          expertId: true,
+          status: true,
+          approvalDays: true,
+          client: { select: { userId: true } },
+        },
       },
     },
   });
   if (stage === null) throw new Error('Этап не найден');
 
+  // Клиент согласует этап, который уже переведён (вторая вкладка, правка
+  // менеджера): причина — состояние этапа, а не права. Прежде он читал
+  // «недоступно для вашей роли» (улучшение УМ-03, решение Р-361).
+  if (actor.role === 'CLIENT' && to === 'DONE' && stage.state !== 'IN_APPROVAL' && can(actor, 'STAGE_APPROVE', stage.project)) {
+    throw new Error('Этап уже не на согласовании: обновите страницу');
+  }
   // Согласование этапа — действие клиента, остальные переходы ведёт менеджер.
   const action = stage.state === 'IN_APPROVAL' && to === 'DONE' ? 'STAGE_APPROVE' : 'STAGE_SET_STATE';
   ensure(actor, action, stage.project);
   if (stage.project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
+  // Клиент после срока при включённом автозакрытии: этап принят по п. 7.3
+  // оферты (Т-15, решение Р-290).
+  if (action === 'STAGE_APPROVE' && actor.role === 'CLIENT') ensureApprovalOpen(stage.approvalDueOn);
+  // Практика согласует за клиента только с основанием: согласование
+  // закрывает этап по оферте, и клиент видит, на каком основании это
+  // сделано от его имени (требование М-12, О-6, решение Р-292).
+  const forClient = action === 'STAGE_APPROVE' && actor.role !== 'CLIENT';
+  if (forClient && (reason ?? '').trim() === '') {
+    throw new Error(
+      'Согласовать за клиента можно только с основанием: укажите, как клиент подтвердил согласие',
+    );
+  }
+  if (forClient && (reason ?? '').trim().length > BASIS_LIMIT) {
+    throw new Error(`Основание — не длиннее ${BASIS_LIMIT} знаков`);
+  }
+  const via =
+    action !== 'STAGE_APPROVE' ? 'MANUAL' : forClient ? 'STAFF_FOR_CLIENT' : 'CLIENT_APPROVE';
 
   const from = stage.state as StageState;
+  // Завершённый этап возвращается в работу своим действием с причиной
+  // (требование М-11, решение Р-303).
+  if (from === 'DONE') {
+    throw new Error('Завершённый этап возвращается в работу отдельным действием — с причиной');
+  }
   if (!canTransition(from, to)) {
-    throw new Error(`Переход этапа из «${from}» в «${to}» не предусмотрен`);
+    // Подписи, а не имена состояний из базы: «IN_PROGRESS» человеку ничего
+    // не говорит (решение Р-279).
+    const staff = actor.role !== 'CLIENT';
+    throw new Error(
+      `Переход этапа из «${stageLabel(from, staff)}» в «${stageLabel(to, staff)}» не предусмотрен`,
+    );
   }
   if (to === 'AWAITING_CLIENT' && !(reason ?? '').trim()) {
     throw new Error(
@@ -832,27 +1878,60 @@ export async function setStageState(
         'и от неё зависит, что и когда он пришлёт',
     );
   }
+  // Без итога клиент получал письмо «посмотрите материалы» и решал о
+  // приёмке, не зная, что сделано и что будет дальше (требование Т-14,
+  // решение Р-289).
+  const outcome = (reason ?? '').trim();
+  if (to === 'IN_APPROVAL' && outcome === '') {
+    throw new Error(
+      'На согласование этап уходит с итогом: напишите, что сделано и что дальше — ' +
+        'клиент решает о согласовании по нему',
+    );
+  }
+  if (to === 'IN_APPROVAL' && outcome.length > OUTCOME_LIMIT) {
+    throw new Error(`Итог этапа длиннее ${OUTCOME_LIMIT} знаков: сократите его`);
+  }
   // На согласование уходит только этап, к которому приложен материал:
   // клиент получает письмо «посмотрите материалы и подтвердите», и пустой
   // этап оставлял его без предмета согласования (решение Р-254).
   if (to === 'IN_APPROVAL') {
+    // Материал — тот, что видит клиент: версия эксперта до публикации не
+    // в счёт (требование Т-18, решение Р-294).
     const materials = await prisma.material.count({
       where: {
         stageId,
         kind: 'STAGE_MATERIAL',
         deletedAt: null,
-        versions: { some: { purgedAt: null } },
+        versions: { some: { purgedAt: null, ...CLIENT_VISIBLE_VERSION } },
       },
     });
     if (materials === 0) {
       throw new Error(
-        'На согласование этап уходит с материалом: приложите хотя бы один файл — ' +
-          'клиенту нечего посмотреть и подтвердить',
+        'На согласование этап уходит с материалом, который видит клиент: приложите файл ' +
+          'или опубликуйте версию куратора — клиенту нечего посмотреть и подтвердить',
       );
     }
   }
 
   const now = new Date();
+  // Срок согласования ставится при сдаче, если клиент может увидеть
+  // результат: без учётной записи «направления» не было, и срок пойдёт с
+  // открытия входа (Т-15, решение Р-290). Снятие с согласования и возврат
+  // срок гасят; у завершённого этапа он остаётся записью о сроке.
+  const approvalDueOn =
+    to === 'IN_APPROVAL' && stage.project.client.userId !== null
+      ? approvalDeadline(now, stage.project.approvalDays, await loadCalendar())
+      : null;
+  const approvalFields =
+    to === 'IN_APPROVAL'
+      ? {
+          approvalSentAt: approvalDueOn === null ? null : now,
+          approvalDueOn,
+          approvalDaysLeft: null,
+        }
+      : from === 'IN_APPROVAL' && to !== 'DONE'
+        ? { approvalSentAt: null, approvalDueOn: null, approvalDaysLeft: null }
+        : {};
   const saved = await prisma.$transaction(async (tx) => {
     // Перевод захватывает этап по прежнему состоянию. Прежде два
     // одновременных перевода проходили проверку по прочитанному и оба
@@ -866,21 +1945,136 @@ export async function setStageState(
         awaitingClientSince: to === 'AWAITING_CLIENT' ? now : null,
         startedAt: from === 'NOT_STARTED' && to === 'IN_PROGRESS' ? now : stage.startedAt,
         completedAt: to === 'DONE' ? now : null,
+        // Повторная сдача гасит пометку «возвращён с замечаниями» и дело
+        // куратора: замечания отработаны (решение Р-281).
+        ...(to === 'IN_APPROVAL' ? { returnedAt: null, returnAckAt: null, outcome } : {}),
+        // Уход из «В работе» — решение менеджера по сдаче куратора: пометка
+        // «сдан», записка и возврат гаснут, отозвать сдачу уже нельзя
+        // (требование Э-05, решение Р-325).
+        ...(from === 'IN_PROGRESS'
+          ? { handedOverAt: null, handoverNote: null, handbackAt: null, handbackReason: null }
+          : {}),
+        ...approvalFields,
       },
     });
     if (claimed.count === 0) {
       throw new Error('Этап уже переведён другим действием: обновите страницу');
     }
     const updated = await tx.stage.findUniqueOrThrow({ where: { id: stageId } });
-    await tx.stageStateChange.create({
-      data: { stageId, fromState: from, toState: to, actorId: actor.id, reason: reason ?? null },
+    const change = await tx.stageStateChange.create({
+      data: {
+        stageId,
+        fromState: from,
+        toState: to,
+        actorId: actor.id,
+        // Согласование в сессии, открытой ссылкой сотрудника, — с пометкой
+        // для практики (ОМ-3, решение Р-292).
+        reason: via === 'CLIENT_APPROVE' && actor.viaStaffLink === true ? STAFF_LINK_NOTE : (reason ?? null),
+        via,
+      },
     });
+
+    // Клиент узнаёт письмом, что этап согласован от его имени и на каком
+    // основании (требование М-12, решение Р-292).
+    if (forClient && stage.project.client.userId !== null) {
+      const project = await tx.project.findUnique({
+        where: { id: stage.projectId },
+        select: { code: true, title: true },
+      });
+      await enqueue(tx, {
+        userId: stage.project.client.userId,
+        projectId: stage.projectId,
+        eventKind: 'STAGE_APPROVED',
+        subject: `Этап «${stage.title}» согласован`,
+        body:
+          `${project == null ? '' : `${workLine(project, true)}\n`}` +
+          `Этап «${stage.title}» согласован менеджером по вашему подтверждению: ${(reason ?? '').trim()}.\n` +
+          'Если вы этого не подтверждали, напишите менеджеру в кабинете.\n' +
+          stageLink(stageId),
+        dedupKey: `stage:${stageId}:approved-for-client:${change.id}`,
+        path: `/cabinet/stages/${stageId}`,
+      });
+    }
+
+    // Куратор узнаёт о приёмке этапа письмом: следующий этап и оплата
+    // зависят от неё (требование Т-16, решение Р-282).
+    if (action === 'STAGE_APPROVE') {
+      await notifyCurator(tx, {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        eventKind: 'STAGE_APPROVED',
+        subject: `Этап «${stage.title}» согласован`,
+        body:
+          `${actor.role === 'CLIENT' ? 'Клиент согласовал этап' : 'Этап согласован за клиента'} «${stage.title}».\n` +
+          'Можно запускать следующий этап.\n' +
+          stageLink(stageId),
+        key: `stage:${stageId}:approved:${change.id}`,
+        path: `/cabinet/stages/${stageId}`,
+      });
+      // Куратору работы — тоже: этап его работы закрыт (требование Э-09,
+      // решение Р-328).
+      await notifyExpert(tx, {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        eventKind: 'STAGE_APPROVED',
+        letter: (work) => ({
+          subject: `Этап «${stage.title}» согласован`,
+          body:
+            `Работа ${work.code}.\n` +
+            (forClient
+              ? `Этап «${stage.title}» согласован менеджером по подтверждению клиента.\n`
+              : `Клиент согласовал этап «${stage.title}».\n`) +
+            stageLink(stageId),
+        }),
+        key: `stage:${stageId}:approved-expert:${change.id}`,
+        path: `/cabinet/stages/${stageId}`,
+      });
+    }
+    // Этап принят — дело руководителю «акт и счёт» (РК-12, Р-338).
+    if (action === 'STAGE_APPROVE') await openAcceptCheck(tx, stageId, via);
+    // Этап «В работе» — ход куратора: запущен или возвращён менеджером
+    // (требование Э-09, решение Р-328).
+    if (to === 'IN_PROGRESS') {
+      await notifyExpert(tx, {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        eventKind: 'CURATOR_TURN',
+        letter: (work) => ({
+          subject: `Ход за вами: этап «${stage.title}»`,
+          body:
+            `Работа ${work.code}.\n` +
+            (from === 'NOT_STARTED'
+              ? `Менеджер запустил этап «${stage.title}».`
+              : `Этап «${stage.title}» снова «В работе».`) +
+            ' Задание и срок — в блоке «Что сделать сейчас» на экране этапа.\n' +
+            stageLink(stageId),
+        }),
+        key: `stage:${stageId}:turn:${change.id}`,
+        path: `/cabinet/stages/${stageId}`,
+      });
+    }
     await tx.projectEvent.create({
       data: {
         projectId: stage.projectId,
         actorId: actor.id,
         kind: 'STAGE_STATE_CHANGED',
-        payload: { stageId, from, to },
+        // Причина — в данных события: история работы называет её рядом с
+        // переходом (требование М-17, решение Р-288). Обезличивание
+        // затирает данные событий целиком (Р-234).
+        // Итог сдачи в историю работы не идёт: он длинный и стоит в
+        // карточке согласования и в истории этапа (решение Р-289).
+        payload: {
+          stageId,
+          // Номер этапа — на момент события: перестановка не перенумеровывает
+          // прежние строки истории (требование М-11, решение Р-303).
+          position: stage.position,
+          from,
+          to,
+          ...((reason ?? '').trim() === '' || to === 'IN_APPROVAL' ? {} : { reason: (reason ?? '').trim() }),
+          // Кто согласовал: история различает «согласован вами» и
+          // «согласован куратором по вашему подтверждению» (О-6, Р-292).
+          ...(via === 'MANUAL' ? {} : { via }),
+        },
       },
     });
 
@@ -903,12 +2097,18 @@ export async function setStageState(
             ? `Этап «${stage.title}» ждёт ваших материалов`
             : `Этап «${stage.title}» готов к согласованию`,
           body:
-            `Проект ${project?.code} — ${project?.title}.\n` +
+            `${project == null ? '' : `${workLine(project, true)}\n`}` +
             (awaiting
               ? `${(reason ?? '').trim()}\n`
-              : 'Посмотрите последнюю версию материалов и комментарии к ней.\n') +
+              : `Итог этапа: что сделано и что дальше.\n${outcome}\n\n` +
+                'Посмотрите последнюю версию материалов и согласуйте этап или верните его с замечаниями' +
+                (approvalDueOn === null
+                  ? '.\n'
+                  : ` до ${formatDay(approvalDueOn)} включительно (по московскому времени).\n`)) +
             'Открыть этап можно в личном кабинете.',
           dedupKey: `stage:${stageId}:${to.toLowerCase()}:${now.toISOString().slice(0, 16)}`,
+          // Кнопка письма ведёт на этот этап — и после входа (Т-06, Р-309).
+          path: `/cabinet/stages/${stageId}`,
         });
       }
     }
@@ -926,7 +2126,179 @@ export async function setStageState(
     objectType: 'Stage',
     objectId: stageId,
     projectId: stage.projectId,
-    payload: { from, to },
+    payload: {
+      from,
+      to,
+      ...(via === 'MANUAL' ? {} : { via }),
+      ...(via === 'CLIENT_APPROVE' && actor.viaStaffLink === true ? { staffLink: true } : {}),
+    },
   });
   return saved;
+}
+
+/**
+ * Куратор принял замечания клиента в работу: дело «Клиент вернул этап»
+ * уходит с «Требует внимания» (требование М-04, решение Р-283). Пометка
+ * «возвращён с замечаниями» на этапе остаётся до новой сдачи.
+ */
+export async function acknowledgeReturn(actor: Actor, stageId: string) {
+  const stage = await prisma.stage.findUnique({
+    where: { id: stageId },
+    include: {
+      project: {
+        select: { id: true, clientId: true, managerId: true, expertId: true, status: true },
+      },
+    },
+  });
+  if (stage === null) throw new Error('Этап не найден');
+  ensure(actor, 'STAGE_SET_STATE', stage.project);
+  if (stage.project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
+  if (stage.returnedAt === null) throw new Error('Этап не возвращался клиентом');
+  const marked = await prisma.stage.updateMany({
+    where: { id: stageId, returnedAt: { not: null }, returnAckAt: null },
+    data: { returnAckAt: new Date() },
+  });
+  if (marked.count === 0) return;
+  await record(actor, {
+    action: 'STAGE_RETURN_ACKNOWLEDGED',
+    objectType: 'Stage',
+    objectId: stageId,
+    projectId: stage.projectId,
+  });
+}
+
+/** Предел текста замечаний — как у сообщения в переписке. */
+const RETURN_TEXT_MAX = 10_000;
+
+/**
+ * Клиент возвращает этап с замечаниями (требование Т-03, решение Р-281).
+ *
+ * Оферта (п. 7.2) даёт заказчику право на мотивированные замечания вместо
+ * подписания акта; прежде у клиента была одна кнопка — «Согласовать», и
+ * несогласие выражалось только комментарием или сообщением. Этап уходит
+ * «В работу» с пометкой «возвращён с замечаниями»; текст хранится в
+ * истории этапа и видим клиенту и практике, эксперту — без контактов
+ * (`presentReturnText`). Текст с контактом не блокируется, как и в
+ * переписке, а помечается: куратор видит его в реестре «Контакты в
+ * переписке».
+ *
+ * Отдельная служба, а не `setStageState`: у возврата свои текст, пометка и
+ * адресаты уведомлений. Новое состояние этапа не вводится — таблица
+ * переходов (Р-229) уже знает «На согласовании → В работе».
+ */
+export async function returnStage(actor: Actor, stageId: string, text: string) {
+  const stage = await prisma.stage.findUnique({
+    where: { id: stageId },
+    include: {
+      project: {
+        select: { id: true, clientId: true, managerId: true, expertId: true, status: true },
+      },
+    },
+  });
+  if (stage === null) throw new Error('Этап не найден');
+  ensure(actor, 'STAGE_RETURN', stage.project);
+  if (stage.project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
+  if (stage.state !== 'IN_APPROVAL') {
+    throw new Error('Этап уже не на согласовании: обновите страницу');
+  }
+  // После срока при включённом автозакрытии этап принят по п. 7.3
+  // оферты, и возврат опоздал (Т-15, решение Р-290).
+  ensureApprovalOpen(stage.approvalDueOn);
+
+  const body = text.trim();
+  if (body.length === 0) {
+    throw new Error('Без замечаний этап не возвращается: напишите, что нужно исправить или дополнить');
+  }
+  if (body.length > RETURN_TEXT_MAX) {
+    throw new Error(`Замечания — не длиннее ${RETURN_TEXT_MAX.toLocaleString('ru-RU')} знаков`);
+  }
+  const contactHint = hasContacts(body);
+
+  const now = new Date();
+  const change = await prisma.$transaction(async (tx) => {
+    // Захват по состоянию: возврат и согласование, нажатые одновременно,
+    // не проходят оба (как в Р-240).
+    const claimed = await tx.stage.updateMany({
+      where: { id: stageId, state: 'IN_APPROVAL' },
+      data: {
+        state: 'IN_PROGRESS',
+        completedAt: null,
+        blockedReason: null,
+        awaitingClientSince: null,
+        returnedAt: now,
+        returnAckAt: null,
+        // Возврат гасит срок согласования; повторная сдача даст новый.
+        approvalSentAt: null,
+        approvalDueOn: null,
+        approvalDaysLeft: null,
+      },
+    });
+    if (claimed.count === 0) {
+      throw new Error('Этап уже переведён другим действием: обновите страницу');
+    }
+    const created = await tx.stageStateChange.create({
+      data: {
+        stageId,
+        fromState: 'IN_APPROVAL',
+        toState: 'IN_PROGRESS',
+        actorId: actor.id,
+        reason: body,
+        via: 'CLIENT_RETURN',
+        contactHint,
+      },
+    });
+    // Куратору — сигнал без текста замечаний: текст читается в кабинете,
+    // как и сообщения переписки (решение Р-282).
+    await notifyCurator(tx, {
+      projectId: stage.projectId,
+      actorId: actor.id,
+      eventKind: 'STAGE_RETURNED',
+      subject: `Клиент вернул этап «${stage.title}» с замечаниями`,
+      body:
+        `Клиент вернул этап «${stage.title}» с замечаниями; этап снова «В работе».\n` +
+        'Текст замечаний — на экране этапа.\n' +
+        stageLink(stageId),
+      key: `stage:${stageId}:returned:${created.id}`,
+      path: `/cabinet/stages/${stageId}`,
+    });
+    // Куратору — тот же сигнал: ход снова за ним (Э-09, Р-328).
+    await notifyExpert(tx, {
+      projectId: stage.projectId,
+      actorId: actor.id,
+      eventKind: 'STAGE_RETURNED',
+      letter: (work) => ({
+        subject: `Клиент вернул этап «${stage.title}» с замечаниями`,
+        body:
+          `Работа ${work.code}.\n` +
+          `Клиент вернул этап «${stage.title}» с замечаниями; этап снова «В работе».\n` +
+          'Текст замечаний — в блоке «Что сделать сейчас» на экране этапа.\n' +
+          stageLink(stageId),
+      }),
+      key: `stage:${stageId}:returned-expert:${created.id}`,
+      path: `/cabinet/stages/${stageId}`,
+    });
+
+    // Текст замечаний — в данных события ленты: история работы показывает
+    // его без похода в историю этапа, а обезличивание затирает данные
+    // событий целиком (решение Р-234).
+    await tx.projectEvent.create({
+      data: {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        kind: 'STAGE_RETURNED',
+        payload: { stageId, changeId: created.id, text: body, contactHint },
+      },
+    });
+    return created;
+  });
+
+  // В журнал — без текста, как и остальные переходы этапа (решение Р-239).
+  await record(actor, {
+    action: 'STAGE_RETURNED',
+    objectType: 'Stage',
+    objectId: stageId,
+    projectId: stage.projectId,
+    payload: { from: 'IN_APPROVAL', to: 'IN_PROGRESS', contactHint },
+  });
+  return change;
 }

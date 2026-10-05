@@ -23,7 +23,8 @@ import { can } from '../../../../lib/cabinet/access';
 import { ERASURE_SHOWN, erasableClients, listErasureRequests } from '../../../../lib/cabinet/erasure';
 import { formatMoment } from '../../../../lib/cabinet/journals';
 import { formatAmount } from '../../../../lib/cabinet/money';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
+import { homeFor } from '../../../../lib/cabinet/nav';
 import { executeErasureRequest, openErasureRequest } from '../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -50,10 +51,9 @@ export default async function ErasureScreen({
 }: {
   searchParams: Promise<{ done?: string; active?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/manage/erasure');
   // Обезличивание необратимо, поэтому доступно только руководителю.
-  if (!can(actor, 'ERASURE_EXECUTE')) redirect('/cabinet/projects');
+  if (!can(actor, 'ERASURE_EXECUTE')) redirect(homeFor(actor));
 
   const flags = await searchParams;
   // Коды берутся из адреса: показываются только те, что похожи на код работы.

@@ -17,7 +17,8 @@ import {
 import { can } from '../../../lib/cabinet/access';
 import { ownPayouts } from '../../../lib/cabinet/finance';
 import { formatAmount } from '../../../lib/cabinet/money';
-import { currentActor } from '../../../lib/cabinet/session';
+import { requireActor } from '../../../lib/cabinet/session';
+import { homeFor } from '../../../lib/cabinet/nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,9 +28,11 @@ export const dynamic = 'force-dynamic';
  * экономика проекта в объект не попадает.
  */
 export default async function PayoutScreen() {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'PAYOUT_VIEW_OWN')) redirect('/cabinet/projects');
+  const actor = await requireActor('/cabinet/payout');
+  if (!can(actor, 'PAYOUT_VIEW_OWN')) redirect(homeFor(actor));
+  // Руководителю — свод по кураторам, а не перечень с текстами для
+  // куратора (требование РК-11, решение Р-339).
+  if (can(actor, 'PAYOUT_MANAGE')) redirect('/cabinet/manage/finance/payouts');
 
   const { rows, accrued, paid } = await ownPayouts(actor);
 
@@ -73,6 +76,13 @@ export default async function PayoutScreen() {
                         её не отдаёт (решение Р-251). */}
                     {row.project === null ? (
                       <span style={{ color: 'var(--pd-ink-muted)' }}>откроется после договора поручения</span>
+                    ) : row.handedOff ? (
+                      /* Переданная работа куратору закрыта: ссылки нет,
+                         есть пометка (требование Э-13, решение Р-332). */
+                      <>
+                        {row.project.title}
+                        <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>работа передана</div>
+                      </>
                     ) : (
                       <a className="cab-mark" href={`/cabinet/projects/${row.project.code}`}>{row.project.title}</a>
                     )}

@@ -1,11 +1,16 @@
 import type { Prisma } from '../../generated/prisma/client.js';
+import { workLine } from './work-line.ts';
 import { prisma } from '../db.ts';
-import { ensure, type Actor } from './access.ts';
+import { ensure, scopeLeads, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { CHANNEL_OFF, telegramNote, telegramPermanent, type EventKind } from './events.ts';
-import { leadAddress } from './lead-letter.ts';
-import { sendMailTo } from './mail.ts';
+import { leadAddress, receivedLetter } from './lead-letter.ts';
+import { defaultPath, openLink, safeNext } from './next-path.ts';
+import { siteUrl } from '../site-url.ts';
+import { mailConfigured, sendMailTo } from './mail.ts';
 import { escapeHtml } from './token.ts';
+import { formatDay } from './approval-text.ts';
+import { DAILY_MAIL_HOUR, moscowToday, now as clockNow } from './clock.ts';
 
 /**
  * Очередь исходящих уведомлений.
@@ -34,6 +39,17 @@ export interface OutboxItem {
    * напоминание о сроке не должно приходить дважды за день.
    */
   readonly dedupKey: string;
+  /**
+   * Экран события: на него ведут кнопка «Открыть кабинет» в письме и ссылка
+   * сигнала Telegram (требование Т-06, решение Р-309). Без пути — экран
+   * работы, если работа известна, иначе кабинет.
+   */
+  readonly path?: string | null;
+  /**
+   * Только этот канал: сигнал о сбое идёт тем каналом, который работает
+   * (требование РК-02, решение Р-334).
+   */
+  readonly only?: 'EMAIL' | 'TELEGRAM';
 }
 
 /** Клиент Prisma или транзакция — уведомление ставится вместе с изменением. */
@@ -44,12 +60,155 @@ type Db = Prisma.TransactionClient | typeof prisma;
  * проверяется: адресата определяет вызывающий сценарий, который уже прошёл
  * через модуль прав.
  */
+/**
+ * Уведомить куратора работы о действии другого человека (решение Р-282).
+ *
+ * О собственном действии куратору не пишется: согласовав этап за клиента,
+ * он и так знает об этом. Ключ повтора содержит адресата: у одного
+ * события бывает несколько адресатов, и ключ без адресата отбросил бы
+ * второго.
+ */
+export async function notifyCurator(
+  db: Db,
+  input: {
+    readonly projectId: string;
+    /** Автор действия; `null` — система (автозакрытие этапа, Р-290). */
+    readonly actorId: string | null;
+    readonly eventKind: EventKind;
+    readonly subject: string;
+    readonly body: string;
+    readonly key: string;
+    /** Экран события (Т-06, Р-309). */
+    readonly path?: string | null;
+  },
+): Promise<number> {
+  const project = await db.project.findUnique({
+    where: { id: input.projectId },
+    select: { managerId: true },
+  });
+  if (project === null || project.managerId === input.actorId) return 0;
+  return enqueue(db, {
+    userId: project.managerId,
+    projectId: input.projectId,
+    eventKind: input.eventKind,
+    subject: input.subject,
+    body: input.body,
+    dedupKey: `${input.key}:${project.managerId}`,
+    path: input.path ?? null,
+  });
+}
+
+/**
+ * Уведомить куратора работы — роль `EXPERT` (требование Э-09, решение
+ * Р-328). О собственном действии куратору не пишется. Письмо называет
+ * работу и этап, поэтому уходит только куратору с договором поручения
+ * (Р-237); нейтральные события — назначение, снятие с работы,
+ * вознаграждение — ставятся напрямую своим текстом. Текст собирается от
+ * кода и названия работы, чтобы вызывающему не читать их отдельно.
+ */
+export async function notifyExpert(
+  db: Db,
+  input: {
+    readonly projectId: string;
+    /** Автор действия; `null` — система (автозакрытие этапа, Р-290). */
+    readonly actorId: string | null;
+    readonly eventKind: EventKind;
+    readonly letter: (work: { readonly code: string; readonly title: string }) => {
+      readonly subject: string;
+      readonly body: string;
+    };
+    readonly key: string;
+    /** Экран события (Т-06, Р-309). */
+    readonly path?: string | null;
+  },
+): Promise<number> {
+  const project = await db.project.findUnique({
+    where: { id: input.projectId },
+    select: {
+      code: true,
+      title: true,
+      expertId: true,
+      expert: { select: { role: true, expertProfile: { select: { ndaSignedAt: true } } } },
+    },
+  });
+  if (project === null || project.expertId === null || project.expertId === input.actorId) return 0;
+  if (project.expert?.role !== 'EXPERT' || (project.expert.expertProfile?.ndaSignedAt ?? null) === null) return 0;
+  const letter = input.letter(project);
+  return enqueue(db, {
+    userId: project.expertId,
+    projectId: input.projectId,
+    eventKind: input.eventKind,
+    subject: letter.subject,
+    body: letter.body,
+    dedupKey: `${input.key}:${project.expertId}`,
+    path: input.path ?? null,
+  });
+}
+
 /** Возвращает число поставленных строк: повтор по ключу не считается. */
+/** Письма куратору, которые в сводку не откладываются (УЭ-01, Р-398). */
+const DIGEST_EXEMPT: ReadonlySet<string> = new Set(['CURATOR_INVITED', 'NDA_SIGNED', 'CURATOR_DIGEST']);
+
+/**
+ * Ближайшие 09:00 по Москве — время сводки куратора (улучшение УЭ-01,
+ * решение Р-398). Москва — UTC+3 без перевода часов.
+ */
+export function nextDigestAt(at: Date): Date {
+  const today = moscowToday(at).getTime() + (DAILY_MAIL_HOUR - 3) * 3_600_000;
+  return new Date(at.getTime() < today ? today : today + 86_400_000);
+}
+
+/**
+ * Сводка куратору: отложенные письма о работах — одним письмом в 09:00 по
+ * Москве (улучшение УЭ-01, решение Р-398). Отложенные строки получают
+ * состояние «вошло в сводку». Ключ — по дню: повторный прогон второй
+ * сводки не ставит.
+ */
+export async function enqueueCuratorDigest(at: Date = clockNow()): Promise<number> {
+  const curators = await prisma.user.findMany({
+    where: { role: 'EXPERT', status: 'ACTIVE', dailyDigest: true },
+    select: { id: true },
+  });
+  let queued = 0;
+  for (const curator of curators) {
+    const rows = await prisma.notificationOutbox.findMany({
+      where: {
+        userId: curator.id,
+        channel: 'EMAIL',
+        state: 'PENDING',
+        // Приглашение, доступ и сама сводка в сводку не входят.
+        eventKind: { notIn: [...DIGEST_EXEMPT] },
+        scheduledAt: { lte: at },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, subject: true },
+    });
+    if (rows.length === 0) continue;
+    const claimed = await prisma.notificationOutbox.updateMany({
+      where: { id: { in: rows.map((row) => row.id) }, state: 'PENDING' },
+      data: { state: 'MERGED', lastError: 'вошло в сводку куратора', scheduledAt: at },
+    });
+    if (claimed.count === 0) continue;
+    queued += await enqueue(prisma, {
+      userId: curator.id,
+      eventKind: 'CURATOR_DIGEST',
+      subject: `Сводка по вашим работам: ${rows.length} ${rows.length % 10 === 1 && rows.length % 100 !== 11 ? 'событие' : [2, 3, 4].includes(rows.length % 10) && ![12, 13, 14].includes(rows.length % 100) ? 'события' : 'событий'}`,
+      body: `${rows.map((row) => `— ${row.subject}`).join('\n')}\nПодробности — в личном кабинете.`,
+      dedupKey: `curator-digest:${moscowToday(at).toISOString().slice(0, 10)}:${curator.id}`,
+      only: 'EMAIL',
+      path: '/cabinet/projects',
+    });
+  }
+  return queued;
+}
+
 export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
   const user = await db.user.findUnique({
     where: { id: item.userId },
     select: {
       status: true,
+      role: true,
+      dailyDigest: true,
       notifyEmail: true,
       notifyTelegram: true,
       telegramChatId: true,
@@ -57,6 +216,9 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
     },
   });
   if (user === null || user.status !== 'ACTIVE') return 0;
+  // Куратор со сводкой: письмо о работе ждёт утренней сводки (улучшение
+  // УЭ-01, решение Р-398); приглашение, доступ и сама сводка — сразу.
+  const held = user.role === 'EXPERT' && user.dailyDigest && !DIGEST_EXEMPT.has(item.eventKind);
 
   // Общие переключатели решают, каким каналом человек вообще согласен
   // получать уведомления. Правила решают, какие события каким каналом —
@@ -66,7 +228,7 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
   if (user.notifyEmail) allowed.push('EMAIL');
   if (user.notifyTelegram && user.telegramChatId !== null) allowed.push('TELEGRAM');
 
-  const channels = allowed.filter((channel) => {
+  const channels = allowed.filter((channel) => item.only === undefined || channel === item.only).filter((channel) => {
     // Точное правило сильнее общего; когда правил нет вовсе, канал
     // работает — иначе включение разбора по событиям молча обрубило бы
     // все уведомления.
@@ -93,6 +255,8 @@ export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
         subject: item.subject,
         body: item.body,
         dedupKey: `${item.dedupKey}:${channel.toLowerCase()}`,
+        path: safeNext(item.path) ?? null,
+        ...(held && channel === 'EMAIL' ? { scheduledAt: nextDigestAt(new Date()) } : {}),
       },
       skipDuplicates: true,
     });
@@ -142,6 +306,34 @@ export async function enqueueToLead(
   return true;
 }
 
+/**
+ * Письмо «Заявка получена» заявителю (требование Т-05, решение Р-312).
+ *
+ * Ставится заявке с почтой, которая не машинная и не отзыв. Адрес в заявке
+ * с сайта не подтверждён: без потолка форма стала бы рассыльщиком на чужие
+ * ящики, поэтому на один адрес — не больше одного такого письма в сутки.
+ * Возвращает, поставлено ли письмо.
+ */
+export async function enqueueLeadReceived(leadId: string): Promise<boolean> {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: { id: true, form: true, status: true, contactKind: true, contact: true },
+  });
+  if (lead === null || lead.status === 'SPAM' || lead.form === 'review') return false;
+  const address = leadAddress(lead);
+  if (address === null) return false;
+  const recent = await prisma.notificationOutbox.count({
+    where: {
+      eventKind: 'LEAD_RECEIVED',
+      createdAt: { gt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      lead: { contact: { equals: address, mode: 'insensitive' } },
+    },
+  });
+  if (recent > 0) return false;
+  const { subject, body } = receivedLetter();
+  return enqueueToLead(prisma, { leadId: lead.id, eventKind: 'LEAD_RECEIVED', subject, body, dedupKey: `lead:${lead.id}:received` });
+}
+
 /** Сколько раз пробуем доставить, прежде чем признать отправку неудачной. */
 const MAX_ATTEMPTS = 5;
 
@@ -150,6 +342,33 @@ const MAX_ATTEMPTS = 5;
 const NO_ADDRESS = 'адрес заявителя недоступен';
 /** Получатель закрыт или отключил канал после постановки (решение Р-246). */
 const RECIPIENT_OFF = 'получатель отключил канал или доступ закрыт';
+/** Привязка Telegram снята получателем — отказ на его стороне, не сбой канала. */
+const TG_UNBOUND = 'привязка Telegram снята';
+
+/** Причина, с которой закрывается устаревшая строка. */
+export const EXPIRED_NOTE = 'устарело до отправки';
+
+/**
+ * Сколько строка остаётся годной к отправке.
+ *
+ * Напоминание о сроке — сутки: «срок через три дня», дождавшееся настройки
+ * почты или долгого обрыва связи, после срока вводило бы в заблуждение.
+ * Прежде это правило знал только повтор отказавшей строки (решение Р-246);
+ * очередь же, накопленная до настройки почты, разошлась бы целиком. Прочие
+ * уведомления сроком не ограничены: письмо об отказе по заявке или о новом
+ * сообщении остаётся верным и через неделю (решение Р-278).
+ */
+export function lifetimeMs(eventKind: string): number | null {
+  // «Заявка получена» обещает ответ в течение рабочего дня: письмо, не
+  // ушедшее за сутки, это обещание уже нарушает (Т-05, Р-312).
+  return eventKind.startsWith('DEADLINE_') || eventKind === 'LEAD_RECEIVED' ? 24 * 60 * 60 * 1000 : null;
+}
+
+/** Устарела ли строка к моменту `at`. */
+export function isExpired(row: { eventKind: string; createdAt: Date }, at: Date): boolean {
+  const lifetime = lifetimeMs(row.eventKind);
+  return lifetime !== null && at.getTime() - row.createdAt.getTime() > lifetime;
+}
 
 /** Через сколько проверить строку, ждущую настройки канала. */
 const CHANNEL_OFF_DELAY_MS = 60 * 60 * 1000;
@@ -210,16 +429,26 @@ export async function telegramSay(chatId: string, text: string): Promise<void> {
 const FOOTER_MEMBER = 'Письмо отправлено личным кабинетом ProDisser. Ход работы виден в кабинете.';
 const FOOTER_APPLICANT = 'Письмо отправлено ProDisser в ответ на вашу заявку.';
 
-function letter(subject: string, body: string, footer: string): string {
+export function renderLetter(subject: string, body: string, footer: string, open: string | null = null): string {
   const paragraphs = body
     .split('\n')
     .filter((line) => line.trim().length > 0)
     .map((line) => `<p style="margin:0 0 14px">${escapeHtml(line)}</p>`)
     .join('');
+  // Кнопка ведёт на экран события через `/cabinet/open`: с сессией — сразу,
+  // без неё — на форму входа с готовым адресом (требование Т-06, Р-309).
+  // Это не ссылка входа: ссылка входа в письме о событии запрещена (Р-162).
+  const button =
+    open === null
+      ? ''
+      : `<p style="margin:6px 0 18px"><a href="${escapeHtml(open)}" ` +
+        `style="display:inline-block;padding:12px 22px;border-radius:999px;background:#14417A;` +
+        `color:#FFFFFF;text-decoration:none;font-weight:600">Открыть кабинет</a></p>`;
   return (
     `<div style="font:15px/1.6 'Helvetica Neue',Arial,sans-serif;color:#14161C">` +
     `<p style="margin:0 0 16px;font-size:17px;font-weight:600">${escapeHtml(subject)}</p>` +
     paragraphs +
+    button +
     `<p style="margin:20px 0 0;color:#5C6474;font-size:13px">${escapeHtml(footer)}</p></div>`
   );
 }
@@ -281,6 +510,14 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
   const down = new Set<string>();
 
   for (const item of pending) {
+    if (isExpired(item, now)) {
+      await prisma.notificationOutbox.update({
+        where: { id: item.id },
+        data: { state: 'EXPIRED', lastError: EXPIRED_NOTE, scheduledAt: now },
+      });
+      continue;
+    }
+
     if (down.has(item.channel)) {
       await prisma.notificationOutbox.update({
         where: { id: item.id },
@@ -300,7 +537,7 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     if (recipientOff) {
       await prisma.notificationOutbox.update({
         where: { id: item.id },
-        data: { state: 'FAILED', lastError: RECIPIENT_OFF, scheduledAt: new Date() },
+        data: { state: 'FAILED', failure: 'RECIPIENT_OFF', lastError: RECIPIENT_OFF, scheduledAt: new Date() },
       });
       continue;
     }
@@ -310,20 +547,25 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     const address = item.user?.email ?? (item.lead === null ? null : leadAddress(item.lead));
     const footer = item.user === null ? FOOTER_APPLICANT : FOOTER_MEMBER;
     const chatId = item.user?.telegramChatId ?? null;
+    // Экран события; заявителю кабинета нет — и кнопки нет (Т-06, Р-309).
+    const screen = item.path ?? defaultPath(item.project?.code ?? null);
+    const base = siteUrl();
+    const open = item.user === null || base === null ? null : openLink(base, screen, address);
+    const text = open === null ? item.body : `${item.body}\n\nОткрыть кабинет: ${open}`;
     const result: SendResult =
       address === null && item.channel === 'EMAIL'
         ? { ok: false, error: NO_ADDRESS }
         : item.channel === 'EMAIL'
-          ? await sendMailTo(address!, item.subject, letter(item.subject, item.body, footer), item.body)
+          ? await sendMailTo(address!, item.subject, renderLetter(item.subject, item.body, footer, open), text)
           : chatId === null
-            ? { ok: false, error: 'привязка Telegram снята' }
-            : await sendTelegram(chatId, telegramNote(item.eventKind, item.project?.code ?? null));
+            ? { ok: false, error: TG_UNBOUND }
+            : await sendTelegram(chatId, telegramNote(item.eventKind, item.project?.code ?? null, screen));
 
     // Без адреса повторять нечего: строка сразу помечается неудачей.
     if (result.error === NO_ADDRESS) {
       await prisma.notificationOutbox.update({
         where: { id: item.id },
-        data: { state: 'FAILED', attempts: { increment: 1 }, lastError: NO_ADDRESS },
+        data: { state: 'FAILED', failure: 'NO_ADDRESS', attempts: { increment: 1 }, lastError: NO_ADDRESS },
       });
       failed += 1;
       continue;
@@ -360,10 +602,14 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     if (result.unreachable === true) down.add(item.channel);
     const attempts = item.attempts + 1;
     const giveUp = attempts >= MAX_ATTEMPTS || result.permanent === true;
+    // Снятая привязка — отказ получателя; остальное — отказ доставки, о
+    // котором руководитель узнаёт делом и сигналом (РК-02, Р-334).
+    const failure = !giveUp ? null : result.error === TG_UNBOUND ? 'RECIPIENT_OFF' : 'DELIVERY';
     await prisma.notificationOutbox.update({
       where: { id: item.id },
       data: {
         state: giveUp ? 'FAILED' : 'PENDING',
+        failure,
         attempts,
         lastError: result.error ?? null,
         // Отступ растёт с числом попыток: временная недоступность почты не
@@ -371,55 +617,137 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
         scheduledAt: giveUp ? now : new Date(Date.now() + attempts * 5 * 60 * 1000),
       },
     });
+    // Сбой самого сигнала нового сигнала не порождает.
+    if (failure === 'DELIVERY' && item.eventKind !== 'OUTBOX_FAILED') await signalFailure(item.channel, now);
     failed += 1;
   }
 
   return { taken: pending.length, sent, failed };
 }
 
+const CHANNEL_NAME: Record<'EMAIL' | 'TELEGRAM', string> = { EMAIL: 'почта', TELEGRAM: 'Telegram' };
+
 /**
- * Напоминания о приближающемся сроке. Выполняются той же командой, что и
- * рассылка: отдельного расписания для них заводить незачем, а ключ
- * дедупликации с датой не даёт напомнить дважды за сутки.
+ * Сигнал руководителям о сбое отправки — тем каналом, который работает:
+ * сбой почты — в Telegram, сбой Telegram — письмом (требование РК-02,
+ * решение Р-334). Не чаще раза в сутки на канал: ключ — канал и
+ * московский день. Пока второй канал у руководителя не подключён, сигнал
+ * не ставится — остаются дело на «Сводке» и плашка.
  */
-export async function enqueueDeadlineReminders(): Promise<number> {
-  const now = new Date();
-  const horizon = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+async function signalFailure(channel: 'EMAIL' | 'TELEGRAM', at: Date): Promise<void> {
+  const other = channel === 'EMAIL' ? 'TELEGRAM' : 'EMAIL';
+  const day = moscowToday(at).toISOString().slice(0, 10);
+  const heads = await prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
+  for (const head of heads) {
+    await enqueue(prisma, {
+      userId: head.id,
+      eventKind: 'OUTBOX_FAILED',
+      subject: `Уведомления не доставлены: ${CHANNEL_NAME[channel]}`,
+      body:
+        `Канал «${CHANNEL_NAME[channel]}» не доставил уведомление после всех попыток.\n` +
+        'Причина и строки очереди — в «Управление → Очередь уведомлений».',
+      dedupKey: `outbox-failed:${channel.toLowerCase()}:${day}:${head.id}`,
+      path: '/cabinet/manage/outbox',
+      only: other,
+    });
+  }
+}
+
+/**
+ * Не настроен ни один канал — ни почта, ни бот. Тогда на «Сводке» —
+ * постоянная плашка «Уведомления не уходят: настройте почту» (требование
+ * РК-02, решение Р-334).
+ */
+export function notifyChannelsDown(): boolean {
+  return !mailConfigured() && !(process.env.TELEGRAM_BOT_TOKEN ?? '').trim();
+}
+
+/**
+ * Напоминания о сроке этапа (требование М-08, ОМ-14, решение Р-301).
+ *
+ * Адресат — тот, чей ход: клиенту — только когда этап ждёт его данных
+ * (на согласовании ему напоминает срок согласования, Р-290); эксперту с
+ * договором поручения — пока этап в работе и не сдан менеджеру: сданный
+ * этап — ход менеджера (требование Э-09, решение Р-328); куратору — всегда. Прежде
+ * клиенту приходило «срок этапа подходит» и тогда, когда от него ничего не
+ * ждали, а куратор и эксперт не получали ничего.
+ *
+ * Одно письмо за три дня до срока и одно при срыве — вместо ежедневных.
+ * Ключ — этап, срок и адресат: перенос срока даёт новое напоминание. День
+ * считается по Москве, этап со сроком «сегодня» тоже напоминается.
+ * «Срок сорван» берёт только вчерашние сроки: первый прогон после выката
+ * не рассылает его по давно сорванным этапам.
+ */
+export async function enqueueDeadlineReminders(at: Date = new Date()): Promise<number> {
+  const today = moscowToday(at);
+  const DAY = 24 * 60 * 60 * 1000;
+  const yesterday = new Date(today.getTime() - DAY);
+  const horizon = new Date(today.getTime() + 3 * DAY);
 
   const stages = await prisma.stage.findMany({
     where: {
-      state: { in: ['IN_PROGRESS', 'AWAITING_CLIENT', 'IN_APPROVAL'] },
-      dueOn: { gte: now, lte: horizon },
+      state: { in: ['NOT_STARTED', 'IN_PROGRESS', 'AWAITING_CLIENT', 'IN_APPROVAL'] },
+      dueOn: { gte: yesterday, lte: horizon },
       // Приостановленная, завершённая и отменённая работа о сроках этапов
-      // не напоминает: прежде напоминания шли по любой (решение Р-235).
+      // не напоминает (решение Р-235).
       project: { status: 'ACTIVE' },
     },
     include: {
       project: {
-        select: { id: true, code: true, title: true, client: { select: { userId: true } } },
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          managerId: true,
+          client: { select: { userId: true } },
+          expert: {
+            select: { id: true, status: true, role: true, expertProfile: { select: { ndaSignedAt: true } } },
+          },
+        },
       },
     },
   });
 
-  const today = now.toISOString().slice(0, 10);
   let queued = 0;
   for (const stage of stages) {
-    const userId = stage.project.client.userId;
-    if (userId === null) continue;
-    // Считаются новые строки, а не попытки: прежде счётчик рос на каждом
-    // прогоне, и сценарий расписания писал строку в журнал каждую минуту
-    // (решение Р-246).
-    queued += await enqueue(prisma, {
-      userId,
-      projectId: stage.project.id,
-      eventKind: 'DEADLINE_IN_3_DAYS',
-      subject: `Срок этапа «${stage.title}» подходит`,
-      body:
-        `Работа: ${stage.project.title}.\n` +
-        `Этап «${stage.title}» должен быть закрыт до ${stage.dueOn?.toISOString().slice(0, 10)}.\n` +
-        'Если от вас что-то требуется, это видно на главном экране кабинета.',
-      dedupKey: `stage:${stage.id}:deadline:${today}`,
-    });
+    const dueOn = stage.dueOn!;
+    const missed = dueOn.getTime() < today.getTime();
+    const { project } = stage;
+    // Эксперт — только с договором поручения: без него название этапа
+    // ему не показывается (решение Р-237).
+    const expert =
+      project.expert !== null &&
+      project.expert.status === 'ACTIVE' &&
+      project.expert.role === 'EXPERT' &&
+      (project.expert.expertProfile?.ndaSignedAt ?? null) !== null
+        ? project.expert.id
+        : null;
+    const recipients = new Set<string>([project.managerId]);
+    if (stage.state === 'AWAITING_CLIENT' && project.client.userId !== null) recipients.add(project.client.userId);
+    if (stage.state === 'IN_PROGRESS' && stage.handedOverAt === null && expert !== null) recipients.add(expert);
+
+    for (const userId of recipients) {
+      const forClient = userId === project.client.userId;
+      // Считаются новые строки, а не попытки (решение Р-246).
+      queued += await enqueue(prisma, {
+        userId,
+        projectId: project.id,
+        eventKind: missed ? 'DEADLINE_MISSED' : 'DEADLINE_IN_3_DAYS',
+        subject: missed
+          ? `Срок этапа «${stage.title}» сорван`
+          : `Срок этапа «${stage.title}» — ${formatDay(dueOn)}`,
+        body:
+          `${workLine(project, forClient)}\n` +
+          (missed
+            ? `Срок этапа «${stage.title}» был ${formatDay(dueOn)}.\n`
+            : `Этап «${stage.title}» должен быть закрыт до ${formatDay(dueOn)} включительно.\n`) +
+          (forClient
+            ? 'Этап ждёт ваших материалов: что нужно, видно на главном экране кабинета.'
+            : 'Ход по этапу виден на его экране в личном кабинете.'),
+        dedupKey: `stage:${stage.id}:${missed ? 'missed' : 'due-soon'}:${dueOn.toISOString().slice(0, 10)}:${userId}`,
+        path: `/cabinet/stages/${stage.id}`,
+      });
+    }
   }
   return queued;
 }
@@ -447,8 +775,12 @@ export interface OutboxDigest {
   readonly pending: number;
   readonly sentLastDay: number;
   readonly failed: number;
+  /** Из неудач — отказы доставки: по ним дело на «Сводке» (РК-02, Р-334). */
+  readonly deliveryFailed: number;
   /** Ждут настройки канала: попытки им не наращиваются (см. `dispatch`). */
   readonly waitingChannel: number;
+  /** Закрыты без отправки за последние сутки: устарели в очереди. */
+  readonly expiredLastDay: number;
   readonly lastSentAt: Date | null;
   readonly failures: readonly OutboxFailure[];
 }
@@ -459,11 +791,13 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
   ensure(actor, 'AUDIT_VIEW');
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const [pending, sentLastDay, failed, waitingChannel, lastSent, failures] = await Promise.all([
+  const [pending, sentLastDay, failed, deliveryFailed, waitingChannel, expiredLastDay, lastSent, failures] = await Promise.all([
     prisma.notificationOutbox.count({ where: { state: 'PENDING' } }),
     prisma.notificationOutbox.count({ where: { state: 'SENT', sentAt: { gte: dayAgo } } }),
     prisma.notificationOutbox.count({ where: { state: 'FAILED' } }),
+    prisma.notificationOutbox.count({ where: { state: 'FAILED', failure: 'DELIVERY' } }),
     prisma.notificationOutbox.count({ where: { state: 'PENDING', lastError: CHANNEL_OFF } }),
+    prisma.notificationOutbox.count({ where: { state: 'EXPIRED', scheduledAt: { gte: dayAgo } } }),
     prisma.notificationOutbox.findFirst({
       where: { state: 'SENT' },
       orderBy: { sentAt: 'desc' },
@@ -495,7 +829,9 @@ export async function outboxDigest(actor: Actor): Promise<OutboxDigest> {
     pending,
     sentLastDay,
     failed,
+    deliveryFailed,
     waitingChannel,
+    expiredLastDay,
     lastSentAt: lastSent?.sentAt ?? null,
     failures: failures.map((row) => ({
       id: row.id,
@@ -612,6 +948,69 @@ export async function leadDeliveryDigest(actor: Actor): Promise<LeadDeliveryDige
   };
 }
 
+/** Пауза между повторами одного письма отказа (требование М-19, Р-307). */
+export const LEAD_RETRY_PAUSE_MS = 10 * 60 * 1000;
+
+/**
+ * Отправить ещё раз письмо отказа по заявке — с её карточки (требование
+ * М-19, решение Р-307).
+ *
+ * Прежде экран заявки советовал «повторить отправку на экране очереди
+ * уведомлений», а очередь менеджеру закрыта. Повторяется только письмо
+ * отказа, не доставленное после всех попыток (ОМ-6): доставленное и
+ * ждущее остаются как есть, и служба возвращает `false`. Адрес рассылка
+ * читает из заявки при отправке, поэтому исправленный в сведениях адрес
+ * действует сразу. Один и тот же отказ повторяется не чаще раза в десять
+ * минут: иначе кнопка становится способом слать письма на чужой ящик.
+ */
+export async function retryLeadLetter(actor: Actor, leadId: string, ip?: string | null): Promise<boolean> {
+  ensure(actor, 'REQUEST_MODERATE');
+  const scope = scopeLeads(actor);
+  const lead =
+    scope === null
+      ? null
+      : await prisma.lead.findFirst({
+          where: { AND: [{ id: leadId }, scope] },
+          select: { id: true, contactKind: true, contact: true },
+        });
+  if (lead === null) throw new Error('Заявка не найдена');
+  const row = await prisma.notificationOutbox.findFirst({
+    where: { leadId: lead.id, eventKind: 'LEAD_DECLINED', channel: 'EMAIL' },
+    select: { id: true, state: true, projectId: true, eventKind: true },
+  });
+  if (row === null || row.state !== 'FAILED') return false;
+  if (leadAddress(lead) === null) {
+    throw new Error('В заявке нет адреса почты: исправьте адрес в сведениях заявки и отправьте ещё раз');
+  }
+  const recent = await prisma.auditEvent.findFirst({
+    where: {
+      action: 'OUTBOX_RETRY',
+      objectType: 'NotificationOutbox',
+      objectId: row.id,
+      occurredAt: { gt: new Date(Date.now() - LEAD_RETRY_PAUSE_MS) },
+    },
+    select: { id: true },
+  });
+  if (recent !== null) {
+    throw new Error('Письмо уже отправлено заново: повторить можно через десять минут');
+  }
+  // Захват по состоянию: второе нажатие в соседнем окне строку не тронет.
+  const claimed = await prisma.notificationOutbox.updateMany({
+    where: { id: row.id, state: 'FAILED' },
+    data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
+  });
+  if (claimed.count === 0) return false;
+  await record(actor, {
+    action: 'OUTBOX_RETRY',
+    objectType: 'NotificationOutbox',
+    objectId: row.id,
+    projectId: row.projectId,
+    payload: { eventKind: row.eventKind, leadId: lead.id },
+    ip,
+  });
+  return true;
+}
+
 /**
  * Вернуть отказавшую строку в очередь. Счётчик попыток обнуляется: причина
  * отказа обычно устраняется снаружи (адрес исправлен, ящик настроен), и
@@ -626,13 +1025,13 @@ export async function retryFailed(actor: Actor, id: string, ip?: string | null):
   if (row === null || row.state !== 'FAILED') return;
   // Напоминание о сроке, повторённое через неделю, сообщало бы «срок через
   // три дня» после срока (решение Р-246).
-  if (row.eventKind.startsWith('DEADLINE_') && Date.now() - row.createdAt.getTime() > 86_400_000) {
+  if (isExpired(row, new Date())) {
     throw new Error('Напоминание о сроке старше суток не повторяется: срок уже другой');
   }
 
   await prisma.notificationOutbox.update({
     where: { id: row.id },
-    data: { state: 'PENDING', attempts: 0, lastError: null, scheduledAt: new Date() },
+    data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
   });
   await record(actor, {
     action: 'OUTBOX_RETRY',

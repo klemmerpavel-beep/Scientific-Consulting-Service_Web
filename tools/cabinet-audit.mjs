@@ -1,7 +1,8 @@
 /**
  * Машинный обход облика снимков прототипа (решение Р-214).
  *
- * По каждому из 99 снимков на ширинах 1100, 1280, 1440, 1920 и 390 px:
+ * По каждому снимку на ширинах 1100, 1280, 1440, 1920, 390 и 360 px
+ * (360 — требование Т-23, решение Р-320):
  * горизонтальное переполнение, кегль ниже 12 px, цель нажатия ниже 44 px,
  * обрезанный текст, наложение карточек, больше двух плашек в ряду.
  * Прежде обход жил во временном каталоге исполнителя и не повторялся
@@ -18,7 +19,7 @@ import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..', 'design', 'cabinet-prototype');
 const widths = process.argv.slice(2).map(Number).filter(Boolean);
-const W = widths.length ? widths : [1100, 1280, 1440, 1920, 390];
+const W = widths.length ? widths : [1100, 1280, 1440, 1920, 390, 360];
 const pages = [];
 (function walk(d) { for (const e of readdirSync(d)) { const p = path.join(d, e); if (statSync(p).isDirectory()) walk(p); else if (e === 'index.html') pages.push(p); } })(ROOT);
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });

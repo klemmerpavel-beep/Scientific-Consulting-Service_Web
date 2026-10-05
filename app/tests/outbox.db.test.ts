@@ -15,9 +15,8 @@ const enabled = Boolean(process.env.DATABASE_URL);
 
 describe('очередь уведомлений', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
-  const { CHANNEL_OFF, dispatch, enqueue, outboxDigest, retryFailed } = await import(
-    '../src/lib/cabinet/outbox.ts'
-  );
+  const { CHANNEL_OFF, EXPIRED_NOTE, dispatch, enqueue, isExpired, outboxDigest, retryFailed } =
+    await import('../src/lib/cabinet/outbox.ts');
   const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
 
   const stamp = Date.now();
@@ -122,6 +121,60 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
     assert.equal(row.attempts, 0, 'ненастроенный канал израсходовал попытку');
     assert.equal(row.lastError, CHANNEL_OFF);
     assert.ok(row.scheduledAt.getTime() > Date.now(), 'повтор не отложен');
+  });
+
+  it('устаревшее напоминание о сроке закрывается без отправки, прочее ждёт', async () => {
+    // Очередь, накопленная до настройки почты, не должна рассылать «срок
+    // через три дня» после срока (решение Р-278).
+    const old = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const stale = await prisma.notificationOutbox.create({
+      data: {
+        userId,
+        channel: 'EMAIL',
+        eventKind: 'DEADLINE_IN_3_DAYS',
+        subject: 'Срок этапа подходит',
+        body: '—',
+        dedupKey: `expired-test:${stamp}:deadline`,
+        createdAt: old,
+        scheduledAt: new Date(0),
+      },
+    });
+    const kept = await prisma.notificationOutbox.create({
+      data: {
+        userId,
+        channel: 'EMAIL',
+        eventKind: 'NEW_MESSAGE',
+        subject: 'Новое сообщение',
+        body: '—',
+        dedupKey: `expired-test:${stamp}:message`,
+        createdAt: old,
+        scheduledAt: new Date(0),
+      },
+    });
+
+    await dispatch(500);
+
+    const staleRow = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: stale.id } });
+    assert.equal(staleRow.state, 'EXPIRED');
+    assert.equal(staleRow.attempts, 0, 'устаревшая строка израсходовала попытку');
+    assert.equal(staleRow.lastError, EXPIRED_NOTE);
+
+    const keptRow = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: kept.id } });
+    assert.equal(keptRow.state, 'PENDING', 'сообщение без срока годности закрыто');
+    assert.equal(keptRow.lastError, CHANNEL_OFF);
+
+    const digest = await outboxDigest(staff(headId, 'HEAD'));
+    assert.ok(digest.expiredLastDay >= 1, 'сводка не видит устаревших');
+
+    await prisma.notificationOutbox.deleteMany({ where: { id: { in: [stale.id, kept.id] } } });
+  });
+
+  it('срок годности считается только у напоминаний о сроке', () => {
+    const now = new Date('2026-10-03T12:00:00Z');
+    const day = 24 * 60 * 60 * 1000;
+    assert.equal(isExpired({ eventKind: 'DEADLINE_IN_3_DAYS', createdAt: new Date(now.getTime() - day - 1) }, now), true);
+    assert.equal(isExpired({ eventKind: 'DEADLINE_IN_3_DAYS', createdAt: new Date(now.getTime() - day + 1) }, now), false);
+    assert.equal(isExpired({ eventKind: 'LEAD_DECLINED', createdAt: new Date(now.getTime() - 30 * day) }, now), false);
   });
 
   it('настоящий отказ наращивает попытки и кончается пометкой неудачи', async () => {

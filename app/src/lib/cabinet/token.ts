@@ -46,6 +46,13 @@ export const RATE_PER_EMAIL_IP = 5;
 export const RATE_PER_EMAIL = 10;
 export const RATE_PER_IP = 20;
 export const RATE_WINDOW_MS = 60 * 60 * 1000;
+/**
+ * Пауза между ссылками на один адрес — минута (требование Т-07, решение
+ * Р-313). Страница входа обещает «прислать ещё раз можно через минуту»;
+ * запрос раньше отклоняется как превышение частоты, и снаружи ответ тот же,
+ * что для любого адреса.
+ */
+export const RESEND_PAUSE_MS = 60 * 1000;
 
 /** Счётчики попыток за окно, по которым решается, выдавать ли ссылку. */
 export type LoginRateCounts = {
@@ -57,10 +64,13 @@ export type LoginRateCounts = {
   readonly byIp: number;
   /** С этого IP владелец адреса уже входил в кабинет. */
   readonly knownIp: boolean;
+  /** Ссылки на этот адрес за последнюю минуту, с любых узлов (Р-313). */
+  readonly lastMinute?: number;
 };
 
 /** Превышен ли предел частоты. Чистая функция: схема проверяется без базы. */
 export function loginRateExceeded(counts: LoginRateCounts): boolean {
+  if ((counts.lastMinute ?? 0) > 0) return true;
   if (counts.byIp >= RATE_PER_IP) return true;
   if (counts.byPair >= RATE_PER_EMAIL_IP) return true;
   if (!counts.knownIp && counts.byEmail >= RATE_PER_EMAIL) return true;

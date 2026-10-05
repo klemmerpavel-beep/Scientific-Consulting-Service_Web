@@ -91,6 +91,16 @@ describe('работа с заявкой', { skip: !enabled }, async () => {
     await assert.rejects(work.editLead(head, ids.lead!, { contact: '  ' }), work.LeadWorkError);
   });
 
+  it('УМ-04: вид контакта — по новому значению (Р-374)', async () => {
+    const head = actor(ids.head!, 'HEAD');
+    await work.editLead(head, ids.lead!, { contact: '+7 900 000-00-00' });
+    assert.equal((await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } })).contactKind, 'phone');
+    await work.editLead(head, ids.lead!, { contact: `lw-${stamp}@example.org` });
+    assert.equal((await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } })).contactKind, 'email');
+    assert.equal(work.contactKindOf(' a@b.ru '), 'email');
+    assert.equal(work.contactKindOf('@telegram_nick'), 'phone');
+  });
+
   it('комментарий сохраняется с автором; пустой отклоняется', async () => {
     const head = actor(ids.head!, 'HEAD');
     await work.addLeadComment(head, ids.lead!, '  Позвонил, ждём ответа  ');

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { prisma } from '../../../lib/db';
 import { deliver } from '../../../lib/notify';
+import { enqueueLeadReceived } from '../../../lib/cabinet/outbox';
 import {
   CONSENT_VERSION,
   RATE_LIMIT_MESSAGE,
@@ -141,6 +142,10 @@ export async function POST(req: NextRequest) {
   // по-прежнему ложится в журнал.
   if (!automated) {
     after(async () => {
+      // Заявителю — «Заявка получена»: что дальше, срок ответа, контакты
+      // (требование Т-05, решение Р-312). Отзыву и заявке без почты письма
+      // нет; на один адрес — не больше письма в сутки.
+      await enqueueLeadReceived(id).catch((e) => console.error('[lead] письмо «Заявка получена» не поставлено', e));
       const results = await deliver(lead, id);
       await prisma.delivery
         .createMany({

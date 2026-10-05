@@ -23,6 +23,7 @@ import {
   TableCard,
   Text,
   formatDate,
+  Pager,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import {
@@ -30,19 +31,26 @@ import {
   STATUS_LABEL,
   USER_PAGE_SIZE,
   accessLinkPeople,
+  curatorProfiles,
   expertsForNda,
+  staffForRegalia,
   listUsers,
   type Role,
 } from '../../../../lib/cabinet/admin';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
+import { formatPlain } from '../../../../lib/cabinet/money';
+import { homeFor } from '../../../../lib/cabinet/nav';
 import { AccessLink } from '../../../../components/cabinet/AccessLink';
 import { mailConfigured } from '../../../../lib/cabinet/mail';
 import {
   changeUserRole,
   changeUserStatus,
+  resendCuratorInvite,
   giveAccessLink,
   inviteUser,
   updateExpertNda,
+  updateRegalia,
+  updateCuratorProfile,
 } from '../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -63,9 +71,8 @@ export default async function UsersScreen({
     page?: string;
   }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'USER_MANAGE')) redirect('/cabinet/projects');
+  const actor = await requireActor('/cabinet/manage/users');
+  if (!can(actor, 'USER_MANAGE')) redirect(homeFor(actor));
 
   const flags = await searchParams;
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
@@ -78,10 +85,12 @@ export default async function UsersScreen({
   // перечня в двадцать строк эксперты и нужные люди уходили на следующие
   // страницы (решение Р-225). Ссылка выдаётся только действующим записям:
   // приостановленной и обезличенной вход закрыт (решение Р-195).
-  const [list, experts, active] = await Promise.all([
+  const [list, experts, active, staffRegalia, curators] = await Promise.all([
     listUsers(actor, { role, status, page: Number(flags.page ?? '1') }),
     expertsForNda(actor),
     accessLinkPeople(actor),
+    staffForRegalia(actor),
+    curatorProfiles(actor),
   ]);
   const users = list.rows;
   // Текст блока зависит от того, настроена ли почта: с ней ссылка отсюда
@@ -120,7 +129,9 @@ export default async function UsersScreen({
             {/* Без почты письмо со ссылкой не придёт, и совет «запросите
                 сам» оставлял сотрудника без входа (решение Р-267). */}
             {mailReady
-              ? 'Учётная запись заведена. Ссылку входа человек запрашивает сам на странице входа — почта уходит только по его действию.'
+              ? flags.created === 'curator'
+                ? 'Учётная запись заведена. Куратору ушло письмо «Вам открыт кабинет куратора ProDisser» с кнопкой «Открыть кабинет»; ссылку входа он запросит на странице входа.'
+                : 'Учётная запись заведена. Ссылку входа человек запрашивает сам на странице входа — почта уходит только по его действию.'
               : 'Учётная запись заведена. Почта практики не подключена, и письмо со ссылкой не придёт: выдайте ссылку ниже, в разделе «Выдать ссылку входа», и передайте её человеку.'}
           </Notice>
         </Block>
@@ -242,15 +253,22 @@ export default async function UsersScreen({
                       нём дату по настройкам системы, и «08/12/2025» рядом
                       с «подписан 12 августа 2025» читалось двояко
                       (решение Р-183). */}
+                  {/* Договор поручения — только у эксперта: профиль с
+                      регалиями теперь есть и у куратора (Т-11, Р-297). */}
                   <td style={TABLE_CELL}>
-                    {user.expertProfile === null
+                    {user.role !== 'EXPERT'
                       ? '—'
                       : nda === null
                         ? 'не подписан'
                         : formatDate(nda)}
-                    {user.expertProfile !== null && nda === null ? (
+                    {user.role === 'EXPERT' && nda === null ? (
                       <div style={{ fontSize: 13, color: 'var(--pd-ink-secondary)' }}>
                         без него материалы клиента не выдаются
+                      </div>
+                    ) : null}
+                    {user.inviteFailed ? (
+                      <div style={{ fontSize: 13, color: 'var(--pd-ink-secondary)' }}>
+                        приглашение в кабинет не доставлено
                       </div>
                     ) : null}
                   </td>
@@ -295,6 +313,14 @@ export default async function UsersScreen({
                           </Button>
                         </Form>
                       )}
+                      {/* Приглашение куратору не доставлено — повтор отсюда,
+                          а не с экрана очереди (УЭ-08, Р-385). */}
+                      {user.inviteFailed && !erased ? (
+                        <Form action={resendCuratorInvite} inline>
+                          <input type="hidden" name="userId" value={user.id} />
+                          <Button tone="quiet">Отправить приглашение ещё раз</Button>
+                        </Form>
+                      ) : null}
                       {self || erased ? (
                         <Text muted size={13} style={{ margin: 0 }}>
                           {erased ? 'запись обезличена' : 'себя не правят'}
@@ -341,12 +367,16 @@ export default async function UsersScreen({
         <Disclosure title="Договоры поручения обработки данных" style={{ marginTop: 20 }}>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
             {experts.map((user) => (
-              <li key={user.id} style={{ display: 'grid', gap: 8 }}>
+              <li key={user.id} id={`nda-${user.id}`} style={{ display: 'grid', gap: 8 }}>
                 <Text size={14} style={{ margin: 0 }}>
                   {user.fullName}
                   {user.expertProfile?.ndaSignedAt == null
                     ? ' · без договора материалы клиента не выдаются'
                     : ` · подписан ${formatDate(user.expertProfile.ndaSignedAt)}`}
+                  {/* Куратор сообщил, что ждёт договор (Э-12, Р-331). */}
+                  {user.expertProfile?.ndaSignedAt == null && user.expertProfile?.ndaRequestedAt != null
+                    ? ` · ждёт договор с ${formatDate(user.expertProfile.ndaRequestedAt)}`
+                    : ''}
                 </Text>
                 <Form action={updateExpertNda} inline>
                   <input type="hidden" name="userId" value={user.id} />
@@ -368,26 +398,147 @@ export default async function UsersScreen({
         </Disclosure>
       )}
 
-      {list.pages <= 1 ? null : (
-        <nav
-          aria-label="Страницы перечня"
-          style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', marginTop: 20 }}
-        >
-          {list.page > 1 ? (
-            <a className="cab-mark" href={href({ page: list.page - 1 })}>
-              Предыдущие
-            </a>
-          ) : null}
-          <Text muted style={{ margin: 0 }}>
-            Страница {list.page} из {list.pages}
+      {/* Профиль куратора правит руководитель: степень и специальность
+          видит клиент, поэтому их вносит тот, кто может их подтвердить
+          (требование Э-11, решение Р-324). Под свёрткой, как договоры
+          поручения (Р-183). */}
+      {curators.length === 0 ? null : (
+        <Disclosure title="Профиль куратора" style={{ marginTop: 20 }}>
+          <Text size={14} style={{ marginBottom: 14 }}>
+            Клиент видит куратора словом «Куратор», степенью и шифром специальности — без имени и
+            контактов; пустые поля не выводятся. Звание, должность, вуз и ставка — для практики. Ставка
+            по умолчанию — подсказка при начислении, в расчёт она не подставляется. Куратор свой профиль
+            не правит.
           </Text>
-          {list.page < list.pages ? (
-            <a className="cab-mark" href={href({ page: list.page + 1 })}>
-              Следующие
-            </a>
-          ) : null}
-        </nav>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
+            {curators.map((user) => (
+              <li key={user.id} id={`profile-${user.id}`} style={{ display: 'grid', gap: 8 }}>
+                <Text size={14} style={{ margin: 0 }}>
+                  {user.fullName}
+                </Text>
+                <Form action={updateCuratorProfile}>
+                  <input type="hidden" name="userId" value={user.id} />
+                  <FormRow>
+                    <Field
+                      label="Учёная степень"
+                      name="degree"
+                      scope={`profile-${user.id}`}
+                      placeholder="доктор технических наук"
+                      defaultValue={user.expertProfile?.degree ?? ''}
+                    />
+                    <Field
+                      label="Учёное звание"
+                      name="academicTitle"
+                      scope={`profile-${user.id}`}
+                      placeholder="профессор"
+                      defaultValue={user.expertProfile?.academicTitle ?? ''}
+                    />
+                    <Field
+                      label="Должность"
+                      name="position"
+                      scope={`profile-${user.id}`}
+                      placeholder="заведующий кафедрой"
+                      defaultValue={user.expertProfile?.position ?? ''}
+                    />
+                  </FormRow>
+                  <FormRow>
+                    <Field
+                      label="Шифр специальности"
+                      name="specialtyCode"
+                      scope={`profile-${user.id}`}
+                      placeholder="2.8.6"
+                      defaultValue={user.expertProfile?.specialtyCode ?? ''}
+                    />
+                    <Field
+                      label="Научная специальность"
+                      name="specialization"
+                      scope={`profile-${user.id}`}
+                      placeholder="Геомеханика, разрушение горных пород"
+                      defaultValue={user.expertProfile?.specialization ?? ''}
+                    />
+                  </FormRow>
+                  <FormRow>
+                    <Field
+                      label="Вуз"
+                      name="university"
+                      scope={`profile-${user.id}`}
+                      placeholder="Санкт-Петербургский горный университет"
+                      defaultValue={user.expertProfile?.university ?? ''}
+                    />
+                    <Field
+                      label="Ставка по умолчанию, ₽"
+                      name="defaultPayout"
+                      scope={`profile-${user.id}`}
+                      placeholder="15 000"
+                      defaultValue={
+                        user.expertProfile?.defaultPayout == null
+                          ? ''
+                          : formatPlain(user.expertProfile.defaultPayout)
+                      }
+                    />
+                  </FormRow>
+                  <FormActions>
+                    <Button tone="quiet">Сохранить профиль</Button>
+                  </FormActions>
+                </Form>
+              </li>
+            ))}
+          </ul>
+        </Disclosure>
       )}
+
+      {/* Регалии менеджеров и руководителей — для служебного учёта:
+          клиенту имя и регалии менеджера не выводятся (Э-01, ответы ОЭ-3б
+          и ОЭ-3в; Т-11, Р-297). Формы — под свёрткой (Р-183). */}
+      {staffRegalia.length === 0 ? null : (
+        <Disclosure title="Регалии сотрудников" style={{ marginTop: 20 }}>
+          <Text size={14} style={{ marginBottom: 14 }}>
+            Регалии менеджера и руководителя ведутся для служебного учёта, клиенту они и имя менеджера
+            не выводятся. Пустые поля не выводятся.
+          </Text>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
+            {staffRegalia.map((user) => (
+              <li key={user.id} style={{ display: 'grid', gap: 8 }}>
+                <Text size={14} style={{ margin: 0 }}>
+                  {user.fullName} · {ROLE_LABEL[user.role as Role]}
+                </Text>
+                <Form action={updateRegalia}>
+                  <input type="hidden" name="userId" value={user.id} />
+                  <FormRow>
+                    <Field
+                      label="Учёная степень"
+                      name="degree"
+                      scope={`regalia-${user.id}`}
+                      placeholder="кандидат технических наук"
+                      defaultValue={user.expertProfile?.degree ?? ''}
+                    />
+                    <Field
+                      label="Научная специальность"
+                      name="specialization"
+                      scope={`regalia-${user.id}`}
+                      placeholder="Горные машины"
+                      defaultValue={user.expertProfile?.specialization ?? ''}
+                    />
+                    <Field
+                      label="Шифр специальности"
+                      name="specialtyCode"
+                      scope={`regalia-${user.id}`}
+                      placeholder="2.8.6"
+                      defaultValue={user.expertProfile?.specialtyCode ?? ''}
+                    />
+                  </FormRow>
+                  <FormActions>
+                    <Button tone="quiet">Сохранить регалии</Button>
+                  </FormActions>
+                </Form>
+              </li>
+            ))}
+          </ul>
+        </Disclosure>
+      )}
+
+      {/* Постраничность — общей частью (УМ-08, Р-390). */}
+      <Pager label="Страницы перечня" page={list.page} pages={list.pages} hrefFor={(page) => href({ page })} />
     </Shell>
   );
 }

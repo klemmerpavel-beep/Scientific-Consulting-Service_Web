@@ -14,7 +14,17 @@ import {
   SHADOW,
 } from './tokens.ts';
 import type { WaveMood } from '../../lib/cabinet/charts';
-import { STAGE_STATE_LABEL, stageLabel, type StageStateKey } from '../../lib/cabinet/stage-state';
+import { presentAuthor } from '../../lib/cabinet/access';
+import { BLOCKED_HINT } from '../../lib/cabinet/file-guard';
+import {
+  STAGE_STATE_LABEL,
+  stageLabel,
+  turnLabel,
+  type StageStateKey,
+  type TurnViewer,
+} from '../../lib/cabinet/stage-state';
+
+export { turnLabel, type TurnViewer };
 
 /**
  * Составные части экранов кабинета. Пишутся вручную и типизированно —
@@ -49,15 +59,19 @@ export function Card({
   style,
   as: Tag = 'section',
   link = false,
+  id,
 }: {
   children: ReactNode;
   style?: CSSProperties;
   as?: 'section' | 'article' | 'div' | 'li';
   /** Карточка целиком ведёт куда-то: подсвечивается при наведении и фокусе. */
   link?: boolean;
+  /** Якорь: отказ формы возвращает к карточке, а не в начало экрана. */
+  id?: string;
 }) {
   return (
     <Tag
+      id={id}
       className={link ? 'cab-block cab-card cab-link-card' : 'cab-block cab-card'}
       style={{
         background: 'var(--pd-ink-inverse)',
@@ -258,7 +272,7 @@ export { BUTTON_PRIMARY, BUTTON_QUIET };
  * «правка», а голосовое управление не найдёт его по имени. Поэтому подпись
  * остаётся той же, только не занимает места.
  */
-const VISUALLY_HIDDEN: CSSProperties = {
+export const VISUALLY_HIDDEN: CSSProperties = {
   position: 'absolute',
   width: 1,
   height: 1,
@@ -385,21 +399,20 @@ export function Field({
 }
 
 /**
- * Как назвать автора файла или замечания на экране клиента.
+ * Как назвать автора файла или замечания на экране.
  *
- * Клиент видит практику как куратора: состав привлечённых специалистов ему
- * не показывается (решение Р-140). Имя эксперта, подписанное под версией
- * материала, обходило это правило с другой стороны — через авторство.
- * Себя клиент видит по имени, куратора тоже: с ним он переписывается.
+ * Куратора клиент видит словом «Куратор», без имени и контактов: прямого
+ * канала «клиент — куратор» нет, и имя под версией материала открывало бы
+ * его через авторство (решения Р-143, Р-150). Менеджера клиент видит
+ * словом «Менеджер» (Э-01, ОЭ-3б), себя — «Вы».
  */
 export function authorName(
   author: { fullName: string; role: string },
   viewer: { id?: string; role: string },
   authorId?: string,
 ): string {
-  if (authorId !== undefined && authorId === viewer.id) return 'Вы';
-  if (viewer.role === 'CLIENT' && author.role === 'EXPERT') return 'Специалист практики';
-  return author.fullName;
+  // Правило — в модуле прав (требование Т-11, решения Р-297, Р-322).
+  return presentAuthor(author, viewer, authorId);
 }
 
 /**
@@ -425,7 +438,11 @@ export function Form({
   children,
   style,
 }: {
-  action?: (form: FormData) => void | Promise<void>;
+  /**
+   * Серверное действие или адрес: форма первого шага отправляется адресом
+   * на экран подтверждения (решение Р-299).
+   */
+  action?: ((form: FormData) => void | Promise<void>) | string;
   /**
    * Форма-фильтр отправляется адресом на свой же маршрут. Со `method` не
    * сочетается серверное действие: одно исключает другое.
@@ -751,6 +768,53 @@ export function Tabs({
 }
 
 /**
+ * Постраничность перечня — одна общая часть вместо шести копий (улучшение
+ * УМ-08, решение Р-390). Разметка — `nav`: она управляет страницей и в счёт
+ * пяти блоков не входит (Р-183). Одна страница — ничего.
+ */
+export function Pager({
+  label,
+  page,
+  pages,
+  hrefFor,
+  total,
+  textSize = 14,
+  style,
+}: {
+  /** Подпись для чтения с экрана: «Страницы перечня». */
+  label: string;
+  page: number;
+  pages: number;
+  hrefFor: (page: number) => string;
+  /** «12 работ» — дописывается к «Страница N из M». */
+  total?: string;
+  textSize?: number;
+  style?: CSSProperties;
+}) {
+  if (pages <= 1) return null;
+  return (
+    <nav
+      aria-label={label}
+      style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', marginTop: 20, ...style }}
+    >
+      {page > 1 ? (
+        <a className="cab-mark" href={hrefFor(page - 1)}>
+          Предыдущие
+        </a>
+      ) : null}
+      <Text muted size={textSize} style={{ margin: 0 }}>
+        {`Страница ${page} из ${pages}${total === undefined ? '' : ` · всего ${total}`}`}
+      </Text>
+      {page < pages ? (
+        <a className="cab-mark" href={hrefFor(page + 1)}>
+          Следующие
+        </a>
+      ) : null}
+    </nav>
+  );
+}
+
+/**
  * Поле выбора файла.
  *
  * Своя связка подписи и `input[type=file]` стояла на трёх экранах в трёх
@@ -780,7 +844,10 @@ export function FileField({
   labelHidden?: boolean;
 }) {
   const id = fieldId(name, scope);
-  const hintId = hint === undefined ? undefined : `${id}-hint`;
+  // Запрет исполняемых файлов — в подсказке каждого поля без своего перечня
+  // расширений; поле книги заказов (`accept`) его не несёт (УК-16, Р-367).
+  const fullHint = accept === undefined ? [hint, BLOCKED_HINT].filter(Boolean).join(' ') : hint;
+  const hintId = fullHint === undefined ? undefined : `${id}-hint`;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <FieldLabel id={id} label={label} required={required} hidden={labelHidden} />
@@ -792,9 +859,9 @@ export function FileField({
         required={required}
         describedBy={hintId}
       />
-      {hint === undefined ? null : (
+      {fullHint === undefined ? null : (
         <span id={hintId} style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
-          {hint}
+          {fullHint}
         </span>
       )}
     </div>
@@ -851,13 +918,15 @@ export interface ThreadMessage {
   readonly createdAt: Date;
   readonly containsContactHint: boolean;
   readonly author: { id: string; fullName: string; role: string };
+  /** Когда прочитано менеджером работы (Р-221); клиенту — отметка «прочитано». */
+  readonly readAt?: Date | null;
 }
 
 /** Кем подписано сообщение: роль словом, а не кодом перечисления. */
 const ROLE_LABEL: Record<string, string> = {
   CLIENT: 'клиент',
-  EXPERT: 'эксперт',
-  MANAGER: 'куратор',
+  EXPERT: 'куратор',
+  MANAGER: 'менеджер',
   HEAD: 'руководитель',
 };
 
@@ -957,8 +1026,10 @@ export function Thread({
                   >
                     {authorName(message.author, viewer, message.author.id)}
                     {/* Свою роль человек знает: «Вы · клиент» читалось как
-                        пометка системы о нём самом (решение Р-206). */}
-                    {mine ? null : (
+                        пометка системы о нём самом (решение Р-206). Клиенту
+                        сотрудник подписан ролью вместо имени — «Менеджер», и
+                        повтор «· менеджер» не нужен (Э-01, ОЭ-3б, С-3). */}
+                    {mine || viewer.role === 'CLIENT' ? null : (
                       <span style={{ fontWeight: 400, color: 'var(--pd-ink-muted)' }}>
                         {' · '}
                         {ROLE_LABEL[message.author.role] ?? message.author.role}
@@ -1002,6 +1073,13 @@ export function Thread({
                   >
                     {formatTime(message.createdAt)}
                   </span>
+                  {/* Клиент видит, что менеджер прочитал его сообщение
+                      (часть F, П-07, решение Р-399). */}
+                  {viewer.role === 'CLIENT' && mine && message.readAt ? (
+                    <span style={{ fontFamily: SANS, fontSize: 12, lineHeight: 1.4, color: 'var(--pd-ink-muted)' }}>
+                      · прочитано менеджером
+                    </span>
+                  ) : null}
                   {flagContacts && message.containsContactHint ? (
                     <Chip>похоже на передачу контактов</Chip>
                   ) : null}
@@ -1403,19 +1481,8 @@ export function Empty({
   );
 }
 
-/**
- * Сократить строку до `max` знаков по границе слова, с многоточием.
- *
- * Нужна ответу экрана: название этапа или работы в нём ничем не
- * ограничено, и длинное выталкивало ответ за нижний край телефона — тот
- * же дефект, что закрывало решение Р-167 для темы работы (решение Р-210).
- */
-export function clip(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max - 1);
-  const space = cut.lastIndexOf(' ');
-  return `${(space > max / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
-}
+/** Сокращение строки — в чистом модуле: его берут и дела куратора (Р-329). */
+export { clip } from '../../lib/cabinet/text-clip';
 
 /** Согласование числительного: «1 этап», «2 этапа», «5 этапов». */
 export function plural(count: number, one: string, few: string, many: string): string {
@@ -1602,7 +1669,7 @@ export function Roadmap({
       <Text muted>
         {staff
           ? 'План работ ещё не заведён.'
-          : 'Этапы ещё не заведены — куратор добавит их после согласования плана.'}
+          : 'Этапы ещё не заведены — менеджер добавит их после согласования плана.'}
       </Text>
     );
   }
@@ -2000,6 +2067,7 @@ export function BoardColumn({
   title,
   href,
   hrefLabel,
+  extra,
   footer,
   anchor = 'start',
   fit = false,
@@ -2010,6 +2078,12 @@ export function BoardColumn({
   /** Полный перечень на своём экране: в колонке видно главное. */
   href?: string;
   hrefLabel?: string;
+  /**
+   * Вторая ссылка рядом с первой: клиенту — «Оплаты и документы» возле
+   * «материалы · N» (решение Р-280). Нового пункта меню ради экрана оплат
+   * не заводится: всё по работе — внутри карточки работы.
+   */
+  extra?: { readonly href: string; readonly label: string };
   /** Форма отправки: стоит под телом и с ним не прокручивается. */
   footer?: ReactNode;
   /**
@@ -2077,10 +2151,19 @@ export function BoardColumn({
         >
           {title}
         </h2>
-        {href === undefined ? null : (
-          <a className="cab-mark" href={href} style={{ fontFamily: SANS, fontSize: 14 }}>
-            {hrefLabel ?? 'весь список'}
-          </a>
+        {href === undefined && extra === undefined ? null : (
+          <span style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {href === undefined ? null : (
+              <a className="cab-mark" href={href} style={{ fontFamily: SANS, fontSize: 14 }}>
+                {hrefLabel ?? 'весь список'}
+              </a>
+            )}
+            {extra === undefined ? null : (
+              <a className="cab-mark" href={extra.href} style={{ fontFamily: SANS, fontSize: 14 }}>
+                {extra.label}
+              </a>
+            )}
+          </span>
         )}
       </div>
       <div
@@ -2150,25 +2233,31 @@ export function BoardColumn({
  * (решение Р-206).
  */
 function panelAnswer(
-  current: { state: StageStateKey } | null,
+  current: { state: StageStateKey; handedOverAt?: Date | null } | null,
   total: number,
   staff: boolean,
+  projectStatus?: string,
+  turnViewer: TurnViewer = 'curator',
+  hasExpert = true,
 ): string {
+  // Состояние работы главнее состояния этапа: у приостановленной и
+  // закрытой работы клиент ничего не делает, сколько бы этапов ни было
+  // открыто (решения Р-240, Р-287).
+  if (!staff && projectStatus === 'PAUSED') return 'Работа приостановлена — сейчас от вас ничего не требуется.';
+  if (!staff && (projectStatus === 'COMPLETED' || projectStatus === 'CANCELLED')) {
+    return 'Работа закрыта. Материалы остаются доступны здесь.';
+  }
+  // Куратору приостановленная работа не пишет «Ход за вами»: сроки стоят,
+  // хотя материалы прикладывать можно (Э-04, Д-4, решение Р-329).
+  if (turnViewer === 'expert' && projectStatus === 'PAUSED') return 'Работа приостановлена.';
   if (current === null) {
     if (total === 0) {
-      return staff ? 'План работ не заведён.' : 'План работ составляет куратор — этапы появятся здесь.';
+      return staff ? 'План работ не заведён.' : 'План работ составляет менеджер — этапы появятся здесь.';
     }
     return staff ? 'Все этапы закрыты.' : 'Работа закрыта. Материалы остаются доступны здесь.';
   }
   if (!staff) return 'Сейчас от вас ничего не требуется — работа идёт.';
-  const turn: Record<StageStateKey, string> = {
-    NOT_STARTED: 'Ход за практикой: этап не начат.',
-    IN_PROGRESS: 'Ход за исполнителем: этап в работе.',
-    AWAITING_CLIENT: 'Ход за клиентом: ждём материалов.',
-    IN_APPROVAL: 'Ход за клиентом: этап на согласовании.',
-    DONE: 'Этап закрыт.',
-  };
-  return turn[current.state];
+  return `${turnLabel(current.state, turnViewer, hasExpert, current.handedOverAt ?? null)}.`;
 }
 
 export function ProgressPanel({
@@ -2183,11 +2272,17 @@ export function ProgressPanel({
   action,
   actionHref,
   actionLabel,
+  waiting: waitingFor,
+  projectStatus,
+  turnViewer,
+  hasExpert,
+  executor,
   style,
 }: {
   done: number;
   total: number;
-  current: { title: string; state: StageStateKey } | null;
+  /** Этап, сданный куратором, — с датой сдачи (Э-05, Р-325). */
+  current: { title: string; state: StageStateKey; handedOverAt?: Date | null } | null;
   stageDueOn?: string | null;
   projectDueOn?: string | null;
   /** Срок прошёл: называется словом, не цветом (решение Р-206). */
@@ -2198,13 +2293,25 @@ export function ProgressPanel({
   action?: string | null;
   actionHref?: string | null;
   actionLabel?: string;
+  /**
+   * Работа ждёт клиента — на любом этапе, а не только на первом
+   * незавершённом (решение Р-287). Без значения — по текущему этапу.
+   */
+  waiting?: boolean;
+  /** Состояние работы: у приостановленной и закрытой клиент ничего не делает. */
+  projectStatus?: string;
+  /** Кто смотрит и назначен ли эксперт — для подписи хода (Р-288). */
+  turnViewer?: TurnViewer;
+  hasExpert?: boolean;
+  /** Исполнитель работы — практике, в нижней строке (М-16, Р-298). */
+  executor?: string | null;
   style?: CSSProperties;
 }) {
   const share = total === 0 ? 0 : Math.round((done / total) * 100);
   // Ожидание человека подсвечивается: это единственное состояние, в котором
   // работа стоит из-за него, и оно не должно теряться среди прочих.
   const waiting =
-    !staff && (current?.state === 'AWAITING_CLIENT' || current?.state === 'IN_APPROVAL');
+    waitingFor ?? (!staff && (current?.state === 'AWAITING_CLIENT' || current?.state === 'IN_APPROVAL'));
   // Настроение шкалы: волна набегает, пока работа идёт, опадает до ряби,
   // когда она ждёт человека, и сходит в гладь, когда всё закрыто. Считается
   // из состояния, а не из текущего времени, — иначе снимок менялся бы ото
@@ -2277,7 +2384,7 @@ export function ProgressPanel({
             color: 'var(--pd-ink)',
           }}
         >
-          {action ?? panelAnswer(current, total, staff)}
+          {action ?? panelAnswer(current, total, staff, projectStatus, turnViewer, hasExpert)}
         </span>
         {actionHref == null ? null : (
           <ButtonLink href={actionHref} tone="primary">
@@ -2314,6 +2421,7 @@ export function ProgressPanel({
             {projectLate ? ' · прошёл' : ''}
           </span>
         )}
+        {executor == null ? null : <span>{executor}</span>}
       </div>
     </section>
   );
@@ -2331,12 +2439,18 @@ export function Disclosure({
   title,
   children,
   tall = false,
+  open = false,
+  id,
   style,
 }: {
   title: string;
   children: ReactNode;
   /** Высокое тело: история работы длиннее прочих свёрток и требует места. */
   tall?: boolean;
+  /** Раскрыта при показе: отказ формы внутри свёртки виден сразу (Р-279). */
+  open?: boolean;
+  /** Якорь: возврат после отказа ведёт прямо к свёртке. */
+  id?: string;
   style?: CSSProperties;
 }) {
   // Раскрытая свёртка не должна выталкивать панель за край окна, поэтому
@@ -2354,6 +2468,8 @@ export function Disclosure({
     // (Р-183).
     <details
       className="cab-block"
+      open={open || undefined}
+      id={id}
       style={{
         background: 'var(--pd-ink-inverse)',
         border: '1px solid var(--pd-border)',
@@ -2566,6 +2682,23 @@ function moscow(value: Date): { day: number; month: number; year: number } {
 export function formatDay(value: Date): string {
   const { day, month, year } = moscow(value);
   return `${day} ${MONTHS[month - 1]} ${year}`;
+}
+
+/**
+ * Состояние своей версии у куратора (требование Э-06, решение Р-326):
+ * «ждёт публикации», «опубликована {дата}» — днём решения менеджера по
+ * Москве, «отклонена: {причина}». `null` — у версии нет модерации: её
+ * загрузил менеджер или клиент.
+ */
+export function versionState(
+  moderation: { status: string; decidedAt?: Date | null; note: string | null } | null,
+): string | null {
+  if (moderation === null) return null;
+  if (moderation.status === 'PENDING') return 'ждёт публикации';
+  if (moderation.status === 'PUBLISHED') {
+    return moderation.decidedAt == null ? 'опубликована' : `опубликована ${formatDay(moderation.decidedAt)}`;
+  }
+  return moderation.note === null ? 'отклонена' : `отклонена: ${moderation.note}`;
 }
 
 /** Ключ дня: два сообщения одного дня дают одну строку. */

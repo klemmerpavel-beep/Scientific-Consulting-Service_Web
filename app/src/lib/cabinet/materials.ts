@@ -1,9 +1,24 @@
 import { prisma } from '../db.ts';
-import { can, ensure, scopeComments, scopeProjects, type Actor } from './access.ts';
+import { workLine } from './work-line.ts';
+import { closeActChecks } from './head-checks.ts';
+import {
+  can,
+  ensure,
+  ensureContributionOpen,
+  scopeComments,
+  scopeProjects,
+  versionVisible,
+  type Actor,
+} from './access.ts';
 import { record } from './audit.ts';
 import { hasContacts } from './contacts.ts';
-import { enqueue } from './outbox.ts';
+import { fileRefusal } from './file-guard.ts';
+import { identityHint } from './identity-hint.ts';
+import { enqueue, notifyCurator } from './outbox.ts';
+import { stageLink } from './approval.ts';
+import { siteUrl } from '../site-url.ts';
 import { projectRef } from './projects.ts';
+import { CLIENT_TRANCHE_STATUSES } from './finance.ts';
 import { materialKey, openObject, sha256, storage } from './storage.ts';
 
 /**
@@ -47,6 +62,12 @@ export interface UploadInput {
   readonly contractId?: string | null;
   /** Транш, к которому относятся счёт и акт. */
   readonly trancheId?: string | null;
+  /**
+   * Пояснение к версии — сохраняется замечанием к ней в той же операции:
+   * при отказе не сохраняется ни файл, ни пояснение (требование Э-06,
+   * решение Р-326).
+   */
+  readonly note?: string | null;
   readonly originalName: string;
   readonly contentType: string;
   readonly body: Buffer;
@@ -66,7 +87,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
       ? null
       : await prisma.material.findUnique({
           where: { id: input.materialId },
-          select: { projectId: true, kind: true, deletedAt: true },
+          select: { projectId: true, kind: true, deletedAt: true, stageId: true },
         });
   if (
     input.materialId != null &&
@@ -87,6 +108,16 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   // бы приложить свой «акт» к чужому траншу.
   const kind = existing?.kind ?? input.kind ?? 'STAGE_MATERIAL';
   ensure(actor, kind === 'STAGE_MATERIAL' ? 'MATERIAL_UPLOAD' : 'PAYMENT_EDIT', ref);
+  // Закрытая работа и завершённый этап — только чтение; документы оплат
+  // правилом не закрыты (требования Т-17, М-10, решение Р-293).
+  if (kind === 'STAGE_MATERIAL') {
+    const stageId = existing === null ? (input.stageId ?? null) : existing.stageId;
+    const [work, stage] = await Promise.all([
+      prisma.project.findUnique({ where: { id: input.projectId }, select: { status: true } }),
+      stageId === null ? null : prisma.stage.findUnique({ where: { id: stageId }, select: { state: true } }),
+    ]);
+    ensureContributionOpen(actor, work?.status ?? 'ACTIVE', stage?.state ?? null);
+  }
 
   // Вид — из закрытого перечня, привязка документа — к договору и траншу
   // этой же работы. Прежде вид с формы шёл в базу как есть (мусорное
@@ -142,14 +173,31 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     }
   }
 
+  // Пояснение проверяется до записи: прежде файл ложился первым, а длинное
+  // пояснение отказывало потом — файл оставался, введённое терялось, и
+  // повтор давал дубль (требование Э-06, решение Р-326).
+  const note = (input.note ?? '').trim();
+  if (note.length > COMMENT_MAX) {
+    throw new Error(`Пояснение длиннее ${COMMENT_MAX} знаков: сократите его — ни файл, ни пояснение не сохранены`);
+  }
+
   if (input.body.byteLength === 0) throw new Error('Пустой файл не принимается');
   if (input.body.byteLength > MAX_UPLOAD_BYTES) {
     throw new Error(`Файл больше допустимых ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ`);
   }
+  // Исполняемые файлы и установщики не принимаются ни от кого — по
+  // расширению и по содержимому (требование Т-22, решение Р-296).
+  const refusal = fileRefusal(input.originalName, input.body);
+  if (refusal !== null) throw new Error(refusal);
+
+  // Версия эксперта клиенту не видна до публикации куратором: строка
+  // модерации ставится вместе с версией, а событие в истории клиента и
+  // письмо ему — в момент публикации (требование Т-18, решение Р-294).
+  const moderated = actor.role === 'EXPERT' && kind === 'STAGE_MATERIAL';
 
   // Номер версии вычисляется и занимается в одной транзакции; от гонки
   // защищает уникальность пары «материал — номер» на стороне базы.
-  const { version, material, fresh, eventId } = await prisma.$transaction(async (tx) => {
+  const { version, material, fresh, eventId, comment } = await prisma.$transaction(async (tx) => {
     const current =
       input.materialId == null
         ? null
@@ -188,18 +236,37 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
         uploadedById: actor.id,
       },
     });
+    if (moderated) {
+      // ФИО куратора в имени файла или в авторе документа — предупреждение
+      // менеджеру перед публикацией (улучшение УК-03, решение Р-396).
+      const curator = await tx.user.findUnique({ where: { id: actor.id }, select: { fullName: true } });
+      const hint = curator !== null && identityHint(input.originalName, input.body, curator.fullName);
+      await tx.versionModeration.create({ data: { versionId: created.id, identityHint: hint } });
+    }
+    // Пояснение — замечанием к этой версии, в той же транзакции; откат
+    // версии при отказе записи байтов удаляет и его (каскад).
+    const remark = note === '' ? null : commentRow(actor, created.id, note);
+    const comment = remark === null ? null : await tx.versionComment.create({ data: remark.data, select: { id: true } });
 
-    const event = await tx.projectEvent.create({
-      data: {
-        projectId: input.projectId,
-        actorId: actor.id,
-        kind: 'VERSION_UPLOADED',
-        payload: { materialId: target.id, version: number },
-      },
-      select: { id: true },
-    });
+    const event = moderated
+      ? null
+      : await tx.projectEvent.create({
+          data: {
+            projectId: input.projectId,
+            actorId: actor.id,
+            kind: 'VERSION_UPLOADED',
+            payload: { materialId: target.id, version: number },
+          },
+          select: { id: true },
+        });
 
-    return { version: created, material: target, fresh: current === null, eventId: event.id };
+    return {
+      version: created,
+      material: target,
+      fresh: current === null,
+      eventId: event?.id ?? null,
+      comment: comment === null || remark === null ? null : { id: comment.id, held: remark.held, contactHint: remark.contactHint },
+    };
   });
 
   // Байты пишутся после строки: ключ объекта строится от номера версии,
@@ -211,7 +278,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     await storage().put(version.storageKey, input.body, input.contentType);
   } catch (error) {
     await prisma.$transaction(async (tx) => {
-      await tx.projectEvent.delete({ where: { id: eventId } });
+      if (eventId !== null) await tx.projectEvent.delete({ where: { id: eventId } });
       await tx.materialVersion.delete({ where: { id: version.id } });
       if (fresh) await tx.material.delete({ where: { id: material.id } });
     });
@@ -264,6 +331,8 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
       },
     });
     const recipients = candidates
+      // Клиент о версии на публикации не узнаёт: она ему не видна (Р-294).
+      .filter((user) => !moderated || user.role !== 'CLIENT')
       .filter((user) =>
         can(
           {
@@ -277,17 +346,20 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
           ref,
         ),
       )
-      .map((user) => user.id);
-    for (const userId of recipients) {
+      .map((user) => ({ id: user.id, role: user.role }));
+    for (const recipient of recipients) {
+      const userId = recipient.id;
       await enqueue(prisma, {
         userId,
         projectId: input.projectId,
         eventKind: 'VERSION_UPLOADED',
         subject: `Новая версия материала: ${material.title}`,
         body:
-          `Проект ${project.code} — ${project.title}.\n` +
-          `Загружена версия v${version.number}. Открыть можно в личном кабинете.`,
+          `${workLine(project, recipient.role === 'CLIENT')}\n` +
+          `Загружена версия v${version.number}. Открыть можно в личном кабинете.` +
+          (moderated ? '\nВерсия куратора ждёт публикации: клиент увидит её после вашего решения.' : ''),
         dedupKey: `version:${version.id}:uploaded:${userId}`,
+        path: materialPath(project.code, material.stageId),
       });
     }
   }
@@ -296,11 +368,284 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     objectType: 'MaterialVersion',
     objectId: version.id,
     projectId: input.projectId,
-    payload: { material: material.id, version: version.number },
+    payload: { material: material.id, version: version.number, ...(moderated ? { moderated: true } : {}) },
     ip,
   });
+  // Акт по работе закрывает дела руководителя об акте (РК-12, Р-338).
+  if (input.kind === 'ACT') await closeActChecks(prisma, input.projectId, actor.id);
+  if (comment !== null && project !== null) {
+    await commentAftermath(
+      actor,
+      {
+        projectId: input.projectId,
+        code: project.code,
+        title: project.title,
+        stageId: material.stageId,
+        materialTitle: material.title,
+        versionNumber: version.number,
+      },
+      comment,
+    );
+  }
 
   return version;
+}
+
+/**
+ * Строка замечания по правилам модерации. Замечание эксперта всегда
+ * проходит модерацию; замечание клиента с телефоном, адресом или ссылкой на
+ * мессенджер — тоже: прежде оно сразу становилось видно назначенному
+ * эксперту, и контакт уходил в обход куратора (решение Р-242). Автор видит
+ * своё замечание с отметкой «ожидает публикации».
+ */
+function commentRow(actor: Actor, versionId: string, text: string) {
+  const contactHint = hasContacts(text);
+  const held = actor.role === 'EXPERT' || (actor.role === 'CLIENT' && contactHint);
+  const published = !held;
+  const now = new Date();
+  return {
+    held,
+    contactHint,
+    data: {
+      versionId,
+      authorId: actor.id,
+      body: text,
+      moderationStatus: published ? ('PUBLISHED' as const) : ('PENDING' as const),
+      moderatedById: published ? actor.id : null,
+      moderatedAt: published ? now : null,
+      publishedAt: published ? now : null,
+    },
+  };
+}
+
+/**
+ * Сигналы и журнал после замечания — общие для замечания и пояснения к
+ * загруженной версии. Менеджеру — сигнал без текста (требование М-07,
+ * решение Р-300): замечание на модерации — одно письмо, пока в работе есть
+ * неразобранное; замечание клиента, опубликованное сразу, — каждое.
+ */
+async function commentAftermath(
+  actor: Actor,
+  ctx: {
+    readonly projectId: string;
+    readonly code: string;
+    readonly title: string;
+    readonly stageId: string | null;
+    readonly materialTitle: string;
+    readonly versionNumber: number;
+  },
+  comment: { readonly id: string; readonly held: boolean; readonly contactHint: boolean },
+): Promise<void> {
+  const where = ctx.stageId === null ? materialsLink(ctx.code) : stageLink(ctx.stageId);
+  if (comment.held) {
+    const [otherComments, versions] = await Promise.all([
+      prisma.versionComment.count({
+        where: {
+          id: { not: comment.id },
+          moderationStatus: 'PENDING',
+          version: { material: { projectId: ctx.projectId, deletedAt: null } },
+        },
+      }),
+      prisma.versionModeration.count({
+        where: { status: 'PENDING', version: { material: { projectId: ctx.projectId, deletedAt: null } } },
+      }),
+    ]);
+    if (otherComments + versions === 0) {
+      await notifyCurator(prisma, {
+        projectId: ctx.projectId,
+        actorId: actor.id,
+        eventKind: 'MODERATION_PENDING',
+        subject: `Ждут публикации: ${ctx.code}`,
+        body:
+          `Работа ${ctx.code} — ${ctx.title}.\n` +
+          'Появились замечания или версии куратора, которые ждут вашего решения: до него клиент их не видит.\n' +
+          where,
+        key: `moderation:${ctx.projectId}:${comment.id}`,
+        path: materialPath(ctx.code, ctx.stageId),
+      });
+    }
+  } else if (actor.role === 'CLIENT') {
+    await notifyCurator(prisma, {
+      projectId: ctx.projectId,
+      actorId: actor.id,
+      eventKind: 'CLIENT_COMMENT',
+      subject: `Клиент оставил замечание: ${ctx.materialTitle}`,
+      body:
+        `Работа ${ctx.code} — ${ctx.title}.\n` +
+        `Клиент оставил замечание к версии v${ctx.versionNumber} материала «${ctx.materialTitle}». Текст — в кабинете.\n` +
+        where,
+      key: `comment:${comment.id}:client`,
+      path: materialPath(ctx.code, ctx.stageId),
+    });
+  }
+  // В журнал — факт и признаки, без текста (решения Р-234, Р-239).
+  await record(actor, {
+    action: 'COMMENT_CREATED',
+    objectType: 'VersionComment',
+    objectId: comment.id,
+    projectId: ctx.projectId,
+    payload: { held: comment.held, contactHint: comment.contactHint },
+  });
+}
+
+/**
+ * Опубликовать версию эксперта клиенту или не публиковать (требование
+ * Т-18, решение Р-294). Тот же круг, что у замечаний: куратор работы и
+ * руководитель (Р-220). В закрытой работе разбора нет (Р-293).
+ *
+ * При публикации клиент получает письмо «Новая версия материала», в
+ * истории работы появляется событие, а пояснения эксперта к этой версии
+ * без контактов публикуются вместе с ней: замечание к невидимой версии
+ * отдельно не публикуется.
+ */
+export async function moderateVersion(
+  actor: Actor,
+  versionId: string,
+  decision: 'PUBLISHED' | 'REJECTED',
+  note?: string | null,
+) {
+  ensure(actor, 'COMMENT_MODERATE');
+  const target = await prisma.versionModeration.findUnique({
+    where: { versionId },
+    select: {
+      version: {
+        select: {
+          id: true,
+          number: true,
+          uploadedById: true,
+          material: {
+            select: {
+              id: true,
+              title: true,
+              stageId: true,
+              project: {
+                select: {
+                  id: true,
+                  code: true,
+                  title: true,
+                  status: true,
+                  clientId: true,
+                  managerId: true,
+                  expertId: true,
+                  client: { select: { userId: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (target === null) throw new Error('Версия не ждёт публикации');
+  const { version } = target;
+  const project = version.material.project;
+  ensure(actor, 'COMMENT_MODERATE', project);
+  ensureContributionOpen(actor, project.status, null);
+  const reason = note?.trim() || null;
+  if (reason !== null && reason.length > 2000) throw new Error('Причина — не длиннее 2000 знаков');
+  // «Не публиковать» — с причиной: эксперт получает её письмом и
+  // исправляет версию (требование М-14, ОМ-15).
+  if (decision === 'REJECTED' && reason === null) {
+    throw new Error('Не публиковать версию можно только с причиной: куратор получит её письмом');
+  }
+
+  const now = new Date();
+  const published = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.versionModeration.updateMany({
+      where: { versionId, status: 'PENDING' },
+      data: {
+        status: decision,
+        decidedById: actor.id,
+        decidedAt: now,
+        note: decision === 'REJECTED' ? reason : null,
+      },
+    });
+    if (count === 0) throw new Error('Версия уже разобрана');
+    if (decision !== 'PUBLISHED') {
+      await enqueue(tx, {
+        userId: version.uploadedById,
+        projectId: project.id,
+        eventKind: 'VERSION_REJECTED',
+        subject: `Версия v${version.number} не опубликована: ${version.material.title}`,
+        body:
+          `${workLine(project, false)}\n` +
+          `Менеджер не опубликовал клиенту версию v${version.number} материала «${version.material.title}».\n` +
+          `Причина: ${reason}\n` +
+          'Исправленную версию можно загрузить в личном кабинете.',
+        dedupKey: `version:${version.id}:rejected`,
+        path: materialPath(project.code, version.material.stageId),
+      });
+      return 0;
+    }
+
+    await tx.projectEvent.create({
+      data: {
+        projectId: project.id,
+        actorId: version.uploadedById,
+        kind: 'VERSION_UPLOADED',
+        payload: { materialId: version.material.id, version: version.number },
+      },
+    });
+    // Пояснения эксперта к версии — вместе с ней; с контактами остаются на
+    // отдельный разбор (Р-242).
+    const notes = await tx.versionComment.findMany({
+      where: { versionId, authorId: version.uploadedById, moderationStatus: 'PENDING' },
+      select: { id: true, body: true },
+    });
+    const clean = notes.filter((comment) => !hasContacts(comment.body)).map((comment) => comment.id);
+    if (clean.length > 0) {
+      await tx.versionComment.updateMany({
+        where: { id: { in: clean }, moderationStatus: 'PENDING' },
+        data: { moderationStatus: 'PUBLISHED', moderatedById: actor.id, moderatedAt: now, publishedAt: now },
+      });
+    }
+    // Эксперту — что версия ушла клиенту (требование М-08, решение Р-301).
+    await enqueue(tx, {
+      userId: version.uploadedById,
+      projectId: project.id,
+      eventKind: 'EXPERT_DECISION',
+      subject: `Версия v${version.number} опубликована: ${version.material.title}`,
+      body: `Работа ${project.code}.\nМенеджер опубликовал клиенту версию v${version.number} материала «${version.material.title}».`,
+      dedupKey: `version:${version.id}:published:expert`,
+      path: materialPath(project.code, version.material.stageId),
+    });
+    if (project.client.userId !== null) {
+      await enqueue(tx, {
+        userId: project.client.userId,
+        projectId: project.id,
+        eventKind: 'VERSION_UPLOADED',
+        subject: `Новая версия материала: ${version.material.title}`,
+        body:
+          `${workLine(project, true)}\n` +
+          `Загружена версия v${version.number}. Открыть можно в личном кабинете.`,
+        dedupKey: `version:${version.id}:uploaded:${project.client.userId}`,
+        path: materialPath(project.code, version.material.stageId),
+      });
+    }
+    return clean.length;
+  });
+
+  await record(actor, {
+    action: decision === 'PUBLISHED' ? 'VERSION_PUBLISHED' : 'VERSION_REJECTED',
+    objectType: 'MaterialVersion',
+    objectId: version.id,
+    projectId: project.id,
+    payload: decision === 'PUBLISHED' ? { comments: published } : { withNote: reason !== null },
+  });
+}
+
+/**
+ * Документ транша виден тем же, кому виден транш: списанный и
+ * сторнированный — внутренний учёт практики, тому, кто оплаты не ведёт, ни
+ * на экране оплат, ни по прямой ссылке (улучшение УК-01, решение Р-356;
+ * Р-251, Р-315).
+ */
+function trancheDocumentVisible(
+  actor: Actor,
+  material: { tranche: { status: string } | null; project: Parameters<typeof can>[2] },
+): boolean {
+  if (material.tranche === null || can(actor, 'PAYMENT_EDIT', material.project)) return true;
+  return (CLIENT_TRANCHE_STATUSES as readonly string[]).includes(material.tranche.status);
 }
 
 /**
@@ -314,8 +659,10 @@ export async function readVersion(actor: Actor, versionId: string, ip?: string |
       material: {
         include: {
           project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
+          tranche: { select: { status: true } },
         },
       },
+      moderation: { select: { status: true } },
     },
   });
   if (version === null) return null;
@@ -331,6 +678,11 @@ export async function readVersion(actor: Actor, versionId: string, ip?: string |
     version.material.kind === 'STAGE_MATERIAL' ? 'MATERIAL_VIEW' : 'CONTRACT_VIEW',
     version.material.project,
   );
+  // Неопубликованная версия эксперта — «не найдено», как и в перечнях
+  // (требование Т-18, решение Р-294).
+  if (!versionVisible(actor, version)) return null;
+  // Документ скрытого транша — «не найдено» и по прямой ссылке (УК-01, Р-356).
+  if (!trancheDocumentVisible(actor, version.material)) return null;
 
   await prisma.fileAccessLog.create({
     data: { versionId, userId: actor.id, action: 'DOWNLOAD', ip: ip ?? null },
@@ -364,13 +716,32 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
     include: {
       material: {
         include: {
-          project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
+          project: {
+            select: {
+              id: true,
+              code: true,
+              title: true,
+              clientId: true,
+              managerId: true,
+              expertId: true,
+              status: true,
+            },
+          },
+          stage: { select: { state: true } },
+          tranche: { select: { status: true } },
         },
       },
+      moderation: { select: { status: true } },
     },
   });
   if (version === null) throw new Error('Версия не найдена');
   ensure(actor, 'COMMENT_CREATE', version.material.project);
+  // К невидимой версии эксперта клиент замечаний не пишет (Т-18, Р-294).
+  if (!versionVisible(actor, version)) throw new Error('Версия не найдена');
+  // И к документу скрытого транша — тоже (УК-01, Р-356).
+  if (!trancheDocumentVisible(actor, version.material)) throw new Error('Версия не найдена');
+  // Закрытая работа и завершённый этап — только чтение (Т-17, М-10, Р-293).
+  ensureContributionOpen(actor, version.material.project.status, version.material.stage?.state ?? null);
   // Замечание — к тому, что можно открыть. Договор, счёт и акт видны по
   // праву на договор, а не на материалы: эксперт, которому они закрыты,
   // зная номер версии, оставлял к ним замечание (решение Р-251).
@@ -388,33 +759,21 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
     throw new Error(`Замечание длиннее ${COMMENT_MAX} знаков: разделите его на несколько`);
   }
 
-  // Замечание эксперта всегда проходит модерацию. Замечание клиента с
-  // телефоном, адресом или ссылкой на мессенджер — тоже: прежде оно сразу
-  // становилось видно назначенному эксперту, и контакт уходил в обход
-  // куратора (решение Р-242). Автор видит своё замечание с отметкой
-  // «ожидает публикации».
-  const contactHint = hasContacts(text);
-  const held = actor.role === 'EXPERT' || (actor.role === 'CLIENT' && contactHint);
-  const published = !held;
-  const comment = await prisma.versionComment.create({
-    data: {
-      versionId,
-      authorId: actor.id,
-      body: text,
-      moderationStatus: published ? 'PUBLISHED' : 'PENDING',
-      moderatedById: published ? actor.id : null,
-      moderatedAt: published ? new Date() : null,
-      publishedAt: published ? new Date() : null,
+  const remark = commentRow(actor, versionId, text);
+  const comment = await prisma.versionComment.create({ data: remark.data });
+  const project = version.material.project;
+  await commentAftermath(
+    actor,
+    {
+      projectId: project.id,
+      code: project.code,
+      title: project.title,
+      stageId: version.material.stageId,
+      materialTitle: version.material.title,
+      versionNumber: version.number,
     },
-  });
-  // В журнал — факт и признаки, без текста (решения Р-234, Р-239).
-  await record(actor, {
-    action: 'COMMENT_CREATED',
-    objectType: 'VersionComment',
-    objectId: comment.id,
-    projectId: version.material.project.id,
-    payload: { held, contactHint },
-  });
+    { id: comment.id, held: remark.held, contactHint: remark.contactHint },
+  );
   return comment;
 }
 
@@ -434,12 +793,20 @@ export async function moderateComment(
   const target = await prisma.versionComment.findUnique({
     where: { id: commentId },
     select: {
+      authorId: true,
+      moderationStatus: true,
       author: { select: { role: true } },
       version: {
         select: {
+          number: true,
+          moderation: { select: { status: true } },
           material: {
             select: {
-              project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
+              title: true,
+              stageId: true,
+              project: {
+                select: { id: true, code: true, clientId: true, managerId: true, expertId: true, status: true },
+              },
             },
           },
         },
@@ -448,11 +815,28 @@ export async function moderateComment(
   });
   if (target === null) throw new Error('Замечание не найдено');
   ensure(actor, 'COMMENT_MODERATE', target.version.material.project);
+  // Разбор замечаний закрытой работы закрыт и практике (М-10, Р-293).
+  ensureContributionOpen(actor, target.version.material.project.status, null);
+  // Замечание к версии, которую клиент не видит, отдельно не публикуется:
+  // оно уходит вместе с версией (требование Т-18, решение Р-294).
+  if (
+    decision === 'PUBLISHED' &&
+    target.version.moderation !== null &&
+    target.version.moderation.status !== 'PUBLISHED'
+  ) {
+    throw new Error('Замечание к неопубликованной версии публикуется вместе с версией');
+  }
   const now = new Date();
   // Разобрать можно только ждущее решения: вкладка, открытая до
   // публикации, иначе отклонила бы замечание, о котором клиенту уже
   // сообщили (решение Р-226).
   const reason = note?.trim() || null;
+  if (target.moderationStatus !== 'PENDING') throw new Error('Замечание уже разобрано');
+  // Замечание эксперта отклоняется с причиной: эксперт получает её письмом
+  // (требование М-08, ОМ-15, решение Р-301).
+  if (decision === 'REJECTED' && target.author.role === 'EXPERT' && reason === null) {
+    throw new Error('Не публиковать замечание куратора можно только с причиной: куратор получит её письмом');
+  }
   const { count } = await prisma.versionComment.updateMany({
     where: { id: commentId, moderationStatus: 'PENDING' },
     data: {
@@ -470,6 +854,28 @@ export async function moderateComment(
     objectType: 'VersionComment',
     objectId: commentId,
   });
+  // Эксперт узнаёт решение по своему замечанию (М-08, Р-301).
+  if (target.author.role === 'EXPERT') {
+    const { material } = target.version;
+    await enqueue(prisma, {
+      userId: target.authorId,
+      projectId: material.project.id,
+      eventKind: 'EXPERT_DECISION',
+      subject:
+        decision === 'PUBLISHED'
+          ? `Ваше замечание опубликовано: ${material.title}`
+          : `Ваше замечание не опубликовано: ${material.title}`,
+      body:
+        `Работа ${material.project.code}.\n` +
+        (decision === 'PUBLISHED'
+          ? `Менеджер опубликовал клиенту ваше замечание к версии v${target.version.number} материала «${material.title}».`
+          : `Менеджер не опубликовал ваше замечание к версии v${target.version.number} материала «${material.title}».\nПричина: ${reason}`),
+      // Своё пространство ключей: письма клиенту о замечании начинаются с
+      // `comment:<id>` (решение Р-242).
+      dedupKey: `expert-decision:comment:${commentId}`,
+      path: materialPath(material.project.code, material.stageId),
+    });
+  }
 
   // Письмо «эксперт оставил замечание» уходит клиенту, только если автор —
   // эксперт: своё же замечание клиенту пересылать незачем (решение Р-242).
@@ -482,6 +888,7 @@ export async function moderateComment(
             material: {
               select: {
                 title: true,
+                stageId: true,
                 project: {
                   select: { id: true, code: true, title: true, client: { select: { userId: true } } },
                 },
@@ -498,11 +905,12 @@ export async function moderateComment(
         userId,
         projectId: project.id,
         eventKind: 'EXPERT_COMMENT_PUBLISHED',
-        subject: 'Эксперт оставил замечание по материалу',
+        subject: 'Куратор оставил замечание по материалу',
         body:
-          `Проект ${project.code} — ${project.title}.\n` +
+          `${workLine(project, true)}\n` +
           `Материал «${context?.version.material.title}». Замечание видно в кабинете.`,
         dedupKey: `comment:${commentId}:published`,
+        path: materialPath(project.code, context?.version.material.stageId ?? null),
       });
     }
   }
@@ -523,6 +931,9 @@ export async function listComments(actor: Actor, versionId: string) {
 /** Замечание, ждущее публикации: работа, этап и кто его оставил. */
 export interface PendingComment {
   readonly stageId: string | null;
+  /** Код работы и материал — для ссылки на «Материалы работы» (решение Р-284). */
+  readonly projectCode: string;
+  readonly materialId: string;
   readonly projectTitle: string;
   readonly stageTitle: string;
   readonly material: string;
@@ -549,7 +960,9 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
   const rows = await prisma.versionComment.findMany({
     where: {
       moderationStatus: 'PENDING',
-      version: { material: { project: scope } },
+      // Замечания к документам оплат разобрать негде, и делом они не
+      // становятся (решение Р-284).
+      version: { material: { project: scope, kind: 'STAGE_MATERIAL' } },
     },
     orderBy: { createdAt: 'asc' },
     select: {
@@ -557,10 +970,11 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
         select: {
           material: {
             select: {
+              id: true,
               title: true,
               stageId: true,
               stage: { select: { id: true, title: true } },
-              project: { select: { title: true } },
+              project: { select: { title: true, code: true } },
             },
           },
         },
@@ -573,11 +987,15 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
   const byStage = new Map<string, PendingComment>();
   for (const row of rows) {
     const material = row.version.material;
-    const key = material.stage?.id ?? `material:${material.title}`;
+    // Вне этапа — по материалу, а не по его названию: одноимённые
+    // материалы разных работ сливались в одно дело (решение Р-284).
+    const key = material.stage?.id ?? `material:${material.id}`;
     const seen = byStage.get(key);
     if (seen === undefined) {
       byStage.set(key, {
         stageId: material.stage?.id ?? null,
+        projectCode: material.project.code,
+        materialId: material.id,
         projectTitle: material.project.title,
         stageTitle: material.stage?.title ?? material.title,
         material: material.title,
@@ -588,4 +1006,73 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
     }
   }
   return [...byStage.values()];
+}
+
+/**
+ * Версии эксперта, ждущие публикации, — дело куратора на «Требует
+ * внимания» (требование Т-18, решение Р-294). Сводятся по этапу, как
+ * замечания: три версии одного этапа — одно дело.
+ */
+export async function pendingVersions(actor: Actor): Promise<PendingComment[]> {
+  if (!can(actor, 'COMMENT_MODERATE')) return [];
+  const scope = scopeProjects(actor);
+  if (scope === null) return [];
+  const rows = await prisma.versionModeration.findMany({
+    where: {
+      status: 'PENDING',
+      version: { purgedAt: null, material: { project: { ...scope, status: { in: ['ACTIVE', 'PAUSED'] } }, deletedAt: null } },
+    },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      version: {
+        select: {
+          material: {
+            select: {
+              id: true,
+              title: true,
+              stage: { select: { id: true, title: true } },
+              project: { select: { title: true, code: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+  const byStage = new Map<string, PendingComment>();
+  for (const row of rows) {
+    const material = row.version.material;
+    const key = material.stage?.id ?? `material:${material.id}`;
+    const seen = byStage.get(key);
+    byStage.set(
+      key,
+      seen === undefined
+        ? {
+            stageId: material.stage?.id ?? null,
+            projectCode: material.project.code,
+            materialId: material.id,
+            projectTitle: material.project.title,
+            stageTitle: material.stage?.title ?? material.title,
+            material: material.title,
+            count: 1,
+          }
+        : { ...seen, count: seen.count + 1 },
+    );
+  }
+  return [...byStage.values()];
+}
+
+/** Строка письма со ссылкой на «Материалы работы» (решение Р-300). */
+/**
+ * Экран материала для кнопки письма: этап, если материал к этапу, иначе
+ * «Материалы работы» (требование Т-06, решение Р-309).
+ */
+function materialPath(code: string, stageId: string | null): string {
+  return stageId === null ? `/cabinet/projects/${code}/materials` : `/cabinet/stages/${stageId}`;
+}
+
+function materialsLink(code: string): string {
+  const base = siteUrl();
+  return base === null
+    ? 'Открыть материалы можно в личном кабинете.'
+    : `Открыть материалы: ${base}/cabinet/projects/${code}/materials`;
 }

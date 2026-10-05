@@ -1,7 +1,9 @@
 import { cookies, headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 import { resolveSession } from './auth.ts';
 import type { Actor } from './access.ts';
+import { OPEN_COOKIE, OPEN_COOKIE_SECONDS, openPath, packOpen, unpackOpen } from './next-path.ts';
 import { SESSION_COOKIE, SESSION_MAX_DAYS } from './token.ts';
 
 /**
@@ -11,6 +13,72 @@ import { SESSION_COOKIE, SESSION_MAX_DAYS } from './token.ts';
  */
 export async function currentActor(): Promise<Actor | null> {
   return resolveSession(await currentSessionValue());
+}
+
+/**
+ * Действующее лицо экрана `path`. Без сессии человек идёт через
+ * `/cabinet/open` и после входа возвращается на этот экран (требование
+ * Т-06, решение Р-309). Прежде каждый экран вёл на общий `/cabinet`, и
+ * после входа человек оказывался на начальном экране, а не там, куда шёл.
+ */
+export async function requireActor(path: string): Promise<Actor> {
+  const actor = await currentActor();
+  if (actor === null) redirect(openPath(path));
+  return actor;
+}
+
+/** Куда человек шёл и с каким адресом — из cookie обработчика открытия. */
+export async function openIntent(): Promise<{ to: string; email: string | null } | null> {
+  const jar = await cookies();
+  return unpackOpen(jar.get(OPEN_COOKIE)?.value);
+}
+
+/** Стереть намерение: после входа оно исполнено. */
+export async function clearOpenIntent(): Promise<void> {
+  const jar = await cookies();
+  jar.set(OPEN_COOKIE, '', shortCookie(0));
+}
+
+/** Свойства коротких cookie раздела: намерение и устаревшая ссылка. */
+function shortCookie(maxAge: number) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/cabinet',
+    maxAge,
+  };
+}
+
+/**
+ * Запомнить адрес, на который просили ссылку: страница «письмо отправлено»
+ * предлагает «Прислать ещё раз» с тем же адресом (требование Т-07, решение
+ * Р-313). Адрес — набранный самим человеком в этом браузере; путь возврата
+ * сохраняется.
+ */
+export async function rememberEmail(email: string, next: string | null): Promise<void> {
+  const intent = await openIntent();
+  const jar = await cookies();
+  jar.set(OPEN_COOKIE, packOpen(next ?? intent?.to ?? '/cabinet', email), shortCookie(OPEN_COOKIE_SECONDS));
+}
+
+/** Cookie устаревшей ссылки входа: для «Прислать новую ссылку» (Т-07, Р-313). */
+const STALE_COOKIE = 'pd_stale';
+
+export async function rememberStaleLink(value: string): Promise<void> {
+  if (value.length === 0 || value.length > 200) return;
+  const jar = await cookies();
+  jar.set(STALE_COOKIE, value, shortCookie(OPEN_COOKIE_SECONDS));
+}
+
+export async function staleLink(): Promise<string | null> {
+  const jar = await cookies();
+  return jar.get(STALE_COOKIE)?.value || null;
+}
+
+export async function clearStaleLink(): Promise<void> {
+  const jar = await cookies();
+  jar.set(STALE_COOKIE, '', shortCookie(0));
 }
 
 /** Значение cookie сессии, с которым пришёл браузер. */

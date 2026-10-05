@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
@@ -15,6 +15,7 @@ import {
   FormRow,
   Heading,
   Narrow,
+  Outcome,
   ScreenHead,
   Select,
   Text,
@@ -24,9 +25,9 @@ import {
 import { ensure } from '../../../../../lib/cabinet/access';
 import { contactHref, leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
 import { declineLetterNote, leadAddress } from '../../../../../lib/cabinet/lead-letter';
-import { leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
-import { currentActor } from '../../../../../lib/cabinet/session';
-import { commentLead, moderateLead, saveLead, switchLeadStatus } from '../../../actions';
+import { curators, leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
+import { requireActor } from '../../../../../lib/cabinet/session';
+import { commentLead, moderateLead, resendDeclineLetter, saveLead, switchLeadStatus } from '../../../actions';
 import { LeadStatusChip, LeadStatusSwitch } from '../../../../../components/cabinet/LeadStatus';
 
 export const dynamic = 'force-dynamic';
@@ -47,16 +48,21 @@ export default async function LeadScreen({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; resent?: string }>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor(`/cabinet/manage/leads/${(await params).id}`);
   ensure(actor, 'REQUEST_MODERATE');
 
   const { id } = await params;
   const flags = await searchParams;
   const [lead, types] = await Promise.all([leadById(actor, id), serviceTypes(actor)]);
   if (lead === null) notFound();
+  // Менеджера работы выбирает руководитель: единственный действующий
+  // менеджер стоит по умолчанию, из нескольких выбор обязателен
+  // (требование РК-08, решение Р-344; ДР-1, ОР-1).
+  const managers = actor.role === 'HEAD' ? await curators(actor) : [];
+  const onlyManager = managers.filter((row) => row.role === 'MANAGER');
+  const managerDefault = onlyManager.length === 1 ? onlyManager[0]!.id : '';
   const letter = lead.notifications[0] ?? null;
 
   const callHref = contactHref(lead.contactKind, lead.contact);
@@ -73,7 +79,7 @@ export default async function LeadScreen({
   ].filter((fact) => fact !== null);
 
   return (
-    <Shell actor={actor} current="/cabinet/manage">
+    <Shell actor={actor} current="/cabinet/manage/leads">
       <Narrow width={780}>
         <ScreenHead
           backHref="/cabinet/manage"
@@ -311,7 +317,7 @@ export default async function LeadScreen({
             </Text>
           </Card>
         ) : lead.status === 'DECLINED' ? (
-          <Card>
+          <Card id="decline">
             <Heading level={2} size={3} style={{ marginBottom: 8 }}>
               Заявка отклонена
             </Heading>
@@ -319,10 +325,26 @@ export default async function LeadScreen({
               <strong style={{ fontWeight: 600 }}>Причина: </strong>
               {lead.declineReason ?? 'не записана'}
             </Text>
+            {flags.resent === undefined ? null : (
+              <Outcome>Письмо снова поставлено в очередь на отправку.</Outcome>
+            )}
             <Text muted size={13}>
               {declineLetterNote(lead, letter)}
               {letter?.state === 'SENT' ? ` ${formatDate(letter.sentAt) ?? ''}`.trimEnd() + '.' : ''}
             </Text>
+            {/* Повтор недоставленного отказа — здесь, а не на экране очереди,
+                закрытом менеджеру (требование М-19, решение Р-307). */}
+            {letter?.state === 'FAILED' ? (
+              <>
+                <ActionError id={flags.error} slot="resend" />
+                <Form action={resendDeclineLetter}>
+                  <input type="hidden" name="leadId" value={lead.id} />
+                  <FormActions>
+                    <Button>Отправить письмо ещё раз</Button>
+                  </FormActions>
+                </Form>
+              </>
+            ) : null}
           </Card>
         ) : (
           <>
@@ -347,6 +369,23 @@ export default async function LeadScreen({
                     </option>
                   ))}
                 </Select>
+                {managers.length === 0 ? null : (
+                  <Select
+                    label="Менеджер работы"
+                    name="managerId"
+                    required
+                    defaultValue={managerDefault}
+                    hint="Работу ведёт и отвечает клиенту выбранный менеджер; ему придёт письмо."
+                  >
+                    <option value="">Выберите менеджера</option>
+                    {managers.map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {row.fullName}
+                        {row.role === 'HEAD' ? ' — руководитель' : ''}
+                      </option>
+                    ))}
+                  </Select>
+                )}
                 {/* Флажок — только если шаблон есть хотя бы у одного типа: при
                     пустом справочнике шаблонов он молча ничего не делал. Какие
                     типы с шаблоном, видно в самом списке (решение Р-254). */}

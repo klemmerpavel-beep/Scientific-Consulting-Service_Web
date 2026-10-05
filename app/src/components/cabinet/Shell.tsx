@@ -2,7 +2,10 @@ import type { ReactNode } from 'react';
 
 import type { Actor } from '../../lib/cabinet/access.ts';
 import { BUTTON_QUIET, CONTAINER, GUTTER, MONO, SANS, SERIF } from './tokens.ts';
-import { activeItem, navFor, type NavItem } from '../../lib/cabinet/nav.ts';
+import { activeItem, navFor, RECOMMENDATIONS_HREF, SUMMARY_HREF, type NavItem } from '../../lib/cabinet/nav.ts';
+import { headAttentionCount } from '../../lib/cabinet/attention.ts';
+import { headRecommendationCount } from '../../lib/cabinet/recommendations.ts';
+import { Chip, VISUALLY_HIDDEN, plural } from './ui.tsx';
 
 /**
  * Каркас раздела: шапка с вордмарком и навигацией, рабочая область, подвал
@@ -13,7 +16,7 @@ import { activeItem, navFor, type NavItem } from '../../lib/cabinet/nav.ts';
 
 const ROLE_LABEL: Record<Actor['role'], string> = {
   CLIENT: 'Клиент',
-  EXPERT: 'Эксперт',
+  EXPERT: 'Куратор',
   MANAGER: 'Менеджер',
   HEAD: 'Руководитель',
 };
@@ -57,15 +60,22 @@ function Wordmark() {
 export { navFor, activeItem };
 export type { NavItem };
 
-export default function Shell({
+export default async function Shell({
   actor,
   current,
   center = false,
   board = false,
+  listHref,
   children,
 }: {
   actor: Actor | null;
   current?: string;
+  /**
+   * Куда ведёт пункт перечня работ. С карточки единственной работы клиента
+   * «Мои работы» вели на неё же (Т-09, Р-311): отсюда — на перечень с
+   * отбором «Все» (улучшение УК-20, решение Р-380). Состав меню прежний.
+   */
+  listHref?: string;
   /**
    * Содержимое стоит по центру оставшейся высоты. Нужно экрану входа: там
    * одна форма, и прижатая к верху она читается обрывком страницы. Обычные
@@ -90,7 +100,18 @@ export default function Shell({
   board?: boolean;
   children: ReactNode;
 }) {
-  const items = actor === null ? [] : navFor(actor);
+  // Число дел у «Сводки» руководителя — один раз на запрос, тем же
+  // набором, что строит «Требует внимания» (требование РК-04, Р-342).
+  const count = actor === null ? null : await headAttentionCount(actor);
+  // Неотмеченные рекомендации — у пункта «Рекомендации» (РК-17, Р-350).
+  const advice = actor === null ? null : await headRecommendationCount(actor);
+  const items = (actor === null ? [] : navFor(actor)).map((item) =>
+    item.href === SUMMARY_HREF && count !== null && count > 0
+      ? { ...item, count }
+      : item.href === RECOMMENDATIONS_HREF && advice !== null && advice > 0
+        ? { ...item, count: advice }
+        : item,
+  );
   const active = activeItem(items, current ?? '');
   return (
     <>
@@ -134,17 +155,28 @@ export default function Shell({
                 {items.map((item) => (
                   <li key={item.href}>
                     <a
-                      href={item.href}
+                      href={item.href === '/cabinet/projects' && listHref !== undefined ? listHref : item.href}
                       aria-current={item.href === active ? 'page' : undefined}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
+                        gap: 8,
                         minHeight: 44,
                         fontFamily: SANS,
                         fontSize: 15,
                       }}
                     >
                       {item.label}
+                      {item.count === undefined ? null : (
+                        <Chip mono>
+                          {item.count}
+                          <span style={VISUALLY_HIDDEN}>
+                            {item.href === RECOMMENDATIONS_HREF
+                              ? ` ${plural(item.count, 'рекомендация не отмечена', 'рекомендации не отмечены', 'рекомендаций не отмечено')}`
+                              : ` ${plural(item.count, 'дело требует', 'дела требуют', 'дел требуют')} решения`}
+                          </span>
+                        </Chip>
+                      )}
                     </a>
                   </li>
                 ))}

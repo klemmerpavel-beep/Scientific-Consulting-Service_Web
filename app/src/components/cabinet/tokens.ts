@@ -183,7 +183,10 @@ body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;
 .cab-board-body{scrollbar-gutter:stable}
 /* Тело свёртки ограничено по высоте только на экране-панели: там страница
    не прокручивается, и раскрытая свёртка вытолкнула бы её за край. На
-   обычной странице свёртка растёт по содержимому (решение Р-191). */
+   обычной странице свёртка растёт по содержимому (решение Р-191). Ниже
+   1024 px экран-панель складывается в одну колонку и прокручивается
+   страницей — пределы сняты, вложенной прокрутки нет (Р-169, требование
+   Т-23, решение Р-320). */
 .cab-board-main .cab-fold-body{max-height:200px;overflow-y:auto;scrollbar-gutter:stable}
 /* История работы длиннее прочих свёрток: по ней разбирают ход дела, и
    двух строк за раз для этого мало (решение Р-197). */
@@ -255,6 +258,6 @@ details[open].cab-block{border-color:var(--pd-accent-edge)!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
-@media (max-width:1024px){.cab-board-main{display:block!important;overflow:visible!important;padding-bottom:clamp(72px,7vw,112px)!important}.cab-board{grid-template-columns:minmax(0,1fr)!important}.cab-board-body{max-height:none!important;overflow:visible!important}}
+@media (max-width:1024px){.cab-board-main{display:block!important;overflow:visible!important;padding-bottom:clamp(72px,7vw,112px)!important}.cab-board{grid-template-columns:minmax(0,1fr)!important}.cab-board-body{max-height:none!important;overflow:visible!important}.cab-board-main .cab-fold-body,.cab-board-main .cab-fold-tall{max-height:none!important;overflow:visible!important}}
 @media print{@page{margin:14mm}body{background:var(--pd-ink-inverse)}header,footer,nav,.pd-skip,.cab-no-print{display:none!important}main{padding:0!important;max-width:none!important}.cab-block{break-inside:avoid;box-shadow:none!important}details{break-inside:avoid}details>*:not(summary){display:block!important}details>summary{display:none!important}a{text-decoration:none;color:inherit}}
 `;

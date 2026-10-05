@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../components/cabinet/tokens';
@@ -17,6 +17,7 @@ import {
   Progress,
   ScreenHead,
   ScreenTop,
+  Select,
   Block,
   FilterBar,
   FilterSearch,
@@ -24,21 +25,37 @@ import {
   clip,
   plural,
   Text,
+  formatDay,
+  formatTime,
   formatDate,
   stageLabel,
   type StageStateKey,
+  Pager,
+  Checkbox,
+  FormActions,
 } from '../../../components/cabinet/ui';
 import { unreadByProject } from '../../../lib/cabinet/messages';
 import {
   PROJECT_FILTER_FROM,
   listProjects,
+  curatorTasksData,
+  curators,
+  experts,
   liveWorks,
   pendingActions,
   type ProjectFilter,
 } from '../../../lib/cabinet/queries';
-import { daysPast } from '../../../lib/cabinet/clock';
-import { can } from '../../../lib/cabinet/access';
-import { currentActor } from '../../../lib/cabinet/session';
+import { daysPast, now } from '../../../lib/cabinet/clock';
+import { can, staffExpertLine } from '../../../lib/cabinet/access';
+import { requireActor } from '../../../lib/cabinet/session';
+import { soleWorkTarget } from '../../../lib/cabinet/nav';
+import { welcomeState } from '../../../lib/cabinet/channels';
+import { dismissWelcome, requestNdaAction, startTelegramBind, transferWorks } from '../actions';
+import ActionError from '../../../components/cabinet/ActionError';
+import { ndaRequestedAt } from '../../../lib/cabinet/admin';
+import { CURATOR_WELCOME, ndaRequestOpen } from '../../../lib/cabinet/curator-welcome';
+import { myAssignments } from '../../../lib/cabinet/assignments';
+import { MONTH_NAMES } from '../../../lib/cabinet/analytics/calendar';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,8 +76,7 @@ export default async function ProjectsScreen({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  const actor = await requireActor('/cabinet/projects');
 
   const sp = await searchParams;
   const query = sp.q ?? '';
@@ -70,12 +86,30 @@ export default async function ProjectsScreen({
     filter: FILTERS.includes(sp.state as ProjectFilter) ? (sp.state as ProjectFilter) : undefined,
     query,
     page: Number(sp.page) || 1,
+    manager: sp.manager,
+    curator: sp.curator,
+    due: sp.due,
   });
   const filter = list.filter;
   const projects = list.rows;
   const pendingAll = await pendingActions(actor);
   const unread = await unreadByProject(actor, projects.map((p) => p.id));
   const forClient = actor.role === 'CLIENT';
+  // Блок первого входа — пока клиент его не закрыл (требование Т-10,
+  // решение Р-310).
+  const welcome = await welcomeState(actor);
+  // Одна действующая или приостановленная работа — сразу её карточка:
+  // перечень из одной строки — лишнее нажатие (требование Т-09, О-3, О-11,
+  // решение Р-311). Пока открыт блок первого входа, клиент видит его здесь;
+  // отбор в адресе — просьба о перечне, и она исполняется.
+  const sole = soleWorkTarget({
+    role: actor.role,
+    welcomeOpen: welcome.open,
+    asked: sp.state !== undefined || sp.q !== undefined || sp.page !== undefined,
+    all: list.all,
+    rows: projects,
+  });
+  if (sole !== null) redirect(sole);
   const forExpert = actor.role === 'EXPERT';
   const showFilters = list.all > PROJECT_FILTER_FROM;
   // Требуемое действие показывается там, где человек его ищет, — на самой
@@ -119,11 +153,20 @@ export default async function ProjectsScreen({
       : stage.state === 'AWAITING_CLIENT'
         ? `Ждём материалов клиента: ${stage.title}`
         : `На согласовании у клиента: ${stage.title}`;
+  const forHead = actor.role === 'HEAD';
+  // Отбор по сотруднику — руководителю; сохраняется в адресе (РК-03, Р-341).
+  const person = forHead ? { manager: sp.manager ?? '', curator: sp.curator ?? '' } : { manager: '', curator: '' };
+  // Отбор по месяцу срока — из числа «К пику» на «Команде» (РК-22, Р-354).
+  const dueKey = /^\d{4}-(0[1-9]|1[0-2])$/u.test(sp.due ?? '') ? sp.due! : null;
+  const [managerList, curatorChoices] = forHead ? await Promise.all([curators(actor), experts(actor)]) : [[], []];
   const href = (next: { state?: ProjectFilter; page?: number }) => {
     const params = new URLSearchParams();
     const state = next.state ?? filter;
     if (state !== 'all') params.set('state', state);
     if (query !== '') params.set('q', query);
+    if (person.manager !== '') params.set('manager', person.manager);
+    if (person.curator !== '') params.set('curator', person.curator);
+    if (dueKey !== null) params.set('due', dueKey);
     if ((next.page ?? 1) > 1) params.set('page', String(next.page));
     const tail = params.toString();
     return tail === '' ? '/cabinet/projects' : `/cabinet/projects?${tail}`;
@@ -134,6 +177,9 @@ export default async function ProjectsScreen({
   // человек ждёт назначения, которого уже дождался, — причину надо назвать
   // (решение Р-150).
   const awaitingNda = forExpert && actor.expertNdaSignedAt === null;
+  // «Сообщить руководителю» — не чаще раза в сутки; после нажатия —
+  // строка о том, когда руководитель получил уведомление (Э-12, Р-331).
+  const askedAt = awaitingNda ? await ndaRequestedAt(actor) : null;
   // Эксперт в канал переписки не входит, поэтому перехода к нему не видит.
   const mayWrite = actor.role !== 'EXPERT';
 
@@ -141,7 +187,10 @@ export default async function ProjectsScreen({
   // Ответ экрана одной фразой — клиенту и эксперту: что от них нужно и с
   // чего начать. Работы практики у менеджера и руководителя отвечают
   // сводкой, и там перечень остаётся перечнем (решение Р-207).
-  const title = forClient ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы практики';
+  // Менеджер видит только свои работы, и заголовок говорит это прямо — как
+  // пункт меню (требование М-05, решение Р-305).
+  const title =
+    forClient || actor.role === 'MANAGER' ? 'Мои работы' : forExpert ? 'Назначенные работы' : 'Работы';
   const live = (forClient || forExpert ? await liveWorks(actor) : [])
     .map((project) => ({
       project,
@@ -170,7 +219,13 @@ export default async function ProjectsScreen({
             // Срок — первым: пояснение режется тремя строками, и на
             // телефоне срок уходил за многоточие (решение Р-213).
             detail: [
-              first.dueOn === null ? null : `Срок этапа — ${formatDate(first.dueOn)}.`,
+              // На согласовании клиента ждут к сроку согласования, а не к
+              // сроку этапа (требование Т-15, решение Р-290).
+              first.state === 'IN_APPROVAL' && first.approvalDueOn !== null
+                ? `Срок согласования — до ${formatDate(first.approvalDueOn)} включительно.`
+                : first.dueOn === null
+                  ? null
+                  : `Срок этапа — ${formatDate(first.dueOn)}.`,
               first.state === 'AWAITING_CLIENT'
                 ? `Работа «${clip(first.project.title, 60)}» стоит, пока их нет.`
                 : `Работа «${clip(first.project.title, 60)}» продолжится после вашего согласования.`,
@@ -190,39 +245,44 @@ export default async function ProjectsScreen({
             }
           : {
               lead: 'Действующих работ нет.',
-              detail: 'Новую работу можно заказать здесь же: заявка уйдёт куратору.',
+              detail: 'Заявку на сопровождение новой работы можно оставить здесь же.',
               action: <ButtonLink href="/cabinet/request">Новая заявка</ButtonLink>,
             };
   } else if (forExpert && !awaitingNda) {
-    // Ход за экспертом — этап не начат или в работе; остальное ждёт
-    // клиента, и заданием ему не является.
-    const mine = live.filter(
-      (row) => row.stage !== null && (row.stage.state === 'IN_PROGRESS' || row.stage.state === 'NOT_STARTED'),
-    );
-    const next =
-      mine
-        .filter((row) => row.stage?.dueOn != null)
-        .sort((a, b) => a.stage!.dueOn!.getTime() - b.stage!.dueOn!.getTime())[0] ??
-      mine[0] ??
-      null;
+    // Ответ куратору — главное дело по ближайшему сроку, число остальных и
+    // кнопка на экран, где дело закрывается. «Не начат» делом не является:
+    // этап запускает менеджер (требование Э-04, решение Р-329).
+    const tasks = await curatorTasksData(actor);
+    const main = tasks[0] ?? null;
     answer =
-      mine.length === 0
+      main === null
         ? {
             lead: 'Сейчас ход не за вами.',
             detail:
               live.length === 0
                 ? 'Действующих назначений нет.'
-                : 'Этапы ваших работ ждут клиента или закрыты; куратор сообщит, когда продолжать.',
+                : 'Этапы ваших работ сданы менеджеру, ждут клиента, ещё не запущены или закрыты; менеджер сообщит, когда продолжать.',
           }
         : {
-            lead: `Ход за вами в ${mine.length} ${plural(mine.length, 'работе', 'работах', 'работах')}.`,
-            detail: dueLine(next),
-            action:
-              next?.stage == null ? undefined : (
-                <ButtonLink href={`/cabinet/stages/${next.stage.id}`}>Открыть этап</ButtonLink>
-              ),
+            lead: `${main.label}.`,
+            detail: [
+              `Работа «${clip(main.work, 60)}».`,
+              main.dueOn === null
+                ? null
+                : daysPast(main.dueOn) === null
+                  ? `Срок этапа — ${formatDate(main.dueOn)}.`
+                  : `Срок этапа прошёл ${formatDate(main.dueOn)}.`,
+              tasks.length > 1 ? `Ещё дел: ${tasks.length - 1}.` : null,
+            ]
+              .filter((part) => part !== null)
+              .join(' '),
+            action: <ButtonLink href={main.href}>{main.action}</ButtonLink>,
           };
   }
+
+  // Поручения руководителя — в делах первого экрана куратора (РК-19, Р-352).
+  const assigned = forExpert ? await myAssignments(actor) : [];
+  const assignedLate = assigned.filter((row) => daysPast(row.dueOn) !== null).length;
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -242,8 +302,84 @@ export default async function ProjectsScreen({
       ) : (
         <ScreenHead title={title} answer={answer} />
       )}
+      {assigned.length === 0 ? null : (
+        <Text size={14} style={{ marginBottom: 20 }}>
+          {`Поручения руководителя: ${assigned.length}${assignedLate === 0 ? '' : `, из них просрочено ${assignedLate}`} — `}
+          <a className="cab-mark" href="/cabinet/assignments">
+            открыть и отметить
+          </a>
+        </Text>
+      )}
 
-      {showFilters ? (
+      {/* Первый вход: три строки вместо пошагового тура, под ответом, а не
+          поверх экрана; «Понятно» закрывает блок навсегда (требование Т-10,
+          решение Р-310). */}
+      {/* Куратору — свой блок: где ход за ним, как сдать этап, как
+          спросить менеджера, и два правила работы (требование Э-12,
+          решение Р-331). */}
+      {welcome.open && forExpert ? (
+        <Card style={{ marginBottom: 24 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 10 }}>
+            {CURATOR_WELCOME.title}
+          </Heading>
+          <ul style={{ margin: '0 0 12px', paddingLeft: 20, display: 'grid', gap: 6 }}>
+            {CURATOR_WELCOME.lines.map((line) => (
+              <li key={line} style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+                {line}
+              </li>
+            ))}
+          </ul>
+          <Text muted size={14} style={{ marginBottom: 6 }}>
+            Два правила:
+          </Text>
+          <ul style={{ margin: '0 0 16px', paddingLeft: 20, display: 'grid', gap: 6 }}>
+            {CURATOR_WELCOME.rules.map((rule) => (
+              <li key={rule} style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+                {rule}
+              </li>
+            ))}
+          </ul>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {welcome.telegram ? (
+              <Form action={startTelegramBind} inline>
+                <Button tone="quiet">Подключить Telegram</Button>
+              </Form>
+            ) : null}
+            <Form action={dismissWelcome} inline>
+              <Button>Понятно</Button>
+            </Form>
+          </div>
+        </Card>
+      ) : welcome.open ? (
+        <Card style={{ marginBottom: 24 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 10 }}>
+            Как устроен кабинет
+          </Heading>
+          <ul style={{ margin: '0 0 16px', paddingLeft: 20, display: 'grid', gap: 6 }}>
+            <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+              Что от вас нужно — в верхней строке «Моих работ» и на карточке работы.
+            </li>
+            <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+              Материалы прикладываются на экране этапа или в «Материалах работы».
+            </li>
+            <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
+              Менеджеру пишите в переписке на карточке работы.
+            </li>
+          </ul>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {welcome.telegram ? (
+              <Form action={startTelegramBind} inline>
+                <Button tone="quiet">Подключить Telegram</Button>
+              </Form>
+            ) : null}
+            <Form action={dismissWelcome} inline>
+              <Button>Понятно</Button>
+            </Form>
+          </div>
+        </Card>
+      ) : null}
+
+      {showFilters || forHead ? (
         <FilterBar>
           <Tabs
             flush
@@ -260,6 +396,27 @@ export default async function ProjectsScreen({
           <FilterSearch>
             <Form method="get" inline>
               {filter === 'all' ? null : <input type="hidden" name="state" value={filter} />}
+              {/* Отбор по менеджеру и куратору — руководителю (РК-03). */}
+              {forHead ? (
+                <>
+                  <Select label="Менеджер" name="manager" labelHidden defaultValue={person.manager} minWidth={180}>
+                    <option value="">Все менеджеры</option>
+                    {managerList.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.fullName}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select label="Куратор" name="curator" labelHidden defaultValue={person.curator} minWidth={180}>
+                    <option value="">Все кураторы</option>
+                    {curatorChoices.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.fullName}
+                      </option>
+                    ))}
+                  </Select>
+                </>
+              ) : null}
               <Field
                 label="Поиск по работам"
                 name="q"
@@ -274,6 +431,43 @@ export default async function ProjectsScreen({
           </FilterSearch>
         </FilterBar>
       ) : null}
+      {/* Передать все действующие работы менеджера — при отборе по нему
+          (улучшение УР-07, решение Р-397). */}
+      {forHead && person.manager !== '' && list.total > 0 ? (
+        <Disclosure title="Передать все действующие работы менеджера" style={{ marginBottom: 16 }}>
+          <Form action={transferWorks}>
+            <input type="hidden" name="fromManagerId" value={person.manager} />
+            <Select label="Кому передать" name="toManagerId" required>
+              <option value="">Выберите менеджера</option>
+              {managerList
+                .filter((item) => item.id !== person.manager)
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.fullName}
+                  </option>
+                ))}
+            </Select>
+            <Field
+              label="Причина передачи"
+              name="reason"
+              required
+              hint="Одна на все работы; останется в истории каждой. Клиенты и кураторы получат обычные письма о смене менеджера."
+            />
+            <Checkbox name="confirm" required label="Подтверждаю: все действующие работы этого менеджера уйдут другому" />
+            <FormActions>
+              <Button tone="quiet">Передать работы</Button>
+            </FormActions>
+          </Form>
+        </Disclosure>
+      ) : null}
+      {dueKey === null ? null : (
+        <Text size={14} style={{ marginBottom: 16 }}>
+          {`Отбор: срок работы в ${MONTH_NAMES[Number(dueKey.slice(5)) - 1]} ${dueKey.slice(0, 4)} — `}
+          <a className="cab-mark" href={href({}).replace(/([?&])due=[^&]*&?/u, '$1').replace(/[?&]$/u, '')}>
+            снять отбор по сроку
+          </a>
+        </Text>
+      )}
 
       {pending.length === 0 ? null : (
         <Block style={{ marginBottom: 32 }}>
@@ -304,7 +498,11 @@ export default async function ProjectsScreen({
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    {stage.dueOn === null ? null : (
+                    {/* У этапа на согласовании — срок согласования, а не
+                        срок этапа: ответ клиента ждут к нему (Т-15, Р-290). */}
+                    {stage.state === 'IN_APPROVAL' && stage.approvalDueOn !== null ? (
+                      <Chip>срок согласования — до {formatDate(stage.approvalDueOn)}</Chip>
+                    ) : stage.dueOn === null ? null : (
                       <Chip>до {formatDate(stage.dueOn)}</Chip>
                     )}
                     <ButtonLink href={`/cabinet/stages/${stage.id}`}>
@@ -318,11 +516,25 @@ export default async function ProjectsScreen({
         </Block>
       )}
 
+      {awaitingNda ? <ActionError id={sp.error} /> : null}
       {awaitingNda ? (
-        <Empty title="Доступ к материалам ещё не открыт">
-          Он открывается после подписания договора поручения обработки персональных данных.
-          Напишите руководителю практики — отметка ставится в кабинете.
-        </Empty>
+        <>
+          <Empty title="Доступ к материалам ещё не открыт">
+            Он открывается после подписания договора поручения обработки персональных данных.
+            Договор оформляет руководитель практики и отмечает его в кабинете.
+          </Empty>
+          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center', textAlign: 'center' }}>
+            {askedAt !== null && !ndaRequestOpen(askedAt, now()) ? (
+              <Text size={14}>
+                {`Руководитель получил уведомление ${formatDay(askedAt)} в ${formatTime(askedAt)}. Повторно сообщить можно через сутки.`}
+              </Text>
+            ) : (
+              <Form action={requestNdaAction} inline>
+                <Button>Сообщить руководителю</Button>
+              </Form>
+            )}
+          </div>
+        </>
       ) : projects.length === 0 ? (
         list.all === 0 ? (
           <Empty
@@ -397,6 +609,9 @@ export default async function ProjectsScreen({
                 ? null
                 : `${newMessages} ${plural(newMessages, 'новое сообщение', 'новых сообщения', 'новых сообщений')}`,
               forClient ? null : project.client.fullName,
+              // Исполнитель на виду у практики (требование М-16, ОМ-23);
+              // руководителю — менеджер и куратор ссылками ниже (РК-03).
+              forClient || forExpert || forHead ? null : staffExpertLine(project.expert, project.expertNameRaw),
             ].filter((fact) => fact !== null);
 
             const waiting = onPage.get(project.code) ?? null;
@@ -488,13 +703,14 @@ export default async function ProjectsScreen({
                       ? 'Работа завершена.'
                       : project.status === 'PAUSED'
                         ? 'Работа приостановлена.'
-                        : 'Работа остановлена.'}
+                        : // Одно слово с меткой состояния и историей (УК-10, Р-366).
+                          'Работа отменена.'}
                   </Text>
                 ) : null}
                 {project.stages.length > 0 || project.status !== 'ACTIVE' ? null : (
                   <Text muted size={13} style={{ margin: '0 0 2px' }}>
                     {forClient || forExpert
-                      ? 'План работ ещё составляется: куратор заведёт этапы и сообщит.'
+                      ? 'План работ ещё составляется: менеджер заведёт этапы и сообщит.'
                       : 'План работ не заведён: этапы задаются на экране работы.'}
                   </Text>
                 )}
@@ -578,7 +794,7 @@ export default async function ProjectsScreen({
                     последний в плашке: раскрытие «Этапы» стоит над ним, и
                     у плашек ряда подвал встаёт на одни линии, есть план
                     или нет (Р-272). */}
-                {facts.length === 0 && project.dueOn === null ? (
+                {facts.length === 0 && project.dueOn === null && !forHead ? (
                   <span aria-hidden="true" style={{ marginTop: 'auto' }} />
                 ) : (
                   <div style={{ marginTop: 'auto', paddingTop: 10, display: 'grid', gap: 2 }}>
@@ -599,6 +815,37 @@ export default async function ProjectsScreen({
                         {facts.join(' · ')}
                       </Text>
                     )}
+                    {/* Руководителю — менеджер и куратор ссылками на
+                        «Работы» с отбором; ссылки поверх растянутой ссылки
+                        плашки (требование РК-03, решение Р-341). */}
+                    {!forHead ? null : (
+                      <Text muted size={13} style={{ margin: 0 }}>
+                        менеджер —{' '}
+                        <a
+                          className="cab-mark"
+                          style={{ position: 'relative', zIndex: 1 }}
+                          href={`/cabinet/projects?state=all&manager=${project.managerId}`}
+                        >
+                          {project.manager.fullName}
+                        </a>
+                        {' · '}
+                        {project.expert === null ? (
+                          staffExpertLine(null, project.expertNameRaw)
+                        ) : (
+                          <>
+                            {'куратор — '}
+                            <a
+                              className="cab-mark"
+                              style={{ position: 'relative', zIndex: 1 }}
+                              href={`/cabinet/projects?state=all&curator=${project.expertId}`}
+                            >
+                              {project.expert.fullName}
+                            </a>
+                            {project.expert.expertProfile?.ndaSignedAt == null ? ' · без договора поручения' : ''}
+                          </>
+                        )}
+                      </Text>
+                    )}
                   </div>
                 )}
               </Card>
@@ -607,33 +854,15 @@ export default async function ProjectsScreen({
         </ul>
       )}
 
-      {list.pages <= 1 ? null : (
-        <nav
-          aria-label="Страницы перечня"
-          style={{
-            display: 'flex',
-            gap: 20,
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            marginTop: 24,
-          }}
-        >
-          {list.page > 1 ? (
-            <a className="cab-mark" href={href({ page: list.page - 1 })}>
-              Предыдущие
-            </a>
-          ) : null}
-          <Text muted size={14}>
-            Страница {list.page} из {list.pages} · всего {list.total}{' '}
-            {plural(list.total, 'работа', 'работы', 'работ')}
-          </Text>
-          {list.page < list.pages ? (
-            <a className="cab-mark" href={href({ page: list.page + 1 })}>
-              Следующие
-            </a>
-          ) : null}
-        </nav>
-      )}
+      {/* Постраничность — общей частью (УМ-08, Р-390). */}
+      <Pager
+        label="Страницы перечня"
+        page={list.page}
+        pages={list.pages}
+        hrefFor={(page) => href({ page })}
+        total={`${list.total} ${plural(list.total, 'работа', 'работы', 'работ')}`}
+        style={{ marginTop: 24 }}
+      />
     </Shell>
   );
 }

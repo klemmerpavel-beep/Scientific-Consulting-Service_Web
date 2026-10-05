@@ -155,7 +155,9 @@ describe('деньги проекта', { skip: !enabled }, async () => {
     try {
       const invoiced = await finance.setTrancheStatus(actor(ids.head, 'HEAD'), tranche.id, 'INVOICED');
       assert.equal(invoiced.status, 'INVOICED');
-      const written = await finance.setTrancheStatus(actor(ids.head, 'HEAD'), tranche.id, 'WRITTEN_OFF');
+      // Без причины списание не принимается (УР-05, Р-388).
+      await assert.rejects(finance.setTrancheStatus(actor(ids.head, 'HEAD'), tranche.id, 'WRITTEN_OFF'), /без причины/u);
+      const written = await finance.setTrancheStatus(actor(ids.head, 'HEAD'), tranche.id, 'WRITTEN_OFF', null, 'Договорились не взыскивать');
       assert.equal(written.status, 'WRITTEN_OFF');
       await assert.rejects(
         finance.setTrancheStatus(actor(ids.head, 'HEAD'), tranche.id, 'PAID', new Date('2026-05-01T00:00:00Z')),

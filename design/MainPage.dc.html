@@ -143,6 +143,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:var(--pd-ok-ink);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята — свяжемся, чтобы согласовать разбор.</span>
 </div>
+<div data-next="top" style="margin-top:12px;flex:1 1 100%;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-surface-quiet);padding:12px 16px">
+<span style="display:block;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);margin-bottom:8px">Что будет дальше</span>
+<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
+<li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
+<li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
+<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+</ol>
+</div>
 </sc-if>
 <sc-if value="{{ errorTop }}" hint-placeholder-val="{{ false }}">
 <div role="alert" style="flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;background:var(--pd-err-bg);border:1px solid var(--pd-err-border);border-radius:10px;padding:12px 16px">
@@ -592,6 +600,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div role="status" tabindex="-1" data-sent="request" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:var(--pd-ok-ink);-webkit-mask:{{ checkPlainMask }};mask:{{ checkPlainMask }}"></span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята — свяжемся, чтобы согласовать время консультации.</span>
+</div>
+<div data-next="request" style="margin-top:12px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-surface-quiet);padding:12px 16px">
+<span style="display:block;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);margin-bottom:8px">Что будет дальше</span>
+<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
+<li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
+<li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
+<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+</ol>
 </div>
 </sc-if>
 <sc-if value="{{ error }}" hint-placeholder-val="{{ false }}">

@@ -5,8 +5,11 @@ import { after } from 'next/server';
 
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { AccessDenied, ensure, type Actor } from '../../lib/cabinet/access';
+import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
+import { ClientChoiceNeeded } from '../../lib/cabinet/client-match';
+import { homeFor } from '../../lib/cabinet/nav';
 import {
   LEAD_EDIT_FIELDS,
   LeadWorkError,
@@ -16,7 +19,8 @@ import {
   type LeadEditField,
 } from '../../lib/cabinet/lead-work';
 import {
-  consumeLoginToken,
+  enterWithToken,
+  resendForStaleLink,
   requestLoginLink,
   revokeSession,
   createTelegramBindLink,
@@ -25,10 +29,17 @@ import {
 import {
   addComment,
   moderateComment,
+  moderateVersion,
   uploadVersion,
   type MaterialKind,
 } from '../../lib/cabinet/materials';
-import { sendMessage } from '../../lib/cabinet/messages';
+import { sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages';
+import { saveAnalyticsSince, saveConfidenceThresholds, saveReactionDays } from '../../lib/cabinet/practice-settings';
+import { markRecommendation } from '../../lib/cabinet/recommendations';
+import { createAssignment, setAssignmentStatus } from '../../lib/cabinet/assignments';
+import { addExpense, removeExpense } from '../../lib/cabinet/profit';
+import { closeCheck } from '../../lib/cabinet/head-checks';
+import { handBackStage, handOverStage, recallHandover } from '../../lib/cabinet/handover';
 import {
   addPayout,
   addTranche,
@@ -36,38 +47,47 @@ import {
   saveContract,
   removeTranche,
   setTrancheStatus,
+  rescheduleTranche,
 } from '../../lib/cabinet/finance';
-import { saveYear } from '../../lib/cabinet/finance-years';
+import { removeYear, saveYear } from '../../lib/cabinet/finance-years';
 import { parseAmount, type TrancheStatus } from '../../lib/cabinet/money';
 import {
   addAlias,
   createUser,
   removeAlias,
+  removeCalendarDay,
+  saveCalendarDay,
+  saveRegalia,
+  saveCuratorProfile,
   removeStageTemplateItem,
   saveServiceType,
   saveStageTemplateItem,
   saveOwnChannels,
   setUserRole,
   issueAccessLink,
+  openClientAccess,
   setUserStatus,
+  retryCuratorInvite,
   signExpertNda,
+  requestNda,
   type Role,
 } from '../../lib/cabinet/admin';
 import type { AccessLinkState } from '../../components/cabinet/AccessLink';
 import {
-  RULE_EVENTS,
+  rulesFor,
   addContact,
-  askForHelp,
+  closeWelcome,
   dropContact,
   preferContact,
+  setFullSupport,
   saveRules,
   type ContactKind,
 } from '../../lib/cabinet/channels';
-import { ActiveWorkError, executeErasure, requestErasure } from '../../lib/cabinet/erasure';
+import { ActiveWorkError, executeErasure, requestErasure, requestOwnErasure } from '../../lib/cabinet/erasure';
 import { createCabinetRequest, REQUEST_FILES_MAX } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
-import { enqueue, retryFailed } from '../../lib/cabinet/outbox';
+import { enqueue, retryFailed, retryLeadLetter } from '../../lib/cabinet/outbox';
 import { reviewFeedback } from '../../lib/cabinet/feedback';
 import {
   addStage,
@@ -76,16 +96,30 @@ import {
   approveLead,
   assignExpert,
   assignManager,
+  transferAllWorks,
   declineLead,
   setProjectStatus,
   setStageState,
+  editStageOutcome,
+  rescheduleStage,
+  moveStage,
+  removeStage,
+  applyStageTemplate,
+  reopenStage,
+  returnStage,
+  acknowledgeReturn,
 } from '../../lib/cabinet/projects';
 import type { ProjectStatusKey } from '../../lib/cabinet/project-status';
 import {
+  clearOpenIntent,
+  clearStaleLink,
   currentActor,
   currentSessionValue,
+  rememberEmail,
+  rememberStaleLink,
   requestIp,
   setSessionCookie,
+  staleLink,
   userAgent,
 } from '../../lib/cabinet/session';
 
@@ -110,9 +144,6 @@ async function actorOrRedirect() {
  * разбора несёт в тексте имена таблиц и куски запросов: вместо него —
  * фиксированная фраза, а подробности идут в журнал сервера.
  */
-/** Отказ загрузки без причины по существу — обычно недоступное хранилище (Р-255). */
-const UPLOAD_FAILED =
-  'Файл не сохранён: хранилище файлов сейчас недоступно. Попробуйте ещё раз через несколько минут; если повторится — напишите руководителю.';
 
 function reasonOf(error: unknown, fallback: string): string {
   if (error instanceof AccessDenied) return 'Это действие недоступно для вашей роли';
@@ -136,11 +167,28 @@ export async function requestLink(form: FormData): Promise<void> {
   if (email.trim().length > 0) {
     // Письмо уходит после ответа: знакомый адрес иначе отвечал бы на
     // время отправки дольше незнакомого (решение Р-239).
-    outcome = await requestLoginLink(email, await requestIp(), { defer: after });
+    // Путь возврата — с формы, куда его положил обработчик открытия; чужой
+    // путь отбрасывается при записи (требование Т-06, решение Р-309).
+    const next = String(form.get('next') ?? '') || null;
+    outcome = await requestLoginLink(email, await requestIp(), { defer: after, next });
+    // Адрес — для кнопки «Прислать ещё раз» на той же странице (Т-07, Р-313).
+    if (outcome !== 'channel_off') await rememberEmail(email.trim(), next);
   }
   // Ответ один на все исходы, кроме одного: ненастроенная почта — состояние
   // системы, а не человека, и от адреса оно не зависит. Молчать о нём
   // значило бы обещать письмо, которого не будет (решение Р-163).
+  redirect(outcome === 'channel_off' ? '/cabinet?channel=off' : '/cabinet?sent=1');
+}
+
+/**
+ * «Прислать новую ссылку» на экране мёртвой ссылки (требование Т-07,
+ * решение Р-313): новая ссылка уходит владельцу старой. Ответ один для
+ * любой ссылки — адрес владельца не раскрывается ни страницей, ни исходом.
+ */
+export async function resendStaleLink(): Promise<void> {
+  const value = await staleLink();
+  await clearStaleLink();
+  const outcome = value === null ? null : await resendForStaleLink(value, await requestIp(), { defer: after });
   redirect(outcome === 'channel_off' ? '/cabinet?channel=off' : '/cabinet?sent=1');
 }
 
@@ -154,11 +202,20 @@ export async function requestLink(form: FormData): Promise<void> {
  */
 export async function enterByLink(form: FormData): Promise<void> {
   const token = String(form.get('token') ?? '');
-  const session = await consumeLoginToken(token, await requestIp(), await userAgent());
-  if (session === null) redirect('/cabinet?error=link');
+  const entered = await enterWithToken(token, await requestIp(), await userAgent());
+  if (entered === null) {
+    // Мёртвая ссылка: страница предложит прислать новую её владельцу, не
+    // раскрывая адреса (требование Т-07, решение Р-313).
+    await rememberStaleLink(token);
+    redirect('/cabinet?error=link');
+  }
   await revokeSession(await currentSessionValue());
-  await setSessionCookie(session);
-  redirect('/cabinet/projects');
+  await setSessionCookie(entered.session);
+  await clearOpenIntent();
+  // Вход ведёт туда, куда человек шёл, — на экран из письма или сигнала
+  // (требование Т-06, решение Р-309); без пути — на начальный экран роли:
+  // адрес `/cabinet` при открытой сессии перенаправляет туда сам (М-05).
+  redirect(entered.returnPath ?? '/cabinet');
 }
 
 export async function approveStage(form: FormData): Promise<void> {
@@ -174,6 +231,105 @@ export async function approveStage(form: FormData): Promise<void> {
   redirect(`/cabinet/stages/${stageId}`);
 }
 
+/**
+ * Практика согласует этап за клиента — только с основанием (требование
+ * М-12, О-6, решение Р-292).
+ */
+export async function approveForClient(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const basis = String(form.get('basis') ?? '');
+  let failure: string | null = null;
+  try {
+    await setStageState(actor, stageId, 'DONE', basis);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось согласовать этап за клиента');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { basis } }));
+  }
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Клиент возвращает этап с замечаниями (требование Т-03, решение Р-281). */
+export async function returnStageWithRemarks(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const text = String(form.get('remarks') ?? '');
+  let failure: string | null = null;
+  try {
+    await returnStage(actor, stageId, text);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось вернуть этап');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { remarks: text } }));
+  }
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Куратор принял замечания клиента в работу (требование М-04, решение Р-283). */
+export async function acknowledgeStageReturn(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  let failure: string | null = null;
+  try {
+    await acknowledgeReturn(actor, stageId);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отметить замечания');
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Сдать этап менеджеру с запиской (требование Э-05, решение Р-325). */
+export async function handOverStageAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const note = String(form.get('note') ?? '');
+  let failure: string | null = null;
+  try {
+    await handOverStage(actor, stageId, note);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сдать этап');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { note } }));
+  }
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Отозвать сдачу, пока менеджер не принял решение (Э-05). */
+export async function recallHandoverAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  let failure: string | null = null;
+  try {
+    await recallHandover(actor, stageId);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отозвать сдачу');
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Вернуть сданный этап куратору с причиной (Э-05, сторона М-25). */
+export async function handBackStageAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const reason = String(form.get('reason') ?? '');
+  let failure: string | null = null;
+  try {
+    await handBackStage(actor, stageId, reason);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось вернуть этап куратору');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { handback: reason } }));
+  }
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
 export async function changeStageState(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const stageId = String(form.get('stageId') ?? '');
@@ -185,7 +341,34 @@ export async function changeStageState(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сменить состояние этапа');
   }
-  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
+  // Набранный итог возвращается в форму вместе с причиной отказа
+  // (решения Р-279, Р-289).
+  if (failure !== null) {
+    redirect(
+      await withError(
+        `/cabinet/stages/${stageId}`,
+        failure,
+        to === 'IN_APPROVAL' ? { draft: { outcome: reason } } : {},
+      ),
+    );
+  }
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
+/** Правка итога этапа на согласовании (требование Т-14, решение Р-289). */
+export async function saveStageOutcome(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const text = String(form.get('outcome') ?? '');
+  let failure: string | null = null;
+  try {
+    await editStageOutcome(actor, stageId, text);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить итог этапа');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { outcome: text } }));
+  }
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -231,7 +414,7 @@ export async function uploadMaterial(form: FormData): Promise<void> {
       await requestIp(),
     );
   } catch (error) {
-    failure = reasonOf(error, UPLOAD_FAILED);
+    failure = reasonOf(error, uploadFailedText(actor.role));
   }
   if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
@@ -245,35 +428,45 @@ export async function uploadMaterial(form: FormData): Promise<void> {
  * замечанием к той же версии — отдельной формы для этого не нужно
  * (решение Р-200).
  */
+/**
+ * Материал с пояснением из колонки «Ваша работа». Файл и пояснение
+ * проверяются до записи и сохраняются одной операцией; при отказе не
+ * сохраняется ничего, а название, пояснение и этап возвращаются в форму —
+ * файл браузер заново не подставляет (требование Э-06, решение Р-326).
+ */
 export async function uploadMaterialWithNote(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const file = form.get('file');
   const code = String(form.get('code') ?? '');
-  if (!(file instanceof File) || file.size === 0) {
-    redirect(await withError(`/cabinet/projects/${code}`, 'Файл не выбран'));
-  }
   const stageId = String(form.get('stageId') ?? '');
+  const title = String(form.get('title') ?? '');
+  const note = String(form.get('note') ?? '');
+  const draft = { title, note, stageId: stageId === '' ? 'none' : stageId };
+  if (!(file instanceof File) || file.size === 0) {
+    redirect(await withError(`/cabinet/projects/${code}`, 'Файл не выбран', { draft }));
+  }
   let failure: string | null = null;
   try {
-    const version = await uploadVersion(
+    await uploadVersion(
       actor,
       {
         projectId: String(form.get('projectId') ?? ''),
         stageId: stageId || null,
         materialId: null,
-        title: String(form.get('title') ?? '') || undefined,
+        title: title || undefined,
+        note,
         originalName: (file as File).name,
         contentType: (file as File).type || 'application/octet-stream',
         body: Buffer.from(await (file as File).arrayBuffer()),
       },
       await requestIp(),
     );
-    const note = String(form.get('note') ?? '').trim();
-    if (note.length > 0) await addComment(actor, version.id, note);
   } catch (error) {
-    failure = reasonOf(error, UPLOAD_FAILED);
+    failure = reasonOf(error, uploadFailedText(actor.role));
   }
-  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/projects/${code}`, `${failure}. Выберите файл ещё раз.`, { draft }));
+  }
 
   redirect(`/cabinet/projects/${code}`);
 }
@@ -294,7 +487,9 @@ export async function moderateLead(form: FormData): Promise<void> {
       const project = await approveLead(actor, {
         leadId,
         serviceTypeId: String(form.get('serviceTypeId') ?? ''),
-        managerId: actor.id,
+        // Руководитель выбирает менеджера работы; менеджер ведёт её сам
+        // (требование РК-08, решение Р-344).
+        managerId: String(form.get('managerId') ?? ''),
         title: String(form.get('title') ?? ''),
         applyStageTemplate: form.get('applyTemplate') === 'on',
       });
@@ -328,6 +523,65 @@ export async function createStage(form: FormData): Promise<void> {
   redirect(`/cabinet/projects/${code}`);
 }
 
+/** Перестановка этапа в плане (требование М-11, решение Р-303). */
+export async function shiftStage(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  let failure: string | null = null;
+  try {
+    await moveStage(actor, String(form.get('stageId') ?? ''), form.get('direction') === 'up' ? 'up' : 'down');
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось переставить этап');
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
+  redirect(`/cabinet/projects/${code}`);
+}
+
+/** Удаление не начатого этапа без материалов (М-11, Р-303). */
+export async function dropStage(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  let failure: string | null = null;
+  try {
+    await removeStage(actor, String(form.get('stageId') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось удалить этап');
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
+  redirect(`/cabinet/projects/${code}`);
+}
+
+/** План по шаблону типа на карточке, пока этапов нет (М-11, Р-303). */
+export async function planFromTemplate(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  let failure: string | null = null;
+  try {
+    await applyStageTemplate(actor, String(form.get('projectId') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось завести план по шаблону');
+  }
+  if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
+  redirect(`/cabinet/projects/${code}`);
+}
+
+/** Возврат завершённого этапа в работу — с причиной (М-11, Р-303). */
+export async function reopenStageAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const stageId = String(form.get('stageId') ?? '');
+  const reason = String(form.get('reason') ?? '');
+  let failure: string | null = null;
+  try {
+    await reopenStage(actor, { stageId, reason, dueOn: dateOrNull(form.get('dueOn')) });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось вернуть этап в работу');
+  }
+  if (failure !== null) {
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { reopenReason: reason } }));
+  }
+  redirect(`/cabinet/stages/${stageId}`);
+}
+
 /** Правка этапа менеджером прямо в плане работ (решение Р-190). */
 export async function saveStage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
@@ -339,6 +593,8 @@ export async function saveStage(form: FormData): Promise<void> {
       title: String(form.get('title') ?? ''),
       summary: String(form.get('summary') ?? ''),
       dueOn: dateOrNull(form.get('dueOn')),
+      reason: String(form.get('reason') ?? ''),
+      updatedAt: String(form.get('updatedAt') ?? '') || null,
     });
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить этап');
@@ -356,32 +612,71 @@ export async function saveStage(form: FormData): Promise<void> {
 export async function moveStageDue(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const stageId = String(form.get('stageId') ?? '');
+  const reason = String(form.get('reason') ?? '');
   let failure: string | null = null;
   try {
-    await editStage(actor, {
-      stageId,
-      title: String(form.get('title') ?? ''),
-      summary: String(form.get('summary') ?? ''),
-      dueOn: dateOrNull(form.get('dueOn')),
-    });
+    // Меняется только срок: скрытые название и суть откатывали правку,
+    // сделанную в другом окне (требование М-15, решение Р-302).
+    await rescheduleStage(actor, { stageId, dueOn: dateOrNull(form.get('dueOn')), reason });
   } catch (error) {
     failure = reasonOf(error, 'Не удалось перенести срок');
   }
-  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
+  if (failure !== null) {
+    redirect(
+      await withError(`/cabinet/stages/${stageId}`, failure, {
+        draft: { dueOn: String(form.get('dueOn') ?? ''), dueReason: reason },
+      }),
+    );
+  }
   redirect(`/cabinet/stages/${stageId}`);
+}
+
+/**
+ * Отказ действия «Управления работой»: причина у своей формы, свёртка
+ * раскрыта, введённое сохранено (решение Р-279). Прежде четыре действия
+ * карточки работы отказывали общим экраном «Сбой» — менеджер не узнавал,
+ * что исправить.
+ */
+async function manageFailure(
+  code: string,
+  slot: 'project' | 'status' | 'expert' | 'manager',
+  error: unknown,
+  draft: Readonly<Record<string, string>>,
+): Promise<never> {
+  const reason = reasonOf(error, 'Не удалось сохранить: попробуйте ещё раз. Введённое сохранено в форме.');
+  redirect(await withError(`/cabinet/projects/${code}`, reason, { slot, draft, anchor: 'manage' }));
+}
+
+/** Значения полей формы — для черновика при отказе. */
+function fieldsOf(form: FormData, names: readonly string[]): Record<string, string> {
+  return Object.fromEntries(names.map((name) => [name, String(form.get(name) ?? '')]));
 }
 
 /** Правка карточки работы менеджером (решение Р-190). */
 export async function saveProject(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
-  await editProject(actor, {
-    projectId: String(form.get('projectId') ?? ''),
-    title: String(form.get('title') ?? ''),
-    topic: String(form.get('topic') ?? ''),
-    summary: String(form.get('summary') ?? ''),
-    dueOn: dateOrNull(form.get('dueOn')),
-  });
+  try {
+    await editProject(actor, {
+      projectId: String(form.get('projectId') ?? ''),
+      title: String(form.get('title') ?? ''),
+      topic: String(form.get('topic') ?? ''),
+      summary: String(form.get('summary') ?? ''),
+      dueOn: dateOrNull(form.get('dueOn')),
+      reason: String(form.get('dueReason') ?? ''),
+      // Поле есть только у формы карточки; пустое значение не меняет срок.
+      ...(String(form.get('approvalDays') ?? '').trim() === ''
+        ? {}
+        : { approvalDays: Number(String(form.get('approvalDays')).trim()) }),
+    });
+  } catch (error) {
+    await manageFailure(
+      code,
+      'project',
+      error,
+      fieldsOf(form, ['title', 'topic', 'summary', 'dueOn', 'dueReason', 'approvalDays']),
+    );
+  }
   redirect(`/cabinet/projects/${code}`);
 }
 
@@ -389,11 +684,22 @@ export async function saveProject(form: FormData): Promise<void> {
 export async function changeProjectStatus(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
-  await setProjectStatus(
-    actor,
-    String(form.get('projectId') ?? ''),
-    String(form.get('status') ?? '') as ProjectStatusKey,
-  );
+  const status = String(form.get('status') ?? '');
+  const reason = String(form.get('reason') ?? '');
+  let failure: string | null = null;
+  try {
+    await setProjectStatus(actor, String(form.get('projectId') ?? ''), status as ProjectStatusKey, reason);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сменить состояние работы');
+  }
+  // Отказ — на экране подтверждения, с набранной причиной (М-09, Р-279).
+  if (failure !== null) {
+    redirect(
+      await withError(`/cabinet/projects/${code}/status?to=${encodeURIComponent(status)}`, failure, {
+        draft: { reason },
+      }),
+    );
+  }
   redirect(`/cabinet/projects/${code}`);
 }
 
@@ -402,17 +708,50 @@ export async function setExpert(form: FormData): Promise<void> {
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
   const expertId = String(form.get('expertId') ?? '');
-  await assignExpert(actor, projectId, expertId || null);
+  const expertRole = String(form.get('expertRole') ?? '');
+  try {
+    await assignExpert(
+      actor,
+      projectId,
+      expertId || null,
+      (expertRole || null) as Parameters<typeof assignExpert>[3],
+    );
+  } catch (error) {
+    await manageFailure(code, 'expert', error, { expertId, expertRole });
+  }
   redirect(`/cabinet/projects/${code}`);
 }
 
-/** Смена куратора работы. Доступна руководителю. */
+/** Передача работы другому менеджеру — с причиной. Доступна руководителю. */
 export async function setManager(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
-  await assignManager(actor, projectId, String(form.get('managerId') ?? ''));
+  const managerId = String(form.get('managerId') ?? '');
+  const reason = String(form.get('reason') ?? '');
+  try {
+    await assignManager(actor, projectId, managerId, reason);
+  } catch (error) {
+    await manageFailure(code, 'manager', error, { managerId, reason });
+  }
   redirect(`/cabinet/projects/${code}`);
+}
+
+/** Передать все действующие работы менеджера (улучшение УР-07, Р-397). */
+export async function transferWorks(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const fromId = String(form.get('fromManagerId') ?? '');
+  const back = `/cabinet/projects?state=active&manager=${encodeURIComponent(fromId)}`;
+  let failure: string | null = null;
+  try {
+    if (form.get('confirm') !== 'on') throw new Error('Подтвердите передачу: работы уйдут другому менеджеру');
+    const result = await transferAllWorks(actor, fromId, String(form.get('toManagerId') ?? ''), String(form.get('reason') ?? ''));
+    if (result.failed !== null) failure = `Передано работ: ${result.moved}. Остановлено на ${result.failed}`;
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось передать работы');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 /**
@@ -425,14 +764,55 @@ export async function decideOnComment(form: FormData): Promise<void> {
   const commentId = String(form.get('commentId') ?? '');
   const stageId = String(form.get('stageId') ?? '');
   const decision = String(form.get('decision') ?? '') === 'publish' ? 'PUBLISHED' : 'REJECTED';
+  // Замечание вне этапа разбирается на «Материалах работы»: возврат туда,
+  // к своему материалу. Адрес возврата — только экран материалов работы:
+  // поле формы иначе стало бы перенаправлением куда угодно (решение Р-284).
+  const back = String(form.get('back') ?? '');
+  const backMatch = /^\/cabinet\/projects\/[A-Za-zА-Яа-я0-9-]+\/materials(#material-[a-z0-9]+)?$/u.exec(back);
+  const target = stageId !== '' ? `/cabinet/stages/${stageId}` : backMatch !== null ? back : '/cabinet/projects';
   let failure: string | null = null;
   try {
     await moderateComment(actor, commentId, decision, String(form.get('note') ?? ''));
   } catch (error) {
     failure = reasonOf(error, 'Не удалось разобрать замечание');
   }
-  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
-  redirect(`/cabinet/stages/${stageId}`);
+  if (failure !== null) {
+    const [path, anchor] = target.split('#');
+    redirect(await withError(path!, failure, anchor === undefined ? {} : { anchor }));
+  }
+  redirect(target);
+}
+
+/**
+ * Опубликовать версию эксперта клиенту или не публиковать (требование
+ * Т-18, решение Р-294). Возврат — на экран этапа или к материалу на
+ * «Материалах работы», как у замечаний (Р-284).
+ */
+export async function decideOnVersion(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const versionId = String(form.get('versionId') ?? '');
+  const stageId = String(form.get('stageId') ?? '');
+  const decision = String(form.get('decision') ?? '') === 'publish' ? 'PUBLISHED' : 'REJECTED';
+  const note = String(form.get('note') ?? '');
+  const back = String(form.get('back') ?? '');
+  const backMatch = /^\/cabinet\/projects\/[A-Za-zА-Яа-я0-9-]+\/materials(#material-[a-z0-9]+)?$/u.exec(back);
+  const target = stageId !== '' ? `/cabinet/stages/${stageId}` : backMatch !== null ? back : '/cabinet/projects';
+  let failure: string | null = null;
+  try {
+    await moderateVersion(actor, versionId, decision, note);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось разобрать версию');
+  }
+  if (failure !== null) {
+    const [path, anchor] = target.split('#');
+    redirect(
+      await withError(path!, failure, {
+        ...(anchor === undefined ? {} : { anchor }),
+        draft: { note },
+      }),
+    );
+  }
+  redirect(target);
 }
 
 /**
@@ -463,25 +843,50 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
       })),
   );
 
-  const { filesLost } = await createCabinetRequest(
-    actor,
-    {
-      topic: String(form.get('topic') ?? '').trim(),
-      need: String(form.get('need') ?? '').trim() || null,
-      deadline: String(form.get('deadline') ?? '').trim() || null,
-      message: String(form.get('message') ?? '').trim() || null,
-      applicantName: String(form.get('applicantName') ?? '').trim() || null,
-      supervisorName: String(form.get('supervisorName') ?? '').trim() || null,
-      organization: String(form.get('organization') ?? '').trim() || null,
-      speciality: String(form.get('speciality') ?? '').trim() || null,
-      phone: String(form.get('phone') ?? '').trim() || null,
-      files,
-      ip: await requestIp(),
-      consent: form.get('consent') === 'on',
-      terms: form.get('terms') === 'on',
-    },
-    CONSENT_VERSION,
-  );
+  // Отказ — на экран заявки с набранным, а не общим экраном сбоя
+  // (требование Т-22, решения Р-279, Р-296).
+  let filesLost = 0;
+  let failure: string | null = null;
+  try {
+    ({ filesLost } = await createCabinetRequest(
+      actor,
+      {
+        topic: String(form.get('topic') ?? '').trim(),
+        need: String(form.get('need') ?? '').trim() || null,
+        deadline: String(form.get('deadline') ?? '').trim() || null,
+        message: String(form.get('message') ?? '').trim() || null,
+        applicantName: String(form.get('applicantName') ?? '').trim() || null,
+        supervisorName: String(form.get('supervisorName') ?? '').trim() || null,
+        organization: String(form.get('organization') ?? '').trim() || null,
+        speciality: String(form.get('speciality') ?? '').trim() || null,
+        phone: String(form.get('phone') ?? '').trim() || null,
+        files,
+        ip: await requestIp(),
+        consent: form.get('consent') === 'on',
+        terms: form.get('terms') === 'on',
+      },
+      CONSENT_VERSION,
+    ));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить заявку');
+  }
+  if (failure !== null) {
+    redirect(
+      await withError('/cabinet/request', failure, {
+        draft: fieldsOf(form, [
+          'applicantName',
+          'supervisorName',
+          'need',
+          'topic',
+          'deadline',
+          'message',
+          'organization',
+          'speciality',
+          'phone',
+        ]),
+      }),
+    );
+  }
 
   redirect(filesLost > 0 ? `/cabinet/request?sent=1&lost=${filesLost}` : '/cabinet/request?sent=1');
 }
@@ -511,13 +916,35 @@ export async function postMessage(form: FormData): Promise<void> {
   redirect(target);
 }
 
+/**
+ * Шаг экрана настроек: отказ — причиной на экране настроек, а не экраном
+ * «Сбой» (улучшение УМ-02, решение Р-373; приём Р-279).
+ */
+async function settingsStep<T>(task: () => Promise<T>, fallback: string): Promise<T> {
+  let failure: string | null = null;
+  let result: T | undefined;
+  try {
+    result = await task();
+  } catch (error) {
+    failure = reasonOf(error, fallback);
+  }
+  if (failure !== null) redirect(await withError('/cabinet/settings', failure));
+  return result as T;
+}
+
 /** Каналы уведомлений. Выбор за получателем, а не за системой. */
 export async function saveNotificationChannels(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await saveOwnChannels(actor, {
-    email: form.get('notifyEmail') === 'on',
-    telegram: form.get('notifyTelegram') === 'on',
-  });
+  await settingsStep(
+    () =>
+      saveOwnChannels(actor, {
+        email: form.get('notifyEmail') === 'on',
+        telegram: form.get('notifyTelegram') === 'on',
+        // Поле есть только у куратора (УЭ-01, Р-398).
+        ...(form.has('digestShown') ? { dailyDigest: form.get('dailyDigest') === 'on' } : {}),
+      }),
+    'Не удалось сохранить каналы уведомлений',
+  );
   redirect('/cabinet/settings?saved=1');
 }
 
@@ -540,13 +967,23 @@ export async function addContactChannel(form: FormData): Promise<void> {
 
 export async function removeContactChannel(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await dropContact(actor, String(form.get('id') ?? ''));
+  await settingsStep(() => dropContact(actor, String(form.get('id') ?? '')), 'Не удалось убрать способ связи');
+  redirect('/cabinet/settings?saved=1');
+}
+
+/** Полное сопровождение — отдельной отметкой клиента (часть F, П-09, Р-401). */
+export async function saveFullSupport(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await settingsStep(
+    () => setFullSupport(actor, form.get('fullSupport') === 'on'),
+    'Не удалось сохранить полное сопровождение',
+  );
   redirect('/cabinet/settings?saved=1');
 }
 
 export async function makeContactPreferred(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  await preferContact(actor, String(form.get('id') ?? ''));
+  await settingsStep(() => preferContact(actor, String(form.get('id') ?? '')), 'Не удалось отметить способ связи');
   redirect('/cabinet/settings?saved=1');
 }
 
@@ -554,35 +991,72 @@ export async function saveNotifyRules(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   // Форма присылает состояние всей решётки: у каждой клетки своё имя
   // вида `rule:<событие>:<канал>`, и снятая галочка просто не приходит.
-  const rules = RULE_EVENTS.flatMap((event) =>
+  const rules = rulesFor(actor.role).flatMap((event) =>
     (['EMAIL', 'TELEGRAM'] as const).map((channel) => ({
       eventKind: event.kind,
       channel,
       enabled: form.get(`rule:${event.kind}:${channel}`) === 'on',
     })),
   );
-  await saveRules(actor, rules);
+  await settingsStep(() => saveRules(actor, rules), 'Не удалось сохранить правила уведомлений');
   redirect('/cabinet/settings?saved=1');
 }
 
-export async function requestHelp(form: FormData): Promise<void> {
+/**
+ * Сообщение во внутренней переписке по работе (требование РК-07, решение
+ * Р-336). При отказе текст возвращается в поле.
+ */
+export async function postInternalMessage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const body = String(form.get('body') ?? '');
+  const target = `/cabinet/projects/${code}/messages?tab=internal`;
+  let failure: string | null = null;
   try {
-    await askForHelp(actor, String(form.get('text') ?? ''));
+    await sendInternal(actor, String(form.get('projectId') ?? ''), body);
   } catch (error) {
-    const text = reasonOf(error, 'Не удалось отправить вопрос');
-    redirect(await withError(`/cabinet/manage/tools`, text));
+    failure = reasonOf(error, 'Не удалось отправить сообщение');
   }
-  redirect('/cabinet/manage/tools?sent=1');
+  if (failure !== null) redirect(await withError(target, failure, { draft: { body } }));
+  redirect(target);
+}
+
+/**
+ * Сообщение в ветке «руководитель — сотрудник» (РК-07, Р-336): менеджер
+ * пишет со своего экрана «Руководитель», руководитель — с экрана ветки.
+ */
+export async function postStaffMessage(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const staffId = String(form.get('staffId') ?? '');
+  const body = String(form.get('body') ?? '');
+  const target = actor.role === 'HEAD' ? `/cabinet/manage/team/${staffId}` : '/cabinet/head';
+  let failure: string | null = null;
+  try {
+    await sendStaff(actor, staffId, body);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить сообщение');
+  }
+  if (failure !== null) redirect(await withError(target, failure, { draft: { body } }));
+  redirect(target);
 }
 
 /**
  * Ссылка привязки Telegram — по нажатию (решение Р-245): метка заводится
  * здесь, и человек сразу уходит в бота.
  */
+/** «Понятно» в блоке первого входа (требование Т-10, решение Р-310). */
+export async function dismissWelcome(): Promise<void> {
+  const actor = await actorOrRedirect();
+  await closeWelcome(actor);
+  redirect(homeFor(actor));
+}
+
 export async function startTelegramBind(): Promise<void> {
   const actor = await actorOrRedirect();
-  const link = await createTelegramBindLink(actor.id);
+  const link = await settingsStep(
+    () => createTelegramBindLink(actor.id),
+    'Не удалось подготовить подключение Telegram',
+  );
   if (link === null) {
     redirect(await withError('/cabinet/settings', 'Telegram не настроен на стороне сервиса'));
   }
@@ -591,7 +1065,7 @@ export async function startTelegramBind(): Promise<void> {
 
 export async function dropTelegram(): Promise<void> {
   const actor = await actorOrRedirect();
-  await unbindTelegram(actor);
+  await settingsStep(() => unbindTelegram(actor), 'Не удалось отключить Telegram');
   redirect('/cabinet/settings?saved=1');
 }
 
@@ -648,6 +1122,7 @@ export async function createOrder(form: FormData): Promise<void> {
   const text = (name: string) => String(form.get(name) ?? '').trim();
   let failure: string | null = null;
   let code: string | null = null;
+  let choiceNeeded = false;
   try {
     const amountOf = (name: string): bigint | null => (text(name).length === 0 ? null : parseAmount(text(name)));
     const status = text('status');
@@ -664,14 +1139,23 @@ export async function createOrder(form: FormData): Promise<void> {
       paid: amountOf('paid'),
       status: status === 'PAUSED' || status === 'COMPLETED' ? status : 'ACTIVE',
       managerId: text('managerId') || null,
+      clientChoice: text('clientChoice') || null,
     });
     code = created.code;
   } catch (error) {
     failure =
-      error instanceof OrderInputError ? error.message : reasonOf(error, 'Не удалось завести заказ');
+      error instanceof OrderInputError || error instanceof ClientChoiceNeeded
+        ? error.message
+        : reasonOf(error, 'Не удалось завести заказ');
+    choiceNeeded = error instanceof ClientChoiceNeeded;
   }
   if (failure !== null || code === null) {
-    redirect(await withError('/cabinet/manage/orders/new', failure ?? 'Не удалось завести заказ'));
+    // Набранное возвращается в форму; совпадение только по ФИО открывает
+    // выбор карточки заказчика (требование М-18, решение Р-308).
+    const fields = ['customer', 'email', 'phone', 'serviceTypeId', 'title', 'topic', 'orderedOn', 'dueOn', 'cost', 'paid', 'status', 'managerId'];
+    const draft: Record<string, string> = Object.fromEntries(fields.map((name) => [name, text(name)]));
+    if (choiceNeeded) draft.clientChoiceNeeded = '1';
+    redirect(await withError('/cabinet/manage/orders/new', failure ?? 'Не удалось завести заказ', { draft }));
   }
   redirect(`/cabinet/projects/${code}?created=1`);
 }
@@ -708,6 +1192,7 @@ export async function addContractTranche(form: FormData): Promise<void> {
       title: String(form.get('title') ?? ''),
       amount: parseAmount(String(form.get('amount') ?? '')),
       plannedDate: dateOrNull(form.get('plannedDate')),
+      stageId: String(form.get('stageId') ?? '') || null,
     });
     exceeds = exceedsContract;
   } catch (error) {
@@ -734,6 +1219,54 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
     );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сменить статус транша');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** Удалить введённый год — после подтверждения второй формой (РК-15, Р-346). */
+export async function removeFinanceYear(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/finance/years';
+  let failure: string | null = null;
+  try {
+    await removeYear(actor, Number(String(form.get('year') ?? '')));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось удалить год');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(`${back}?removed=1`);
+}
+
+/** «Должники»: перенести плановую дату транша с причиной (РК-10, Р-345). */
+export async function moveTrancheDate(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/finance/debtors';
+  let failure: string | null = null;
+  try {
+    await rescheduleTranche(
+      actor,
+      String(form.get('trancheId') ?? ''),
+      dateOrNull(form.get('plannedDate')),
+      String(form.get('reason') ?? ''),
+    );
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось перенести дату транша');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(`${back}?moved=1`);
+}
+
+/** «Должники»: списать долг — только с подтверждением (РК-10, Р-345; Р-244). */
+export async function writeOffDebt(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/finance/debtors';
+  let failure: string | null = null;
+  try {
+    if (form.get('confirm') !== 'on') throw new Error('Подтвердите списание: долг больше не будет ждать оплаты');
+    await setTrancheStatus(actor, String(form.get('trancheId') ?? ''), 'WRITTEN_OFF', null, String(form.get('reason') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось списать транш');
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);
@@ -781,6 +1314,7 @@ export async function accruePayout(form: FormData): Promise<void> {
   try {
     await addPayout(actor, {
       projectId: String(form.get('projectId') ?? ''),
+      stageId: String(form.get('stageId') ?? '') || null,
       amount: parseAmount(String(form.get('amount') ?? '')),
       comment: String(form.get('comment') ?? '') || null,
     });
@@ -882,6 +1416,20 @@ export async function openErasureRequest(form: FormData): Promise<void> {
   redirect('/cabinet/manage/erasure');
 }
 
+/** Клиент запрашивает удаление своих данных (часть F, П-08, Р-400). */
+export async function requestMyErasure(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  let failure: string | null = null;
+  try {
+    if (form.get('confirm') !== 'on') throw new Error('Подтвердите запрос: он уйдёт руководителю практики');
+    await requestOwnErasure(actor);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить запрос');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/settings', failure));
+  redirect('/cabinet/settings?saved=1');
+}
+
 export async function executeErasureRequest(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   try {
@@ -900,22 +1448,24 @@ export async function executeErasureRequest(form: FormData): Promise<void> {
 // ─────────────────────────── Учётные записи ─────────────────────────────────
 
 /**
- * Завести учётную запись. Ссылку входа человек запрашивает сам: письмо,
- * отправленное без его действия, — рассылка, а не вход.
+ * Завести учётную запись. Ссылку входа человек запрашивает сам: письмо со
+ * ссылкой, отправленное без его действия, — рассылка, а не вход. Куратору
+ * уходит приглашение без ссылки — с кнопкой «Открыть кабинет» (Э-03).
  */
 export async function inviteUser(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
+  const role = String(form.get('role') ?? 'EXPERT') as Role;
   try {
     await createUser(actor, {
       email: String(form.get('email') ?? ''),
       fullName: String(form.get('fullName') ?? ''),
-      role: String(form.get('role') ?? 'EXPERT') as Role,
+      role,
     });
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось завести запись');
     redirect(await withError(`/cabinet/manage/users`, reason));
   }
-  redirect('/cabinet/manage/users?created=1');
+  redirect(`/cabinet/manage/users?created=${role === 'EXPERT' ? 'curator' : '1'}`);
 }
 
 export async function changeUserRole(form: FormData): Promise<void> {
@@ -939,6 +1489,31 @@ export async function changeUserStatus(form: FormData): Promise<void> {
     redirect(await withError(`/cabinet/manage/users`, reason));
   }
   redirect('/cabinet/manage/users');
+}
+
+/** «Открыть клиенту вход» с карточки работы (требование М-03, решение Р-285). */
+export async function openAccessForClient(
+  _previous: AccessLinkState,
+  form: FormData,
+): Promise<AccessLinkState> {
+  const actor = await actorOrRedirect();
+  try {
+    const issued = await openClientAccess(actor, String(form.get('projectId') ?? ''), await requestIp());
+    const until = issued.expiresAt.toLocaleTimeString('ru-RU', {
+      timeZone: 'Europe/Moscow',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return {
+      link: issued.link,
+      note:
+        `Ссылка для «${issued.fullName}» действует до ${until} по Москве и срабатывает один раз. ` +
+        'Передайте её клиенту тем каналом, которым с ним разговариваете; на экране входа он увидит свой адрес.',
+      error: null,
+    };
+  } catch (error) {
+    return { link: null, note: null, error: reasonOf(error, 'Не удалось открыть вход') };
+  }
 }
 
 export async function giveAccessLink(
@@ -969,6 +1544,61 @@ export async function giveAccessLink(
       error: reasonOf(error, 'Не удалось выдать ссылку'),
     };
   }
+}
+
+/** Регалии сотрудника (требование Т-11, решение Р-297). */
+export async function updateRegalia(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  let failure: string | null = null;
+  try {
+    await saveRegalia(actor, String(form.get('userId') ?? ''), {
+      degree: String(form.get('degree') ?? ''),
+      specialization: String(form.get('specialization') ?? ''),
+      specialtyCode: String(form.get('specialtyCode') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить регалии');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/manage/users', failure));
+  redirect('/cabinet/manage/users');
+}
+
+/**
+ * «Сообщить руководителю» с экрана без договора поручения (требование
+ * Э-12, решение Р-331).
+ */
+export async function requestNdaAction(): Promise<void> {
+  const actor = await actorOrRedirect();
+  let failure: string | null = null;
+  try {
+    await requestNda(actor);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить уведомление руководителю');
+  }
+  if (failure !== null) redirect(await withError(homeFor(actor), failure));
+  redirect(homeFor(actor));
+}
+
+/** Профиль куратора — правит руководитель (требование Э-11). */
+export async function updateCuratorProfile(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const field = (name: string) => String(form.get(name) ?? '');
+  let failure: string | null = null;
+  try {
+    await saveCuratorProfile(actor, field('userId'), {
+      degree: field('degree'),
+      academicTitle: field('academicTitle'),
+      position: field('position'),
+      specialtyCode: field('specialtyCode'),
+      specialization: field('specialization'),
+      university: field('university'),
+      defaultPayout: field('defaultPayout'),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить профиль куратора');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/manage/users', failure));
+  redirect('/cabinet/manage/users');
 }
 
 export async function updateExpertNda(form: FormData): Promise<void> {
@@ -1024,6 +1654,173 @@ export async function detachAlias(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError('/cabinet/manage/directory', failure));
   redirect('/cabinet/manage/directory');
+}
+
+/** Закрыть дело руководителя «Не требуется» / «Проверено» (РК-12, Р-338). */
+export async function closeHeadCheck(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const back = `/cabinet/projects/${code}/payments`;
+  let failure: string | null = null;
+  try {
+    await closeCheck(actor, String(form.get('checkId') ?? ''), String(form.get('note') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось закрыть дело');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** Срок реакции в рабочих днях (требование РК-05, решение Р-337). */
+export async function saveReaction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/directory?tab=calendar';
+  let failure: string | null = null;
+  try {
+    await saveReactionDays(actor, String(form.get('days') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить срок реакции');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** Внести расход месяца (требование РК-21, решение Р-353). */
+export async function addExpenseAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/finance/profit';
+  let failure: string | null = null;
+  try {
+    await addExpense(actor, {
+      month: String(form.get('month') ?? ''),
+      categoryId: String(form.get('categoryId') ?? ''),
+      amount: parseAmount(String(form.get('amount') ?? '')),
+      serviceTypeId: String(form.get('serviceTypeId') ?? ''),
+      note: String(form.get('note') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось внести расход');
+  }
+  if (failure !== null) {
+    redirect(await withError(back, failure, { draft: fieldsOf(form, ['month', 'categoryId', 'amount', 'serviceTypeId', 'note']) }));
+  }
+  redirect(back);
+}
+
+/** Удалить ошибочно внесённый расход (РК-21, Р-353). */
+export async function removeExpenseAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/finance/profit';
+  let failure: string | null = null;
+  try {
+    await removeExpense(actor, String(form.get('id') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось удалить расход');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** Поставить поручение (требование РК-19, решение Р-352). */
+export async function createAssignmentAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/assignments';
+  let failure: string | null = null;
+  try {
+    await createAssignment(actor, {
+      assigneeId: String(form.get('assigneeId') ?? ''),
+      text: String(form.get('text') ?? ''),
+      dueOn: dateOrNull(form.get('dueOn')),
+      projectCode: String(form.get('project') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось поставить поручение');
+  }
+  if (failure !== null) {
+    redirect(await withError(back, failure, { draft: fieldsOf(form, ['assigneeId', 'text', 'dueOn', 'project']) }));
+  }
+  redirect(`${back}?created=1`);
+}
+
+/** Перевести поручение: «в работе», «сделано», «отозвано» (РК-19, Р-352). */
+export async function assignmentStatusAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = String(form.get('back') ?? '') === 'manage' ? '/cabinet/manage/assignments' : '/cabinet/assignments';
+  const raw = String(form.get('status') ?? '');
+  let failure: string | null = null;
+  try {
+    if (raw !== 'IN_PROGRESS' && raw !== 'DONE' && raw !== 'WITHDRAWN') throw new Error('Неизвестное состояние поручения');
+    await setAssignmentStatus(actor, String(form.get('id') ?? ''), raw);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось изменить поручение');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** Дата начала учёта и пороги уверенности (требование РК-16, решение Р-349). */
+export async function saveAnalyticsSettings(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/directory?tab=calendar';
+  let failure: string | null = null;
+  try {
+    await saveAnalyticsSince(actor, String(form.get('since') ?? ''));
+    await saveConfidenceThresholds(actor, String(form.get('thresholds') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить настройки учёта');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** Отметка рекомендации «сделано», «отложено» или снятие (РК-16, Р-349). */
+export async function markRecommendationAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = String(form.get('back') ?? '') === 'recommendations' ? '/cabinet/manage/recommendations' : '/cabinet/manage/recommendations/calendar';
+  const raw = String(form.get('status') ?? '');
+  let failure: string | null = null;
+  try {
+    await markRecommendation(
+      actor,
+      String(form.get('key') ?? ''),
+      raw === 'DONE' || raw === 'POSTPONED' ? raw : null,
+    );
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отметить рекомендацию');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** День производственного календаря (требование Т-15, решение Р-290). */
+export async function saveCalendar(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/directory?tab=calendar';
+  let failure: string | null = null;
+  try {
+    await saveCalendarDay(actor, {
+      day: dateOrNull(form.get('day')),
+      workday: String(form.get('workday') ?? '') === 'yes',
+      note: String(form.get('note') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить день календаря');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+export async function dropCalendarDay(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/directory?tab=calendar';
+  let failure: string | null = null;
+  try {
+    await removeCalendarDay(actor, String(form.get('day') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось снять день календаря');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 /**
@@ -1100,7 +1897,7 @@ export async function addMaterialVersion(form: FormData): Promise<void> {
       await requestIp(),
     );
   } catch (error) {
-    failure = reasonOf(error, UPLOAD_FAILED);
+    failure = reasonOf(error, uploadFailedText(actor.role));
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);
@@ -1136,6 +1933,38 @@ export async function dropStageTemplate(form: FormData): Promise<void> {
 }
 
 /**
+ * Отправить ещё раз письмо отказа — с карточки заявки (требование М-19,
+ * решение Р-307). Отказ службы — у кнопки, а не общим экраном сбоя.
+ */
+export async function resendDeclineLetter(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const leadId = String(form.get('leadId') ?? '');
+  let failure: string | null = null;
+  let resent = false;
+  try {
+    resent = await retryLeadLetter(actor, leadId, await requestIp());
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить письмо ещё раз');
+  }
+  const path = `/cabinet/manage/leads/${leadId}`;
+  if (failure !== null) redirect(await withError(path, failure, { slot: 'resend', anchor: 'decline' }));
+  redirect(resent ? `${path}?resent=1#decline` : `${path}#decline`);
+}
+
+/** Повтор недоставленного приглашения куратору (улучшение УЭ-08, Р-385). */
+export async function resendCuratorInvite(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  let failure: string | null = null;
+  try {
+    await retryCuratorInvite(actor, String(form.get('userId') ?? ''), await requestIp());
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить приглашение ещё раз');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/manage/users', failure));
+  redirect('/cabinet/manage/users?saved=1');
+}
+
+/**
  * Вернуть недоставленное уведомление в очередь. Экран очереди служебный и
  * открыт только руководителю; право проверяет сама служба.
  */
@@ -1152,7 +1981,7 @@ export async function retryNotification(form: FormData): Promise<void> {
 }
 
 /**
- * Разбор замечания с виджета (решение Р-277): критичность, состояние и что
+ * Разбор замечания с виджета (решение Р-403): критичность, состояние и что
  * сделано. Возврат — на ту же страницу перечня с тем же отбором; адрес
  * возврата приходит с формы и потому принимается только внутри экрана
  * замечаний. Право проверяет служба.

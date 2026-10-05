@@ -157,6 +157,9 @@ describe('итоги по годам', { skip: !enabled }, async () => {
 
   it('повторный ввод года заменяет прежние величины, а не множит строки', async () => {
     await saveYear(head(), { year: YEAR_PAID, revenue: 130_000_00n, costs: 30_000_00n, note: 'правка' });
+    // Пустая заметка при повторном вводе прежнюю не стирает (УР-03, Р-387).
+    await saveYear(head(), { year: YEAR_PAID, revenue: 130_000_00n, costs: 30_000_00n, note: '  ' });
+    assert.equal((await prisma.yearlyFinance.findUniqueOrThrow({ where: { year: YEAR_PAID } })).note, 'правка');
     const { rows } = await yearlyRows(head());
     const mine = rows.filter((item) => item.year === YEAR_PAID);
     assert.equal(mine.length, 1, 'строка года задвоилась');
@@ -170,6 +173,20 @@ describe('итоги по годам', { skip: !enabled }, async () => {
     assert.ok(row !== undefined, 'год исчез вместе с посчитанными величинами');
     assert.equal(row.entered, null);
     assert.equal(row.counted.revenue, 100_000_00n);
+  });
+
+  it('удаление года — запись в журнале с прежними величинами; повтор — отказ (РК-15, Р-346)', async () => {
+    const entry = await prisma.auditEvent.findFirst({
+      where: { action: 'FINANCE_YEAR_REMOVE', objectId: String(YEAR_PAID) },
+      orderBy: { occurredAt: 'desc' },
+    });
+    assert.ok(entry !== null, 'записи в журнале нет');
+    const payload = entry.payload as Record<string, unknown>;
+    assert.equal(payload.revenue, (130_000_00n).toString());
+    assert.equal(payload.costs, (30_000_00n).toString());
+    await assert.rejects(removeYear(head(), YEAR_PAID), /удалять нечего/u);
+    const manager: Actor = { ...head(), role: 'MANAGER' };
+    await assert.rejects(() => removeYear(manager, YEAR_PAID), AccessDenied);
   });
 
   it('сводка закрыта всем, кроме руководителя', async () => {

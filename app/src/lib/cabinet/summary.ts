@@ -9,14 +9,31 @@
 import { can, ensure, type Actor } from './access.ts';
 import { prisma } from '../db.ts';
 import { scopeProjects } from './access.ts';
-import { moscowToday, now as today } from './clock.ts';
-import { PAYMENT_CLOSED_STATUSES, outstandingOf, receivableOf } from './money.ts';
+import { daysPast, moscowToday, now as today } from './clock.ts';
+import { outstandingOf, overdueTrancheWhere, receivableOf } from './money.ts';
+import { turnLabel, type StageStateKey } from './stage-state.ts';
+
+/**
+ * Действующие работы — идущие и приостановленные, одним набором для всех
+ * блоков «Сводки»: плитки, «Ведутся сейчас», «Чем занята практика»,
+ * «Ближайшие сроки» и реестра кураторов. Приостановленные называются
+ * пометкой «из них приостановлено N» (Р-257; требование РК-04, решение
+ * Р-342). Прежде часть блоков считала одни идущие, и число действующих
+ * расходилось от блока к блоку.
+ */
+export const LIVE_STATUSES = ['ACTIVE', 'PAUSED'] as const;
+const LIVE = { status: { in: [...LIVE_STATUSES] } };
 
 /** Работа, идущая прямо сейчас: то, чем практика занята. */
 export interface ActiveWork {
   readonly code: string;
   readonly title: string;
+  /** Приостановлена: в общем наборе действующих она стоит с пометкой (Р-342). */
+  readonly paused: boolean;
   readonly client: string;
+  /** Менеджер и куратор работы — у руководителя (РК-03, Р-341). */
+  readonly manager: { readonly id: string; readonly fullName: string };
+  readonly expert: { readonly id: string; readonly fullName: string } | null;
   readonly dueOn: Date | null;
   /**
    * Деньги стоят `null` у того, кому они не открыты. Поля нет в объекте по
@@ -56,12 +73,16 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
   const scope = scopeProjects(actor);
 
   const projects = await prisma.project.findMany({
-    where: { ...(scope ?? {}), status: 'ACTIVE' },
+    where: { ...(scope ?? {}), ...LIVE },
     select: {
       code: true,
       title: true,
+      status: true,
       dueOn: true,
       client: { select: { fullName: true } },
+      // Кто ведёт работу — у руководителя в «Ведутся сейчас» (РК-03, Р-341).
+      manager: { select: { id: true, fullName: true } },
+      expert: { select: { id: true, fullName: true } },
       contract: { select: { totalAmount: true, tranches: { select: { amount: true, status: true } } } },
       stages: { orderBy: { position: 'asc' }, select: { title: true, state: true } },
     },
@@ -77,7 +98,10 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
     return {
       code: project.code,
       title: project.title,
+      paused: project.status === 'PAUSED',
       client: project.client.fullName,
+      manager: project.manager,
+      expert: project.expert,
       dueOn: project.dueOn,
       contracted: money ? contracted : null,
       received: money ? received : null,
@@ -113,15 +137,28 @@ export interface LoadPoint {
   readonly count: number;
 }
 
-/** Этап, срок которого наступает в ближайшие две недели. */
-export interface DueSoon {
-  readonly id: string;
+/**
+ * Срок ближайших двух недель или уже сорванный: этап действующей работы
+ * либо работа без плана — по сроку работы (требование РК-04, решение
+ * Р-342; Р-182 и Р-216 дополняются).
+ */
+export interface Deadline {
+  readonly key: string;
   readonly code: string;
   /** Название работы: код с экранов убран и человеку ничего не говорит. */
   readonly title: string;
-  readonly stage: string;
+  /** Этап; у работы без плана — `null`, срок — срок работы. */
+  readonly stage: string | null;
   readonly client: string;
   readonly dueOn: Date;
+  /** Сколько дней прошло после срока; `null` — срок не прошёл. */
+  readonly late: number | null;
+  readonly manager: string;
+  readonly curator: string | null;
+  /** Чей ход — подписью шкалы (Р-288); у работы без плана — `null`. */
+  readonly turn: string | null;
+  readonly paused: boolean;
+  readonly href: string;
 }
 
 /**
@@ -135,50 +172,63 @@ export interface DueSoon {
 const SOON_DAYS = 14;
 
 /**
+ * Где стоят работы — по состоянию текущего этапа. Порядок — ход работы, а
+ * не убывание числа: перечень читается как путь от «не начат» до «на
+ * согласовании». Тот же перечень — у «Команды» (РК-06, Р-343).
+ */
+export const LOAD_ORDER: readonly { key: string; label: string }[] = [
+  { key: 'NOT_STARTED', label: 'Не начаты' },
+  { key: 'IN_PROGRESS', label: 'В работе' },
+  { key: 'AWAITING_CLIENT', label: 'Ждут клиента' },
+  { key: 'IN_APPROVAL', label: 'На согласовании' },
+  { key: 'DONE', label: 'Все этапы пройдены' },
+  { key: 'PLANLESS', label: 'Без плана работ' },
+];
+
+/**
  * Загрузка практики по состоянию текущего этапа.
  *
  * Плитки отвечают на вопрос «сколько денег», но не на вопрос «чем занята
  * практика»: пять работ в согласовании и пять, ждущих клиента, — это
  * разные положения дел при одной и той же выручке. Состояние берётся у
  * первого незавершённого этапа: он и есть то, где работа стоит сейчас
- * (решение Р-180).
+ * (решение Р-180). Работы — тот же набор действующих, что у плиток;
+ * приостановленные названы числом `paused` (Р-342).
  */
 export async function stageLoad(
   actor: Actor,
   now: Date = today(),
-): Promise<{ points: LoadPoint[]; overdue: number; planless: number; soon: DueSoon[] }> {
+): Promise<{ points: LoadPoint[]; overdue: number; planless: number; paused: number }> {
   ensure(actor, 'PROJECT_VIEW');
   const scope = scopeProjects(actor);
 
   const projects = await prisma.project.findMany({
-    where: { ...(scope ?? {}), status: 'ACTIVE' },
+    where: { ...(scope ?? {}), ...LIVE },
     // Порядок задан явно: без него строки шли так, как их отдала база
     // (решение Р-229).
     orderBy: { code: 'asc' },
     select: {
-      code: true,
-      title: true,
+      status: true,
       dueOn: true,
-      client: { select: { fullName: true } },
       stages: {
         orderBy: { position: 'asc' },
-        select: { id: true, title: true, state: true, dueOn: true },
+        select: { state: true, dueOn: true },
       },
     },
   });
 
   const counts = new Map<string, number>();
-  const soon: DueSoon[] = [];
   // Срок — день: сравнение с началом суток, иначе срок «сегодня» числился
   // сорванным с первой минуты (решение Р-240). Сутки — московские: по
   // UTC вчерашний срок до трёх часов ночи ещё не считался прошедшим
   // (решение Р-257).
   const day = moscowToday(now);
-  const horizon = new Date(day.getTime() + SOON_DAYS * 86_400_000);
   let overdue = 0;
   let planless = 0;
+  let paused = 0;
 
   for (const project of projects) {
+    if (project.status === 'PAUSED') paused += 1;
     const current = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
     // Работа без плана — это почти вся перенесённая книга: этапов в ней
     // нет, одна строка на заказ. Прежде такие работы выпадали из графика и
@@ -194,44 +244,110 @@ export async function stageLoad(
     const key = current?.state ?? 'DONE';
     counts.set(key, (counts.get(key) ?? 0) + 1);
     if (current?.dueOn != null && current.dueOn < day) overdue += 1;
-    // Срок ближайших двух недель берётся у того же текущего этапа: работа
-    // стоит на нём, и его срок — это и есть ближайшее обязательство.
-    // Просроченное сюда не попадает — оно названо выше отдельно.
-    if (current?.dueOn != null && current.dueOn >= day && current.dueOn <= horizon) {
-      soon.push({
-        id: current.id,
-        code: project.code,
-        title: project.title,
-        stage: current.title,
-        client: project.client.fullName,
-        dueOn: current.dueOn,
-      });
-    }
   }
 
-  // При равном сроке — по коду: на сводке показываются первые пять, и
-  // без второго ключа их набор менялся от прогона к прогону (решение Р-229).
-  soon.sort((a, b) => a.dueOn.getTime() - b.dueOn.getTime() || a.code.localeCompare(b.code));
-
-  // Порядок — ход работы, а не убывание числа: перечень читается как
-  // путь от «не начат» до «на согласовании».
-  const ORDER: readonly { key: string; label: string }[] = [
-    { key: 'NOT_STARTED', label: 'Не начаты' },
-    { key: 'IN_PROGRESS', label: 'В работе' },
-    { key: 'AWAITING_CLIENT', label: 'Ждут клиента' },
-    { key: 'IN_APPROVAL', label: 'На согласовании' },
-    { key: 'DONE', label: 'Все этапы пройдены' },
-    { key: 'PLANLESS', label: 'Без плана работ' },
-  ];
-
   return {
-    points: ORDER.map((row) => ({ ...row, count: counts.get(row.key) ?? 0 })).filter(
+    points: LOAD_ORDER.map((row) => ({ ...row, count: counts.get(row.key) ?? 0 })).filter(
       (row) => row.count > 0,
     ),
     overdue,
     planless,
-    soon,
+    paused,
   };
+}
+
+/**
+ * «Ближайшие сроки» (требование РК-04, решение Р-342).
+ *
+ * Прежде сюда шёл только срок текущего этапа и только будущий, а работы
+ * без этапов выпадали: руководитель практики, ведущей учёт книгой, видел
+ * пустой блок. Теперь — все незавершённые этапы действующих работ со
+ * сроком в ближайшие две недели и сорванные, а у работы без плана — срок
+ * работы. У строки — менеджер, куратор и чей ход; приостановленная
+ * работа помечена. Порядок — по сроку: сорванные сверху.
+ */
+export async function upcomingDeadlines(actor: Actor, now: Date = today()): Promise<Deadline[]> {
+  ensure(actor, 'PROJECT_VIEW');
+  const scope = scopeProjects(actor);
+  const day = moscowToday(now);
+  const horizon = new Date(day.getTime() + SOON_DAYS * 86_400_000);
+  const people = {
+    managerId: true,
+    expertId: true,
+    expertNameRaw: true,
+    manager: { select: { fullName: true } },
+    expert: { select: { fullName: true } },
+  } as const;
+
+  const [stages, planless] = await Promise.all([
+    prisma.stage.findMany({
+      where: {
+        state: { not: 'DONE' },
+        dueOn: { lte: horizon },
+        project: { ...(scope ?? {}), ...LIVE },
+      },
+      select: {
+        id: true,
+        title: true,
+        state: true,
+        dueOn: true,
+        handedOverAt: true,
+        project: {
+          select: { code: true, title: true, status: true, client: { select: { fullName: true } }, ...people },
+        },
+      },
+    }),
+    prisma.project.findMany({
+      where: { ...(scope ?? {}), ...LIVE, stages: { none: {} }, dueOn: { lte: horizon } },
+      select: { code: true, title: true, status: true, dueOn: true, client: { select: { fullName: true } }, ...people },
+    }),
+  ]);
+
+  const rows: Deadline[] = [
+    ...stages.map((stage) => {
+      const project = stage.project;
+      const hasCurator = project.expertId !== null || (project.expertNameRaw ?? '').trim() !== '';
+      return {
+        key: `stage-${stage.id}`,
+        code: project.code,
+        title: project.title,
+        stage: stage.title,
+        client: project.client.fullName,
+        dueOn: stage.dueOn!,
+        late: daysPast(stage.dueOn, now),
+        manager: project.manager.fullName,
+        curator: project.expert?.fullName ?? null,
+        turn: turnLabel(
+          stage.state as StageStateKey,
+          project.managerId === actor.id ? 'curator' : 'foreign-head',
+          hasCurator,
+          stage.handedOverAt,
+        ),
+        paused: project.status === 'PAUSED',
+        href: `/cabinet/stages/${stage.id}`,
+      };
+    }),
+    ...planless.map((project) => ({
+      key: `work-${project.code}`,
+      code: project.code,
+      title: project.title,
+      stage: null,
+      client: project.client.fullName,
+      dueOn: project.dueOn!,
+      late: daysPast(project.dueOn, now),
+      manager: project.manager.fullName,
+      curator: project.expert?.fullName ?? null,
+      turn: null,
+      paused: project.status === 'PAUSED',
+      href: `/cabinet/projects/${project.code}`,
+    })),
+  ];
+  // При равном сроке — по коду и этапу: на сводке показываются первые
+  // пять, и без второго ключа их набор менялся от прогона к прогону
+  // (решение Р-229).
+  return rows.sort(
+    (a, b) => a.dueOn.getTime() - b.dueOn.getTime() || a.code.localeCompare(b.code) || a.key.localeCompare(b.key),
+  );
 }
 
 /**
@@ -249,7 +365,13 @@ export async function orderSummary(actor: Actor): Promise<{
   completed: number;
   startedLastQuarter: number;
   closedLastQuarter: number;
-  /** Те же кварталы, но предыдущие: без них число ни с чем не сравнить. */
+  /**
+   * «Закрыто за 90 дней» — две цифры: завершено и отменено. Одним числом
+   * сданная работа и отказ читались одинаково (РК-04, Р-342).
+   */
+  completedLastQuarter: number;
+  cancelledLastQuarter: number;
+  /** Те же окна в 90 дней, но предыдущие: без них число ни с чем не сравнить. */
   startedPrevQuarter: number;
   closedPrevQuarter: number;
 }> {
@@ -268,19 +390,24 @@ export async function orderSummary(actor: Actor): Promise<{
     closedLastQuarter,
     startedPrevQuarter,
     closedPrevQuarter,
+    completedLastQuarter,
+    cancelledLastQuarter,
   ] = await Promise.all([
     prisma.project.count({ where: scope }),
     prisma.project.count({ where: { ...scope, status: 'ACTIVE' } }),
     prisma.project.count({ where: { ...scope, status: 'PAUSED' } }),
     prisma.project.count({ where: { ...scope, status: 'COMPLETED' } }),
     prisma.project.count({ where: { ...scope, startedOn: { gte: quarterAgo } } }),
-    prisma.project.count({ where: { ...scope, closedOn: { gte: quarterAgo } } }),
+    // Закрыто за период — по первой дате закрытия (УМ-13, Р-392).
+    prisma.project.count({ where: { ...scope, closedOn: { not: null }, firstClosedOn: { gte: quarterAgo } } }),
     prisma.project.count({
       where: { ...scope, startedOn: { gte: halfYearAgo, lt: quarterAgo } },
     }),
     prisma.project.count({
-      where: { ...scope, closedOn: { gte: halfYearAgo, lt: quarterAgo } },
+      where: { ...scope, closedOn: { not: null }, firstClosedOn: { gte: halfYearAgo, lt: quarterAgo } },
     }),
+    prisma.project.count({ where: { ...scope, status: 'COMPLETED', firstClosedOn: { gte: quarterAgo } } }),
+    prisma.project.count({ where: { ...scope, status: 'CANCELLED', firstClosedOn: { gte: quarterAgo } } }),
   ]);
 
   return {
@@ -290,6 +417,8 @@ export async function orderSummary(actor: Actor): Promise<{
     completed,
     startedLastQuarter,
     closedLastQuarter,
+    completedLastQuarter,
+    cancelledLastQuarter,
     startedPrevQuarter,
     closedPrevQuarter,
   };
@@ -324,7 +453,6 @@ export async function moneyBrief(actor: Actor): Promise<{
   const day = moscowToday(today());
   // Отменённая работа денег не ждёт: её неоплаченное — потеря, и ни в «к
   // получению», ни в просроченное оно не входит (решение Р-257).
-  const expecting = { project: { status: { notIn: [...PAYMENT_CLOSED_STATUSES] } } };
   const [received, contracts, overdue] = await Promise.all([
     prisma.tranche.aggregate({ _sum: { amount: true }, where: { status: 'PAID' } }),
     // «К получению» — договор без полученного и списанного, той же функцией,
@@ -338,14 +466,8 @@ export async function moneyBrief(actor: Actor): Promise<{
         tranches: { select: { amount: true, status: true } },
       },
     }),
-    prisma.tranche.aggregate({
-      _sum: { amount: true },
-      where: {
-        status: { in: ['PLANNED', 'INVOICED'] },
-        plannedDate: { lt: day },
-        contract: expecting,
-      },
-    }),
+    // Условие — общее с «Должниками» (требование РК-10, решение Р-345).
+    prisma.tranche.aggregate({ _sum: { amount: true }, where: overdueTrancheWhere(day) }),
   ]);
   return {
     received: received._sum.amount ?? 0n,

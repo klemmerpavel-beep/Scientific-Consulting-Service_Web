@@ -35,6 +35,19 @@ export interface YearlySummary {
   readonly undated: bigint;
 }
 
+/**
+ * Дата поступления транша — одна функция для «Итогов по годам» и «Прибыли
+ * по месяцам», чтобы сумма месяцев сходилась с годом (требование РК-21,
+ * решение Р-353): дата оплаты, а без неё — дата договора или начала
+ * работы (Р-133, Р-156).
+ */
+export function receiptOn(tranche: {
+  readonly paidOn: Date | null;
+  readonly contract: { readonly signedOn: Date | null; readonly project: { readonly startedOn: Date | null } };
+}): Date | null {
+  return tranche.paidOn ?? tranche.contract.signedOn ?? tranche.contract.project.startedOn ?? null;
+}
+
 /** Год даты в часовом поясе UTC: даты в базе хранятся в нём же. */
 function yearOf(date: Date): number {
   return date.getUTCFullYear();
@@ -47,7 +60,7 @@ function add(map: Map<number, bigint>, year: number, amount: bigint): void {
 export async function yearlyRows(actor: Actor): Promise<YearlySummary> {
   ensure(actor, 'MARGIN_VIEW');
 
-  const [entered, tranches, payouts, projects] = await Promise.all([
+  const [entered, tranches, payouts, projects, expenses] = await Promise.all([
     prisma.yearlyFinance.findMany({ orderBy: { year: 'desc' } }),
     // Выручка года — оплаченные транши, отнесённые к дате оплаты: деньги
     // приходят в тот год, когда пришли.
@@ -75,6 +88,8 @@ export async function yearlyRows(actor: Actor): Promise<YearlySummary> {
       where: { startedOn: { not: null } },
       select: { startedOn: true },
     }),
+    // Расходы по статьям входят в «Итоги по годам» (ОР-9; РК-21, Р-353).
+    prisma.expense.findMany({ select: { amount: true, month: true } }),
   ]);
 
   const revenue = new Map<number, bigint>();
@@ -84,8 +99,7 @@ export async function yearlyRows(actor: Actor): Promise<YearlySummary> {
   let datedByContract = 0;
   let undated = 0n;
   for (const t of tranches) {
-    const fallback = t.contract.signedOn ?? t.contract.project.startedOn ?? null;
-    const date = t.paidOn ?? fallback;
+    const date = receiptOn(t);
     if (date === null) {
       undated += t.amount;
       continue;
@@ -94,6 +108,7 @@ export async function yearlyRows(actor: Actor): Promise<YearlySummary> {
     add(revenue, yearOf(date), t.amount);
   }
   for (const p of payouts) add(costs, yearOf(p.paidOn!), p.amount);
+  for (const e of expenses) add(costs, yearOf(e.month), e.amount);
   for (const p of projects) {
     const year = yearOf(p.startedOn!);
     orders.set(year, (orders.get(year) ?? 0) + 1);
@@ -161,17 +176,20 @@ export async function saveYear(actor: Actor, input: YearInput): Promise<void> {
     throw new Error('Выручка и расходы не бывают отрицательными');
   }
 
+  // Пустая заметка при повторном вводе года прежнюю не стирает: форма
+  // года не заполняется прежними величинами, и заметка пропадала молча
+  // (улучшение УР-03, решение Р-387). Новая заметка заменяет прежнюю.
+  const note = input.note === null || input.note.trim() === '' ? null : input.note.trim();
   const data = {
     revenue: input.revenue,
     costs: input.costs,
-    note: input.note,
     updatedById: actor.id,
   };
 
   await prisma.yearlyFinance.upsert({
     where: { year: input.year },
-    create: { year: input.year, ...data },
-    update: data,
+    create: { year: input.year, ...data, note },
+    update: note === null ? data : { ...data, note },
   });
 
   // В журнал уходят сами величины: спорная цифра должна иметь автора, дату и
@@ -188,12 +206,31 @@ export async function saveYear(actor: Actor, input: YearInput): Promise<void> {
   });
 }
 
+/**
+ * Удалить введённые величины года (требование РК-15, решение Р-346).
+ * Посчитанные кабинетом величины остаются: удаляется только ввод. В журнал
+ * уходят прежние величины — спорную цифру и после удаления можно отнести к
+ * автору и дате (Р-156).
+ */
 export async function removeYear(actor: Actor, year: number): Promise<void> {
   ensure(actor, 'PAYMENT_EDIT');
-  await prisma.yearlyFinance.deleteMany({ where: { year } });
+  if (!Number.isInteger(year)) throw new Error('Год указывается числом');
+  const entered = await prisma.yearlyFinance.findUnique({
+    where: { year },
+    select: { revenue: true, costs: true, note: true },
+  });
+  if (entered === null) throw new Error(`Введённых величин за ${year} год нет: удалять нечего`);
+  const removed = await prisma.yearlyFinance.deleteMany({ where: { year } });
+  if (removed.count === 0) throw new Error('Год уже удалён: обновите страницу');
   await record(actor, {
     action: 'FINANCE_YEAR_REMOVE',
     objectType: 'YearlyFinance',
     objectId: String(year),
+    payload: {
+      year,
+      revenue: entered.revenue.toString(),
+      costs: entered.costs.toString(),
+      note: entered.note,
+    },
   });
 }

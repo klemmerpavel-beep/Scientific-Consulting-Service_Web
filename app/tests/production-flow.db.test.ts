@@ -116,7 +116,7 @@ describe('сквозной контур', { skip: !enabled }, async () => {
     ids.project = project.id;
     ids.clientProfile = project.clientId;
 
-    assert.match(project.code, /^PD-\d{4}-\d{3}$/);
+    assert.match(project.code, /^PD-\d{4}-\d{3,}$/);
 
     // Заявка не исчезает: она получает ссылку на проект.
     const lead = await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } });
@@ -240,6 +240,9 @@ describe('сквозной контур', { skip: !enabled }, async () => {
     assert.equal(v1.number, 1);
     // Исходное имя файла в ключ не попадает: оно может содержать фамилию.
     assert.ok(!v1.storageKey.includes('glava-2'));
+    // Версию эксперта клиент видит после публикации куратором (Т-18, Р-294).
+    assert.equal(await materials.readVersion(client, v1.id), null);
+    await materials.moderateVersion(staff(ids.manager, 'MANAGER'), v1.id, 'PUBLISHED');
 
     const v2 = await materials.uploadVersion(client, {
       projectId: ids.project,
@@ -347,7 +350,12 @@ describe('сквозной контур', { skip: !enabled }, async () => {
     assert.match(waiting.blockedReason ?? '', /протокол испытаний/);
 
     await projects.setStageState(manager, ids.stage, 'IN_PROGRESS');
-    await projects.setStageState(manager, ids.stage, 'IN_APPROVAL');
+    await projects.setStageState(
+      manager,
+      ids.stage,
+      'IN_APPROVAL',
+      'Обзор литературы готов; дальше — методика расчёта.',
+    );
 
     const done = await projects.setStageState(client, ids.stage, 'DONE');
     assert.equal(done.state, 'DONE');
@@ -365,9 +373,11 @@ describe('сквозной контур', { skip: !enabled }, async () => {
   });
 
   it('непредусмотренный переход состояния отклоняется', async () => {
+    // Из «Завершён» общий перевод не ведёт: возврат — своим действием с
+    // причиной (требование М-11, решение Р-303).
     await assert.rejects(
       projects.setStageState(staff(ids.manager, 'MANAGER'), ids.stage, 'IN_PROGRESS'),
-      /не предусмотрен/,
+      /отдельным действием/,
     );
   });
 

@@ -11,6 +11,9 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 
 process.env.SESSION_SECRET ??= 'y'.repeat(48);
+// Почта считается настроенной только при известном отправителе (Р-278):
+// проверки, задающие `SMTP_HOST`, задают и его.
+process.env.SMTP_FROM ??= 'ProDisser <site@example.org>';
 
 const enabled = Boolean(process.env.DATABASE_URL);
 
@@ -202,6 +205,11 @@ describe('вход по одноразовой ссылке', { skip: !enabled }
   it('неудачная отправка записывается как неудачная', async () => {
     // Узел заведомо не отвечает, поэтому отправка не проходит. Наружу это
     // по-прежнему «отправлено» — иначе отказ выдал бы, что адрес существует.
+    // Прежняя ссылка набора — больше минуты назад: иначе пауза Р-313.
+    await prisma.loginAttempt.updateMany({
+      where: { emailNormalized: email },
+      data: { occurredAt: new Date(Date.now() - 2 * 60 * 1000) },
+    });
     process.env.SMTP_HOST = 'smtp.invalid';
     try {
       assert.equal(await auth.requestLoginLink(email, '10.0.0.3'), 'sent');
@@ -213,5 +221,56 @@ describe('вход по одноразовой ссылке', { skip: !enabled }
     } finally {
       delete process.env.SMTP_HOST;
     }
+  });
+  it('новая ссылка владельцу мёртвой: тот же путь; подделка — ничего (Т-07, Р-313)', async () => {
+    await prisma.loginAttempt.updateMany({
+      where: { emailNormalized: email },
+      data: { occurredAt: new Date(Date.now() - 2 * 60 * 1000) },
+    });
+    const dead = createRawToken();
+    await prisma.loginToken.create({
+      data: {
+        selector: dead.selector,
+        verifierHash: digest(dead.verifier),
+        userId,
+        expiresAt: new Date(Date.now() - 60 * 1000),
+        usedAt: new Date(Date.now() - 120 * 1000),
+        requestIp: '127.0.0.1',
+        returnPath: '/cabinet/projects',
+      },
+    });
+    const before = await prisma.loginToken.count({ where: { userId } });
+    process.env.SMTP_HOST = 'smtp.invalid';
+    try {
+      assert.equal(await auth.resendForStaleLink(dead.value, '10.0.0.7', { defer: () => undefined }), 'sent');
+      const fresh = await prisma.loginToken.findFirstOrThrow({
+        where: { userId, usedAt: null },
+        orderBy: { createdAt: 'desc' },
+      });
+      assert.equal(fresh.returnPath, '/cabinet/projects');
+      assert.equal(await prisma.loginToken.count({ where: { userId } }), before + 1);
+      const forged = `${dead.selector}.${'x'.repeat(dead.verifier.length)}`;
+      assert.equal(await auth.resendForStaleLink(forged, '10.0.0.7', { defer: () => undefined }), null);
+      assert.equal(await auth.resendForStaleLink('мусор', '10.0.0.7', { defer: () => undefined }), null);
+    } finally {
+      delete process.env.SMTP_HOST;
+    }
+  });
+
+  it('новая ссылка гасит прежнюю непогашенную (УК-04, Р-358)', async () => {
+    await prisma.loginAttempt.updateMany({
+      where: { emailNormalized: email },
+      data: { occurredAt: new Date(Date.now() - 2 * 60 * 1000) },
+    });
+    const older = await issue();
+    process.env.SMTP_HOST = 'smtp.invalid';
+    try {
+      assert.equal(await auth.requestLoginLink(email, '10.0.0.8', { defer: () => undefined }), 'sent');
+    } finally {
+      delete process.env.SMTP_HOST;
+    }
+    assert.equal(await auth.consumeLoginToken(older, '127.0.0.1', null), null, 'прежняя ссылка осталась живой');
+    const live = await prisma.loginToken.count({ where: { userId, usedAt: null, expiresAt: { gt: new Date() } } });
+    assert.equal(live, 1);
   });
 });

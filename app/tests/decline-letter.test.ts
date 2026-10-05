@@ -6,7 +6,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { declineLetter, declineLetterNote, leadAddress } from '../src/lib/cabinet/lead-letter.ts';
+import { declineLetter, declineLetterNote, leadAddress, receivedLetter } from '../src/lib/cabinet/lead-letter.ts';
+import { PRACTICE_EMAIL, PRACTICE_PHONE } from '../src/lib/practice-contacts.ts';
 import { CHANNEL_OFF } from '../src/lib/cabinet/events.ts';
 import { EVENT_LABEL } from '../src/lib/cabinet/events.ts';
 
@@ -59,6 +60,26 @@ describe('судьба письма на экране заявки', () => {
     assert.match(waiting, /почтового канала/u);
     assert.match(queued, /в очереди/u);
     assert.match(failed, /не доставлено: 550 ящик не существует/u);
+    // Повтор — кнопкой на карточке заявки, а не на закрытом менеджеру
+    // экране очереди (требование М-19, решение Р-307).
+    assert.match(failed, /Исправьте адрес в сведениях заявки и отправьте ещё раз\.$/u);
+    assert.doesNotMatch(failed, /очереди уведомлений/u);
     assert.match(declineLetterNote(mail, { state: 'SENT', lastError: null }), /ушло/u);
+  });
+});
+
+describe('письмо «Заявка получена» (Т-05, Р-312)', () => {
+  it('что дальше, срок ответа, контакты; без имени, темы и ссылок', () => {
+    const { subject, body } = receivedLetter();
+    assert.equal(subject, 'Заявка получена — ProDisser');
+    assert.match(body, /ответит в течение рабочего дня/u);
+    assert.ok(body.includes(PRACTICE_EMAIL) && body.includes(PRACTICE_PHONE));
+    assert.match(body, /Если вы не оставляли заявку, удалите это письмо\./u);
+    assert.doesNotMatch(body, /https?:|\/cabinet|войти|вход/iu, 'в письме ссылка или вход');
+    assert.ok(body.startsWith('Здравствуйте.\n'), 'обращение по имени из неподтверждённой заявки');
+  });
+
+  it('событие названо для журнала и экрана очереди', () => {
+    assert.equal(EVENT_LABEL.LEAD_RECEIVED, 'заявка получена');
   });
 });

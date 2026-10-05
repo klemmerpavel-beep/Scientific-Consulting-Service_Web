@@ -58,7 +58,7 @@ if (!/artboard/i.test(DB)) {
  */
 const ROLES = [
   { key: 'client', label: 'Клиент', home: '/cabinet/projects' },
-  { key: 'expert', label: 'Эксперт', home: '/cabinet/projects' },
+  { key: 'expert', label: 'Куратор', home: '/cabinet/projects' },
   { key: 'manager', label: 'Менеджер', home: '/cabinet/manage' },
   { key: 'head', label: 'Руководитель', home: '/cabinet/manage' },
 ];
@@ -287,6 +287,21 @@ async function crawl(page, role, stabilize) {
     '/cabinet/manage/finance?set=all',
     '/cabinet/manage/directory?tab=stages',
     '/cabinet/manage/directory?tab=colors',
+    '/cabinet/manage/directory?tab=calendar',
+    // Экран подтверждения смены состояния работы — за формой с запросом,
+    // обходом не находится (требование М-09, решение Р-299).
+    '/cabinet/projects/PD-2026-047/status?to=PAUSED',
+    // Экран оплат витринной работы со списанной частью — у куратора та же
+    // арифметика, что у клиента (требования Т-19, М-22, решение Р-315).
+    // Только менеджеру: эксперту экран отвечает «не найдено» с кодом 200,
+    // и такой снимок в дерево попадать не должен.
+    ...(role.key === 'manager' ? ['/cabinet/projects/PD-2026-047/payments'] : []),
+    // Внутренняя ветка переписки — за вкладкой с запросом (РК-07, Р-336).
+    ...(role.key === 'manager' || role.key === 'head' ? ['/cabinet/projects/PD-2026-047/messages?tab=internal'] : []),
+    // Переписка «Команды» — за вкладкой с запросом (РК-06, Р-343).
+    ...(role.key === 'head' ? ['/cabinet/manage/team?tab=threads'] : []),
+    // Поручения исполнителя — экран из дела «Сегодня» (РК-19, Р-352).
+    ...(role.key === 'manager' ? ['/cabinet/assignments'] : []),
   ];
   const many = [];
   const seen = new Set(plain);
@@ -461,7 +476,11 @@ async function main() {
       const page = await context.newPage();
       // Ключ гасится нажатием, а не открытием ссылки (решение Р-232).
       await page.goto(`${BASE}/cabinet/enter/${links[role.key]}`, { waitUntil: 'networkidle' });
-      await Promise.all([page.waitForURL(/\/cabinet\/projects/u), page.click('button[type=submit]')]);
+      // Вход ведёт на начальный экран роли (требование М-05, решение Р-305).
+      await Promise.all([
+        page.waitForURL((url) => url.pathname === role.home),
+        page.click('button[type=submit]'),
+      ]);
 
       const tree = await crawl(page, role, stabilize);
       trees.set(role.key, tree);

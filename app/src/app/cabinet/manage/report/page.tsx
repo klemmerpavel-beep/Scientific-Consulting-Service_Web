@@ -25,6 +25,7 @@ import {
   roundRuble,
 } from "../../../../lib/cabinet/money";
 import { currentActor } from "../../../../lib/cabinet/session";
+import { homeFor } from "../../../../lib/cabinet/nav";
 import { loadRows } from "../../../../lib/cabinet/analytics/data";
 import {
   byMonth,
@@ -41,6 +42,7 @@ import {
   type ProjectRow,
 } from "../../../../lib/cabinet/analytics/metrics";
 import { moscowToday, now as clockNow } from "../../../../lib/cabinet/clock";
+import { analyticsSince } from "../../../../lib/cabinet/practice-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -88,10 +90,19 @@ const PERIODS: readonly {
   },
 ];
 
+/**
+ * Закрыта в периоде — по первой дате закрытия: повторное закрытие после
+ * возобновления работу в новый период не переносит (УМ-13, Р-392).
+ */
+function closedSince(row: ProjectRow, from: Date): boolean {
+  const first = row.firstClosedOn ?? row.closedOn;
+  return row.closedOn !== null && first !== null && first >= from;
+}
+
 /** Работа относится к периоду, если она в нём началась либо закрылась. */
 function inPeriod(row: ProjectRow, from: Date): boolean {
   if (row.startedOn !== null && row.startedOn >= from) return true;
-  return row.closedOn !== null && row.closedOn >= from;
+  return closedSince(row, from);
 }
 
 export default async function ReportScreen({
@@ -101,7 +112,7 @@ export default async function ReportScreen({
 }) {
   const actor = await currentActor();
   if (actor === null) redirect("/cabinet");
-  if (!can(actor, "ANALYTICS_VIEW")) redirect("/cabinet/projects");
+  if (!can(actor, "ANALYTICS_VIEW")) redirect(homeFor(actor));
 
   const asked = (await searchParams).period;
   const period = PERIODS.find((item) => item.key === asked) ?? PERIODS[0];
@@ -115,9 +126,7 @@ export default async function ReportScreen({
   const started = rows.filter(
     (row) => row.startedOn !== null && row.startedOn >= from,
   );
-  const closed = rows.filter(
-    (row) => row.closedOn !== null && row.closedOn >= from,
-  );
+  const closed = rows.filter((row) => closedSince(row, from));
   // Работы с прошедшим сроком — действующие, срок раньше сегодняшнего
   // дня по Москве; та же функция, что у вкладки «Сроки» и итога
   // (решение Р-257).
@@ -147,8 +156,10 @@ export default async function ReportScreen({
     (debt) => (debt.overdueDays ?? 0) > 0,
   );
   const debtSum = debts.reduce((acc, debt) => acc + debt.debt, 0n);
-  const advice = conclusions(all, today);
-  const digest = verdict(all, today);
+  // Сезонная норма — от даты начала учёта практики (РК-16, Р-349; ОР-6).
+  const since = await analyticsSince();
+  const advice = conclusions(all, today, since);
+  const digest = verdict(all, today, since);
 
   return (
     <Shell actor={actor} current="/cabinet/manage">
@@ -214,8 +225,8 @@ export default async function ReportScreen({
               note={period.words}
             />
             {/* «Закрыто», а не «Завершено»: в число входят и отменённые —
-                так же, как «Закрыто за квартал» на главной (решение
-                Р-257). */}
+                так же, как «Закрыто за 90 дней» на главной (решения
+                Р-257, Р-342). */}
             <Tile
               label="Закрыто"
               value={String(closed.length)}
@@ -473,8 +484,10 @@ export default async function ReportScreen({
             <Heading level={2} size={3} style={{ marginBottom: 4 }}>
               Что делать
             </Heading>
+            {/* Выводы — по всей истории, а не за выбранный период (РК-17, Р-350). */}
             <Text muted size={14} style={{ marginBottom: 14 }}>
-              Выводы считаются из собственных чисел практики; оценка эффекта
+              По всей истории практики, а не за выбранный период. Выводы
+              считаются из собственных чисел практики; оценка эффекта
               приводится там, где её можно вывести честно.
             </Text>
             <ul

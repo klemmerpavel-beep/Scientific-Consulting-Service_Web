@@ -120,7 +120,7 @@ describe('защиты финансового контура', { skip: !enabled 
     await finance.setTrancheStatus(head(), tranche.id, 'INVOICED');
     const results = await Promise.allSettled([
       finance.setTrancheStatus(head(), tranche.id, 'PAID', new Date('2026-09-01T00:00:00Z')),
-      finance.setTrancheStatus(head(), tranche.id, 'WRITTEN_OFF'),
+      finance.setTrancheStatus(head(), tranche.id, 'WRITTEN_OFF', null, 'Безнадёжный долг'),
     ]);
     assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
     const row = await prisma.tranche.findUniqueOrThrow({ where: { id: tranche.id } });
@@ -150,7 +150,7 @@ describe('защиты финансового контура', { skip: !enabled 
     assert.equal(row.paidOn?.toISOString().slice(0, 10), '2025-12-30');
 
     const orphan = await newProject('O', { expertId: null });
-    await assert.rejects(() => finance.addPayout(head(), { projectId: orphan, amount: 100n }), /исполнителя/u);
+    await assert.rejects(() => finance.addPayout(head(), { projectId: orphan, amount: 100n }), /куратора работы/u);
   });
 
   it('номер договора другой работы и сумма ниже полученного отклоняются с причиной', async () => {
@@ -260,7 +260,7 @@ describe('защиты финансового контура', { skip: !enabled 
     const projectId = await newProject('G');
     const contract = await newContract(projectId, 10_000_000n);
     const { tranche: lost } = await finance.addTranche(head(), { contractId: contract.id, title: 'Долг', amount: 6_000_000n });
-    await finance.setTrancheStatus(head(), lost.id, 'WRITTEN_OFF');
+    await finance.setTrancheStatus(head(), lost.id, 'WRITTEN_OFF', null, 'Клиент отказался платить');
     await finance.addPayout(head(), { projectId, amount: 5_000_000n });
     const money = await finance.projectMoney(head(), projectId);
     assert.equal(money?.margin, -1_000_000n);
@@ -280,5 +280,25 @@ describe('защиты финансового контура', { skip: !enabled 
       0,
       'клиенту написали о списании',
     );
+  });
+
+  it('письмо о платеже ведёт на экран оплат этой работы (Р-280)', async () => {
+    const saved = process.env.NEXT_PUBLIC_SITE_URL;
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://prodisser.ru';
+    try {
+      const projectId = await newProject('L');
+      const contract = await newContract(projectId, 100_000n);
+      const { tranche } = await finance.addTranche(head(), { contractId: contract.id, title: 'Аванс', amount: 100n });
+      await finance.setTrancheStatus(head(), tranche.id, 'INVOICED');
+      const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { code: true } });
+      const letter = await prisma.notificationOutbox.findFirstOrThrow({
+        where: { projectId, eventKind: 'PAYMENT_STATUS_CHANGED', channel: 'EMAIL' },
+        select: { body: true },
+      });
+      assert.match(letter.body, new RegExp(`https://prodisser\\.ru/cabinet/projects/${project.code}/payments`, 'u'));
+    } finally {
+      if (saved === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
+      else process.env.NEXT_PUBLIC_SITE_URL = saved;
+    }
   });
 });

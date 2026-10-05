@@ -86,6 +86,35 @@ export function outstandingOf(
  */
 export const PAYMENT_CLOSED_STATUSES = ['CANCELLED'] as const;
 
+/**
+ * Просроченный транш (требование РК-10, решение Р-345): счёт
+ * выставлен или платёж запланирован, плановая дата — раньше московского
+ * сегодня, работа не отменена. Одно условие на плитку «Просрочено по
+ * траншам» и перечень «Должники»: суммы совпадают по построению.
+ * `day` — начало сегодняшнего дня по Москве (`moscowToday`).
+ */
+export function overdueTrancheWhere(day: Date) {
+  return {
+    status: { in: ['PLANNED' as const, 'INVOICED' as const] },
+    plannedDate: { lt: day },
+    contract: { project: { status: { notIn: [...PAYMENT_CLOSED_STATUSES] } } },
+  };
+}
+
+/** То же условие для строки на экране: транш и состояние его работы. */
+export function isTrancheOverdue(
+  tranche: { readonly status: string; readonly plannedDate: Date | null },
+  projectStatus: string,
+  day: Date,
+): boolean {
+  return (
+    (tranche.status === 'PLANNED' || tranche.status === 'INVOICED') &&
+    tranche.plannedDate !== null &&
+    tranche.plannedDate.getTime() < day.getTime() &&
+    !(PAYMENT_CLOSED_STATUSES as readonly string[]).includes(projectStatus)
+  );
+}
+
 /** Ждёт ли практика денег по работе в этом состоянии (решение Р-257). */
 export function expectsPayment(status: string): boolean {
   return !(PAYMENT_CLOSED_STATUSES as readonly string[]).includes(status);
@@ -197,4 +226,22 @@ export function formatAmount(kopecks: bigint | number | null | undefined): strin
   const grouped = rubles.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   const tail = cents === 0n ? '' : `,${cents.toString().padStart(2, '0')}`;
   return `${negative ? '−' : ''}${grouped}${tail} ₽`;
+}
+
+/**
+ * Итог «Должников» по клиенту — только у тех, у кого просрочено несколько
+ * платежей; крупные долги сверху (улучшение УР-06, решение Р-389).
+ */
+export function debtsByClient(
+  rows: readonly { readonly client: string; readonly amount: bigint }[],
+): { client: string; count: number; total: bigint }[] {
+  const grouped = new Map<string, { count: number; total: bigint }>();
+  for (const row of rows) {
+    const current = grouped.get(row.client) ?? { count: 0, total: 0n };
+    grouped.set(row.client, { count: current.count + 1, total: current.total + row.amount });
+  }
+  return [...grouped.entries()]
+    .filter(([, value]) => value.count > 1)
+    .map(([client, value]) => ({ client, ...value }))
+    .sort((a, b) => (b.total > a.total ? 1 : b.total < a.total ? -1 : a.client.localeCompare(b.client)));
 }

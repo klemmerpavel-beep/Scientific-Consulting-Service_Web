@@ -51,3 +51,77 @@ describe('одноразовое сообщение об отказе', () => {
     }
   });
 });
+
+describe('отказ у своей формы и черновик (решение Р-279)', async () => {
+  const { MAX_DRAFT_BYTES, packDraft, unpackDraft, unpackFlashEntry } = await import(
+    '../src/lib/cabinet/flash-value.ts'
+  );
+
+  it('место вывода возвращается вместе с причиной, чужое имя места отбрасывается', () => {
+    const raw = packFlash('0123456789ab', 'Экспертом может быть только действующий эксперт', 'expert');
+    assert.deepEqual(unpackFlashEntry(raw, '0123456789ab'), {
+      text: 'Экспертом может быть только действующий эксперт',
+      slot: 'expert',
+    });
+    const forged = Buffer.from(
+      JSON.stringify({ id: '0123456789ab', text: 'x', slot: '<script>' }),
+      'utf8',
+    ).toString('base64url');
+    assert.deepEqual(unpackFlashEntry(forged, '0123456789ab'), { text: 'x' });
+  });
+
+  it('черновик формы возвращается по своей метке и не возвращается по чужой', () => {
+    const raw = packDraft('0123456789ab', { title: 'Глава 2', dueOn: '2026-11-01' });
+    assert.ok(raw !== null);
+    assert.deepEqual(unpackDraft(raw, '0123456789ab'), { title: 'Глава 2', dueOn: '2026-11-01' });
+    assert.equal(unpackDraft(raw, 'ba9876543210'), undefined);
+  });
+
+  it('черновик больше предела cookie не сохраняется', () => {
+    assert.equal(packDraft('0123456789ab', { summary: 'я'.repeat(MAX_DRAFT_BYTES) }), null);
+  });
+
+  it('четыре действия «Управления работой» отказывают причиной, а не экраном сбоя', () => {
+    const source = readFileSync(path.join(CABINET, 'actions.ts'), 'utf8');
+    const body = (name: string) => {
+      const start = source.indexOf(`export async function ${name}(`);
+      assert.ok(start >= 0, `нет действия ${name}`);
+      return source.slice(start, source.indexOf('\nexport ', start + 1));
+    };
+    for (const name of ['saveProject', 'setExpert', 'setManager']) {
+      assert.match(body(name), /catch \(error\)[\s\S]*manageFailure\(/u, `${name} без перехвата отказа`);
+    }
+    // Смена состояния отказывает на экране подтверждения, с набранной
+    // причиной (требование М-09, решение Р-299).
+    assert.match(
+      body('changeProjectStatus'),
+      /catch \(error\)[\s\S]*withError\(`\/cabinet\/projects\/\$\{code\}\/status/u,
+      'changeProjectStatus без перехвата отказа',
+    );
+  });
+
+  it('действия настроек отказывают причиной на экране настроек (УМ-02, Р-373)', () => {
+    const source = readFileSync(path.join(CABINET, 'actions.ts'), 'utf8');
+    const body = (name: string) => {
+      const start = source.indexOf(`export async function ${name}(`);
+      assert.ok(start >= 0, `нет действия ${name}`);
+      return source.slice(start, source.indexOf('\nexport ', start + 1));
+    };
+    for (const name of [
+      'saveNotificationChannels',
+      'removeContactChannel',
+      'makeContactPreferred',
+      'saveNotifyRules',
+      'startTelegramBind',
+      'dropTelegram',
+    ]) {
+      assert.match(body(name), /settingsStep\(/u, `${name} без перехвата отказа`);
+    }
+    assert.match(source, /async function settingsStep[\s\S]{0,400}catch \(error\)[\s\S]{0,200}withError\('\/cabinet\/settings'/u);
+  });
+
+  it('ошибка перехода этапа называет состояния подписями, а не именами из базы', () => {
+    const source = readFileSync(path.join(APP, 'src/lib/cabinet/projects.ts'), 'utf8');
+    assert.doesNotMatch(source, /Переход этапа из «\$\{from\}»/u);
+  });
+});

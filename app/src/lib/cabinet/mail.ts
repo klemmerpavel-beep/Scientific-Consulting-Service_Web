@@ -67,13 +67,32 @@ export function smtpPermanent(error: unknown): boolean {
  * в базе — и отвечать честно, ничего о нём не раскрывая.
  */
 export function mailConfigured(): boolean {
-  return Boolean(process.env.SMTP_HOST);
+  return Boolean(process.env.SMTP_HOST) && mailSender() !== null;
+}
+
+/**
+ * Адрес отправителя.
+ *
+ * `||`, а не `??`: описание сервиса подставляет незаданную переменную пустой
+ * строкой (`${SMTP_FROM:-}`), и через `??` письмо уходило с пустым полем
+ * From — почтовые серверы такое отвергают или кладут в спам. Без
+ * отправителя канал считается ненастроенным: письмо от имени получателя,
+ * как было прежде запасным вариантом, не проходит проверку DMARC
+ * (решение Р-278).
+ */
+export function mailSender(): string | null {
+  return process.env.SMTP_FROM || process.env.SMTP_USER || null;
+}
+
+/** Адрес для ответа: ящик, который читают, а не адрес рассылки. */
+export function mailReplyTo(): string | undefined {
+  return process.env.MAIL_REPLY_TO || undefined;
 }
 
 /** Общие настройки транспорта. Сроки те же, что у доставки заявок. */
 function transport() {
   const host = process.env.SMTP_HOST;
-  if (!host) return null;
+  if (!host || mailSender() === null) return null;
   return nodemailer.createTransport({
     host,
     connectionTimeout: 8000,
@@ -96,9 +115,11 @@ export async function sendMailTo(
   const t = transport();
   if (t === null) return { ok: false, error: 'канал не настроен' };
   try {
+    const replyTo = mailReplyTo();
     await t.sendMail({
-      from: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? to,
+      from: mailSender()!,
       to: header(to),
+      ...(replyTo === undefined ? {} : { replyTo: header(replyTo) }),
       subject: header(subject),
       html,
       text,

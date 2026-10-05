@@ -57,6 +57,20 @@ export function moscowToday(at: Date = now()): Date {
   return new Date(`${day}T00:00:00Z`);
 }
 
+/** Час по Москве, 0–23 (улучшение УК-14, решение Р-393). */
+export function moscowHour(at: Date = now()): number {
+  return Number(
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Moscow', hour: '2-digit', hourCycle: 'h23' }).format(at),
+  );
+}
+
+/**
+ * С какого часа по Москве уходят плановые письма дня: напоминания о
+ * сроках, автозакрытие, сводка и сигналы (улучшение УК-14, решение
+ * Р-393). Прежде они уходили в первую минуту суток — ночью.
+ */
+export const DAILY_MAIL_HOUR = 9;
+
 /**
  * Прошёл ли срок: день срока раньше сегодняшнего дня по Москве. Срок —
  * день, и в самый день срока он ещё не прошёл (решения Р-240, Р-257).

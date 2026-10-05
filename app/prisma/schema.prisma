@@ -55,8 +55,11 @@ model Lead {
   ip        String?
   userAgent String? @db.Text
 
-  status LeadStatus @default(NEW)
-  notes  String?    @db.Text
+  status          LeadStatus @default(NEW)
+  /// Когда заявка последний раз сменила состояние — давность дела
+  /// «Заявки в разборе» на «Сегодня» (требование М-06, решение Р-304).
+  statusChangedAt DateTime   @default(now())
+  notes           String?    @db.Text
 
   /// Причина отказа, которую заявитель получает письмом (решение Р-217).
   /// Отдельно от notes: notes — внутренняя пометка менеджера и наружу не
@@ -182,15 +185,21 @@ model User {
 
   notifyEmail    Boolean @default(true)
   notifyTelegram Boolean @default(false)
+  /// Куратор получает письма о работах одной сводкой в 09:00 по Москве
+  /// (улучшение УЭ-01, решение Р-398). Telegram — сразу.
+  dailyDigest    Boolean @default(false)
 
   /// Согласие на обработку ПДн, принятое при первом входе в кабинет.
   /// Редакция текста хранится отдельно — тексты пересматриваются.
   consentAcceptedAt DateTime?
   consentVersion    String?
 
-  createdAt   DateTime  @default(now())
-  lastLoginAt DateTime?
-  erasedAt    DateTime?
+  createdAt       DateTime  @default(now())
+  lastLoginAt     DateTime?
+  /// Клиент закрыл блок первого входа «Как устроен кабинет» (Т-10, Р-310):
+  /// блок больше не показывается.
+  welcomeClosedAt DateTime?
+  erasedAt        DateTime?
 
   clientProfile ClientProfile?
   expertProfile ExpertProfile?
@@ -205,22 +214,30 @@ model User {
   expertProjects  Project[] @relation("ProjectExpert")
   expertStages    Stage[]   @relation("StageExpert")
 
-  stageChanges      StageStateChange[]
-  projectEvents     ProjectEvent[]
-  createdMaterials  Material[]
-  uploadedVersions  MaterialVersion[]
-  leadAttachments   LeadAttachment[]     @relation("LeadAttachmentUploader")
-  authoredComments  VersionComment[]     @relation("CommentAuthor")
-  moderatedComments VersionComment[]     @relation("CommentModerator")
-  fileAccess        FileAccessLog[]
-  messages          Message[]
-  payouts           ExpertPayout[]
-  notifications     NotificationOutbox[]
-  auditEvents       AuditEvent[]
-  importBatches     ImportBatch[]
-  yearlyFinance     YearlyFinance[]      @relation("YearlyFinanceAuthor")
-  erasureApprovals  ErasureRequest[]
-  leadComments      LeadComment[]
+  stageChanges        StageStateChange[]
+  projectEvents       ProjectEvent[]
+  createdMaterials    Material[]
+  uploadedVersions    MaterialVersion[]
+  leadAttachments     LeadAttachment[]     @relation("LeadAttachmentUploader")
+  authoredComments    VersionComment[]     @relation("CommentAuthor")
+  moderatedComments   VersionComment[]     @relation("CommentModerator")
+  fileAccess          FileAccessLog[]
+  messages            Message[]            @relation("MessageAuthor")
+  staffMessages       Message[]            @relation("StaffThread")
+  threadReads         MessageThreadRead[]
+  practiceSettings    PracticeSetting[]
+  closedChecks        HeadCheck[]
+  recommendationMarks RecommendationMark[]
+  assignments         Assignment[]         @relation("AssignmentAssignee")
+  givenAssignments    Assignment[]         @relation("AssignmentAuthor")
+  expenses            Expense[]
+  payouts             ExpertPayout[]
+  notifications       NotificationOutbox[]
+  auditEvents         AuditEvent[]
+  importBatches       ImportBatch[]
+  yearlyFinance       YearlyFinance[]      @relation("YearlyFinanceAuthor")
+  erasureApprovals    ErasureRequest[]
+  leadComments        LeadComment[]
 
   @@index([role, status])
 }
@@ -247,6 +264,13 @@ model LoginToken {
   expiresAt    DateTime
   usedAt       DateTime?
   requestIp    String?
+  /// Ссылку выдал сотрудник (М-03, «Выдать ссылку»), а не сам человек
+  /// запросил её на свою почту: сессия по ней помечается (ОМ-3, Р-292).
+  issuedById   String?
+  /// Экран, на который человек вернётся после входа: с него он пришёл на
+  /// форму входа (Т-06, Р-309). Хранится в токене — вход с другого
+  /// устройства ведёт туда же.
+  returnPath   String?
 
   @@index([userId])
   @@index([expiresAt])
@@ -269,16 +293,19 @@ model LoginAttempt {
 /// Серверная сессия. Хранится на сервере, а не в подписанном токене:
 /// нужен мгновенный отзыв при обезличивании субъекта и при смене роли.
 model Session {
-  id         String    @id @default(cuid())
-  tokenHash  String    @unique
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt  DateTime  @default(now())
-  lastSeenAt DateTime  @default(now())
-  expiresAt  DateTime
-  revokedAt  DateTime?
-  ip         String?
-  userAgent  String?   @db.Text
+  id           String    @id @default(cuid())
+  tokenHash    String    @unique
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  ip           String?
+  userAgent    String?   @db.Text
+  /// Сессия открыта ссылкой, которую выдал сотрудник: согласование этапа
+  /// в ней записывается с пометкой (ОМ-3, решение Р-292).
+  viaStaffLink Boolean   @default(false)
 
   @@index([userId])
   @@index([expiresAt])
@@ -328,6 +355,10 @@ model ExpertProfile {
   position       String?
   specialization String?
   university     String?
+  /// Шифр научной специальности («1.3.8»). Профиль — носитель регалий и
+  /// у куратора с руководителем; права по-прежнему решает роль
+  /// (требование Т-11, решение Р-297).
+  specialtyCode  String?
 
   /// Подсказка по умолчанию для начисления. Само вознаграждение вводится
   /// суммой вручную по каждому проекту или этапу.
@@ -335,7 +366,11 @@ model ExpertProfile {
 
   /// Договор поручения обработки ПДн (ч. 3 ст. 6 152-ФЗ). Без него модуль
   /// прав не выдаёт эксперту доступ к материалам клиента.
-  ndaSignedAt DateTime?
+  ndaSignedAt    DateTime?
+  /// Когда куратор нажал «Сообщить руководителю» на экране без доступа:
+  /// не чаще раза в сутки; отметка договора гасит (требование Э-12,
+  /// решение Р-331).
+  ndaRequestedAt DateTime?
 
   createdAt DateTime @default(now())
 }
@@ -354,6 +389,7 @@ model ServiceType {
   aliases        ServiceTypeAlias[]
   stageTemplates StageTemplate[]
   projects       Project[]
+  expenses       Expense[]
 }
 
 /// Историческое написание типа работы. Сводит разнобой исходного файла
@@ -403,6 +439,13 @@ enum ProjectStatus {
   CANCELLED
 }
 
+/// Роль эксперта в работе (требование Т-11, О-10, решение Р-297).
+enum ExpertRole {
+  SUBJECT_EXPERT
+  METHODOLOGIST
+  SCIENCE_EDITOR
+}
+
 enum ProjectSource {
   WEB
   IMPORT
@@ -440,9 +483,27 @@ model Project {
   status ProjectStatus @default(ACTIVE)
   source ProjectSource @default(WEB)
 
-  startedOn DateTime?
-  dueOn     DateTime?
-  closedOn  DateTime?
+  startedOn       DateTime?
+  dueOn           DateTime?
+  closedOn        DateTime?
+  /// Дата закрытия — плановый срок, а не день фактического закрытия:
+  /// перенос книги заказов и ручной заказ, заведённый завершённым. По
+  /// таким работам доля «в срок» не считается (требование РК-23,
+  /// решение Р-355).
+  closedOnPlanned Boolean   @default(false)
+  /// Первая дата закрытия: повторное закрытие после возобновления её не
+  /// сдвигает; «закрыто за период» считается по ней (улучшение УМ-13,
+  /// решение Р-392).
+  firstClosedOn   DateTime?
+
+  /// Роль эксперта в работе — так клиент видит эксперта вместо ФИО
+  /// (требование Т-11, О-10, решение Р-297). Пусто — «Эксперт по
+  /// специальности».
+  expertRole ExpertRole?
+
+  /// Срок согласования этапа, рабочих дней: от 5 (п. 7.2 оферты) до 20.
+  /// Действует со следующей сдачи этапа (требование Т-15, решение Р-290).
+  approvalDays Int @default(5)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -456,6 +517,8 @@ model Project {
   payouts       ExpertPayout[]
   notifications NotificationOutbox[]
   importRows    ImportRow[]
+  assignments   Assignment[]
+  headChecks    HeadCheck[]
 
   @@index([status, dueOn])
   @@index([clientId])
@@ -494,6 +557,11 @@ model Stage {
   /// название, и клиент догадывался о содержании сам (решение Р-190).
   summary String? @db.Text
 
+  /// Итог этапа: что сделано и что дальше. Куратор пишет его при переводе
+  /// на согласование; клиент читает его над кнопками и в письме
+  /// (требование Т-14, решение Р-289). Обезличивание затирает поле.
+  outcome String? @db.Text
+
   expertId String?
   expert   User?   @relation("StageExpert", fields: [expertId], references: [id], onDelete: SetNull)
 
@@ -504,32 +572,90 @@ model Stage {
   startedAt   DateTime?
   completedAt DateTime?
 
+  /// Клиент вернул этап с замечаниями; гаснет при новой сдаче (Р-281).
+  returnedAt  DateTime?
+  /// Куратор принял замечания в работу — дело «Клиент вернул этап»
+  /// закрыто (требование М-04).
+  returnAckAt DateTime?
+
+  /// Куратор сдал этап менеджеру (требование Э-05, решение Р-325). Новое
+  /// состояние этапа не заводится: для клиента этап остаётся «В работе».
+  /// Пометка гаснет при отзыве, при возврате менеджером, при уходе этапа из
+  /// «В работе» и при замене куратора.
+  handedOverAt   DateTime?
+  /// «Что сделано и на что обратить внимание клиента» — записка куратора;
+  /// у менеджера она — черновик «Итога этапа». Обезличивание затирает поле.
+  handoverNote   String?   @db.Text
+  /// Последний возврат этапа куратору менеджером и его причина.
+  handbackAt     DateTime?
+  handbackReason String?   @db.Text
+
+  /// Срок согласования (требование Т-15, решение Р-290): момент сдачи и
+  /// последний день срока — московский день как полночь UTC. Пока работа
+  /// приостановлена, срока нет, а остаток рабочих дней лежит в
+  /// `approvalDaysLeft`. Клиенту без учётной записи срок не ставится.
+  approvalSentAt   DateTime?
+  approvalDueOn    DateTime?
+  approvalDaysLeft Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   changes   StageStateChange[]
   materials Material[]
   payouts   ExpertPayout[]
+  tranches  Tranche[]
+  checks    HeadCheck[]
 
   @@unique([projectId, position])
   @@index([state, dueOn])
+  @@index([state, approvalDueOn])
 }
 
 /// История переходов состояния. Нужна аналитике длительностей и служит
-/// источником событий уведомлений. Согласование этапа клиентом — это
-/// переход IN_APPROVAL → DONE с автором-клиентом.
+/// источником событий уведомлений. Согласование этапа — переход
+/// IN_APPROVAL → DONE: клиентом (`CLIENT_APPROVE`), практикой по
+/// подтверждению клиента с основанием (`STAFF_FOR_CLIENT`, Р-292) или
+/// по истечении срока без автора (`AUTO_ACCEPT`, Р-290).
 model StageStateChange {
-  id        String      @id @default(cuid())
-  stageId   String
-  stage     Stage       @relation(fields: [stageId], references: [id], onDelete: Cascade)
-  fromState StageState?
-  toState   StageState
-  actorId   String?
-  actor     User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
-  reason    String?     @db.Text
-  createdAt DateTime    @default(now())
+  id          String         @id @default(cuid())
+  stageId     String
+  stage       Stage          @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  fromState   StageState?
+  toState     StageState
+  actorId     String?
+  actor       User?          @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  reason      String?        @db.Text
+  /// Кто и как перевёл: практика, согласование или возврат клиентом.
+  via         StageChangeVia @default(MANUAL)
+  /// В тексте замечаний есть телефон, почта или ссылка на мессенджер:
+  /// эксперт такого текста не видит (решение Р-281, О-5).
+  contactHint Boolean        @default(false)
+  createdAt   DateTime       @default(now())
 
   @@index([stageId, createdAt])
+}
+
+enum StageChangeVia {
+  MANUAL
+  CLIENT_APPROVE
+  CLIENT_RETURN
+  /// Принят по истечении срока согласования, п. 7.3 оферты (Р-290).
+  AUTO_ACCEPT
+  /// Согласован практикой по подтверждению клиента (О-6, требование М-12).
+  STAFF_FOR_CLIENT
+}
+
+/// Производственный календарь: дни, где рабочий день расходится с
+/// правилом «понедельник–пятница без праздников ст. 112 ТК РФ» —
+/// переносы выходных и рабочие субботы. Правит руководитель в
+/// «Справочниках» (требование Т-15, решение Р-290).
+model CalendarDay {
+  /// Московский день как полночь UTC.
+  day       DateTime @id
+  workday   Boolean
+  note      String?
+  updatedAt DateTime @updatedAt
 }
 
 /// Лента событий проекта. Показывается клиенту с авторством и временем.
@@ -613,8 +739,11 @@ model MaterialVersion {
   /// Строка остаётся ради связности истории версий.
   purgedAt DateTime?
 
-  comments  VersionComment[]
-  accessLog FileAccessLog[]
+  comments   VersionComment[]
+  accessLog  FileAccessLog[]
+  /// Публикация версии эксперта клиенту (Т-18, Р-294); у прочих версий
+  /// строки нет.
+  moderation VersionModeration?
 
   @@unique([materialId, number])
   @@index([materialId])
@@ -624,6 +753,30 @@ enum ModerationStatus {
   PENDING
   PUBLISHED
   REJECTED
+}
+
+/// Публикация версии эксперта клиенту (требование Т-18, решение Р-294).
+///
+/// Одна строка на версию, загруженную экспертом: клиент видит её только
+/// после публикации куратором. Версии без строки — клиента, практики и
+/// загруженные до решения — видны как прежде. Статус хранится, а не
+/// выводится из роли загрузившего: смена роли не раскроет неопубликованное.
+/// `MaterialVersion` остаётся «только вставка» (Р-122). Примечание
+/// затирается обезличиванием.
+model VersionModeration {
+  id           String           @id @default(cuid())
+  versionId    String           @unique
+  version      MaterialVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  status       ModerationStatus @default(PENDING)
+  decidedById  String?
+  decidedAt    DateTime?
+  note         String?          @db.Text
+  /// В имени файла или в свойствах документа — фамилия куратора: менеджер
+  /// видит предупреждение перед публикацией (улучшение УК-03, Р-396).
+  identityHint Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+
+  @@index([status])
 }
 
 /// Комментарий привязан к версии, а не к файлу: клиент видит, что именно
@@ -685,13 +838,29 @@ model FileAccessLog {
 /// Сообщение в канале «клиент — менеджер». Канал один: эксперт высказывается
 /// комментариями к версиям после модерации. Во внешние каналы переписка
 /// не дублируется.
+/// Ветка переписки (требование РК-07, решение Р-336). Куратор не участвует
+/// ни в одной (Р-150, ответ ОЭ-1).
+enum MessageThread {
+  /// Клиент — менеджер работы; руководитель читает и пишет.
+  CLIENT_MANAGER
+  /// Внутренняя по работе: менеджер работы и руководитель.
+  WORK_INTERNAL
+  /// Руководитель — сотрудник, без работы.
+  HEAD_STAFF
+}
+
 model Message {
-  id        String  @id @default(cuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id        String        @id @default(cuid())
+  /// Пусто только у ветки `HEAD_STAFF` — ограничение проверяется в базе.
+  projectId String?
+  project   Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  thread    MessageThread @default(CLIENT_MANAGER)
+  /// Сотрудник ветки «руководитель — сотрудник».
+  staffId   String?
+  staff     User?         @relation("StaffThread", fields: [staffId], references: [id], onDelete: Cascade)
 
   authorId String
-  author   User   @relation(fields: [authorId], references: [id])
+  author   User   @relation("MessageAuthor", fields: [authorId], references: [id])
   body     String @db.Text
 
   /// Сработал детектор телефона, адреса почты или @username. Не блокирует
@@ -708,6 +877,104 @@ model Message {
   /// Помеченные передачей контактов — сводка менеджера: полсотни свежих
   /// строк из всей переписки практики.
   @@index([containsContactHint, createdAt])
+  @@index([thread, projectId, createdAt])
+  @@index([thread, staffId, createdAt])
+}
+
+/// Настройка практики «ключ — значение» (требование РК-05, решение Р-337).
+model PracticeSetting {
+  key         String   @id
+  value       String
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt   DateTime @default(now())
+}
+
+/// Отметка рекомендации руководителем — «сделано» или «отложено»
+/// (требования РК-16, РК-17, решение Р-349). Ключ — экземпляр
+/// рекомендации: `calendar:<вид>:<дата заказа>` и подобные; у следующего
+/// сезона свой ключ. Отметка общая для практики.
+model RecommendationMark {
+  id     String                   @id @default(cuid())
+  key    String                   @unique
+  status RecommendationMarkStatus
+  userId String?
+  user   User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  at     DateTime                 @default(now())
+}
+
+enum RecommendationMarkStatus {
+  DONE
+  POSTPONED
+}
+
+/// Поручение руководителя менеджеру или куратору (требование РК-19,
+/// решение Р-352; В-19). Исполнитель переводит «в работе» и «сделано»,
+/// руководитель — отзывает.
+model Assignment {
+  id          String           @id @default(cuid())
+  assigneeId  String
+  assignee    User             @relation("AssignmentAssignee", fields: [assigneeId], references: [id], onDelete: Cascade)
+  text        String           @db.Text
+  dueOn       DateTime
+  projectId   String?
+  project     Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  status      AssignmentStatus @default(ASSIGNED)
+  createdById String?
+  createdBy   User?            @relation("AssignmentAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  doneAt      DateTime?
+
+  @@index([assigneeId, status])
+  @@index([status, dueOn])
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  IN_PROGRESS
+  DONE
+  WITHDRAWN
+}
+
+/// Статья расходов практики — справочник из четырёх статей (требование
+/// РК-21, решение Р-353).
+model ExpenseCategory {
+  id       String    @id
+  name     String    @unique
+  position Int
+  isActive Boolean   @default(true)
+  expenses Expense[]
+}
+
+/// Расход практики за месяц (требование РК-21, решение Р-353). Месяц —
+/// первое число по UTC; вид работ не указан — расход «общий».
+model Expense {
+  id            String          @id @default(cuid())
+  month         DateTime
+  categoryId    String
+  category      ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  amount        BigInt
+  note          String?
+  serviceTypeId String?
+  serviceType   ServiceType?    @relation(fields: [serviceTypeId], references: [id], onDelete: SetNull)
+  createdById   String?
+  createdBy     User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime        @default(now())
+
+  @@index([month])
+}
+
+/// Курсор прочтения участника ветки (РК-07, Р-336). Ключ ветки —
+/// `{ветка}:{работа или сотрудник}`.
+model MessageThreadRead {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  threadKey String
+  readAt    DateTime
+
+  @@unique([userId, threadKey])
 }
 
 // ───────────────────────────── Финансы ─────────────────────────────────────
@@ -755,6 +1022,10 @@ model Tranche {
   plannedDate DateTime?
   status      TrancheStatus @default(PLANNED)
   paidOn      DateTime?
+  /// Этап, за который транш (требование РК-12, решение Р-338): по нему
+  /// подсказка «Следующий этап не оплачен».
+  stageId     String?
+  stage       Stage?        @relation(fields: [stageId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -762,6 +1033,33 @@ model Tranche {
   documents Material[]
 
   @@index([status, plannedDate])
+  @@index([stageId])
+}
+
+/// Дело руководителя, которое закрывается действием (требование РК-12,
+/// решение Р-338): акт после приёмки или возврата этапа, проверка договора,
+/// заведённого менеджером.
+enum HeadCheckKind {
+  ACT_AFTER_ACCEPT
+  ACT_AFTER_REOPEN
+  CONTRACT_BY_MANAGER
+}
+
+model HeadCheck {
+  id         String        @id @default(cuid())
+  kind       HeadCheckKind
+  projectId  String
+  project    Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stageId    String?
+  stage      Stage?        @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  createdAt  DateTime      @default(now())
+  closedAt   DateTime?
+  closedById String?
+  closedBy   User?         @relation(fields: [closedById], references: [id], onDelete: SetNull)
+  closeNote  String?
+
+  @@index([closedAt, createdAt])
+  @@index([projectId])
 }
 
 /// Начисление эксперту. Сумма вводится вручную по этапу или по проекту.
@@ -867,6 +1165,21 @@ enum NotificationState {
   PENDING
   SENT
   FAILED
+  /// Устарело до отправки: закрыто без попытки (решение Р-278).
+  EXPIRED
+  /// Вошло в сводку куратора (улучшение УЭ-01, решение Р-398).
+  MERGED
+}
+
+/// Почему строка очереди не ушла (требование РК-02, решение Р-334): дело на
+/// «Сводке» и сигнал руководителю — только по отказу доставки.
+enum OutboxFailure {
+  /// Сервер канала отказал или не ответил после всех попыток.
+  DELIVERY
+  /// Получатель отключил канал, снял привязку Telegram или доступ закрыт.
+  RECIPIENT_OFF
+  /// У заявителя нет адреса.
+  NO_ADDRESS
 }
 
 /// Очередь исходящих уведомлений. Строка пишется в той же транзакции, что и
@@ -893,8 +1206,14 @@ model NotificationOutbox {
   /// Ключ дедупликации вида stage:<id>:awaiting_client:2026-09-15.
   /// Делает повторную постановку идемпотентной.
   dedupKey  String              @unique
+  /// Экран события: кнопка «Открыть кабинет» в письме и ссылка сигнала
+  /// ведут на него через `/cabinet/open` (Т-06, Р-309). Пусто — экран
+  /// работы или кабинет.
+  path      String?
 
   state       NotificationState @default(PENDING)
+  /// Причина неудачи; задана только у `FAILED` (РК-02, Р-334).
+  failure     OutboxFailure?
   attempts    Int               @default(0)
   lastError   String?           @db.Text
   scheduledAt DateTime          @default(now())
@@ -1080,7 +1399,7 @@ enum FeedbackStatus {
 }
 
 /// Замечание о странице, оставленное кнопкой справа внизу на время запуска
-/// сайта и кабинета (решение Р-277). Персональных данных здесь нет по
+/// сайта и кабинета (решение Р-403). Персональных данных здесь нет по
 /// устройству, а не по договорённости: ни учётной записи, ни сессии, ни
 /// адреса, ни строки браузера, ни cookies запись не знает; страница
 /// хранится шаблоном без идентификаторов и ключей входа, текст с

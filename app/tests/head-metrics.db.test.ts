@@ -91,6 +91,7 @@ describe('определения величин руководителя', { ski
       startedOn: new Date(today.getTime() - 120 * DAY),
       dueOn: new Date(today.getTime() - 20 * DAY),
       closedOn: new Date(today.getTime() - 5 * DAY),
+      firstClosedOn: new Date(today.getTime() - 5 * DAY),
     });
     const cancelledContract = await prisma.contract.create({
       data: { projectId: ids.cancelled, number: `HM-${tail}-X`, totalAmount: 200_000_00n },
@@ -126,6 +127,7 @@ describe('определения величин руководителя', { ski
       status: 'COMPLETED',
       startedOn: new Date(today.getTime() - 730 * DAY),
       closedOn: new Date(today.getTime() - DAY),
+      firstClosedOn: new Date(today.getTime() - DAY),
     });
     // Оплачена полностью два года назад: в остатках и поступлениях за
     // период её нет, проверяется только отнесение договора к периоду.

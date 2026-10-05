@@ -4,7 +4,7 @@ import { exportLimiter, handleExportReview } from '../../../../../lib/feedback-e
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** Разбор замечания по ключу выгрузки: `{status?, severity?, note?}` (решение Р-279). */
+/** Разбор замечания по ключу выгрузки: `{status?, severity?, note?}` (решение Р-405). */
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },

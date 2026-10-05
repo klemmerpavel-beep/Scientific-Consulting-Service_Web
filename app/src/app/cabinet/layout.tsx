@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { CABINET_CSS } from '../../components/cabinet/tokens';
 import { Heading, Mono, Notice, Text } from '../../components/cabinet/ui';
 import { cabinetReadiness } from '../../lib/cabinet/readiness';
+import { PRACTICE_EMAIL } from '../../lib/practice-contacts';
 
 /**
  * Разметка закрытого раздела. Общие правила оформления подключаются здесь
@@ -58,7 +59,7 @@ function NotReady({ missing }: { missing: readonly string[] }) {
         </Heading>
         <Text style={{ marginBottom: 16 }}>
           Личный кабинет ещё не открыт. Ход работы по вашему сопровождению сообщит менеджер —
-          напишите на <a href="mailto:info@prodisser.ru">info@prodisser.ru</a>.
+          напишите на <a href={`mailto:${PRACTICE_EMAIL}`}>{PRACTICE_EMAIL}</a>.
         </Text>
         {local ? (
           <Notice tone="quiet">

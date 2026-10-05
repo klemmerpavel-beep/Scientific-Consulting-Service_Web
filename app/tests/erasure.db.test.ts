@@ -147,6 +147,7 @@ describe('удаление данных субъекта', { skip: !enabled }, a
         position: 1,
         title: 'Глава 1 Смирнова О. П.',
         blockedReason: 'Ждём справку из МГУ на имя Смирнова',
+        outcome: 'Глава Смирнова О. П. готова; дальше — выводы',
       },
     });
     const comment = await prisma.versionComment.create({
@@ -394,6 +395,7 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     const stage = await prisma.stage.findUnique({ where: { id: ids.stage } });
     assert.match(stage?.title ?? '', /удалено/u, 'название этапа писал человек — там фамилия');
     assert.equal(stage?.blockedReason, null);
+    assert.equal(stage?.outcome, null, 'итог этапа пишет куратор — там фамилия');
 
     const material = await prisma.material.findUnique({ where: { id: ids.material } });
     assert.match(material?.title ?? '', /удалено/u);
