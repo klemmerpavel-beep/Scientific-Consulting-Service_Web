@@ -93,6 +93,14 @@ describe('вознаграждение кураторов (РК-11)', { skip: !e
     assert.equal((await row())?.toPay, 1_000_000n);
     const lines = await finance.curatorPayoutLines(head(), ids.curator!);
     assert.equal(lines.length, 2);
+    assert.ok(lines.every((line) => !line.handedOff), 'работа куратора помечена переданной');
+    // Работа ушла другому куратору — у руководителя пометка, как у куратора (УЭ-06, Р-383).
+    await prisma.project.update({ where: { id: ids.project! }, data: { expertId: null } });
+    try {
+      assert.ok((await finance.curatorPayoutLines(head(), ids.curator!)).every((line) => line.handedOff));
+    } finally {
+      await prisma.project.update({ where: { id: ids.project! }, data: { expertId: ids.curator! } });
+    }
   });
 
   it('этап начисления — только из этой работы; свод — только руководителю', async () => {

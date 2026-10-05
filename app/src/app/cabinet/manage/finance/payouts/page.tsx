@@ -102,6 +102,10 @@ export default async function CuratorPayoutsScreen({
                       <a className="cab-mark" href={`/cabinet/projects/${line.project.code}/payments`}>
                         {line.project.title}
                       </a>
+                      {/* Как у куратора: работу ведёт уже другой (УЭ-06, Р-383). */}
+                      {line.handedOff ? (
+                        <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>работа передана</div>
+                      ) : null}
                     </td>
                     <td style={TABLE_CELL}>
                       {line.stage?.title ?? 'по работе в целом'}

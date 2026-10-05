@@ -692,7 +692,7 @@ export async function payoutsByCurator(actor: Actor): Promise<CuratorPayoutRow[]
 /** Начисления одного куратора по работам — раскрытие строки свода (РК-11). */
 export async function curatorPayoutLines(actor: Actor, expertId: string) {
   ensure(actor, 'PAYOUT_MANAGE');
-  return prisma.expertPayout.findMany({
+  const rows = await prisma.expertPayout.findMany({
     where: { expertId },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     select: {
@@ -702,10 +702,18 @@ export async function curatorPayoutLines(actor: Actor, expertId: string) {
       paidOn: true,
       comment: true,
       createdAt: true,
-      project: { select: { code: true, title: true } },
+      project: { select: { code: true, title: true, expertId: true } },
       stage: { select: { title: true } },
     },
   });
+  // «Работа передана» — тем же признаком, что у куратора (Э-13, Р-332):
+  // начисление по работе, которую ведёт уже другой куратор (улучшение
+  // УЭ-06, решение Р-383). Руководителю работа открыта, ссылка остаётся.
+  return rows.map(({ project, ...row }) => ({
+    ...row,
+    project: { code: project.code, title: project.title },
+    handedOff: project.expertId !== expertId,
+  }));
 }
 
 /**
