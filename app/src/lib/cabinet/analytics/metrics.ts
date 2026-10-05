@@ -35,6 +35,12 @@ export interface ProjectRow {
   readonly dueOn: Date | null;
   readonly closedOn: Date | null;
   /**
+   * Дата закрытия — плановый срок: перенесённая книга заказов и ручной
+   * заказ, заведённый завершённым. Длительность такой работы — плановая,
+   * в долю «в срок» она не входит (требование РК-23, решение Р-355).
+   */
+  readonly closedOnPlanned: boolean;
+  /**
    * День подписания договора; `null` — договора нет или дата не указана.
    * По нему работа относится к периоду в «законтрактовано за период»
    * (решение Р-257).
@@ -702,14 +708,31 @@ export interface CycleRow {
   readonly typeCode: string;
   readonly typeName: string;
   readonly estimate: CycleEstimate;
+  /** Из завершённых — с плановой датой закрытия (РК-23, Р-355). */
+  readonly planned: number;
+}
+
+/**
+ * Работы с плановой датой закрытия — одно определение для «Сроков» и
+ * «Денег» (требование РК-23, решение Р-355).
+ */
+export function plannedClosures(rows: readonly ProjectRow[]): number {
+  return rows.filter((row) => row.closedOn !== null && row.closedOnPlanned).length;
 }
 
 export interface CyclesReport {
   readonly overall: CycleEstimate;
   readonly byType: readonly CycleRow[];
-  /** Завершённые в срок, из числа тех, у кого срок был задан. */
+  /**
+   * Завершённые в срок, из числа тех, у кого срок был задан и дата закрытия
+   * фактическая: плановая дата закрытия совпадает со сроком, и такая работа
+   * всегда была бы «в срок» (требование РК-23, решение Р-355; ОР-7).
+   * `withDue === 0` — «мало данных».
+   */
   readonly onTime: number;
   readonly withDue: number;
+  /** Завершённых с плановой датой закрытия: длительность у них плановая. */
+  readonly planned: number;
   /** Незакрытых работ с прошедшим сроком — `lateOpen` (решение Р-257). */
   readonly overdueOpen: number;
   /** Отменённых работ с датой начала: они цензурируют кривую, а не завершают её. */
@@ -729,8 +752,10 @@ export function cycles(rows: readonly ProjectRow[], controlDate: Date): CyclesRe
   }
 
   const closedWithDue = rows.filter(
-    (row) => row.status === 'COMPLETED' && row.dueOn !== null && row.closedOn !== null,
+    (row) => row.status === 'COMPLETED' && row.dueOn !== null && row.closedOn !== null && !row.closedOnPlanned,
   );
+  const completedPlanned = (list: readonly ProjectRow[]) =>
+    plannedClosures(list.filter((row) => row.status === 'COMPLETED'));
 
   return {
     overall: cycleMedian(durations),
@@ -743,10 +768,12 @@ export function cycles(rows: readonly ProjectRow[], controlDate: Date): CyclesRe
             .map((row) => durationOf(row, controlDate))
             .filter((duration): duration is Duration => duration !== null),
         ),
+        planned: completedPlanned(list),
       }))
       .sort((a, b) => b.estimate.observations - a.estimate.observations),
     onTime: closedWithDue.filter((row) => row.closedOn!.getTime() <= row.dueOn!.getTime()).length,
     withDue: closedWithDue.length,
+    planned: completedPlanned(rows),
     overdueOpen: lateOpen(rows, controlDate).length,
     cancelled: rows.filter((row) => row.status === 'CANCELLED' && row.startedOn !== null).length,
   };

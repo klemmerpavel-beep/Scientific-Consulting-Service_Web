@@ -310,6 +310,8 @@ async function main() {
     const base = startedOn ?? day(0);
     const dueOn = row.dueOn ?? new Date(base.getTime() + 120 * 86_400_000);
     const closedOn = row.status === 'COMPLETED' ? dueOn : null;
+    // Дата закрытия строки книги — плановый срок (требование РК-23, решение Р-355).
+    const closedOnPlanned = closedOn !== null;
     const year = base.getUTCFullYear();
     const code = `PD-${year}-${String(index + 1).padStart(3, '0')}`;
 
@@ -333,6 +335,7 @@ async function main() {
         startedOn,
         dueOn,
         closedOn,
+        closedOnPlanned,
         summary: SUMMARY[row.type] ?? SUMMARY.consulting!,
       },
       // Куратор переназначается при каждом наполнении: правка распределения
@@ -350,6 +353,7 @@ async function main() {
         startedOn,
         dueOn,
         closedOn,
+        closedOnPlanned,
       },
       select: { id: true },
     });

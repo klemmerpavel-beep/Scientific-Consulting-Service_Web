@@ -480,9 +480,14 @@ model Project {
   status ProjectStatus @default(ACTIVE)
   source ProjectSource @default(WEB)
 
-  startedOn DateTime?
-  dueOn     DateTime?
-  closedOn  DateTime?
+  startedOn       DateTime?
+  dueOn           DateTime?
+  closedOn        DateTime?
+  /// Дата закрытия — плановый срок, а не день фактического закрытия:
+  /// перенос книги заказов и ручной заказ, заведённый завершённым. По
+  /// таким работам доля «в срок» не считается (требование РК-23,
+  /// решение Р-355).
+  closedOnPlanned Boolean   @default(false)
 
   /// Роль эксперта в работе — так клиент видит эксперта вместо ФИО
   /// (требование Т-11, О-10, решение Р-297). Пусто — «Эксперт по

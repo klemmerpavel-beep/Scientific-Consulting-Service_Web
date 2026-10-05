@@ -40,6 +40,7 @@ export default async function AnalyticsProjects() {
               value={cycleLabel(report.overall)}
               note={
                 `${report.overall.observations} ${plural(report.overall.observations, 'наблюдение', 'наблюдения', 'наблюдений')}, завершено ${report.overall.events}` +
+                (report.planned > 0 ? `, из них по плановой дате ${report.planned}` : '') +
                 (report.cancelled > 0 ? `; отменённые (${report.cancelled}) — как незавершённые` : '')
               }
             />
@@ -50,10 +51,17 @@ export default async function AnalyticsProjects() {
               value={String(total.ongoing)}
               note={total.paused > 0 ? `из них приостановлено ${total.paused}` : 'приостановленных нет'}
             />
+            {/* Доля «в срок» — только по фактическим датам закрытия: плановая
+                дата закрытия равна сроку, и такая работа всегда была бы «в
+                срок» (требование РК-23, решение Р-355; ОР-7). */}
             <Tile
               label="В срок"
-              value={report.withDue === 0 ? '—' : share(report.onTime / report.withDue)}
-              note={`из ${report.withDue} завершённых с заданным сроком`}
+              value={report.withDue === 0 ? 'мало данных' : share(report.onTime / report.withDue)}
+              note={
+                report.withDue === 0
+                  ? 'нет завершённых работ со сроком и фактической датой закрытия'
+                  : `из ${report.withDue} завершённых с заданным сроком и фактической датой закрытия`
+              }
             />
             <Tile
               label="С прошедшим сроком"
@@ -61,6 +69,11 @@ export default async function AnalyticsProjects() {
               note="действующих работ со сроком раньше сегодняшнего дня"
             />
           </Tiles>
+          {report.planned === 0 ? null : (
+            <Text muted size={14} style={{ marginBottom: 24 }}>
+              {`Плановые даты: у ${report.planned} ${plural(report.planned, 'завершённой работы', 'завершённых работ', 'завершённых работ')} дата закрытия — плановый срок: перенесённая книга заказов и ручные заказы, заведённые завершёнными. Их длительности в медиане — плановые, в долю «в срок» они не входят.`}
+            </Text>
+          )}
 
           {withMedian.length === 0 ? (
             <Card style={{ marginBottom: 28 }}>
@@ -124,7 +137,9 @@ export default async function AnalyticsProjects() {
                   <tr key={row.typeCode}>
                     <td style={cell}>{row.typeName}</td>
                     <td style={num}>{row.estimate.observations}</td>
-                    <td style={num}>{row.estimate.events}</td>
+                    <td style={num}>
+                      {row.planned > 0 ? `${row.estimate.events}, из них плановых ${row.planned}` : row.estimate.events}
+                    </td>
                     <td style={cell}>{cycleLabel(row.estimate)}</td>
                   </tr>
                 ))}

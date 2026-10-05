@@ -1514,7 +1514,8 @@ export async function setProjectStatus(
     // Р-251).
     const claimed = await tx.project.updateMany({
       where: { id: projectId, status: from },
-      data: { status: to, closedOn },
+      // Дата закрытия перевода — фактическая (РК-23, Р-355).
+      data: { status: to, closedOn, closedOnPlanned: false },
     });
     if (claimed.count === 0) {
       throw new Error('Состояние работы уже изменено другим действием: обновите страницу');

@@ -19,6 +19,7 @@ import {
   byMonth,
   collectionPercent,
   overview,
+  plannedClosures,
   receivables,
   seasonalNorm,
 } from '../../../../../lib/cabinet/analytics/metrics';
@@ -49,6 +50,8 @@ export default async function AnalyticsMoney() {
   const season = seasonalNorm(rows, now, await analyticsSince());
   const debts = receivables(rows, now);
   const overdue = debts.filter((debt) => debt.overdueDays !== null && debt.overdueDays > 0);
+  // Работы с плановыми датами — оговорка экрана (РК-23, Р-355).
+  const planned = plannedClosures(rows);
 
   return (
     <Frame
@@ -83,6 +86,11 @@ export default async function AnalyticsMoney() {
               note={`${overdue.length} ${plural(overdue.length, 'работа', 'работы', 'работ')} со сроком раньше сегодняшнего дня`}
             />
           </Tiles>
+          {planned === 0 ? null : (
+            <Text muted size={14} style={{ marginBottom: 24 }}>
+              {`Плановые даты: у ${planned} ${plural(planned, 'работы', 'работ', 'работ')} дата закрытия — плановый срок: перенесённая книга заказов и ручные заказы, заведённые завершёнными. Оплата без записанной даты отнесена к дате договора или начала работы.`}
+            </Text>
+          )}
 
           <ChartCard
             title="Договоры и оплаты по месяцу начала работы"

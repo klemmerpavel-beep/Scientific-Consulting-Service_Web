@@ -926,6 +926,8 @@ export async function applyBatch(
               status,
               dueOn: deadline,
               closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
+              // Дата закрытия книги — плановый срок (РК-23, Р-355).
+              closedOnPlanned: status === 'COMPLETED',
             },
           });
           const contract = await tx.contract.findFirst({
@@ -1065,6 +1067,7 @@ export async function applyBatch(
             startedOn: orderDate,
             dueOn: deadline,
             closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
+            closedOnPlanned: status === 'COMPLETED',
           },
           select: { id: true },
         });

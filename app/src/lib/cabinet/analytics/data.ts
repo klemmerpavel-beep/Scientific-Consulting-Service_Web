@@ -35,6 +35,7 @@ export async function loadRows(actor: Actor): Promise<ProjectRow[]> {
       startedOn: true,
       dueOn: true,
       closedOn: true,
+      closedOnPlanned: true,
       client: { select: { id: true, fullName: true } },
       serviceType: { select: { code: true, name: true } },
       contract: {
@@ -59,6 +60,7 @@ export async function loadRows(actor: Actor): Promise<ProjectRow[]> {
     startedOn: project.startedOn,
     dueOn: project.dueOn,
     closedOn: project.closedOn,
+    closedOnPlanned: project.closedOnPlanned,
     signedOn: project.contract?.signedOn ?? null,
     cost: project.contract?.totalAmount ?? 0n,
     paid: total(project.contract?.tranches, 'PAID'),

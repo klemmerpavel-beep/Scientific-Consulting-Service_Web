@@ -24,6 +24,7 @@ import {
   median,
   openBalance,
   overview,
+  plannedClosures,
   products,
   quantile,
   receivables,
@@ -60,6 +61,7 @@ function row(over: Partial<ProjectRow> & { code: string }): ProjectRow {
     startedOn: new Date(Date.UTC(2025, 0, 10)),
     dueOn: null,
     closedOn: new Date(Date.UTC(2025, 3, 10)),
+    closedOnPlanned: false,
     cost: 10_000_000n,
     paid: 10_000_000n,
     ...over,
@@ -379,6 +381,34 @@ describe('сроки', () => {
       CONTROL,
     );
     assert.equal(report.overdueOpen, 1);
+  });
+
+  it('РК-23: доля «в срок» — только по фактическим датам закрытия; плановые названы числом', () => {
+    const due = new Date(Date.UTC(2025, 3, 1));
+    const late = new Date(Date.UTC(2025, 3, 10));
+    const report = cycles(
+      [
+        row({ code: 'PD-1', dueOn: due, closedOn: late }),
+        // Плановая дата закрытия совпадает со сроком: всегда «в срок».
+        row({ code: 'PD-2', dueOn: due, closedOn: due, closedOnPlanned: true }),
+        row({ code: 'PD-3', dueOn: due, closedOn: due, closedOnPlanned: true, typeCode: 'article', typeName: 'Статья' }),
+      ],
+      CONTROL,
+    );
+    assert.equal(report.withDue, 1);
+    assert.equal(report.onTime, 0);
+    assert.equal(report.planned, 2);
+    assert.deepEqual(
+      report.byType.map((item) => [item.typeCode, item.planned]),
+      [
+        ['dissertation', 1],
+        ['article', 1],
+      ],
+    );
+    // Только плановые даты — «мало данных»: withDue равно нулю.
+    const book = cycles([row({ code: 'PD-4', dueOn: due, closedOn: due, closedOnPlanned: true })], CONTROL);
+    assert.equal(book.withDue, 0);
+    assert.equal(plannedClosures([row({ code: 'PD-5', status: 'ACTIVE', closedOn: null, closedOnPlanned: false })]), 0);
   });
 });
 
