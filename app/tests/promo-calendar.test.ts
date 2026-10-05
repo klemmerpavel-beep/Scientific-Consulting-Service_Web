@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
-import { calendarKey, calendarNow, promoCalendar } from '../src/lib/cabinet/analytics/calendar.ts';
+import { calendarKey, calendarNow, nearestPeak, promoCalendar } from '../src/lib/cabinet/analytics/calendar.ts';
 import { ANALYTICS_SINCE_DEFAULT, seasonalNorm, type ProjectRow } from '../src/lib/cabinet/analytics/metrics.ts';
 
 interface BookOrder {
@@ -106,6 +106,12 @@ describe('календарь продвижения (РК-16, таблица 6.4
     assert.equal(of('article').observations, 12);
     assert.equal(of('article').medianDays, 34.5);
     assert.equal(of('article').averageCheck, 9_750_000n);
+  });
+
+  it('ближайший пик сдачи — декабрь 2026: консалтинг с «мало данных» не в счёт (РК-22, ДР-3)', () => {
+    assert.deepEqual(nearestPeak(calendar, AT), { key: '2026-12', year: 2026, month: 12 });
+    const onlyFew = calendar.filter((row) => row.typeCode === 'consulting');
+    assert.equal(nearestPeak(onlyFew, AT), null);
   });
 
   it('научный консалтинг: два месяца сдачи, мало данных — окна нет', () => {

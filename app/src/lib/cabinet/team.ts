@@ -23,6 +23,8 @@ import { curatorContacts, type ContactRow } from './channels.ts';
 import { moscowToday, now as clockNow } from './clock.ts';
 import { curatorTasksData } from './queries.ts';
 import { LIVE_STATUSES, LOAD_ORDER } from './summary.ts';
+import { nearestPeak } from './analytics/calendar.ts';
+import { calendarFor } from './recommendations.ts';
 
 export interface TeamPoint {
   readonly key: string;
@@ -55,6 +57,8 @@ export interface ManagerLoad extends PersonLoad {
 }
 
 export interface CuratorLoad extends PersonLoad {
+  /** Действующих работ со сроком в месяце ближайшего пика сдачи (РК-22, Р-354). */
+  readonly peakWorks: number;
   readonly ndaSignedAt: Date | null;
   /** Предпочтительный способ связи; без действующих работ — `null`. */
   readonly contact: ContactRow | null;
@@ -68,6 +72,12 @@ interface WorkRow {
   readonly status: string;
   readonly dueOn: Date | null;
   readonly stages: readonly { state: string; dueOn: Date | null }[];
+}
+
+export interface Peak {
+  readonly key: string;
+  readonly year: number;
+  readonly month: number;
 }
 
 function personLoad(works: readonly WorkRow[], day: Date) {
@@ -96,8 +106,12 @@ function personLoad(works: readonly WorkRow[], day: Date) {
 export async function teamLoad(
   actor: Actor,
   at: Date = clockNow(),
-): Promise<{ managers: ManagerLoad[]; curators: CuratorLoad[] }> {
-  if (actor.role !== 'HEAD' || !can(actor, 'AUDIT_VIEW')) return { managers: [], curators: [] };
+): Promise<{ managers: ManagerLoad[]; curators: CuratorLoad[]; peak: Peak | null }> {
+  if (actor.role !== 'HEAD' || !can(actor, 'AUDIT_VIEW')) return { managers: [], curators: [], peak: null };
+  // Ближайший пик сдачи по календарю продвижения (РК-22, Р-354; ДР-3).
+  const peak = can(actor, 'ANALYTICS_VIEW') ? nearestPeak((await calendarFor(actor, at)).rows, at) : null;
+  const inPeak = (date: Date | null) =>
+    peak !== null && date !== null && date.getUTCFullYear() === peak.year && date.getUTCMonth() + 1 === peak.month;
   const day = moscowToday(at);
   const live = { status: { in: [...LIVE_STATUSES] } };
 
@@ -200,13 +214,14 @@ export async function teamLoad(
       id: person.id,
       fullName: person.fullName,
       ...personLoad(own, day),
+      peakWorks: own.filter((work) => inPeak(work.dueOn)).length,
       decide: tasks.length,
       ndaSignedAt,
       contact: contacts[0] ?? null,
       href: `/cabinet/projects?state=active&curator=${person.id}`,
     });
   }
-  return { managers, curators };
+  return { managers, curators, peak };
 }
 
 /**

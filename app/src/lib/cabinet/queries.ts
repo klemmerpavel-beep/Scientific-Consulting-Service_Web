@@ -64,7 +64,8 @@ export async function listProjects(
     page = 1,
     manager,
     curator,
-  }: { filter?: ProjectFilter; query?: string; page?: number; manager?: string; curator?: string } = {},
+    due,
+  }: { filter?: ProjectFilter; query?: string; page?: number; manager?: string; curator?: string; due?: string } = {},
 ) {
   const scope = scopeProjects(actor);
   if (scope === null) {
@@ -118,7 +119,19 @@ export async function listProjects(
     actor.role === 'HEAD'
       ? { ...(manager ? { managerId: manager } : {}), ...(curator ? { expertId: curator } : {}) }
       : {};
-  const where = { ...scope, ...byFilter, ...byQuery, ...byPerson };
+  // Отбор по месяцу срока работы `ГГГГ-ММ` — проверка числа «К пику» на
+  // «Команде» (требование РК-22, решение Р-354).
+  const dueMatch = /^(\d{4})-(0[1-9]|1[0-2])$/u.exec(due ?? '');
+  const byDue =
+    dueMatch === null
+      ? {}
+      : {
+          dueOn: {
+            gte: new Date(Date.UTC(Number(dueMatch[1]), Number(dueMatch[2]) - 1, 1)),
+            lt: new Date(Date.UTC(Number(dueMatch[1]), Number(dueMatch[2]), 1)),
+          },
+        };
+  const where = { ...scope, ...byFilter, ...byQuery, ...byPerson, ...byDue };
   const total = await prisma.project.count({ where });
   const pages = Math.max(1, Math.ceil(total / PROJECT_PAGE_SIZE));
   const current = Math.min(Math.max(1, Math.trunc(page) || 1), pages);

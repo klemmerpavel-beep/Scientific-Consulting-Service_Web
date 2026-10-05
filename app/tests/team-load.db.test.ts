@@ -176,7 +176,22 @@ describe('«Команда» (РК-06)', { skip: !enabled }, async () => {
     assert.equal(manager.side, 'менеджер');
   });
 
+  it('РК-22: «К пику» у куратора — столько же, сколько в «Работах» по отбору куратора и месяца', async () => {
+    const before = await teamLoad(head());
+    if (before.peak === null) return;
+    // Срок идущей работы — в месяце пика: число растёт и совпадает с отбором.
+    await prisma.project.update({
+      where: { id: ids.running },
+      data: { dueOn: new Date(Date.UTC(before.peak.year, before.peak.month - 1, 15)) },
+    });
+    const team = await teamLoad(head());
+    const curator = team.curators.find((row) => row.id === ids.curator)!;
+    const listed = await listProjects(head(), { filter: 'active', curator: ids.curator!, due: team.peak!.key });
+    assert.ok(curator.peakWorks >= 1);
+    assert.equal(curator.peakWorks, listed.total);
+  });
+
   it('менеджеру «Команда» не отдаётся', async () => {
-    assert.deepEqual(await teamLoad(who(ids.manager!, 'MANAGER')), { managers: [], curators: [] });
+    assert.deepEqual(await teamLoad(who(ids.manager!, 'MANAGER')), { managers: [], curators: [], peak: null });
   });
 });

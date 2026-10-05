@@ -52,6 +52,7 @@ import ActionError from '../../../components/cabinet/ActionError';
 import { ndaRequestedAt } from '../../../lib/cabinet/admin';
 import { CURATOR_WELCOME, ndaRequestOpen } from '../../../lib/cabinet/curator-welcome';
 import { myAssignments } from '../../../lib/cabinet/assignments';
+import { MONTH_NAMES } from '../../../lib/cabinet/analytics/calendar';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +85,7 @@ export default async function ProjectsScreen({
     page: Number(sp.page) || 1,
     manager: sp.manager,
     curator: sp.curator,
+    due: sp.due,
   });
   const filter = list.filter;
   const projects = list.rows;
@@ -151,6 +153,8 @@ export default async function ProjectsScreen({
   const forHead = actor.role === 'HEAD';
   // Отбор по сотруднику — руководителю; сохраняется в адресе (РК-03, Р-341).
   const person = forHead ? { manager: sp.manager ?? '', curator: sp.curator ?? '' } : { manager: '', curator: '' };
+  // Отбор по месяцу срока — из числа «К пику» на «Команде» (РК-22, Р-354).
+  const dueKey = /^\d{4}-(0[1-9]|1[0-2])$/u.test(sp.due ?? '') ? sp.due! : null;
   const [managerList, curatorChoices] = forHead ? await Promise.all([curators(actor), experts(actor)]) : [[], []];
   const href = (next: { state?: ProjectFilter; page?: number }) => {
     const params = new URLSearchParams();
@@ -159,6 +163,7 @@ export default async function ProjectsScreen({
     if (query !== '') params.set('q', query);
     if (person.manager !== '') params.set('manager', person.manager);
     if (person.curator !== '') params.set('curator', person.curator);
+    if (dueKey !== null) params.set('due', dueKey);
     if ((next.page ?? 1) > 1) params.set('page', String(next.page));
     const tail = params.toString();
     return tail === '' ? '/cabinet/projects' : `/cabinet/projects?${tail}`;
@@ -423,6 +428,14 @@ export default async function ProjectsScreen({
           </FilterSearch>
         </FilterBar>
       ) : null}
+      {dueKey === null ? null : (
+        <Text size={14} style={{ marginBottom: 16 }}>
+          {`Отбор: срок работы в ${MONTH_NAMES[Number(dueKey.slice(5)) - 1]} ${dueKey.slice(0, 4)} — `}
+          <a className="cab-mark" href={href({}).replace(/([?&])due=[^&]*&?/u, '$1').replace(/[?&]$/u, '')}>
+            снять отбор по сроку
+          </a>
+        </Text>
+      )}
 
       {pending.length === 0 ? null : (
         <Block style={{ marginBottom: 32 }}>

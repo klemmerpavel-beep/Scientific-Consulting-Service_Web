@@ -253,3 +253,27 @@ export function calendarNow(rows: readonly CalendarRow[], marked: ReadonlySet<st
     .sort((a, b) => rank[a.state!] - rank[b.state!] || Number((b.weight ?? 0n) - (a.weight ?? 0n)))
     .slice(0, 3);
 }
+
+/**
+ * Ближайший пик сдачи — для загрузки кураторов на «Команде» (требование
+ * РК-22, решение Р-354; ДР-3): ближайший, начиная с текущего, из месяцев
+ * сдачи видов с уверенностью не ниже «предположительно». Нет таких видов —
+ * `null`.
+ */
+export function nearestPeak(rows: readonly CalendarRow[], controlDate: Date): { key: string; year: number; month: number } | null {
+  const today = moscowToday(controlDate);
+  const current = today.getUTCFullYear() * 12 + today.getUTCMonth();
+  let best: number | null = null;
+  for (const row of rows) {
+    if (row.confidence === 'FEW') continue;
+    for (const month of row.deliveryMonths) {
+      let key = today.getUTCFullYear() * 12 + (month - 1);
+      if (key < current) key += 12;
+      if (best === null || key < best) best = key;
+    }
+  }
+  if (best === null) return null;
+  const year = Math.floor(best / 12);
+  const month = (best % 12) + 1;
+  return { key: `${year}-${String(month).padStart(2, '0')}`, year, month };
+}

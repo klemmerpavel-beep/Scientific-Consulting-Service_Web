@@ -22,6 +22,7 @@ import { requireActor } from '../../../../lib/cabinet/session';
 import { contactLabelFor } from '../../../../lib/cabinet/staff-texts';
 import { teamLoad, type TeamPoint } from '../../../../lib/cabinet/team';
 import { assignmentLoad } from '../../../../lib/cabinet/assignments';
+import { MONTH_NAMES } from '../../../../lib/cabinet/analytics/calendar';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,9 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
   const tab = (await searchParams).tab === 'threads' ? 'threads' : 'people';
   const threads = await staffThreads(actor);
   const unread = threads.reduce((acc, row) => acc + row.unread, 0);
-  const team = tab === 'people' ? await teamLoad(actor) : { managers: [], curators: [] };
+  const team = tab === 'people' ? await teamLoad(actor) : { managers: [], curators: [], peak: null };
+  // Ближайший пик сдачи — колонка куратора «К пику» (РК-22, Р-354).
+  const peakLabel = team.peak === null ? null : `${MONTH_NAMES[team.peak.month - 1]} ${team.peak.year}`;
   // Поручения: открытые и просроченные по исполнителю (РК-19, Р-352).
   const given = tab === 'people' ? await assignmentLoad(actor) : new Map<string, { open: number; overdue: number }>();
   const assigned = (id: string) => {
@@ -169,12 +172,15 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                   <th style={TABLE_HEAD} scope="col">Договор поручения</th>
                   <th style={TABLE_HEAD} scope="col">Связь</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Поручения</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">
+                    {peakLabel === null ? 'К пику сдачи' : `К пику: ${peakLabel}`}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {team.curators.length === 0 ? (
                   <tr>
-                    <td style={TABLE_CELL} colSpan={8}>
+                    <td style={TABLE_CELL} colSpan={9}>
                       Действующих кураторов нет.
                     </td>
                   </tr>
@@ -208,6 +214,15 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                             }`}
                       </td>
                       <td style={TABLE_NUM}>{assigned(row.id)}</td>
+                      <td style={TABLE_NUM}>
+                        {team.peak === null || row.peakWorks === 0 ? (
+                          num(row.peakWorks)
+                        ) : (
+                          <a className="cab-mark" href={`/cabinet/projects?state=active&curator=${row.id}&due=${team.peak.key}`}>
+                            {row.peakWorks}
+                          </a>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -216,7 +231,9 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
           </TableCard>
           <Text muted size={13}>
             Его дела — то, что куратор видит в «Что сделать сейчас». Связь — предпочтительный способ
-            из его настроек; без действующих работ не показывается.
+            из его настроек; без действующих работ не показывается. К пику — действующие работы со
+            сроком в ближайшем месяце сдачи по «Календарю продвижения» (виды с уверенностью не ниже
+            «предположительно»).
           </Text>
         </>
       )}
