@@ -1,4 +1,5 @@
 import { prisma } from '../db.ts';
+import { workLine } from './work-line.ts';
 import {
   CLIENT_VISIBLE_VERSION,
   EXPERT_ROLE_LABEL,
@@ -851,7 +852,7 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
         eventKind: 'CURATOR_CHANGED',
         subject: `Сменился менеджер работы «${updated.title}»`,
         body:
-          `Проект ${updated.code} — ${updated.title}.\n` +
+          `${workLine(updated, true)}\n` +
           'Сменился менеджер работы. Писать ему можно в переписке по работе в личном кабинете.',
         dedupKey: `project:${projectId}:curator:${managerId}:${stamp}`,
       });
@@ -1118,7 +1119,7 @@ export async function reopenStage(
       select: { code: true, title: true, client: { select: { userId: true } } },
     });
     const body =
-      `Проект ${project.code} — ${project.title}.\n` +
+      `${workLine(project, true)}\n` +
       `Этап «${stage.title}» снова в работе.\nПричина: ${why}\n${stageLink(stage.id)}`;
     // Руководителю — дело «проверьте акт и транш» (РК-12, Р-338).
     await openReopenCheck(tx, stage.id, stage.projectId);
@@ -1305,7 +1306,7 @@ async function announceDueChange(
       projectId: project.id,
       eventKind: 'STAGE_DUE_CHANGED',
       subject: `Срок этапа «${stage.title}» изменён`,
-      body: `Проект ${project.code} — ${project.title}.\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
+      body: `${workLine(project, true)}\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
       dedupKey: `stage:${stageId}:due-changed:${dueKey(to) ?? 'none'}:${Date.now()}`,
       path: `/cabinet/stages/${stageId}`,
     });
@@ -1560,7 +1561,7 @@ export async function setProjectStatus(
         projectId,
         eventKind: 'PROJECT_STATUS_CHANGED',
         subject: letter.subject,
-        body: `Проект ${saved.code} — ${saved.title}.\n${letter.body}\nОткрыть работу можно в личном кабинете.`,
+        body: `${workLine(saved, true)}\n${letter.body}\nОткрыть работу можно в личном кабинете.`,
         dedupKey: `project:${projectId}:status:${from}-${to}:${Date.now()}`,
       });
     }
@@ -1877,7 +1878,7 @@ export async function setStageState(
         eventKind: 'STAGE_APPROVED',
         subject: `Этап «${stage.title}» согласован`,
         body:
-          `Проект ${project?.code} — ${project?.title}.\n` +
+          `${project == null ? '' : `${workLine(project, true)}\n`}` +
           `Этап «${stage.title}» согласован менеджером по вашему подтверждению: ${(reason ?? '').trim()}.\n` +
           'Если вы этого не подтверждали, напишите менеджеру в кабинете.\n' +
           stageLink(stageId),
@@ -1987,7 +1988,7 @@ export async function setStageState(
             ? `Этап «${stage.title}» ждёт ваших материалов`
             : `Этап «${stage.title}» готов к согласованию`,
           body:
-            `Проект ${project?.code} — ${project?.title}.\n` +
+            `${project == null ? '' : `${workLine(project, true)}\n`}` +
             (awaiting
               ? `${(reason ?? '').trim()}\n`
               : `Итог этапа: что сделано и что дальше.\n${outcome}\n\n` +

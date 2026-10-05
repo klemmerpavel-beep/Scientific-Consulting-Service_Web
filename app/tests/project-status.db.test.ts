@@ -108,6 +108,9 @@ describe('состояние работы', { skip: !enabled }, async () => {
       });
       assert.match(letter.subject, /приостановлена/u);
       assert.match(letter.body, /Причина: Ждём решения диссовета/u);
+      // Клиенту — название работы без кода (УК-06, Р-362).
+      assert.match(letter.body, /^Работа «/u);
+      assert.doesNotMatch(letter.body, /PD-\d/u);
     }
     await setProjectStatus(curator(), ids.project!, 'ACTIVE');
   });

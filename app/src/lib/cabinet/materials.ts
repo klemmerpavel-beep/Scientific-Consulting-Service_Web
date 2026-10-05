@@ -1,4 +1,5 @@
 import { prisma } from '../db.ts';
+import { workLine } from './work-line.ts';
 import { closeActChecks } from './head-checks.ts';
 import {
   can,
@@ -338,15 +339,16 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
           ref,
         ),
       )
-      .map((user) => user.id);
-    for (const userId of recipients) {
+      .map((user) => ({ id: user.id, role: user.role }));
+    for (const recipient of recipients) {
+      const userId = recipient.id;
       await enqueue(prisma, {
         userId,
         projectId: input.projectId,
         eventKind: 'VERSION_UPLOADED',
         subject: `Новая версия материала: ${material.title}`,
         body:
-          `Проект ${project.code} — ${project.title}.\n` +
+          `${workLine(project, recipient.role === 'CLIENT')}\n` +
           `Загружена версия v${version.number}. Открыть можно в личном кабинете.` +
           (moderated ? '\nВерсия куратора ждёт публикации: клиент увидит её после вашего решения.' : ''),
         dedupKey: `version:${version.id}:uploaded:${userId}`,
@@ -559,7 +561,7 @@ export async function moderateVersion(
         eventKind: 'VERSION_REJECTED',
         subject: `Версия v${version.number} не опубликована: ${version.material.title}`,
         body:
-          `Проект ${project.code} — ${project.title}.\n` +
+          `${workLine(project, false)}\n` +
           `Менеджер не опубликовал клиенту версию v${version.number} материала «${version.material.title}».\n` +
           `Причина: ${reason}\n` +
           'Исправленную версию можно загрузить в личном кабинете.',
@@ -607,7 +609,7 @@ export async function moderateVersion(
         eventKind: 'VERSION_UPLOADED',
         subject: `Новая версия материала: ${version.material.title}`,
         body:
-          `Проект ${project.code} — ${project.title}.\n` +
+          `${workLine(project, true)}\n` +
           `Загружена версия v${version.number}. Открыть можно в личном кабинете.`,
         dedupKey: `version:${version.id}:uploaded:${project.client.userId}`,
         path: materialPath(project.code, version.material.stageId),
@@ -898,7 +900,7 @@ export async function moderateComment(
         eventKind: 'EXPERT_COMMENT_PUBLISHED',
         subject: 'Куратор оставил замечание по материалу',
         body:
-          `Проект ${project.code} — ${project.title}.\n` +
+          `${workLine(project, true)}\n` +
           `Материал «${context?.version.material.title}». Замечание видно в кабинете.`,
         dedupKey: `comment:${commentId}:published`,
         path: materialPath(project.code, context?.version.material.stageId ?? null),

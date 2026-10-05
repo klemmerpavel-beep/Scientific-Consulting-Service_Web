@@ -1,4 +1,5 @@
 import { prisma } from '../db.ts';
+import { workLine } from './work-line.ts';
 import { can, ensure, scopePayouts, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { daysPast, moscowToday, now as clockNow } from './clock.ts';
@@ -291,7 +292,7 @@ export async function setTrancheStatus(
         eventKind: 'PAYMENT_STATUS_CHANGED',
         subject: `Статус платежа изменился: ${row.title}`,
         body:
-          `Проект ${project?.code} — ${project?.title}.\n` +
+          `${project === null ? '' : `${workLine(project, true)}\n`}` +
           `Транш «${row.title}» переведён в состояние «${STATUS_LABEL[status]}».\n` +
           paymentsLine(project?.code ?? null),
         // Ключ по моменту перехода: счёт, отозванный и выставленный снова,

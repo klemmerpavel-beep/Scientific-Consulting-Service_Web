@@ -1,4 +1,5 @@
 import type { Prisma } from '../../generated/prisma/client.js';
+import { workLine } from './work-line.ts';
 import { prisma } from '../db.ts';
 import { ensure, scopeLeads, type Actor } from './access.ts';
 import { record } from './audit.ts';
@@ -674,7 +675,7 @@ export async function enqueueDeadlineReminders(at: Date = new Date()): Promise<n
           ? `Срок этапа «${stage.title}» сорван`
           : `Срок этапа «${stage.title}» — ${formatDay(dueOn)}`,
         body:
-          `${forClient ? 'Работа' : `Работа ${project.code} —`} ${project.title}.\n` +
+          `${workLine(project, forClient)}\n` +
           (missed
             ? `Срок этапа «${stage.title}» был ${formatDay(dueOn)}.\n`
             : `Этап «${stage.title}» должен быть закрыт до ${formatDay(dueOn)} включительно.\n`) +

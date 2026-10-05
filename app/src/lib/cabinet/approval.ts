@@ -1,4 +1,5 @@
 import type { Prisma } from '../../generated/prisma/client.js';
+import { workLine } from './work-line.ts';
 import { prisma } from '../db.ts';
 import { siteUrl } from '../site-url.ts';
 import { formatDay } from './approval-text.ts';
@@ -162,7 +163,7 @@ export async function startMissingDeadlines(at: Date = new Date()): Promise<numb
           eventKind: 'STAGE_IN_APPROVAL',
           subject: `Срок согласования этапа «${stage.title}»`,
           body:
-            `Проект ${stage.project.code} — ${stage.project.title}.\n` +
+            `${workLine(stage.project, true)}\n` +
             `Этап «${stage.title}» ждёт вашего согласования. Согласуйте его или верните с замечаниями ` +
             `до ${formatDay(dueOn)} включительно (по московскому времени).\n` +
             stageLink(stage.id),
@@ -213,7 +214,7 @@ export async function enqueueApprovalReminders(at: Date = new Date()): Promise<n
       eventKind: 'DEADLINE_APPROVAL_SOON',
       subject: `Согласуйте этап «${stage.title}» до ${formatDay(dueOn)}`,
       body:
-        `Проект ${stage.project.code} — ${stage.project.title}.\n` +
+        `${workLine(stage.project, true)}\n` +
         `Срок согласования этапа «${stage.title}» — до ${formatDay(dueOn)} включительно ` +
         '(по московскому времени).\n' +
         (auto
@@ -290,7 +291,7 @@ export async function autoAcceptExpired(at: Date = new Date()): Promise<number> 
           eventKind: 'STAGE_APPROVED',
           subject: `Этап «${stage.title}» принят`,
           body:
-            `Проект ${stage.project.code} — ${stage.project.title}.\n` +
+            `${workLine(stage.project, true)}\n` +
             `Срок согласования этапа «${stage.title}» истёк ${formatDay(dueOn)}: этап принят по п. 7.3 оферты.\n` +
             stageLink(stage.id),
           dedupKey: `stage:${stage.id}:auto-accepted:${change.id}`,
