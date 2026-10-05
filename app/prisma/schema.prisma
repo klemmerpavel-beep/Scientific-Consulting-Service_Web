@@ -227,6 +227,7 @@ model User {
   recommendationMarks RecommendationMark[]
   assignments         Assignment[]         @relation("AssignmentAssignee")
   givenAssignments    Assignment[]         @relation("AssignmentAuthor")
+  expenses            Expense[]
   payouts             ExpertPayout[]
   notifications       NotificationOutbox[]
   auditEvents         AuditEvent[]
@@ -385,6 +386,7 @@ model ServiceType {
   aliases        ServiceTypeAlias[]
   stageTemplates StageTemplate[]
   projects       Project[]
+  expenses       Expense[]
 }
 
 /// Историческое написание типа работы. Сводит разнобой исходного файла
@@ -918,6 +920,34 @@ enum AssignmentStatus {
   IN_PROGRESS
   DONE
   WITHDRAWN
+}
+
+/// Статья расходов практики — справочник из четырёх статей (требование
+/// РК-21, решение Р-353).
+model ExpenseCategory {
+  id       String    @id
+  name     String    @unique
+  position Int
+  isActive Boolean   @default(true)
+  expenses Expense[]
+}
+
+/// Расход практики за месяц (требование РК-21, решение Р-353). Месяц —
+/// первое число по UTC; вид работ не указан — расход «общий».
+model Expense {
+  id            String          @id @default(cuid())
+  month         DateTime
+  categoryId    String
+  category      ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  amount        BigInt
+  note          String?
+  serviceTypeId String?
+  serviceType   ServiceType?    @relation(fields: [serviceTypeId], references: [id], onDelete: SetNull)
+  createdById   String?
+  createdBy     User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime        @default(now())
+
+  @@index([month])
 }
 
 /// Курсор прочтения участника ветки (РК-07, Р-336). Ключ ветки —

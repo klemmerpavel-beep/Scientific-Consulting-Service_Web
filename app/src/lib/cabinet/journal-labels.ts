@@ -67,6 +67,8 @@ const ACTIONS: Record<string, string> = {
   RECOMMENDATION_MARKED: 'Отмечена рекомендация',
   ASSIGNMENT_CREATED: 'Поставлено поручение',
   ASSIGNMENT_STATUS: 'Изменено состояние поручения',
+  EXPENSE_ADDED: 'Внесён расход',
+  EXPENSE_REMOVED: 'Удалён расход',
   USER_CREATED: 'Заведена учётная запись',
   USER_ROLE_CHANGED: 'Изменена роль',
   USER_STATUS_CHANGED: 'Изменено состояние доступа',

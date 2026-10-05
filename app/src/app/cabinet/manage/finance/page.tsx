@@ -133,7 +133,9 @@ export default async function FinanceScreen({
         <a href="/cabinet/manage/finance/debtors">Должники</a> — просроченные платежи: напомнить,
         перенести дату или списать.{' '}
         <a href="/cabinet/manage/finance/receipts">Поступления</a> — когда придут деньги по
-        заключённым договорам, по месяцам.
+        заключённым договорам, по месяцам.{' '}
+        <a href="/cabinet/manage/finance/profit">Прибыль по месяцам</a> — поступления, выплаты
+        кураторам и расходы по статьям; здесь же вносятся расходы.
       </Text>
 
       <Tiles>

@@ -36,6 +36,7 @@ import { sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages
 import { saveAnalyticsSince, saveConfidenceThresholds, saveReactionDays } from '../../lib/cabinet/practice-settings';
 import { markRecommendation } from '../../lib/cabinet/recommendations';
 import { createAssignment, setAssignmentStatus } from '../../lib/cabinet/assignments';
+import { addExpense, removeExpense } from '../../lib/cabinet/profit';
 import { closeCheck } from '../../lib/cabinet/head-checks';
 import { handBackStage, handOverStage, recallHandover } from '../../lib/cabinet/handover';
 import {
@@ -1609,6 +1610,42 @@ export async function saveReaction(form: FormData): Promise<void> {
     await saveReactionDays(actor, String(form.get('days') ?? ''));
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить срок реакции');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** Внести расход месяца (требование РК-21, решение Р-353). */
+export async function addExpenseAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/finance/profit';
+  let failure: string | null = null;
+  try {
+    await addExpense(actor, {
+      month: String(form.get('month') ?? ''),
+      categoryId: String(form.get('categoryId') ?? ''),
+      amount: parseAmount(String(form.get('amount') ?? '')),
+      serviceTypeId: String(form.get('serviceTypeId') ?? ''),
+      note: String(form.get('note') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось внести расход');
+  }
+  if (failure !== null) {
+    redirect(await withError(back, failure, { draft: fieldsOf(form, ['month', 'categoryId', 'amount', 'serviceTypeId', 'note']) }));
+  }
+  redirect(back);
+}
+
+/** Удалить ошибочно внесённый расход (РК-21, Р-353). */
+export async function removeExpenseAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/finance/profit';
+  let failure: string | null = null;
+  try {
+    await removeExpense(actor, String(form.get('id') ?? ''));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось удалить расход');
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);
