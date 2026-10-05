@@ -152,6 +152,14 @@ export async function requestLoginLink(
         return { outcome: 'not_active' as const };
       }
 
+      // Прежние непогашенные ссылки входа гасятся: живой остаётся одна,
+      // последняя выданная, как у ссылок от сотрудника (Р-164, Р-285;
+      // улучшение УК-04, решение Р-358).
+      const issuedAt = new Date();
+      await tx.loginToken.updateMany({
+        where: { userId: user.id, usedAt: null, expiresAt: { gt: issuedAt }, purpose: 'LOGIN' },
+        data: { expiresAt: issuedAt },
+      });
       const token = createRawToken();
       await tx.loginToken.create({
         data: {

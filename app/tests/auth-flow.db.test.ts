@@ -256,4 +256,21 @@ describe('вход по одноразовой ссылке', { skip: !enabled }
       delete process.env.SMTP_HOST;
     }
   });
+
+  it('новая ссылка гасит прежнюю непогашенную (УК-04, Р-358)', async () => {
+    await prisma.loginAttempt.updateMany({
+      where: { emailNormalized: email },
+      data: { occurredAt: new Date(Date.now() - 2 * 60 * 1000) },
+    });
+    const older = await issue();
+    process.env.SMTP_HOST = 'smtp.invalid';
+    try {
+      assert.equal(await auth.requestLoginLink(email, '10.0.0.8', { defer: () => undefined }), 'sent');
+    } finally {
+      delete process.env.SMTP_HOST;
+    }
+    assert.equal(await auth.consumeLoginToken(older, '127.0.0.1', null), null, 'прежняя ссылка осталась живой');
+    const live = await prisma.loginToken.count({ where: { userId, usedAt: null, expiresAt: { gt: new Date() } } });
+    assert.equal(live, 1);
+  });
 });
