@@ -180,21 +180,21 @@ describe('этапы и работы', { skip: !enabled }, async () => {
       },
     });
     const light = await trafficLight(curator());
-    for (const list of [light.overdue, light.soon, light.stalled]) {
+    for (const list of [light.overdue, light.stalled]) {
       assert.ok(!list.some((row) => row.id === stage.id), 'этап отменённой работы в сводке');
     }
     const pending = await pendingActions(curator());
     assert.ok(!pending.some((row) => row.id === stage.id), 'этап отменённой работы ждёт клиента');
   });
 
-  it('срок «сегодня» не сорван: этап в ближайших, а не в просроченных', async () => {
+  it('срок «сегодня» не сорван (полоса ближайших снята — УР-02, Р-386)', async () => {
     const projectId = await newProject('T');
     const stage = await prisma.stage.create({
       data: { projectId, position: 1, title: 'Сегодня', state: 'IN_PROGRESS', dueOn: today() },
     });
     const light = await trafficLight(curator());
     assert.ok(!light.overdue.some((row) => row.id === stage.id), 'срок сегодня назван сорванным');
-    assert.ok(light.soon.some((row) => row.id === stage.id), 'срок сегодня не в ближайших');
+    assert.equal('soon' in light, false);
   });
 
   it('два одновременных перевода этапа: проходит один, история — одна строка', async () => {

@@ -726,10 +726,12 @@ export async function experts(actor: Actor) {
 }
 
 /**
- * Светофор по срокам. Три полосы, и каждая отвечает на свой вопрос: что уже
- * сорвано, что сорвётся на этой неделе и где работа стоит из-за клиента
- * дольше недели (Р-304). Последняя полоса нужна отдельно: просрочки там может
- * ещё не быть, а проект уже фактически не движется.
+ * Светофор по срокам. Полосы отвечают каждая на свой вопрос: что уже
+ * сорвано и где работа стоит из-за клиента дольше недели (Р-304). Последняя
+ * полоса нужна отдельно: просрочки там может ещё не быть, а проект уже
+ * фактически не движется. Полоса «на этой неделе» снята: её никто не
+ * выводил, а ближайшие сроки руководитель видит на «Сводке» (Р-342;
+ * улучшение УР-02, решение Р-386).
  */
 export async function trafficLight(actor: Actor) {
   ensure(actor, 'REGISTRY_VIEW');
@@ -738,7 +740,7 @@ export async function trafficLight(actor: Actor) {
   // (решение Р-149). Правило модуля прав — списки и реестры идут через
   // `scope*`, а не через отдельное условие.
   const scope = scopeProjects(actor);
-  if (scope === null) return { overdue: [], soon: [], stalled: [], lateWorks: [] };
+  if (scope === null) return { overdue: [], stalled: [], lateWorks: [] };
   // Этапы только действующих работ. Прежде этап отменённой или
   // завершённой работы, брошенный незакрытым, висел в «Требует внимания»
   // бессрочно, а изменить его было уже нельзя (решение Р-240).
@@ -751,7 +753,6 @@ export async function trafficLight(actor: Actor) {
   // ещё не считался сорванным (решение Р-257).
   const moment = today();
   const now = moscowToday(moment);
-  const inWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   // Порог «ждёт клиента» — неделя, а не две: за две недели работа успевала
   // встать (требование М-06, решение Р-304).
   const weekAgo = new Date(moment.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -788,16 +789,11 @@ export async function trafficLight(actor: Actor) {
     in: ['NOT_STARTED', 'IN_PROGRESS', 'AWAITING_CLIENT', 'IN_APPROVAL'] as StageState[],
   };
 
-  const [overdue, soon, stalled] = await Promise.all([
+  const [overdue, stalled] = await Promise.all([
     prisma.stage.findMany({
       where: { ...mine, state: live, dueOn: { lt: now } },
       // Второй ключ — идентификатор: сроки хранятся днём, совпадения часты, а
       // первая строка решает, куда ведёт «Начать с главного» (решение Р-229).
-      orderBy: [{ dueOn: 'asc' }, { id: 'asc' }],
-      include,
-    }),
-    prisma.stage.findMany({
-      where: { ...mine, state: live, dueOn: { gte: now, lte: inWeek } },
       orderBy: [{ dueOn: 'asc' }, { id: 'asc' }],
       include,
     }),
@@ -870,7 +866,7 @@ export async function trafficLight(actor: Actor) {
       ),
   );
 
-  return { overdue, soon, stalled: stillStalled, lateWorks };
+  return { overdue, stalled: stillStalled, lateWorks };
 }
 
 /** Реестр клиентов. Контакты отдаются только ролям, которым они положены. */
