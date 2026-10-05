@@ -918,6 +918,8 @@ export interface ThreadMessage {
   readonly createdAt: Date;
   readonly containsContactHint: boolean;
   readonly author: { id: string; fullName: string; role: string };
+  /** Когда прочитано менеджером работы (Р-221); клиенту — отметка «прочитано». */
+  readonly readAt?: Date | null;
 }
 
 /** Кем подписано сообщение: роль словом, а не кодом перечисления. */
@@ -1071,6 +1073,13 @@ export function Thread({
                   >
                     {formatTime(message.createdAt)}
                   </span>
+                  {/* Клиент видит, что менеджер прочитал его сообщение
+                      (часть F, П-07, решение Р-399). */}
+                  {viewer.role === 'CLIENT' && mine && message.readAt ? (
+                    <span style={{ fontFamily: SANS, fontSize: 12, lineHeight: 1.4, color: 'var(--pd-ink-muted)' }}>
+                      · прочитано менеджером
+                    </span>
+                  ) : null}
                   {flagContacts && message.containsContactHint ? (
                     <Chip>похоже на передачу контактов</Chip>
                   ) : null}

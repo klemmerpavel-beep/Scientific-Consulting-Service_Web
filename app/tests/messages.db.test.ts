@@ -10,6 +10,8 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 
 import type { Actor } from '../src/lib/cabinet/access.ts';
@@ -156,6 +158,17 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     assert.equal(await messages.unreadCount(manager(), ids.project!), 0);
     // У клиента остаётся непрочитанным то, что написал куратор.
     assert.ok((await messages.unreadCount(client(), ids.project!)) > 0);
+  });
+
+  it('П-07: клиент видит, что менеджер прочитал его сообщение (Р-399)', async () => {
+    const sent = await messages.sendMessage(client(), ids.project!, 'Когда будет глава 2?');
+    const before = (await messages.listMessages(client(), ids.project!)).find((row) => row.id === sent.id);
+    assert.equal(before?.readAt ?? null, null);
+    await messages.markRead(manager(), ids.project!);
+    const after = (await messages.listMessages(client(), ids.project!)).find((row) => row.id === sent.id);
+    assert.ok(after?.readAt instanceof Date, 'клиенту не отдано время прочтения');
+    const thread = readFileSync(path.join(import.meta.dirname, '..', 'src', 'components', 'cabinet', 'ui.tsx'), 'utf8');
+    assert.match(thread, /viewer\.role === 'CLIENT' && mine && message\.readAt[\s\S]{0,200}прочитано менеджером/u);
   });
 
   it('руководитель, открывший чужую работу, не гасит новое у куратора', async () => {
