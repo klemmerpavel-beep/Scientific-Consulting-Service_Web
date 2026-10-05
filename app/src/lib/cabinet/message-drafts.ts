@@ -10,7 +10,7 @@
 
 import type { Role } from './access.ts';
 
-export type DraftKey = 'call' | 'due' | 'remind' | 'callnote' | 'reschedule' | 'payment';
+export type DraftKey = 'call' | 'due' | 'remind' | 'callnote' | 'reschedule' | 'payment' | 'approve';
 
 export interface DraftLink {
   readonly key: DraftKey;
@@ -35,6 +35,8 @@ const STAFF_DRAFTS: readonly DraftLink[] = [
   { key: 'reschedule', label: 'Перенос срока' },
   // Напоминание о просроченном платеже — из «Должников» (РК-10, Р-345).
   { key: 'payment', label: 'Напоминание об оплате' },
+  // Напоминание о согласовании — из подсказки этапа (УМ-09, Р-377).
+  { key: 'approve', label: 'Напоминание о согласовании' },
 ];
 
 /** Заготовки, доступные роли в переписке. */
@@ -69,6 +71,8 @@ export function draftText(
       return `Прошу перенести срок ${stage} на . Причина: `;
     case 'remind':
       return `Напоминаем: для ${stage} ждём от вас материалы. Приложить их можно на экране этапа или в «Материалах работы». `;
+    case 'approve':
+      return `Напоминаем: материалы ${stage} ждут вашего согласования. Согласовать этап или вернуть его с замечаниями можно на экране этапа. `;
     case 'callnote':
       return `Итог созвона ${context.today}: договорились — `;
     case 'reschedule':

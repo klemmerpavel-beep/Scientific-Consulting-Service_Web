@@ -451,6 +451,18 @@ export default async function StageScreen({
           </Heading>
           <Text style={{ marginBottom: 12 }}>
             {state === 'IN_APPROVAL' && pendingComments === 0 ? IN_APPROVAL_CLEAR : STAFF_TODO[state]}
+            {/* «Напишите в переписке» — ссылкой с заготовкой (УМ-09, Р-377). */}
+            {state === 'AWAITING_CLIENT' || (state === 'IN_APPROVAL' && pendingComments === 0) ? (
+              <>
+                {' '}
+                <a
+                  className="cab-mark"
+                  href={`/cabinet/projects/${stage.project.code}/messages?draft=${state === 'AWAITING_CLIENT' ? 'remind' : 'approve'}#body`}
+                >
+                  {state === 'AWAITING_CLIENT' ? 'Напомнить о материалах' : 'Напомнить о согласовании'}
+                </a>
+              </>
+            ) : null}
           </Text>
           {approvalLine === null ? null : (
             <Text size={14} style={{ marginBottom: 12, fontWeight: 600 }}>

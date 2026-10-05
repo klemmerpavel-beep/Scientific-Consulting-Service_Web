@@ -39,7 +39,7 @@ describe('заготовки куратора (М-21)', () => {
   it('напоминание, итог созвона с датой по часам кабинета, перенос срока', () => {
     assert.deepEqual(
       draftsFor('MANAGER').map((draft) => draft.label),
-      ['Напоминание о материалах', 'Итог созвона', 'Перенос срока', 'Напоминание об оплате'],
+      ['Напоминание о материалах', 'Итог созвона', 'Перенос срока', 'Напоминание об оплате', 'Напоминание о согласовании'],
     );
     assert.match(
       draftText('MANAGER', 'remind', context) ?? '',
@@ -56,6 +56,16 @@ describe('заготовки куратора (М-21)', () => {
     assert.doesNotMatch(text, /\d[\d\s]*₽|руб/u, 'сумма в заготовке');
     assert.match(draftText('MANAGER', 'payment', context) ?? '', /срок очередной оплаты по договору прошёл/u);
     assert.equal(draftText('CLIENT', 'payment', context), null, 'заготовка практики открылась клиенту');
+  });
+
+  it('напоминание о согласовании — из подсказки этапа (УМ-09, Р-377)', () => {
+    assert.match(draftText('MANAGER', 'approve', context) ?? '', /^Напоминаем: материалы этапа «Обзор литературы» ждут вашего согласования/u);
+    assert.equal(draftText('CLIENT', 'approve', context), null);
+    const stagePage = readFileSync(
+      path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'stages', '[id]', 'page.tsx'),
+      'utf8',
+    );
+    assert.match(stagePage, /messages\?draft=\$\{state === 'AWAITING_CLIENT' \? 'remind' : 'approve'\}#body/u);
   });
 
   it('дело «Напомнить клиенту» ведёт в переписку с заготовкой', () => {
