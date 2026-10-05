@@ -44,6 +44,7 @@ import { mailConfigured } from '../../../../lib/cabinet/mail';
 import {
   changeUserRole,
   changeUserStatus,
+  resendCuratorInvite,
   giveAccessLink,
   inviteUser,
   updateExpertNda,
@@ -264,6 +265,11 @@ export default async function UsersScreen({
                         без него материалы клиента не выдаются
                       </div>
                     ) : null}
+                    {user.inviteFailed ? (
+                      <div style={{ fontSize: 13, color: 'var(--pd-ink-secondary)' }}>
+                        приглашение в кабинет не доставлено
+                      </div>
+                    ) : null}
                   </td>
                   {/* Действия — одной строкой: прежде каждое стояло своей
                       формой в теле строки, и строка вырастала до ста
@@ -306,6 +312,14 @@ export default async function UsersScreen({
                           </Button>
                         </Form>
                       )}
+                      {/* Приглашение куратору не доставлено — повтор отсюда,
+                          а не с экрана очереди (УЭ-08, Р-385). */}
+                      {user.inviteFailed && !erased ? (
+                        <Form action={resendCuratorInvite} inline>
+                          <input type="hidden" name="userId" value={user.id} />
+                          <Button tone="quiet">Отправить приглашение ещё раз</Button>
+                        </Form>
+                      ) : null}
                       {self || erased ? (
                         <Text muted size={13} style={{ margin: 0 }}>
                           {erased ? 'запись обезличена' : 'себя не правят'}

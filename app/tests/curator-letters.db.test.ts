@@ -82,6 +82,23 @@ describe('письма куратору (Э-03)', { skip: !enabled }, async () =
     assert.doesNotMatch(letter!.body, /\/cabinet\/enter\//u, 'ссылка входа в письме (Р-162)');
   });
 
+  it('УЭ-08: недоставленное приглашение — повтор с «Учётных записей», не чаще раза в десять минут (Р-385)', async () => {
+    const [invite] = await letters(ids.curator!, 'CURATOR_INVITED');
+    assert.ok(invite !== undefined);
+    // Доставленное или ждущее письмо не повторяется.
+    assert.equal(await admin.retryCuratorInvite(head(), ids.curator!), false);
+    await prisma.notificationOutbox.update({ where: { id: invite.id }, data: { state: 'FAILED', lastError: 'тест' } });
+    const listed = await admin.listUsers(head(), { role: 'EXPERT' });
+    const all = [listed.rows];
+    for (let page = 2; page <= listed.pages; page += 1) all.push((await admin.listUsers(head(), { role: 'EXPERT', page })).rows);
+    assert.equal(all.flat().find((row) => row.id === ids.curator)?.inviteFailed, true);
+    assert.equal(await admin.retryCuratorInvite(head(), ids.curator!), true);
+    assert.equal((await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: invite.id } })).state, 'PENDING');
+    await prisma.notificationOutbox.update({ where: { id: invite.id }, data: { state: 'FAILED' } });
+    await assert.rejects(admin.retryCuratorInvite(head(), ids.curator!), /через десять минут/u);
+    await prisma.notificationOutbox.update({ where: { id: invite.id }, data: { state: 'SENT' } });
+  });
+
   it('вход по ссылке возвращает на экран из письма', async () => {
     const token = createRawToken();
     await prisma.loginToken.create({

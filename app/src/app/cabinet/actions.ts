@@ -67,6 +67,7 @@ import {
   issueAccessLink,
   openClientAccess,
   setUserStatus,
+  retryCuratorInvite,
   signExpertNda,
   requestNda,
   type Role,
@@ -1901,6 +1902,19 @@ export async function resendDeclineLetter(form: FormData): Promise<void> {
   const path = `/cabinet/manage/leads/${leadId}`;
   if (failure !== null) redirect(await withError(path, failure, { slot: 'resend', anchor: 'decline' }));
   redirect(resent ? `${path}?resent=1#decline` : `${path}#decline`);
+}
+
+/** Повтор недоставленного приглашения куратору (улучшение УЭ-08, Р-385). */
+export async function resendCuratorInvite(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  let failure: string | null = null;
+  try {
+    await retryCuratorInvite(actor, String(form.get('userId') ?? ''), await requestIp());
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить приглашение ещё раз');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/manage/users', failure));
+  redirect('/cabinet/manage/users?saved=1');
 }
 
 /**

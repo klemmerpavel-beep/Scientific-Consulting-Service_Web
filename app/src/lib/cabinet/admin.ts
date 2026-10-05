@@ -12,7 +12,7 @@ import { moscowToday } from './clock.ts';
 import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
 import { parseAmount } from './money.ts';
-import { enqueue } from './outbox.ts';
+import { enqueue, LEAD_RETRY_PAUSE_MS } from './outbox.ts';
 import { curatorAccessLetter, invitationLetter, ndaSignedLetter } from './curator-letters.ts';
 import { ndaRequestOpen, ndaWaitingLetter } from './curator-welcome.ts';
 
@@ -321,7 +321,57 @@ export async function listUsers(actor: Actor, filter: UserFilter = {}) {
       _count: { select: { sessions: true } },
     },
   });
-  return { rows, total, page, pages };
+  // Недоставленное приглашение куратору — с кнопкой повтора в строке
+  // (улучшение УЭ-08, решение Р-385).
+  const failed = await prisma.notificationOutbox.findMany({
+    where: {
+      userId: { in: rows.map((row) => row.id) },
+      eventKind: 'CURATOR_INVITED',
+      channel: 'EMAIL',
+      state: 'FAILED',
+    },
+    select: { userId: true },
+  });
+  const failedIds = new Set(failed.map((row) => row.userId));
+  return { rows: rows.map((row) => ({ ...row, inviteFailed: failedIds.has(row.id) })), total, page, pages };
+}
+
+/**
+ * Отправить недоставленное приглашение куратору ещё раз — с «Учётных
+ * записей», тем же приёмом, что письмо об отказе (М-19, Р-307): только
+ * отказавшее письмо, не чаще раза в десять минут, в журнал (улучшение
+ * УЭ-08, решение Р-385). `false` — повторять нечего.
+ */
+export async function retryCuratorInvite(actor: Actor, userId: string, ip?: string | null): Promise<boolean> {
+  ensure(actor, 'USER_MANAGE');
+  const row = await prisma.notificationOutbox.findFirst({
+    where: { userId, eventKind: 'CURATOR_INVITED', channel: 'EMAIL' },
+    select: { id: true, state: true },
+  });
+  if (row === null || row.state !== 'FAILED') return false;
+  const recent = await prisma.auditEvent.findFirst({
+    where: {
+      action: 'OUTBOX_RETRY',
+      objectType: 'NotificationOutbox',
+      objectId: row.id,
+      occurredAt: { gt: new Date(Date.now() - LEAD_RETRY_PAUSE_MS) },
+    },
+    select: { id: true },
+  });
+  if (recent !== null) throw new Error('Приглашение уже отправлено заново: повторить можно через десять минут');
+  const claimed = await prisma.notificationOutbox.updateMany({
+    where: { id: row.id, state: 'FAILED' },
+    data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
+  });
+  if (claimed.count === 0) return false;
+  await record(actor, {
+    action: 'OUTBOX_RETRY',
+    objectType: 'NotificationOutbox',
+    objectId: row.id,
+    payload: { eventKind: 'CURATOR_INVITED', userId },
+    ip,
+  });
+  return true;
 }
 
 /**
