@@ -7,7 +7,15 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { executableContent, fileRefusal, lastExtension, normalizeName } from '../src/lib/cabinet/file-guard.ts';
+import {
+  BLOCKED_EXAMPLES,
+  BLOCKED_EXTENSIONS,
+  BLOCKED_HINT,
+  executableContent,
+  fileRefusal,
+  lastExtension,
+  normalizeName,
+} from '../src/lib/cabinet/file-guard.ts';
 
 /** Минимальный ZIP с данными именами записей — только центральный каталог. */
 function zipWith(names: readonly string[]): Buffer {
@@ -81,5 +89,14 @@ describe('исполняемые файлы', () => {
 
   it('отказ называет файл и говорит, что делать', () => {
     assert.match(fileRefusal('setup.msi', text) ?? '', /«setup\.msi» не принят.*напишите менеджеру/u);
+  });
+});
+
+describe('подсказка поля файла (УК-16, Р-367)', () => {
+  it('примеры — из перечня запрещённого и все названы в подсказке', () => {
+    for (const ext of BLOCKED_EXAMPLES) {
+      assert.ok(BLOCKED_EXTENSIONS.has(ext), ext);
+      assert.ok(BLOCKED_HINT.includes(`.${ext}`), ext);
+    }
   });
 });

@@ -18,6 +18,15 @@ export const BLOCKED_EXTENSIONS: ReadonlySet<string> = new Set([
   'reg', 'jar', 'apk', 'aab', 'xapk', 'dmg', 'pkg', 'deb', 'rpm',
 ]);
 
+/**
+ * Примеры запрещённого в подсказке поля файла: человек узнаёт о запрете до
+ * выбора файла, а не из отказа (улучшение УК-16, решение Р-367). Полный
+ * перечень длинен для подсказки; примеры берутся из него.
+ */
+export const BLOCKED_EXAMPLES = ['exe', 'msi', 'bat', 'cmd', 'js', 'jar', 'apk', 'dmg'] as const;
+
+export const BLOCKED_HINT = `Не принимаются программы, установщики и сценарии: ${BLOCKED_EXAMPLES.map((ext) => `.${ext}`).join(', ')} и другие исполняемые файлы.`;
+
 /** Знаки направления письма: U+202E показывает «fdp.exe» как «exe.pdf». */
 const BIDI = /[‎‏‪-‮⁦-⁩]/gu;
 

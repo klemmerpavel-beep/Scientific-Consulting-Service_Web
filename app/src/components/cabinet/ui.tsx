@@ -15,6 +15,7 @@ import {
 } from './tokens.ts';
 import type { WaveMood } from '../../lib/cabinet/charts';
 import { presentAuthor } from '../../lib/cabinet/access';
+import { BLOCKED_HINT } from '../../lib/cabinet/file-guard';
 import {
   STAGE_STATE_LABEL,
   stageLabel,
@@ -796,7 +797,10 @@ export function FileField({
   labelHidden?: boolean;
 }) {
   const id = fieldId(name, scope);
-  const hintId = hint === undefined ? undefined : `${id}-hint`;
+  // Запрет исполняемых файлов — в подсказке каждого поля без своего перечня
+  // расширений; поле книги заказов (`accept`) его не несёт (УК-16, Р-367).
+  const fullHint = accept === undefined ? [hint, BLOCKED_HINT].filter(Boolean).join(' ') : hint;
+  const hintId = fullHint === undefined ? undefined : `${id}-hint`;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <FieldLabel id={id} label={label} required={required} hidden={labelHidden} />
@@ -808,9 +812,9 @@ export function FileField({
         required={required}
         describedBy={hintId}
       />
-      {hint === undefined ? null : (
+      {fullHint === undefined ? null : (
         <span id={hintId} style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
-          {hint}
+          {fullHint}
         </span>
       )}
     </div>
