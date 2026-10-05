@@ -9,11 +9,11 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  uploadFailedText,
   contactKindsFor,
   contactLabelFor,
   contactNoteFor,
   settingsTexts,
+  uploadFailedText,
 } from '../src/lib/cabinet/staff-texts.ts';
 import type { ContactKind } from '../src/lib/cabinet/channels.ts';
 
@@ -99,6 +99,26 @@ describe('строка об удалении данных без отметки 
       assert.match(text, /^Потребовать удаления своих персональных данных можно письмом/u);
       assert.doesNotMatch(text, /[Оо]тозвать/u);
       assert.match(text, / на$/u);
+    }
+  });
+});
+
+/** Общие подписи клиента — как `CONTACT_NOTE` в `channels.ts` (модуль с базой здесь не грузится). */
+const CONTACT_NOTE: Record<ContactKind, string> = {
+  EMAIL: 'Уведомления и ответы менеджера приходят письмом.',
+  TELEGRAM: 'То же, но сообщением в Telegram — быстрее письма.',
+  PHONE_CALL: 'Менеджер звонит по важным поворотам работы, а не по каждой мелочи.',
+  MESSENGER: 'Менеджер пишет туда, где вам удобно отвечать.',
+  FULL_SUPPORT: 'Менеджер ведёт работу сам и связывается первым, не дожидаясь вопросов.',
+};
+
+describe('подписи способов связи руководителя (УМ-15, УЭ-02, Р-370)', () => {
+  it('без обращений клиента: не «ответы менеджера», не «повороты работы»', () => {
+    const kinds = ['EMAIL', 'TELEGRAM', 'PHONE_CALL', 'MESSENGER', 'FULL_SUPPORT'] as const;
+    for (const kind of kinds) {
+      const note = contactNoteFor('HEAD', kind, CONTACT_NOTE);
+      assert.notEqual(note, CONTACT_NOTE[kind], kind);
+      assert.doesNotMatch(note, /ответы менеджера|поворотам работы|ведёт работу сам/u, kind);
     }
   });
 });

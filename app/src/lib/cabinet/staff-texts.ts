@@ -117,6 +117,20 @@ const CURATOR_NOTE: Partial<Record<ContactKind, string>> = {
   FULL_SUPPORT: 'Услуга клиенту, куратору она не нужна — этот способ можно убрать.',
 };
 
+/**
+ * Пояснения для руководителя: ему пишут и звонят менеджеры практики, а
+ * кабинет шлёт сводку и сигналы (улучшения УМ-15, УЭ-02, решение Р-370).
+ * Прежде под его способами связи стояли подписи клиента: «ответы
+ * менеджера», «Менеджер звонит по важным поворотам работы».
+ */
+const HEAD_NOTE: Partial<Record<ContactKind, string>> = {
+  EMAIL: 'Утренняя сводка, сигналы и вопросы сотрудников приходят письмом.',
+  TELEGRAM: 'Сводка и сигналы — сообщением в Telegram, быстрее письма.',
+  PHONE_CALL: 'Менеджеры звонят, когда вопрос быстрее решить голосом.',
+  MESSENGER: 'Менеджеры пишут туда, где вам удобно отвечать.',
+  FULL_SUPPORT: 'Услуга клиенту, руководителю она не нужна — этот способ можно убрать.',
+};
+
 /** Сотрудник практики — подписи не для клиента (М-20, Э-10, РК-14). */
 const staffSide = (role: Role) => role === 'MANAGER' || role === 'EXPERT' || role === 'HEAD';
 
@@ -132,7 +146,14 @@ export function contactLabelFor(role: Role, kind: ContactKind, base: Record<Cont
 
 /** Пояснение под способом связи для роли; `base` — общее пояснение. */
 export function contactNoteFor(role: Role, kind: ContactKind, base: Record<ContactKind, string>): string {
-  const own = role === 'MANAGER' ? MANAGER_NOTE[kind] : role === 'EXPERT' ? CURATOR_NOTE[kind] : undefined;
+  const own =
+    role === 'MANAGER'
+      ? MANAGER_NOTE[kind]
+      : role === 'EXPERT'
+        ? CURATOR_NOTE[kind]
+        : role === 'HEAD'
+          ? HEAD_NOTE[kind]
+          : undefined;
   return own ?? base[kind];
 }
 
