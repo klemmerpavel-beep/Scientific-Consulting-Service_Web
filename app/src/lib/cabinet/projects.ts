@@ -1253,6 +1253,58 @@ function dueKey(value: Date | null): string | null {
 }
 
 /** Причина переноса срока: её читает клиент (требование М-15, Р-302). */
+/**
+ * Перенос срока работы: событие в историю и письма клиенту и куратору с
+ * причиной — как перенос срока этапа (улучшение УМ-12, решение Р-391).
+ * Куратору — без названия и темы работы до договора поручения не пишется.
+ */
+async function announceWorkDueChange(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  actor: Actor,
+  projectId: string,
+  from: Date | null,
+  to: Date | null,
+  reason: string,
+): Promise<void> {
+  const project = await tx.project.findUniqueOrThrow({
+    where: { id: projectId },
+    select: {
+      code: true,
+      title: true,
+      client: { select: { userId: true } },
+      expert: { select: { id: true, status: true, expertProfile: { select: { ndaSignedAt: true } } } },
+    },
+  });
+  await tx.projectEvent.create({
+    data: { projectId, actorId: actor.id, kind: 'PROJECT_DUE_CHANGED', payload: { dueFrom: dueKey(from), dueTo: dueKey(to), reason } },
+  });
+  const line = to === null ? 'Срок работы снят.' : `Новый срок работы — ${formatDay(to)}.`;
+  const stamp = `${dueKey(to) ?? 'none'}:${Date.now()}`;
+  if (project.client.userId !== null) {
+    await enqueue(tx, {
+      userId: project.client.userId,
+      projectId,
+      eventKind: 'PROJECT_DUE_CHANGED',
+      subject: `Срок работы «${project.title}» изменён`,
+      body: `${workLine(project, true)}\n${line}\nПричина: ${reason}\nОткрыть работу можно в личном кабинете.`,
+      dedupKey: `project:${projectId}:due-changed:${stamp}`,
+      path: `/cabinet/projects/${project.code}`,
+    });
+  }
+  const expert = project.expert;
+  if (expert !== null && expert.status === 'ACTIVE' && (expert.expertProfile?.ndaSignedAt ?? null) !== null) {
+    await enqueue(tx, {
+      userId: expert.id,
+      projectId,
+      eventKind: 'PROJECT_DUE_CHANGED',
+      subject: `Срок работы ${project.code} изменён`,
+      body: `${workLine(project, false)}\n${line}\nПричина: ${reason}`,
+      dedupKey: `project:${projectId}:due-changed-expert:${stamp}`,
+      path: `/cabinet/projects/${project.code}`,
+    });
+  }
+}
+
 function ensureDueReason(reason: string): void {
   if (reason === '') {
     throw new Error('Срок этапа переносится с причиной: её получит клиент — без неё перенос читается как срыв');
@@ -1388,6 +1440,11 @@ export async function editProject(
     readonly dueOn?: Date | null;
     /** Срок согласования этапа, рабочих дней; не передан — не меняется. */
     readonly approvalDays?: number;
+    /**
+     * Причина смены срока работы: обязательна, если срок уже был и
+     * меняется или снимается (улучшение УМ-12, решение Р-391).
+     */
+    readonly reason?: string | null;
   },
 ) {
   const ref = await projectRef(input.projectId);
@@ -1422,15 +1479,29 @@ export async function editProject(
   });
   // Карточка закрытой работы не правится (М-10, решение Р-293).
   ensureWorkOpen(before.status);
-  const saved = await prisma.project.update({
-    where: { id: input.projectId },
-    data: {
-      title,
-      topic: input.topic?.trim() || null,
-      summary: input.summary?.trim() || null,
-      dueOn: input.dueOn ?? null,
-      ...(input.approvalDays === undefined ? {} : { approvalDays: input.approvalDays }),
-    },
+  // Срок работы, который уже был, меняется с причиной — как срок этапа
+  // (М-15, Р-302). Первый срок — планирование, причины не требует
+  // (улучшение УМ-12, решение Р-391).
+  const nextDue = input.dueOn ?? null;
+  const shifted = before.dueOn !== null && dueKey(before.dueOn) !== dueKey(nextDue);
+  const why = (input.reason ?? '').trim();
+  if (shifted) {
+    if (why === '') throw new Error('Срок работы переносится с причиной: её получит клиент — без неё перенос читается как срыв');
+    if (why.length > 1000) throw new Error('Причина переноса — не длиннее 1000 знаков');
+  }
+  const saved = await prisma.$transaction(async (tx) => {
+    const updated = await tx.project.update({
+      where: { id: input.projectId },
+      data: {
+        title,
+        topic: input.topic?.trim() || null,
+        summary: input.summary?.trim() || null,
+        dueOn: nextDue,
+        ...(input.approvalDays === undefined ? {} : { approvalDays: input.approvalDays }),
+      },
+    });
+    if (shifted) await announceWorkDueChange(tx, actor, input.projectId, before.dueOn, nextDue, why);
+    return updated;
   });
   await record(actor, {
     action: 'PROJECT_EDITED',

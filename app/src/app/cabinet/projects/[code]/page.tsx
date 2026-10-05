@@ -104,6 +104,7 @@ const EVENT_LABEL: Record<string, string> = {
   EXPERT_ASSIGNED: 'Назначен куратор',
   PLAN_CHANGED: 'План работ изменён',
   STAGE_DUE_CHANGED: 'Перенесён срок этапа',
+  PROJECT_DUE_CHANGED: 'Перенесён срок работы',
   STAGE_STATE_CHANGED: 'Этап сменил состояние',
   STAGE_RETURNED: 'Этап возвращён с замечаниями',
   VERSION_UPLOADED: 'Приложена новая версия материала',
@@ -240,6 +241,13 @@ function eventLine(
     const where = stage === undefined ? 'Этап' : `Этап ${atPosition(data, stage)} «${stage.title}»`;
     const to = typeof data.dueTo === 'string' ? formatDate(new Date(`${data.dueTo}T00:00:00Z`)) : null;
     const line = to === null ? `${where} — срок снят` : `${where} — срок перенесён на ${to}`;
+    return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
+  }
+
+  // Перенос срока работы — с датой и причиной (УМ-12, Р-391).
+  if (kind === 'PROJECT_DUE_CHANGED') {
+    const to = typeof data.dueTo === 'string' ? formatDate(new Date(`${data.dueTo}T00:00:00Z`)) : null;
+    const line = to === null ? 'Срок работы снят' : `Срок работы перенесён на ${to}`;
     return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
   }
 
@@ -1119,6 +1127,14 @@ export default async function ProjectScreen({
                     scope="project"
                     type="date"
                     defaultValue={draft.dueOn ?? project.dueOn?.toISOString().slice(0, 10) ?? ''}
+                  />
+                  {/* Перенос срока работы — с причиной для клиента (УМ-12, Р-391). */}
+                  <Field
+                    label="Причина переноса срока работы"
+                    name="dueReason"
+                    scope="project"
+                    defaultValue={draft.dueReason ?? ''}
+                    hint="Нужна, только если срок работы меняется: клиент и куратор получат её письмом."
                   />
                   {/* Срок согласования этапа — по п. 7.2 оферты не меньше
                       пяти рабочих дней (требование Т-15, решение Р-290). */}

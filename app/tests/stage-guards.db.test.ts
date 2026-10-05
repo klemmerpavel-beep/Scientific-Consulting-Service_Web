@@ -327,6 +327,30 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     assert.equal(waited.until?.toISOString().slice(0, 10), '2026-11-05');
   });
 
+  it('УМ-12: перенос срока работы — с причиной, в истории и письмом клиенту (Р-391)', async () => {
+    const { projectId } = await clientWithWork('WDUE');
+    const title = 'Работа со сроком';
+    // Первый срок — без причины.
+    await projects.editProject(curator(), { projectId, title, dueOn: new Date('2026-12-01T00:00:00Z') });
+    await assert.rejects(
+      projects.editProject(curator(), { projectId, title, dueOn: new Date('2026-12-20T00:00:00Z') }),
+      /с причиной/u,
+    );
+    await projects.editProject(curator(), {
+      projectId,
+      title,
+      dueOn: new Date('2026-12-20T00:00:00Z'),
+      reason: 'Диссовет перенёс заседание',
+    });
+    const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId, kind: 'PROJECT_DUE_CHANGED' } });
+    assert.deepEqual(event.payload, { dueFrom: '2026-12-01', dueTo: '2026-12-20', reason: 'Диссовет перенёс заседание' });
+    const letter = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { projectId, eventKind: 'PROJECT_DUE_CHANGED', channel: 'EMAIL' },
+    });
+    assert.match(letter.body, /^Работа «/u);
+    assert.match(letter.body, /Причина: Диссовет перенёс заседание/u);
+  });
+
   it('перенос срока этапа и работы попадает в журнал', async () => {
     const projectId = await newProject('D');
     const stage = await prisma.stage.create({

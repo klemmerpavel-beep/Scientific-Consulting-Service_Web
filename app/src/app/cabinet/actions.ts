@@ -660,6 +660,7 @@ export async function saveProject(form: FormData): Promise<void> {
       topic: String(form.get('topic') ?? ''),
       summary: String(form.get('summary') ?? ''),
       dueOn: dateOrNull(form.get('dueOn')),
+      reason: String(form.get('dueReason') ?? ''),
       // Поле есть только у формы карточки; пустое значение не меняет срок.
       ...(String(form.get('approvalDays') ?? '').trim() === ''
         ? {}
@@ -670,7 +671,7 @@ export async function saveProject(form: FormData): Promise<void> {
       code,
       'project',
       error,
-      fieldsOf(form, ['title', 'topic', 'summary', 'dueOn', 'approvalDays']),
+      fieldsOf(form, ['title', 'topic', 'summary', 'dueOn', 'dueReason', 'approvalDays']),
     );
   }
   redirect(`/cabinet/projects/${code}`);

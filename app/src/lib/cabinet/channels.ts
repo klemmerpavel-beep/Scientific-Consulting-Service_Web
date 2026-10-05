@@ -282,6 +282,8 @@ export const RULE_EVENTS: readonly {
   { kind: 'DEADLINE_IN_3_DAYS', title: 'Срок этапа через три дня', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'DEADLINE_MISSED', title: 'Срок этапа сорван', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'STAGE_DUE_CHANGED', title: 'Изменён срок этапа', group: 'Работа куратора', roles: ['EXPERT'] },
+  // Срок всей работы — с причиной (УМ-12, Р-391).
+  { kind: 'PROJECT_DUE_CHANGED', title: 'Изменён срок работы', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'STAGE_APPROVED', title: 'Этап согласован или принят по сроку', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'PROJECT_STATUS_CHANGED', title: 'Работа приостановлена, возобновлена, завершена или отменена', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'WORK_ASSIGNED', title: 'Вас назначили куратором работы', group: 'Работа куратора', roles: ['EXPERT'] },
