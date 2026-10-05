@@ -22,6 +22,7 @@ import {
   TABLE_CELL,
   TABLE_HEAD,
   TableCard,
+  Pager,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import {
@@ -190,26 +191,8 @@ export default async function AllLeadsScreen({
         </TableCard>
       )}
 
-      {list.pages > 1 ? (
-        <nav
-          aria-label="Страницы перечня"
-          style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 20 }}
-        >
-          {list.page > 1 ? (
-            <a className="cab-mark" href={pageHref(kept, list.page - 1)}>
-              Предыдущие
-            </a>
-          ) : null}
-          <Text muted style={{ margin: 0 }}>
-            Страница {list.page} из {list.pages}
-          </Text>
-          {list.page < list.pages ? (
-            <a className="cab-mark" href={pageHref(kept, list.page + 1)}>
-              Следующие
-            </a>
-          ) : null}
-        </nav>
-      ) : null}
+      {/* Постраничность — общей частью (УМ-08, Р-390). */}
+      <Pager label="Страницы перечня" page={list.page} pages={list.pages} hrefFor={(page) => pageHref(kept, page)} />
     </Shell>
   );
 }

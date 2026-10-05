@@ -27,6 +27,7 @@ import {
   formatDate,
   plural,
   turnLabel,
+  Pager,
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
@@ -1389,23 +1390,15 @@ export default async function ManageQueue({
           )}
           {/* Очередь листается: прежде видна была только первая страница
               (требование М-06, решение Р-304). */}
-          {queue.pages <= 1 ? null : (
-            <nav aria-label="Страницы очереди заявок" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
-              {queue.page > 1 ? (
-                <a className="cab-mark" href={`/cabinet/manage?page=${queue.page - 1}`}>
-                  Предыдущие
-                </a>
-              ) : null}
-              <Text muted size={13} style={{ margin: 0 }}>
-                Страница {queue.page} из {queue.pages}
-              </Text>
-              {queue.page < queue.pages ? (
-                <a className="cab-mark" href={`/cabinet/manage?page=${queue.page + 1}`}>
-                  Следующие
-                </a>
-              ) : null}
-            </nav>
-          )}
+          {/* Постраничность — общей частью (УМ-08, Р-390). */}
+          <Pager
+            label="Страницы очереди заявок"
+            page={queue.page}
+            pages={queue.pages}
+            hrefFor={(page) => `/cabinet/manage?page=${page}`}
+            textSize={13}
+            style={{ gap: 16, marginTop: 8 }}
+          />
         </BoardColumn>
       </Board>
 

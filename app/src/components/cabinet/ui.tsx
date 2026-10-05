@@ -768,6 +768,53 @@ export function Tabs({
 }
 
 /**
+ * Постраничность перечня — одна общая часть вместо шести копий (улучшение
+ * УМ-08, решение Р-390). Разметка — `nav`: она управляет страницей и в счёт
+ * пяти блоков не входит (Р-183). Одна страница — ничего.
+ */
+export function Pager({
+  label,
+  page,
+  pages,
+  hrefFor,
+  total,
+  textSize = 14,
+  style,
+}: {
+  /** Подпись для чтения с экрана: «Страницы перечня». */
+  label: string;
+  page: number;
+  pages: number;
+  hrefFor: (page: number) => string;
+  /** «12 работ» — дописывается к «Страница N из M». */
+  total?: string;
+  textSize?: number;
+  style?: CSSProperties;
+}) {
+  if (pages <= 1) return null;
+  return (
+    <nav
+      aria-label={label}
+      style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', marginTop: 20, ...style }}
+    >
+      {page > 1 ? (
+        <a className="cab-mark" href={hrefFor(page - 1)}>
+          Предыдущие
+        </a>
+      ) : null}
+      <Text muted size={textSize} style={{ margin: 0 }}>
+        {`Страница ${page} из ${pages}${total === undefined ? '' : ` · всего ${total}`}`}
+      </Text>
+      {page < pages ? (
+        <a className="cab-mark" href={hrefFor(page + 1)}>
+          Следующие
+        </a>
+      ) : null}
+    </nav>
+  );
+}
+
+/**
  * Поле выбора файла.
  *
  * Своя связка подписи и `input[type=file]` стояла на трёх экранах в трёх

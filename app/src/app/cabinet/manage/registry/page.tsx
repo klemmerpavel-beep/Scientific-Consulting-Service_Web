@@ -18,6 +18,7 @@ import {
   formatDate,
   formatDay,
   plural,
+  Pager,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { flaggedMessages } from '../../../../lib/cabinet/messages';
@@ -175,33 +176,14 @@ export default async function RegistryScreen({
             </table>
           </TableCard>
 
-          {pages <= 1 ? null : (
-            <nav
-              aria-label="Страницы реестра клиентов"
-              style={{
-                display: 'flex',
-                gap: 20,
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                marginTop: 20,
-              }}
-            >
-              {page > 1 ? (
-                <a className="cab-mark" href={href('clients', page - 1)}>
-                  Предыдущие
-                </a>
-              ) : null}
-              <Text muted size={14}>
-                Страница {page} из {pages} · всего {matched.length}{' '}
-                {plural(matched.length, 'клиент', 'клиента', 'клиентов')}
-              </Text>
-              {page < pages ? (
-                <a className="cab-mark" href={href('clients', page + 1)}>
-                  Следующие
-                </a>
-              ) : null}
-            </nav>
-          )}
+          {/* Постраничность — общей частью (УМ-08, Р-390). */}
+          <Pager
+            label="Страницы реестра клиентов"
+            page={page}
+            pages={pages}
+            hrefFor={(next) => href('clients', next)}
+            total={`${matched.length} ${plural(matched.length, 'клиент', 'клиента', 'клиентов')}`}
+          />
         </>
       ) : null}
 

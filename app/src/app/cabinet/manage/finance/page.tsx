@@ -26,6 +26,7 @@ import {
   TABLE_NUM_HEAD,
   TableCard,
   plural,
+  Pager,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { financeSummary } from '../../../../lib/cabinet/finance';
@@ -340,27 +341,14 @@ export default async function FinanceScreen({
         </table>
       </TableCard>
 
-      {pages <= 1 ? null : (
-        <nav
-          aria-label="Страницы расчётов"
-          style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', marginTop: 20 }}
-        >
-          {page > 1 ? (
-            <a className="cab-mark" href={href(all ? 'all' : 'owing', page - 1)}>
-              Предыдущие
-            </a>
-          ) : null}
-          <Text muted size={14}>
-            Страница {page} из {pages} · всего {chosen.length}{' '}
-            {plural(chosen.length, 'работа', 'работы', 'работ')}
-          </Text>
-          {page < pages ? (
-            <a className="cab-mark" href={href(all ? 'all' : 'owing', page + 1)}>
-              Следующие
-            </a>
-          ) : null}
-        </nav>
-      )}
+      {/* Постраничность — общей частью (УМ-08, Р-390). */}
+      <Pager
+        label="Страницы расчётов"
+        page={page}
+        pages={pages}
+        hrefFor={(next) => href(all ? 'all' : 'owing', next)}
+        total={`${chosen.length} ${plural(chosen.length, 'работа', 'работы', 'работ')}`}
+      />
     </Shell>
   );
 }

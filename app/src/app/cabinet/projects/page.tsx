@@ -30,6 +30,7 @@ import {
   formatDate,
   stageLabel,
   type StageStateKey,
+  Pager,
 } from '../../../components/cabinet/ui';
 import { unreadByProject } from '../../../lib/cabinet/messages';
 import {
@@ -822,33 +823,15 @@ export default async function ProjectsScreen({
         </ul>
       )}
 
-      {list.pages <= 1 ? null : (
-        <nav
-          aria-label="Страницы перечня"
-          style={{
-            display: 'flex',
-            gap: 20,
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            marginTop: 24,
-          }}
-        >
-          {list.page > 1 ? (
-            <a className="cab-mark" href={href({ page: list.page - 1 })}>
-              Предыдущие
-            </a>
-          ) : null}
-          <Text muted size={14}>
-            Страница {list.page} из {list.pages} · всего {list.total}{' '}
-            {plural(list.total, 'работа', 'работы', 'работ')}
-          </Text>
-          {list.page < list.pages ? (
-            <a className="cab-mark" href={href({ page: list.page + 1 })}>
-              Следующие
-            </a>
-          ) : null}
-        </nav>
-      )}
+      {/* Постраничность — общей частью (УМ-08, Р-390). */}
+      <Pager
+        label="Страницы перечня"
+        page={list.page}
+        pages={list.pages}
+        hrefFor={(page) => href({ page })}
+        total={`${list.total} ${plural(list.total, 'работа', 'работы', 'работ')}`}
+        style={{ marginTop: 24 }}
+      />
     </Shell>
   );
 }
