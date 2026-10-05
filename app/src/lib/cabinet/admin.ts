@@ -13,7 +13,7 @@ import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
 import { parseAmount } from './money.ts';
 import { enqueue } from './outbox.ts';
-import { invitationLetter, ndaSignedLetter } from './curator-letters.ts';
+import { curatorAccessLetter, invitationLetter, ndaSignedLetter } from './curator-letters.ts';
 import { ndaRequestOpen, ndaWaitingLetter } from './curator-welcome.ts';
 
 export type Role = 'CLIENT' | 'EXPERT' | 'MANAGER' | 'HEAD';
@@ -743,6 +743,32 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
       dedupKey: `nda-signed:${userId}`,
       path: '/cabinet/projects',
     });
+    // Менеджерам его действующих работ — куратор может приступать
+    // (улучшение УМ-05, решение Р-375). Тому, кто отметил, не пишется.
+    const [curator, works] = await Promise.all([
+      prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { fullName: true } }),
+      prisma.project.findMany({
+        where: { expertId: userId, status: { in: ['ACTIVE', 'PAUSED'] } },
+        orderBy: { code: 'asc' },
+        select: { code: true, title: true, managerId: true },
+      }),
+    ]);
+    const byManager = new Map<string, { code: string; title: string }[]>();
+    for (const work of works) {
+      if (work.managerId === actor.id) continue;
+      byManager.set(work.managerId, [...(byManager.get(work.managerId) ?? []), work]);
+    }
+    for (const [managerId, own] of byManager) {
+      const letter = curatorAccessLetter(curator.fullName, own);
+      await enqueue(prisma, {
+        userId: managerId,
+        eventKind: 'CURATOR_NDA_SIGNED',
+        subject: letter.subject,
+        body: letter.body,
+        dedupKey: `nda-signed:${userId}:manager:${managerId}`,
+        path: own.length === 1 ? `/cabinet/projects/${own[0]!.code}` : '/cabinet/projects',
+      });
+    }
   }
 }
 

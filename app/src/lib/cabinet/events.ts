@@ -40,6 +40,7 @@ export type EventKind =
   | 'LEAD_RECEIVED'
   | 'CURATOR_INVITED'
   | 'NDA_SIGNED'
+  | 'CURATOR_NDA_SIGNED'
   | 'STAGE_HANDED_OVER'
   | 'STAGE_HANDED_BACK'
   | 'CURATOR_TURN'
@@ -118,6 +119,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   LEAD_RECEIVED: 'заявка получена',
   CURATOR_INVITED: 'вам открыт кабинет куратора',
   NDA_SIGNED: 'доступ к материалам открыт',
+  CURATOR_NDA_SIGNED: 'куратору открыт доступ к материалам',
   STAGE_HANDED_OVER: 'куратор сдал этап',
   STAGE_HANDED_BACK: 'этап возвращён вам',
   CURATOR_TURN: 'ход за вами',

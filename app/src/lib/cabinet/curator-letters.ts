@@ -56,6 +56,21 @@ export function ndaSignedLetter(): Letter {
   };
 }
 
+/**
+ * Менеджеру — куратору его действующих работ отмечен договор поручения:
+ * куратор видит материалы и может приступать (улучшение УМ-05, решение
+ * Р-375). Письмо сотруднику: с кодами работ, без данных клиента.
+ */
+export function curatorAccessLetter(curator: string, works: readonly { code: string; title: string }[]): Letter {
+  return {
+    subject: `Куратору ${curator} открыт доступ к материалам`,
+    body:
+      `Руководитель отметил договор поручения с куратором ${curator}. Ему открыты материалы ваших работ:\n` +
+      works.map((work) => `— ${work.code} — ${work.title}`).join('\n') +
+      '\nКуратор может приступать к этапам.',
+  };
+}
+
 export interface AssignedWork {
   readonly code: string;
   readonly title: string;

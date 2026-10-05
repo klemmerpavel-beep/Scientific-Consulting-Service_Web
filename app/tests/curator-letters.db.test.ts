@@ -116,6 +116,14 @@ describe('письма куратору (Э-03)', { skip: !enabled }, async () =
     assert.equal(rows.length, 1, 'исправление даты дало второе письмо');
     assert.equal(rows[0]!.subject, 'Доступ к материалам открыт');
     assert.equal(rows[0]!.path, '/cabinet/projects');
+    // Менеджеру работы куратора — одно письмо с кодом работы (УМ-05, Р-375).
+    const toManager = await letters(ids.manager!, 'CURATOR_NDA_SIGNED');
+    assert.equal(toManager.length, 1);
+    assert.match(toManager[0]!.subject, /открыт доступ к материалам/u);
+    assert.match(toManager[0]!.body, new RegExp(ids.code!));
+    assert.doesNotMatch(toManager[0]!.body, /Заказчикова/u);
+    assert.equal(toManager[0]!.path, `/cabinet/projects/${ids.code}`);
+    assert.equal((await letters(ids.head!, 'CURATOR_NDA_SIGNED')).length, 0, 'письмо тому, кто отметил');
   });
 
   it('назначение с договором — название и тема, кнопка на карточку, которую куратор видит', async () => {
