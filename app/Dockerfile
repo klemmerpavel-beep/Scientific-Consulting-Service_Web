@@ -44,6 +44,12 @@ ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ARG NEXT_PUBLIC_METRIKA_ID=""
 ENV NEXT_PUBLIC_METRIKA_ID=$NEXT_PUBLIC_METRIKA_ID
 
+# Кнопка замечаний справа внизу (решение Р-403). Пустое значение — кнопка
+# есть; `off` — кнопки нет нигде и приём замечаний отвечает 404. Как и
+# номер счётчика, вшивается при сборке.
+ARG NEXT_PUBLIC_FEEDBACK_WIDGET=""
+ENV NEXT_PUBLIC_FEEDBACK_WIDGET=$NEXT_PUBLIC_FEEDBACK_WIDGET
+
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

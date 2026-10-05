@@ -74,3 +74,7 @@ app/AGENTS.md
 app/CLAUDE.md
 # Метки версий файлов Диска, скачанных tools/disk.mjs
 .disk-etags.json
+
+# Замечания, забранные с боевого сайта утилитой tools/feedback-pull.mjs
+# (решение Р-405): рабочая копия для правок, в историю ей незачем.
+feedback-export/

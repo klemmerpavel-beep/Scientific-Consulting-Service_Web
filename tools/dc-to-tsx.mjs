@@ -368,6 +368,21 @@ const { tpl, styles, logic, head } = parseDc(src);
 
 const jsx = convert(tpl.trim(), path.basename(inFile));
 
+// Благодарность за заявку — всплывающим окном поверх страницы, а не
+// строкой под формой (решение Р-406). Текст остаётся в макете: из блока
+// `data-sent` берётся его строка, из обработчика — какой блок к какой
+// форме относится. Отзыв пишется в своём окне и благодарит там же — его
+// обработчик остаётся прежним.
+const sentText = {};
+for (const m of tpl.matchAll(/data-sent="([\w-]+)"[\s\S]*?--pd-ok-ink\)">([^<]+)<\/span>/g)) {
+  sentText[m[1]] = m[2].trim();
+}
+const leadThanks = {};
+for (const m of logic.matchAll(/(submit\w*)\s*:\s*e\s*=>\s*\{[^\n]*?data-sent="([\w-]+)"/g)) {
+  if (m[1] === 'submitReview' || !sentText[m[2]]) continue;
+  leadThanks[m[1]] = sentText[m[2]];
+}
+
 // таблица стилей: правила из helmet + классы взаимодействия
 // Базовое оформление в макетах живёт в атрибуте style, а он сильнее любого
 // класса. Без !important правила наведения и нажатия не срабатывали вовсе:
@@ -398,6 +413,9 @@ import { submitLead } from '../../lib/submit-lead';
 import PhotoSlot from '../PhotoSlot';
 import { ABOVE_THE_FOLD } from '../photos';
 
+/** Текст благодарности по обработчику формы заявки — из макета (Р-406). */
+const LEAD_THANKS: Record<string, string> = ${JSON.stringify(leadThanks, null, 2)};
+
 const css = \`
 ${styles.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')}
 ${interactionCss.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')}
@@ -419,6 +437,13 @@ ${logicBody}
       const outcome = await submitLead(e, ${JSON.stringify(source || 'landing')}, key.slice('submit'.length).toLowerCase() || 'request');
       if (outcome.ok) {
         this.setState((s: any) => ({ __ui: { ...(s.__ui ?? {}), pending: false } }));
+        // Заявка: благодарность всплывает поверх страницы, форма уже
+        // очищена (components/LeadThanks.tsx, Р-406). Прочее — как в макете.
+        const thanks = LEAD_THANKS[key];
+        if (thanks && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('pd:lead-sent', { detail: { text: thanks, form } }));
+          return;
+        }
         if (typeof original === 'function') original({ preventDefault() {}, currentTarget: form });
         return;
       }

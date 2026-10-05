@@ -179,6 +179,12 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
 
   it('настоящий отказ наращивает попытки и кончается пометкой неудачи', async () => {
     // Отказ без обращения в сеть: канал Telegram при снятой привязке.
+    // Своя строка ставится первой, как в проверке выше (Р-191): порция
+    // рассылки — двадцать строк по сроку, а очередь стенда общая. Строки
+    // прошлых прогонов откладываются на час (канал почты не настроен) и
+    // через час созревают разом; их срок раньше «минус секунды», и своя
+    // строка в порцию не попадала — проверка падала в прогоне, начатом
+    // через час после предыдущего, вместе с двумя следующими.
     const row = await prisma.notificationOutbox.create({
       data: {
         userId,
@@ -187,7 +193,7 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
         subject: 'Этап ждёт ваших материалов',
         body: 'Проект PD-2026-001.',
         dedupKey: `t-${stamp}-tg`,
-        scheduledAt: new Date(Date.now() - 1000),
+        scheduledAt: new Date(0),
       },
     });
     await dispatch();
@@ -198,7 +204,7 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
 
     await prisma.notificationOutbox.update({
       where: { id: row.id },
-      data: { attempts: 4, scheduledAt: new Date(Date.now() - 1000) },
+      data: { attempts: 4, scheduledAt: new Date(0) },
     });
     await dispatch();
     const done = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: row.id } });

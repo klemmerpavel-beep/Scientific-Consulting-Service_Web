@@ -15,7 +15,7 @@ export default function Route() {
   return (
     <>
       <Page />
-      <OrgSchema />
+      <OrgSchema requisites />
     </>
   );
 }

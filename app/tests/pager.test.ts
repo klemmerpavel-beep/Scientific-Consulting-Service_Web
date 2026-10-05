@@ -1,6 +1,7 @@
 /**
  * Постраничность — одна общая часть (улучшение УМ-08, решение Р-390):
- * экраны не набирают её вручную, а шесть перечней берут `Pager`.
+ * экраны не набирают её вручную, а семь перечней берут `Pager` — седьмой
+ * перечень замечаний с виджета пришёл из main (Р-403, Р-410).
  */
 
 import assert from 'node:assert/strict';
@@ -23,8 +24,8 @@ describe('постраничность — общей частью (УМ-08)', (
     const manual = files.filter((file) => /Предыдущие/u.test(readFileSync(file, 'utf8')));
     assert.deepEqual(manual.map((file) => path.relative(APP, file)), []);
   });
-  it('шесть перечней берут общую часть', () => {
+  it('семь перечней берут общую часть', () => {
     const users = files.filter((file) => /<Pager\b/u.test(readFileSync(file, 'utf8')));
-    assert.equal(users.length, 6, users.map((file) => path.relative(APP, file)).join(', '));
+    assert.equal(users.length, 7, users.map((file) => path.relative(APP, file)).join(', '));
   });
 });

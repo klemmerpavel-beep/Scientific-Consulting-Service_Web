@@ -149,6 +149,7 @@ export const ACTIONS = [
   // Поручения ставит только руководитель (требование РК-19, решение
   // Р-352; В-19).
   'ASSIGNMENT_CREATE',
+  'FEEDBACK_REVIEW',
 ] as const;
 
 export type Action = (typeof ACTIONS)[number];
@@ -320,6 +321,11 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
 
     // Поручения ставит и отзывает руководитель (РК-19, Р-352; В-19).
     case 'ASSIGNMENT_CREATE':
+    // Разбор замечаний с виджета — раз в неделю, у руководителя: он решает,
+    // что править и в каком порядке (решение Р-403). Отдельное действие, а
+    // не право на журналы: журналы — надзор, замечания — работа над сайтом,
+    // и смешивать их значило бы выдавать одно вместе с другим.
+    case 'FEEDBACK_REVIEW':
       return head;
 
     default: {

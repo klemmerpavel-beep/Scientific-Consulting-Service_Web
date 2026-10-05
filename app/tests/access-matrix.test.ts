@@ -136,6 +136,8 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   USER_MANAGE: [false, false, false, true],
   ERASURE_EXECUTE: [false, false, false, true],
   ASSIGNMENT_CREATE: [false, false, false, true],
+  // Разбор замечаний с виджета — только руководитель (Р-403).
+  FEEDBACK_REVIEW: [false, false, false, true],
 };
 
 const ROLE_ORDER: Role[] = ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'];

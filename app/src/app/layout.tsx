@@ -4,6 +4,8 @@ import localFont from 'next/font/local';
 import './globals.css';
 import SiteMotion from '../components/SiteMotion';
 import Metrika from '../components/Metrika';
+import FeedbackWidget from '../components/FeedbackWidget';
+import LeadThanks from '../components/LeadThanks';
 
 // Шрифты лежат в репозитории (`src/fonts/`, лицензия OFL рядом) и
 // отдаются с нашего же домена: внешних запросов нет ни со страниц, ни у
@@ -56,7 +58,7 @@ export const metadata: Metadata = {
     ? new URL(siteUrl() as string)
     : undefined,
   applicationName: 'ProDisser',
-  authors: [{ name: 'ООО «РУСДРОН»' }],
+  authors: [{ name: 'ProDisser' }],
   // Обложка объявлена в каждой странице, а не здесь: Next заменяет
   // родительский блок openGraph целиком, и картинка из макета отсюда до
   // страниц не доходила бы. Описатель — `components/og-cover.ts`.
@@ -78,6 +80,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <SiteMotion />
         <Metrika />
+        {/* Кнопка замечаний — на всех страницах сайта и экранах кабинета,
+            как Метрика: на время запуска (решение Р-403). */}
+        <FeedbackWidget />
+        {/* Благодарность за заявку — окном поверх страницы (решение Р-406). */}
+        <LeadThanks />
       </body>
     </html>
   );

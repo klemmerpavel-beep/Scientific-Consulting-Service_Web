@@ -33,6 +33,7 @@ services:
       args:
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?публичный адрес обязателен}
         NEXT_PUBLIC_METRIKA_ID: ${NEXT_PUBLIC_METRIKA_ID:-}
+        NEXT_PUBLIC_FEEDBACK_WIDGET: ${NEXT_PUBLIC_FEEDBACK_WIDGET:-}
         # Базовый образ. Скрипт выката подтягивает его заранее и подставляет
         # сюда локальную метку, чтобы сборка не ходила в Docker Hub и не
         # упиралась в его ограничение частоты (решение Р-160).
@@ -69,6 +70,9 @@ services:
       APPROVAL_AUTO_ACCEPT: ${APPROVAL_AUTO_ACCEPT:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      # Ключ выгрузки замечаний для исполнителя правок (решение Р-405):
+      # пусто — адреса /api/feedback/export нет.
+      FEEDBACK_EXPORT_TOKEN: ${FEEDBACK_EXPORT_TOKEN:-}
       # Экран «Зеркало на Диске» показывает, настроено ли зеркало и мост.
       # Прежде этих значений у приложения не было, и экран при работающем
       # зеркале писал «не настроено» (решение Р-246). Пароль сюда не
