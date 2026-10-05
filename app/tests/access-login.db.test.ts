@@ -448,6 +448,10 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
       const forHead = await finance.paymentDocumentLines(head(), ids.mine!);
       assert.equal(forHead.lines.get(hiddenAct.id), `Приложен акт к траншу «${written.title}»`);
       assert.equal(forHead.hidden.size, 0);
+      // Куратор без права на договор событий о документах оплат не видит (УК-02, Р-357).
+      const forExpert = await finance.paymentDocumentLines(expert(), ids.mine!);
+      assert.ok(forExpert.hidden.has(invoice.id) && forExpert.hidden.has(hiddenAct.id), 'куратору видны документы оплат');
+      assert.equal(forExpert.lines.size, 0);
     } finally {
       await prisma.material.deleteMany({ where: { id: { in: [invoice.id, hiddenAct.id] } } });
     }

@@ -807,8 +807,8 @@ export async function projectContract(actor: Actor, projectId: string) {
  * «Приложен счёт к траншу «…»», «Приложен акт к траншу «…»», «Приложен
  * договор». Сопоставление — по документам видимых смотрящему траншей;
  * события о документах скрытых траншей (списанных и сторнированных у того,
- * кто оплаты не ведёт) из истории убираются. Без права на оплаты — ничего
- * не меняется.
+ * кто оплаты не ведёт) из истории убираются. Без права на договор скрыты
+ * все события о документах оплат (УК-02, Р-357).
  */
 export async function paymentDocumentLines(
   actor: Actor,
@@ -816,7 +816,19 @@ export async function paymentDocumentLines(
 ): Promise<{ lines: Map<string, string>; hidden: Set<string> }> {
   const lines = new Map<string, string>();
   const ref = await projectRef(projectId);
-  if (ref === null || !can(actor, 'CONTRACT_VIEW', ref)) return { lines, hidden: new Set() };
+  if (ref === null) return { lines, hidden: new Set() };
+  // Документы оплат — материалы при договоре или транше и не материалы этапа.
+  const all = await prisma.material.findMany({
+    where: {
+      projectId,
+      OR: [{ contractId: { not: null } }, { trancheId: { not: null } }, { kind: { not: 'STAGE_MATERIAL' } }],
+    },
+    select: { id: true },
+  });
+  // Без права на договор скрыты все события о документах оплат: куратор
+  // видел в истории «Приложена версия N материала» о счёте и акте
+  // (улучшение УК-02, решение Р-357).
+  if (!can(actor, 'CONTRACT_VIEW', ref)) return { lines, hidden: new Set(all.map((row) => row.id)) };
   const contract = await projectContract(actor, projectId);
   const what = (kind: string): string =>
     kind === 'INVOICE' ? 'счёт' : kind === 'ACT' ? 'акт' : kind === 'CONTRACT' ? 'договор' : 'документ';
@@ -828,11 +840,6 @@ export async function paymentDocumentLines(
   for (const document of contract?.documents ?? []) {
     if (document.trancheId === null && !lines.has(document.id)) lines.set(document.id, `Приложен ${what(document.kind)}`);
   }
-  // Документы оплат — материалы при договоре или транше.
-  const all = await prisma.material.findMany({
-    where: { projectId, OR: [{ contractId: { not: null } }, { trancheId: { not: null } }] },
-    select: { id: true },
-  });
   return { lines, hidden: new Set(all.map((row) => row.id).filter((id) => !lines.has(id))) };
 }
 
