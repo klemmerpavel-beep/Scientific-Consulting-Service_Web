@@ -105,13 +105,28 @@ export async function editLead(
   }
   const changed = Object.keys(data);
   if (changed.length === 0) return;
-  await prisma.lead.update({ where: { id: lead.id }, data: data as never });
+  // Вид контакта — по новому значению: телефон, исправленный на почту,
+  // иначе не получал писем, а почта, исправленная на телефон, уводила
+  // письма в никуда (улучшение УМ-04, решение Р-374).
+  const kind = typeof data.contact === 'string' ? contactKindOf(data.contact) : null;
+  await prisma.lead.update({
+    where: { id: lead.id },
+    data: { ...(data as Record<string, string | null>), ...(kind === null ? {} : { contactKind: kind }) } as never,
+  });
   await record(actor, {
     action: 'LEAD_EDITED',
     objectType: 'Lead',
     objectId: lead.id,
     payload: { fields: changed },
   });
+}
+
+/**
+ * Вид контакта заявки по значению: адрес почты — `email`, иначе — `phone`.
+ * Правило адреса — то же, что у письма заявителю (`leadAddress`).
+ */
+export function contactKindOf(contact: string): 'email' | 'phone' {
+  return /^[^\s@]+@[^\s@]+$/u.test(contact.trim()) ? 'email' : 'phone';
 }
 
 /** Внутренний комментарий к заявке. Заявителю не показывается. */
