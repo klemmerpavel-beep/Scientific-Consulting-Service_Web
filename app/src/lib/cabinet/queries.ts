@@ -157,15 +157,9 @@ export async function listProjects(
       // (решение Р-169). Счётчик идёт тем же запросом, второго обращения
       // к базе не появляется.
       // Считается видимое: материал, у которого видна хотя бы одна версия
-      // (требование Т-18, решение Р-294).
-      _count: {
-        select: {
-          materials:
-            scopeVersions(actor) === null || Object.keys(scopeVersions(actor)!).length === 0
-              ? true
-              : { where: { versions: { some: scopeVersions(actor)! } } },
-        },
-      },
+      // (требование Т-18, решение Р-294), — по правилу карточки: без
+      // удалённых и без документов оплат (улучшение УК-12, решение Р-359).
+      _count: { select: { materials: { where: materialCountWhere(actor) } } },
     },
   });
 
@@ -278,6 +272,16 @@ export async function stageById(actor: Actor, stageId: string) {
 }
 
 /** Условие «у материала есть видимая версия»; практике — без условия. */
+/**
+ * Какие материалы входят в число на плашке перечня — те же, что в списке
+ * материалов карточки (улучшение УК-12, решение Р-359).
+ */
+export function materialCountWhere(actor: Actor): Record<string, unknown> {
+  const { project: _byProject, ...base } = scopeMaterials(actor) ?? {};
+  void _byProject;
+  return { ...base, kind: 'STAGE_MATERIAL', ...visibleMaterial(scopeVersions(actor) ?? {}) };
+}
+
 function visibleMaterial(versionScope: Record<string, unknown>): Record<string, unknown> {
   return Object.keys(versionScope).length === 0 ? {} : { versions: { some: versionScope } };
 }

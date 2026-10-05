@@ -457,6 +457,43 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     }
   });
 
+  it('УК-12: число материалов в перечне — как в карточке: без удалённых и документов оплат (Р-359)', async () => {
+    const project = await prisma.project.findUniqueOrThrow({ where: { id: ids.mine! }, select: { code: true } });
+    const make = (title: string, extra: Record<string, unknown> = {}) =>
+      prisma.material.create({
+        data: {
+          projectId: ids.mine!,
+          title,
+          createdById: ids.manager!,
+          ...extra,
+          versions: {
+            create: {
+              number: 1,
+              storageKey: `acl/${tail}/${title}`,
+              originalName: 'file.pdf',
+              sizeBytes: 1n,
+              sha256: 'c'.repeat(64),
+              contentType: 'application/pdf',
+              uploadedById: ids.manager!,
+            },
+          },
+        },
+      });
+    const made = [await make('Глава'), await make('Удалённая', { deletedAt: new Date() }), await make('Акт', { kind: 'ACT' })];
+    try {
+      const list = await queries.listProjects(client(), { filter: 'all' });
+      const row = list.rows.find((item) => item.id === ids.mine);
+      const card = await queries.projectMaterials(client(), project.code);
+      assert.ok(row !== undefined && card !== null);
+      assert.ok(card.materials.some((material) => material.title === 'Глава'));
+      assert.equal(row._count.materials, card.materials.length);
+    } finally {
+      const materialIds = made.map((material) => material.id);
+      await prisma.materialVersion.deleteMany({ where: { materialId: { in: materialIds } } });
+      await prisma.material.deleteMany({ where: { id: { in: materialIds } } });
+    }
+  });
+
   it('оплачено сверх суммы договора — корректировка меньше нуля (ОМ-30)', async () => {
     const contract = await prisma.contract.findUniqueOrThrow({ where: { projectId: ids.mine! } });
     const extra = await prisma.tranche.create({
