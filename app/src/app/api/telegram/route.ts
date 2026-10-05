@@ -41,7 +41,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (payload.length === 0) {
     await telegramSay(
       String(chatId),
-      'Чтобы получать уведомления, откройте в личном кабинете ProDisser раздел «Настройки» и нажмите «Привязать Telegram».',
+      'Чтобы получать уведомления, откройте в личном кабинете ProDisser раздел «Настройки» и нажмите «Подключить Telegram».',
     );
     return NextResponse.json({ ok: true });
   }

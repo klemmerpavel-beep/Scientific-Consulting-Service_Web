@@ -356,7 +356,7 @@ export default async function SettingsScreen({
                 кабинет нельзя.
               </Text>
               <Form action={startTelegramBind} inline>
-                <Button>Привязать Telegram</Button>
+                <Button>Подключить Telegram</Button>
               </Form>
             </>
           )}
