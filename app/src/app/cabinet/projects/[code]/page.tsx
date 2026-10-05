@@ -57,6 +57,7 @@ import {
   PROJECT_STATUS_ACTION,
   PROJECT_STATUS_LABEL,
   nextProjectStatuses,
+  pauseReasonOf,
 } from '../../../../lib/cabinet/project-status';
 import { templateLength } from '../../../../lib/cabinet/projects';
 import { daysPast } from '../../../../lib/cabinet/clock';
@@ -420,6 +421,10 @@ export default async function ProjectScreen({
           .filter((part) => part !== null)
           .join(' ');
   const staff = !forClient;
+  // Причина приостановки — под пометкой в шапке, а не только в истории и
+  // письме; куратору — без причины, как в его письмах (УК-13, Р-379; Р-328).
+  // Список событий — от новых к старым.
+  const pauseReason = pauseReasonOf(project.status, project.events, forExpert);
 
   const roadmap: RoadmapItem[] = stages.map((stage, index) => ({
     id: stage.id,
@@ -678,6 +683,11 @@ export default async function ProjectScreen({
           >
             срок — {formatDate(project.dueOn)}
           </span>
+        )}
+        {pauseReason === null ? null : (
+          <Text muted size={13} style={{ flexBasis: '100%', margin: 0 }}>
+            {`Причина приостановки: ${pauseReason}`}
+          </Text>
         )}
       </ScreenTop>
       <ActionError id={errorId} />

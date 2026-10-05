@@ -43,3 +43,19 @@ describe('корректировка суммы — и руководителю 
     assert.match(payments, /списано и сторнировано по траншам ниже/u);
   });
 });
+
+describe('причина приостановки в шапке карточки (УК-13, Р-379)', async () => {
+  const { pauseReasonOf } = await import('../src/lib/cabinet/project-status.ts');
+  const events = [
+    { kind: 'PROJECT_STATUS_CHANGED', payload: { from: 'ACTIVE', to: 'PAUSED', reason: 'Ждём решения диссовета' } },
+    { kind: 'PROJECT_STATUS_CHANGED', payload: { from: 'PAUSED', to: 'ACTIVE' } },
+    { kind: 'PROJECT_STATUS_CHANGED', payload: { from: 'ACTIVE', to: 'PAUSED', reason: 'Старая причина' } },
+  ];
+  it('последняя причина — клиенту и сотрудникам', () => {
+    assert.equal(pauseReasonOf('PAUSED', events, false), 'Ждём решения диссовета');
+  });
+  it('куратору и у не приостановленной работы — ничего', () => {
+    assert.equal(pauseReasonOf('PAUSED', events, true), null);
+    assert.equal(pauseReasonOf('ACTIVE', events, false), null);
+  });
+});
