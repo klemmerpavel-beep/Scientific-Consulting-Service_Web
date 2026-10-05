@@ -91,3 +91,14 @@ describe('отказ загрузки по роли (УК-08, Р-364)', () => {
     for (const role of ['MANAGER', 'EXPERT', 'HEAD'] as const) assert.match(uploadFailedText(role), /напишите руководителю/u);
   });
 });
+
+describe('строка об удалении данных без отметки о согласии (УК-18, Р-369)', () => {
+  it('у каждой роли — право требовать удаления, без «отозвать»', () => {
+    for (const role of ['CLIENT', 'MANAGER', 'EXPERT', 'HEAD'] as const) {
+      const text = settingsTexts(role).erasureTail;
+      assert.match(text, /^Потребовать удаления своих персональных данных можно письмом/u);
+      assert.doesNotMatch(text, /[Оо]тозвать/u);
+      assert.match(text, / на$/u);
+    }
+  });
+});

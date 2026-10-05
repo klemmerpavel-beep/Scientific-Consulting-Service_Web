@@ -362,16 +362,17 @@ export default async function SettingsScreen({
           )}
         </Card>
 
-        {user.consentAcceptedAt === null ? null : (
-          <Text muted size={13} style={{ marginTop: 24 }}>
-            Согласие на обработку персональных данных принято{' '}
-            {formatDate(user.consentAcceptedAt)}. {texts.consentTail}{' '}
-            <a className="cab-mark" href={`mailto:${PRACTICE_EMAIL}`}>
-              {PRACTICE_EMAIL}
-            </a>
-            .
-          </Text>
-        )}
+        {/* Без отметки о согласии — только право требовать удаления: оно есть
+            у любого субъекта (УК-18, Р-369). */}
+        <Text muted size={13} style={{ marginTop: 24 }}>
+          {user.consentAcceptedAt === null
+            ? texts.erasureTail
+            : `Согласие на обработку персональных данных принято ${formatDate(user.consentAcceptedAt)}. ${texts.consentTail}`}{' '}
+          <a className="cab-mark" href={`mailto:${PRACTICE_EMAIL}`}>
+            {PRACTICE_EMAIL}
+          </a>
+          .
+        </Text>
       </Narrow>
     </Shell>
   );
