@@ -32,3 +32,14 @@ describe('один глагол для Telegram (УК-17, Р-368)', () => {
     }
   });
 });
+
+describe('корректировка суммы — и руководителю (УМ-07, Р-376)', () => {
+  it('строка корректировки не скрыта от того, кто ведёт оплаты', () => {
+    const payments = readFileSync(
+      path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'projects', '[code]', 'payments', 'page.tsx'),
+      'utf8',
+    );
+    assert.doesNotMatch(payments, /mayEdit \|\| money\.adjustment === 0n/u);
+    assert.match(payments, /списано и сторнировано по траншам ниже/u);
+  });
+});

@@ -411,6 +411,9 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     assert.equal(forHead?.tranches.length, 5);
     const headMoney = await finance.projectMoney(head(), ids.mine!);
     assert.equal(headMoney?.writtenOff, 15_000n);
+    // Руководитель видит ту же корректировку: одна арифметика для всех ролей (УМ-07, Р-376).
+    assert.equal(headMoney?.adjustment, 15_000n);
+    assert.ok(headMoney !== null && headMoney.contractTotal - headMoney.adjustment - headMoney.received === headMoney.awaiting);
   });
 
   it('отменённая работа: корректировка — весь неоплаченный остаток, дата отмены видна (Т-19, Р-315)', async () => {
