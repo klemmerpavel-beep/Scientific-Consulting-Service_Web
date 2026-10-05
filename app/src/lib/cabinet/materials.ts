@@ -16,6 +16,7 @@ import { enqueue, notifyCurator } from './outbox.ts';
 import { stageLink } from './approval.ts';
 import { siteUrl } from '../site-url.ts';
 import { projectRef } from './projects.ts';
+import { CLIENT_TRANCHE_STATUSES } from './finance.ts';
 import { materialKey, openObject, sha256, storage } from './storage.ts';
 
 /**
@@ -625,6 +626,20 @@ export async function moderateVersion(
 }
 
 /**
+ * Документ транша виден тем же, кому виден транш: списанный и
+ * сторнированный — внутренний учёт практики, тому, кто оплаты не ведёт, ни
+ * на экране оплат, ни по прямой ссылке (улучшение УК-01, решение Р-356;
+ * Р-251, Р-315).
+ */
+function trancheDocumentVisible(
+  actor: Actor,
+  material: { tranche: { status: string } | null; project: Parameters<typeof can>[2] },
+): boolean {
+  if (material.tranche === null || can(actor, 'PAYMENT_EDIT', material.project)) return true;
+  return (CLIENT_TRANCHE_STATUSES as readonly string[]).includes(material.tranche.status);
+}
+
+/**
  * Выдать содержимое версии. Единственный путь к байтам: сначала разрешение,
  * затем запись в журнал доступа, и только потом чтение из хранилища.
  */
@@ -635,6 +650,7 @@ export async function readVersion(actor: Actor, versionId: string, ip?: string |
       material: {
         include: {
           project: { select: { id: true, clientId: true, managerId: true, expertId: true } },
+          tranche: { select: { status: true } },
         },
       },
       moderation: { select: { status: true } },
@@ -656,6 +672,8 @@ export async function readVersion(actor: Actor, versionId: string, ip?: string |
   // Неопубликованная версия эксперта — «не найдено», как и в перечнях
   // (требование Т-18, решение Р-294).
   if (!versionVisible(actor, version)) return null;
+  // Документ скрытого транша — «не найдено» и по прямой ссылке (УК-01, Р-356).
+  if (!trancheDocumentVisible(actor, version.material)) return null;
 
   await prisma.fileAccessLog.create({
     data: { versionId, userId: actor.id, action: 'DOWNLOAD', ip: ip ?? null },
@@ -701,6 +719,7 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
             },
           },
           stage: { select: { state: true } },
+          tranche: { select: { status: true } },
         },
       },
       moderation: { select: { status: true } },
@@ -710,6 +729,8 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
   ensure(actor, 'COMMENT_CREATE', version.material.project);
   // К невидимой версии эксперта клиент замечаний не пишет (Т-18, Р-294).
   if (!versionVisible(actor, version)) throw new Error('Версия не найдена');
+  // И к документу скрытого транша — тоже (УК-01, Р-356).
+  if (!trancheDocumentVisible(actor, version.material)) throw new Error('Версия не найдена');
   // Закрытая работа и завершённый этап — только чтение (Т-17, М-10, Р-293).
   ensureContributionOpen(actor, version.material.project.status, version.material.stage?.state ?? null);
   // Замечание — к тому, что можно открыть. Договор, счёт и акт видны по
