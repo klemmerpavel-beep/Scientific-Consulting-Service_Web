@@ -77,8 +77,8 @@ describe('одни определения на «Сводке» (РК-04)', { sk
     ]);
     const closed = new Date(now - 10 * DAY);
     const [done, cancelled] = await Promise.all([
-      prisma.project.create({ data: { ...base, code: code('done'), title: `Завершённая ${stamp}`, status: 'COMPLETED', closedOn: closed } }),
-      prisma.project.create({ data: { ...base, code: code('cancel'), title: `Отменённая ${stamp}`, status: 'CANCELLED', closedOn: closed } }),
+      prisma.project.create({ data: { ...base, code: code('done'), title: `Завершённая ${stamp}`, status: 'COMPLETED', closedOn: closed, firstClosedOn: closed } }),
+      prisma.project.create({ data: { ...base, code: code('cancel'), title: `Отменённая ${stamp}`, status: 'CANCELLED', closedOn: closed, firstClosedOn: closed } }),
     ]);
     Object.assign(ids, {
       head: headUser.id,

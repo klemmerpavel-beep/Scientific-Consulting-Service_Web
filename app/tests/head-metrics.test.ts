@@ -59,6 +59,7 @@ function row(over: Partial<ProjectRow> & { code: string }): ProjectRow {
     dueOn: null,
     closedOn: null,
     closedOnPlanned: false,
+    firstClosedOn: null,
     signedOn: null,
     cost: 10_000_000n,
     paid: 0n,

@@ -930,6 +930,13 @@ export async function applyBatch(
               closedOnPlanned: status === 'COMPLETED',
             },
           });
+          // Первая дата закрытия — один раз (УМ-13, Р-392).
+          if (status === 'COMPLETED') {
+            await tx.project.updateMany({
+              where: { id: projectId, firstClosedOn: null },
+              data: { firstClosedOn: deadline ?? orderDate },
+            });
+          }
           const contract = await tx.contract.findFirst({
             where: { projectId },
             select: { id: true, tranches: { select: { id: true, title: true, amount: true, status: true } } },
@@ -1068,6 +1075,7 @@ export async function applyBatch(
             dueOn: deadline,
             closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
             closedOnPlanned: status === 'COMPLETED',
+            firstClosedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
           },
           select: { id: true },
         });

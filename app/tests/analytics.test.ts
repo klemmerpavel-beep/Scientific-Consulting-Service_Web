@@ -62,6 +62,7 @@ function row(over: Partial<ProjectRow> & { code: string }): ProjectRow {
     dueOn: null,
     closedOn: new Date(Date.UTC(2025, 3, 10)),
     closedOnPlanned: false,
+    firstClosedOn: null,
     cost: 10_000_000n,
     paid: 10_000_000n,
     ...over,

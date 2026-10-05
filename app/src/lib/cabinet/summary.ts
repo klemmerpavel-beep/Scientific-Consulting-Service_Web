@@ -398,15 +398,16 @@ export async function orderSummary(actor: Actor): Promise<{
     prisma.project.count({ where: { ...scope, status: 'PAUSED' } }),
     prisma.project.count({ where: { ...scope, status: 'COMPLETED' } }),
     prisma.project.count({ where: { ...scope, startedOn: { gte: quarterAgo } } }),
-    prisma.project.count({ where: { ...scope, closedOn: { gte: quarterAgo } } }),
+    // Закрыто за период — по первой дате закрытия (УМ-13, Р-392).
+    prisma.project.count({ where: { ...scope, closedOn: { not: null }, firstClosedOn: { gte: quarterAgo } } }),
     prisma.project.count({
       where: { ...scope, startedOn: { gte: halfYearAgo, lt: quarterAgo } },
     }),
     prisma.project.count({
-      where: { ...scope, closedOn: { gte: halfYearAgo, lt: quarterAgo } },
+      where: { ...scope, closedOn: { not: null }, firstClosedOn: { gte: halfYearAgo, lt: quarterAgo } },
     }),
-    prisma.project.count({ where: { ...scope, status: 'COMPLETED', closedOn: { gte: quarterAgo } } }),
-    prisma.project.count({ where: { ...scope, status: 'CANCELLED', closedOn: { gte: quarterAgo } } }),
+    prisma.project.count({ where: { ...scope, status: 'COMPLETED', firstClosedOn: { gte: quarterAgo } } }),
+    prisma.project.count({ where: { ...scope, status: 'CANCELLED', firstClosedOn: { gte: quarterAgo } } }),
   ]);
 
   return {

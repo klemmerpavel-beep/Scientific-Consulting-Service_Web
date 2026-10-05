@@ -90,10 +90,19 @@ const PERIODS: readonly {
   },
 ];
 
+/**
+ * Закрыта в периоде — по первой дате закрытия: повторное закрытие после
+ * возобновления работу в новый период не переносит (УМ-13, Р-392).
+ */
+function closedSince(row: ProjectRow, from: Date): boolean {
+  const first = row.firstClosedOn ?? row.closedOn;
+  return row.closedOn !== null && first !== null && first >= from;
+}
+
 /** Работа относится к периоду, если она в нём началась либо закрылась. */
 function inPeriod(row: ProjectRow, from: Date): boolean {
   if (row.startedOn !== null && row.startedOn >= from) return true;
-  return row.closedOn !== null && row.closedOn >= from;
+  return closedSince(row, from);
 }
 
 export default async function ReportScreen({
@@ -117,9 +126,7 @@ export default async function ReportScreen({
   const started = rows.filter(
     (row) => row.startedOn !== null && row.startedOn >= from,
   );
-  const closed = rows.filter(
-    (row) => row.closedOn !== null && row.closedOn >= from,
-  );
+  const closed = rows.filter((row) => closedSince(row, from));
   // Работы с прошедшим сроком — действующие, срок раньше сегодняшнего
   // дня по Москве; та же функция, что у вкладки «Сроки» и итога
   // (решение Р-257).

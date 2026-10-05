@@ -1604,6 +1604,10 @@ export async function setProjectStatus(
     if (claimed.count === 0) {
       throw new Error('Состояние работы уже изменено другим действием: обновите страницу');
     }
+    // Первая дата закрытия ставится один раз (УМ-13, Р-392).
+    if (closedOn !== null) {
+      await tx.project.updateMany({ where: { id: projectId, firstClosedOn: null }, data: { firstClosedOn: closedOn } });
+    }
     // Срок согласования стоит, пока работа не в действии: остаток рабочих
     // дней сохраняется, а при возобновлении срок отсчитывается заново от
     // дня возобновления (требование Т-15, решение Р-290).

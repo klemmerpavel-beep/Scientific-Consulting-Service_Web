@@ -336,6 +336,7 @@ async function main() {
         dueOn,
         closedOn,
         closedOnPlanned,
+        firstClosedOn: closedOn,
         summary: SUMMARY[row.type] ?? SUMMARY.consulting!,
       },
       // Куратор переназначается при каждом наполнении: правка распределения
@@ -354,6 +355,7 @@ async function main() {
         dueOn,
         closedOn,
         closedOnPlanned,
+        firstClosedOn: closedOn,
       },
       select: { id: true },
     });

@@ -131,6 +131,27 @@ describe('состояние работы', { skip: !enabled }, async () => {
     }
   });
 
+  it('УМ-13: повторное закрытие не сдвигает первую дату закрытия (Р-392)', async () => {
+    const first = new Date('2026-01-15T00:00:00Z');
+    await prisma.project.update({
+      where: { id: ids.project! },
+      data: { status: 'COMPLETED', closedOn: first, firstClosedOn: first },
+    });
+    try {
+      await setProjectStatus(curator(), ids.project!, 'ACTIVE');
+      assert.equal((await prisma.project.findUniqueOrThrow({ where: { id: ids.project! } })).firstClosedOn?.getTime(), first.getTime());
+      await setProjectStatus(curator(), ids.project!, 'COMPLETED');
+      const closed = await prisma.project.findUniqueOrThrow({ where: { id: ids.project! } });
+      assert.equal(closed.firstClosedOn?.getTime(), first.getTime(), 'первая дата сдвинулась');
+      assert.notEqual(closed.closedOn?.getTime(), first.getTime(), 'дата закрытия — сегодняшняя');
+    } finally {
+      await prisma.project.update({
+        where: { id: ids.project! },
+        data: { status: 'ACTIVE', closedOn: null, firstClosedOn: null },
+      });
+    }
+  });
+
   it('неизвестное состояние не принимается', async () => {
     await assert.rejects(
       () => setProjectStatus(curator(), ids.project!, 'ARCHIVED' as never),

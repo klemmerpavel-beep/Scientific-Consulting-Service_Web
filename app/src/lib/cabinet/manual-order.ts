@@ -213,6 +213,7 @@ export async function createManualOrder(
         closedOn: status === 'COMPLETED' ? (input.dueOn ?? orderedOn) : null,
         // Заказ, заведённый завершённым, закрыт плановым сроком (РК-23, Р-355).
         closedOnPlanned: status === 'COMPLETED',
+        firstClosedOn: status === 'COMPLETED' ? (input.dueOn ?? orderedOn) : null,
       },
       select: { id: true },
     });
