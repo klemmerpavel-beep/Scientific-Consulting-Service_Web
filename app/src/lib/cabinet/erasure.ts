@@ -137,7 +137,7 @@ export async function requestOwnErasure(actor: Actor): Promise<Date> {
     where: { clientId: actor.clientProfileId, executedAt: null },
     select: { id: true },
   });
-  if (open !== null) throw new Error('Запрос уже отправлен: руководитель практики его рассматривает');
+  if (open !== null) throw new Error('Запрос уже отправлен: мы его рассматриваем');
   const profile = await prisma.clientProfile.findUniqueOrThrow({
     where: { id: actor.clientProfileId },
     select: { fullName: true },
