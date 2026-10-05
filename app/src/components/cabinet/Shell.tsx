@@ -65,10 +65,17 @@ export default async function Shell({
   current,
   center = false,
   board = false,
+  listHref,
   children,
 }: {
   actor: Actor | null;
   current?: string;
+  /**
+   * Куда ведёт пункт перечня работ. С карточки единственной работы клиента
+   * «Мои работы» вели на неё же (Т-09, Р-311): отсюда — на перечень с
+   * отбором «Все» (улучшение УК-20, решение Р-380). Состав меню прежний.
+   */
+  listHref?: string;
   /**
    * Содержимое стоит по центру оставшейся высоты. Нужно экрану входа: там
    * одна форма, и прижатая к верху она читается обрывком страницы. Обычные
@@ -148,7 +155,7 @@ export default async function Shell({
                 {items.map((item) => (
                   <li key={item.href}>
                     <a
-                      href={item.href}
+                      href={item.href === '/cabinet/projects' && listHref !== undefined ? listHref : item.href}
                       aria-current={item.href === active ? 'page' : undefined}
                       style={{
                         display: 'inline-flex',

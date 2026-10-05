@@ -656,7 +656,7 @@ export default async function ProjectScreen({
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
   return (
-    <Shell actor={actor} current="/cabinet/projects" board>
+    <Shell actor={actor} current="/cabinet/projects" board listHref={forClient ? '/cabinet/projects?state=all' : undefined}>
       {/* Шапка заказа — одной полосой. Прежде код, название и тема занимали
           три яруса и 154 пикселя: на панели это четверть места, отведённого
           колонкам (решение Р-169). */}

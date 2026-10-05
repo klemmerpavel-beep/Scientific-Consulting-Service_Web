@@ -59,3 +59,19 @@ describe('причина приостановки в шапке карточки
     assert.equal(pauseReasonOf('ACTIVE', events, false), null);
   });
 });
+
+describe('«Мои работы» с карточки клиента — на перечень (УК-20, Р-380)', async () => {
+  const { soleWorkTarget } = await import('../src/lib/cabinet/nav.ts');
+  it('карточка клиента ведёт пункт меню на перечень с отбором «Все»', () => {
+    const card = readFileSync(
+      path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'projects', '[code]', 'page.tsx'),
+      'utf8',
+    );
+    assert.match(card, /listHref=\{forClient \? '\/cabinet\/projects\?state=all' : undefined\}/u);
+  });
+  it('с отбором в адресе перечень не уводит на единственную карточку', () => {
+    const rows = [{ code: 'PD-1', status: 'ACTIVE' }];
+    assert.equal(soleWorkTarget({ role: 'CLIENT', welcomeOpen: false, asked: false, all: 1, rows }), '/cabinet/projects/PD-1');
+    assert.equal(soleWorkTarget({ role: 'CLIENT', welcomeOpen: false, asked: true, all: 1, rows }), null);
+  });
+});
