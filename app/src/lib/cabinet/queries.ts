@@ -256,7 +256,7 @@ export async function stageById(actor: Actor, stageId: string) {
             orderBy: { number: 'desc' },
             include: {
               uploadedBy: { select: { fullName: true, role: true } },
-              moderation: { select: { status: true, note: true, decidedAt: true } },
+              moderation: { select: { status: true, note: true, decidedAt: true, identityHint: true } },
               comments: {
                 where: commentScope,
                 orderBy: { createdAt: 'asc' },
@@ -362,7 +362,7 @@ export async function projectMaterials(actor: Actor, code: string) {
             orderBy: { number: 'desc' },
             include: {
               uploadedBy: { select: { fullName: true, role: true } },
-              moderation: { select: { status: true, note: true, decidedAt: true } },
+              moderation: { select: { status: true, note: true, decidedAt: true, identityHint: true } },
               // Состояние модерации нужно эксперту: его замечание не
               // видно клиенту, пока куратор его не опубликовал, и ждущее
               // публикации он должен видеть у себя (решение Р-200).

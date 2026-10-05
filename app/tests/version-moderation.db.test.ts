@@ -209,6 +209,27 @@ describe('версия эксперта — после публикации', { 
     assert.equal(journal.actorId, ids.manager);
   });
 
+  it('УК-03: фамилия куратора в имени файла — пометка для менеджера (Р-396)', async () => {
+    // ФИО куратора в этом тесте — «EXPERT {метка}»: фамилия — «EXPERT».
+    const named = await materials.uploadVersion(expert(), {
+      projectId: ids.project!,
+      stageId: ids.stage!,
+      materialId: null,
+      title: 'Глава 3 с подписью',
+      originalName: 'glava3_Expert.docx',
+      contentType: 'application/octet-stream',
+      body: Buffer.from('глава 3'),
+    });
+    const plain = await upload();
+    const flag = async (versionId: string) =>
+      (await prisma.versionModeration.findUniqueOrThrow({ where: { versionId } })).identityHint;
+    assert.equal(await flag(named.id), true);
+    assert.equal(await flag(plain.id), false);
+    const stage = await stageById(curator(), ids.stage!);
+    const shown = stage?.materials.flatMap((material) => material.versions).find((version) => version.id === named.id);
+    assert.equal(shown?.moderation?.identityHint, true, 'пометка не дошла до экрана этапа');
+  });
+
   it('в закрытой работе версий не разбирают', async () => {
     const last = await upload(ids.material!);
     await projects.setProjectStatus(curator(), ids.project!, 'COMPLETED');

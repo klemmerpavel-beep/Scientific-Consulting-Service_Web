@@ -154,6 +154,13 @@ export default async function ProjectMaterialsScreen({
                           <Text muted size={13}>
                             v{version.number} куратора ждёт публикации клиенту
                           </Text>
+                          {/* ФИО куратора в файле (УК-03, Р-396). */}
+                          {version.moderation?.identityHint ? (
+                            <Text size={13} style={{ marginTop: 6, color: 'var(--pd-ink-secondary)' }}>
+                              В имени файла или в свойствах документа (автор) — фамилия куратора: клиент её
+                              увидит. Попросите куратора убрать её или не публикуйте.
+                            </Text>
+                          ) : null}
                           <Form action={decideOnVersion} inline style={{ marginTop: 8 }}>
                             <input type="hidden" name="versionId" value={version.id} />
                             <input type="hidden" name="decision" value="publish" />

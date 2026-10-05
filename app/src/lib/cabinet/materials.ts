@@ -13,6 +13,7 @@ import {
 import { record } from './audit.ts';
 import { hasContacts } from './contacts.ts';
 import { fileRefusal } from './file-guard.ts';
+import { identityHint } from './identity-hint.ts';
 import { enqueue, notifyCurator } from './outbox.ts';
 import { stageLink } from './approval.ts';
 import { siteUrl } from '../site-url.ts';
@@ -235,7 +236,13 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
         uploadedById: actor.id,
       },
     });
-    if (moderated) await tx.versionModeration.create({ data: { versionId: created.id } });
+    if (moderated) {
+      // ФИО куратора в имени файла или в авторе документа — предупреждение
+      // менеджеру перед публикацией (улучшение УК-03, решение Р-396).
+      const curator = await tx.user.findUnique({ where: { id: actor.id }, select: { fullName: true } });
+      const hint = curator !== null && identityHint(input.originalName, input.body, curator.fullName);
+      await tx.versionModeration.create({ data: { versionId: created.id, identityHint: hint } });
+    }
     // Пояснение — замечанием к этой версии, в той же транзакции; откат
     // версии при отказе записи байтов удаляет и его (каскад).
     const remark = note === '' ? null : commentRow(actor, created.id, note);

@@ -10,4 +10,4 @@
  * Проверка `schema-version.test.ts` не даёт забыть поднять имя вместе с
  * новой миграцией.
  */
-export const LATEST_MIGRATION = '20261005130000_first_closed_on';
+export const LATEST_MIGRATION = '20261005140000_identity_hint';

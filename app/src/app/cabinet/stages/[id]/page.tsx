@@ -833,6 +833,13 @@ export default async function StageScreen({
                           <Chip>{mayModerate ? 'ждёт публикации клиенту' : 'ждёт публикации менеджером'}</Chip>
                           {mayModerate ? (
                             <>
+                              {/* ФИО куратора в файле (УК-03, Р-396). */}
+                              {version.moderation.identityHint ? (
+                                <Text size={13} style={{ marginTop: 8, color: 'var(--pd-ink-secondary)' }}>
+                                  В имени файла или в свойствах документа (автор) — фамилия куратора: клиент её
+                                  увидит. Попросите куратора убрать её или не публикуйте.
+                                </Text>
+                              ) : null}
                               <Form action={decideOnVersion} inline style={{ marginTop: 10 }}>
                                 <input type="hidden" name="versionId" value={version.id} />
                                 <input type="hidden" name="stageId" value={stage.id} />

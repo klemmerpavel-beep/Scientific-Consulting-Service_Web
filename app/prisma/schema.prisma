@@ -761,14 +761,17 @@ enum ModerationStatus {
 /// `MaterialVersion` остаётся «только вставка» (Р-122). Примечание
 /// затирается обезличиванием.
 model VersionModeration {
-  id          String           @id @default(cuid())
-  versionId   String           @unique
-  version     MaterialVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
-  status      ModerationStatus @default(PENDING)
-  decidedById String?
-  decidedAt   DateTime?
-  note        String?          @db.Text
-  createdAt   DateTime         @default(now())
+  id           String           @id @default(cuid())
+  versionId    String           @unique
+  version      MaterialVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  status       ModerationStatus @default(PENDING)
+  decidedById  String?
+  decidedAt    DateTime?
+  note         String?          @db.Text
+  /// В имени файла или в свойствах документа — фамилия куратора: менеджер
+  /// видит предупреждение перед публикацией (улучшение УК-03, Р-396).
+  identityHint Boolean          @default(false)
+  createdAt    DateTime         @default(now())
 
   @@index([status])
 }
