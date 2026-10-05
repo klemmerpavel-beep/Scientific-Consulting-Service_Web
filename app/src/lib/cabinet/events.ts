@@ -155,9 +155,18 @@ export function eventLabel(eventKind: string): string {
   return EVENT_LABEL[eventKind as EventKind] ?? eventKind;
 }
 
+/**
+ * Сигнал получателю, а не очереди: событие, которое уходит только клиенту,
+ * в мессенджере говорит с ним на «вы». На экране очереди руководитель
+ * читает прежнее название (улучшение УК-07, решение Р-363).
+ */
+const TELEGRAM_LABEL: Partial<Record<EventKind, string>> = {
+  STAGE_AWAITING_CLIENT: 'этап ждёт ваших материалов',
+};
+
 export function telegramNote(eventKind: string, projectCode: string | null, path: string | null = null): string {
   const base = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') ?? '';
-  const what = eventLabel(eventKind);
+  const what = TELEGRAM_LABEL[eventKind as EventKind] ?? eventLabel(eventKind);
   const where = projectCode === null ? '' : ` · ${projectCode}`;
   // Ссылка ведёт на экран события через `/cabinet/open` — без адреса почты:
   // сигнал уходит за пределы России и содержания не несёт (Т-06, Р-309,

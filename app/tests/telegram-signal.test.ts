@@ -15,7 +15,7 @@ import { describe, it } from 'node:test';
 process.env.SESSION_SECRET ??= 'y'.repeat(48);
 
 const { telegramSignal } = await import('../src/lib/notify.ts');
-const { telegramNote } = await import('../src/lib/cabinet/events.ts');
+const { eventLabel, telegramNote } = await import('../src/lib/cabinet/events.ts');
 
 const lead = {
   source: 'business' as const,
@@ -67,7 +67,9 @@ describe('сигнал о заявке с сайта', () => {
 describe('сигнал об уведомлении кабинета', () => {
   it('несёт род события и код работы, но не тему и не суммы', () => {
     const text = telegramNote('STAGE_AWAITING_CLIENT', 'PD-2026-001');
-    assert.ok(text.includes('этап ждёт клиента'), text);
+    // Клиенту — на «вы» (УК-07, Р-363); на экране очереди — прежнее название.
+    assert.ok(text.includes('этап ждёт ваших материалов'), text);
+    assert.equal(eventLabel('STAGE_AWAITING_CLIENT'), 'этап ждёт клиента');
     assert.ok(text.includes('PD-2026-001'), text);
     assert.ok(text.includes('/cabinet'), 'нет пути в кабинет');
     assert.ok(!text.includes('Глава'), 'название этапа не должно уходить');
