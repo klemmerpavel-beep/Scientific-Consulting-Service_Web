@@ -7,7 +7,7 @@ import { submitLead } from '../../lib/submit-lead';
 import PhotoSlot from '../PhotoSlot';
 import { ABOVE_THE_FOLD } from '../photos';
 
-/** Текст благодарности по обработчику формы заявки — из макета (Р-280). */
+/** Текст благодарности по обработчику формы заявки — из макета (Р-406). */
 const LEAD_THANKS: Record<string, string> = {};
 
 const css = `
@@ -65,7 +65,7 @@ export default class OfferPage extends React.Component<any, any> {
  /* Оглавление на узком экране свёрнуто стилями с первой отрисовки
  (data-toc="closed"), а не сценарием после загрузки: прежде оно
  приходило развёрнутым и сворачивалось через долю секунды, и текст
- документа прыгал на высоту оглавления (Р-282). На широком экране
+ документа прыгал на высоту оглавления (Р-408). На широком экране
  список виден всегда, кнопка скрыта. */
  renderVals(){
  const S = [
@@ -132,7 +132,7 @@ export default class OfferPage extends React.Component<any, any> {
       if (outcome.ok) {
         this.setState((s: any) => ({ __ui: { ...(s.__ui ?? {}), pending: false } }));
         // Заявка: благодарность всплывает поверх страницы, форма уже
-        // очищена (components/LeadThanks.tsx, Р-280). Прочее — как в макете.
+        // очищена (components/LeadThanks.tsx, Р-406). Прочее — как в макете.
         const thanks = LEAD_THANKS[key];
         if (thanks && typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('pd:lead-sent', { detail: { text: thanks, form } }));

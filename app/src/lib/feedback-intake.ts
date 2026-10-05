@@ -9,7 +9,7 @@ import {
 import { RateLimiter } from './rate-limit.ts';
 
 /**
- * Приём замечания с виджета (решение Р-277): разбор запроса без базы.
+ * Приём замечания с виджета (решение Р-403): разбор запроса без базы.
  *
  * Маршрут `/api/feedback` только связывает этот приём со службой записи;
  * сам приём не знает ни базы, ни Next и потому проверяется тестами на
@@ -91,7 +91,7 @@ async function readCapped(request: Request, max: number): Promise<Uint8Array | n
 
 export async function receiveFeedback(request: Request, options: IntakeOptions): Promise<Response> {
   // Выключенный виджет — это отсутствующий адрес, а не отказ: снаружи не
-  // видно, был ли он когда-то (решение Р-277).
+  // видно, был ли он когда-то (решение Р-403).
   if (!options.enabled) return new Response('Не найдено', { status: 404 });
 
   if (options.limiter.hit(clientIp(request.headers))) {

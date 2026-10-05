@@ -88,7 +88,7 @@ async function main(): Promise<number> {
     await stagesTable(),
     await paymentsTable(),
     await materialsTable(files),
-    // Замечания с виджета — по ним раз в неделю делаются правки (Р-277).
+    // Замечания с виджета — по ним раз в неделю делаются правки (Р-403).
     await feedbackTable(),
   ];
   if (actor !== null) {

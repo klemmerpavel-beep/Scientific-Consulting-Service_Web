@@ -67,7 +67,7 @@ services:
       CABINET_CRON_SECRET: ${CABINET_CRON_SECRET:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
-      # Ключ выгрузки замечаний для исполнителя правок (решение Р-279):
+      # Ключ выгрузки замечаний для исполнителя правок (решение Р-405):
       # пусто — адреса /api/feedback/export нет.
       FEEDBACK_EXPORT_TOKEN: ${FEEDBACK_EXPORT_TOKEN:-}
       # Экран «Зеркало на Диске» показывает, настроено ли зеркало и мост.

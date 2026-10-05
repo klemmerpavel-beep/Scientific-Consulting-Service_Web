@@ -369,7 +369,7 @@ const { tpl, styles, logic, head } = parseDc(src);
 const jsx = convert(tpl.trim(), path.basename(inFile));
 
 // Благодарность за заявку — всплывающим окном поверх страницы, а не
-// строкой под формой (решение Р-280). Текст остаётся в макете: из блока
+// строкой под формой (решение Р-406). Текст остаётся в макете: из блока
 // `data-sent` берётся его строка, из обработчика — какой блок к какой
 // форме относится. Отзыв пишется в своём окне и благодарит там же — его
 // обработчик остаётся прежним.
@@ -413,7 +413,7 @@ import { submitLead } from '../../lib/submit-lead';
 import PhotoSlot from '../PhotoSlot';
 import { ABOVE_THE_FOLD } from '../photos';
 
-/** Текст благодарности по обработчику формы заявки — из макета (Р-280). */
+/** Текст благодарности по обработчику формы заявки — из макета (Р-406). */
 const LEAD_THANKS: Record<string, string> = ${JSON.stringify(leadThanks, null, 2)};
 
 const css = \`
@@ -438,7 +438,7 @@ ${logicBody}
       if (outcome.ok) {
         this.setState((s: any) => ({ __ui: { ...(s.__ui ?? {}), pending: false } }));
         // Заявка: благодарность всплывает поверх страницы, форма уже
-        // очищена (components/LeadThanks.tsx, Р-280). Прочее — как в макете.
+        // очищена (components/LeadThanks.tsx, Р-406). Прочее — как в макете.
         const thanks = LEAD_THANKS[key];
         if (thanks && typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('pd:lead-sent', { detail: { text: thanks, form } }));

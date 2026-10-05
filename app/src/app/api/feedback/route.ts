@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Приём замечания с виджета (решение Р-277).
+ * Приём замечания с виджета (решение Р-403).
  *
  * Разбор запроса — в `lib/feedback-intake.ts`, правила — в
  * `lib/feedback.ts`, запись — в `lib/cabinet/feedback.ts`. Маршрут не

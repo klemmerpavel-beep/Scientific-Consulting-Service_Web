@@ -26,7 +26,7 @@ import { openObject, storage, type OpenedObject } from './storage.ts';
 export { FeedbackInputError };
 
 /**
- * Замечания с виджета: приём, разбор и выгрузка (решение Р-277).
+ * Замечания с виджета: приём, разбор и выгрузка (решение Р-403).
  *
  * Приём открыт всем — кнопка стоит на каждой странице сайта и на каждом
  * экране кабинета, — и потому не знает, кто пишет: действующее лицо сюда
@@ -60,7 +60,7 @@ export async function createFeedback(input: FeedbackSubmission): Promise<{ id: s
     // На экранах кабинета — имена, суммы, темы работ: снимок оттуда был бы
     // персональными данными, которые виджет обещал не собирать. Поле на
     // экранах кабинета не показывается, но присланное в обход отвергается
-    // здесь (решение Р-277).
+    // здесь (решение Р-403).
     if (value.area === 'CABINET') throw new FeedbackInputError(SCREENSHOT_IN_CABINET);
     if (shot.byteLength > SCREENSHOT_MAX_BYTES) throw new FeedbackInputError(SCREENSHOT_TOO_BIG, 413);
     const kind = sniffImage(shot);
@@ -158,7 +158,7 @@ export async function reviewFeedback(actor: Actor, id: string, input: FeedbackRe
 
 /**
  * Разбор без проверки права: его делают `reviewFeedback` (право
- * руководителя) и `feedbackExportService` (ключ выгрузки, Р-279). Во втором
+ * руководителя) и `feedbackExportService` (ключ выгрузки, Р-405). Во втором
  * случае действующего лица нет, и в журнал пишется пометка «по ключу».
  */
 async function applyReview(actor: Actor | null, id: string, input: FeedbackReview): Promise<void> {
@@ -263,7 +263,7 @@ export async function feedbackWorkbook(actor: Actor, ip: string | null): Promise
 // ───────────────────────────── Выгрузка по ключу ──────────────────────────
 
 /**
- * Служба выгрузки по ключу (решение Р-279): перечень, снимок и разбор для
+ * Служба выгрузки по ключу (решение Р-405): перечень, снимок и разбор для
  * `/api/feedback/export`. Право здесь не проверяется — его заменяет ключ,
  * который проверяет маршрут (`lib/feedback-export.ts`). Каждая выгрузка
  * перечня пишется в журнал числом строк с пометкой «по ключу», разбор — как

@@ -40,7 +40,7 @@ export async function flashText(id: string | undefined): Promise<string | undefi
 /**
  * Адрес возврата на экран с меткой отказа. Адрес с отбором (`?status=…`)
  * получает метку через `&`: экран замечаний возвращает на ту же страницу
- * перечня с тем же отбором (решение Р-277).
+ * перечня с тем же отбором (решение Р-403).
  */
 export async function withError(path: string, reason: string): Promise<string> {
   return `${path}${path.includes('?') ? '&' : '?'}error=${await flash(reason)}`;

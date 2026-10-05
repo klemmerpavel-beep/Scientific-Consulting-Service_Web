@@ -7,7 +7,7 @@ import { submitLead } from '../../lib/submit-lead';
 import PhotoSlot from '../PhotoSlot';
 import { ABOVE_THE_FOLD } from '../photos';
 
-/** Текст благодарности по обработчику формы заявки — из макета (Р-280). */
+/** Текст благодарности по обработчику формы заявки — из макета (Р-406). */
 const LEAD_THANKS: Record<string, string> = {
   "submitTop": "Заявка принята. Менеджер ответит в рабочее время.",
   "submitBottom": "Заявка принята. Менеджер ответит в рабочее время."
@@ -175,7 +175,7 @@ state = { sentTop: false, sentBottom: false, contactTop: 0, contactBottom: 0, di
       if (outcome.ok) {
         this.setState((s: any) => ({ __ui: { ...(s.__ui ?? {}), pending: false } }));
         // Заявка: благодарность всплывает поверх страницы, форма уже
-        // очищена (components/LeadThanks.tsx, Р-280). Прочее — как в макете.
+        // очищена (components/LeadThanks.tsx, Р-406). Прочее — как в макете.
         const thanks = LEAD_THANKS[key];
         if (thanks && typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('pd:lead-sent', { detail: { text: thanks, form } }));

@@ -1,5 +1,5 @@
 /**
- * Замечания с виджета на настоящей базе (решение Р-277): запись через
+ * Замечания с виджета на настоящей базе (решение Р-403): запись через
  * службу, отказ снимка из кабинета, разбор руководителем, права и таблица
  * для Диска без адресов и строк браузера.
  *
@@ -78,7 +78,7 @@ describe('замечания с виджета', { skip: !enabled }, async () =>
     if (root !== '') await rm(root, { recursive: true, force: true });
     await prisma.feedback.deleteMany({ where: { OR: [{ id: { in: created } }, { text: { contains: marker } }] } });
     await prisma.auditEvent.deleteMany({ where: { actorId: { in: users } } });
-    // Разбор и выгрузка по ключу идут без действующего лица (Р-279).
+    // Разбор и выгрузка по ключу идут без действующего лица (Р-405).
     await prisma.auditEvent.deleteMany({ where: { actorId: null, objectId: { in: created } } });
     await prisma.auditEvent.deleteMany({
       where: { actorId: null, action: 'FEEDBACK_EXPORTED', occurredAt: { gte: new Date(stamp) } },
@@ -264,7 +264,7 @@ describe('замечания с виджета', { skip: !enabled }, async () =>
     assert.equal((event.payload as { rows: number }).rows, book.rows);
   });
 
-  describe('выгрузка и разбор по ключу (Р-279)', () => {
+  describe('выгрузка и разбор по ключу (Р-405)', () => {
     it('перечень: свежие сверху, отбор по состоянию, выгрузка в журнале без лица', async () => {
       const all = await service.feedbackExportService.list(null);
       const mine = all.filter((row) => row.text.includes(marker));

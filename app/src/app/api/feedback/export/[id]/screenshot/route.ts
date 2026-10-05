@@ -4,7 +4,7 @@ import { exportLimiter, handleExportScreenshot } from '../../../../../../lib/fee
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** Снимок экрана к замечанию по ключу выгрузки (решение Р-279). */
+/** Снимок экрана к замечанию по ключу выгрузки (решение Р-405). */
 export async function GET(
   request: Request,
   context: { params: Promise<{ id: string }> },
