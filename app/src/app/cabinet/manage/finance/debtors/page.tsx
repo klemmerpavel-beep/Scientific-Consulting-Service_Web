@@ -22,7 +22,7 @@ import {
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
 import { overdueTranches } from '../../../../../lib/cabinet/finance';
-import { formatAmount } from '../../../../../lib/cabinet/money';
+import { debtsByClient, formatAmount } from '../../../../../lib/cabinet/money';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { moveTrancheDate, writeOffDebt } from '../../../actions';
@@ -48,6 +48,8 @@ export default async function DebtorsScreen({
   const flags = await searchParams;
   const rows = await overdueTranches(actor);
   const total = rows.reduce((acc, row) => acc + row.amount, 0n);
+  // Итог по клиенту с несколькими просроченными платежами (УР-06, Р-389).
+  const repeat = debtsByClient(rows);
 
   return (
     <Shell actor={actor} current="/cabinet/manage/finance">
@@ -76,6 +78,11 @@ export default async function DebtorsScreen({
             Просрочен платёж, срок которого раньше сегодняшнего дня; отменённые работы денег не ждут.
             По п. 8.5 оферты работу можно приостановить до оплаты — «Приостановить» у строки ведёт к
             смене состояния работы.
+            {repeat.length === 0
+              ? null
+              : ` Несколько просроченных платежей у одного клиента: ${repeat
+                  .map((row) => `${row.client} — ${row.count} на ${formatAmount(row.total)}`)
+                  .join('; ')}.`}
           </Text>
           <TableCard label="Должники">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1040 }}>

@@ -227,3 +227,21 @@ export function formatAmount(kopecks: bigint | number | null | undefined): strin
   const tail = cents === 0n ? '' : `,${cents.toString().padStart(2, '0')}`;
   return `${negative ? '−' : ''}${grouped}${tail} ₽`;
 }
+
+/**
+ * Итог «Должников» по клиенту — только у тех, у кого просрочено несколько
+ * платежей; крупные долги сверху (улучшение УР-06, решение Р-389).
+ */
+export function debtsByClient(
+  rows: readonly { readonly client: string; readonly amount: bigint }[],
+): { client: string; count: number; total: bigint }[] {
+  const grouped = new Map<string, { count: number; total: bigint }>();
+  for (const row of rows) {
+    const current = grouped.get(row.client) ?? { count: 0, total: 0n };
+    grouped.set(row.client, { count: current.count + 1, total: current.total + row.amount });
+  }
+  return [...grouped.entries()]
+    .filter(([, value]) => value.count > 1)
+    .map(([client, value]) => ({ client, ...value }))
+    .sort((a, b) => (b.total > a.total ? 1 : b.total < a.total ? -1 : a.client.localeCompare(b.client)));
+}
