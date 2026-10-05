@@ -14,6 +14,7 @@ import {
   contactNoteFor,
   settingsTexts,
   uploadFailedText,
+  waitingPublication,
 } from '../src/lib/cabinet/staff-texts.ts';
 import type { ContactKind } from '../src/lib/cabinet/channels.ts';
 
@@ -120,5 +121,14 @@ describe('подписи способов связи руководителя (�
       assert.notEqual(note, CONTACT_NOTE[kind], kind);
       assert.doesNotMatch(note, /ответы менеджера|поворотам работы|ведёт работу сам/u, kind);
     }
+  });
+});
+
+describe('«Ждут публикации» одной строкой (УЭ-04, Р-382)', () => {
+  it('по видам, с числительными; пусто — ничего', () => {
+    assert.equal(waitingPublication(3, 1), 'Ждут публикации: 3 замечания и 1 версия куратора.');
+    assert.equal(waitingPublication(0, 5), 'Ждут публикации: 5 версий куратора.');
+    assert.equal(waitingPublication(11, 0), 'Ждут публикации: 11 замечаний.');
+    assert.equal(waitingPublication(0, 0), null);
   });
 });

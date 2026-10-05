@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { waitingPublication } from '../../../lib/cabinet/staff-texts';
 
 import Shell from '../../../components/cabinet/Shell';
 import { RADIUS, SANS } from '../../../components/cabinet/tokens';
@@ -609,6 +610,12 @@ export default async function ManageQueue({
               oldestLate === null ? '' : `, ${oldestLate} ${plural(oldestLate, 'день', 'дня', 'дней')}`
             }.`,
         summary === null ? null : `Действующих работ — ${summary.active + summary.paused}.`,
+        // Всё, что ждёт публикации, — одной строкой по видам (улучшение
+        // УЭ-04, решение Р-382); сами дела — ниже, по этапам.
+        waitingPublication(
+          parts.comment.reduce((acc, row) => acc + row.count, 0),
+          parts.version.reduce((acc, row) => acc + row.count, 0),
+        ),
         queue.total === 0
           ? null
           : `${queue.total} ${plural(queue.total, 'заявка ждёт', 'заявки ждут', 'заявок ждут')} разбора.`,

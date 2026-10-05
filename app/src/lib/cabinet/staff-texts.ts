@@ -167,3 +167,26 @@ export function uploadFailedText(role: Role): string {
   const whom = role === 'CLIENT' ? 'менеджеру в переписке работы' : 'руководителю';
   return `Файл не сохранён: хранилище файлов сейчас недоступно. Попробуйте ещё раз через несколько минут; если повторится — напишите ${whom}.`;
 }
+
+/** Склонение числительного — как `plural` экранов; модуль без разметки. */
+function word(count: number, one: string, few: string, many: string): string {
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  const mod10 = count % 10;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
+
+/**
+ * Строка ответа «Сегодня» менеджера: всё, что ждёт публикации, одной
+ * фразой по видам — «Ждут публикации: N замечаний и M версий куратора»;
+ * нечего публиковать — ничего (улучшение УЭ-04, решение Р-382).
+ */
+export function waitingPublication(comments: number, versions: number): string | null {
+  const parts = [
+    comments === 0 ? null : `${comments} ${word(comments, 'замечание', 'замечания', 'замечаний')}`,
+    versions === 0 ? null : `${versions} ${word(versions, 'версия', 'версии', 'версий')} куратора`,
+  ].filter((part) => part !== null);
+  return parts.length === 0 ? null : `Ждут публикации: ${parts.join(' и ')}.`;
+}
