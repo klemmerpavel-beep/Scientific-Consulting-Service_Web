@@ -19,6 +19,7 @@
 
 import { ensure, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
+import { NOTIFY_LOG_SIZE, type NotifyLogRow } from './notify-log.ts';
 
 import { prisma } from '../db.ts';
 
@@ -234,6 +235,31 @@ export async function setFullSupport(actor: Actor, on: boolean): Promise<void> {
     objectId: actor.id,
     payload: { kind: 'FULL_SUPPORT' },
   });
+}
+
+/**
+ * Последние уведомления своей учётной записи — для перечня «Что и когда
+ * отправлено» (часть F, П-04, решение Р-402). Только свои строки очереди:
+ * чужой идентификатор сюда не передаётся. Текст письма не отдаётся —
+ * тема, канал, время и исход.
+ */
+export async function ownNotifications(actor: Actor): Promise<NotifyLogRow[]> {
+  const rows = await prisma.notificationOutbox.findMany({
+    where: { userId: actor.id },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: NOTIFY_LOG_SIZE,
+    select: {
+      id: true,
+      channel: true,
+      subject: true,
+      state: true,
+      failure: true,
+      createdAt: true,
+      scheduledAt: true,
+      sentAt: true,
+    },
+  });
+  return rows as NotifyLogRow[];
 }
 
 /* ------------------------------------------------------------------ */

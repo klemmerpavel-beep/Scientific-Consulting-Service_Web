@@ -20,6 +20,8 @@ import {
   TABLE_HEAD,
   Text,
   formatDate,
+  formatDay,
+  formatTime,
   TableScroll,
 } from '../../../components/cabinet/ui';
 import { telegramBindAvailable } from '../../../lib/cabinet/auth';
@@ -34,6 +36,7 @@ import {
   rulesFor,
   needsValue,
   ownContacts,
+  ownNotifications,
   ownRules,
   type ContactKind,
 } from '../../../lib/cabinet/channels';
@@ -57,6 +60,12 @@ import {
   startTelegramBind,
 } from '../actions';
 import { ownErasureRequest } from '../../../lib/cabinet/erasure';
+import {
+  NOTIFY_CHANNEL_LABEL,
+  NOTIFY_LOG_SIZE,
+  notifyMoment,
+  notifyStatus,
+} from '../../../lib/cabinet/notify-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +76,7 @@ export default async function SettingsScreen({
 }) {
   const actor = await requireActor('/cabinet/settings');
 
-  const [params, user, allContacts, rules, profile, erasureAsked] = await Promise.all([
+  const [params, user, allContacts, rules, profile, erasureAsked, sent] = await Promise.all([
     searchParams,
     ownChannels(actor),
     ownContacts(actor),
@@ -75,6 +84,8 @@ export default async function SettingsScreen({
     ownCuratorProfile(actor),
     // Открытый запрос клиента на удаление данных (П-08, Р-400).
     ownErasureRequest(actor),
+    // Что и когда отправлено (П-04, Р-402).
+    ownNotifications(actor),
   ]);
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
   const failure = await flashText(params.error);
@@ -304,6 +315,34 @@ export default async function SettingsScreen({
               <Button>Сохранить</Button>
             </FormActions>
           </Form>
+          {/* Перечень своих уведомлений: тема, время, канал, исход — без
+              текста письма (часть F, П-04, решение Р-402). */}
+          <Disclosure title="Что и когда отправлено" style={{ marginTop: 16 }}>
+            {sent.length === 0 ? (
+              <Text muted size={14}>
+                Уведомлений пока не было.
+              </Text>
+            ) : (
+              <>
+                <Text muted size={13} style={{ marginBottom: 12 }}>
+                  {`Последние ${NOTIFY_LOG_SIZE} уведомлений, новые сверху. Время московское.`}
+                </Text>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+                  {sent.map((row) => {
+                    const at = notifyMoment(row);
+                    return (
+                      <li key={row.id} style={{ paddingBottom: 10, borderBottom: '1px solid var(--pd-divider)' }}>
+                        <Text size={14}>{row.subject}</Text>
+                        <Text muted size={13} style={{ marginTop: 2 }}>
+                          {`${formatDay(at)}, ${formatTime(at)} · ${NOTIFY_CHANNEL_LABEL[row.channel]} · ${notifyStatus(row)}`}
+                        </Text>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </Disclosure>
         </Card>
 
         {!withRules ? null : (
