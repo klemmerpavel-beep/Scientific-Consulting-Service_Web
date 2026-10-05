@@ -256,6 +256,8 @@ export const RULE_EVENTS: readonly {
   { kind: 'STAFF_QUESTION', title: 'Вопрос сотрудника', group: 'Руководителю', roles: ['HEAD'] },
   { kind: 'CLIENT_ACCESS_OPENED', title: 'Менеджер открыл вход клиенту', group: 'Руководителю', roles: ['HEAD'] },
   { kind: 'NDA_NEEDED', title: 'Нужен договор поручения', group: 'Руководителю', roles: ['HEAD'] },
+  // Клиент запросил удаление данных из «Настроек» (часть F, П-08, Р-400).
+  { kind: 'CLIENT_ERASURE_REQUEST', title: 'Клиент просит удалить персональные данные', group: 'Руководителю', roles: ['HEAD'] },
   // Куратор сам сообщил, что ждёт договор (Э-12, Р-331).
   { kind: 'NDA_WAITING', title: 'Куратор ждёт договор поручения', group: 'Руководителю', roles: ['HEAD'] },
   // Сбой отправки — тем каналом, который работает (РК-02, Р-334).

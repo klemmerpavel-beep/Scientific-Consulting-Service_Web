@@ -82,7 +82,7 @@ import {
   saveRules,
   type ContactKind,
 } from '../../lib/cabinet/channels';
-import { ActiveWorkError, executeErasure, requestErasure } from '../../lib/cabinet/erasure';
+import { ActiveWorkError, executeErasure, requestErasure, requestOwnErasure } from '../../lib/cabinet/erasure';
 import { createCabinetRequest, REQUEST_FILES_MAX } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
@@ -1402,6 +1402,20 @@ export async function openErasureRequest(form: FormData): Promise<void> {
     scope === 'PERSONAL_DATA' ? 'PERSONAL_DATA' : 'PERSONAL_DATA_AND_FILES',
   );
   redirect('/cabinet/manage/erasure');
+}
+
+/** Клиент запрашивает удаление своих данных (часть F, П-08, Р-400). */
+export async function requestMyErasure(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  let failure: string | null = null;
+  try {
+    if (form.get('confirm') !== 'on') throw new Error('Подтвердите запрос: он уйдёт руководителю практики');
+    await requestOwnErasure(actor);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить запрос');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/settings', failure));
+  redirect('/cabinet/settings?saved=1');
 }
 
 export async function executeErasureRequest(form: FormData): Promise<void> {

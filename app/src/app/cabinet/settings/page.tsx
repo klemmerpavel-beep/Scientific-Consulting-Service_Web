@@ -48,9 +48,11 @@ import {
   makeContactPreferred,
   removeContactChannel,
   saveNotificationChannels,
+  requestMyErasure,
   saveNotifyRules,
   startTelegramBind,
 } from '../actions';
+import { ownErasureRequest } from '../../../lib/cabinet/erasure';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,12 +63,14 @@ export default async function SettingsScreen({
 }) {
   const actor = await requireActor('/cabinet/settings');
 
-  const [params, user, contacts, rules, profile] = await Promise.all([
+  const [params, user, contacts, rules, profile, erasureAsked] = await Promise.all([
     searchParams,
     ownChannels(actor),
     ownContacts(actor),
     ownRules(actor),
     ownCuratorProfile(actor),
+    // Открытый запрос клиента на удаление данных (П-08, Р-400).
+    ownErasureRequest(actor),
   ]);
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
   const failure = await flashText(params.error);
@@ -372,6 +376,31 @@ export default async function SettingsScreen({
             </>
           )}
         </Card>
+
+        {/* Запрос удаления данных прямо из кабинета (часть F, П-08, Р-400). */}
+        {actor.role !== 'CLIENT' ? null : (
+          <Card style={{ marginTop: 20 }}>
+            <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+              Удаление персональных данных
+            </Heading>
+            {erasureAsked !== null ? (
+              <Text muted size={14}>
+                {`Запрос отправлен ${formatDate(erasureAsked)}: руководитель практики рассмотрит его и ответит на почту учётной записи.`}
+              </Text>
+            ) : (
+              <Form action={requestMyErasure}>
+                <Text muted size={14}>
+                  Запрос уйдёт руководителю практики. Договоры и платёжные документы, которые закон
+                  обязывает хранить, сохраняются; остальные персональные данные и файлы удаляются.
+                </Text>
+                <Checkbox name="confirm" required label="Прошу удалить мои персональные данные" />
+                <FormActions>
+                  <Button tone="quiet">Отправить запрос</Button>
+                </FormActions>
+              </Form>
+            )}
+          </Card>
+        )}
 
         {/* Без отметки о согласии — только право требовать удаления: оно есть
             у любого субъекта (УК-18, Р-369). */}
