@@ -50,7 +50,13 @@ import {
   workClosed,
   type Actor,
 } from '../../../../lib/cabinet/access';
-import { CONTACT_LABEL, contactsOf, curatorContacts } from '../../../../lib/cabinet/channels';
+import {
+  CONTACT_LABEL,
+  contactsOf,
+  curatorContacts,
+  fullSupportOn,
+  listedContacts,
+} from '../../../../lib/cabinet/channels';
 import { contactLabelFor } from '../../../../lib/cabinet/staff-texts';
 import { stageLabel } from '../../../../lib/cabinet/stage-state';
 import {
@@ -324,10 +330,13 @@ export default async function ProjectScreen({
   const mayWrite = can(actor, 'MESSAGE_READ', ref);
   // Способы связи клиента видит тот же, кто видит его контакты: телефон и
   // ссылка на мессенджер — персональные данные (решение Р-198).
-  const clientContacts =
+  const clientChannels =
     maySeeContacts && project.client.userId !== null
       ? await contactsOf(actor, ref, project.client.userId)
       : [];
+  // Полное сопровождение — отдельной строкой, не способом связи (П-09, Р-401).
+  const clientContacts = listedContacts(clientChannels);
+  const clientFullSupport = fullSupportOn(clientChannels);
   const mayUpload = can(actor, 'MATERIAL_UPLOAD', ref);
   // Способы связи куратора — практике работы, в «О работе» рядом с ним
   // (требование Э-10, решение Р-330; Р-298).
@@ -1268,6 +1277,11 @@ export default async function ProjectScreen({
                   )}
                   {/* Как человек просил с ним связываться. Куратор держится
                       этого списка, а не звонит наугад (решение Р-198). */}
+                  {clientFullSupport ? (
+                    <Text size={13} style={{ marginTop: 10 }}>
+                      Просит полное сопровождение: менеджер ведёт работу сам и связывается первым.
+                    </Text>
+                  ) : null}
                   {clientContacts.length === 0 ? null : (
                     <ul
                       style={{

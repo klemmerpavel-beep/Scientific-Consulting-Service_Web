@@ -57,7 +57,8 @@ describe('тексты экрана настроек по роли', () => {
       assert.doesNotMatch(contactLabelFor('MANAGER', kind, LABEL), /менеджер/iu);
       assert.doesNotMatch(contactNoteFor('MANAGER', kind, NOTE), /[Мм]енеджер/u);
     }
-    assert.deepEqual(contactKindsFor('CLIENT', KINDS), [...KINDS]);
+    // Клиент включает сопровождение отдельной отметкой, не строкой перечня (П-09, Р-401).
+    assert.deepEqual(contactKindsFor('CLIENT', KINDS), KINDS.filter((kind) => kind !== 'FULL_SUPPORT'));
     assert.equal(contactLabelFor('CLIENT', 'PHONE_CALL', LABEL), 'Звонок менеджера');
   });
 });

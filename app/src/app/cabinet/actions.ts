@@ -79,6 +79,7 @@ import {
   closeWelcome,
   dropContact,
   preferContact,
+  setFullSupport,
   saveRules,
   type ContactKind,
 } from '../../lib/cabinet/channels';
@@ -966,6 +967,16 @@ export async function addContactChannel(form: FormData): Promise<void> {
 export async function removeContactChannel(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   await settingsStep(() => dropContact(actor, String(form.get('id') ?? '')), 'Не удалось убрать способ связи');
+  redirect('/cabinet/settings?saved=1');
+}
+
+/** Полное сопровождение — отдельной отметкой клиента (часть F, П-09, Р-401). */
+export async function saveFullSupport(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await settingsStep(
+    () => setFullSupport(actor, form.get('fullSupport') === 'on'),
+    'Не удалось сохранить полное сопровождение',
+  );
   redirect('/cabinet/settings?saved=1');
 }
 

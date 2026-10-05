@@ -80,13 +80,26 @@ describe('способы связи и правила уведомлений', {
     assert.equal(rows[0]?.kind, 'EMAIL', 'предпочтение не перешло к последнему выбранному');
   });
 
-  it('полное сопровождение не требует адреса', async () => {
+  it('полное сопровождение — отдельной отметкой, не строкой перечня (П-09, Р-401)', async () => {
     const actor = who(ids.client!, 'CLIENT');
-    await channels.addContact(actor, { kind: 'FULL_SUPPORT' });
-    const rows = await channels.ownContacts(actor);
-    const support = rows.find((row) => row.kind === 'FULL_SUPPORT');
-    assert.ok(support !== undefined, 'полное сопровождение не завелось');
-    assert.equal(support?.value, null, 'у порядка работы откуда-то взялся адрес');
+    await assert.rejects(channels.addContact(actor, { kind: 'FULL_SUPPORT' }), /отдельной отметкой/u);
+    await channels.setFullSupport(actor, true);
+    await channels.setFullSupport(actor, true);
+    let rows = await channels.ownContacts(actor);
+    const support = rows.filter((row) => row.kind === 'FULL_SUPPORT');
+    assert.equal(support.length, 1, 'повторное включение завело вторую строку');
+    assert.equal(support[0]?.value, null, 'у порядка работы откуда-то взялся адрес');
+    assert.equal(support[0]?.preferred, false, 'сопровождение стало предпочтительным способом');
+    assert.ok(channels.fullSupportOn(rows));
+    assert.ok(channels.listedContacts(rows).every((row) => row.kind !== 'FULL_SUPPORT'));
+    // Предпочтительным сопровождение не становится и прежнее предпочтение не снимает.
+    await channels.preferContact(actor, support[0]!.id);
+    rows = await channels.ownContacts(actor);
+    assert.equal(rows.find((row) => row.kind === 'FULL_SUPPORT')?.preferred, false);
+    assert.equal(rows.filter((row) => row.preferred).length, 1);
+    await channels.setFullSupport(actor, false);
+    assert.ok(!channels.fullSupportOn(await channels.ownContacts(actor)));
+    await assert.rejects(channels.setFullSupport(who(ids.expert!, 'EXPERT'), true), /не разрешено/u);
   });
 
   // Реквизиты работы, к которой относится вопрос о контактах: куратор —

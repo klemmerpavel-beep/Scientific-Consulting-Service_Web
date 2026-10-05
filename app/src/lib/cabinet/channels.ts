@@ -41,6 +41,23 @@ export const CONTACT_NOTE: Record<ContactKind, string> = {
   FULL_SUPPORT: 'Менеджер ведёт работу сам и связывается первым, не дожидаясь вопросов.',
 };
 
+/**
+ * «Полное сопровождение» — порядок работы, а не адрес: на экране это
+ * отдельная отметка клиента, а не строка перечня способов связи (часть F,
+ * П-09, решение Р-401). Хранится прежней строкой способа связи без адреса.
+ */
+export const FULL_SUPPORT_NOTE = CONTACT_NOTE.FULL_SUPPORT;
+
+/** Строки перечня способов связи — без отметки полного сопровождения. */
+export function listedContacts<T extends { readonly kind: ContactKind }>(rows: readonly T[]): T[] {
+  return rows.filter((row) => row.kind !== 'FULL_SUPPORT');
+}
+
+/** Включено ли полное сопровождение. */
+export function fullSupportOn(rows: readonly { readonly kind: ContactKind }[]): boolean {
+  return rows.some((row) => row.kind === 'FULL_SUPPORT');
+}
+
 /** Нужен ли этому способу адрес или номер. */
 export function needsValue(kind: ContactKind): boolean {
   return kind === 'PHONE_CALL' || kind === 'MESSENGER';
@@ -114,6 +131,10 @@ export const CONTACT_MAX = 500;
 
 /** Добавить способ связи себе. */
 export async function addContact(actor: Actor, input: ContactInput): Promise<void> {
+  // Сопровождение включается отдельной отметкой (П-09, Р-401).
+  if (input.kind === 'FULL_SUPPORT') {
+    throw new Error('Полное сопровождение включается отдельной отметкой в «Настройках»');
+  }
   const value = (input.value ?? '').trim();
   const note = (input.note ?? '').trim();
   // Пределы длины: телефон и ссылка не бывают длиннее, а заметка — это
@@ -176,7 +197,8 @@ export async function preferContact(actor: Actor, id: string): Promise<void> {
     where: { id, userId: actor.id },
     select: { id: true, kind: true },
   });
-  if (own === null) return;
+  // Сопровождение — не способ связи и предпочтительным не бывает (Р-401).
+  if (own === null || own.kind === 'FULL_SUPPORT') return;
   await prisma.$transaction([
     prisma.contactChannel.updateMany({ where: { userId: actor.id }, data: { preferred: false } }),
     prisma.contactChannel.update({ where: { id: own.id }, data: { preferred: true } }),
@@ -186,6 +208,31 @@ export async function preferContact(actor: Actor, id: string): Promise<void> {
     objectType: 'ContactChannel',
     objectId: actor.id,
     payload: { kind: own.kind },
+  });
+}
+
+/**
+ * Включить или снять полное сопровождение (часть F, П-09, решение Р-401).
+ * Только клиенту: сотруднику услуга не нужна. Повтор того же состояния
+ * ничего не меняет и в журнал не пишется.
+ */
+export async function setFullSupport(actor: Actor, on: boolean): Promise<void> {
+  if (actor.role !== 'CLIENT' || actor.status !== 'ACTIVE') throw new Error('Действие не разрешено');
+  const existing = await prisma.contactChannel.findMany({
+    where: { userId: actor.id, kind: 'FULL_SUPPORT' },
+    select: { id: true },
+  });
+  if (on === existing.length > 0) return;
+  if (on) {
+    await prisma.contactChannel.create({ data: { userId: actor.id, kind: 'FULL_SUPPORT', preferred: false } });
+  } else {
+    await prisma.contactChannel.deleteMany({ where: { userId: actor.id, kind: 'FULL_SUPPORT' } });
+  }
+  await record(actor, {
+    action: on ? 'CONTACT_ADDED' : 'CONTACT_REMOVED',
+    objectType: 'ContactChannel',
+    objectId: actor.id,
+    payload: { kind: 'FULL_SUPPORT' },
   });
 }
 

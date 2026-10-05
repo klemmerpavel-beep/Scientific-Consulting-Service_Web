@@ -134,9 +134,13 @@ const HEAD_NOTE: Partial<Record<ContactKind, string>> = {
 /** Сотрудник практики — подписи не для клиента (М-20, Э-10, РК-14). */
 const staffSide = (role: Role) => role === 'MANAGER' || role === 'EXPERT' || role === 'HEAD';
 
-/** Способы связи, которые роль может себе завести. */
-export function contactKindsFor(role: Role, kinds: readonly ContactKind[]): ContactKind[] {
-  return staffSide(role) ? kinds.filter((kind) => kind !== 'FULL_SUPPORT') : [...kinds];
+/**
+ * Способы связи, которые роль может себе завести. «Полного сопровождения»
+ * в перечне нет ни у кого: клиент включает его отдельной отметкой (П-09,
+ * Р-401), сотруднику услуга не нужна.
+ */
+export function contactKindsFor(_role: Role, kinds: readonly ContactKind[]): ContactKind[] {
+  return kinds.filter((kind) => kind !== 'FULL_SUPPORT');
 }
 
 /** Подпись способа связи для роли; `base` — общая подпись. */

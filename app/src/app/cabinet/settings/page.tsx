@@ -28,6 +28,9 @@ import { CURATOR_FOR_CLIENT, expertLine } from '../../../lib/cabinet/access';
 import {
   CONTACT_LABEL,
   CONTACT_NOTE,
+  FULL_SUPPORT_NOTE,
+  fullSupportOn,
+  listedContacts,
   rulesFor,
   needsValue,
   ownContacts,
@@ -47,6 +50,7 @@ import {
   dropTelegram,
   makeContactPreferred,
   removeContactChannel,
+  saveFullSupport,
   saveNotificationChannels,
   requestMyErasure,
   saveNotifyRules,
@@ -63,7 +67,7 @@ export default async function SettingsScreen({
 }) {
   const actor = await requireActor('/cabinet/settings');
 
-  const [params, user, contacts, rules, profile, erasureAsked] = await Promise.all([
+  const [params, user, allContacts, rules, profile, erasureAsked] = await Promise.all([
     searchParams,
     ownChannels(actor),
     ownContacts(actor),
@@ -74,6 +78,9 @@ export default async function SettingsScreen({
   ]);
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
   const failure = await flashText(params.error);
+  // Полное сопровождение — отдельная отметка, не строка перечня (П-09, Р-401).
+  const contacts = listedContacts(allContacts);
+  const fullSupport = fullSupportOn(allContacts);
 
   // Разбор по событиям нужен тому, кто получает уведомления обо всей
   // практике: у клиента их несколько в месяц, и делить их по каналам
@@ -171,6 +178,20 @@ export default async function SettingsScreen({
           <Text muted size={14} style={{ marginBottom: 16 }}>
             {texts.contactsLead}
           </Text>
+
+          {/* Порядок работы, а не адрес: отдельной отметкой над перечнем
+              (часть F, П-09, решение Р-401). */}
+          {actor.role !== 'CLIENT' ? null : (
+            <Form action={saveFullSupport}>
+              <Checkbox name="fullSupport" defaultChecked={fullSupport} label="Полное сопровождение" />
+              <Text muted size={13}>
+                {FULL_SUPPORT_NOTE}
+              </Text>
+              <FormActions>
+                <Button tone="quiet">Сохранить</Button>
+              </FormActions>
+            </Form>
+          )}
 
           {contacts.length === 0 ? (
             <Text muted style={{ marginBottom: 16 }}>
