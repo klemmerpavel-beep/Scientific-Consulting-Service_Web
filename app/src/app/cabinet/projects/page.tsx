@@ -31,6 +31,8 @@ import {
   stageLabel,
   type StageStateKey,
   Pager,
+  Checkbox,
+  FormActions,
 } from '../../../components/cabinet/ui';
 import { unreadByProject } from '../../../lib/cabinet/messages';
 import {
@@ -48,7 +50,7 @@ import { can, staffExpertLine } from '../../../lib/cabinet/access';
 import { requireActor } from '../../../lib/cabinet/session';
 import { soleWorkTarget } from '../../../lib/cabinet/nav';
 import { welcomeState } from '../../../lib/cabinet/channels';
-import { dismissWelcome, requestNdaAction, startTelegramBind } from '../actions';
+import { dismissWelcome, requestNdaAction, startTelegramBind, transferWorks } from '../actions';
 import ActionError from '../../../components/cabinet/ActionError';
 import { ndaRequestedAt } from '../../../lib/cabinet/admin';
 import { CURATOR_WELCOME, ndaRequestOpen } from '../../../lib/cabinet/curator-welcome';
@@ -428,6 +430,35 @@ export default async function ProjectsScreen({
             </Form>
           </FilterSearch>
         </FilterBar>
+      ) : null}
+      {/* Передать все действующие работы менеджера — при отборе по нему
+          (улучшение УР-07, решение Р-397). */}
+      {forHead && person.manager !== '' && list.total > 0 ? (
+        <Disclosure title="Передать все действующие работы менеджера" style={{ marginBottom: 16 }}>
+          <Form action={transferWorks}>
+            <input type="hidden" name="fromManagerId" value={person.manager} />
+            <Select label="Кому передать" name="toManagerId" required>
+              <option value="">Выберите менеджера</option>
+              {managerList
+                .filter((item) => item.id !== person.manager)
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.fullName}
+                  </option>
+                ))}
+            </Select>
+            <Field
+              label="Причина передачи"
+              name="reason"
+              required
+              hint="Одна на все работы; останется в истории каждой. Клиенты и кураторы получат обычные письма о смене менеджера."
+            />
+            <Checkbox name="confirm" required label="Подтверждаю: все действующие работы этого менеджера уйдут другому" />
+            <FormActions>
+              <Button tone="quiet">Передать работы</Button>
+            </FormActions>
+          </Form>
+        </Disclosure>
       ) : null}
       {dueKey === null ? null : (
         <Text size={14} style={{ marginBottom: 16 }}>

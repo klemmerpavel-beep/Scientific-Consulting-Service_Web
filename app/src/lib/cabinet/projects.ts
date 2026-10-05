@@ -734,6 +734,40 @@ export function managerAssignedLetter(code: string, title: string, by: string): 
 }
 
 /**
+ * Передать все действующие работы одного менеджера другому — при уходе
+ * или отпуске (улучшение УР-07, решение Р-397). Только руководитель; одна
+ * причина на все работы; каждая работа передаётся тем же путём, что по
+ * одной (`assignManager`, РК-08): событие, письма, журнал. Работы
+ * передаются по очереди; отказ на одной не отменяет уже переданные —
+ * возвращается число переданных и первая причина отказа.
+ */
+export async function transferAllWorks(
+  actor: Actor,
+  fromManagerId: string,
+  toManagerId: string,
+  reasonRaw: string,
+): Promise<{ moved: number; failed: string | null }> {
+  if (actor.role !== 'HEAD') throw new Error('Передать работы менеджера может только руководитель');
+  if (fromManagerId === toManagerId) throw new Error('Работы передаются другому менеджеру');
+  if (reasonRaw.trim() === '') throw new Error('Укажите причину передачи: она останется в истории каждой работы');
+  const works = await prisma.project.findMany({
+    where: { managerId: fromManagerId, status: { in: ['ACTIVE', 'PAUSED'] } },
+    orderBy: { code: 'asc' },
+    select: { id: true, code: true },
+  });
+  let moved = 0;
+  for (const work of works) {
+    try {
+      await assignManager(actor, work.id, toManagerId, reasonRaw);
+      moved += 1;
+    } catch (error) {
+      return { moved, failed: `${work.code}: ${error instanceof Error ? error.message : 'не передана'}` };
+    }
+  }
+  return { moved, failed: null };
+}
+
+/**
  * Передать работу другому менеджеру (требование РК-08, решение Р-344).
  *
  * Причина обязательна: она стоит в истории для практики — «Работу передал

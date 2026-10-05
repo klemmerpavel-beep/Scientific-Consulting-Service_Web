@@ -184,4 +184,32 @@ describe('передача работы (РК-08)', { skip: !enabled }, async ()
     const letters = await outbox(ids.second!, 'CURATOR_ASSIGNED');
     assert.ok(letters.some((row) => row.projectId === order.projectId), 'нет письма о ручном заказе');
   });
+  it('УР-07: все действующие работы менеджера — другому одной причиной; завершённые остаются (Р-397)', async () => {
+    const order = async (suffix: string, status: 'ACTIVE' | 'PAUSED' | 'COMPLETED') => {
+      const made = await createManualOrder(head(), {
+        customer: `Передачин Клиент ${suffix} ${stamp}`,
+        serviceTypeId: ids.type!,
+        title: `Массовая ${suffix} ${stamp}`,
+        orderedOn: new Date('2026-09-01T00:00:00Z'),
+        cost: 0n,
+        paid: 0n,
+        managerId: ids.first!,
+        status,
+      });
+      created.push(made.projectId);
+      return made.projectId;
+    };
+    const [live, paused, done] = [await order('A', 'ACTIVE'), await order('P', 'PAUSED'), await order('D', 'COMPLETED')];
+    await assert.rejects(projects.transferAllWorks(first(), ids.first!, ids.second!, 'Отпуск'), /только руководитель/u);
+    await assert.rejects(projects.transferAllWorks(head(), ids.first!, ids.second!, '  '), /причину/u);
+    const result = await projects.transferAllWorks(head(), ids.first!, ids.second!, 'Уход в отпуск');
+    assert.equal(result.failed, null);
+    assert.ok(result.moved >= 2);
+    const owner = async (id: string) => (await prisma.project.findUniqueOrThrow({ where: { id } })).managerId;
+    assert.equal(await owner(live), ids.second);
+    assert.equal(await owner(paused), ids.second);
+    assert.equal(await owner(done), ids.first, 'завершённая работа передана');
+    const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: live, kind: 'MANAGER_ASSIGNED' } });
+    assert.equal((event.payload as { reason?: string }).reason, 'Уход в отпуск');
+  });
 });

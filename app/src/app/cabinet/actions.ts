@@ -94,6 +94,7 @@ import {
   approveLead,
   assignExpert,
   assignManager,
+  transferAllWorks,
   declineLead,
   setProjectStatus,
   setStageState,
@@ -732,6 +733,23 @@ export async function setManager(form: FormData): Promise<void> {
     await manageFailure(code, 'manager', error, { managerId, reason });
   }
   redirect(`/cabinet/projects/${code}`);
+}
+
+/** Передать все действующие работы менеджера (улучшение УР-07, Р-397). */
+export async function transferWorks(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const fromId = String(form.get('fromManagerId') ?? '');
+  const back = `/cabinet/projects?state=active&manager=${encodeURIComponent(fromId)}`;
+  let failure: string | null = null;
+  try {
+    if (form.get('confirm') !== 'on') throw new Error('Подтвердите передачу: работы уйдут другому менеджеру');
+    const result = await transferAllWorks(actor, fromId, String(form.get('toManagerId') ?? ''), String(form.get('reason') ?? ''));
+    if (result.failed !== null) failure = `Передано работ: ${result.moved}. Остановлено на ${result.failed}`;
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось передать работы');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 /**
