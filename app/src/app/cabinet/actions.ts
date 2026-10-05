@@ -5,6 +5,7 @@ import { after } from 'next/server';
 
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { AccessDenied, ensure, type Actor } from '../../lib/cabinet/access';
+import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
 import { ClientChoiceNeeded } from '../../lib/cabinet/client-match';
@@ -139,9 +140,6 @@ async function actorOrRedirect() {
  * разбора несёт в тексте имена таблиц и куски запросов: вместо него —
  * фиксированная фраза, а подробности идут в журнал сервера.
  */
-/** Отказ загрузки без причины по существу — обычно недоступное хранилище (Р-255). */
-const UPLOAD_FAILED =
-  'Файл не сохранён: хранилище файлов сейчас недоступно. Попробуйте ещё раз через несколько минут; если повторится — напишите руководителю.';
 
 function reasonOf(error: unknown, fallback: string): string {
   if (error instanceof AccessDenied) return 'Это действие недоступно для вашей роли';
@@ -412,7 +410,7 @@ export async function uploadMaterial(form: FormData): Promise<void> {
       await requestIp(),
     );
   } catch (error) {
-    failure = reasonOf(error, UPLOAD_FAILED);
+    failure = reasonOf(error, uploadFailedText(actor.role));
   }
   if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
   redirect(`/cabinet/stages/${stageId}`);
@@ -460,7 +458,7 @@ export async function uploadMaterialWithNote(form: FormData): Promise<void> {
       await requestIp(),
     );
   } catch (error) {
-    failure = reasonOf(error, UPLOAD_FAILED);
+    failure = reasonOf(error, uploadFailedText(actor.role));
   }
   if (failure !== null) {
     redirect(await withError(`/cabinet/projects/${code}`, `${failure}. Выберите файл ещё раз.`, { draft }));
@@ -1828,7 +1826,7 @@ export async function addMaterialVersion(form: FormData): Promise<void> {
       await requestIp(),
     );
   } catch (error) {
-    failure = reasonOf(error, UPLOAD_FAILED);
+    failure = reasonOf(error, uploadFailedText(actor.role));
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);

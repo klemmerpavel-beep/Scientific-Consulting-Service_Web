@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  uploadFailedText,
   contactKindsFor,
   contactLabelFor,
   contactNoteFor,
@@ -80,5 +81,13 @@ describe('тексты экрана настроек куратора (Э-10)', 
     for (const kind of KINDS) {
       assert.doesNotMatch(contactNoteFor('EXPERT', kind, NOTE), /ведёт работу сам|по важным поворотам работы/u, kind);
     }
+  });
+});
+
+describe('отказ загрузки по роли (УК-08, Р-364)', () => {
+  it('клиенту — к менеджеру, сотрудникам — к руководителю', () => {
+    assert.match(uploadFailedText('CLIENT'), /напишите менеджеру/u);
+    assert.doesNotMatch(uploadFailedText('CLIENT'), /руководител/u);
+    for (const role of ['MANAGER', 'EXPERT', 'HEAD'] as const) assert.match(uploadFailedText(role), /напишите руководителю/u);
   });
 });

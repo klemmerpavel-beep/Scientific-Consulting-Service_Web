@@ -125,3 +125,14 @@ export function contactNoteFor(role: Role, kind: ContactKind, base: Record<Conta
   const own = role === 'MANAGER' ? MANAGER_NOTE[kind] : role === 'EXPERT' ? CURATOR_NOTE[kind] : undefined;
   return own ?? base[kind];
 }
+
+/**
+ * Отказ загрузки без причины по существу — обычно недоступное хранилище
+ * (Р-255). Клиенту — к менеджеру работы: «руководителя» он принимал за
+ * научного руководителя; сотруднику — к руководителю (улучшение УК-08,
+ * решение Р-364).
+ */
+export function uploadFailedText(role: Role): string {
+  const whom = role === 'CLIENT' ? 'менеджеру в переписке работы' : 'руководителю';
+  return `Файл не сохранён: хранилище файлов сейчас недоступно. Попробуйте ещё раз через несколько минут; если повторится — напишите ${whom}.`;
+}
