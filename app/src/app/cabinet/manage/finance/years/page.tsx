@@ -128,6 +128,12 @@ export default async function FinanceYearsScreen({
             <tr key={row.year}>
               <th style={TABLE_CELL} scope="row">
                 {row.year}
+                {/* Заметка года — в его строке (улучшение УР-03, решение Р-387). */}
+                {row.entered?.note ? (
+                  <div style={{ fontSize: 13, fontWeight: 400, color: 'var(--pd-ink-muted)', maxWidth: 220 }}>
+                    {row.entered.note}
+                  </div>
+                ) : null}
               </th>
               <td style={TABLE_NUM}>{row.entered ? formatAmount(row.entered.revenue) : '—'}</td>
               <td style={TABLE_NUM}>{row.entered ? formatAmount(row.entered.costs) : '—'}</td>
@@ -172,7 +178,7 @@ export default async function FinanceYearsScreen({
               label="Заметка"
               name="note"
               multiline
-              hint="Чем именно отличается год: смена направления, длинная работа, разовый заказ."
+              hint="Чем именно отличается год: смена направления, длинная работа, разовый заказ. Пустое поле при повторном вводе года оставляет прежнюю заметку."
             />
             <FormActions>
               <Button>Сохранить год</Button>

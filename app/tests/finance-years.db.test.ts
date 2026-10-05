@@ -157,6 +157,9 @@ describe('итоги по годам', { skip: !enabled }, async () => {
 
   it('повторный ввод года заменяет прежние величины, а не множит строки', async () => {
     await saveYear(head(), { year: YEAR_PAID, revenue: 130_000_00n, costs: 30_000_00n, note: 'правка' });
+    // Пустая заметка при повторном вводе прежнюю не стирает (УР-03, Р-387).
+    await saveYear(head(), { year: YEAR_PAID, revenue: 130_000_00n, costs: 30_000_00n, note: '  ' });
+    assert.equal((await prisma.yearlyFinance.findUniqueOrThrow({ where: { year: YEAR_PAID } })).note, 'правка');
     const { rows } = await yearlyRows(head());
     const mine = rows.filter((item) => item.year === YEAR_PAID);
     assert.equal(mine.length, 1, 'строка года задвоилась');

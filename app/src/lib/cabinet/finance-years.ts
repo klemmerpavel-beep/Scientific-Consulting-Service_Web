@@ -176,17 +176,20 @@ export async function saveYear(actor: Actor, input: YearInput): Promise<void> {
     throw new Error('Выручка и расходы не бывают отрицательными');
   }
 
+  // Пустая заметка при повторном вводе года прежнюю не стирает: форма
+  // года не заполняется прежними величинами, и заметка пропадала молча
+  // (улучшение УР-03, решение Р-387). Новая заметка заменяет прежнюю.
+  const note = input.note === null || input.note.trim() === '' ? null : input.note.trim();
   const data = {
     revenue: input.revenue,
     costs: input.costs,
-    note: input.note,
     updatedById: actor.id,
   };
 
   await prisma.yearlyFinance.upsert({
     where: { year: input.year },
-    create: { year: input.year, ...data },
-    update: data,
+    create: { year: input.year, ...data, note },
+    update: note === null ? data : { ...data, note },
   });
 
   // В журнал уходят сами величины: спорная цифра должна иметь автора, дату и
