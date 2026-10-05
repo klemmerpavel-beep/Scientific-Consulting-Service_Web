@@ -135,6 +135,7 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   DIRECTORY_EDIT: [false, false, false, true],
   USER_MANAGE: [false, false, false, true],
   ERASURE_EXECUTE: [false, false, false, true],
+  ASSIGNMENT_CREATE: [false, false, false, true],
 };
 
 const ROLE_ORDER: Role[] = ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'];

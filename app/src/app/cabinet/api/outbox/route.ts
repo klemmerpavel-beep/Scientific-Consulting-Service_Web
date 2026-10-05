@@ -7,6 +7,7 @@ import {
 } from '../../../../lib/cabinet/approval';
 import { dispatch, enqueueDeadlineReminders } from '../../../../lib/cabinet/outbox';
 import { enqueueHeadDigest, enqueueHeadMonthly, enqueueTrancheOverdue } from '../../../../lib/cabinet/head-digest';
+import { enqueueAssignmentReminders } from '../../../../lib/cabinet/assignments';
 import { sameSecret } from '../../../../lib/cabinet/token';
 
 export const runtime = 'nodejs';
@@ -46,6 +47,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const overdueSignals = await enqueueTrancheOverdue();
   // Письмо 1-го числа — рекомендации на месяц (РК-17, Р-350).
   const monthly = await enqueueHeadMonthly();
+  // Напоминание исполнителю за день до срока поручения (РК-19, Р-352).
+  const assignmentReminders = await enqueueAssignmentReminders();
   const report = await dispatch();
   return NextResponse.json({
     ok: true,
@@ -53,6 +56,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     headDigest,
     overdueSignals,
     monthly,
+    assignmentReminders,
     approvalReminders,
     deadlinesStarted,
     autoAccepted,

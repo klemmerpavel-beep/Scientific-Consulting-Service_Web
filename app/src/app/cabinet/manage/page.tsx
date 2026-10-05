@@ -506,6 +506,36 @@ export default async function ManageQueue({
       todo: CHECK_TITLE[check.kind],
       href: `/cabinet/projects/${check.project.code}/payments`,
     })),
+    // Поручения руководителя: исполнителю — свои открытые, руководителю —
+    // просроченные (требование РК-19, решение Р-352).
+    ...parts.assignment.map((row) => {
+      const late = overdueDays(row.dueOn);
+      return {
+        key: `assignment-${row.id}`,
+        kind: 'assignment' as const,
+        step: alertStep(late),
+        title: clip(row.text, 80),
+        mark: late === null ? `поручение до ${formatDate(row.dueOn)}` : `поручение просрочено на ${late} ${plural(late, 'день', 'дня', 'дней')}`,
+        urgent: late !== null,
+        detail: row.project === null ? null : row.project.title,
+        todo: 'Отметить «в работе» или «сделано»',
+        href: '/cabinet/assignments',
+      };
+    }),
+    ...parts.assignmentOverdue.map((row) => {
+      const late = overdueDays(row.dueOn);
+      return {
+        key: `assignment-late-${row.id}`,
+        kind: 'assignment' as const,
+        step: alertStep(late),
+        title: `Поручение просрочено: ${row.assignee.fullName}`,
+        mark: late === null ? 'срок сегодня' : `просрочено на ${late} ${plural(late, 'день', 'дня', 'дней')}`,
+        urgent: true,
+        detail: clip(row.text, 80),
+        todo: 'Узнать у сотрудника, перенести срок или отозвать поручение',
+        href: '/cabinet/manage/assignments',
+      };
+    }),
     // «Контроль» — дело менеджера, не закрытое за срок реакции (РК-05).
     ...parts.control.map((row) => ({
       key: row.key,
@@ -539,6 +569,7 @@ export default async function ManageQueue({
     outbox: 1,
     control: 6,
     check: 3,
+    assignment: 4,
   };
   const showAll = (await searchParams).attention === 'all' || attention.length <= 12;
   const taken: Partial<Record<(typeof attention)[number]['kind'], number>> = {};

@@ -146,6 +146,9 @@ export const ACTIONS = [
   'DIRECTORY_EDIT',
   'USER_MANAGE',
   'ERASURE_EXECUTE',
+  // Поручения ставит только руководитель (требование РК-19, решение
+  // Р-352; В-19).
+  'ASSIGNMENT_CREATE',
 ] as const;
 
 export type Action = (typeof ACTIONS)[number];
@@ -313,6 +316,10 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     case 'DIRECTORY_EDIT':
     case 'USER_MANAGE':
     case 'ERASURE_EXECUTE':
+      return head;
+
+    // Поручения ставит и отзывает руководитель (РК-19, Р-352; В-19).
+    case 'ASSIGNMENT_CREATE':
       return head;
 
     default: {

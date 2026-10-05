@@ -300,6 +300,8 @@ async function crawl(page, role, stabilize) {
     ...(role.key === 'manager' || role.key === 'head' ? ['/cabinet/projects/PD-2026-047/messages?tab=internal'] : []),
     // Переписка «Команды» — за вкладкой с запросом (РК-06, Р-343).
     ...(role.key === 'head' ? ['/cabinet/manage/team?tab=threads'] : []),
+    // Поручения исполнителя — экран из дела «Сегодня» (РК-19, Р-352).
+    ...(role.key === 'manager' ? ['/cabinet/assignments'] : []),
   ];
   const many = [];
   const seen = new Set(plain);

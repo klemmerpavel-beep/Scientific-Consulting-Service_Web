@@ -65,6 +65,8 @@ const ACTIONS: Record<string, string> = {
   TRANCHE_REMOVED: 'Удалён плановый транш',
   TRANCHE_RESCHEDULED: 'Перенесена плановая дата транша',
   RECOMMENDATION_MARKED: 'Отмечена рекомендация',
+  ASSIGNMENT_CREATED: 'Поставлено поручение',
+  ASSIGNMENT_STATUS: 'Изменено состояние поручения',
   USER_CREATED: 'Заведена учётная запись',
   USER_ROLE_CHANGED: 'Изменена роль',
   USER_STATUS_CHANGED: 'Изменено состояние доступа',

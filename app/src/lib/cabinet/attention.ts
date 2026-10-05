@@ -16,6 +16,7 @@
 import { cache } from 'react';
 
 import { can, type Actor } from './access.ts';
+import { myAssignments, overdueAssignments } from './assignments.ts';
 import { controlItems } from './control.ts';
 import { openChecks } from './head-checks.ts';
 import { pendingComments, pendingVersions } from './materials.ts';
@@ -29,7 +30,7 @@ async function collect(actor: Actor) {
   // реакции (требование РК-05, решение Р-337). Набор строится выборками
   // менеджера: роль здесь задаёт только сужение до своих работ.
   const mine: Actor = actor.role === 'HEAD' ? { ...actor, role: 'MANAGER' } : actor;
-  const [light, returned, threads, unread, moderation, versions, today, outbox, checks, control] =
+  const [light, returned, threads, unread, moderation, versions, today, outbox, checks, control, mineAssigned, lateAssigned] =
     await Promise.all([
       trafficLight(mine),
       // Клиент вернул этап с замечаниями: ход за куратором (решение Р-283).
@@ -49,6 +50,10 @@ async function collect(actor: Actor) {
       // Дела «акт и счёт» и «проверьте договор» (РК-12, Р-338).
       openChecks(actor),
       controlItems(actor),
+      // Поручения: свои открытые — исполнителю, просроченные — руководителю
+      // (требование РК-19, решение Р-352).
+      myAssignments(actor),
+      overdueAssignments(actor),
     ]);
   return {
     light,
@@ -61,6 +66,8 @@ async function collect(actor: Actor) {
     outbox,
     checks,
     control,
+    mineAssigned,
+    lateAssigned,
   };
 }
 
@@ -99,6 +106,8 @@ export function attentionParts(sources: AttentionSources) {
     outbox: outbox !== null && outbox.deliveryFailed > 0 ? [outbox] : [],
     check: sources.checks,
     control: sources.control,
+    assignment: sources.mineAssigned,
+    assignmentOverdue: sources.lateAssigned,
   };
 }
 

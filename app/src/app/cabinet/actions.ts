@@ -35,6 +35,7 @@ import {
 import { sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages';
 import { saveAnalyticsSince, saveConfidenceThresholds, saveReactionDays } from '../../lib/cabinet/practice-settings';
 import { markRecommendation } from '../../lib/cabinet/recommendations';
+import { createAssignment, setAssignmentStatus } from '../../lib/cabinet/assignments';
 import { closeCheck } from '../../lib/cabinet/head-checks';
 import { handBackStage, handOverStage, recallHandover } from '../../lib/cabinet/handover';
 import {
@@ -1608,6 +1609,43 @@ export async function saveReaction(form: FormData): Promise<void> {
     await saveReactionDays(actor, String(form.get('days') ?? ''));
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить срок реакции');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
+}
+
+/** Поставить поручение (требование РК-19, решение Р-352). */
+export async function createAssignmentAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/assignments';
+  let failure: string | null = null;
+  try {
+    await createAssignment(actor, {
+      assigneeId: String(form.get('assigneeId') ?? ''),
+      text: String(form.get('text') ?? ''),
+      dueOn: dateOrNull(form.get('dueOn')),
+      projectCode: String(form.get('project') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось поставить поручение');
+  }
+  if (failure !== null) {
+    redirect(await withError(back, failure, { draft: fieldsOf(form, ['assigneeId', 'text', 'dueOn', 'project']) }));
+  }
+  redirect(`${back}?created=1`);
+}
+
+/** Перевести поручение: «в работе», «сделано», «отозвано» (РК-19, Р-352). */
+export async function assignmentStatusAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const back = String(form.get('back') ?? '') === 'manage' ? '/cabinet/manage/assignments' : '/cabinet/assignments';
+  const raw = String(form.get('status') ?? '');
+  let failure: string | null = null;
+  try {
+    if (raw !== 'IN_PROGRESS' && raw !== 'DONE' && raw !== 'WITHDRAWN') throw new Error('Неизвестное состояние поручения');
+    await setAssignmentStatus(actor, String(form.get('id') ?? ''), raw);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось изменить поручение');
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);

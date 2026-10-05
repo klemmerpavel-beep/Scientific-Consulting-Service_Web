@@ -21,6 +21,7 @@ import { TOOLS_HREF, homeFor } from '../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { contactLabelFor } from '../../../../lib/cabinet/staff-texts';
 import { teamLoad, type TeamPoint } from '../../../../lib/cabinet/team';
+import { assignmentLoad } from '../../../../lib/cabinet/assignments';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,12 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
   const threads = await staffThreads(actor);
   const unread = threads.reduce((acc, row) => acc + row.unread, 0);
   const team = tab === 'people' ? await teamLoad(actor) : { managers: [], curators: [] };
+  // Поручения: открытые и просроченные по исполнителю (РК-19, Р-352).
+  const given = tab === 'people' ? await assignmentLoad(actor) : new Map<string, { open: number; overdue: number }>();
+  const assigned = (id: string) => {
+    const cell = given.get(id);
+    return cell === undefined ? '—' : `${cell.open}${cell.overdue === 0 ? '' : ` (просрочено ${cell.overdue})`}`;
+  };
 
   return (
     <Shell actor={actor} current={TOOLS_HREF}>
@@ -106,12 +113,13 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Клиент ждёт ответа</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Ждёт публикации</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Сдано, ждёт решения</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Поручения</th>
                 </tr>
               </thead>
               <tbody>
                 {team.managers.length === 0 ? (
                   <tr>
-                    <td style={TABLE_CELL} colSpan={7}>
+                    <td style={TABLE_CELL} colSpan={8}>
                       Действующих менеджеров нет.
                     </td>
                   </tr>
@@ -133,6 +141,7 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                       <td style={TABLE_NUM}>{num(row.clientWaiting)}</td>
                       <td style={TABLE_NUM}>{num(row.moderation)}</td>
                       <td style={TABLE_NUM}>{num(row.handedOver)}</td>
+                      <td style={TABLE_NUM}>{assigned(row.id)}</td>
                     </tr>
                   ))
                 )}
@@ -159,12 +168,13 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Его дела</th>
                   <th style={TABLE_HEAD} scope="col">Договор поручения</th>
                   <th style={TABLE_HEAD} scope="col">Связь</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Поручения</th>
                 </tr>
               </thead>
               <tbody>
                 {team.curators.length === 0 ? (
                   <tr>
-                    <td style={TABLE_CELL} colSpan={7}>
+                    <td style={TABLE_CELL} colSpan={8}>
                       Действующих кураторов нет.
                     </td>
                   </tr>
@@ -197,6 +207,7 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                               row.contact.value === null ? '' : ` — ${row.contact.value}`
                             }`}
                       </td>
+                      <td style={TABLE_NUM}>{assigned(row.id)}</td>
                     </tr>
                   ))
                 )}

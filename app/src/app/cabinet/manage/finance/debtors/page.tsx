@@ -114,6 +114,16 @@ export default async function DebtorsScreen({
                         >
                           Напомнить
                         </a>
+                        {/* Поручение менеджеру работы с готовым текстом (РК-19, Р-352). */}
+                        <a
+                          className="cab-mark"
+                          href={`/cabinet/manage/assignments?${new URLSearchParams({
+                            text: `Напомнить клиенту об оплате «${row.title}» по работе «${row.work}»: срок был ${formatDate(row.plannedDate) ?? ''}`,
+                            project: row.code,
+                          }).toString()}#new`}
+                        >
+                          Поручить
+                        </a>
                         {row.workStatus === 'ACTIVE' ? (
                           <a className="cab-mark" href={`/cabinet/projects/${row.code}/status?to=PAUSED`}>
                             Приостановить

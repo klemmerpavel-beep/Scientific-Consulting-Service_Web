@@ -69,6 +69,14 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
                   back="recommendations"
                   action={markRecommendationAction}
                 />
+                <a
+                  className="cab-mark"
+                  href={`/cabinet/manage/assignments?${new URLSearchParams({
+                    text: `Запустить продвижение «${row.typeName}»: главное окно с ${formatDate(row.mainStart) ?? ''}, заказ около ${formatDate(row.orderOn) ?? ''}`,
+                  }).toString()}#new`}
+                >
+                  Поручить
+                </a>
               </li>
             ))}
           </ul>
@@ -102,6 +110,14 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
                   {`разброс ${Math.round(row.variation * 100)} % · ${row.orders} ${plural(row.orders, 'заказ', 'заказа', 'заказов')} · средний чек ${formatAmount(row.averageCheck)}${row.min === null || row.max === null ? '' : ` · от ${formatAmount(row.min)} до ${formatAmount(row.max)}`}`}
                 </Text>
                 <RecommendationMarks markKey={row.key} mark={marks.get(row.key)} back="recommendations" action={markRecommendationAction} />
+                <a
+                  className="cab-mark"
+                  href={`/cabinet/manage/assignments?${new URLSearchParams({
+                    text: `Подготовить базовую цену «${row.typeName}» на уровне медианы ${formatAmount(row.medianCheck)}${row.before === null ? '' : ` до ${formatDate(row.before) ?? ''}`}`,
+                  }).toString()}#new`}
+                >
+                  Поручить
+                </a>
               </li>
             ))}
           </ul>
@@ -133,6 +149,14 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
                   ].join(' · ')}
                 </Text>
                 <RecommendationMarks markKey={row.key} mark={marks.get(row.key)} back="recommendations" action={markRecommendationAction} />
+                <a
+                  className="cab-mark"
+                  href={`/cabinet/manage/assignments?${new URLSearchParams({
+                    text: `Связаться с клиентом «${row.clientName}»${row.next === null ? '' : ` и предложить «${row.next.toName}»`}${row.consent ? '' : ' — согласия на рассылку нет: только ответ на его обращение'}`,
+                  }).toString()}#new`}
+                >
+                  Поручить
+                </a>
               </li>
             ))}
           </ul>

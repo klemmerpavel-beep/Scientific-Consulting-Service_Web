@@ -244,6 +244,10 @@ export const RULE_EVENTS: readonly {
   // Внутренняя переписка по работе и ветка с руководителем (РК-07, Р-336).
   { kind: 'INTERNAL_MESSAGE', title: 'Сообщение во внутренней переписке по работе', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   { kind: 'HEAD_REPLY', title: 'Руководитель ответил в переписке', group: 'Переписка и работы', roles: ['MANAGER'] },
+  // Поручения руководителя (РК-19, Р-352).
+  { kind: 'ASSIGNMENT_CREATED', title: 'Руководитель поставил поручение', group: 'Переписка и работы', roles: ['MANAGER'] },
+  { kind: 'ASSIGNMENT_DUE', title: 'Завтра срок поручения', group: 'Переписка и работы', roles: ['MANAGER'] },
+  { kind: 'ASSIGNMENT_DONE', title: 'Поручение выполнено', group: 'Руководителю', roles: ['HEAD'] },
   // Только руководителю: вопрос сотрудника (вместо «Менеджер просит
   // помощи», РК-07), выдача входа клиенту (Р-285) и договор поручения
   // (Р-298). Менеджеру эти строки ничем не управляли.
@@ -281,6 +285,8 @@ export const RULE_EVENTS: readonly {
   { kind: 'WORK_ASSIGNED', title: 'Вас назначили куратором работы', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'WORK_UNASSIGNED', title: 'Работа передана другому куратору', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'MANAGER_CHANGED', title: 'Сменился менеджер работы', group: 'Работа куратора', roles: ['EXPERT'] },
+  { kind: 'ASSIGNMENT_CREATED', title: 'Руководитель поставил поручение', group: 'Работа куратора', roles: ['EXPERT'] },
+  { kind: 'ASSIGNMENT_DUE', title: 'Завтра срок поручения', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'PAYOUT_ACCRUED', title: 'Начислено вознаграждение', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'PAYOUT_PAID', title: 'Вознаграждение выплачено', group: 'Работа куратора', roles: ['EXPERT'] },
 ];

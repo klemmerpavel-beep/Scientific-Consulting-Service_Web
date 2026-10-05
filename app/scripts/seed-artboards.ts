@@ -748,6 +748,19 @@ async function main() {
       data: { kind: 'ACT_AFTER_ACCEPT', projectId: showcase, stageId: accepted.id, createdAt: day(1) },
     });
   }
+  // Поручение руководителя менеджеру по витринной работе — дело «Сегодня»
+  // менеджера и строка «Поручений» (требование РК-19, решение Р-352).
+  await prisma.assignment.deleteMany({});
+  await prisma.assignment.create({
+    data: {
+      assigneeId: manager.id,
+      createdById: head.id,
+      projectId: showcase,
+      text: 'Согласовать с клиентом перенос срока главы 3 и записать договорённость в переписке.',
+      dueOn: day(-3),
+      createdAt: day(1),
+    },
+  });
   // Ветка «руководитель — сотрудник»: вопрос менеджера без ответа — дело
   // «Вопрос сотрудника» на «Сводке» руководителя (РК-07, Р-336).
   await prisma.message.deleteMany({ where: { thread: 'HEAD_STAFF', staffId: manager.id } });

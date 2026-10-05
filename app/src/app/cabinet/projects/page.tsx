@@ -51,6 +51,7 @@ import { dismissWelcome, requestNdaAction, startTelegramBind } from '../actions'
 import ActionError from '../../../components/cabinet/ActionError';
 import { ndaRequestedAt } from '../../../lib/cabinet/admin';
 import { CURATOR_WELCOME, ndaRequestOpen } from '../../../lib/cabinet/curator-welcome';
+import { myAssignments } from '../../../lib/cabinet/assignments';
 
 export const dynamic = 'force-dynamic';
 
@@ -271,6 +272,10 @@ export default async function ProjectsScreen({
           };
   }
 
+  // Поручения руководителя — в делах первого экрана куратора (РК-19, Р-352).
+  const assigned = forExpert ? await myAssignments(actor) : [];
+  const assignedLate = assigned.filter((row) => daysPast(row.dueOn) !== null).length;
+
   return (
     <Shell actor={actor} current="/cabinet/projects">
       {/* Композиционный центр экрана — ответ: что от человека нужно
@@ -288,6 +293,14 @@ export default async function ProjectsScreen({
         </ScreenTop>
       ) : (
         <ScreenHead title={title} answer={answer} />
+      )}
+      {assigned.length === 0 ? null : (
+        <Text size={14} style={{ marginBottom: 20 }}>
+          {`Поручения руководителя: ${assigned.length}${assignedLate === 0 ? '' : `, из них просрочено ${assignedLate}`} — `}
+          <a className="cab-mark" href="/cabinet/assignments">
+            открыть и отметить
+          </a>
+        </Text>
       )}
 
       {/* Первый вход: три строки вместо пошагового тура, под ответом, а не
