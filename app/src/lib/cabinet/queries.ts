@@ -1231,22 +1231,27 @@ export async function executorNames(actor: Actor, ids: readonly string[]): Promi
  * (требование М-09, ОМ-17, решение Р-299): после закрытия разобрать его
  * будет нельзя (Р-293).
  */
-export async function pendingReview(actor: Actor, projectId: string): Promise<{ comments: number; versions: number }> {
+export async function pendingReview(
+  actor: Actor,
+  projectId: string,
+): Promise<{ comments: number; versions: number; openStages: number }> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: { id: true, clientId: true, managerId: true, expertId: true },
   });
-  if (project === null) return { comments: 0, versions: 0 };
+  if (project === null) return { comments: 0, versions: 0, openStages: 0 };
   ensure(actor, 'PROJECT_EDIT', project);
-  const [comments, versions] = await Promise.all([
+  const [comments, versions, openStages] = await Promise.all([
     prisma.versionComment.count({
       where: { moderationStatus: 'PENDING', version: { material: { projectId, deletedAt: null } } },
     }),
     prisma.versionModeration.count({
       where: { status: 'PENDING', version: { purgedAt: null, material: { projectId, deletedAt: null } } },
     }),
+    // Незавершённые этапы — предупреждение при завершении работы (УМ-10, Р-378).
+    prisma.stage.count({ where: { projectId, state: { not: 'DONE' } } }),
   ]);
-  return { comments, versions };
+  return { comments, versions, openStages };
 }
 
 /**

@@ -109,6 +109,16 @@ export default async function ProjectStatusScreen({
           ))}
         </ul>
 
+        {/* Завершение при незавершённых этапах — предупреждение: этапы
+            закрываются только своим действием (УМ-10, Р-378; Р-240). */}
+        {to === 'COMPLETED' && review !== null && review.openStages > 0 ? (
+          <div style={{ marginBottom: 16 }}>
+            <Notice tone="quiet" role="status">
+              {`${review.openStages} ${plural(review.openStages, 'этап не завершён', 'этапа не завершены', 'этапов не завершены')}: работа закроется с ними, и клиент увидит их незавершёнными.`}
+            </Notice>
+          </div>
+        ) : null}
+
         {/* Неразобранное после закрытия разобрать будет нельзя (ОМ-17, Р-293). */}
         {review !== null && review.comments + review.versions > 0 ? (
           <div style={{ marginBottom: 16 }}>

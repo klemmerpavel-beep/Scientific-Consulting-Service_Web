@@ -115,6 +115,22 @@ describe('состояние работы', { skip: !enabled }, async () => {
     await setProjectStatus(curator(), ids.project!, 'ACTIVE');
   });
 
+  it('УМ-10: перед завершением названы незавершённые этапы (Р-378)', async () => {
+    const { pendingReview } = await import('../src/lib/cabinet/queries.ts');
+    const before = (await pendingReview(curator(), ids.project!)).openStages;
+    const stage = await prisma.stage.create({
+      data: { projectId: ids.project!, position: 90, title: 'Незавершённый этап', state: 'IN_PROGRESS' },
+    });
+    const done = await prisma.stage.create({
+      data: { projectId: ids.project!, position: 91, title: 'Завершённый этап', state: 'DONE' },
+    });
+    try {
+      assert.equal((await pendingReview(curator(), ids.project!)).openStages, before + 1);
+    } finally {
+      await prisma.stage.deleteMany({ where: { id: { in: [stage.id, done.id] } } });
+    }
+  });
+
   it('неизвестное состояние не принимается', async () => {
     await assert.rejects(
       () => setProjectStatus(curator(), ids.project!, 'ARCHIVED' as never),
