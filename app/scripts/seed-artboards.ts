@@ -815,6 +815,9 @@ async function main() {
   // Прототип должен показывать экран состояния очереди не пустым: одна
   // ушедшая строка, одна ждущая и одна недоставленная. Иначе ссылка на
   // экран не появляется в «Требует внимания», и экран не попадает в снимок.
+  // Даты — от точки наполнения: перечень «Что и когда отправлено» в
+  // «Настройках» клиента показывает время, и снимок иначе менялся бы при
+  // каждой съёмке (П-04, Р-402; Р-205).
   await prisma.notificationOutbox.deleteMany({ where: { userId: clientUser.id } });
   await prisma.notificationOutbox.createMany({
     data: [
@@ -828,6 +831,8 @@ async function main() {
         dedupKey: `artboard:stage-approval:${showcase}`,
         state: 'SENT',
         attempts: 1,
+        createdAt: day(1),
+        scheduledAt: day(1),
         sentAt: day(1),
       },
       {
@@ -841,6 +846,8 @@ async function main() {
         state: 'PENDING',
         attempts: 0,
         lastError: 'канал не настроен',
+        createdAt: day(0),
+        scheduledAt: day(0),
       },
       {
         userId: clientUser.id,
@@ -853,6 +860,8 @@ async function main() {
         state: 'FAILED',
         attempts: 5,
         lastError: 'привязка Telegram снята',
+        createdAt: day(0),
+        scheduledAt: day(0),
       },
     ],
   });
