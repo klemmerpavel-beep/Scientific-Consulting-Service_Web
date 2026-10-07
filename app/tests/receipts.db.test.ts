@@ -128,6 +128,32 @@ describe('«Поступления» (РК-20)', { skip: !enabled }, async () =>
     assert.equal(own.find((line) => line.title === 'Отменённой'), undefined);
   });
 
+  it('транши отменённой работы не значатся «сверх остатка договора» (Р-446)', async () => {
+    const before = await finance.receiptsPlan(head(), AT);
+    const project = await prisma.project.create({
+      data: {
+        code: `PD-RC-${String(stamp).slice(-6)}-X`,
+        clientId: ids.client!,
+        serviceTypeId: ids.type!,
+        managerId: ids.manager!,
+        title: 'Отменённая с траншем',
+        status: 'CANCELLED',
+      },
+    });
+    const contract = await prisma.contract.create({ data: { projectId: project.id, number: `RCX-${stamp}`, totalAmount: 3_000_00n } });
+    await prisma.tranche.create({ data: { contractId: contract.id, title: 'Не ждём', amount: 3_000_00n, plannedDate: on('2026-11-01') } });
+    try {
+      const after = await finance.receiptsPlan(head(), AT);
+      assert.equal(after.excess.count, before.excess.count, 'транш отменённой работы назван лишним');
+      assert.equal(after.excess.amount, before.excess.amount);
+      assert.equal(after.total, before.total);
+    } finally {
+      await prisma.tranche.deleteMany({ where: { contractId: contract.id } });
+      await prisma.contract.delete({ where: { id: contract.id } });
+      await prisma.project.delete({ where: { id: project.id } });
+    }
+  });
+
   it('остаток без траншей — «не разнесено по траншам»', async () => {
     // У рабочей работы остаток 80 000 ₽, траншей на 50 000 ₽: 30 000 ₽ не разнесено.
     const before = await finance.receiptsPlan(head(), AT);

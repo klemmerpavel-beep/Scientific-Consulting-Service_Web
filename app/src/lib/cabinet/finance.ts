@@ -1129,6 +1129,9 @@ export async function receiptsPlan(actor: Actor, at: Date = clockNow()): Promise
   for (const contract of contracts) {
     let rest = receivableOf(contract.project.status, contract.totalAmount, contract.tranches);
     total += rest;
+    // Отменённая работа денег не ждёт: её открытые транши — не «сверх
+    // остатка договора», а просто не ждутся (решение Р-446).
+    if (!expectsPayment(contract.project.status)) continue;
     // Сначала датированные по сроку, затем без даты: в пределах остатка
     // договора учитываются ранние обязательства.
     const open = contract.tranches
