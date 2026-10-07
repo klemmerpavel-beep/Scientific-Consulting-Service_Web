@@ -96,6 +96,13 @@ export interface ApproveLeadInput {
 /**
  * Карточка того же человека по почте или телефону заявки — живая, без
  * учётной записи или с записью заявителя (требование М-18, решение Р-308).
+ *
+ * Телефон заявки никем не подтверждён, а найденная карточка без записи
+ * привязывается к записи заявителя. Поэтому по телефону карточка ищется
+ * только у заявки без адреса: учётная запись тогда не заводится и
+ * привязывать нечего. Иначе чужой номер, вписанный в форму сайта, отдал
+ * бы заявителю работы, договоры и файлы этой карточки (решение Р-413).
+ * Адрес так не опасен: вход — только по ссылке, пришедшей на него.
  */
 async function contactTwin(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
@@ -113,7 +120,7 @@ async function contactTwin(
     if (found !== null) return found;
   }
   const key = phoneKey(phone);
-  if (key === null) return null;
+  if (key === null || userId !== null) return null;
   const rows = await tx.clientProfile.findMany({
     where: { AND: [alive, owner, { phone: { not: null } }] },
     orderBy: { createdAt: 'asc' },

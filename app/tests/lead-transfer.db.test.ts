@@ -123,6 +123,24 @@ describe('перенос из заявки', { skip: !enabled }, async () => {
     assert.equal(project.client.university, 'СПбГУ', 'заполненное поле карточки затёрто');
   });
 
+  it('заявка с адресом и чужим телефоном карточку без записи не получает (Р-413)', async () => {
+    const card = await prisma.clientProfile.create({
+      data: { fullName: 'Кузнецов Кузьма', normalizedName: `lt кузнецов ${stamp}`, phone: '+7 (902) 333-44-55' },
+    });
+    profileIds.push(card.id);
+    const leadId = await lead({
+      contactKind: 'email',
+      contact: `lt-stranger-${stamp}@example.org`,
+      name: 'Посторонний П.',
+      phone: '89023334455',
+    });
+    const project = await approve(leadId);
+    profileIds.push(project.clientId);
+    assert.notEqual(project.clientId, card.id, 'работа легла в чужую карточку по одному телефону');
+    const after = await prisma.clientProfile.findUniqueOrThrow({ where: { id: card.id } });
+    assert.equal(after.userId, null, 'чужая карточка привязана к записи заявителя');
+  });
+
   it('заявка с телефоном — дубль по телефону карточки', async () => {
     const card = await prisma.clientProfile.create({
       data: { fullName: 'Сидоров Сидор', normalizedName: `lt сидоров ${stamp}`, phone: '+7 (901) 222-33-44' },
