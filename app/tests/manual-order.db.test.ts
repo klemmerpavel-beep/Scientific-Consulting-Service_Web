@@ -149,6 +149,46 @@ describe('заказ вручную', { skip: !enabled }, async () => {
     assert.equal(phoneProject.clientId, first.clientId);
   });
 
+  it('клиент другого менеджера менеджеру не предлагается и заказа от него не принимает (Р-419)', async () => {
+    const { nameCandidates } = await import('../src/lib/cabinet/manual-order.ts');
+    const other = await prisma.user.create({
+      data: { email: `order-mgr2-${stamp}@example.org`, fullName: 'Другой менеджер', role: 'MANAGER' },
+    });
+    try {
+      const foreignName = `Чужой Клиент Заказа ${stamp}`;
+      const foreign = await createManualOrder(actor(ids.head!, 'HEAD'), {
+        customer: foreignName,
+        email: `foreign-${stamp}@example.org`,
+        phone: '+7 911 222-33-44',
+        serviceTypeId: ids.type!,
+        title: 'Работа другого менеджера',
+        managerId: other.id,
+      });
+      projects.push(foreign.projectId);
+      const manager = actor(ids.manager!, 'MANAGER');
+
+      // По ФИО карточка менеджеру не предлагается — заводится своя.
+      assert.equal((await nameCandidates(manager, foreignName)).length, 0);
+      assert.equal((await nameCandidates(actor(ids.head!, 'HEAD'), foreignName)).length, 1);
+      const own = await createManualOrder(manager, { customer: foreignName, serviceTypeId: ids.type!, title: 'Однофамилец' });
+      projects.push(own.projectId);
+      const ownProject = await prisma.project.findUniqueOrThrow({ where: { id: own.projectId } });
+      const foreignProject = await prisma.project.findUniqueOrThrow({ where: { id: foreign.projectId } });
+      assert.notEqual(ownProject.clientId, foreignProject.clientId, 'заказ менеджера лёг в карточку чужого клиента');
+
+      // По почте и телефону — отказ: заказ вносит руководитель.
+      for (const contact of [{ email: `FOREIGN-${stamp}@example.org` }, { phone: '8 911 222 33 44' }]) {
+        await assert.rejects(
+          createManualOrder(manager, { customer: 'Кто Угодно', serviceTypeId: ids.type!, title: 'Обход', ...contact }),
+          /клиент другого менеджера/u,
+        );
+      }
+      assert.equal(await prisma.project.count({ where: { clientId: foreignProject.clientId } }), 1);
+    } finally {
+      await prisma.user.delete({ where: { id: other.id } }).catch(() => undefined);
+    }
+  });
+
   it('почта — по формату и не сотрудника', async () => {
     const head = actor(ids.head!, 'HEAD');
     await assert.rejects(

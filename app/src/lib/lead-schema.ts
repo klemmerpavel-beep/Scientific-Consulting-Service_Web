@@ -182,6 +182,9 @@ export const FIELD_LABELS: Record<string, string> = {
  */
 export function looksAutomated(v: Lead): string | null {
   if (v.company_website) return 'заполнено скрытое поле';
-  if (typeof v.elapsed === 'number' && v.elapsed < 1200) return 'форма отправлена быстрее человека';
+  // Формы сайта присылают время заполнения всегда (`submit-lead.ts`):
+  // запрос без него собран не на странице (решение Р-428).
+  if (v.elapsed === undefined) return 'нет времени заполнения формы';
+  if (v.elapsed < 1200) return 'форма отправлена быстрее человека';
   return null;
 }

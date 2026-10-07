@@ -16,6 +16,14 @@ export const BLOCKED_EXTENSIONS: ReadonlySet<string> = new Set([
   'exe', 'msi', 'msp', 'msix', 'appx', 'com', 'scr', 'pif', 'cpl', 'dll', 'sys', 'ocx',
   'bat', 'cmd', 'vbs', 'vbe', 'js', 'jse', 'wsf', 'wsh', 'hta', 'ps1', 'psm1', 'lnk',
   'reg', 'jar', 'apk', 'aab', 'xapk', 'dmg', 'pkg', 'deb', 'rpm',
+  // Запускаемое двойным щелчком в Windows без установщика: образы дисков
+  // (монтируются с программой внутри), справка CHM, OneNote, надстройка
+  // Excel, ярлыки и оснастки, веб-запросы и SYLK (решение Р-427). Сырые
+  // образы .img не запрещаются по имени: так же называются научные данные
+  // (ERDAS, Analyze) — образ ISO ловится по содержимому.
+  'iso', 'vhd', 'vhdx', 'chm', 'hlp', 'one', 'onepkg', 'xll', 'url', 'scf', 'msc',
+  'application', 'appref-ms', 'xbap', 'wsc', 'sct', 'settingcontent-ms', 'iqy', 'slk',
+  'cab', 'inf', 'gadget', 'library-ms', 'search-ms',
 ]);
 
 /**
@@ -88,6 +96,18 @@ export function executableContent(body: Buffer): boolean {
     // ELF; Mach-O в обоих порядках байтов и «толстый» Mach-O (он же класс Java).
     if (magic === 0x7f454c46) return true;
     if ([0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe, 0xcafebabe].includes(magic)) return true;
+  }
+  // Образы дисков под любым именем: ISO 9660 (метка «CD001» в первом
+  // описателе тома), VHDX и VHD (подпись в начале или в хвосте файла).
+  // Windows монтирует их двойным щелчком вместе с программой внутри
+  // (решение Р-427).
+  for (const at of [0x8001, 0x8801, 0x9001]) {
+    if (body.length >= at + 5 && body.subarray(at, at + 5).toString('latin1') === 'CD001') return true;
+  }
+  if (body.length >= 8 && body.subarray(0, 8).toString('latin1') === 'vhdxfile') return true;
+  if (body.length >= 512) {
+    const footer = body.subarray(body.length - 512, body.length - 504).toString('latin1');
+    if (footer === 'conectix' || body.subarray(0, 8).toString('latin1') === 'conectix') return true;
   }
   // ZIP-установщики: jar, apk и aab, appx и msix. Документы Office и
   // OpenDocument — тоже ZIP, но таких записей у них нет.

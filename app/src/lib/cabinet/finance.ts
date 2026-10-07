@@ -992,7 +992,9 @@ export async function rescheduleTranche(actor: Actor, trancheId: string, date: D
 /**
  * Назначение и плановая дата транша — для заготовки «Напоминание об
  * оплате» (РК-10). Транш должен принадлежать этой работе; пишущий в
- * переписку видит её оплаты.
+ * переписку видит её оплаты. Заготовка уходит клиенту, поэтому годится
+ * только видимый ему транш: списанный и сторнированный — внутренний учёт
+ * практики (УК-01, Р-356; решение Р-422).
  */
 export async function trancheForReminder(
   actor: Actor,
@@ -1002,7 +1004,7 @@ export async function trancheForReminder(
   const ref = await projectRef(projectId);
   if (ref === null || !can(actor, 'MESSAGE_WRITE', ref)) return null;
   return prisma.tranche.findFirst({
-    where: { id: trancheId, contract: { projectId } },
+    where: { id: trancheId, contract: { projectId }, status: { in: [...CLIENT_TRANCHE_STATUSES] } },
     select: { title: true, plannedDate: true },
   });
 }

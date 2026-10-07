@@ -414,6 +414,8 @@ describe('документы, материалы и шаблоны', { skip: !en
         });
         const client = actor(ids.clientUser, 'CLIENT', { clientProfileId: ids.client });
         assert.equal(await readVersion(client, act.id), null, 'клиент скачал акт списанного транша');
+        // И письма о нём клиент не получает: тема называет документ (Р-415).
+        assert.equal(await noticesFor(act.id, ids.clientUser), 0, 'клиенту написали об акте списанного транша');
         await assert.rejects(addComment(client, act.id, 'Вопрос по акту'), /не найдена/u);
         assert.ok((await readVersion(head(), act.id)) !== null, 'руководителю акт не выдан');
       } finally {

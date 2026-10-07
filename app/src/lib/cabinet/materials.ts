@@ -313,6 +313,12 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
       managerId: project.managerId,
       expertId: project.expertId,
     };
+    // Документ скрытого транша — внутренний учёт практики: о его версии
+    // пишут только тем, кому он виден на экране (УК-01, Р-356, Р-415).
+    const tranche =
+      material.trancheId === null
+        ? null
+        : await prisma.tranche.findUnique({ where: { id: material.trancheId }, select: { status: true } });
     const candidates = await prisma.user.findMany({
       where: {
         id: {
@@ -333,19 +339,16 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     const recipients = candidates
       // Клиент о версии на публикации не узнаёт: она ему не видна (Р-294).
       .filter((user) => !moderated || user.role !== 'CLIENT')
-      .filter((user) =>
-        can(
-          {
-            id: user.id,
-            role: user.role,
-            status: user.status,
-            clientProfileId: user.clientProfile?.id ?? null,
-            expertNdaSignedAt: user.expertProfile?.ndaSignedAt ?? null,
-          },
-          permission,
-          ref,
-        ),
-      )
+      .filter((user) => {
+        const who: Actor = {
+          id: user.id,
+          role: user.role,
+          status: user.status,
+          clientProfileId: user.clientProfile?.id ?? null,
+          expertNdaSignedAt: user.expertProfile?.ndaSignedAt ?? null,
+        };
+        return can(who, permission, ref) && trancheDocumentVisible(who, { tranche, project: ref });
+      })
       .map((user) => ({ id: user.id, role: user.role }));
     for (const recipient of recipients) {
       const userId = recipient.id;

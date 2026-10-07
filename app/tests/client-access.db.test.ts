@@ -130,6 +130,74 @@ describe('открыть клиенту вход', { skip: !enabled }, async () 
     await assert.rejects(openClientAccess(staff(ids.manager!, 'MANAGER'), foreign.projectId), AccessDenied);
   });
 
+  it('у клиента есть работа другого менеджера — вход открывает только руководитель (Р-416)', async () => {
+    const own = await work('F', ids.manager!, `client-f-${stamp}@example.org`);
+    const second = await prisma.project.create({
+      data: {
+        code: `PD-CA-${tail}-F2`,
+        clientId: own.profileId,
+        serviceTypeId: ids.type!,
+        title: 'Работа F2',
+        managerId: ids.other!,
+      },
+    });
+    projects.push(second.id);
+    await assert.rejects(
+      openClientAccess(staff(ids.manager!, 'MANAGER'), own.projectId),
+      /работы другого менеджера/u,
+    );
+    const profile = await prisma.clientProfile.findUniqueOrThrow({ where: { id: own.profileId } });
+    assert.equal(profile.userId, null, 'отказ завёл учётную запись');
+
+    const issued = await openClientAccess(staff(ids.head!, 'HEAD'), own.projectId);
+    assert.match(issued.link, /\/cabinet\/enter\//u);
+  });
+
+  it('сессия по ссылке сотрудника — не дольше суток; свой вход клиента и уход выдавшего её гасят (Р-424)', async () => {
+    const auth = await import('../src/lib/cabinet/auth.ts');
+    const { createRawToken, digest } = await import('../src/lib/cabinet/token.ts');
+    const { projectId, profileId } = await work('G', ids.manager!, `client-g-${stamp}@example.org`);
+    const enter = async () => {
+      const issued = await openClientAccess(staff(ids.manager!, 'MANAGER'), projectId);
+      const value = decodeURIComponent(issued.link.split('/cabinet/enter/')[1]!);
+      return (await auth.consumeLoginToken(value, '127.0.0.1', 'test'))!;
+    };
+
+    // Срок — сутки; старше суток сессия не действует и при продлённом сроке.
+    const first = await enter();
+    const row = await prisma.session.findFirstOrThrow({ where: { tokenHash: digest(first) } });
+    assert.ok(row.expiresAt.getTime() <= Date.now() + 24 * 3_600_000 + 5_000, 'срок сессии по ссылке сотрудника дольше суток');
+    await prisma.session.update({
+      where: { id: row.id },
+      data: { createdAt: new Date(Date.now() - 25 * 3_600_000), expiresAt: new Date(Date.now() + 3_600_000) },
+    });
+    assert.equal(await auth.resolveSession(first), null, 'сессия по ссылке сотрудника пережила сутки');
+
+    // Свой вход клиента гасит сессию по ссылке сотрудника.
+    const second = await enter();
+    assert.ok(await auth.resolveSession(second));
+    const profile = await prisma.clientProfile.findUniqueOrThrow({ where: { id: profileId } });
+    const own = createRawToken();
+    await prisma.loginToken.create({
+      data: {
+        selector: own.selector,
+        verifierHash: digest(own.verifier),
+        userId: profile.userId!,
+        expiresAt: new Date(Date.now() + 15 * 60_000),
+        requestIp: '127.0.0.1',
+      },
+    });
+    const mine = (await auth.consumeLoginToken(own.value, '127.0.0.1', 'test'))!;
+    assert.equal(await auth.resolveSession(second), null, 'сессия по ссылке сотрудника пережила вход клиента');
+    assert.equal((await auth.resolveSession(mine))?.viaStaffLink, false);
+
+    // Уход выдавшего: его ссылки за сутки гасят сессии по ним; своя — живёт.
+    const third = await enter();
+    await auth.revokeStaffIssuedSessions(prisma, ids.manager!);
+    assert.equal(await auth.resolveSession(third), null, 'сессия по ссылке ушедшего сотрудника жива');
+    assert.ok(await auth.resolveSession(mine), 'погашена своя сессия клиента');
+  });
+
   it('сессия по ссылке куратора помечена; согласование в ней — с пометкой (ОМ-3, Р-292)', async () => {
     const { consumeLoginToken, resolveSession } = await import('../src/lib/cabinet/auth.ts');
     const projectsLib = await import('../src/lib/cabinet/projects.ts');

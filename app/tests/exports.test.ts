@@ -17,6 +17,27 @@ import { toCsv } from '../src/lib/cabinet/csv.ts';
 const MANAGE = path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'manage');
 const read = (...parts: string[]) => readFileSync(path.join(MANAGE, ...parts), 'utf8');
 
+describe('разовые выгрузки заявок и отзывов (Р-425)', async () => {
+  const { cell } = await import('../scripts/csv-cell.mjs');
+  const SCRIPTS = path.join(import.meta.dirname, '..', 'scripts');
+
+  it('значение-формула из формы сайта обезврежено апострофом', () => {
+    for (const start of ['=', '+', '-', '@', '\t', '\r']) {
+      assert.equal(cell(`${start}HYPERLINK("http://x")`), `"'${start}HYPERLINK(""http://x"")"`);
+    }
+    assert.equal(cell('обычный текст'), '"обычный текст"');
+    assert.equal(cell(null), '""');
+  });
+
+  it('оба скрипта берут общую ячейку, без своего экранирования', () => {
+    for (const name of ['export-leads.mjs', 'export-reviews.mjs']) {
+      const source = readFileSync(path.join(SCRIPTS, name), 'utf8');
+      assert.match(source, /from '\.\/csv-cell\.mjs'/u, name);
+      assert.doesNotMatch(source, /function cell\(/u, name);
+    }
+  });
+});
+
 describe('выгрузки', () => {
   it('заявки выгружаются общей выгрузкой, без своего экранирования', () => {
     const route = read('leads', 'export', 'route.ts');

@@ -96,6 +96,13 @@ export interface ApproveLeadInput {
 /**
  * Карточка того же человека по почте или телефону заявки — живая, без
  * учётной записи или с записью заявителя (требование М-18, решение Р-308).
+ *
+ * Телефон заявки никем не подтверждён, а найденная карточка без записи
+ * привязывается к записи заявителя. Поэтому по телефону карточка ищется
+ * только у заявки без адреса: учётная запись тогда не заводится и
+ * привязывать нечего. Иначе чужой номер, вписанный в форму сайта, отдал
+ * бы заявителю работы, договоры и файлы этой карточки (решение Р-413).
+ * Адрес так не опасен: вход — только по ссылке, пришедшей на него.
  */
 async function contactTwin(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
@@ -113,7 +120,7 @@ async function contactTwin(
     if (found !== null) return found;
   }
   const key = phoneKey(phone);
-  if (key === null) return null;
+  if (key === null || userId !== null) return null;
   const rows = await tx.clientProfile.findMany({
     where: { AND: [alive, owner, { phone: { not: null } }] },
     orderBy: { createdAt: 'asc' },
@@ -544,6 +551,9 @@ export async function projectRef(projectId: string): Promise<ProjectRef | null> 
   });
 }
 
+/** Почему письмо прежнему куратору не ушло: его сняли с работы (Р-421). */
+export const UNASSIGNED_NOTE = 'куратор снят с работы до отправки';
+
 export async function assignExpert(
   actor: Actor,
   projectId: string,
@@ -670,6 +680,14 @@ export async function assignExpert(
   // нейтральное и уходит без договора поручения: без названия работы
   // (требование Э-09, решение Р-328; Р-237).
   if (ref.expertId !== null) {
+    // Неотправленные письма о работе прежнему куратору гаснут: отложенные
+    // до утренней сводки ушли бы ему в 09:00 уже о чужой работе
+    // (улучшение УЭ-01, Р-398; решение Р-421). Письмо о снятии ставится
+    // следом и уходит.
+    await prisma.notificationOutbox.updateMany({
+      where: { userId: ref.expertId, projectId, state: 'PENDING' },
+      data: { state: 'EXPIRED', lastError: UNASSIGNED_NOTE, scheduledAt: new Date() },
+    });
     const letter = unassignedLetter(project.code, expertId !== null);
     await enqueue(prisma, {
       userId: ref.expertId,

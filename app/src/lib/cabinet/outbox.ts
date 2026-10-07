@@ -314,6 +314,9 @@ export async function enqueueToLead(
  * ящики, поэтому на один адрес — не больше одного такого письма в сутки.
  * Возвращает, поставлено ли письмо.
  */
+/** Писем «Заявка получена» в час на всех заявителей (решение Р-428). */
+export const LEAD_RECEIVED_PER_HOUR = 30;
+
 export async function enqueueLeadReceived(leadId: string): Promise<boolean> {
   const lead = await prisma.lead.findUnique({
     where: { id: leadId },
@@ -322,14 +325,31 @@ export async function enqueueLeadReceived(leadId: string): Promise<boolean> {
   if (lead === null || lead.status === 'SPAM' || lead.form === 'review') return false;
   const address = leadAddress(lead);
   if (address === null) return false;
-  const recent = await prisma.notificationOutbox.count({
-    where: {
-      eventKind: 'LEAD_RECEIVED',
-      createdAt: { gt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-      lead: { contact: { equals: address, mode: 'insensitive' } },
-    },
-  });
-  if (recent > 0) return false;
+  // Потолок — на ящик, а не на строку адреса: «ivanova+1@…» и
+  // «ivanova+2@…» приходят в один ящик. И общий потолок в час: форма не
+  // должна становиться рассыльщиком и по множеству разных адресов
+  // (решение Р-428).
+  const at = address.lastIndexOf('@');
+  const local = address.slice(0, at).split('+')[0]!;
+  const domain = address.slice(at);
+  const [recent, hourly] = await Promise.all([
+    prisma.notificationOutbox.count({
+      where: {
+        eventKind: 'LEAD_RECEIVED',
+        createdAt: { gt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        lead: {
+          OR: [
+            { contact: { equals: `${local}${domain}`, mode: 'insensitive' } },
+            { contact: { startsWith: `${local}+`, endsWith: domain, mode: 'insensitive' } },
+          ],
+        },
+      },
+    }),
+    prisma.notificationOutbox.count({
+      where: { eventKind: 'LEAD_RECEIVED', createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) } },
+    }),
+  ]);
+  if (recent > 0 || hourly >= LEAD_RECEIVED_PER_HOUR) return false;
   const { subject, body } = receivedLetter();
   return enqueueToLead(prisma, { leadId: lead.id, eventKind: 'LEAD_RECEIVED', subject, body, dedupKey: `lead:${lead.id}:received` });
 }

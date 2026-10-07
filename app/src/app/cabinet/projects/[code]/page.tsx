@@ -46,6 +46,7 @@ import {
   EXPERT_ROLE_LABEL,
   expertLine,
   expertRoleLabel,
+  presentClientReason,
   presentReturnText,
   workClosed,
   type Actor,
@@ -227,9 +228,10 @@ function eventLine(
     if (to === null) return `${where} — состояние изменено`;
     // Переход описан словами: знак-стрелка — украшение, а правило облика
     // требует штриховых значков, не символов. Причина перехода — следом
-    // (решение Р-288).
+    // (решение Р-288); куратору — без неё: она написана клиенту (Р-414).
     const line = from === null ? `${where} — ${to}` : `${where} — ${to} (было «${from}»)`;
-    return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
+    const why = presentClientReason(actor, data.reason);
+    return why === null ? line : `${line}: ${why}`;
   }
 
   // Состав плана — словами: что переставлено, удалено, заведено по шаблону
@@ -265,9 +267,11 @@ function eventLine(
       COMPLETED: 'Работа завершена',
       CANCELLED: 'Работа отменена',
     };
-    // Причина приостановки и отмены видна в истории (Т-21, Р-299).
+    // Причина приостановки и отмены видна в истории (Т-21, Р-299);
+    // куратору — без неё, как и в письме ему (Э-09, Р-414).
     const said = (to === null ? undefined : line[to]) ?? EVENT_LABEL[kind]!;
-    return typeof data.reason === 'string' && data.reason !== '' ? `${said}: ${data.reason}` : said;
+    const why = presentClientReason(actor, data.reason);
+    return why === null ? said : `${said}: ${why}`;
   }
 
   if (kind === 'VERSION_UPLOADED') {

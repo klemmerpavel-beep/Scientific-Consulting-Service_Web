@@ -531,7 +531,7 @@ export default async function ManageQueue({
         title: clip(row.text, 80),
         mark: late === null ? `поручение до ${formatDate(row.dueOn)}` : `поручение просрочено на ${late} ${plural(late, 'день', 'дня', 'дней')}`,
         urgent: late !== null,
-        detail: row.project === null ? null : row.project.title,
+        detail: row.project === null ? null : (row.project.title ?? row.project.code),
         todo: 'Отметить «в работе» или «сделано»',
         href: '/cabinet/assignments',
       };

@@ -52,6 +52,7 @@ import { ERASED_KEY_PREFIX, erasedKey, normalizeName, signatureBase } from './im
 import { prisma } from '../db.ts';
 import { storage } from './storage.ts';
 import { enqueue } from './outbox.ts';
+import { moscowToday } from './clock.ts';
 
 /**
  * У клиента есть действующие работы. Затирать данные, пока по работе идёт
@@ -451,9 +452,14 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     // Причина сторно — свободный текст руководителя («вернули Ивановой по
     // заявлению»). Прочее содержимое записи — переход состояния и сумма —
     // учёт, и оно остаётся; затирается только причина (решение Р-252).
+    // Так же — причина переноса даты транша и передачи работы другому
+    // менеджеру: тоже свободный текст о клиенте (решение Р-423).
     let reversals = 0;
     const trancheEvents = await tx.auditEvent.findMany({
-      where: { projectId: { in: projectIds }, action: 'TRANCHE_STATUS_CHANGED' },
+      where: {
+        projectId: { in: projectIds },
+        action: { in: ['TRANCHE_STATUS_CHANGED', 'TRANCHE_RESCHEDULED', 'MANAGER_ASSIGNED'] },
+      },
       select: { id: true, payload: true },
     });
     for (const event of trancheEvents) {
@@ -482,6 +488,18 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
       where: { version: { material: { projectId: { in: projectIds } } } },
       data: { body: ERASED, moderationNote: null },
     });
+    // Поручения руководителя по его работам и комментарии сотрудников к его
+    // заявкам — свободный текст о клиенте: «перезвонить Ивановой…»
+    // (РК-19, Р-270; решение Р-423). Строки остаются — по ним видно, что
+    // поручение было и заявку разбирали.
+    const assignmentsErased = await tx.assignment.updateMany({
+      where: { projectId: { in: projectIds } },
+      data: { text: ERASED },
+    });
+    const leadComments =
+      leadIds.length === 0
+        ? { count: 0 }
+        : await tx.leadComment.updateMany({ where: { leadId: { in: leadIds } }, data: { body: ERASED } });
     // Причина «не публиковать» версию эксперта — свободный текст куратора
     // о работе клиента (Т-18, решение Р-294).
     await tx.versionModeration.updateMany({
@@ -500,9 +518,32 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     // имени. Строка остаётся — по ней видно, что отправка была. Письма
     // по его заявкам (ответ на отказ, Р-217) адресованы заявке, а не
     // записи, и попадают сюда отдельным условием.
+    // Письмо руководителю о запросе удаления называет клиента по имени, а
+    // утренняя сводка куратора пересказывает темы писем о его работах
+    // (П-08, Р-400; УЭ-01, Р-398). Работы у этих строк нет: первое
+    // находится по ключу требования, вторая — по ключу дня сводки, в которую
+    // вошли письма о его работах (решение Р-423).
+    const requests = await tx.erasureRequest.findMany({
+      where: { clientId: { in: cardIds } },
+      select: { id: true },
+    });
+    const merged =
+      projectIds.length === 0
+        ? []
+        : await tx.notificationOutbox.findMany({
+            where: { projectId: { in: projectIds }, state: 'MERGED', userId: { not: null } },
+            select: { userId: true, scheduledAt: true },
+          });
+    const digestKeys = [
+      ...new Set(
+        merged.map((row) => `curator-digest:${moscowToday(row.scheduledAt).toISOString().slice(0, 10)}:${row.userId}`),
+      ),
+    ];
     const notifications = await tx.notificationOutbox.updateMany({
       where: {
         OR: [
+          ...requests.map((row) => ({ dedupKey: { startsWith: `erasure-request:${row.id}:` } })),
+          ...digestKeys.map((key) => ({ eventKind: 'CURATOR_DIGEST', dedupKey: { startsWith: key } })),
           projectIds.length === 0
             ? { id: '—нет такой строки—' }
             : { projectId: { in: projectIds } },
@@ -688,7 +729,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
           userErased,
           leads: leads.count,
           loginAttempts: loginAttempts.count,
-          texts: materials.count + stages.count + comments.count + reasons.count,
+          texts: materials.count + stages.count + comments.count + reasons.count + assignmentsErased.count + leadComments.count,
           events: events.count + journal.count + personal.count + reversals,
           notifications: notifications.count,
           importRows: importRowsErased.count,
@@ -706,7 +747,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
       userErased,
       leads: leads.count,
       loginAttempts: loginAttempts.count,
-      texts: materials.count + stages.count + comments.count + reasons.count,
+      texts: materials.count + stages.count + comments.count + reasons.count + assignmentsErased.count + leadComments.count,
       events: events.count + journal.count + personal.count + reversals,
       notifications: notifications.count,
       importRows: importRowsErased.count,

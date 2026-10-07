@@ -21,6 +21,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.js';
+import { cell } from './csv-cell.mjs';
 
 const SOURCE_LABEL = {
   landing: 'Посадочная',
@@ -48,11 +49,6 @@ const STATUS_LABEL = {
 
 const CONTACT_LABEL = { email: 'Почта', phone: 'Телефон' };
 
-/** Экранирование по RFC 4180: кавычки удваиваются, поле берётся в кавычки */
-function cell(value) {
-  const s = value == null ? '' : String(value);
-  return '"' + s.replace(/"/g, '""') + '"';
-}
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {

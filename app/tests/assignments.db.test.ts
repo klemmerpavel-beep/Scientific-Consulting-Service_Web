@@ -110,6 +110,21 @@ describe('поручения руководителя (РК-19)', { skip: !enabl
     assert.ok(parts.assignment.some((row) => row.id === ids.first));
   });
 
+  it('название работы — пока исполнитель её видит; потом — код (Р-420)', async () => {
+    const titleOf = async (actor: Actor, id: string) =>
+      (await assignments.myAssignments(actor)).find((row) => row.id === id)?.project;
+    assert.deepEqual(await titleOf(curator(), ids.curatorTask!), { code: ids.code, title: 'Работа поручений' });
+    await prisma.project.update({ where: { id: ids.project }, data: { expertId: null, managerId: ids.other! } });
+    try {
+      assert.deepEqual(await titleOf(curator(), ids.curatorTask!), { code: ids.code, title: null });
+      assert.deepEqual(await titleOf(manager(), ids.first!), { code: ids.code, title: null });
+    } finally {
+      await prisma.project.update({ where: { id: ids.project }, data: { expertId: ids.curator!, managerId: ids.manager! } });
+    }
+    const unsigned: Actor = { ...curator(), expertNdaSignedAt: null };
+    assert.deepEqual(await titleOf(unsigned, ids.curatorTask!), { code: ids.code, title: null });
+  });
+
   it('просроченное — дело руководителя и колонка «Команды»', async () => {
     await prisma.assignment.update({ where: { id: ids.first }, data: { dueOn: new Date(today().getTime() - 2 * DAY) } });
     const parts = attentionParts(await attentionSources(head()));
