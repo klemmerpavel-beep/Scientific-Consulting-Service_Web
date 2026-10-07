@@ -75,4 +75,30 @@ describe('сводка куратору (УЭ-01)', { skip: !enabled }, async ()
     const merged = await prisma.notificationOutbox.count({ where: { userId: ids.digest, eventKind: 'CURATOR_TURN', state: 'MERGED' } });
     assert.equal(merged, 2);
   });
+
+  it('строка, ставшая к отправке после сводки, уходит второй сводкой, а не пропадает (Р-436)', async () => {
+    const at = outbox.nextDigestAt(new Date());
+    // Повтор неудачной строки после утренней сводки: она снова ждёт отправки.
+    const late = await prisma.notificationOutbox.create({
+      data: {
+        userId: ids.digest!,
+        channel: 'EMAIL',
+        eventKind: 'CURATOR_TURN',
+        subject: 'Ход за вами поздний',
+        body: 'Этап запущен.',
+        dedupKey: `cd:late:${stamp}:email`,
+        scheduledAt: at,
+      },
+    });
+    assert.equal(await outbox.enqueueCuratorDigest(at), 1, 'поздняя строка не попала ни в одну сводку');
+    const row = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: late.id } });
+    assert.equal(row.state, 'MERGED');
+    const digests = await prisma.notificationOutbox.findMany({
+      where: { userId: ids.digest, eventKind: 'CURATOR_DIGEST' },
+      orderBy: { createdAt: 'asc' },
+    });
+    assert.equal(digests.length, 2);
+    assert.match(digests[1]!.body, /Ход за вами поздний/u);
+    assert.equal(await outbox.enqueueCuratorDigest(at), 0, 'повторный прогон поставил третью сводку');
+  });
 });

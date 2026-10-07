@@ -161,9 +161,19 @@ export function nextDigestAt(at: Date): Date {
 /**
  * Сводка куратору: отложенные письма о работах — одним письмом в 09:00 по
  * Москве (улучшение УЭ-01, решение Р-398). Отложенные строки получают
- * состояние «вошло в сводку». Ключ — по дню: повторный прогон второй
- * сводки не ставит.
+ * состояние «вошло в сводку». Повторный прогон второй сводки не ставит:
+ * вошедшие строки больше не ждут отправки.
+ *
+ * Отметка строк и сама сводка — одна транзакция, а ключ сводки — по дню и
+ * первой вошедшей строке (решение Р-436). Прежде ключ был один на день:
+ * строка, ставшая к отправке после утренней сводки (повтор неудачной,
+ * отложенная до включения сводки), помечалась «вошло в сводку», а сводка
+ * с тем же ключом не ставилась — письмо пропадало. Если сводку поставить
+ * нельзя, отметка откатывается и строки уходят обычным порядком.
  */
+/** Сводку не поставить: отметка строк откатывается (решение Р-436). */
+class DigestSkipped extends Error {}
+
 export async function enqueueCuratorDigest(at: Date = clockNow()): Promise<number> {
   const curators = await prisma.user.findMany({
     where: { role: 'EXPERT', status: 'ACTIVE', dailyDigest: true },
@@ -184,20 +194,29 @@ export async function enqueueCuratorDigest(at: Date = clockNow()): Promise<numbe
       select: { id: true, subject: true },
     });
     if (rows.length === 0) continue;
-    const claimed = await prisma.notificationOutbox.updateMany({
-      where: { id: { in: rows.map((row) => row.id) }, state: 'PENDING' },
-      data: { state: 'MERGED', lastError: 'вошло в сводку куратора', scheduledAt: at },
-    });
-    if (claimed.count === 0) continue;
-    queued += await enqueue(prisma, {
-      userId: curator.id,
-      eventKind: 'CURATOR_DIGEST',
-      subject: `Сводка по вашим работам: ${rows.length} ${rows.length % 10 === 1 && rows.length % 100 !== 11 ? 'событие' : [2, 3, 4].includes(rows.length % 10) && ![12, 13, 14].includes(rows.length % 100) ? 'события' : 'событий'}`,
-      body: `${rows.map((row) => `— ${row.subject}`).join('\n')}\nПодробности — в личном кабинете.`,
-      dedupKey: `curator-digest:${moscowToday(at).toISOString().slice(0, 10)}:${curator.id}`,
-      only: 'EMAIL',
-      path: '/cabinet/projects',
-    });
+    queued += await prisma
+      .$transaction(async (tx) => {
+        const claimed = await tx.notificationOutbox.updateMany({
+          where: { id: { in: rows.map((row) => row.id) }, state: 'PENDING' },
+          data: { state: 'MERGED', lastError: 'вошло в сводку куратора', scheduledAt: at },
+        });
+        if (claimed.count !== rows.length) throw new DigestSkipped();
+        const put = await enqueue(tx, {
+          userId: curator.id,
+          eventKind: 'CURATOR_DIGEST',
+          subject: `Сводка по вашим работам: ${rows.length} ${rows.length % 10 === 1 && rows.length % 100 !== 11 ? 'событие' : [2, 3, 4].includes(rows.length % 10) && ![12, 13, 14].includes(rows.length % 100) ? 'события' : 'событий'}`,
+          body: `${rows.map((row) => `— ${row.subject}`).join('\n')}\nПодробности — в личном кабинете.`,
+          dedupKey: `curator-digest:${moscowToday(at).toISOString().slice(0, 10)}:${curator.id}:${rows[0]!.id}`,
+          only: 'EMAIL',
+          path: '/cabinet/projects',
+        });
+        if (put === 0) throw new DigestSkipped();
+        return put;
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DigestSkipped) return 0;
+        throw error;
+      });
   }
   return queued;
 }
