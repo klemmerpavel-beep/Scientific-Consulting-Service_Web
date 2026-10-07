@@ -603,10 +603,16 @@ export async function assignExpert(
   }
 
   const project = await prisma.$transaction(async (tx) => {
-    const updated = await tx.project.update({
-      where: { id: projectId },
+    // Назначение захватывает работу с прежним куратором: два одновременных
+    // назначения не проходят оба — иначе письмо «работа назначена» получал
+    // и тот, кого тут же сменили, а прежний — два письма о снятии
+    // (решение Р-464).
+    const { count } = await tx.project.updateMany({
+      where: { id: projectId, expertId: ref.expertId },
       data: { expertId, expertRole: nextRole },
     });
+    if (count === 0) throw new Error('Куратора работы уже сменили: обновите страницу');
+    const updated = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
     // Новый куратор начинает со своего хода: сдача прежнего куратора гаснет
     // (требование Э-05, решение Д-6 плана куратора).
     await tx.stage.updateMany({
@@ -824,9 +830,14 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
   const by = await prisma.user.findUniqueOrThrow({ where: { id: actor.id }, select: { fullName: true } });
 
   const project = await prisma.$transaction(async (tx) => {
-    const updated = await tx.project.update({
-      where: { id: projectId },
+    // Передача захватывает работу с прежним менеджером (решение Р-464).
+    const { count } = await tx.project.updateMany({
+      where: { id: projectId, managerId: ref.managerId },
       data: { managerId },
+    });
+    if (count === 0) throw new Error('Менеджера работы уже сменили: обновите страницу');
+    const updated = await tx.project.findUniqueOrThrow({
+      where: { id: projectId },
       include: { client: { select: { userId: true } } },
     });
     await tx.projectEvent.create({
