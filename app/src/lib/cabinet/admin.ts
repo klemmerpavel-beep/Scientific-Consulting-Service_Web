@@ -8,6 +8,7 @@
 
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
+import { revokeStaffIssuedSessions } from './auth.ts';
 import { moscowToday } from './clock.ts';
 import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
@@ -694,6 +695,8 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
     if (role === 'EXPERT') {
       await tx.expertProfile.upsert({ where: { userId }, create: { userId }, update: {} });
     }
+    // И сессии клиентов по ссылкам, которые он выдал (решение Р-424).
+    await revokeStaffIssuedSessions(tx, userId);
     await tx.session.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
@@ -732,6 +735,8 @@ export async function setUserStatus(actor: Actor, userId: string, status: 'ACTIV
   await prisma.$transaction(async (tx) => {
     await tx.user.update({ where: { id: userId }, data: { status } });
     if (status === 'SUSPENDED') {
+      // И сессии клиентов по ссылкам, которые он выдал (решение Р-424).
+      await revokeStaffIssuedSessions(tx, userId);
       await tx.session.updateMany({
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },

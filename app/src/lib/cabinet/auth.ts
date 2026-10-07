@@ -19,6 +19,7 @@ import {
   SESSION_MAX_DAYS,
   SESSION_TTL_DAYS,
   splitToken,
+  STAFF_LINK_SESSION_HOURS,
   TOKEN_TTL_MINUTES,
 } from './token.ts';
 
@@ -302,6 +303,14 @@ export async function enterWithToken(
   });
   if (consumed.count !== 1) return null;
 
+  // Человек вошёл по своей почте: сессии по ссылкам сотрудников гаснут —
+  // копия такой сессии у сотрудника больше не нужна (решение Р-424).
+  if (token.issuedById === null) {
+    await prisma.session.updateMany({
+      where: { userId: token.userId, viaStaffLink: true, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
   // Ссылку выдал сотрудник: сессия помечается, и согласование этапа в ней
   // записывается с пометкой (ОМ-3, решение Р-292).
   const session = await createSession(token.userId, ip, userAgent, { viaStaffLink: token.issuedById !== null });
@@ -343,6 +352,38 @@ export async function loginLinkOwner(value: string): Promise<string | null> {
   return maskEmail(token.user.email);
 }
 
+/**
+ * Срок сессии в миллисекундах: по ссылке сотрудника — не дольше суток
+ * (решение Р-424), иначе — переданный срок в днях.
+ */
+function sessionLimitMs(viaStaffLink: boolean, days: number): number {
+  const ordinary = days * 24 * 60 * 60 * 1000;
+  return viaStaffLink ? Math.min(ordinary, STAFF_LINK_SESSION_HOURS * 60 * 60 * 1000) : ordinary;
+}
+
+/**
+ * Погасить сессии по ссылкам, которые выдал сотрудник, — при его
+ * приостановке и смене роли (решение Р-424). Сессия ссылку выдавшего не
+ * помнит; её находит ссылка: погашенная за последние сутки, выданная им, —
+ * значит, у этого человека может быть живая сессия по ней.
+ */
+export async function revokeStaffIssuedSessions(
+  db: Pick<typeof prisma, 'loginToken' | 'session'>,
+  issuerId: string,
+): Promise<void> {
+  const since = new Date(Date.now() - STAFF_LINK_SESSION_HOURS * 60 * 60 * 1000);
+  const issued = await db.loginToken.findMany({
+    where: { issuedById: issuerId, usedAt: { gte: since } },
+    select: { userId: true },
+  });
+  const users = [...new Set(issued.map((row) => row.userId))];
+  if (users.length === 0) return;
+  await db.session.updateMany({
+    where: { userId: { in: users }, viaStaffLink: true, revokedAt: null, createdAt: { gte: since } },
+    data: { revokedAt: new Date() },
+  });
+}
+
 export async function createSession(
   userId: string,
   ip: string,
@@ -355,7 +396,7 @@ export async function createSession(
       data: {
         tokenHash: digest(raw),
         userId,
-        expiresAt: new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + sessionLimitMs(options.viaStaffLink ?? false, SESSION_TTL_DAYS)),
         ip,
         userAgent,
         viaStaffLink: options.viaStaffLink ?? false,
@@ -394,7 +435,8 @@ export async function resolveSession(raw: string | undefined): Promise<Actor | n
   // Абсолютный предел от открытия сессии (решение Р-251). Проверяется и
   // сам по себе, а не только через срок: строки, продлённые до этого
   // решения, могли уйти за предел.
-  const hardLimit = session.createdAt.getTime() + SESSION_MAX_DAYS * 24 * 60 * 60 * 1000;
+  // Сессия по ссылке сотрудника — не дольше суток (решение Р-424).
+  const hardLimit = session.createdAt.getTime() + sessionLimitMs(session.viaStaffLink, SESSION_MAX_DAYS);
   if (hardLimit < Date.now()) return null;
 
   const { user } = session;
