@@ -35,7 +35,7 @@ export interface OutboxItem {
   readonly subject: string;
   readonly body: string;
   /**
-   * Ключ дедупликации, например `stage:<id>:awaiting_client:2026-09-15`.
+   * Ключ дедупликации, например `stage:<id>:awaiting_client:<строка истории>`.
    * Повторная постановка того же события проходит без ошибки и без дубля:
    * напоминание о сроке не должно приходить дважды за день.
    */

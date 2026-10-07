@@ -2124,7 +2124,10 @@ export async function setStageState(
                   ? '.\n'
                   : ` до ${formatDay(approvalDueOn)} включительно (по московскому времени).\n`)) +
             'Открыть этап можно в личном кабинете.',
-          dedupKey: `stage:${stageId}:${to.toLowerCase()}:${now.toISOString().slice(0, 16)}`,
+          // Ключ — строка истории этапа, а не минута: исправленное «ждёт
+          // материалов» или повторная сдача в ту же минуту — новое письмо
+          // (решение Р-458).
+          dedupKey: `stage:${stageId}:${to.toLowerCase()}:${change.id}`,
           // Кнопка письма ведёт на этот этап — и после входа (Т-06, Р-309).
           path: `/cabinet/stages/${stageId}`,
         });
