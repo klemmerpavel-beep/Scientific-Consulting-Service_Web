@@ -295,5 +295,10 @@ describe('заказ вручную', { skip: !enabled }, async () => {
     assert.equal(await bookRowOf(actor(ids.head!, 'HEAD'), projects[0]!), null);
     assert.equal(paidShare({ cost: 12_500_000n, paid: 4_166_700n }), '33 %');
     assert.equal(paidShare({ cost: 0n, paid: 0n }), null);
+    // Пока есть остаток — не больше 99 % (Р-444).
+    assert.equal(paidShare({ cost: 1_000_000n, paid: 999_500n }), '99 %');
+    assert.equal(paidShare({ cost: 1_000_000n, paid: 1_000_000n }), '100 %');
+    assert.equal(paidShare({ cost: 1_000_000n, paid: 1_100_000n }), '110 %');
+    assert.equal(paidShare({ cost: 3_000_000n, paid: 2_000_000n }), '67 %');
   });
 });
