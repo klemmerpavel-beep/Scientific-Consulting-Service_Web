@@ -907,6 +907,8 @@ export interface DebtorRow {
   /** Состояние работы: идущую можно приостановить до оплаты (п. 8.5 оферты). */
   readonly workStatus: string;
   readonly client: string;
+  /** Карточка клиента: итог по клиенту — по ней, а не по ФИО (Р-445). */
+  readonly clientId: string;
   readonly manager: string;
 }
 
@@ -935,7 +937,7 @@ export async function overdueTranches(actor: Actor, at: Date = clockNow()): Prom
               code: true,
               title: true,
               status: true,
-              client: { select: { fullName: true } },
+              client: { select: { id: true, fullName: true } },
               manager: { select: { fullName: true } },
             },
           },
@@ -954,6 +956,7 @@ export async function overdueTranches(actor: Actor, at: Date = clockNow()): Prom
     work: row.contract.project.title,
     workStatus: row.contract.project.status,
     client: row.contract.project.client.fullName,
+    clientId: row.contract.project.client.id,
     manager: row.contract.project.manager.fullName,
   }));
 }

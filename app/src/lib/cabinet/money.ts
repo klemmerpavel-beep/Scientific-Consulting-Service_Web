@@ -231,17 +231,21 @@ export function formatAmount(kopecks: bigint | number | null | undefined): strin
 /**
  * Итог «Должников» по клиенту — только у тех, у кого просрочено несколько
  * платежей; крупные долги сверху (улучшение УР-06, решение Р-389).
+ *
+ * Клиент — карточка, а не ФИО: однофамильцы и обезличенные карточки
+ * (у всех одно ФИО-заглушка) прежде сливались в одного должника с общей
+ * суммой (решение Р-445). Без идентификатора — по ФИО, как прежде.
  */
 export function debtsByClient(
-  rows: readonly { readonly client: string; readonly amount: bigint }[],
+  rows: readonly { readonly client: string; readonly clientId?: string; readonly amount: bigint }[],
 ): { client: string; count: number; total: bigint }[] {
-  const grouped = new Map<string, { count: number; total: bigint }>();
+  const grouped = new Map<string, { client: string; count: number; total: bigint }>();
   for (const row of rows) {
-    const current = grouped.get(row.client) ?? { count: 0, total: 0n };
-    grouped.set(row.client, { count: current.count + 1, total: current.total + row.amount });
+    const key = row.clientId ?? `name:${row.client}`;
+    const current = grouped.get(key) ?? { client: row.client, count: 0, total: 0n };
+    grouped.set(key, { client: row.client, count: current.count + 1, total: current.total + row.amount });
   }
-  return [...grouped.entries()]
-    .filter(([, value]) => value.count > 1)
-    .map(([client, value]) => ({ client, ...value }))
+  return [...grouped.values()]
+    .filter((value) => value.count > 1)
     .sort((a, b) => (b.total > a.total ? 1 : b.total < a.total ? -1 : a.client.localeCompare(b.client)));
 }

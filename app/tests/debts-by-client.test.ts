@@ -23,4 +23,16 @@ describe('должники по клиенту (УР-06)', () => {
     ]);
     assert.deepEqual(debtsByClient([{ client: 'Петров', amount: 1n }]), []);
   });
+
+  it('однофамильцы и обезличенные карточки — разные должники (Р-445)', () => {
+    const erased = '[удалено по требованию субъекта]';
+    const rows = [
+      { client: 'Иванов Иван', clientId: 'a', amount: 10_000n },
+      { client: 'Иванов Иван', clientId: 'b', amount: 20_000n },
+      { client: erased, clientId: 'c', amount: 1_000n },
+      { client: erased, clientId: 'd', amount: 2_000n },
+      { client: 'Иванов Иван', clientId: 'a', amount: 5_000n },
+    ];
+    assert.deepEqual(debtsByClient(rows), [{ client: 'Иванов Иван', count: 2, total: 15_000n }]);
+  });
 });
