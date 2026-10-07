@@ -77,7 +77,12 @@ export function leadStatusTone(value: string) {
 export function contactHref(kind: string, value: string): string | null {
   const text = value.trim();
   if (kind === 'email') {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(text) ? `mailto:${text}` : null;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(text)) return null;
+    // Части адреса кодируются (RFC 6068): адрес с «?body=…» или «&cc=…»,
+    // присланный с открытой формы, иначе подставлял бы в письмо менеджера
+    // чужой текст и получателей (решение Р-433).
+    const at = text.lastIndexOf('@');
+    return `mailto:${encodeURIComponent(text.slice(0, at))}@${encodeURIComponent(text.slice(at + 1))}`;
   }
   const digits = text.replace(/[^\d+]/gu, '');
   const number = /^8\d{10}$/u.test(digits)
