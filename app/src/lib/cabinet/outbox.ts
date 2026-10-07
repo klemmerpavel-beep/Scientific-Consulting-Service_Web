@@ -173,6 +173,9 @@ export async function curatorOnWork(db: Db, projectId: string, userId: string): 
  * Поручение руководителя и напоминание о его сроке — тоже: «завтра срок»,
  * отложенное до 09:00 следующего дня, приходило в день срока, а поручение
  * со сроком «сегодня» — назавтра, после срока (решение Р-437).
+ * Напоминания о сроке этапа — по той же причине: их ставит утренний
+ * прогон после 09:00, и отложенное «срок через три дня» приходило за два
+ * дня, а «срок сорван» — на второй день после срыва (решение Р-457).
  */
 export const DIGEST_EXEMPT: ReadonlySet<string> = new Set([
   'CURATOR_INVITED',
@@ -180,6 +183,8 @@ export const DIGEST_EXEMPT: ReadonlySet<string> = new Set([
   'CURATOR_DIGEST',
   'ASSIGNMENT_CREATED',
   'ASSIGNMENT_DUE',
+  'DEADLINE_IN_3_DAYS',
+  'DEADLINE_MISSED',
 ]);
 
 /**
