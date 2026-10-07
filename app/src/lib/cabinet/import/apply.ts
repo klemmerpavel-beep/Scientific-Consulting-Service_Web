@@ -920,18 +920,29 @@ export async function applyBatch(
           // остаток, заведённый прошлым переносом, пересчитывается под новую
           // сумму. Прежде разница оплаты шла в итог загрузки, но в базу не
           // попадала (решение Р-233).
-          await tx.project.update({
-            where: { id: projectId },
-            data: {
-              status,
-              dueOn: deadline,
-              closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
-              // Дата закрытия книги — плановый срок (РК-23, Р-355).
-              closedOnPlanned: status === 'COMPLETED',
-            },
-          });
+          // Пишется только то, что в книге поменялось с прошлого переноса:
+          // правка одной оплаты прежде переписывала и состояние со сроком, и
+          // работа, завершённая или отменённая в кабинете, возвращалась «в
+          // работу» (решение Р-451).
+          const prior = (match.kind === 'KNOWN' ? match.parsed : null) as { status?: unknown; deadline?: unknown } | null;
+          const statusChanged = prior === null || prior.status !== parsed.status;
+          const deadlineChanged = prior === null || (prior.deadline ?? null) !== (parsed.deadline ?? null);
+          const changes = {
+            ...(statusChanged
+              ? {
+                  status,
+                  closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
+                  // Дата закрытия книги — плановый срок (РК-23, Р-355).
+                  closedOnPlanned: status === 'COMPLETED',
+                }
+              : {}),
+            ...(deadlineChanged ? { dueOn: deadline } : {}),
+          };
+          if (Object.keys(changes).length > 0) {
+            await tx.project.update({ where: { id: projectId }, data: changes });
+          }
           // Первая дата закрытия — один раз (УМ-13, Р-392).
-          if (status === 'COMPLETED') {
+          if (statusChanged && status === 'COMPLETED') {
             await tx.project.updateMany({
               where: { id: projectId, firstClosedOn: null },
               data: { firstClosedOn: deadline ?? orderDate },

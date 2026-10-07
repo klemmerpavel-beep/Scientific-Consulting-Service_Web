@@ -365,6 +365,27 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     assert.equal(sum('PLANNED'), reversed.amount, 'сторнированное не встало к получению');
   });
 
+  it('правка оплаты в книге не возвращает «в работу» работу, отменённую в кабинете (Р-451)', async () => {
+    const head = actor(ids.head, 'HEAD');
+    const contract = await prisma.contract.findFirstOrThrow({
+      where: { totalAmount: 9_000_000n, project: { managerId: ids.manager } },
+      select: { projectId: true },
+    });
+    await prisma.project.update({ where: { id: contract.projectId }, data: { status: 'CANCELLED', closedOn: new Date('2025-11-01T00:00:00Z') } });
+    const before = await prisma.project.findUniqueOrThrow({ where: { id: contract.projectId } });
+
+    // В книге поменялась только оплата; состояние и срок — прежние.
+    const preview = await previewBook(head, { fileName: `книга-${stamp}-оплата.xlsx`, bytes: book('80000', [], '25.12.2025') });
+    batches.push(preview.batchId);
+    const report = await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    assert.equal(report.updated, 1);
+
+    const after = await prisma.project.findUniqueOrThrow({ where: { id: contract.projectId } });
+    assert.equal(after.status, 'CANCELLED', 'работа, отменённая в кабинете, вернулась в работу');
+    assert.equal(after.closedOn?.toISOString(), before.closedOn?.toISOString());
+    assert.equal(after.dueOn?.toISOString(), before.dueOn?.toISOString());
+  });
+
   it('одну загрузку нельзя зафиксировать дважды и одновременно', async () => {
     const head = actor(ids.head, 'HEAD');
     const extra: TestRow[] = [
