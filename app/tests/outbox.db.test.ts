@@ -311,6 +311,45 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
     assert.equal(back.lastError, null);
   });
 
+  it('повтор не возвращает в очередь письмо, отправленное между чтением и записью (Р-466)', async () => {
+    const row = await prisma.notificationOutbox.create({
+      data: {
+        userId,
+        channel: 'EMAIL',
+        eventKind: 'STAGE_AWAITING_CLIENT',
+        subject: 'Повтор в гонке',
+        body: 'Текст',
+        dedupKey: `retry-race-${stamp}:email`,
+        state: 'FAILED',
+        attempts: 5,
+      },
+    });
+    // Рассылка держит строку и отмечает её отправленной; повтор прочитал
+    // «не доставлено» и ждёт блокировки на записи.
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let locked!: () => void;
+    const holding = new Promise<void>((resolve) => (locked = resolve));
+    const send = prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`select 1 from "NotificationOutbox" where id = ${row.id} for update`;
+        await tx.notificationOutbox.update({ where: { id: row.id }, data: { state: 'SENT', sentAt: new Date() } });
+        locked();
+        await gate;
+      },
+      { timeout: 20_000 },
+    );
+    await holding;
+    const retry = retryFailed(head(), row.id);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    release();
+    await send;
+    await retry;
+    const after = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: row.id } });
+    assert.equal(after.state, 'SENT', 'отправленное письмо вернулось в очередь');
+    await prisma.notificationOutbox.delete({ where: { id: row.id } });
+  });
+
   it('менеджеру состояние очереди и повтор недоступны', async () => {
     await assert.rejects(() => outboxDigest(manager()), AccessDenied);
     const row = await prisma.notificationOutbox.findFirstOrThrow({ where: { userId } });

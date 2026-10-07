@@ -1113,10 +1113,14 @@ export async function retryFailed(actor: Actor, id: string, ip?: string | null):
     throw new Error('Напоминание о сроке старше суток не повторяется: срок уже другой');
   }
 
-  await prisma.notificationOutbox.update({
-    where: { id: row.id },
+  // Повтор захватывает строку в состоянии «не доставлено»: два нажатия
+  // «Повторить» не возвращают в очередь письмо, которое рассылка между
+  // ними уже отправила (решение Р-466).
+  const { count } = await prisma.notificationOutbox.updateMany({
+    where: { id: row.id, state: 'FAILED' },
     data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
   });
+  if (count === 0) return;
   await record(actor, {
     action: 'OUTBOX_RETRY',
     objectType: 'NotificationOutbox',
