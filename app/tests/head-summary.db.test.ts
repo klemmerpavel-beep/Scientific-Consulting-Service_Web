@@ -136,6 +136,30 @@ describe('одни определения на «Сводке» (РК-04)', { sk
     assert.equal(orders.completedLastQuarter + orders.cancelledLastQuarter, orders.closedLastQuarter);
   });
 
+  it('окно «за 90 дней» — московские дни по сегодняшний включительно (Р-472)', async () => {
+    // 01:30 по Москве 7 октября — 22:30 UTC 6 октября: окно — с 10 июля.
+    const at = new Date(Date.UTC(2026, 9, 6, 22, 30));
+    const before = await summary.orderSummary(head(), at);
+    const edge = await prisma.project.create({
+      data: {
+        clientId: ids.client!,
+        serviceTypeId: ids.type!,
+        managerId: ids.manager!,
+        code: code('edge'),
+        title: `Край окна ${stamp}`,
+        status: 'ACTIVE',
+        startedOn: new Date(Date.UTC(2026, 6, 9)),
+      },
+    });
+    try {
+      const after = await summary.orderSummary(head(), at);
+      assert.equal(after.startedLastQuarter - before.startedLastQuarter, 0, '91-й день попал в окно 90 дней');
+      assert.equal(after.startedPrevQuarter - before.startedPrevQuarter, 1, 'день выпал из предыдущего окна');
+    } finally {
+      await prisma.project.delete({ where: { id: edge.id } });
+    }
+  });
+
   it('«Ближайшие сроки»: работа из книги без плана — по сроку работы; у строки менеджер, куратор, ход', async () => {
     const rows = (await summary.upcomingDeadlines(head())).filter((row) => row.code.startsWith(code('')));
     assert.deepEqual(

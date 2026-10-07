@@ -358,7 +358,7 @@ export async function upcomingDeadlines(actor: Actor, now: Date = today()): Prom
  * запретил (решение Р-194). Право спрашивается то же, что на перечень
  * работ, — деньги здесь не участвуют вовсе.
  */
-export async function orderSummary(actor: Actor): Promise<{
+export async function orderSummary(actor: Actor, at: Date = today()): Promise<{
   orders: number;
   active: number;
   paused: number;
@@ -378,8 +378,13 @@ export async function orderSummary(actor: Actor): Promise<{
   ensure(actor, 'PROJECT_VIEW');
   const scope = scopeProjects(actor) ?? {};
   const DAY = 24 * 60 * 60 * 1000;
-  const quarterAgo = new Date(today().getTime() - 90 * DAY);
-  const halfYearAgo = new Date(today().getTime() - 180 * DAY);
+  // Окно — 90 московских дней по сегодняшний включительно, как у «Получено
+  // за 90 дней» (`periodBounds`, Р-448): даты начала и закрытия — дни, и
+  // сравнение с мгновением «сейчас минус 90 суток» ночью давало 91 день
+  // (решение Р-472).
+  const start = moscowToday(at).getTime();
+  const quarterAgo = new Date(start - 89 * DAY);
+  const halfYearAgo = new Date(start - 179 * DAY);
 
   const [
     orders,
