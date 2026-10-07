@@ -146,6 +146,8 @@ describe('«Должники» (РК-10)', { skip: !enabled }, async () => {
     const reminder = await finance.trancheForReminder(head(), ids.live!, ids.future!);
     assert.equal(reminder?.title, `Глава 2 ${stamp}`);
     assert.equal(await finance.trancheForReminder(head(), ids.cancelled!, ids.future!), null, 'транш чужой работы');
+    // Списанный транш клиенту не виден — заготовка его не называет (Р-422).
+    assert.equal(await finance.trancheForReminder(head(), ids.live!, ids.invoiced!), null, 'списанный транш');
     const text = draftText('HEAD', 'payment', { stage: null, today: '', payment: { title: reminder!.title, date: '1 октября 2026' } }) ?? '';
     assert.doesNotMatch(text, /90 000|₽/u);
   });
