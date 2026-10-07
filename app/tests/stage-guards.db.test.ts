@@ -349,6 +349,37 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     });
     assert.match(letter.body, /^Работа «/u);
     assert.match(letter.body, /Причина: Диссовет перенёс заседание/u);
+
+    // Чужой перенос между чтением и записью: правка из второй вкладки с
+    // прежним сроком отклоняется, второго письма о переносе нет (Р-467).
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let locked!: () => void;
+    const holding = new Promise<void>((resolve) => (locked = resolve));
+    const other = prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`select 1 from "Project" where id = ${projectId} for update`;
+        await tx.project.update({ where: { id: projectId }, data: { dueOn: new Date('2027-01-15T00:00:00Z') } });
+        locked();
+        await gate;
+      },
+      { timeout: 20_000 },
+    );
+    await holding;
+    const edit = projects
+      .editProject(curator(), { projectId, title, dueOn: new Date('2026-12-25T00:00:00Z'), reason: 'Вторая вкладка' })
+      .then(() => 'прошла', (error: unknown) => String(error));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    release();
+    await other;
+    assert.match(await edit, /уже изменили/u);
+    const row = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { dueOn: true } });
+    assert.equal(row.dueOn?.toISOString().slice(0, 10), '2027-01-15', 'правка со старым сроком перезаписала чужой перенос');
+    assert.equal(
+      await prisma.notificationOutbox.count({ where: { projectId, eventKind: 'PROJECT_DUE_CHANGED', channel: 'EMAIL' } }),
+      1,
+      'второе письмо о переносе',
+    );
   });
 
   it('перенос срока этапа и работы попадает в журнал', async () => {

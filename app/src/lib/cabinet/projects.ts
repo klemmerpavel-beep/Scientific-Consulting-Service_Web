@@ -1560,8 +1560,12 @@ export async function editProject(
     if (why.length > 1000) throw new Error('Причина переноса — не длиннее 1000 знаков');
   }
   const saved = await prisma.$transaction(async (tx) => {
-    const updated = await tx.project.update({
-      where: { id: input.projectId },
+    // Правка захватывает работу с прочитанным сроком и состоянием: две
+    // одновременные правки не дают клиенту двух писем о переносе с
+    // неверным «было», а форма, открытая до чужого переноса, не
+    // возвращает прежний срок молча (решение Р-467).
+    const { count } = await tx.project.updateMany({
+      where: { id: input.projectId, dueOn: before.dueOn, status: before.status },
       data: {
         title,
         topic: input.topic?.trim() || null,
@@ -1570,6 +1574,8 @@ export async function editProject(
         ...(input.approvalDays === undefined ? {} : { approvalDays: input.approvalDays }),
       },
     });
+    if (count === 0) throw new Error('Срок или состояние работы уже изменили: обновите страницу');
+    const updated = await tx.project.findUniqueOrThrow({ where: { id: input.projectId } });
     if (shifted) await announceWorkDueChange(tx, actor, input.projectId, before.dueOn, nextDue, why);
     return updated;
   });
