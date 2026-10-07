@@ -551,6 +551,9 @@ export async function projectRef(projectId: string): Promise<ProjectRef | null> 
   });
 }
 
+/** Почему письмо прежнему куратору не ушло: его сняли с работы (Р-421). */
+export const UNASSIGNED_NOTE = 'куратор снят с работы до отправки';
+
 export async function assignExpert(
   actor: Actor,
   projectId: string,
@@ -677,6 +680,14 @@ export async function assignExpert(
   // нейтральное и уходит без договора поручения: без названия работы
   // (требование Э-09, решение Р-328; Р-237).
   if (ref.expertId !== null) {
+    // Неотправленные письма о работе прежнему куратору гаснут: отложенные
+    // до утренней сводки ушли бы ему в 09:00 уже о чужой работе
+    // (улучшение УЭ-01, Р-398; решение Р-421). Письмо о снятии ставится
+    // следом и уходит.
+    await prisma.notificationOutbox.updateMany({
+      where: { userId: ref.expertId, projectId, state: 'PENDING' },
+      data: { state: 'EXPIRED', lastError: UNASSIGNED_NOTE, scheduledAt: new Date() },
+    });
     const letter = unassignedLetter(project.code, expertId !== null);
     await enqueue(prisma, {
       userId: ref.expertId,
