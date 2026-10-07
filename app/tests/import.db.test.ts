@@ -34,7 +34,7 @@ const HEADER: TestRow = [
 /** Метка прогона отделяет данные проверки от всего, что есть в базе. */
 const stamp = Date.now();
 
-function book(paidSecond = '40000', extra: TestRow[] = []): Buffer {
+function book(paidSecond = '40000', extra: TestRow[] = [], deadlineSecond = '20.12.2025'): Buffer {
   return makeWorkbook([
     HEADER,
     [
@@ -52,7 +52,7 @@ function book(paidSecond = '40000', extra: TestRow[] = []): Buffer {
       `Иванов Иван ${stamp}`,
       'Аспирнтура',
       'Пакет поступления',
-      '20.12.2025',
+      deadlineSecond,
       '90000',
       { value: 'в работе', fill: GREEN },
       paidSecond,
@@ -339,6 +339,30 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     assert.equal(again.created, 0, 'вторая загрузка той же книги завела работы');
     assert.equal(again.updated, 0);
     assert.equal(await prisma.project.count({ where: mine }), before);
+  });
+
+  it('правка строки книги не отменяет сторно, сделанное в кабинете (Р-435)', async () => {
+    const head = actor(ids.head, 'HEAD');
+    const contract = await prisma.contract.findFirstOrThrow({
+      where: { totalAmount: 9_000_000n, project: { managerId: ids.manager } },
+      select: { id: true, tranches: { where: { status: 'PAID' }, orderBy: { amount: 'asc' }, select: { id: true, amount: true } } },
+    });
+    const reversed = contract.tranches[0]!;
+    await prisma.tranche.update({ where: { id: reversed.id }, data: { status: 'REVERSED' } });
+
+    // В книге поменялся только срок; оплата та же, что прежде.
+    const preview = await previewBook(head, {
+      fileName: `книга-${stamp}-сторно.xlsx`,
+      bytes: book('90000', [], '25.12.2025'),
+    });
+    batches.push(preview.batchId);
+    await applyBatch(head, preview.batchId, { managerId: ids.manager });
+
+    const after = await prisma.tranche.findMany({ where: { contractId: contract.id }, select: { status: true, amount: true } });
+    const sum = (status: string) => after.filter((row) => row.status === status).reduce((acc, row) => acc + row.amount, 0n);
+    assert.equal(sum('PAID'), 9_000_000n - reversed.amount, 'сторнированная оплата заведена заново');
+    assert.equal(sum('REVERSED'), reversed.amount);
+    assert.equal(sum('PLANNED'), reversed.amount, 'сторнированное не встало к получению');
   });
 
   it('одну загрузку нельзя зафиксировать дважды и одновременно', async () => {

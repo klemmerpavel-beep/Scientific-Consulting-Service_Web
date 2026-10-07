@@ -957,8 +957,11 @@ export async function applyBatch(
             // доплата за дополнительную услугу (Р-273).
             const total = rowPaid > rowCost ? rowPaid : rowCost;
             await tx.contract.update({ where: { id: contract.id }, data: { totalAmount: total } });
+            // Сторнированное в кабинете книга ещё помнит оплаченным: оно
+            // считается учтённым, иначе правка любого поля строки заводила
+            // бы ту же оплату заново и отменяла сторно (решение Р-435).
             const paidSoFar = contract.tranches
-              .filter((tranche) => tranche.status === 'PAID')
+              .filter((tranche) => tranche.status === 'PAID' || tranche.status === 'REVERSED')
               .reduce((sum, tranche) => sum + tranche.amount, 0n);
             let received = 0n;
             if (rowPaid > paidSoFar) {
@@ -975,8 +978,10 @@ export async function applyBatch(
             const rest = contract.tranches.find(
               (tranche) => tranche.title === REST_TITLE && tranche.status === 'PLANNED',
             );
+            // Сторнированное снова к получению (Р-257) — в разнесённое по
+            // траншам оно не входит и ложится в остаток (решение Р-435).
             const others = contract.tranches
-              .filter((tranche) => tranche.id !== rest?.id)
+              .filter((tranche) => tranche.id !== rest?.id && tranche.status !== 'REVERSED')
               .reduce((sum, tranche) => sum + tranche.amount, 0n);
             const left = total - others - received;
             if (rest !== undefined) {
