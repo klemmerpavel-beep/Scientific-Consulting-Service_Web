@@ -509,6 +509,27 @@ describe('замечания клиента при возврате этапа (
   });
 });
 
+describe('причина перевода в истории работы (Р-414)', async () => {
+  const { presentClientReason } = await import('../src/lib/cabinet/access.ts');
+  const why = 'Ждём оплату второго транша; позвоните мне: +7 900 000-00-00';
+
+  it('клиент и практика видят причину целиком', () => {
+    for (const actor of [client, manager, head]) assert.equal(presentClientReason(actor, why), why);
+  });
+
+  it('куратор видит переход без причины: она написана клиенту', () => {
+    assert.equal(presentClientReason(expert, why), null);
+  });
+
+  it('пустая и нестроковая причина не показывается никому', () => {
+    for (const actor of [client, manager, head, expert]) {
+      assert.equal(presentClientReason(actor, ''), null);
+      assert.equal(presentClientReason(actor, undefined), null);
+      assert.equal(presentClientReason(actor, 42), null);
+    }
+  });
+});
+
 describe('открыть клиенту вход (Р-285)', () => {
   it('без работы действие не разрешается никому, даже менеджеру', () => {
     assert.equal(can(manager, 'CLIENT_ACCESS_OPEN', null), false);
