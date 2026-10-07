@@ -1772,11 +1772,6 @@ async function ensureProjectActive(projectId: string): Promise<void> {
   if (project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
 }
 
-/** Полночь UTC того же дня: сроки в кабинете — дни, а не мгновения. */
-function dayOf(at: Date): Date {
-  return new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
-}
-
 /**
  * Этапы из шаблона со сроками подряд.
  *
@@ -1792,7 +1787,10 @@ export function templateStages(
   template: readonly { readonly title: string; readonly durationDays: number | null }[],
   at: Date,
 ) {
-  let cursor = dayOf(at).getTime();
+  // Отсчёт — от московского дня, как день начала работы: одобрение в 01:30
+  // по Москве давало день начала «сегодня», а сроки — от вчерашнего UTC-дня
+  // (решение Р-471).
+  let cursor = moscowToday(at).getTime();
   return template.map((item, index) => {
     let dueOn: Date | null = null;
     if (item.durationDays !== null) {

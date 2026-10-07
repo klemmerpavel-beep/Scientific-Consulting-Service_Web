@@ -267,6 +267,10 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     for (const row of rows) {
       if (row.dueOn !== null) assert.equal(row.dueOn.getUTCHours(), 0, 'срок не день');
     }
+    // Одобрение в 01:30 по Москве 27 сентября — 22:30 UTC 26-го: отсчёт от
+    // московского 27-го, как и день начала работы (Р-471).
+    const night = projects.templateStages('p', [{ title: 'Первый', durationDays: 10 }], new Date(Date.UTC(2026, 8, 26, 22, 30)));
+    assert.equal(night[0]!.dueOn?.toISOString().slice(0, 10), '2026-10-07');
     assert.deepEqual(
       rows.map((row) => row.position),
       [1, 2, 3, 4],
