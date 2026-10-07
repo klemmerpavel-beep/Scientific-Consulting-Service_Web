@@ -53,6 +53,17 @@ type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 const ALIVE = { mergedIntoId: null, erasedAt: null } as const;
 
+/**
+ * Карточки, доступные заказу этого сотрудника. Менеджер видит клиентов
+ * своих работ (Р-149): карточка, у которой есть работа другого менеджера,
+ * ему не предлагается и заказа от него не принимает — иначе заказ на неё
+ * открывал бы ему контакты чужого клиента. Такой заказ вносит
+ * руководитель. Защитный минимум до решения МП-02 (решение Р-419).
+ */
+function reachable(actor: Actor) {
+  return actor.role === 'MANAGER' ? { projects: { none: { managerId: { not: actor.id } } } } : {};
+}
+
 /** Карточка по почте или телефону — сильные признаки, выбора не требуют. */
 async function byContact(tx: Tx, email: string | null, phone: string | null): Promise<string | null> {
   if (email !== null) {
@@ -84,7 +95,7 @@ export async function nameCandidates(actor: Actor, customer: string): Promise<Na
   const normalized = normalizeName(customer.replace(/\s+/gu, ' ').trim());
   if (normalized.length === 0) return [];
   const rows = await prisma.clientProfile.findMany({
-    where: { ...ALIVE, normalizedName: normalized },
+    where: { ...ALIVE, normalizedName: normalized, ...reachable(actor) },
     orderBy: { createdAt: 'asc' },
     select: {
       id: true,
@@ -157,9 +168,17 @@ export async function createManualOrder(
     // принимают. Почта и телефон находят карточку сами; совпадение только
     // по ФИО — выбор менеджера (решение Р-308).
     let foundId = await byContact(tx, email, phone);
+    if (foundId !== null && actor.role === 'MANAGER') {
+      const open = await tx.clientProfile.count({ where: { id: foundId, ...reachable(actor) } });
+      if (open === 0) {
+        throw new OrderInputError(
+          'Заказчик с этой почтой или телефоном — клиент другого менеджера: такой заказ вносит руководитель.',
+        );
+      }
+    }
     if (foundId === null) {
       const namesakes = await tx.clientProfile.findMany({
-        where: { ...ALIVE, normalizedName: normalized },
+        where: { ...ALIVE, normalizedName: normalized, ...reachable(actor) },
         select: { id: true },
       });
       const choice = input.clientChoice?.trim() || null;
