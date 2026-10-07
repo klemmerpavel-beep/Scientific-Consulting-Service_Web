@@ -768,6 +768,9 @@ export { moscowToday };
  * человека, который экспертом не является, — и датой из будущего, которая
  * открывала доступ заранее и выглядела как опечатка (решение Р-251).
  */
+/** Почему письмо куратору не ушло: договор поручения отозван (Р-456). */
+export const NDA_REVOKED_NOTE = 'договор поручения отозван до отправки';
+
 export async function signExpertNda(actor: Actor, userId: string, signedOn: Date | null) {
   ensure(actor, 'USER_MANAGE');
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
@@ -786,6 +789,16 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
     create: { userId, ndaSignedAt: signedOn },
     update: { ndaSignedAt: signedOn, ...(signedOn === null ? {} : { ndaRequestedAt: null }) },
   });
+  // Отзыв договора гасит неотправленные письма о работах: отложенные до
+  // утренней сводки ушли бы в 09:00 с названиями этапов и материалов
+  // куратору, которому они уже не положены (Р-237; решение Р-456).
+  // Нейтральное «работа снята» уходит.
+  if ((before?.ndaSignedAt ?? null) !== null && signedOn === null) {
+    await prisma.notificationOutbox.updateMany({
+      where: { userId, projectId: { not: null }, state: 'PENDING', eventKind: { not: 'WORK_UNASSIGNED' } },
+      data: { state: 'EXPIRED', lastError: NDA_REVOKED_NOTE, scheduledAt: new Date() },
+    });
+  }
   await record(actor, {
     action: 'EXPERT_NDA_UPDATED',
     objectType: 'ExpertProfile',
