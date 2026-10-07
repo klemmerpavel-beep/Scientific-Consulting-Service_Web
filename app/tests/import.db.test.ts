@@ -501,6 +501,34 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     );
   });
 
+  it('новая строка с написанием сведённой карточки ложится в основную (Р-453)', async () => {
+    const merged = await prisma.clientProfile.findFirstOrThrow({
+      where: { normalizedName: { contains: String(stamp) }, mergedIntoId: { not: null } },
+      select: { id: true, fullName: true, mergedIntoId: true },
+    });
+    const head = actor(ids.head, 'HEAD');
+    const extra: TestRow = [
+      excelSerial('2025-08-17'),
+      merged.fullName,
+      'Диссертция',
+      'Новая глава',
+      '01.12.2025',
+      '77000',
+      { value: 'в работе', fill: GREEN },
+      '0',
+    ];
+    const preview = await previewBook(head, { fileName: `книга-${stamp}-сведённая.xlsx`, bytes: book('80000', [extra], '25.12.2025') });
+    batches.push(preview.batchId);
+    await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    const created = await prisma.project.findFirstOrThrow({
+      where: { managerId: ids.manager, contract: { totalAmount: 7_700_000n } },
+      select: { clientId: true },
+    });
+    assert.equal(created.clientId, merged.mergedIntoId, 'новая работа легла не в основную карточку');
+    const dupes = await prisma.clientProfile.count({ where: { fullName: merged.fullName, mergedIntoId: null } });
+    assert.equal(dupes, 0, 'заведена карточка-дубль сведённой');
+  });
+
   it('перенос записан в журнал действий', async () => {
     const events = await prisma.auditEvent.findMany({
       where: { actorId: ids.head, action: { in: ['IMPORT_PREVIEWED', 'IMPORT_APPLIED'] } },

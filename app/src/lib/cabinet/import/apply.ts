@@ -1050,14 +1050,22 @@ export async function applyBatch(
         // и рассылки им не уходят.
         let clientId = clients.get(parsed.normalizedName);
         if (clientId === undefined) {
-          const existing = await tx.clientProfile.findFirst({
-            where: {
-              normalizedName: parsed.normalizedName,
-              erasedAt: null,
-              mergedIntoId: null,
-            },
-            select: { id: true },
+          // Сведённая карточка ведёт к основной: сведение соединяет разные
+          // написания, и строка с написанием сведённой прежде заводила
+          // новую карточку-дубль (решение Р-453). Живая карточка с тем же
+          // написанием — впереди сведённой.
+          let existing = await tx.clientProfile.findFirst({
+            where: { normalizedName: parsed.normalizedName, erasedAt: null },
+            orderBy: [{ mergedIntoId: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }],
+            select: { id: true, mergedIntoId: true, erasedAt: true },
           });
+          for (let hop = 0; existing !== null && existing.mergedIntoId !== null && hop < 10; hop += 1) {
+            existing = await tx.clientProfile.findUnique({
+              where: { id: existing.mergedIntoId },
+              select: { id: true, mergedIntoId: true, erasedAt: true },
+            });
+          }
+          if (existing !== null && (existing.erasedAt !== null || existing.mergedIntoId !== null)) existing = null;
           if (existing === null) {
             const client = await tx.clientProfile.create({
               data: { fullName: raw.customer, normalizedName: parsed.normalizedName },
