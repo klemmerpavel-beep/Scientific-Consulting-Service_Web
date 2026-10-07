@@ -2665,13 +2665,21 @@ export function formatDate(value: Date | null | undefined): string | null {
  * Пояс назван прямо, поэтому снимки прототипа не зависят от настроек
  * машины, на которой снимаются.
  */
+// Форматы — один раз на модуль, а не на каждое сообщение (решение Р-474).
+const MOSCOW_PARTS = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Moscow',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+const MOSCOW_TIME = new Intl.DateTimeFormat('ru-RU', {
+  timeZone: 'Europe/Moscow',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
 function moscow(value: Date): { day: number; month: number; year: number } {
-  const [year, month, day] = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Moscow',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
+  const [year, month, day] = MOSCOW_PARTS
     .format(value)
     .split('-')
     .map(Number);
@@ -2712,11 +2720,7 @@ function dayKey(value: Date): string {
 
 /** Время сообщения по Москве, часы и минуты. */
 export function formatTime(value: Date): string {
-  return value.toLocaleTimeString('ru-RU', {
-    timeZone: 'Europe/Moscow',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return MOSCOW_TIME.format(value);
 }
 
 /**

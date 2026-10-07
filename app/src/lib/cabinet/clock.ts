@@ -47,21 +47,23 @@ export function now(): Date {
  * Москве вчерашний срок ещё не считался прошедшим, а один и тот же срок
  * на главной и в отчёте числился по-разному (решение Р-257).
  */
+// Форматы создаются один раз: создание стоит сотни микросекунд, а день
+// по Москве считается на каждую заявку, этап и сообщение (решение Р-474).
+const MOSCOW_DAY = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Moscow',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+const MOSCOW_HOUR = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Moscow', hour: '2-digit', hourCycle: 'h23' });
+
 export function moscowToday(at: Date = now()): Date {
-  const day = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Moscow',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(at);
-  return new Date(`${day}T00:00:00Z`);
+  return new Date(`${MOSCOW_DAY.format(at)}T00:00:00Z`);
 }
 
 /** Час по Москве, 0–23 (улучшение УК-14, решение Р-393). */
 export function moscowHour(at: Date = now()): number {
-  return Number(
-    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Moscow', hour: '2-digit', hourCycle: 'h23' }).format(at),
-  );
+  return Number(MOSCOW_HOUR.format(at));
 }
 
 /**

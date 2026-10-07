@@ -8,15 +8,15 @@
  */
 
 /** День для письма и экрана: «28 сентября 2026». */
+const DAY_FORMAT = new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
 export function formatDay(day: Date): string {
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-    .format(day)
-    .replace(/\s*г\.$/u, '');
+  return DAY_FORMAT.format(day).replace(/\s*г\.$/u, '');
 }
 
 /** «1 рабочий день», «3 рабочих дня», «5 рабочих дней». */
