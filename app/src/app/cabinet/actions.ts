@@ -150,7 +150,13 @@ function reasonOf(error: unknown, fallback: string): string {
   // Системная ошибка (диск, сеть) — тоже `Error`, но с кодом `ENOTDIR`,
   // `ENOSPC` и т. п. и путём на сервере в тексте: человеку она ничего не
   // скажет, а путь показывать незачем. Для неё — общая фраза (Р-255).
-  const system = typeof (error as { code?: unknown } | null)?.code === 'string';
+  const code = (error as { code?: unknown } | null)?.code;
+  // Нарушение уникальности — одновременное действие из второй вкладки или
+  // второго сотрудника: номер версии, позиция этапа, правило уведомлений
+  // уже заняты. Данные целы, и человеку нужно действие, а не общая фраза
+  // (решение Р-469).
+  if (code === 'P2002') return 'Это уже изменили в другой вкладке или другой сотрудник: обновите страницу и повторите';
+  const system = typeof code === 'string';
   if (error instanceof Error && error.constructor === Error && !system) return error.message;
   console.error('[cabinet] сбой действия', error);
   return fallback;
