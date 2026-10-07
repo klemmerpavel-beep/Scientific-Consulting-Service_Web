@@ -126,6 +126,23 @@ describe('сверка с перенесённым', () => {
     assert.deepEqual(result.map((m) => m.kind), ['KNOWN', 'NEW']);
   });
 
+  it('исправленное ФИО — та же работа, а не вторая; два кандидата — на разбор (Р-452)', () => {
+    const typo = rowOf('Зимна Ольга', 3_000_000n);
+    const fixed = rowOf('Зимина Ольга', 3_000_000n);
+    const known = [work('p1', typo.signature!, '3000000')];
+    const [match] = matchBook([fixed], known, new Set());
+    assert.equal(match?.kind, 'KNOWN', 'исправленная строка завела бы вторую работу');
+    assert.equal(match?.kind === 'KNOWN' && match.projectId, 'p1');
+
+    // Другая сумма — новая работа; работа на месте в книге — тоже.
+    assert.equal(matchBook([rowOf('Зимина Ольга', 5_000_000n)], known, new Set())[0]?.kind, 'NEW');
+    assert.deepEqual(matchBook([typo, fixed], known, new Set()).map((m) => m.kind), ['KNOWN', 'NEW']);
+
+    // Две строки на одну пропавшую работу — угадывать нельзя.
+    const other = rowOf('Зимина Олга', 3_000_000n);
+    assert.deepEqual(matchBook([fixed, other], known, new Set()).map((m) => m.kind), ['UNCLEAR', 'UNCLEAR']);
+  });
+
   it('одна строка на две работы без совпадения суммы — на разбор', () => {
     const a = rowOf('Зимина Ольга', 9_000_000n);
     const known = [work('p1', a.signature!, '3000000', 1), work('p2', `${a.signature}|#2`, '4000000', 2)];
