@@ -130,6 +130,29 @@ describe('открыть клиенту вход', { skip: !enabled }, async () 
     await assert.rejects(openClientAccess(staff(ids.manager!, 'MANAGER'), foreign.projectId), AccessDenied);
   });
 
+  it('у клиента есть работа другого менеджера — вход открывает только руководитель (Р-416)', async () => {
+    const own = await work('F', ids.manager!, `client-f-${stamp}@example.org`);
+    const second = await prisma.project.create({
+      data: {
+        code: `PD-CA-${tail}-F2`,
+        clientId: own.profileId,
+        serviceTypeId: ids.type!,
+        title: 'Работа F2',
+        managerId: ids.other!,
+      },
+    });
+    projects.push(second.id);
+    await assert.rejects(
+      openClientAccess(staff(ids.manager!, 'MANAGER'), own.projectId),
+      /работы другого менеджера/u,
+    );
+    const profile = await prisma.clientProfile.findUniqueOrThrow({ where: { id: own.profileId } });
+    assert.equal(profile.userId, null, 'отказ завёл учётную запись');
+
+    const issued = await openClientAccess(staff(ids.head!, 'HEAD'), own.projectId);
+    assert.match(issued.link, /\/cabinet\/enter\//u);
+  });
+
   it('сессия по ссылке куратора помечена; согласование в ней — с пометкой (ОМ-3, Р-292)', async () => {
     const { consumeLoginToken, resolveSession } = await import('../src/lib/cabinet/auth.ts');
     const projectsLib = await import('../src/lib/cabinet/projects.ts');

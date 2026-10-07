@@ -186,6 +186,14 @@ export async function openClientAccess(
   if (client.erasedAt !== null || client.mergedIntoId !== null) {
     throw new Error('Карточка клиента обезличена или сведена с другой: вход не открывается');
   }
+  // Ссылка открывает кабинет клиента целиком, со всеми его работами, а
+  // сессия по ней — у того, кто ссылку получил. Менеджер выдаёт её, только
+  // если все работы клиента ведёт он сам; иначе он увидел бы чужие работы
+  // глазами клиента. Такой вход открывает руководитель (решение Р-416).
+  if (actor.role === 'MANAGER') {
+    const foreign = await prisma.project.count({ where: { clientId: client.id, managerId: { not: actor.id } } });
+    if (foreign > 0) throw new Error('У клиента есть работы другого менеджера: вход ему открывает руководитель');
+  }
 
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const byActor = await prisma.auditEvent.count({
