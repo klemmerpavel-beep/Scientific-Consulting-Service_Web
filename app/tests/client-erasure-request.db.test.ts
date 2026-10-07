@@ -65,6 +65,20 @@ describe('запрос клиента на удаление данных (П-08)
     await assert.rejects(erasure.requestOwnErasure(client()), /уже отправлен/u);
   });
 
+  it('двойная отправка — одно требование и одно письмо; второе требование руководителя — отказ (Р-468)', async () => {
+    const head: Actor = { id: ids.head!, role: 'HEAD', status: 'ACTIVE', clientProfileId: null, expertNdaSignedAt: null };
+    await assert.rejects(erasure.requestErasure(head, ids.profile!), /неисполненное требование/u);
+    await prisma.notificationOutbox.deleteMany({ where: { userId: ids.head } });
+    await prisma.erasureRequest.deleteMany({ where: { clientId: ids.profile } });
+    const results = await Promise.allSettled([erasure.requestOwnErasure(client()), erasure.requestOwnErasure(client())]);
+    assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+    assert.equal(await prisma.erasureRequest.count({ where: { clientId: ids.profile } }), 1);
+    assert.equal(
+      await prisma.notificationOutbox.count({ where: { userId: ids.head, eventKind: 'CLIENT_ERASURE_REQUEST', channel: 'EMAIL' } }),
+      1,
+    );
+  });
+
   it('сотруднику и заблокированному клиенту действие закрыто', async () => {
     await assert.rejects(erasure.requestOwnErasure({ ...client(), status: 'SUSPENDED' }), /не разрешено/u);
     await assert.rejects(

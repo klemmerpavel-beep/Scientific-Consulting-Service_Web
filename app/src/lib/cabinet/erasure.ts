@@ -111,17 +111,38 @@ export async function requestErasure(
   });
   if (client === null) throw new Error('Карточка клиента не найдена');
 
-  const request = await prisma.erasureRequest.create({
-    data: { clientId, scope },
-    select: { id: true },
+  return prisma.$transaction(async (tx) => {
+    await lockClientRequests(tx, clientId);
+    if (await hasOpenRequest(tx, clientId)) throw new Error('По этой карточке уже есть неисполненное требование');
+    const request = await tx.erasureRequest.create({
+      data: { clientId, scope },
+      select: { id: true },
+    });
+    await record(
+      actor,
+      { action: 'ERASURE_REQUESTED', objectType: 'ErasureRequest', objectId: request.id, payload: { clientId, scope } },
+      tx,
+    );
+    return request;
   });
-  await record(actor, {
-    action: 'ERASURE_REQUESTED',
-    objectType: 'ErasureRequest',
-    objectId: request.id,
-    payload: { clientId, scope },
-  });
-  return request;
+}
+
+/** Класс замка требований об удалении — своё пространство ключей (Р-468). */
+const LOCK_ERASURE_REQUEST = 251_003;
+
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/**
+ * Требования по одной карточке ставятся по очереди: проверка «открытого
+ * требования нет» и запись иначе проходили бы обе при двойной отправке
+ * (решение Р-468).
+ */
+async function lockClientRequests(tx: Tx, clientId: string): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LOCK_ERASURE_REQUEST}::int, hashtext(${clientId}))`;
+}
+
+async function hasOpenRequest(tx: Tx, clientId: string): Promise<boolean> {
+  return (await tx.erasureRequest.count({ where: { clientId, executedAt: null } })) > 0;
 }
 
 /**
@@ -136,37 +157,44 @@ export async function requestOwnErasure(actor: Actor): Promise<Date> {
   if (actor.role !== 'CLIENT' || actor.clientProfileId === null || actor.status !== 'ACTIVE') {
     throw new Error('Действие не разрешено');
   }
-  const open = await prisma.erasureRequest.findFirst({
-    where: { clientId: actor.clientProfileId, executedAt: null },
-    select: { id: true },
-  });
-  if (open !== null) throw new Error('Запрос уже отправлен: мы его рассматриваем');
-  const profile = await prisma.clientProfile.findUniqueOrThrow({
-    where: { id: actor.clientProfileId },
-    select: { fullName: true },
-  });
-  const request = await prisma.erasureRequest.create({
-    data: { clientId: actor.clientProfileId, scope: 'PERSONAL_DATA_AND_FILES' },
-    select: { id: true, requestedAt: true },
-  });
-  await record(actor, {
-    action: 'ERASURE_REQUESTED',
-    objectType: 'ErasureRequest',
-    objectId: request.id,
-    payload: { clientId: actor.clientProfileId, scope: 'PERSONAL_DATA_AND_FILES', byClient: true },
-  });
-  const heads = await prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
-  for (const head of heads) {
-    await enqueue(prisma, {
-      userId: head.id,
-      eventKind: 'CLIENT_ERASURE_REQUEST',
-      subject: 'Клиент просит удалить персональные данные',
-      body: `Клиент ${profile.fullName} запросил удаление персональных данных из личного кабинета.\nТребование — на экране «Удаление данных».`,
-      dedupKey: `erasure-request:${request.id}:${head.id}`,
-      path: '/cabinet/manage/erasure',
+  const clientId = actor.clientProfileId;
+  // Проверка, запись, журнал и письма — одна транзакция под замком
+  // карточки: двойная отправка не даёт двух требований и двух писем
+  // каждому руководителю (решение Р-468).
+  return prisma.$transaction(async (tx) => {
+    await lockClientRequests(tx, clientId);
+    if (await hasOpenRequest(tx, clientId)) throw new Error('Запрос уже отправлен: мы его рассматриваем');
+    const profile = await tx.clientProfile.findUniqueOrThrow({
+      where: { id: clientId },
+      select: { fullName: true },
     });
-  }
-  return request.requestedAt;
+    const request = await tx.erasureRequest.create({
+      data: { clientId, scope: 'PERSONAL_DATA_AND_FILES' },
+      select: { id: true, requestedAt: true },
+    });
+    await record(
+      actor,
+      {
+        action: 'ERASURE_REQUESTED',
+        objectType: 'ErasureRequest',
+        objectId: request.id,
+        payload: { clientId, scope: 'PERSONAL_DATA_AND_FILES', byClient: true },
+      },
+      tx,
+    );
+    const heads = await tx.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
+    for (const head of heads) {
+      await enqueue(tx, {
+        userId: head.id,
+        eventKind: 'CLIENT_ERASURE_REQUEST',
+        subject: 'Клиент просит удалить персональные данные',
+        body: `Клиент ${profile.fullName} запросил удаление персональных данных из личного кабинета.\nТребование — на экране «Удаление данных».`,
+        dedupKey: `erasure-request:${request.id}:${head.id}`,
+        path: '/cabinet/manage/erasure',
+      });
+    }
+    return request.requestedAt;
+  });
 }
 
 /** Открытое требование клиента об удалении — для строки «Настроек» (П-08). */

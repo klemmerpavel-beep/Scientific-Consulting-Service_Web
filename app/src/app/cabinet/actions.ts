@@ -1408,11 +1408,19 @@ export async function mergeClientCards(form: FormData): Promise<void> {
 export async function openErasureRequest(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const scope = String(form.get('scope') ?? 'PERSONAL_DATA_AND_FILES');
-  await requestErasure(
-    actor,
-    String(form.get('clientId') ?? ''),
-    scope === 'PERSONAL_DATA' ? 'PERSONAL_DATA' : 'PERSONAL_DATA_AND_FILES',
-  );
+  let failure: string | null = null;
+  try {
+    await requestErasure(
+      actor,
+      String(form.get('clientId') ?? ''),
+      scope === 'PERSONAL_DATA' ? 'PERSONAL_DATA' : 'PERSONAL_DATA_AND_FILES',
+    );
+  } catch (error) {
+    // Второе требование по карточке — причиной на экране, а не страницей
+    // ошибки (решение Р-468).
+    failure = reasonOf(error, 'Не удалось принять требование');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/manage/erasure', failure));
   redirect('/cabinet/manage/erasure');
 }
 
