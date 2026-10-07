@@ -24,10 +24,11 @@ describe('письма дня — с 09:00 по Москве (УК-14)', () => {
       'utf8',
     );
     for (const call of ['autoAcceptExpired', 'enqueueApprovalReminders', 'enqueueDeadlineReminders', 'enqueueHeadDigest']) {
-      assert.match(route, new RegExp(`morning \\? await ${call}\\(\\)`, 'u'), call);
+      // Каждый шаг — через cronStep: сбой шага не останавливает отправку (Р-438).
+      assert.match(route, new RegExp(`morning \\? await cronStep\\('${call}', ${call}, stepsFailed\\)`, 'u'), call);
     }
     // Отправка готового и сроки согласования — в каждом прогоне.
     assert.match(route, /const report = await dispatch\(\);/u);
-    assert.match(route, /const deadlinesStarted = await startMissingDeadlines\(\);/u);
+    assert.match(route, /const deadlinesStarted = await cronStep\('startMissingDeadlines', startMissingDeadlines, stepsFailed\);/u);
   });
 });
