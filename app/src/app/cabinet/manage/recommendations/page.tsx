@@ -9,7 +9,7 @@ import { CONFIDENCE_LABEL } from '../../../../lib/cabinet/analytics/calendar';
 import { MIN_TRANSITIONS, SILENCE_DAYS } from '../../../../lib/cabinet/analytics/advice';
 import { formatAmount } from '../../../../lib/cabinet/money';
 import { RECOMMENDATIONS_HREF, homeFor } from '../../../../lib/cabinet/nav';
-import { calendarKey, recommendationsFor } from '../../../../lib/cabinet/recommendations';
+import { calendarKey, recommendationsNow } from '../../../../lib/cabinet/recommendations';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { markRecommendationAction } from '../../actions';
 
@@ -29,7 +29,7 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
   const actor = await requireActor(RECOMMENDATIONS_HREF);
   if (!can(actor, 'ANALYTICS_VIEW')) redirect(homeFor(actor));
   const flags = await searchParams;
-  const { calendar, price, returns, marks, unmarked } = await recommendationsFor(actor);
+  const { calendar, price, returns, marks, unmarked } = await recommendationsNow(actor);
   // Неотмеченные — сверху: отмеченные остаются видны с отметкой.
   const shownReturns = [...returns].sort((a, b) => Number(marks.has(a.key)) - Number(marks.has(b.key))).slice(0, RETURN_LIMIT);
 

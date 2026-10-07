@@ -174,10 +174,17 @@ export async function recommendationsFor(actor: Actor, at: Date = clockNow()): P
  * Число у пункта «Рекомендации» — только руководителю, один раз на запрос.
  * Сбой выборки оставляет пункт без числа.
  */
+/**
+ * Рекомендации на сейчас — один раз на запрос: число у пункта меню,
+ * рекомендация месяца на «Сводке» и раздел «Рекомендации» берут один
+ * расчёт, а не считают его каждый заново (решение Р-476).
+ */
+export const recommendationsNow = cache((actor: Actor): Promise<Recommendations> => recommendationsFor(actor));
+
 export const headRecommendationCount = cache(async (actor: Actor): Promise<number | null> => {
   if (actor.role !== 'HEAD') return null;
   try {
-    return (await recommendationsFor(actor)).unmarked;
+    return (await recommendationsNow(actor)).unmarked;
   } catch {
     return null;
   }

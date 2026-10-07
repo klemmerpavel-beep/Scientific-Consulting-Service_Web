@@ -7,6 +7,8 @@
  * написав свой запрос, здесь нельзя.
  */
 
+import { cache } from 'react';
+
 import { ensure, scopeProjects, type Actor } from '../access.ts';
 import { prisma } from '../../db.ts';
 import type { ProjectRow } from './metrics.ts';
@@ -16,7 +18,9 @@ import type { ProjectRow } from './metrics.ts';
  * сумма траншей со статусом «оплачен», а не поле проекта — отдельного поля
  * нет и быть не должно, иначе оно разошлось бы с траншами.
  */
-export async function loadRows(actor: Actor): Promise<ProjectRow[]> {
+// Один раз на запрос: «Сводка» руководителя читает строки витрины в меню
+// (рекомендации), в календаре и в аналитике экрана (решение Р-476).
+export const loadRows = cache(async function loadRows(actor: Actor): Promise<ProjectRow[]> {
   ensure(actor, 'ANALYTICS_VIEW');
   const scope = scopeProjects(actor);
   if (scope === null) return [];
@@ -75,7 +79,7 @@ export async function loadRows(actor: Actor): Promise<ProjectRow[]> {
         on: tranche.paidOn ?? project.contract?.signedOn ?? project.startedOn ?? null,
       })),
   }));
-}
+});
 
 function total(
   tranches: readonly { amount: bigint; status: string }[] | undefined,
