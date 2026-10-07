@@ -72,12 +72,24 @@ export function digestLetter(parts: Parts, day: Date): { subject: string; body: 
 }
 
 /** Утренняя сводка руководителям — по рабочим дням и только при делах. */
+/**
+ * Строка с этим ключом уже в очереди — любым каналом. Ключ строки —
+ * `<ключ>:<канал>`; точные значения идут по уникальному индексу.
+ */
+async function alreadyQueued(key: string): Promise<boolean> {
+  const keys = [`${key}:email`, `${key}:telegram`];
+  return (await prisma.notificationOutbox.count({ where: { dedupKey: { in: keys } } })) > 0;
+}
+
 export async function enqueueHeadDigest(at: Date = clockNow()): Promise<number> {
   const today = moscowToday(at);
   if (!isWorkday(today, await loadCalendar())) return 0;
   const heads = await prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
   let queued = 0;
   for (const head of heads) {
+    // Сводка дня уже поставлена — её не пересчитывать: шаг идёт каждую
+    // минуту с 09:00, а сводка — полтора десятка запросов (решение Р-475).
+    if (await alreadyQueued(`head-digest:${dayKey(today)}:${head.id}`)) continue;
     const actor: Actor = { id: head.id, role: 'HEAD', status: 'ACTIVE', clientProfileId: null, expertNdaSignedAt: null };
     const letter = digestLetter(attentionParts(await attentionSources(actor)), today);
     if (letter.total === 0) continue;
@@ -147,6 +159,9 @@ export async function enqueueHeadMonthly(at: Date = clockNow()): Promise<number>
   const heads = await prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
   let queued = 0;
   for (const head of heads) {
+    // Письмо месяца уже поставлено — рекомендации не пересчитываются каждую
+    // минуту трёх первых дней (решение Р-475).
+    if (await alreadyQueued(`head-monthly:${month}:${head.id}`)) continue;
     const actor: Actor = { id: head.id, role: 'HEAD', status: 'ACTIVE', clientProfileId: null, expertNdaSignedAt: null };
     const advice = await recommendationsFor(actor, at);
     if (advice.unmarked === 0 || advice.month === null) continue;

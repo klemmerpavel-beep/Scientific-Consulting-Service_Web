@@ -24,6 +24,7 @@ import {
   Tile,
   Tiles,
   formatDate,
+  formatDay,
   plural,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
@@ -106,7 +107,7 @@ export default async function ImportBatchScreen({
   ];
 
   const sheet = report.sheet === '' ? '' : `Лист «${report.sheet}», з`;
-  const loaded = `${sheet === '' ? 'З' : sheet}агружена ${formatDate(report.createdAt)}.`;
+  const loaded = `${sheet === '' ? 'З' : sheet}агружена ${formatDay(report.createdAt)}.`;
   // После фиксации подпись говорит, что сделано, а не что предполагалось:
   // прежде зафиксированная книга читалась «к заведению 56, уже перенесено 0».
   const summary =

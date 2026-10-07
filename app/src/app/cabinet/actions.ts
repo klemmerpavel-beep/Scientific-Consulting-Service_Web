@@ -150,7 +150,13 @@ function reasonOf(error: unknown, fallback: string): string {
   // Системная ошибка (диск, сеть) — тоже `Error`, но с кодом `ENOTDIR`,
   // `ENOSPC` и т. п. и путём на сервере в тексте: человеку она ничего не
   // скажет, а путь показывать незачем. Для неё — общая фраза (Р-255).
-  const system = typeof (error as { code?: unknown } | null)?.code === 'string';
+  const code = (error as { code?: unknown } | null)?.code;
+  // Нарушение уникальности — одновременное действие из второй вкладки или
+  // второго сотрудника: номер версии, позиция этапа, правило уведомлений
+  // уже заняты. Данные целы, и человеку нужно действие, а не общая фраза
+  // (решение Р-469).
+  if (code === 'P2002') return 'Это уже изменили в другой вкладке или другой сотрудник: обновите страницу и повторите';
+  const system = typeof code === 'string';
   if (error instanceof Error && error.constructor === Error && !system) return error.message;
   console.error('[cabinet] сбой действия', error);
   return fallback;
@@ -1408,11 +1414,19 @@ export async function mergeClientCards(form: FormData): Promise<void> {
 export async function openErasureRequest(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const scope = String(form.get('scope') ?? 'PERSONAL_DATA_AND_FILES');
-  await requestErasure(
-    actor,
-    String(form.get('clientId') ?? ''),
-    scope === 'PERSONAL_DATA' ? 'PERSONAL_DATA' : 'PERSONAL_DATA_AND_FILES',
-  );
+  let failure: string | null = null;
+  try {
+    await requestErasure(
+      actor,
+      String(form.get('clientId') ?? ''),
+      scope === 'PERSONAL_DATA' ? 'PERSONAL_DATA' : 'PERSONAL_DATA_AND_FILES',
+    );
+  } catch (error) {
+    // Второе требование по карточке — причиной на экране, а не страницей
+    // ошибки (решение Р-468).
+    failure = reasonOf(error, 'Не удалось принять требование');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/manage/erasure', failure));
   redirect('/cabinet/manage/erasure');
 }
 

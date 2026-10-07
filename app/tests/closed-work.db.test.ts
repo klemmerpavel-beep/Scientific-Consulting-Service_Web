@@ -58,6 +58,7 @@ describe('закрытая работа — только чтение', { skip: 
       make('cl', 'CLIENT'),
       make('exp', 'EXPERT'),
     ]);
+    await prisma.expertProfile.create({ data: { userId: expertUser.id, ndaSignedAt: new Date() } });
     const profile = await prisma.clientProfile.create({
       data: { userId: clientUser.id, fullName: `Клиент ${stamp}`, normalizedName: `cw клиент ${stamp}` },
     });

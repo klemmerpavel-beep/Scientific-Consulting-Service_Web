@@ -19,7 +19,7 @@ import {
   ScreenHead,
   Select,
   Text,
-  formatDate,
+  formatDay,
   formatSize,
 } from '../../../../../components/cabinet/ui';
 import { ensure } from '../../../../../lib/cabinet/access';
@@ -92,7 +92,7 @@ export default async function LeadScreen({
             </>
           }
           note={`${lead.contactKind === 'email' ? 'Почта' : 'Телефон'}: ${lead.contact}`}
-          aside={formatDate(lead.createdAt)}
+          aside={formatDay(lead.createdAt)}
         />
 
         <ActionError id={flags.error} />
@@ -241,7 +241,7 @@ export default async function LeadScreen({
                     style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--pd-surface-quiet)' }}
                   >
                     <Text muted size={13}>
-                      {comment.author.fullName} · {formatDate(comment.createdAt)},{' '}
+                      {comment.author.fullName} · {formatDay(comment.createdAt)},{' '}
                       {comment.createdAt.toLocaleTimeString('ru-RU', {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -330,7 +330,7 @@ export default async function LeadScreen({
             )}
             <Text muted size={13}>
               {declineLetterNote(lead, letter)}
-              {letter?.state === 'SENT' ? ` ${formatDate(letter.sentAt) ?? ''}`.trimEnd() + '.' : ''}
+              {letter?.state === 'SENT' ? ` ${formatDay(letter.sentAt) ?? ''}`.trimEnd() + '.' : ''}
             </Text>
             {/* Повтор недоставленного отказа — здесь, а не на экране очереди,
                 закрытом менеджеру (требование М-19, решение Р-307). */}

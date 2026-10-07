@@ -265,7 +265,7 @@ export default async function StageScreen({
           {lastReturn === undefined ? null : (
             <div style={{ marginBottom: 12 }}>
               <Notice tone="quiet" role="status">
-                {`Клиент вернул этап с замечаниями ${formatDate(lastReturn.createdAt)}`}
+                {`Клиент вернул этап с замечаниями ${formatDay(lastReturn.createdAt)}`}
                 {returnText === null ? null : (
                   <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnText}</span>
                 )}
@@ -275,7 +275,7 @@ export default async function StageScreen({
           {handover !== 'handed-back' || stage.handbackAt === null ? null : (
             <div style={{ marginBottom: 12 }}>
               <Notice tone="quiet" role="status">
-                {`Менеджер вернул этап ${formatDate(stage.handbackAt)}`}
+                {`Менеджер вернул этап ${formatDay(stage.handbackAt)}`}
                 <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>
                   {stage.handbackReason}
                 </span>
@@ -301,7 +301,7 @@ export default async function StageScreen({
               {clientVersions.map(({ material, version }) => (
                 <li key={version.id}>
                   <Text size={14} style={{ margin: 0 }}>
-                    {material.title} · v{version.number} · {formatDate(version.uploadedAt)}
+                    {material.title} · v{version.number} · {formatDay(version.uploadedAt)}
                   </Text>
                 </li>
               ))}
@@ -310,7 +310,7 @@ export default async function StageScreen({
           {handover === 'handed' && stage.handedOverAt !== null ? (
             <>
               <Notice tone="quiet" role="status">
-                {`Этап сдан ${formatDate(stage.handedOverAt)}: ход за менеджером.`}
+                {`Этап сдан ${formatDay(stage.handedOverAt)}: ход за менеджером.`}
                 {(stage.handoverNote ?? '').trim() === '' ? null : (
                   <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>
                     {stage.handoverNote}
@@ -364,7 +364,7 @@ export default async function StageScreen({
           )}
           {lastReturn === undefined ? null : (
             <Notice tone="quiet" role="status">
-              {`Возвращён с замечаниями ${formatDate(lastReturn.createdAt)}`}
+              {`Возвращён с замечаниями ${formatDay(lastReturn.createdAt)}`}
               {returnText === null ? null : (
                 <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnText}</span>
               )}
@@ -393,7 +393,7 @@ export default async function StageScreen({
       {mayHandBack && stage.handedOverAt !== null ? (
         <Card style={{ marginBottom: 24, borderColor: 'var(--pd-accent-edge)' }}>
           <Heading level={2} size={3} style={{ marginBottom: 8 }}>
-            {`Куратор сдал этап ${formatDate(stage.handedOverAt)}`}
+            {`Куратор сдал этап ${formatDay(stage.handedOverAt)}`}
           </Heading>
           {(stage.handoverNote ?? '').trim() === '' ? null : (
             <Text size={15} style={{ whiteSpace: 'pre-wrap', marginBottom: 8 }}>
@@ -818,7 +818,7 @@ export default async function StageScreen({
                         <Chip mono>v{version.number}</Chip>
                         <Text size={14}>
                           {authorName(version.uploadedBy, actor, version.uploadedById)} ·{' '}
-                          {formatDate(version.uploadedAt)} · {formatSize(version.sizeBytes)}
+                          {formatDay(version.uploadedAt)} · {formatSize(version.sizeBytes)}
                         </Text>
                         <span style={{ marginLeft: 'auto' }}>
                           <ButtonLink href={`/cabinet/files/${version.id}`}>Скачать</ButtonLink>

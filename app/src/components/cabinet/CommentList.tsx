@@ -1,6 +1,6 @@
 import type { Actor } from '../../lib/cabinet/access';
 import { hasContacts } from '../../lib/cabinet/contacts';
-import { Button, Field, Form, Text, authorName, formatDate } from './ui';
+import { Button, Field, Form, Text, authorName, formatDay } from './ui';
 
 /**
  * Замечания к версии материала с модерацией — общая часть экрана этапа и
@@ -51,7 +51,7 @@ export default function CommentList({
             <Text size={14}>{comment.body}</Text>
             <Text muted size={13} style={{ marginTop: 2 }}>
               {authorName(comment.author, actor, comment.authorId)} ·{' '}
-              {formatDate(comment.createdAt)}
+              {formatDay(comment.createdAt)}
               {comment.moderationStatus === 'PENDING'
                 ? mayModerate && hasContacts(comment.body)
                   ? ' · ожидает публикации · есть контакты'

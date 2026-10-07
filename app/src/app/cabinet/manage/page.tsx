@@ -25,6 +25,7 @@ import {
   Tiles,
   clip,
   formatDate,
+  formatDay,
   plural,
   turnLabel,
   Pager,
@@ -47,7 +48,7 @@ import { byMonth, periodBounds, products, receivedBetween } from '../../../lib/c
 import { loadRows } from '../../../lib/cabinet/analytics/data';
 import { activeWorks, moneyBrief, orderSummary, stageLoad, upcomingDeadlines } from '../../../lib/cabinet/summary';
 import { teamBrief, teamLoad } from '../../../lib/cabinet/team';
-import { recommendationsFor } from '../../../lib/cabinet/recommendations';
+import { recommendationsNow } from '../../../lib/cabinet/recommendations';
 export const dynamic = 'force-dynamic';
 
 /**
@@ -160,7 +161,7 @@ export default async function ManageQueue({
   // «Команда» — до пяти строк после «Требует внимания» (РК-06, Р-343; ОР-2).
   const team = actor.role === 'HEAD' ? teamBrief(await teamLoad(actor)) : [];
   // «Рекомендация месяца» — под ответом сводки (РК-17, Р-350).
-  const advice = actor.role === 'HEAD' && can(actor, 'ANALYTICS_VIEW') ? (await recommendationsFor(actor)).month : null;
+  const advice = actor.role === 'HEAD' && can(actor, 'ANALYTICS_VIEW') ? (await recommendationsNow(actor)).month : null;
   const queue = await leadQueue(actor, Number.isFinite(requested) ? requested : 1);
   const leads = queue.rows;
 
@@ -319,7 +320,7 @@ export default async function ManageQueue({
       mark:
         stage.awaitingClientSince === null
           ? 'ждёт клиента'
-          : `ждёт клиента с ${formatDate(stage.awaitingClientSince)}`,
+          : `ждёт клиента с ${formatDay(stage.awaitingClientSince)}`,
       urgent: false,
       detail: stage.project.client.fullName,
       todo: 'Напомнить клиенту о материалах',
@@ -332,7 +333,7 @@ export default async function ManageQueue({
       kind: 'returned' as const,
       step: 0 as const,
       title: `${stage.title} · ${stage.project.title}`,
-      mark: `клиент вернул с замечаниями ${formatDate(stage.returnedAt)}`,
+      mark: `клиент вернул с замечаниями ${formatDay(stage.returnedAt)}`,
       urgent: false,
       detail: stage.project.client.fullName,
       todo: 'Разобрать замечания и отметить «Замечания приняты в работу»',
@@ -384,7 +385,7 @@ export default async function ManageQueue({
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: 'куратор сдал этап',
       urgent: false,
-      detail: `сдан ${formatDate(row.handedOverAt)}`,
+      detail: `сдан ${formatDay(row.handedOverAt)}`,
       todo: 'Посмотреть материалы и записку куратора: на согласование или вернуть куратору',
       href: row.href,
     })),
@@ -410,7 +411,7 @@ export default async function ManageQueue({
       detail:
         row.requestedAt === null
           ? `назначен на ${row.works} ${plural(row.works, 'работу', 'работы', 'работ')}`
-          : `сообщил ${formatDate(row.requestedAt)}`,
+          : `сообщил ${formatDay(row.requestedAt)}`,
       todo: 'Оформить договор поручения и отметить его в «Учётных записях»',
       href: `/cabinet/manage/users#nda-${row.id}`,
     })),
@@ -454,7 +455,7 @@ export default async function ManageQueue({
       title: lead.name ?? 'Без имени',
       mark: 'заявка без ответа дольше рабочего дня',
       urgent: false,
-      detail: `пришла ${formatDate(lead.createdAt)}`,
+      detail: `пришла ${formatDay(lead.createdAt)}`,
       todo: 'Разобрать заявку',
       href: `/cabinet/manage/leads/${lead.id}`,
     })),
@@ -463,7 +464,7 @@ export default async function ManageQueue({
       kind: 'lead' as const,
       step: 0 as const,
       title: lead.name ?? 'Без имени',
-      mark: `${(LEAD_STATUS_LABEL[lead.status as keyof typeof LEAD_STATUS_LABEL] ?? lead.status).toLowerCase()} с ${formatDate(lead.since)}`,
+      mark: `${(LEAD_STATUS_LABEL[lead.status as keyof typeof LEAD_STATUS_LABEL] ?? lead.status).toLowerCase()} с ${formatDay(lead.since)}`,
       urgent: false,
       detail: null,
       todo: 'Довести разбор до решения',
@@ -1392,7 +1393,7 @@ export default async function ManageQueue({
                     {lead.name ?? 'Без имени'}
                   </a>
                   <Text muted size={13}>
-                    {leadSourceLabel(lead.source)} · {formatDate(lead.createdAt)}
+                    {leadSourceLabel(lead.source)} · {formatDay(lead.createdAt)}
                     {lead.topic === null ? '' : ` · ${lead.topic}`}
                   </Text>
                   <Text size={13}>{lead.contact}</Text>

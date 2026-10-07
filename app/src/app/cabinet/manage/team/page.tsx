@@ -14,6 +14,7 @@ import {
   Tabs,
   Text,
   formatDate,
+  formatDay,
 } from '../../../../components/cabinet/ui';
 import { CONTACT_LABEL } from '../../../../lib/cabinet/channels';
 import { staffThreads } from '../../../../lib/cabinet/messages';
@@ -92,7 +93,7 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                         ? `новых сообщений: ${row.unread}`
                         : row.lastAt === null
                           ? 'переписки пока нет'
-                          : `последнее сообщение — ${formatDate(row.lastAt)}`}
+                          : `последнее сообщение — ${formatDay(row.lastAt)}`}
                     </Text>
                   </li>
                 ))}

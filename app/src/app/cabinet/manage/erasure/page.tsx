@@ -23,6 +23,7 @@ import { can } from '../../../../lib/cabinet/access';
 import { ERASURE_SHOWN, erasableClients, listErasureRequests } from '../../../../lib/cabinet/erasure';
 import { formatMoment } from '../../../../lib/cabinet/journals';
 import { formatAmount } from '../../../../lib/cabinet/money';
+import { flashText } from '../../../../lib/cabinet/flash';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { executeErasureRequest, openErasureRequest } from '../../actions';
@@ -49,13 +50,14 @@ interface Report {
 export default async function ErasureScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ done?: string; active?: string }>;
+  searchParams: Promise<{ done?: string; active?: string; error?: string }>;
 }) {
   const actor = await requireActor('/cabinet/manage/erasure');
   // Обезличивание необратимо, поэтому доступно только руководителю.
   if (!can(actor, 'ERASURE_EXECUTE')) redirect(homeFor(actor));
 
   const flags = await searchParams;
+  const failure = await flashText(flags.error);
   // Коды берутся из адреса: показываются только те, что похожи на код работы.
   const active = (flags.active ?? '')
     .split(',')
@@ -74,6 +76,10 @@ export default async function ErasureScreen({
         title="Удаление по требованию субъекта"
         note="Статьи 14 и 21 Федерального закона № 152-ФЗ. Затираются ФИО, контакты, вуз, специальность, тема работы, имена файлов и тела сообщений; объекты изымаются из хранилища. Сохраняются код проекта, суммы договора и траншей, строки версий и записи журналов — первичные учётные документы хранятся своими сроками, и по ним человека опознать нельзя."
       />
+
+      {failure === undefined ? null : (
+        <Outcome tone="error">{failure}</Outcome>
+      )}
 
       {flags.done === undefined ? null : (
         <Outcome>Требование исполнено. Отчёт записан и показан в перечне ниже.</Outcome>

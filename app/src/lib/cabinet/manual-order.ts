@@ -252,57 +252,59 @@ export async function createManualOrder(
     await tx.projectEvent.create({
       data: { projectId: project.id, actorId: actor.id, kind: 'PROJECT_CREATED', payload: { code, manual: true } },
     });
-    return { code, projectId: project.id };
-  });
 
-  await record(actor, {
-    action: 'ORDER_CREATED',
-    objectType: 'Project',
-    objectId: created.projectId,
-    projectId: created.projectId,
-    payload: { code: created.code },
-  });
+    // Журнал, дело руководителю и письма — в той же транзакции: сбой после
+    // сохранённого заказа показывал ошибку с заполненной формой, и
+    // повторная отправка заводила вторую работу с договором и оплатой
+    // (решение Р-463).
+    await record(
+      actor,
+      { action: 'ORDER_CREATED', objectType: 'Project', objectId: project.id, projectId: project.id, payload: { code } },
+      tx,
+    );
 
-  // Деньги ведёт руководитель (Р-149), но договор при ручном заказе
-  // заводит и менеджер (В-9): руководитель узнаёт о нём сразу. Суммы в
-  // письме нет: она — в деле «Проверьте договор» на «Сводке» (требование
-  // РК-13, решение Р-347; Р-308 дополняется).
-  if (actor.role === 'MANAGER' && cost > 0n) {
-    // Дело «Проверьте договор» — до проверки руководителем (РК-12, Р-338).
-    await openContractCheck(prisma, created.projectId);
-    const [me, heads] = await Promise.all([
-      prisma.user.findUnique({ where: { id: actor.id }, select: { fullName: true } }),
-      prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } }),
-    ]);
-    for (const head of heads) {
-      await enqueue(prisma, {
-        userId: head.id,
-        projectId: created.projectId,
-        eventKind: 'ORDER_WITH_CONTRACT',
-        subject: `Заведён заказ с договором: ${created.code}`,
-        body:
-          `Менеджер ${me?.fullName ?? ''} завёл заказ ${created.code} — ${title}.\n` +
-          'Договор и оплаты при заведении — на экране «Оплаты и документы» работы; дело «Проверьте договор» — на «Сводке».\n' +
-          'Менять суммы и оплаты дальше может только руководитель.',
-        dedupKey: `order-contract:${created.projectId}:${head.id}`,
-        path: `/cabinet/projects/${created.code}/payments`,
+    // Деньги ведёт руководитель (Р-149), но договор при ручном заказе
+    // заводит и менеджер (В-9): руководитель узнаёт о нём сразу. Суммы в
+    // письме нет: она — в деле «Проверьте договор» на «Сводке» (требование
+    // РК-13, решение Р-347; Р-308 дополняется).
+    if (actor.role === 'MANAGER' && cost > 0n) {
+      // Дело «Проверьте договор» — до проверки руководителем (РК-12, Р-338).
+      await openContractCheck(tx, project.id);
+      const [me, heads] = await Promise.all([
+        tx.user.findUnique({ where: { id: actor.id }, select: { fullName: true } }),
+        tx.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } }),
+      ]);
+      for (const head of heads) {
+        await enqueue(tx, {
+          userId: head.id,
+          projectId: project.id,
+          eventKind: 'ORDER_WITH_CONTRACT',
+          subject: `Заведён заказ с договором: ${code}`,
+          body:
+            `Менеджер ${me?.fullName ?? ''} завёл заказ ${code} — ${title}.\n` +
+            'Договор и оплаты при заведении — на экране «Оплаты и документы» работы; дело «Проверьте договор» — на «Сводке».\n' +
+            'Менять суммы и оплаты дальше может только руководитель.',
+          dedupKey: `order-contract:${project.id}:${head.id}`,
+          path: `/cabinet/projects/${code}/payments`,
+        });
+      }
+    }
+
+    // Руководитель завёл заказ на другого менеджера — тому письмо: прежде
+    // работа появлялась у него молча (требование РК-08, решение Р-344).
+    if (managerId !== actor.id) {
+      const by = await tx.user.findUniqueOrThrow({ where: { id: actor.id }, select: { fullName: true } });
+      const letter = managerAssignedLetter(code, title, `Заказ завёл и передал вам ${by.fullName}`);
+      await enqueue(tx, {
+        userId: managerId,
+        projectId: project.id,
+        eventKind: 'CURATOR_ASSIGNED',
+        subject: letter.subject,
+        body: letter.body,
+        dedupKey: `project:${project.id}:curator-assigned:${managerId}:manual`,
       });
     }
-  }
-
-  // Руководитель завёл заказ на другого менеджера — тому письмо: прежде
-  // работа появлялась у него молча (требование РК-08, решение Р-344).
-  if (managerId !== actor.id) {
-    const by = await prisma.user.findUniqueOrThrow({ where: { id: actor.id }, select: { fullName: true } });
-    const letter = managerAssignedLetter(created.code, title, `Заказ завёл и передал вам ${by.fullName}`);
-    await enqueue(prisma, {
-      userId: managerId,
-      projectId: created.projectId,
-      eventKind: 'CURATOR_ASSIGNED',
-      subject: letter.subject,
-      body: letter.body,
-      dedupKey: `project:${created.projectId}:curator-assigned:${managerId}:manual`,
-    });
-  }
+    return { code, projectId: project.id };
+  });
   return created;
 }

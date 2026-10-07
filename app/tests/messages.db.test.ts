@@ -254,4 +254,23 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     assert.equal(mine.title, 'Работа с перепиской');
     assert.ok(mine.count > 0);
   });
+
+  it('по закрытой работе с приостановленным менеджером сигнал — руководителю (Р-462)', async () => {
+    await prisma.message.updateMany({ where: { projectId: ids.project! }, data: { readAt: new Date() } });
+    await prisma.project.update({ where: { id: ids.project! }, data: { status: 'COMPLETED' } });
+    await prisma.user.update({ where: { id: ids.manager! }, data: { status: 'SUSPENDED' } });
+    try {
+      const sent = await messages.sendMessage(client(), ids.project!, 'Вопрос по закрытой работе');
+      const signals = await prisma.notificationOutbox.findMany({
+        where: { projectId: ids.project!, eventKind: 'MESSAGE_RECEIVED', dedupKey: { startsWith: `message:${sent.id}:` } },
+        select: { userId: true },
+      });
+      const to = new Set(signals.map((row) => row.userId));
+      assert.ok(to.has(ids.head!), 'руководитель не получил сигнала');
+      assert.ok(!to.has(ids.manager!), 'сигнал ушёл приостановленному менеджеру');
+    } finally {
+      await prisma.user.update({ where: { id: ids.manager! }, data: { status: 'ACTIVE' } });
+      await prisma.project.update({ where: { id: ids.project! }, data: { status: 'ACTIVE' } });
+    }
+  });
 });

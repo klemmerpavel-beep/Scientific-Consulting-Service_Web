@@ -14,7 +14,7 @@ import { record } from './audit.ts';
 import { hasContacts } from './contacts.ts';
 import { fileRefusal } from './file-guard.ts';
 import { identityHint } from './identity-hint.ts';
-import { enqueue, notifyCurator } from './outbox.ts';
+import { curatorOnWork, enqueue, notifyCurator } from './outbox.ts';
 import { stageLink } from './approval.ts';
 import { siteUrl } from '../site-url.ts';
 import { projectRef } from './projects.ts';
@@ -362,7 +362,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
           `Загружена версия v${version.number}. Открыть можно в личном кабинете.` +
           (moderated ? '\nВерсия куратора ждёт публикации: клиент увидит её после вашего решения.' : ''),
         dedupKey: `version:${version.id}:uploaded:${userId}`,
-        path: materialPath(project.code, material.stageId),
+        path: materialPath(project.code, material.stageId, material.kind),
       });
     }
   }
@@ -564,8 +564,11 @@ export async function moderateVersion(
       },
     });
     if (count === 0) throw new Error('Версия уже разобрана');
+    // Решение уходит куратору, пока он на работе и с договором поручения
+    // (решение Р-455).
+    const toUploader = await curatorOnWork(tx, project.id, version.uploadedById);
     if (decision !== 'PUBLISHED') {
-      await enqueue(tx, {
+      if (toUploader) await enqueue(tx, {
         userId: version.uploadedById,
         projectId: project.id,
         eventKind: 'VERSION_REJECTED',
@@ -603,7 +606,7 @@ export async function moderateVersion(
       });
     }
     // Эксперту — что версия ушла клиенту (требование М-08, решение Р-301).
-    await enqueue(tx, {
+    if (toUploader) await enqueue(tx, {
       userId: version.uploadedById,
       projectId: project.id,
       eventKind: 'EXPERT_DECISION',
@@ -857,8 +860,12 @@ export async function moderateComment(
     objectType: 'VersionComment',
     objectId: commentId,
   });
-  // Эксперт узнаёт решение по своему замечанию (М-08, Р-301).
-  if (target.author.role === 'EXPERT') {
+  // Эксперт узнаёт решение по своему замечанию (М-08, Р-301), пока он на
+  // работе и с договором поручения (Р-455).
+  if (
+    target.author.role === 'EXPERT' &&
+    (await curatorOnWork(prisma, target.version.material.project.id, target.authorId))
+  ) {
     const { material } = target.version;
     await enqueue(prisma, {
       userId: target.authorId,
@@ -1069,7 +1076,13 @@ export async function pendingVersions(actor: Actor): Promise<PendingComment[]> {
  * Экран материала для кнопки письма: этап, если материал к этапу, иначе
  * «Материалы работы» (требование Т-06, решение Р-309).
  */
-function materialPath(code: string, stageId: string | null): string {
+/**
+ * Экран материала для кнопки письма (Т-06, Р-309). Документ оплаты —
+ * договор, счёт, акт — лежит на «Оплатах и документах», а не на
+ * «Материалах работы» (решение Р-459).
+ */
+function materialPath(code: string, stageId: string | null, kind: string = 'STAGE_MATERIAL'): string {
+  if (kind !== 'STAGE_MATERIAL') return `/cabinet/projects/${code}/payments`;
   return stageId === null ? `/cabinet/projects/${code}/materials` : `/cabinet/stages/${stageId}`;
 }
 

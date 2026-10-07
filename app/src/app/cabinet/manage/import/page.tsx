@@ -18,7 +18,7 @@ import {
   TableCard,
   TABLE_NUM,
   Text,
-  formatDate,
+  formatDay,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { listBatches } from '../../../../lib/cabinet/import/apply';
@@ -126,7 +126,7 @@ export default async function ImportScreen({
                     {batch.uploadedBy.fullName}
                   </div>
                 </td>
-                <td style={TABLE_CELL}>{formatDate(batch.createdAt)}</td>
+                <td style={TABLE_CELL}>{formatDay(batch.createdAt)}</td>
                 <td style={TABLE_CELL}>
                   <Chip tone={batch.state === 'APPLIED' ? 'accent' : 'neutral'}>
                     {STATE_LABEL[batch.state] ?? batch.state}

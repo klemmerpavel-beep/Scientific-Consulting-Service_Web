@@ -14,6 +14,7 @@
  * свой перечень, где названо, кого ждут (решение Р-206).
  */
 import { formatDay } from './approval-text.ts';
+import { moscowToday } from './clock.ts';
 
 export const STAGE_STATE_LABEL = {
   NOT_STARTED: 'Не начат',
@@ -106,7 +107,8 @@ export function turnLabel(
       return viewer === 'expert' ? 'Ход за менеджером: этап ещё не запущен' : `${curatorTurn}: этап не начат`;
     case 'IN_PROGRESS':
       if (handedOverAt !== null) {
-        const day = formatDay(handedOverAt);
+        // Сдача — мгновение: день — московский, а не по UTC (решение Р-470).
+        const day = formatDay(moscowToday(handedOverAt));
         return viewer === 'expert' ? `Этап сдан ${day}: ход за менеджером` : `${curatorTurn}: куратор сдал этап ${day}`;
       }
       if (viewer === 'expert') return 'Ход за вами: этап в работе';

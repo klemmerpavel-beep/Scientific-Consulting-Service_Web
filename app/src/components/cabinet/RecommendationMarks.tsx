@@ -1,5 +1,5 @@
 import type { Mark } from '../../lib/cabinet/recommendations';
-import { Button, Chip, Form, formatDate } from './ui';
+import { Button, Chip, Form, formatDay } from './ui';
 
 const LABEL = { DONE: 'сделано', POSTPONED: 'отложено' } as const;
 
@@ -36,7 +36,7 @@ export default function RecommendationMarks({
     </div>
   ) : (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-      <Chip>{`${LABEL[mark.status]} ${formatDate(mark.at)}`}</Chip>
+      <Chip>{`${LABEL[mark.status]} ${formatDay(mark.at)}`}</Chip>
       {form('', 'Снять отметку')}
     </div>
   );

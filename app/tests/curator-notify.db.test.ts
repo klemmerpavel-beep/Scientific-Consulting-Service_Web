@@ -30,6 +30,7 @@ describe('уведомления куратору (Э-09)', { skip: !enabled }, 
   const materials = await import('../src/lib/cabinet/materials.ts');
   const finance = await import('../src/lib/cabinet/finance.ts');
   const channels = await import('../src/lib/cabinet/channels.ts');
+  const admin = await import('../src/lib/cabinet/admin.ts');
   const { enqueueDeadlineReminders } = await import('../src/lib/cabinet/outbox.ts');
   const { moscowToday } = await import('../src/lib/cabinet/clock.ts');
 
@@ -263,7 +264,11 @@ describe('уведомления куратору (Э-09)', { skip: !enabled }, 
       where: { userId: ids.curator, projectId: ids.project, state: 'PENDING' },
       select: { eventKind: true },
     });
-    assert.deepEqual([...new Set(pending.map((row) => row.eventKind))], ['WORK_UNASSIGNED']);
+    // Начисление и выплата — его деньги: письма о них не гаснут (Р-460).
+    assert.deepEqual(
+      [...new Set(pending.map((row) => row.eventKind))].sort(),
+      ['PAYOUT_ACCRUED', 'PAYOUT_PAID', 'WORK_UNASSIGNED'],
+    );
     const expired = await prisma.notificationOutbox.count({
       where: { userId: ids.curator, projectId: ids.project, state: 'EXPIRED', lastError: projects.UNASSIGNED_NOTE },
     });
@@ -279,5 +284,23 @@ describe('уведомления куратору (Э-09)', { skip: !enabled }, 
     const neutral = await lastLetter(ids.newcomer!, 'PAYOUT_ACCRUED');
     assert.match(neutral.body, new RegExp(ids.code!, 'u'));
     assert.doesNotMatch(neutral.body, /Флотация/u, 'название работы без договора поручения');
+  });
+
+  it('отзыв договора гасит неотправленные письма о работах (Р-456)', async () => {
+    await admin.signExpertNda(head(), ids.newcomer!, NDA);
+    const stage = await makeStage(7, 'NOT_STARTED');
+    await projects.setStageState(manager(), stage.id, 'IN_PROGRESS');
+    assert.ok((await rows(ids.newcomer!, 'CURATOR_TURN')).some((row) => row.state === 'PENDING'));
+
+    await admin.signExpertNda(head(), ids.newcomer!, null);
+    const pending = await prisma.notificationOutbox.findMany({
+      where: { userId: ids.newcomer, projectId: { not: null }, state: 'PENDING' },
+      select: { eventKind: true },
+    });
+    assert.deepEqual(pending.filter((row) => row.eventKind !== 'WORK_UNASSIGNED'), [], 'письма о работе остались в очереди');
+    const expired = await prisma.notificationOutbox.count({
+      where: { userId: ids.newcomer, eventKind: 'CURATOR_TURN', state: 'EXPIRED', lastError: admin.NDA_REVOKED_NOTE },
+    });
+    assert.ok(expired > 0, 'письмо «ход за вами» не погашено');
   });
 });

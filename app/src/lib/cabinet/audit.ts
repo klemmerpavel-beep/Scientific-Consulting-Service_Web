@@ -1,5 +1,8 @@
+import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import type { Actor } from './access.ts';
+
+type Db = Prisma.TransactionClient | typeof prisma;
 
 /**
  * Журнал действий. Запись выполняется явным вызовом из сервисного слоя,
@@ -20,8 +23,12 @@ export interface AuditInput {
   readonly ip?: string | null;
 }
 
-export async function record(actor: Actor | null, input: AuditInput): Promise<void> {
-  await prisma.auditEvent.create({
+/**
+ * Запись журнала. `db` — транзакция вызывающего, когда запись должна
+ * откатиться вместе с действием (решение Р-463).
+ */
+export async function record(actor: Actor | null, input: AuditInput, db: Db = prisma): Promise<void> {
+  await db.auditEvent.create({
     data: {
       actorId: actor?.id ?? null,
       actorRole: actor?.role ?? null,

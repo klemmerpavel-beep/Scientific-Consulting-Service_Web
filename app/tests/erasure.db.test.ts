@@ -31,7 +31,7 @@ const phone = `+7 9${String(stamp).slice(-9)}`;
 describe('удаление данных субъекта', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
   const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
-  const { executeErasure, requestErasure } = await import('../src/lib/cabinet/erasure.ts');
+  const { ERASED_NOTE, executeErasure, requestErasure } = await import('../src/lib/cabinet/erasure.ts');
   const { storage, materialKey, sha256 } = await import('../src/lib/cabinet/storage.ts');
 
   const ids: Record<string, string> = {};
@@ -492,6 +492,9 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     const outbox = await prisma.notificationOutbox.findUnique({ where: { id: ids.outbox } });
     assert.doesNotMatch(outbox?.subject ?? '', /Смирнов/u);
     assert.doesNotMatch(outbox?.body ?? '', /Олег/u);
+    // Неотправленное затёртое письмо не уходит (Р-461).
+    assert.equal(outbox?.state, 'EXPIRED', 'затёртое письмо осталось в очереди');
+    assert.equal(outbox?.lastError, ERASED_NOTE);
 
     // Заявка не удаляется никогда: отметка согласия и её редакция —
     // доказательство законности прошлой обработки.

@@ -64,9 +64,9 @@ describe('сводка куратору (УЭ-01)', { skip: !enabled }, async ()
     assert.ok(rows.find((row) => row.userId === ids.plain)!.scheduledAt.getTime() <= now, 'без выбора отложено');
   });
 
-  it('поручение и напоминание о его сроке — сразу, не в сводке (Р-437)', async () => {
+  it('поручение, напоминание о его сроке и о сроке этапа — сразу, не в сводке (Р-437, Р-457)', async () => {
     const now = Date.now();
-    for (const eventKind of ['ASSIGNMENT_CREATED', 'ASSIGNMENT_DUE'] as const) {
+    for (const eventKind of ['ASSIGNMENT_CREATED', 'ASSIGNMENT_DUE', 'DEADLINE_IN_3_DAYS', 'DEADLINE_MISSED'] as const) {
       await outbox.enqueue(prisma, {
         userId: ids.digest!,
         eventKind,

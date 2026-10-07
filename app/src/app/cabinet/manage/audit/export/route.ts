@@ -10,6 +10,7 @@ import {
   toCsv,
 } from '../../../../../lib/cabinet/journals';
 import { currentActor, requestIp } from '../../../../../lib/cabinet/session';
+import { moscowToday } from '../../../../../lib/cabinet/clock';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,7 +123,7 @@ export async function GET(request: Request): Promise<Response> {
   return new NextResponse(toCsv(rows), {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${name}-${new Date().toISOString().slice(0, 10)}.csv"`,
+      'Content-Disposition': `attachment; filename="${name}-${moscowToday().toISOString().slice(0, 10)}.csv"`,
       'Cache-Control': 'no-store',
     },
   });

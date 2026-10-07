@@ -35,7 +35,7 @@ export interface OutboxItem {
   readonly subject: string;
   readonly body: string;
   /**
-   * Ключ дедупликации, например `stage:<id>:awaiting_client:2026-09-15`.
+   * Ключ дедупликации, например `stage:<id>:awaiting_client:<строка истории>`.
    * Повторная постановка того же события проходит без ошибки и без дубля:
    * напоминание о сроке не должно приходить дважды за день.
    */
@@ -146,12 +146,36 @@ export async function notifyExpert(
   });
 }
 
+/**
+ * Человек — куратор этой работы с договором поручения (Р-237). Письма о
+ * решении по его версии или замечанию называют работу и этап: после снятия
+ * с работы или отзыва договора они не уходят (решение Р-455).
+ */
+export async function curatorOnWork(db: Db, projectId: string, userId: string): Promise<boolean> {
+  const project = await db.project.findUnique({
+    where: { id: projectId },
+    select: {
+      expertId: true,
+      expert: { select: { role: true, expertProfile: { select: { ndaSignedAt: true } } } },
+    },
+  });
+  return (
+    project !== null &&
+    project.expertId === userId &&
+    project.expert?.role === 'EXPERT' &&
+    (project.expert.expertProfile?.ndaSignedAt ?? null) !== null
+  );
+}
+
 /** Возвращает число поставленных строк: повтор по ключу не считается. */
 /**
  * Письма куратору, которые в сводку не откладываются (УЭ-01, Р-398).
  * Поручение руководителя и напоминание о его сроке — тоже: «завтра срок»,
  * отложенное до 09:00 следующего дня, приходило в день срока, а поручение
  * со сроком «сегодня» — назавтра, после срока (решение Р-437).
+ * Напоминания о сроке этапа — по той же причине: их ставит утренний
+ * прогон после 09:00, и отложенное «срок через три дня» приходило за два
+ * дня, а «срок сорван» — на второй день после срыва (решение Р-457).
  */
 export const DIGEST_EXEMPT: ReadonlySet<string> = new Set([
   'CURATOR_INVITED',
@@ -159,6 +183,8 @@ export const DIGEST_EXEMPT: ReadonlySet<string> = new Set([
   'CURATOR_DIGEST',
   'ASSIGNMENT_CREATED',
   'ASSIGNMENT_DUE',
+  'DEADLINE_IN_3_DAYS',
+  'DEADLINE_MISSED',
 ]);
 
 /**
@@ -1087,10 +1113,14 @@ export async function retryFailed(actor: Actor, id: string, ip?: string | null):
     throw new Error('Напоминание о сроке старше суток не повторяется: срок уже другой');
   }
 
-  await prisma.notificationOutbox.update({
-    where: { id: row.id },
+  // Повтор захватывает строку в состоянии «не доставлено»: два нажатия
+  // «Повторить» не возвращают в очередь письмо, которое рассылка между
+  // ними уже отправила (решение Р-466).
+  const { count } = await prisma.notificationOutbox.updateMany({
+    where: { id: row.id, state: 'FAILED' },
     data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
   });
+  if (count === 0) return;
   await record(actor, {
     action: 'OUTBOX_RETRY',
     objectType: 'NotificationOutbox',

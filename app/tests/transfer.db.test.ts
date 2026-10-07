@@ -173,6 +173,30 @@ describe('передача работы (РК-08)', { skip: !enabled }, async ()
     assert.equal(row.managerId, ids.first);
   });
 
+  it('две передачи одновременно: проходит одна, цепочка истории без разрыва (Р-464)', async () => {
+    const since = new Date();
+    const results = await Promise.allSettled([
+      projects.assignManager(head(), ids.project!, ids.second!, 'Передача из первой вкладки'),
+      projects.assignManager(head(), ids.project!, ids.head!, 'Передача из второй вкладки'),
+    ]);
+    const passed = results.filter((result) => result.status === 'fulfilled').length;
+    for (const result of results) {
+      if (result.status === 'rejected') assert.match(String(result.reason), /уже сменили/u);
+    }
+    const events = await prisma.projectEvent.findMany({
+      where: { projectId: ids.project, kind: 'MANAGER_ASSIGNED', createdAt: { gte: since } },
+      orderBy: { createdAt: 'asc' },
+    });
+    assert.equal(events.length, passed, 'событий передачи больше, чем прошедших передач');
+    // Каждая передача начинается с того, кем работа кончилась предыдущей.
+    let holder: unknown = ids.first;
+    for (const event of events) {
+      const payload = event.payload as Record<string, unknown>;
+      assert.equal(payload.from, holder, 'передача от менеджера, у которого работы уже не было');
+      holder = payload.managerId;
+    }
+  });
+
   it('ручной заказ руководителя на другого менеджера — тому письмо', async () => {
     const order = await createManualOrder(head(), {
       customer: `Заказчик Передачи ${stamp}`,

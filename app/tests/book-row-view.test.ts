@@ -22,7 +22,7 @@ describe('строка книги заказов на карточке рабо�
     const about = page.indexOf('<Disclosure title="О работе"');
     const end = page.indexOf('</Disclosure>', about);
     const block = page.slice(about, end);
-    assert.match(block, /как в книге на \$\{formatDate\(bookRow\.appliedAt\)\}/u);
+    assert.match(block, /как в книге на \$\{formatDay\(bookRow\.appliedAt\)\}/u);
     assert.match(block, /bookFacts\.map/u);
   });
 });

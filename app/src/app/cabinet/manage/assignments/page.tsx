@@ -15,6 +15,7 @@ import {
   Select,
   Text,
   formatDate,
+  formatDay,
   plural,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
@@ -128,7 +129,7 @@ export default async function AssignmentsScreen({
                       `${row.assignee.fullName}${row.assignee.role === 'EXPERT' ? ' — куратор' : ' — менеджер'}`,
                       `срок ${formatDate(row.dueOn)}`,
                       row.project === null ? null : `работа «${row.project.title}»`,
-                      `поставлено ${formatDate(row.createdAt)}`,
+                      `поставлено ${formatDay(row.createdAt)}`,
                     ]
                       .filter((part) => part !== null)
                       .join(' · ')}

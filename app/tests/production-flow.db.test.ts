@@ -349,6 +349,17 @@ describe('сквозной контур', { skip: !enabled }, async () => {
     assert.ok(waiting.awaitingClientSince !== null);
     assert.match(waiting.blockedReason ?? '', /протокол испытаний/);
 
+    // Исправленная причина в ту же минуту — второе письмо клиенту, а не
+    // пропуск по ключу (Р-458).
+    await projects.setStageState(manager, ids.stage, 'IN_PROGRESS');
+    await projects.setStageState(manager, ids.stage, 'AWAITING_CLIENT', 'Ждём протокол испытаний и акт отбора проб.');
+    const awaitingLetters = await prisma.notificationOutbox.findMany({
+      where: { userId: ids.client, eventKind: 'STAGE_AWAITING_CLIENT', channel: 'EMAIL' },
+      orderBy: { createdAt: 'asc' },
+    });
+    assert.equal(awaitingLetters.length, 2, 'исправленная причина не дошла до клиента');
+    assert.match(awaitingLetters[1]!.body, /акт отбора проб/u);
+
     await projects.setStageState(manager, ids.stage, 'IN_PROGRESS');
     await projects.setStageState(
       manager,
@@ -367,7 +378,7 @@ describe('сквозной контур', { skip: !enabled }, async () => {
     });
     assert.deepEqual(
       history.map((h) => h.toState),
-      ['IN_PROGRESS', 'AWAITING_CLIENT', 'IN_PROGRESS', 'IN_APPROVAL', 'DONE'],
+      ['IN_PROGRESS', 'AWAITING_CLIENT', 'IN_PROGRESS', 'AWAITING_CLIENT', 'IN_PROGRESS', 'IN_APPROVAL', 'DONE'],
     );
     assert.equal(history.at(-1)?.actorId, ids.client, 'этап закрыл не клиент');
   });

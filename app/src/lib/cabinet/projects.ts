@@ -278,7 +278,9 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
         },
       }));
 
-    const code = await nextProjectCode(tx as never, new Date().getUTCFullYear());
+    // Год номера — московский, как день начала работы: одобрение в ночь на
+    // 1 января по Москве давало номер прошлого года (решение Р-473).
+    const code = await nextProjectCode(tx as never, moscowToday().getUTCFullYear());
 
     const created = await tx.project.create({
       data: {
@@ -603,10 +605,16 @@ export async function assignExpert(
   }
 
   const project = await prisma.$transaction(async (tx) => {
-    const updated = await tx.project.update({
-      where: { id: projectId },
+    // Назначение захватывает работу с прежним куратором: два одновременных
+    // назначения не проходят оба — иначе письмо «работа назначена» получал
+    // и тот, кого тут же сменили, а прежний — два письма о снятии
+    // (решение Р-464).
+    const { count } = await tx.project.updateMany({
+      where: { id: projectId, expertId: ref.expertId },
       data: { expertId, expertRole: nextRole },
     });
+    if (count === 0) throw new Error('Куратора работы уже сменили: обновите страницу');
+    const updated = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
     // Новый куратор начинает со своего хода: сдача прежнего куратора гаснет
     // (требование Э-05, решение Д-6 плана куратора).
     await tx.stage.updateMany({
@@ -683,9 +691,16 @@ export async function assignExpert(
     // Неотправленные письма о работе прежнему куратору гаснут: отложенные
     // до утренней сводки ушли бы ему в 09:00 уже о чужой работе
     // (улучшение УЭ-01, Р-398; решение Р-421). Письмо о снятии ставится
-    // следом и уходит.
+    // следом и уходит. Начисление и выплата вознаграждения — его
+    // собственные деньги, они остаются на экране вознаграждения (Р-332) и
+    // письмом уходят (решение Р-460).
     await prisma.notificationOutbox.updateMany({
-      where: { userId: ref.expertId, projectId, state: 'PENDING' },
+      where: {
+        userId: ref.expertId,
+        projectId,
+        state: 'PENDING',
+        eventKind: { notIn: ['PAYOUT_ACCRUED', 'PAYOUT_PAID'] },
+      },
       data: { state: 'EXPIRED', lastError: UNASSIGNED_NOTE, scheduledAt: new Date() },
     });
     const letter = unassignedLetter(project.code, expertId !== null);
@@ -817,9 +832,14 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
   const by = await prisma.user.findUniqueOrThrow({ where: { id: actor.id }, select: { fullName: true } });
 
   const project = await prisma.$transaction(async (tx) => {
-    const updated = await tx.project.update({
-      where: { id: projectId },
+    // Передача захватывает работу с прежним менеджером (решение Р-464).
+    const { count } = await tx.project.updateMany({
+      where: { id: projectId, managerId: ref.managerId },
       data: { managerId },
+    });
+    if (count === 0) throw new Error('Менеджера работы уже сменили: обновите страницу');
+    const updated = await tx.project.findUniqueOrThrow({
+      where: { id: projectId },
       include: { client: { select: { userId: true } } },
     });
     await tx.projectEvent.create({
@@ -1542,8 +1562,12 @@ export async function editProject(
     if (why.length > 1000) throw new Error('Причина переноса — не длиннее 1000 знаков');
   }
   const saved = await prisma.$transaction(async (tx) => {
-    const updated = await tx.project.update({
-      where: { id: input.projectId },
+    // Правка захватывает работу с прочитанным сроком и состоянием: две
+    // одновременные правки не дают клиенту двух писем о переносе с
+    // неверным «было», а форма, открытая до чужого переноса, не
+    // возвращает прежний срок молча (решение Р-467).
+    const { count } = await tx.project.updateMany({
+      where: { id: input.projectId, dueOn: before.dueOn, status: before.status },
       data: {
         title,
         topic: input.topic?.trim() || null,
@@ -1552,6 +1576,8 @@ export async function editProject(
         ...(input.approvalDays === undefined ? {} : { approvalDays: input.approvalDays }),
       },
     });
+    if (count === 0) throw new Error('Срок или состояние работы уже изменили: обновите страницу');
+    const updated = await tx.project.findUniqueOrThrow({ where: { id: input.projectId } });
     if (shifted) await announceWorkDueChange(tx, actor, input.projectId, before.dueOn, nextDue, why);
     return updated;
   });
@@ -1748,11 +1774,6 @@ async function ensureProjectActive(projectId: string): Promise<void> {
   if (project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
 }
 
-/** Полночь UTC того же дня: сроки в кабинете — дни, а не мгновения. */
-function dayOf(at: Date): Date {
-  return new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
-}
-
 /**
  * Этапы из шаблона со сроками подряд.
  *
@@ -1768,7 +1789,10 @@ export function templateStages(
   template: readonly { readonly title: string; readonly durationDays: number | null }[],
   at: Date,
 ) {
-  let cursor = dayOf(at).getTime();
+  // Отсчёт — от московского дня, как день начала работы: одобрение в 01:30
+  // по Москве давало день начала «сегодня», а сроки — от вчерашнего UTC-дня
+  // (решение Р-471).
+  let cursor = moscowToday(at).getTime();
   return template.map((item, index) => {
     let dueOn: Date | null = null;
     if (item.durationDays !== null) {
@@ -2124,7 +2148,10 @@ export async function setStageState(
                   ? '.\n'
                   : ` до ${formatDay(approvalDueOn)} включительно (по московскому времени).\n`)) +
             'Открыть этап можно в личном кабинете.',
-          dedupKey: `stage:${stageId}:${to.toLowerCase()}:${now.toISOString().slice(0, 16)}`,
+          // Ключ — строка истории этапа, а не минута: исправленное «ждёт
+          // материалов» или повторная сдача в ту же минуту — новое письмо
+          // (решение Р-458).
+          dedupKey: `stage:${stageId}:${to.toLowerCase()}:${change.id}`,
           // Кнопка письма ведёт на этот этап — и после входа (Т-06, Р-309).
           path: `/cabinet/stages/${stageId}`,
         });

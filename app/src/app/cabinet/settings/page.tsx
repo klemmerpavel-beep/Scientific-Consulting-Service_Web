@@ -445,7 +445,7 @@ export default async function SettingsScreen({
             </Heading>
             {erasureAsked !== null ? (
               <Text muted size={14}>
-                {`Запрос отправлен ${formatDate(erasureAsked)}: мы рассмотрим его и ответим на почту учётной записи.`}
+                {`Запрос отправлен ${formatDay(erasureAsked)}: мы рассмотрим его и ответим на почту учётной записи.`}
               </Text>
             ) : (
               <Form action={requestMyErasure}>
@@ -468,7 +468,7 @@ export default async function SettingsScreen({
         <Text muted size={13} style={{ marginTop: 24 }}>
           {user.consentAcceptedAt === null
             ? texts.erasureTail
-            : `Согласие на обработку персональных данных принято ${formatDate(user.consentAcceptedAt)}. ${texts.consentTail}`}{' '}
+            : `Согласие на обработку персональных данных принято ${formatDay(user.consentAcceptedAt)}. ${texts.consentTail}`}{' '}
           <a className="cab-mark" href={`mailto:${PRACTICE_EMAIL}`}>
             {PRACTICE_EMAIL}
           </a>

@@ -13,7 +13,7 @@ import {
   Text,
   Tile,
   Tiles,
-  formatDate,
+  formatDay,
   formatTime,
   plural,
 } from '../../../../components/cabinet/ui';
@@ -69,7 +69,7 @@ export default async function DiskScreen() {
       <Tiles>
         <Tile
           label="Последняя выгрузка"
-          value={last === null ? '—' : formatDate(last.occurredAt) ?? '—'}
+          value={last === null ? '—' : formatDay(last.occurredAt) ?? '—'}
           note={last === null ? 'прогонов ещё не было' : `в ${formatTime(last.occurredAt)} по Москве`}
         />
         <Tile
@@ -145,7 +145,7 @@ export default async function DiskScreen() {
           </Text>
         ) : (
           <Text muted size={13} style={{ marginTop: 10 }}>
-            Последний прогон {formatDate(pull.occurredAt)} в {formatTime(pull.occurredAt)}: из{' '}
+            Последний прогон {formatDay(pull.occurredAt)} в {formatTime(pull.occurredAt)}: из{' '}
             {pull.rows} {plural(pull.rows, 'строки', 'строк', 'строк')} заведено {pull.created},
             обновлено {pull.updated}, уже было {pull.skipped}
             {pull.held === 0
@@ -168,7 +168,7 @@ export default async function DiskScreen() {
               {status.pullRuns.map((run) => (
                 <tr key={run.occurredAt.toISOString()}>
                   <td style={TABLE_CELL}>
-                    {formatDate(run.occurredAt)}, {formatTime(run.occurredAt)}
+                    {formatDay(run.occurredAt)}, {formatTime(run.occurredAt)}
                   </td>
                   <td style={TABLE_NUM}>{run.rows}</td>
                   <td style={TABLE_NUM}>{run.created}</td>
@@ -199,7 +199,7 @@ export default async function DiskScreen() {
               {status.runs.map((run) => (
                 <tr key={run.occurredAt.toISOString()}>
                   <td style={TABLE_CELL}>
-                    {formatDate(run.occurredAt)}, {formatTime(run.occurredAt)}
+                    {formatDay(run.occurredAt)}, {formatTime(run.occurredAt)}
                   </td>
                   <td style={TABLE_NUM}>{run.uploaded}</td>
                   <td style={TABLE_NUM}>{run.removed}</td>

@@ -79,6 +79,37 @@ describe('работа с заявкой', { skip: !enabled }, async () => {
     await assert.rejects(work.setLeadStatus(head, ids.lead!, 'DECLINED'), work.LeadWorkError);
   });
 
+  it('плашка, нажатая во время отказа, отклонённую заявку не возвращает (Р-465)', async () => {
+    const head = actor(ids.head!, 'HEAD');
+    // Отказ держит строку заявки: плашка читает прежнее состояние и ждёт
+    // блокировки на записи — так, как при одновременном нажатии.
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let locked!: () => void;
+    const holding = new Promise<void>((resolve) => (locked = resolve));
+    const decline = prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`select 1 from "Lead" where id = ${ids.lead!} for update`;
+        await tx.lead.update({ where: { id: ids.lead! }, data: { status: 'DECLINED' } });
+        locked();
+        await gate;
+      },
+      { timeout: 20_000 },
+    );
+    await holding;
+    const chip = work.setLeadStatus(head, ids.lead!, 'CONSULTED').then(
+      () => 'прошла',
+      (error: unknown) => String(error),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    release();
+    await decline;
+    assert.match(await chip, /уже изменилось/u);
+    const lead = await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead! } });
+    assert.equal(lead.status, 'DECLINED', 'плашка вернула отклонённую заявку в разбор');
+    await prisma.lead.update({ where: { id: ids.lead! }, data: { status: 'AWAITING_REPLY' } });
+  });
+
   it('правка сохраняет значения, а в журнал идут только названия полей', async () => {
     const head = actor(ids.head!, 'HEAD');
     await work.editLead(head, ids.lead!, { name: 'Иванов Иван', topic: 'Статья Q1', contact: `lw-${stamp}@example.org` });
