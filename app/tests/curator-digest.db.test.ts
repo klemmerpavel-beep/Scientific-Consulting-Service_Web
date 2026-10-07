@@ -64,6 +64,25 @@ describe('сводка куратору (УЭ-01)', { skip: !enabled }, async ()
     assert.ok(rows.find((row) => row.userId === ids.plain)!.scheduledAt.getTime() <= now, 'без выбора отложено');
   });
 
+  it('поручение и напоминание о его сроке — сразу, не в сводке (Р-437)', async () => {
+    const now = Date.now();
+    for (const eventKind of ['ASSIGNMENT_CREATED', 'ASSIGNMENT_DUE'] as const) {
+      await outbox.enqueue(prisma, {
+        userId: ids.digest!,
+        eventKind,
+        subject: `Поручение ${eventKind}`,
+        body: 'Срок завтра.',
+        dedupKey: `cd:${eventKind}:${stamp}`,
+      });
+      const row = await prisma.notificationOutbox.findFirstOrThrow({
+        where: { userId: ids.digest, eventKind, channel: 'EMAIL' },
+      });
+      assert.ok(row.scheduledAt.getTime() <= now + 1_000, `${eventKind} отложено до сводки`);
+      // Строка уходит сама: сводке не достаётся (иначе её отметят «вошло в сводку»).
+      await prisma.notificationOutbox.update({ where: { id: row.id }, data: { state: 'SENT', sentAt: new Date() } });
+    }
+  });
+
   it('в 09:00 — одна сводка, отложенные «вошли в сводку»; повторный прогон второй не ставит', async () => {
     const at = outbox.nextDigestAt(new Date());
     assert.equal(await outbox.enqueueCuratorDigest(at), 1);
