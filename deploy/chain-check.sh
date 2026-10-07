@@ -196,6 +196,17 @@ else
   fi
 fi
 
+# Секреты машинных адресов (рассылка, вебхук Telegram, выгрузка замечаний):
+# короче 32 знаков их реально подобрать перебором — адреса видны снаружи.
+# Отказа нет: короткий секрет продолжает работать, отчёт просит заменить его
+# (решение Р-431). Значение в отчёт не печатается.
+for name in CABINET_CRON_SECRET TELEGRAM_WEBHOOK_SECRET FEEDBACK_EXPORT_TOKEN; do
+  value=$(read_env "$name")
+  if [ -n "$value" ] && [ "${#value}" -lt 32 ]; then
+    bad "секрет $name короче 32 знаков — заменить на openssl rand -hex 32 (DEPLOY.md)"
+  fi
+done
+
 # ── 5. Зеркало на Яндекс Диске ──────────────────────────────────────────────
 BASE=$(read_env YANDEX_DISK_WEBDAV); BASE=${BASE:-https://webdav.yandex.ru}; BASE=${BASE%/}
 FOLDER=$(read_env YANDEX_DISK_FOLDER); FOLDER=${FOLDER:-ProDisser}
