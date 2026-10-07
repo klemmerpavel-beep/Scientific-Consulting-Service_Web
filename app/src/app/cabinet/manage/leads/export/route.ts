@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { attachmentDisposition } from '../../../../../lib/cabinet/disposition';
 import { AccessDenied, ensure } from '../../../../../lib/cabinet/access';
 import { record } from '../../../../../lib/cabinet/audit';
 import { leadSourceLabel, leadStatusLabel } from '../../../../../lib/cabinet/lead-labels';
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   return new NextResponse(csv, {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
-      'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(`zayavki-${stamp}.csv`)}`,
+      'content-disposition': attachmentDisposition(`zayavki-${stamp}.csv`),
       'cache-control': 'private, no-store',
     },
   });

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { attachmentDisposition } from '../../../../lib/cabinet/disposition';
 import { AccessDenied } from '../../../../lib/cabinet/access';
 import { readLeadAttachment } from '../../../../lib/cabinet/queries';
 import { currentActor, requestIp } from '../../../../lib/cabinet/session';
@@ -39,7 +40,7 @@ export async function GET(
       headers: {
         'content-length': String(file.sizeBytes),
         'content-type': safeType(file.contentType),
-        'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(file.originalName)}`,
+        'content-disposition': attachmentDisposition(file.originalName),
         'cache-control': 'private, no-store',
       },
     });
