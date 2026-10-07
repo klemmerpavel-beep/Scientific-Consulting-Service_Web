@@ -843,11 +843,14 @@ export async function trafficLight(actor: Actor) {
 
   // Дело «ждёт клиента» гаснет, когда практика после этой даты написала
   // клиенту в переписке: напоминание уже сделано (М-06, М-21, Р-304).
+  // Считается только переписка с клиентом: внутренняя ветка работы клиенту
+  // не видна и напоминанием не служит (решение Р-417).
   const nudged =
     stalled.length === 0
       ? []
       : await prisma.message.findMany({
           where: {
+            thread: 'CLIENT_MANAGER',
             projectId: { in: stalled.map((stage) => stage.projectId) },
             author: { role: { in: ['MANAGER', 'HEAD'] } },
             createdAt: {

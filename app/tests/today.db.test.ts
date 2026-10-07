@@ -143,6 +143,12 @@ describe('рабочий экран «Сегодня»', { skip: !enabled }, asy
     });
     let light = await trafficLight(curator());
     assert.ok(light.stalled.some((row) => row.id === stage.id), 'восемь дней ожидания — не дело');
+    // Внутренняя ветка работы клиенту не видна: напоминанием не считается (Р-417).
+    await prisma.message.create({
+      data: { projectId: project.id, thread: 'WORK_INTERNAL', authorId: ids.manager!, body: 'Клиент молчит, напомню' },
+    });
+    light = await trafficLight(curator());
+    assert.ok(light.stalled.some((row) => row.id === stage.id), 'дело погасло от внутреннего сообщения');
     await prisma.message.create({ data: { projectId: project.id, authorId: ids.manager!, body: 'Напоминаем о данных' } });
     light = await trafficLight(curator());
     assert.ok(!light.stalled.some((row) => row.id === stage.id), 'дело не погасло после письма практики');
