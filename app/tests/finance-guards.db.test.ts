@@ -256,6 +256,26 @@ describe('защиты финансового контура', { skip: !enabled 
     );
   });
 
+  it('маржа отменённой работы — без неполученного остатка; переплата входит (Р-434)', async () => {
+    const cancelledId = await newProject('M1');
+    const cancelled = await newContract(cancelledId, 20_000_000n);
+    const { tranche: paidPart } = await finance.addTranche(head(), { contractId: cancelled.id, title: 'Аванс', amount: 5_000_000n });
+    await finance.setTrancheStatus(head(), paidPart.id, 'PAID', new Date('2026-03-01T00:00:00Z'));
+    await finance.addPayout(head(), { projectId: cancelledId, amount: 3_000_000n });
+    await prisma.project.update({ where: { id: cancelledId }, data: { status: 'CANCELLED' } });
+    assert.equal((await finance.projectMoney(head(), cancelledId))?.margin, 2_000_000n);
+
+    const overpaidId = await newProject('M2');
+    const overpaid = await newContract(overpaidId, 10_000_000n);
+    const { tranche: big } = await finance.addTranche(head(), { contractId: overpaid.id, title: 'Оплата', amount: 11_000_000n });
+    await finance.setTrancheStatus(head(), big.id, 'PAID', new Date('2026-03-01T00:00:00Z'));
+    assert.equal((await finance.projectMoney(head(), overpaidId))?.margin, 11_000_000n);
+
+    const summary = await finance.financeSummary(head());
+    assert.equal(summary.rows.find((row) => row.projectId === cancelledId)?.margin, 2_000_000n, 'сводка расходится с экраном работы');
+    assert.equal(summary.rows.find((row) => row.projectId === overpaidId)?.margin, 11_000_000n);
+  });
+
   it('маржа — без списанного; повторный счёт доходит, о списании клиенту не пишется', async () => {
     const projectId = await newProject('G');
     const contract = await newContract(projectId, 10_000_000n);
