@@ -87,6 +87,22 @@ describe('исполняемые файлы', () => {
     assert.notEqual(fileRefusal('app.apk', text), null);
   });
 
+  it('образы дисков, справка, OneNote, надстройки и ярлыки — нет; научный .img — да (Р-427)', () => {
+    for (const name of ['data.iso', 'disk.VHDX', 'help.chm', 'notes.one', 'addin.xll', 'link.url', 'query.iqy', 'table.slk']) {
+      assert.notEqual(fileRefusal(name, text), null, name);
+    }
+    assert.equal(fileRefusal('snimok.img', text), null, 'научные данные .img отклонены по имени');
+    const iso = Buffer.alloc(0x8001 + 16);
+    iso.write('CD001', 0x8001, 'latin1');
+    assert.notEqual(fileRefusal('snimok.img', iso), null, 'образ ISO под именем .img принят');
+    const vhdx = Buffer.concat([Buffer.from('vhdxfile', 'latin1'), Buffer.alloc(64)]);
+    assert.equal(executableContent(vhdx), true);
+    const vhd = Buffer.alloc(2048);
+    vhd.write('conectix', 2048 - 512, 'latin1');
+    assert.equal(executableContent(vhd), true);
+    assert.equal(executableContent(Buffer.from('CD001 — шифр образца в тексте'.padEnd(600, '.'))), false);
+  });
+
   it('отказ называет файл и говорит, что делать', () => {
     assert.match(fileRefusal('setup.msi', text) ?? '', /«setup\.msi» не принят.*напишите менеджеру/u);
   });
