@@ -151,14 +151,29 @@ const view = {
   project: { select: { code: true, title: true } },
 } as const;
 
-/** Открытые поручения исполнителя — его дела. */
+/**
+ * Открытые поручения исполнителя — его дела. Название работы — только
+ * пока исполнитель её видит: после смены куратора, передачи работы другому
+ * менеджеру или без договора поручения остаётся код, как в письмах куратору
+ * без договора (Р-301, решение Р-420).
+ */
 export async function myAssignments(actor: Actor) {
   if (actor.status !== 'ACTIVE' || (actor.role !== 'MANAGER' && actor.role !== 'EXPERT')) return [];
-  return prisma.assignment.findMany({
+  const rows = await prisma.assignment.findMany({
     where: { assigneeId: actor.id, status: { in: OPEN } },
     orderBy: [{ dueOn: 'asc' }, { createdAt: 'asc' }],
-    select: view,
+    select: {
+      ...view,
+      project: { select: { id: true, code: true, title: true, clientId: true, managerId: true, expertId: true } },
+    },
   });
+  return rows.map(({ project, ...row }) => ({
+    ...row,
+    project:
+      project === null
+        ? null
+        : { code: project.code, title: can(actor, 'PROJECT_VIEW', project) ? project.title : null },
+  }));
 }
 
 /** Все поручения практики — руководителю: открытые сверху, по сроку. */

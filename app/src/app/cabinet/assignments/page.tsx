@@ -55,7 +55,11 @@ export default async function MyAssignmentsScreen({ searchParams }: { searchPara
                     <Text muted size={13} style={{ marginTop: 6 }}>
                       {[
                         `срок ${formatDate(row.dueOn)}`,
-                        row.project === null ? null : `работа «${row.project.title}»`,
+                        row.project === null
+                          ? null
+                          : row.project.title === null
+                            ? `работа ${row.project.code}`
+                            : `работа «${row.project.title}»`,
                         row.createdBy === null ? null : `поставил ${row.createdBy.fullName}`,
                       ]
                         .filter((part) => part !== null)
