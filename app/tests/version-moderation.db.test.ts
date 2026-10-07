@@ -64,6 +64,7 @@ describe('версия эксперта — после публикации', { 
       make('cl', 'CLIENT'),
       make('exp', 'EXPERT'),
     ]);
+    await prisma.expertProfile.create({ data: { userId: expertUser.id, ndaSignedAt: new Date() } });
     const profile = await prisma.clientProfile.create({
       data: { userId: clientUser.id, fullName: `Клиент ${stamp}`, normalizedName: `vm клиент ${stamp}` },
     });
@@ -228,6 +229,22 @@ describe('версия эксперта — после публикации', { 
     const stage = await stageById(curator(), ids.stage!);
     const shown = stage?.materials.flatMap((material) => material.versions).find((version) => version.id === named.id);
     assert.equal(shown?.moderation?.identityHint, true, 'пометка не дошла до экрана этапа');
+  });
+
+  it('снятому с работы или без договора куратору решение по версии не пишется (Р-455)', async () => {
+    const letters = (versionId: string) =>
+      prisma.notificationOutbox.count({ where: { userId: ids.expert, dedupKey: { startsWith: `version:${versionId}:` } } });
+    const gone = await upload(ids.material!);
+    await prisma.project.update({ where: { id: ids.project! }, data: { expertId: null } });
+    await materials.moderateVersion(curator(), gone.id, 'REJECTED', 'Нет списка литературы');
+    assert.equal(await letters(gone.id), 0, 'снятому куратору ушло письмо о решении');
+    await prisma.project.update({ where: { id: ids.project! }, data: { expertId: ids.expert! } });
+
+    const unsigned = await upload(ids.material!);
+    await prisma.expertProfile.update({ where: { userId: ids.expert! }, data: { ndaSignedAt: null } });
+    await materials.moderateVersion(curator(), unsigned.id, 'PUBLISHED');
+    assert.equal(await letters(unsigned.id), 0, 'куратору без договора ушло письмо с названием материала');
+    await prisma.expertProfile.update({ where: { userId: ids.expert! }, data: { ndaSignedAt: new Date() } });
   });
 
   it('в закрытой работе версий не разбирают', async () => {

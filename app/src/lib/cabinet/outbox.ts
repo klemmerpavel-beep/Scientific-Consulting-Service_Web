@@ -146,6 +146,27 @@ export async function notifyExpert(
   });
 }
 
+/**
+ * Человек — куратор этой работы с договором поручения (Р-237). Письма о
+ * решении по его версии или замечанию называют работу и этап: после снятия
+ * с работы или отзыва договора они не уходят (решение Р-455).
+ */
+export async function curatorOnWork(db: Db, projectId: string, userId: string): Promise<boolean> {
+  const project = await db.project.findUnique({
+    where: { id: projectId },
+    select: {
+      expertId: true,
+      expert: { select: { role: true, expertProfile: { select: { ndaSignedAt: true } } } },
+    },
+  });
+  return (
+    project !== null &&
+    project.expertId === userId &&
+    project.expert?.role === 'EXPERT' &&
+    (project.expert.expertProfile?.ndaSignedAt ?? null) !== null
+  );
+}
+
 /** Возвращает число поставленных строк: повтор по ключу не считается. */
 /**
  * Письма куратору, которые в сводку не откладываются (УЭ-01, Р-398).
