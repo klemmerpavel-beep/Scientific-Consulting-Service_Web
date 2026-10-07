@@ -168,6 +168,10 @@ async function knownWorks(
     signatures.map(signatureBase).filter((base): base is string => base !== null),
   );
   if (bases.size === 0) return [];
+  // Сначала — лёгкие столбцы всех прежних версий строк, без разобранных
+  // значений: строк набирается «строки книги × зафиксированные загрузки», а
+  // сверка (`matchBook`) берёт у каждой работы только последнюю. Разобранные
+  // значения читаются вторым запросом — лишь у последних (решение Р-477).
   const found = await db.importRow.findMany({
     where: {
       projectId: { not: null },
@@ -179,15 +183,14 @@ async function knownWorks(
       ]),
     },
     select: {
+      id: true,
       signature: true,
-      parsed: true,
       projectId: true,
       rowNumber: true,
-      project: { select: { code: true } },
       batch: { select: { appliedAt: true } },
     },
   });
-  return found
+  const ordered = found
     .filter((row) => {
       const base = signatureBase(row.signature);
       return base !== null && bases.has(base);
@@ -200,12 +203,24 @@ async function knownWorks(
         (a.batch.appliedAt?.getTime() ?? 0) - (b.batch.appliedAt?.getTime() ?? 0) ||
         a.rowNumber - b.rowNumber,
     )
-    .map((row, order) => ({
+    .map((row, order) => ({ ...row, order }));
+  // Последняя строка каждой работы — та же, что выбрала бы сверка.
+  const latest = new Map<string, (typeof ordered)[number]>();
+  for (const row of ordered) latest.set(row.projectId!, row);
+  if (latest.size === 0) return [];
+  const details = await db.importRow.findMany({
+    where: { id: { in: [...latest.values()].map((row) => row.id) } },
+    select: { id: true, parsed: true, project: { select: { code: true } } },
+  });
+  const byId = new Map(details.map((row) => [row.id, row]));
+  return [...latest.values()]
+    .sort((a, b) => a.order - b.order)
+    .map((row) => ({
       signature: row.signature,
       projectId: row.projectId!,
-      parsed: row.parsed,
-      order,
-      code: row.project?.code ?? null,
+      parsed: byId.get(row.id)?.parsed ?? null,
+      order: row.order,
+      code: byId.get(row.id)?.project?.code ?? null,
     }));
 }
 
