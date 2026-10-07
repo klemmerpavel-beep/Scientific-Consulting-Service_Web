@@ -35,7 +35,11 @@ fi
 # Секрет должен состоять из знаков ASCII: заголовки HTTP переносят кириллицу
 # в искажённом виде, и маршрут отвечал бы «не найдено» при верном на вид
 # значении. `openssl rand -base64` даёт ровно такой набор знаков.
-if ! ANSWER=$(curl -fsS --noproxy '*' -m 30 -X POST -H "x-cabinet-cron: $SECRET" "$URL"); then
+#
+# Заголовок с секретом идёт curl через ввод (`-H @-`), а не аргументом:
+# аргументы процесса видны любому пользователю сервера в списке процессов,
+# и секрет рассылки читался бы оттуда раз в минуту (решение Р-454).
+if ! ANSWER=$(printf 'x-cabinet-cron: %s\n' "$SECRET" | curl -fsS --noproxy '*' -m 30 -X POST -H @- "$URL"); then
   echo "$(date -Is) ОШИБКА: маршрут рассылки не ответил" >&2
   exit 1
 fi
@@ -52,6 +56,11 @@ for key in reminders approvalReminders deadlinesStarted autoAccepted sent failed
     *) quiet=0 ;;
   esac
 done
+# Упавший шаг прогона (Р-438) — тоже событие для журнала.
+case "$ANSWER" in
+  *'"stepsFailed":[]'*) ;;
+  *) quiet=0 ;;
+esac
 [ "$quiet" -eq 1 ] && exit 0
 
 echo "$(date -Is) рассылка: $ANSWER"
