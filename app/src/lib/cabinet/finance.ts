@@ -20,10 +20,12 @@ export function paymentsLine(code: string | null): string {
 }
 import {
   STATUS_LABEL,
+  allocateOpen,
   canChangeTrancheStatus,
   expectsPayment,
   isTrancheStatus,
   overdueTrancheWhere,
+  overdueWithinRest,
   receivableOf,
   type TrancheStatus,
 } from './money.ts';
@@ -915,8 +917,10 @@ export interface DebtorRow {
 /**
  * «Деньги → Должники» (требование РК-10, решение Р-345): просроченные
  * транши — тем же условием, что плитка «Просрочено по траншам»
- * (`overdueTrancheWhere`); сумма перечня равна плитке по построению.
- * Давние сверху. Деньги практики — только руководителю (Р-149).
+ * (`overdueTrancheWhere`), и тем же разнесением остатка договора
+ * (`overdueWithinRest`, Р-447); сумма перечня равна плитке и строке
+ * «Просрочено» «Поступлений» по построению. Давние сверху. Деньги
+ * практики — только руководителю (Р-149).
  */
 export async function overdueTranches(actor: Actor, at: Date = clockNow()): Promise<DebtorRow[]> {
   ensure(actor, 'MARGIN_VIEW');
@@ -932,6 +936,9 @@ export async function overdueTranches(actor: Actor, at: Date = clockNow()): Prom
       status: true,
       contract: {
         select: {
+          id: true,
+          totalAmount: true,
+          tranches: { select: { id: true, amount: true, status: true, plannedDate: true } },
           project: {
             select: {
               code: true,
@@ -945,10 +952,22 @@ export async function overdueTranches(actor: Actor, at: Date = clockNow()): Prom
       },
     },
   });
-  return rows.map((row) => ({
+  // Сумма долга — в пределах остатка договора, тем же разнесением, что
+  // «Поступления» и плитка главной; транш целиком сверх остатка долгом не
+  // считается (решение Р-447).
+  const counted = new Map<string, bigint>();
+  for (const row of rows) {
+    const contract = row.contract;
+    if (counted.has(`contract:${contract.id}`)) continue;
+    counted.set(`contract:${contract.id}`, 0n);
+    for (const part of overdueWithinRest({ status: contract.project.status, totalAmount: contract.totalAmount, tranches: contract.tranches }, day)) {
+      counted.set(part.tranche.id, part.counted);
+    }
+  }
+  return rows.filter((row) => (counted.get(row.id) ?? 0n) > 0n).map((row) => ({
     trancheId: row.id,
     title: row.title,
-    amount: row.amount,
+    amount: counted.get(row.id)!,
     plannedDate: row.plannedDate!,
     late: daysPast(row.plannedDate, at) ?? 0,
     status: row.status as TrancheStatus,
@@ -1133,16 +1152,8 @@ export async function receiptsPlan(actor: Actor, at: Date = clockNow()): Promise
     // остатка договора», а просто не ждутся (решение Р-446).
     if (!expectsPayment(contract.project.status)) continue;
     // Сначала датированные по сроку, затем без даты: в пределах остатка
-    // договора учитываются ранние обязательства.
-    const open = contract.tranches
-      .filter((tranche) => tranche.status === 'PLANNED' || tranche.status === 'INVOICED')
-      .sort((a, b) => {
-        if (a.plannedDate === null) return b.plannedDate === null ? a.id.localeCompare(b.id) : 1;
-        if (b.plannedDate === null) return -1;
-        return a.plannedDate.getTime() - b.plannedDate.getTime() || a.id.localeCompare(b.id);
-      });
-    for (const tranche of open) {
-      const counted = tranche.amount < rest ? tranche.amount : rest;
+    // договора учитываются ранние обязательства (общее разнесение, Р-447).
+    for (const { tranche, counted } of allocateOpen(rest, contract.tranches)) {
       rest -= counted;
       if (counted < tranche.amount) {
         excess.amount += tranche.amount - counted;
