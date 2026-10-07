@@ -271,7 +271,86 @@ describe('удаление данных субъекта', { skip: !enabled }, a
       },
     });
 
+    // След, найденный проходом проверки 07.10.2026 (решение Р-423):
+    // комментарий к заявке, поручение, причины в журнале, письмо
+    // руководителю о запросе удаления и утренняя сводка куратора.
+    await prisma.leadComment.create({
+      data: { leadId: lead.id, authorId: manager.id, body: 'Смирнов просит перезвонить после 18:00' },
+    });
+    const assignment = await prisma.assignment.create({
+      data: {
+        assigneeId: manager.id,
+        createdById: head.id,
+        projectId: project.id,
+        text: 'Позвонить Смирнову О. П. о главе 1',
+        dueOn: new Date('2026-12-01T00:00:00Z'),
+      },
+    });
+    await prisma.auditEvent.createMany({
+      data: [
+        {
+          actorId: head.id,
+          action: 'MANAGER_ASSIGNED',
+          objectType: 'Project',
+          objectId: project.id,
+          projectId: project.id,
+          payload: { from: manager.id, to: manager.id, reason: 'Смирнов просил другого менеджера' },
+        },
+        {
+          actorId: head.id,
+          action: 'TRANCHE_RESCHEDULED',
+          objectType: 'Tranche',
+          objectId: contract.id,
+          projectId: project.id,
+          payload: { from: null, to: '2026-12-01', reason: 'Смирнов в отпуске до декабря' },
+        },
+      ],
+    });
+    const executed = await prisma.erasureRequest.create({
+      data: { clientId: client.id, scope: 'PERSONAL_DATA_AND_FILES', executedAt: new Date('2026-01-01T00:00:00Z') },
+    });
+    const digestAt = new Date('2026-09-01T06:00:00Z');
+    const [erasureLetter, mergedRow, digest] = await Promise.all([
+      prisma.notificationOutbox.create({
+        data: {
+          userId: head.id,
+          channel: 'EMAIL',
+          eventKind: 'CLIENT_ERASURE_REQUEST',
+          subject: 'Клиент просит удалить персональные данные',
+          body: 'Клиент Смирнов Олег Петрович запросил удаление персональных данных',
+          dedupKey: `erasure-request:${executed.id}:${head.id}:email`,
+        },
+      }),
+      prisma.notificationOutbox.create({
+        data: {
+          userId: manager.id,
+          projectId: project.id,
+          channel: 'EMAIL',
+          eventKind: 'CURATOR_TURN',
+          subject: 'Ход за вами: этап «Глава 1 Смирнова О. П.»',
+          body: 'Этап запущен',
+          state: 'MERGED',
+          scheduledAt: digestAt,
+          dedupKey: `era-merged-${stamp}`,
+        },
+      }),
+      prisma.notificationOutbox.create({
+        data: {
+          userId: manager.id,
+          channel: 'EMAIL',
+          eventKind: 'CURATOR_DIGEST',
+          subject: 'Сводка по вашим работам: 1 событие',
+          body: '— Ход за вами: этап «Глава 1 Смирнова О. П.»',
+          dedupKey: `curator-digest:2026-09-01:${manager.id}:email`,
+        },
+      }),
+    ]);
+
     Object.assign(ids, {
+      assignment: assignment.id,
+      erasureLetter: erasureLetter.id,
+      mergedRow: mergedRow.id,
+      digest: digest.id,
       journal: journal.id,
       merged: merged.id,
       mergedLead: mergedLead.id,
@@ -297,7 +376,10 @@ describe('удаление данных субъекта', { skip: !enabled }, a
   after(async () => {
     await prisma.importRow.deleteMany({ where: { batchId: ids.batch } });
     await prisma.importBatch.deleteMany({ where: { id: ids.batch } });
-    await prisma.notificationOutbox.deleteMany({ where: { id: { in: [ids.outbox!, ids.requestNotice!] } } });
+    await prisma.notificationOutbox.deleteMany({
+      where: { id: { in: [ids.outbox!, ids.requestNotice!, ids.erasureLetter!, ids.mergedRow!, ids.digest!] } },
+    });
+    await prisma.assignment.deleteMany({ where: { id: ids.assignment } });
     await prisma.lead.deleteMany({ where: { id: ids.mergedLead } });
     await prisma.auditEvent.deleteMany({ where: { id: ids.journal } });
     await prisma.stageStateChange.deleteMany({ where: { stage: { projectId: ids.project } } });
@@ -454,6 +536,24 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     assert.ok(merged?.erasedAt instanceof Date);
     const mergedLead = await prisma.lead.findUnique({ where: { id: ids.mergedLead } });
     assert.equal(mergedLead?.name, null, 'заявка по телефону сведённой карточки не затёрта');
+  });
+
+  it('комментарии к заявке, поручения, причины в журнале, письмо о запросе и сводка куратора затёрты (Р-423)', async () => {
+    const leadComments = await prisma.leadComment.findMany({ where: { leadId: ids.lead } });
+    assert.equal(leadComments.length, 1);
+    assert.doesNotMatch(leadComments[0]!.body, /Смирнов/u, 'комментарий к заявке называет клиента');
+    const assignment = await prisma.assignment.findUnique({ where: { id: ids.assignment } });
+    assert.doesNotMatch(assignment?.text ?? '', /Смирнов/u, 'поручение называет клиента');
+    const reasons = await prisma.auditEvent.findMany({
+      where: { projectId: ids.project, action: { in: ['MANAGER_ASSIGNED', 'TRANCHE_RESCHEDULED'] } },
+      select: { payload: true },
+    });
+    assert.equal(reasons.length, 2);
+    for (const row of reasons) assert.doesNotMatch(JSON.stringify(row.payload), /Смирнов/u, 'причина в журнале');
+    for (const id of [ids.erasureLetter!, ids.digest!]) {
+      const row = await prisma.notificationOutbox.findUnique({ where: { id } });
+      assert.doesNotMatch(`${row?.subject}\n${row?.body}`, /Смирнов/u, `строка очереди ${row?.eventKind} называет клиента`);
+    }
   });
 
   it('объект изъят из хранилища, строка версии осталась', async () => {
