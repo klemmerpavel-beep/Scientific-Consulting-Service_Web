@@ -544,7 +544,7 @@ export default async function ProjectScreen({
         stageTitle: material.stage === null ? null : `этап ${material.stage.position}`,
         versionNumber: latest?.number ?? null,
         size: latest === null ? null : formatSize(latest.sizeBytes),
-        uploadedAt: latest === null ? null : formatDate(latest.uploadedAt),
+        uploadedAt: latest === null ? null : formatDay(latest.uploadedAt),
         comments: latest?.comments.length ?? 0,
         href: latest === null ? null : `/cabinet/files/${latest.id}`,
       };
@@ -767,7 +767,7 @@ export default async function ProjectScreen({
         {bookRow === null ? null : (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--pd-divider)' }}>
             <Text muted size={13} style={{ marginBottom: 10 }}>
-              {`Строка книги заказов — как в книге на ${formatDate(bookRow.appliedAt)}`}
+              {`Строка книги заказов — как в книге на ${formatDay(bookRow.appliedAt)}`}
             </Text>
             <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
               {bookFacts.map((row) => (

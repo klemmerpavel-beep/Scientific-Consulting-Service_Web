@@ -43,6 +43,9 @@ describe('подпись хода', () => {
     assert.equal(turnLabel('IN_PROGRESS', 'foreign-head', true, day), 'Ход за менеджером: куратор сдал этап 3 октября 2026');
     // Вне «В работе» пометка не действует.
     assert.equal(turnLabel('IN_APPROVAL', 'expert', true, day), 'Ход за клиентом: этап на согласовании');
+    // Сдача в 01:30 по Москве 7 октября — 22:30 UTC 6 октября: день — московский (Р-470).
+    const night = new Date(Date.UTC(2026, 9, 6, 22, 30));
+    assert.equal(turnLabel('IN_PROGRESS', 'expert', true, night), 'Этап сдан 7 октября 2026: ход за менеджером');
   });
 });
 

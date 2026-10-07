@@ -2679,7 +2679,10 @@ function moscow(value: Date): { day: number; month: number; year: number } {
 }
 
 /** День мгновения по Москве — им отбиваются дни в переписке. */
-export function formatDay(value: Date): string {
+export function formatDay(value: Date): string;
+export function formatDay(value: Date | null | undefined): string | null;
+export function formatDay(value: Date | null | undefined): string | null {
+  if (!value) return null;
   const { day, month, year } = moscow(value);
   return `${day} ${MONTHS[month - 1]} ${year}`;
 }

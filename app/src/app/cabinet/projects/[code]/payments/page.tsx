@@ -21,6 +21,7 @@ import {
   Select,
   Text,
   formatDate,
+  formatDay,
   formatSize,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
@@ -145,8 +146,8 @@ export default async function PaymentsScreen({
                 </Text>
                 <Text muted size={13}>
                   {check.kind === 'CONTRACT_BY_MANAGER'
-                    ? `заведён ${formatDate(check.createdAt)}`
-                    : `с ${formatDate(check.createdAt)}; закроется, когда будет приложен акт по работе`}
+                    ? `заведён ${formatDay(check.createdAt)}`
+                    : `с ${formatDay(check.createdAt)}; закроется, когда будет приложен акт по работе`}
                 </Text>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   {(check.kind === 'CONTRACT_BY_MANAGER' ? ['проверено'] : check.kind === 'ACT_AFTER_REOPEN' ? ['проверено', 'не требуется'] : ['не требуется']).map((note) => (
@@ -522,7 +523,7 @@ export default async function PaymentsScreen({
                       <Text muted size={13}>
                         {document.versions[0] === undefined
                           ? 'файл не загружен'
-                          : `${formatSize(document.versions[0].sizeBytes)} · ${formatDate(document.versions[0].uploadedAt)}`}
+                          : `${formatSize(document.versions[0].sizeBytes)} · ${formatDay(document.versions[0].uploadedAt)}`}
                       </Text>
                     </li>
                   ))}

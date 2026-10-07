@@ -23,6 +23,7 @@ import {
   TableCard,
   Text,
   formatDate,
+  formatDay,
   Pager,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
@@ -246,7 +247,7 @@ export default async function UsersScreen({
                     </Chip>
                   </td>
                   <td style={TABLE_CELL}>
-                    {formatDate(user.lastLoginAt) ?? 'не входил'} · сессий {user._count.sessions}
+                    {formatDay(user.lastLoginAt) ?? 'не входил'} · сессий {user._count.sessions}
                   </td>
                   {/* Дата договора стоит одним написанием — русским. Поле
                       правки уехало в соседнюю колонку: браузер печатает в
@@ -375,7 +376,7 @@ export default async function UsersScreen({
                     : ` · подписан ${formatDate(user.expertProfile.ndaSignedAt)}`}
                   {/* Куратор сообщил, что ждёт договор (Э-12, Р-331). */}
                   {user.expertProfile?.ndaSignedAt == null && user.expertProfile?.ndaRequestedAt != null
-                    ? ` · ждёт договор с ${formatDate(user.expertProfile.ndaRequestedAt)}`
+                    ? ` · ждёт договор с ${formatDay(user.expertProfile.ndaRequestedAt)}`
                     : ''}
                 </Text>
                 <Form action={updateExpertNda} inline>

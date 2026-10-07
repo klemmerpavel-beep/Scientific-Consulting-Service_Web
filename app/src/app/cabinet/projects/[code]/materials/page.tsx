@@ -20,7 +20,7 @@ import {
   Select,
   Text,
   authorName,
-  formatDate,
+  formatDay,
   versionState,
   formatSize,
   plural,
@@ -121,7 +121,7 @@ export default async function ProjectMaterialsScreen({
                         {version.originalName}
                       </a>
                       <span>{formatSize(version.sizeBytes)}</span>
-                      <span>{formatDate(version.uploadedAt)}</span>
+                      <span>{formatDay(version.uploadedAt)}</span>
                       <span>{authorName(version.uploadedBy, actor, version.uploadedById)}</span>
                       {/* Версия эксперта до публикации — с пометкой; клиенту
                           её здесь нет вовсе (Т-18, Р-294). У своей версии
