@@ -56,17 +56,27 @@ export async function addExpense(actor: Actor, input: ExpenseInput): Promise<{ i
   }
   const note = (input.note ?? '').trim() || null;
   if (note !== null && note.length > EXPENSE_NOTE_MAX) throw new Error(`Заметка — не длиннее ${EXPENSE_NOTE_MAX} знаков`);
-  const created = await prisma.expense.create({
-    data: { month, categoryId: category.id, amount: input.amount, serviceTypeId: typeId, note, createdById: actor.id },
-    select: { id: true },
+  // Расход и запись журнала — одна транзакция: сбой записи журнала после
+  // сохранённого расхода показывал ошибку, и повторная отправка вносила
+  // расход дважды (решение Р-463).
+  const amount = input.amount;
+  return prisma.$transaction(async (tx) => {
+    const created = await tx.expense.create({
+      data: { month, categoryId: category.id, amount, serviceTypeId: typeId, note, createdById: actor.id },
+      select: { id: true },
+    });
+    await record(
+      actor,
+      {
+        action: 'EXPENSE_ADDED',
+        objectType: 'Expense',
+        objectId: created.id,
+        payload: { month: keyOf(month), category: category.id, amount: amount.toString(), serviceTypeId: typeId },
+      },
+      tx,
+    );
+    return created;
   });
-  await record(actor, {
-    action: 'EXPENSE_ADDED',
-    objectType: 'Expense',
-    objectId: created.id,
-    payload: { month: keyOf(month), category: category.id, amount: input.amount.toString(), serviceTypeId: typeId },
-  });
-  return created;
 }
 
 /** Удалить ошибочно внесённый расход; прежние величины — в журнал. */

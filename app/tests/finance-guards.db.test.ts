@@ -188,6 +188,17 @@ describe('защиты финансового контура', { skip: !enabled 
     assert.deepEqual(actions.sort(), ['TRANCHE_ADDED', 'TRANCHE_REMOVED']);
   });
 
+  it('сбой записи журнала откатывает транш и начисление: повтор формы не даёт дубля (Р-463)', async () => {
+    const projectId = await newProject('J');
+    const contract = await newContract(projectId);
+    // Учётной записи нет: запись журнала падает на ссылке на автора.
+    const ghost: Actor = { ...head(), id: `нет-такого-${stamp}` };
+    await assert.rejects(() => finance.addTranche(ghost, { contractId: contract.id, title: 'Призрак', amount: 100n }));
+    assert.equal(await prisma.tranche.count({ where: { contractId: contract.id, title: 'Призрак' } }), 0, 'транш остался');
+    await assert.rejects(() => finance.addPayout(ghost, { projectId, amount: 100n }));
+    assert.equal(await prisma.expertPayout.count({ where: { projectId } }), 0, 'начисление осталось');
+  });
+
   it('по обезличенному клиенту и отменённой работе новые записи не заводятся', async () => {
     const erasedWork = await newProject('E', { clientId: ids.erased });
     await assert.rejects(() => newContract(erasedWork), /удалены по его требованию/u);

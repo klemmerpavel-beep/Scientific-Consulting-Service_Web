@@ -1,3 +1,4 @@
+import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { workLine } from './work-line.ts';
 import { can, ensure, scopePayouts, type Actor } from './access.ts';
@@ -29,6 +30,8 @@ import {
   receivableOf,
   type TrancheStatus,
 } from './money.ts';
+
+type Db = Prisma.TransactionClient | typeof prisma;
 
 export { formatAmount, parseAmount, STATUS_LABEL, type TrancheStatus } from './money.ts';
 
@@ -192,25 +195,34 @@ export async function addTranche(actor: Actor, input: TrancheInput) {
     if (stage === null || stage.projectId !== contract.projectId) throw new Error('Этап не из этой работы');
   }
 
-  const tranche = await prisma.tranche.create({
-    data: {
-      contractId: input.contractId,
-      title,
-      amount: input.amount,
-      plannedDate: input.plannedDate ?? null,
-      stageId,
-    },
-  });
-  // Заведение транша прежде не оставляло следа в журнале вовсе (Р-244).
-  await record(actor, {
-    action: 'TRANCHE_ADDED',
-    objectType: 'Tranche',
-    objectId: tranche.id,
-    projectId: contract.projectId,
-    payload: {
-      amount: money(input.amount),
-      plannedDate: input.plannedDate?.toISOString().slice(0, 10) ?? null,
-    },
+  // Транш и запись журнала — одна транзакция: ошибка после сохранённого
+  // транша приглашала отправить форму снова и заводила второй (Р-463).
+  const tranche = await prisma.$transaction(async (tx) => {
+    const created = await tx.tranche.create({
+      data: {
+        contractId: input.contractId,
+        title,
+        amount: input.amount,
+        plannedDate: input.plannedDate ?? null,
+        stageId,
+      },
+    });
+    // Заведение транша прежде не оставляло следа в журнале вовсе (Р-244).
+    await record(
+      actor,
+      {
+        action: 'TRANCHE_ADDED',
+        objectType: 'Tranche',
+        objectId: created.id,
+        projectId: contract.projectId,
+        payload: {
+          amount: money(input.amount),
+          plannedDate: input.plannedDate?.toISOString().slice(0, 10) ?? null,
+        },
+      },
+      tx,
+    );
+    return created;
   });
 
   // Сторнированный транш денег не несёт и в сверку с договором не входит.
@@ -387,24 +399,31 @@ export async function addPayout(
     if (stage === null || stage.projectId !== input.projectId) throw new Error('Этап не из этой работы');
   }
 
-  const payout = await prisma.expertPayout.create({
-    data: {
-      projectId: input.projectId,
-      stageId: input.stageId ?? null,
-      expertId,
-      amount: input.amount,
-      comment,
-    },
+  // Начисление, журнал и письмо куратору — одна транзакция (Р-463).
+  return prisma.$transaction(async (tx) => {
+    const payout = await tx.expertPayout.create({
+      data: {
+        projectId: input.projectId,
+        stageId: input.stageId ?? null,
+        expertId,
+        amount: input.amount,
+        comment,
+      },
+    });
+    await record(
+      actor,
+      {
+        action: 'PAYOUT_ACCRUED',
+        objectType: 'ExpertPayout',
+        objectId: payout.id,
+        projectId: input.projectId,
+        payload: { amount: money(input.amount) },
+      },
+      tx,
+    );
+    await notifyPayout(payout.id, false, tx);
+    return payout;
   });
-  await record(actor, {
-    action: 'PAYOUT_ACCRUED',
-    objectType: 'ExpertPayout',
-    objectId: payout.id,
-    projectId: input.projectId,
-    payload: { amount: money(input.amount) },
-  });
-  await notifyPayout(payout.id, false);
-  return payout;
 }
 
 export async function markPayoutPaid(actor: Actor, payoutId: string, paidOn: Date) {
@@ -439,8 +458,8 @@ export async function markPayoutPaid(actor: Actor, payoutId: string, paidOn: Dat
  * Р-328). Событие нейтральное: уходит и без договора поручения, тогда без
  * названия работы и этапа (Р-237).
  */
-async function notifyPayout(payoutId: string, paid: boolean): Promise<void> {
-  const payout = await prisma.expertPayout.findUniqueOrThrow({
+async function notifyPayout(payoutId: string, paid: boolean, db: Db = prisma): Promise<void> {
+  const payout = await db.expertPayout.findUniqueOrThrow({
     where: { id: payoutId },
     select: {
       expert: { select: { id: true, role: true, expertProfile: { select: { ndaSignedAt: true } } } },
@@ -454,7 +473,7 @@ async function notifyPayout(payoutId: string, paid: boolean): Promise<void> {
     paid,
     (payout.expert.expertProfile?.ndaSignedAt ?? null) !== null,
   );
-  await enqueue(prisma, {
+  await enqueue(db, {
     userId: payout.expert.id,
     projectId: payout.project.id,
     eventKind: paid ? 'PAYOUT_PAID' : 'PAYOUT_ACCRUED',
