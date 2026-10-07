@@ -94,13 +94,16 @@ echo "$(date -Is) кабинет: погашенные ссылки, истёк�
 # руководитель разбирает отказ; потом это копия переписки без цели обработки
 # (решение Р-252). Ушедшие хранятся 90 дней, неудавшиеся — 180: отказ
 # разбирают дольше. Срок неудавшейся считается от последней попытки —
-# повтор с экрана очереди возвращает строку в работу.
+# повтор с экрана очереди возвращает строку в работу. Устаревшие до
+# отправки и вошедшие в сводку куратора — тоже 90 дней от последнего
+# движения: прежде они не удалялись вовсе и хранили темы и тела писем
+# бессрочно (решение Р-440).
 #
 # Письма заявителям (ответ на отказ, Р-217) здесь не трогаются: по ним экран
 # заявки показывает, дошёл ли ответ, и живут они сроком самой заявки —
 # уходят каскадом вместе с ней в первом блоке скрипта.
-SQL_OUTBOX_COUNT="SELECT count(*) FROM \"NotificationOutbox\" WHERE \"leadId\" IS NULL AND ((\"state\" = 'SENT' AND coalesce(\"sentAt\", \"createdAt\") < now() - interval '90 days') OR (\"state\" = 'FAILED' AND greatest(\"createdAt\", \"scheduledAt\") < now() - interval '180 days'));"
-SQL_OUTBOX="DELETE FROM \"NotificationOutbox\" WHERE \"leadId\" IS NULL AND ((\"state\" = 'SENT' AND coalesce(\"sentAt\", \"createdAt\") < now() - interval '90 days') OR (\"state\" = 'FAILED' AND greatest(\"createdAt\", \"scheduledAt\") < now() - interval '180 days'));"
+SQL_OUTBOX_COUNT="SELECT count(*) FROM \"NotificationOutbox\" WHERE \"leadId\" IS NULL AND ((\"state\" = 'SENT' AND coalesce(\"sentAt\", \"createdAt\") < now() - interval '90 days') OR (\"state\" IN ('EXPIRED', 'MERGED') AND greatest(\"createdAt\", \"scheduledAt\") < now() - interval '90 days') OR (\"state\" = 'FAILED' AND greatest(\"createdAt\", \"scheduledAt\") < now() - interval '180 days'));"
+SQL_OUTBOX="DELETE FROM \"NotificationOutbox\" WHERE \"leadId\" IS NULL AND ((\"state\" = 'SENT' AND coalesce(\"sentAt\", \"createdAt\") < now() - interval '90 days') OR (\"state\" IN ('EXPIRED', 'MERGED') AND greatest(\"createdAt\", \"scheduledAt\") < now() - interval '90 days') OR (\"state\" = 'FAILED' AND greatest(\"createdAt\", \"scheduledAt\") < now() - interval '180 days'));"
 
 OUTBOX_DUE=$(run "$SQL_OUTBOX_COUNT" | tr -d '[:space:]')
 run "$SQL_OUTBOX" > /dev/null
