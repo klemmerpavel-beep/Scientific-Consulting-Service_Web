@@ -128,6 +128,66 @@ describe('«Поступления» (РК-20)', { skip: !enabled }, async () =>
     assert.equal(own.find((line) => line.title === 'Отменённой'), undefined);
   });
 
+  it('транши отменённой работы не значатся «сверх остатка договора» (Р-446)', async () => {
+    const before = await finance.receiptsPlan(head(), AT);
+    const project = await prisma.project.create({
+      data: {
+        code: `PD-RC-${String(stamp).slice(-6)}-X`,
+        clientId: ids.client!,
+        serviceTypeId: ids.type!,
+        managerId: ids.manager!,
+        title: 'Отменённая с траншем',
+        status: 'CANCELLED',
+      },
+    });
+    const contract = await prisma.contract.create({ data: { projectId: project.id, number: `RCX-${stamp}`, totalAmount: 3_000_00n } });
+    await prisma.tranche.create({ data: { contractId: contract.id, title: 'Не ждём', amount: 3_000_00n, plannedDate: on('2026-11-01') } });
+    try {
+      const after = await finance.receiptsPlan(head(), AT);
+      assert.equal(after.excess.count, before.excess.count, 'транш отменённой работы назван лишним');
+      assert.equal(after.excess.amount, before.excess.amount);
+      assert.equal(after.total, before.total);
+    } finally {
+      await prisma.tranche.deleteMany({ where: { contractId: contract.id } });
+      await prisma.contract.delete({ where: { id: contract.id } });
+      await prisma.project.delete({ where: { id: project.id } });
+    }
+  });
+
+  it('просроченное сверх остатка договора не долг: плитка, «Должники» и «Поступления» сходятся (Р-447)', async () => {
+    const briefBefore = await moneyBrief(head());
+    const project = await prisma.project.create({
+      data: {
+        code: `PD-RC-${String(stamp).slice(-6)}-Y`,
+        clientId: ids.client!,
+        serviceTypeId: ids.type!,
+        managerId: ids.manager!,
+        title: 'Оплачено целиком, транш сверх',
+        status: 'ACTIVE',
+      },
+    });
+    const contract = await prisma.contract.create({ data: { projectId: project.id, number: `RCY-${stamp}`, totalAmount: 1_000_00n } });
+    await prisma.tranche.create({ data: { contractId: contract.id, title: 'Всё', amount: 1_000_00n, status: 'PAID', plannedDate: on('2020-01-01') } });
+    const extra = await prisma.tranche.create({
+      data: { contractId: contract.id, title: 'Сверх договора', amount: 500_00n, plannedDate: on('2020-02-01') },
+    });
+    try {
+      const [plan, debtors, brief] = await Promise.all([
+        finance.receiptsPlan(head(), AT),
+        finance.overdueTranches(head(), AT),
+        moneyBrief(head()),
+      ]);
+      assert.equal(brief.overdue, briefBefore.overdue, 'главная считает долгом транш сверх оплаченного договора');
+      assert.ok(!debtors.some((row) => row.trancheId === extra.id), 'транш сверх договора — в «Должниках»');
+      const debt = debtors.reduce((acc, row) => acc + row.amount, 0n);
+      assert.equal(debt, plan.overdue.amount, '«Должники» расходятся с «Поступлениями»');
+    } finally {
+      await prisma.tranche.deleteMany({ where: { contractId: contract.id } });
+      await prisma.contract.delete({ where: { id: contract.id } });
+      await prisma.project.delete({ where: { id: project.id } });
+    }
+  });
+
   it('остаток без траншей — «не разнесено по траншам»', async () => {
     // У рабочей работы остаток 80 000 ₽, траншей на 50 000 ₽: 30 000 ₽ не разнесено.
     const before = await finance.receiptsPlan(head(), AT);

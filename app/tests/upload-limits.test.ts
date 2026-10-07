@@ -97,6 +97,8 @@ describe('пределы загрузки файлов', () => {
             String.raw`^\s*key=\$\(read_env FEEDBACK_EXPORT_TOKEN\)$`,
             String.raw`^\s*seen=\$\(\$COMPOSE exec -T web sh -c 'printf %s "\$FEEDBACK_EXPORT_TOKEN" \| wc -c' 2>/dev/null \| tr -d ' \\r'\)$`,
             String.raw`^\s*(ok|off|bad) "`,
+            // Перечень секретов, чья длина сверяется (Р-431): имена, не значения.
+            String.raw`^\s*for name in (?:[A-Z_]+ ?)+; do$`,
           ].join('|'),
           'u',
         ),
@@ -104,6 +106,11 @@ describe('пределы загрузки файлов', () => {
       );
       // Строка отчёта называет переменную, но не подставляет значение.
       if (/^\s*(ok|off|bad) "/u.test(line)) assert.doesNotMatch(line, /\$\(read_env|\$pass|\$user/u, line);
+    }
+    // Значение секрета из перечня (Р-431) — только длина `${#value}`.
+    for (const line of check) {
+      if (/^\s*#/u.test(line) || !/\$value\b|\$\{value\}/u.test(line)) continue;
+      assert.match(line, /^\s*if \[ -n "\$value" \] && \[ "\$\{#value\}" -lt 32 \]; then$/u, line);
     }
     // Значение ключа выгрузки не выводится нигде — только его длина `${#key}`.
     for (const line of check) {

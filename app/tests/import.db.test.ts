@@ -34,7 +34,7 @@ const HEADER: TestRow = [
 /** Метка прогона отделяет данные проверки от всего, что есть в базе. */
 const stamp = Date.now();
 
-function book(paidSecond = '40000', extra: TestRow[] = []): Buffer {
+function book(paidSecond = '40000', extra: TestRow[] = [], deadlineSecond = '20.12.2025'): Buffer {
   return makeWorkbook([
     HEADER,
     [
@@ -52,7 +52,7 @@ function book(paidSecond = '40000', extra: TestRow[] = []): Buffer {
       `Иванов Иван ${stamp}`,
       'Аспирнтура',
       'Пакет поступления',
-      '20.12.2025',
+      deadlineSecond,
       '90000',
       { value: 'в работе', fill: GREEN },
       paidSecond,
@@ -341,6 +341,51 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     assert.equal(await prisma.project.count({ where: mine }), before);
   });
 
+  it('правка строки книги не отменяет сторно, сделанное в кабинете (Р-435)', async () => {
+    const head = actor(ids.head, 'HEAD');
+    const contract = await prisma.contract.findFirstOrThrow({
+      where: { totalAmount: 9_000_000n, project: { managerId: ids.manager } },
+      select: { id: true, tranches: { where: { status: 'PAID' }, orderBy: { amount: 'asc' }, select: { id: true, amount: true } } },
+    });
+    const reversed = contract.tranches[0]!;
+    await prisma.tranche.update({ where: { id: reversed.id }, data: { status: 'REVERSED' } });
+
+    // В книге поменялся только срок; оплата та же, что прежде.
+    const preview = await previewBook(head, {
+      fileName: `книга-${stamp}-сторно.xlsx`,
+      bytes: book('90000', [], '25.12.2025'),
+    });
+    batches.push(preview.batchId);
+    await applyBatch(head, preview.batchId, { managerId: ids.manager });
+
+    const after = await prisma.tranche.findMany({ where: { contractId: contract.id }, select: { status: true, amount: true } });
+    const sum = (status: string) => after.filter((row) => row.status === status).reduce((acc, row) => acc + row.amount, 0n);
+    assert.equal(sum('PAID'), 9_000_000n - reversed.amount, 'сторнированная оплата заведена заново');
+    assert.equal(sum('REVERSED'), reversed.amount);
+    assert.equal(sum('PLANNED'), reversed.amount, 'сторнированное не встало к получению');
+  });
+
+  it('правка оплаты в книге не возвращает «в работу» работу, отменённую в кабинете (Р-451)', async () => {
+    const head = actor(ids.head, 'HEAD');
+    const contract = await prisma.contract.findFirstOrThrow({
+      where: { totalAmount: 9_000_000n, project: { managerId: ids.manager } },
+      select: { projectId: true },
+    });
+    await prisma.project.update({ where: { id: contract.projectId }, data: { status: 'CANCELLED', closedOn: new Date('2025-11-01T00:00:00Z') } });
+    const before = await prisma.project.findUniqueOrThrow({ where: { id: contract.projectId } });
+
+    // В книге поменялась только оплата; состояние и срок — прежние.
+    const preview = await previewBook(head, { fileName: `книга-${stamp}-оплата.xlsx`, bytes: book('80000', [], '25.12.2025') });
+    batches.push(preview.batchId);
+    const report = await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    assert.equal(report.updated, 1);
+
+    const after = await prisma.project.findUniqueOrThrow({ where: { id: contract.projectId } });
+    assert.equal(after.status, 'CANCELLED', 'работа, отменённая в кабинете, вернулась в работу');
+    assert.equal(after.closedOn?.toISOString(), before.closedOn?.toISOString());
+    assert.equal(after.dueOn?.toISOString(), before.dueOn?.toISOString());
+  });
+
   it('одну загрузку нельзя зафиксировать дважды и одновременно', async () => {
     const head = actor(ids.head, 'HEAD');
     const extra: TestRow[] = [
@@ -454,6 +499,34 @@ describe('перенос книги заказов', { skip: !enabled }, async (
       0,
       'проекты не переведены на основную карточку',
     );
+  });
+
+  it('новая строка с написанием сведённой карточки ложится в основную (Р-453)', async () => {
+    const merged = await prisma.clientProfile.findFirstOrThrow({
+      where: { normalizedName: { contains: String(stamp) }, mergedIntoId: { not: null } },
+      select: { id: true, fullName: true, mergedIntoId: true },
+    });
+    const head = actor(ids.head, 'HEAD');
+    const extra: TestRow = [
+      excelSerial('2025-08-17'),
+      merged.fullName,
+      'Диссертция',
+      'Новая глава',
+      '01.12.2025',
+      '77000',
+      { value: 'в работе', fill: GREEN },
+      '0',
+    ];
+    const preview = await previewBook(head, { fileName: `книга-${stamp}-сведённая.xlsx`, bytes: book('80000', [extra], '25.12.2025') });
+    batches.push(preview.batchId);
+    await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    const created = await prisma.project.findFirstOrThrow({
+      where: { managerId: ids.manager, contract: { totalAmount: 7_700_000n } },
+      select: { clientId: true },
+    });
+    assert.equal(created.clientId, merged.mergedIntoId, 'новая работа легла не в основную карточку');
+    const dupes = await prisma.clientProfile.count({ where: { fullName: merged.fullName, mergedIntoId: null } });
+    assert.equal(dupes, 0, 'заведена карточка-дубль сведённой');
   });
 
   it('перенос записан в журнал действий', async () => {

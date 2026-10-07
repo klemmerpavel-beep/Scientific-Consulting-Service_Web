@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { attachmentDisposition } from '../../../../lib/cabinet/disposition';
 import { AccessDenied } from '../../../../lib/cabinet/access';
 import { readVersion } from '../../../../lib/cabinet/materials';
 import { currentActor, requestIp } from '../../../../lib/cabinet/session';
@@ -47,7 +48,7 @@ export async function GET(
         'content-type': safeType(file.contentType),
         // Имя файла возвращается пользователю, но в адрес не попадает:
         // адрес виден в журналах прокси, а имя может содержать фамилию.
-        'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(file.originalName)}`,
+        'content-disposition': attachmentDisposition(file.originalName),
         'cache-control': 'private, no-store',
       },
     });

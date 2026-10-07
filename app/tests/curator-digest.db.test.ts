@@ -64,6 +64,25 @@ describe('сводка куратору (УЭ-01)', { skip: !enabled }, async ()
     assert.ok(rows.find((row) => row.userId === ids.plain)!.scheduledAt.getTime() <= now, 'без выбора отложено');
   });
 
+  it('поручение и напоминание о его сроке — сразу, не в сводке (Р-437)', async () => {
+    const now = Date.now();
+    for (const eventKind of ['ASSIGNMENT_CREATED', 'ASSIGNMENT_DUE'] as const) {
+      await outbox.enqueue(prisma, {
+        userId: ids.digest!,
+        eventKind,
+        subject: `Поручение ${eventKind}`,
+        body: 'Срок завтра.',
+        dedupKey: `cd:${eventKind}:${stamp}`,
+      });
+      const row = await prisma.notificationOutbox.findFirstOrThrow({
+        where: { userId: ids.digest, eventKind, channel: 'EMAIL' },
+      });
+      assert.ok(row.scheduledAt.getTime() <= now + 1_000, `${eventKind} отложено до сводки`);
+      // Строка уходит сама: сводке не достаётся (иначе её отметят «вошло в сводку»).
+      await prisma.notificationOutbox.update({ where: { id: row.id }, data: { state: 'SENT', sentAt: new Date() } });
+    }
+  });
+
   it('в 09:00 — одна сводка, отложенные «вошли в сводку»; повторный прогон второй не ставит', async () => {
     const at = outbox.nextDigestAt(new Date());
     assert.equal(await outbox.enqueueCuratorDigest(at), 1);
@@ -74,5 +93,31 @@ describe('сводка куратору (УЭ-01)', { skip: !enabled }, async ()
     assert.match(digest[0]!.body, /Ход за вами a[\s\S]*Ход за вами b/u);
     const merged = await prisma.notificationOutbox.count({ where: { userId: ids.digest, eventKind: 'CURATOR_TURN', state: 'MERGED' } });
     assert.equal(merged, 2);
+  });
+
+  it('строка, ставшая к отправке после сводки, уходит второй сводкой, а не пропадает (Р-436)', async () => {
+    const at = outbox.nextDigestAt(new Date());
+    // Повтор неудачной строки после утренней сводки: она снова ждёт отправки.
+    const late = await prisma.notificationOutbox.create({
+      data: {
+        userId: ids.digest!,
+        channel: 'EMAIL',
+        eventKind: 'CURATOR_TURN',
+        subject: 'Ход за вами поздний',
+        body: 'Этап запущен.',
+        dedupKey: `cd:late:${stamp}:email`,
+        scheduledAt: at,
+      },
+    });
+    assert.equal(await outbox.enqueueCuratorDigest(at), 1, 'поздняя строка не попала ни в одну сводку');
+    const row = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: late.id } });
+    assert.equal(row.state, 'MERGED');
+    const digests = await prisma.notificationOutbox.findMany({
+      where: { userId: ids.digest, eventKind: 'CURATOR_DIGEST' },
+      orderBy: { createdAt: 'asc' },
+    });
+    assert.equal(digests.length, 2);
+    assert.match(digests[1]!.body, /Ход за вами поздний/u);
+    assert.equal(await outbox.enqueueCuratorDigest(at), 0, 'повторный прогон поставил третью сводку');
   });
 });

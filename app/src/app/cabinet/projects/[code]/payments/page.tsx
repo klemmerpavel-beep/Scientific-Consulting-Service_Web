@@ -205,7 +205,7 @@ export default async function PaymentsScreen({
                   </Text>
                   {money.adjustment > 0n && !money.cancelled ? (
                     <Text muted size={13} style={{ marginTop: 4 }}>
-                      {mayEdit ? 'списано и сторнировано по траншам ниже' : 'сумма к оплате изменена по договорённости'}
+                      {mayEdit ? 'списано по траншам ниже' : 'сумма к оплате изменена по договорённости'}
                     </Text>
                   ) : null}
                 </div>

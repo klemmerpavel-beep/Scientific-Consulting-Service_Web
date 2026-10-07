@@ -30,9 +30,12 @@ import { ERASED_KEY_PREFIX, erasedKey, signatureBase } from './etl.ts';
  *      угадывать нельзя: строка уходит на разбор человеку, и фиксация её
  *      не заводит, пока книгу не поправят.
  *
- * Чего сверка не умеет: правка ФИО или написания типа меняет основу, и
- * такая строка читается новой. Опечатку в ключевом поле по-прежнему
- * разбирает руководитель на экране переноса.
+ *   6. строка без пары, чья дата и сумма совпадают с работой, которой в
+ *      книге больше нет, — это та же работа с исправленным ФИО или
+ *      написанием типа: обновление, а не новая работа. Прежде такая
+ *      строка читалась новой, и мост раз в час заводил вторую работу с
+ *      договором и оплатой — выручка считалась дважды (решение Р-452).
+ *      Несколько равно подходящих пар — на разбор.
  */
 
 export interface BookRowKey {
@@ -126,6 +129,31 @@ export function matchBook(
       continue;
     }
     for (const index of left) result[index] = { kind: 'UNCLEAR', candidates: works.length };
+  }
+
+  // Шаг 6: исправленное ключевое поле (решение Р-452). Пара — по дню заказа
+  // из основы и сумме, только среди работ, не нашедших строку в книге.
+  const matched = new Set(result.flatMap((row) => (row.kind === 'KNOWN' ? [row.projectId] : [])));
+  const orphans = [...latest.values()].filter(
+    (work) => !matched.has(work.projectId) && signatureBase(work.signature) !== null,
+  );
+  const dayOf = (signature: string | null) => signatureBase(signature)?.split('|')[0] ?? null;
+  const fresh = result.flatMap((row, index) =>
+    row.kind === 'NEW' && signatureBase(rows[index]!.signature) !== null ? [index] : [],
+  );
+  const twinsOf = (index: number) =>
+    orphans.filter(
+      (work) => dayOf(work.signature) === dayOf(rows[index]!.signature) && costOf(work.parsed) === rows[index]!.cost.toString(),
+    );
+  for (const index of fresh) {
+    const twins = twinsOf(index);
+    if (twins.length === 0) continue;
+    // Пара однозначна, только если и у работы нет другой такой строки.
+    const rivals = fresh.filter((other) => twinsOf(other).some((work) => twins.includes(work)));
+    result[index] =
+      twins.length === 1 && rivals.length === 1
+        ? { kind: 'KNOWN', projectId: twins[0]!.projectId, parsed: twins[0]!.parsed }
+        : { kind: 'UNCLEAR', candidates: twins.length };
   }
   return result;
 }

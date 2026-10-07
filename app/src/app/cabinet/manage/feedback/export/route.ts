@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { attachmentDisposition } from '../../../../../lib/cabinet/disposition';
 import { AccessDenied } from '../../../../../lib/cabinet/access';
 import { feedbackWorkbook } from '../../../../../lib/cabinet/feedback';
 import { currentActor, requestIp } from '../../../../../lib/cabinet/session';
@@ -25,7 +26,7 @@ export async function GET(): Promise<NextResponse> {
     return new NextResponse(new Uint8Array(book.xlsx), {
       headers: {
         'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'content-disposition': `attachment; filename="zamechaniya-${day}.xlsx"; filename*=UTF-8''${encodeURIComponent(`${stamp} ${day}.xlsx`)}`,
+        'content-disposition': attachmentDisposition(`${stamp} ${day}.xlsx`, `zamechaniya-${day}.xlsx`),
         'cache-control': 'private, no-store',
       },
     });

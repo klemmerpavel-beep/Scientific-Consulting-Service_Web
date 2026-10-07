@@ -10,7 +10,7 @@ import { can, ensure, type Actor } from './access.ts';
 import { prisma } from '../db.ts';
 import { scopeProjects } from './access.ts';
 import { daysPast, moscowToday, now as today } from './clock.ts';
-import { outstandingOf, overdueTrancheWhere, receivableOf } from './money.ts';
+import { outstandingOf, overdueWithinRest, receivableOf } from './money.ts';
 import { turnLabel, type StageStateKey } from './stage-state.ts';
 
 /**
@@ -453,7 +453,7 @@ export async function moneyBrief(actor: Actor): Promise<{
   const day = moscowToday(today());
   // Отменённая работа денег не ждёт: её неоплаченное — потеря, и ни в «к
   // получению», ни в просроченное оно не входит (решение Р-257).
-  const [received, contracts, overdue] = await Promise.all([
+  const [received, contracts] = await Promise.all([
     prisma.tranche.aggregate({ _sum: { amount: true }, where: { status: 'PAID' } }),
     // «К получению» — договор без полученного и списанного, той же функцией,
     // что экран финансов и отчёт: прежде здесь были только заведённые
@@ -463,11 +463,9 @@ export async function moneyBrief(actor: Actor): Promise<{
       select: {
         totalAmount: true,
         project: { select: { status: true } },
-        tranches: { select: { amount: true, status: true } },
+        tranches: { select: { id: true, amount: true, status: true, plannedDate: true } },
       },
     }),
-    // Условие — общее с «Должниками» (требование РК-10, решение Р-345).
-    prisma.tranche.aggregate({ _sum: { amount: true }, where: overdueTrancheWhere(day) }),
   ]);
   return {
     received: received._sum.amount ?? 0n,
@@ -475,6 +473,16 @@ export async function moneyBrief(actor: Actor): Promise<{
       (acc, c) => acc + receivableOf(c.project.status, c.totalAmount, c.tranches),
       0n,
     ),
-    overdue: overdue._sum.amount ?? 0n,
+    // Просроченное — условием «Должников» (РК-10, Р-345) и в пределах
+    // остатка договора, как в «Поступлениях» (решение Р-447).
+    overdue: contracts.reduce(
+      (acc, c) =>
+        acc +
+        overdueWithinRest({ status: c.project.status, totalAmount: c.totalAmount, tranches: c.tranches }, day).reduce(
+          (sum, part) => sum + part.counted,
+          0n,
+        ),
+      0n,
+    ),
   };
 }

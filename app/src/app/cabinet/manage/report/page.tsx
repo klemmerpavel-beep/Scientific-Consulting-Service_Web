@@ -35,6 +35,7 @@ import {
   contractedBetween,
   lateOpen,
   overview,
+  periodBounds,
   products,
   receivables,
   receivedBetween,
@@ -117,7 +118,8 @@ export default async function ReportScreen({
   const asked = (await searchParams).period;
   const period = PERIODS.find((item) => item.key === asked) ?? PERIODS[0];
   const today = clockNow();
-  const from = new Date(today.getTime() - period.days * 86_400_000);
+  // Период — московскими днями по сегодняшний включительно (решение Р-448).
+  const { from, to } = periodBounds(moscowToday(today), period.days);
 
   const all = await loadRows(actor);
   const rows = all.filter((row) => inPeriod(row, from));
@@ -136,8 +138,8 @@ export default async function ReportScreen({
   // начала работы. Прежде сюда шли договоры работ, начатых или закрытых в
   // периоде, и старая работа, закрытая вчера, давала всю свою сумму «за
   // тридцать дней» (решение Р-257).
-  const signed = contractedBetween(all, from, today);
-  const received = receivedBetween(all, from, today);
+  const signed = contractedBetween(all, from, to);
+  const received = receivedBetween(all, from, to);
   const quiet = signed.total === 0n && received === 0n;
 
   // Помесячный ряд и спрос — по работам, начатым в периоде: ряд `byMonth`

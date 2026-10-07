@@ -40,10 +40,10 @@ import { attentionParts, attentionSources } from '../../../lib/cabinet/attention
 import { CHECK_TITLE } from '../../../lib/cabinet/head-checks';
 import { reactionDays } from '../../../lib/cabinet/practice-settings';
 import { notifyChannelsDown } from '../../../lib/cabinet/outbox';
-import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
+import { daysPast, moscowToday, now as clockNow } from '../../../lib/cabinet/clock';
 import { requireActor } from '../../../lib/cabinet/session';
 import { homeFor } from '../../../lib/cabinet/nav';
-import { byMonth, products, receivedBetween } from '../../../lib/cabinet/analytics/metrics';
+import { byMonth, periodBounds, products, receivedBetween } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
 import { activeWorks, moneyBrief, orderSummary, stageLoad, upcomingDeadlines } from '../../../lib/cabinet/summary';
 import { teamBrief, teamLoad } from '../../../lib/cabinet/team';
@@ -219,12 +219,14 @@ export default async function ManageQueue({
   // время. 90 дней — по дате поступления той же функцией, что отчёт за
   // период (Р-236); за всё время — итог по траншам (Р-201).
   const receivedAll = (await searchParams).received === 'all';
+  // Девяносто московских дней по сегодняшний включительно (решение Р-448).
+  const quarter = periodBounds(moscowToday(clockNow()), 90);
   const received =
     money === null
       ? null
       : receivedAll || !dashboard
       ? money.received
-      : receivedBetween(analyticsRows, new Date(clockNow().getTime() - 90 * 86_400_000), clockNow());
+      : receivedBetween(analyticsRows, quarter.from, quarter.to);
   // Итоги по тому же ряду, что и столбцы: считать их заново неоткуда.
   const yearOrders = months.reduce((acc, month) => acc + month.orders, 0);
   const monthAverage =

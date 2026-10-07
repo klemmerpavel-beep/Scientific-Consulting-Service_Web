@@ -132,6 +132,56 @@ export function receivableOf(
   return expectsPayment(status) ? outstandingOf(total, tranches) : 0n;
 }
 
+/** Открытый транш для разнесения остатка договора. */
+export interface OpenTranche {
+  readonly id: string;
+  readonly amount: bigint;
+  readonly status: string;
+  readonly plannedDate: Date | null;
+}
+
+/**
+ * Разнесение остатка договора по открытым траншам: сначала датированные
+ * по сроку, затем без даты; каждый транш учитывается в пределах того, что
+ * осталось (РК-20, Р-357). Общее для «Поступлений», плитки «Просрочено по
+ * траншам» и «Должников»: прежде последние два брали транши целиком, и при
+ * транше сверх остатка договора главная показывала просрочку, которой
+ * «Поступления» не видели (решение Р-447).
+ */
+export function allocateOpen<T extends OpenTranche>(
+  rest: bigint,
+  tranches: readonly T[],
+): { tranche: T; counted: bigint }[] {
+  const open = tranches
+    .filter((tranche) => tranche.status === 'PLANNED' || tranche.status === 'INVOICED')
+    .sort((a, b) => {
+      if (a.plannedDate === null) return b.plannedDate === null ? a.id.localeCompare(b.id) : 1;
+      if (b.plannedDate === null) return -1;
+      return a.plannedDate.getTime() - b.plannedDate.getTime() || a.id.localeCompare(b.id);
+    });
+  let left = rest;
+  return open.map((tranche) => {
+    const counted = tranche.amount < left ? tranche.amount : left;
+    left -= counted;
+    return { tranche, counted };
+  });
+}
+
+/**
+ * Просроченное по договору в пределах его остатка (решение Р-447): транши
+ * со сроком до `day` и только та их часть, что умещается в остаток. У
+ * работы, которая денег не ждёт, — пусто.
+ */
+export function overdueWithinRest<T extends OpenTranche>(
+  contract: { readonly status: string; readonly totalAmount: bigint; readonly tranches: readonly T[] },
+  day: Date,
+): { tranche: T; counted: bigint }[] {
+  const rest = receivableOf(contract.status, contract.totalAmount, contract.tranches);
+  return allocateOpen(rest, contract.tranches).filter(
+    (row) => row.counted > 0n && row.tranche.plannedDate !== null && row.tranche.plannedDate.getTime() < day.getTime(),
+  );
+}
+
 /**
  * Деньги строкой в перечне «Ведутся сейчас» на главной.
  *
@@ -174,9 +224,18 @@ export function parseAmount(raw: string): bigint {
     );
   }
   const rubles = BigInt(match[1]!.replace(/ /gu, ''));
+  // Предел — миллиард рублей: лишний разряд в форме прежде доходил до базы
+  // и кончался ошибкой выхода за предел целого вместо внятного отказа
+  // (решение Р-449).
+  if (rubles > MAX_AMOUNT_RUBLES) {
+    throw new Error('Сумма слишком велика: не больше 1 000 000 000 ₽ — проверьте число разрядов');
+  }
   const kopecks = BigInt((match[2] ?? '').padEnd(2, '0') || '0');
   return rubles * 100n + kopecks;
 }
+
+/** Наибольшая сумма, которую принимает форма, — в рублях (решение Р-449). */
+export const MAX_AMOUNT_RUBLES = 1_000_000_000n;
 
 /** Сумма в рублях для показа: «240 000 ₽», «1 250,50 ₽». */
 /**
@@ -231,17 +290,21 @@ export function formatAmount(kopecks: bigint | number | null | undefined): strin
 /**
  * Итог «Должников» по клиенту — только у тех, у кого просрочено несколько
  * платежей; крупные долги сверху (улучшение УР-06, решение Р-389).
+ *
+ * Клиент — карточка, а не ФИО: однофамильцы и обезличенные карточки
+ * (у всех одно ФИО-заглушка) прежде сливались в одного должника с общей
+ * суммой (решение Р-445). Без идентификатора — по ФИО, как прежде.
  */
 export function debtsByClient(
-  rows: readonly { readonly client: string; readonly amount: bigint }[],
+  rows: readonly { readonly client: string; readonly clientId?: string; readonly amount: bigint }[],
 ): { client: string; count: number; total: bigint }[] {
-  const grouped = new Map<string, { count: number; total: bigint }>();
+  const grouped = new Map<string, { client: string; count: number; total: bigint }>();
   for (const row of rows) {
-    const current = grouped.get(row.client) ?? { count: 0, total: 0n };
-    grouped.set(row.client, { count: current.count + 1, total: current.total + row.amount });
+    const key = row.clientId ?? `name:${row.client}`;
+    const current = grouped.get(key) ?? { client: row.client, count: 0, total: 0n };
+    grouped.set(key, { client: row.client, count: current.count + 1, total: current.total + row.amount });
   }
-  return [...grouped.entries()]
-    .filter(([, value]) => value.count > 1)
-    .map(([client, value]) => ({ client, ...value }))
+  return [...grouped.values()]
+    .filter((value) => value.count > 1)
     .sort((a, b) => (b.total > a.total ? 1 : b.total < a.total ? -1 : a.client.localeCompare(b.client)));
 }

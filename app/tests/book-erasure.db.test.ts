@@ -578,6 +578,40 @@ describe('книга заказов и обезличивание', { skip: !ena
     assert.equal(open.total, 1);
   });
 
+  it('чистка очереди берёт устаревшие и вошедшие в сводку строки старше 90 дней (Р-440)', async () => {
+    const script = readFileSync(path.join(import.meta.dirname, '..', '..', 'deploy', 'retention.sh'), 'utf8');
+    const line = script.split('\n').find((text) => text.startsWith('SQL_OUTBOX="'))!;
+    const where = line.slice(line.indexOf(' WHERE ') + ' WHERE '.length, -2).replace(/\\"/gu, '"');
+    const old = new Date(Date.now() - 100 * 86_400_000);
+    const fresh = new Date(Date.now() - 10 * 86_400_000);
+    const rows = [
+      ['EXPIRED', old, true],
+      ['MERGED', old, true],
+      ['EXPIRED', fresh, false],
+      ['MERGED', fresh, false],
+      ['PENDING', old, false],
+    ] as const;
+    const made = [];
+    for (const [i, [state, at, due]] of rows.entries()) {
+      const row = await prisma.notificationOutbox.create({
+        data: {
+          userId: ids.head!, channel: 'EMAIL', eventKind: 'CURATOR_TURN', subject: 'Тема', body: 'Тело', state,
+          createdAt: at, scheduledAt: at, dedupKey: `rt-${stamp}-${i}`,
+        },
+      });
+      made.push({ id: row.id, due });
+    }
+    try {
+      const picked = await prisma.$queryRawUnsafe<{ id: string }[]>(
+        `SELECT "id" FROM "NotificationOutbox" WHERE ${where} AND "dedupKey" LIKE 'rt-${stamp}-%'`,
+      );
+      const ids = new Set(picked.map((row) => row.id));
+      for (const row of made) assert.equal(ids.has(row.id), row.due, `строка ${row.id}`);
+    } finally {
+      await prisma.notificationOutbox.deleteMany({ where: { dedupKey: { startsWith: `rt-${stamp}-` } } });
+    }
+  });
+
   it('запросы чистки в retention.sh исполнимы на этой схеме', async () => {
     const script = readFileSync(path.join(import.meta.dirname, '..', '..', 'deploy', 'retention.sh'), 'utf8');
     for (const name of ['SQL_OUTBOX', 'SQL_OUTBOX_COUNT', 'SQL_BATCHES', 'SQL_BATCHES_COUNT']) {

@@ -26,6 +26,30 @@ if [ -z "$FILE" ] || [ ! -f "$FILE" ]; then
   exit 1
 fi
 
+# Целостность файла — до восстановления (решение Р-443). В /bin/sh нет
+# pipefail: оборванный или испорченный после снятия архив мог распаковаться
+# до границы двух команд, psql завершался успешно, и проверка подтверждала
+# копию без части таблиц. Архив проверяется целиком, а конец дампа — по
+# отметке pg_dump о завершении, как при снятии копии (backup.sh).
+if ! gzip -t "$FILE" 2>/dev/null; then
+  echo "$(date -Is) ОШИБКА: архив копии повреждён: $(basename "$FILE")" >&2
+  exit 1
+fi
+if ! gzip -dc "$FILE" | tail -n 5 | grep -q 'PostgreSQL database dump complete'; then
+  echo "$(date -Is) ОШИБКА: дамп в копии оборван — нет отметки о завершении: $(basename "$FILE")" >&2
+  exit 1
+fi
+
+# Архивы хранилища файлов читаются целиком: последний полный и последний
+# разностный. Прежде их не проверял никто (решение Р-443).
+for kind in full diff; do
+  ARCHIVE=$(ls -1 "$DIR"/backups/storage_*_"$kind".tar.gz 2>/dev/null | sort | tail -n 1 || true)
+  if [ -n "$ARCHIVE" ] && ! tar -tzf "$ARCHIVE" > /dev/null 2>&1; then
+    echo "$(date -Is) ОШИБКА: архив хранилища не читается: $(basename "$ARCHIVE")" >&2
+    exit 1
+  fi
+done
+
 CHECK_DB="restorecheck_$(date +%Y%m%d_%H%M%S)"
 
 # Запросы уходят в psql через ввод, а не параметром -c: через -c кавычки
@@ -86,8 +110,9 @@ fi
 LEADS=$(run_check "SELECT count(*) FROM \"Lead\";" | tr -d '[:space:]')
 MIGRATIONS=$(run_check "SELECT count(*) FROM \"_prisma_migrations\" WHERE finished_at IS NOT NULL;" | tr -d '[:space:]')
 LIVE_LEADS=$(run_main "SELECT count(*) FROM \"Lead\";" | tr -d '[:space:]')
+LIVE_TABLES=$(run_main "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" | tr -d '[:space:]')
 
-for value in "$TABLES" "$LEADS" "$MIGRATIONS" "$LIVE_LEADS"; do
+for value in "$TABLES" "$LEADS" "$MIGRATIONS" "$LIVE_LEADS" "$LIVE_TABLES"; do
   case "$value" in
     ''|*[!0-9]*)
       echo "$(date -Is) ОШИБКА: база не ответила числом, копия не подтверждена" >&2
@@ -106,6 +131,12 @@ fi
 # на момент снятия, означало бы оборванный дамп.
 if [ "$LEADS" -gt "$LIVE_LEADS" ]; then
   echo "$(date -Is) ВНИМАНИЕ: в копии заявок больше, чем в базе ($LEADS против $LIVE_LEADS) — проверьте, не удалялись ли записи" >&2
+fi
+
+# Таблиц в копии меньше, чем в базе, бывает законно — копия перед
+# миграциями выката, — поэтому это предупреждение, а не отказ (Р-443).
+if [ "$TABLES" -lt "$LIVE_TABLES" ]; then
+  echo "$(date -Is) ВНИМАНИЕ: в копии таблиц меньше, чем в базе ($TABLES против $LIVE_TABLES) — копия снята до миграций или неполна" >&2
 fi
 
 echo "$(date -Is) копия восстановлена: $(basename "$FILE"), таблиц $TABLES, заявок $LEADS (в базе сейчас $LIVE_LEADS), миграций $MIGRATIONS"

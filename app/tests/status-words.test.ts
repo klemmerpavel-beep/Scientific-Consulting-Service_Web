@@ -40,7 +40,9 @@ describe('корректировка суммы — и руководителю 
       'utf8',
     );
     assert.doesNotMatch(payments, /mayEdit \|\| money\.adjustment === 0n/u);
-    assert.match(payments, /списано и сторнировано по траншам ниже/u);
+    // Сторнированное снова к оплате и в корректировку не входит (Р-450).
+    assert.match(payments, /'списано по траншам ниже'/u);
+    assert.doesNotMatch(payments, /сторнировано по траншам ниже/u);
   });
 });
 

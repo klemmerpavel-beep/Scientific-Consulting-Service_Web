@@ -920,18 +920,29 @@ export async function applyBatch(
           // остаток, заведённый прошлым переносом, пересчитывается под новую
           // сумму. Прежде разница оплаты шла в итог загрузки, но в базу не
           // попадала (решение Р-233).
-          await tx.project.update({
-            where: { id: projectId },
-            data: {
-              status,
-              dueOn: deadline,
-              closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
-              // Дата закрытия книги — плановый срок (РК-23, Р-355).
-              closedOnPlanned: status === 'COMPLETED',
-            },
-          });
+          // Пишется только то, что в книге поменялось с прошлого переноса:
+          // правка одной оплаты прежде переписывала и состояние со сроком, и
+          // работа, завершённая или отменённая в кабинете, возвращалась «в
+          // работу» (решение Р-451).
+          const prior = (match.kind === 'KNOWN' ? match.parsed : null) as { status?: unknown; deadline?: unknown } | null;
+          const statusChanged = prior === null || prior.status !== parsed.status;
+          const deadlineChanged = prior === null || (prior.deadline ?? null) !== (parsed.deadline ?? null);
+          const changes = {
+            ...(statusChanged
+              ? {
+                  status,
+                  closedOn: status === 'COMPLETED' ? (deadline ?? orderDate) : null,
+                  // Дата закрытия книги — плановый срок (РК-23, Р-355).
+                  closedOnPlanned: status === 'COMPLETED',
+                }
+              : {}),
+            ...(deadlineChanged ? { dueOn: deadline } : {}),
+          };
+          if (Object.keys(changes).length > 0) {
+            await tx.project.update({ where: { id: projectId }, data: changes });
+          }
           // Первая дата закрытия — один раз (УМ-13, Р-392).
-          if (status === 'COMPLETED') {
+          if (statusChanged && status === 'COMPLETED') {
             await tx.project.updateMany({
               where: { id: projectId, firstClosedOn: null },
               data: { firstClosedOn: deadline ?? orderDate },
@@ -957,8 +968,11 @@ export async function applyBatch(
             // доплата за дополнительную услугу (Р-273).
             const total = rowPaid > rowCost ? rowPaid : rowCost;
             await tx.contract.update({ where: { id: contract.id }, data: { totalAmount: total } });
+            // Сторнированное в кабинете книга ещё помнит оплаченным: оно
+            // считается учтённым, иначе правка любого поля строки заводила
+            // бы ту же оплату заново и отменяла сторно (решение Р-435).
             const paidSoFar = contract.tranches
-              .filter((tranche) => tranche.status === 'PAID')
+              .filter((tranche) => tranche.status === 'PAID' || tranche.status === 'REVERSED')
               .reduce((sum, tranche) => sum + tranche.amount, 0n);
             let received = 0n;
             if (rowPaid > paidSoFar) {
@@ -975,8 +989,10 @@ export async function applyBatch(
             const rest = contract.tranches.find(
               (tranche) => tranche.title === REST_TITLE && tranche.status === 'PLANNED',
             );
+            // Сторнированное снова к получению (Р-257) — в разнесённое по
+            // траншам оно не входит и ложится в остаток (решение Р-435).
             const others = contract.tranches
-              .filter((tranche) => tranche.id !== rest?.id)
+              .filter((tranche) => tranche.id !== rest?.id && tranche.status !== 'REVERSED')
               .reduce((sum, tranche) => sum + tranche.amount, 0n);
             const left = total - others - received;
             if (rest !== undefined) {
@@ -1034,14 +1050,22 @@ export async function applyBatch(
         // и рассылки им не уходят.
         let clientId = clients.get(parsed.normalizedName);
         if (clientId === undefined) {
-          const existing = await tx.clientProfile.findFirst({
-            where: {
-              normalizedName: parsed.normalizedName,
-              erasedAt: null,
-              mergedIntoId: null,
-            },
-            select: { id: true },
+          // Сведённая карточка ведёт к основной: сведение соединяет разные
+          // написания, и строка с написанием сведённой прежде заводила
+          // новую карточку-дубль (решение Р-453). Живая карточка с тем же
+          // написанием — впереди сведённой.
+          let existing = await tx.clientProfile.findFirst({
+            where: { normalizedName: parsed.normalizedName, erasedAt: null },
+            orderBy: [{ mergedIntoId: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }],
+            select: { id: true, mergedIntoId: true, erasedAt: true },
           });
+          for (let hop = 0; existing !== null && existing.mergedIntoId !== null && hop < 10; hop += 1) {
+            existing = await tx.clientProfile.findUnique({
+              where: { id: existing.mergedIntoId },
+              select: { id: true, mergedIntoId: true, erasedAt: true },
+            });
+          }
+          if (existing !== null && (existing.erasedAt !== null || existing.mergedIntoId !== null)) existing = null;
           if (existing === null) {
             const client = await tx.clientProfile.create({
               data: { fullName: raw.customer, normalizedName: parsed.normalizedName },

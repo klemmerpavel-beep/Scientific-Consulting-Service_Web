@@ -83,8 +83,14 @@ export async function bookRowOf(actor: Actor, projectId: string): Promise<BookRo
   };
 }
 
-/** Доля оплаты в процентах — столбец, который книга считает формулой. */
+/**
+ * Доля оплаты в процентах — столбец, который книга считает формулой.
+ * Пока оплачено меньше стоимости, доля не больше 99 %: 9 995 из 10 000
+ * округлялись до «100 %» при неоплаченном остатке — то, что правило
+ * собираемости запрещает (Р-257; решение Р-444).
+ */
 export function paidShare(row: Pick<BookRow, 'cost' | 'paid'>): string | null {
   if (row.cost <= 0n) return null;
-  return `${Math.round(Number((row.paid * 1000n) / row.cost) / 10)} %`;
+  const rounded = Math.round(Number((row.paid * 1000n) / row.cost) / 10);
+  return `${row.paid < row.cost ? Math.min(rounded, 99) : rounded} %`;
 }

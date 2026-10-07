@@ -20,10 +20,12 @@ export function paymentsLine(code: string | null): string {
 }
 import {
   STATUS_LABEL,
+  allocateOpen,
   canChangeTrancheStatus,
   expectsPayment,
   isTrancheStatus,
   overdueTrancheWhere,
+  overdueWithinRest,
   receivableOf,
   type TrancheStatus,
 } from './money.ts';
@@ -550,15 +552,31 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
     .filter((p) => p.status === 'PAID')
     .reduce((acc, p) => acc + p.amount, 0n);
 
-  // Маржа нигде не хранится: договор без списанного и без начислений.
-  // Списанное — деньги, которых уже не ждут; прежде маржа их учитывала, и
-  // работа в убытке показывалась прибыльной (решение Р-244).
+  // Маржа нигде не хранится: полученное и ожидаемое без начислений.
+  // Списанное — деньги, которых уже не ждут (решение Р-244); у отменённой
+  // работы не ждут и остатка, а переплата — тоже доход (решение Р-434).
   return {
     ...base,
     payoutsAccrued: accrued,
     payoutsPaid: paid,
-    margin: contract.totalAmount - base.writtenOff - accrued,
+    margin: marginOf(received, awaiting, accrued),
   };
+}
+
+/**
+ * Маржа работы: полученное и ещё ожидаемое по договору за вычетом
+ * начислений куратору (решение Р-434).
+ *
+ * Прежде маржа считалась от суммы договора без списанного (Р-244). У
+ * отменённой работы так выходил доход в неполученный остаток — тот, что
+ * на том же экране «к получению» ноль, а в аналитике потеря: договор на
+ * 200 000, получено 50 000, начислено 30 000 давали маржу 170 000 вместо
+ * 20 000. Переплата сверх договора, наоборот, в маржу не входила. У
+ * обычной работы «полученное + ожидаемое» и есть договор без списанного,
+ * и число не меняется.
+ */
+export function marginOf(received: bigint, awaiting: bigint, accrued: bigint): bigint {
+  return received + awaiting - accrued;
 }
 
 /** Сводка по практике для руководителя. */
@@ -619,8 +637,8 @@ export async function financeSummary(actor: Actor) {
       awaiting,
       lost,
       accrued,
-      // Договор без списанного и без начислений (решение Р-244).
-      margin: contract.totalAmount - lost - accrued,
+      // Полученное и ожидаемое без начислений (решения Р-244, Р-434).
+      margin: marginOf(received, awaiting, accrued),
     };
   });
 
@@ -891,14 +909,18 @@ export interface DebtorRow {
   /** Состояние работы: идущую можно приостановить до оплаты (п. 8.5 оферты). */
   readonly workStatus: string;
   readonly client: string;
+  /** Карточка клиента: итог по клиенту — по ней, а не по ФИО (Р-445). */
+  readonly clientId: string;
   readonly manager: string;
 }
 
 /**
  * «Деньги → Должники» (требование РК-10, решение Р-345): просроченные
  * транши — тем же условием, что плитка «Просрочено по траншам»
- * (`overdueTrancheWhere`); сумма перечня равна плитке по построению.
- * Давние сверху. Деньги практики — только руководителю (Р-149).
+ * (`overdueTrancheWhere`), и тем же разнесением остатка договора
+ * (`overdueWithinRest`, Р-447); сумма перечня равна плитке и строке
+ * «Просрочено» «Поступлений» по построению. Давние сверху. Деньги
+ * практики — только руководителю (Р-149).
  */
 export async function overdueTranches(actor: Actor, at: Date = clockNow()): Promise<DebtorRow[]> {
   ensure(actor, 'MARGIN_VIEW');
@@ -914,12 +936,15 @@ export async function overdueTranches(actor: Actor, at: Date = clockNow()): Prom
       status: true,
       contract: {
         select: {
+          id: true,
+          totalAmount: true,
+          tranches: { select: { id: true, amount: true, status: true, plannedDate: true } },
           project: {
             select: {
               code: true,
               title: true,
               status: true,
-              client: { select: { fullName: true } },
+              client: { select: { id: true, fullName: true } },
               manager: { select: { fullName: true } },
             },
           },
@@ -927,10 +952,22 @@ export async function overdueTranches(actor: Actor, at: Date = clockNow()): Prom
       },
     },
   });
-  return rows.map((row) => ({
+  // Сумма долга — в пределах остатка договора, тем же разнесением, что
+  // «Поступления» и плитка главной; транш целиком сверх остатка долгом не
+  // считается (решение Р-447).
+  const counted = new Map<string, bigint>();
+  for (const row of rows) {
+    const contract = row.contract;
+    if (counted.has(`contract:${contract.id}`)) continue;
+    counted.set(`contract:${contract.id}`, 0n);
+    for (const part of overdueWithinRest({ status: contract.project.status, totalAmount: contract.totalAmount, tranches: contract.tranches }, day)) {
+      counted.set(part.tranche.id, part.counted);
+    }
+  }
+  return rows.filter((row) => (counted.get(row.id) ?? 0n) > 0n).map((row) => ({
     trancheId: row.id,
     title: row.title,
-    amount: row.amount,
+    amount: counted.get(row.id)!,
     plannedDate: row.plannedDate!,
     late: daysPast(row.plannedDate, at) ?? 0,
     status: row.status as TrancheStatus,
@@ -938,6 +975,7 @@ export async function overdueTranches(actor: Actor, at: Date = clockNow()): Prom
     work: row.contract.project.title,
     workStatus: row.contract.project.status,
     client: row.contract.project.client.fullName,
+    clientId: row.contract.project.client.id,
     manager: row.contract.project.manager.fullName,
   }));
 }
@@ -1110,17 +1148,12 @@ export async function receiptsPlan(actor: Actor, at: Date = clockNow()): Promise
   for (const contract of contracts) {
     let rest = receivableOf(contract.project.status, contract.totalAmount, contract.tranches);
     total += rest;
+    // Отменённая работа денег не ждёт: её открытые транши — не «сверх
+    // остатка договора», а просто не ждутся (решение Р-446).
+    if (!expectsPayment(contract.project.status)) continue;
     // Сначала датированные по сроку, затем без даты: в пределах остатка
-    // договора учитываются ранние обязательства.
-    const open = contract.tranches
-      .filter((tranche) => tranche.status === 'PLANNED' || tranche.status === 'INVOICED')
-      .sort((a, b) => {
-        if (a.plannedDate === null) return b.plannedDate === null ? a.id.localeCompare(b.id) : 1;
-        if (b.plannedDate === null) return -1;
-        return a.plannedDate.getTime() - b.plannedDate.getTime() || a.id.localeCompare(b.id);
-      });
-    for (const tranche of open) {
-      const counted = tranche.amount < rest ? tranche.amount : rest;
+    // договора учитываются ранние обязательства (общее разнесение, Р-447).
+    for (const { tranche, counted } of allocateOpen(rest, contract.tranches)) {
       rest -= counted;
       if (counted < tranche.amount) {
         excess.amount += tranche.amount - counted;
