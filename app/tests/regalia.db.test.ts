@@ -155,4 +155,18 @@ describe('регалии и роль эксперта', { skip: !enabled }, asyn
     const staff = await projectByCode(curator(), ids.code!);
     assert.equal(staff?.expert?.fullName, 'Григорьев Антон Эдуардович');
   });
+
+  it('данные экрана работы — без цены услуги, ставки куратора и заметок о клиенте (Р-418)', async () => {
+    await prisma.serviceType.update({ where: { id: ids.type }, data: { basePrice: 7_654_321n } });
+    await prisma.expertProfile.update({ where: { userId: ids.expert }, data: { defaultPayout: 1_234_567n } });
+    await prisma.clientProfile.update({ where: { id: ids.client }, data: { notes: 'Заметка практики о клиенте' } });
+    for (const actor of [client(), curator(), head()]) {
+      const seen = await projectByCode(actor, ids.code!);
+      assert.ok(seen !== null);
+      const text = JSON.stringify(seen, (_key, value) => (typeof value === 'bigint' ? String(value) : value));
+      for (const secret of ['7654321', '1234567', 'Заметка практики', 'basePrice', 'defaultPayout', '"notes"']) {
+        assert.ok(!text.includes(secret), `${actor.role}: в данных экрана работы — ${secret}`);
+      }
+    }
+  });
 });

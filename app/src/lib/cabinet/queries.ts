@@ -172,8 +172,22 @@ export async function projectByCode(actor: Actor, code: string) {
   const project = await prisma.project.findFirst({
     where: { code, ...scope },
     include: {
-      serviceType: true,
-      client: true,
+      // Только то, что выводят экраны работы: базовая цена услуги, заметки
+      // практики о клиенте и ставка куратора — внутренний учёт, и в данных
+      // экрана клиента и куратора им не место даже невыведенными (Р-418).
+      serviceType: { select: { id: true, code: true, name: true } },
+      client: {
+        select: {
+          id: true,
+          userId: true,
+          fullName: true,
+          phone: true,
+          email: true,
+          university: true,
+          speciality: true,
+          erasedAt: true,
+        },
+      },
       // Регалии менеджера и эксперта — для «О работе» (Т-11, Р-297). Роль
       // нужна, чтобы снять имя менеджера с данных клиента (ОЭ-3б).
       manager: {
@@ -188,7 +202,12 @@ export async function projectByCode(actor: Actor, code: string) {
         },
       },
       expert: {
-        select: { id: true, fullName: true, role: true, expertProfile: true },
+        select: {
+          id: true,
+          fullName: true,
+          role: true,
+          expertProfile: { select: { degree: true, specialization: true, specialtyCode: true, ndaSignedAt: true } },
+        },
       },
       stages: { orderBy: { position: 'asc' } },
       // История работы показывается целиком, а не последней дюжиной:
