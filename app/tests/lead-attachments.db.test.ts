@@ -165,6 +165,25 @@ describe('вложения заявки', { skip: !enabled }, async () => {
     assert.ok(!saved.attachments[0]!.storageKey.includes('черновик'));
   });
 
+  it('поле длиннее предела не принимается, и заявка не заводится (Р-426)', async () => {
+    const before = await prisma.lead.count({ where: { contact: { startsWith: 'lead-client-' } } });
+    const draft = { topic: 'Тема', need: null, deadline: null, message: null, ip: '127.0.0.1', consent: true, terms: true };
+    await assert.rejects(
+      queries.createCabinetRequest(clientActor(), { ...draft, topic: 'т'.repeat(501) }, 'v1'),
+      /«Тема работы» — не длиннее 500 знаков/u,
+    );
+    await assert.rejects(
+      queries.createCabinetRequest(clientActor(), { ...draft, message: 'м'.repeat(5001) }, 'v1'),
+      /«Что требуется» — не длиннее 5000 знаков/u,
+    );
+    await assert.rejects(
+      queries.createCabinetRequest(clientActor(), { ...draft, phone: '9'.repeat(61) }, 'v1'),
+      /«Контактный телефон» — не длиннее 60 знаков/u,
+    );
+    const after = await prisma.lead.count({ where: { contact: { startsWith: 'lead-client-' } } });
+    assert.equal(after, before, 'заявка с длинным полем заведена');
+  });
+
   it('исполняемый файл не принимается, и заявка не заводится (Т-22, Р-296)', async () => {
     const before = await prisma.lead.count({ where: { contact: { startsWith: 'lead-client-' } } });
     await assert.rejects(

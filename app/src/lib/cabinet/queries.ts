@@ -1137,6 +1137,19 @@ export const REQUEST_FILE_MAX_BYTES = 25 * 1024 * 1024;
  * Контакт берётся из учётной записи, а не с формы: человек уже вошёл, и
  * спрашивать его заново незачем — заодно подменить его нельзя.
  */
+/** Пределы полей заявки из кабинета: поле, подпись на форме, знаков (Р-426). */
+const REQUEST_LIMITS: readonly (readonly [keyof RequestDraft, string, number])[] = [
+  ['topic', 'Тема работы', 500],
+  ['need', 'Тип сопровождения', 300],
+  ['deadline', 'Желаемый срок', 120],
+  ['message', 'Что требуется', 5000],
+  ['applicantName', 'Ваши ФИО', 200],
+  ['supervisorName', 'ФИО научного руководителя', 200],
+  ['organization', 'Организация или вуз', 300],
+  ['speciality', 'Направление подготовки', 200],
+  ['phone', 'Контактный телефон', 60],
+];
+
 export async function createCabinetRequest(
   actor: Actor,
   draft: RequestDraft,
@@ -1144,6 +1157,15 @@ export async function createCabinetRequest(
 ): Promise<{ id: string; authorName: string; filesLost: number }> {
   ensure(actor, 'REQUEST_CREATE');
   if (draft.topic.length === 0) throw new Error('Тема работы не указана');
+  // Пределы — как у правки заявки сотрудником (`lead-work.ts`): прежде
+  // поля шли в базу любой длины, и тема в мегабайт уходила письмом каждому
+  // менеджеру и руководителю (решение Р-426).
+  for (const [field, label, max] of REQUEST_LIMITS) {
+    const value = draft[field];
+    if (typeof value === 'string' && value.length > max) {
+      throw new Error(`Поле «${label}» — не длиннее ${max} знаков`);
+    }
+  }
 
   // Размер проверяется до заявки: прежде проверка стояла в цикле после
   // неё, и слишком большой второй файл оставлял заявку с первым, без
