@@ -395,6 +395,12 @@ describe('документы, материалы и шаблоны', { skip: !en
       await assert.rejects(readVersion(expert(), invoice.id), AccessDenied, 'эксперт скачал счёт');
       assert.equal(await noticesFor(invoice.id, expertId), 0, 'эксперту ушло письмо о счёте');
       assert.equal(await noticesFor(invoice.id, ids.clientUser), 1, 'клиенту о счёте не сообщили');
+      // Кнопка письма ведёт на «Оплаты и документы»: на «Материалах работы»
+      // счёта нет (Р-459).
+      const letter = await prisma.notificationOutbox.findFirstOrThrow({
+        where: { dedupKey: { startsWith: `version:${invoice.id}:uploaded:${ids.clientUser}:` } },
+      });
+      assert.match(letter.path ?? '', /^\/cabinet\/projects\/[^/]+\/payments$/u);
     });
 
     it('УК-01: документ списанного транша клиенту не выдаётся и по прямой ссылке (Р-356)', async () => {

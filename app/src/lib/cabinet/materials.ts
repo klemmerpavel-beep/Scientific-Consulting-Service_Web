@@ -362,7 +362,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
           `Загружена версия v${version.number}. Открыть можно в личном кабинете.` +
           (moderated ? '\nВерсия куратора ждёт публикации: клиент увидит её после вашего решения.' : ''),
         dedupKey: `version:${version.id}:uploaded:${userId}`,
-        path: materialPath(project.code, material.stageId),
+        path: materialPath(project.code, material.stageId, material.kind),
       });
     }
   }
@@ -1076,7 +1076,13 @@ export async function pendingVersions(actor: Actor): Promise<PendingComment[]> {
  * Экран материала для кнопки письма: этап, если материал к этапу, иначе
  * «Материалы работы» (требование Т-06, решение Р-309).
  */
-function materialPath(code: string, stageId: string | null): string {
+/**
+ * Экран материала для кнопки письма (Т-06, Р-309). Документ оплаты —
+ * договор, счёт, акт — лежит на «Оплатах и документах», а не на
+ * «Материалах работы» (решение Р-459).
+ */
+function materialPath(code: string, stageId: string | null, kind: string = 'STAGE_MATERIAL'): string {
+  if (kind !== 'STAGE_MATERIAL') return `/cabinet/projects/${code}/payments`;
   return stageId === null ? `/cabinet/projects/${code}/materials` : `/cabinet/stages/${stageId}`;
 }
 
