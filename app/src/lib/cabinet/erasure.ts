@@ -71,6 +71,8 @@ export class ActiveWorkError extends Error {
 
 /** Маркер вместо затёртого значения: пустая строка читалась бы как потеря. */
 const ERASED = '[удалено по требованию субъекта]';
+/** Почему затёртое письмо не ушло (решение Р-461). */
+export const ERASED_NOTE = 'обезличено до отправки';
 
 export interface ErasureReport {
   readonly requestId: string;
@@ -539,8 +541,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
         merged.map((row) => `curator-digest:${moscowToday(row.scheduledAt).toISOString().slice(0, 10)}:${row.userId}`),
       ),
     ];
-    const notifications = await tx.notificationOutbox.updateMany({
-      where: {
+    const touched = {
         OR: [
           ...requests.map((row) => ({ dedupKey: { startsWith: `erasure-request:${row.id}:` } })),
           ...digestKeys.map((key) => ({ eventKind: 'CURATOR_DIGEST', dedupKey: { startsWith: key } })),
@@ -554,10 +555,19 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
           // помнят только в ключе от повторов (решение Р-234).
           ...leadIds.map((leadId) => ({ dedupKey: { startsWith: `lead:${leadId}:` } })),
         ],
-      },
+      };
+    const notifications = await tx.notificationOutbox.updateMany({
+      where: touched,
       // Текст ошибки доставки бывает с адресом получателя: почтовый сервер
       // повторяет его в отказе (решение Р-252).
       data: { subject: ERASED, body: ERASED, lastError: null },
+    });
+    // Неотправленное после затирания не уходит: письмо с темой и текстом
+    // «[удалено…]» и строка сводки «— [удалено…]» адресату ничего не
+    // сообщают (решение Р-461).
+    await tx.notificationOutbox.updateMany({
+      where: { AND: [touched, { state: 'PENDING' }] },
+      data: { state: 'EXPIRED', lastError: ERASED_NOTE, scheduledAt: new Date() },
     });
 
     // Заявки: персональные поля затираются, отметка согласия и её
