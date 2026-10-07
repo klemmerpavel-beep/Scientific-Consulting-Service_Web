@@ -44,7 +44,14 @@ export async function setLeadStatus(actor: Actor, leadId: string, status: string
   }
   if (lead.status === status) return;
   // Давность состояния — для дела «Заявки в разборе» (М-06, Р-304).
-  await prisma.lead.update({ where: { id: lead.id }, data: { status, statusChangedAt: new Date() } });
+  // Смена захватывает заявку в прочитанном состоянии и без работы: плашка,
+  // нажатая во время одобрения или отказа, не возвращает отклонённую заявку
+  // в разбор и не перекрашивает ставшую работой (решение Р-465).
+  const { count } = await prisma.lead.updateMany({
+    where: { id: lead.id, projectId: null, status: lead.status },
+    data: { status, statusChangedAt: new Date() },
+  });
+  if (count === 0) throw new LeadWorkError('Состояние заявки уже изменилось: обновите страницу');
   await record(actor, {
     action: 'LEAD_STATUS_CHANGED',
     objectType: 'Lead',
