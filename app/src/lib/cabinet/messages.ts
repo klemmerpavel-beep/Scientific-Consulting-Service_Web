@@ -94,8 +94,26 @@ export async function sendMessage(actor: Actor, projectId: string, body: string)
  * ставится: человек и так знает, что его ждут, а десять писем на десять
  * реплик приучили бы его их не читать.
  */
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/**
+ * Кому из практики сигнал по работе: менеджеру работы, пока он действующий
+ * менеджер или руководитель, иначе — действующим руководителям. У
+ * завершённой и отменённой работы менеджер прежний: его могли
+ * приостановить или перевести в другую роль, а переписка по работе
+ * открыта (решение Р-462).
+ */
+async function practiceSide(db: Tx, managerId: string): Promise<string[]> {
+  const manager = await db.user.findUnique({ where: { id: managerId }, select: { role: true, status: true } });
+  if (manager !== null && manager.status === 'ACTIVE' && (manager.role === 'MANAGER' || manager.role === 'HEAD')) {
+    return [managerId];
+  }
+  const heads = await db.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
+  return heads.map((head) => head.id);
+}
+
 async function signalMessage(
-  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  tx: Tx,
   actor: Actor,
   ref: { id: string; managerId: string; clientId: string },
   messageId: string,
@@ -117,19 +135,25 @@ async function signalMessage(
     select: { code: true, client: { select: { userId: true } } },
   });
   if (project === null) return;
-  const userId = fromClient ? ref.managerId : project.client.userId;
-  if (userId === null || userId === actor.id) return;
+  const recipients = fromClient
+    ? await practiceSide(tx, ref.managerId)
+    : project.client.userId === null
+      ? []
+      : [project.client.userId];
 
-  await enqueue(tx, {
-    userId,
-    projectId: ref.id,
-    eventKind: 'MESSAGE_RECEIVED',
-    subject: `Новое сообщение по работе ${project.code}`,
-    body: 'В переписке по работе новое сообщение. Прочитать и ответить можно в кабинете.',
-    dedupKey: `message:${messageId}:${userId}`,
-    // Кнопка письма — в переписку работы (Т-06, Р-309).
-    path: `/cabinet/projects/${project.code}/messages`,
-  });
+  for (const userId of recipients) {
+    if (userId === actor.id) continue;
+    await enqueue(tx, {
+      userId,
+      projectId: ref.id,
+      eventKind: 'MESSAGE_RECEIVED',
+      subject: `Новое сообщение по работе ${project.code}`,
+      body: 'В переписке по работе новое сообщение. Прочитать и ответить можно в кабинете.',
+      dedupKey: `message:${messageId}:${userId}`,
+      // Кнопка письма — в переписку работы (Т-06, Р-309).
+      path: `/cabinet/projects/${project.code}/messages`,
+    });
+  }
 }
 
 /**
@@ -450,7 +474,9 @@ export async function sendInternal(actor: Actor, projectId: string, body: string
     select: { id: true },
   });
   const recipients =
-    actor.id === ref.managerId ? heads.map((head) => head.id) : ref.managerId === actor.id ? [] : [ref.managerId];
+    actor.id === ref.managerId
+      ? heads.map((head) => head.id)
+      : (await practiceSide(prisma, ref.managerId)).filter((id) => id !== actor.id);
   await signalThread(recipients, 'WORK_INTERNAL', projectId, message.id, {
     eventKind: 'INTERNAL_MESSAGE',
     subject: `Внутренняя переписка по работе ${project.code}`,
