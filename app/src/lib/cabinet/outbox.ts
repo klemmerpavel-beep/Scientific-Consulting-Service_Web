@@ -11,6 +11,7 @@ import { mailConfigured, sendMailTo } from './mail.ts';
 import { escapeHtml } from './token.ts';
 import { formatDay } from './approval-text.ts';
 import { DAILY_MAIL_HOUR, moscowToday, now as clockNow } from './clock.ts';
+import { LEASE_MS, leaseRunningOut } from './outbox-lease.ts';
 
 /**
  * Очередь исходящих уведомлений.
@@ -504,7 +505,6 @@ export function renderLetter(subject: string, body: string, footer: string, open
 }
 
 /** Срок, на который прогон рассылки захватывает строку очереди. */
-const LEASE_MS = 10 * 60 * 1000;
 
 /**
  * Разослать накопившееся. Берём небольшими порциями: маршрут вызывается раз
@@ -559,7 +559,15 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
   // попытки: пропавшая связь — не повод расходовать их лимит (решение Р-255).
   const down = new Set<string>();
 
-  for (const item of pending) {
+  for (const [index, item] of pending.entries()) {
+    if (leaseRunningOut(now.getTime(), Date.now())) {
+      // Остаток порции — обратно в очередь, пока аренда ещё наша.
+      await prisma.notificationOutbox.updateMany({
+        where: { id: { in: pending.slice(index).map((row) => row.id) }, state: 'PENDING', scheduledAt: leaseUntil },
+        data: { scheduledAt: new Date() },
+      });
+      break;
+    }
     if (isExpired(item, now)) {
       await prisma.notificationOutbox.update({
         where: { id: item.id },
