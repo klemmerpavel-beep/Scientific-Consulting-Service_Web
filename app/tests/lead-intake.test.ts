@@ -72,6 +72,14 @@ describe('приём заявки', () => {
     assert.equal(clean.company_website, '');
   });
 
+  it('запрос без времени заполнения — машинный: формы сайта шлют его всегда (Р-428)', () => {
+    assert.equal(looksAutomated(leadSchema.parse(request())), 'нет времени заполнения формы');
+    assert.equal(looksAutomated(leadSchema.parse(request({ elapsed: 800 }))), 'форма отправлена быстрее человека');
+    assert.equal(looksAutomated(leadSchema.parse(request({ elapsed: 15_000 }))), null);
+    const helper = readFileSync(path.join(APP, 'src/lib/submit-lead.ts'), 'utf8');
+    assert.match(helper, /elapsed: Date\.now\(\) - pageShownAt/u, 'форма сайта перестала слать время заполнения');
+  });
+
   it('адрес на кириллическом домене принимается, явная опечатка — нет', () => {
     for (const good of ['мария@почта.рф', 'ivanova@university.ru', 'a.b+c@sub.domain.org']) {
       assert.equal(looksLikeEmail(good), true, good);

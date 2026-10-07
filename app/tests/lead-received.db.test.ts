@@ -58,6 +58,34 @@ describe('письмо «Заявка получена»', { skip: !enabled }, a
     assert.equal(await prisma.notificationOutbox.count({ where: { leadId: again } }), 0);
   });
 
+  it('тот же ящик с плюс-меткой за сутки — письма нет (Р-428)', async () => {
+    for (const tag of ['2', 'promo']) {
+      const tagged = await lead({ contact: `lr-${stamp}+${tag}@example.org` });
+      assert.equal(await enqueueLeadReceived(tagged), false, `+${tag}`);
+    }
+  });
+
+  it('за час — не больше общего потолка писем на все адреса (Р-428)', async () => {
+    const { LEAD_RECEIVED_PER_HOUR } = await import('../src/lib/cabinet/outbox.ts');
+    const filler = await lead({ contact: `lr-filler-${stamp}@example.org` });
+    const existing = await prisma.notificationOutbox.count({
+      where: { eventKind: 'LEAD_RECEIVED', createdAt: { gt: new Date(Date.now() - 3_600_000) } },
+    });
+    const missing = Math.max(0, LEAD_RECEIVED_PER_HOUR - existing);
+    await prisma.notificationOutbox.createMany({
+      data: Array.from({ length: missing }, (_, i) => ({
+        leadId: filler,
+        channel: 'EMAIL' as const,
+        eventKind: 'LEAD_RECEIVED',
+        subject: 'Заявка получена',
+        body: '—',
+        dedupKey: `lr-cap-${stamp}-${i}`,
+      })),
+    });
+    const fresh = await lead({ contact: `lr-fresh-${stamp}@example.org` });
+    assert.equal(await enqueueLeadReceived(fresh), false, 'потолок в час не сработал');
+  });
+
   it('телефону, отзыву и машинной заявке — письма нет', async () => {
     const phone = await lead({ contactKind: 'phone', contact: '+7 900 000-00-00' });
     const review = await lead({ form: 'review', contact: `lr-review-${stamp}@example.org` });
