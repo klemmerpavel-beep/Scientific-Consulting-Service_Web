@@ -683,9 +683,16 @@ export async function assignExpert(
     // Неотправленные письма о работе прежнему куратору гаснут: отложенные
     // до утренней сводки ушли бы ему в 09:00 уже о чужой работе
     // (улучшение УЭ-01, Р-398; решение Р-421). Письмо о снятии ставится
-    // следом и уходит.
+    // следом и уходит. Начисление и выплата вознаграждения — его
+    // собственные деньги, они остаются на экране вознаграждения (Р-332) и
+    // письмом уходят (решение Р-460).
     await prisma.notificationOutbox.updateMany({
-      where: { userId: ref.expertId, projectId, state: 'PENDING' },
+      where: {
+        userId: ref.expertId,
+        projectId,
+        state: 'PENDING',
+        eventKind: { notIn: ['PAYOUT_ACCRUED', 'PAYOUT_PAID'] },
+      },
       data: { state: 'EXPIRED', lastError: UNASSIGNED_NOTE, scheduledAt: new Date() },
     });
     const letter = unassignedLetter(project.code, expertId !== null);

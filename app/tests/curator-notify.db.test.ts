@@ -264,7 +264,11 @@ describe('уведомления куратору (Э-09)', { skip: !enabled }, 
       where: { userId: ids.curator, projectId: ids.project, state: 'PENDING' },
       select: { eventKind: true },
     });
-    assert.deepEqual([...new Set(pending.map((row) => row.eventKind))], ['WORK_UNASSIGNED']);
+    // Начисление и выплата — его деньги: письма о них не гаснут (Р-460).
+    assert.deepEqual(
+      [...new Set(pending.map((row) => row.eventKind))].sort(),
+      ['PAYOUT_ACCRUED', 'PAYOUT_PAID', 'WORK_UNASSIGNED'],
+    );
     const expired = await prisma.notificationOutbox.count({
       where: { userId: ids.curator, projectId: ids.project, state: 'EXPIRED', lastError: projects.UNASSIGNED_NOTE },
     });
