@@ -42,4 +42,15 @@ describe('мгновения — московским днём', () => {
       assert.deepEqual(stamps, [], `${file}: мгновение через formatDate`);
     }
   });
+
+  it('год номера работы, черновик итога созвона и имена выгрузок — по Москве (Р-473)', () => {
+    const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
+    assert.match(read('lib/cabinet/projects.ts'), /nextProjectCode\(tx as never, moscowToday\(\)\.getUTCFullYear\(\)\)/u);
+    assert.doesNotMatch(read('lib/cabinet/projects.ts'), /nextProjectCode\([^)]*new Date\(\)\.getUTCFullYear/u);
+    assert.match(read('app/cabinet/projects/[code]/messages/page.tsx'), /today: formatDate\(moscowToday\(clockNow\(\)\)\)/u);
+    for (const file of ['app/cabinet/manage/audit/export/route.ts', 'app/cabinet/manage/leads/export/route.ts']) {
+      assert.doesNotMatch(read(file), /new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/u, `${file}: имя выгрузки по UTC`);
+      assert.match(read(file), /moscowToday\(\)\.toISOString\(\)\.slice\(0, 10\)/u);
+    }
+  });
 });

@@ -278,7 +278,9 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
         },
       }));
 
-    const code = await nextProjectCode(tx as never, new Date().getUTCFullYear());
+    // Год номера — московский, как день начала работы: одобрение в ночь на
+    // 1 января по Москве давало номер прошлого года (решение Р-473).
+    const code = await nextProjectCode(tx as never, moscowToday().getUTCFullYear());
 
     const created = await tx.project.create({
       data: {

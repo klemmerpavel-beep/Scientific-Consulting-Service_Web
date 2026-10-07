@@ -7,6 +7,7 @@ import { leadSourceLabel, leadStatusLabel } from '../../../../../lib/cabinet/lea
 import { toCsv } from '../../../../../lib/cabinet/csv';
 import { leadList } from '../../../../../lib/cabinet/queries';
 import { currentActor, requestIp } from '../../../../../lib/cabinet/session';
+import { moscowToday } from '../../../../../lib/cabinet/clock';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -120,7 +121,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   });
 
   const csv = toCsv(lines);
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = moscowToday().toISOString().slice(0, 10);
 
   return new NextResponse(csv, {
     headers: {

@@ -27,7 +27,7 @@ import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { draftsFor, draftText } from '../../../../../lib/cabinet/message-drafts';
 import { trancheForReminder } from '../../../../../lib/cabinet/finance';
-import { now as clockNow } from '../../../../../lib/cabinet/clock';
+import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
 import { postInternalMessage, postMessage } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -82,7 +82,8 @@ export default async function MessagesScreen({
     sp.draft === 'payment' && sp.tranche !== undefined ? await trancheForReminder(actor, project.id, sp.tranche) : null;
   const draft = draftText(actor.role, sp.draft, {
     stage: (sp.draft === 'remind' ? (awaiting ?? current) : current)?.title ?? null,
-    today: formatDate(clockNow()) ?? '',
+    // Сегодня — московский день: ночью черновик ставил вчерашнюю дату (Р-473).
+    today: formatDate(moscowToday(clockNow())) ?? '',
     payment: tranche === null ? null : { title: tranche.title, date: formatDate(tranche.plannedDate) },
   });
   // Подзаголовок называет собеседника, а не повторяет название работы:
