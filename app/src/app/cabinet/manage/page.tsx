@@ -128,6 +128,24 @@ const ALERT_WIDTH: Record<number, number> = { 0: 0, 1: 3, 2: 4, 3: 5, 4: 6 };
 const DASH_STACK = { display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0, alignSelf: 'start' } as const;
 
 /**
+ * Запись в колонках «Ведутся сейчас» и «Заявки» — отдельной плашкой с
+ * рамкой и тихим фоном, с промежутком до соседней. Прежде записи
+ * разделяла едва заметная линия, и десяток работ читался сплошным текстом:
+ * где кончается одна работа и начинается другая, видно не было (решение
+ * Р-490; линия — Р-189).
+ */
+const BOARD_LIST = { margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 } as const;
+const BOARD_ITEM = {
+  display: 'grid',
+  gap: 6,
+  padding: '12px 14px',
+  border: '1px solid var(--pd-border)',
+  borderRadius: RADIUS.field,
+  background: 'var(--pd-surface-quiet)',
+  minWidth: 0,
+} as const;
+
+/**
  * Остаток по договору работы: сколько ещё не получено.
  *
  * На карточке просрочки это главная величина после самого срока: сорванный
@@ -1300,27 +1318,12 @@ export default async function ManageQueue({
                 из них приостановлено {works.filter((work) => work.paused).length}
               </Text>
             ) : null}
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-              {works.map((work, index) => {
+            <ul style={BOARD_LIST}>
+              {works.map((work) => {
                 const late = overdueDays(work.dueOn);
                 return (
-                  <li
-                    key={work.code}
-                    style={{
-                      display: 'grid',
-                      gap: 6,
-                      // Записи разделены едва заметной линией: сплошной
-                      // список из шести работ читался единым полотном
-                      // (решение Р-189).
-                      ...(index === 0
-                        ? { paddingBottom: 14 }
-                        : {
-                            borderTop: '1px solid var(--pd-divider)',
-                            paddingTop: 14,
-                            paddingBottom: 14,
-                          }),
-                    }}
-                  >
+                  // Каждая работа — своей плашкой (решение Р-490).
+                  <li key={work.code} style={BOARD_ITEM}>
                     <a
                       href={`/cabinet/projects/${work.code}`}
                       className="cab-mark"
@@ -1393,21 +1396,13 @@ export default async function ManageQueue({
           {leads.length === 0 ? (
             <Text muted>Новых заявок нет.</Text>
           ) : (
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+            <ul style={BOARD_LIST}>
               {/* Контакт стоит в строке, а разбор начинается кнопкой:
                   прежде за тем и другим приходилось заходить внутрь, а
-                  менеджер решает по заявке за секунды (решение Р-180). */}
-              {leads.map((lead, index) => (
-                <li
-                  key={lead.id}
-                  style={{
-                    display: 'grid',
-                    gap: 4,
-                    paddingTop: index === 0 ? 0 : 14,
-                    paddingBottom: 14,
-                    ...(index === 0 ? {} : { borderTop: '1px solid var(--pd-divider)' }),
-                  }}
-                >
+                  менеджер решает по заявке за секунды (решение Р-180).
+                  Каждая заявка — своей плашкой (решение Р-490). */}
+              {leads.map((lead) => (
+                <li key={lead.id} style={{ ...BOARD_ITEM, gap: 4 }}>
                   <a
                     href={`/cabinet/manage/leads/${lead.id}`}
                     className="cab-mark"
@@ -1436,7 +1431,7 @@ export default async function ManageQueue({
             pages={queue.pages}
             hrefFor={(page) => `/cabinet/manage?page=${page}`}
             textSize={13}
-            style={{ gap: 16, marginTop: 8 }}
+            style={{ gap: 16, marginTop: 12 }}
           />
         </BoardColumn>
       </Board>
