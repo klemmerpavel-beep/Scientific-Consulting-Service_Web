@@ -347,8 +347,15 @@ export default async function SettingsScreen({
                   name="notifyTelegram"
                   defaultChecked={user.notifyTelegram}
                   disabled={!bound}
-                  label={`Telegram${bound ? '' : ' — сначала подключите Telegram ниже'}`}
+                  label="Telegram"
                 />
+                {/* Пояснение — отдельной строкой: в подписи флажка оно
+                    переносилось и сдвигало форму (решение Р-485). */}
+                {bound ? null : (
+                  <Text muted size={13} style={{ margin: '-6px 0 8px 28px' }}>
+                    Сначала подключите Telegram в карточке «Telegram».
+                  </Text>
+                )}
                 {/* Сводка писем о работах раз в день — выбор куратора (УЭ-01, Р-398). */}
                 {actor.role === 'EXPERT' ? (
                   <>
@@ -438,11 +445,12 @@ export default async function SettingsScreen({
                         <tr>
                           <td style={TABLE_CELL}>{event.title}</td>
                           {(['EMAIL', 'TELEGRAM'] as const).map((channel) => (
-                            <td key={channel} style={TABLE_CELL}>
+                            <td key={channel} style={{ ...TABLE_CELL, width: '1%', whiteSpace: 'nowrap' }}>
                               <Checkbox
                                 name={`rule:${event.kind}:${channel}`}
                                 defaultChecked={ruleOn(event.kind, channel)}
                                 label={channel === 'EMAIL' ? 'письмом' : 'в Telegram'}
+                                nowrap
                               />
                             </td>
                           ))}

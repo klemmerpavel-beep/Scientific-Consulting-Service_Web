@@ -480,12 +480,15 @@ export function Checkbox({
   defaultChecked = false,
   disabled = false,
   required = false,
+  nowrap = false,
 }: {
   label: ReactNode;
   name: string;
   defaultChecked?: boolean;
   disabled?: boolean;
   required?: boolean;
+  /** Подпись в одну строку — в узкой ячейке таблицы она не переносится (Р-485). */
+  nowrap?: boolean;
 }) {
   return (
     <label
@@ -507,7 +510,7 @@ export function Checkbox({
         required={required}
         style={{ width: 18, height: 18 }}
       />
-      <span>{label}</span>
+      <span style={nowrap ? { whiteSpace: 'nowrap' } : undefined}>{label}</span>
     </label>
   );
 }
