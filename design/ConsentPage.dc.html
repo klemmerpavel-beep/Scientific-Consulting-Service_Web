@@ -7,7 +7,7 @@
 </head>
 <body>
 <x-dc>
-<!-- @template name="ProDisser — согласие на обработку персональных данных" description="Форма согласия, акцептуемая отметкой в формах сайта. Отдельным блоком — согласие на получение рекламных сообщений. Проект для согласования юристом." -->
+<!-- @template name="ProDisser — согласие на обработку персональных данных" description="Форма согласия, акцептуемая отметкой в формах сайта. Проект для согласования юристом." -->
 <helmet>
 <title>Согласие на обработку персональных данных — ProDisser</title>
 <meta name="description" content="Форма согласия, принимаемая отметкой в формах сайта: цель, закрытый перечень данных, срок действия и порядок отзыва.">
@@ -58,14 +58,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <nav class="doc-toc" data-toc="{{ tocState }}" aria-label="Оглавление документа">
 <button type="button" class="doc-toc-btn" onClick="{{ toggleToc }}" aria-expanded="{{ tocExpanded }}" aria-controls="toc-list" style="appearance:none;cursor:pointer;width:100%;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--pd-border);background:var(--pd-ink-inverse);border-radius:10px;padding:14px 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;color:var(--pd-ink);margin-bottom:12px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent-mark)" style-active="opacity:.82">Оглавление<span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;color:var(--pd-accent)">{{ tocMark }}</span></button>
 <ol id="toc-list" class="doc-toc-list" style="margin:0;padding:0;list-style:none;gap:2px;border-left:1px solid var(--pd-border)">
-<sc-for list="{{ toc }}" as="t" hint-placeholder-count="10">
+<sc-for list="{{ toc }}" as="t" hint-placeholder-count="9">
 <li><a href="{{ t.href }}" style="display:flex;align-items:center;min-height:44px;gap:10px;padding:8px 14px;font-size:14px;line-height:1.4;color:var(--pd-ink-secondary);border-left:2px solid transparent;margin-left:-1px;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink);border-left-color:var(--pd-accent)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;color:var(--pd-ink-muted);padding-top:2px;flex:0 0 auto">{{ t.num }}</span><span>{{ t.title }}</span></a></li>
 </sc-for>
 </ol>
 </nav>
 
 <main id="main" style="min-width:0;max-width:72ch">
-<p style="margin:0 0 28px;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary)">Настоящий текст является формой согласия, которую субъект персональных данных принимает проставлением отметки в форме на Сайте. Согласие на обработку персональных данных и согласие на получение рекламных сообщений даются отдельно и отзываются независимо друг от друга.</p>
+<p style="margin:0 0 28px;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary)">Настоящий текст является формой согласия, которую субъект персональных данных принимает проставлением отметки в форме на Сайте.</p>
 
 <sc-for list="{{ sections }}" as="s" hint-placeholder-count="9">
 <section id="{{ s.id }}" style="scroll-margin-top:24px;padding-bottom:32px">
@@ -76,18 +76,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </section>
 </sc-for>
 
-<section id="ads" style="scroll-margin-top:24px;border:1px solid var(--pd-accent-mark);border-radius:14px;padding:24px 26px;background:var(--pd-surface-quiet);margin-bottom:32px">
-<span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent);margin-bottom:12px">Отдельное согласие · даётся отдельной отметкой</span>
-<h2 style="margin:0 0 14px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:600;letter-spacing:-.01em;color:var(--pd-ink);display:flex;gap:12px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;color:var(--pd-accent);flex:0 0 auto;padding-top:2px">9.</span><span>Согласие на получение рекламных и информационных сообщений</span></h2>
-<sc-for list="{{ ads }}" as="p" hint-placeholder-count="5">
-<p style="margin:0 0 10px;display:flex;gap:12px;font-size:16px;line-height:1.6;color:var(--pd-ink)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;color:var(--pd-ink-muted);flex:0 0 auto;padding-top:2px;font-variant-numeric:tabular-nums">{{ p.num }}</span><span>{{ p.text }}</span></p>
-</sc-for>
-</section>
-
 <section id="version" style="scroll-margin-top:24px;padding-bottom:32px">
-<h2 style="margin:0 0 14px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:600;letter-spacing:-.01em;color:var(--pd-ink);display:flex;gap:12px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;color:var(--pd-accent);flex:0 0 auto;padding-top:2px">10.</span><span>Дата редакции и версия</span></h2>
-<p style="margin:0 0 10px;display:flex;gap:12px;font-size:16px;line-height:1.6;color:var(--pd-ink)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;color:var(--pd-ink-muted);flex:0 0 auto;padding-top:2px">10.1</span><span>Редакция от 21 августа 2026 года, версия 1.0. Действует с даты размещения на Сайте.</span></p>
-<p style="margin:0 0 10px;display:flex;gap:12px;font-size:16px;line-height:1.6;color:var(--pd-ink)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;color:var(--pd-ink-muted);flex:0 0 auto;padding-top:2px">10.2</span><span>Оператор сохраняет сведения о редакции согласия, действовавшей на момент его предоставления субъектом.</span></p>
+<h2 style="margin:0 0 14px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:600;letter-spacing:-.01em;color:var(--pd-ink);display:flex;gap:12px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;color:var(--pd-accent);flex:0 0 auto;padding-top:2px">9.</span><span>Дата редакции и версия</span></h2>
+<p style="margin:0 0 10px;display:flex;gap:12px;font-size:16px;line-height:1.6;color:var(--pd-ink)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;color:var(--pd-ink-muted);flex:0 0 auto;padding-top:2px">9.1</span><span>Редакция от 8 октября 2026 года, версия 1.1. Действует с даты размещения на Сайте.</span></p>
+<p style="margin:0 0 10px;display:flex;gap:12px;font-size:16px;line-height:1.6;color:var(--pd-ink)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;color:var(--pd-ink-muted);flex:0 0 auto;padding-top:2px">9.2</span><span>Оператор сохраняет сведения о редакции согласия, действовавшей на момент его предоставления субъектом.</span></p>
 </section>
 </main>
 </div>
@@ -116,7 +108,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
  Поэтому согласие вынесено на отдельную страницу и не включено в оферту.
  НЕ ПРОВЕРЯЛОСЬ ПОСТАТЕЙНО и дано словами либо с маркером:
  статья 152-ФЗ о требованиях к содержанию согласия и перечню обязательных сведений;
- норма Закона о рекламе о предварительном согласии на рекламу по сетям связи;
  подзаконные акты Роскомнадзора о форме согласия.
  Перечень персональных данных сверен с фактическими полями форм пяти страниц сайта
  на 10.08.2026: имя, контакт, организация, тема работы, специальность, тип работы,
@@ -154,14 +145,10 @@ class Component extends DCLogic {
  id, title, num: String(i + 1) +'.',
  items: items.map((text, j) => ({ text, num: (i + 1) +'.' + (j + 1) }))
  }));
- const adsItems = ['Настоящее согласие даётся отдельной отметкой в поле «Согласен получать информационные и рекламные сообщения» и не является условием рассмотрения заявки.','Цель обработки: направление сообщений об услугах оператора, изменениях условий работы и материалах, подготовленных оператором.','Перечень данных: имя, адрес электронной почты, номер телефона.','Способы направления сообщений: электронная почта, телефонные сообщения, мессенджеры.','Согласие отзывается независимо от согласия на обработку персональных данных: по ссылке отказа в сообщении либо по адресу info.prodisser@gmail.com. Отзыв не влияет на рассмотрение заявки и на исполнение договора.','Направление рекламных сообщений по сетям электросвязи допускается только при наличии предварительного согласия субъекта.'
- ];
  return {
  sections,
- ads: adsItems.map((text, j) => ({ text, num:'9.' + (j + 1) })),
  toc: sections.map(s => ({ href:'#' + s.id, num: s.num, title: s.title })).concat([
- { href:'#ads', num:'9.', title:'Согласие на рекламные сообщения' },
- { href:'#version', num:'10.', title:'Дата редакции и версия' }
+ { href:'#version', num:'9.', title:'Дата редакции и версия' }
  ]),
  tocState: this.state.toc ? 'open' : 'closed',
  tocExpanded: this.state.toc ?'true':'false',
