@@ -67,6 +67,7 @@ export default async function UsersScreen({
   searchParams: Promise<{
     error?: string;
     created?: string;
+    new?: string;
     role?: string;
     status?: string;
     page?: string;
@@ -141,7 +142,9 @@ export default async function UsersScreen({
       {/* Завести запись нужно раз в несколько месяцев, а форма занимала
           треть экрана постоянно. Под свёрткой она на месте и не мешает
           работе с перечнем (решение Р-183). */}
-      <Disclosure title="Завести учётную запись" style={{ marginBottom: 20 }}>
+      {/* Кнопка «Добавить в команду» со «Сводки» и «Команды» открывает
+          свёртку сразу (решение Р-488). */}
+      <Disclosure title="Завести учётную запись" open={flags.new === '1'} id="new" style={{ marginBottom: 20 }}>
         <Form action={inviteUser}>
           <FormRow>
             <Field
@@ -158,6 +161,18 @@ export default async function UsersScreen({
                 </option>
               ))}
             </Select>
+          </FormRow>
+          {/* Исходные данные сотрудника — по желанию; позже правятся в
+              «Профиле куратора» и «Регалиях сотрудников» (решение Р-488). */}
+          <FormRow>
+            <Field label="Должность" name="position" placeholder="Доцент кафедры физической химии" />
+            <Field label="Учёная степень" name="degree" placeholder="кандидат химических наук" />
+            <Field
+              label="Научная специальность"
+              name="specialization"
+              placeholder="Физическая химия"
+              hint="Необязательно. Клиенту видны степень и специальность куратора."
+            />
           </FormRow>
           <FormActions>
             <Button>Завести</Button>

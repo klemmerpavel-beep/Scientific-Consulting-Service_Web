@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
 import {
+  ButtonLink,
   Card,
   Chip,
   Heading,
@@ -60,7 +61,16 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
 
   return (
     <Shell actor={actor} current={TOOLS_HREF}>
-      <ScreenHead backHref={TOOLS_HREF} backLabel="Управление" title="Команда" note="кто чем занят и переписка с менеджерами" />
+      <ScreenHead
+        backHref={TOOLS_HREF}
+        backLabel="Управление"
+        title="Команда"
+        note="кто чем занят и переписка с менеджерами"
+        action={
+          // Новый человек — сразу в форму заведения (решение Р-488).
+          <ButtonLink href="/cabinet/manage/users?new=1#new">Добавить в команду</ButtonLink>
+        }
+      />
       <Tabs
         label="Разделы команды"
         items={[

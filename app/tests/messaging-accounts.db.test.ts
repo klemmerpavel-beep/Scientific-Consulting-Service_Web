@@ -221,6 +221,48 @@ describe('переписка и учётные записи', { skip: !enabled }
     );
   });
 
+  it('новая запись с исходными данными: у куратора и менеджера — в профиле, клиенту — отказ (Р-488)', async () => {
+    const curator = await admin.createUser(head(), {
+      email: `ma-new-cur-${stamp}@example.org`,
+      fullName: 'Куратор Исходных',
+      role: 'EXPERT',
+      position: '  Доцент кафедры  ',
+      degree: 'кандидат химических наук',
+      specialization: '',
+    });
+    const manager = await admin.createUser(head(), {
+      email: `ma-new-mgr-${stamp}@example.org`,
+      fullName: 'Менеджер Исходных',
+      role: 'MANAGER',
+      degree: 'кандидат экономических наук',
+    });
+    try {
+      const curatorProfile = await prisma.expertProfile.findUniqueOrThrow({ where: { userId: curator.id } });
+      assert.equal(curatorProfile.position, 'Доцент кафедры');
+      assert.equal(curatorProfile.degree, 'кандидат химических наук');
+      assert.equal(curatorProfile.specialization, null, 'пустое поле записано строкой');
+      const managerProfile = await prisma.expertProfile.findUniqueOrThrow({ where: { userId: manager.id } });
+      assert.equal(managerProfile.degree, 'кандидат экономических наук');
+      await assert.rejects(
+        () =>
+          admin.createUser(head(), {
+            email: `ma-new-cl-${stamp}@example.org`,
+            fullName: 'Клиент Исходных',
+            role: 'CLIENT',
+            degree: 'кандидат наук',
+          }),
+        /только у сотрудников/u,
+      );
+      assert.equal(await prisma.user.count({ where: { email: `ma-new-cl-${stamp}@example.org` } }), 0);
+    } finally {
+      const made = [curator.id, manager.id];
+      await prisma.notificationOutbox.deleteMany({ where: { userId: { in: made } } });
+      await prisma.auditEvent.deleteMany({ where: { objectId: { in: made } } });
+      await prisma.expertProfile.deleteMany({ where: { userId: { in: made } } });
+      await prisma.user.deleteMany({ where: { id: { in: made } } });
+    }
+  });
+
   it('справочник: совпавший код не переписывает позицию, числа — целые от нуля', async () => {
     await assert.rejects(
       () => admin.saveServiceType(head(), { code: `ma-${stamp}`, name: 'Подмена' }),

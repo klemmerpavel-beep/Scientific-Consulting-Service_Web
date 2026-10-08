@@ -808,11 +808,16 @@ export default async function ManageQueue({
       {/* «Команда»: строка на человека — работ, просрочено, ждёт его
           решения; первыми — у кого больше просроченного и ждущего
           (требование РК-06, решение Р-343). */}
-      {team.length === 0 ? null : (
+      {actor.role !== 'HEAD' ? null : (
         <Block style={{ marginBottom: 20 }}>
           <Heading level={2} size={3} style={{ marginBottom: 10 }}>
             Команда
           </Heading>
+          {team.length === 0 ? (
+            <Text muted size={14}>
+              В команде пока нет людей с работами и делами.
+            </Text>
+          ) : null}
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
             {team.map((row) => (
               <li key={`${row.side}-${row.id}`}>
@@ -832,9 +837,14 @@ export default async function ManageQueue({
               </li>
             ))}
           </ul>
-          <div style={{ marginTop: 12 }}>
+          {/* Новый человек — отдельной кнопкой, сразу в форму заведения
+              с ролью и исходными данными (решение Р-488). */}
+          <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <ButtonLink href="/cabinet/manage/team" tone="quiet">
               Вся команда
+            </ButtonLink>
+            <ButtonLink href="/cabinet/manage/users?new=1#new" tone="quiet">
+              Добавить в команду
             </ButtonLink>
           </div>
         </Block>
