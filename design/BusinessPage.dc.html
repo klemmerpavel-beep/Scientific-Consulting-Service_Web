@@ -656,6 +656,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:var(--pd-ink-muted)">Срок ответа — рабочий день</span>
 </div>
 <div style="flex:1 1 auto;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);padding:18px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(20,22,28,.05)">
+<span aria-hidden="true" style="display:block;height:112px;flex:0 0 112px;margin:-18px -20px 6px;border-top-left-radius:13px;border-top-right-radius:13px;border-bottom:1px solid var(--pd-divider);background:var(--pd-surface-quiet) url('./assets/art/svc-grants.webp');background-size:cover;background-position:center"></span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что прислать для сметы</h3>
 <sc-for list="{{ askFor }}" as="a" hint-placeholder-count="4">
 <span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:var(--pd-accent)"></span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ a.text }}</span></span>
