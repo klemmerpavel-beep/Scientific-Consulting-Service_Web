@@ -2,8 +2,9 @@
  * Календарь продвижения в кабинете (требование РК-16, решение Р-349):
  * дата начала учёта и пороги уверенности — настройки практики, правит
  * руководитель, ошибочный ввод отклоняется, изменение — в журнал;
- * отметки «сделано» и «отложено» хранятся по ключу окна, снимаются и
- * убирают окно из «Сейчас»; менеджеру календарь и отметки закрыты.
+ * отметки «сделано» и «отложено», «принято» и «отклонено» (Р-491)
+ * хранятся по ключу окна, снимаются и убирают окно из «Сейчас»; менеджеру
+ * календарь и отметки закрыты.
  *
  * Пропускается без заданного адреса базы; запускается `npm run test:db`.
  */
@@ -95,6 +96,41 @@ describe('календарь продвижения в кабинете (РК-16
 
     await recommendations.markRecommendation(head(), KEY, null);
     assert.equal((await recommendations.recommendationMarks(head())).has(KEY), false);
+  });
+
+  it('рекомендацию принимают и отклоняют; принятая уходит из числа, неизвестная отметка отклоняется (Р-491)', async () => {
+    await recommendations.markRecommendation(head(), KEY, 'ACCEPTED');
+    let marks = await recommendations.recommendationMarks(head());
+    assert.equal(marks.get(KEY)?.status, 'ACCEPTED');
+    assert.equal(recommendations.MARK_LABEL.ACCEPTED, 'принято');
+    await recommendations.markRecommendation(head(), KEY, 'DECLINED');
+    marks = await recommendations.recommendationMarks(head());
+    assert.equal(marks.get(KEY)?.status, 'DECLINED');
+    assert.equal(recommendations.MARK_LABEL.DECLINED, 'отклонено');
+    await assert.rejects(
+      recommendations.markRecommendation(head(), KEY, 'LOST' as never),
+      /Неизвестная отметка/u,
+    );
+    assert.equal((await recommendations.recommendationMarks(head())).get(KEY)?.status, 'DECLINED');
+
+    // Принятое окно уходит из «Сейчас» и из числа у пункта меню.
+    const before = await recommendations.recommendationsFor(head());
+    const open = before.calendar.now[0];
+    if (open !== undefined) {
+      const { calendarKey } = await import('../src/lib/cabinet/analytics/calendar.ts');
+      const key = calendarKey(open)!;
+      await recommendations.markRecommendation(head(), key, 'ACCEPTED');
+      const accepted = await recommendations.recommendationsFor(head());
+      assert.ok(!accepted.calendar.now.some((row) => row.typeCode === open.typeCode), 'принятое окно осталось в «Сейчас»');
+      assert.equal(accepted.marks.get(key)?.status, 'ACCEPTED');
+      await recommendations.markRecommendation(head(), key, null);
+    }
+    const entry = await prisma.auditEvent.findFirst({
+      where: { actorId: ids.head, action: 'RECOMMENDATION_MARKED', objectId: KEY },
+      orderBy: { occurredAt: 'desc' },
+    });
+    assert.deepEqual(entry?.payload, { status: 'DECLINED' });
+    await recommendations.markRecommendation(head(), KEY, null);
   });
 
   it('менеджеру календарь и отметки закрыты', async () => {

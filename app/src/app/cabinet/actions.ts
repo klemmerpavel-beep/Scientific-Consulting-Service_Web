@@ -1800,7 +1800,7 @@ export async function markRecommendationAction(form: FormData): Promise<void> {
     await markRecommendation(
       actor,
       String(form.get('key') ?? ''),
-      raw === 'DONE' || raw === 'POSTPONED' ? raw : null,
+      raw === 'ACCEPTED' || raw === 'DECLINED' || raw === 'DONE' || raw === 'POSTPONED' ? raw : null,
     );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отметить рекомендацию');
