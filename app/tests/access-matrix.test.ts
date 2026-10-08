@@ -138,6 +138,8 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   ASSIGNMENT_CREATE: [false, false, false, true],
   // Разбор замечаний с виджета — только руководитель (Р-403).
   FEEDBACK_REVIEW: [false, false, false, true],
+  // Чек-листы — менеджеру и руководителю (Р-494).
+  CHECKLIST_VIEW: [false, false, true, true],
 };
 
 const ROLE_ORDER: Role[] = ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'];

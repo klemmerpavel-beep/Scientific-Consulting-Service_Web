@@ -6,6 +6,7 @@ import SiteMotion from '../components/SiteMotion';
 import Metrika from '../components/Metrika';
 import FeedbackWidget from '../components/FeedbackWidget';
 import LeadThanks from '../components/LeadThanks';
+import RequestDialog from '../components/RequestDialog';
 
 // Шрифты лежат в репозитории (`src/fonts/`, лицензия OFL рядом) и
 // отдаются с нашего же домена: внешних запросов нет ни со страниц, ни у
@@ -85,6 +86,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <FeedbackWidget />
         {/* Благодарность за заявку — окном поверх страницы (решение Р-406). */}
         <LeadThanks />
+        {/* Заявка из шапки — окном поверх страницы (решение Р-484). */}
+        <RequestDialog />
       </body>
     </html>
   );

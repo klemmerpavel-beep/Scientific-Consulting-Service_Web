@@ -622,6 +622,14 @@ export interface CreateUserInput {
   readonly email: string;
   readonly fullName: string;
   readonly role: Role;
+  /**
+   * Исходные данные сотрудника — по желанию, сразу при заведении (решение
+   * Р-488): должность, учёная степень, научная специальность. Клиенту не
+   * заводятся: регалии ведутся только у сотрудников.
+   */
+  readonly position?: string;
+  readonly degree?: string;
+  readonly specialization?: string;
 }
 
 export async function createUser(actor: Actor, input: CreateUserInput) {
@@ -639,6 +647,18 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
 
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (existing !== null) throw new Error('Учётная запись с таким адресом уже есть');
+  const starting = (value: string | undefined, limit: number, what: string): string | null => {
+    const text = (value ?? '').trim();
+    if (text.length > limit) throw new Error(`${what} — не длиннее ${limit} знаков`);
+    return text === '' ? null : text;
+  };
+  const profile = {
+    position: starting(input.position, 200, 'Должность'),
+    degree: starting(input.degree, 120, 'Учёная степень'),
+    specialization: starting(input.specialization, 200, 'Научная специальность'),
+  };
+  const withProfile = Object.values(profile).some((value) => value !== null);
+  if (withProfile && input.role === 'CLIENT') throw new Error('Регалии ведутся только у сотрудников');
 
   const user = await prisma.user.create({
     data: { email, fullName, role: input.role },
@@ -650,8 +670,11 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
   // Регалии не заводятся пустой строкой: реестр печатал «Имя · » и пустую
   // клетку специализации (решение Р-225).
   if (input.role === 'EXPERT') {
-    await prisma.expertProfile.create({ data: { userId: user.id } });
+    await prisma.expertProfile.create({ data: { userId: user.id, ...profile } });
     await inviteCurator(user.id, false);
+  } else if (withProfile) {
+    // Регалии менеджера и руководителя — тот же профиль (Р-297).
+    await prisma.expertProfile.create({ data: { userId: user.id, ...profile } });
   }
 
   // Адрес почты в журнал не пишется: запись ссылается на учётную запись
@@ -661,7 +684,7 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
     action: 'USER_CREATED',
     objectType: 'User',
     objectId: user.id,
-    payload: { role: user.role },
+    payload: { role: user.role, ...(withProfile ? { profile: Object.keys(profile).filter((key) => profile[key as keyof typeof profile] !== null) } : {}) },
   });
   return user;
 }

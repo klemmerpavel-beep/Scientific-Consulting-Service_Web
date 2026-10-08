@@ -135,6 +135,8 @@ describe('шапка экрана собрана общей частью', () =>
     'manage/import/page.tsx',
     'manage/finance/years/page.tsx',
     'manage/tools/page.tsx',
+    // Чек-листы практики (Р-494).
+    'manage/checklists/page.tsx',
   ];
 
   for (const name of inside) {

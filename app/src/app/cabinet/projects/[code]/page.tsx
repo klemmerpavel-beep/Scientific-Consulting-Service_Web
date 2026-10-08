@@ -291,23 +291,29 @@ function eventLine(
  */
 const MATERIALS_IN_COLUMN = 12;
 
+/** Якорь формы «Управления работой»: прокрутка не прячет её под шапкой (Р-487). */
+const MANAGE_ANCHOR = { display: 'block', height: 0, scrollMarginTop: 96 } as const;
+
 export default async function ProjectScreen({
   params,
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; manage?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}`);
 
   const { code } = await params;
   // Отказ действия «Управления работой»: причина у своей формы, свёртка
   // раскрыта, поля заполнены введённым (решение Р-279).
-  const errorId = (await searchParams).error;
+  const { error: errorId, manage } = await searchParams;
   const failure = await flashEntry(errorId);
   const draft = (await formDraft(errorId)) ?? {};
+  // Кнопки «Изменить карточку», «Куратор», «Менеджер» под названием открывают
+  // свёртку сразу на своей форме (решение Р-487).
   const manageOpen =
-    failure?.slot !== undefined && ['project', 'status', 'expert', 'manager'].includes(failure.slot);
+    manage === '1' ||
+    (failure?.slot !== undefined && ['project', 'status', 'expert', 'manager'].includes(failure.slot));
   const project = await projectByCode(actor, decodeURIComponent(code));
   // Чужой проект не отличается от несуществующего: иначе перебор кодов
   // показывал бы, какие проекты есть у практики.
@@ -710,6 +716,28 @@ export default async function ProjectScreen({
             {`Причина приостановки: ${pauseReason}`}
           </Text>
         )}
+        {/* Правка карточки, куратор и менеджер — на виду, а не только в
+            свёрнутом «Управлении работой» в конце экрана: руководитель их
+            не находил (замечание владельца 08.10.2026, решение Р-487). */}
+        {(mayEdit && !closed) || mayAssign || maySetManager ? (
+          <div style={{ flexBasis: '100%', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {mayEdit && !closed ? (
+              <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-card`}>
+                Изменить карточку
+              </ButtonLink>
+            ) : null}
+            {mayAssign ? (
+              <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-expert`}>
+                {project.expertId === null ? 'Назначить куратора' : 'Сменить куратора'}
+              </ButtonLink>
+            ) : null}
+            {maySetManager ? (
+              <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-manager`}>
+                Сменить менеджера
+              </ButtonLink>
+            ) : null}
+          </div>
+        ) : null}
       </ScreenTop>
       <ActionError id={errorId} />
       <Disclosure title="О работе" style={{ marginTop: 12 }}>
@@ -1108,6 +1136,7 @@ export default async function ProjectScreen({
                 </Text>
               ) : null}
 
+              {mayEdit && !closed ? <span id="manage-card" style={MANAGE_ANCHOR} /> : null}
               {mayEdit && !closed ? (
                 <Form action={saveProject}>
                   <input type="hidden" name="projectId" value={project.id} />
@@ -1166,6 +1195,7 @@ export default async function ProjectScreen({
                 </Form>
               ) : null}
 
+              {mayAssign ? <span id="manage-expert" style={MANAGE_ANCHOR} /> : null}
               {mayAssign ? (
                 <Form action={setExpert}>
                   <input type="hidden" name="projectId" value={project.id} />
@@ -1230,6 +1260,7 @@ export default async function ProjectScreen({
                 </Form>
               ) : null}
 
+              {maySetManager ? <span id="manage-manager" style={MANAGE_ANCHOR} /> : null}
               {maySetManager ? (
                 <Form action={setManager}>
                   <input type="hidden" name="projectId" value={project.id} />

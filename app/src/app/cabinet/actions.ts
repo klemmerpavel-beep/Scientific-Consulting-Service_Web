@@ -1474,6 +1474,9 @@ export async function inviteUser(form: FormData): Promise<void> {
       email: String(form.get('email') ?? ''),
       fullName: String(form.get('fullName') ?? ''),
       role,
+      position: String(form.get('position') ?? ''),
+      degree: String(form.get('degree') ?? ''),
+      specialization: String(form.get('specialization') ?? ''),
     });
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось завести запись');
@@ -1797,7 +1800,7 @@ export async function markRecommendationAction(form: FormData): Promise<void> {
     await markRecommendation(
       actor,
       String(form.get('key') ?? ''),
-      raw === 'DONE' || raw === 'POSTPONED' ? raw : null,
+      raw === 'ACCEPTED' || raw === 'DECLINED' || raw === 'DONE' || raw === 'POSTPONED' ? raw : null,
     );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отметить рекомендацию');

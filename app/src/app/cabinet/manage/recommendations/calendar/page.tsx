@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
-import RecommendationMarks from '../../../../../components/cabinet/RecommendationMarks';
+import CardSlider from '../../../../../components/cabinet/CardSlider';
+import PromoGantt from '../../../../../components/cabinet/PromoGantt';
+import RecommendationMarks, { CalendarRecommendationCard } from '../../../../../components/cabinet/RecommendationMarks';
 import Shell from '../../../../../components/cabinet/Shell';
 import {
   Button,
@@ -24,7 +26,6 @@ import {
   CONFIDENCE_LABEL,
   MONTH_NAMES,
   calendarKey,
-  type CalendarRow,
 } from '../../../../../lib/cabinet/analytics/calendar';
 import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
 import { formatAmount } from '../../../../../lib/cabinet/money';
@@ -35,30 +36,18 @@ import { requireActor } from '../../../../../lib/cabinet/session';
 
 export const dynamic = 'force-dynamic';
 
-const DAY = 86_400_000;
-const SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 const days = (value: number) => String(value).replace('.', ',');
 const norm = (value: number) => (Math.round(value * 100) / 100).toString().replace('.', ',');
-
-/** Что сделать по окну — строкой «Сейчас». */
-function action(row: CalendarRow): string {
-  if (row.state === 'main') {
-    return `Запустить продвижение «${row.typeName}»: главное окно идёт, заказ около ${formatDate(row.orderOn)}`;
-  }
-  if (row.state === 'open') {
-    return `Подготовить продвижение «${row.typeName}»: окно открыто, главное — с ${formatDate(row.mainStart)}`;
-  }
-  return `Окно «${row.typeName}» откроется ${formatDate(row.windowStart)}: подготовить материалы`;
-}
 
 /**
  * «Календарь продвижения» (требование РК-16, решение Р-349).
  *
  * Когда продвигать каждый вид работ — от сроков сдачи: расчётная дата
  * заказа — середина месяца сдачи минус медиана выполнения, окно — шесть
- * недель до неё, последние четыре главные. Сверху — «Сейчас» с одним–тремя
- * действиями; полоса на двенадцать месяцев; таблица видов; «На чём
- * основано» — заказы по месяцам и годам, медиана, средний чек и оговорки.
+ * недель до неё, последние четыре главные. Сверху — «Сейчас»: окна
+ * карточками в ленте (Р-492); окна графиком Ганта на двенадцать месяцев
+ * (Р-493); таблица видов; «На чём основано» — заказы по месяцам и годам,
+ * медиана, средний чек и оговорки.
  */
 export default async function PromoCalendarScreen({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const actor = await requireActor('/cabinet/manage/recommendations/calendar');
@@ -66,23 +55,12 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
   const flags = await searchParams;
   const at = clockNow();
   const { rows, now, marks, since, skipped, leads } = await calendarFor(actor, at);
+  const current = [
+    ...now,
+    ...rows.filter((row) => row.state !== null && row.state !== 'later' && marks.has(calendarKey(row) ?? '')),
+  ];
   const today = moscowToday(at);
-  const strip = Array.from({ length: 12 }, (_, index) => {
-    const first = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + index, 1));
-    const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0));
-    return { first, last, label: `${SHORT[first.getUTCMonth()]} ${String(first.getUTCFullYear()).slice(2)}` };
-  });
   const windowed = rows.filter((row) => row.orderOn !== null);
-  const cellOf = (row: CalendarRow, month: (typeof strip)[number]) => {
-    const overlaps = (from: Date | null, to: Date | null) =>
-      from !== null && to !== null && from.getTime() <= month.last.getTime() && to.getTime() >= month.first.getTime();
-    const delivery = row.deliveryMonths.includes(month.first.getUTCMonth() + 1);
-    if (overlaps(row.mainStart, row.orderOn)) return { text: 'главное', strong: true };
-    if (overlaps(row.windowStart, row.mainStart === null ? null : new Date(row.mainStart.getTime() - DAY))) {
-      return { text: 'окно', strong: false };
-    }
-    return delivery ? { text: 'сдача', strong: false, plain: true } : null;
-  };
 
   return (
     <Shell actor={actor} current="/cabinet/manage/recommendations">
@@ -98,7 +76,7 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
         <Heading level={2} size={3} style={{ marginBottom: 10 }}>
           Сейчас
         </Heading>
-        {now.length === 0 ? (
+        {current.length === 0 ? (
           <Text muted>
             Открытых окон продвижения нет
             {windowed.length === 0
@@ -106,69 +84,26 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
               : `; ближайшее — «${windowed.slice().sort((a, b) => a.windowStart!.getTime() - b.windowStart!.getTime())[0]!.typeName}» с ${formatDate(windowed.slice().sort((a, b) => a.windowStart!.getTime() - b.windowStart!.getTime())[0]!.windowStart)}.`}
           </Text>
         ) : (
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 12 }}>
-            {now.map((row) => (
-              <li key={row.typeCode} style={{ display: 'grid', gap: 6 }}>
-                <Text size={15}>{action(row)}</Text>
-                <Text muted size={13}>
-                  {`уверенность — ${CONFIDENCE_LABEL[row.confidence]}${row.weight === null ? '' : ` · вес ${formatAmount(row.weight)}`}`}
-                </Text>
-                <RecommendationMarks markKey={calendarKey(row)} mark={marks.get(calendarKey(row) ?? '')} back="calendar" action={markRecommendationAction} />
-              </li>
+          // Каждое окно — своя карточка в ленте со слайдером: принять,
+          // отклонить, отложить, поручить (замечание владельца 08.10.2026,
+          // решение Р-492). За неотмеченными — отмеченные окна, которые идут.
+          <CardSlider label="Окна продвижения сейчас">
+            {current.map((row) => (
+              <CalendarRecommendationCard
+                key={row.typeCode}
+                row={row}
+                mark={marks.get(calendarKey(row) ?? '')}
+                back="calendar"
+                action={markRecommendationAction}
+              />
             ))}
-          </ul>
+          </CardSlider>
         )}
       </Card>
 
-      {windowed.length === 0 ? null : (
-        <TableCard label="Полоса на двенадцать месяцев" style={{ marginBottom: 20 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980 }}>
-            <caption style={{ ...TABLE_CELL, textAlign: 'left', color: 'var(--pd-ink-secondary)' }}>
-              Окно продвижения — шесть недель до расчётной даты заказа, главное — последние четыре;
-              «сдача» — месяц сдачи вида.
-            </caption>
-            <thead>
-              <tr>
-                <th style={TABLE_HEAD} scope="col">
-                  Вид работ
-                </th>
-                {strip.map((month) => (
-                  <th key={month.label} style={{ ...TABLE_HEAD, textAlign: 'center' }} scope="col">
-                    {month.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {windowed.map((row) => (
-                <tr key={row.typeCode}>
-                  <th style={TABLE_CELL} scope="row">
-                    {row.typeName}
-                  </th>
-                  {strip.map((month) => {
-                    const cell = cellOf(row, month);
-                    return (
-                      <td
-                        key={month.label}
-                        style={{
-                          ...TABLE_CELL,
-                          textAlign: 'center',
-                          fontSize: 12,
-                          background: cell === null || 'plain' in cell ? undefined : 'var(--pd-accent-tint)',
-                          color: cell === null ? undefined : 'var(--pd-ink)',
-                          fontWeight: cell?.strong ? 600 : 400,
-                        }}
-                      >
-                        {cell?.text ?? ''}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableCard>
-      )}
+      {/* Окна — графиком Ганта, а не таблицей «вид × месяц» (замечание
+          владельца 08.10.2026, решение Р-493). */}
+      {windowed.length === 0 ? null : <PromoGantt rows={windowed} today={today} />}
 
       <TableCard label="Виды работ" style={{ marginBottom: 12 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1120 }}>

@@ -150,6 +150,8 @@ export const ACTIONS = [
   // Р-352; В-19).
   'ASSIGNMENT_CREATE',
   'FEEDBACK_REVIEW',
+  // Чек-листы практики — менеджеру и руководителю (решение Р-494).
+  'CHECKLIST_VIEW',
 ] as const;
 
 export type Action = (typeof ACTIONS)[number];
@@ -304,6 +306,11 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
 
     case 'REQUEST_MODERATE':
     case 'REGISTRY_VIEW':
+      return staff;
+
+    // Чек-листы — порядок дел практики, без данных клиентов и денег:
+    // менеджеру — его чек-листы, руководителю — все (решение Р-494).
+    case 'CHECKLIST_VIEW':
       return staff;
 
     // ── Только руководитель ───────────────────────────────────────────────

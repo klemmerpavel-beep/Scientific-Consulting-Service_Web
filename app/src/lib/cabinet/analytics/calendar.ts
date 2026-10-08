@@ -240,7 +240,7 @@ export function calendarKey(row: Pick<CalendarRow, 'typeCode' | 'orderOn'>): str
 /**
  * «Сейчас: …» — одно–три действия: главное окно открыто — запускать,
  * окно открыто или откроется в две недели — готовить. Отмеченное
- * «сделано» или «отложено» не повторяется.
+ * (принятое, отклонённое, сделанное, отложенное) не повторяется.
  */
 export function calendarNow(rows: readonly CalendarRow[], marked: ReadonlySet<string>): CalendarRow[] {
   const rank: Record<WindowState, number> = { main: 0, open: 1, soon: 2, later: 3 };

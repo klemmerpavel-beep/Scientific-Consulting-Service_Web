@@ -1,6 +1,7 @@
 /**
- * Рекомендации руководителю: календарь продвижения и отметки «сделано» и
- * «отложено» (требование РК-16, решение Р-349); раздел «Рекомендации» —
+ * Рекомендации руководителю: календарь продвижения и отметки «принято»,
+ * «отклонено», «сделано» и «отложено» (требование РК-16, решения Р-349,
+ * Р-491); раздел «Рекомендации» —
  * календарь, цена и пакеты, возврат клиентов, «Рекомендация месяца» и
  * счётчик неотмеченных (требование РК-17, решение Р-350).
  *
@@ -30,9 +31,14 @@ export interface Mark {
 }
 
 export const MARK_LABEL: Record<RecommendationMarkStatus, string> = {
+  ACCEPTED: 'принято',
+  DECLINED: 'отклонено',
   DONE: 'сделано',
   POSTPONED: 'отложено',
 };
+
+/** Отметки, которые ставит руководитель (решения Р-349, Р-491). */
+export const MARK_STATUSES: readonly RecommendationMarkStatus[] = ['ACCEPTED', 'DECLINED', 'DONE', 'POSTPONED'];
 
 /** Отметки рекомендаций практики по ключу. */
 export async function recommendationMarks(actor: Actor): Promise<Map<string, Mark>> {
@@ -45,7 +51,10 @@ export async function recommendationMarks(actor: Actor): Promise<Map<string, Mar
 
 const KEY = /^[a-z]+(?::[\w.-]+){1,3}$/u;
 
-/** Отметить рекомендацию «сделано» или «отложено»; `null` — снять отметку. */
+/**
+ * Отметить рекомендацию «принято», «отклонено», «сделано» или «отложено»
+ * (Р-349, Р-491); `null` — снять отметку.
+ */
 export async function markRecommendation(
   actor: Actor,
   key: string,
@@ -53,7 +62,7 @@ export async function markRecommendation(
 ): Promise<void> {
   ensure(actor, 'ANALYTICS_VIEW');
   if (!KEY.test(key)) throw new Error('Неизвестная рекомендация');
-  if (status !== null && status !== 'DONE' && status !== 'POSTPONED') throw new Error('Неизвестная отметка');
+  if (status !== null && !MARK_STATUSES.includes(status)) throw new Error('Неизвестная отметка');
   if (status === null) {
     await prisma.recommendationMark.deleteMany({ where: { key } });
   } else {
