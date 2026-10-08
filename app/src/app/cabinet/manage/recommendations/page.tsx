@@ -2,11 +2,15 @@ import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../components/cabinet/ActionError';
 import CardSlider from '../../../../components/cabinet/CardSlider';
-import RecommendationMarks, { RecommendationCard } from '../../../../components/cabinet/RecommendationMarks';
+import RecommendationMarks, {
+  CalendarRecommendationCard,
+  RecommendationCard,
+  assignHref,
+} from '../../../../components/cabinet/RecommendationMarks';
 import Shell from '../../../../components/cabinet/Shell';
 import { ButtonLink, Card, Heading, ScreenHead, Text, formatDate, plural } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
-import { CONFIDENCE_LABEL, type CalendarRow, type WindowState } from '../../../../lib/cabinet/analytics/calendar';
+import type { CalendarRow } from '../../../../lib/cabinet/analytics/calendar';
 import { MIN_TRANSITIONS, SILENCE_DAYS } from '../../../../lib/cabinet/analytics/advice';
 import { formatAmount } from '../../../../lib/cabinet/money';
 import { RECOMMENDATIONS_HREF, homeFor } from '../../../../lib/cabinet/nav';
@@ -18,18 +22,6 @@ export const dynamic = 'force-dynamic';
 
 /** Сколько клиентов показывается в «Возврате клиентов». */
 const RETURN_LIMIT = 10;
-
-/** Метка карточки календаря — по состоянию окна (Р-491). */
-const WINDOW_KIND: Record<WindowState, string> = {
-  main: 'Главное окно идёт',
-  open: 'Окно открыто',
-  soon: 'Окно скоро',
-  later: 'Окно впереди',
-};
-
-/** Форма поручения с готовым текстом. */
-const assignHref = (text: string) =>
-  `/cabinet/manage/assignments?${new URLSearchParams({ text }).toString()}#new`;
 
 /**
  * Заголовок блока: название и сколько рекомендаций ждёт решения из
@@ -101,35 +93,15 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
           <Text muted>Открытых окон продвижения сейчас нет.</Text>
         ) : (
           <CardSlider label="Рекомендации календаря продвижения">
-            {calendarItems.map((row) => {
-              const key = calendarKey(row);
-              const mark = marks.get(key ?? '');
-              return (
-                <RecommendationCard
-                  key={row.typeCode}
-                  kind={WINDOW_KIND[row.state ?? 'later']}
-                  title={
-                    row.state === 'main'
-                      ? `Запустить продвижение «${row.typeName}»: заказ около ${formatDate(row.orderOn)}`
-                      : row.state === 'open'
-                        ? `Подготовить продвижение «${row.typeName}»: главное окно с ${formatDate(row.mainStart)}`
-                        : `Окно «${row.typeName}» откроется ${formatDate(row.windowStart)}`
-                  }
-                  details={`окно ${formatDate(row.windowStart)} — ${formatDate(row.orderOn)}, главное с ${formatDate(row.mainStart)} · уверенность — ${CONFIDENCE_LABEL[row.confidence]}`}
-                  marked={mark !== undefined}
-                >
-                  <RecommendationMarks
-                    markKey={key}
-                    mark={mark}
-                    back="recommendations"
-                    action={markRecommendationAction}
-                    assignHref={assignHref(
-                      `Запустить продвижение «${row.typeName}»: главное окно с ${formatDate(row.mainStart) ?? ''}, заказ около ${formatDate(row.orderOn) ?? ''}`,
-                    )}
-                  />
-                </RecommendationCard>
-              );
-            })}
+            {calendarItems.map((row) => (
+              <CalendarRecommendationCard
+                key={row.typeCode}
+                row={row}
+                mark={marks.get(calendarKey(row) ?? '')}
+                back="recommendations"
+                action={markRecommendationAction}
+              />
+            ))}
           </CardSlider>
         )}
         <div style={{ marginTop: 14 }}>

@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
-import RecommendationMarks from '../../../../../components/cabinet/RecommendationMarks';
+import CardSlider from '../../../../../components/cabinet/CardSlider';
+import RecommendationMarks, { CalendarRecommendationCard } from '../../../../../components/cabinet/RecommendationMarks';
 import Shell from '../../../../../components/cabinet/Shell';
 import {
   Button,
@@ -40,24 +41,13 @@ const SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'ию
 const days = (value: number) => String(value).replace('.', ',');
 const norm = (value: number) => (Math.round(value * 100) / 100).toString().replace('.', ',');
 
-/** Что сделать по окну — строкой «Сейчас». */
-function action(row: CalendarRow): string {
-  if (row.state === 'main') {
-    return `Запустить продвижение «${row.typeName}»: главное окно идёт, заказ около ${formatDate(row.orderOn)}`;
-  }
-  if (row.state === 'open') {
-    return `Подготовить продвижение «${row.typeName}»: окно открыто, главное — с ${formatDate(row.mainStart)}`;
-  }
-  return `Окно «${row.typeName}» откроется ${formatDate(row.windowStart)}: подготовить материалы`;
-}
-
 /**
  * «Календарь продвижения» (требование РК-16, решение Р-349).
  *
  * Когда продвигать каждый вид работ — от сроков сдачи: расчётная дата
  * заказа — середина месяца сдачи минус медиана выполнения, окно — шесть
- * недель до неё, последние четыре главные. Сверху — «Сейчас» с одним–тремя
- * действиями; полоса на двенадцать месяцев; таблица видов; «На чём
+ * недель до неё, последние четыре главные. Сверху — «Сейчас»: окна
+ * карточками в ленте (Р-492); полоса на двенадцать месяцев; таблица видов; «На чём
  * основано» — заказы по месяцам и годам, медиана, средний чек и оговорки.
  */
 export default async function PromoCalendarScreen({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -66,6 +56,10 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
   const flags = await searchParams;
   const at = clockNow();
   const { rows, now, marks, since, skipped, leads } = await calendarFor(actor, at);
+  const current = [
+    ...now,
+    ...rows.filter((row) => row.state !== null && row.state !== 'later' && marks.has(calendarKey(row) ?? '')),
+  ];
   const today = moscowToday(at);
   const strip = Array.from({ length: 12 }, (_, index) => {
     const first = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + index, 1));
@@ -98,7 +92,7 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
         <Heading level={2} size={3} style={{ marginBottom: 10 }}>
           Сейчас
         </Heading>
-        {now.length === 0 ? (
+        {current.length === 0 ? (
           <Text muted>
             Открытых окон продвижения нет
             {windowed.length === 0
@@ -106,17 +100,20 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
               : `; ближайшее — «${windowed.slice().sort((a, b) => a.windowStart!.getTime() - b.windowStart!.getTime())[0]!.typeName}» с ${formatDate(windowed.slice().sort((a, b) => a.windowStart!.getTime() - b.windowStart!.getTime())[0]!.windowStart)}.`}
           </Text>
         ) : (
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 12 }}>
-            {now.map((row) => (
-              <li key={row.typeCode} style={{ display: 'grid', gap: 6 }}>
-                <Text size={15}>{action(row)}</Text>
-                <Text muted size={13}>
-                  {`уверенность — ${CONFIDENCE_LABEL[row.confidence]}${row.weight === null ? '' : ` · вес ${formatAmount(row.weight)}`}`}
-                </Text>
-                <RecommendationMarks markKey={calendarKey(row)} mark={marks.get(calendarKey(row) ?? '')} back="calendar" action={markRecommendationAction} />
-              </li>
+          // Каждое окно — своя карточка в ленте со слайдером: принять,
+          // отклонить, отложить, поручить (замечание владельца 08.10.2026,
+          // решение Р-492). За неотмеченными — отмеченные окна, которые идут.
+          <CardSlider label="Окна продвижения сейчас">
+            {current.map((row) => (
+              <CalendarRecommendationCard
+                key={row.typeCode}
+                row={row}
+                mark={marks.get(calendarKey(row) ?? '')}
+                back="calendar"
+                action={markRecommendationAction}
+              />
             ))}
-          </ul>
+          </CardSlider>
         )}
       </Card>
 

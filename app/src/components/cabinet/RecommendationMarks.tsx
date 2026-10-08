@@ -1,8 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react';
 
+import { CONFIDENCE_LABEL, calendarKey, type CalendarRow, type WindowState } from '../../lib/cabinet/analytics/calendar';
+import { formatAmount } from '../../lib/cabinet/money';
 import type { Mark } from '../../lib/cabinet/recommendations';
 import { RADIUS } from './tokens';
-import { Button, ButtonLink, Chip, Form, Mono, Text, formatDay } from './ui';
+import { Button, ButtonLink, Chip, Form, Mono, Text, formatDate, formatDay } from './ui';
 
 const LABEL: Record<Mark['status'], string> = {
   ACCEPTED: 'принято',
@@ -115,5 +117,65 @@ export function RecommendationCard({
       </Text>
       <div style={{ marginTop: 'auto', paddingTop: 6 }}>{children}</div>
     </article>
+  );
+}
+
+/** Метка карточки окна — по его состоянию (Р-491). */
+const WINDOW_KIND: Record<WindowState, string> = {
+  main: 'Главное окно идёт',
+  open: 'Окно открыто',
+  soon: 'Окно скоро',
+  later: 'Окно впереди',
+};
+
+/** Форма поручения с готовым текстом. */
+export const assignHref = (text: string) =>
+  `/cabinet/manage/assignments?${new URLSearchParams({ text }).toString()}#new`;
+
+/**
+ * Карточка окна продвижения — одна и та же на «Рекомендациях» и в
+ * «Сейчас» календаря (решения Р-491, Р-492): что сделать, даты окна,
+ * уверенность и вес, отметка и поручение.
+ */
+export function CalendarRecommendationCard({
+  row,
+  mark,
+  back,
+  action,
+}: {
+  row: CalendarRow;
+  mark: Mark | undefined;
+  back: 'recommendations' | 'calendar';
+  action: (form: FormData) => Promise<void>;
+}) {
+  const title =
+    row.state === 'main'
+      ? `Запустить продвижение «${row.typeName}»: заказ около ${formatDate(row.orderOn)}`
+      : row.state === 'open'
+        ? `Подготовить продвижение «${row.typeName}»: главное окно с ${formatDate(row.mainStart)}`
+        : `Окно «${row.typeName}» откроется ${formatDate(row.windowStart)}: подготовить материалы`;
+  return (
+    <RecommendationCard
+      kind={WINDOW_KIND[row.state ?? 'later']}
+      title={title}
+      details={[
+        `окно ${formatDate(row.windowStart)} — ${formatDate(row.orderOn)}, главное с ${formatDate(row.mainStart)}`,
+        `уверенность — ${CONFIDENCE_LABEL[row.confidence]}`,
+        row.weight === null ? null : `вес ${formatAmount(row.weight)}`,
+      ]
+        .filter((part) => part !== null)
+        .join(' · ')}
+      marked={mark !== undefined}
+    >
+      <RecommendationMarks
+        markKey={calendarKey(row)}
+        mark={mark}
+        back={back}
+        action={action}
+        assignHref={assignHref(
+          `Запустить продвижение «${row.typeName}»: главное окно с ${formatDate(row.mainStart) ?? ''}, заказ около ${formatDate(row.orderOn) ?? ''}`,
+        )}
+      />
+    </RecommendationCard>
   );
 }
