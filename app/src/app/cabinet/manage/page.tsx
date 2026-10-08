@@ -1448,9 +1448,16 @@ export default async function ManageQueue({
           <Text muted size={14} style={{ marginBottom: 14 }}>
             Спорный случай, нестандартная просьба клиента, сомнение по срокам или цене — напишите руководителю
             в кабинете; ответ придёт сюда же.
-            {headReplies === 0 ? '' : ` Новых ответов: ${headReplies}.`}
+            {headReplies === 0 ? '' : ` Новых ответов: ${headReplies}.`} Порядок основных дел по шагам — в
+            чек-листах практики.
           </Text>
-          <ButtonLink href="/cabinet/head">Написать руководителю</ButtonLink>
+          {/* Чек-листы менеджера: «Управления» у него нет, и без ссылки
+              отсюда экран открывался бы только по набранному адресу
+              (решения Р-158, Р-494). */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <ButtonLink href="/cabinet/head">Написать руководителю</ButtonLink>
+            <ButtonLink href="/cabinet/manage/checklists">Чек-листы</ButtonLink>
+          </div>
         </Card>
       )}
     </Shell>
