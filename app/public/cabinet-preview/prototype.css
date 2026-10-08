@@ -135,6 +135,19 @@ details[open].cab-block{border-color:var(--pd-accent-edge)!important}
 @media print{.pd-fb{display:none!important}}
 
 
+.pd-rq-veil{position:fixed;inset:0;z-index:43;background:rgba(20,22,28,.32);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:pd-rq-fade 220ms cubic-bezier(.2,0,.2,1)}
+form.pd-rq-open{position:fixed!important;z-index:44!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;box-sizing:border-box!important;width:min(560px,calc(100vw - 24px))!important;max-height:calc(100dvh - 24px)!important;overflow:auto!important;margin:0!important;padding:24px 22px 22px!important;background:var(--pd-ink-inverse,#FFFFFF)!important;border:1px solid var(--pd-border,#E3E7EC)!important;border-radius:14px!important;box-shadow:0 10px 20px rgba(20,22,28,.09),0 1px 2px rgba(20,22,28,.05)!important;opacity:1!important;visibility:visible!important;filter:none!important;animation:pd-rq-rise 220ms cubic-bezier(.2,0,.2,1)}
+.pd-rq-title{margin:0 44px 4px 0;font-family:var(--pd-serif,'Literata'),Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink,#14161C);flex:1 1 100%}
+.pd-rq-close{position:absolute;top:12px;right:12px;appearance:none;box-sizing:border-box;width:44px;height:44px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--pd-ink-secondary,#3D4450);cursor:pointer;transition:border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.pd-rq-close:hover{border-color:var(--pd-border,#E3E7EC);color:var(--pd-ink,#14161C)}
+.pd-rq-close:focus-visible{outline:2px solid var(--pd-accent,#14417A);outline-offset:2px}
+html.pd-rq-lock{overflow:hidden}
+@keyframes pd-rq-fade{from{opacity:0}to{opacity:1}}
+@keyframes pd-rq-rise{from{opacity:0;transform:translate(-50%,calc(-50% + 8px))}to{opacity:1;transform:translate(-50%,-50%)}}
+@media (prefers-reduced-motion:reduce){.pd-rq-veil,form.pd-rq-open,.pd-rq-close{animation:none!important;transition:none!important}}
+@media print{.pd-rq-veil{display:none!important}}
+
+
 .pt-bar { position:sticky; top:0; z-index:9999; display:flex; flex-wrap:wrap; align-items:center;
   gap:8px; padding:8px 20px; background:#14161C; color:#C9D2E0;
   font-family:'Inter','Helvetica Neue',Arial,sans-serif; font-size:13px; }
