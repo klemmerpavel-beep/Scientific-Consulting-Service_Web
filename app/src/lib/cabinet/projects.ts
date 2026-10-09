@@ -1,3 +1,4 @@
+import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { workLine } from './work-line.ts';
 import {
@@ -1768,6 +1769,22 @@ const INACTIVE_PROJECT =
  * куратора держала его в «Требует внимания» бессрочно (решение Р-240).
  * Вернуть работу в действие — отдельное действие с записью в ленте.
  */
+/**
+ * Захват работы в транзакции перевода этапа (решение Р-526).
+ *
+ * Проверка «работа действует», прочитанная до транзакции, не видит
+ * приостановки, ещё не зафиксированной рядом: `setProjectStatus` снимал
+ * сроки согласования до того, как этап доходил до записи, и этап вставал
+ * на согласование у приостановленной работы с идущим сроком. Строка
+ * работы захватывается `FOR UPDATE` — тем же замком, что берёт перевод
+ * работы, — и состояние перечитывается под ним.
+ */
+async function lockActiveProject(tx: Prisma.TransactionClient, projectId: string): Promise<void> {
+  const rows = await tx.$queryRaw<{ status: string }[]>`
+    SELECT "status"::text AS "status" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+  if (rows[0]?.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
+}
+
 async function ensureProjectActive(projectId: string): Promise<void> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -1978,6 +1995,9 @@ export async function setStageState(
         ? { approvalSentAt: null, approvalDueOn: null, approvalDaysLeft: null }
         : {};
   const saved = await prisma.$transaction(async (tx) => {
+    // Работа — под замком: приостановка рядом не разойдётся со сроком
+    // согласования (решение Р-526).
+    await lockActiveProject(tx, stage.projectId);
     // Перевод захватывает этап по прежнему состоянию. Прежде два
     // одновременных перевода проходили проверку по прочитанному и оба
     // записывались: история этапа получала два перехода из одного
@@ -2264,6 +2284,8 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
 
   const now = new Date();
   const change = await prisma.$transaction(async (tx) => {
+    // Работа — под замком, как при переводе этапа (решение Р-526).
+    await lockActiveProject(tx, stage.projectId);
     // Захват по состоянию: возврат и согласование, нажатые одновременно,
     // не проходят оба (как в Р-240).
     const claimed = await tx.stage.updateMany({

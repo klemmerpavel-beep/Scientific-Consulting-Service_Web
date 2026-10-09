@@ -21,6 +21,8 @@ describe('производственный контур (П5)', { skip: !enabled
   const { prisma } = await import('../src/lib/db.ts');
   const handover = await import('../src/lib/cabinet/handover.ts');
   const materials = await import('../src/lib/cabinet/materials.ts');
+  const projects = await import('../src/lib/cabinet/projects.ts');
+  const { holdApprovalDeadlines } = await import('../src/lib/cabinet/approval.ts');
 
   const ids: Record<string, string> = {};
   const NDA = new Date(Date.UTC(2026, 0, 10));
@@ -33,6 +35,7 @@ describe('производственный контур (П5)', { skip: !enabled
     ...extra,
   });
   const manager = () => who(ids.manager!, 'MANAGER');
+  const client = () => who(ids.clientUser!, 'CLIENT', { clientProfileId: ids.client! });
   const outbox = (userId: string, eventKind: string) =>
     prisma.notificationOutbox.count({ where: { userId, eventKind } });
   const setStatus = (status: 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED') =>
@@ -157,5 +160,100 @@ describe('производственный контур (П5)', { skip: !enabled
     await setStatus('ACTIVE');
     await prisma.material.update({ where: { id: material.id }, data: { deletedAt: new Date() } });
     assert.deepEqual(await mine(), [], 'дело по удалённому материалу');
+  });
+
+  /**
+   * Приостановка, ещё не зафиксированная, и перевод этапа рядом с ней:
+   * транзакция приостановки делает то же, что `setProjectStatus` (захват
+   * работы и снятие сроков согласования), и держится открытой, пока
+   * перевод этапа идёт параллельно.
+   */
+  async function duringPause(action: () => Promise<unknown>): Promise<PromiseSettledResult<unknown>> {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let paused!: () => void;
+    const started = new Promise<void>((resolve) => {
+      paused = resolve;
+    });
+    const pause = prisma.$transaction(
+      async (tx) => {
+        await tx.project.updateMany({ where: { id: ids.project, status: 'ACTIVE' }, data: { status: 'PAUSED' } });
+        await holdApprovalDeadlines(tx, ids.project!, new Date());
+        paused();
+        await gate;
+      },
+      { timeout: 15_000 },
+    );
+    await started;
+    const racing = action();
+    // Перевод этапа успевает дойти до записи, пока приостановка не
+    // зафиксирована.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    release();
+    await pause;
+    const [result] = await Promise.allSettled([racing]);
+    return result!;
+  }
+
+  it('перевод этапа на согласование рядом с приостановкой не оставляет срока, который не стоит (Р-526)', async () => {
+    const stage = await prisma.stage.create({
+      data: { projectId: ids.project!, position: 2, title: 'Глава 2', state: 'IN_PROGRESS' },
+    });
+    // Материал, который видит клиент: версия менеджера.
+    await prisma.material.create({
+      data: {
+        projectId: ids.project!,
+        stageId: stage.id,
+        title: 'Глава 2',
+        createdById: ids.manager!,
+        versions: {
+          create: {
+            number: 1,
+            storageKey: `production-loop/${stamp}/race`,
+            originalName: 'glava2.docx',
+            sizeBytes: 10n,
+            sha256: 'd'.repeat(64),
+            contentType: 'application/octet-stream',
+            uploadedById: ids.manager!,
+          },
+        },
+      },
+    });
+
+    const result = await duringPause(() => projects.setStageState(manager(), stage.id, 'IN_APPROVAL', 'Глава 2 готова'));
+    const project = await prisma.project.findUniqueOrThrow({ where: { id: ids.project } });
+    const row = await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } });
+    assert.equal(project.status, 'PAUSED');
+    if (row.state === 'IN_APPROVAL') {
+      // Если перевод прошёл, срок обязан стоять: остаток, а не дата.
+      assert.equal(row.approvalDueOn, null, 'срок согласования идёт у приостановленной работы');
+      assert.ok(row.approvalDaysLeft !== null, 'остаток срока не сохранён');
+    } else {
+      assert.equal(result.status, 'rejected');
+      assert.match(String((result as PromiseRejectedResult).reason), /Работа не в действии/u);
+      assert.equal(row.state, 'IN_PROGRESS');
+    }
+  });
+
+  it('возврат этапа клиентом рядом с приостановкой не меняет этап приостановленной работы (Р-526)', async () => {
+    await setStatus('ACTIVE');
+    const stage = await prisma.stage.create({
+      data: {
+        projectId: ids.project!,
+        position: 3,
+        title: 'Глава 3',
+        state: 'IN_APPROVAL',
+        approvalSentAt: new Date(),
+        approvalDueOn: new Date(Date.now() + 10 * 86_400_000),
+      },
+    });
+    const result = await duringPause(() => projects.returnStage(client(), stage.id, 'Дополните выводы'));
+    const row = await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } });
+    assert.equal(result.status, 'rejected', 'возврат прошёл у приостановленной работы');
+    assert.equal(row.state, 'IN_APPROVAL');
+    assert.equal(row.approvalDueOn, null, 'срок не снят приостановкой');
+    assert.ok(row.approvalDaysLeft !== null);
   });
 });
