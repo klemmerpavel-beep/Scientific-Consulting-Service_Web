@@ -286,6 +286,27 @@ describe('вложения заявки', { skip: !enabled }, async () => {
     assert.equal(await prisma.lead.count({ where: { topic } }), 0);
   });
 
+  it('файлов больше предела — отказ до заявки, а не молчаливое отсечение (Р-532)', async () => {
+    // Прежде шестой и следующие файлы отбрасывались, а экран сообщал, что
+    // отправлено всё.
+    const topic = `Лишние файлы ${stamp}`;
+    const files = Array.from({ length: queries.REQUEST_FILES_MAX + 2 }, (_, index) => ({
+      originalName: `файл-${index + 1}.txt`,
+      contentType: 'text/plain',
+      body: Buffer.from(`содержимое ${index + 1}`),
+    }));
+    await assert.rejects(
+      () =>
+        queries.createCabinetRequest(
+          clientActor(),
+          { topic, need: null, deadline: null, message: null, files, ip: '127.0.0.1' },
+          'v1',
+        ),
+      new RegExp(`не больше ${queries.REQUEST_FILES_MAX} файлов, выбрано ${queries.REQUEST_FILES_MAX + 2}`, 'u'),
+    );
+    assert.equal(await prisma.lead.count({ where: { topic } }), 0);
+  });
+
   it('отказ хранилища на одном файле не теряет ни заявку, ни остальные файлы', async () => {
     const { LocalStorage, setStorage } = await import('../src/lib/cabinet/storage.ts');
     const inner = new LocalStorage(root);

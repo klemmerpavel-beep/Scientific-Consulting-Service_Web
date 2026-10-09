@@ -1171,9 +1171,15 @@ export async function createCabinetRequest(
   // Размер проверяется до заявки: прежде проверка стояла в цикле после
   // неё, и слишком большой второй файл оставлял заявку с первым, без
   // уведомления менеджерам, а повторная отправка давала дубль (Р-231).
-  const files = (draft.files ?? [])
-    .slice(0, REQUEST_FILES_MAX)
-    .filter((file) => file.body.byteLength > 0);
+  const files = (draft.files ?? []).filter((file) => file.body.byteLength > 0);
+  // Лишние файлы — отказ до заявки, а не молчаливое отсечение: прежде
+  // шестой и следующие отбрасывались, и экран сообщал, что отправлено всё
+  // (решение Р-532).
+  if (files.length > REQUEST_FILES_MAX) {
+    throw new Error(
+      `К заявке прикладывается не больше ${REQUEST_FILES_MAX} файлов, выбрано ${files.length}: выберите файлы заново`,
+    );
+  }
   if (files.some((file) => file.body.byteLength > REQUEST_FILE_MAX_BYTES)) {
     throw new Error(
       `Файл больше допустимых ${Math.round(REQUEST_FILE_MAX_BYTES / 1024 / 1024)} МБ`,

@@ -85,7 +85,7 @@ import {
   type ContactKind,
 } from '../../lib/cabinet/channels';
 import { ActiveWorkError, executeErasure, requestErasure, requestOwnErasure } from '../../lib/cabinet/erasure';
-import { createCabinetRequest, REQUEST_FILES_MAX } from '../../lib/cabinet/queries';
+import { createCabinetRequest } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue, retryFailed, retryLeadLetter } from '../../lib/cabinet/outbox';
@@ -837,12 +837,13 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
 
   // Файлы приходят одним полем: браузер кладёт в форму по записи на
   // каждый выбранный файл, и `getAll` собирает их все. Пустая запись
-  // означает «ничего не выбрано» и отбрасывается (решение Р-191).
+  // означает «ничего не выбрано» и отбрасывается (решение Р-191). Больше
+  // `REQUEST_FILES_MAX` не отсекается молча: отказ с числом выбранных даёт
+  // `createCabinetRequest` (решение Р-532).
   const files = await Promise.all(
     form
       .getAll('files')
       .filter((entry): entry is File => entry instanceof File && entry.size > 0)
-      .slice(0, REQUEST_FILES_MAX)
       .map(async (file) => ({
         originalName: file.name,
         contentType: file.type || 'application/octet-stream',
