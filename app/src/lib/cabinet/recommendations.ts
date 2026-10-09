@@ -160,13 +160,29 @@ async function consentOf(clientIds: readonly string[]): Promise<Map<string, bool
   return out;
 }
 
+/** Карточки из перечня, данные которых удалены по требованию субъекта. */
+async function erasedClients(clientIds: readonly string[]): Promise<Set<string>> {
+  if (clientIds.length === 0) return new Set();
+  const rows = await prisma.clientProfile.findMany({
+    where: { id: { in: [...clientIds] }, erasedAt: { not: null } },
+    select: { id: true },
+  });
+  return new Set(rows.map((row) => row.id));
+}
+
 /** Раздел «Рекомендации»: три блока, отметки, счётчик и рекомендация месяца. */
 export async function recommendationsFor(actor: Actor, at: Date = clockNow()): Promise<Recommendations> {
   ensure(actor, 'ANALYTICS_VIEW');
   const [calendar, data] = await Promise.all([calendarFor(actor, at), loadRows(actor)]);
   const marks = calendar.marks;
   const price = priceAdvice(data, calendar.rows, at);
-  const silent = returnAdvice(data, at);
+  // Клиент, чьи данные удалены по его требованию, к возврату не
+  // предлагается: у его заявок остаётся отметка согласия на рассылку как
+  // доказательство прошлой обработки, но писать ему больше нельзя
+  // (проверка 09.10.2026).
+  const advised = returnAdvice(data, at);
+  const erased = await erasedClients(advised.map((row) => row.clientId));
+  const silent = advised.filter((row) => !erased.has(row.clientId));
   const consent = await consentOf(silent.map((row) => row.clientId));
   const returns = silent.map((row) => ({ ...row, consent: consent.get(row.clientId) ?? false }));
   const open = <T extends { key: string }>(rows: readonly T[]) => rows.filter((row) => !marks.has(row.key));
