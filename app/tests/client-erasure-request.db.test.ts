@@ -79,6 +79,37 @@ describe('запрос клиента на удаление данных (П-08)
     );
   });
 
+  it('требование из входа по ссылке сотрудника помечено в журнале, письме и перечне (аудит 09.10.2026)', async () => {
+    const head: Actor = { id: ids.head!, role: 'HEAD', status: 'ACTIVE', clientProfileId: null, expertNdaSignedAt: null };
+    await prisma.notificationOutbox.deleteMany({ where: { userId: ids.head } });
+    await prisma.erasureRequest.deleteMany({ where: { clientId: ids.profile } });
+
+    await erasure.requestOwnErasure({ ...client(), viaStaffLink: true });
+    const request = await prisma.erasureRequest.findFirstOrThrow({ where: { clientId: ids.profile } });
+    const audit = await prisma.auditEvent.findFirstOrThrow({
+      where: { actorId: ids.user, action: 'ERASURE_REQUESTED', objectId: request.id },
+    });
+    assert.equal((audit.payload as { staffLink?: boolean }).staffLink, true);
+    const letter = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { userId: ids.head, eventKind: 'CLIENT_ERASURE_REQUEST', channel: 'EMAIL' },
+    });
+    assert.match(letter.body, /по ссылке, которую выдал сотрудник/u);
+    const listed = (await erasure.listErasureRequests(head)).rows.find((row) => row.id === request.id);
+    assert.equal(listed?.viaStaffLink, true, 'перечень не помечает требование');
+
+    // Своя сессия клиента — без пометки.
+    await prisma.notificationOutbox.deleteMany({ where: { userId: ids.head } });
+    await prisma.erasureRequest.deleteMany({ where: { clientId: ids.profile } });
+    await erasure.requestOwnErasure(client());
+    const own = await prisma.erasureRequest.findFirstOrThrow({ where: { clientId: ids.profile } });
+    const ownLetter = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { userId: ids.head, eventKind: 'CLIENT_ERASURE_REQUEST', channel: 'EMAIL' },
+    });
+    assert.doesNotMatch(ownLetter.body, /сотрудник/u);
+    const ownListed = (await erasure.listErasureRequests(head)).rows.find((row) => row.id === own.id);
+    assert.equal(ownListed?.viaStaffLink, false);
+  });
+
   it('сотруднику и заблокированному клиенту действие закрыто', async () => {
     await assert.rejects(erasure.requestOwnErasure({ ...client(), status: 'SUSPENDED' }), /не разрешено/u);
     await assert.rejects(

@@ -152,12 +152,19 @@ async function hasOpenRequest(tx: Tx, clientId: string): Promise<boolean> {
  * повторный запрос до исполнения не принимается. Исполняет руководитель
  * (Р-195 и решения об удалении данных): договоры и платёжные документы,
  * которые закон обязывает хранить, остаются.
+ *
+ * Запрос из сессии по ссылке, которую выдал сотрудник, мог подать и он
+ * сам. Требование принимается, но журнал, письмо руководителям и перечень
+ * «Удаление данных» это показывают: руководитель уточняет у клиента до
+ * исполнения (проверка 09.10.2026, решение Р-515; так же — согласование
+ * этапа, Р-292).
  */
 export async function requestOwnErasure(actor: Actor): Promise<Date> {
   if (actor.role !== 'CLIENT' || actor.clientProfileId === null || actor.status !== 'ACTIVE') {
     throw new Error('Действие не разрешено');
   }
   const clientId = actor.clientProfileId;
+  const staffLink = actor.viaStaffLink === true;
   // Проверка, запись, журнал и письма — одна транзакция под замком
   // карточки: двойная отправка не даёт двух требований и двух писем
   // каждому руководителю (решение Р-468).
@@ -178,7 +185,12 @@ export async function requestOwnErasure(actor: Actor): Promise<Date> {
         action: 'ERASURE_REQUESTED',
         objectType: 'ErasureRequest',
         objectId: request.id,
-        payload: { clientId, scope: 'PERSONAL_DATA_AND_FILES', byClient: true },
+        payload: {
+          clientId,
+          scope: 'PERSONAL_DATA_AND_FILES',
+          byClient: true,
+          ...(staffLink ? { staffLink: true } : {}),
+        },
       },
       tx,
     );
@@ -188,7 +200,10 @@ export async function requestOwnErasure(actor: Actor): Promise<Date> {
         userId: head.id,
         eventKind: 'CLIENT_ERASURE_REQUEST',
         subject: 'Клиент просит удалить персональные данные',
-        body: `Клиент ${profile.fullName} запросил удаление персональных данных из личного кабинета.\nТребование — на экране «Удаление данных».`,
+        body:
+          `Клиент ${profile.fullName} запросил удаление персональных данных из личного кабинета.\n` +
+          (staffLink ? `${STAFF_LINK_ERASURE_NOTE}\n` : '') +
+          'Требование — на экране «Удаление данных».',
         dedupKey: `erasure-request:${request.id}:${head.id}`,
         path: '/cabinet/manage/erasure',
       });
@@ -196,6 +211,10 @@ export async function requestOwnErasure(actor: Actor): Promise<Date> {
     return request.requestedAt;
   });
 }
+
+/** Пометка требования, поданного во входе по ссылке сотрудника (Р-515). */
+export const STAFF_LINK_ERASURE_NOTE =
+  'Запрос подан во входе по ссылке, которую выдал сотрудник: до исполнения уточните у клиента, подавал ли он его.';
 
 /** Открытое требование клиента об удалении — для строки «Настроек» (П-08). */
 export async function ownErasureRequest(actor: Actor): Promise<Date | null> {
@@ -877,7 +896,18 @@ export async function listErasureRequests(actor: Actor) {
       approvedBy: { select: { fullName: true } },
     },
   });
-  return { rows, total };
+  // Поданные во входе по ссылке сотрудника — по записи журнала о подаче
+  // (решение Р-515): у самого требования такого поля нет.
+  const marked = await prisma.auditEvent.findMany({
+    where: { action: 'ERASURE_REQUESTED', objectType: 'ErasureRequest', objectId: { in: rows.map((row) => row.id) } },
+    select: { objectId: true, payload: true },
+  });
+  const viaStaff = new Set(
+    marked
+      .filter((event) => (event.payload as { staffLink?: unknown } | null)?.staffLink === true)
+      .map((event) => event.objectId),
+  );
+  return { rows: rows.map((row) => ({ ...row, viaStaffLink: viaStaff.has(row.id) })), total };
 }
 
 /** Карточки, по которым требование ещё не исполнено. */

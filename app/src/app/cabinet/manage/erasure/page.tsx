@@ -148,7 +148,16 @@ export default async function ErasureScreen({
             return (
               <tr key={request.id}>
                 <td style={TABLE_CELL}>{formatMoment(request.requestedAt)}</td>
-                <td style={TABLE_CELL}>{request.client.fullName}</td>
+                <td style={TABLE_CELL}>
+                  {request.client.fullName}
+                  {/* Подано во входе по ссылке сотрудника: руководитель
+                      уточняет у клиента до исполнения (решение Р-515). */}
+                  {request.viaStaffLink ? (
+                    <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)', marginTop: 4 }}>
+                      подано во входе по ссылке сотрудника — уточните у клиента
+                    </div>
+                  ) : null}
+                </td>
                 <td style={TABLE_CELL}>
                   {request.scope === 'PERSONAL_DATA_AND_FILES' ? 'данные и файлы' : 'только данные'}
                 </td>
