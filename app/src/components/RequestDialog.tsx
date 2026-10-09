@@ -27,18 +27,28 @@ import { LEAD_SENT_EVENT } from './LeadThanks';
  *
  * Слой — под благодарностью (45) и уведомлением о cookies (50), над окном
  * отзыва (40) и кнопкой замечаний (30/31).
+ *
+ * Оформление (Р-511). Положение формы держит `transform` с !important —
+ * он перебивает стили макета; поэтому появление анимирует отдельное
+ * свойство `translate`, а `opacity` не важная. Крестик — в потоке формы и
+ * прилипает к верху окна (`sticky`): на телефоне длинная форма
+ * прокручивается, а крестик остаётся на виду. Его отрицательные поля не
+ * занимают места, зазор формы перед заголовком снимается в сценарии.
+ * Блокировка прокрутки оставляет место полосы прокрутки, если полоса его
+ * занимает, и страница за окном не сдвигается.
  */
 
 const CSS = `
 .pd-rq-veil{position:fixed;inset:0;z-index:43;background:rgba(20,22,28,.32);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:pd-rq-fade 220ms cubic-bezier(.2,0,.2,1)}
-form.pd-rq-open{position:fixed!important;z-index:44!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;box-sizing:border-box!important;width:min(560px,calc(100vw - 24px))!important;max-height:calc(100dvh - 24px)!important;overflow:auto!important;margin:0!important;padding:24px 22px 22px!important;background:var(--pd-ink-inverse,#FFFFFF)!important;border:1px solid var(--pd-border,#E3E7EC)!important;border-radius:14px!important;box-shadow:0 10px 20px rgba(20,22,28,.09),0 1px 2px rgba(20,22,28,.05)!important;opacity:1!important;visibility:visible!important;filter:none!important;animation:pd-rq-rise 220ms cubic-bezier(.2,0,.2,1)}
+form.pd-rq-open{position:fixed!important;z-index:44!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;box-sizing:border-box!important;width:min(560px,calc(100vw - 24px))!important;max-height:calc(100dvh - 24px)!important;overflow:auto!important;margin:0!important;padding:24px 22px 22px!important;background:var(--pd-ink-inverse,#FFFFFF)!important;border:1px solid var(--pd-border,#E3E7EC)!important;border-radius:14px!important;box-shadow:0 10px 20px rgba(20,22,28,.09),0 1px 2px rgba(20,22,28,.05)!important;opacity:1;visibility:visible!important;filter:none!important;animation:pd-rq-rise 220ms cubic-bezier(.2,0,.2,1)}
 .pd-rq-title{margin:0 44px 4px 0;font-family:var(--pd-serif,'Literata'),Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink,#14161C);flex:1 1 100%}
-.pd-rq-close{position:absolute;top:12px;right:12px;appearance:none;box-sizing:border-box;width:44px;height:44px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--pd-ink-secondary,#3D4450);cursor:pointer;transition:border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.pd-rq-close{position:sticky;top:-12px;z-index:2;flex:none;align-self:flex-end;margin:-12px -10px -32px auto;appearance:none;box-sizing:border-box;width:44px;height:44px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid transparent;border-radius:999px;background:var(--pd-ink-inverse,#FFFFFF);color:var(--pd-ink-secondary,#3D4450);cursor:pointer;transition:border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
 .pd-rq-close:hover{border-color:var(--pd-border,#E3E7EC);color:var(--pd-ink,#14161C)}
 .pd-rq-close:focus-visible{outline:2px solid var(--pd-accent,#14417A);outline-offset:2px}
 html.pd-rq-lock{overflow:hidden}
+html.pd-rq-lock.pd-rq-gutter{scrollbar-gutter:stable}
 @keyframes pd-rq-fade{from{opacity:0}to{opacity:1}}
-@keyframes pd-rq-rise{from{opacity:0;transform:translate(-50%,calc(-50% + 8px))}to{opacity:1;transform:translate(-50%,-50%)}}
+@keyframes pd-rq-rise{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
 @media (prefers-reduced-motion:reduce){.pd-rq-veil,form.pd-rq-open,.pd-rq-close{animation:none!important;transition:none!important}}
 @media print{.pd-rq-veil{display:none!important}}
 `;
@@ -79,7 +89,7 @@ export default function RequestDialog() {
       title.remove();
       close.remove();
       veil.remove();
-      document.documentElement.classList.remove('pd-rq-lock');
+      document.documentElement.classList.remove('pd-rq-lock', 'pd-rq-gutter');
       document.removeEventListener('keydown', onKey, true);
       if (returnFocus) opener.focus({ preventScroll: true });
     };
@@ -151,7 +161,15 @@ export default function RequestDialog() {
       form.setAttribute('aria-modal', 'true');
       form.setAttribute('aria-labelledby', title.id);
       document.body.append(veil, form);
-      document.documentElement.classList.add('pd-rq-lock');
+      // Крестик стоит в потоке перед заголовком: зазор формы между ними
+      // снимается, заголовок остаётся на прежнем месте (Р-511).
+      const gap = parseFloat(getComputedStyle(form).rowGap) || 0;
+      if (gap > 0) title.style.marginTop = `-${gap}px`;
+      // Место полосы прокрутки держится, только если полоса занимает место:
+      // у накладных полос (телефон, macOS) запас дал бы сдвиг в другую сторону.
+      const root = document.documentElement;
+      root.classList.toggle('pd-rq-gutter', window.innerWidth > root.clientWidth);
+      root.classList.add('pd-rq-lock');
       open = { form, opener, mark, veil, title, close };
       document.addEventListener('keydown', onKey, true);
 

@@ -148,3 +148,41 @@ describe('окно заявки: фокус после благодарност�
     assert.match(THANKS, /\(back \?\? button \?\? form\)\?\.focus\(\{ preventScroll: true \}\)/u);
   });
 });
+
+describe('окно заявки: оформление (Р-511)', () => {
+  /** Тело CSS-правила по селектору — из строки стилей компонента. */
+  const rule = (selector: string): string => {
+    const at = COMPONENT.indexOf(`${selector}{`);
+    assert.ok(at >= 0, `нет правила ${selector}`);
+    return COMPONENT.slice(at + selector.length + 1, COMPONENT.indexOf('}', at));
+  };
+
+  it('появление формы анимируется: ключевые кадры не перебиты !important', () => {
+    // Объявление с !important сильнее анимации: прежде transform и opacity
+    // формы стояли важными, и форма появлялась рывком.
+    const frames = /@keyframes pd-rq-rise\{(.*?)\}\}/u.exec(COMPONENT);
+    assert.ok(frames, 'нет ключевых кадров pd-rq-rise');
+    const animated = new Set([...frames[1]!.matchAll(/([a-z-]+):/gu)].map((m) => m[1]!));
+    assert.ok(animated.has('opacity') && animated.has('translate'), `анимируются: ${[...animated].join(', ')}`);
+    const form = rule('form.pd-rq-open');
+    assert.match(form, /animation:pd-rq-rise/u);
+    for (const prop of animated) {
+      assert.doesNotMatch(form, new RegExp(`(^|;)${prop}:[^;]*!important`, 'u'), `${prop} формы стоит важным`);
+    }
+  });
+
+  it('крестик прилипает к верху окна при прокрутке длинной формы', () => {
+    const close = rule('.pd-rq-close');
+    assert.match(close, /position:sticky;top:-12px/u);
+    assert.doesNotMatch(close, /position:absolute/u);
+    // Крестик в потоке не сдвигает заголовок: зазор формы снимается.
+    assert.match(COMPONENT, /title\.style\.marginTop = `-\$\{gap\}px`;/u);
+  });
+
+  it('блокировка прокрутки оставляет место полосы прокрутки: страница не сдвигается', () => {
+    assert.match(rule('html.pd-rq-lock.pd-rq-gutter'), /^scrollbar-gutter:stable$/u);
+    // Только при полосе, которая занимает место; снимается вместе с блокировкой.
+    assert.match(COMPONENT, /classList\.toggle\('pd-rq-gutter', window\.innerWidth > root\.clientWidth\)/u);
+    assert.match(COMPONENT, /classList\.remove\('pd-rq-lock', 'pd-rq-gutter'\)/u);
+  });
+});
