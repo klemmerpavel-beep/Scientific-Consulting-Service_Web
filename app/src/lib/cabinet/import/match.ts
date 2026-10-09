@@ -44,7 +44,9 @@ import { ERASED_KEY_PREFIX, erasedKey, signatureBase } from './etl.ts';
  *      такая строка читалась новой, и мост заводил карточку с ФИО из книги
  *      и второй договор на ту же сумму (решение Р-501). Если на ту же
  *      стёртую работу претендуют несколько строк либо подходит и живая
- *      работа шага 6 — на разбор.
+ *      работа шага 6 — на разбор, с пометкой `erased`: какая из строк
+ *      стёртого, неизвестно, поэтому ни одна из них не сохраняет ФИО и
+ *      тему из книги (решение Р-506).
  */
 
 export interface BookRowKey {
@@ -74,7 +76,15 @@ export interface KnownWork {
 export type RowMatch =
   | { readonly kind: 'NEW' }
   | { readonly kind: 'KNOWN'; readonly projectId: string; readonly parsed: unknown }
-  | { readonly kind: 'UNCLEAR'; readonly candidates: number }
+  | {
+      readonly kind: 'UNCLEAR';
+      readonly candidates: number;
+      /**
+       * Среди кандидатов есть стёртая работа (шаг 7): строка может быть
+       * строкой стёртого заказчика, и её ячейки не сохраняются (Р-506).
+       */
+      readonly erased?: true;
+    }
   | { readonly kind: 'ERASED' };
 
 function costOf(parsed: unknown): string | null {
@@ -189,7 +199,7 @@ export function matchBook(
       result[index] =
         twins.length === 0 && rivals.length <= tombs.length
           ? { kind: 'ERASED' }
-          : { kind: 'UNCLEAR', candidates: twins.length + tombs.length };
+          : { kind: 'UNCLEAR', candidates: twins.length + tombs.length, erased: true };
       continue;
     }
     if (twins.length === 0) continue;

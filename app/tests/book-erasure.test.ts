@@ -189,6 +189,18 @@ describe('сверка с перенесённым', () => {
     assert.deepEqual(matchBook([stub, typo], [], new Set(), graves).map((m) => m.kind), ['UNCLEAR', 'UNCLEAR']);
     const live = [work('p1', rowOf('Петрова Анна', 0n).signature!, '3000000')];
     assert.deepEqual(matchBook([stub], live, new Set(), graves).map((m) => m.kind), ['UNCLEAR']);
+
+    // Такая неясность помечена: среди кандидатов стёртая работа, и ячейки
+    // строки не сохраняются (Р-506). Неясность без стёртой — без пометки.
+    for (const match of [...matchBook([stub, typo], [], new Set(), graves), ...matchBook([typo], live, new Set(), graves)]) {
+      assert.equal(match.kind === 'UNCLEAR' && match.erased, true);
+    }
+    const plain = matchBook([stub], live, new Set())[0]!;
+    assert.equal(plain.kind, 'KNOWN');
+    const twoLive = [...live, work('p2', rowOf('Сидорова Анна', 0n).signature!, '3000000')];
+    const unclear = matchBook([stub], twoLive, new Set())[0]!;
+    assert.equal(unclear.kind, 'UNCLEAR');
+    assert.equal(unclear.kind === 'UNCLEAR' ? unclear.erased : null, undefined);
   });
 
   it('изменением считается и правка срока', () => {

@@ -151,6 +151,17 @@ const ERASED_CUSTOMER = '[удалено по требованию субъек�
 export const ERASED_NOTE =
   'данные заказчика удалены по требованию субъекта — строка не переносится';
 
+/**
+ * Вместо ФИО строки, которая может оказаться строкой стёртого заказчика
+ * (шаг 7 сверки дал неоднозначность, решение Р-506). Не «удалено»: строка
+ * может быть и живой работой — какой именно, решает человек по книге.
+ */
+const HIDDEN_CUSTOMER = '[скрыто до сверки]';
+
+/** Почему такая строка не заводится и где её сверять (решение Р-506). */
+export const ERASED_UNCLEAR_NOTE =
+  'строка похожа на стёртую работу — сверьте по номеру строки в книге';
+
 /** След «день заказа | сумма» в разобранных значениях надгробия (Р-501). */
 function twinField(twin: string | null): { twin?: string } {
   return twin === null ? {} : { twin };
@@ -490,6 +501,41 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
         note: ERASED_NOTE,
       };
     }
+    if (match.kind === 'UNCLEAR' && match.erased === true) {
+      // Строка может быть строкой стёртого заказчика с поправленным ФИО или
+      // типом, а может — живой работой того же дня и суммы. Какая из них
+      // какая, неизвестно, поэтому она хранится и показывается так же, как
+      // надгробие: без ФИО, темы, написания типа и цитат ячеек в замечаниях
+      // разбора. Фиксация её не заводит (решение Р-506).
+      return {
+        rowNumber: row.rowNumber,
+        signature: '',
+        action: 'SKIP',
+        severity: 'ERROR',
+        customer: HIDDEN_CUSTOMER,
+        rawType: '',
+        typeCode: null,
+        topic: '',
+        orderDate: null,
+        deadline: null,
+        cost: row.cost,
+        paid: row.paid,
+        status: row.status,
+        statusLabel: STATUS_LABEL[row.status],
+        rawStatus: '',
+        fill: null,
+        issues: [
+          {
+            code: 'PREVIOUS_WORK_UNCLEAR',
+            label: ISSUE_LABEL.PREVIOUS_WORK_UNCLEAR,
+            note: ERASED_UNCLEAR_NOTE,
+          },
+        ],
+        existingCode: null,
+        erased: false,
+        note: ERASED_UNCLEAR_NOTE,
+      };
+    }
     const issues = row.issues.map((issue) => ({
       code: issue.code,
       label: ISSUE_LABEL[issue.code],
@@ -567,6 +613,27 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
               },
               severity: preview.severity,
               errors: [],
+              action: preview.action,
+            };
+          }
+          // Строка, похожая на стёртую работу, — тоже без ячеек и без
+          // подписи: подпись несёт ФИО, а свёртка её основы стала бы новым
+          // надгробием и навсегда заперла бы строку, которая может быть
+          // живой работой (решение Р-506).
+          if (match.kind === 'UNCLEAR' && match.erased === true) {
+            return {
+              rowNumber: row.rowNumber,
+              signature: null,
+              raw: { erased: true },
+              parsed: {
+                erased: true,
+                unclear: true,
+                cost: row.cost.toString(),
+                paid: row.paid.toString(),
+                ...twinField(erasedTwin(row.orderDate, row.cost)),
+              },
+              severity: preview.severity,
+              errors: preview.issues,
               action: preview.action,
             };
           }
@@ -664,6 +731,7 @@ export async function loadBatch(actor: Actor, batchId: string): Promise<Preview 
       fill?: string | null;
     } | null;
     const parsed = row.parsed as {
+      unclear?: boolean;
       typeCode?: string | null;
       orderDate?: string | null;
       deadline?: string | null;
@@ -673,7 +741,10 @@ export async function loadBatch(actor: Actor, batchId: string): Promise<Preview 
     } | null;
     // Стёртая строка хранит `{ erased: true }` вместо ячеек: прежде отчёт с
     // такой строкой не открывался вовсе — разбор ФИО падал на пустом месте.
-    const erased = raw?.erased === true;
+    // Строка, похожая на стёртую работу (Р-506), хранится так же, но не
+    // стёрта: она ждёт сверки человеком и показывается как не перенесённая.
+    const hidden = raw?.erased === true && parsed?.unclear === true;
+    const erased = raw?.erased === true && !hidden;
     const status = parsed?.status ?? 'IN_WORK';
     const issues = Array.isArray(row.errors) ? (row.errors as unknown as PreviewRow['issues']) : [];
     const unclear = issues.find((issue) => issue.code === 'PREVIOUS_WORK_UNCLEAR');
@@ -682,7 +753,7 @@ export async function loadBatch(actor: Actor, batchId: string): Promise<Preview 
       signature: row.signature ?? '',
       action: row.action,
       severity: row.severity,
-      customer: erased ? ERASED_CUSTOMER : (raw?.customer ?? ''),
+      customer: erased ? ERASED_CUSTOMER : hidden ? HIDDEN_CUSTOMER : (raw?.customer ?? ''),
       rawType: raw?.type ?? '',
       typeCode: parsed?.typeCode ?? null,
       topic: raw?.description ?? '',
@@ -938,6 +1009,18 @@ export async function applyBatch(
         // Строка, стёртая прежним обезличиванием, ключа не имеет вовсе, а
         // ячеек в ней нет: заводить по ней нечего (решение Р-252).
         const wiped = (row.raw as { erased?: unknown } | null)?.erased === true;
+        // Строка, похожая на стёртую работу (Р-506): ячеек в ней нет, и
+        // заводить по ней нечего, а надгробием её не сделать — она может
+        // быть живой работой. Отклоняется как неясная; хранимое не меняется.
+        if (wiped && (row.parsed as { unclear?: unknown } | null)?.unclear === true) {
+          if (excluded.has(row.rowNumber)) skipped += 1;
+          else rejected.push({ rowNumber: row.rowNumber, reason: ERASED_UNCLEAR_NOTE });
+          await tx.importRow.update({
+            where: { id: row.id },
+            data: { action: 'SKIP', severity: 'ERROR', projectId: null },
+          });
+          continue;
+        }
         if (match.kind === 'ERASED' || wiped) {
           // Заказчик стёрт — строка не заводит работу никогда, а её ячейки
           // заменяются надгробием и здесь, если стирание пришлось между
@@ -1013,10 +1096,39 @@ export async function applyBatch(
         // строки — на одну: заводить её значило бы рискнуть второй работой
         // с договором и оплатой (решение Р-252). Разбирает человек.
         if (match.kind === 'UNCLEAR') {
-          rejected.push({ rowNumber: row.rowNumber, reason: unclearNote(match.candidates) });
+          rejected.push({
+            rowNumber: row.rowNumber,
+            reason: match.erased === true ? ERASED_UNCLEAR_NOTE : unclearNote(match.candidates),
+          });
           await tx.importRow.update({
             where: { id: row.id },
-            data: { action: 'SKIP', severity: 'ERROR', projectId: null },
+            data:
+              match.erased === true
+                ? {
+                    // Стёртая работа появилась между предпросмотром и
+                    // фиксацией: строка убирается в ту же форму, что и в
+                    // предпросмотре, — без ячеек и подписи (Р-506).
+                    action: 'SKIP',
+                    severity: 'ERROR',
+                    projectId: null,
+                    signature: null,
+                    raw: { erased: true },
+                    parsed: {
+                      erased: true,
+                      unclear: true,
+                      cost: parsed.cost,
+                      paid: parsed.paid,
+                      ...twinField(erasedTwin(parsed.orderDate, parsed.cost)),
+                    },
+                    errors: [
+                      {
+                        code: 'PREVIOUS_WORK_UNCLEAR',
+                        label: ISSUE_LABEL.PREVIOUS_WORK_UNCLEAR,
+                        note: ERASED_UNCLEAR_NOTE,
+                      },
+                    ],
+                  }
+                : { action: 'SKIP', severity: 'ERROR', projectId: null },
           });
           continue;
         }
