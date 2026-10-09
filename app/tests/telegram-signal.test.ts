@@ -1,10 +1,10 @@
 /**
- * В мессенджер уходит сигнал, а не содержание.
+ * В мессенджер уходит сигнал, а не содержание заявки.
  *
- * Политика называет использование мессенджеров трансграничной передачей и
- * обязует не прибегать к ней до подтверждения перечня сервисов. Значит, имя,
- * контакт, организация, тема работы и текст сообщения в Telegram уйти не
- * могут — ни из заявки с сайта, ни из уведомления кабинета.
+ * С решения владельца Р-547 сигнал о заявке с сайта несёт имя и контакт
+ * заявителя — чтобы связаться сразу. Организация, тема работы, срок и текст
+ * сообщения в Telegram по-прежнему не уходят: им место на почте и в
+ * карточке. Уведомление кабинета не несёт ни темы, ни сумм.
  *
  * Проверка идёт без базы и без сети: оба текста собираются чистыми функциями.
  */
@@ -38,19 +38,39 @@ const lead = {
 describe('сигнал о заявке с сайта', () => {
   const text = telegramSignal(lead as never, 'cmu8f230k00054y7d7vdfg843');
 
-  it('не выносит в мессенджер ничего о заявителе', () => {
-    for (const secret of [
-      lead.name,
-      lead.contact,
-      lead.organization,
-      lead.topic,
-      lead.speciality,
-      lead.need,
-      lead.message,
-      lead.deadline,
-    ]) {
+  it('несёт имя и контакт заявителя, чтобы связаться сразу (Р-547)', () => {
+    assert.ok(text.includes(`<b>Имя:</b> ${lead.name}`), text);
+    assert.ok(text.includes(`<b>Почта:</b> ${lead.contact}`), text);
+  });
+
+  it('телефон назван телефоном', () => {
+    const phone = telegramSignal({ ...lead, contactKind: 'phone', contact: '+7 916 123-45-67' } as never, 'x1');
+    assert.ok(phone.includes('<b>Телефон:</b> +7 916 123-45-67'), phone);
+    assert.ok(!phone.includes('<b>Почта:</b>'), phone);
+  });
+
+  it('без имени — «не указано», а не пустая строка', () => {
+    const anonymous = telegramSignal({ ...lead, name: undefined } as never, 'x2');
+    assert.ok(anonymous.includes('<b>Имя:</b> не указано'), anonymous);
+  });
+
+  it('имя и контакт экранированы: разметку из формы Telegram не исполняет', () => {
+    const tricky = telegramSignal({ ...lead, name: '<b>Х</b> & Ко', contact: 'a<b>@x.ru' } as never, 'x3');
+    assert.ok(tricky.includes('&lt;b&gt;Х&lt;/b&gt; &amp; Ко'), tricky);
+    assert.ok(tricky.includes('a&lt;b&gt;@x.ru'), tricky);
+  });
+
+  it('содержание заявки в мессенджер не уходит', () => {
+    for (const secret of [lead.organization, lead.topic, lead.speciality, lead.need, lead.message, lead.deadline]) {
       assert.ok(!text.includes(secret), `в сигнал попало: ${secret}`);
     }
+  });
+
+  it('отзыв — с подписью автора и без контакта (Р-110)', () => {
+    const review = telegramSignal({ ...lead, form: 'review', name: 'аспирант', contact: '' } as never, 'x4');
+    assert.ok(review.includes('<b>Новый отзыв</b>'), review);
+    assert.ok(review.includes('<b>Автор:</b> аспирант'), review);
+    assert.ok(!review.includes('<b>Почта:</b>') && !review.includes('<b>Телефон:</b>'), review);
   });
 
   it('говорит, откуда заявка и что открывать', () => {
