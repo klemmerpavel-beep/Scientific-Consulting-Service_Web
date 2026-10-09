@@ -13,7 +13,7 @@ import {
 } from './access.ts';
 import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
-import { enqueue, enqueueToLead, notifyCurator, notifyExpert } from './outbox.ts';
+import { enqueue, enqueueToLead, notifyCurator, notifyExpert, pruneCuratorDigests } from './outbox.ts';
 import { assignmentLetter, unassignedLetter } from './curator-letters.ts';
 import { openAcceptCheck, openReopenCheck } from './head-checks.ts';
 import { materialKey, storage } from './storage.ts';
@@ -716,6 +716,13 @@ export async function assignExpert(
       },
       data: { state: 'EXPIRED', lastError: UNASSIGNED_NOTE, scheduledAt: new Date() },
     });
+    // И письма о ней, уже вошедшие в неотправленную сводку (решение Р-534).
+    await pruneCuratorDigests(
+      prisma,
+      ref.expertId,
+      (row) => row.projectId === projectId && row.eventKind !== 'PAYOUT_ACCRUED' && row.eventKind !== 'PAYOUT_PAID',
+      UNASSIGNED_NOTE,
+    );
     const letter = unassignedLetter(project.code, expertId !== null);
     await enqueue(prisma, {
       userId: ref.expertId,

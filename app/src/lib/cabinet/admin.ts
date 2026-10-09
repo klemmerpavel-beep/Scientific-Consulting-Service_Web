@@ -13,7 +13,7 @@ import { moscowToday } from './clock.ts';
 import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
 import { parseAmount } from './money.ts';
-import { enqueue, LEAD_RETRY_PAUSE_MS } from './outbox.ts';
+import { enqueue, LEAD_RETRY_PAUSE_MS, pruneCuratorDigests } from './outbox.ts';
 import { curatorAccessLetter, invitationLetter, ndaSignedLetter } from './curator-letters.ts';
 import { ndaRequestOpen, ndaWaitingLetter } from './curator-welcome.ts';
 
@@ -837,6 +837,14 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
       where: { userId, projectId: { not: null }, state: 'PENDING', eventKind: { not: 'WORK_UNASSIGNED' } },
       data: { state: 'EXPIRED', lastError: NDA_REVOKED_NOTE, scheduledAt: new Date() },
     });
+    // И письма о работах, уже вошедшие в неотправленную сводку: сводка
+    // без работы под условие выше не подходит (решение Р-534).
+    await pruneCuratorDigests(
+      prisma,
+      userId,
+      (row) => row.projectId !== null && row.eventKind !== 'WORK_UNASSIGNED',
+      NDA_REVOKED_NOTE,
+    );
   }
   await record(actor, {
     action: 'EXPERT_NDA_UPDATED',
