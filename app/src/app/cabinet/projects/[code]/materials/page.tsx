@@ -161,6 +161,11 @@ export default async function ProjectMaterialsScreen({
                               увидит. Попросите куратора убрать её или не публикуйте.
                             </Text>
                           ) : null}
+                          {/* Комментарии практики открываются клиенту вместе
+                              с версией (Р-546). */}
+                          <Text muted size={13} style={{ marginTop: 6 }}>
+                            Вместе с версией клиент увидит комментарии менеджера к ней.
+                          </Text>
                           <Form action={decideOnVersion} inline style={{ marginTop: 8 }}>
                             <input type="hidden" name="versionId" value={version.id} />
                             <input type="hidden" name="decision" value="publish" />
