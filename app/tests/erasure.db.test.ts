@@ -302,7 +302,9 @@ describe('удаление данных субъекта', { skip: !enabled }, a
           objectType: 'Tranche',
           objectId: contract.id,
           projectId: project.id,
-          payload: { from: null, to: '2026-12-01', reason: 'Смирнов в отпуске до декабря' },
+          // Назначение транша перенос пишет в журнал рядом с причиной
+          // (проверка 09.10.2026).
+          payload: { title: 'Оплата Смирнова за главу 1', from: null, to: '2026-12-01', reason: 'Смирнов в отпуске до декабря' },
         },
       ],
     });

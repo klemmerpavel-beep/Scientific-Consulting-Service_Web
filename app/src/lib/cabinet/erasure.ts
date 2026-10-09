@@ -71,6 +71,11 @@ export class ActiveWorkError extends Error {
 
 /** Маркер вместо затёртого значения: пустая строка читалась бы как потеря. */
 const ERASED = '[удалено по требованию субъекта]';
+/**
+ * Свободные тексты в записях журнала о траншах и передаче работы: причина
+ * и назначение транша. Прочее содержимое — суммы, даты, переходы — учёт.
+ */
+const JOURNAL_TEXT_KEYS = ['reason', 'title'] as const;
 /** Почему затёртое письмо не ушло (решение Р-461). */
 export const ERASED_NOTE = 'обезличено до отправки';
 
@@ -503,6 +508,8 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     // учёт, и оно остаётся; затирается только причина (решение Р-252).
     // Так же — причина переноса даты транша и передачи работы другому
     // менеджеру: тоже свободный текст о клиенте (решение Р-423).
+    // Перенос даты пишет и назначение транша — тот же текст, что в самой
+    // строке транша затирается выше (проверка 09.10.2026).
     let reversals = 0;
     const trancheEvents = await tx.auditEvent.findMany({
       where: {
@@ -513,10 +520,12 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     });
     for (const event of trancheEvents) {
       const payload = event.payload as Record<string, unknown> | null;
-      if (payload === null || typeof payload !== 'object' || !('reason' in payload)) continue;
+      if (payload === null || typeof payload !== 'object') continue;
+      const texts = JOURNAL_TEXT_KEYS.filter((key) => key in payload);
+      if (texts.length === 0) continue;
       await tx.auditEvent.update({
         where: { id: event.id },
-        data: { payload: { ...payload, reason: ERASED } as never },
+        data: { payload: { ...payload, ...Object.fromEntries(texts.map((key) => [key, ERASED])) } as never },
       });
       reversals += 1;
     }
