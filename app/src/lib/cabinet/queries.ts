@@ -444,7 +444,8 @@ export async function curatorTasksData(actor: Actor) {
   const scope = scopeProjects(actor);
   if (actor.role !== 'EXPERT' || scope === null) return curatorTasks([]);
   const openWork = { ...scope, status: { in: ['ACTIVE' as const, 'PAUSED' as const] } };
-  const stageRef = { select: { id: true, dueOn: true } };
+  // Состояние — чтобы не брать дел с завершённого этапа (Р-524).
+  const stageRef = { select: { id: true, dueOn: true, state: true } };
   const [works, versions, comments] = await Promise.all([
     prisma.project.findMany({
       where: openWork,

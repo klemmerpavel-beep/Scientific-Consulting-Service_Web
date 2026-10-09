@@ -51,6 +51,20 @@ export interface CuratorWork {
   readonly stages: readonly CuratorStage[];
 }
 
+/** Этап материала: срок для порядка дел, состояние — открыт ли он куратору. */
+export interface StageRef {
+  readonly id: string;
+  readonly dueOn: Date | null;
+  readonly state?: string;
+}
+
+/**
+ * Дело «не опубликовал» закрывается новой версией или замечанием, а на
+ * завершённом этапе куратору загружать и замечать нельзя (Р-293): там
+ * дело было бы вечным (решение Р-524).
+ */
+const closedForCurator = (stage: StageRef | null) => stage?.state === 'DONE';
+
 /** Своя версия куратора с решением менеджера. */
 export interface OwnVersion {
   readonly versionId: string;
@@ -59,7 +73,7 @@ export interface OwnVersion {
   readonly number: number;
   readonly status: string;
   readonly code: string;
-  readonly stage: { readonly id: string; readonly dueOn: Date | null } | null;
+  readonly stage: StageRef | null;
 }
 
 /** Своё замечание куратора с решением менеджера. */
@@ -69,7 +83,7 @@ export interface OwnComment {
   readonly status: string;
   readonly materialTitle: string;
   readonly code: string;
-  readonly stage: { readonly id: string; readonly dueOn: Date | null } | null;
+  readonly stage: StageRef | null;
 }
 
 /** Работа, в которой дела куратора есть: действующая и приостановленная (Д-4). */
@@ -90,6 +104,8 @@ const materialHref = (code: string, stage: { readonly id: string } | null) =>
  *   материала отклонена; закрывается новой версией того же материала.
  * - «Менеджер не опубликовал ваше замечание» — последнее своё замечание к
  *   версии отклонено; закрывается новым замечанием к той же версии.
+ * - Оба «не опубликовал» не берутся с завершённого этапа: закрыть их там
+ *   нечем (решение Р-524).
  */
 export function curatorTasks(
   works: readonly CuratorWork[],
@@ -129,7 +145,7 @@ export function curatorTasks(
     if (known === undefined || version.number > known.number) lastVersion.set(version.materialId, version);
   }
   for (const version of lastVersion.values()) {
-    if (version.status !== 'REJECTED' || !open.has(version.code)) continue;
+    if (version.status !== 'REJECTED' || !open.has(version.code) || closedForCurator(version.stage)) continue;
     tasks.push({
       kind: 'VERSION_REJECTED',
       label: `Менеджер не опубликовал вашу версию v${version.number}: «${name(version.materialTitle)}»`,
@@ -148,7 +164,7 @@ export function curatorTasks(
     if (known === undefined || comment.createdAt > known.createdAt) lastComment.set(comment.versionId, comment);
   }
   for (const comment of lastComment.values()) {
-    if (comment.status !== 'REJECTED' || !open.has(comment.code)) continue;
+    if (comment.status !== 'REJECTED' || !open.has(comment.code) || closedForCurator(comment.stage)) continue;
     tasks.push({
       kind: 'COMMENT_REJECTED',
       label: `Менеджер не опубликовал ваше замечание: «${name(comment.materialTitle)}»`,
