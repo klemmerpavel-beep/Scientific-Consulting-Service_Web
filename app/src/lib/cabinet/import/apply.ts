@@ -1030,6 +1030,18 @@ export async function applyBatch(
           });
           continue;
         }
+        // Оплата при пустой стоимости — та же ошибка (Р-273): договора не
+        // будет, и поступление потерялось бы, а итог загрузки засчитывал
+        // его перенесённым. Мост такие строки исключает и прежде; здесь —
+        // фиксация вручную, где строку не исключили (решение Р-504).
+        if (BigInt(parsed.cost) === 0n && BigInt(parsed.paid) > 0n) {
+          rejected.push({ rowNumber: row.rowNumber, reason: 'оплата указана при пустой стоимости' });
+          await tx.importRow.update({
+            where: { id: row.id },
+            data: { action: 'SKIP', severity: 'ERROR', projectId: null },
+          });
+          continue;
+        }
 
         const rowCost = BigInt(parsed.cost);
         const rowPaid = BigInt(parsed.paid);

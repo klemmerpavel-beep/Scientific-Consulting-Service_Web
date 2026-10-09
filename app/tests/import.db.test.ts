@@ -441,6 +441,40 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     );
   });
 
+  it('оплата при пустой стоимости — отказ, а не работа без договора (Р-504)', async () => {
+    const head = actor(ids.head, 'HEAD');
+    const extra: TestRow[] = [
+      [
+        excelSerial('2025-07-02'),
+        `Лисина Ада ${stamp}`,
+        'Диссертция',
+        'Кандидатская',
+        '20.12.2025',
+        '',
+        { value: 'в работе', fill: null },
+        '50000',
+      ],
+    ];
+    const preview = await previewBook(head, { fileName: `книга-${stamp}-7б.xlsx`, bytes: book('90000', extra) });
+    batches.push(preview.batchId);
+    const row = preview.rows.find((candidate) => candidate.customer === `Лисина Ада ${stamp}`);
+    assert.equal(row?.severity, 'ERROR');
+    assert.ok(row?.issues.some((issue) => issue.code === 'PAYMENT_EXCEEDS_CONTRACT'));
+
+    // Фиксация вручную, строка не исключена.
+    const report = await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    assert.ok(
+      report.rejected.some((item) => item.rowNumber === row?.rowNumber),
+      'строка с оплатой без стоимости заведена',
+    );
+    assert.equal(
+      await prisma.project.count({ where: { client: { normalizedName: { contains: `лисина ада ${stamp}` } } } }),
+      0,
+    );
+    const stored = await loadBatch(head, preview.batchId);
+    assert.equal(stored?.rows.find((item) => item.rowNumber === row?.rowNumber)?.action, 'SKIP');
+  });
+
   it('оставленная на разбор строка в отчёте не значится «завести»', async () => {
     // Р-260: мост с Диска исключает строки с ошибкой разбора. Прежде такая
     // строка хранила действие предпросмотра, и отчёт зафиксированной
