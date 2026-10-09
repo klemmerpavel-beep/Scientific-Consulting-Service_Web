@@ -224,9 +224,12 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
       // Согласие на обработку дано в самой заявке: его момент и редакция
       // переходят в учётную запись. Прежде запись оставалась без согласия,
       // а обращение из кабинета всё равно помечалось согласованным
-      // (решение Р-238).
+      // (решение Р-238). Только вместе с акцептом оферты: отметка учётной
+      // записи снимает обе отметки формы кабинета, и заявка из кабинета
+      // пишет «оферта принята». Без акцепта в заявке с сайта кабинет
+      // спросит обе отметки сам (проверка 09.10.2026, решение Р-516).
       const consent =
-        lead.consentGiven && (known === null || known.consentAcceptedAt === null)
+        lead.consentGiven && lead.termsAccepted && (known === null || known.consentAcceptedAt === null)
           ? { consentAcceptedAt: lead.createdAt, consentVersion: lead.consentVersion }
           : {};
       const user = await tx.user.upsert({

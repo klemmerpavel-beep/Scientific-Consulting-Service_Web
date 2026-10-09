@@ -56,7 +56,7 @@ describe('согласие в кабинете', { skip: !enabled }, async () =>
   });
 
   after(async () => {
-    const users = [ids.manager!, ids.invited!, ids.approved ?? '', ids.staffLinked ?? ''].filter(Boolean);
+    const users = [ids.manager!, ids.invited!, ids.approved ?? '', ids.staffLinked ?? '', ids.noTerms ?? ''].filter(Boolean);
     const projects = await prisma.project.findMany({ where: { serviceTypeId: ids.type } });
     await prisma.lead.updateMany({ where: { id: { in: leadIds } }, data: { projectId: null } });
     await prisma.notificationOutbox.deleteMany({ where: { userId: { in: users } } });
@@ -156,6 +156,7 @@ describe('согласие в кабинете', { skip: !enabled }, async () =>
         name: 'С сайта',
         consentGiven: true,
         consentVersion: 'v-lead',
+        termsAccepted: true,
       },
     });
     leadIds.push(lead.id);
@@ -171,6 +172,47 @@ describe('согласие в кабинете', { skip: !enabled }, async () =>
     ids.approved = user.id;
     assert.equal(user.consentVersion, 'v-lead');
     assert.equal(user.consentAcceptedAt?.getTime(), lead.createdAt.getTime());
+  });
+
+  it('заявка с сайта без акцепта оферты: согласие не переносится, кабинет спрашивает обе отметки (аудит 09.10.2026)', async () => {
+    const email = `consent-noterms-${stamp}@example.org`;
+    const lead = await prisma.lead.create({
+      data: {
+        source: 'postgrad',
+        form: 'request',
+        contactKind: 'email',
+        contact: email,
+        name: 'Без акцепта',
+        consentGiven: true,
+        consentVersion: 'v-lead',
+        termsAccepted: false,
+      },
+    });
+    leadIds.push(lead.id);
+    await approveLead(person(ids.manager!, 'HEAD'), {
+      leadId: lead.id,
+      serviceTypeId: ids.type!,
+      managerId: ids.manager!,
+      title: 'Работа без акцепта',
+    });
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    ids.noTerms = user.id;
+    assert.equal(user.consentAcceptedAt, null, 'согласие без акцепта перенесено в учётную запись');
+
+    // Заявка из кабинета без отметок не подаётся — «оферта принята» без
+    // акцепта не пишется.
+    const topic = `Без акцепта из кабинета ${stamp}`;
+    await assert.rejects(createCabinetRequest(person(user.id, 'CLIENT'), draft(topic), 'v-site'), /оферты/u);
+    assert.equal(await prisma.lead.count({ where: { topic } }), 0);
+
+    const accepted = await createCabinetRequest(
+      person(user.id, 'CLIENT'),
+      draft(topic, { consent: true, terms: true }),
+      'v-site',
+    );
+    leadIds.push(accepted.id);
+    const saved = await prisma.lead.findUniqueOrThrow({ where: { id: accepted.id } });
+    assert.equal(saved.termsAccepted, true);
   });
 
   it('заявка на адрес сотрудника не вешает работу на его запись', async () => {
