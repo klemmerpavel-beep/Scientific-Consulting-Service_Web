@@ -29,6 +29,7 @@ import {
   overdueTrancheWhere,
   overdueWithinRest,
   receivableOf,
+  writtenOffOf,
   type TrancheStatus,
 } from './money.ts';
 
@@ -573,7 +574,7 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
   };
   if (!can(actor, 'PAYMENT_EDIT', ref)) return visible;
 
-  const base = { ...visible, writtenOff: sum('WRITTEN_OFF') };
+  const base = { ...visible, writtenOff: writtenOffOf(contract.totalAmount, contract.tranches) };
   if (!can(actor, 'MARGIN_VIEW', ref)) return base;
 
   const payouts = await prisma.expertPayout.findMany({ where: { projectId } });
@@ -650,9 +651,7 @@ export async function financeSummary(actor: Actor) {
     // полученных деньгах (решение Р-244). У отменённой работы — ноль: её
     // неоплаченное — потеря, а не деньги к получению (решение Р-257).
     const awaiting = receivableOf(contract.project.status, contract.totalAmount, contract.tranches);
-    const lost = contract.tranches
-      .filter((t) => t.status === 'WRITTEN_OFF')
-      .reduce((acc, t) => acc + t.amount, 0n);
+    const lost = writtenOffOf(contract.totalAmount, contract.tranches);
     const accrued = payoutByProject.get(contract.projectId) ?? 0n;
     return {
       projectId: contract.projectId,

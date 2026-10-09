@@ -10,7 +10,7 @@ import { can, ensure, type Actor } from './access.ts';
 import { prisma } from '../db.ts';
 import { scopeProjects } from './access.ts';
 import { daysPast, moscowToday, now as today } from './clock.ts';
-import { outstandingOf, overdueWithinRest, receivableOf } from './money.ts';
+import { outstandingOf, overdueWithinRest, receivableOf, writtenOffOf } from './money.ts';
 import { turnLabel, type StageStateKey } from './stage-state.ts';
 
 /**
@@ -83,7 +83,7 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
       // Кто ведёт работу — у руководителя в «Ведутся сейчас» (РК-03, Р-341).
       manager: { select: { id: true, fullName: true } },
       expert: { select: { id: true, fullName: true } },
-      contract: { select: { totalAmount: true, tranches: { select: { amount: true, status: true } } } },
+      contract: { select: { totalAmount: true, tranches: { select: { id: true, amount: true, status: true, plannedDate: true } } } },
       stages: { orderBy: { position: 'asc' }, select: { title: true, state: true } },
     },
   });
@@ -105,11 +105,7 @@ export async function activeWorks(actor: Actor): Promise<ActiveWork[]> {
       dueOn: project.dueOn,
       contracted: money ? contracted : null,
       received: money ? received : null,
-      writtenOff: money
-        ? tranches
-            .filter((tranche) => tranche.status === 'WRITTEN_OFF')
-            .reduce((acc, tranche) => acc + tranche.amount, 0n)
-        : null,
+      writtenOff: money ? writtenOffOf(contracted, tranches) : null,
       hasContract: project.contract !== null,
       // Переплату в задолженность не записываем: остаток не бывает
       // отрицательным (то же правило, что в финансовом контуре). Списанное

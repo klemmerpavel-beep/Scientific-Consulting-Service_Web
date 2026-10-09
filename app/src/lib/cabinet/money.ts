@@ -54,21 +54,42 @@ export function canChangeTrancheStatus(from: TrancheStatus, to: TrancheStatus): 
 
 /**
  * Остаток долга по договору: сумма договора без полученного и без
- * списанного, не ниже нуля.
+ * списанного в пределах остатка (`writtenOffWithin`, Р-530), не ниже нуля.
  *
  * Списанный транш — решение больше этих денег не ждать. Прежде главный
  * экран считал долг как «договор минус оплата», и списанное продолжало
  * числиться под угрозой, хотя экран финансов его уже не ждал (решение
  * Р-240).
  */
-export function outstandingOf(
-  total: bigint,
-  tranches: readonly { readonly amount: bigint; readonly status: string }[],
-): bigint {
-  const closed = tranches
-    .filter((tranche) => tranche.status === 'PAID' || tranche.status === 'WRITTEN_OFF')
-    .reduce((sum, tranche) => sum + tranche.amount, 0n);
-  return total > closed ? total - closed : 0n;
+export function outstandingOf(total: bigint, tranches: readonly OpenTranche[]): bigint {
+  const paid = tranches.filter((tranche) => tranche.status === 'PAID').reduce((acc, tranche) => acc + tranche.amount, 0n);
+  const rest = total > paid ? total - paid : 0n;
+  return rest - writtenOffWithin(rest, tranches);
+}
+
+/**
+ * Списано по договору — то, на что списание уменьшило остаток
+ * (`outstandingOf`): часть списанного транша сверх остатка договора
+ * долгом и не была, и в «Списано» и «Потерях» не считается (решение
+ * Р-530).
+ */
+export function writtenOffOf(total: bigint, tranches: readonly OpenTranche[]): bigint {
+  const paid = tranches.filter((tranche) => tranche.status === 'PAID').reduce((acc, tranche) => acc + tranche.amount, 0n);
+  return writtenOffWithin(total > paid ? total - paid : 0n, tranches);
+}
+
+/**
+ * Списанное в пределах остатка: списанные транши разносятся по остатку
+ * вместе с открытыми, в том же порядке сроков, что `allocateOpen`
+ * (Р-447), и учитывается только их часть в пределах остатка. Прежде
+ * списанный транш вычитался целиком: при договоре на 100 000, открытом
+ * транше на 60 000 и списанном позже него на 60 000 долг читался 40 000
+ * вместо 60 000, а «Списано» — 60 000 вместо 40 000 (решение Р-530).
+ */
+function writtenOffWithin(rest: bigint, tranches: readonly OpenTranche[]): bigint {
+  return allocateWithin(rest, tranches, ['PLANNED', 'INVOICED', 'WRITTEN_OFF'])
+    .filter((row) => row.tranche.status === 'WRITTEN_OFF')
+    .reduce((acc, row) => acc + row.counted, 0n);
 }
 
 /**
@@ -127,7 +148,7 @@ export function expectsPayment(status: string): boolean {
 export function receivableOf(
   status: string,
   total: bigint,
-  tranches: readonly { readonly amount: bigint; readonly status: string }[],
+  tranches: readonly OpenTranche[],
 ): bigint {
   return expectsPayment(status) ? outstandingOf(total, tranches) : 0n;
 }
@@ -152,8 +173,16 @@ export function allocateOpen<T extends OpenTranche>(
   rest: bigint,
   tranches: readonly T[],
 ): { tranche: T; counted: bigint }[] {
+  return allocateWithin(rest, tranches, ['PLANNED', 'INVOICED']);
+}
+
+function allocateWithin<T extends OpenTranche>(
+  rest: bigint,
+  tranches: readonly T[],
+  statuses: readonly string[],
+): { tranche: T; counted: bigint }[] {
   const open = tranches
-    .filter((tranche) => tranche.status === 'PLANNED' || tranche.status === 'INVOICED')
+    .filter((tranche) => statuses.includes(tranche.status))
     .sort((a, b) => {
       if (a.plannedDate === null) return b.plannedDate === null ? a.id.localeCompare(b.id) : 1;
       if (b.plannedDate === null) return -1;

@@ -32,7 +32,7 @@ import {
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
-import { formatAmount, formatPlain, outstandingOf, workMoneyNote } from '../../../lib/cabinet/money';
+import { formatAmount, formatPlain, outstandingOf, workMoneyNote, type OpenTranche } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { staffThreadUnread } from '../../../lib/cabinet/messages';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
@@ -154,7 +154,7 @@ const BOARD_ITEM = {
  */
 function owed(contract: {
   totalAmount: bigint;
-  tranches: readonly { amount: bigint; status: string }[];
+  tranches: readonly OpenTranche[];
 } | null): bigint {
   if (contract === null) return 0n;
   // Списанное под угрозой уже не числится (решение Р-240).

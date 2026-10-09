@@ -798,7 +798,7 @@ export async function trafficLight(actor: Actor) {
         contract: {
           select: {
             totalAmount: true,
-            tranches: { select: { amount: true, status: true } },
+            tranches: { select: { id: true, amount: true, status: true, plannedDate: true } },
           },
         },
       },
@@ -854,7 +854,7 @@ export async function trafficLight(actor: Actor) {
       contract: {
         select: {
           totalAmount: true,
-          tranches: { select: { amount: true, status: true } },
+          tranches: { select: { id: true, amount: true, status: true, plannedDate: true } },
         },
       },
       _count: { select: { stages: true } },

@@ -11,6 +11,7 @@ import { cache } from 'react';
 
 import { ensure, scopeProjects, type Actor } from '../access.ts';
 import { prisma } from '../../db.ts';
+import { writtenOffOf } from '../money.ts';
 import type { ProjectRow } from './metrics.ts';
 
 /**
@@ -47,7 +48,7 @@ export const loadRows = cache(async function loadRows(actor: Actor): Promise<Pro
         select: {
           totalAmount: true,
           signedOn: true,
-          tranches: { select: { amount: true, status: true, paidOn: true } },
+          tranches: { select: { id: true, amount: true, status: true, plannedDate: true, paidOn: true } },
         },
       },
     },
@@ -70,7 +71,9 @@ export const loadRows = cache(async function loadRows(actor: Actor): Promise<Pro
     signedOn: project.contract?.signedOn ?? null,
     cost: project.contract?.totalAmount ?? 0n,
     paid: total(project.contract?.tranches, 'PAID'),
-    writtenOff: total(project.contract?.tranches, 'WRITTEN_OFF'),
+    // Списанное — в пределах остатка договора, как «Списано» на «Деньгах»
+    // (решение Р-530).
+    writtenOff: writtenOffOf(project.contract?.totalAmount ?? 0n, project.contract?.tranches ?? []),
     payments: (project.contract?.tranches ?? [])
       .filter((tranche) => tranche.status === 'PAID')
       .map((tranche) => ({
