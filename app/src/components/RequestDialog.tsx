@@ -45,6 +45,7 @@ form.pd-rq-open{position:fixed!important;z-index:44!important;left:50%!important
 .pd-rq-close{position:sticky;top:-12px;z-index:2;flex:none;align-self:flex-end;margin:-12px -10px -32px auto;appearance:none;box-sizing:border-box;width:44px;height:44px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid transparent;border-radius:999px;background:var(--pd-ink-inverse,#FFFFFF);color:var(--pd-ink-secondary,#3D4450);cursor:pointer;transition:border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
 .pd-rq-close:hover{border-color:var(--pd-border,#E3E7EC);color:var(--pd-ink,#14161C)}
 .pd-rq-close:focus-visible{outline:2px solid var(--pd-accent,#14417A);outline-offset:2px}
+.pd-rq-guard{position:fixed;top:0;left:0;width:1px;height:0;padding:0;overflow:hidden;outline:none}
 html.pd-rq-lock{overflow:hidden}
 html.pd-rq-lock.pd-rq-gutter{scrollbar-gutter:stable}
 @keyframes pd-rq-fade{from{opacity:0}to{opacity:1}}
@@ -64,6 +65,8 @@ interface Open {
   readonly veil: HTMLDivElement;
   readonly title: HTMLParagraphElement;
   readonly close: HTMLButtonElement;
+  /** Стражи до и после формы: Tab от body не уходит из документа. */
+  readonly guards: readonly [HTMLDivElement, HTMLDivElement];
 }
 
 /** Видимые элементы окна, до которых доходит Tab: ловушка поля-приманки не трогает. */
@@ -79,7 +82,7 @@ export default function RequestDialog() {
 
     const shut = (returnFocus: boolean) => {
       if (open === null) return;
-      const { form, opener, mark, veil, title, close } = open;
+      const { form, opener, mark, veil, title, close, guards } = open;
       open = null;
       mark.replaceWith(form);
       form.classList.remove('pd-rq-open');
@@ -89,6 +92,7 @@ export default function RequestDialog() {
       title.remove();
       close.remove();
       veil.remove();
+      for (const guard of guards) guard.remove();
       document.documentElement.classList.remove('pd-rq-lock', 'pd-rq-gutter');
       document.removeEventListener('keydown', onKey, true);
       if (returnFocus) opener.focus({ preventScroll: true });
@@ -107,11 +111,25 @@ export default function RequestDialog() {
       const first = items[0]!;
       const last = items[items.length - 1]!;
       const active = document.activeElement;
-      // Фокус на body — элемент окна, где он стоял, заменён (вкладка
-      // «почта/телефон» при переключении рисуется новой кнопкой). Браузер
-      // помнит место удалённой кнопки и сам ведёт Tab к соседнему полю;
-      // перехват уводил бы на крестик в начало окна (Р-509).
-      if (active === null || active === document.body) return;
+      // Фокус на body: элемент окна, где он стоял, заменён (вкладка
+      // «почта/телефон» при переключении рисуется новой кнопкой, Р-509) или
+      // выключен (кнопка отправки на время запроса), либо щелчок пришёлся
+      // по тексту. Браузер помнит это место и ведёт Tab от него — к соседу
+      // внутри окна. Шаг не перехватывается, а проверяется после: если
+      // фокус оказался вне окна, он возвращается в окно. За край формы
+      // Tab попадает на стража и тоже возвращается (Р-512).
+      if (active === null || active === document.body) {
+        const current = open;
+        const back = event.shiftKey;
+        window.setTimeout(() => {
+          if (open !== current) return;
+          const now = document.activeElement;
+          if (now !== null && now !== document.body && current.form.contains(now)) return;
+          const items = focusables(current.form);
+          (back ? items[items.length - 1] : items[0])?.focus();
+        }, 0);
+        return;
+      }
       if (event.shiftKey && (active === first || !open.form.contains(active))) {
         event.preventDefault();
         last.focus();
@@ -148,6 +166,26 @@ export default function RequestDialog() {
         '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
       close.addEventListener('click', () => shut(true));
 
+      // Стражи по краям формы. Tab от body с места последнего элемента
+      // формы (выключенная на время отправки кнопка, текст плашки ошибки)
+      // уходил бы из документа в интерфейс браузера — форма последняя на
+      // странице. Страж ловит этот шаг и переводит фокус на другой край
+      // окна (Р-512). Обычный Tab до стражей не доходит: его перехватывает
+      // onKey на первом и последнем элементе.
+      const guard = (edge: 'start' | 'end') => {
+        const el = document.createElement('div');
+        el.tabIndex = 0;
+        el.className = 'pd-rq-guard';
+        el.dataset.edge = edge;
+        el.addEventListener('focus', () => {
+          if (open === null) return;
+          const items = focusables(open.form);
+          (edge === 'end' ? items[0] : items[items.length - 1])?.focus();
+        });
+        return el;
+      };
+      const guards = [guard('start'), guard('end')] as const;
+
       // Форма на время окна переносится к концу страницы: раздел заявки
       // внизу ещё не проявился при прокрутке (прозрачен и сдвинут), а
       // предок со сдвигом делает «fixed» относительным себе, а не экрану.
@@ -160,7 +198,7 @@ export default function RequestDialog() {
       form.setAttribute('role', 'dialog');
       form.setAttribute('aria-modal', 'true');
       form.setAttribute('aria-labelledby', title.id);
-      document.body.append(veil, form);
+      document.body.append(veil, guards[0], form, guards[1]);
       // Крестик стоит в потоке перед заголовком: зазор формы между ними
       // снимается, заголовок остаётся на прежнем месте (Р-511).
       const gap = parseFloat(getComputedStyle(form).rowGap) || 0;
@@ -170,7 +208,7 @@ export default function RequestDialog() {
       const root = document.documentElement;
       root.classList.toggle('pd-rq-gutter', window.innerWidth > root.clientWidth);
       root.classList.add('pd-rq-lock');
-      open = { form, opener, mark, veil, title, close };
+      open = { form, opener, mark, veil, title, close, guards };
       document.addEventListener('keydown', onKey, true);
 
       const first = focusables(form).find((el) => el !== close);

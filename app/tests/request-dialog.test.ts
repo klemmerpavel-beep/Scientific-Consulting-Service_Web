@@ -125,9 +125,50 @@ describe('окно заявки: двойной клик и клавиатура
     // Вкладка «почта/телефон» при переключении заменяется новой кнопкой,
     // фокус падает на body. Прежде Tab уводил на крестик в начало окна.
     const onKey = COMPONENT.slice(COMPONENT.indexOf('const onKey'), COMPONENT.indexOf('const show'));
-    const guard = onKey.indexOf('if (active === null || active === document.body) return;');
-    assert.ok(guard > 0, 'нет пропуска Tab при фокусе на body');
-    assert.ok(guard < onKey.indexOf('first.focus()'), 'пропуск стоит после перехвата');
+    const guard = onKey.indexOf('if (active === null || active === document.body) {');
+    assert.ok(guard > 0, 'нет отдельной ветки Tab при фокусе на body');
+    assert.ok(guard < onKey.indexOf('event.preventDefault();\n        last.focus()'), 'ветка стоит после перехвата');
+    // В ветке body клавиша не гасится: браузер делает шаг сам.
+    const branch = onKey.slice(guard, onKey.indexOf('\n      }\n', guard));
+    assert.doesNotMatch(branch, /preventDefault/u);
+  });
+});
+
+describe('окно заявки: Tab после отказа сервера не уходит из окна (Р-512)', () => {
+  // Кнопка отправки на время запроса выключена, браузер снимает с неё
+  // фокус на body. После 429/503 или обрыва сети Tab шёл от места кнопки —
+  // последнего элемента формы, а форма последняя на странице: фокус уходил
+  // в интерфейс браузера, затем на ссылки шапки под пеленой.
+  const onKey = COMPONENT.slice(COMPONENT.indexOf('const onKey'), COMPONENT.indexOf('const show'));
+  const show = COMPONENT.slice(COMPONENT.indexOf('const show'), COMPONENT.indexOf('const onClick'));
+  const shut = COMPONENT.slice(COMPONENT.indexOf('const shut'), COMPONENT.indexOf('const onKey'));
+
+  it('после шага от body фокус вне окна возвращается на край окна по направлению', () => {
+    const branch = onKey.slice(onKey.indexOf('if (active === null || active === document.body) {'));
+    assert.match(branch, /window\.setTimeout\(\(\) => \{/u);
+    // Проверка — для того же окна, что было открыто при нажатии.
+    assert.match(branch, /if \(open !== current\) return;/u);
+    // Фокус внутри формы (соседняя вкладка, Р-509) не трогается.
+    assert.match(branch, /now !== document\.body && current\.form\.contains\(now\)\) return;/u);
+    assert.match(branch, /\(back \? items\[items\.length - 1\] : items\[0\]\)\?\.focus\(\);/u);
+    assert.match(branch, /const back = event\.shiftKey;/u);
+  });
+
+  it('стражи стоят вплотную до и после формы и переводят фокус на другой край окна', () => {
+    assert.match(show, /document\.body\.append\(veil, guards\[0\], form, guards\[1\]\);/u);
+    assert.match(show, /el\.tabIndex = 0;/u);
+    assert.match(show, /\(edge === 'end' \? items\[0\] : items\[items\.length - 1\]\)\?\.focus\(\);/u);
+    assert.match(show, /const guards = \[guard\('start'\), guard\('end'\)\] as const;/u);
+    // Стражи невидимы и снимаются вместе с окном.
+    assert.match(COMPONENT, /\.pd-rq-guard\{position:fixed;[^}]*width:1px;height:0;[^}]*overflow:hidden/u);
+    assert.match(shut, /for \(const guard of guards\) guard\.remove\(\);/u);
+  });
+
+  it('стражи вне формы: в перечень элементов окна для Tab не попадают', () => {
+    // Перечень берётся только из формы: стражи не становятся ни первым,
+    // ни последним элементом, обычный Tab до них не доходит.
+    assert.match(COMPONENT, /function focusables\(form: HTMLFormElement\)[^]*?form\.querySelectorAll<HTMLElement>\(FOCUSABLE\)/u);
+    assert.doesNotMatch(show, /form\.(append|prepend)\(guard/u);
   });
 });
 
