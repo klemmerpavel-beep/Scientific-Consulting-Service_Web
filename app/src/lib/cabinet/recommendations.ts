@@ -59,30 +59,55 @@ const KEY = /^[a-z]+(?::[\w.-]+){1,3}$/u;
  * на его экране. Если отметку тем временем сменили на другой вкладке или
  * другой человек, снятие отказывает, а не удаляет чужое решение
  * (решение Р-498).
+ *
+ * Так же сверяется и смена отметки: `expected` — состояние на экране,
+ * `null` — «отметки не было». Отметка ставится, только если состояние в
+ * базе всё ещё такое; «сделано» ставится только у принятой рекомендации.
+ * Иначе — тот же отказ, чужое решение не перезаписывается (решение Р-537).
+ * Без `expected` (внутренние вызовы) отметка ставится без сверки.
  */
 export async function markRecommendation(
   actor: Actor,
   key: string,
   status: RecommendationMarkStatus | null,
-  expected?: RecommendationMarkStatus,
+  expected?: RecommendationMarkStatus | null,
 ): Promise<void> {
   ensure(actor, 'ANALYTICS_VIEW');
   if (!KEY.test(key)) throw new Error('Неизвестная рекомендация');
   if (status !== null && !MARK_STATUSES.includes(status)) throw new Error('Неизвестная отметка');
-  if (expected !== undefined && !MARK_STATUSES.includes(expected)) throw new Error('Неизвестная отметка');
+  if (expected !== undefined && expected !== null && !MARK_STATUSES.includes(expected)) throw new Error('Неизвестная отметка');
+  const changed = new Error('Отметку уже изменили: обновите экран и посмотрите её текущее состояние');
+  if (status === 'DONE' && expected !== undefined && expected !== 'ACCEPTED') {
+    throw new Error('Сделанной отмечают принятую рекомендацию');
+  }
   if (status === null) {
+    if (expected === null) {
+      // На экране отметки не было: снимать нечего, а появившуюся — не трогаем.
+      if ((await prisma.recommendationMark.count({ where: { key } })) > 0) throw changed;
+      return;
+    }
     const removed = await prisma.recommendationMark.deleteMany({
       where: expected === undefined ? { key } : { key, status: expected },
     });
-    if (expected !== undefined && removed.count === 0) {
-      throw new Error('Отметку уже изменили: обновите экран и посмотрите её текущее состояние');
-    }
-  } else {
+    if (expected !== undefined && removed.count === 0) throw changed;
+  } else if (expected === undefined) {
     await prisma.recommendationMark.upsert({
       where: { key },
       create: { key, status, userId: actor.id },
       update: { status, userId: actor.id, at: new Date() },
     });
+  } else if (expected === null) {
+    const created = await prisma.recommendationMark.createMany({
+      data: [{ key, status, userId: actor.id }],
+      skipDuplicates: true,
+    });
+    if (created.count === 0) throw changed;
+  } else {
+    const updated = await prisma.recommendationMark.updateMany({
+      where: { key, status: expected },
+      data: { status, userId: actor.id, at: new Date() },
+    });
+    if (updated.count === 0) throw changed;
   }
   await record(actor, {
     action: 'RECOMMENDATION_MARKED',

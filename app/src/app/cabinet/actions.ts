@@ -1798,7 +1798,7 @@ export async function saveAnalyticsSettings(form: FormData): Promise<void> {
  * считается только пустое значение: прежде любое незнакомое — опечатка,
  * форма прежней сборки — молча удаляло отметку. Теперь его отклоняет
  * проверка отметок, а снятие сверяется с состоянием, которое человек
- * видел (решение Р-498).
+ * видел (решение Р-498). Так же сверяется и смена отметки (решение Р-537).
  */
 export async function markRecommendationAction(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
@@ -1811,7 +1811,8 @@ export async function markRecommendationAction(form: FormData): Promise<void> {
       actor,
       String(form.get('key') ?? ''),
       raw === '' ? null : (raw as RecommendationMarkStatus),
-      current === '' ? undefined : (current as RecommendationMarkStatus),
+      // Пустое `current` — на экране отметки не было (Р-537).
+      current === '' ? null : (current as RecommendationMarkStatus),
     );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отметить рекомендацию');
