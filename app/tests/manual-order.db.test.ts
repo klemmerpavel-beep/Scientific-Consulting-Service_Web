@@ -252,6 +252,25 @@ describe('заказ вручную', { skip: !enabled }, async () => {
     );
   });
 
+  it('оплата без стоимости отклоняется, а не теряется молча (Р-505)', async () => {
+    const head = actor(ids.head!, 'HEAD');
+    const before = await prisma.project.count({ where: { title: 'Статья без стоимости' } });
+    for (const cost of [null, 0n]) {
+      await assert.rejects(
+        createManualOrder(head, {
+          customer,
+          serviceTypeId: ids.type!,
+          title: 'Статья без стоимости',
+          cost,
+          paid: 5_000_000n,
+          clientChoice: 'new',
+        }),
+        (error: unknown) => error instanceof OrderInputError && /стоимост/u.test(error.message),
+      );
+    }
+    assert.equal(await prisma.project.count({ where: { title: 'Статья без стоимости' } }), before);
+  });
+
   it('эксперт заказ не заводит, строку книги не видит', async () => {
     const expert = actor(ids.expert!, 'EXPERT');
     await assert.rejects(
