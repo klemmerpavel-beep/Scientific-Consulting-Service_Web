@@ -971,8 +971,17 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
     where: {
       moderationStatus: 'PENDING',
       // Замечания к документам оплат разобрать негде, и делом они не
-      // становятся (решение Р-284).
-      version: { material: { project: scope, kind: 'STAGE_MATERIAL' } },
+      // становятся (решение Р-284). Закрытая работа разбора не допускает
+      // (Р-293), и дело по ней было бы вечным; удалённый материал и
+      // изъятая версия — тоже, как у версий на публикации (решение Р-525).
+      version: {
+        purgedAt: null,
+        material: {
+          project: { ...scope, status: { in: ['ACTIVE', 'PAUSED'] } },
+          kind: 'STAGE_MATERIAL',
+          deletedAt: null,
+        },
+      },
     },
     orderBy: { createdAt: 'asc' },
     select: {

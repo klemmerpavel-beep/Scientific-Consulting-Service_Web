@@ -20,6 +20,7 @@ const stamp = Date.now();
 describe('производственный контур (П5)', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
   const handover = await import('../src/lib/cabinet/handover.ts');
+  const materials = await import('../src/lib/cabinet/materials.ts');
 
   const ids: Record<string, string> = {};
   const NDA = new Date(Date.UTC(2026, 0, 10));
@@ -118,5 +119,43 @@ describe('производственный контур (П5)', { skip: !enabled
     const row = await prisma.stage.findUniqueOrThrow({ where: { id: ids.stage } });
     assert.equal(row.handedOverAt, null);
     assert.equal(row.handbackReason, 'Добавьте выводы');
+  });
+
+  it('замечание куратора, ждущее публикации, не становится делом по закрытой работе (Р-525)', async () => {
+    const material = await prisma.material.create({
+      data: {
+        projectId: ids.project!,
+        stageId: ids.stage!,
+        title: 'Глава 1 — черновик',
+        createdById: ids.curator!,
+        versions: {
+          create: {
+            number: 1,
+            storageKey: `production-loop/${stamp}/comment`,
+            originalName: 'glava.docx',
+            sizeBytes: 10n,
+            sha256: 'c'.repeat(64),
+            contentType: 'application/octet-stream',
+            uploadedById: ids.curator!,
+          },
+        },
+      },
+      include: { versions: true },
+    });
+    await prisma.versionComment.create({
+      data: { versionId: material.versions[0]!.id, authorId: ids.curator!, body: 'Проверить таблицу 2' },
+    });
+    const mine = async () => (await materials.pendingComments(manager())).filter((row) => row.stageId === ids.stage);
+
+    assert.equal((await mine()).length, 1, 'у действующей работы дело есть');
+    await setStatus('PAUSED');
+    assert.equal((await mine()).length, 1, 'у приостановленной работы дело есть');
+    for (const status of ['COMPLETED', 'CANCELLED'] as const) {
+      await setStatus(status);
+      assert.deepEqual(await mine(), [], `дело по работе ${status}: разобрать его нельзя`);
+    }
+    await setStatus('ACTIVE');
+    await prisma.material.update({ where: { id: material.id }, data: { deletedAt: new Date() } });
+    assert.deepEqual(await mine(), [], 'дело по удалённому материалу');
   });
 });
