@@ -99,6 +99,26 @@ describe('регалии и роль эксперта', { skip: !enabled }, asyn
     assert.ok(expertProfile.ndaSignedAt !== null, 'регалии стёрли договор поручения');
   });
 
+  it('должность сотрудника правится в регалиях; без поля — не трогается (Р-500)', async () => {
+    const regalia = { degree: 'к.т.н.', specialization: 'горные машины', specialtyCode: '2.8.6' };
+    await admin.saveRegalia(head(), ids.manager!, { ...regalia, position: '  Доцент кафедры  ' });
+    let profile = await prisma.expertProfile.findUniqueOrThrow({ where: { userId: ids.manager } });
+    assert.equal(profile.position, 'Доцент кафедры');
+    // Прежний вызов без должности её не стирает.
+    await admin.saveRegalia(head(), ids.manager!, regalia);
+    profile = await prisma.expertProfile.findUniqueOrThrow({ where: { userId: ids.manager } });
+    assert.equal(profile.position, 'Доцент кафедры');
+    await assert.rejects(
+      admin.saveRegalia(head(), ids.manager!, { ...regalia, position: 'д'.repeat(201) }),
+      /Должность — не длиннее 200 знаков/u,
+    );
+    await admin.saveRegalia(head(), ids.manager!, { ...regalia, position: ' ' });
+    profile = await prisma.expertProfile.findUniqueOrThrow({ where: { userId: ids.manager } });
+    assert.equal(profile.position, null);
+    const staff = await admin.staffForRegalia(head());
+    assert.ok(staff.every((user) => user.expertProfile === null || 'position' in user.expertProfile));
+  });
+
   it('роль эксперта задаётся при назначении; по умолчанию — эксперт по специальности', async () => {
     await projects.assignExpert(curator(), ids.project!, ids.expert!);
     let project = await prisma.project.findUniqueOrThrow({ where: { id: ids.project } });

@@ -171,7 +171,7 @@ export default async function UsersScreen({
               label="Научная специальность"
               name="specialization"
               placeholder="Физическая химия"
-              hint="Необязательно. Клиенту видны степень и специальность куратора."
+              hint="Необязательно. Клиенту видны учёная степень куратора и шифр специальности; шифр вносится в профиле куратора."
             />
           </FormRow>
           <FormActions>
@@ -521,6 +521,13 @@ export default async function UsersScreen({
                 <Form action={updateRegalia}>
                   <input type="hidden" name="userId" value={user.id} />
                   <FormRow>
+                    <Field
+                      label="Должность"
+                      name="position"
+                      scope={`regalia-${user.id}`}
+                      placeholder="Доцент кафедры"
+                      defaultValue={user.expertProfile?.position ?? ''}
+                    />
                     <Field
                       label="Учёная степень"
                       name="degree"

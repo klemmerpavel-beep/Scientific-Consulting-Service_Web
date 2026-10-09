@@ -1570,6 +1570,7 @@ export async function updateRegalia(form: FormData): Promise<void> {
   let failure: string | null = null;
   try {
     await saveRegalia(actor, String(form.get('userId') ?? ''), {
+      position: String(form.get('position') ?? ''),
       degree: String(form.get('degree') ?? ''),
       specialization: String(form.get('specialization') ?? ''),
       specialtyCode: String(form.get('specialtyCode') ?? ''),

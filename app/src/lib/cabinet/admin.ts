@@ -416,20 +416,28 @@ export async function staffForRegalia(actor: Actor) {
       id: true,
       fullName: true,
       role: true,
-      expertProfile: { select: { degree: true, specialization: true, specialtyCode: true } },
+      expertProfile: { select: { position: true, degree: true, specialization: true, specialtyCode: true } },
     },
   });
 }
 
 /**
- * Регалии сотрудника: учёная степень, научная специальность и её шифр.
+ * Регалии сотрудника: должность, учёная степень, научная специальность и
+ * её шифр. Должность вносится и при заведении (Р-488) и правится здесь
+ * же: прежде она сохранялась, но не показывалась и не правилась нигде
+ * (решение Р-500).
  * Профиль — носитель регалий и у куратора с руководителем; права решает
  * роль, а не профиль. Пустые значения хранятся как `null` (Р-225).
  */
 export async function saveRegalia(
   actor: Actor,
   userId: string,
-  input: { readonly degree: string; readonly specialization: string; readonly specialtyCode: string },
+  input: {
+    readonly position?: string;
+    readonly degree: string;
+    readonly specialization: string;
+    readonly specialtyCode: string;
+  },
 ) {
   ensure(actor, 'USER_MANAGE');
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, status: true } });
@@ -441,6 +449,9 @@ export async function saveRegalia(
     return text === '' ? null : text;
   };
   const data = {
+    // Без поля в запросе должность не трогается: так сохраняют и прежние
+    // вызовы, где её не было.
+    ...(input.position === undefined ? {} : { position: clean(input.position, 200, 'Должность') }),
     degree: clean(input.degree, 120, 'Учёная степень'),
     specialization: clean(input.specialization, 200, 'Научная специальность'),
     specialtyCode: clean(input.specialtyCode, 20, 'Шифр специальности'),
@@ -453,7 +464,12 @@ export async function saveRegalia(
     action: 'STAFF_REGALIA_SAVED',
     objectType: 'ExpertProfile',
     objectId: userId,
-    payload: { degree: data.degree !== null, specialization: data.specialization !== null, code: data.specialtyCode },
+    payload: {
+      ...('position' in data ? { position: data.position !== null } : {}),
+      degree: data.degree !== null,
+      specialization: data.specialization !== null,
+      code: data.specialtyCode,
+    },
   });
 }
 
