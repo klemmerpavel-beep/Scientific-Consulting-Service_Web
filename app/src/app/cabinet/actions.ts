@@ -73,6 +73,7 @@ import {
   type Role,
 } from '../../lib/cabinet/admin';
 import type { AccessLinkState } from '../../components/cabinet/AccessLink';
+import type { RecommendationMarkStatus } from '../../generated/prisma/client.js';
 import {
   rulesFor,
   addContact,
@@ -1790,17 +1791,25 @@ export async function saveAnalyticsSettings(form: FormData): Promise<void> {
   redirect(back);
 }
 
-/** Отметка рекомендации «сделано», «отложено» или снятие (РК-16, Р-349). */
+/**
+ * Отметка рекомендации или её снятие (РК-16, Р-349, Р-491). Снятием
+ * считается только пустое значение: прежде любое незнакомое — опечатка,
+ * форма прежней сборки — молча удаляло отметку. Теперь его отклоняет
+ * проверка отметок, а снятие сверяется с состоянием, которое человек
+ * видел (решение Р-498).
+ */
 export async function markRecommendationAction(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const back = String(form.get('back') ?? '') === 'recommendations' ? '/cabinet/manage/recommendations' : '/cabinet/manage/recommendations/calendar';
   const raw = String(form.get('status') ?? '');
+  const current = String(form.get('current') ?? '');
   let failure: string | null = null;
   try {
     await markRecommendation(
       actor,
       String(form.get('key') ?? ''),
-      raw === 'ACCEPTED' || raw === 'DECLINED' || raw === 'DONE' || raw === 'POSTPONED' ? raw : null,
+      raw === '' ? null : (raw as RecommendationMarkStatus),
+      current === '' ? undefined : (current as RecommendationMarkStatus),
     );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отметить рекомендацию');

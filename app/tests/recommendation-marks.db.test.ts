@@ -133,6 +133,31 @@ describe('календарь продвижения в кабинете (РК-16
     await recommendations.markRecommendation(head(), KEY, null);
   });
 
+  it('снимается только отметка, которую человек видел; незнакомое значение не снимает отметку (Р-498)', async () => {
+    await recommendations.markRecommendation(head(), KEY, 'ACCEPTED');
+    // На другой вкладке отметку сменили на «отклонено»; эта вкладка всё ещё
+    // показывает «принято» и жмёт «Снять отметку».
+    await recommendations.markRecommendation(head(), KEY, 'DECLINED');
+    await assert.rejects(
+      recommendations.markRecommendation(head(), KEY, null, 'ACCEPTED'),
+      /Отметку уже изменили/u,
+    );
+    assert.equal((await recommendations.recommendationMarks(head())).get(KEY)?.status, 'DECLINED');
+    await assert.rejects(
+      recommendations.markRecommendation(head(), KEY, null, 'LOST' as never),
+      /Неизвестная отметка/u,
+    );
+    await recommendations.markRecommendation(head(), KEY, null, 'DECLINED');
+    assert.equal((await recommendations.recommendationMarks(head())).has(KEY), false);
+
+    // Действие экрана: снятием считается только пустое значение, а
+    // незнакомое уходит в проверку отметок и отклоняется ею.
+    const { readFileSync } = await import('node:fs');
+    const path = await import('node:path');
+    const actions = readFileSync(path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'actions.ts'), 'utf8');
+    assert.match(actions, /raw === '' \? null : \(raw as RecommendationMarkStatus\)/u);
+  });
+
   it('менеджеру календарь и отметки закрыты', async () => {
     await assert.rejects(recommendations.calendarFor(manager()), AccessDenied);
     await assert.rejects(recommendations.markRecommendation(manager(), KEY, 'DONE'), AccessDenied);

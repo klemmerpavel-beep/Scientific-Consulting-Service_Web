@@ -54,17 +54,29 @@ const KEY = /^[a-z]+(?::[\w.-]+){1,3}$/u;
 /**
  * Отметить рекомендацию «принято», «отклонено», «сделано» или «отложено»
  * (Р-349, Р-491); `null` — снять отметку.
+ *
+ * Снимается та отметка, которую человек видел: `expected` — её состояние
+ * на его экране. Если отметку тем временем сменили на другой вкладке или
+ * другой человек, снятие отказывает, а не удаляет чужое решение
+ * (решение Р-498).
  */
 export async function markRecommendation(
   actor: Actor,
   key: string,
   status: RecommendationMarkStatus | null,
+  expected?: RecommendationMarkStatus,
 ): Promise<void> {
   ensure(actor, 'ANALYTICS_VIEW');
   if (!KEY.test(key)) throw new Error('Неизвестная рекомендация');
   if (status !== null && !MARK_STATUSES.includes(status)) throw new Error('Неизвестная отметка');
+  if (expected !== undefined && !MARK_STATUSES.includes(expected)) throw new Error('Неизвестная отметка');
   if (status === null) {
-    await prisma.recommendationMark.deleteMany({ where: { key } });
+    const removed = await prisma.recommendationMark.deleteMany({
+      where: expected === undefined ? { key } : { key, status: expected },
+    });
+    if (expected !== undefined && removed.count === 0) {
+      throw new Error('Отметку уже изменили: обновите экран и посмотрите её текущее состояние');
+    }
   } else {
     await prisma.recommendationMark.upsert({
       where: { key },
