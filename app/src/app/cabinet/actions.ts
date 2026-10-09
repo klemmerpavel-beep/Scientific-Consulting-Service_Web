@@ -1471,18 +1471,26 @@ export async function executeErasureRequest(form: FormData): Promise<void> {
 export async function inviteUser(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const role = String(form.get('role') ?? 'EXPERT') as Role;
+  const input = {
+    email: String(form.get('email') ?? ''),
+    fullName: String(form.get('fullName') ?? ''),
+    role,
+    position: String(form.get('position') ?? ''),
+    degree: String(form.get('degree') ?? ''),
+    specialization: String(form.get('specialization') ?? ''),
+  };
   try {
-    await createUser(actor, {
-      email: String(form.get('email') ?? ''),
-      fullName: String(form.get('fullName') ?? ''),
-      role,
-      position: String(form.get('position') ?? ''),
-      degree: String(form.get('degree') ?? ''),
-      specialization: String(form.get('specialization') ?? ''),
-    });
+    await createUser(actor, input);
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось завести запись');
-    redirect(await withError(`/cabinet/manage/users`, reason));
+    // Отказ возвращает в открытую форму с набранным: прежде свёртка
+    // закрывалась и введённое пропадало (решение Р-543).
+    redirect(
+      await withError('/cabinet/manage/users?new=1', reason, {
+        draft: { ...input, role: String(role) },
+        anchor: 'new',
+      }),
+    );
   }
   redirect(`/cabinet/manage/users?created=${role === 'EXPERT' ? 'curator' : '1'}`);
 }
