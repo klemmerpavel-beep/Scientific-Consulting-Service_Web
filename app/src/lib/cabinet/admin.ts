@@ -676,33 +676,42 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
   const withProfile = Object.values(profile).some((value) => value !== null);
   if (withProfile && input.role === 'CLIENT') throw new Error('Регалии ведутся только у сотрудников');
 
-  const user = await prisma.user.create({
-    data: { email, fullName, role: input.role },
-    select: { id: true, email: true, role: true },
-  });
+  // Запись, профиль, письмо куратору и строка журнала — одной транзакцией:
+  // сбой между ними оставлял учётную запись без профиля и журнала, а
+  // повтор отказывал «адрес уже есть» (решение Р-542).
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: { email, fullName, role: input.role },
+      select: { id: true, email: true, role: true },
+    });
 
-  // Эксперту заводится профиль: без него матрица прав не выдаст доступ к
-  // материалам, и причина отказа была бы неочевидна.
-  // Регалии не заводятся пустой строкой: реестр печатал «Имя · » и пустую
-  // клетку специализации (решение Р-225).
-  if (input.role === 'EXPERT') {
-    await prisma.expertProfile.create({ data: { userId: user.id, ...profile } });
-    await inviteCurator(user.id, false);
-  } else if (withProfile) {
-    // Регалии менеджера и руководителя — тот же профиль (Р-297).
-    await prisma.expertProfile.create({ data: { userId: user.id, ...profile } });
-  }
+    // Эксперту заводится профиль: без него матрица прав не выдаст доступ к
+    // материалам, и причина отказа была бы неочевидна.
+    // Регалии не заводятся пустой строкой: реестр печатал «Имя · » и пустую
+    // клетку специализации (решение Р-225).
+    if (input.role === 'EXPERT') {
+      await tx.expertProfile.create({ data: { userId: user.id, ...profile } });
+      await inviteCurator(user.id, false, tx);
+    } else if (withProfile) {
+      // Регалии менеджера и руководителя — тот же профиль (Р-297).
+      await tx.expertProfile.create({ data: { userId: user.id, ...profile } });
+    }
 
-  // Адрес почты в журнал не пишется: запись ссылается на учётную запись
-  // идентификатором, а адрес в ней переживал бы и смену адреса, и
-  // обезличивание (решение Р-252).
-  await record(actor, {
-    action: 'USER_CREATED',
-    objectType: 'User',
-    objectId: user.id,
-    payload: { role: user.role, ...(withProfile ? { profile: Object.keys(profile).filter((key) => profile[key as keyof typeof profile] !== null) } : {}) },
+    // Адрес почты в журнал не пишется: запись ссылается на учётную запись
+    // идентификатором, а адрес в ней переживал бы и смену адреса, и
+    // обезличивание (решение Р-252).
+    await record(
+      actor,
+      {
+        action: 'USER_CREATED',
+        objectType: 'User',
+        objectId: user.id,
+        payload: { role: user.role, ...(withProfile ? { profile: Object.keys(profile).filter((key) => profile[key as keyof typeof profile] !== null) } : {}) },
+      },
+      tx,
+    );
+    return user;
   });
-  return user;
 }
 
 /**
@@ -959,9 +968,13 @@ export async function ndaRequestedAt(actor: Actor): Promise<Date | null> {
  * один раз на учётную запись: ключ не даёт второго письма, если роль
  * сменили туда и обратно.
  */
-async function inviteCurator(userId: string, ndaSigned: boolean): Promise<void> {
+async function inviteCurator(
+  userId: string,
+  ndaSigned: boolean,
+  db: Parameters<typeof enqueue>[0] = prisma,
+): Promise<void> {
   const letter = invitationLetter(ndaSigned);
-  await enqueue(prisma, {
+  await enqueue(db, {
     userId,
     eventKind: 'CURATOR_INVITED',
     subject: letter.subject,
