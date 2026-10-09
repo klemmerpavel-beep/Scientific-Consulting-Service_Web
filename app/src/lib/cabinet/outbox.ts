@@ -548,12 +548,23 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
   // если прогон оборвался, строка вернётся в очередь по истечении аренды.
   const now = new Date();
   const leaseUntil = new Date(now.getTime() + LEASE_MS);
+  // Строки ненастроенного канала берутся в порцию после строк настроенного.
+  // Почта без срока годности ждёт настройки бессрочно (откладывается на
+  // час без расхода попыток); при Telegram без почты таких строк набирались
+  // тысячи, они созревали раньше свежих и занимали порцию целиком, и сигнал
+  // в Telegram отставал всё сильнее. В конце порции они по-прежнему
+  // доходят до разбора: устаревшие закрываются, прочие откладываются
+  // (решение Р-533).
+  const off = [
+    ...(mailConfigured() ? [] : ['EMAIL']),
+    ...((process.env.TELEGRAM_BOT_TOKEN ?? '').trim() ? [] : ['TELEGRAM']),
+  ];
   const claimed = await prisma.$queryRaw<{ id: string }[]>`
     UPDATE "NotificationOutbox" SET "scheduledAt" = ${leaseUntil}
     WHERE "id" IN (
       SELECT "id" FROM "NotificationOutbox"
       WHERE "state" = 'PENDING' AND "scheduledAt" <= ${now}
-      ORDER BY "scheduledAt" ASC
+      ORDER BY ("channel"::text = ANY(${off}::text[])) ASC, "scheduledAt" ASC
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
     )
