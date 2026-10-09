@@ -846,6 +846,20 @@ export default async function StageScreen({
                                   увидит. Попросите куратора убрать её или не публикуйте.
                                 </Text>
                               ) : null}
+                              {/* Комментарии практики к версии куратора стоят
+                                  «опубликованными» с самого начала и
+                                  открываются клиенту вместе с версией
+                                  (решение владельца, Р-546). */}
+                              <Text muted size={13} style={{ marginTop: 8 }}>
+                                {(() => {
+                                  const staffNotes = version.comments.filter(
+                                    (comment) => comment.author.role === 'MANAGER' || comment.author.role === 'HEAD',
+                                  ).length;
+                                  return staffNotes === 0
+                                    ? 'Вместе с версией клиент увидит комментарии менеджера к ней, если они будут.'
+                                    : `Вместе с версией клиент увидит комментарии менеджера к ней: ${staffNotes}.`;
+                                })()}
+                              </Text>
                               <Form action={decideOnVersion} inline style={{ marginTop: 10 }}>
                                 <input type="hidden" name="versionId" value={version.id} />
                                 <input type="hidden" name="stageId" value={stage.id} />
@@ -916,7 +930,12 @@ export default async function StageScreen({
                               multiline
                               required
                               placeholder={curatorView ? 'Раздел — что не так — как исправить' : undefined}
-                              hint={curatorView ? 'Клиент увидит замечание после проверки менеджером.' : undefined}
+                              hint={
+                                curatorView ? 'Клиент увидит замечание после проверки менеджером.'
+                                // Р-546: практике — о неопубликованной версии куратора.
+                                : version.moderation?.status === 'PENDING' ? 'Версия куратора ещё не опубликована. Когда её опубликуют, клиент увидит и этот комментарий с подписью «Менеджер». Замечание только для куратора напишите в причине «Не публиковать».'
+                                : undefined
+                              }
                             />
                             {curatorView ? (
                               <Text muted size={13}>
