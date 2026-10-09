@@ -489,6 +489,24 @@ describe('книга заказов и обезличивание', { skip: !ena
     assert.equal(letter.lastError, null, 'адрес остался в тексте ошибки доставки');
   });
 
+  it('исправленное ФИО в книге не заводит вторую работу и на базе (Р-452, Р-502)', async () => {
+    const typo = `Зуев Пётр ${stamp}`;
+    const fixed = `Зуев Петр Ильич ${stamp}`;
+    const first = await preview([row('2025-05-05', typo, 'Диссертция', '120000')], 'опечатка');
+    await applyBatch(head(), first.batchId, { managerId: ids.manager! });
+    assert.equal(await worksOf(typo), 1);
+
+    const edited = await preview([row('2025-05-05', fixed, 'Диссертция', '120000')], 'опечатка-исправлена');
+    assert.notEqual(edited.rows[0]?.action, 'CREATE', 'строка с исправленным ФИО читается новой');
+    const report = await applyBatch(head(), edited.batchId, { managerId: ids.manager! });
+    assert.equal(report.created, 0, 'исправленное ФИО завело вторую работу');
+    assert.equal(await worksOf(fixed), 0, 'заведена вторая карточка');
+
+    // Следующий прогон находит работу уже по новой подписи.
+    const again = await preview([row('2025-05-05', fixed, 'Диссертция', '120000')], 'опечатка-повтор');
+    assert.equal(again.rows[0]?.action, 'SKIP');
+  });
+
   it('надгробие, оставленное до Р-501, узнаёт поправленную строку по началу и договору работы', async () => {
     // Так лежат строки, обезличенные до решения Р-501: надгробие без
     // следа «день | сумма», работа и договор на месте.

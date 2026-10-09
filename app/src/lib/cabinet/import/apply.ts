@@ -171,16 +171,22 @@ function unclearNote(candidates: number): string {
  * Отбор идёт по началу подписи: у прежней формулы основа стоит в начале, у
  * новой — после метки. Совпадение начала ещё не совпадение основы, поэтому
  * найденное перепроверяется точным сравнением основ.
+ *
+ * `days` — дни заказа (первое поле основы), чьи работы нужны целиком: среди
+ * них сверка ищет работу, чья строка в книге поправлена (шаг 6, Р-452).
+ * Прежде такие работы не загружались вовсе — их основы в книге уже нет, —
+ * и шаг 6 на базе не срабатывал (решение Р-502).
  */
 async function knownWorks(
   db: Pick<typeof prisma, 'importRow'>,
   signatures: readonly (string | null)[],
   exceptBatch: string | null,
+  days: ReadonlySet<string> = new Set(),
 ): Promise<(KnownWork & { code: string | null })[]> {
   const bases = new Set(
     signatures.map(signatureBase).filter((base): base is string => base !== null),
   );
-  if (bases.size === 0) return [];
+  if (bases.size === 0 && days.size === 0) return [];
   // Сначала — лёгкие столбцы всех прежних версий строк, без разобранных
   // значений: строк набирается «строки книги × зафиксированные загрузки», а
   // сверка (`matchBook`) берёт у каждой работы только последнюю. Разобранные
@@ -190,7 +196,7 @@ async function knownWorks(
       projectId: { not: null },
       batch: { state: 'APPLIED' },
       ...(exceptBatch === null ? {} : { batchId: { not: exceptBatch } }),
-      OR: [...bases].flatMap((base) => [
+      OR: [...bases, ...days].flatMap((base) => [
         { signature: { startsWith: `${base}|` } },
         { signature: { startsWith: `${KEY_VERSION}|${base}` } },
       ]),
@@ -206,7 +212,7 @@ async function knownWorks(
   const ordered = found
     .filter((row) => {
       const base = signatureBase(row.signature);
-      return base !== null && bases.has(base);
+      return base !== null && (bases.has(base) || days.has(dayOf(base)));
     })
     // Порядок фиксации, внутри загрузки — порядок строк. Номером по порядку,
     // а не произведением: миллисекунды на номер строки не помещаются в
@@ -295,23 +301,37 @@ async function erasedWorks(
   return [...found.values()];
 }
 
+/** День заказа — первое поле основы ключа. */
+function dayOf(base: string): string {
+  return base.split('|')[0]!;
+}
+
 /**
- * Сверка строк с перенесённым и стёртым. Стёртые работы по дню и сумме
- * ищутся, только если после обычной сверки остались новые строки: так
- * неизменная книга обходится без лишнего запроса (решение Р-501).
+ * Сверка строк с перенесённым и стёртым. Работы тех же дней, что у новых
+ * строк (шаг 6, Р-502), и стёртые работы по дню и сумме (шаг 7, Р-501)
+ * ищутся, только если после обычной сверки новые строки остались: так
+ * неизменная книга обходится без лишних запросов.
  */
 async function settle(
   db: Pick<typeof prisma, 'importRow'>,
   rows: readonly BookRowKey[],
-  known: readonly KnownWork[],
-  tombs: ReadonlySet<string>,
-): Promise<RowMatch[]> {
+  exceptBatch: string | null,
+): Promise<{ matches: RowMatch[]; known: (KnownWork & { code: string | null })[] }> {
+  const signatures = rows.map((row) => row.signature);
+  const known = await knownWorks(db, signatures, exceptBatch);
+  const tombs = await erasedKeys(db, signatures);
   const first = matchBook(rows, known, tombs);
-  const twins = rows.flatMap((row, index) =>
-    first[index]!.kind === 'NEW' && row.twin !== undefined && row.twin !== null ? [row.twin] : [],
+  const fresh = rows.filter((_, index) => first[index]!.kind === 'NEW');
+  if (fresh.length === 0) return { matches: first, known };
+  const days = new Set(
+    fresh.flatMap((row) => {
+      const base = signatureBase(row.signature);
+      return base === null ? [] : [dayOf(base)];
+    }),
   );
-  if (twins.length === 0) return first;
-  return matchBook(rows, known, tombs, await erasedWorks(db, twins));
+  const twins = fresh.flatMap((row) => (row.twin === undefined || row.twin === null ? [] : [row.twin]));
+  const wider = days.size === 0 ? known : await knownWorks(db, signatures, exceptBatch, days);
+  return { matches: matchBook(rows, wider, tombs, await erasedWorks(db, twins)), known: wider };
 }
 
 /**
@@ -431,20 +451,16 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
   // иначе брошенный предпросмотр закрывал бы строки от переноса. Сверка —
   // по основе ключа, а не по ключу целиком: так находят свои работы и
   // строки с исправленной суммой, и строки со старыми ключами (Р-252).
-  const signatures = book.rows.map((row) => row.signature);
-  const known = await knownWorks(prisma, signatures, null);
-  const codes = new Map(known.map((work) => [work.projectId, work.code]));
-  const tombs = await erasedKeys(prisma, signatures);
-  const matches = await settle(
+  const { matches, known } = await settle(
     prisma,
     book.rows.map((row) => ({
       signature: row.signature,
       cost: row.cost,
       twin: erasedTwin(row.orderDate, row.cost),
     })),
-    known,
-    tombs,
+    null,
   );
+  const codes = new Map(known.map((work) => [work.projectId, work.code]));
 
   const rows: PreviewRow[] = book.rows.map((row, index) => {
     const match = matches[index]!;
@@ -902,10 +918,7 @@ export async function applyBatch(
       // минуте, а не берётся из предпросмотра: между ними могла быть
       // зафиксирована другая загрузка той же книги, а заказчик — стёрт по
       // требованию субъекта. Сверка та же, что в предпросмотре (Р-252).
-      const signatures = stored.map((row) => row.signature);
-      const known = await knownWorks(tx, signatures, batchId);
-      const tombs = await erasedKeys(tx, signatures);
-      const matches = await settle(
+      const { matches } = await settle(
         tx,
         stored.map((row) => {
           const values = row.parsed as { cost?: string; orderDate?: string | null } | null;
@@ -915,8 +928,7 @@ export async function applyBatch(
             twin: erasedTwin(values?.orderDate ?? null, values?.cost ?? null),
           };
         }),
-        known,
-        tombs,
+        batchId,
       );
 
       const clients = new Map<string, string>();
