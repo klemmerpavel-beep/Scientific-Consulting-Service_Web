@@ -63,7 +63,11 @@ describe('перенос из заявки', { skip: !enabled }, async () => {
       data: { email: `lt-mgr-${stamp}@example.org`, fullName: 'Куратор переноса', role: 'MANAGER', status: 'SUSPENDED' },
     });
     const type = await prisma.serviceType.create({ data: { code: `lt-${stamp}`, name: 'Проверка переноса' } });
-    Object.assign(ids, { manager: manager.id, type: type.id });
+    const [other, head] = await Promise.all([
+      prisma.user.create({ data: { email: `lt-mgr2-${stamp}@example.org`, fullName: 'Другой менеджер', role: 'MANAGER' } }),
+      prisma.user.create({ data: { email: `lt-head-${stamp}@example.org`, fullName: 'Руководитель переноса', role: 'HEAD' } }),
+    ]);
+    Object.assign(ids, { manager: manager.id, type: type.id, other: other.id, head: head.id });
   });
 
   after(async () => {
@@ -81,7 +85,7 @@ describe('перенос из заявки', { skip: !enabled }, async () => {
     await prisma.project.deleteMany({ where: { id: { in: projectIds } } });
     await prisma.lead.deleteMany({ where: { id: { in: leadIds } } });
     await prisma.clientProfile.deleteMany({ where: { id: { in: profileIds } } });
-    await prisma.user.deleteMany({ where: { id: { in: [...users, ids.manager!] } } });
+    await prisma.user.deleteMany({ where: { id: { in: [...users, ids.manager!, ids.other!, ids.head!] } } });
     await prisma.serviceType.deleteMany({ where: { id: ids.type } });
   });
 
@@ -148,6 +152,34 @@ describe('перенос из заявки', { skip: !enabled }, async () => {
     profileIds.push(card.id);
     const leadId = await lead({ contactKind: 'phone', contact: '89012223344', name: 'Сидоров С.' });
     const project = await approve(leadId);
+    assert.equal(project.clientId, card.id);
+  });
+
+  it('заявитель — клиент другого менеджера: менеджер не одобряет, руководитель одобряет (Р-531)', async () => {
+    // Карточка с работой другого менеджера; заявка с сайта пришла с её
+    // адресом. Работа на этой карточке открыла бы одобрившему её контакты.
+    const card = await prisma.clientProfile.create({
+      data: {
+        fullName: 'Чужой Клиент',
+        normalizedName: `lt чужой ${stamp}`,
+        email: `lt-foreign-${stamp}@example.org`,
+        phone: '+7 903 111-22-33',
+      },
+    });
+    profileIds.push(card.id);
+    const theirs = await prisma.project.create({
+      data: { code: `PD-LT-${String(stamp).slice(-6)}`, clientId: card.id, serviceTypeId: ids.type!, title: 'Работа другого', managerId: ids.other! },
+    });
+    projectIds.push(theirs.id);
+    const leadId = await lead({ contactKind: 'email', contact: `lt-foreign-${stamp}@example.org`, name: 'Чужой К.' });
+    await assert.rejects(approve(leadId), /клиент другого менеджера: заявку одобряет руководитель/u);
+    const kept = await prisma.lead.findUniqueOrThrow({ where: { id: leadId } });
+    assert.equal(kept.projectId, null, 'работа заведена');
+    assert.notEqual(kept.status, 'CONTRACTED', 'заявка осталась захваченной');
+    assert.equal(await prisma.project.count({ where: { clientId: card.id } }), 1, 'на чужой карточке новая работа');
+    const head: Actor = { id: ids.head!, role: 'HEAD', status: 'ACTIVE', clientProfileId: null, expertNdaSignedAt: null };
+    const project = await approveLead(head, { leadId, serviceTypeId: ids.type!, managerId: ids.head!, title: 'Работа из заявки' });
+    projectIds.push(project.id);
     assert.equal(project.clientId, card.id);
   });
 });

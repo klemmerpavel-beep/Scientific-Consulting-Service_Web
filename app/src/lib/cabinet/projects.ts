@@ -250,6 +250,15 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
     // книги), заводила вторую карточку того же человека. Найденная карточка
     // без записи привязывается к записи заявителя (решение Р-308).
     const twin = own ?? (await contactTwin(tx, email, phone, userId));
+    // Заявитель — клиент другого менеджера: работа на его карточке открыла
+    // бы одобрившему менеджеру контакты чужого клиента. Такую заявку
+    // одобряет руководитель — как ручной заказ (Р-419, решение Р-531).
+    if (twin !== null && actor.role === 'MANAGER') {
+      const foreign = await tx.project.count({ where: { clientId: twin.id, managerId: { not: actor.id } } });
+      if (foreign > 0) {
+        throw new Error('Заявитель — клиент другого менеджера: заявку одобряет руководитель');
+      }
+    }
     if (twin !== null && twin.userId === null && userId !== null) {
       await tx.clientProfile.update({ where: { id: twin.id }, data: { userId } });
     }
