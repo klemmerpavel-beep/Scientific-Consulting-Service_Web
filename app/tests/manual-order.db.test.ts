@@ -23,6 +23,7 @@ describe('заказ вручную', { skip: !enabled }, async () => {
   const stamp = Date.now();
   const ids: Record<string, string> = {};
   const projects: string[] = [];
+  const others: string[] = [];
   const customer = `Заказчиков Тест Ручной ${stamp}`;
 
   const actor = (id: string, role: Actor['role']): Actor => ({
@@ -48,6 +49,15 @@ describe('заказ вручную', { skip: !enabled }, async () => {
   });
 
   after(async () => {
+    // Работы, заведённые мимо списка (например, при падении проверки до
+    // `projects.push`), иначе держат учётные записи проверки в базе: лишний
+    // действующий руководитель меняет счёт писем в других проверках. Все
+    // заказы проверки заводятся с её видом услуги.
+    const strays = await prisma.project.findMany({
+      where: { serviceTypeId: ids.type, id: { notIn: projects } },
+      select: { id: true },
+    });
+    projects.push(...strays.map((p) => p.id));
     await prisma.tranche.deleteMany({ where: { contract: { projectId: { in: projects } } } });
     await prisma.contract.deleteMany({ where: { projectId: { in: projects } } });
     await prisma.notificationOutbox.deleteMany({ where: { projectId: { in: projects } } });
@@ -57,7 +67,7 @@ describe('заказ вручную', { skip: !enabled }, async () => {
     await prisma.project.deleteMany({ where: { id: { in: projects } } });
     await prisma.clientProfile.deleteMany({ where: { id: { in: clients.map((c) => c.clientId) } } });
     await prisma.serviceType.deleteMany({ where: { id: ids.type } });
-    await prisma.user.deleteMany({ where: { id: { in: [ids.head!, ids.manager!, ids.expert!] } } });
+    await prisma.user.deleteMany({ where: { id: { in: [ids.head!, ids.manager!, ids.expert!, ...others] } } });
     await prisma.$disconnect();
   });
 
@@ -154,39 +164,37 @@ describe('заказ вручную', { skip: !enabled }, async () => {
     const other = await prisma.user.create({
       data: { email: `order-mgr2-${stamp}@example.org`, fullName: 'Другой менеджер', role: 'MANAGER' },
     });
-    try {
-      const foreignName = `Чужой Клиент Заказа ${stamp}`;
-      const foreign = await createManualOrder(actor(ids.head!, 'HEAD'), {
-        customer: foreignName,
-        email: `foreign-${stamp}@example.org`,
-        phone: '+7 911 222-33-44',
-        serviceTypeId: ids.type!,
-        title: 'Работа другого менеджера',
-        managerId: other.id,
-      });
-      projects.push(foreign.projectId);
-      const manager = actor(ids.manager!, 'MANAGER');
+    // Удаляется в `after` вместе с работой, которую ведёт.
+    others.push(other.id);
+    const foreignName = `Чужой Клиент Заказа ${stamp}`;
+    const foreign = await createManualOrder(actor(ids.head!, 'HEAD'), {
+      customer: foreignName,
+      email: `foreign-${stamp}@example.org`,
+      phone: '+7 911 222-33-44',
+      serviceTypeId: ids.type!,
+      title: 'Работа другого менеджера',
+      managerId: other.id,
+    });
+    projects.push(foreign.projectId);
+    const manager = actor(ids.manager!, 'MANAGER');
 
-      // По ФИО карточка менеджеру не предлагается — заводится своя.
-      assert.equal((await nameCandidates(manager, foreignName)).length, 0);
-      assert.equal((await nameCandidates(actor(ids.head!, 'HEAD'), foreignName)).length, 1);
-      const own = await createManualOrder(manager, { customer: foreignName, serviceTypeId: ids.type!, title: 'Однофамилец' });
-      projects.push(own.projectId);
-      const ownProject = await prisma.project.findUniqueOrThrow({ where: { id: own.projectId } });
-      const foreignProject = await prisma.project.findUniqueOrThrow({ where: { id: foreign.projectId } });
-      assert.notEqual(ownProject.clientId, foreignProject.clientId, 'заказ менеджера лёг в карточку чужого клиента');
+    // По ФИО карточка менеджеру не предлагается — заводится своя.
+    assert.equal((await nameCandidates(manager, foreignName)).length, 0);
+    assert.equal((await nameCandidates(actor(ids.head!, 'HEAD'), foreignName)).length, 1);
+    const own = await createManualOrder(manager, { customer: foreignName, serviceTypeId: ids.type!, title: 'Однофамилец' });
+    projects.push(own.projectId);
+    const ownProject = await prisma.project.findUniqueOrThrow({ where: { id: own.projectId } });
+    const foreignProject = await prisma.project.findUniqueOrThrow({ where: { id: foreign.projectId } });
+    assert.notEqual(ownProject.clientId, foreignProject.clientId, 'заказ менеджера лёг в карточку чужого клиента');
 
-      // По почте и телефону — отказ: заказ вносит руководитель.
-      for (const contact of [{ email: `FOREIGN-${stamp}@example.org` }, { phone: '8 911 222 33 44' }]) {
-        await assert.rejects(
-          createManualOrder(manager, { customer: 'Кто Угодно', serviceTypeId: ids.type!, title: 'Обход', ...contact }),
-          /клиент другого менеджера/u,
-        );
-      }
-      assert.equal(await prisma.project.count({ where: { clientId: foreignProject.clientId } }), 1);
-    } finally {
-      await prisma.user.delete({ where: { id: other.id } }).catch(() => undefined);
+    // По почте и телефону — отказ: заказ вносит руководитель.
+    for (const contact of [{ email: `FOREIGN-${stamp}@example.org` }, { phone: '8 911 222 33 44' }]) {
+      await assert.rejects(
+        createManualOrder(manager, { customer: 'Кто Угодно', serviceTypeId: ids.type!, title: 'Обход', ...contact }),
+        /клиент другого менеджера/u,
+      );
     }
+    assert.equal(await prisma.project.count({ where: { clientId: foreignProject.clientId } }), 1);
   });
 
   it('почта — по формату и не сотрудника', async () => {

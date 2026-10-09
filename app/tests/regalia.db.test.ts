@@ -152,13 +152,14 @@ describe('регалии и роль эксперта', { skip: !enabled }, asyn
     assert.equal(asked.length, 1);
     assert.match(asked[0]!.subject, /Нужен договор поручения: Петров Без Договора, работа PD-RG-/u);
 
-    // Назначил руководитель — вопроса себе нет.
+    // Назначил руководитель — вопроса себе нет. Считаются письма всем
+    // руководителям: в общей базе их может быть больше одного.
+    const askedAll = () =>
+      prisma.notificationOutbox.count({ where: { projectId: ids.project, eventKind: 'NDA_NEEDED' } });
+    const beforeHead = await askedAll();
     await projects.assignExpert(curator(), ids.project!, ids.expert!);
     await projects.assignExpert(head(), ids.project!, fresh.id);
-    assert.equal(
-      await prisma.notificationOutbox.count({ where: { projectId: ids.project, eventKind: 'NDA_NEEDED' } }),
-      1,
-    );
+    assert.equal(await askedAll(), beforeHead);
 
     // Имена исполнителей для истории — практике, клиенту — нет.
     assert.equal((await executorNames(curator(), [fresh.id])).get(fresh.id), 'Петров Без Договора');
