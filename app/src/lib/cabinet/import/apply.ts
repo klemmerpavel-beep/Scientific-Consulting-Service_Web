@@ -1048,9 +1048,18 @@ export async function applyBatch(
           // правка одной оплаты прежде переписывала и состояние со сроком, и
           // работа, завершённая или отменённая в кабинете, возвращалась «в
           // работу» (решение Р-451).
-          const prior = (match.kind === 'KNOWN' ? match.parsed : null) as { status?: unknown; deadline?: unknown } | null;
+          const prior = (match.kind === 'KNOWN' ? match.parsed : null) as {
+            status?: unknown;
+            deadline?: unknown;
+            cost?: unknown;
+            paid?: unknown;
+          } | null;
           const statusChanged = prior === null || prior.status !== parsed.status;
           const deadlineChanged = prior === null || (prior.deadline ?? null) !== (parsed.deadline ?? null);
+          // Сумма договора — тем же правилом: правка срока или состояния
+          // прежде возвращала к книге сумму, исправленную в кабинете, и
+          // снимала остаток под неё (решение Р-503).
+          const moneyChanged = prior === null || prior.cost !== parsed.cost || prior.paid !== parsed.paid;
           const changes = {
             ...(statusChanged
               ? {
@@ -1074,7 +1083,11 @@ export async function applyBatch(
           }
           const contract = await tx.contract.findFirst({
             where: { projectId },
-            select: { id: true, tranches: { select: { id: true, title: true, amount: true, status: true } } },
+            select: {
+              id: true,
+              totalAmount: true,
+              tranches: { select: { id: true, title: true, amount: true, status: true } },
+            },
           });
           // Работа заведена с нулевой суммой, и договора у неё нет, а в книге
           // сумму проставили: договор заводится так же, как при заведении
@@ -1089,9 +1102,13 @@ export async function applyBatch(
           }
           if (contract !== null) {
             // Сумма договора не ниже полученного: оплата сверх стоимости —
-            // доплата за дополнительную услугу (Р-273).
-            const total = rowPaid > rowCost ? rowPaid : rowCost;
-            await tx.contract.update({ where: { id: contract.id }, data: { totalAmount: total } });
+            // доплата за дополнительную услугу (Р-273). Если стоимость и
+            // оплата в книге прежние, остаётся сумма договора из кабинета
+            // (Р-503), а остаток считается от неё.
+            const total = moneyChanged ? (rowPaid > rowCost ? rowPaid : rowCost) : contract.totalAmount;
+            if (moneyChanged) {
+              await tx.contract.update({ where: { id: contract.id }, data: { totalAmount: total } });
+            }
             // Сторнированное в кабинете книга ещё помнит оплаченным: оно
             // считается учтённым, иначе правка любого поля строки заводила
             // бы ту же оплату заново и отменяла сторно (решение Р-435).

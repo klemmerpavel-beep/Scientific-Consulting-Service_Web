@@ -507,6 +507,37 @@ describe('книга заказов и обезличивание', { skip: !ena
     assert.equal(again.rows[0]?.action, 'SKIP');
   });
 
+  it('правка срока в книге не возвращает сумму договора, исправленную в кабинете (Р-503)', async () => {
+    const who = `Белова Нина ${stamp}`;
+    const first = await preview([row('2025-07-07', who, 'Диссертция', '50000')], 'сумма');
+    await applyBatch(head(), first.batchId, { managerId: ids.manager! });
+    const contract = await prisma.contract.findFirstOrThrow({
+      where: { project: { client: { normalizedName: normalizeName(who) } } },
+      select: { id: true },
+    });
+    // Руководитель поднял сумму договора в кабинете и завёл транш за
+    // дополнительную услугу — так, как советует Р-233.
+    await prisma.contract.update({ where: { id: contract.id }, data: { totalAmount: 7_000_000n } });
+    await prisma.tranche.create({
+      data: { contractId: contract.id, title: 'Доп. услуга', amount: 2_000_000n, status: 'PLANNED' },
+    });
+
+    // В книге поменялся только срок; стоимость и оплата прежние.
+    const later: TestRow = row('2025-07-07', who, 'Диссертция', '50000').map((cell, index) =>
+      index === 4 ? excelSerial('2025-09-30') : cell,
+    );
+    const edited = await preview([later], 'сумма-срок');
+    assert.equal(edited.rows[0]?.action, 'UPDATE');
+    const report = await applyBatch(head(), edited.batchId, { managerId: ids.manager! });
+    assert.equal(report.updated, 1);
+    const after = await prisma.contract.findUniqueOrThrow({
+      where: { id: contract.id },
+      select: { totalAmount: true, tranches: { select: { title: true, amount: true, status: true } } },
+    });
+    assert.equal(after.totalAmount, 7_000_000n, 'сумма договора возвращена к книге');
+    assert.ok(after.tranches.some((tranche) => tranche.title === 'Доп. услуга' && tranche.amount === 2_000_000n));
+  });
+
   it('надгробие, оставленное до Р-501, узнаёт поправленную строку по началу и договору работы', async () => {
     // Так лежат строки, обезличенные до решения Р-501: надгробие без
     // следа «день | сумма», работа и договор на месте.
