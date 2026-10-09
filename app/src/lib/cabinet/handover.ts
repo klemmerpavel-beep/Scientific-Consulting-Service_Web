@@ -11,7 +11,7 @@
  */
 
 import { prisma } from '../db.ts';
-import { ensure, ensureContributionOpen, type Actor } from './access.ts';
+import { ensure, ensureContributionOpen, ensureWorkOpen, type Actor } from './access.ts';
 import { stageLink } from './approval.ts';
 import { record } from './audit.ts';
 import { notifyCurator, notifyExpert } from './outbox.ts';
@@ -144,6 +144,9 @@ export async function recallHandover(actor: Actor, stageId: string) {
 export async function handBackStage(actor: Actor, stageId: string, reason: string) {
   const stage = await loadStage(stageId);
   ensure(actor, 'STAGE_HAND_BACK', stage.project);
+  // Закрытая работа — только чтение (Р-293): возврат этапа завершённой или
+  // отменённой работы давал куратору письмо «ход за вами» (решение Р-523).
+  ensureWorkOpen(stage.project.status);
   const text = cleanText(reason, 'Причина возврата');
   const now = new Date();
   await prisma.$transaction(async (tx) => {

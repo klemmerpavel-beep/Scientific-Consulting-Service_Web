@@ -31,6 +31,7 @@ import {
   presentBlockedReason,
   presentReturnText,
   staffExpertLine,
+  workClosed,
 } from '../../../../lib/cabinet/access';
 import { autoAcceptEnabled, formatDay } from '../../../../lib/cabinet/approval';
 import { approvalStaffLine } from '../../../../lib/cabinet/approval-text';
@@ -179,7 +180,8 @@ export default async function StageScreen({
   const curatorView = actor.role === 'EXPERT';
   const blockedForCurator = curatorView ? presentBlockedReason(actor, stage.blockedReason) : null;
   const mayHandOver = state === 'IN_PROGRESS' && refusal === null && can(actor, 'STAGE_HAND_OVER', ref);
-  const mayHandBack = handover === 'handed' && can(actor, 'STAGE_HAND_BACK', ref);
+  // Сдачу закрытой работы не возвращают: работа только для чтения (Р-523).
+  const mayHandBack = handover === 'handed' && !workClosed(stage.project.status) && can(actor, 'STAGE_HAND_BACK', ref);
   // Транш следующего этапа не оплачен — подсказка практике; перевод этапа
   // она не запрещает (требование РК-12, решение Р-338).
   const nextUnpaid = mayEdit && state !== 'DONE' ? await nextStageUnpaid(actor, stage.id) : false;
