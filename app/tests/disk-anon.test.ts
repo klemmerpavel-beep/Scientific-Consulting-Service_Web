@@ -50,6 +50,22 @@ describe('обезличенная выгрузка на Диск', () => {
     assert.ok(t.csv.includes('PD-2026-057'));
   });
 
+  it('закрывает названия материала и этапа и назначение транша (проверка 09.10.2026)', () => {
+    // Название материала без введённого заголовка — исходное имя файла, то
+    // же, что закрыто в «Файле»; этап и назначение транша пишут от руки.
+    for (const col of ['Материал', 'Этап', 'Поступление']) {
+      assert.ok(PERSONAL_COLUMNS.has(col), col);
+    }
+    const head = ['Работа', 'Материал', 'Версия', 'Файл'];
+    const data = [['PD-2026-057', 'Иванов_глава1.docx', 1, 'Иванов_глава1.docx']] as const;
+    const t = anonymize({
+      file: 'Материалы.xlsx', name: 'materialy.csv', rows: 1,
+      xlsx: xlsx({ title: 'Материалы', head, rows: data }), csv: csv(head, data), head, data,
+    });
+    assert.ok(!t.csv.includes('Иванов'), t.csv);
+    assert.ok(!t.xlsx.includes(Buffer.from('Иванов', 'utf8')));
+  });
+
   it('закрывает столбцы всех реестров, где есть люди', () => {
     for (const col of ['Клиент', 'Менеджер', 'Куратор', 'Кем', 'Файл', 'Отзыв', 'Кто', 'Сообщение', 'Организация', 'Название']) {
       assert.ok(PERSONAL_COLUMNS.has(col), col);
