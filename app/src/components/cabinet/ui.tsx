@@ -18,6 +18,7 @@ import { presentAuthor } from '../../lib/cabinet/access';
 import { BLOCKED_HINT } from '../../lib/cabinet/file-guard';
 import {
   STAGE_STATE_LABEL,
+  curatorWorkLine,
   stageLabel,
   turnLabel,
   type StageStateKey,
@@ -2251,8 +2252,10 @@ function panelAnswer(
     return 'Работа закрыта. Материалы остаются доступны здесь.';
   }
   // Куратору приостановленная работа не пишет «Ход за вами»: сроки стоят,
-  // хотя материалы прикладывать можно (Э-04, Д-4, решение Р-329).
-  if (turnViewer === 'expert' && projectStatus === 'PAUSED') return 'Работа приостановлена.';
+  // хотя материалы прикладывать можно (Э-04, Д-4, решение Р-329); закрытая
+  // — тоже: она только для чтения (Р-293, Р-527).
+  const curatorLine = turnViewer === 'expert' ? curatorWorkLine(projectStatus) : null;
+  if (curatorLine !== null) return curatorLine;
   if (current === null) {
     if (total === 0) {
       return staff ? 'План работ не заведён.' : 'План работ составляет менеджер — этапы появятся здесь.';

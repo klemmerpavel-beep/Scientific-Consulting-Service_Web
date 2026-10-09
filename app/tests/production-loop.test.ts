@@ -12,6 +12,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 
 import { curatorTasks, type CuratorWork } from '../src/lib/cabinet/curator-tasks.ts';
+import { curatorWorkLine } from '../src/lib/cabinet/stage-state.ts';
 import {
   AWAITING_CLIENT_FOR_CURATOR,
   presentBlockedReason,
@@ -104,5 +105,27 @@ describe('дела «не опубликовал» не берутся с зав
 
   it('выборка дел берёт состояние этапа', () => {
     assert.match(source('src/lib/cabinet/queries.ts'), /const stageRef = \{ select: \{ id: true, dueOn: true, state: true \} \};/u);
+  });
+});
+
+describe('куратор не читает «Ход за вами» по закрытой работе (Р-527)', () => {
+  it('завершённая и отменённая работа — «Работа закрыта.», приостановленная — «Работа приостановлена.»', () => {
+    assert.equal(curatorWorkLine('COMPLETED'), 'Работа закрыта.');
+    assert.equal(curatorWorkLine('CANCELLED'), 'Работа закрыта.');
+    assert.equal(curatorWorkLine('PAUSED'), 'Работа приостановлена.');
+  });
+
+  it('у действующей работы подпись хода прежняя', () => {
+    assert.equal(curatorWorkLine('ACTIVE'), null);
+    assert.equal(curatorWorkLine(undefined), null);
+  });
+
+  it('панель хода на карточке работы спрашивает её у куратора до подписи хода', () => {
+    const ui = source('src/components/cabinet/ui.tsx');
+    const start = ui.indexOf('function panelAnswer(');
+    const body = ui.slice(start, ui.indexOf('\nexport function ProgressPanel', start));
+    const line = body.indexOf("turnViewer === 'expert' ? curatorWorkLine(projectStatus) : null");
+    assert.ok(line > 0, 'панель не спрашивает curatorWorkLine');
+    assert.ok(line < body.indexOf('turnLabel('), 'curatorWorkLine спрашивается после подписи хода');
   });
 });
