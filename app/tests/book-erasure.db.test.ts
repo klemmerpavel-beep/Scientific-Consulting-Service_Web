@@ -443,6 +443,26 @@ describe('книга заказов и обезличивание', { skip: !ena
       'заведена новая карточка с ФИО стёртого',
     );
 
+    // В книге поправили строку стёртого: вместо ФИО — заглушка, либо
+    // исправлено написание типа. Подпись другая, но день и сумма — те же:
+    // строка не заводит ни карточку, ни работу с договором (решение Р-501).
+    const contractsBefore = await prisma.contract.count();
+    for (const [label, edited] of [
+      ['заглушка', row('2025-02-10', 'Удалено', 'Диссертция', '95000')],
+      ['тип', row('2025-02-10', FRESH, 'Диссертация', '95000')],
+    ] as const) {
+      const again = await preview([edited], `после-стирания-${label}`);
+      const item = again.rows[0]!;
+      assert.equal(item.erased, true, `строка с правкой (${label}) читается новой`);
+      assert.equal(item.action, 'SKIP');
+      const stored = await prisma.importRow.findMany({ where: { batchId: again.batchId } });
+      assert.ok(!JSON.stringify(stored).toLowerCase().includes(name), 'ФИО стёртого снова записано');
+      const report = await applyBatch(head(), again.batchId, { managerId: ids.manager! });
+      assert.equal(report.created, 0, `мост завёл стёртого заново (${label})`);
+    }
+    assert.equal(await prisma.contract.count(), contractsBefore, 'заведён второй договор стёртой работы');
+    assert.equal(await prisma.clientProfile.count({ where: { normalizedName: name } }), 0);
+
     // Сетевые следы и журнал.
     const journal = await prisma.auditEvent.findMany({ where: { actorId: created.id } });
     assert.ok(journal.length > 0);
@@ -467,6 +487,62 @@ describe('книга заказов и обезличивание', { skip: !ena
     assert.equal(access.userAgent, null);
     const letter = await prisma.notificationOutbox.findFirstOrThrow({ where: { dedupKey: `be-outbox-${stamp}` } });
     assert.equal(letter.lastError, null, 'адрес остался в тексте ошибки доставки');
+  });
+
+  it('надгробие, оставленное до Р-501, узнаёт поправленную строку по началу и договору работы', async () => {
+    // Так лежат строки, обезличенные до решения Р-501: надгробие без
+    // следа «день | сумма», работа и договор на месте.
+    const { erasedKey: tombOf } = await import('../src/lib/cabinet/import/etl.ts');
+    const card = await prisma.clientProfile.create({
+      data: { fullName: '[удалено]', normalizedName: `erased-${stamp}`, erasedAt: new Date() },
+    });
+    cards.push(card.id);
+    const project = await prisma.project.create({
+      data: {
+        code: `PD-BE2-${tail}`,
+        clientId: card.id,
+        serviceTypeId: ids.type!,
+        title: '[удалено]',
+        managerId: ids.manager!,
+        status: 'COMPLETED',
+        source: 'IMPORT',
+        startedOn: new Date('2024-05-06T00:00:00Z'),
+      },
+    });
+    await prisma.contract.create({
+      data: { projectId: project.id, number: `PD-BE2-${tail}`, totalAmount: 7_000_000n },
+    });
+    const batch = await prisma.importBatch.create({
+      data: {
+        fileName: `книга-${stamp}-стёртая.xlsx`,
+        sha256: 'e'.repeat(64),
+        uploadedById: ids.head!,
+        state: 'APPLIED',
+        appliedAt: new Date(Date.now() - 86_400_000),
+      },
+    });
+    batches.push(batch.id);
+    await prisma.importRow.create({
+      data: {
+        batchId: batch.id,
+        rowNumber: 2,
+        signature: tombOf(`k2|${excelSerial('2024-05-06')}|миронова дина ${stamp}|диссертция`),
+        raw: { erased: true },
+        parsed: { erased: true },
+        action: 'CREATE',
+        projectId: project.id,
+      },
+    });
+
+    const edited = await preview([row('2024-05-06', 'Удалено', 'Диссертция', '70000')], 'стёртая-до-р501');
+    assert.equal(edited.rows[0]?.erased, true, 'поправленная строка стёртого читается новой');
+    const report = await applyBatch(head(), edited.batchId, { managerId: ids.manager! });
+    assert.equal(report.created, 0);
+
+    // Другая сумма того же дня — обычный новый заказ.
+    const fresh = await preview([row('2024-05-06', `Миронов Лев ${stamp}`, 'Диссертция', '80000')], 'тот-же-день');
+    assert.equal(fresh.rows[0]?.erased, false);
+    assert.equal(fresh.rows[0]?.action, 'CREATE');
   });
 
   it('заявки субъекта находятся по приведённой почте и телефону', async () => {

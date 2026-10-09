@@ -36,12 +36,29 @@ import { ERASED_KEY_PREFIX, erasedKey, signatureBase } from './etl.ts';
  *      строка читалась новой, и мост раз в час заводил вторую работу с
  *      договором и оплатой — выручка считалась дважды (решение Р-452).
  *      Несколько равно подходящих пар — на разбор.
+ *
+ *   7. строка без пары, чьи день заказа и сумма (`erasedTwin`) совпадают
+ *      со стёртой работой, чьей строки с прежней основой в книге нет, —
+ *      это строка стёртого заказчика с исправленным ФИО (заглушкой) или
+ *      написанием типа: она не переносится, как и по надгробию. Прежде
+ *      такая строка читалась новой, и мост заводил карточку с ФИО из книги
+ *      и второй договор на ту же сумму (решение Р-501). Если на ту же
+ *      стёртую работу претендуют несколько строк либо подходит и живая
+ *      работа шага 6 — на разбор.
  */
 
 export interface BookRowKey {
   /** Подпись строки из разбора либо сохранённая подпись загрузки. */
   readonly signature: string | null;
   readonly cost: bigint;
+  /** День заказа и сумма строки (`erasedTwin`), если они есть. */
+  readonly twin?: string | null;
+}
+
+/** Стёртая работа: её надгробие и день заказа с суммой (решение Р-501). */
+export interface ErasedWork {
+  readonly tomb: string;
+  readonly twin: string;
 }
 
 export interface KnownWork {
@@ -69,12 +86,14 @@ function costOf(parsed: unknown): string | null {
  * Решение по каждой строке, в порядке входа.
  *
  * `erased` — надгробия, найденные в базе для строк этой книги
- * (`erasedKey` от их подписей).
+ * (`erasedKey` от их подписей); `graves` — стёртые работы с тем же днём
+ * заказа и суммой, что у строк книги (шаг 7).
  */
 export function matchBook(
   rows: readonly BookRowKey[],
   known: readonly KnownWork[],
   erased: ReadonlySet<string>,
+  graves: readonly ErasedWork[] = [],
 ): RowMatch[] {
   // Одна работа — одна последняя строка: ранние строки той же работы
   // помнят прежние значения, и сравнение с ними давало бы ложные правки.
@@ -145,8 +164,34 @@ export function matchBook(
     orphans.filter(
       (work) => dayOf(work.signature) === dayOf(rows[index]!.signature) && costOf(work.parsed) === rows[index]!.cost.toString(),
     );
+  // Шаг 7: стёртая работа, чья строка в книге поправлена (решение Р-501).
+  // Надгробие, с которым сошлась строка книги, занято: работа на месте, и
+  // новый заказ того же дня и суммы рядом с ней остаётся новым.
+  const used = new Set(
+    rows.flatMap((row, index) =>
+      result[index]!.kind === 'ERASED'
+        ? [row.signature !== null && row.signature.startsWith(ERASED_KEY_PREFIX) ? row.signature : erasedKey(row.signature)]
+        : [],
+    ),
+  );
+  const lost = graves.filter((grave) => !used.has(grave.tomb));
+  const tombsOf = (index: number) => {
+    const twin = rows[index]!.twin ?? null;
+    return twin === null ? [] : [...new Set(lost.filter((grave) => grave.twin === twin).map((grave) => grave.tomb))];
+  };
   for (const index of fresh) {
     const twins = twinsOf(index);
+    const tombs = tombsOf(index);
+    if (tombs.length > 0) {
+      // Строк, претендующих на эти стёртые работы, не больше, чем работ, и
+      // живой работы с тем же днём и суммой нет — строка стёртого.
+      const rivals = fresh.filter((other) => tombsOf(other).some((tomb) => tombs.includes(tomb)));
+      result[index] =
+        twins.length === 0 && rivals.length <= tombs.length
+          ? { kind: 'ERASED' }
+          : { kind: 'UNCLEAR', candidates: twins.length + tombs.length };
+      continue;
+    }
     if (twins.length === 0) continue;
     // Пара однозначна, только если и у работы нет другой такой строки.
     const rivals = fresh.filter((other) => twinsOf(other).some((work) => twins.includes(work)));

@@ -12,7 +12,7 @@ import { describe, it } from 'node:test';
 
 import { contactKeys, emailKey, leadMatchesContacts, phoneKey } from '../src/lib/cabinet/contacts.ts';
 import { telegramPermanent } from '../src/lib/cabinet/events.ts';
-import { erasedKey, normalizeName, parseBook, signatureBase } from '../src/lib/cabinet/import/etl.ts';
+import { erasedKey, erasedTwin, normalizeName, parseBook, signatureBase } from '../src/lib/cabinet/import/etl.ts';
 import { changed, matchBook, type KnownWork } from '../src/lib/cabinet/import/match.ts';
 import { readWorkbook } from '../src/lib/cabinet/import/xlsx.ts';
 import { declineLetterFor } from '../src/lib/cabinet/lead-letter.ts';
@@ -154,6 +154,41 @@ describe('сверка с перенесённым', () => {
     const tombs = new Set([erasedKey(legacy('Зимина Ольга', 'Диссертция', '1'))!]);
     assert.deepEqual(matchBook([a, { ...a, cost: 1n }], [], tombs).map((m) => m.kind), ['ERASED', 'ERASED']);
     assert.deepEqual(matchBook([{ signature: erasedKey(a.signature), cost: 0n }], [], new Set()).map((m) => m.kind), ['ERASED']);
+  });
+
+  it('поправленная строка стёртого заказчика не читается новой (Р-501)', () => {
+    const twin = erasedTwin(new Date('2025-04-01T00:00:00Z'), 3_000_000n)!;
+    assert.equal(twin, '2025-04-01|3000000');
+    assert.equal(erasedTwin('2025-04-01T00:00:00.000Z', '3000000'), twin);
+    assert.equal(erasedTwin(null, 1n), null, 'без даты следа нет');
+    assert.equal(erasedTwin(new Date('2025-04-01'), 0n), null, 'нулевая сумма — не след');
+
+    const original = rowOf('Зимина Ольга', 3_000_000n);
+    const graves = [{ tomb: erasedKey(original.signature)!, twin }];
+    const stub = { ...rowOf('Удалено', 3_000_000n), twin };
+    const typo = { signature: book([line('Зимина Ольга', 'Диссертация', '1')]).rows[0]!.signature, cost: 3_000_000n, twin };
+    // Без следа — прежнее поведение: строка новая.
+    assert.deepEqual(matchBook([stub], [], new Set()).map((m) => m.kind), ['NEW']);
+    assert.deepEqual(matchBook([stub], [], new Set(), graves).map((m) => m.kind), ['ERASED']);
+    assert.deepEqual(matchBook([typo], [], new Set(), graves).map((m) => m.kind), ['ERASED']);
+
+    // Другая сумма или день — новая работа.
+    const other = { ...stub, cost: 5_000_000n, twin: erasedTwin(new Date('2025-04-01'), 5_000_000n) };
+    assert.deepEqual(matchBook([other], [], new Set(), graves).map((m) => m.kind), ['NEW']);
+
+    // Стёртая строка на месте в книге — её надгробие занято, и новый
+    // заказ того же дня и суммы рядом с ней остаётся новым.
+    const tombs = new Set([erasedKey(original.signature)!]);
+    assert.deepEqual(
+      matchBook([{ ...original, twin }, { ...rowOf('Орлова Анна', 3_000_000n), twin }], [], tombs, graves).map((m) => m.kind),
+      ['ERASED', 'NEW'],
+    );
+
+    // Две строки на одну стёртую работу либо ещё и живая работа без
+    // строки с тем же днём и суммой — на разбор.
+    assert.deepEqual(matchBook([stub, typo], [], new Set(), graves).map((m) => m.kind), ['UNCLEAR', 'UNCLEAR']);
+    const live = [work('p1', rowOf('Петрова Анна', 0n).signature!, '3000000')];
+    assert.deepEqual(matchBook([stub], live, new Set(), graves).map((m) => m.kind), ['UNCLEAR']);
   });
 
   it('изменением считается и правка срока', () => {

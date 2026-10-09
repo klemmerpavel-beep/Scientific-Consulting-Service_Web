@@ -396,6 +396,33 @@ export function erasedKey(signature: string | null): string | null {
   return ERASED_KEY_PREFIX + createHash('sha256').update(base, 'utf8').digest('hex');
 }
 
+/**
+ * Второй след стёртой строки — день заказа и сумма по книге:
+ * «ГГГГ-ММ-ДД|копейки» (решение Р-501).
+ *
+ * Надгробие сходится только с той же основой ключа. Когда в книге
+ * поправляют ФИО стёртого (вписывают заглушку) или написание типа, основа
+ * меняется, и без второго следа строка читалась новой: мост заводил
+ * карточку с ФИО из книги и второй договор на ту же сумму. ФИО след не
+ * несёт; день и сумма остаются и в самой обезличенной работе (дата начала,
+ * договор), так что нового о субъекте он не хранит.
+ *
+ * Строке без даты или с нулевой суммой следа нет: совпадение по одному
+ * дню слишком слабое и запирало бы чужие новые заказы.
+ */
+export function erasedTwin(
+  orderDate: Date | string | null | undefined,
+  cost: bigint | string | null | undefined,
+): string | null {
+  if (orderDate === null || orderDate === undefined || cost === null || cost === undefined) return null;
+  if (orderDate instanceof Date && Number.isNaN(orderDate.getTime())) return null;
+  const day = (typeof orderDate === 'string' ? orderDate : orderDate.toISOString()).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(day)) return null;
+  const amount = typeof cost === 'string' ? cost : cost.toString();
+  if (!/^\d+$/u.test(amount) || /^0+$/u.test(amount)) return null;
+  return `${day}|${BigInt(amount).toString()}`;
+}
+
 /** Приведение ФИО к виду, пригодному для поиска однофамильцев. */
 export function normalizeName(raw: string): string {
   return raw

@@ -28,6 +28,7 @@ import {
   KEY_VERSION,
   STATUS_LABEL,
   erasedKey,
+  erasedTwin,
   normalizeName,
   parseBook,
   signatureBase,
@@ -35,7 +36,14 @@ import {
   type LegacyStatus,
   type ParsedRow,
 } from './etl.ts';
-import { changed, matchBook, type KnownWork, type RowMatch } from './match.ts';
+import {
+  changed,
+  matchBook,
+  type BookRowKey,
+  type ErasedWork,
+  type KnownWork,
+  type RowMatch,
+} from './match.ts';
 import { readWorkbook } from './xlsx.ts';
 import { ImportError } from './zip.ts';
 
@@ -143,6 +151,11 @@ const ERASED_CUSTOMER = '[удалено по требованию субъек�
 export const ERASED_NOTE =
   'данные заказчика удалены по требованию субъекта — строка не переносится';
 
+/** След «день заказа | сумма» в разобранных значениях надгробия (Р-501). */
+function twinField(twin: string | null): { twin?: string } {
+  return twin === null ? {} : { twin };
+}
+
 /** Почему строка оставлена на разбор, а не заведена. */
 function unclearNote(candidates: number): string {
   return (
@@ -239,6 +252,66 @@ async function erasedKeys(
     distinct: ['signature'],
   });
   return new Set(found.map((row) => row.signature!));
+}
+
+/**
+ * Стёртые работы с теми же днём заказа и суммой, что у строк книги
+ * (решение Р-501). След хранится в разобранных значениях надгробия;
+ * надгробия, оставленные до Р-501, следа не имеют — у них день берётся из
+ * начала обезличенной работы, сумма — из её договора.
+ */
+async function erasedWorks(
+  db: Pick<typeof prisma, 'importRow'>,
+  twins: readonly string[],
+): Promise<ErasedWork[]> {
+  const wanted = new Set(twins);
+  if (wanted.size === 0) return [];
+  const [marked, older] = await Promise.all([
+    db.importRow.findMany({
+      where: {
+        signature: { startsWith: ERASED_KEY_PREFIX },
+        OR: [...wanted].map((twin) => ({ parsed: { path: ['twin'], equals: twin } })),
+      },
+      select: { signature: true, parsed: true },
+    }),
+    db.importRow.findMany({
+      where: { signature: { startsWith: ERASED_KEY_PREFIX }, projectId: { not: null } },
+      select: {
+        signature: true,
+        parsed: true,
+        project: { select: { startedOn: true, contract: { select: { totalAmount: true } } } },
+      },
+    }),
+  ]);
+  const found = new Map<string, ErasedWork>();
+  const add = (tomb: string | null, twin: string | null) => {
+    if (tomb !== null && twin !== null && wanted.has(twin)) found.set(`${tomb} ${twin}`, { tomb, twin });
+  };
+  for (const row of marked) add(row.signature, (row.parsed as { twin?: string } | null)?.twin ?? null);
+  for (const row of older) {
+    if (typeof (row.parsed as { twin?: unknown } | null)?.twin === 'string') continue;
+    add(row.signature, erasedTwin(row.project?.startedOn ?? null, row.project?.contract?.totalAmount ?? null));
+  }
+  return [...found.values()];
+}
+
+/**
+ * Сверка строк с перенесённым и стёртым. Стёртые работы по дню и сумме
+ * ищутся, только если после обычной сверки остались новые строки: так
+ * неизменная книга обходится без лишнего запроса (решение Р-501).
+ */
+async function settle(
+  db: Pick<typeof prisma, 'importRow'>,
+  rows: readonly BookRowKey[],
+  known: readonly KnownWork[],
+  tombs: ReadonlySet<string>,
+): Promise<RowMatch[]> {
+  const first = matchBook(rows, known, tombs);
+  const twins = rows.flatMap((row, index) =>
+    first[index]!.kind === 'NEW' && row.twin !== undefined && row.twin !== null ? [row.twin] : [],
+  );
+  if (twins.length === 0) return first;
+  return matchBook(rows, known, tombs, await erasedWorks(db, twins));
 }
 
 /**
@@ -362,7 +435,16 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
   const known = await knownWorks(prisma, signatures, null);
   const codes = new Map(known.map((work) => [work.projectId, work.code]));
   const tombs = await erasedKeys(prisma, signatures);
-  const matches = matchBook(book.rows, known, tombs);
+  const matches = await settle(
+    prisma,
+    book.rows.map((row) => ({
+      signature: row.signature,
+      cost: row.cost,
+      twin: erasedTwin(row.orderDate, row.cost),
+    })),
+    known,
+    tombs,
+  );
 
   const rows: PreviewRow[] = book.rows.map((row, index) => {
     const match = matches[index]!;
@@ -461,7 +543,12 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
               rowNumber: row.rowNumber,
               signature: preview.signature,
               raw: { erased: true },
-              parsed: { erased: true, cost: row.cost.toString(), paid: row.paid.toString() },
+              parsed: {
+                erased: true,
+                cost: row.cost.toString(),
+                paid: row.paid.toString(),
+                ...twinField(erasedTwin(row.orderDate, row.cost)),
+              },
               severity: preview.severity,
               errors: [],
               action: preview.action,
@@ -818,11 +905,16 @@ export async function applyBatch(
       const signatures = stored.map((row) => row.signature);
       const known = await knownWorks(tx, signatures, batchId);
       const tombs = await erasedKeys(tx, signatures);
-      const matches = matchBook(
-        stored.map((row) => ({
-          signature: row.signature,
-          cost: BigInt((row.parsed as { cost?: string } | null)?.cost ?? '0'),
-        })),
+      const matches = await settle(
+        tx,
+        stored.map((row) => {
+          const values = row.parsed as { cost?: string; orderDate?: string | null } | null;
+          return {
+            signature: row.signature,
+            cost: BigInt(values?.cost ?? '0'),
+            twin: erasedTwin(values?.orderDate ?? null, values?.cost ?? null),
+          };
+        }),
         known,
         tombs,
       );
@@ -839,14 +931,19 @@ export async function applyBatch(
           // заменяются надгробием и здесь, если стирание пришлось между
           // предпросмотром и фиксацией.
           const tomb = row.signature?.startsWith(ERASED_KEY_PREFIX) ? row.signature : erasedKey(row.signature);
-          const amounts = row.parsed as { cost?: string; paid?: string } | null;
+          const amounts = row.parsed as { cost?: string; paid?: string; orderDate?: string | null; twin?: string } | null;
           await tx.importRow.update({
             where: { id: row.id },
             data: {
               action: 'SKIP',
               signature: tomb,
               raw: { erased: true },
-              parsed: { erased: true, cost: amounts?.cost ?? '0', paid: amounts?.paid ?? '0' },
+              parsed: {
+                erased: true,
+                cost: amounts?.cost ?? '0',
+                paid: amounts?.paid ?? '0',
+                ...twinField(amounts?.twin ?? erasedTwin(amounts?.orderDate ?? null, amounts?.cost ?? null)),
+              },
               errors: [],
               projectId: null,
             },

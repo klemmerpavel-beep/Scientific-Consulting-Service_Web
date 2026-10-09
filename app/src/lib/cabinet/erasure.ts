@@ -48,7 +48,7 @@
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { contactKeys, leadMatchesContacts } from './contacts.ts';
-import { ERASED_KEY_PREFIX, erasedKey, normalizeName, signatureBase } from './import/etl.ts';
+import { ERASED_KEY_PREFIX, erasedKey, erasedTwin, normalizeName, signatureBase } from './import/etl.ts';
 import { prisma } from '../db.ts';
 import { storage } from './storage.ts';
 import { enqueue } from './outbox.ts';
@@ -343,7 +343,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
         ...spellings.map((spelling) => ({ raw: { path: ['customer'], equals: spelling } })),
       ],
     },
-    select: { id: true, signature: true, raw: true, projectId: true },
+    select: { id: true, signature: true, raw: true, parsed: true, projectId: true },
   });
   const nameOf = (signature: string | null): string | null =>
     signatureBase(signature)?.split('|')[1] ?? null;
@@ -661,22 +661,35 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     // разбирающий файл с Диска, не находил прежнего переноса и заводил
     // стёртого клиента заново — с ФИО из книги. Надгробие ФИО не хранит, но
     // та же строка книги с ним сходится, и разбор её пропускает
-    // (`import/match.ts`, решение Р-252).
-    const byTomb = new Map<string | null, string[]>();
+    // (`import/match.ts`, решение Р-252). Рядом остаётся след «день
+    // заказа | сумма»: по нему узнаётся и строка, в которой потом
+    // поправили ФИО или написание типа (решение Р-501).
+    const byTomb = new Map<string, { tomb: string | null; twin: string | null; ids: string[] }>();
     for (const row of importRows) {
       const tomb =
         row.signature === null || row.signature.startsWith(ERASED_KEY_PREFIX)
           ? null
           : erasedKey(row.signature);
-      byTomb.set(tomb, [...(byTomb.get(tomb) ?? []), row.id]);
+      const values = row.parsed as { twin?: unknown; orderDate?: unknown; cost?: unknown } | null;
+      const twin =
+        typeof values?.twin === 'string'
+          ? values.twin
+          : erasedTwin(
+              typeof values?.orderDate === 'string' ? values.orderDate : null,
+              typeof values?.cost === 'string' ? values.cost : null,
+            );
+      const key = `${tomb ?? ''} ${twin ?? ''}`;
+      const group = byTomb.get(key) ?? { tomb, twin, ids: [] };
+      group.ids.push(row.id);
+      byTomb.set(key, group);
     }
     let importRowCount = 0;
-    for (const [tomb, ids] of byTomb) {
+    for (const { tomb, twin, ids } of byTomb.values()) {
       const updated = await tx.importRow.updateMany({
         where: { id: { in: ids } },
         data: {
           raw: { erased: true },
-          parsed: { erased: true },
+          parsed: twin === null ? { erased: true } : { erased: true, twin },
           errors: [],
           ...(tomb === null ? {} : { signature: tomb }),
         },
