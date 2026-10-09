@@ -296,9 +296,10 @@ export async function enterWithToken(
   if (!sameDigest(token.verifierHash, digest(parsed.verifier))) return null;
 
   // Погашение атомарно на стороне базы: два одновременных перехода по одной
-  // ссылке не откроют две сессии.
+  // ссылке не откроют две сессии. Срок — в том же условии: ссылку, которую
+  // погасили между чтением и погашением, переход не откроет (Р-513).
   const consumed = await prisma.loginToken.updateMany({
-    where: { id: token.id, usedAt: null },
+    where: { id: token.id, usedAt: null, expiresAt: { gt: new Date() } },
     data: { usedAt: new Date() },
   });
   if (consumed.count !== 1) return null;
@@ -366,11 +367,21 @@ function sessionLimitMs(viaStaffLink: boolean, days: number): number {
  * приостановке и смене роли (решение Р-424). Сессия ссылку выдавшего не
  * помнит; её находит ссылка: погашенная за последние сутки, выданная им, —
  * значит, у этого человека может быть живая сессия по ней.
+ *
+ * Выданные им и ещё не открытые ссылки гаснут тоже. Прежде такая ссылка
+ * жила свои два часа и открывала сессию уже после гашения сессий —
+ * кабинет клиента оставался у ушедшего сотрудника ещё на сутки (проверка
+ * 09.10.2026, решение Р-513).
  */
 export async function revokeStaffIssuedSessions(
   db: Pick<typeof prisma, 'loginToken' | 'session'>,
   issuerId: string,
 ): Promise<void> {
+  const now = new Date();
+  await db.loginToken.updateMany({
+    where: { issuedById: issuerId, usedAt: null, expiresAt: { gt: now } },
+    data: { expiresAt: now },
+  });
   const since = new Date(Date.now() - STAFF_LINK_SESSION_HOURS * 60 * 60 * 1000);
   const issued = await db.loginToken.findMany({
     where: { issuedById: issuerId, usedAt: { gte: since } },
