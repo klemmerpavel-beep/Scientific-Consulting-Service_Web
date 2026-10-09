@@ -256,4 +256,52 @@ describe('производственный контур (П5)', { skip: !enabled
     assert.equal(row.approvalDueOn, null, 'срок не снят приостановкой');
     assert.ok(row.approvalDaysLeft !== null);
   });
+
+  it('перевод этапа рядом со сдачей того же этапа не обрывается взаимной блокировкой (Р-528)', async () => {
+    await setStatus('ACTIVE');
+    const stage = await prisma.stage.create({
+      data: { projectId: ids.project!, position: 4, title: 'Глава 4', state: 'IN_PROGRESS' },
+    });
+    // Транзакция сдачи — те же шаги, что у `handOverStage`: захват этапа,
+    // затем запись в ленту работы (ссылка на работу). Между шагами она
+    // держится открытой, пока рядом идёт перевод того же этапа.
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let claimed!: () => void;
+    const started = new Promise<void>((resolve) => {
+      claimed = resolve;
+    });
+    const handing = prisma.$transaction(
+      async (tx) => {
+        const won = await tx.stage.updateMany({
+          where: { id: stage.id, state: 'IN_PROGRESS', handedOverAt: null },
+          data: { handedOverAt: new Date(), handoverNote: 'Глава готова' },
+        });
+        assert.equal(won.count, 1);
+        claimed();
+        await gate;
+        await tx.projectEvent.create({
+          data: {
+            projectId: ids.project!,
+            actorId: ids.curator!,
+            kind: 'STAGE_HANDED_OVER',
+            payload: { stageId: stage.id, position: 4 },
+          },
+        });
+      },
+      { timeout: 15_000 },
+    );
+    await started;
+    const moving = projects.setStageState(manager(), stage.id, 'AWAITING_CLIENT', 'Ждём данные опроса');
+    // Перевод успевает захватить работу и встать в очередь за этапом.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    release();
+    const [handed, moved] = await Promise.allSettled([handing, moving]);
+    assert.equal(handed.status, 'fulfilled', `сдача оборвана: ${String((handed as PromiseRejectedResult).reason)}`);
+    assert.equal(moved.status, 'fulfilled', `перевод оборван: ${String((moved as PromiseRejectedResult).reason)}`);
+    const row = await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } });
+    assert.equal(row.state, 'AWAITING_CLIENT');
+  });
 });

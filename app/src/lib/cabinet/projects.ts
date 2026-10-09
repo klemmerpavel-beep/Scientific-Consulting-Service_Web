@@ -1776,12 +1776,21 @@ const INACTIVE_PROJECT =
  * приостановки, ещё не зафиксированной рядом: `setProjectStatus` снимал
  * сроки согласования до того, как этап доходил до записи, и этап вставал
  * на согласование у приостановленной работы с идущим сроком. Строка
- * работы захватывается `FOR UPDATE` — тем же замком, что берёт перевод
- * работы, — и состояние перечитывается под ним.
+ * работы захватывается `FOR NO KEY UPDATE` — тем же замком, что берёт
+ * `UPDATE` перевода работы, — и состояние перечитывается под ним.
+ *
+ * Замок не сильнее нужного (решение Р-528). Сдача, возврат куратору,
+ * возврат завершённого этапа в работу и автозакрытие захватывают сначала
+ * этап, а затем вставляют строки со ссылкой на работу (лента, очередь
+ * писем); проверка внешнего ключа берёт на работе `FOR KEY SHARE`. Он
+ * совместим с `FOR NO KEY UPDATE`, но не с `FOR UPDATE`: при `FOR UPDATE`
+ * перевод этапа (работа, затем этап) и сдача того же этапа (этап, затем
+ * ссылка на работу) взаимно блокировались, и база обрывала одно из
+ * действий.
  */
 async function lockActiveProject(tx: Prisma.TransactionClient, projectId: string): Promise<void> {
   const rows = await tx.$queryRaw<{ status: string }[]>`
-    SELECT "status"::text AS "status" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    SELECT "status"::text AS "status" FROM "Project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
   if (rows[0]?.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
 }
 
