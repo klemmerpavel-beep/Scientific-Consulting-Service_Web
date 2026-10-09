@@ -178,14 +178,18 @@ export function Text({
   muted = false,
   size = 15,
   style,
+  id,
 }: {
   children: ReactNode;
   muted?: boolean;
   size?: number;
   style?: CSSProperties;
+  /** Для ссылки `aria-describedby` с поля (Р-540). */
+  id?: string;
 }) {
   return (
     <p
+      id={id}
       style={{
         margin: 0,
         fontFamily: SANS,
@@ -482,6 +486,7 @@ export function Checkbox({
   disabled = false,
   required = false,
   nowrap = false,
+  describedBy,
 }: {
   label: ReactNode;
   name: string;
@@ -490,6 +495,8 @@ export function Checkbox({
   required?: boolean;
   /** Подпись в одну строку — в узкой ячейке таблицы она не переносится (Р-485). */
   nowrap?: boolean;
+  /** Пояснение, стоящее вне подписи отдельной строкой: читалка зачитает его с флажком (Р-540). */
+  describedBy?: string;
 }) {
   return (
     <label
@@ -509,6 +516,7 @@ export function Checkbox({
         defaultChecked={defaultChecked}
         disabled={disabled}
         required={required}
+        aria-describedby={describedBy}
         style={{ width: 18, height: 18 }}
       />
       <span style={nowrap ? { whiteSpace: 'nowrap' } : undefined}>{label}</span>
