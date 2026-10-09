@@ -48,7 +48,7 @@
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { contactKeys, leadMatchesContacts } from './contacts.ts';
-import { ERASED_KEY_PREFIX, erasedKey, normalizeName, signatureBase } from './import/etl.ts';
+import { ERASED_KEY_PREFIX, erasedKey, erasedTwin, normalizeName, signatureBase } from './import/etl.ts';
 import { prisma } from '../db.ts';
 import { storage } from './storage.ts';
 import { enqueue } from './outbox.ts';
@@ -71,6 +71,13 @@ export class ActiveWorkError extends Error {
 
 /** Маркер вместо затёртого значения: пустая строка читалась бы как потеря. */
 const ERASED = '[удалено по требованию субъекта]';
+/** Тот же маркер — для свободного текста, введённого после исполнения требования. */
+export const ERASED_TEXT = ERASED;
+/**
+ * Свободные тексты в записях журнала о траншах и передаче работы: причина
+ * и назначение транша. Прочее содержимое — суммы, даты, переходы — учёт.
+ */
+const JOURNAL_TEXT_KEYS = ['reason', 'title'] as const;
 /** Почему затёртое письмо не ушло (решение Р-461). */
 export const ERASED_NOTE = 'обезличено до отправки';
 
@@ -152,12 +159,19 @@ async function hasOpenRequest(tx: Tx, clientId: string): Promise<boolean> {
  * повторный запрос до исполнения не принимается. Исполняет руководитель
  * (Р-195 и решения об удалении данных): договоры и платёжные документы,
  * которые закон обязывает хранить, остаются.
+ *
+ * Запрос из сессии по ссылке, которую выдал сотрудник, мог подать и он
+ * сам. Требование принимается, но журнал, письмо руководителям и перечень
+ * «Удаление данных» это показывают: руководитель уточняет у клиента до
+ * исполнения (проверка 09.10.2026, решение Р-515; так же — согласование
+ * этапа, Р-292).
  */
 export async function requestOwnErasure(actor: Actor): Promise<Date> {
   if (actor.role !== 'CLIENT' || actor.clientProfileId === null || actor.status !== 'ACTIVE') {
     throw new Error('Действие не разрешено');
   }
   const clientId = actor.clientProfileId;
+  const staffLink = actor.viaStaffLink === true;
   // Проверка, запись, журнал и письма — одна транзакция под замком
   // карточки: двойная отправка не даёт двух требований и двух писем
   // каждому руководителю (решение Р-468).
@@ -178,7 +192,12 @@ export async function requestOwnErasure(actor: Actor): Promise<Date> {
         action: 'ERASURE_REQUESTED',
         objectType: 'ErasureRequest',
         objectId: request.id,
-        payload: { clientId, scope: 'PERSONAL_DATA_AND_FILES', byClient: true },
+        payload: {
+          clientId,
+          scope: 'PERSONAL_DATA_AND_FILES',
+          byClient: true,
+          ...(staffLink ? { staffLink: true } : {}),
+        },
       },
       tx,
     );
@@ -188,7 +207,10 @@ export async function requestOwnErasure(actor: Actor): Promise<Date> {
         userId: head.id,
         eventKind: 'CLIENT_ERASURE_REQUEST',
         subject: 'Клиент просит удалить персональные данные',
-        body: `Клиент ${profile.fullName} запросил удаление персональных данных из личного кабинета.\nТребование — на экране «Удаление данных».`,
+        body:
+          `Клиент ${profile.fullName} запросил удаление персональных данных из личного кабинета.\n` +
+          (staffLink ? `${STAFF_LINK_ERASURE_NOTE}\n` : '') +
+          'Требование — на экране «Удаление данных».',
         dedupKey: `erasure-request:${request.id}:${head.id}`,
         path: '/cabinet/manage/erasure',
       });
@@ -196,6 +218,10 @@ export async function requestOwnErasure(actor: Actor): Promise<Date> {
     return request.requestedAt;
   });
 }
+
+/** Пометка требования, поданного во входе по ссылке сотрудника (Р-515). */
+export const STAFF_LINK_ERASURE_NOTE =
+  'Запрос подан во входе по ссылке, которую выдал сотрудник: до исполнения уточните у клиента, подавал ли он его.';
 
 /** Открытое требование клиента об удалении — для строки «Настроек» (П-08). */
 export async function ownErasureRequest(actor: Actor): Promise<Date | null> {
@@ -343,7 +369,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
         ...spellings.map((spelling) => ({ raw: { path: ['customer'], equals: spelling } })),
       ],
     },
-    select: { id: true, signature: true, raw: true, projectId: true },
+    select: { id: true, signature: true, raw: true, parsed: true, projectId: true },
   });
   const nameOf = (signature: string | null): string | null =>
     signatureBase(signature)?.split('|')[1] ?? null;
@@ -392,9 +418,12 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
         await storage().remove(object.storageKey);
         objectsPurged += 1;
       } catch {
-        // Объекта может не быть: хранилище чистили вручную либо загрузка
-        // оборвалась. Строка версии всё равно затирается, а расхождение
-        // попадает в отчёт — молчать о нём нельзя.
+        // Отсутствие объекта ошибкой не считается (`rm` с `force`), так что
+        // сюда приводит настоящий отказ хранилища. Строка версии всё равно
+        // затирается и помечается изъятой — ни экран, ни зеркало её больше
+        // не выдают, — расхождение попадает в отчёт, а удаление объекта
+        // повторяет еженедельная чистка `deploy/retention.sh` по ключам
+        // изъятых строк (проверка 09.10.2026).
         objectsFailed += 1;
       }
     }
@@ -484,6 +513,8 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     // учёт, и оно остаётся; затирается только причина (решение Р-252).
     // Так же — причина переноса даты транша и передачи работы другому
     // менеджеру: тоже свободный текст о клиенте (решение Р-423).
+    // Перенос даты пишет и назначение транша — тот же текст, что в самой
+    // строке транша затирается выше (проверка 09.10.2026).
     let reversals = 0;
     const trancheEvents = await tx.auditEvent.findMany({
       where: {
@@ -494,10 +525,12 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     });
     for (const event of trancheEvents) {
       const payload = event.payload as Record<string, unknown> | null;
-      if (payload === null || typeof payload !== 'object' || !('reason' in payload)) continue;
+      if (payload === null || typeof payload !== 'object') continue;
+      const texts = JOURNAL_TEXT_KEYS.filter((key) => key in payload);
+      if (texts.length === 0) continue;
       await tx.auditEvent.update({
         where: { id: event.id },
-        data: { payload: { ...payload, reason: ERASED } as never },
+        data: { payload: { ...payload, ...Object.fromEntries(texts.map((key) => [key, ERASED])) } as never },
       });
       reversals += 1;
     }
@@ -661,22 +694,35 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     // разбирающий файл с Диска, не находил прежнего переноса и заводил
     // стёртого клиента заново — с ФИО из книги. Надгробие ФИО не хранит, но
     // та же строка книги с ним сходится, и разбор её пропускает
-    // (`import/match.ts`, решение Р-252).
-    const byTomb = new Map<string | null, string[]>();
+    // (`import/match.ts`, решение Р-252). Рядом остаётся след «день
+    // заказа | сумма»: по нему узнаётся и строка, в которой потом
+    // поправили ФИО или написание типа (решение Р-501).
+    const byTomb = new Map<string, { tomb: string | null; twin: string | null; ids: string[] }>();
     for (const row of importRows) {
       const tomb =
         row.signature === null || row.signature.startsWith(ERASED_KEY_PREFIX)
           ? null
           : erasedKey(row.signature);
-      byTomb.set(tomb, [...(byTomb.get(tomb) ?? []), row.id]);
+      const values = row.parsed as { twin?: unknown; orderDate?: unknown; cost?: unknown } | null;
+      const twin =
+        typeof values?.twin === 'string'
+          ? values.twin
+          : erasedTwin(
+              typeof values?.orderDate === 'string' ? values.orderDate : null,
+              typeof values?.cost === 'string' ? values.cost : null,
+            );
+      const key = `${tomb ?? ''} ${twin ?? ''}`;
+      const group = byTomb.get(key) ?? { tomb, twin, ids: [] };
+      group.ids.push(row.id);
+      byTomb.set(key, group);
     }
     let importRowCount = 0;
-    for (const [tomb, ids] of byTomb) {
+    for (const { tomb, twin, ids } of byTomb.values()) {
       const updated = await tx.importRow.updateMany({
         where: { id: { in: ids } },
         data: {
           raw: { erased: true },
-          parsed: { erased: true },
+          parsed: twin === null ? { erased: true } : { erased: true, twin },
           errors: [],
           ...(tomb === null ? {} : { signature: tomb }),
         },
@@ -864,7 +910,18 @@ export async function listErasureRequests(actor: Actor) {
       approvedBy: { select: { fullName: true } },
     },
   });
-  return { rows, total };
+  // Поданные во входе по ссылке сотрудника — по записи журнала о подаче
+  // (решение Р-515): у самого требования такого поля нет.
+  const marked = await prisma.auditEvent.findMany({
+    where: { action: 'ERASURE_REQUESTED', objectType: 'ErasureRequest', objectId: { in: rows.map((row) => row.id) } },
+    select: { objectId: true, payload: true },
+  });
+  const viaStaff = new Set(
+    marked
+      .filter((event) => (event.payload as { staffLink?: unknown } | null)?.staffLink === true)
+      .map((event) => event.objectId),
+  );
+  return { rows: rows.map((row) => ({ ...row, viaStaffLink: viaStaff.has(row.id) })), total };
 }
 
 /** Карточки, по которым требование ещё не исполнено. */

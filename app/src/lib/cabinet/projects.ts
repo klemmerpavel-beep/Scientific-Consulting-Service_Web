@@ -1,3 +1,4 @@
+import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { workLine } from './work-line.ts';
 import {
@@ -12,7 +13,7 @@ import {
 } from './access.ts';
 import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
-import { enqueue, enqueueToLead, notifyCurator, notifyExpert } from './outbox.ts';
+import { enqueue, enqueueToLead, notifyCurator, notifyExpert, pruneCuratorDigests } from './outbox.ts';
 import { assignmentLetter, unassignedLetter } from './curator-letters.ts';
 import { openAcceptCheck, openReopenCheck } from './head-checks.ts';
 import { materialKey, storage } from './storage.ts';
@@ -224,9 +225,12 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
       // Согласие на обработку дано в самой заявке: его момент и редакция
       // переходят в учётную запись. Прежде запись оставалась без согласия,
       // а обращение из кабинета всё равно помечалось согласованным
-      // (решение Р-238).
+      // (решение Р-238). Только вместе с акцептом оферты: отметка учётной
+      // записи снимает обе отметки формы кабинета, и заявка из кабинета
+      // пишет «оферта принята». Без акцепта в заявке с сайта кабинет
+      // спросит обе отметки сам (проверка 09.10.2026, решение Р-516).
       const consent =
-        lead.consentGiven && (known === null || known.consentAcceptedAt === null)
+        lead.consentGiven && lead.termsAccepted && (known === null || known.consentAcceptedAt === null)
           ? { consentAcceptedAt: lead.createdAt, consentVersion: lead.consentVersion }
           : {};
       const user = await tx.user.upsert({
@@ -246,6 +250,15 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
     // книги), заводила вторую карточку того же человека. Найденная карточка
     // без записи привязывается к записи заявителя (решение Р-308).
     const twin = own ?? (await contactTwin(tx, email, phone, userId));
+    // Заявитель — клиент другого менеджера: работа на его карточке открыла
+    // бы одобрившему менеджеру контакты чужого клиента. Такую заявку
+    // одобряет руководитель — как ручной заказ (Р-419, решение Р-531).
+    if (twin !== null && actor.role === 'MANAGER') {
+      const foreign = await tx.project.count({ where: { clientId: twin.id, managerId: { not: actor.id } } });
+      if (foreign > 0) {
+        throw new Error('Заявитель — клиент другого менеджера: заявку одобряет руководитель');
+      }
+    }
     if (twin !== null && twin.userId === null && userId !== null) {
       await tx.clientProfile.update({ where: { id: twin.id }, data: { userId } });
     }
@@ -703,6 +716,13 @@ export async function assignExpert(
       },
       data: { state: 'EXPIRED', lastError: UNASSIGNED_NOTE, scheduledAt: new Date() },
     });
+    // И письма о ней, уже вошедшие в неотправленную сводку (решение Р-534).
+    await pruneCuratorDigests(
+      prisma,
+      ref.expertId,
+      (row) => row.projectId === projectId && row.eventKind !== 'PAYOUT_ACCRUED' && row.eventKind !== 'PAYOUT_PAID',
+      UNASSIGNED_NOTE,
+    );
     const letter = unassignedLetter(project.code, expertId !== null);
     await enqueue(prisma, {
       userId: ref.expertId,
@@ -1765,6 +1785,31 @@ const INACTIVE_PROJECT =
  * куратора держала его в «Требует внимания» бессрочно (решение Р-240).
  * Вернуть работу в действие — отдельное действие с записью в ленте.
  */
+/**
+ * Захват работы в транзакции перевода этапа (решение Р-526).
+ *
+ * Проверка «работа действует», прочитанная до транзакции, не видит
+ * приостановки, ещё не зафиксированной рядом: `setProjectStatus` снимал
+ * сроки согласования до того, как этап доходил до записи, и этап вставал
+ * на согласование у приостановленной работы с идущим сроком. Строка
+ * работы захватывается `FOR NO KEY UPDATE` — тем же замком, что берёт
+ * `UPDATE` перевода работы, — и состояние перечитывается под ним.
+ *
+ * Замок не сильнее нужного (решение Р-528). Сдача, возврат куратору,
+ * возврат завершённого этапа в работу и автозакрытие захватывают сначала
+ * этап, а затем вставляют строки со ссылкой на работу (лента, очередь
+ * писем); проверка внешнего ключа берёт на работе `FOR KEY SHARE`. Он
+ * совместим с `FOR NO KEY UPDATE`, но не с `FOR UPDATE`: при `FOR UPDATE`
+ * перевод этапа (работа, затем этап) и сдача того же этапа (этап, затем
+ * ссылка на работу) взаимно блокировались, и база обрывала одно из
+ * действий.
+ */
+async function lockActiveProject(tx: Prisma.TransactionClient, projectId: string): Promise<void> {
+  const rows = await tx.$queryRaw<{ status: string }[]>`
+    SELECT "status"::text AS "status" FROM "Project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
+  if (rows[0]?.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
+}
+
 async function ensureProjectActive(projectId: string): Promise<void> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -1975,6 +2020,9 @@ export async function setStageState(
         ? { approvalSentAt: null, approvalDueOn: null, approvalDaysLeft: null }
         : {};
   const saved = await prisma.$transaction(async (tx) => {
+    // Работа — под замком: приостановка рядом не разойдётся со сроком
+    // согласования (решение Р-526).
+    await lockActiveProject(tx, stage.projectId);
     // Перевод захватывает этап по прежнему состоянию. Прежде два
     // одновременных перевода проходили проверку по прочитанному и оба
     // записывались: история этапа получала два перехода из одного
@@ -2261,6 +2309,8 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
 
   const now = new Date();
   const change = await prisma.$transaction(async (tx) => {
+    // Работа — под замком, как при переводе этапа (решение Р-526).
+    await lockActiveProject(tx, stage.projectId);
     // Захват по состоянию: возврат и согласование, нажатые одновременно,
     // не проходят оба (как в Р-240).
     const claimed = await tx.stage.updateMany({

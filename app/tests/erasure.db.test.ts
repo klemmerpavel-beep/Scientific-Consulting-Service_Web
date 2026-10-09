@@ -11,7 +11,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
@@ -302,7 +302,9 @@ describe('удаление данных субъекта', { skip: !enabled }, a
           objectType: 'Tranche',
           objectId: contract.id,
           projectId: project.id,
-          payload: { from: null, to: '2026-12-01', reason: 'Смирнов в отпуске до декабря' },
+          // Назначение транша перенос пишет в журнал рядом с причиной
+          // (проверка 09.10.2026).
+          payload: { title: 'Оплата Смирнова за главу 1', from: null, to: '2026-12-01', reason: 'Смирнов в отпуске до декабря' },
         },
       ],
     });
@@ -577,6 +579,20 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     const { materialFiles } = await import('../src/lib/disk/registry.ts');
     const files = await materialFiles();
     assert.equal(files.some((file) => file.storageKey === storageKey), false);
+  });
+
+  it('чистка по сроку хранения повторяет удаление объектов изъятых версий (проверка 09.10.2026)', async () => {
+    // Отказ хранилища при исполнении требования не повторить с экрана:
+    // требование исполнено, строка версии изъята. Объект ищет и удаляет
+    // еженедельная чистка `deploy/retention.sh` — по ключам изъятых строк.
+    const script = readFileSync(path.join(import.meta.dirname, '..', '..', 'deploy', 'retention.sh'), 'utf8');
+    const line = script.split('\n').find((text) => text.startsWith('SQL_PURGED_KEYS="'));
+    assert.ok(line !== undefined, 'в retention.sh нет повтора удаления изъятых объектов');
+    const sql = line.slice('SQL_PURGED_KEYS="'.length, -1).replace(/\\"/gu, '"');
+    const keys = (await prisma.$queryRawUnsafe<{ storageKey: string }[]>(sql)).map((row) => row.storageKey);
+    assert.ok(keys.includes(storageKey), 'ключ изъятой версии не выбирается');
+    const live = await prisma.materialVersion.findFirst({ where: { purgedAt: null }, select: { storageKey: true } });
+    if (live !== null) assert.ok(!keys.includes(live.storageKey), 'выбран ключ действующей версии');
   });
 
   it('изъятие отражено в журнале доступа к файлам', async () => {

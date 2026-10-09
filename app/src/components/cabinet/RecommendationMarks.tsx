@@ -42,6 +42,9 @@ export default function RecommendationMarks({
     <Form action={action} inline>
       <input type="hidden" name="key" value={markKey} />
       <input type="hidden" name="status" value={status} />
+      {/* Снимается и меняется та отметка, что видна на экране (Р-498, Р-537);
+          пустое значение — отметки не было. */}
+      <input type="hidden" name="current" value={mark?.status ?? ''} />
       <input type="hidden" name="back" value={back} />
       <Button tone={tone}>{label}</Button>
     </Form>

@@ -13,7 +13,7 @@ import { moscowToday } from './clock.ts';
 import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
 import { parseAmount } from './money.ts';
-import { enqueue, LEAD_RETRY_PAUSE_MS } from './outbox.ts';
+import { enqueue, LEAD_RETRY_PAUSE_MS, pruneCuratorDigests } from './outbox.ts';
 import { curatorAccessLetter, invitationLetter, ndaSignedLetter } from './curator-letters.ts';
 import { ndaRequestOpen, ndaWaitingLetter } from './curator-welcome.ts';
 
@@ -416,20 +416,28 @@ export async function staffForRegalia(actor: Actor) {
       id: true,
       fullName: true,
       role: true,
-      expertProfile: { select: { degree: true, specialization: true, specialtyCode: true } },
+      expertProfile: { select: { position: true, degree: true, specialization: true, specialtyCode: true } },
     },
   });
 }
 
 /**
- * Регалии сотрудника: учёная степень, научная специальность и её шифр.
+ * Регалии сотрудника: должность, учёная степень, научная специальность и
+ * её шифр. Должность вносится и при заведении (Р-488) и правится здесь
+ * же: прежде она сохранялась, но не показывалась и не правилась нигде
+ * (решение Р-500).
  * Профиль — носитель регалий и у куратора с руководителем; права решает
  * роль, а не профиль. Пустые значения хранятся как `null` (Р-225).
  */
 export async function saveRegalia(
   actor: Actor,
   userId: string,
-  input: { readonly degree: string; readonly specialization: string; readonly specialtyCode: string },
+  input: {
+    readonly position?: string;
+    readonly degree: string;
+    readonly specialization: string;
+    readonly specialtyCode: string;
+  },
 ) {
   ensure(actor, 'USER_MANAGE');
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, status: true } });
@@ -441,6 +449,9 @@ export async function saveRegalia(
     return text === '' ? null : text;
   };
   const data = {
+    // Без поля в запросе должность не трогается: так сохраняют и прежние
+    // вызовы, где её не было.
+    ...(input.position === undefined ? {} : { position: clean(input.position, 200, 'Должность') }),
     degree: clean(input.degree, 120, 'Учёная степень'),
     specialization: clean(input.specialization, 200, 'Научная специальность'),
     specialtyCode: clean(input.specialtyCode, 20, 'Шифр специальности'),
@@ -453,7 +464,12 @@ export async function saveRegalia(
     action: 'STAFF_REGALIA_SAVED',
     objectType: 'ExpertProfile',
     objectId: userId,
-    payload: { degree: data.degree !== null, specialization: data.specialization !== null, code: data.specialtyCode },
+    payload: {
+      ...('position' in data ? { position: data.position !== null } : {}),
+      degree: data.degree !== null,
+      specialization: data.specialization !== null,
+      code: data.specialtyCode,
+    },
   });
 }
 
@@ -660,33 +676,42 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
   const withProfile = Object.values(profile).some((value) => value !== null);
   if (withProfile && input.role === 'CLIENT') throw new Error('Регалии ведутся только у сотрудников');
 
-  const user = await prisma.user.create({
-    data: { email, fullName, role: input.role },
-    select: { id: true, email: true, role: true },
-  });
+  // Запись, профиль, письмо куратору и строка журнала — одной транзакцией:
+  // сбой между ними оставлял учётную запись без профиля и журнала, а
+  // повтор отказывал «адрес уже есть» (решение Р-542).
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: { email, fullName, role: input.role },
+      select: { id: true, email: true, role: true },
+    });
 
-  // Эксперту заводится профиль: без него матрица прав не выдаст доступ к
-  // материалам, и причина отказа была бы неочевидна.
-  // Регалии не заводятся пустой строкой: реестр печатал «Имя · » и пустую
-  // клетку специализации (решение Р-225).
-  if (input.role === 'EXPERT') {
-    await prisma.expertProfile.create({ data: { userId: user.id, ...profile } });
-    await inviteCurator(user.id, false);
-  } else if (withProfile) {
-    // Регалии менеджера и руководителя — тот же профиль (Р-297).
-    await prisma.expertProfile.create({ data: { userId: user.id, ...profile } });
-  }
+    // Эксперту заводится профиль: без него матрица прав не выдаст доступ к
+    // материалам, и причина отказа была бы неочевидна.
+    // Регалии не заводятся пустой строкой: реестр печатал «Имя · » и пустую
+    // клетку специализации (решение Р-225).
+    if (input.role === 'EXPERT') {
+      await tx.expertProfile.create({ data: { userId: user.id, ...profile } });
+      await inviteCurator(user.id, false, tx);
+    } else if (withProfile) {
+      // Регалии менеджера и руководителя — тот же профиль (Р-297).
+      await tx.expertProfile.create({ data: { userId: user.id, ...profile } });
+    }
 
-  // Адрес почты в журнал не пишется: запись ссылается на учётную запись
-  // идентификатором, а адрес в ней переживал бы и смену адреса, и
-  // обезличивание (решение Р-252).
-  await record(actor, {
-    action: 'USER_CREATED',
-    objectType: 'User',
-    objectId: user.id,
-    payload: { role: user.role, ...(withProfile ? { profile: Object.keys(profile).filter((key) => profile[key as keyof typeof profile] !== null) } : {}) },
+    // Адрес почты в журнал не пишется: запись ссылается на учётную запись
+    // идентификатором, а адрес в ней переживал бы и смену адреса, и
+    // обезличивание (решение Р-252).
+    await record(
+      actor,
+      {
+        action: 'USER_CREATED',
+        objectType: 'User',
+        objectId: user.id,
+        payload: { role: user.role, ...(withProfile ? { profile: Object.keys(profile).filter((key) => profile[key as keyof typeof profile] !== null) } : {}) },
+      },
+      tx,
+    );
+    return user;
   });
-  return user;
 }
 
 /**
@@ -821,6 +846,14 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
       where: { userId, projectId: { not: null }, state: 'PENDING', eventKind: { not: 'WORK_UNASSIGNED' } },
       data: { state: 'EXPIRED', lastError: NDA_REVOKED_NOTE, scheduledAt: new Date() },
     });
+    // И письма о работах, уже вошедшие в неотправленную сводку: сводка
+    // без работы под условие выше не подходит (решение Р-534).
+    await pruneCuratorDigests(
+      prisma,
+      userId,
+      (row) => row.projectId !== null && row.eventKind !== 'WORK_UNASSIGNED',
+      NDA_REVOKED_NOTE,
+    );
   }
   await record(actor, {
     action: 'EXPERT_NDA_UPDATED',
@@ -935,9 +968,13 @@ export async function ndaRequestedAt(actor: Actor): Promise<Date | null> {
  * один раз на учётную запись: ключ не даёт второго письма, если роль
  * сменили туда и обратно.
  */
-async function inviteCurator(userId: string, ndaSigned: boolean): Promise<void> {
+async function inviteCurator(
+  userId: string,
+  ndaSigned: boolean,
+  db: Parameters<typeof enqueue>[0] = prisma,
+): Promise<void> {
   const letter = invitationLetter(ndaSigned);
-  await enqueue(prisma, {
+  await enqueue(db, {
     userId,
     eventKind: 'CURATOR_INVITED',
     subject: letter.subject,

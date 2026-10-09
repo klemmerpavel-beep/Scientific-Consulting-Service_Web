@@ -50,6 +50,27 @@ describe('приём заявки', () => {
     assert.equal(forIntake(ordinary).contact, 'ivanova@example.org');
   });
 
+  it('рекламное согласие из запроса не принимается ни в базу, ни в сигнал (Р-497)', () => {
+    // Страница прежней сборки с отметкой «Согласен получать…» или ручной
+    // запрос: отметки на сайте нет (Р-495), в согласии 1.1 — тоже.
+    const stale = leadSchema.parse(request({ marketing: true }));
+    assert.equal(stale.marketing, true, 'схема по-прежнему принимает поле');
+    assert.equal(forIntake(stale).marketing, false);
+    const review = leadSchema.parse({
+      source: 'postgrad',
+      form: 'review',
+      contactKind: 'email',
+      contact: '',
+      name: 'аспирант',
+      message: 'Спасибо.',
+      marketing: true,
+    });
+    assert.equal(forIntake(review).marketing, false);
+    // Запись в базу берёт отметку из очищенной записи.
+    const route = readFileSync(path.join(import.meta.dirname, '..', 'src', 'app', 'api', 'lead', 'route.ts'), 'utf8');
+    assert.match(route, /marketingOptIn: lead\.marketing,/u);
+  });
+
   it('превышение длины называется по-русски', () => {
     const result = leadSchema.safeParse(request({ message: 'а'.repeat(4001) }));
     assert.equal(result.success, false);

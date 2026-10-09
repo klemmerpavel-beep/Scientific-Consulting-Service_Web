@@ -7,6 +7,7 @@ import { daysPast, moscowToday, now as clockNow } from './clock.ts';
 import { enqueue } from './outbox.ts';
 import { payoutLetter } from './curator-letters.ts';
 import { projectRef } from './projects.ts';
+import { ERASED_TEXT } from './erasure.ts';
 import { siteUrl } from '../site-url.ts';
 
 /**
@@ -28,6 +29,7 @@ import {
   overdueTrancheWhere,
   overdueWithinRest,
   receivableOf,
+  writtenOffOf,
   type TrancheStatus,
 } from './money.ts';
 
@@ -55,19 +57,29 @@ export { formatAmount, parseAmount, STATUS_LABEL, type TrancheStatus } from './m
  * фамилия после исполнения требования субъекта (Р-234). У отменённой
  * работы не заводятся новые транши и начисления — оплату уже выставленных
  * траншей отметить можно (`fresh: false`).
+ *
+ * Уже заведённое по обезличенному клиенту ведётся дальше: выставленный
+ * счёт отмечается оплаченным, долг списывается и переносится, договор
+ * правится. Прежде отказ был на любое действие, и долг по завершённой
+ * работе навсегда оставался в «К получению» и «Должниках» (проверка
+ * 09.10.2026). Свободный текст таких действий — причина списания, сторно
+ * и переноса — в журнал не пишется: вызывающий заменяет его отметкой
+ * (`erased`).
  */
-async function ensureMoneyWritable(projectId: string, fresh: boolean): Promise<void> {
+async function ensureMoneyWritable(projectId: string, fresh: boolean): Promise<{ readonly erased: boolean }> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: { status: true, client: { select: { erasedAt: true } } },
   });
   if (project === null) throw new Error('Проект не найден');
-  if (project.client.erasedAt !== null) {
+  const erased = project.client.erasedAt !== null;
+  if (fresh && erased) {
     throw new Error('Данные клиента удалены по его требованию: новые денежные записи по работе не заводятся');
   }
   if (fresh && project.status === 'CANCELLED') {
     throw new Error('Работа отменена: новые транши и начисления по ней не заводятся');
   }
+  return { erased };
 }
 
 /**
@@ -276,7 +288,7 @@ export async function setTrancheStatus(
     throw new Error('Списание без причины не принимается: укажите, почему долг не ждёт оплаты');
   }
   if (note.length > 500) throw new Error('Причина — не длиннее 500 знаков');
-  await ensureMoneyWritable(tranche.contract.projectId, false);
+  const { erased } = await ensureMoneyWritable(tranche.contract.projectId, false);
 
   const updated = await prisma.$transaction(async (tx) => {
     // Перевод захватывает транш по прежнему статусу. Прежде «Отметить
@@ -333,7 +345,7 @@ export async function setTrancheStatus(
       to: status,
       amount: money(tranche.amount),
       paidOn: status === 'PAID' ? paidOn!.toISOString().slice(0, 10) : null,
-      ...(status === 'REVERSED' || status === 'WRITTEN_OFF' ? { reason: note } : {}),
+      ...(status === 'REVERSED' || status === 'WRITTEN_OFF' ? { reason: erased ? ERASED_TEXT : note } : {}),
     },
   });
   return updated;
@@ -562,7 +574,7 @@ export async function projectMoney(actor: Actor, projectId: string): Promise<Pro
   };
   if (!can(actor, 'PAYMENT_EDIT', ref)) return visible;
 
-  const base = { ...visible, writtenOff: sum('WRITTEN_OFF') };
+  const base = { ...visible, writtenOff: writtenOffOf(contract.totalAmount, contract.tranches) };
   if (!can(actor, 'MARGIN_VIEW', ref)) return base;
 
   const payouts = await prisma.expertPayout.findMany({ where: { projectId } });
@@ -639,9 +651,7 @@ export async function financeSummary(actor: Actor) {
     // полученных деньгах (решение Р-244). У отменённой работы — ноль: её
     // неоплаченное — потеря, а не деньги к получению (решение Р-257).
     const awaiting = receivableOf(contract.project.status, contract.totalAmount, contract.tranches);
-    const lost = contract.tranches
-      .filter((t) => t.status === 'WRITTEN_OFF')
-      .reduce((acc, t) => acc + t.amount, 0n);
+    const lost = writtenOffOf(contract.totalAmount, contract.tranches);
     const accrued = payoutByProject.get(contract.projectId) ?? 0n;
     return {
       projectId: contract.projectId,
@@ -1026,7 +1036,7 @@ export async function rescheduleTranche(actor: Actor, trancheId: string, date: D
   if (reason.length > RESCHEDULE_REASON_MAX) {
     throw new Error(`Причина переноса — не длиннее ${RESCHEDULE_REASON_MAX} знаков`);
   }
-  await ensureMoneyWritable(tranche.contract.projectId, false);
+  const { erased } = await ensureMoneyWritable(tranche.contract.projectId, false);
   const moved = await prisma.tranche.updateMany({
     where: { id: trancheId, status: tranche.status },
     data: { plannedDate: date },
@@ -1041,7 +1051,7 @@ export async function rescheduleTranche(actor: Actor, trancheId: string, date: D
       title: tranche.title,
       from: tranche.plannedDate?.toISOString().slice(0, 10) ?? null,
       to: date.toISOString().slice(0, 10),
-      reason,
+      reason: erased ? ERASED_TEXT : reason,
     },
   });
 }

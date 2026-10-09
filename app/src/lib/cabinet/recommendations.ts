@@ -54,23 +54,60 @@ const KEY = /^[a-z]+(?::[\w.-]+){1,3}$/u;
 /**
  * Отметить рекомендацию «принято», «отклонено», «сделано» или «отложено»
  * (Р-349, Р-491); `null` — снять отметку.
+ *
+ * Снимается та отметка, которую человек видел: `expected` — её состояние
+ * на его экране. Если отметку тем временем сменили на другой вкладке или
+ * другой человек, снятие отказывает, а не удаляет чужое решение
+ * (решение Р-498).
+ *
+ * Так же сверяется и смена отметки: `expected` — состояние на экране,
+ * `null` — «отметки не было». Отметка ставится, только если состояние в
+ * базе всё ещё такое; «сделано» ставится только у принятой рекомендации.
+ * Иначе — тот же отказ, чужое решение не перезаписывается (решение Р-537).
+ * Без `expected` (внутренние вызовы) отметка ставится без сверки.
  */
 export async function markRecommendation(
   actor: Actor,
   key: string,
   status: RecommendationMarkStatus | null,
+  expected?: RecommendationMarkStatus | null,
 ): Promise<void> {
   ensure(actor, 'ANALYTICS_VIEW');
   if (!KEY.test(key)) throw new Error('Неизвестная рекомендация');
   if (status !== null && !MARK_STATUSES.includes(status)) throw new Error('Неизвестная отметка');
+  if (expected !== undefined && expected !== null && !MARK_STATUSES.includes(expected)) throw new Error('Неизвестная отметка');
+  const changed = new Error('Отметку уже изменили: обновите экран и посмотрите её текущее состояние');
+  if (status === 'DONE' && expected !== undefined && expected !== 'ACCEPTED') {
+    throw new Error('Сделанной отмечают принятую рекомендацию');
+  }
   if (status === null) {
-    await prisma.recommendationMark.deleteMany({ where: { key } });
-  } else {
+    if (expected === null) {
+      // На экране отметки не было: снимать нечего, а появившуюся — не трогаем.
+      if ((await prisma.recommendationMark.count({ where: { key } })) > 0) throw changed;
+      return;
+    }
+    const removed = await prisma.recommendationMark.deleteMany({
+      where: expected === undefined ? { key } : { key, status: expected },
+    });
+    if (expected !== undefined && removed.count === 0) throw changed;
+  } else if (expected === undefined) {
     await prisma.recommendationMark.upsert({
       where: { key },
       create: { key, status, userId: actor.id },
       update: { status, userId: actor.id, at: new Date() },
     });
+  } else if (expected === null) {
+    const created = await prisma.recommendationMark.createMany({
+      data: [{ key, status, userId: actor.id }],
+      skipDuplicates: true,
+    });
+    if (created.count === 0) throw changed;
+  } else {
+    const updated = await prisma.recommendationMark.updateMany({
+      where: { key, status: expected },
+      data: { status, userId: actor.id, at: new Date() },
+    });
+    if (updated.count === 0) throw changed;
   }
   await record(actor, {
     action: 'RECOMMENDATION_MARKED',
@@ -148,13 +185,29 @@ async function consentOf(clientIds: readonly string[]): Promise<Map<string, bool
   return out;
 }
 
+/** Карточки из перечня, данные которых удалены по требованию субъекта. */
+async function erasedClients(clientIds: readonly string[]): Promise<Set<string>> {
+  if (clientIds.length === 0) return new Set();
+  const rows = await prisma.clientProfile.findMany({
+    where: { id: { in: [...clientIds] }, erasedAt: { not: null } },
+    select: { id: true },
+  });
+  return new Set(rows.map((row) => row.id));
+}
+
 /** Раздел «Рекомендации»: три блока, отметки, счётчик и рекомендация месяца. */
 export async function recommendationsFor(actor: Actor, at: Date = clockNow()): Promise<Recommendations> {
   ensure(actor, 'ANALYTICS_VIEW');
   const [calendar, data] = await Promise.all([calendarFor(actor, at), loadRows(actor)]);
   const marks = calendar.marks;
   const price = priceAdvice(data, calendar.rows, at);
-  const silent = returnAdvice(data, at);
+  // Клиент, чьи данные удалены по его требованию, к возврату не
+  // предлагается: у его заявок остаётся отметка согласия на рассылку как
+  // доказательство прошлой обработки, но писать ему больше нельзя
+  // (проверка 09.10.2026).
+  const advised = returnAdvice(data, at);
+  const erased = await erasedClients(advised.map((row) => row.clientId));
+  const silent = advised.filter((row) => !erased.has(row.clientId));
   const consent = await consentOf(silent.map((row) => row.clientId));
   const returns = silent.map((row) => ({ ...row, consent: consent.get(row.clientId) ?? false }));
   const open = <T extends { key: string }>(rows: readonly T[]) => rows.filter((row) => !marks.has(row.key));

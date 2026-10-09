@@ -198,6 +198,27 @@ describe('открыть клиенту вход', { skip: !enabled }, async () 
     assert.ok(await auth.resolveSession(mine), 'погашена своя сессия клиента');
   });
 
+  it('невостребованная ссылка гаснет вместе с правами выдавшего; чужая — живёт (аудит 09.10.2026)', async () => {
+    const auth = await import('../src/lib/cabinet/auth.ts');
+    const mine = await work('H', ids.manager!, `client-h-${stamp}@example.org`);
+    const theirs = await work('I', ids.other!, `client-i-${stamp}@example.org`);
+    const pending = await openClientAccess(staff(ids.manager!, 'MANAGER'), mine.projectId);
+    const foreign = await openClientAccess(staff(ids.other!, 'MANAGER'), theirs.projectId);
+
+    await auth.revokeStaffIssuedSessions(prisma, ids.manager!);
+
+    const value = (link: string) => decodeURIComponent(link.split('/cabinet/enter/')[1]!);
+    assert.equal(
+      await auth.consumeLoginToken(value(pending.link), '127.0.0.1', 'test'),
+      null,
+      'ссылка ушедшего сотрудника открыла сессию после гашения',
+    );
+    assert.ok(
+      await auth.consumeLoginToken(value(foreign.link), '127.0.0.1', 'test'),
+      'погашена ссылка другого сотрудника',
+    );
+  });
+
   it('сессия по ссылке куратора помечена; согласование в ней — с пометкой (ОМ-3, Р-292)', async () => {
     const { consumeLoginToken, resolveSession } = await import('../src/lib/cabinet/auth.ts');
     const projectsLib = await import('../src/lib/cabinet/projects.ts');

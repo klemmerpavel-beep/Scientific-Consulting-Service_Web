@@ -151,6 +151,30 @@ describe('поручения руководителя (РК-19)', { skip: !enabl
     assert.equal(row.status, 'WITHDRAWN');
   });
 
+  it('открытое поручение видно руководителю и за пятьюстами закрытыми (Р-535)', async () => {
+    // Закрытые не удаляются и копятся; прежде предел стоял на общей
+    // выборке по раннему сроку, и старые закрытые вытесняли новое открытое.
+    await prisma.assignment.createMany({
+      data: Array.from({ length: 501 }, (_, index) => ({
+        assigneeId: ids.other!,
+        text: `Давнее поручение ${index}`,
+        dueOn: new Date(Date.UTC(1990, 0, 1) + index * DAY),
+        status: 'DONE' as const,
+        createdById: ids.head!,
+      })),
+    });
+    const { id } = await assignments.createAssignment(head(), {
+      assigneeId: ids.other!,
+      text: 'Свежее поручение',
+      dueOn: new Date(today().getTime() + 7 * DAY),
+    });
+    const rows = await assignments.allAssignments(head());
+    assert.ok(rows.some((row) => row.id === id), 'новое открытое поручение пропало с экрана');
+    const firstClosed = rows.findIndex((row) => row.status !== 'ASSIGNED' && row.status !== 'IN_PROGRESS');
+    assert.ok(rows.slice(firstClosed).every((row) => row.status !== 'ASSIGNED' && row.status !== 'IN_PROGRESS'), 'открытые не сверху');
+    await prisma.assignment.updateMany({ where: { id }, data: { status: 'WITHDRAWN' } });
+  });
+
   it('напоминание за день до срока — один раз', async () => {
     const { id } = await assignments.createAssignment(head(), {
       assigneeId: ids.manager!,

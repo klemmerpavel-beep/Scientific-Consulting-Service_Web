@@ -443,6 +443,26 @@ describe('книга заказов и обезличивание', { skip: !ena
       'заведена новая карточка с ФИО стёртого',
     );
 
+    // В книге поправили строку стёртого: вместо ФИО — заглушка, либо
+    // исправлено написание типа. Подпись другая, но день и сумма — те же:
+    // строка не заводит ни карточку, ни работу с договором (решение Р-501).
+    const contractsBefore = await prisma.contract.count();
+    for (const [label, edited] of [
+      ['заглушка', row('2025-02-10', 'Удалено', 'Диссертция', '95000')],
+      ['тип', row('2025-02-10', FRESH, 'Диссертация', '95000')],
+    ] as const) {
+      const again = await preview([edited], `после-стирания-${label}`);
+      const item = again.rows[0]!;
+      assert.equal(item.erased, true, `строка с правкой (${label}) читается новой`);
+      assert.equal(item.action, 'SKIP');
+      const stored = await prisma.importRow.findMany({ where: { batchId: again.batchId } });
+      assert.ok(!JSON.stringify(stored).toLowerCase().includes(name), 'ФИО стёртого снова записано');
+      const report = await applyBatch(head(), again.batchId, { managerId: ids.manager! });
+      assert.equal(report.created, 0, `мост завёл стёртого заново (${label})`);
+    }
+    assert.equal(await prisma.contract.count(), contractsBefore, 'заведён второй договор стёртой работы');
+    assert.equal(await prisma.clientProfile.count({ where: { normalizedName: name } }), 0);
+
     // Сетевые следы и журнал.
     const journal = await prisma.auditEvent.findMany({ where: { actorId: created.id } });
     assert.ok(journal.length > 0);
@@ -467,6 +487,191 @@ describe('книга заказов и обезличивание', { skip: !ena
     assert.equal(access.userAgent, null);
     const letter = await prisma.notificationOutbox.findFirstOrThrow({ where: { dedupKey: `be-outbox-${stamp}` } });
     assert.equal(letter.lastError, null, 'адрес остался в тексте ошибки доставки');
+  });
+
+  it('исправленное ФИО в книге не заводит вторую работу и на базе (Р-452, Р-502)', async () => {
+    const typo = `Зуев Пётр ${stamp}`;
+    const fixed = `Зуев Петр Ильич ${stamp}`;
+    const first = await preview([row('2025-05-05', typo, 'Диссертция', '120000')], 'опечатка');
+    await applyBatch(head(), first.batchId, { managerId: ids.manager! });
+    assert.equal(await worksOf(typo), 1);
+
+    const edited = await preview([row('2025-05-05', fixed, 'Диссертция', '120000')], 'опечатка-исправлена');
+    assert.notEqual(edited.rows[0]?.action, 'CREATE', 'строка с исправленным ФИО читается новой');
+    const report = await applyBatch(head(), edited.batchId, { managerId: ids.manager! });
+    assert.equal(report.created, 0, 'исправленное ФИО завело вторую работу');
+    assert.equal(await worksOf(fixed), 0, 'заведена вторая карточка');
+
+    // Следующий прогон находит работу уже по новой подписи.
+    const again = await preview([row('2025-05-05', fixed, 'Диссертция', '120000')], 'опечатка-повтор');
+    assert.equal(again.rows[0]?.action, 'SKIP');
+  });
+
+  it('правка срока в книге не возвращает сумму договора, исправленную в кабинете (Р-503)', async () => {
+    const who = `Белова Нина ${stamp}`;
+    const first = await preview([row('2025-07-07', who, 'Диссертция', '50000')], 'сумма');
+    await applyBatch(head(), first.batchId, { managerId: ids.manager! });
+    const contract = await prisma.contract.findFirstOrThrow({
+      where: { project: { client: { normalizedName: normalizeName(who) } } },
+      select: { id: true },
+    });
+    // Руководитель поднял сумму договора в кабинете и завёл транш за
+    // дополнительную услугу — так, как советует Р-233.
+    await prisma.contract.update({ where: { id: contract.id }, data: { totalAmount: 7_000_000n } });
+    await prisma.tranche.create({
+      data: { contractId: contract.id, title: 'Доп. услуга', amount: 2_000_000n, status: 'PLANNED' },
+    });
+
+    // В книге поменялся только срок; стоимость и оплата прежние.
+    const later: TestRow = row('2025-07-07', who, 'Диссертция', '50000').map((cell, index) =>
+      index === 4 ? excelSerial('2025-09-30') : cell,
+    );
+    const edited = await preview([later], 'сумма-срок');
+    assert.equal(edited.rows[0]?.action, 'UPDATE');
+    const report = await applyBatch(head(), edited.batchId, { managerId: ids.manager! });
+    assert.equal(report.updated, 1);
+    const after = await prisma.contract.findUniqueOrThrow({
+      where: { id: contract.id },
+      select: { totalAmount: true, tranches: { select: { title: true, amount: true, status: true } } },
+    });
+    assert.equal(after.totalAmount, 7_000_000n, 'сумма договора возвращена к книге');
+    assert.ok(after.tranches.some((tranche) => tranche.title === 'Доп. услуга' && tranche.amount === 2_000_000n));
+  });
+
+  it('надгробие, оставленное до Р-501, узнаёт поправленную строку по началу и договору работы', async () => {
+    // Так лежат строки, обезличенные до решения Р-501: надгробие без
+    // следа «день | сумма», работа и договор на месте.
+    const { erasedKey: tombOf } = await import('../src/lib/cabinet/import/etl.ts');
+    const card = await prisma.clientProfile.create({
+      data: { fullName: '[удалено]', normalizedName: `erased-${stamp}`, erasedAt: new Date() },
+    });
+    cards.push(card.id);
+    const project = await prisma.project.create({
+      data: {
+        code: `PD-BE2-${tail}`,
+        clientId: card.id,
+        serviceTypeId: ids.type!,
+        title: '[удалено]',
+        managerId: ids.manager!,
+        status: 'COMPLETED',
+        source: 'IMPORT',
+        startedOn: new Date('2024-05-06T00:00:00Z'),
+      },
+    });
+    await prisma.contract.create({
+      data: { projectId: project.id, number: `PD-BE2-${tail}`, totalAmount: 7_000_000n },
+    });
+    const batch = await prisma.importBatch.create({
+      data: {
+        fileName: `книга-${stamp}-стёртая.xlsx`,
+        sha256: 'e'.repeat(64),
+        uploadedById: ids.head!,
+        state: 'APPLIED',
+        appliedAt: new Date(Date.now() - 86_400_000),
+      },
+    });
+    batches.push(batch.id);
+    await prisma.importRow.create({
+      data: {
+        batchId: batch.id,
+        rowNumber: 2,
+        signature: tombOf(`k2|${excelSerial('2024-05-06')}|миронова дина ${stamp}|диссертция`),
+        raw: { erased: true },
+        parsed: { erased: true },
+        action: 'CREATE',
+        projectId: project.id,
+      },
+    });
+
+    const edited = await preview([row('2024-05-06', 'Удалено', 'Диссертция', '70000')], 'стёртая-до-р501');
+    assert.equal(edited.rows[0]?.erased, true, 'поправленная строка стёртого читается новой');
+    const report = await applyBatch(head(), edited.batchId, { managerId: ids.manager! });
+    assert.equal(report.created, 0);
+
+    // Другая сумма того же дня — обычный новый заказ.
+    const fresh = await preview([row('2024-05-06', `Миронов Лев ${stamp}`, 'Диссертция', '80000')], 'тот-же-день');
+    assert.equal(fresh.rows[0]?.erased, false);
+    assert.equal(fresh.rows[0]?.action, 'CREATE');
+  });
+
+  it('строка, похожая и на стёртую, и на живую работу, не сохраняет ФИО и не заводится (Р-506)', async () => {
+    // Сценарий находки: в книге массово исправили написание типа. Стёртая
+    // работа и живая перенесённая — одного дня и одной суммы; их строки
+    // после правки читаются новыми, и какая из них чья, неизвестно.
+    const { erasedKey: tombOf, erasedTwin: twinOf } = await import('../src/lib/cabinet/import/etl.ts');
+    const { loadBatch } = await import('../src/lib/cabinet/import/apply.ts');
+    const day = '2024-08-08';
+    const gone = `Тихонова Алла ${stamp}`;
+    const alive = `Гусев Олег ${stamp}`;
+
+    const first = await preview([row(day, alive, 'Диссертция', '50000')], 'живая-рядом');
+    await applyBatch(head(), first.batchId, { managerId: ids.manager! });
+    assert.equal(await worksOf(alive), 1);
+
+    // Надгробие стёртой работы того же дня и суммы — так его оставляет
+    // обезличивание (Р-501): свёртка прежней основы и след «день | сумма».
+    const batch = await prisma.importBatch.create({
+      data: {
+        fileName: `книга-${stamp}-стёртая-рядом.xlsx`,
+        sha256: 'f'.repeat(64),
+        uploadedById: ids.head!,
+        state: 'APPLIED',
+        appliedAt: new Date(Date.now() - 86_400_000),
+      },
+    });
+    batches.push(batch.id);
+    await prisma.importRow.create({
+      data: {
+        batchId: batch.id,
+        rowNumber: 2,
+        signature: tombOf(`k2|${excelSerial(day)}|${normalizeName(gone)}|диссертция`),
+        raw: { erased: true },
+        parsed: { erased: true, cost: '5000000', paid: '5000000', twin: twinOf(day, '5000000') },
+        action: 'SKIP',
+      },
+    });
+
+    const edited = await preview(
+      [row(day, gone, 'Диссертация', '50000'), row(day, alive, 'Диссертация', '50000')],
+      'стёртая-и-живая',
+    );
+    const names = [normalizeName(gone), normalizeName(alive)];
+    const check = (rows: readonly { customer: string; topic: string; rawType: string; severity: string; erased: boolean; note: string | null }[]) => {
+      assert.equal(rows.length, 2);
+      for (const item of rows) {
+        assert.equal(item.severity, 'ERROR', 'неясная строка не оставлена человеку');
+        assert.equal(item.erased, false);
+        assert.match(item.note ?? '', /похожа на стёртую работу/u);
+        assert.equal(item.topic, '');
+        assert.equal(item.rawType, '');
+        for (const name of names) assert.ok(!item.customer.toLowerCase().includes(name), 'ФИО на экране предпросмотра');
+      }
+    };
+    check(edited.rows);
+    const stored = await prisma.importRow.findMany({ where: { batchId: edited.batchId } });
+    const text = JSON.stringify(stored).toLowerCase();
+    for (const name of names) assert.ok(!text.includes(name), `ФИО записано в строку загрузки: ${text}`);
+    assert.ok(!text.includes('кандидатская'), 'тема из книги записана в строку загрузки');
+    assert.ok(stored.every((item) => item.signature === null), 'подпись с ФИО либо новое надгробие');
+    check((await loadBatch(head(), edited.batchId))!.rows);
+
+    // Фиксация без исключений: строки отклоняются, хранимое не меняется.
+    const report = await applyBatch(head(), edited.batchId, { managerId: ids.manager! });
+    assert.equal(report.created, 0);
+    assert.equal(report.updated, 0);
+    assert.deepEqual(report.rejected.map((item) => item.rowNumber).sort(), stored.map((item) => item.rowNumber).sort());
+    const after = await prisma.importRow.findMany({ where: { batchId: edited.batchId } });
+    assert.ok(after.every((item) => JSON.stringify(item.raw) === '{"erased":true}' && item.projectId === null));
+    assert.equal(await prisma.clientProfile.count({ where: { normalizedName: normalizeName(gone) } }), 0);
+    assert.equal(await worksOf(alive), 1, 'живая работа задета');
+
+    // Следующий прогон той же книги: строки не заперты надгробием и снова
+    // ждут сверки, а не читаются стёртыми.
+    const again = await preview(
+      [row(day, gone, 'Диссертация', '50000'), row(day, alive, 'Диссертация', '50000')],
+      'стёртая-и-живая-повтор',
+    );
+    check(again.rows);
   });
 
   it('заявки субъекта находятся по приведённой почте и телефону', async () => {

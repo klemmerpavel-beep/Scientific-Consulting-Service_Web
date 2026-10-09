@@ -61,10 +61,17 @@ export default function PromoGantt({ rows, today }: { rows: readonly CalendarRow
   const at = (time: number) => Math.min(100, Math.max(0, ((time - start) / (end - start)) * 100));
   const todayAt = at(today.getTime() + DAY / 2);
 
-  const bar = (from: number, to: number, style: CSSProperties) => {
+  /**
+   * Полоса от `from` до `to`. `joined` — сторона, которой она стыкуется с
+   * соседней полосой: там угол прямой, иначе на стыке окна и главного окна
+   * скругления оставляли выемку (Р-539).
+   */
+  const bar = (from: number, to: number, style: CSSProperties, joined: { left?: boolean; right?: boolean } = {}) => {
     if (to <= start || from >= end) return null;
     const left = at(from);
     const right = at(to);
+    const squareLeft = from < start || joined.left === true;
+    const squareRight = to > end || joined.right === true;
     return (
       <span
         style={{
@@ -75,10 +82,10 @@ export default function PromoGantt({ rows, today }: { rows: readonly CalendarRow
           width: `${Math.max(right - left, 0.4)}%`,
           boxSizing: 'border-box',
           // Окно, начатое до шкалы или уходящее за неё, обрезано прямым краем.
-          borderTopLeftRadius: from < start ? 0 : RADIUS.mark,
-          borderBottomLeftRadius: from < start ? 0 : RADIUS.mark,
-          borderTopRightRadius: to > end ? 0 : RADIUS.mark,
-          borderBottomRightRadius: to > end ? 0 : RADIUS.mark,
+          borderTopLeftRadius: squareLeft ? 0 : RADIUS.mark,
+          borderBottomLeftRadius: squareLeft ? 0 : RADIUS.mark,
+          borderTopRightRadius: squareRight ? 0 : RADIUS.mark,
+          borderBottomRightRadius: squareRight ? 0 : RADIUS.mark,
           ...style,
         }}
       />
@@ -95,8 +102,10 @@ export default function PromoGantt({ rows, today }: { rows: readonly CalendarRow
         заказа — середина месяца сдачи минус медиана выполнения вида.
       </Text>
 
+      {/* Обозначения поясняют рисунок, а рисунок от читалки скрыт: она
+          читает даты в столбце вида, обозначения ей ни к чему (Р-539). */}
       <ul
-        aria-label="Обозначения графика"
+        aria-hidden="true"
         style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', margin: '0 0 14px', padding: 0, listStyle: 'none' }}
       >
         {[
@@ -190,8 +199,10 @@ export default function PromoGantt({ rows, today }: { rows: readonly CalendarRow
                         />
                       ))}
                     </div>
-                    {windowFrom === null || mainFrom === null ? null : bar(windowFrom, mainFrom, WINDOW_BAR)}
-                    {mainFrom === null || orderOn === null ? null : bar(mainFrom, orderOn + DAY, MAIN_BAR)}
+                    {windowFrom === null || mainFrom === null ? null : bar(windowFrom, mainFrom, WINDOW_BAR, { right: true })}
+                    {mainFrom === null || orderOn === null
+                      ? null
+                      : bar(mainFrom, orderOn + DAY, MAIN_BAR, { left: windowFrom !== null && windowFrom < mainFrom })}
                     {orderOn === null || orderOn < start || orderOn >= end ? null : (
                       <span
                         style={{

@@ -73,6 +73,7 @@ import {
   type Role,
 } from '../../lib/cabinet/admin';
 import type { AccessLinkState } from '../../components/cabinet/AccessLink';
+import type { RecommendationMarkStatus } from '../../generated/prisma/client.js';
 import {
   rulesFor,
   addContact,
@@ -84,7 +85,7 @@ import {
   type ContactKind,
 } from '../../lib/cabinet/channels';
 import { ActiveWorkError, executeErasure, requestErasure, requestOwnErasure } from '../../lib/cabinet/erasure';
-import { createCabinetRequest, REQUEST_FILES_MAX } from '../../lib/cabinet/queries';
+import { createCabinetRequest } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
 import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue, retryFailed, retryLeadLetter } from '../../lib/cabinet/outbox';
@@ -836,12 +837,13 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
 
   // Файлы приходят одним полем: браузер кладёт в форму по записи на
   // каждый выбранный файл, и `getAll` собирает их все. Пустая запись
-  // означает «ничего не выбрано» и отбрасывается (решение Р-191).
+  // означает «ничего не выбрано» и отбрасывается (решение Р-191). Больше
+  // `REQUEST_FILES_MAX` не отсекается молча: отказ с числом выбранных даёт
+  // `createCabinetRequest` (решение Р-532).
   const files = await Promise.all(
     form
       .getAll('files')
       .filter((entry): entry is File => entry instanceof File && entry.size > 0)
-      .slice(0, REQUEST_FILES_MAX)
       .map(async (file) => ({
         originalName: file.name,
         contentType: file.type || 'application/octet-stream',
@@ -1469,18 +1471,26 @@ export async function executeErasureRequest(form: FormData): Promise<void> {
 export async function inviteUser(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const role = String(form.get('role') ?? 'EXPERT') as Role;
+  const input = {
+    email: String(form.get('email') ?? ''),
+    fullName: String(form.get('fullName') ?? ''),
+    role,
+    position: String(form.get('position') ?? ''),
+    degree: String(form.get('degree') ?? ''),
+    specialization: String(form.get('specialization') ?? ''),
+  };
   try {
-    await createUser(actor, {
-      email: String(form.get('email') ?? ''),
-      fullName: String(form.get('fullName') ?? ''),
-      role,
-      position: String(form.get('position') ?? ''),
-      degree: String(form.get('degree') ?? ''),
-      specialization: String(form.get('specialization') ?? ''),
-    });
+    await createUser(actor, input);
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось завести запись');
-    redirect(await withError(`/cabinet/manage/users`, reason));
+    // Отказ возвращает в открытую форму с набранным: прежде свёртка
+    // закрывалась и введённое пропадало (решение Р-543).
+    redirect(
+      await withError('/cabinet/manage/users?new=1', reason, {
+        draft: { ...input, role: String(role) },
+        anchor: 'new',
+      }),
+    );
   }
   redirect(`/cabinet/manage/users?created=${role === 'EXPERT' ? 'curator' : '1'}`);
 }
@@ -1569,6 +1579,7 @@ export async function updateRegalia(form: FormData): Promise<void> {
   let failure: string | null = null;
   try {
     await saveRegalia(actor, String(form.get('userId') ?? ''), {
+      position: String(form.get('position') ?? ''),
       degree: String(form.get('degree') ?? ''),
       specialization: String(form.get('specialization') ?? ''),
       specialtyCode: String(form.get('specialtyCode') ?? ''),
@@ -1790,17 +1801,26 @@ export async function saveAnalyticsSettings(form: FormData): Promise<void> {
   redirect(back);
 }
 
-/** Отметка рекомендации «сделано», «отложено» или снятие (РК-16, Р-349). */
+/**
+ * Отметка рекомендации или её снятие (РК-16, Р-349, Р-491). Снятием
+ * считается только пустое значение: прежде любое незнакомое — опечатка,
+ * форма прежней сборки — молча удаляло отметку. Теперь его отклоняет
+ * проверка отметок, а снятие сверяется с состоянием, которое человек
+ * видел (решение Р-498). Так же сверяется и смена отметки (решение Р-537).
+ */
 export async function markRecommendationAction(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const back = String(form.get('back') ?? '') === 'recommendations' ? '/cabinet/manage/recommendations' : '/cabinet/manage/recommendations/calendar';
   const raw = String(form.get('status') ?? '');
+  const current = String(form.get('current') ?? '');
   let failure: string | null = null;
   try {
     await markRecommendation(
       actor,
       String(form.get('key') ?? ''),
-      raw === 'ACCEPTED' || raw === 'DECLINED' || raw === 'DONE' || raw === 'POSTPONED' ? raw : null,
+      raw === '' ? null : (raw as RecommendationMarkStatus),
+      // Пустое `current` — на экране отметки не было (Р-537).
+      current === '' ? null : (current as RecommendationMarkStatus),
     );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отметить рекомендацию');

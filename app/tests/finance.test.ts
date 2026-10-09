@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { formatAmount, formatRounded, outstandingOf, parseAmount } from '../src/lib/cabinet/money.ts';
+import { formatAmount, formatRounded, outstandingOf, parseAmount, writtenOffOf } from '../src/lib/cabinet/money.ts';
 
 describe('разбор введённой суммы', () => {
   const cases: [string, bigint][] = [
@@ -119,15 +119,44 @@ describe('смена статуса транша (решение Р-224)', async
 });
 
 describe('остаток долга по договору', () => {
+  // Транш для разнесения остатка: срок — день октября 2026, без дня — без срока.
+  let seq = 0;
+  const t = (amount: bigint, status: string, day: number | null = null) => ({
+    id: `t${++seq}`,
+    amount,
+    status,
+    plannedDate: day === null ? null : new Date(Date.UTC(2026, 9, day)),
+  });
+
   it('списанное долгом не считается, переплата в минус не уходит (решение Р-240)', () => {
-    const tranches = [
-      { amount: 100_000n, status: 'PAID' },
-      { amount: 50_000n, status: 'WRITTEN_OFF' },
-      { amount: 70_000n, status: 'INVOICED' },
-    ];
+    const tranches = [t(100_000n, 'PAID', 1), t(50_000n, 'WRITTEN_OFF', 2), t(70_000n, 'INVOICED', 3)];
     assert.equal(outstandingOf(220_000n, tranches), 70_000n);
     assert.equal(outstandingOf(120_000n, tranches), 0n);
+    assert.equal(outstandingOf(90_000n, tranches.slice(0, 1)), 0n);
     assert.equal(outstandingOf(220_000n, []), 220_000n);
+  });
+
+  it('списание транша сверх остатка не уменьшает долг по открытым; «Списано» — в пределах остатка (Р-530)', () => {
+    // Договор 100 000: открытый транш 60 000 и позже него списанный 60 000.
+    // В остаток списанный входит только на 40 000 (разнесение по срокам,
+    // Р-447): долг — 60 000, а не 40 000; списано — 40 000.
+    const later = [t(60_000n, 'INVOICED', 5), t(60_000n, 'WRITTEN_OFF', 20)];
+    assert.equal(outstandingOf(100_000n, later), 60_000n);
+    assert.equal(writtenOffOf(100_000n, later), 40_000n);
+    // Списанный без срока разносится последним — так же.
+    const undated = [t(60_000n, 'PLANNED', 5), t(60_000n, 'WRITTEN_OFF')];
+    assert.equal(outstandingOf(100_000n, undated), 60_000n);
+    assert.equal(writtenOffOf(100_000n, undated), 40_000n);
+    // Списанный раньше открытого входит в остаток целиком; сверх остатка
+    // лежит часть открытого, как в «Должниках» (Р-447).
+    const earlier = [t(60_000n, 'WRITTEN_OFF', 5), t(60_000n, 'INVOICED', 20)];
+    assert.equal(outstandingOf(100_000n, earlier), 40_000n);
+    assert.equal(writtenOffOf(100_000n, earlier), 60_000n);
+    // Без превышения договора — как прежде: списанное вычитается целиком.
+    const within = [t(100_000n, 'PAID', 1), t(50_000n, 'WRITTEN_OFF', 9), t(70_000n, 'INVOICED', 3)];
+    assert.equal(outstandingOf(220_000n, within), 70_000n);
+    assert.equal(writtenOffOf(220_000n, within), 50_000n);
+    assert.equal(writtenOffOf(100_000n, [t(30_000n, 'WRITTEN_OFF', 1)]), 30_000n);
   });
 });
 
@@ -150,8 +179,8 @@ describe('сторно транша (решение Р-249)', () => {
     assert.equal(canChangeTrancheStatus('INVOICED', 'REVERSED'), false);
     assert.equal(
       outstandingOf(1000n, [
-        { amount: 400n, status: 'REVERSED' },
-        { amount: 100n, status: 'PAID' },
+        { id: 'r', amount: 400n, status: 'REVERSED', plannedDate: null },
+        { id: 'p', amount: 100n, status: 'PAID', plannedDate: null },
       ]),
       900n,
     );

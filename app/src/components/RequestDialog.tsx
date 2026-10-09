@@ -18,7 +18,8 @@ import { LEAD_SENT_EVENT } from './LeadThanks';
  * можно крестиком, клавишей Esc или нажатием мимо формы. После успешной
  * отправки окно закрывается само, и поверх страницы встаёт благодарность
  * (`LeadThanks`, Р-406). Фокус переходит в первое поле, Tab не выходит за
- * окно, по закрытии фокус возвращается на кнопку в шапке.
+ * окно, по закрытии — и окна, и благодарности после него — фокус
+ * возвращается на кнопку в шапке (Р-510).
  *
  * Без скриптов ссылка остаётся якорем и прокручивает к форме, как прежде.
  * Остальные ссылки «#request» на странице (в тексте разделов) окно не
@@ -26,18 +27,29 @@ import { LEAD_SENT_EVENT } from './LeadThanks';
  *
  * Слой — под благодарностью (45) и уведомлением о cookies (50), над окном
  * отзыва (40) и кнопкой замечаний (30/31).
+ *
+ * Оформление (Р-511). Положение формы держит `transform` с !important —
+ * он перебивает стили макета; поэтому появление анимирует отдельное
+ * свойство `translate`, а `opacity` не важная. Крестик — в потоке формы и
+ * прилипает к верху окна (`sticky`): на телефоне длинная форма
+ * прокручивается, а крестик остаётся на виду. Его отрицательные поля не
+ * занимают места, зазор формы перед заголовком снимается в сценарии.
+ * Блокировка прокрутки оставляет место полосы прокрутки, если полоса его
+ * занимает, и страница за окном не сдвигается.
  */
 
 const CSS = `
 .pd-rq-veil{position:fixed;inset:0;z-index:43;background:rgba(20,22,28,.32);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:pd-rq-fade 220ms cubic-bezier(.2,0,.2,1)}
-form.pd-rq-open{position:fixed!important;z-index:44!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;box-sizing:border-box!important;width:min(560px,calc(100vw - 24px))!important;max-height:calc(100dvh - 24px)!important;overflow:auto!important;margin:0!important;padding:24px 22px 22px!important;background:var(--pd-ink-inverse,#FFFFFF)!important;border:1px solid var(--pd-border,#E3E7EC)!important;border-radius:14px!important;box-shadow:0 10px 20px rgba(20,22,28,.09),0 1px 2px rgba(20,22,28,.05)!important;opacity:1!important;visibility:visible!important;filter:none!important;animation:pd-rq-rise 220ms cubic-bezier(.2,0,.2,1)}
+form.pd-rq-open{position:fixed!important;z-index:44!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;box-sizing:border-box!important;width:min(560px,calc(100vw - 24px))!important;max-height:calc(100dvh - 24px)!important;overflow:auto!important;margin:0!important;padding:24px 22px 22px!important;background:var(--pd-ink-inverse,#FFFFFF)!important;border:1px solid var(--pd-border,#E3E7EC)!important;border-radius:14px!important;box-shadow:0 10px 20px rgba(20,22,28,.09),0 1px 2px rgba(20,22,28,.05)!important;opacity:1;visibility:visible!important;filter:none!important;animation:pd-rq-rise 220ms cubic-bezier(.2,0,.2,1)}
 .pd-rq-title{margin:0 44px 4px 0;font-family:var(--pd-serif,'Literata'),Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink,#14161C);flex:1 1 100%}
-.pd-rq-close{position:absolute;top:12px;right:12px;appearance:none;box-sizing:border-box;width:44px;height:44px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--pd-ink-secondary,#3D4450);cursor:pointer;transition:border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.pd-rq-close{position:sticky;top:-12px;z-index:2;flex:none;align-self:flex-end;margin:-12px -10px -32px auto;appearance:none;box-sizing:border-box;width:44px;height:44px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid transparent;border-radius:999px;background:var(--pd-ink-inverse,#FFFFFF);color:var(--pd-ink-secondary,#3D4450);cursor:pointer;transition:border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
 .pd-rq-close:hover{border-color:var(--pd-border,#E3E7EC);color:var(--pd-ink,#14161C)}
 .pd-rq-close:focus-visible{outline:2px solid var(--pd-accent,#14417A);outline-offset:2px}
+.pd-rq-guard{position:fixed;top:0;left:0;width:1px;height:0;padding:0;overflow:hidden;outline:none}
 html.pd-rq-lock{overflow:hidden}
+html.pd-rq-lock.pd-rq-gutter{scrollbar-gutter:stable}
 @keyframes pd-rq-fade{from{opacity:0}to{opacity:1}}
-@keyframes pd-rq-rise{from{opacity:0;transform:translate(-50%,calc(-50% + 8px))}to{opacity:1;transform:translate(-50%,-50%)}}
+@keyframes pd-rq-rise{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
 @media (prefers-reduced-motion:reduce){.pd-rq-veil,form.pd-rq-open,.pd-rq-close{animation:none!important;transition:none!important}}
 @media print{.pd-rq-veil{display:none!important}}
 `;
@@ -53,6 +65,8 @@ interface Open {
   readonly veil: HTMLDivElement;
   readonly title: HTMLParagraphElement;
   readonly close: HTMLButtonElement;
+  /** Стражи до и после формы: Tab от body не уходит из документа. */
+  readonly guards: readonly [HTMLDivElement, HTMLDivElement];
 }
 
 /** Видимые элементы окна, до которых доходит Tab: ловушка поля-приманки не трогает. */
@@ -68,7 +82,7 @@ export default function RequestDialog() {
 
     const shut = (returnFocus: boolean) => {
       if (open === null) return;
-      const { form, opener, mark, veil, title, close } = open;
+      const { form, opener, mark, veil, title, close, guards } = open;
       open = null;
       mark.replaceWith(form);
       form.classList.remove('pd-rq-open');
@@ -78,7 +92,8 @@ export default function RequestDialog() {
       title.remove();
       close.remove();
       veil.remove();
-      document.documentElement.classList.remove('pd-rq-lock');
+      for (const guard of guards) guard.remove();
+      document.documentElement.classList.remove('pd-rq-lock', 'pd-rq-gutter');
       document.removeEventListener('keydown', onKey, true);
       if (returnFocus) opener.focus({ preventScroll: true });
     };
@@ -96,6 +111,25 @@ export default function RequestDialog() {
       const first = items[0]!;
       const last = items[items.length - 1]!;
       const active = document.activeElement;
+      // Фокус на body: элемент окна, где он стоял, заменён (вкладка
+      // «почта/телефон» при переключении рисуется новой кнопкой, Р-509) или
+      // выключен (кнопка отправки на время запроса), либо щелчок пришёлся
+      // по тексту. Браузер помнит это место и ведёт Tab от него — к соседу
+      // внутри окна. Шаг не перехватывается, а проверяется после: если
+      // фокус оказался вне окна, он возвращается в окно. За край формы
+      // Tab попадает на стража и тоже возвращается (Р-512).
+      if (active === null || active === document.body) {
+        const current = open;
+        const back = event.shiftKey;
+        window.setTimeout(() => {
+          if (open !== current) return;
+          const now = document.activeElement;
+          if (now !== null && now !== document.body && current.form.contains(now)) return;
+          const items = focusables(current.form);
+          (back ? items[items.length - 1] : items[0])?.focus();
+        }, 0);
+        return;
+      }
       if (event.shiftKey && (active === first || !open.form.contains(active))) {
         event.preventDefault();
         last.focus();
@@ -112,7 +146,12 @@ export default function RequestDialog() {
 
       const veil = document.createElement('div');
       veil.className = 'pd-rq-veil';
-      veil.addEventListener('click', () => shut(true));
+      // Второй клик двойного по кнопке шапки попадает уже в подложку:
+      // повторные клики серии окно не закрывают (Р-509).
+      veil.addEventListener('click', (event) => {
+        if (event.detail > 1) return;
+        shut(true);
+      });
 
       const title = document.createElement('p');
       title.className = 'pd-rq-title';
@@ -127,6 +166,26 @@ export default function RequestDialog() {
         '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
       close.addEventListener('click', () => shut(true));
 
+      // Стражи по краям формы. Tab от body с места последнего элемента
+      // формы (выключенная на время отправки кнопка, текст плашки ошибки)
+      // уходил бы из документа в интерфейс браузера — форма последняя на
+      // странице. Страж ловит этот шаг и переводит фокус на другой край
+      // окна (Р-512). Обычный Tab до стражей не доходит: его перехватывает
+      // onKey на первом и последнем элементе.
+      const guard = (edge: 'start' | 'end') => {
+        const el = document.createElement('div');
+        el.tabIndex = 0;
+        el.className = 'pd-rq-guard';
+        el.dataset.edge = edge;
+        el.addEventListener('focus', () => {
+          if (open === null) return;
+          const items = focusables(open.form);
+          (edge === 'end' ? items[0] : items[items.length - 1])?.focus();
+        });
+        return el;
+      };
+      const guards = [guard('start'), guard('end')] as const;
+
       // Форма на время окна переносится к концу страницы: раздел заявки
       // внизу ещё не проявился при прокрутке (прозрачен и сдвинут), а
       // предок со сдвигом делает «fixed» относительным себе, а не экрану.
@@ -139,9 +198,17 @@ export default function RequestDialog() {
       form.setAttribute('role', 'dialog');
       form.setAttribute('aria-modal', 'true');
       form.setAttribute('aria-labelledby', title.id);
-      document.body.append(veil, form);
-      document.documentElement.classList.add('pd-rq-lock');
-      open = { form, opener, mark, veil, title, close };
+      document.body.append(veil, guards[0], form, guards[1]);
+      // Крестик стоит в потоке перед заголовком: зазор формы между ними
+      // снимается, заголовок остаётся на прежнем месте (Р-511).
+      const gap = parseFloat(getComputedStyle(form).rowGap) || 0;
+      if (gap > 0) title.style.marginTop = `-${gap}px`;
+      // Место полосы прокрутки держится, только если полоса занимает место:
+      // у накладных полос (телефон, macOS) запас дал бы сдвиг в другую сторону.
+      const root = document.documentElement;
+      root.classList.toggle('pd-rq-gutter', window.innerWidth > root.clientWidth);
+      root.classList.add('pd-rq-lock');
+      open = { form, opener, mark, veil, title, close, guards };
       document.addEventListener('keydown', onKey, true);
 
       const first = focusables(form).find((el) => el !== close);
@@ -160,17 +227,22 @@ export default function RequestDialog() {
     };
 
     // Заявка ушла — окно закрывается, благодарность встаёт поверх страницы.
+    // Благодарность по закрытии вернёт фокус на кнопку шапки, открывшую
+    // окно, а не на кнопку формы внизу страницы (Р-510). Слушатель с
+    // перехватом: срабатывает раньше благодарности.
     const onSent = (event: Event) => {
-      const sent = (event as CustomEvent<{ form?: unknown }>).detail?.form;
-      if (open !== null && sent === open.form) shut(false);
+      const detail = (event as CustomEvent<{ form?: unknown; returnTo?: unknown } | null>).detail;
+      if (open === null || detail?.form !== open.form) return;
+      detail.returnTo = open.opener;
+      shut(false);
     };
 
     document.addEventListener('click', onClick, true);
-    window.addEventListener(LEAD_SENT_EVENT, onSent);
+    window.addEventListener(LEAD_SENT_EVENT, onSent, true);
     return () => {
       shut(false);
       document.removeEventListener('click', onClick, true);
-      window.removeEventListener(LEAD_SENT_EVENT, onSent);
+      window.removeEventListener(LEAD_SENT_EVENT, onSent, true);
     };
   }, []);
 

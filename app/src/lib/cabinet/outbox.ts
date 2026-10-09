@@ -242,8 +242,7 @@ export async function enqueueCuratorDigest(at: Date = clockNow()): Promise<numbe
         const put = await enqueue(tx, {
           userId: curator.id,
           eventKind: 'CURATOR_DIGEST',
-          subject: `Сводка по вашим работам: ${rows.length} ${rows.length % 10 === 1 && rows.length % 100 !== 11 ? 'событие' : [2, 3, 4].includes(rows.length % 10) && ![12, 13, 14].includes(rows.length % 100) ? 'события' : 'событий'}`,
-          body: `${rows.map((row) => `— ${row.subject}`).join('\n')}\nПодробности — в личном кабинете.`,
+          ...curatorDigestText(rows.map((row) => row.subject)),
           dedupKey: `curator-digest:${moscowToday(at).toISOString().slice(0, 10)}:${curator.id}:${rows[0]!.id}`,
           only: 'EMAIL',
           path: '/cabinet/projects',
@@ -257,6 +256,75 @@ export async function enqueueCuratorDigest(at: Date = clockNow()): Promise<numbe
       });
   }
   return queued;
+}
+
+/** Тема и тело сводки куратора по темам вошедших писем (Р-398). */
+function curatorDigestText(subjects: readonly string[]): { subject: string; body: string } {
+  const n = subjects.length;
+  const word =
+    n % 10 === 1 && n % 100 !== 11
+      ? 'событие'
+      : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)
+        ? 'события'
+        : 'событий';
+  return {
+    subject: `Сводка по вашим работам: ${n} ${word}`,
+    body: `${subjects.map((subject) => `— ${subject}`).join('\n')}\nПодробности — в личном кабинете.`,
+  };
+}
+
+/**
+ * Неотправленные сводки куратора без писем, которые ему больше не положены
+ * (решение Р-534). Отзыв договора поручения и снятие с работы
+ * гасят неотправленные письма о работе (Р-456, Р-421), но письма, уже
+ * вошедшие в сводку, живут в её теле: сводка без работы (`projectId`)
+ * под эти условия не подходила и уходила, когда канал оживал, с темами
+ * этапов и материалов.
+ *
+ * Сводка находит свои строки по первой вошедшей (ключ, Р-436): все
+ * строки одной сводки помечены её моментом. Отброшенные строки гаснут с
+ * причиной `note`; сводка пересобирается из оставшихся, а без них гаснет
+ * сама.
+ */
+export async function pruneCuratorDigests(
+  db: Db,
+  userId: string,
+  drop: (row: { projectId: string | null; eventKind: string }) => boolean,
+  note: string,
+): Promise<void> {
+  const digests = await db.notificationOutbox.findMany({
+    where: { userId, eventKind: 'CURATOR_DIGEST', state: 'PENDING' },
+    select: { id: true, dedupKey: true },
+  });
+  for (const digest of digests) {
+    // Ключ: curator-digest:<день>:<куратор>:<первая строка>:<канал>.
+    const firstId = digest.dedupKey.split(':')[3];
+    if (firstId === undefined) continue;
+    const first = await db.notificationOutbox.findUnique({ where: { id: firstId }, select: { scheduledAt: true } });
+    if (first === null) continue;
+    const merged = await db.notificationOutbox.findMany({
+      where: { userId, state: 'MERGED', scheduledAt: first.scheduledAt },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, subject: true, projectId: true, eventKind: true },
+    });
+    const gone = merged.filter(drop);
+    if (gone.length === 0) continue;
+    const kept = merged.filter((row) => !drop(row));
+    const at = new Date();
+    // Срок отброшенных строк не трогается: по нему сводку находит
+    // следующая чистка, если первая вошедшая строка уже отброшена.
+    await db.notificationOutbox.updateMany({
+      where: { id: { in: gone.map((row) => row.id) }, state: 'MERGED' },
+      data: { state: 'EXPIRED', lastError: note },
+    });
+    await db.notificationOutbox.updateMany({
+      where: { id: digest.id, state: 'PENDING' },
+      data:
+        kept.length === 0
+          ? { state: 'EXPIRED', lastError: note, scheduledAt: at }
+          : curatorDigestText(kept.map((row) => row.subject)),
+    });
+  }
 }
 
 export async function enqueue(db: Db, item: OutboxItem): Promise<number> {
@@ -548,12 +616,23 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
   // если прогон оборвался, строка вернётся в очередь по истечении аренды.
   const now = new Date();
   const leaseUntil = new Date(now.getTime() + LEASE_MS);
+  // Строки ненастроенного канала берутся в порцию после строк настроенного.
+  // Почта без срока годности ждёт настройки бессрочно (откладывается на
+  // час без расхода попыток); при Telegram без почты таких строк набирались
+  // тысячи, они созревали раньше свежих и занимали порцию целиком, и сигнал
+  // в Telegram отставал всё сильнее. В конце порции они по-прежнему
+  // доходят до разбора: устаревшие закрываются, прочие откладываются
+  // (решение Р-533).
+  const off = [
+    ...(mailConfigured() ? [] : ['EMAIL']),
+    ...((process.env.TELEGRAM_BOT_TOKEN ?? '').trim() ? [] : ['TELEGRAM']),
+  ];
   const claimed = await prisma.$queryRaw<{ id: string }[]>`
     UPDATE "NotificationOutbox" SET "scheduledAt" = ${leaseUntil}
     WHERE "id" IN (
       SELECT "id" FROM "NotificationOutbox"
       WHERE "state" = 'PENDING' AND "scheduledAt" <= ${now}
-      ORDER BY "scheduledAt" ASC
+      ORDER BY ("channel"::text = ANY(${off}::text[])) ASC, "scheduledAt" ASC
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
     )

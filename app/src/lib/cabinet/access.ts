@@ -594,6 +594,22 @@ export function presentClientReason(actor: Actor, reason: unknown): string | nul
   return actor.role === 'EXPERT' ? null : reason;
 }
 
+/** Что читает куратор на экране этапа вместо причины «ждём материалы». */
+export const AWAITING_CLIENT_FOR_CURATOR = 'Этап ждёт материалов клиента.';
+
+/**
+ * Причина остановки этапа «ждём материалы» (`Stage.blockedReason`) на
+ * экране этапа — так, как её можно показать смотрящему (решение Р-522).
+ *
+ * Причину пишет менеджер для клиента, и правило у неё то же, что у
+ * причины перевода в истории работы (Р-414): куратор видит не текст, а
+ * нейтральную пометку о том, что этап ждёт материалов клиента.
+ */
+export function presentBlockedReason(actor: Actor, reason: string | null): string | null {
+  if (reason === null) return null;
+  return presentClientReason(actor, reason) ?? (actor.role === 'EXPERT' ? AWAITING_CLIENT_FOR_CURATOR : null);
+}
+
 // ─────────────────────── Представление участника работы ────────────────────
 
 /**

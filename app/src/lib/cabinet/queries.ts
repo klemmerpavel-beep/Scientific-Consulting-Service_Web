@@ -444,7 +444,8 @@ export async function curatorTasksData(actor: Actor) {
   const scope = scopeProjects(actor);
   if (actor.role !== 'EXPERT' || scope === null) return curatorTasks([]);
   const openWork = { ...scope, status: { in: ['ACTIVE' as const, 'PAUSED' as const] } };
-  const stageRef = { select: { id: true, dueOn: true } };
+  // Состояние — чтобы не брать дел с завершённого этапа (Р-524).
+  const stageRef = { select: { id: true, dueOn: true, state: true } };
   const [works, versions, comments] = await Promise.all([
     prisma.project.findMany({
       where: openWork,
@@ -797,7 +798,7 @@ export async function trafficLight(actor: Actor) {
         contract: {
           select: {
             totalAmount: true,
-            tranches: { select: { amount: true, status: true } },
+            tranches: { select: { id: true, amount: true, status: true, plannedDate: true } },
           },
         },
       },
@@ -853,7 +854,7 @@ export async function trafficLight(actor: Actor) {
       contract: {
         select: {
           totalAmount: true,
-          tranches: { select: { amount: true, status: true } },
+          tranches: { select: { id: true, amount: true, status: true, plannedDate: true } },
         },
       },
       _count: { select: { stages: true } },
@@ -1170,9 +1171,15 @@ export async function createCabinetRequest(
   // Размер проверяется до заявки: прежде проверка стояла в цикле после
   // неё, и слишком большой второй файл оставлял заявку с первым, без
   // уведомления менеджерам, а повторная отправка давала дубль (Р-231).
-  const files = (draft.files ?? [])
-    .slice(0, REQUEST_FILES_MAX)
-    .filter((file) => file.body.byteLength > 0);
+  const files = (draft.files ?? []).filter((file) => file.body.byteLength > 0);
+  // Лишние файлы — отказ до заявки, а не молчаливое отсечение: прежде
+  // шестой и следующие отбрасывались, и экран сообщал, что отправлено всё
+  // (решение Р-532).
+  if (files.length > REQUEST_FILES_MAX) {
+    throw new Error(
+      `К заявке прикладывается не больше ${REQUEST_FILES_MAX} файлов, выбрано ${files.length}: выберите файлы заново`,
+    );
+  }
   if (files.some((file) => file.body.byteLength > REQUEST_FILE_MAX_BYTES)) {
     throw new Error(
       `Файл больше допустимых ${Math.round(REQUEST_FILE_MAX_BYTES / 1024 / 1024)} МБ`,
@@ -1231,6 +1238,21 @@ export async function createCabinetRequest(
       ip: draft.ip,
     },
   });
+
+  // Сессия по ссылке, которую выдал сотрудник: отметки в ней мог поставить
+  // и он сам. Отказ сломал бы вход клиента, получившего ссылку от
+  // менеджера, поэтому заявка принимается, а журнал помечает, что она — и
+  // согласие с акцептом, если они даны в ней, — пришли из такой сессии.
+  // Тот же порядок, что у согласования этапа (ОМ-3, Р-292; решение Р-514).
+  if (actor.viaStaffLink === true) {
+    await record(actor, {
+      action: 'REQUEST_VIA_STAFF_LINK',
+      objectType: 'Lead',
+      objectId: lead.id,
+      ip: draft.ip,
+      payload: { consentGiven: !accepted, staffLink: true },
+    });
+  }
 
   // Вложения кладутся после заявки: ключ объекта строится от её
   // идентификатора, а заявка без файлов остаётся действительной — отказ

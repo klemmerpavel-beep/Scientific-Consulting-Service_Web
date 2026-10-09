@@ -14,6 +14,7 @@ import type { CalendarRow } from '../../../../lib/cabinet/analytics/calendar';
 import { MIN_TRANSITIONS, SILENCE_DAYS } from '../../../../lib/cabinet/analytics/advice';
 import { formatAmount } from '../../../../lib/cabinet/money';
 import { RECOMMENDATIONS_HREF, homeFor } from '../../../../lib/cabinet/nav';
+import { laneOrder, limitedLane } from '../../../../lib/cabinet/recommendation-order';
 import { calendarKey, recommendationsNow } from '../../../../lib/cabinet/recommendations';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { markRecommendationAction } from '../../actions';
@@ -24,18 +25,20 @@ export const dynamic = 'force-dynamic';
 const RETURN_LIMIT = 10;
 
 /**
- * Заголовок блока: название и сколько рекомендаций ждёт решения из
- * скольких (Р-491).
+ * Заголовок блока: название и сколько рекомендаций ждёт решения (Р-491).
+ * Сумма по трём блокам — то же число, что у пункта меню и в подписи
+ * экрана. Прежде стояло «N из M», и M у календаря смешивал три
+ * показанных окна с отмеченными, не считая окон сверх трёх (Р-499).
  */
-function BlockHead({ title, open, total }: { title: string; open: number; total: number }) {
+function BlockHead({ title, open, any }: { title: string; open: number; any: boolean }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
       <Heading level={2} size={3}>
         {title}
       </Heading>
-      {total === 0 ? null : (
+      {!any ? null : (
         <Text muted size={13}>
-          {open === 0 ? `все ${total} отмечены` : `ждут решения ${open} из ${total}`}
+          {open === 0 ? 'всё отмечено' : `ждут решения: ${open}`}
         </Text>
       )}
     </div>
@@ -55,18 +58,23 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
   if (!can(actor, 'ANALYTICS_VIEW')) redirect(homeFor(actor));
   const flags = await searchParams;
   const { calendar, price, returns, marks, unmarked } = await recommendationsNow(actor);
-  // Неотмеченные — первыми в ленте: отмеченные остаются видны с отметкой.
-  const unmarkedFirst = <T extends { key: string }>(rows: readonly T[]) =>
-    [...rows].sort((a, b) => Number(marks.has(a.key)) - Number(marks.has(b.key)));
-  const shownReturns = unmarkedFirst(returns).slice(0, RETURN_LIMIT);
+  // В ленте — сначала ждущие решения, за ними принятые, в конце закрытые
+  // отметкой. Принятое ждёт поручения и «Сделано» и за предел ленты не
+  // уходит (решение Р-499).
+  const markOf = (row: { key: string }) => marks.get(row.key);
+  const returnsLane = limitedLane(returns, markOf, RETURN_LIMIT);
+  const priceLane = laneOrder(price, markOf);
   // «Сейчас» календаря — неотмеченные окна (до трёх); за ними — отмеченные
   // окна, которые ещё идут: принятое видно, отметку можно снять.
+  const windowMark = (row: CalendarRow) => marks.get(calendarKey(row) ?? '');
+  const running = calendar.rows.filter((row) => row.state !== null && row.state !== 'later');
   const calendarItems: CalendarRow[] = [
     ...calendar.now,
-    ...calendar.rows.filter(
-      (row) => row.state !== null && row.state !== 'later' && marks.has(calendarKey(row) ?? ''),
-    ),
+    ...laneOrder(running.filter((row) => windowMark(row) !== undefined), windowMark),
   ];
+  // Открытые окна сверх трёх ближайших: их нет ни в ленте, ни в числе у
+  // пункта меню, отмечаются они в таблице видов календаря (Р-499).
+  const moreWindows = running.filter((row) => windowMark(row) === undefined).length - calendar.now.length;
 
   return (
     <Shell actor={actor} current={RECOMMENDATIONS_HREF}>
@@ -80,11 +88,7 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
           в ленте со слайдером: принять, отклонить, отложить, поручить
           (замечание владельца 08.10.2026, решение Р-491). */}
       <Card style={{ marginBottom: 20 }} id="calendar">
-        <BlockHead
-          title="Календарь продвижения"
-          open={calendarItems.filter((row) => !marks.has(calendarKey(row) ?? '')).length}
-          total={calendarItems.length}
-        />
+        <BlockHead title="Календарь продвижения" open={calendar.now.length} any={calendarItems.length > 0} />
         <Text muted size={13} style={{ marginBottom: 14 }}>
           Окно — шесть недель до расчётной даты заказа: середина месяца сдачи минус медиана
           выполнения вида.
@@ -104,6 +108,11 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
             ))}
           </CardSlider>
         )}
+        {moreWindows <= 0 ? null : (
+          <Text muted size={13} style={{ marginTop: 12 }}>
+            {`Показаны три ближайших окна. Ещё ${moreWindows} ${plural(moreWindows, 'окно открыто', 'окна открыты', 'окон открыты')} — в календаре, в таблице видов.`}
+          </Text>
+        )}
         <div style={{ marginTop: 14 }}>
           <ButtonLink href="/cabinet/manage/recommendations/calendar" tone="quiet">
             Весь календарь
@@ -112,11 +121,7 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
       </Card>
 
       <Card style={{ marginBottom: 20 }} id="price">
-        <BlockHead
-          title="Цена и пакеты"
-          open={price.filter((row) => !marks.has(row.key)).length}
-          total={price.length}
-        />
+        <BlockHead title="Цена и пакеты" open={price.filter((row) => !marks.has(row.key)).length} any={price.length > 0} />
         <Text muted size={13} style={{ marginBottom: 14 }}>
           На чём основано: разброс чека вида выше 40 % при трёх и более заказах — одна и та же
           работа продаётся по разной цене. Правило предлагает зафиксировать цену по собственной
@@ -126,7 +131,7 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
           <Text muted>Цена по видам работ держится: разброс нигде не выше 40 %.</Text>
         ) : (
           <CardSlider label="Рекомендации по цене и пакетам">
-            {unmarkedFirst(price).map((row) => (
+            {priceLane.map((row) => (
               <RecommendationCard
                 key={row.key}
                 kind="Цена вида работ"
@@ -150,19 +155,15 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
       </Card>
 
       <Card id="returns">
-        <BlockHead
-          title="Возврат клиентов"
-          open={returns.filter((row) => !marks.has(row.key)).length}
-          total={returns.length}
-        />
+        <BlockHead title="Возврат клиентов" open={returns.filter((row) => !marks.has(row.key)).length} any={returns.length > 0} />
         <Text muted size={13} style={{ marginBottom: 14 }}>
           {`На чём основано: у клиента нет действующих работ, последний заказ старше ${SILENCE_DAYS} дней. «Следующая работа» — самый частый переход от вида его последней работы к следующему заказу у клиентов практики; при меньше чем ${MIN_TRANSITIONS} переходах подсказки нет. Писать с предложением можно только тем, кто дал согласие на рассылку в последней заявке.`}
         </Text>
-        {shownReturns.length === 0 ? (
+        {returnsLane.shown.length === 0 ? (
           <Text muted>Молчащих дольше полугода клиентов нет.</Text>
         ) : (
           <CardSlider label="Рекомендации по возврату клиентов">
-            {shownReturns.map((row) => (
+            {returnsLane.shown.map((row) => (
               <RecommendationCard
                 key={row.key}
                 kind={row.consent ? 'Возврат клиента · согласие есть' : 'Возврат клиента · согласия нет'}
@@ -194,10 +195,11 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
             ))}
           </CardSlider>
         )}
-        {returns.length <= RETURN_LIMIT ? null : (
+        {/* Считаются только ждущие решения: закрытые отметкой в ленту уже
+            не вернутся, и обещать их показать нельзя (Р-499). */}
+        {returnsLane.hiddenOpen === 0 ? null : (
           <Text muted size={13} style={{ marginTop: 12 }}>
-            И ещё {returns.length - RETURN_LIMIT} {plural(returns.length - RETURN_LIMIT, 'клиент', 'клиента', 'клиентов')}: лента
-            сдвигается по мере отметок.
+            {`И ещё ${returnsLane.hiddenOpen} ${plural(returnsLane.hiddenOpen, 'клиент ждёт', 'клиента ждут', 'клиентов ждут')} решения: они встанут в ленту по мере отметок.`}
           </Text>
         )}
       </Card>

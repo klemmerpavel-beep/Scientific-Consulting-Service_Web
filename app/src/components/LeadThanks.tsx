@@ -15,7 +15,8 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
  * Окно не знает форм: перенесённая страница после успешной отправки
  * посылает событие `pd:lead-sent` с текстом благодарности из макета и самой
  * формой (`tools/dc-to-tsx.mjs`). Фокус переходит в окно, Tab не выходит за
- * него, по закрытии возвращается на кнопку отправки этой формы. Наведение
+ * него, по закрытии возвращается на кнопку отправки этой формы, а если
+ * форма была в окне заявки — на кнопку шапки, открывшую окно (Р-510). Наведение
  * на плашку останавливает отсчёт: дочитать можно не спеша.
  *
  * Слой — над окном отзыва (40) и кнопкой замечаний (30/31), ниже
@@ -47,6 +48,12 @@ const CSS = `
 interface Shown {
   readonly text: string;
   readonly form: HTMLFormElement | null;
+  /**
+   * Подробности события: окно заявки (`RequestDialog`) кладёт туда
+   * `returnTo` — кнопку шапки, открывшую окно. Читается при закрытии, а не
+   * при показе: так порядок слушателей события не важен (Р-510).
+   */
+  readonly detail: { returnTo?: unknown };
 }
 
 export default function LeadThanks() {
@@ -72,17 +79,20 @@ export default function LeadThanks() {
     stopTimer();
     leavingRef.current = true;
     setLeaving(true);
-    const form = shownRef.current.form;
+    const { form, detail } = shownRef.current;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     setTimeout(() => {
       shownRef.current = null;
       leavingRef.current = false;
       setShown(null);
       setLeaving(false);
-      // Фокус — на кнопку отправки той же формы: человек остаётся там,
-      // где был, а читалка не теряет место.
+      // Фокус — туда, откуда отправили заявку: на кнопку шапки, если
+      // форма была в окне заявки, иначе на кнопку отправки той же формы.
+      // Человек остаётся там, где был, а читалка не теряет место.
+      const returnTo = detail.returnTo;
+      const back = returnTo instanceof HTMLElement && returnTo.isConnected ? returnTo : null;
       const button = form?.querySelector<HTMLElement>('[type="submit"]');
-      (button ?? form)?.focus({ preventScroll: true });
+      (back ?? button ?? form)?.focus({ preventScroll: true });
     }, reduced ? 0 : LEAVE_MS);
   }, []);
 
@@ -94,10 +104,10 @@ export default function LeadThanks() {
 
   useEffect(() => {
     const onSent = (event: Event) => {
-      const detail = (event as CustomEvent<{ text?: unknown; form?: unknown }>).detail ?? {};
+      const detail = (event as CustomEvent<{ text?: unknown; form?: unknown; returnTo?: unknown }>).detail ?? {};
       const text = typeof detail.text === 'string' && detail.text.trim() !== '' ? detail.text.trim() : 'Заявка принята.';
       const form = detail.form instanceof HTMLFormElement ? detail.form : null;
-      const next = { text, form };
+      const next = { text, form, detail };
       shownRef.current = next;
       leavingRef.current = false;
       setLeaving(false);

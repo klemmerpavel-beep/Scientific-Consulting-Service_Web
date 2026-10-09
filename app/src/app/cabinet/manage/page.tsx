@@ -32,7 +32,7 @@ import {
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
-import { formatAmount, formatPlain, outstandingOf, workMoneyNote } from '../../../lib/cabinet/money';
+import { formatAmount, formatPlain, outstandingOf, workMoneyNote, type OpenTranche } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { staffThreadUnread } from '../../../lib/cabinet/messages';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
@@ -154,7 +154,7 @@ const BOARD_ITEM = {
  */
 function owed(contract: {
   totalAmount: bigint;
-  tranches: readonly { amount: bigint; status: string }[];
+  tranches: readonly OpenTranche[];
 } | null): bigint {
   if (contract === null) return 0n;
   // Списанное под угрозой уже не числится (решение Р-240).
@@ -839,30 +839,33 @@ export default async function ManageQueue({
           <Heading level={2} size={3} style={{ marginBottom: 10 }}>
             Команда
           </Heading>
+          {/* Пустая команда — только фраза, без пустого перечня: читалка
+              объявляла «список, 0 пунктов» (решение Р-541). */}
           {team.length === 0 ? (
             <Text muted size={14}>
               В команде пока нет людей с работами и делами.
             </Text>
-          ) : null}
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
-            {team.map((row) => (
-              <li key={`${row.side}-${row.id}`}>
-                <a className="cab-mark" href={row.href} style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
-                  {row.fullName}
-                </a>
-                <Text muted size={13}>
-                  {[
-                    row.side,
-                    `работ ${row.works}`,
-                    row.overdue === 0 ? null : `просрочено ${row.overdue}`,
-                    row.decide === 0 ? null : `ждёт решения ${row.decide}`,
-                  ]
-                    .filter((part) => part !== null)
-                    .join(' · ')}
-                </Text>
-              </li>
-            ))}
-          </ul>
+          ) : (
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
+              {team.map((row) => (
+                <li key={`${row.side}-${row.id}`}>
+                  <a className="cab-mark" href={row.href} style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
+                    {row.fullName}
+                  </a>
+                  <Text muted size={13}>
+                    {[
+                      row.side,
+                      `работ ${row.works}`,
+                      row.overdue === 0 ? null : `просрочено ${row.overdue}`,
+                      row.decide === 0 ? null : `ждёт решения ${row.decide}`,
+                    ]
+                      .filter((part) => part !== null)
+                      .join(' · ')}
+                  </Text>
+                </li>
+              ))}
+            </ul>
+          )}
           {/* Новый человек — отдельной кнопкой, сразу в форму заведения
               с ролью и исходными данными (решение Р-488). */}
           <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>

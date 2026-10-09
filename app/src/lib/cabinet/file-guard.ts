@@ -24,6 +24,11 @@ export const BLOCKED_EXTENSIONS: ReadonlySet<string> = new Set([
   'iso', 'vhd', 'vhdx', 'chm', 'hlp', 'one', 'onepkg', 'xll', 'url', 'scf', 'msc',
   'application', 'appref-ms', 'xbap', 'wsc', 'sct', 'settingcontent-ms', 'iqy', 'slk',
   'cab', 'inf', 'gadget', 'library-ms', 'search-ms',
+  // Установщики Windows, которых не было в перечне: пакет обновления
+  // (CAB внутри), XML установки MSIX по ссылке, пакеты MSIX и APPX
+  // набором, пакет подготовки, пакет диагностики, преобразование MSI
+  // (решение Р-536).
+  'msu', 'appinstaller', 'appxbundle', 'msixbundle', 'ppkg', 'diagcab', 'mst',
 ]);
 
 /**
@@ -96,6 +101,11 @@ export function executableContent(body: Buffer): boolean {
     // ELF; Mach-O в обоих порядках байтов и «толстый» Mach-O (он же класс Java).
     if (magic === 0x7f454c46) return true;
     if ([0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe, 0xcafebabe].includes(magic)) return true;
+    // Кабинет Microsoft: «MSCF», нулевое резервное поле и версия формата
+    // 1.x. .cab запрещён по имени, а внутри .msu и .diagcab — тот же CAB,
+    // и переименованный не проходит (решение Р-536). Текст, начатый
+    // буквами «MSCF», кабинетом не считается.
+    if (magic === 0x4d534346 && body.length >= 36 && body.readUInt32LE(4) === 0 && body[25] === 1) return true;
   }
   // Образы дисков под любым именем: ISO 9660 (метка «CD001» в первом
   // описателе тома), VHDX и VHD (подпись в начале или в хвосте файла).

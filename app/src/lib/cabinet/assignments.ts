@@ -176,12 +176,33 @@ export async function myAssignments(actor: Actor) {
   }));
 }
 
-/** Все поручения практики — руководителю: открытые сверху, по сроку. */
+/** Сколько закрытых поручений показывать руководителю: последние по дате. */
+export const CLOSED_ASSIGNMENTS_SHOWN = 500;
+
+/**
+ * Все поручения практики — руководителю: открытые сверху, по сроку.
+ *
+ * Открытые — все, закрытые — последние `CLOSED_ASSIGNMENTS_SHOWN`. Прежде
+ * предел стоял на общей выборке по раннему сроку: когда выполненных и
+ * отозванных накапливалось больше пятисот, в неё попадали старые
+ * закрытые, а новое открытое поручение со сроком через неделю пропадало с
+ * экрана (решение Р-535).
+ */
 export async function allAssignments(actor: Actor) {
   ensure(actor, 'ASSIGNMENT_CREATE');
-  const rows = await prisma.assignment.findMany({ orderBy: [{ dueOn: 'asc' }, { createdAt: 'asc' }], select: view, take: 500 });
-  const open = (status: AssignmentStatus) => OPEN.includes(status);
-  return rows.sort((a, b) => Number(open(b.status)) - Number(open(a.status)));
+  const order = [{ dueOn: 'asc' as const }, { createdAt: 'asc' as const }];
+  const [open, closed] = await Promise.all([
+    prisma.assignment.findMany({ where: { status: { in: OPEN } }, orderBy: order, select: view }),
+    prisma.assignment.findMany({
+      where: { status: { notIn: OPEN } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: view,
+      take: CLOSED_ASSIGNMENTS_SHOWN,
+    }),
+  ]);
+  const byDue = (a: { dueOn: Date; createdAt: Date }, b: { dueOn: Date; createdAt: Date }) =>
+    a.dueOn.getTime() - b.dueOn.getTime() || a.createdAt.getTime() - b.createdAt.getTime();
+  return [...open, ...closed.sort(byDue)];
 }
 
 /** Просроченные поручения — дело руководителя «Поручение просрочено». */

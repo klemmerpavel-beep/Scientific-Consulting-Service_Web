@@ -122,6 +122,19 @@ export function turnLabel(
   }
 }
 
+/**
+ * Ответ куратору о работе, где хода нет ни у кого: приостановленная —
+ * сроки стоят (Э-04, Д-4, Р-329), завершённая и отменённая — только
+ * чтение (Р-293). Прежде по закрытой работе он читал «Ход за вами: этап
+ * в работе» (решение Р-527). `null` — работа действует, подпись хода
+ * даёт `turnLabel`.
+ */
+export function curatorWorkLine(projectStatus: string | undefined): string | null {
+  if (projectStatus === 'PAUSED') return 'Работа приостановлена.';
+  if (projectStatus === 'COMPLETED' || projectStatus === 'CANCELLED') return 'Работа закрыта.';
+  return null;
+}
+
 /** Где этап по сдаче куратором: не сдан, сдан или возвращён менеджером. */
 export type Handover = 'none' | 'handed' | 'handed-back';
 

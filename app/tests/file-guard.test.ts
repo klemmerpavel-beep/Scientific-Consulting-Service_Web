@@ -103,6 +103,18 @@ describe('исполняемые файлы', () => {
     assert.equal(executableContent(Buffer.from('CD001 — шифр образца в тексте'.padEnd(600, '.'))), false);
   });
 
+  it('пакеты обновления, установка MSIX по ссылке и прочие установщики Windows — нет; CAB — и под чужим именем (Р-536)', () => {
+    for (const name of ['update.msu', 'setup.appinstaller', 'app.appxbundle', 'app.msixbundle', 'x.ppkg', 'fix.diagcab', 'patch.mst']) {
+      assert.notEqual(fileRefusal(name, text), null, name);
+    }
+    // Заголовок CAB: «MSCF», резервное поле 0, версия 1.3.
+    const cab = Buffer.concat([Buffer.from('MSCF', 'latin1'), Buffer.alloc(60)]);
+    cab[24] = 3;
+    cab[25] = 1;
+    assert.notEqual(fileRefusal('glava.pdf', cab), null, 'переименованный CAB принят');
+    assert.equal(executableContent(Buffer.from('MSCF — сокращение в тексте статьи'.padEnd(80, '.'))), false);
+  });
+
   it('отказ называет файл и говорит, что делать', () => {
     assert.match(fileRefusal('setup.msi', text) ?? '', /«setup\.msi» не принят.*напишите менеджеру/u);
   });

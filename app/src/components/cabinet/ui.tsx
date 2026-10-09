@@ -18,6 +18,7 @@ import { presentAuthor } from '../../lib/cabinet/access';
 import { BLOCKED_HINT } from '../../lib/cabinet/file-guard';
 import {
   STAGE_STATE_LABEL,
+  curatorWorkLine,
   stageLabel,
   turnLabel,
   type StageStateKey,
@@ -177,14 +178,18 @@ export function Text({
   muted = false,
   size = 15,
   style,
+  id,
 }: {
   children: ReactNode;
   muted?: boolean;
   size?: number;
   style?: CSSProperties;
+  /** Для ссылки `aria-describedby` с поля (Р-540). */
+  id?: string;
 }) {
   return (
     <p
+      id={id}
       style={{
         margin: 0,
         fontFamily: SANS,
@@ -481,6 +486,7 @@ export function Checkbox({
   disabled = false,
   required = false,
   nowrap = false,
+  describedBy,
 }: {
   label: ReactNode;
   name: string;
@@ -489,6 +495,8 @@ export function Checkbox({
   required?: boolean;
   /** Подпись в одну строку — в узкой ячейке таблицы она не переносится (Р-485). */
   nowrap?: boolean;
+  /** Пояснение, стоящее вне подписи отдельной строкой: читалка зачитает его с флажком (Р-540). */
+  describedBy?: string;
 }) {
   return (
     <label
@@ -508,6 +516,7 @@ export function Checkbox({
         defaultChecked={defaultChecked}
         disabled={disabled}
         required={required}
+        aria-describedby={describedBy}
         style={{ width: 18, height: 18 }}
       />
       <span style={nowrap ? { whiteSpace: 'nowrap' } : undefined}>{label}</span>
@@ -2251,8 +2260,10 @@ function panelAnswer(
     return 'Работа закрыта. Материалы остаются доступны здесь.';
   }
   // Куратору приостановленная работа не пишет «Ход за вами»: сроки стоят,
-  // хотя материалы прикладывать можно (Э-04, Д-4, решение Р-329).
-  if (turnViewer === 'expert' && projectStatus === 'PAUSED') return 'Работа приостановлена.';
+  // хотя материалы прикладывать можно (Э-04, Д-4, решение Р-329); закрытая
+  // — тоже: она только для чтения (Р-293, Р-527).
+  const curatorLine = turnViewer === 'expert' ? curatorWorkLine(projectStatus) : null;
+  if (curatorLine !== null) return curatorLine;
   if (current === null) {
     if (total === 0) {
       return staff ? 'План работ не заведён.' : 'План работ составляет менеджер — этапы появятся здесь.';

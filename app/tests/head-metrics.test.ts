@@ -92,7 +92,7 @@ describe('отменённая работа денег не ждёт', () => {
     assert.equal(expectsPayment('PAUSED'), true);
     assert.equal(expectsPayment('ACTIVE'), true);
     assert.equal(expectsPayment('COMPLETED'), true);
-    const tranches = [{ amount: 5_000_000n, status: 'PAID' }];
+    const tranches = [{ id: 'p', amount: 5_000_000n, status: 'PAID', plannedDate: null }];
     assert.equal(receivableOf('CANCELLED', 20_000_000n, tranches), 0n);
     assert.equal(receivableOf('PAUSED', 20_000_000n, tranches), 15_000_000n);
   });

@@ -303,6 +303,9 @@ function convert(html, ctx) {
     }
 
     const attrs = parseAttrs(attrsSrc);
+    // Форма без method до оживления страницы уходила родным GET: ФИО и
+    // контакт — в строку адреса, журнал nginx и историю браузера (Р-508).
+    if (tag === 'form' && !attrs.some(([n]) => n.toLowerCase() === 'method')) attrs.push(['method', 'post']);
     const rendered = renderAttrs(attrs, ctx);
 
     if (VOID.has(tag) || selfClosing) {
@@ -421,7 +424,7 @@ ${styles.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')}
 ${interactionCss.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')}
 \`;
 
-export default class ${componentName} extends React.Component<any, any> {
+class ${componentName}View extends React.Component<any, any> {
 ${logicBody}
 
   /**
@@ -460,6 +463,9 @@ ${logicBody}
     for (const k of Object.keys(base)) {
       if (k.startsWith('submit') && typeof base[k] === 'function') v[k] = this.wrapSubmit(k, base[k]);
     }
+    // До оживления страницы обработчика отправки ещё нет: кнопка выключена,
+    // и Enter форму не отправляет — заявка не уходит мимо сервера (Р-508).
+    if (this.state?.__live !== true) v.pending = true;
     const {
 ${[...usedRoots].sort().map(k => `      ${k},`).join('\n')}
     } = v;
@@ -469,6 +475,14 @@ ${[...usedRoots].sort().map(k => `      ${k},`).join('\n')}
 ${indent(jsx, 8)}
       </>
     );
+  }
+}
+
+/** Страница ожила: обработчики подключены, кнопки отправки включаются (Р-508). */
+export default class ${componentName} extends ${componentName}View {
+  componentDidMount() {
+    super.componentDidMount?.();
+    this.setState({ __live: true });
   }
 }
 `;

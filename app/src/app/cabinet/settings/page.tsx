@@ -348,12 +348,18 @@ export default async function SettingsScreen({
                   defaultChecked={user.notifyTelegram}
                   disabled={!bound}
                   label="Telegram"
+                  describedBy={bound ? undefined : 'notify-telegram-hint'}
                 />
                 {/* Пояснение — отдельной строкой: в подписи флажка оно
-                    переносилось и сдвигало форму (решение Р-485). */}
+                    переносилось и сдвигало форму (решение Р-485). С флажком
+                    связано через aria-describedby. Если канал не настроен
+                    на стороне сервиса, подключать нечего — так и сказано
+                    (решение Р-540). */}
                 {bound ? null : (
-                  <Text muted size={13} style={{ margin: '-6px 0 8px 28px' }}>
-                    Сначала подключите Telegram в карточке «Telegram».
+                  <Text id="notify-telegram-hint" muted size={13} style={{ margin: '-6px 0 8px 28px' }}>
+                    {mayBind
+                      ? 'Сначала подключите Telegram в карточке «Telegram».'
+                      : 'Telegram не настроен на стороне сервиса.'}
                   </Text>
                 )}
                 {/* Сводка писем о работах раз в день — выбор куратора (УЭ-01, Р-398). */}

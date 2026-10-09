@@ -217,6 +217,42 @@ describe('защиты финансового контура', { skip: !enabled 
     await finance.setTrancheStatus(head(), tranche.id, 'PAID', new Date('2026-02-01T00:00:00Z'));
   });
 
+  it('долг обезличенного клиента отмечается оплаченным, списывается и переносится; причина в журнал не пишется (проверка 09.10.2026)', async () => {
+    const projectId = await newProject('Q', { clientId: ids.erased, status: 'COMPLETED' });
+    // Договор и выставленные транши заведены до исполнения требования.
+    const contract = await prisma.contract.create({
+      data: { projectId, number: `ФГ-${tail}-Q`, totalAmount: 900n },
+    });
+    const [first, second] = await Promise.all(
+      ['Первый', 'Второй'].map((title) =>
+        prisma.tranche.create({
+          data: { contractId: contract.id, title, amount: 300n, status: 'INVOICED', plannedDate: new Date('2026-03-01T00:00:00Z') },
+        }),
+      ),
+    );
+    // Новые денежные записи по-прежнему не заводятся (Р-244).
+    await assert.rejects(
+      () => finance.addTranche(head(), { contractId: contract.id, title: 'Новый', amount: 100n }),
+      /удалены по его требованию/u,
+    );
+    await assert.rejects(() => finance.addPayout(head(), { projectId, amount: 100n }), /удалены по его требованию/u);
+
+    await finance.rescheduleTranche(head(), first!.id, new Date('2026-12-01T00:00:00Z'), 'Смирнов просил отсрочку');
+    await finance.setTrancheStatus(head(), first!.id, 'PAID', new Date('2026-09-01T00:00:00Z'));
+    await finance.setTrancheStatus(head(), second!.id, 'WRITTEN_OFF', null, 'Смирнов не отвечает');
+    await finance.saveContract(head(), { projectId, number: `ФГ-${tail}-Q2`, totalAmount: 900n });
+
+    const status = async (id: string) => (await prisma.tranche.findUniqueOrThrow({ where: { id } })).status;
+    assert.equal(await status(first!.id), 'PAID');
+    assert.equal(await status(second!.id), 'WRITTEN_OFF');
+    const journal = await prisma.auditEvent.findMany({
+      where: { projectId, action: { in: ['TRANCHE_RESCHEDULED', 'TRANCHE_STATUS_CHANGED'] } },
+      select: { payload: true },
+    });
+    assert.equal(journal.length, 3);
+    for (const row of journal) assert.doesNotMatch(JSON.stringify(row.payload), /Смирнов/u, 'свободный текст о стёртом клиенте в журнале');
+  });
+
   it('документ не привязывается к траншу чужой работы; вид — из перечня', async () => {
     const mine = await newProject('M');
     const other = await newProject('X');

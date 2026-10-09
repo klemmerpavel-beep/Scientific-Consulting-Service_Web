@@ -43,15 +43,21 @@ describe('«Рекомендации» (РК-17)', { skip: !enabled }, async () 
       prisma.user.create({ data: { email: `rs-mgr-${stamp}@example.org`, fullName: 'Менеджер Рекомендаций', role: 'MANAGER' } }),
     ]);
     const type = await prisma.serviceType.create({ data: { code: `rs-${stamp}`, name: 'Проверка рекомендаций' } });
-    const [agreed, silent] = await Promise.all([
+    const [agreed, silent, erased] = await Promise.all([
       prisma.clientProfile.create({ data: { fullName: `Согласный ${stamp}`, normalizedName: `rs согласный ${stamp}` } }),
       prisma.clientProfile.create({ data: { fullName: `Без согласия ${stamp}`, normalizedName: `rs без ${stamp}` } }),
+      // Данные удалены по требованию субъекта; у заявки остаётся отметка
+      // согласия на рассылку — доказательство прошлой обработки (Р-122).
+      prisma.clientProfile.create({
+        data: { fullName: '[удалено по требованию субъекта]', normalizedName: `erased-rs-${stamp}`, erasedAt: new Date() },
+      }),
     ]);
     const old = new Date(Math.floor((Date.now() - 300 * DAY) / DAY) * DAY);
     const base = { serviceTypeId: type.id, managerId: managerUser.id, status: 'COMPLETED' as const, startedOn: old };
-    const [agreedWork, silentWork] = await Promise.all([
+    const [agreedWork, silentWork, erasedWork] = await Promise.all([
       prisma.project.create({ data: { ...base, clientId: agreed.id, code: `PD-RS-${String(stamp).slice(-6)}-A`, title: 'Давняя работа' } }),
       prisma.project.create({ data: { ...base, clientId: silent.id, code: `PD-RS-${String(stamp).slice(-6)}-B`, title: 'Давняя работа 2' } }),
+      prisma.project.create({ data: { ...base, clientId: erased.id, code: `PD-RS-${String(stamp).slice(-6)}-C`, title: '[удалено по требованию субъекта]' } }),
     ]);
     const lead = await prisma.lead.create({
       data: {
@@ -66,7 +72,22 @@ describe('«Рекомендации» (РК-17)', { skip: !enabled }, async () 
         projectId: agreedWork.id,
       },
     });
+    const erasedLead = await prisma.lead.create({
+      data: {
+        source: 'landing',
+        contactKind: 'email',
+        contact: '[удалено по требованию субъекта]',
+        form: 'request',
+        consentGiven: true,
+        consentVersion: '2026-08-21',
+        marketingOptIn: true,
+        projectId: erasedWork.id,
+      },
+    });
     Object.assign(ids, {
+      erased: erased.id,
+      erasedWork: erasedWork.id,
+      erasedLead: erasedLead.id,
       head: headUser.id,
       manager: managerUser.id,
       type: type.id,
@@ -85,10 +106,11 @@ describe('«Рекомендации» (РК-17)', { skip: !enabled }, async () 
     });
     await prisma.recommendationMark.deleteMany({ where: { userId: { in: users } } });
     await prisma.auditEvent.deleteMany({ where: { actorId: { in: users } } });
-    await prisma.lead.updateMany({ where: { id: ids.lead }, data: { projectId: null } });
-    await prisma.lead.deleteMany({ where: { id: ids.lead } });
-    await prisma.project.deleteMany({ where: { id: { in: [ids.agreedWork!, ids.silentWork!] } } });
-    await prisma.clientProfile.deleteMany({ where: { id: { in: [ids.agreed!, ids.silent!] } } });
+    const leads = [ids.lead!, ids.erasedLead!];
+    await prisma.lead.updateMany({ where: { id: { in: leads } }, data: { projectId: null } });
+    await prisma.lead.deleteMany({ where: { id: { in: leads } } });
+    await prisma.project.deleteMany({ where: { id: { in: [ids.agreedWork!, ids.silentWork!, ids.erasedWork!] } } });
+    await prisma.clientProfile.deleteMany({ where: { id: { in: [ids.agreed!, ids.silent!, ids.erased!] } } });
     await prisma.serviceType.deleteMany({ where: { id: ids.type } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
   });
@@ -97,6 +119,12 @@ describe('«Рекомендации» (РК-17)', { skip: !enabled }, async () 
     const { returns } = await recommendations.recommendationsFor(head());
     assert.equal(returns.find((row) => row.clientId === ids.agreed)?.consent, true);
     assert.equal(returns.find((row) => row.clientId === ids.silent)?.consent, false);
+  });
+
+  it('клиент, чьи данные удалены по его требованию, в «Возврат клиентов» не попадает (проверка 09.10.2026)', async () => {
+    const { returns } = await recommendations.recommendationsFor(head());
+    assert.ok(returns.some((row) => row.clientId === ids.agreed), 'заготовка: живой клиент в блоке есть');
+    assert.equal(returns.find((row) => row.clientId === ids.erased), undefined, 'стёртый клиент в рекомендациях');
   });
 
   it('отметка убирает рекомендацию из числа у пункта меню; число равно неотмеченным', async () => {

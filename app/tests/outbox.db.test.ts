@@ -212,6 +212,52 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
     assert.equal(done.attempts, 5);
   });
 
+  it('строки ненастроенной почты не занимают порцию впереди Telegram (Р-533)', async () => {
+    // Практика работает только с Telegram: почта не задана, бот задан.
+    // Письма, ждущие настройки почты, созрели раньше сигнала в Telegram;
+    // прежде порция бралась строго по сроку, и они занимали её целиком.
+    const saved = process.env.TELEGRAM_BOT_TOKEN;
+    process.env.TELEGRAM_BOT_TOKEN = 'test-token';
+    const letters = await Promise.all(
+      [0, 1, 2].map((i) =>
+        prisma.notificationOutbox.create({
+          data: {
+            userId,
+            channel: 'EMAIL',
+            eventKind: 'NEW_MESSAGE',
+            subject: 'Новое сообщение',
+            body: '—',
+            dedupKey: `t-${stamp}-mailoff-${i}`,
+            scheduledAt: new Date(-10_000 + i),
+          },
+        }),
+      ),
+    );
+    const signal = await prisma.notificationOutbox.create({
+      data: {
+        userId,
+        channel: 'TELEGRAM',
+        eventKind: 'STAGE_AWAITING_CLIENT',
+        subject: 'Этап ждёт ваших материалов',
+        body: 'Проект PD-2026-001.',
+        dedupKey: `t-${stamp}-tg-first`,
+        scheduledAt: new Date(-5_000),
+      },
+    });
+    try {
+      // Привязки чата нет: отправка кончается отказом без обращения в сеть.
+      await dispatch(1);
+      const tg = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: signal.id } });
+      assert.equal(tg.attempts, 1, 'сигнал в Telegram не взят в порцию');
+      const mail = await prisma.notificationOutbox.findMany({ where: { id: { in: letters.map((row) => row.id) } } });
+      assert.ok(mail.every((row) => row.lastError === null), 'порцию заняло письмо ненастроенной почты');
+    } finally {
+      if (saved === undefined) delete process.env.TELEGRAM_BOT_TOKEN;
+      else process.env.TELEGRAM_BOT_TOKEN = saved;
+      await prisma.notificationOutbox.deleteMany({ where: { id: { in: [...letters.map((row) => row.id), signal.id] } } });
+    }
+  });
+
   it('два наложившихся прогона не берут одну строку дважды', async () => {
     // Прежде порция выбиралась простым чтением, и прогон, наложившийся на
     // медленный предыдущий, отправлял те же письма ещё раз (решение Р-235).

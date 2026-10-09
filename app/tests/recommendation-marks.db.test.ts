@@ -133,6 +133,62 @@ describe('календарь продвижения в кабинете (РК-16
     await recommendations.markRecommendation(head(), KEY, null);
   });
 
+  it('снимается только отметка, которую человек видел; незнакомое значение не снимает отметку (Р-498)', async () => {
+    await recommendations.markRecommendation(head(), KEY, 'ACCEPTED');
+    // На другой вкладке отметку сменили на «отклонено»; эта вкладка всё ещё
+    // показывает «принято» и жмёт «Снять отметку».
+    await recommendations.markRecommendation(head(), KEY, 'DECLINED');
+    await assert.rejects(
+      recommendations.markRecommendation(head(), KEY, null, 'ACCEPTED'),
+      /Отметку уже изменили/u,
+    );
+    assert.equal((await recommendations.recommendationMarks(head())).get(KEY)?.status, 'DECLINED');
+    await assert.rejects(
+      recommendations.markRecommendation(head(), KEY, null, 'LOST' as never),
+      /Неизвестная отметка/u,
+    );
+    await recommendations.markRecommendation(head(), KEY, null, 'DECLINED');
+    assert.equal((await recommendations.recommendationMarks(head())).has(KEY), false);
+
+    // Действие экрана: снятием считается только пустое значение, а
+    // незнакомое уходит в проверку отметок и отклоняется ею.
+    const { readFileSync } = await import('node:fs');
+    const path = await import('node:path');
+    const actions = readFileSync(path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'actions.ts'), 'utf8');
+    assert.match(actions, /raw === '' \? null : \(raw as RecommendationMarkStatus\)/u);
+  });
+
+  it('ставится и меняется только отметка, которую человек видел; «сделано» — только у принятой (Р-537)', async () => {
+    // Вкладка B открыта, пока рекомендация без отметки; на вкладке A её
+    // отклонили. «Принять» на B не перезаписывает отклонение.
+    await recommendations.markRecommendation(head(), KEY, 'DECLINED', null);
+    await assert.rejects(recommendations.markRecommendation(head(), KEY, 'ACCEPTED', null), /Отметку уже изменили/u);
+    assert.equal((await recommendations.recommendationMarks(head())).get(KEY)?.status, 'DECLINED');
+    // На B ещё «принято», а в базе уже «отклонено»: «Сделано» отказывает.
+    await assert.rejects(recommendations.markRecommendation(head(), KEY, 'DONE', 'ACCEPTED'), /Отметку уже изменили/u);
+    assert.equal((await recommendations.recommendationMarks(head())).get(KEY)?.status, 'DECLINED');
+    // «Сделано» не ставится у непринятой рекомендации.
+    await assert.rejects(recommendations.markRecommendation(head(), KEY, 'DONE', 'DECLINED'), /принятую/u);
+    await assert.rejects(recommendations.markRecommendation(head(), KEY, 'DONE', null), /принятую/u);
+    // Снятие с экрана, где отметки не было, появившуюся не удаляет.
+    await assert.rejects(recommendations.markRecommendation(head(), KEY, null, null), /Отметку уже изменили/u);
+    assert.equal((await recommendations.recommendationMarks(head())).get(KEY)?.status, 'DECLINED');
+    // Сверка совпала — отметка меняется.
+    await recommendations.markRecommendation(head(), KEY, 'ACCEPTED', 'DECLINED');
+    await recommendations.markRecommendation(head(), KEY, 'DONE', 'ACCEPTED');
+    assert.equal((await recommendations.recommendationMarks(head())).get(KEY)?.status, 'DONE');
+    await recommendations.markRecommendation(head(), KEY, null, 'DONE');
+    assert.equal((await recommendations.recommendationMarks(head())).has(KEY), false);
+
+    // Экран передаёт видимое состояние у каждой кнопки отметки.
+    const { readFileSync } = await import('node:fs');
+    const path = await import('node:path');
+    const marks = readFileSync(path.join(import.meta.dirname, '..', 'src', 'components', 'cabinet', 'RecommendationMarks.tsx'), 'utf8');
+    assert.match(marks, /<input type="hidden" name="current" value=\{mark\?\.status \?\? ''\} \/>/u);
+    const actions = readFileSync(path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'actions.ts'), 'utf8');
+    assert.match(actions, /current === '' \? null : \(current as RecommendationMarkStatus\)/u);
+  });
+
   it('менеджеру календарь и отметки закрыты', async () => {
     await assert.rejects(recommendations.calendarFor(manager()), AccessDenied);
     await assert.rejects(recommendations.markRecommendation(manager(), KEY, 'DONE'), AccessDenied);

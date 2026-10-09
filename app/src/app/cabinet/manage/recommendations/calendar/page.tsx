@@ -20,6 +20,7 @@ import {
   TableCard,
   Text,
   formatDate,
+  plural,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
 import {
@@ -30,6 +31,7 @@ import {
 import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { homeFor } from '../../../../../lib/cabinet/nav';
+import { laneOrder } from '../../../../../lib/cabinet/recommendation-order';
 import { calendarFor } from '../../../../../lib/cabinet/recommendations';
 import { markRecommendationAction } from '../../../actions';
 import { requireActor } from '../../../../../lib/cabinet/session';
@@ -55,10 +57,12 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
   const flags = await searchParams;
   const at = clockNow();
   const { rows, now, marks, since, skipped, leads } = await calendarFor(actor, at);
-  const current = [
-    ...now,
-    ...rows.filter((row) => row.state !== null && row.state !== 'later' && marks.has(calendarKey(row) ?? '')),
-  ];
+  // За неотмеченными — идущие отмеченные окна: принятые первыми, они ждут
+  // поручения и «Сделано» (Р-499).
+  const windowMark = (row: (typeof rows)[number]) => marks.get(calendarKey(row) ?? '');
+  const running = rows.filter((row) => row.state !== null && row.state !== 'later');
+  const current = [...now, ...laneOrder(running.filter((row) => windowMark(row) !== undefined), windowMark)];
+  const moreWindows = running.filter((row) => windowMark(row) === undefined).length - now.length;
   const today = moscowToday(at);
   const windowed = rows.filter((row) => row.orderOn !== null);
 
@@ -87,6 +91,7 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
           // Каждое окно — своя карточка в ленте со слайдером: принять,
           // отклонить, отложить, поручить (замечание владельца 08.10.2026,
           // решение Р-492). За неотмеченными — отмеченные окна, которые идут.
+          <>
           <CardSlider label="Окна продвижения сейчас">
             {current.map((row) => (
               <CalendarRecommendationCard
@@ -98,6 +103,13 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
               />
             ))}
           </CardSlider>
+          {/* Окна сверх трёх ближайших отмечаются в таблице видов (Р-499). */}
+          {moreWindows <= 0 ? null : (
+            <Text muted size={13} style={{ marginTop: 12 }}>
+              {`Показаны три ближайших окна. Ещё ${moreWindows} ${plural(moreWindows, 'окно открыто', 'окна открыты', 'окон открыты')} — их можно отметить в таблице видов ниже.`}
+            </Text>
+          )}
+          </>
         )}
       </Card>
 

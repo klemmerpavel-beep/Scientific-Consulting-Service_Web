@@ -1,4 +1,4 @@
-import { flashText } from '../../../../lib/cabinet/flash';
+import { flashText, formDraft } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -79,6 +79,8 @@ export default async function UsersScreen({
   const flags = await searchParams;
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
   const failure = await flashText(flags.error);
+  // Набранное в форме заведения — после отказа (решение Р-543).
+  const draft = (await formDraft(flags.error)) ?? {};
   const role = ROLES.includes(flags.role as Role) ? (flags.role as Role) : undefined;
   const status = STATES.includes(flags.status as UserState)
     ? (flags.status as UserState)
@@ -152,9 +154,10 @@ export default async function UsersScreen({
               name="fullName"
               required
               placeholder="Соловьёв Дмитрий Викторович"
+              defaultValue={draft.fullName}
             />
-            <Field label="Почта" name="email" type="email" required placeholder="expert@example.org" />
-            <Select label="Роль" name="role" defaultValue="EXPERT">
+            <Field label="Почта" name="email" type="email" required placeholder="expert@example.org" defaultValue={draft.email} />
+            <Select label="Роль" name="role" defaultValue={ROLES.includes(draft.role as Role) ? draft.role : 'EXPERT'}>
               {ROLES.map((role) => (
                 <option key={role} value={role}>
                   {ROLE_LABEL[role]}
@@ -165,13 +168,14 @@ export default async function UsersScreen({
           {/* Исходные данные сотрудника — по желанию; позже правятся в
               «Профиле куратора» и «Регалиях сотрудников» (решение Р-488). */}
           <FormRow>
-            <Field label="Должность" name="position" placeholder="Доцент кафедры физической химии" />
-            <Field label="Учёная степень" name="degree" placeholder="кандидат химических наук" />
+            <Field label="Должность" name="position" placeholder="Доцент кафедры физической химии" defaultValue={draft.position} />
+            <Field label="Учёная степень" name="degree" placeholder="кандидат химических наук" defaultValue={draft.degree} />
             <Field
               label="Научная специальность"
               name="specialization"
               placeholder="Физическая химия"
-              hint="Необязательно. Клиенту видны степень и специальность куратора."
+              defaultValue={draft.specialization}
+              hint="Необязательно. Клиенту видны учёная степень куратора и шифр специальности; шифр вносится в профиле куратора."
             />
           </FormRow>
           <FormActions>
@@ -521,6 +525,13 @@ export default async function UsersScreen({
                 <Form action={updateRegalia}>
                   <input type="hidden" name="userId" value={user.id} />
                   <FormRow>
+                    <Field
+                      label="Должность"
+                      name="position"
+                      scope={`regalia-${user.id}`}
+                      placeholder="Доцент кафедры"
+                      defaultValue={user.expertProfile?.position ?? ''}
+                    />
                     <Field
                       label="Учёная степень"
                       name="degree"
