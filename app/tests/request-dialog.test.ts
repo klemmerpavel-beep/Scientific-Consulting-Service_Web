@@ -69,3 +69,43 @@ describe('заявка из шапки — окном', () => {
     assert.ok(layers.length > 0 && layers.every((z) => z < 45), `слои окна: ${layers.join(', ')}`);
   });
 });
+
+/**
+ * Раздел заявки страницы: от `id="request"` до конца раздела. В макете и в
+ * перенесённом компоненте разметка одна, различается только запись атрибутов.
+ */
+function requestSection(source: string): string {
+  const start = source.indexOf('id="request"');
+  assert.ok(start >= 0, 'нет раздела заявки');
+  return source.slice(start, source.indexOf('</section>', start));
+}
+
+describe('окно заявки: ошибка отправки видна в окне', () => {
+  // Окно переносит в body только сам элемент form (Р-484): всё, что стоит
+  // после </form>, остаётся под размытием. Ошибка отправки (429, 503, обрыв
+  // сети, ошибки полей) обязана быть внутри формы — иначе в окне её нет.
+  const pages = [
+    { design: 'StartPage', code: 'StartPage' },
+    { design: 'MainPage', code: 'PostgradPage' },
+    { design: 'StudentsPage', code: 'StudentsPage' },
+    { design: 'BusinessPage', code: 'BusinessPage' },
+  ];
+  for (const page of pages) {
+    it(`${page.code}: role="alert" формы заявки — внутри <form>`, () => {
+      for (const source of [
+        read('design', `${page.design}.dc.html`),
+        read('app', 'src', 'components', 'pages', `${page.code}.tsx`),
+      ]) {
+        const section = requestSection(source);
+        const open = section.indexOf('<form');
+        const close = section.indexOf('</form>');
+        assert.ok(open >= 0 && close > open, `${page.code}: нет формы в разделе заявки`);
+        const alerts = [...section.matchAll(/role="alert"/gu)].map((m) => m.index!);
+        assert.ok(alerts.length > 0, `${page.code}: у формы заявки нет блока ошибки`);
+        for (const at of alerts) {
+          assert.ok(at > open && at < close, `${page.code}: блок ошибки стоит вне формы`);
+        }
+      }
+    });
+  }
+});
