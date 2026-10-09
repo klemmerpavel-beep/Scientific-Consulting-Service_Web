@@ -1,6 +1,8 @@
 'use client';
 
-import { Children, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Children, isValidElement, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+
+import { sameView, visibleSlides } from './slider-view';
 
 /**
  * Лента карточек со слайдером (решение Р-491).
@@ -20,21 +22,21 @@ export default function CardSlider({ label, children }: { label: string; childre
   const count = items.length;
   const track = useRef<HTMLUListElement>(null);
   const [view, setView] = useState({ first: 0, last: 0 });
+  // Счётчик объявляется читалке только после первого замера: до него он
+  // показывает расчётное «1 из N», а не то, что видно (Р-538).
+  const [measured, setMeasured] = useState(false);
 
   const measure = useCallback(() => {
     const el = track.current;
     if (el === null) return;
-    const box = el.getBoundingClientRect();
-    let first = -1;
-    let last = -1;
-    [...el.children].forEach((slide, index) => {
-      const rect = slide.getBoundingClientRect();
-      if (rect.left >= box.left - 2 && rect.right <= box.right + 2) {
-        if (first === -1) first = index;
-        last = index;
-      }
-    });
-    setView(first === -1 ? { first: 0, last: 0 } : { first, last });
+    const next = visibleSlides(
+      el.getBoundingClientRect(),
+      [...el.children].map((slide) => slide.getBoundingClientRect()),
+    );
+    // Посреди прокрутки целиком не видна ни одна карточка: берётся
+    // ближайшая, а не первая; одинаковый вид не перерисовывается (Р-538).
+    setView((prev) => (sameView(prev, next) ? prev : next));
+    setMeasured(true);
   }, []);
 
   useEffect(() => {
@@ -48,7 +50,8 @@ export default function CardSlider({ label, children }: { label: string; childre
       el.removeEventListener('scroll', measure);
       resize.disconnect();
     };
-  }, [measure]);
+    // Число карточек меняется после отметки — вид пересчитывается (Р-538).
+  }, [measure, count]);
 
   const go = (step: -1 | 1) => {
     const el = track.current;
@@ -69,7 +72,7 @@ export default function CardSlider({ label, children }: { label: string; childre
     <div className="cab-slider">
       {count < 2 ? null : (
         <div className="cab-slider-nav">
-          <span className="cab-slider-count" aria-live="polite">
+          <span className="cab-slider-count" aria-live={measured ? 'polite' : 'off'}>
             {`${shown} из ${count}`}
           </span>
           <button
@@ -103,7 +106,9 @@ export default function CardSlider({ label, children }: { label: string; childre
         tabIndex={0}
       >
         {items.map((item, index) => (
-          <li key={index}>{item}</li>
+          // Ключ карточки — её собственный: после отметки карточки не
+          // перенимают состояние соседей (Р-538).
+          <li key={isValidElement(item) && item.key !== null ? item.key : index}>{item}</li>
         ))}
       </ul>
     </div>
