@@ -43,6 +43,7 @@ const ACTIONS: Record<string, string> = {
   LEAD_STATUS_CHANGED: 'Изменено состояние заявки',
   LEAD_EDITED: 'Сведения заявки исправлены',
   LEAD_COMMENTED: 'Комментарий к заявке',
+  REQUEST_VIA_STAFF_LINK: 'Заявка подана во входе по ссылке сотрудника',
   LEAD_EXPORT: 'Заявки выгружены',
   LEAD_FILE_DOWNLOADED: 'Скачано вложение заявки',
   LEAD_FILES_MOVED: 'Вложения заявки перенесены в работу',
@@ -202,6 +203,8 @@ const FIELDS: Record<string, string> = {
   dueFrom: 'срок был',
   dueTo: 'срок стал',
   year: 'год',
+  consentGiven: 'согласие и акцепт отмечены в ней',
+  staffLink: 'вход по ссылке сотрудника',
 };
 
 /** Поля с суммой: журнал хранит их строкой копеек, bigint в JSON не кладётся. */
