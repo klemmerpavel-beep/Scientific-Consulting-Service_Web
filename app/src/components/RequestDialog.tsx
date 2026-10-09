@@ -96,6 +96,11 @@ export default function RequestDialog() {
       const first = items[0]!;
       const last = items[items.length - 1]!;
       const active = document.activeElement;
+      // Фокус на body — элемент окна, где он стоял, заменён (вкладка
+      // «почта/телефон» при переключении рисуется новой кнопкой). Браузер
+      // помнит место удалённой кнопки и сам ведёт Tab к соседнему полю;
+      // перехват уводил бы на крестик в начало окна (Р-509).
+      if (active === null || active === document.body) return;
       if (event.shiftKey && (active === first || !open.form.contains(active))) {
         event.preventDefault();
         last.focus();
@@ -112,7 +117,12 @@ export default function RequestDialog() {
 
       const veil = document.createElement('div');
       veil.className = 'pd-rq-veil';
-      veil.addEventListener('click', () => shut(true));
+      // Второй клик двойного по кнопке шапки попадает уже в подложку:
+      // повторные клики серии окно не закрывают (Р-509).
+      veil.addEventListener('click', (event) => {
+        if (event.detail > 1) return;
+        shut(true);
+      });
 
       const title = document.createElement('p');
       title.className = 'pd-rq-title';

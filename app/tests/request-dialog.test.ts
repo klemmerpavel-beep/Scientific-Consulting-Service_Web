@@ -55,7 +55,7 @@ describe('заявка из шапки — окном', () => {
   it('закрывается крестиком 44 px, Esc и нажатием мимо; фокус держится в окне', () => {
     assert.match(COMPONENT, /\.pd-rq-close\{[^}]*width:44px;height:44px/u);
     assert.match(COMPONENT, /event\.key === 'Escape'/u);
-    assert.match(COMPONENT, /veil\.addEventListener\('click', \(\) => shut\(true\)\)/u);
+    assert.match(COMPONENT, /veil\.addEventListener\('click', \(event\) => \{[^}]*shut\(true\);/u);
     assert.match(COMPONENT, /event\.key !== 'Tab'/u);
     assert.match(COMPONENT, /aria-modal/u);
   });
@@ -108,4 +108,23 @@ describe('окно заявки: ошибка отправки видна в о�
       }
     });
   }
+});
+
+describe('окно заявки: двойной клик и клавиатура (Р-509)', () => {
+  it('повторный клик серии (двойной клик по кнопке шапки) окно не закрывает', () => {
+    // Второй клик двойного попадает уже в подложку: прежде окно тут же
+    // закрывалось. У него event.detail = 2, у одиночного — 1.
+    const handler = /veil\.addEventListener\('click', \(event\) => \{([^}]*)\}/u.exec(COMPONENT);
+    assert.ok(handler, 'у подложки нет обработчика с событием');
+    assert.match(handler[1]!, /if \(event\.detail > 1\) return;\s*shut\(true\);/u);
+  });
+
+  it('Tab при фокусе на body не перехватывается: браузер идёт от места удалённой вкладки', () => {
+    // Вкладка «почта/телефон» при переключении заменяется новой кнопкой,
+    // фокус падает на body. Прежде Tab уводил на крестик в начало окна.
+    const onKey = COMPONENT.slice(COMPONENT.indexOf('const onKey'), COMPONENT.indexOf('const show'));
+    const guard = onKey.indexOf('if (active === null || active === document.body) return;');
+    assert.ok(guard > 0, 'нет пропуска Tab при фокусе на body');
+    assert.ok(guard < onKey.indexOf('first.focus()'), 'пропуск стоит после перехвата');
+  });
 });
