@@ -61,8 +61,10 @@ describe('заявка из шапки — окном', () => {
   });
 
   it('после отправки окно закрывается и уступает благодарности; форма возвращается на место', () => {
-    assert.match(COMPONENT, /window\.addEventListener\(LEAD_SENT_EVENT, onSent\)/u);
-    assert.match(COMPONENT, /sent === open\.form\) shut\(false\)/u);
+    assert.match(COMPONENT, /window\.addEventListener\(LEAD_SENT_EVENT, onSent, true\)/u);
+    assert.match(COMPONENT, /window\.removeEventListener\(LEAD_SENT_EVENT, onSent, true\)/u);
+    assert.match(COMPONENT, /if \(open === null \|\| detail\?\.form !== open\.form\) return;/u);
+    assert.match(COMPONENT, /detail\.returnTo = open\.opener;\s*shut\(false\);/u);
     assert.match(COMPONENT, /mark\.replaceWith\(form\)/u);
     // Слой ниже благодарности (45) и уведомления о cookies (50).
     const layers = [...COMPONENT.matchAll(/z-index:(\d+)/gu)].map((m) => Number(m[1]));
@@ -126,5 +128,23 @@ describe('окно заявки: двойной клик и клавиатура
     const guard = onKey.indexOf('if (active === null || active === document.body) return;');
     assert.ok(guard > 0, 'нет пропуска Tab при фокусе на body');
     assert.ok(guard < onKey.indexOf('first.focus()'), 'пропуск стоит после перехвата');
+  });
+});
+
+describe('окно заявки: фокус после благодарности (Р-510)', () => {
+  const THANKS = read('app', 'src', 'components', 'LeadThanks.tsx');
+
+  it('окно передаёт благодарности кнопку шапки, которая его открыла', () => {
+    // Слушатель с перехватом: срабатывает раньше благодарности.
+    const onSent = COMPONENT.slice(COMPONENT.indexOf('const onSent'), COMPONENT.indexOf("document.addEventListener('click', onClick, true)"));
+    assert.match(onSent, /detail\.returnTo = open\.opener;/u);
+    assert.ok(onSent.indexOf('detail.returnTo = open.opener') < onSent.indexOf('shut(false)'), 'кнопка передаётся после закрытия окна');
+  });
+
+  it('благодарность возвращает фокус туда, откуда пришла заявка, иначе — на кнопку отправки формы', () => {
+    // Прежде фокус всегда уходил на кнопку нижней формы внизу страницы,
+    // даже если заявку отправили из окна, открытого кнопкой шапки.
+    assert.match(THANKS, /returnTo instanceof HTMLElement && returnTo\.isConnected \? returnTo : null/u);
+    assert.match(THANKS, /\(back \?\? button \?\? form\)\?\.focus\(\{ preventScroll: true \}\)/u);
   });
 });

@@ -18,7 +18,8 @@ import { LEAD_SENT_EVENT } from './LeadThanks';
  * можно крестиком, клавишей Esc или нажатием мимо формы. После успешной
  * отправки окно закрывается само, и поверх страницы встаёт благодарность
  * (`LeadThanks`, Р-406). Фокус переходит в первое поле, Tab не выходит за
- * окно, по закрытии фокус возвращается на кнопку в шапке.
+ * окно, по закрытии — и окна, и благодарности после него — фокус
+ * возвращается на кнопку в шапке (Р-510).
  *
  * Без скриптов ссылка остаётся якорем и прокручивает к форме, как прежде.
  * Остальные ссылки «#request» на странице (в тексте разделов) окно не
@@ -170,17 +171,22 @@ export default function RequestDialog() {
     };
 
     // Заявка ушла — окно закрывается, благодарность встаёт поверх страницы.
+    // Благодарность по закрытии вернёт фокус на кнопку шапки, открывшую
+    // окно, а не на кнопку формы внизу страницы (Р-510). Слушатель с
+    // перехватом: срабатывает раньше благодарности.
     const onSent = (event: Event) => {
-      const sent = (event as CustomEvent<{ form?: unknown }>).detail?.form;
-      if (open !== null && sent === open.form) shut(false);
+      const detail = (event as CustomEvent<{ form?: unknown; returnTo?: unknown } | null>).detail;
+      if (open === null || detail?.form !== open.form) return;
+      detail.returnTo = open.opener;
+      shut(false);
     };
 
     document.addEventListener('click', onClick, true);
-    window.addEventListener(LEAD_SENT_EVENT, onSent);
+    window.addEventListener(LEAD_SENT_EVENT, onSent, true);
     return () => {
       shut(false);
       document.removeEventListener('click', onClick, true);
-      window.removeEventListener(LEAD_SENT_EVENT, onSent);
+      window.removeEventListener(LEAD_SENT_EVENT, onSent, true);
     };
   }, []);
 
