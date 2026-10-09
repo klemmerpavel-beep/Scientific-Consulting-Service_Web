@@ -460,7 +460,9 @@ export default async function ProjectScreen({
     dueOn: formatDate(stage.dueOn),
     late: daysPast(stage.dueOn) !== null,
     href: `/cabinet/stages/${stage.id}`,
-    note: stage.state === 'AWAITING_CLIENT' ? stage.blockedReason : null,
+    // Причину «ждём материалы» менеджер пишет клиенту: куратору пометка
+    // шкалы её не показывает (Р-414, Р-522).
+    note: stage.state === 'AWAITING_CLIENT' ? presentClientReason(actor, stage.blockedReason) : null,
     // Суть выполнения этапа пишет куратор; клиенту она отвечает на вопрос
     // «что здесь делают», не заставляя открывать этап (решение Р-190).
     summary: stage.summary,

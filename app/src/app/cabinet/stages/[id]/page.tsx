@@ -28,6 +28,7 @@ import { SANS } from '../../../../components/cabinet/tokens';
 import {
   can,
   contributionRefusal,
+  presentBlockedReason,
   presentReturnText,
   staffExpertLine,
 } from '../../../../lib/cabinet/access';
@@ -176,6 +177,7 @@ export default async function StageScreen({
   // (требование Э-05, решение Р-325).
   const handover = handoverOf(stage);
   const curatorView = actor.role === 'EXPERT';
+  const blockedForCurator = curatorView ? presentBlockedReason(actor, stage.blockedReason) : null;
   const mayHandOver = state === 'IN_PROGRESS' && refusal === null && can(actor, 'STAGE_HAND_OVER', ref);
   const mayHandBack = handover === 'handed' && can(actor, 'STAGE_HAND_BACK', ref);
   // Транш следующего этапа не оплачен — подсказка практике; перевод этапа
@@ -282,10 +284,12 @@ export default async function StageScreen({
               </Notice>
             </div>
           )}
-          {stage.blockedReason === null ? null : (
+          {/* Причину «ждём материалы» менеджер пишет клиенту: куратору —
+              нейтральная пометка, как в истории работы (Р-414, Р-522). */}
+          {blockedForCurator === null ? null : (
             <div style={{ marginBottom: 12 }}>
               <Notice tone="quiet" role="status">
-                {stage.blockedReason}
+                {blockedForCurator}
               </Notice>
             </div>
           )}
