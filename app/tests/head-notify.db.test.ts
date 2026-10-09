@@ -151,6 +151,37 @@ describe('сводка и сигналы руководителю (РК-13)', { 
     assert.equal(signals[0]!.path, '/cabinet/manage/finance/debtors');
   });
 
+  it('транш сверх остатка оплаченного договора — без сигнала: «Должники» его не показывают (Р-447)', async () => {
+    // Пример Р-447: договор на 100 000 оплачен полностью, транш на 20 000
+    // запланирован на прошлую неделю — долгом он не считается.
+    const work = await prisma.project.create({
+      data: {
+        code: `PD-HN-${String(stamp).slice(-6)}-P`,
+        clientId: ids.client!,
+        serviceTypeId: ids.type!,
+        title: `Оплаченная ${stamp}`,
+        managerId: ids.head!,
+      },
+    });
+    const paid = await prisma.contract.create({ data: { projectId: work.id, number: `HNP-${stamp}`, totalAmount: 10_000_000n } });
+    try {
+      await prisma.tranche.createMany({
+        data: [
+          { contractId: paid.id, title: `Полная оплата ${stamp}`, amount: 10_000_000n, plannedDate: new Date(Date.UTC(2026, 8, 20)), status: 'PAID' },
+          { contractId: paid.id, title: `Лишний ${stamp}`, amount: 2_000_000n, plannedDate: new Date(Date.UTC(2026, 9, 1)), status: 'PLANNED' },
+        ],
+      });
+      await digest.enqueueTrancheOverdue(MONDAY);
+      const signals = await prisma.notificationOutbox.findMany({ where: { projectId: work.id, eventKind: 'TRANCHE_OVERDUE' } });
+      assert.deepEqual(signals, [], 'сигнал по траншу, которого нет в «Должниках»');
+    } finally {
+      await prisma.notificationOutbox.deleteMany({ where: { projectId: work.id } });
+      await prisma.tranche.deleteMany({ where: { contractId: paid.id } });
+      await prisma.contract.delete({ where: { id: paid.id } });
+      await prisma.project.delete({ where: { id: work.id } });
+    }
+  });
+
   it('отключённая строка правил не даёт строки очереди', async () => {
     // Строки прежних прогонов сняты: ключ повтора иначе скрыл бы проверку.
     await prisma.notificationOutbox.deleteMany({ where: { userId: ids.otherHead } });

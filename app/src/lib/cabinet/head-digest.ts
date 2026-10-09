@@ -22,7 +22,7 @@ import { loadCalendar } from './approval.ts';
 import { formatDay } from './approval-text.ts';
 import { attentionParts, attentionSources } from './attention.ts';
 import { moscowToday, now as clockNow } from './clock.ts';
-import { overdueTrancheWhere } from './money.ts';
+import { overdueTrancheWhere, overdueWithinRest } from './money.ts';
 import { enqueue } from './outbox.ts';
 import { recommendationsFor } from './recommendations.ts';
 import { dayKey, isWorkday } from './workdays.ts';
@@ -120,13 +120,37 @@ export async function enqueueTrancheOverdue(at: Date = clockNow()): Promise<numb
         id: true,
         title: true,
         plannedDate: true,
-        contract: { select: { project: { select: { id: true, code: true, title: true } } } },
+        contract: {
+          select: {
+            id: true,
+            totalAmount: true,
+            tranches: { select: { id: true, amount: true, status: true, plannedDate: true } },
+            project: { select: { id: true, code: true, title: true, status: true } },
+          },
+        },
       },
     }),
     prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } }),
   ]);
-  let queued = 0;
+  // Сигнал — только по траншу, который «Должники» показывают: в пределах
+  // остатка договора, тем же разнесением (`overdueWithinRest`, Р-447).
+  // Транш сверх остатка (договор уже оплачен) долгом не считается, и
+  // письмо «не поступил к сроку» по нему вело на экран без этой строки.
+  const owed = new Set<string>();
+  const seen = new Set<string>();
   for (const tranche of tranches) {
+    const contract = tranche.contract;
+    if (seen.has(contract.id)) continue;
+    seen.add(contract.id);
+    for (const part of overdueWithinRest(
+      { status: contract.project.status, totalAmount: contract.totalAmount, tranches: contract.tranches },
+      today,
+    )) {
+      owed.add(part.tranche.id);
+    }
+  }
+  let queued = 0;
+  for (const tranche of tranches.filter((row) => owed.has(row.id))) {
     const work = tranche.contract.project;
     for (const head of heads) {
       queued += await enqueue(prisma, {
