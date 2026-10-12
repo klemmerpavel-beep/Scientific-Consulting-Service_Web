@@ -69,6 +69,24 @@ describe('реестр рекламы перенесён из marketing/', () =>
   });
 });
 
+describe('документы в кабинете держат словарь его экранов', () => {
+  it('без знаков-украшений и прежних названий ролей', () => {
+    for (const doc of ADS_REGISTRY.docs.filter((item) => item.external === null)) {
+      assert.doesNotMatch(doc.markdown, /[←-⇿☀-➿✓✔✖\u{1F300}-\u{1FAFF}]/u, doc.slug);
+      assert.doesNotMatch(doc.markdown, /[Ээ]ксперт(?!из)|[Ии]сполнител|Специалист практики/u, doc.slug);
+    }
+  });
+
+  it('документ вне кабинета — ссылка на файл в репозитории, без текста', () => {
+    const outside = ADS_REGISTRY.docs.filter((item) => item.external !== null);
+    assert.ok(outside.length > 0);
+    for (const doc of outside) {
+      assert.match(doc.external ?? '', /^https:\/\/github\.com\/klemmerpavel-beep\/Scientific-Consulting-Service_Web\/blob\/main\/marketing\//u);
+      assert.equal(doc.markdown, '');
+    }
+  });
+});
+
 describe('разбор документов', () => {
   it('строка: жирный, код, ссылка, курсив, зачёркнутый', () => {
     assert.deepEqual(parseInline('a **b** `c` [d](https://e.ru) *f* ~~g~~'), [
@@ -152,7 +170,7 @@ describe('разбор документов', () => {
   });
 
   it('каждый документ реестра разбирается без потери текста', () => {
-    for (const doc of ADS_REGISTRY.docs) {
+    for (const doc of ADS_REGISTRY.docs.filter((item) => item.external === null)) {
       const blocks = parseMarkdown(doc.markdown);
       assert.ok(blocks.length > 0, doc.slug);
       assert.equal(blocks[0]?.kind, 'heading', `${doc.slug}: документ начинается с заголовка`);

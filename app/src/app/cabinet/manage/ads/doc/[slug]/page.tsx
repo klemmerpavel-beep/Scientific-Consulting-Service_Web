@@ -20,7 +20,8 @@ export default async function AdsDocScreen({ params }: { params: Promise<{ slug:
   const actor = await requireActor(`/cabinet/manage/ads/doc/${slug}`);
   if (!can(actor, 'ANALYTICS_VIEW')) redirect(homeFor(actor));
   const doc = ADS_REGISTRY.docs.find((item) => item.slug === slug);
-  if (doc === undefined) notFound();
+  // Документ вне кабинета открывается в репозитории: экрана у него нет.
+  if (doc === undefined || doc.external !== null) notFound();
 
   return (
     <Shell actor={actor} current="/cabinet/manage/ads">

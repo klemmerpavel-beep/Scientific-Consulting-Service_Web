@@ -49,8 +49,12 @@ function Inlines({ items, doc, docs }: { items: readonly Inline[]; doc: AdsDoc; 
             // внешняя — в новой вкладке; прочее остаётся текстом.
             const target = docByPath(docs, doc.path, item.href);
             if (target !== null) {
-              return (
+              return target.external === null ? (
                 <a key={index} href={adsDocHref(target.slug)} style={LINK}>
+                  {item.v}
+                </a>
+              ) : (
+                <a key={index} href={target.external} target="_blank" rel="noopener noreferrer" style={LINK}>
                   {item.v}
                 </a>
               );

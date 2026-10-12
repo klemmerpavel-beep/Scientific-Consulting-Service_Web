@@ -75,9 +75,14 @@ const day = (iso: string | null) => (iso === null ? '—' : iso.split('-').rever
 function DocLink({ slug, docs }: { slug: string | null; docs: readonly AdsDoc[] }) {
   const doc = slug === null ? undefined : docs.find((item) => item.slug === slug);
   if (doc === undefined) return null;
-  return (
-    <a href={adsDocHref(doc.slug)} style={{ color: 'var(--pd-accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+  const style = { color: 'var(--pd-accent)', textDecoration: 'underline', textUnderlineOffset: 3 } as const;
+  return doc.external === null ? (
+    <a href={adsDocHref(doc.slug)} style={style}>
       {doc.title}
+    </a>
+  ) : (
+    <a href={doc.external} target="_blank" rel="noopener noreferrer" style={style}>
+      {`${doc.title} (в репозитории)`}
     </a>
   );
 }

@@ -28,6 +28,17 @@ const SERVICE = ['NOT_CONNECTED', 'REQUESTED', 'READ_ONLY', 'ACTIVE', 'ERROR', '
 const CONFIDENCE = ['sure', 'likely', 'risky'];
 const DIRECTION = ['students', 'postgrad', 'all'];
 const DAY = /^\d{4}-\d{2}-\d{2}$/u;
+const REPOSITORY = 'https://github.com/klemmerpavel-beep/Scientific-Consulting-Service_Web/blob/main/marketing/';
+
+/**
+ * Словарь экранов кабинета: те же правила, что проверки снимков
+ * (`cabinet-view.test.ts`, `head-role-names.test.ts`) — без знаков-украшений
+ * и прежних названий ролей. Документ, который их нарушает по существу
+ * (цитаты конкурентов), в кабинете не разворачивается: помечается
+ * `"cabinet": false` и открывается в репозитории.
+ */
+const SYMBOLS = /[←-⇿☀-➿✓✔✖\u{1F300}-\u{1FAFF}]/u;
+const ROLE_NAMES = /[Ээ]ксперт(?!из)|[Ии]сполнител|Специалист практики/u;
 const ID = /^[a-z0-9-]+$/u;
 
 function fail(message) {
@@ -102,6 +113,14 @@ export function validateRegistry(source) {
     check(SERVICE.includes(row.status), `сервис ${row.id}: состояние «${row.status}»`);
     check(DAY.test(row.updated), `сервис ${row.id}: дата обновления`);
   }
+  // Выводы, предложения, работы и сервисы показываются на экранах
+  // кабинета и держат его словарь так же, как документы.
+  const { docs: _docs, ...screens } = source;
+  const text = JSON.stringify(screens);
+  const symbol = SYMBOLS.exec(text);
+  check(symbol === null, `знак «${symbol?.[0]}» в тексте реестра — в кабинете знаки штриховые`);
+  const role = ROLE_NAMES.exec(text);
+  check(role === null, `«${role?.[0]}» в тексте реестра — прежнее название роли`);
   return source;
 }
 
@@ -109,10 +128,25 @@ export function validateRegistry(source) {
 export function loadRegistry(root = ROOT) {
   const base = path.join(root, 'marketing');
   const source = validateRegistry(JSON.parse(readFileSync(path.join(base, 'registry.json'), 'utf8')));
-  const docs = source.docs.map((doc) => ({
-    ...doc,
-    markdown: readFileSync(path.join(base, doc.path), 'utf8'),
-  }));
+  const docs = source.docs.map((doc) => {
+    const text = readFileSync(path.join(base, doc.path), 'utf8');
+    const inCabinet = doc.cabinet !== false;
+    if (inCabinet) {
+      const symbol = SYMBOLS.exec(text);
+      check(symbol === null, `документ ${doc.slug}: знак «${symbol?.[0]}» — в кабинете знаки штриховые`);
+      const role = ROLE_NAMES.exec(text);
+      check(role === null, `документ ${doc.slug}: «${role?.[0]}» — прежнее название роли; переформулируйте или пометьте "cabinet": false`);
+    }
+    return {
+      slug: doc.slug,
+      title: doc.title,
+      group: doc.group,
+      path: doc.path,
+      // Документ вне кабинета показывается ссылкой на файл в репозитории.
+      external: inCabinet ? null : REPOSITORY + doc.path.split('/').map(encodeURIComponent).join('/'),
+      markdown: inCabinet ? text : '',
+    };
+  });
   return { ...source, docs };
 }
 

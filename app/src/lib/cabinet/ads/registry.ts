@@ -85,6 +85,12 @@ export interface AdsDoc {
   readonly title: string;
   readonly group: string;
   readonly path: string;
+  /**
+   * Документ, который в кабинете не разворачивается (цитаты конкурентов
+   * расходятся со словарём кабинета), — ссылка на файл в репозитории.
+   */
+  readonly external: string | null;
+  /** Текст документа; пустой у документа вне кабинета. */
   readonly markdown: string;
 }
 
