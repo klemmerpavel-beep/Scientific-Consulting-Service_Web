@@ -50,7 +50,7 @@ export default async function NewOrderScreen({
   // Набранное возвращается после отказа; совпадение только по ФИО
   // открывает выбор карточки заказчика (требование М-18, решение Р-308).
   const { error: errorId, brief: briefRef } = await searchParams;
-  // Документ заполняет ту же форму (решение Р-559); набранное после отказа
+  // Документ заполняет ту же форму (решение Р-560); набранное после отказа
   // важнее разобранного.
   const loaded = briefRef === undefined ? null : await loadBrief(actor, 'REQUEST_MODERATE', briefRef);
   const fromBrief = loaded === null ? null : orderDraftFromBrief(loaded.brief, types);
@@ -69,7 +69,7 @@ export default async function NewOrderScreen({
         }`}
       />
       <ActionError id={errorId} />
-      {/* Анкета или исходные данные заполняют форму сами (решение Р-559). */}
+      {/* Анкета или исходные данные заполняют форму сами (решение Р-560). */}
       <Disclosure title="Заполнить из документа" open={briefRef !== undefined && loaded === null} style={{ marginBottom: 16 }}>
         <Form action={parseOrderBrief}>
           <FileField
@@ -103,7 +103,7 @@ export default async function NewOrderScreen({
           </Notice>
         )}
         <Form action={createOrder}>
-          {/* Документ уходит в материалы созданной работы (Р-559). */}
+          {/* Документ уходит в материалы созданной работы (Р-560). */}
           {loaded === null ? null : <input type="hidden" name="brief" value={briefRef} />}
           <FormRow>
             <Field
@@ -160,7 +160,7 @@ export default async function NewOrderScreen({
             defaultValue={draft.topic}
           />
           {/* Суть задачи, вуз и направление — из документа или вручную
-              (решение Р-559): суть ложится в карточку работы, вуз и
+              (решение Р-560): суть ложится в карточку работы, вуз и
               направление дополняют пустые поля карточки клиента. */}
           <Field
             label="Суть задачи"

@@ -1,5 +1,5 @@
 /**
- * Оценки сопровождения (решение Р-564): оценка с формы, средние по
+ * Оценки сопровождения (решение Р-565): оценка с формы, средние по
  * практике, менеджеру и куратору, вид в таблице «Команды».
  */
 
@@ -8,7 +8,7 @@ import { describe, it } from 'node:test';
 
 import { averageOf, formatAverage, parseScore, ratingStats } from '../src/lib/cabinet/rating-stats.ts';
 
-describe('оценки сопровождения (Р-564)', () => {
+describe('оценки сопровождения (Р-565)', () => {
   it('оценка с формы — целое от 1 до 5', () => {
     assert.equal(parseScore('5'), 5);
     assert.equal(parseScore(' 1 '), 1);

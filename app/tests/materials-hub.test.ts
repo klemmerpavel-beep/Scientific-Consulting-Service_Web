@@ -1,6 +1,6 @@
 /**
  * Материалы для всех ролей (указание владельца 12.10.2026, решение
- * Р-558): кому что видно и что скачивается.
+ * Р-559): кому что видно и что скачивается.
  */
 
 import assert from 'node:assert/strict';
@@ -32,7 +32,7 @@ function sources(dir: string): string[] {
   });
 }
 
-describe('материалы по ролям (Р-558)', () => {
+describe('материалы по ролям (Р-559)', () => {
   it('клиенту — шаблоны и памятка, без чек-листов команды', async () => {
     const rows = clientMaterials();
     const files = rows.flatMap((row) => row.files.map((file) => file.href));
@@ -55,7 +55,7 @@ describe('материалы по ролям (Р-558)', () => {
     assert.deepEqual(staffMaterials(actor('CLIENT')), []);
   });
 
-  it('шаблоны практики (Р-561): клиенту — строкой каждый, сотрудникам — общей строкой', () => {
+  it('шаблоны практики (Р-562): клиенту — строкой каждый, сотрудникам — общей строкой', () => {
     const contract = { id: 'ctpl0000001', title: 'Договор', note: null, originalName: 'Договор.DOCX' };
     const memo = { id: 'ctpl0000002', title: 'Памятка', note: 'Перед стартом', originalName: 'памятка' };
     const client = clientMaterials([memo]);

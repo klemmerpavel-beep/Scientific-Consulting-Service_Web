@@ -60,9 +60,9 @@ export default async function NewRequestScreen({
     requestDefaults(actor),
   ]);
 
-  // Анкета или исходные данные заполняют форму сами (решение Р-562). Из
+  // Анкета или исходные данные заполняют форму сами (решение Р-563). Из
   // нескольких вариантов темы клиент выбирает один — как на карточке
-  // работы (Р-560).
+  // работы (Р-561).
   const loaded = params.brief === undefined ? null : await loadBrief(actor, 'REQUEST_CREATE', params.brief);
   const variants = loaded?.brief.variants ?? [];
   const variantRaw = params.variant !== undefined && /^\d+$/u.test(params.variant) ? Number(params.variant) : null;
@@ -92,7 +92,7 @@ export default async function NewRequestScreen({
           <Card>
             <ActionError id={params.error} />
             {/* Заполненная анкета или исходные данные заполняют форму сами;
-                документ ложится вложением заявки (решение Р-562). */}
+                документ ложится вложением заявки (решение Р-563). */}
             <Disclosure title="Заполнить из документа" open={params.brief !== undefined && loaded === null} style={{ marginBottom: 16 }}>
               <Form action={parseRequestBrief}>
                 <FileField

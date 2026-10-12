@@ -1,5 +1,5 @@
 /**
- * Документ → черновик формы «Нового заказа» (решение Р-559).
+ * Документ → черновик формы «Нового заказа» (решение Р-560).
  */
 
 import assert from 'node:assert/strict';
@@ -19,7 +19,7 @@ const TYPES = [
 const fromDocx = (blocks: Parameters<typeof makeDocx>[0]) =>
   orderDraftFromBrief(parseBrief(readBrief(makeDocx(blocks)).lines), TYPES);
 
-describe('черновик нового заказа из документа (Р-559)', () => {
+describe('черновик нового заказа из документа (Р-560)', () => {
   it('анкета-таблица: поля формы, вид по названию, даты — в формате поля', () => {
     const { values, notes } = fromDocx([
       {

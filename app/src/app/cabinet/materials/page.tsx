@@ -11,15 +11,15 @@ import { requireActor } from '../../../lib/cabinet/session';
 export const dynamic = 'force-dynamic';
 
 /**
- * «Материалы» клиента (указание владельца 12.10.2026, решение Р-558):
+ * «Материалы» клиента (указание владельца 12.10.2026, решение Р-559):
  * шаблоны документов и памятка по кабинету со скачиванием. Чек-листы
  * команды сюда не входят — это порядок работы практики (ответ владельца).
- * Шаблоны практики, адресованные всем, — тут же (решение Р-561).
+ * Шаблоны практики, адресованные всем, — тут же (решение Р-562).
  */
 export default async function ClientMaterialsScreen() {
   const actor = await requireActor('/cabinet/materials');
   if (actor.role !== 'CLIENT') redirect(homeFor(actor));
-  // Шаблоны практики — только адресованные всем (решение Р-561).
+  // Шаблоны практики — только адресованные всем (решение Р-562).
   const templates = await ownerTemplates(actor);
   return (
     <Shell actor={actor} current="/cabinet/materials">

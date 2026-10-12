@@ -56,7 +56,7 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
   const peakLabel = team.peak === null ? null : `${MONTH_NAMES[team.peak.month - 1]} ${team.peak.year}`;
   // Поручения: открытые и просроченные по исполнителю (РК-19, Р-352).
   const given = tab === 'people' ? await assignmentLoad(actor) : new Map<string, { open: number; overdue: number }>();
-  // Оценки клиентов после завершения работы (Р-564): средняя и число.
+  // Оценки клиентов после завершения работы (Р-565): средняя и число.
   const ratings = tab === 'people' ? await ratingSummary(actor) : null;
   const assigned = (id: string) => {
     const cell = given.get(id);

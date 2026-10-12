@@ -1621,7 +1621,7 @@ export async function editProject(
 const STATUS_LETTER: Record<ProjectStatusKey, (title: string, reason: string) => { subject: string; body: string }> = {
   PAUSED: (title, reason) => ({ subject: `Работа «${title}» приостановлена`, body: `Причина: ${reason}` }),
   // Приглашение оценить сопровождение — в том же письме, отдельной
-  // рассылки нет (решение Р-564).
+  // рассылки нет (решение Р-565).
   COMPLETED: (title) => ({
     subject: `Работа «${title}» завершена`,
     body: 'Материалы остаются доступны в кабинете. Оцените, пожалуйста, сопровождение на карточке работы: оценка и короткий отзыв помогут нам работать лучше.',

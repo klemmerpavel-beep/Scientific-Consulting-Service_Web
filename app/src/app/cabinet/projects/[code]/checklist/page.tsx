@@ -25,7 +25,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Чек-лист вида работы по работе (задание владельца 12.10.2026, решение
- * Р-554). Отметки сохраняются: их видят менеджер работы, куратор и
+ * Р-555). Отметки сохраняются: их видят менеджер работы, куратор и
  * руководитель. Отдельный экран, а не свёртка на карточке: у карточки
  * менеджера пять блоков, и шестой нарушил бы предел (Р-183).
  */
@@ -50,7 +50,7 @@ export default async function WorkChecklistScreen({
         backHref={back}
         backLabel={project.title}
         title={list === null ? 'Чек-лист работы' : `Чек-лист: ${project.serviceType.name}`}
-        // Процессные чек-листы по этой работе — с автоотметками (Р-555).
+        // Процессные чек-листы по этой работе — с автоотметками (Р-556).
         action={
           <ButtonLink href={`/cabinet/manage/checklists?work=${encodeURIComponent(project.code)}`}>
             Порядок дел по работе
@@ -81,7 +81,7 @@ export default async function WorkChecklistScreen({
             <input type="hidden" name="code" value={project.code} />
             <input type="hidden" name="checklistKey" value={list.key} />
             {/* Что было отмечено при показе: сохраняется только разница
-                (решение Р-554). */}
+                (решение Р-555). */}
             <input type="hidden" name="shown" value={[...marks.keys()].join(',')} />
             {SERVICE_PHASES.map((phase) => {
               const steps = list.steps.filter((step) => step.phase === phase.key);

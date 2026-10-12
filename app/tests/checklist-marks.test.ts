@@ -1,5 +1,5 @@
 /**
- * Отметки чек-листа вида работы — правила без базы (решение Р-554): счёт
+ * Отметки чек-листа вида работы — правила без базы (решение Р-555): счёт
  * и разница по отправке формы.
  */
 
@@ -11,7 +11,7 @@ import { checklistProgress, markChanges, serviceChecklist } from '../src/lib/cab
 const list = serviceChecklist('diploma')!;
 const [a, b, c] = list.steps.map((step) => step.key);
 
-describe('отметки чек-листа работы (Р-554)', () => {
+describe('отметки чек-листа работы (Р-555)', () => {
   it('счёт — по действующим шагам; снятый шаг в счёт не идёт', () => {
     assert.deepEqual(checklistProgress(list, []), { done: 0, total: list.steps.length });
     assert.deepEqual(checklistProgress(list, [a!, b!, 'removed-step']), { done: 2, total: list.steps.length });

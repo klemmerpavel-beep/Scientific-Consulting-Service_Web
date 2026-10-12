@@ -1,5 +1,5 @@
 /**
- * Выдача файлов раздела материалов (решение Р-557): шаблоны — всем ролям,
+ * Выдача файлов раздела материалов (решение Р-558): шаблоны — всем ролям,
  * незнакомый ключ и приостановленная запись — «не найдено».
  */
 
@@ -20,7 +20,7 @@ const actor = (role: Actor['role'], status: Actor['status'] = 'ACTIVE'): Actor =
   expertNdaSignedAt: null,
 });
 
-describe('выдача файлов материалов (Р-557)', () => {
+describe('выдача файлов материалов (Р-558)', () => {
   it('шаблоны выдаются каждой роли', async () => {
     for (const role of ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'] as const) {
       for (const template of BRIEF_TEMPLATES) {
