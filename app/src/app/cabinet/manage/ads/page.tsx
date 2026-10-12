@@ -25,6 +25,7 @@ import {
   Tiles,
   plural,
 } from '../../../../components/cabinet/ui';
+import { RADIUS } from '../../../../components/cabinet/tokens';
 import { can } from '../../../../lib/cabinet/access';
 import { sourceFunnels } from '../../../../lib/cabinet/ads/funnel';
 import { funnelRows } from '../../../../lib/cabinet/ads/funnel-rows';
@@ -35,7 +36,6 @@ import {
   DIRECTION_SOURCE,
   SERVICE_STATUS_LABEL,
   WORK_STATUS_LABEL,
-  budgetWithoutVat,
   figures,
   labelOf,
   moscowDayStart,
@@ -72,17 +72,17 @@ const share = (value: number | null) => (value === null ? '—' : `${(value * 10
 const count = (value: number) => value.toLocaleString('ru-RU');
 const day = (iso: string | null) => (iso === null ? '—' : iso.split('-').reverse().join('.'));
 
-function DocLink({ slug, docs }: { slug: string | null; docs: readonly AdsDoc[] }) {
+function DocLink({ slug, docs, label }: { slug: string | null; docs: readonly AdsDoc[]; label?: string }) {
   const doc = slug === null ? undefined : docs.find((item) => item.slug === slug);
   if (doc === undefined) return null;
   const style = { color: 'var(--pd-accent)', textDecoration: 'underline', textUnderlineOffset: 3 } as const;
   return doc.external === null ? (
     <a href={adsDocHref(doc.slug)} style={style}>
-      {doc.title}
+      {label ?? doc.title}
     </a>
   ) : (
     <a href={doc.external} target="_blank" rel="noopener noreferrer" style={style}>
-      {`${doc.title} (в репозитории)`}
+      {label ?? `${doc.title} (в репозитории)`}
     </a>
   );
 }
@@ -116,7 +116,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
   const head = (
     <ScreenHead
       title="Реклама"
-      note={`Тест «Студентам» и «Аспирантам»: ${day(registry.test.from)} — ${day(registry.test.to)}. Реестр обновлён ${day(registry.updated)}.`}
+      note={`Тест: ${day(registry.test.from)} — ${day(registry.test.to)}`}
     />
   );
 
@@ -133,18 +133,18 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
             Предложения по продвижению
           </Heading>
           <Text muted size={13} style={{ margin: '6px 0 16px' }}>
-            {`Ждут решения: ${waiting} из ${registry.proposals.length}. Каждое предложение называет основание и ожидаемый эффект; принятое можно поручить и отметить сделанным.`}
+            {`Ждут решения: ${waiting} из ${registry.proposals.length}.`}
           </Text>
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' }}>
             {registry.proposals.map((row) => (
               <RecommendationCard
                 key={row.id}
-                kind={`${row.id} · ${labelOf(DIRECTION_LABEL, row.direction)} · ${day(row.date)}`}
+                kind={labelOf(DIRECTION_LABEL, row.direction)}
                 title={row.title}
                 details={
                   <>
-                    {`Основание: ${row.basis} Эффект: ${row.effect} `}
-                    <DocLink slug={row.doc} docs={registry.docs} />
+                    {`${row.effect} `}
+                    <DocLink slug={row.doc} docs={registry.docs} label="Подробнее" />
                   </>
                 }
                 marked={marks.has(proposalKey(row.id))}
@@ -176,7 +176,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
             Работы
           </Heading>
           <Text muted size={13} style={{ margin: '6px 0 14px' }}>
-            {`Сделано ${done} из ${registry.works.length}. Срок и ответственный — по критическому пути запуска.`}
+            {`Сделано ${done} из ${registry.works.length}.`}
           </Text>
           <TableScroll label="Работы по продвижению">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -212,8 +212,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
             Документы
           </Heading>
           <Text muted size={13} style={{ margin: '6px 0 14px' }}>
-            Стратегия, исследования рынка, настройки кампаний и спецификация агента — те же тексты, что в папке
-            marketing/ репозитория.
+            Стратегия, исследования и настройки кампаний.
           </Text>
           <div style={{ display: 'grid', gap: 18 }}>
             {groups.map((group) => (
@@ -246,9 +245,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
             Сервисы и подключения по MCP
           </Heading>
           <Text muted size={13} style={{ margin: '6px 0 14px' }}>
-            Агент читает отчёты свободно, а любое изменение кампаний оформляет предложением: оно применяется
-            только после подтверждения владельца. Потолок расхода задаётся в настройках сервера, удаление
-            кампаний и платёжные операции агенту недоступны.
+            Агент читает отчёты; любое изменение в кампаниях — только после вашего подтверждения.
           </Text>
           <TableScroll label="Сервисы рекламы">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -305,12 +302,13 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
   const sourceLabel = (source: string) =>
     labelOf(DIRECTION_LABEL, Object.entries(DIRECTION_SOURCE).find(([, value]) => value === source)?.[0] ?? source);
 
+  const daysLeft = Math.ceil((from.getTime() - now.getTime()) / DAY);
   const phaseText =
     phase.phase === 'before'
-      ? `До запуска ${Math.ceil((from.getTime() - now.getTime()) / DAY)} ${plural(Math.ceil((from.getTime() - now.getTime()) / DAY), 'день', 'дня', 'дней')}. Расход, показы и клики появятся после старта; заявки с посадочных кабинет считает уже сейчас — это базовый уровень для сравнения.`
+      ? `До запуска ${daysLeft} ${plural(daysLeft, 'день', 'дня', 'дней')}.`
       : phase.phase === 'running'
-        ? `Идёт день ${phase.day} из ${phase.days}. Показатели площадок вносятся по недельному отчёту, заявки — по кабинету на текущий момент.`
-        : 'Тест завершён. Решение о бюджете полугодия — по итогам, в стратегическом плане.';
+        ? `Идёт день ${phase.day} из ${phase.days}.`
+        : 'Тест завершён.';
 
   return (
     <Shell actor={actor} current={HREF}>
@@ -320,11 +318,11 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
 
       <div style={{ margin: '20px 0' }}>
         <Tiles>
-          <Tile label="Бюджет теста" value={rub(registry.test.budgetWithVat)} note={`с НДС; ${rub(budgetWithoutVat(registry))} без НДС`} />
-          <Tile label="Израсходовано" value={rub(total.spend)} note={`без НДС; ${share(total.spent)} плана`} />
-          <Tile label="Клики" value={count(total.clicks)} note={`CTR ${share(total.ctr)}; показов ${count(total.impressions)}`} />
-          <Tile label="Цена клика" value={rub(total.cpc)} note="без НДС" />
-          <Tile label="Заявки с посадочных" value={count(leadsTotal)} note={`целевых ${leadsTargeted}; за период теста`} />
+          <Tile label="Бюджет теста" value={rub(registry.test.budgetWithVat)} note="с НДС" />
+          <Tile label="Израсходовано" value={rub(total.spend)} note={`${share(total.spent)} плана`} />
+          <Tile label="Клики" value={count(total.clicks)} note={`CTR ${share(total.ctr)}`} />
+          <Tile label="Цена клика" value={rub(total.cpc)} />
+          <Tile label="Заявки" value={count(leadsTotal)} note={`целевых: ${leadsTargeted}`} />
         </Tiles>
       </div>
 
@@ -333,8 +331,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
           Кампании
         </Heading>
         <Text muted size={13} style={{ margin: '6px 0 14px' }}>
-          Суммы без НДС — так их показывают кабинеты площадок. «Цели» — достижения цели «Заявка отправлена» по
-          Метрике: она видит только посетителей, согласившихся на статистику.
+          Суммы без НДС.
         </Text>
         <TableScroll label="Кампании и бюджеты">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -350,7 +347,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
                 <th scope="col" style={TABLE_NUM_HEAD}>Клики</th>
                 <th scope="col" style={TABLE_NUM_HEAD}>CTR</th>
                 <th scope="col" style={TABLE_NUM_HEAD}>Цена клика</th>
-                <th scope="col" style={TABLE_NUM_HEAD}>Цели</th>
+                <th scope="col" style={TABLE_NUM_HEAD}>Заявки</th>
               </tr>
             </thead>
             <tbody>
@@ -359,11 +356,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
                 return (
                   <tr key={campaign.id}>
                     <td style={TABLE_CELL}>
-                      <span style={{ display: 'block', fontWeight: 500, color: 'var(--pd-ink)' }}>{campaign.platform}</span>
-                      <span style={{ display: 'block', fontSize: 13, color: 'var(--pd-ink-muted)' }}>{campaign.name}</span>
-                      {campaign.note === null ? null : (
-                        <span style={{ display: 'block', fontSize: 13, color: 'var(--pd-ink-muted)', marginTop: 4 }}>{campaign.note}</span>
-                      )}
+                      <span style={{ fontWeight: 500, color: 'var(--pd-ink)' }}>{campaign.platform}</span>
                     </td>
                     <td style={TABLE_CELL}>{labelOf(DIRECTION_LABEL, campaign.direction)}</td>
                     <td style={TABLE_CELL}>
@@ -405,7 +398,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
           Заявки с посадочных
         </Heading>
         <Text muted size={13} style={{ margin: '6px 0 14px' }}>
-          {`Метка кампании с заявкой не хранится (Р-496): заявки направления — заявки с его страницы сайта за период теста. Базовый уровень — среднее в неделю за ${registry.test.baselineDays} ${plural(registry.test.baselineDays, 'день', 'дня', 'дней')} до запуска. Целевая — с консультацией или договором.`}
+          Заявки со страниц сайта за время теста. Целевая — после консультации.
         </Text>
         <TableScroll label="Заявки с посадочных за период теста">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -418,7 +411,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
                 <th scope="col" style={TABLE_NUM_HEAD}>Отказы</th>
                 <th scope="col" style={TABLE_NUM_HEAD}>В разборе</th>
                 <th scope="col" style={TABLE_NUM_HEAD}>Спам</th>
-                <th scope="col" style={TABLE_NUM_HEAD}>До запуска, в неделю</th>
+                <th scope="col" style={TABLE_NUM_HEAD}>До теста, в неделю</th>
               </tr>
             </thead>
             <tbody>
@@ -445,7 +438,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
         </Heading>
         {weeks.length === 0 ? (
           <Text muted style={{ marginTop: 8 }}>
-            Недельные данные появятся после первой контрольной точки теста.
+            Появится после первой недели теста.
           </Text>
         ) : (
           <div style={{ marginTop: 12 }}>
@@ -462,21 +455,30 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
         <Heading level={2} size={3}>
           Ключевые выводы
         </Heading>
-        <div style={{ display: 'grid', gap: 14, marginTop: 12 }}>
+        {/* Каждый вывод — своя плашка, как карточки рекомендаций: подряд
+            идущие выводы без рамок сливались (замечание владельца 12.10.2026). */}
+        <div style={{ display: 'grid', gap: 12, marginTop: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' }}>
           {registry.conclusions.map((row, index) => (
-            <div key={index} style={{ display: 'grid', gap: 4 }}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Chip tone={row.confidence === 'sure' ? 'accent' : 'neutral'}>{labelOf(CONFIDENCE_LABEL, row.confidence)}</Chip>
-                <Text muted size={13}>
-                  {day(row.date)}
-                </Text>
-              </div>
-              <Text>{row.text}</Text>
-              <Text muted size={13}>
-                {`На чём основано: ${row.basis} `}
-                <DocLink slug={row.doc} docs={registry.docs} />
+            <article
+              key={index}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                padding: '14px 16px 16px',
+                border: '1px solid var(--pd-border)',
+                borderRadius: RADIUS.field,
+                background: 'var(--pd-surface-quiet)',
+              }}
+            >
+              <Mono>{`${labelOf(CONFIDENCE_LABEL, row.confidence)} · ${day(row.date)}`}</Mono>
+              <Text size={15} style={{ lineHeight: 1.5 }}>
+                {row.text}
               </Text>
-            </div>
+              <Text muted size={13} style={{ marginTop: 'auto' }}>
+                <DocLink slug={row.doc} docs={registry.docs} label="Подробнее" />
+              </Text>
+            </article>
           ))}
         </div>
       </Card>
@@ -493,7 +495,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
           <ul style={{ margin: '12px 0 0', paddingLeft: 20, display: 'grid', gap: 6 }}>
             {steps.map((work) => (
               <li key={work.id} style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--pd-ink-secondary)' }}>
-                {`${day(work.due)} · ${work.owner} · ${work.title} — ${labelOf(WORK_STATUS_LABEL, work.status).toLowerCase()}`}
+                {`${day(work.due).slice(0, 5)} · ${work.title} · ${work.owner}`}
               </li>
             ))}
           </ul>
