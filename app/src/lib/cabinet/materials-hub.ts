@@ -27,7 +27,7 @@ const templateFiles = () =>
 export function clientMaterials(): HubRow[] {
   return [
     {
-      title: 'Анкета заказа',
+      title: 'Анкета для заявки',
       note: 'Заполните перед новой заявкой: тема, вид работы, срок, вуз, научный руководитель. Стоимость не указывается.',
       files: BRIEF_TEMPLATES.filter((template) => template.key.startsWith('anketa')).map((template) =>
         file(template.key, template.file.endsWith('.xlsx') ? 'Скачать .xlsx' : 'Скачать .docx'),
@@ -66,7 +66,7 @@ export function staffMaterials(actor: Actor): HubRow[] {
     },
     {
       title: 'Шаблоны документов',
-      note: 'Анкета заказа и исходные данные: кабинет сам заполняет из них форму заказа и карточку работы.',
+      note: 'Анкета для заявки и исходные данные: кабинет сам заполняет из них форму нового заказа и карточку работы.',
       href: '/cabinet/manage/checklists?view=templates',
       files: templateFiles(),
     },

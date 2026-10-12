@@ -54,7 +54,7 @@ describe('подобия образцов владельца (Р-553)', () => {
     assert.match(brief.fields.goal ?? '', /^Оценить эффективность/u);
     assert.equal(brief.fields.tasks?.split('\n').length, 3);
     assert.match(brief.fields.tasks ?? '', /^1\. Провести анализ/u);
-    assert.ok(brief.issues.some((issue) => issue.includes('«ФИО заказчика»')));
+    assert.ok(brief.issues.some((issue) => issue.includes('«ФИО автора»')));
     assert.ok(brief.issues.some((issue) => issue.startsWith('Введение — сплошным текстом')));
     // «Введение» и «Список…» внутри плана — пункты, а не повтор раздела.
     assert.ok(!brief.issues.some((issue) => issue.startsWith('Раздел повторяется')), brief.issues.join(' | '));

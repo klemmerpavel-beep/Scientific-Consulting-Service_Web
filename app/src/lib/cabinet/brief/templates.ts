@@ -76,28 +76,28 @@ function workBlocks(title: string, header: readonly BriefFieldKey[], sections: r
 export const BRIEF_TEMPLATES: readonly BriefTemplate[] = [
   {
     key: 'anketa-docx',
-    title: 'Анкета заказа',
-    file: 'Анкета заказа.docx',
-    ascii: 'anketa-zakaza.docx',
+    title: 'Анкета для заявки',
+    file: 'Анкета для заявки.docx',
+    ascii: 'anketa-dlya-zayavki.docx',
     type: DOCX,
     note: 'Заполняется при обращении; из неё кабинет заполняет форму нового заказа или заявки.',
     fields: ORDER_FIELDS,
     build: () =>
-      docx('Анкета заказа', [
-        { kind: 'title', text: 'Анкета заказа' },
+      docx('Анкета для заявки', [
+        { kind: 'title', text: 'Анкета для заявки' },
         { kind: 'paragraph', text: ORDER_NOTE, muted: true },
         { kind: 'table', rows: ORDER_FIELDS.map((key) => [label(key), '']) },
       ]),
   },
   {
     key: 'anketa-xlsx',
-    title: 'Анкета заказа (Excel)',
-    file: 'Анкета заказа.xlsx',
-    ascii: 'anketa-zakaza.xlsx',
+    title: 'Анкета для заявки (Excel)',
+    file: 'Анкета для заявки.xlsx',
+    ascii: 'anketa-dlya-zayavki.xlsx',
     type: XLSX,
     note: 'Та же анкета книгой Excel: подписи — в первой колонке, значения — во второй.',
     fields: ORDER_FIELDS,
-    build: () => xlsx({ title: 'Анкета заказа', head: ['Поле', 'Значение'], rows: ORDER_FIELDS.map((key) => [label(key), '']) }),
+    build: () => xlsx({ title: 'Анкета для заявки', head: ['Поле', 'Значение'], rows: ORDER_FIELDS.map((key) => [label(key), '']) }),
   },
   {
     key: 'iskhodnye-rabota',
