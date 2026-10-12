@@ -29,6 +29,9 @@ export const RECOMMENDATIONS_HREF = '/cabinet/manage/recommendations';
 /** Промежуточный экран служебных разделов — пункт «Управление». */
 export const TOOLS_HREF = '/cabinet/manage/tools';
 
+/** «Материалы» клиента: шаблоны и памятка (решение Р-555). */
+export const MATERIALS_HREF = '/cabinet/materials';
+
 /**
  * Разделы роли.
  *
@@ -43,10 +46,14 @@ export function navFor(actor: Actor): NavItem[] {
   // «Настройки», а не «Уведомления»: на экране и способы связи, и каналы,
   // и согласие (требование Т-08, решение Р-314). Состав меню не меняется.
   const settings: NavItem = { href: '/cabinet/settings', label: 'Настройки' };
+  // Материалы — у всех ролей (указание владельца 12.10.2026, решение
+  // Р-555): у сотрудников — «Управление» с чек-листами и шаблонами, у
+  // клиента — «Материалы» с его шаблонами и памяткой.
   if (actor.role === 'CLIENT') {
     return [
       { href: '/cabinet/projects', label: 'Мои работы' },
       { href: '/cabinet/request', label: 'Новая заявка' },
+      { href: MATERIALS_HREF, label: 'Материалы' },
       settings,
     ];
   }
@@ -54,19 +61,21 @@ export function navFor(actor: Actor): NavItem[] {
     return [
       { href: '/cabinet/projects', label: 'Назначенные работы' },
       { href: '/cabinet/payout', label: 'Вознаграждение' },
+      { href: TOOLS_HREF, label: 'Управление' },
       settings,
     ];
   }
   // Менеджеру — то, с чем он работает каждый день: дела на сегодня, свои
-  // работы, заявки и реестры. Промежуточного «Управления» у него нет: из
-  // служебного контура ему открыты только заявки и реестры, и они стоят в
-  // меню сами (требование М-05, решение Р-305).
+  // работы, заявки и реестры (требование М-05, решение Р-305), и
+  // «Управление» с чек-листами и материалами (решение владельца, Р-555):
+  // заявки и реестры остаются в меню сами.
   if (actor.role === 'MANAGER') {
     return [
       { href: '/cabinet/manage', label: 'Сегодня' },
       { href: '/cabinet/projects', label: 'Мои работы' },
       { href: '/cabinet/manage/leads', label: 'Заявки' },
       { href: '/cabinet/manage/registry', label: 'Реестры' },
+      { href: TOOLS_HREF, label: 'Управление' },
       settings,
     ];
   }

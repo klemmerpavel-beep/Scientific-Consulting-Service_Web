@@ -9,7 +9,9 @@ import {
   ScreenHead,
   Text,
 } from '../../../../components/cabinet/ui';
+import MaterialsList from '../../../../components/cabinet/MaterialsList';
 import { can, type Action } from '../../../../lib/cabinet/access';
+import { staffMaterials } from '../../../../lib/cabinet/materials-hub';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { hasToolsScreen, homeFor } from '../../../../lib/cabinet/nav';
 
@@ -151,17 +153,8 @@ const TOOLS: readonly {
     action: 'REGISTRY_VIEW',
     group: 'work',
   },
-  // Чек-листы — порядок основных дел по шагам (решения Р-494, Р-548 —
-  // Р-550).
-  {
-    href: '/cabinet/manage/checklists',
-    title: 'Чек-листы',
-    note: 'Порядок дел по шагам — руководителю, менеджеру и куратору: от заявки до закрытия работы, отклонения по ходу, команда и практика; по каждому виду работ — что проверить на старте, по ходу и при сдаче.',
-    when: 'Нужно пройти дело по шагам и ничего не упустить — самому или вместе с сотрудником.',
-    often: 'По случаю',
-    action: 'CHECKLIST_VIEW',
-    group: 'work',
-  },
+  // Чек-листы — не плашкой, а первым блоком экрана «Чек-листы и
+  // материалы» со скачиванием (решение Р-555).
   // Замечания с виджета разбираются раз в неделю, и по ним делаются
   // точечные правки сайта и кабинета (решение Р-403). Группа — обращения:
   // это тоже голос клиента, только о самом сайте, а не о работе.
@@ -242,12 +235,14 @@ const TOOLS: readonly {
 export default async function ToolsScreen() {
   const actor = await requireActor('/cabinet/manage/tools');
 
-  // Менеджеру промежуточный экран не показывается: заявки и реестры стоят у
-  // него в меню, а вопрос руководителю — внизу «Сегодня» (требование М-05,
-  // решение Р-305).
+  // «Управление» — у всех сотрудников (указание владельца 12.10.2026,
+  // решение Р-555): первым блоком — чек-листы и материалы, ниже — разделы,
+  // открытые роли. Куратору разделов нет, и экран — только материалы.
   if (!hasToolsScreen(actor)) redirect(homeFor(actor));
   const allowed = TOOLS.filter((tool) => can(actor, tool.action));
-  if (allowed.length === 0) redirect(homeFor(actor));
+  const materials = staffMaterials(actor);
+  if (allowed.length === 0 && materials.length === 0) redirect(homeFor(actor));
+  const head = actor.role === 'HEAD';
 
   const groups = GROUPS.map((group) => ({
     ...group,
@@ -261,29 +256,46 @@ export default async function ToolsScreen() {
     <Shell actor={actor} current="/cabinet/manage/tools">
       <ScreenHead
         title="Управление"
-        note="Всё, что не входит в ежедневную работу с заказами: настройка практики, надзорные журналы и перенос истории. Ниже — порядок работы, а у каждого раздела названы повод и частота."
+        note={
+          head
+            ? 'Чек-листы и материалы, а также всё, что не входит в ежедневную работу с заказами: настройка практики, надзорные журналы и перенос истории. У каждого раздела названы повод и частота.'
+            : 'Чек-листы и материалы: открываются на экране и скачиваются файлом Word.'
+        }
       />
+
+      {/* Чек-листы и материалы — первым блоком, со скачиванием (указание
+          владельца 12.10.2026, решение Р-555). */}
+      {materials.length === 0 ? null : (
+        <MaterialsList
+          id="materials"
+          title="Чек-листы и материалы"
+          note="Открыть — экран кабинета; файлы — в Word. Чтобы сохранить экран в PDF, напечатайте его: Ctrl + P, на Mac ⌘ + P, — и выберите «Сохранить в PDF»."
+          rows={materials}
+        />
+      )}
 
       {/* Порядок обычного дня: сверху сказано, с чего начинают и чем
           заканчивают, а карточки ниже разложены по тому же порядку —
           иначе перечень разделов читается как список ящиков без подписей
-          (решение Р-201). */}
-      <Card style={{ marginBottom: 24 }}>
-        <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-          Как этим пользоваться
-        </Heading>
-        <Text muted size={14} style={{ marginBottom: 14 }}>
-          Разделы идут по частоте: сверху то, что открывают каждый день, ниже — редкое. Метка у
-          названия говорит, как часто сюда заходят, строка под ним — по какому случаю.
-        </Text>
-        <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 8 }}>
-          {ROUTINE.map((step) => (
-            <li key={step.term} style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.6 }}>
-              <strong style={{ fontWeight: 600 }}>{step.term}.</strong> {step.text}
-            </li>
-          ))}
-        </ol>
-      </Card>
+          (решение Р-201). Распорядок — руководителя: его разделы. */}
+      {head ? (
+        <Card style={{ marginBottom: 24 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 4 }}>
+            Как этим пользоваться
+          </Heading>
+          <Text muted size={14} style={{ marginBottom: 14 }}>
+            Разделы идут по частоте: сверху то, что открывают каждый день, ниже — редкое. Метка у
+            названия говорит, как часто сюда заходят, строка под ним — по какому случаю.
+          </Text>
+          <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 8 }}>
+            {ROUTINE.map((step) => (
+              <li key={step.term} style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.6 }}>
+                <strong style={{ fontWeight: 600 }}>{step.term}.</strong> {step.text}
+              </li>
+            ))}
+          </ol>
+        </Card>
+      ) : null}
 
 
       {groups.map((group) => (

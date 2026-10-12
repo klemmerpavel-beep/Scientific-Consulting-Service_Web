@@ -130,9 +130,9 @@ describe('чек-листы практики (Р-494, Р-548, Р-549)', () => {
     }
   });
 
-  it('экран чек-листов есть в «Управлении», у менеджера — ссылка на «Сегодня»', () => {
+  it('экран чек-листов — первым блоком «Управления» (Р-555), у менеджера — ссылка и на «Сегодня»', () => {
     const tools = readFileSync(path.join(APP, 'cabinet', 'manage', 'tools', 'page.tsx'), 'utf8');
-    assert.match(tools, /href: '\/cabinet\/manage\/checklists',[\s\S]{0,400}action: 'CHECKLIST_VIEW'/u);
+    assert.match(tools, /<MaterialsList[\s\S]{0,80}title="Чек-листы и материалы"/u);
     const today = readFileSync(path.join(APP, 'cabinet', 'manage', 'page.tsx'), 'utf8');
     assert.match(today, /<ButtonLink href="\/cabinet\/manage\/checklists">Чек-листы<\/ButtonLink>/u);
   });
