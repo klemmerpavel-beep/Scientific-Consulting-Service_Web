@@ -33,6 +33,11 @@ export interface ManualOrderInput {
   readonly serviceTypeId: string;
   readonly title: string;
   readonly topic?: string | null;
+  /** Суть задачи — `Project.summary` (решение Р-556). */
+  readonly summary?: string | null;
+  /** Вуз и направление дополняют пустые поля карточки клиента (Р-556). */
+  readonly university?: string | null;
+  readonly speciality?: string | null;
   readonly orderedOn?: Date | null;
   readonly dueOn?: Date | null;
   /** В копейках. */
@@ -154,6 +159,10 @@ export async function createManualOrder(
     }
   }
   const phone = input.phone?.trim() || null;
+  const summary = input.summary?.trim() || null;
+  if (summary !== null && summary.length > 2000) throw new OrderInputError('Суть задачи длиннее 2000 знаков: сократите.');
+  const university = input.university?.replace(/\s+/gu, ' ').trim().slice(0, 300) || null;
+  const speciality = input.speciality?.replace(/\s+/gu, ' ').trim().slice(0, 300) || null;
 
   const managerId = actor.role === 'HEAD' ? (input.managerId || actor.id) : actor.id;
   const status = input.status ?? 'ACTIVE';
@@ -201,12 +210,12 @@ export async function createManualOrder(
         ? null
         : await tx.clientProfile.findUniqueOrThrow({
             where: { id: foundId },
-            select: { id: true, email: true, phone: true },
+            select: { id: true, email: true, phone: true, university: true, speciality: true },
           });
     let clientId: string;
     if (existing === null) {
       const client = await tx.clientProfile.create({
-        data: { fullName: customer, normalizedName: normalized, email, phone },
+        data: { fullName: customer, normalizedName: normalized, email, phone, university, speciality },
         select: { id: true },
       });
       clientId = client.id;
@@ -216,6 +225,8 @@ export async function createManualOrder(
       const patch = {
         ...(existing.email === null && email !== null ? { email } : {}),
         ...(existing.phone === null && phone !== null ? { phone } : {}),
+        ...(existing.university === null && university !== null ? { university } : {}),
+        ...(existing.speciality === null && speciality !== null ? { speciality } : {}),
       };
       if (Object.keys(patch).length > 0) {
         await tx.clientProfile.update({ where: { id: clientId }, data: patch });
@@ -230,6 +241,7 @@ export async function createManualOrder(
         serviceTypeId: type.id,
         title,
         topic: input.topic?.trim() || null,
+        summary,
         managerId,
         status,
         source: 'WEB',

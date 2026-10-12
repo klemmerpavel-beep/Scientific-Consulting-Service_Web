@@ -6,6 +6,8 @@ import { after } from 'next/server';
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { AccessDenied, ensure, type Actor } from '../../lib/cabinet/access';
 import { saveChecklistMarks } from '../../lib/cabinet/checklist-marks';
+import { attachBrief, stageBrief } from '../../lib/cabinet/brief/intake';
+import { BRIEF_MAX_BYTES, BriefError } from '../../lib/cabinet/brief/read';
 import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
@@ -1154,11 +1156,33 @@ export async function commentLead(form: FormData): Promise<void> {
  * Новый заказ, заведённый руководителем или менеджером вручную (Р-269).
  * При ошибке ввода форма возвращается с причиной, а не теряется.
  */
+/**
+ * Документ на «Новом заказе» (решение Р-556): разбор и переход на тот же
+ * экран с ключом документа — форма заполнится его значениями.
+ */
+export async function parseOrderBrief(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const file = form.get('brief');
+  let failure: string | null = null;
+  let ref: string | null = null;
+  try {
+    if (!(file instanceof File) || file.size === 0) throw new BriefError('Выберите файл анкеты или исходных данных: .docx или .xlsx.');
+    if (file.size > BRIEF_MAX_BYTES) throw new BriefError('Файл больше 2 МБ: анкета и исходные данные столько не весят.');
+    ref = await stageBrief(actor, 'REQUEST_MODERATE', file.name, Buffer.from(await file.arrayBuffer()));
+  } catch (error) {
+    failure = error instanceof BriefError ? error.message : reasonOf(error, 'Документ не удалось разобрать');
+  }
+  if (failure !== null || ref === null) redirect(await withError('/cabinet/manage/orders/new', failure ?? 'Документ не удалось разобрать'));
+  redirect(`/cabinet/manage/orders/new?brief=${encodeURIComponent(ref)}`);
+}
+
 export async function createOrder(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const text = (name: string) => String(form.get(name) ?? '').trim();
+  const brief = text('brief');
   let failure: string | null = null;
   let code: string | null = null;
+  let projectId: string | null = null;
   let choiceNeeded = false;
   try {
     const amountOf = (name: string): bigint | null => (text(name).length === 0 ? null : parseAmount(text(name)));
@@ -1170,6 +1194,9 @@ export async function createOrder(form: FormData): Promise<void> {
       serviceTypeId: text('serviceTypeId'),
       title: text('title'),
       topic: text('topic') || null,
+      summary: text('summary') || null,
+      university: text('university') || null,
+      speciality: text('speciality') || null,
       orderedOn: dateOrNull(form.get('orderedOn')),
       dueOn: dateOrNull(form.get('dueOn')),
       cost: amountOf('cost'),
@@ -1179,6 +1206,7 @@ export async function createOrder(form: FormData): Promise<void> {
       clientChoice: text('clientChoice') || null,
     });
     code = created.code;
+    projectId = created.projectId;
   } catch (error) {
     failure =
       error instanceof OrderInputError || error instanceof ClientChoiceNeeded
@@ -1189,10 +1217,21 @@ export async function createOrder(form: FormData): Promise<void> {
   if (failure !== null || code === null) {
     // Набранное возвращается в форму; совпадение только по ФИО открывает
     // выбор карточки заказчика (требование М-18, решение Р-308).
-    const fields = ['customer', 'email', 'phone', 'serviceTypeId', 'title', 'topic', 'orderedOn', 'dueOn', 'cost', 'paid', 'status', 'managerId'];
+    const fields = ['customer', 'email', 'phone', 'serviceTypeId', 'title', 'topic', 'summary', 'university', 'speciality', 'orderedOn', 'dueOn', 'cost', 'paid', 'status', 'managerId'];
     const draft: Record<string, string> = Object.fromEntries(fields.map((name) => [name, text(name)]));
     if (choiceNeeded) draft.clientChoiceNeeded = '1';
-    redirect(await withError('/cabinet/manage/orders/new', failure ?? 'Не удалось завести заказ', { draft }));
+    // Документ остаётся при форме: отказ не теряет разобранное (Р-556).
+    const back = brief === '' ? '/cabinet/manage/orders/new' : `/cabinet/manage/orders/new?brief=${encodeURIComponent(brief)}`;
+    redirect(await withError(back, failure ?? 'Не удалось завести заказ', { draft }));
+  }
+  // Документ, из которого заполнен заказ, — в материалы работы (Р-556).
+  // Отказ хранилища заказ не отменяет: он уже заведён.
+  if (brief !== '' && projectId !== null) {
+    try {
+      await attachBrief(actor, brief, { projectId, title: 'Анкета для заявки' }, await requestIp());
+    } catch (error) {
+      console.error('[cabinet] документ заказа не перенесён в материалы', error);
+    }
   }
   redirect(`/cabinet/projects/${code}?created=1`);
 }
