@@ -7,6 +7,7 @@ import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { AccessDenied, ensure, type Actor } from '../../lib/cabinet/access';
 import { saveChecklistMarks } from '../../lib/cabinet/checklist-marks';
 import { attachBrief, stageBrief } from '../../lib/cabinet/brief/intake';
+import { applyWorkBrief, type WorkBriefKey } from '../../lib/cabinet/brief/work-apply';
 import { BRIEF_MAX_BYTES, BriefError } from '../../lib/cabinet/brief/read';
 import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
@@ -716,6 +717,47 @@ export async function saveWorkChecklist(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(`${back}?saved=1`);
+}
+
+/** Документ для карточки работы: разбор и переход к сравнению (Р-557). */
+export async function parseWorkBrief(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const back = `/cabinet/projects/${encodeURIComponent(code)}/brief`;
+  const file = form.get('brief');
+  let failure: string | null = null;
+  let ref: string | null = null;
+  try {
+    if (!(file instanceof File) || file.size === 0) throw new BriefError('Выберите файл исходных данных: .docx или .xlsx.');
+    if (file.size > BRIEF_MAX_BYTES) throw new BriefError('Файл больше 2 МБ: исходные данные столько не весят.');
+    ref = await stageBrief(actor, 'REQUEST_MODERATE', file.name, Buffer.from(await file.arrayBuffer()));
+  } catch (error) {
+    failure = error instanceof BriefError ? error.message : reasonOf(error, 'Документ не удалось разобрать');
+  }
+  if (failure !== null || ref === null) redirect(await withError(back, failure ?? 'Документ не удалось разобрать'));
+  redirect(`${back}?brief=${encodeURIComponent(ref)}`);
+}
+
+/** Применить отмеченное из документа и приложить его к этапу (Р-557). */
+export async function applyWorkBriefAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const brief = String(form.get('brief') ?? '');
+  const variantRaw = String(form.get('variant') ?? '');
+  const variant = /^\d+$/u.test(variantRaw) ? Number(variantRaw) : null;
+  const stageId = String(form.get('stageId') ?? '') || null;
+  const apply = form.getAll('apply').map(String).filter((key): key is WorkBriefKey => ['topic', 'summary', 'university', 'speciality'].includes(key));
+  let failure: string | null = null;
+  try {
+    await applyWorkBrief(actor, { projectId: String(form.get('projectId') ?? ''), ref: brief, variant, apply, stageId }, await requestIp());
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось применить документ');
+  }
+  if (failure !== null) {
+    const back = `/cabinet/projects/${encodeURIComponent(code)}/brief?brief=${encodeURIComponent(brief)}${variant === null ? '' : `&variant=${variant}`}`;
+    redirect(await withError(back, failure));
+  }
+  redirect(`/cabinet/projects/${encodeURIComponent(code)}?briefApplied=1`);
 }
 
 /** Смена состояния работы куратором или руководителем (решение Р-223). */

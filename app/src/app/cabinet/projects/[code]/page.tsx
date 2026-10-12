@@ -6,6 +6,7 @@ import { AccessLink } from '../../../../components/cabinet/AccessLink';
 import Shell from '../../../../components/cabinet/Shell';
 import {
   Notice,
+  Outcome,
   Board,
   BoardColumn,
   Button,
@@ -300,14 +301,14 @@ export default async function ProjectScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string; manage?: string }>;
+  searchParams: Promise<{ error?: string; manage?: string; briefApplied?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}`);
 
   const { code } = await params;
   // Отказ действия «Управления работой»: причина у своей формы, свёртка
   // раскрыта, поля заполнены введённым (решение Р-279).
-  const { error: errorId, manage } = await searchParams;
+  const { error: errorId, manage, briefApplied } = await searchParams;
   const failure = await flashEntry(errorId);
   const draft = (await formDraft(errorId)) ?? {};
   // Кнопки «Изменить карточку», «Куратор», «Менеджер» под названием открывают
@@ -734,6 +735,10 @@ export default async function ProjectScreen({
                 Изменить карточку
               </ButtonLink>
             ) : null}
+            {/* Исходные данные на утверждение — документом (Р-557). */}
+            {mayEdit && !closed && can(actor, 'PROJECT_EDIT', ref) ? (
+              <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/brief`}>Обновить из документа</ButtonLink>
+            ) : null}
             {mayAssign ? (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-expert`}>
                 {project.expertId === null ? 'Назначить куратора' : 'Сменить куратора'}
@@ -753,6 +758,9 @@ export default async function ProjectScreen({
         ) : null}
       </ScreenTop>
       <ActionError id={errorId} />
+      {/* Исход «Обновить из документа» (Р-557): блок исхода в счёт пяти
+          не входит (Р-253). */}
+      {briefApplied === undefined ? null : <Outcome>Карточка обновлена из документа, документ приложен к работе.</Outcome>}
       <Disclosure title="О работе" style={{ marginTop: 12 }}>
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
           {about.map((row) => (
