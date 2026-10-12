@@ -26,6 +26,9 @@ export const SUMMARY_HREF = '/cabinet/manage';
 /** Раздел «Рекомендации» руководителя (требование РК-17, решение Р-350). */
 export const RECOMMENDATIONS_HREF = '/cabinet/manage/recommendations';
 
+/** Раздел «Реклама» руководителя: продвижение, предложения, MCP (решение Р-550). */
+export const ADS_HREF = '/cabinet/manage/ads';
+
 /** Промежуточный экран служебных разделов — пункт «Управление». */
 export const TOOLS_HREF = '/cabinet/manage/tools';
 
@@ -81,6 +84,9 @@ export function navFor(actor: Actor): NavItem[] {
   // неотмеченных (требование РК-17, решение Р-350).
   staff.push({ href: RECOMMENDATIONS_HREF, label: 'Рекомендации' });
   staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
+  // «Реклама» — за «Аналитикой»: стратегия продвижения, предложения,
+  // подключения по MCP и показатели кампаний (решение Р-550).
+  staff.push({ href: ADS_HREF, label: 'Реклама' });
   // Служебный контур — реестры, учётные записи, справочники, перенос книги,
   // журналы, очередь уведомлений, удаление данных — собран за одним пунктом
   // (решение Р-158). В первый ряд эти разделы не выносятся по Р-140: они
@@ -131,7 +137,8 @@ export function activeItem(items: readonly NavItem[], current: string): string |
         current.startsWith('/cabinet/manage/') &&
         !current.startsWith('/cabinet/manage/finance') &&
         !current.startsWith(RECOMMENDATIONS_HREF) &&
-        !current.startsWith('/cabinet/manage/analytics'));
+        !current.startsWith('/cabinet/manage/analytics') &&
+        !current.startsWith(ADS_HREF));
     if (hit && (best === null || item.href.length > best.length)) best = item.href;
   }
   return best;
