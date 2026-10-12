@@ -13,7 +13,27 @@ export function adsDocHref(slug: string): string {
 
 const LINK = { color: 'var(--pd-accent)', textDecoration: 'underline', textUnderlineOffset: 3 } as const;
 
-function Inlines({ items, doc, docs }: { items: readonly Inline[]; doc: AdsDoc; docs: readonly AdsDoc[] }) {
+/**
+ * Ссылка в ячейке таблицы и в пункте списка — не строчная в предложении, а
+ * самостоятельная цель нажатия: имя репозитория, документ. Высотой в строку
+ * (17–38 px) она не дотягивала до 44 px; отступ сверху и снизу добирает
+ * цель, не меняя строки — как у ссылок в подписи согласия (Р-253, Р-567).
+ */
+const TARGET_LINK = { ...LINK, padding: '14px 0' } as const;
+
+function Inlines({
+  items,
+  doc,
+  docs,
+  standalone = false,
+}: {
+  items: readonly Inline[];
+  doc: AdsDoc;
+  docs: readonly AdsDoc[];
+  /** Ячейка таблицы или пункт списка: ссылкам — цель 44 px. */
+  standalone?: boolean;
+}) {
+  const linkStyle = standalone ? TARGET_LINK : LINK;
   return (
     <>
       {items.map((item, index) => {
@@ -50,18 +70,18 @@ function Inlines({ items, doc, docs }: { items: readonly Inline[]; doc: AdsDoc; 
             const target = docByPath(docs, doc.path, item.href);
             if (target !== null) {
               return target.external === null ? (
-                <a key={index} href={adsDocHref(target.slug)} style={LINK}>
+                <a key={index} href={adsDocHref(target.slug)} style={linkStyle}>
                   {item.v}
                 </a>
               ) : (
-                <a key={index} href={target.external} target="_blank" rel="noopener noreferrer" style={LINK}>
+                <a key={index} href={target.external} target="_blank" rel="noopener noreferrer" style={linkStyle}>
                   {item.v}
                 </a>
               );
             }
             if (isExternal(item.href)) {
               return (
-                <a key={index} href={item.href} target="_blank" rel="noopener noreferrer" style={LINK}>
+                <a key={index} href={item.href} target="_blank" rel="noopener noreferrer" style={linkStyle}>
                   {item.v}
                 </a>
               );
@@ -86,9 +106,13 @@ export default function AdsDocument({ doc, docs }: { doc: AdsDoc; docs: readonly
   const first = blocks.findIndex((block) => block.kind === 'heading' && block.level === 1);
   const body = first === 0 ? blocks.slice(1) : blocks;
   const inline = (items: readonly Inline[]) => <Inlines items={items} doc={doc} docs={docs} />;
+  const cell = (items: readonly Inline[]) => <Inlines items={items} doc={doc} docs={docs} standalone />;
 
+  // Колонка сетки — не шире экрана: без `minmax(0, 1fr)` она растягивалась
+  // по самой широкой таблице, и прокручивалась вся страница, а не область
+  // таблицы (Р-567).
   return (
-    <div style={{ display: 'grid', gap: 14, fontFamily: SANS }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, fontFamily: SANS }}>
       {body.map((block, index): ReactNode => {
         switch (block.kind) {
           case 'heading':
@@ -149,7 +173,7 @@ export default function AdsDocument({ doc, docs }: { doc: AdsDoc; docs: readonly
                       color: 'var(--pd-ink-secondary)',
                     }}
                   >
-                    {inline(item.inlines)}
+                    {cell(item.inlines)}
                   </li>
                 ))}
               </Tag>
@@ -161,9 +185,9 @@ export default function AdsDocument({ doc, docs }: { doc: AdsDoc; docs: readonly
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      {block.head.map((cell, at) => (
+                      {block.head.map((value, at) => (
                         <th key={at} scope="col" style={{ ...TABLE_HEAD, whiteSpace: 'normal' }}>
-                          {inline(cell)}
+                          {cell(value)}
                         </th>
                       ))}
                     </tr>
@@ -171,9 +195,9 @@ export default function AdsDocument({ doc, docs }: { doc: AdsDoc; docs: readonly
                   <tbody>
                     {block.rows.map((row, at) => (
                       <tr key={at}>
-                        {row.map((cell, col) => (
+                        {row.map((value, col) => (
                           <td key={col} style={TABLE_CELL}>
-                            {inline(cell)}
+                            {cell(value)}
                           </td>
                         ))}
                       </tr>
