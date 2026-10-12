@@ -6,7 +6,7 @@ import { after } from 'next/server';
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { AccessDenied, ensure, type Actor } from '../../lib/cabinet/access';
 import { saveChecklistMarks } from '../../lib/cabinet/checklist-marks';
-import { attachBrief, stageBrief } from '../../lib/cabinet/brief/intake';
+import { attachBrief, briefAttachment, dropBrief, stageBrief } from '../../lib/cabinet/brief/intake';
 import { applyWorkBrief, type WorkBriefKey } from '../../lib/cabinet/brief/work-apply';
 import { BRIEF_MAX_BYTES, BriefError } from '../../lib/cabinet/brief/read';
 import { removeOwnerTemplate, saveOwnerTemplate, TEMPLATE_MAX_BYTES, TemplateError } from '../../lib/cabinet/owner-templates';
@@ -943,15 +943,37 @@ export async function decideOnVersion(form: FormData): Promise<void> {
  * заявитель уже известен по сессии, согласие принято при первом входе, и
  * спрашивать контакт заново незачем.
  */
+/** Документ для «Новой заявки» клиента: разбор и заполнение формы (Р-559). */
+export async function parseRequestBrief(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const file = form.get('brief');
+  let failure: string | null = null;
+  let ref: string | null = null;
+  try {
+    if (!(file instanceof File) || file.size === 0) throw new BriefError('Выберите файл анкеты или исходных данных: .docx или .xlsx.');
+    if (file.size > BRIEF_MAX_BYTES) throw new BriefError('Файл больше 2 МБ: анкета и исходные данные столько не весят.');
+    ref = await stageBrief(actor, 'REQUEST_CREATE', file.name, Buffer.from(await file.arrayBuffer()));
+  } catch (error) {
+    failure = error instanceof BriefError ? error.message : reasonOf(error, 'Документ не удалось прочитать');
+  }
+  if (failure !== null || ref === null) redirect(await withError('/cabinet/request', failure ?? 'Документ не удалось прочитать'));
+  redirect(`/cabinet/request?brief=${encodeURIComponent(ref)}`);
+}
+
 export async function submitCabinetRequest(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
+  // Документ, из которого заполнена форма, — вложением заявки, в счёт
+  // пяти файлов (решение Р-559). Объект пропал (старше суток) — заявка
+  // уходит без него, и экран называет потерю, как у прочих вложений.
+  const brief = String(form.get('brief') ?? '');
+  const variant = String(form.get('variant') ?? '');
 
   // Файлы приходят одним полем: браузер кладёт в форму по записи на
   // каждый выбранный файл, и `getAll` собирает их все. Пустая запись
   // означает «ничего не выбрано» и отбрасывается (решение Р-191). Больше
   // `REQUEST_FILES_MAX` не отсекается молча: отказ с числом выбранных даёт
   // `createCabinetRequest` (решение Р-532).
-  const files = await Promise.all(
+  const files: { originalName: string; contentType: string; body: Buffer }[] = await Promise.all(
     form
       .getAll('files')
       .filter((entry): entry is File => entry instanceof File && entry.size > 0)
@@ -965,8 +987,14 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
   // Отказ — на экран заявки с набранным, а не общим экраном сбоя
   // (требование Т-22, решения Р-279, Р-296).
   let filesLost = 0;
+  let briefLost = 0;
   let failure: string | null = null;
   try {
+    if (brief !== '') {
+      const attachment = await briefAttachment(actor, 'REQUEST_CREATE', brief, 'Анкета для заявки');
+      if (attachment === null) briefLost = 1;
+      else files.unshift(attachment);
+    }
     ({ filesLost } = await createCabinetRequest(
       actor,
       {
@@ -990,8 +1018,10 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось отправить заявку');
   }
   if (failure !== null) {
+    // Документ остаётся при форме: на повторной отправке он ляжет снова.
+    const back = brief === '' || briefLost > 0 ? '/cabinet/request' : `/cabinet/request?brief=${encodeURIComponent(brief)}${/^\d+$/u.test(variant) ? `&variant=${variant}` : ''}`;
     redirect(
-      await withError('/cabinet/request', failure, {
+      await withError(back, failure, {
         draft: fieldsOf(form, [
           'applicantName',
           'supervisorName',
@@ -1007,7 +1037,9 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
     );
   }
 
-  redirect(filesLost > 0 ? `/cabinet/request?sent=1&lost=${filesLost}` : '/cabinet/request?sent=1');
+  if (brief !== '') await dropBrief(actor, brief);
+  const lost = filesLost + briefLost;
+  redirect(lost > 0 ? `/cabinet/request?sent=1&lost=${lost}` : '/cabinet/request?sent=1');
 }
 
 /**

@@ -10,6 +10,9 @@
  *
  * Чужой ключ не открывается: в ключе — идентификатор загрузившего, и
  * чужой `uuid` просто не находится.
+ *
+ * Тем же порядком клиент заполняет «Новую заявку» (решение Р-559): документ
+ * лежит под его ключом, а при отправке становится вложением заявки.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -103,4 +106,33 @@ export async function attachBrief(
   );
   await storage().remove(key).catch(() => undefined);
   return true;
+}
+
+/**
+ * Документ как вложение заявки клиента (решение Р-559): байты и имя файла.
+ * Объект остаётся на месте до `dropBrief`: заявка может не пройти
+ * проверку, и документ нужен на повторной отправке. Нет объекта — `null`.
+ */
+export async function briefAttachment(
+  actor: Actor,
+  action: Action,
+  ref: string,
+  title: string,
+): Promise<{ originalName: string; contentType: string; body: Buffer } | null> {
+  ensure(actor, action);
+  const parts = split(ref);
+  if (parts === null) return null;
+  try {
+    const body = await storage().get(briefKey(actor, parts.id, parts.format));
+    return { originalName: `${title}.${parts.format}`, contentType: TYPES[parts.format], body };
+  } catch {
+    return null;
+  }
+}
+
+/** Убрать временный объект после того, как документ лёг вложением. */
+export async function dropBrief(actor: Actor, ref: string): Promise<void> {
+  const parts = split(ref);
+  if (parts === null) return;
+  await storage().remove(briefKey(actor, parts.id, parts.format)).catch(() => undefined);
 }
