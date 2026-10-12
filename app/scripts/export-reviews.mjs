@@ -11,6 +11,10 @@
  * контакт не собирается вовсе (решение Р-110). Поэтому файл можно хранить в
  * облаке без оглядки на 152-ФЗ.
  *
+ * Рядом — отзывы к оценкам сопровождения из кабинета, которые клиент
+ * разрешил опубликовать (решение Р-561): без имени, с видом работы и
+ * оценкой. Затёртые по требованию субъекта сюда не попадают.
+ *
  *   node scripts/export-reviews.mjs                  → ../deploy/exports/reviews.csv
  *   node scripts/export-reviews.mjs --stdout         → в поток вывода
  *   node scripts/export-reviews.mjs путь/к/файлу.csv → куда скажут
@@ -44,21 +48,28 @@ try {
     select: { id: true, createdAt: true, source: true, name: true, message: true, publishAllowed: true, status: true, notes: true },
   });
 
+  const ratings = await prisma.workRating.findMany({
+    where: { publishAllowed: true, text: { not: null } },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, createdAt: true, score: true, text: true, project: { select: { serviceType: { select: { name: true } } } } },
+  });
+
   // Столбец «Можно публиковать» — первое, по чему сортируют реестр: отзыв без
   // разрешения опубликовать нельзя, спросить автора негде (Р-114).
   const head = ['Дата', 'Страница', 'Кто', 'Отзыв', 'Можно публиковать', 'Состояние', 'Заметки', 'Идентификатор'];
+  const records = [
+    ...rows.map((r) => ({
+      at: r.createdAt,
+      cells: [SOURCE_LABEL[r.source] ?? r.source, r.name ?? '', r.message ?? '', r.publishAllowed ? 'да' : 'нет', r.status ?? '', r.notes ?? '', r.id],
+    })),
+    ...ratings.map((r) => ({
+      at: r.createdAt,
+      cells: ['Кабинет', `${r.project.serviceType.name}, оценка ${r.score} из 5`, r.text ?? '', 'да', 'оценка работы', '', r.id],
+    })),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime());
   const lines = [head.map(cell).join(',')];
-  for (const r of rows) {
-    lines.push([
-      r.createdAt.toISOString().slice(0, 16).replace('T', ' '),
-      SOURCE_LABEL[r.source] ?? r.source,
-      r.name ?? '',
-      r.message ?? '',
-      r.publishAllowed ? 'да' : 'нет',
-      r.status ?? '',
-      r.notes ?? '',
-      r.id,
-    ].map(cell).join(','));
+  for (const r of records) {
+    lines.push([r.at.toISOString().slice(0, 16).replace('T', ' '), ...r.cells].map(cell).join(','));
   }
   // Разделитель строк CRLF и метка BOM: без них таблицы на Windows открывают
   // кириллицу вопросительными знаками, а строки — одной длинной ячейкой.
@@ -71,7 +82,7 @@ try {
     const out = arg ?? path.join('..', 'deploy', 'exports', 'reviews.csv');
     mkdirSync(path.dirname(out), { recursive: true });
     writeFileSync(out, csv);
-    console.error(`Выгружено отзывов: ${rows.length} → ${out}`);
+    console.error(`Выгружено отзывов: ${records.length} → ${out}`);
   }
 } finally {
   await prisma.$disconnect();

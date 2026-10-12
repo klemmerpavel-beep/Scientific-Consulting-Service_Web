@@ -10,6 +10,8 @@ import {
   Board,
   BoardColumn,
   Button,
+  Card,
+  Checkbox,
   ButtonLink,
   Chip,
   Disclosure,
@@ -54,6 +56,8 @@ import {
 } from '../../../../lib/cabinet/access';
 import { checklistCounts } from '../../../../lib/cabinet/checklist-marks';
 import { prepareList, prepareOpen, prepareStatus } from '../../../../lib/cabinet/prepare-lists';
+import { ratingFor } from '../../../../lib/cabinet/ratings';
+import { RATING_TEXT_MAX } from '../../../../lib/cabinet/rating-stats';
 import {
   CONTACT_LABEL,
   contactsOf,
@@ -97,6 +101,7 @@ import {
   setManager,
   uploadMaterialWithNote,
   openAccessForClient,
+  rateWorkAction,
 } from '../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -302,14 +307,14 @@ export default async function ProjectScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string; manage?: string; briefApplied?: string }>;
+  searchParams: Promise<{ error?: string; manage?: string; briefApplied?: string; rated?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}`);
 
   const { code } = await params;
   // Отказ действия «Управления работой»: причина у своей формы, свёртка
   // раскрыта, поля заполнены введённым (решение Р-279).
-  const { error: errorId, manage, briefApplied } = await searchParams;
+  const { error: errorId, manage, briefApplied, rated } = await searchParams;
   const failure = await flashEntry(errorId);
   const draft = (await formDraft(errorId)) ?? {};
   // Кнопки «Изменить карточку», «Куратор», «Менеджер» под названием открывают
@@ -392,6 +397,9 @@ export default async function ProjectScreen({
       ),
     0,
   );
+
+  // Оценка сопровождения (Р-561): клиенту завершённой работы, один раз.
+  const rating = forClient ? await ratingFor(actor, { ...ref, status: project.status }) : null;
 
   // «Что подготовить» (Р-560): пока первый этап не согласован — кнопка со
   // счётом приложенного; клиенту — его перечень, сотруднику — отметки.
@@ -777,6 +785,9 @@ export default async function ProjectScreen({
       {/* Исход «Обновить из документа» (Р-557): блок исхода в счёт пяти
           не входит (Р-253). */}
       {briefApplied === undefined ? null : <Outcome>Карточка обновлена из документа, документ приложен к работе.</Outcome>}
+      {rated === undefined || rating?.score === null || rating === null ? null : (
+        <Outcome>{`Спасибо за оценку: ${rating.score} из 5.`}</Outcome>
+      )}
       <Disclosure title="О работе" style={{ marginTop: 12 }}>
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
           {about.map((row) => (
@@ -1077,6 +1088,46 @@ export default async function ProjectScreen({
           </BoardColumn>
         ) : null}
       </Board>
+
+      {/* Оценка сопровождения (улучшение У-4, решение Р-561): клиенту
+          завершённой работы, пока оценки нет. Пятый блок карточки клиента:
+          «Управления работой» у него нет (Р-183). */}
+      {rating?.mayRate === true ? (
+        <Card id="rate" style={{ marginTop: 20 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 4 }}>
+            Оцените сопровождение
+          </Heading>
+          <Text muted size={14} style={{ marginBottom: 14 }}>
+            Работа завершена. Оценка и отзыв помогут нам сопровождать следующие работы лучше. Оценку
+            можно поставить один раз.
+          </Text>
+          <Form action={rateWorkAction}>
+            <input type="hidden" name="projectId" value={project.id} />
+            <input type="hidden" name="code" value={project.code} />
+            <Select label="Оценка" name="score" required defaultValue={draft.score ?? ''}>
+              <option value="" disabled>
+                — выберите —
+              </option>
+              <option value="5">5 — отлично</option>
+              <option value="4">4 — хорошо</option>
+              <option value="3">3 — удовлетворительно</option>
+              <option value="2">2 — плохо</option>
+              <option value="1">1 — очень плохо</option>
+            </Select>
+            <Field
+              label="Отзыв"
+              name="text"
+              multiline
+              defaultValue={draft.text}
+              hint={`Необязательно, до ${RATING_TEXT_MAX} знаков: что получилось, что стоило сделать иначе.`}
+            />
+            <Checkbox name="publish" defaultChecked={draft.publish === 'on'} label="Разрешаю опубликовать отзыв на сайте без имени" />
+            <FormActions>
+              <Button>Отправить оценку</Button>
+            </FormActions>
+          </Form>
+        </Card>
+      ) : null}
 
       {/* Ниже — то, что нужно не каждый раз: история и служебные действия.
           На виду они занимали пол-экрана, пересказывая этапы и переписку. */}

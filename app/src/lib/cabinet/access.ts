@@ -155,6 +155,8 @@ export const ACTIONS = [
   'CHECKLIST_VIEW',
   // Отметки чек-листа вида работы по работе (решение Р-551).
   'CHECKLIST_MARK',
+  // Оценка сопровождения после завершения работы (решение Р-561).
+  'WORK_RATE',
 ] as const;
 
 export type Action = (typeof ACTIONS)[number];
@@ -324,6 +326,12 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     // нет: чек-лист — внутренняя кухня практики.
     case 'CHECKLIST_MARK':
       return project !== null && (practice || assigned);
+
+    // Оценку сопровождения ставит клиент своей работы (решение Р-561):
+    // оценка — его мнение, и за него её не ставит никто. Состояние работы
+    // («завершена») проверяет сервисный слой.
+    case 'WORK_RATE':
+      return own;
 
     // ── Только руководитель ───────────────────────────────────────────────
     // Раздача работ между кураторами — распоряжение практикой, а не

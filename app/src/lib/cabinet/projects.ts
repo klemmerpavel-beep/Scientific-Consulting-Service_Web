@@ -1620,9 +1620,11 @@ export async function editProject(
 /** Письмо клиенту о смене состояния работы (требование Т-21, решение Р-299). */
 const STATUS_LETTER: Record<ProjectStatusKey, (title: string, reason: string) => { subject: string; body: string }> = {
   PAUSED: (title, reason) => ({ subject: `Работа «${title}» приостановлена`, body: `Причина: ${reason}` }),
+  // Приглашение оценить сопровождение — в том же письме, отдельной
+  // рассылки нет (решение Р-561).
   COMPLETED: (title) => ({
     subject: `Работа «${title}» завершена`,
-    body: 'Материалы остаются доступны в кабинете.',
+    body: 'Материалы остаются доступны в кабинете. Оцените, пожалуйста, сопровождение на карточке работы: оценка и короткий отзыв помогут нам работать лучше.',
   }),
   CANCELLED: (title, reason) => ({ subject: `Работа «${title}» отменена`, body: `Причина: ${reason}` }),
   ACTIVE: (title) => ({ subject: `Работа «${title}» возобновлена`, body: 'Работа снова идёт.' }),

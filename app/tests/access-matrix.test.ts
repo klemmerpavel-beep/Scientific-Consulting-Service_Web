@@ -142,6 +142,8 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   CHECKLIST_VIEW: [false, true, true, true],
   // Отметки чек-листа работы — менеджеру работы, куратору, руководителю (Р-551).
   CHECKLIST_MARK: [false, true, true, true],
+  // Оценку сопровождения ставит только клиент своей работы (Р-561).
+  WORK_RATE: [true, false, false, false],
 };
 
 const ROLE_ORDER: Role[] = ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'];

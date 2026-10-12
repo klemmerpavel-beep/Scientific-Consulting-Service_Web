@@ -25,6 +25,8 @@ import { contactLabelFor } from '../../../../lib/cabinet/staff-texts';
 import { teamLoad, type TeamPoint } from '../../../../lib/cabinet/team';
 import { assignmentLoad } from '../../../../lib/cabinet/assignments';
 import { MONTH_NAMES } from '../../../../lib/cabinet/analytics/calendar';
+import { ratingSummary } from '../../../../lib/cabinet/ratings';
+import { formatAverage } from '../../../../lib/cabinet/rating-stats';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +56,8 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
   const peakLabel = team.peak === null ? null : `${MONTH_NAMES[team.peak.month - 1]} ${team.peak.year}`;
   // Поручения: открытые и просроченные по исполнителю (РК-19, Р-352).
   const given = tab === 'people' ? await assignmentLoad(actor) : new Map<string, { open: number; overdue: number }>();
+  // Оценки клиентов после завершения работы (Р-561): средняя и число.
+  const ratings = tab === 'people' ? await ratingSummary(actor) : null;
   const assigned = (id: string) => {
     const cell = given.get(id);
     return cell === undefined ? '—' : `${cell.open}${cell.overdue === 0 ? '' : ` (просрочено ${cell.overdue})`}`;
@@ -128,12 +132,13 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Ждёт публикации</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Сдано, ждёт решения</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Поручения</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Оценка</th>
                 </tr>
               </thead>
               <tbody>
                 {team.managers.length === 0 ? (
                   <tr>
-                    <td style={TABLE_CELL} colSpan={8}>
+                    <td style={TABLE_CELL} colSpan={9}>
                       Действующих менеджеров нет.
                     </td>
                   </tr>
@@ -156,6 +161,7 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                       <td style={TABLE_NUM}>{num(row.moderation)}</td>
                       <td style={TABLE_NUM}>{num(row.handedOver)}</td>
                       <td style={TABLE_NUM}>{assigned(row.id)}</td>
+                      <td style={TABLE_NUM}>{formatAverage(ratings?.managers.get(row.id))}</td>
                     </tr>
                   ))
                 )}
@@ -165,7 +171,8 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
           <Text muted size={13} style={{ marginBottom: 24 }}>
             Работы — действующие, идущие и приостановленные. Где стоят — по текущему этапу. Клиент
             ждёт ответа, ждёт публикации и сдано куратором — дела менеджера без срока реакции; те
-            же дела после срока — «Контроль» на «Сводке».
+            же дела после срока — «Контроль» на «Сводке». Оценка — средняя оценка клиентов после
+            завершения работы и их число в скобках; по практике — {formatAverage(ratings?.practice)}.
           </Text>
 
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
@@ -186,12 +193,13 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">
                     {peakLabel === null ? 'К пику сдачи' : `К пику: ${peakLabel}`}
                   </th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Оценка</th>
                 </tr>
               </thead>
               <tbody>
                 {team.curators.length === 0 ? (
                   <tr>
-                    <td style={TABLE_CELL} colSpan={9}>
+                    <td style={TABLE_CELL} colSpan={10}>
                       Действующих кураторов нет.
                     </td>
                   </tr>
@@ -234,6 +242,7 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                           </a>
                         )}
                       </td>
+                      <td style={TABLE_NUM}>{formatAverage(ratings?.curators.get(row.id))}</td>
                     </tr>
                   ))
                 )}

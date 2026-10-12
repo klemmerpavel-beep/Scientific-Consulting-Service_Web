@@ -68,6 +68,7 @@ const ACTIONS: Record<string, string> = {
   TEMPLATE_UPLOADED: 'Загружен шаблон документа',
   TEMPLATE_REPLACED: 'Заменён шаблон документа',
   TEMPLATE_REMOVED: 'Убран шаблон документа',
+  WORK_RATED: 'Клиент оценил сопровождение',
   TRANCHE_STATUS_CHANGED: 'Изменено состояние транша',
   TRANCHE_ADDED: 'Заведён транш',
   TRANCHE_REMOVED: 'Удалён плановый транш',
@@ -126,6 +127,7 @@ const OBJECTS: Record<string, string> = {
   Tranche: 'транш',
   User: 'учётная запись',
   VersionComment: 'комментарий к версии',
+  WorkRating: 'оценка работы',
   YearlyFinance: 'годовой итог',
 };
 

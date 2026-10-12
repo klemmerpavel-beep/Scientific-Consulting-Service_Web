@@ -229,6 +229,8 @@ model User {
   closedChecks        HeadCheck[]
   recommendationMarks RecommendationMark[]
   checklistMarks      ChecklistMark[]
+  ratingsAsManager    WorkRating[]         @relation("WorkRatingManager")
+  ratingsAsExpert     WorkRating[]         @relation("WorkRatingExpert")
   documentTemplates   DocumentTemplate[]
   assignments         Assignment[]         @relation("AssignmentAssignee")
   givenAssignments    Assignment[]         @relation("AssignmentAuthor")
@@ -522,6 +524,7 @@ model Project {
   assignments    Assignment[]
   headChecks     HeadCheck[]
   checklistMarks ChecklistMark[]
+  rating         WorkRating?
 
   @@index([status, dueOn])
   @@index([clientId])
@@ -1489,4 +1492,28 @@ model Feedback {
 
   @@index([status, createdAt])
   @@index([createdAt])
+}
+
+/// Оценка сопровождения клиентом после завершения работы (решение Р-561).
+/// Одна на работу. Менеджер и куратор — те, кто вёл работу в момент
+/// оценки: средняя относится к ним, даже если работу потом передали.
+/// Текст отзыва — данные клиента: затирается при удалении данных субъекта,
+/// оценка остаётся обезличенной цифрой.
+model WorkRating {
+  id             String   @id @default(cuid())
+  projectId      String   @unique
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// 1–5; предел держит и проверка в базе.
+  score          Int
+  text           String?
+  /// «Разрешаю опубликовать»: отзыв попадает в выгрузку отзывов для сайта.
+  publishAllowed Boolean  @default(false)
+  managerId      String?
+  manager        User?    @relation("WorkRatingManager", fields: [managerId], references: [id], onDelete: SetNull)
+  expertId       String?
+  expert         User?    @relation("WorkRatingExpert", fields: [expertId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+
+  @@index([managerId])
+  @@index([expertId])
 }

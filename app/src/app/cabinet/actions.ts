@@ -10,6 +10,7 @@ import { attachBrief, briefAttachment, dropBrief, stageBrief } from '../../lib/c
 import { applyWorkBrief, type WorkBriefKey } from '../../lib/cabinet/brief/work-apply';
 import { BRIEF_MAX_BYTES, BriefError } from '../../lib/cabinet/brief/read';
 import { removeOwnerTemplate, saveOwnerTemplate, TEMPLATE_MAX_BYTES, TemplateError } from '../../lib/cabinet/owner-templates';
+import { rateWork, RatingError } from '../../lib/cabinet/ratings';
 import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
@@ -796,6 +797,26 @@ export async function removeOwnerTemplateAction(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError(TEMPLATES_TAB, failure, { anchor: 'practice-templates' }));
   redirect(`${TEMPLATES_TAB}&template=removed#practice-templates`);
+}
+
+/** Оценка сопровождения клиентом завершённой работы (решение Р-561). */
+export async function rateWorkAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const back = `/cabinet/projects/${encodeURIComponent(code)}`;
+  const draft = { score: String(form.get('score') ?? ''), text: String(form.get('text') ?? ''), publish: form.get('publish') === 'on' ? 'on' : '' };
+  let failure: string | null = null;
+  try {
+    await rateWork(
+      actor,
+      { projectId: String(form.get('projectId') ?? ''), score: draft.score, text: draft.text, publishAllowed: draft.publish === 'on' },
+      await requestIp(),
+    );
+  } catch (error) {
+    failure = error instanceof RatingError ? error.message : reasonOf(error, 'Оценку не удалось сохранить');
+  }
+  if (failure !== null) redirect(await withError(back, failure, { draft, anchor: 'rate' }));
+  redirect(`${back}?rated=1`);
 }
 
 /** Смена состояния работы куратором или руководителем (решение Р-223). */

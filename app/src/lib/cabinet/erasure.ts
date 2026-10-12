@@ -563,6 +563,13 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
       leadIds.length === 0
         ? { count: 0 }
         : await tx.leadComment.updateMany({ where: { leadId: { in: leadIds } }, data: { body: ERASED } });
+    // Отзыв к оценке сопровождения — текст клиента (решение Р-561): он
+    // затирается, и разрешение на публикацию снимается — затёртое в
+    // выгрузку отзывов не попадёт. Оценка остаётся цифрой без автора.
+    const ratingsErased = await tx.workRating.updateMany({
+      where: { projectId: { in: projectIds }, text: { not: null } },
+      data: { text: null, publishAllowed: false },
+    });
     // Причина «не публиковать» версию эксперта — свободный текст куратора
     // о работе клиента (Т-18, решение Р-294).
     await tx.versionModeration.updateMany({
@@ -813,7 +820,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
           userErased,
           leads: leads.count,
           loginAttempts: loginAttempts.count,
-          texts: materials.count + stages.count + comments.count + reasons.count + assignmentsErased.count + leadComments.count,
+          texts: materials.count + stages.count + comments.count + reasons.count + assignmentsErased.count + leadComments.count + ratingsErased.count,
           events: events.count + journal.count + personal.count + reversals,
           notifications: notifications.count,
           importRows: importRowsErased.count,
@@ -831,7 +838,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
       userErased,
       leads: leads.count,
       loginAttempts: loginAttempts.count,
-      texts: materials.count + stages.count + comments.count + reasons.count + assignmentsErased.count + leadComments.count,
+      texts: materials.count + stages.count + comments.count + reasons.count + assignmentsErased.count + leadComments.count + ratingsErased.count,
       events: events.count + journal.count + personal.count + reversals,
       notifications: notifications.count,
       importRows: importRowsErased.count,
