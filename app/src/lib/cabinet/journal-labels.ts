@@ -25,6 +25,7 @@ const ACTIONS: Record<string, string> = {
   CLIENT_MERGED: 'Карточки клиента сведены',
   DISK_SYNC: 'Зеркало на Диске обновлено',
   BOOK_PULL: 'Книга заказов перенесена с Диска',
+  CHECKLIST_MARKED: 'Отмечены шаги чек-листа работы',
   CONTRACT_SAVED: 'Договор сохранён',
   ERASURE_EXECUTED: 'Данные удалены по требованию',
   ERASURE_REQUESTED: 'Поступило требование об удалении',

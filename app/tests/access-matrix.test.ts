@@ -140,6 +140,8 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   FEEDBACK_REVIEW: [false, false, false, true],
   // Чек-листы — куратору, менеджеру и руководителю (Р-494, Р-548).
   CHECKLIST_VIEW: [false, true, true, true],
+  // Отметки чек-листа работы — менеджеру работы, куратору, руководителю (Р-551).
+  CHECKLIST_MARK: [false, true, true, true],
 };
 
 const ROLE_ORDER: Role[] = ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'];

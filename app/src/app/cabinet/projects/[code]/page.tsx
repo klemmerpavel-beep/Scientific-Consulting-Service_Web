@@ -51,6 +51,7 @@ import {
   workClosed,
   type Actor,
 } from '../../../../lib/cabinet/access';
+import { checklistCounts } from '../../../../lib/cabinet/checklist-marks';
 import {
   CONTACT_LABEL,
   contactsOf,
@@ -364,6 +365,11 @@ export default async function ProjectScreen({
   // Передать работу другому менеджеру может только руководитель (Р-149;
   // названия ролей — РК-01).
   const maySetManager = can(actor, 'PROJECT_SET_MANAGER', ref);
+  // Чек-лист вида работы — отдельным экраном со счётом отметок (Р-551):
+  // руководителю, менеджеру работы и назначенному куратору.
+  const checklist = (
+    await checklistCounts(actor, [{ ...ref, serviceCode: project.serviceType.code }])
+  ).get(project.id);
   const curatorList = maySetManager ? await curators(actor) : [];
   // Материалы берутся своей выборкой: она уже сужает и сами материалы, и
   // замечания по матрице прав, а `projectByCode` служит ещё четырём
@@ -721,7 +727,7 @@ export default async function ProjectScreen({
         {/* Правка карточки, куратор и менеджер — на виду, а не только в
             свёрнутом «Управлении работой» в конце экрана: руководитель их
             не находил (замечание владельца 08.10.2026, решение Р-487). */}
-        {(mayEdit && !closed) || mayAssign || maySetManager ? (
+        {(mayEdit && !closed) || mayAssign || maySetManager || checklist !== undefined ? (
           <div style={{ flexBasis: '100%', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {mayEdit && !closed ? (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-card`}>
@@ -738,6 +744,11 @@ export default async function ProjectScreen({
                 Сменить менеджера
               </ButtonLink>
             ) : null}
+            {checklist === undefined ? null : (
+              <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/checklist`}>
+                {`Чек-лист · ${checklist.done} из ${checklist.total}`}
+              </ButtonLink>
+            )}
           </div>
         ) : null}
       </ScreenTop>

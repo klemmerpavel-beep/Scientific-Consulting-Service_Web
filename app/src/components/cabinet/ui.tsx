@@ -482,6 +482,7 @@ export function Form({
 export function Checkbox({
   label,
   name,
+  value,
   defaultChecked = false,
   disabled = false,
   required = false,
@@ -490,6 +491,8 @@ export function Checkbox({
 }: {
   label: ReactNode;
   name: string;
+  /** Значение флажка: несколько флажков с одним именем — перечень (Р-551). */
+  value?: string;
   defaultChecked?: boolean;
   disabled?: boolean;
   required?: boolean;
@@ -513,6 +516,7 @@ export function Checkbox({
       <input
         type="checkbox"
         name={name}
+        value={value}
         defaultChecked={defaultChecked}
         disabled={disabled}
         required={required}

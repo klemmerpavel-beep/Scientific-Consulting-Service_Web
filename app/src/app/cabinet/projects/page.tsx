@@ -47,6 +47,7 @@ import {
 } from '../../../lib/cabinet/queries';
 import { daysPast, now } from '../../../lib/cabinet/clock';
 import { can, staffExpertLine } from '../../../lib/cabinet/access';
+import { checklistCounts } from '../../../lib/cabinet/checklist-marks';
 import { requireActor } from '../../../lib/cabinet/session';
 import { soleWorkTarget } from '../../../lib/cabinet/nav';
 import { welcomeState } from '../../../lib/cabinet/channels';
@@ -94,6 +95,11 @@ export default async function ProjectsScreen({
   const projects = list.rows;
   const pendingAll = await pendingActions(actor);
   const unread = await unreadByProject(actor, projects.map((p) => p.id));
+  // Счёт отметок чек-листа вида работы — у тех, кто отмечает (Р-551).
+  const checklists = await checklistCounts(
+    actor,
+    projects.map((p) => ({ id: p.id, clientId: p.clientId, managerId: p.managerId, expertId: p.expertId, serviceCode: p.serviceType.code })),
+  );
   const forClient = actor.role === 'CLIENT';
   // Блок первого входа — пока клиент его не закрыл (требование Т-10,
   // решение Р-310).
@@ -618,6 +624,13 @@ export default async function ProjectsScreen({
               newMessages === 0 || forExpert
                 ? null
                 : `${newMessages} ${plural(newMessages, 'новое сообщение', 'новых сообщения', 'новых сообщений')}`,
+              // «Чек-лист 7 из 11» — пока работа не закрыта (Р-551).
+              (() => {
+                const marks = checklists.get(project.id);
+                return marks === undefined || project.status === 'COMPLETED' || project.status === 'CANCELLED'
+                  ? null
+                  : `чек-лист ${marks.done} из ${marks.total}`;
+              })(),
               forClient ? null : project.client.fullName,
               // Исполнитель на виду у практики (требование М-16, ОМ-23);
               // руководителю — менеджер и куратор ссылками ниже (РК-03).

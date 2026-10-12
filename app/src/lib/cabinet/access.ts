@@ -153,6 +153,8 @@ export const ACTIONS = [
   // Чек-листы практики — куратору, менеджеру и руководителю (решения
   // Р-494, Р-548).
   'CHECKLIST_VIEW',
+  // Отметки чек-листа вида работы по работе (решение Р-551).
+  'CHECKLIST_MARK',
 ] as const;
 
 export type Action = (typeof ACTIONS)[number];
@@ -316,6 +318,12 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     // раз о договоре.
     case 'CHECKLIST_VIEW':
       return staff || actor.role === 'EXPERT';
+
+    // Отметки чек-листа вида работы — тем, кто работу делает: руководителю,
+    // менеджеру работы и назначенному куратору (решение Р-551). Клиенту —
+    // нет: чек-лист — внутренняя кухня практики.
+    case 'CHECKLIST_MARK':
+      return project !== null && (practice || assigned);
 
     // ── Только руководитель ───────────────────────────────────────────────
     // Раздача работ между кураторами — распоряжение практикой, а не

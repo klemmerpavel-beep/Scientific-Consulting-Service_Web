@@ -5,6 +5,7 @@ import { after } from 'next/server';
 
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { AccessDenied, ensure, type Actor } from '../../lib/cabinet/access';
+import { saveChecklistMarks } from '../../lib/cabinet/checklist-marks';
 import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
@@ -685,6 +686,34 @@ export async function saveProject(form: FormData): Promise<void> {
     );
   }
   redirect(`/cabinet/projects/${code}`);
+}
+
+/**
+ * Отметки чек-листа вида работы (решение Р-551). Форма шлёт отмеченное
+ * сейчас и отмеченное при показе: меняется только разница, и чужая правка
+ * между показом и отправкой не теряется.
+ */
+export async function saveWorkChecklist(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const back = `/cabinet/projects/${code}/checklist`;
+  const shown = String(form.get('shown') ?? '')
+    .split(',')
+    .filter((key) => key !== '');
+  const checked = form.getAll('step').map(String);
+  let failure: string | null = null;
+  try {
+    await saveChecklistMarks(actor, {
+      projectId: String(form.get('projectId') ?? ''),
+      checklistKey: String(form.get('checklistKey') ?? ''),
+      shown,
+      checked,
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить отметки: попробуйте ещё раз');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(`${back}?saved=1`);
 }
 
 /** Смена состояния работы куратором или руководителем (решение Р-223). */

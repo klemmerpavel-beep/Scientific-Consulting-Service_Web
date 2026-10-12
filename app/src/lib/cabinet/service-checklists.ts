@@ -159,3 +159,29 @@ export function serviceChecklistsFor(actor: Actor): readonly ServiceChecklist[] 
 export function serviceChecklist(code: string): ServiceChecklist | null {
   return SERVICE_CHECKLISTS.find((list) => list.serviceCode === code) ?? null;
 }
+
+/** Сколько шагов чек-листа отмечено: в счёт идут только действующие шаги. */
+export function checklistProgress(list: ServiceChecklist, marked: Iterable<string>): { done: number; total: number } {
+  const keys = new Set(marked);
+  return { done: list.steps.filter((step) => keys.has(step.key)).length, total: list.steps.length };
+}
+
+/**
+ * Что изменить по отправке формы. Сравнивается с тем, что было отмечено
+ * при показе, а не с базой: форма, открытая раньше чужой правки, не
+ * снимает чужую отметку и не ставит её заново. Ключи не из чек-листа
+ * отбрасываются.
+ */
+export function markChanges(
+  list: ServiceChecklist,
+  shown: readonly string[],
+  checked: readonly string[],
+): { add: string[]; remove: string[] } {
+  const valid = new Set(list.steps.map((step) => step.key));
+  const was = new Set(shown.filter((key) => valid.has(key)));
+  const now = new Set(checked.filter((key) => valid.has(key)));
+  return {
+    add: [...now].filter((key) => !was.has(key)),
+    remove: [...was].filter((key) => !now.has(key)),
+  };
+}
