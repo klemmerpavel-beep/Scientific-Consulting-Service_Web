@@ -67,12 +67,12 @@ describe('вкладки экрана чек-листов (Р-550)', () => {
   it('руководителю — по адресату и по видам; остальным — свои и по видам', () => {
     assert.deepEqual(
       checklistViews(actor('HEAD')).map((view) => view.key),
-      ['head', 'manager', 'curator', 'service'],
+      ['head', 'manager', 'curator', 'service', 'templates'],
     );
     for (const role of ['MANAGER', 'EXPERT'] as const) {
       assert.deepEqual(
         checklistViews(actor(role)).map((view) => view.key),
-        ['own', 'service'],
+        ['own', 'service', 'templates'],
       );
     }
     assert.throws(() => checklistViews(actor('CLIENT')), AccessDenied);
@@ -103,5 +103,6 @@ describe('вкладки экрана чек-листов (Р-550)', () => {
     const shown = new Set(['head', 'manager', 'curator'].flatMap((view) => checklistsForView(head, view as 'head').map((list) => list.key)));
     assert.equal(shown.size, CHECKLISTS.length);
     assert.deepEqual(checklistsForView(head, 'service'), []);
+    assert.deepEqual(checklistsForView(head, 'templates'), []);
   });
 });

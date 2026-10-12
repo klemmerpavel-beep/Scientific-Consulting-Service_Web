@@ -25,6 +25,9 @@ import {
 } from '../../../../lib/cabinet/checklists';
 import { AUTO_NOTE, autoDone, type WorkState } from '../../../../lib/cabinet/checklist-auto';
 import { workState } from '../../../../lib/cabinet/checklist-marks';
+import { BRIEF_TEMPLATES } from '../../../../lib/cabinet/brief/templates';
+import { DOWNLOAD_HREF } from '../../../../lib/cabinet/downloads';
+import MaterialsList from '../../../../components/cabinet/MaterialsList';
 import {
   SERVICE_PHASES,
   serviceChecklistsFor,
@@ -209,7 +212,19 @@ export default async function ChecklistsScreen({
         }))}
       />
 
-      {view === 'service' ? (
+      {view === 'templates' ? (
+        // Шаблоны документов: кабинет сам заполняет из них форму заказа и
+        // карточку работы (решения Р-553, Р-554).
+        <MaterialsList
+          title="Шаблоны документов"
+          note="Заполненный шаблон загружается на «Новом заказе» и на карточке работы: поля заполнятся сами. Подписи полей не меняйте — по ним кабинет их узнаёт."
+          rows={BRIEF_TEMPLATES.map((template) => ({
+            title: template.title,
+            note: template.note,
+            files: [{ href: `${DOWNLOAD_HREF}/${template.key}`, label: `Скачать .${template.file.split('.').pop()}` }],
+          }))}
+        />
+      ) : view === 'service' ? (
         <div className="cab-block" style={{ marginBottom: 24 }}>
           <Heading level={2} size={3} style={{ marginBottom: 4 }}>
             По видам работ

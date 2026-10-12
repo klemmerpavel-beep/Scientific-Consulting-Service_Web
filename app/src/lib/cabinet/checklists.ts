@@ -445,7 +445,7 @@ export function audienceLabel(roles: readonly ChecklistRole[]): string {
  * руководитель смотрит их глазами того, кому они адресованы. Куратору и
  * менеджеру — свои и по видам работ.
  */
-export type ChecklistView = 'head' | 'manager' | 'curator' | 'own' | 'service';
+export type ChecklistView = 'head' | 'manager' | 'curator' | 'own' | 'service' | 'templates';
 
 export function checklistViews(actor: Actor): readonly { readonly key: ChecklistView; readonly label: string }[] {
   ensure(actor, 'CHECKLIST_VIEW');
@@ -455,11 +455,14 @@ export function checklistViews(actor: Actor): readonly { readonly key: Checklist
       { key: 'manager', label: 'Менеджеру' },
       { key: 'curator', label: 'Куратору' },
       { key: 'service', label: 'По видам работ' },
+      // Шаблоны документов — рядом с чек-листами (решение Р-554).
+      { key: 'templates', label: 'Шаблоны' },
     ];
   }
   return [
     { key: 'own', label: 'Мои чек-листы' },
     { key: 'service', label: 'По видам работ' },
+    { key: 'templates', label: 'Шаблоны' },
   ];
 }
 
@@ -485,6 +488,7 @@ export function checklistsForView(actor: Actor, view: ChecklistView): Checklist[
     case 'own':
       return lists;
     case 'service':
+    case 'templates':
       return [];
   }
 }

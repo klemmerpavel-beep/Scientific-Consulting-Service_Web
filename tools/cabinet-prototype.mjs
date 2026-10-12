@@ -77,6 +77,8 @@ const SKIP = [
   /^\/cabinet\/lead-files\b/u,
   /\/export\b/u,
   /^\/cabinet\/logout\b/u,
+  // Шаблоны, чек-листы и памятки отдаются файлом (решения Р-554, Р-555).
+  /^\/cabinet\/downloads\b/u,
 ];
 
 const LIMIT = 90;

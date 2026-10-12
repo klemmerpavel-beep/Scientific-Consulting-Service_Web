@@ -220,8 +220,9 @@ function workbookXml(title: string, range: string): string {
 /**
  * Архив ZIP со сжатием deflate. Время всех записей — 1 января 1980 года,
  * наименьшее, что умеет формат: так книга не меняется от часа сборки.
+ * Им же собираются документы Word кабинета (решение Р-554).
  */
-function zip(entries: readonly (readonly [string, Buffer])[]): Buffer {
+export function zip(entries: readonly (readonly [string, Buffer])[]): Buffer {
   const DOS_TIME = 0;
   const DOS_DATE = (0 << 9) | (1 << 5) | 1;
   const locals: Buffer[] = [];
