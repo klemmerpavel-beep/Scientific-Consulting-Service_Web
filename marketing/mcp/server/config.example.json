@@ -1,0 +1,27 @@
+{
+  "clientLogin": null,
+  "sandbox": true,
+  "apiVersion": "v5",
+  "write": false,
+  "confirmTtlHours": 72,
+  "maxCodeAttempts": 5,
+  "metrika": { "counterId": null, "goalId": null },
+  "journal": "var/journal.jsonl",
+  "autoStop": { "enabled": false },
+  "directions": {
+    "STU": {
+      "title": "Студентам",
+      "bidMax": 165,
+      "dailyBudgetMax": 300,
+      "weeklySpendMax": 1333,
+      "monthlySpendMax": 5330
+    },
+    "PG": {
+      "title": "Аспирантам",
+      "bidMax": 360,
+      "dailyBudgetMax": 300,
+      "weeklySpendMax": 2050,
+      "monthlySpendMax": 8197
+    }
+  }
+}
