@@ -162,7 +162,10 @@ export default function AdsDocument({ doc, docs }: { doc: AdsDoc; docs: readonly
             const ordered = block.items[0]?.ordered ?? false;
             const Tag = ordered ? 'ol' : 'ul';
             return (
-              <Tag key={index} style={{ margin: 0, paddingLeft: 22, display: 'grid', gap: 6 }}>
+              // Колонка списка — не шире документа, длинный адрес
+              // `https://…` переносится: иначе пункт растягивал список и
+              // страницу (Р-567).
+              <Tag key={index} style={{ margin: 0, paddingLeft: 22, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6 }}>
                 {block.items.map((item, at) => (
                   <li
                     key={at}
@@ -171,6 +174,7 @@ export default function AdsDocument({ doc, docs }: { doc: AdsDoc; docs: readonly
                       fontSize: 15,
                       lineHeight: 1.6,
                       color: 'var(--pd-ink-secondary)',
+                      overflowWrap: 'anywhere',
                     }}
                   >
                     {cell(item.inlines)}
