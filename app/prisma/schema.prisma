@@ -229,6 +229,7 @@ model User {
   closedChecks        HeadCheck[]
   recommendationMarks RecommendationMark[]
   checklistMarks      ChecklistMark[]
+  documentTemplates   DocumentTemplate[]
   assignments         Assignment[]         @relation("AssignmentAssignee")
   givenAssignments    Assignment[]         @relation("AssignmentAuthor")
   expenses            Expense[]
@@ -930,6 +931,35 @@ model ChecklistMark {
   doneAt       DateTime @default(now())
 
   @@unique([projectId, checklistKey, stepKey])
+}
+
+/// Шаблон документа практики, загруженный руководителем: договор,
+/// техническое задание, памятка (решение Р-558). Файл — в хранилище под
+/// `templates/`; в открытый репозиторий свои шаблоны практики не кладутся.
+/// Загрузка с тем же названием заменяет файл; «убрать» помечает строку.
+model DocumentTemplate {
+  id           String           @id @default(cuid())
+  title        String
+  note         String?
+  audience     TemplateAudience @default(STAFF)
+  storageKey   String           @unique
+  originalName String
+  contentType  String
+  sizeBytes    BigInt
+  sha256       String
+  uploadedById String?
+  uploadedBy   User?            @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  deletedAt    DateTime?
+
+  @@index([deletedAt, title])
+}
+
+/// Кому виден шаблон практики: команде или всем, включая клиентов.
+enum TemplateAudience {
+  STAFF
+  ALL
 }
 
 /// Поручение руководителя менеджеру или куратору (требование РК-19,

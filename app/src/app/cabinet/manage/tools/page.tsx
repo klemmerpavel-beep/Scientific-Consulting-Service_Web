@@ -12,6 +12,7 @@ import {
 import MaterialsList from '../../../../components/cabinet/MaterialsList';
 import { can, type Action } from '../../../../lib/cabinet/access';
 import { staffMaterials } from '../../../../lib/cabinet/materials-hub';
+import { ownerTemplates } from '../../../../lib/cabinet/owner-templates';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { hasToolsScreen, homeFor } from '../../../../lib/cabinet/nav';
 
@@ -240,7 +241,7 @@ export default async function ToolsScreen() {
   // открытые роли. Куратору разделов нет, и экран — только материалы.
   if (!hasToolsScreen(actor)) redirect(homeFor(actor));
   const allowed = TOOLS.filter((tool) => can(actor, tool.action));
-  const materials = staffMaterials(actor);
+  const materials = staffMaterials(actor, await ownerTemplates(actor));
   if (allowed.length === 0 && materials.length === 0) redirect(homeFor(actor));
   const head = actor.role === 'HEAD';
 

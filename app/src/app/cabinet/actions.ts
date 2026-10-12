@@ -9,6 +9,7 @@ import { saveChecklistMarks } from '../../lib/cabinet/checklist-marks';
 import { attachBrief, stageBrief } from '../../lib/cabinet/brief/intake';
 import { applyWorkBrief, type WorkBriefKey } from '../../lib/cabinet/brief/work-apply';
 import { BRIEF_MAX_BYTES, BriefError } from '../../lib/cabinet/brief/read';
+import { removeOwnerTemplate, saveOwnerTemplate, TEMPLATE_MAX_BYTES, TemplateError } from '../../lib/cabinet/owner-templates';
 import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
@@ -758,6 +759,43 @@ export async function applyWorkBriefAction(form: FormData): Promise<void> {
     redirect(await withError(back, failure));
   }
   redirect(`/cabinet/projects/${encodeURIComponent(code)}?briefApplied=1`);
+}
+
+const TEMPLATES_TAB = '/cabinet/manage/checklists?view=templates';
+
+/** Загрузить или заменить шаблон практики (решение Р-558). */
+export async function uploadOwnerTemplate(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const file = form.get('file');
+  const draft = { title: String(form.get('title') ?? ''), note: String(form.get('note') ?? ''), audience: String(form.get('audience') ?? '') };
+  let failure: string | null = null;
+  let replaced = false;
+  try {
+    if (!(file instanceof File) || file.size === 0) throw new TemplateError('Выберите файл шаблона.');
+    if (file.size > TEMPLATE_MAX_BYTES) throw new TemplateError('Файл больше 25 МБ.');
+    ({ replaced } = await saveOwnerTemplate(
+      actor,
+      { ...draft, originalName: file.name, contentType: file.type, body: Buffer.from(await file.arrayBuffer()) },
+      await requestIp(),
+    ));
+  } catch (error) {
+    failure = error instanceof TemplateError ? error.message : reasonOf(error, 'Шаблон не удалось загрузить');
+  }
+  if (failure !== null) redirect(await withError(TEMPLATES_TAB, failure, { draft, anchor: 'template-upload' }));
+  redirect(`${TEMPLATES_TAB}&template=${replaced ? 'replaced' : 'uploaded'}#practice-templates`);
+}
+
+/** Убрать шаблон практики (решение Р-558). */
+export async function removeOwnerTemplateAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  let failure: string | null = null;
+  try {
+    await removeOwnerTemplate(actor, String(form.get('id') ?? ''), await requestIp());
+  } catch (error) {
+    failure = error instanceof TemplateError ? error.message : reasonOf(error, 'Шаблон не удалось убрать');
+  }
+  if (failure !== null) redirect(await withError(TEMPLATES_TAB, failure, { anchor: 'practice-templates' }));
+  redirect(`${TEMPLATES_TAB}&template=removed#practice-templates`);
 }
 
 /** Смена состояния работы куратором или руководителем (решение Р-223). */

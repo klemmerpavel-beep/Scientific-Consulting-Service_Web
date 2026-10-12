@@ -3,11 +3,13 @@
  * решение Р-555): что открывается на экране и что скачивается файлом.
  * Сотрудникам — в «Управлении», клиенту — в «Материалах»; клиенту только
  * его материалы (ответ владельца): чек-листы — порядок работы практики.
+ * Шаблоны практики, загруженные руководителем (решение Р-558), экран
+ * читает сам и передаёт сюда: модуль остаётся без базы.
  */
 
 import { can, type Actor } from './access.ts';
 import { BRIEF_TEMPLATES } from './brief/templates.ts';
-import { DOWNLOAD_HREF } from './downloads.ts';
+import { DOWNLOAD_HREF, OWNER_TEMPLATE_PREFIX } from './downloads.ts';
 import { CLIENT_MEMO } from './memos.ts';
 
 export interface HubRow {
@@ -17,14 +19,31 @@ export interface HubRow {
   readonly files: readonly { readonly href: string; readonly label: string }[];
 }
 
+/** Шаблон практики в перечне: что нужно строке и ссылке. */
+export interface OwnerTemplateEntry {
+  readonly id: string;
+  readonly title: string;
+  readonly note: string | null;
+  readonly originalName: string;
+}
+
 const file = (key: string, label: string) => ({ href: `${DOWNLOAD_HREF}/${key}`, label });
+
+/**
+ * Ссылка на шаблон практики. Подпись — «Скачать .docx» или, в общей строке
+ * сотрудника, «Договор, .docx», как у встроенных шаблонов.
+ */
+export function ownerTemplateLink(template: OwnerTemplateEntry, named = false) {
+  const ext = /\.([a-z0-9]{1,10})$/iu.exec(template.originalName)?.[1]?.toLowerCase();
+  const label = named ? template.title : 'Скачать';
+  return file(`${OWNER_TEMPLATE_PREFIX}${template.id}`, ext === undefined ? label : `${label}${named ? ',' : ''} .${ext}`);
+}
 
 const templateFiles = () =>
   BRIEF_TEMPLATES.map((template) => file(template.key, `${template.title.replace(' (Excel)', '')}, .${template.file.split('.').pop()}`));
 
-/** Строка перечня материалов: название, пояснение, экран и файлы. */
-/** Материалы клиента. */
-export function clientMaterials(): HubRow[] {
+/** Материалы клиента; шаблоны практики — только адресованные всем. */
+export function clientMaterials(templates: readonly OwnerTemplateEntry[] = []): HubRow[] {
   return [
     {
       title: 'Анкета для заявки',
@@ -45,11 +64,16 @@ export function clientMaterials(): HubRow[] {
       note: 'Вход, этапы и согласование, материалы и версии, переписка, оплаты, уведомления.',
       files: [file(CLIENT_MEMO.key, 'Скачать .docx')],
     },
+    ...templates.map((template) => ({
+      title: template.title,
+      note: template.note ?? 'Документ практики: скачайте и прочитайте до начала работы.',
+      files: [ownerTemplateLink(template)],
+    })),
   ];
 }
 
-/** Материалы сотрудника: чек-листы, шаблоны, памятка клиенту. */
-export function staffMaterials(actor: Actor): HubRow[] {
+/** Материалы сотрудника: чек-листы, шаблоны, шаблоны практики, памятка клиенту. */
+export function staffMaterials(actor: Actor, templates: readonly OwnerTemplateEntry[] = []): HubRow[] {
   if (!can(actor, 'CHECKLIST_VIEW')) return [];
   return [
     {
@@ -70,6 +94,21 @@ export function staffMaterials(actor: Actor): HubRow[] {
       href: '/cabinet/manage/checklists?view=templates',
       files: templateFiles(),
     },
+    // Шаблоны практики — строкой, когда руководитель их загрузил; самому
+    // руководителю — и пустой: оттуда он переходит к загрузке.
+    ...(templates.length === 0 && actor.role !== 'HEAD'
+      ? []
+      : [
+          {
+            title: 'Шаблоны практики',
+            note:
+              templates.length === 0
+                ? 'Договор, техническое задание, памятки — ваши файлы. Загружаются в кабинете и в открытый код сайта не попадают.'
+                : 'Договор, техническое задание, памятки практики — файлы руководителя.',
+            href: '/cabinet/manage/checklists?view=templates#practice-templates',
+            files: templates.map((template) => ownerTemplateLink(template, true)),
+          },
+        ]),
     {
       title: `Памятка клиенту: «${CLIENT_MEMO.title}»`,
       note: 'Можно передать клиенту файлом; клиент видит её в своих «Материалах».',

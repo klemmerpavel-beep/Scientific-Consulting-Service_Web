@@ -1,16 +1,26 @@
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import ActionError from '../../../../components/cabinet/ActionError';
+import { Button } from '../../../../components/cabinet/Button';
 import Shell from '../../../../components/cabinet/Shell';
 import {
   ButtonLink,
   Card,
   Checkbox,
   Chip,
+  Field,
+  FileField,
+  Form,
+  FormActions,
   Heading,
+  Outcome,
   ScreenHead,
+  Select,
   Tabs,
   Text,
+  formatDate,
+  formatSize,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import {
@@ -28,6 +38,9 @@ import { workState } from '../../../../lib/cabinet/checklist-marks';
 import { BRIEF_TEMPLATES } from '../../../../lib/cabinet/brief/templates';
 import { DOWNLOAD_HREF } from '../../../../lib/cabinet/downloads';
 import MaterialsList from '../../../../components/cabinet/MaterialsList';
+import { formDraft } from '../../../../lib/cabinet/flash';
+import { ownerTemplateLink } from '../../../../lib/cabinet/materials-hub';
+import { AUDIENCE_LABEL, ownerTemplates } from '../../../../lib/cabinet/owner-templates';
 import {
   SERVICE_PHASES,
   serviceChecklistsFor,
@@ -35,6 +48,7 @@ import {
 } from '../../../../lib/cabinet/service-checklists';
 import { TOOLS_HREF, homeFor } from '../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../lib/cabinet/session';
+import { removeOwnerTemplateAction, uploadOwnerTemplate } from '../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,6 +169,104 @@ function Columns({ cards }: { cards: readonly ReactNode[] }) {
   );
 }
 
+type PracticeTemplate = Awaited<ReturnType<typeof ownerTemplates>>[number];
+
+const TEMPLATE_OUTCOME = {
+  uploaded: 'Шаблон загружен.',
+  replaced: 'Шаблон заменён: прежний файл удалён, ссылка осталась та же.',
+  removed: 'Шаблон убран.',
+} as const;
+
+/**
+ * Шаблоны практики (задание владельца 12.10.2026, решение Р-558): договор,
+ * техническое задание, памятки — файлы руководителя. Он их загружает и
+ * убирает, остальные скачивают.
+ */
+function PracticeTemplates({
+  templates,
+  head,
+  draft,
+}: {
+  templates: readonly PracticeTemplate[];
+  head: boolean;
+  draft: Readonly<Record<string, string>>;
+}) {
+  return (
+    <Card id="practice-templates" style={{ marginBottom: 24 }}>
+      <Heading level={2} size={3} style={{ marginBottom: 4 }}>
+        Шаблоны практики
+      </Heading>
+      <Text muted size={14} style={{ marginBottom: 14 }}>
+        {head
+          ? 'Договор, техническое задание, памятки — ваши файлы. Они хранятся в кабинете и в открытый код сайта не попадают. Шаблон «всем» видят и клиенты в «Материалах»; шаблон с тем же названием заменяется.'
+          : 'Договор, техническое задание, памятки — файлы руководителя практики.'}
+      </Text>
+      {templates.length === 0 ? (
+        <Text muted size={14} style={{ marginBottom: head ? 14 : 0 }}>
+          {head ? 'Шаблонов пока нет: загрузите первый формой ниже.' : 'Руководитель ещё не загрузил шаблоны.'}
+        </Text>
+      ) : (
+        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
+          {templates.map((template) => {
+            const link = ownerTemplateLink(template);
+            return (
+              <li
+                key={template.id}
+                style={{ display: 'grid', gap: 8, paddingTop: 12, borderTop: '1px solid var(--pd-divider)' }}
+              >
+                <div>
+                  <Heading level={3} size={3} style={{ marginBottom: 2 }}>
+                    {template.title}
+                  </Heading>
+                  {template.note === null ? null : (
+                    <Text muted size={13} style={{ margin: 0 }}>
+                      {template.note}
+                    </Text>
+                  )}
+                  <Text muted size={13} style={{ margin: 0 }}>
+                    {formatSize(template.sizeBytes)} · {head ? `${AUDIENCE_LABEL[template.audience]} · ` : ''}обновлён{' '}
+                    {formatDate(template.updatedAt)}
+                  </Text>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <ButtonLink href={link.href} download>
+                    {link.label}
+                  </ButtonLink>
+                  {head ? (
+                    <Form action={removeOwnerTemplateAction} inline>
+                      <input type="hidden" name="id" value={template.id} />
+                      <Button tone="quiet">Убрать</Button>
+                    </Form>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {head ? (
+        <div id="template-upload" style={{ paddingTop: 16, marginTop: 16, borderTop: '1px solid var(--pd-divider)' }}>
+          <Heading level={3} size={3} style={{ marginBottom: 12 }}>
+            Загрузить шаблон
+          </Heading>
+          <Form action={uploadOwnerTemplate}>
+            <Field label="Название" name="title" required defaultValue={draft.title} hint="Так шаблон называется в перечне и в имени файла." />
+            <Field label="Пояснение" name="note" defaultValue={draft.note} hint="Необязательно: когда и кому его отправлять." />
+            <Select label="Кому" name="audience" defaultValue={draft.audience === 'ALL' ? 'ALL' : 'STAFF'}>
+              <option value="STAFF">Команде</option>
+              <option value="ALL">Всем, включая клиентов</option>
+            </Select>
+            <FileField label="Файл" name="file" required hint="Word, Excel или PDF до 25 МБ." />
+            <FormActions>
+              <Button>Загрузить</Button>
+            </FormActions>
+          </Form>
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
 /**
  * «Чек-листы» (замечание владельца 08.10.2026, решение Р-494): порядок
  * основных дел практики по шагам. Руководителю — все чек-листы, куратору и
@@ -164,19 +276,14 @@ function Columns({ cards }: { cards: readonly ReactNode[] }) {
 export default async function ChecklistsScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; work?: string }>;
+  searchParams: Promise<{ view?: string; work?: string; template?: string; error?: string }>;
 }) {
   const actor = await requireActor(CHECKLISTS_HREF);
   if (!can(actor, 'CHECKLIST_VIEW')) redirect(homeFor(actor));
   const head = actor.role === 'HEAD';
-  const curator = actor.role === 'EXPERT';
-  // Куратор приходит с «Назначенных работ»: «Сегодня» и «Управления» у него
-  // нет (Р-548).
-  const back = head
-    ? { href: TOOLS_HREF, label: 'Управление' }
-    : curator
-      ? { href: '/cabinet/projects', label: 'Назначенные работы' }
-      : { href: '/cabinet/manage', label: 'Сегодня' };
+  // «Управление» есть у всех сотрудников (решение Р-555): экран чек-листов
+  // открывается оттуда, и возврат — туда же (решение Р-558).
+  const back = { href: TOOLS_HREF, label: 'Управление' };
   const params = await searchParams;
   const views = checklistViews(actor);
   const view = checklistView(actor, params.view);
@@ -185,6 +292,9 @@ export default async function ChecklistsScreen({
   const work = params.work === undefined ? null : await workState(actor, params.work);
   const workQuery = work === null ? '' : `&work=${encodeURIComponent(work.code)}`;
   const lists = checklistsForView(actor, view);
+  const templates = view === 'templates' ? await ownerTemplates(actor) : [];
+  const draft = view === 'templates' ? ((await formDraft(params.error)) ?? {}) : {};
+  const outcome = params.template === undefined ? undefined : TEMPLATE_OUTCOME[params.template as keyof typeof TEMPLATE_OUTCOME];
   const groups = CHECKLIST_GROUPS.map((group) => ({
     ...group,
     lists: lists.filter((list) => list.group === group.key),
@@ -221,18 +331,24 @@ export default async function ChecklistsScreen({
         }))}
       />
 
+      <ActionError id={params.error} />
+      {outcome === undefined ? null : <Outcome>{outcome}</Outcome>}
+
       {view === 'templates' ? (
-        // Шаблоны документов: кабинет сам заполняет из них форму заказа и
-        // карточку работы (решения Р-553, Р-554).
-        <MaterialsList
-          title="Шаблоны документов"
-          note="Заполненный шаблон загружается на «Новом заказе» и на карточке работы: поля заполнятся сами. Подписи полей не меняйте — по ним кабинет их узнаёт."
-          rows={BRIEF_TEMPLATES.map((template) => ({
-            title: template.title,
-            note: template.note,
-            files: [{ href: `${DOWNLOAD_HREF}/${template.key}`, label: `Скачать .${template.file.split('.').pop()}` }],
-          }))}
-        />
+        <>
+          {/* Шаблоны документов: кабинет сам заполняет из них форму заказа
+              и карточку работы (решения Р-553, Р-554). */}
+          <MaterialsList
+            title="Шаблоны документов"
+            note="Заполненный шаблон загружается на «Новом заказе» и на карточке работы: поля заполнятся сами. Подписи полей не меняйте — по ним кабинет их узнаёт."
+            rows={BRIEF_TEMPLATES.map((template) => ({
+              title: template.title,
+              note: template.note,
+              files: [{ href: `${DOWNLOAD_HREF}/${template.key}`, label: `Скачать .${template.file.split('.').pop()}` }],
+            }))}
+          />
+          <PracticeTemplates templates={templates} head={head} draft={draft} />
+        </>
       ) : view === 'service' ? (
         <div className="cab-block" style={{ marginBottom: 24 }}>
           <Heading level={2} size={3} style={{ marginBottom: 4 }}>

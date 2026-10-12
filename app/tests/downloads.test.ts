@@ -21,10 +21,10 @@ const actor = (role: Actor['role'], status: Actor['status'] = 'ACTIVE'): Actor =
 });
 
 describe('выдача файлов материалов (Р-554)', () => {
-  it('шаблоны выдаются каждой роли', () => {
+  it('шаблоны выдаются каждой роли', async () => {
     for (const role of ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'] as const) {
       for (const template of BRIEF_TEMPLATES) {
-        const item = download(actor(role), template.key);
+        const item = await download(actor(role), template.key);
         assert.ok(item !== null, `${role}: ${template.key}`);
         assert.equal(item.file, template.file);
         assert.ok(item.bytes.length > 0);
@@ -32,9 +32,12 @@ describe('выдача файлов материалов (Р-554)', () => {
     }
   });
 
-  it('незнакомый ключ и приостановленная запись — «не найдено»', () => {
-    assert.equal(download(actor('HEAD'), 'nope'), null);
-    assert.equal(download(actor('HEAD', 'SUSPENDED'), BRIEF_TEMPLATES[0]!.key), null);
+  it('незнакомый ключ и приостановленная запись — «не найдено»', async () => {
+    assert.equal(await download(actor('HEAD'), 'nope'), null);
+    assert.equal(await download(actor('HEAD', 'SUSPENDED'), BRIEF_TEMPLATES[0]!.key), null);
+    // Ключ шаблона практики неверного вида отсекается до обращения к базе.
+    assert.equal(await download(actor('HEAD'), 'tpl-../../etc'), null);
+    assert.equal(await download(actor('HEAD'), 'tpl-'), null);
   });
 
   it('маршрут выдачи и обход прототипа согласованы', () => {

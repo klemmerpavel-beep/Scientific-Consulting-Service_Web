@@ -9,13 +9,14 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Скачивание материалов кабинета: шаблоны документов, чек-листы, памятки
- * (решения Р-554, Р-555). Файл собирается при выдаче и на сервере не
- * остаётся; персональных данных в нём нет.
+ * (решения Р-554, Р-555) и шаблоны практики из хранилища (решение Р-558).
+ * Свои файлы собираются при выдаче и на сервере не остаются; персональных
+ * данных ни в тех, ни в других нет.
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ file: string }> }): Promise<NextResponse> {
   const actor = await currentActor();
   if (actor === null) return new NextResponse('Требуется вход', { status: 401 });
-  const item = download(actor, (await params).file);
+  const item = await download(actor, (await params).file);
   if (item === null) return new NextResponse('Не найдено', { status: 404 });
   return new NextResponse(new Uint8Array(item.bytes), {
     headers: {

@@ -1,6 +1,7 @@
 /**
  * Файлы раздела материалов: шаблоны документов (решение Р-554), чек-листы и
- * памятки (решение Р-555). Собираются при выдаче из того же кода, что
+ * памятки (решение Р-555), шаблоны практики, загруженные руководителем
+ * (решение Р-558). Свои файлы собираются при выдаче из того же кода, что
  * экраны: файл и экран не расходятся.
  *
  * Что кому выдаётся — решает этот модуль: незнакомый ключ и чужой файл
@@ -17,6 +18,9 @@ const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.doc
 /** Адрес выдачи файла: `${DOWNLOAD_HREF}/{ключ}`. */
 export const DOWNLOAD_HREF = '/cabinet/downloads';
 
+/** Ключ шаблона практики: `tpl-{id}`. */
+export const OWNER_TEMPLATE_PREFIX = 'tpl-';
+
 export interface Download {
   /** Имя файла для человека и запасное латиницей (RFC 8187). */
   readonly file: string;
@@ -26,8 +30,16 @@ export interface Download {
 }
 
 /** Файл по ключу для смотрящего; `null` — нет такого или не положен. */
-export function download(actor: Actor, key: string): Download | null {
+export async function download(actor: Actor, key: string): Promise<Download | null> {
   if (actor.status !== 'ACTIVE') return null;
+  // Шаблон практики лежит в хранилище, адресата проверяет модуль шаблонов.
+  // Подгружается по требованию: остальная выдача обходится без базы.
+  if (key.startsWith(OWNER_TEMPLATE_PREFIX)) {
+    const id = key.slice(OWNER_TEMPLATE_PREFIX.length);
+    if (!/^[a-z0-9]{8,40}$/u.test(id)) return null;
+    const { ownerTemplateFile } = await import('./owner-templates.ts');
+    return ownerTemplateFile(actor, id);
+  }
   // Шаблоны — всем ролям: клиент заполняет анкету и видит, что ему
   // пришлют на утверждение (решение владельца 12.10.2026).
   const template = BRIEF_TEMPLATES.find((item) => item.key === key);

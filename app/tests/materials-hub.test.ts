@@ -11,7 +11,7 @@ import { describe, it } from 'node:test';
 import type { Actor } from '../src/lib/cabinet/access.ts';
 import { checklistsDocx, serviceChecklistsDocx } from '../src/lib/cabinet/checklist-docs.ts';
 import { readBrief } from '../src/lib/cabinet/brief/read.ts';
-import { download } from '../src/lib/cabinet/downloads.ts';
+import { DOWNLOAD_HREF, download } from '../src/lib/cabinet/downloads.ts';
 import { clientMaterials, staffMaterials } from '../src/lib/cabinet/materials-hub.ts';
 import { CLIENT_MEMO } from '../src/lib/cabinet/memos.ts';
 
@@ -33,26 +33,39 @@ function sources(dir: string): string[] {
 }
 
 describe('материалы по ролям (Р-555)', () => {
-  it('клиенту — шаблоны и памятка, без чек-листов команды', () => {
+  it('клиенту — шаблоны и памятка, без чек-листов команды', async () => {
     const rows = clientMaterials();
     const files = rows.flatMap((row) => row.files.map((file) => file.href));
     assert.ok(files.some((href) => href.endsWith('/anketa-docx')));
     assert.ok(files.some((href) => href.endsWith(`/${CLIENT_MEMO.key}`)));
     assert.ok(!files.some((href) => href.includes('chek-listy')));
-    for (const href of files) assert.ok(download(actor('CLIENT'), href.split('/').pop()!) !== null, href);
-    assert.equal(download(actor('CLIENT'), 'chek-listy'), null, 'чек-листы команды клиенту не выдаются');
-    assert.equal(download(actor('CLIENT'), 'chek-listy-po-vidam'), null);
+    for (const href of files) assert.ok((await download(actor('CLIENT'), href.split('/').pop()!)) !== null, href);
+    assert.equal(await download(actor('CLIENT'), 'chek-listy'), null, 'чек-листы команды клиенту не выдаются');
+    assert.equal(await download(actor('CLIENT'), 'chek-listy-po-vidam'), null);
   });
 
-  it('сотрудникам — чек-листы, по видам работ, шаблоны и памятка; каждый файл выдаётся', () => {
+  it('сотрудникам — чек-листы, по видам работ, шаблоны и памятка; каждый файл выдаётся', async () => {
     for (const role of ['EXPERT', 'MANAGER', 'HEAD'] as const) {
       const rows = staffMaterials(actor(role));
       assert.ok(rows.some((row) => row.href === '/cabinet/manage/checklists'), role);
       for (const row of rows) {
-        for (const file of row.files) assert.ok(download(actor(role), file.href.split('/').pop()!) !== null, `${role}: ${file.href}`);
+        for (const file of row.files) assert.ok((await download(actor(role), file.href.split('/').pop()!)) !== null, `${role}: ${file.href}`);
       }
     }
     assert.deepEqual(staffMaterials(actor('CLIENT')), []);
+  });
+
+  it('шаблоны практики (Р-558): клиенту — строкой каждый, сотрудникам — общей строкой', () => {
+    const contract = { id: 'ctpl0000001', title: 'Договор', note: null, originalName: 'Договор.DOCX' };
+    const memo = { id: 'ctpl0000002', title: 'Памятка', note: 'Перед стартом', originalName: 'памятка' };
+    const client = clientMaterials([memo]);
+    assert.deepEqual(client.at(-1), { title: 'Памятка', note: 'Перед стартом', files: [{ href: `${DOWNLOAD_HREF}/tpl-ctpl0000002`, label: 'Скачать' }] });
+
+    const staff = staffMaterials(actor('MANAGER'), [contract, memo]).find((row) => row.title === 'Шаблоны практики');
+    assert.deepEqual(staff?.files.map((file) => file.label), ['Договор, .docx', 'Памятка']);
+    // Пустая строка — только руководителю: оттуда он идёт к загрузке.
+    assert.ok(staffMaterials(actor('HEAD')).some((row) => row.title === 'Шаблоны практики'));
+    assert.ok(!staffMaterials(actor('MANAGER')).some((row) => row.title === 'Шаблоны практики'));
   });
 
   it('файл чек-листов — свои чек-листы роли, каждый шаг с квадратом', () => {
