@@ -32,11 +32,24 @@ function sources(dir: string): string[] {
 }
 const CODE = sources(SRC).map((file) => readFileSync(file, 'utf8')).join('\n');
 
-describe('чек-листы практики (Р-494, Р-548)', () => {
+describe('чек-листы практики (Р-494, Р-548, Р-549)', () => {
   it('руководителю — все, менеджеру и куратору — свои, клиенту экран закрыт', () => {
     assert.equal(checklistsFor(actor('HEAD')).length, CHECKLISTS.length);
     const manager = checklistsFor(actor('MANAGER')).map((list) => list.key);
-    assert.deepEqual(manager, ['lead', 'start', 'stage', 'close', 'expert-brief']);
+    assert.deepEqual(manager, [
+      'lead',
+      'first-call',
+      'repeat',
+      'start',
+      'stage',
+      'silent',
+      'reschedule',
+      'pause',
+      'handover',
+      'dispute',
+      'close',
+      'expert-brief',
+    ]);
     const curator = checklistsFor(actor('EXPERT')).map((list) => list.key);
     assert.deepEqual(curator, ['expert-accept', 'expert-brief', 'expert-handover', 'expert-remarks']);
     assert.throws(() => checklistsFor(actor('CLIENT')), AccessDenied);
@@ -95,6 +108,15 @@ describe('чек-листы практики (Р-494, Р-548)', () => {
       'Приостановить',
       'Зарегистрировать требование',
       'Исполнить',
+      // Процессные чек-листы менеджера (Р-549).
+      'Отказ',
+      'Напоминание о материалах',
+      'Напоминание о согласовании',
+      'Сохранить срок',
+      'Перенос срока',
+      'Возобновить',
+      'Сохранить менеджера',
+      'Новый заказ',
       // Куратору (Р-548).
       'Сообщить руководителю',
       'Загрузить',
