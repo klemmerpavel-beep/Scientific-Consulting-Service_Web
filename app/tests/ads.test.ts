@@ -27,7 +27,7 @@ import {
 } from '../src/lib/cabinet/ads/registry.ts';
 import type { Actor } from '../src/lib/cabinet/access.ts';
 import { ADS_HREF, activeItem, navFor } from '../src/lib/cabinet/nav.ts';
-import { OUTPUT, loadRegistry, renderModule, validateRegistry } from '../../tools/ads-registry.mjs';
+import { OUTPUT, loadRegistry, renderModule, validateRegistry } from '../scripts/ads-registry.mjs';
 
 const ROOT = path.join(import.meta.dirname, '..', '..');
 
