@@ -145,7 +145,8 @@ export async function listProjects(
     skip: (current - 1) * PROJECT_PAGE_SIZE,
     take: PROJECT_PAGE_SIZE,
     include: {
-      serviceType: { select: { name: true } },
+      // Код вида — для счёта отметок чек-листа на плашке (Р-555).
+      serviceType: { select: { code: true, name: true } },
       client: { select: { fullName: true } },
       // Исполнитель — в строке фактов у практики (требование М-16, Р-298).
       expert: { select: { id: true, fullName: true, role: true, expertProfile: { select: { ndaSignedAt: true } } } },

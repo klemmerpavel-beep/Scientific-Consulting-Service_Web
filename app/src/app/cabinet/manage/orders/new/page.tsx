@@ -6,13 +6,18 @@ import Shell from '../../../../../components/cabinet/Shell';
 import {
   Button,
   Card,
+  Disclosure,
   Field,
+  FileField,
   Form,
   FormActions,
   FormRow,
+  Notice,
   ScreenHead,
   Select,
 } from '../../../../../components/cabinet/ui';
+import { loadBrief } from '../../../../../lib/cabinet/brief/intake';
+import { orderDraftFromBrief } from '../../../../../lib/cabinet/brief/order-draft';
 import { can } from '../../../../../lib/cabinet/access';
 import { moscowToday } from '../../../../../lib/cabinet/clock';
 import { curators, serviceTypes } from '../../../../../lib/cabinet/queries';
@@ -21,7 +26,7 @@ import { formDraft } from '../../../../../lib/cabinet/flash';
 import { nameCandidates } from '../../../../../lib/cabinet/manual-order';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { homeFor } from '../../../../../lib/cabinet/nav';
-import { createOrder } from '../../../actions';
+import { createOrder, parseOrderBrief } from '../../../actions';
 
 export const metadata: Metadata = { title: 'Новый заказ — ProDisser' };
 export const dynamic = 'force-dynamic';
@@ -34,7 +39,7 @@ export const dynamic = 'force-dynamic';
 export default async function NewOrderScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; brief?: string }>;
 }) {
   const actor = await requireActor('/cabinet/manage/orders/new');
   if (!can(actor, 'REQUEST_MODERATE')) redirect(homeFor(actor));
@@ -44,8 +49,12 @@ export default async function NewOrderScreen({
   const today = moscowToday().toISOString().slice(0, 10);
   // Набранное возвращается после отказа; совпадение только по ФИО
   // открывает выбор карточки заказчика (требование М-18, решение Р-308).
-  const errorId = (await searchParams).error;
-  const draft = (await formDraft(errorId)) ?? {};
+  const { error: errorId, brief: briefRef } = await searchParams;
+  // Документ заполняет ту же форму (решение Р-560); набранное после отказа
+  // важнее разобранного.
+  const loaded = briefRef === undefined ? null : await loadBrief(actor, 'REQUEST_MODERATE', briefRef);
+  const fromBrief = loaded === null ? null : orderDraftFromBrief(loaded.brief, types);
+  const draft: Record<string, string | undefined> = { ...(fromBrief?.values ?? {}), ...((await formDraft(errorId)) ?? {}) };
   const candidates =
     draft.clientChoiceNeeded === '1' ? await nameCandidates(actor, draft.customer ?? '') : [];
 
@@ -60,8 +69,42 @@ export default async function NewOrderScreen({
         }`}
       />
       <ActionError id={errorId} />
+      {/* Анкета или исходные данные заполняют форму сами (решение Р-560). */}
+      <Disclosure title="Заполнить из документа" open={briefRef !== undefined && loaded === null} style={{ marginBottom: 16 }}>
+        <Form action={parseOrderBrief}>
+          <FileField
+            label="Анкета заказа или исходные данные"
+            name="brief"
+            accept=".docx,.xlsx"
+            required
+            hint="Word или Excel до 2 МБ. Шаблоны — в «Управлении» и на вкладке «Шаблоны» чек-листов."
+          />
+          <FormActions>
+            <Button tone="quiet">Разобрать</Button>
+          </FormActions>
+        </Form>
+      </Disclosure>
+      {briefRef !== undefined && loaded === null ? (
+        <Notice tone="quiet" role="status">
+          Документ не найден: загрузите его снова.
+        </Notice>
+      ) : null}
       <Card>
+        {fromBrief === null ? null : (
+          <Notice tone="quiet" role="status">
+            Поля заполнены из документа: проверьте их и нажмите «Завести заказ». Стоимость документ не несёт.
+            {[...loaded!.brief.issues, ...fromBrief.notes].length === 0 ? null : (
+              <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
+                {[...loaded!.brief.issues, ...fromBrief.notes].map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            )}
+          </Notice>
+        )}
         <Form action={createOrder}>
+          {/* Документ уходит в материалы созданной работы (Р-560). */}
+          {loaded === null ? null : <input type="hidden" name="brief" value={briefRef} />}
           <FormRow>
             <Field
               label="Заказчик (ФИО)"
@@ -116,6 +159,20 @@ export default async function NewOrderScreen({
             placeholder="Тема работы, цель, особые условия"
             defaultValue={draft.topic}
           />
+          {/* Суть задачи, вуз и направление — из документа или вручную
+              (решение Р-560): суть ложится в карточку работы, вуз и
+              направление дополняют пустые поля карточки клиента. */}
+          <Field
+            label="Суть задачи"
+            name="summary"
+            multiline
+            placeholder="Цель, задачи, научный руководитель — необязательно"
+            defaultValue={draft.summary}
+          />
+          <FormRow>
+            <Field label="Вуз или организация" name="university" placeholder="необязательно" defaultValue={draft.university} />
+            <Field label="Направление или специальность" name="speciality" placeholder="необязательно" defaultValue={draft.speciality} />
+          </FormRow>
           <FormRow>
             <Field label="Дата заказа" name="orderedOn" type="date" defaultValue={draft.orderedOn || today} />
             <Field label="Дедлайн" name="dueOn" type="date" defaultValue={draft.dueOn} />

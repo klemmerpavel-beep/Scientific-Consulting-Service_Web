@@ -138,8 +138,12 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   ASSIGNMENT_CREATE: [false, false, false, true],
   // Разбор замечаний с виджета — только руководитель (Р-403).
   FEEDBACK_REVIEW: [false, false, false, true],
-  // Чек-листы — менеджеру и руководителю (Р-494).
-  CHECKLIST_VIEW: [false, false, true, true],
+  // Чек-листы — куратору, менеджеру и руководителю (Р-494, Р-552).
+  CHECKLIST_VIEW: [false, true, true, true],
+  // Отметки чек-листа работы — менеджеру работы, куратору, руководителю (Р-555).
+  CHECKLIST_MARK: [false, true, true, true],
+  // Оценку сопровождения ставит только клиент своей работы (Р-565).
+  WORK_RATE: [true, false, false, false],
 };
 
 const ROLE_ORDER: Role[] = ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'];
@@ -451,7 +455,7 @@ describe('меню менеджера и начальный экран роли 
   const head: Actor = { ...manager, id: 'head-home', role: 'HEAD' };
   const items = navFor(manager);
 
-  it('пункты менеджера: Сегодня, Мои работы, Заявки, Реестры, Настройки', () => {
+  it('пункты менеджера: Сегодня, Мои работы, Заявки, Реестры, Управление, Настройки (Р-559)', () => {
     assert.deepEqual(
       items.map((item) => [item.href, item.label]),
       [
@@ -459,11 +463,28 @@ describe('меню менеджера и начальный экран роли 
         ['/cabinet/projects', 'Мои работы'],
         ['/cabinet/manage/leads', 'Заявки'],
         ['/cabinet/manage/registry', 'Реестры'],
+        ['/cabinet/manage/tools', 'Управление'],
         ['/cabinet/settings', 'Настройки'],
       ],
     );
-    assert.equal(hasToolsScreen(manager), false, 'менеджеру остался промежуточный экран');
+    assert.equal(hasToolsScreen(manager), true, 'менеджер без «Управления» не дойдёт до материалов');
     assert.equal(hasToolsScreen(head), true, 'руководитель потерял «Управление»');
+  });
+
+  it('материалы — у всех ролей: «Управление» у куратора, «Материалы» у клиента (Р-559)', () => {
+    const expert: Actor = { ...manager, id: 'expert-nav', role: 'EXPERT' };
+    const client: Actor = { ...manager, id: 'client-nav', role: 'CLIENT', clientProfileId: 'c-1' };
+    assert.deepEqual(
+      navFor(expert).map((item) => item.label),
+      ['Назначенные работы', 'Вознаграждение', 'Управление', 'Настройки'],
+    );
+    assert.deepEqual(navFor(client).map((item) => item.label), ['Мои работы', 'Новая заявка', 'Материалы', 'Настройки']);
+    assert.equal(hasToolsScreen(expert), true);
+    assert.equal(hasToolsScreen(client), false, 'клиенту — «Материалы», а не служебный экран');
+    // Экраны чек-листов подсвечивают «Управление».
+    assert.equal(activeItem(navFor(expert), '/cabinet/manage/checklists'), '/cabinet/manage/tools');
+    assert.equal(activeItem(navFor(manager), '/cabinet/manage/checklists'), '/cabinet/manage/tools');
+    assert.equal(activeItem(navFor(client), '/cabinet/materials'), '/cabinet/materials');
   });
 
   const cases: readonly [string, string][] = [

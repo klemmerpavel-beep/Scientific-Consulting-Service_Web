@@ -286,6 +286,10 @@ describe('удаление данных субъекта', { skip: !enabled }, a
         dueOn: new Date('2026-12-01T00:00:00Z'),
       },
     });
+    // Оценка сопровождения с отзывом, разрешённым к публикации (Р-565).
+    await prisma.workRating.create({
+      data: { projectId: project.id, score: 5, text: 'Смирнов О. П.: спасибо за сопровождение', publishAllowed: true, managerId: manager.id },
+    });
     await prisma.auditEvent.createMany({
       data: [
         {
@@ -382,6 +386,7 @@ describe('удаление данных субъекта', { skip: !enabled }, a
       where: { id: { in: [ids.outbox!, ids.requestNotice!, ids.erasureLetter!, ids.mergedRow!, ids.digest!] } },
     });
     await prisma.assignment.deleteMany({ where: { id: ids.assignment } });
+    await prisma.workRating.deleteMany({ where: { projectId: ids.project } });
     await prisma.lead.deleteMany({ where: { id: ids.mergedLead } });
     await prisma.auditEvent.deleteMany({ where: { id: ids.journal } });
     await prisma.stageStateChange.deleteMany({ where: { stage: { projectId: ids.project } } });
@@ -549,6 +554,11 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     assert.doesNotMatch(leadComments[0]!.body, /Смирнов/u, 'комментарий к заявке называет клиента');
     const assignment = await prisma.assignment.findUnique({ where: { id: ids.assignment } });
     assert.doesNotMatch(assignment?.text ?? '', /Смирнов/u, 'поручение называет клиента');
+    // Отзыв к оценке затёрт, разрешение снято, оценка осталась (Р-565).
+    const rating = await prisma.workRating.findUnique({ where: { projectId: ids.project } });
+    assert.equal(rating?.text, null, 'отзыв к оценке не затёрт');
+    assert.equal(rating?.publishAllowed, false);
+    assert.equal(rating?.score, 5);
     const reasons = await prisma.auditEvent.findMany({
       where: { projectId: ids.project, action: { in: ['MANAGER_ASSIGNED', 'TRANCHE_RESCHEDULED'] } },
       select: { payload: true },

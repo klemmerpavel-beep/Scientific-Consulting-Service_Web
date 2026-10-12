@@ -228,6 +228,10 @@ model User {
   practiceSettings    PracticeSetting[]
   closedChecks        HeadCheck[]
   recommendationMarks RecommendationMark[]
+  checklistMarks      ChecklistMark[]
+  ratingsAsManager    WorkRating[]         @relation("WorkRatingManager")
+  ratingsAsExpert     WorkRating[]         @relation("WorkRatingExpert")
+  documentTemplates   DocumentTemplate[]
   assignments         Assignment[]         @relation("AssignmentAssignee")
   givenAssignments    Assignment[]         @relation("AssignmentAuthor")
   expenses            Expense[]
@@ -508,17 +512,19 @@ model Project {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  lead          Lead?
-  stages        Stage[]
-  materials     Material[]
-  messages      Message[]
-  events        ProjectEvent[]
-  contract      Contract?
-  payouts       ExpertPayout[]
-  notifications NotificationOutbox[]
-  importRows    ImportRow[]
-  assignments   Assignment[]
-  headChecks    HeadCheck[]
+  lead           Lead?
+  stages         Stage[]
+  materials      Material[]
+  messages       Message[]
+  events         ProjectEvent[]
+  contract       Contract?
+  payouts        ExpertPayout[]
+  notifications  NotificationOutbox[]
+  importRows     ImportRow[]
+  assignments    Assignment[]
+  headChecks     HeadCheck[]
+  checklistMarks ChecklistMark[]
+  rating         WorkRating?
 
   @@index([status, dueOn])
   @@index([clientId])
@@ -911,6 +917,52 @@ enum RecommendationMarkStatus {
   ACCEPTED
   /// Отклонена: к практике не подходит (Р-491).
   DECLINED
+}
+
+/// Отметка шага чек-листа вида работы по работе (решение Р-555).
+/// Ключи — из кода (`lib/cabinet/service-checklists.ts`): текст чек-листа
+/// живёт в коде, база хранит только факт «шаг сделан», кем и когда.
+/// Персональных данных в строке нет: кто отметил — ссылкой на сотрудника.
+model ChecklistMark {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  checklistKey String
+  stepKey      String
+  doneById     String?
+  doneBy       User?    @relation(fields: [doneById], references: [id], onDelete: SetNull)
+  doneAt       DateTime @default(now())
+
+  @@unique([projectId, checklistKey, stepKey])
+}
+
+/// Шаблон документа практики, загруженный руководителем: договор,
+/// техническое задание, памятка (решение Р-562). Файл — в хранилище под
+/// `templates/`; в открытый репозиторий свои шаблоны практики не кладутся.
+/// Загрузка с тем же названием заменяет файл; «убрать» помечает строку.
+model DocumentTemplate {
+  id           String           @id @default(cuid())
+  title        String
+  note         String?
+  audience     TemplateAudience @default(STAFF)
+  storageKey   String           @unique
+  originalName String
+  contentType  String
+  sizeBytes    BigInt
+  sha256       String
+  uploadedById String?
+  uploadedBy   User?            @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  deletedAt    DateTime?
+
+  @@index([deletedAt, title])
+}
+
+/// Кому виден шаблон практики: команде или всем, включая клиентов.
+enum TemplateAudience {
+  STAFF
+  ALL
 }
 
 /// Поручение руководителя менеджеру или куратору (требование РК-19,
@@ -1440,4 +1492,28 @@ model Feedback {
 
   @@index([status, createdAt])
   @@index([createdAt])
+}
+
+/// Оценка сопровождения клиентом после завершения работы (решение Р-565).
+/// Одна на работу. Менеджер и куратор — те, кто вёл работу в момент
+/// оценки: средняя относится к ним, даже если работу потом передали.
+/// Текст отзыва — данные клиента: затирается при удалении данных субъекта,
+/// оценка остаётся обезличенной цифрой.
+model WorkRating {
+  id             String   @id @default(cuid())
+  projectId      String   @unique
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// 1–5; предел держит и проверка в базе.
+  score          Int
+  text           String?
+  /// «Разрешаю опубликовать»: отзыв попадает в выгрузку отзывов для сайта.
+  publishAllowed Boolean  @default(false)
+  managerId      String?
+  manager        User?    @relation("WorkRatingManager", fields: [managerId], references: [id], onDelete: SetNull)
+  expertId       String?
+  expert         User?    @relation("WorkRatingExpert", fields: [expertId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+
+  @@index([managerId])
+  @@index([expertId])
 }

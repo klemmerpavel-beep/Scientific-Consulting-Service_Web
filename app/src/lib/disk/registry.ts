@@ -72,13 +72,26 @@ export async function reviewsTable(): Promise<Table> {
     where: { form: 'review' },
     orderBy: { createdAt: 'desc' },
   });
+  // Отзывы к оценкам из кабинета, разрешённые к публикации (Р-565): без
+  // имени, с видом работы и оценкой; затёртые сюда не попадают.
+  const ratings = await prisma.workRating.findMany({
+    where: { publishAllowed: true, text: { not: null } },
+    select: { id: true, createdAt: true, score: true, text: true, project: { select: { serviceType: { select: { name: true } } } } },
+  });
+  const records = [
+    ...rows.map((r) => ({
+      at: r.createdAt,
+      cells: [leadSourceLabel(r.source), r.name ?? '', r.message ?? '', r.publishAllowed ? 'да' : 'нет', leadStatusLabel(r.status), r.id],
+    })),
+    ...ratings.map((r) => ({
+      at: r.createdAt,
+      cells: ['Кабинет', `${r.project.serviceType.name}, оценка ${r.score} из 5`, r.text ?? '', 'да', 'оценка работы', r.id],
+    })),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime());
   return table(
     'Отзывы.xlsx', 'otzyvy.csv',
     ['Дата (МСК)', 'Страница', 'Кто', 'Отзыв', 'Можно публиковать', 'Состояние', 'Идентификатор'],
-    rows.map((r) => [
-      moment(r.createdAt), leadSourceLabel(r.source), r.name ?? '', r.message ?? '',
-      r.publishAllowed ? 'да' : 'нет', leadStatusLabel(r.status), r.id,
-    ]),
+    records.map((r) => [moment(r.at), ...r.cells]),
   );
 }
 
