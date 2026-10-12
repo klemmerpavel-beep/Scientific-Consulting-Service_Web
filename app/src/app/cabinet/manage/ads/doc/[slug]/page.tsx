@@ -29,7 +29,7 @@ export default async function AdsDocScreen({ params }: { params: Promise<{ slug:
         backHref="/cabinet/manage/ads?tab=works"
         backLabel="Работы и документы"
         title={doc.title}
-        note={`${doc.group} · marketing/${doc.path}`}
+        note={doc.group}
       />
       <Card>
         <AdsDocument doc={doc} docs={ADS_REGISTRY.docs} />
