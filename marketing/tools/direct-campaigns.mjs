@@ -19,16 +19,29 @@ import path from 'node:path';
 export const ROOT = path.resolve(import.meta.dirname, '..', '..');
 export const SOURCE = path.join(ROOT, 'marketing', 'campaigns', 'direct.json');
 
-/** Пределы Директа для текстового объявления на поиске. */
+/**
+ * Пределы Директа для комбинаторного объявления ЕПК на поиске
+ * (`marketing/research/07-директ-загрузка-и-api.md`, раздел 7). Знаки
+ * препинания текст в 81 знак не увеличивают: проверка считает их, с запасом.
+ */
 export const LIMITS = {
-  title1: 56,
-  title2: 30,
+  headline: 56,
+  headlines: 7,
+  headlineWord: 22,
   text: 81,
+  texts: 3,
+  textWord: 23,
   sitelinkTitle: 30,
   sitelinkDescription: 60,
+  sitelinkTitlesPerFour: 66,
   callout: 25,
+  calloutsTotal: 132,
   displayPath: 20,
   phraseWords: 7,
+  phraseChars: 4096,
+  groupPhrases: 200,
+  campaignNegativeChars: 20000,
+  negativeWords: 7,
 };
 
 /**
@@ -98,6 +111,10 @@ export function validateCampaigns(source, { root = ROOT } = {}) {
   const clean = (value, where) => {
     for (const why of bannedIn(value)) problems.push(`${where}: «${value}» — ${why}`);
   };
+  const words = (value, max, where) => {
+    const long = (value ?? '').split(/[\s,.:;«»"()]+/).find((word) => word.length > max);
+    check(!long, `${where}: слово «${long}» длиннее ${max} знаков`);
+  };
 
   check(Array.isArray(source.campaigns) && source.campaigns.length > 0, 'нет кампаний');
   const names = new Set();
@@ -110,28 +127,43 @@ export function validateCampaigns(source, { root = ROOT } = {}) {
     check(campaign.start <= campaign.end, `${at}: начало позже окончания`);
     check(campaign.dailyBudget > 0 && campaign.bid > 0, `${at}: бюджет и ставка — больше нуля`);
     length(campaign.displayPath, LIMITS.displayPath, `${at}, отображаемая ссылка`);
-    check(/^[a-z0-9-]+$/.test(campaign.displayPath ?? ''), `${at}: отображаемая ссылка — латиница, цифры, дефис`);
+    check(/^[\p{L}\d\-№/%#]+$/u.test(campaign.displayPath ?? ''), `${at}: в отображаемой ссылке допустимы буквы, цифры и - № / % #`);
 
     const markupFile = path.join(root, 'design', MARKUP[campaign.direction] ?? '');
     const markup = fs.existsSync(markupFile) ? fs.readFileSync(markupFile, 'utf8') : '';
     check(markup !== '', `${at}: нет макета посадочной для направления ${campaign.direction}`);
     const anchor = (name, where) => check(markup.includes(`id="${name}"`), `${where}: якоря #${name} нет на ${campaign.page}`);
 
-    check((campaign.sitelinks ?? []).length >= 4, `${at}: быстрых ссылок меньше четырёх`);
-    for (const link of campaign.sitelinks ?? []) {
+    const sitelinks = campaign.sitelinks ?? [];
+    check(sitelinks.length >= 4 && sitelinks.length <= 8, `${at}: быстрых ссылок ${sitelinks.length}, нужно от 4 до 8`);
+    for (const link of sitelinks) {
       length(link.title, LIMITS.sitelinkTitle, `${at}, быстрая ссылка`);
       length(link.description, LIMITS.sitelinkDescription, `${at}, описание быстрой ссылки`);
+      check(!/[!?[\]]/.test(link.title + link.description), `${at}, быстрая ссылка «${link.title}»: знаки ! ? [ ] не допускаются`);
       anchor(link.anchor, `${at}, быстрая ссылка «${link.title}»`);
       clean(link.title, `${at}, быстрая ссылка`);
       clean(link.description, `${at}, описание быстрой ссылки`);
     }
-    for (const callout of campaign.callouts ?? []) {
+    // Не уложится набор — Директ не покажет ни одной быстрой ссылки.
+    for (const [from, to] of [[0, 4], [4, 8]]) {
+      const sum = sitelinks.slice(from, to).reduce((total, link) => total + (link.title?.length ?? 0), 0);
+      check(sum <= LIMITS.sitelinkTitlesPerFour, `${at}: заголовки быстрых ссылок ${from + 1}–${to} — ${sum} знаков при пределе ${LIMITS.sitelinkTitlesPerFour}`);
+    }
+    const callouts = campaign.callouts ?? [];
+    for (const callout of callouts) {
       length(callout, LIMITS.callout, `${at}, уточнение`);
       clean(callout, `${at}, уточнение`);
     }
+    const calloutsTotal = callouts.reduce((total, callout) => total + callout.length, 0);
+    check(calloutsTotal <= LIMITS.calloutsTotal, `${at}: уточнения — ${calloutsTotal} знаков при пределе ${LIMITS.calloutsTotal}`);
 
     const negatives = campaign.negative ?? [];
     check(new Set(negatives).size === negatives.length, `${at}: минус-слова повторяются`);
+    const negativeChars = negatives.join('').replace(/\s/g, '').length;
+    check(negativeChars <= LIMITS.campaignNegativeChars, `${at}: минус-слова — ${negativeChars} знаков при пределе ${LIMITS.campaignNegativeChars}`);
+    for (const negative of negatives) {
+      check(negative.split(/\s+/).length <= LIMITS.negativeWords, `${at}: в минус-фразе «${negative}» больше ${LIMITS.negativeWords} слов`);
+    }
     const groups = new Set();
     for (const group of campaign.groups ?? []) {
       const where = `${at} / ${group.name}`;
@@ -140,17 +172,30 @@ export function validateCampaigns(source, { root = ROOT } = {}) {
       check(group.name.startsWith(`${campaign.direction}_`), `${where}: имя группы начинается не с ${campaign.direction}_`);
       anchor(group.anchor, where);
       check((group.phrases ?? []).length > 0, `${where}: нет фраз`);
-      check((group.ads ?? []).length > 0, `${where}: нет объявлений`);
-      for (const phrase of group.phrases ?? []) {
+      const phrases = group.phrases ?? [];
+      check(phrases.length > 0 && phrases.length <= LIMITS.groupPhrases, `${where}: фраз ${phrases.length}, нужно от 1 до ${LIMITS.groupPhrases}`);
+      for (const phrase of phrases) {
         check(phrase.split(/\s+/).length <= LIMITS.phraseWords, `${where}: во фразе «${phrase}» больше ${LIMITS.phraseWords} слов`);
+        check(phrase.length <= LIMITS.phraseChars, `${where}: фраза длиннее ${LIMITS.phraseChars} знаков`);
         const hits = negativeHits(phrase, negatives);
         check(hits.length === 0, `${where}: фразу «${phrase}» гасит минус-слово ${hits.map((h) => `«${h}»`).join(', ')}`);
       }
-      for (const ad of group.ads ?? []) {
-        length(ad.title1, LIMITS.title1, `${where}, заголовок 1`);
-        length(ad.title2, LIMITS.title2, `${where}, заголовок 2`);
-        length(ad.text, LIMITS.text, `${where}, текст`);
-        for (const field of ['title1', 'title2', 'text']) clean(ad[field] ?? '', `${where}, ${field}`);
+      // Одно комбинаторное объявление на группу: Директ сам собирает
+      // сочетания, поэтому любой заголовок должен читаться с любым текстом.
+      const headlines = group.ad?.headlines ?? [];
+      const texts = group.ad?.texts ?? [];
+      check(headlines.length > 0 && headlines.length <= LIMITS.headlines, `${where}: заголовков ${headlines.length}, нужно от 1 до ${LIMITS.headlines}`);
+      check(texts.length > 0 && texts.length <= LIMITS.texts, `${where}: текстов ${texts.length}, нужно от 1 до ${LIMITS.texts}`);
+      check(new Set(headlines).size === headlines.length && new Set(texts).size === texts.length, `${where}: заголовки или тексты повторяются`);
+      for (const headline of headlines) {
+        length(headline, LIMITS.headline, `${where}, заголовок`);
+        words(headline, LIMITS.headlineWord, `${where}, заголовок`);
+        clean(headline, `${where}, заголовок`);
+      }
+      for (const text of texts) {
+        length(text, LIMITS.text, `${where}, текст`);
+        words(text, LIMITS.textWord, `${where}, текст`);
+        clean(text, `${where}, текст`);
       }
     }
 
@@ -160,13 +205,12 @@ export function validateCampaigns(source, { root = ROOT } = {}) {
     if (fs.existsSync(docFile)) {
       const doc = fs.readFileSync(docFile, 'utf8');
       for (const group of campaign.groups ?? []) {
-        for (const ad of group.ads ?? []) {
-          for (const field of ['title1', 'title2', 'text']) {
-            check(doc.includes(ad[field]), `${campaign.doc}: нет текста «${ad[field]}» из ${group.name} — описание разошлось с источником`);
-          }
+        for (const value of [...(group.ad?.headlines ?? []), ...(group.ad?.texts ?? [])]) {
+          check(doc.includes(value), `${campaign.doc}: нет текста «${value}» из ${group.name} — описание разошлось с источником`);
         }
       }
       for (const callout of campaign.callouts ?? []) check(doc.includes(callout), `${campaign.doc}: нет уточнения «${callout}»`);
+      for (const link of campaign.sitelinks ?? []) check(doc.includes(link.title), `${campaign.doc}: нет быстрой ссылки «${link.title}»`);
     } else {
       problems.push(`${at}: нет описания ${campaign.doc}`);
     }

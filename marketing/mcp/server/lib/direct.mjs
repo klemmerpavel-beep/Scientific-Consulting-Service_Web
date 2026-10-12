@@ -2,7 +2,9 @@
  * Клиент API Директа: сервисы JSON v5 и отчёты.
  *
  * Адреса и порядок отчётов — `../../research/04-площадки-и-правила.md`,
- * раздел 6.1. Деньги в сервисах — в микроединицах (рубль × 1 000 000);
+ * раздел 6.1, и `../../research/07-директ-загрузка-и-api.md`, раздел 4:
+ * действующая документация даёт адреса v501, для своего аккаунта
+ * `Client-Login` не нужен. Деньги в сервисах — в микроединицах (рубль × 1 000 000);
  * отчёты запрашиваются в рублях без НДС.
  */
 
@@ -50,7 +52,7 @@ export function createDirect({
   token,
   clientLogin = null,
   sandbox = true,
-  version = 'v5',
+  version = 'v501',
   fetchImpl = globalThis.fetch,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   maxWaitMs = 180_000,

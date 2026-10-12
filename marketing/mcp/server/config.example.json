@@ -1,11 +1,11 @@
 {
   "clientLogin": null,
   "sandbox": true,
-  "apiVersion": "v5",
+  "apiVersion": "v501",
   "write": false,
   "confirmTtlHours": 72,
   "maxCodeAttempts": 5,
-  "metrika": { "counterId": null, "goalId": null },
+  "metrika": { "counterId": null, "goalId": null, "attribution": "last" },
   "journal": "var/journal.jsonl",
   "autoStop": { "enabled": false },
   "directions": {

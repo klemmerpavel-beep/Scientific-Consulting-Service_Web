@@ -9,14 +9,14 @@
 const BASE = 'https://api-metrika.yandex.net/stat/v1/data';
 
 export function createMetrika({ token, counterId, fetchImpl = globalThis.fetch }) {
-  async function goalConversions({ goalId, dateFrom, dateTo }) {
+  async function goalConversions({ goalId, attribution = 'last', dateFrom, dateTo }) {
     if (!token) throw new Error('Нет токена Метрики: переменная METRIKA_TOKEN');
     if (!counterId) throw new Error('Не задан номер счётчика: metrika.counterId в конфигурации');
     if (!goalId) throw new Error('Не задана цель: metrika.goalId в конфигурации');
     const query = new URLSearchParams({
       ids: String(counterId),
       metrics: `ym:s:visits,ym:s:goal${goalId}reaches`,
-      dimensions: 'ym:s:lastsignUTMSource,ym:s:lastsignUTMCampaign,ym:s:startURLPath',
+      dimensions: `ym:s:${attribution}UTMSource,ym:s:${attribution}UTMCampaign,ym:s:startURLPath`,
       date1: dateFrom,
       date2: dateTo,
       accuracy: 'full',

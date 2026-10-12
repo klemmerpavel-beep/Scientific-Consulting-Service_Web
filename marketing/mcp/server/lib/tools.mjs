@@ -252,7 +252,7 @@ export function createTools({ config, direct, metrika, journal, proposals, now =
         };
         if (config.metrika.goalId) {
           definition.Goals = [String(config.metrika.goalId)];
-          definition.AttributionModels = ['LSC'];
+          definition.AttributionModels = ['LSCCD'];
         }
         const rows = (await api().report(definition)).map(normalizeRow);
         read('stats_report', args, `строк: ${rows.length}`);
@@ -288,7 +288,7 @@ export function createTools({ config, direct, metrika, journal, proposals, now =
       inputSchema: { type: 'object', properties: RANGE, required: ['date_from', 'date_to'], additionalProperties: false },
       async run(args) {
         const { from, to } = dates(args);
-        const rows = await metrika().goalConversions({ goalId: config.metrika.goalId, dateFrom: from, dateTo: to });
+        const rows = await metrika().goalConversions({ goalId: config.metrika.goalId, attribution: config.metrika.attribution, dateFrom: from, dateTo: to });
         read('goal_conversions', args, `строк: ${rows.length}`);
         return textResult({ period: { from, to }, rows });
       },

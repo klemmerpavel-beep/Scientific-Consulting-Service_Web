@@ -26,15 +26,22 @@ export function validateConfig(raw, { baseDir = process.cwd() } = {}) {
   const config = {
     clientLogin: raw.clientLogin ?? null,
     sandbox: raw.sandbox !== false,
-    apiVersion: raw.apiVersion ?? 'v5',
+    apiVersion: raw.apiVersion ?? 'v501',
     write: raw.write === true,
     confirmTtlHours: raw.confirmTtlHours ?? 72,
     maxCodeAttempts: raw.maxCodeAttempts ?? 5,
-    metrika: { counterId: raw.metrika?.counterId ?? null, goalId: raw.metrika?.goalId ?? null },
+    metrika: {
+      counterId: raw.metrika?.counterId ?? null,
+      goalId: raw.metrika?.goalId ?? null,
+      // С 20.05.2026 Метрика отключила «Последний значимый переход»
+      // (lastsign); «Последний переход» остался.
+      attribution: raw.metrika?.attribution ?? 'last',
+    },
     journal: path.resolve(baseDir, raw.journal ?? 'var/journal.jsonl'),
     directions: {},
   };
   if (!/^v5\d*$/.test(config.apiVersion)) fail('apiVersion — v5 или v501');
+  if (!/^[a-z_]+$/.test(config.metrika.attribution)) fail('metrika.attribution — модель атрибуции латиницей, например last');
   positive(config.confirmTtlHours, 'confirmTtlHours');
   positive(config.maxCodeAttempts, 'maxCodeAttempts');
   if (raw.autoStop?.enabled) fail('autoStop.enabled: остановка по порогу в каркас не входит, оставьте false');

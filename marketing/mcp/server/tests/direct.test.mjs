@@ -20,6 +20,8 @@ test('образец конфигурации проходит проверку,
   const config = validateConfig(EXAMPLE);
   assert.equal(config.write, false);
   assert.equal(config.sandbox, true);
+  assert.equal(config.apiVersion, 'v501');
+  assert.equal(config.metrika.attribution, 'last');
   assert.equal(config.directions.STU.bidMax, 165);
   assert.equal(config.directions.PG.monthlySpendMax, 8197);
 });
@@ -56,7 +58,7 @@ test('вызов сервиса: песочница, токен, логин кл
   ]);
   const direct = createDirect({ token: 't0k', clientLogin: 'rusdron', fetchImpl });
   assert.deepEqual(await direct.call('campaigns', 'get', { SelectionCriteria: {} }), { Campaigns: [] });
-  assert.equal(requests[0].url, 'https://api-sandbox.direct.yandex.com/json/v5/campaigns');
+  assert.equal(requests[0].url, 'https://api-sandbox.direct.yandex.com/json/v501/campaigns');
   assert.equal(requests[0].init.headers.Authorization, 'Bearer t0k');
   assert.equal(requests[0].init.headers['Client-Login'], 'rusdron');
   assert.deepEqual(JSON.parse(requests[0].init.body), { method: 'get', params: { SelectionCriteria: {} } });
@@ -82,11 +84,11 @@ test('отчёт: очередь 201 и 202, ожидание retryIn, зате�
     new Response('CampaignName\tCost\nPD_STU\t100\n', { status: 200 }),
   ]);
   const waits = [];
-  const direct = createDirect({ token: 't', fetchImpl, sleep: async (ms) => waits.push(ms), version: 'v501' });
+  const direct = createDirect({ token: 't', fetchImpl, sleep: async (ms) => waits.push(ms), version: 'v5' });
   const rows = await direct.report({ ReportType: 'CAMPAIGN_PERFORMANCE_REPORT', FieldNames: ['CampaignName', 'Cost'] });
   assert.deepEqual(rows, [{ CampaignName: 'PD_STU', Cost: 100 }]);
   assert.deepEqual(waits, [2000, 3000]);
-  assert.equal(requests[0].url, 'https://api-sandbox.direct.yandex.com/json/v501/reports');
+  assert.equal(requests[0].url, 'https://api-sandbox.direct.yandex.com/json/v5/reports');
   const body = JSON.parse(requests[0].init.body);
   assert.equal(body.params.IncludeVAT, 'NO');
   assert.equal(body.params.Format, 'TSV');
@@ -108,10 +110,11 @@ test('Метрика: цель lead по меткам и странице вхо
     ),
   ]);
   const metrika = createMetrika({ token: 'm', counterId: 12345678, fetchImpl });
-  const rows = await metrika.goalConversions({ goalId: 987, dateFrom: '2026-10-27', dateTo: '2026-11-02' });
+  const rows = await metrika.goalConversions({ goalId: 987, attribution: 'last', dateFrom: '2026-10-27', dateTo: '2026-11-02' });
   assert.deepEqual(rows, [{ utmSource: 'yandex', utmCampaign: '101', landing: '/students', visits: 40, leads: 2 }]);
   const url = new URL(requests[0].url);
   assert.equal(url.searchParams.get('metrics'), 'ym:s:visits,ym:s:goal987reaches');
+  assert.equal(url.searchParams.get('dimensions'), 'ym:s:lastUTMSource,ym:s:lastUTMCampaign,ym:s:startURLPath');
   assert.equal(requests[0].init.headers.Authorization, 'OAuth m');
   await assert.rejects(createMetrika({ token: 'm', counterId: null }).goalConversions({ goalId: 1, dateFrom: 'a', dateTo: 'b' }), /counterId/);
 });

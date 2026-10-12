@@ -155,6 +155,7 @@ test('отчёт: разрез, рубли без НДС, конверсии п�
   const result = parse(await tools.stats_report.run({ date_from: '2026-10-27', date_to: '2026-11-02', group_by: 'campaign' }));
   assert.deepEqual(result.rows, [{ CampaignName: 'PD_STU', Clicks: 3, Conversions: 1 }]);
   assert.deepEqual(direct.reports[0].Goals, ['987']);
+  assert.deepEqual(direct.reports[0].AttributionModels, ['LSCCD']);
   assert.ok(direct.reports[0].FieldNames.includes('Conversions'));
   await assert.rejects(tools.stats_report.run({ date_from: '2026-11-02', date_to: '2026-10-27', group_by: 'day' }), /позже/);
   assert.equal(journal.read().filter((e) => e.type === 'read').length, 1);
