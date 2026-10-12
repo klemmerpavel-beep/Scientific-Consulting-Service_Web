@@ -286,7 +286,7 @@ describe('удаление данных субъекта', { skip: !enabled }, a
         dueOn: new Date('2026-12-01T00:00:00Z'),
       },
     });
-    // Оценка сопровождения с отзывом, разрешённым к публикации (Р-561).
+    // Оценка сопровождения с отзывом, разрешённым к публикации (Р-564).
     await prisma.workRating.create({
       data: { projectId: project.id, score: 5, text: 'Смирнов О. П.: спасибо за сопровождение', publishAllowed: true, managerId: manager.id },
     });
@@ -554,7 +554,7 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     assert.doesNotMatch(leadComments[0]!.body, /Смирнов/u, 'комментарий к заявке называет клиента');
     const assignment = await prisma.assignment.findUnique({ where: { id: ids.assignment } });
     assert.doesNotMatch(assignment?.text ?? '', /Смирнов/u, 'поручение называет клиента');
-    // Отзыв к оценке затёрт, разрешение снято, оценка осталась (Р-561).
+    // Отзыв к оценке затёрт, разрешение снято, оценка осталась (Р-564).
     const rating = await prisma.workRating.findUnique({ where: { projectId: ids.project } });
     assert.equal(rating?.text, null, 'отзыв к оценке не затёрт');
     assert.equal(rating?.publishAllowed, false);

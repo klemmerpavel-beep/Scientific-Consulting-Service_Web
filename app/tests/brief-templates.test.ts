@@ -1,5 +1,5 @@
 /**
- * Шаблоны документов (решение Р-554): каждый шаблон читается тем же
+ * Шаблоны документов (решение Р-557): каждый шаблон читается тем же
  * разборщиком, все его поля узнаются, файл без автора и побайтно
  * повторяется.
  */
@@ -13,7 +13,7 @@ import { BRIEF_TEMPLATES, briefTemplate } from '../src/lib/cabinet/brief/templat
 import { docx } from '../src/lib/cabinet/docx.ts';
 import { documentAuthors } from '../src/lib/cabinet/identity-hint.ts';
 
-describe('шаблоны документов (Р-554)', () => {
+describe('шаблоны документов (Р-557)', () => {
   for (const template of BRIEF_TEMPLATES) {
     it(`${template.file}: все поля узнаются разборщиком`, () => {
       const { lines, format } = readBrief(template.build());
@@ -51,7 +51,7 @@ describe('шаблоны документов (Р-554)', () => {
   });
 });
 
-describe('документ Word из кода (Р-554)', () => {
+describe('документ Word из кода (Р-557)', () => {
   it('текст экранируется, служебные символы убираются', () => {
     const bytes = docx('Проверка', [{ kind: 'paragraph', text: 'A & B <c> "d"\u0001' }]);
     const { lines } = readBrief(bytes);

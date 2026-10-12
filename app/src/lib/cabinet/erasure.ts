@@ -563,7 +563,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
       leadIds.length === 0
         ? { count: 0 }
         : await tx.leadComment.updateMany({ where: { leadId: { in: leadIds } }, data: { body: ERASED } });
-    // Отзыв к оценке сопровождения — текст клиента (решение Р-561): он
+    // Отзыв к оценке сопровождения — текст клиента (решение Р-564): он
     // затирается, и разрешение на публикацию снимается — затёртое в
     // выгрузку отзывов не попадёт. Оценка остаётся цифрой без автора.
     const ratingsErased = await tx.workRating.updateMany({

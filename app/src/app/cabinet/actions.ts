@@ -694,7 +694,7 @@ export async function saveProject(form: FormData): Promise<void> {
 }
 
 /**
- * Отметки чек-листа вида работы (решение Р-551). Форма шлёт отмеченное
+ * Отметки чек-листа вида работы (решение Р-554). Форма шлёт отмеченное
  * сейчас и отмеченное при показе: меняется только разница, и чужая правка
  * между показом и отправкой не теряется.
  */
@@ -721,7 +721,7 @@ export async function saveWorkChecklist(form: FormData): Promise<void> {
   redirect(`${back}?saved=1`);
 }
 
-/** Документ для карточки работы: разбор и переход к сравнению (Р-557). */
+/** Документ для карточки работы: разбор и переход к сравнению (Р-560). */
 export async function parseWorkBrief(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
@@ -740,7 +740,7 @@ export async function parseWorkBrief(form: FormData): Promise<void> {
   redirect(`${back}?brief=${encodeURIComponent(ref)}`);
 }
 
-/** Применить отмеченное из документа и приложить его к этапу (Р-557). */
+/** Применить отмеченное из документа и приложить его к этапу (Р-560). */
 export async function applyWorkBriefAction(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
@@ -764,7 +764,7 @@ export async function applyWorkBriefAction(form: FormData): Promise<void> {
 
 const TEMPLATES_TAB = '/cabinet/manage/checklists?view=templates';
 
-/** Загрузить или заменить шаблон практики (решение Р-558). */
+/** Загрузить или заменить шаблон практики (решение Р-561). */
 export async function uploadOwnerTemplate(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const file = form.get('file');
@@ -786,7 +786,7 @@ export async function uploadOwnerTemplate(form: FormData): Promise<void> {
   redirect(`${TEMPLATES_TAB}&template=${replaced ? 'replaced' : 'uploaded'}#practice-templates`);
 }
 
-/** Убрать шаблон практики (решение Р-558). */
+/** Убрать шаблон практики (решение Р-561). */
 export async function removeOwnerTemplateAction(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   let failure: string | null = null;
@@ -799,7 +799,7 @@ export async function removeOwnerTemplateAction(form: FormData): Promise<void> {
   redirect(`${TEMPLATES_TAB}&template=removed#practice-templates`);
 }
 
-/** Оценка сопровождения клиентом завершённой работы (решение Р-561). */
+/** Оценка сопровождения клиентом завершённой работы (решение Р-564). */
 export async function rateWorkAction(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
@@ -964,7 +964,7 @@ export async function decideOnVersion(form: FormData): Promise<void> {
  * заявитель уже известен по сессии, согласие принято при первом входе, и
  * спрашивать контакт заново незачем.
  */
-/** Документ для «Новой заявки» клиента: разбор и заполнение формы (Р-559). */
+/** Документ для «Новой заявки» клиента: разбор и заполнение формы (Р-562). */
 export async function parseRequestBrief(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const file = form.get('brief');
@@ -984,7 +984,7 @@ export async function parseRequestBrief(form: FormData): Promise<void> {
 export async function submitCabinetRequest(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   // Документ, из которого заполнена форма, — вложением заявки, в счёт
-  // пяти файлов (решение Р-559). Объект пропал (старше суток) — заявка
+  // пяти файлов (решение Р-562). Объект пропал (старше суток) — заявка
   // уходит без него, и экран называет потерю, как у прочих вложений.
   const brief = String(form.get('brief') ?? '');
   const variant = String(form.get('variant') ?? '');
@@ -1290,7 +1290,7 @@ export async function commentLead(form: FormData): Promise<void> {
  * При ошибке ввода форма возвращается с причиной, а не теряется.
  */
 /**
- * Документ на «Новом заказе» (решение Р-556): разбор и переход на тот же
+ * Документ на «Новом заказе» (решение Р-559): разбор и переход на тот же
  * экран с ключом документа — форма заполнится его значениями.
  */
 export async function parseOrderBrief(form: FormData): Promise<void> {
@@ -1353,11 +1353,11 @@ export async function createOrder(form: FormData): Promise<void> {
     const fields = ['customer', 'email', 'phone', 'serviceTypeId', 'title', 'topic', 'summary', 'university', 'speciality', 'orderedOn', 'dueOn', 'cost', 'paid', 'status', 'managerId'];
     const draft: Record<string, string> = Object.fromEntries(fields.map((name) => [name, text(name)]));
     if (choiceNeeded) draft.clientChoiceNeeded = '1';
-    // Документ остаётся при форме: отказ не теряет разобранное (Р-556).
+    // Документ остаётся при форме: отказ не теряет разобранное (Р-559).
     const back = brief === '' ? '/cabinet/manage/orders/new' : `/cabinet/manage/orders/new?brief=${encodeURIComponent(brief)}`;
     redirect(await withError(back, failure ?? 'Не удалось завести заказ', { draft }));
   }
-  // Документ, из которого заполнен заказ, — в материалы работы (Р-556).
+  // Документ, из которого заполнен заказ, — в материалы работы (Р-559).
   // Отказ хранилища заказ не отменяет: он уже заведён.
   if (brief !== '' && projectId !== null) {
     try {

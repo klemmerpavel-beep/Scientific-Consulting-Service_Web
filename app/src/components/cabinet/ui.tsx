@@ -491,7 +491,7 @@ export function Checkbox({
 }: {
   label: ReactNode;
   name: string;
-  /** Значение флажка: несколько флажков с одним именем — перечень (Р-551). */
+  /** Значение флажка: несколько флажков с одним именем — перечень (Р-554). */
   value?: string;
   defaultChecked?: boolean;
   disabled?: boolean;

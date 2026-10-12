@@ -1,6 +1,6 @@
 /**
  * Автоотметки шагов чек-листа по состоянию работы (улучшение У-3,
- * решение Р-552).
+ * решение Р-555).
  */
 
 import assert from 'node:assert/strict';
@@ -21,7 +21,7 @@ const base: WorkState = {
   status: 'ACTIVE',
 };
 
-describe('автоотметки (Р-552)', () => {
+describe('автоотметки (Р-555)', () => {
   it('каждое правило стоит хотя бы у одного шага и подписано', () => {
     const used = new Set(CHECKLISTS.flatMap((list) => list.steps.map(stepAuto)).filter((rule) => rule !== null));
     for (const rule of Object.keys(AUTO_NOTE) as AutoRule[]) assert.ok(used.has(rule), `правило ${rule} не стоит ни у одного шага`);

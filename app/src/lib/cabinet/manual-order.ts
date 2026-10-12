@@ -33,9 +33,9 @@ export interface ManualOrderInput {
   readonly serviceTypeId: string;
   readonly title: string;
   readonly topic?: string | null;
-  /** Суть задачи — `Project.summary` (решение Р-556). */
+  /** Суть задачи — `Project.summary` (решение Р-559). */
   readonly summary?: string | null;
-  /** Вуз и направление дополняют пустые поля карточки клиента (Р-556). */
+  /** Вуз и направление дополняют пустые поля карточки клиента (Р-559). */
   readonly university?: string | null;
   readonly speciality?: string | null;
   readonly orderedOn?: Date | null;

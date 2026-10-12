@@ -95,7 +95,7 @@ export default async function ProjectsScreen({
   const projects = list.rows;
   const pendingAll = await pendingActions(actor);
   const unread = await unreadByProject(actor, projects.map((p) => p.id));
-  // Счёт отметок чек-листа вида работы — у тех, кто отмечает (Р-551).
+  // Счёт отметок чек-листа вида работы — у тех, кто отмечает (Р-554).
   const checklists = await checklistCounts(
     actor,
     projects.map((p) => ({ id: p.id, clientId: p.clientId, managerId: p.managerId, expertId: p.expertId, serviceCode: p.serviceType.code })),
@@ -310,7 +310,7 @@ export default async function ProjectsScreen({
           title={title}
           answer={answer}
           // Чек-листы куратора — справа вверху, где общее действие экрана
-          // (Р-201): меню куратора не меняется (Р-548).
+          // (Р-201): меню куратора не меняется (Р-551).
           action={
             forExpert && can(actor, 'CHECKLIST_VIEW') ? (
               <ButtonLink href="/cabinet/manage/checklists">Чек-листы</ButtonLink>
@@ -624,7 +624,7 @@ export default async function ProjectsScreen({
               newMessages === 0 || forExpert
                 ? null
                 : `${newMessages} ${plural(newMessages, 'новое сообщение', 'новых сообщения', 'новых сообщений')}`,
-              // «Чек-лист 7 из 11» — пока работа не закрыта (Р-551).
+              // «Чек-лист 7 из 11» — пока работа не закрыта (Р-554).
               (() => {
                 const marks = checklists.get(project.id);
                 return marks === undefined || project.status === 'COMPLETED' || project.status === 'CANCELLED'

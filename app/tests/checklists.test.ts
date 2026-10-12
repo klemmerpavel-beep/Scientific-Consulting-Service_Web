@@ -1,5 +1,5 @@
 /**
- * Чек-листы практики (решения Р-494, Р-548): кому какие видны, куда ведут
+ * Чек-листы практики (решения Р-494, Р-551): кому какие видны, куда ведут
  * ссылки и что кнопки, названные в шагах, на экранах есть — текст
  * чек-листа не расходится с кабинетом.
  */
@@ -32,7 +32,7 @@ function sources(dir: string): string[] {
 }
 const CODE = sources(SRC).map((file) => readFileSync(file, 'utf8')).join('\n');
 
-describe('чек-листы практики (Р-494, Р-548, Р-549)', () => {
+describe('чек-листы практики (Р-494, Р-551, Р-552)', () => {
   it('руководителю — все, менеджеру и куратору — свои, клиенту экран закрыт', () => {
     assert.equal(checklistsFor(actor('HEAD')).length, CHECKLISTS.length);
     const manager = checklistsFor(actor('MANAGER')).map((list) => list.key);
@@ -108,7 +108,7 @@ describe('чек-листы практики (Р-494, Р-548, Р-549)', () => {
       'Приостановить',
       'Зарегистрировать требование',
       'Исполнить',
-      // Процессные чек-листы менеджера (Р-549).
+      // Процессные чек-листы менеджера (Р-552).
       'Отказ',
       'Напоминание о материалах',
       'Напоминание о согласовании',
@@ -117,7 +117,7 @@ describe('чек-листы практики (Р-494, Р-548, Р-549)', () => {
       'Возобновить',
       'Сохранить менеджера',
       'Новый заказ',
-      // Куратору (Р-548).
+      // Куратору (Р-551).
       'Сообщить руководителю',
       'Загрузить',
       'Сдать этап менеджеру',
@@ -130,14 +130,14 @@ describe('чек-листы практики (Р-494, Р-548, Р-549)', () => {
     }
   });
 
-  it('экран чек-листов — первым блоком «Управления» (Р-555), у менеджера — ссылка и на «Сегодня»', () => {
+  it('экран чек-листов — первым блоком «Управления» (Р-558), у менеджера — ссылка и на «Сегодня»', () => {
     const tools = readFileSync(path.join(APP, 'cabinet', 'manage', 'tools', 'page.tsx'), 'utf8');
     assert.match(tools, /<MaterialsList[\s\S]{0,80}title="Чек-листы и материалы"/u);
     const today = readFileSync(path.join(APP, 'cabinet', 'manage', 'page.tsx'), 'utf8');
     assert.match(today, /<ButtonLink href="\/cabinet\/manage\/checklists">Чек-листы<\/ButtonLink>/u);
   });
 
-  it('куратор открывает чек-листы с «Назначенных работ» и со сдачи этапа (Р-548)', () => {
+  it('куратор открывает чек-листы с «Назначенных работ» и со сдачи этапа (Р-551)', () => {
     const works = readFileSync(path.join(APP, 'cabinet', 'projects', 'page.tsx'), 'utf8');
     assert.match(works, /forExpert && can\(actor, 'CHECKLIST_VIEW'\)[\s\S]{0,80}<ButtonLink href="\/cabinet\/manage\/checklists">Чек-листы<\/ButtonLink>/u);
     const stage = readFileSync(path.join(APP, 'cabinet', 'stages', '[id]', 'page.tsx'), 'utf8');

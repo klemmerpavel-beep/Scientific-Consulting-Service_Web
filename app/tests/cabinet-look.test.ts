@@ -149,7 +149,7 @@ describe('начальный экран роли отвечает на свой 
 });
 
 describe('менеджер начинает с «Сегодня» (М-05, Р-305)', () => {
-  it('«Управление» с материалами есть в снимках менеджера и куратора (Р-555)', () => {
+  it('«Управление» с материалами есть в снимках менеджера и куратора (Р-558)', () => {
     assert.equal(existsSync(path.join(PROTOTYPE, 'manager', 'manage', 'tools')), true);
     assert.equal(existsSync(path.join(PROTOTYPE, 'expert', 'manage', 'tools')), true);
   });

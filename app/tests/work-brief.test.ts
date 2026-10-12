@@ -1,5 +1,5 @@
 /**
- * Сравнение «было — станет» для карточки работы (решение Р-557).
+ * Сравнение «было — станет» для карточки работы (решение Р-560).
  */
 
 import assert from 'node:assert/strict';
@@ -12,7 +12,7 @@ import { SAMPLES, makeDocx } from './helpers/make-docx.ts';
 
 const empty = { topic: null, summary: null, university: null, speciality: null };
 
-describe('сравнение для карточки работы (Р-557)', () => {
+describe('сравнение для карточки работы (Р-560)', () => {
   it('тема и суть — заменить; вуз и направление — дополнить пустое', () => {
     const brief = parseBrief(readBrief(makeDocx(SAMPLES.thesis)).lines);
     const rows = workBriefRows({ ...empty, topic: 'Старая тема' }, brief.fields);

@@ -372,7 +372,7 @@ export default async function ProjectScreen({
   // Передать работу другому менеджеру может только руководитель (Р-149;
   // названия ролей — РК-01).
   const maySetManager = can(actor, 'PROJECT_SET_MANAGER', ref);
-  // Чек-лист вида работы — отдельным экраном со счётом отметок (Р-551):
+  // Чек-лист вида работы — отдельным экраном со счётом отметок (Р-554):
   // руководителю, менеджеру работы и назначенному куратору.
   const checklist = (
     await checklistCounts(actor, [{ ...ref, serviceCode: project.serviceType.code }])
@@ -398,10 +398,10 @@ export default async function ProjectScreen({
     0,
   );
 
-  // Оценка сопровождения (Р-561): клиенту завершённой работы, один раз.
+  // Оценка сопровождения (Р-564): клиенту завершённой работы, один раз.
   const rating = forClient ? await ratingFor(actor, { ...ref, status: project.status }) : null;
 
-  // «Что подготовить» (Р-560): пока первый этап не согласован — кнопка со
+  // «Что подготовить» (Р-563): пока первый этап не согласован — кнопка со
   // счётом приложенного; клиенту — его перечень, сотруднику — отметки.
   const prepare = prepareList(project.serviceType.code);
   const prepareCount =
@@ -752,7 +752,7 @@ export default async function ProjectScreen({
                 Изменить карточку
               </ButtonLink>
             ) : null}
-            {/* Исходные данные на утверждение — документом (Р-557). */}
+            {/* Исходные данные на утверждение — документом (Р-560). */}
             {mayEdit && !closed && can(actor, 'PROJECT_EDIT', ref) ? (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/brief`}>Обновить из документа</ButtonLink>
             ) : null}
@@ -782,7 +782,7 @@ export default async function ProjectScreen({
         ) : null}
       </ScreenTop>
       <ActionError id={errorId} />
-      {/* Исход «Обновить из документа» (Р-557): блок исхода в счёт пяти
+      {/* Исход «Обновить из документа» (Р-560): блок исхода в счёт пяти
           не входит (Р-253). */}
       {briefApplied === undefined ? null : <Outcome>Карточка обновлена из документа, документ приложен к работе.</Outcome>}
       {rated === undefined || rating?.score === null || rating === null ? null : (
@@ -1089,7 +1089,7 @@ export default async function ProjectScreen({
         ) : null}
       </Board>
 
-      {/* Оценка сопровождения (улучшение У-4, решение Р-561): клиенту
+      {/* Оценка сопровождения (улучшение У-4, решение Р-564): клиенту
           завершённой работы, пока оценки нет. Пятый блок карточки клиента:
           «Управления работой» у него нет (Р-183). */}
       {rating?.mayRate === true ? (

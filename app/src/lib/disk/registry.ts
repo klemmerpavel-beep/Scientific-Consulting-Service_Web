@@ -72,7 +72,7 @@ export async function reviewsTable(): Promise<Table> {
     where: { form: 'review' },
     orderBy: { createdAt: 'desc' },
   });
-  // Отзывы к оценкам из кабинета, разрешённые к публикации (Р-561): без
+  // Отзывы к оценкам из кабинета, разрешённые к публикации (Р-564): без
   // имени, с видом работы и оценкой; затёртые сюда не попадают.
   const ratings = await prisma.workRating.findMany({
     where: { publishAllowed: true, text: { not: null } },
