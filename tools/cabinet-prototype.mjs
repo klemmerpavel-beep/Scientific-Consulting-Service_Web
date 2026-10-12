@@ -95,6 +95,8 @@ const QUOTA = [
   [/^\/cabinet\/projects\/[^/]+\/materials$/u, 2],
   [/^\/cabinet\/projects\/[^/]+\/messages$/u, 2],
   [/^\/cabinet\/projects\/[^/]+\/payments$/u, 2],
+  // Чек-лист вида работы — один образец на два вида (Р-551).
+  [/^\/cabinet\/projects\/[^/]+\/checklist$/u, 2],
   [/^\/cabinet\/stages\/[^/]+$/u, 5],
   [/^\/cabinet\/manage\/import\/[^/]+$/u, 1],
   // Заявок в очереди двадцать на страницу, а образец разбора один: снимка
