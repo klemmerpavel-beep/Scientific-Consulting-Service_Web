@@ -2011,7 +2011,14 @@ export async function saveAnalyticsSettings(form: FormData): Promise<void> {
  */
 export async function markRecommendationAction(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
-  const back = String(form.get('back') ?? '') === 'recommendations' ? '/cabinet/manage/recommendations' : '/cabinet/manage/recommendations/calendar';
+  // «Реклама» отмечает свои предложения тем же механизмом (решение Р-550).
+  const from = String(form.get('back') ?? '');
+  const back =
+    from === 'recommendations'
+      ? '/cabinet/manage/recommendations'
+      : from === 'ads'
+        ? '/cabinet/manage/ads?tab=proposals'
+        : '/cabinet/manage/recommendations/calendar';
   const raw = String(form.get('status') ?? '');
   const current = String(form.get('current') ?? '');
   let failure: string | null = null;
