@@ -10,7 +10,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 
 import { AccessDenied, can, type Actor } from '../src/lib/cabinet/access.ts';
-import { CHECKLISTS, CHECKLIST_GROUPS, audienceLabel, checklistsFor } from '../src/lib/cabinet/checklists.ts';
+import { CHECKLISTS, CHECKLIST_GROUPS, audienceLabel, checklistsFor, stepText } from '../src/lib/cabinet/checklists.ts';
 
 const SRC = path.join(import.meta.dirname, '..', 'src');
 const APP = path.join(SRC, 'app');
@@ -123,7 +123,7 @@ describe('чек-листы практики (Р-494, Р-548, Р-549)', () => {
       'Сдать этап менеджеру',
       'Замечания приняты в работу',
     ];
-    const text = CHECKLISTS.flatMap((list) => list.steps).join('\n');
+    const text = CHECKLISTS.flatMap((list) => list.steps.map(stepText)).join('\n');
     for (const label of labels) {
       assert.ok(text.includes(`«${label}»`), `в шагах нет «${label}»`);
       assert.ok(CODE.includes(label), `на экранах нет «${label}»`);

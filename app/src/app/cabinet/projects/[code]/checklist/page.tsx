@@ -4,6 +4,7 @@ import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
 import {
   Button,
+  ButtonLink,
   Card,
   Checkbox,
   Empty,
@@ -49,6 +50,12 @@ export default async function WorkChecklistScreen({
         backHref={back}
         backLabel={project.title}
         title={list === null ? 'Чек-лист работы' : `Чек-лист: ${project.serviceType.name}`}
+        // Процессные чек-листы по этой работе — с автоотметками (Р-552).
+        action={
+          <ButtonLink href={`/cabinet/manage/checklists?work=${encodeURIComponent(project.code)}`}>
+            Порядок дел по работе
+          </ButtonLink>
+        }
         note={
           progress === null
             ? null

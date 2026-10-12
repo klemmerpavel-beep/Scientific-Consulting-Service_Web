@@ -144,6 +144,37 @@ describe('отметки чек-листа работы', { skip: !enabled }, as
     assert.deepEqual(keys, [s1, s3].sort());
   });
 
+  it('состояние для автоотметок — по правам смотрящего (Р-552)', async () => {
+    const project = await newProject('G');
+    await prisma.stage.createMany({
+      data: [
+        { projectId: project.id, position: 1, title: 'Этап 1', state: 'DONE' },
+        { projectId: project.id, position: 2, title: 'Этап 2', state: 'DONE' },
+      ],
+    });
+    const contract = await prisma.contract.create({
+      data: { projectId: project.id, number: `CM-${tail}-G`, totalAmount: 100_00n },
+    });
+    await prisma.tranche.create({ data: { contractId: contract.id, title: 'Весь платёж', amount: 100_00n, status: 'PAID' } });
+    await prisma.expertPayout.create({ data: { projectId: project.id, expertId: ids.expert!, amount: 10_00n, status: 'PAID' } });
+    const forHead = await marks.workState(head(), project.code);
+    assert.equal(forHead?.state.stagesDone, 2);
+    assert.equal(forHead?.state.contractSchedule, true);
+    assert.equal(forHead?.state.moneySettled, true);
+    assert.equal(forHead?.state.payoutsPaid, true);
+    assert.equal(forHead?.state.curatorReady, false, 'договор поручения у куратора не отмечен');
+    // Менеджеру начисления куратору не видны: «не знаю», а не «да».
+    const forManager = await marks.workState(manager(), project.code);
+    assert.equal(forManager?.state.payoutsPaid, null);
+    assert.equal(forManager?.state.moneySettled, true);
+    assert.equal(await marks.workState(stranger(), project.code), null);
+    assert.equal(await marks.workState(client(), project.code), null);
+    await prisma.expertPayout.deleteMany({ where: { projectId: project.id } });
+    await prisma.tranche.deleteMany({ where: { contractId: contract.id } });
+    await prisma.contract.delete({ where: { id: contract.id } });
+    await prisma.stage.deleteMany({ where: { projectId: project.id } });
+  });
+
   it('счёт на плашке — только у тех, кто отмечает', async () => {
     const project = await newProject('F');
     await marks.saveChecklistMarks(manager(), { projectId: project.id, checklistKey: list.key, shown: [], checked: [s1!, s2!] });

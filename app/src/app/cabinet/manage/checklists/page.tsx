@@ -19,8 +19,12 @@ import {
   checklistView,
   checklistViews,
   checklistsForView,
+  stepAuto,
+  stepText,
   type Checklist,
 } from '../../../../lib/cabinet/checklists';
+import { AUTO_NOTE, autoDone, type WorkState } from '../../../../lib/cabinet/checklist-auto';
+import { workState } from '../../../../lib/cabinet/checklist-marks';
 import {
   SERVICE_PHASES,
   serviceChecklistsFor,
@@ -36,7 +40,7 @@ const CHECKLISTS_HREF = '/cabinet/manage/checklists';
 /** Колонка плашек: две колонки своей высоты, как на «Сводке» (Р-489). */
 const STACK = { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, alignSelf: 'start' } as const;
 
-function ChecklistCard({ list, head }: { list: Checklist; head: boolean }) {
+function ChecklistCard({ list, head, state }: { list: Checklist; head: boolean; state: WorkState | null }) {
   return (
     <Card id={list.key}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 4 }}>
@@ -51,11 +55,35 @@ function ChecklistCard({ list, head }: { list: Checklist; head: boolean }) {
         Когда: {list.when}
       </Text>
       <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 2 }}>
-        {list.steps.map((step, index) => (
-          <li key={step}>
-            <Checkbox name={`${list.key}-${index + 1}`} label={`${index + 1}. ${step}`} />
-          </li>
-        ))}
+        {list.steps.map((step, index) => {
+          const text = `${index + 1}. ${stepText(step)}`;
+          const rule = stepAuto(step);
+          // Шаг с правилом, открытый по работе, отмечается по её состоянию
+          // и нажатием не меняется (Р-552). Ответ «не положено знать» —
+          // обычный флажок-памятка.
+          const done = rule === null || state === null ? null : autoDone(rule, state);
+          return (
+            <li key={stepText(step)}>
+              {done === null || rule === null ? (
+                <Checkbox name={`${list.key}-${index + 1}`} label={text} />
+              ) : (
+                <Checkbox
+                  name={`${list.key}-${index + 1}`}
+                  defaultChecked={done}
+                  disabled
+                  label={
+                    <>
+                      {text}
+                      <span style={{ display: 'block', fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                        {done ? `Отмечено кабинетом: ${AUTO_NOTE[rule]}.` : `Кабинет отметит сам: ${AUTO_NOTE[rule]}.`}
+                      </span>
+                    </>
+                  }
+                />
+              )}
+            </li>
+          );
+        })}
       </ol>
       {list.links.length === 0 ? null : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
@@ -130,7 +158,11 @@ function Columns({ cards }: { cards: readonly ReactNode[] }) {
  * менеджеру — их (Р-548). Отметки на экране — памятка на одно дело и не
  * сохраняются.
  */
-export default async function ChecklistsScreen({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+export default async function ChecklistsScreen({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string; work?: string }>;
+}) {
   const actor = await requireActor(CHECKLISTS_HREF);
   if (!can(actor, 'CHECKLIST_VIEW')) redirect(homeFor(actor));
   const head = actor.role === 'HEAD';
@@ -142,8 +174,13 @@ export default async function ChecklistsScreen({ searchParams }: { searchParams:
     : curator
       ? { href: '/cabinet/projects', label: 'Назначенные работы' }
       : { href: '/cabinet/manage', label: 'Сегодня' };
+  const params = await searchParams;
   const views = checklistViews(actor);
-  const view = checklistView(actor, (await searchParams).view);
+  const view = checklistView(actor, params.view);
+  // Открыт по работе (Р-552): шаги, которые кабинет проверяет сам,
+  // отмечены по её состоянию. Чужая или неизвестная работа — обычный экран.
+  const work = params.work === undefined ? null : await workState(actor, params.work);
+  const workQuery = work === null ? '' : `&work=${encodeURIComponent(work.code)}`;
   const lists = checklistsForView(actor, view);
   const groups = CHECKLIST_GROUPS.map((group) => ({
     ...group,
@@ -153,16 +190,20 @@ export default async function ChecklistsScreen({ searchParams }: { searchParams:
   return (
     <Shell actor={actor} current={back.href}>
       <ScreenHead
-        backHref={back.href}
-        backLabel={back.label}
+        backHref={work === null ? back.href : `/cabinet/projects/${encodeURIComponent(work.code)}`}
+        backLabel={work === null ? back.label : work.title}
         title="Чек-листы"
-        note="Порядок основных дел по шагам: что сделать и на каком экране. Отметки здесь — памятка на одно дело, они не сохраняются. Это первая редакция: правки к шагам присылайте кнопкой замечаний справа внизу."
+        note={
+          work === null
+            ? 'Порядок основных дел по шагам: что сделать и на каком экране. Отметки здесь — памятка на одно дело, они не сохраняются. Это первая редакция: правки к шагам присылайте кнопкой замечаний справа внизу.'
+            : `По работе «${work.title}»: шаги, которые кабинет проверяет сам, отмечены по её состоянию. Остальные отметки — памятка, они не сохраняются.`
+        }
       />
 
       <Tabs
         label="Чек-листы"
         items={views.map((item) => ({
-          href: `${CHECKLISTS_HREF}?view=${item.key}`,
+          href: `${CHECKLISTS_HREF}?view=${item.key}${workQuery}`,
           label: item.label,
           active: item.key === view,
         }))}
@@ -191,7 +232,11 @@ export default async function ChecklistsScreen({ searchParams }: { searchParams:
             <Text muted size={14} style={{ marginBottom: 14 }}>
               {group.note}
             </Text>
-            <Columns cards={group.lists.map((list) => <ChecklistCard key={list.key} list={list} head={head} />)} />
+            <Columns
+              cards={group.lists.map((list) => (
+                <ChecklistCard key={list.key} list={list} head={head} state={work?.state ?? null} />
+              ))}
+            />
           </div>
         ))
       )}

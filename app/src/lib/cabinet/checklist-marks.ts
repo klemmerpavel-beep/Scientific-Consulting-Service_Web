@@ -16,6 +16,7 @@
 import { prisma } from '../db.ts';
 import { can, ensure, scopeProjects, workClosed, type Actor } from './access.ts';
 import { record } from './audit.ts';
+import { moneySettled, type WorkState } from './checklist-auto.ts';
 import { checklistProgress, markChanges, serviceChecklist } from './service-checklists.ts';
 
 export interface StepMark {
@@ -119,4 +120,56 @@ export async function saveChecklistMarks(
     );
   });
   return { added: add.length, removed: remove.length };
+}
+
+/**
+ * Состояние работы для автоотметок процессных чек-листов (Р-552); `null` —
+ * работа не видна или смотрящий не ведёт её. Деньги — по правам: договор и
+ * транши видит тот, кому открыт договор, начисления куратору — только
+ * руководитель.
+ */
+export async function workState(actor: Actor, code: string): Promise<{ code: string; title: string; state: WorkState } | null> {
+  const scope = scopeProjects(actor);
+  if (scope === null) return null;
+  const project = await prisma.project.findFirst({
+    where: { code, ...scope },
+    select: {
+      id: true,
+      code: true,
+      title: true,
+      status: true,
+      clientId: true,
+      managerId: true,
+      expertId: true,
+      expert: { select: { status: true, expertProfile: { select: { ndaSignedAt: true } } } },
+      client: { select: { user: { select: { lastLoginAt: true } } } },
+      stages: { select: { state: true } },
+      contract: { select: { totalAmount: true, tranches: { select: { status: true, amount: true } } } },
+    },
+  });
+  if (project === null || !can(actor, 'CHECKLIST_MARK', project)) return null;
+  const contractVisible = can(actor, 'CONTRACT_VIEW', project);
+  const payoutsVisible = can(actor, 'PAYOUT_MANAGE', project);
+  const payouts = payoutsVisible
+    ? await prisma.expertPayout.findMany({ where: { projectId: project.id }, select: { status: true } })
+    : [];
+  const contract = project.contract;
+  return {
+    code: project.code,
+    title: project.title,
+    state: {
+      curatorReady:
+        project.expert !== null && project.expert.status === 'ACTIVE' && project.expert.expertProfile?.ndaSignedAt != null,
+      ownNda: actor.role === 'EXPERT' ? actor.expertNdaSignedAt !== null : null,
+      stages: project.stages.length,
+      stagesDone: project.stages.filter((stage) => stage.state === 'DONE').length,
+      contractSchedule: contractVisible ? contract !== null && contract.tranches.length > 0 : null,
+      moneySettled: contractVisible ? contract !== null && moneySettled(contract.totalAmount, contract.tranches) : null,
+      // Без начислений шаг «выплачено» не выполнен: начислять нечего — не
+      // значит выплачено.
+      payoutsPaid: payoutsVisible ? payouts.length > 0 && payouts.every((payout) => payout.status === 'PAID') : null,
+      clientEntered: project.client.user?.lastLoginAt != null,
+      status: project.status,
+    },
+  };
 }
