@@ -300,7 +300,17 @@ export default async function ProjectsScreen({
           ) : null}
         </ScreenTop>
       ) : (
-        <ScreenHead title={title} answer={answer} />
+        <ScreenHead
+          title={title}
+          answer={answer}
+          // Чек-листы куратора — справа вверху, где общее действие экрана
+          // (Р-201): меню куратора не меняется (Р-548).
+          action={
+            forExpert && can(actor, 'CHECKLIST_VIEW') ? (
+              <ButtonLink href="/cabinet/manage/checklists">Чек-листы</ButtonLink>
+            ) : undefined
+          }
+        />
       )}
       {assigned.length === 0 ? null : (
         <Text size={14} style={{ marginBottom: 20 }}>

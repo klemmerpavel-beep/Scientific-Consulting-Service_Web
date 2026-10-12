@@ -11,7 +11,7 @@ import {
   Text,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
-import { CHECKLIST_GROUPS, checklistsFor, type Checklist } from '../../../../lib/cabinet/checklists';
+import { CHECKLIST_GROUPS, audienceLabel, checklistsFor, type Checklist } from '../../../../lib/cabinet/checklists';
 import { TOOLS_HREF, homeFor } from '../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../lib/cabinet/session';
 
@@ -29,9 +29,9 @@ function ChecklistCard({ list, head }: { list: Checklist; head: boolean }) {
         <Heading level={3} size={3}>
           {list.title}
         </Heading>
-        {/* Руководителю видно, кому адресован чек-лист: менеджеру видны
-            только его собственные. */}
-        {head ? <Chip>{list.roles.includes('MANAGER') ? 'менеджеру и руководителю' : 'руководителю'}</Chip> : null}
+        {/* Руководителю видно, кому адресован чек-лист: куратору и
+            менеджеру видны только их собственные. */}
+        {head ? <Chip>{audienceLabel(list.roles)}</Chip> : null}
       </div>
       <Text muted size={13} style={{ marginBottom: 10 }}>
         Когда: {list.when}
@@ -58,13 +58,22 @@ function ChecklistCard({ list, head }: { list: Checklist; head: boolean }) {
 
 /**
  * «Чек-листы» (замечание владельца 08.10.2026, решение Р-494): порядок
- * основных дел практики по шагам. Руководителю — все чек-листы, менеджеру
- * — его. Отметки на экране — памятка на одно дело и не сохраняются.
+ * основных дел практики по шагам. Руководителю — все чек-листы, куратору и
+ * менеджеру — их (Р-548). Отметки на экране — памятка на одно дело и не
+ * сохраняются.
  */
 export default async function ChecklistsScreen() {
   const actor = await requireActor(CHECKLISTS_HREF);
   if (!can(actor, 'CHECKLIST_VIEW')) redirect(homeFor(actor));
   const head = actor.role === 'HEAD';
+  const curator = actor.role === 'EXPERT';
+  // Куратор приходит с «Назначенных работ»: «Сегодня» и «Управления» у него
+  // нет (Р-548).
+  const back = head
+    ? { href: TOOLS_HREF, label: 'Управление' }
+    : curator
+      ? { href: '/cabinet/projects', label: 'Назначенные работы' }
+      : { href: '/cabinet/manage', label: 'Сегодня' };
   const lists = checklistsFor(actor);
   const groups = CHECKLIST_GROUPS.map((group) => ({
     ...group,
@@ -72,10 +81,10 @@ export default async function ChecklistsScreen() {
   })).filter((group) => group.lists.length > 0);
 
   return (
-    <Shell actor={actor} current={head ? TOOLS_HREF : '/cabinet/manage'}>
+    <Shell actor={actor} current={back.href}>
       <ScreenHead
-        backHref={head ? TOOLS_HREF : '/cabinet/manage'}
-        backLabel={head ? 'Управление' : 'Сегодня'}
+        backHref={back.href}
+        backLabel={back.label}
         title="Чек-листы"
         note="Порядок основных дел по шагам: что сделать и на каком экране. Отметки — памятка на одно дело, они не сохраняются. Это первая редакция: правки к шагам присылайте кнопкой замечаний справа внизу."
       />
