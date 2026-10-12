@@ -417,6 +417,56 @@ export function audienceLabel(roles: readonly ChecklistRole[]): string {
   return words.length === 1 ? words[0]! : `${words.slice(0, -1).join(', ')} и ${words[words.length - 1]}`;
 }
 
+/**
+ * Вкладки экрана чек-листов (Р-550). Руководителю — по адресату и по видам
+ * работ: все чек-листы на одной странице перестали помещаться в обзор, и
+ * руководитель смотрит их глазами того, кому они адресованы. Куратору и
+ * менеджеру — свои и по видам работ.
+ */
+export type ChecklistView = 'head' | 'manager' | 'curator' | 'own' | 'service';
+
+export function checklistViews(actor: Actor): readonly { readonly key: ChecklistView; readonly label: string }[] {
+  ensure(actor, 'CHECKLIST_VIEW');
+  if (actor.role === 'HEAD') {
+    return [
+      { key: 'head', label: 'Руководителю' },
+      { key: 'manager', label: 'Менеджеру' },
+      { key: 'curator', label: 'Куратору' },
+      { key: 'service', label: 'По видам работ' },
+    ];
+  }
+  return [
+    { key: 'own', label: 'Мои чек-листы' },
+    { key: 'service', label: 'По видам работ' },
+  ];
+}
+
+/** Вкладка из адреса; незнакомое значение — первая вкладка роли. */
+export function checklistView(actor: Actor, raw: string | undefined): ChecklistView {
+  const views = checklistViews(actor);
+  return views.find((view) => view.key === raw)?.key ?? views[0]!.key;
+}
+
+/**
+ * Процессные чек-листы вкладки. «Руководителю» — адресованные только ему;
+ * «Менеджеру» и «Куратору» — всё, что видит эта роль; «Мои» — свои.
+ */
+export function checklistsForView(actor: Actor, view: ChecklistView): Checklist[] {
+  const lists = checklistsFor(actor);
+  switch (view) {
+    case 'head':
+      return lists.filter((list) => list.roles.length === 1 && list.roles[0] === 'HEAD');
+    case 'manager':
+      return lists.filter((list) => list.roles.includes('MANAGER'));
+    case 'curator':
+      return lists.filter((list) => list.roles.includes('EXPERT'));
+    case 'own':
+      return lists;
+    case 'service':
+      return [];
+  }
+}
+
 /** Чек-листы смотрящего: свой круг ролей, ссылки — по его правам. */
 export function checklistsFor(actor: Actor): Checklist[] {
   ensure(actor, 'CHECKLIST_VIEW');

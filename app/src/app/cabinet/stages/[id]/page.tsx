@@ -351,7 +351,7 @@ export default async function StageScreen({
                 <FormActions>
                   <Button>Сдать этап менеджеру</Button>
                   {/* Проверка перед сдачей — чек-листом куратора (Р-548). */}
-                  <ButtonLink href="/cabinet/manage/checklists#expert-handover">Чек-лист сдачи</ButtonLink>
+                  <ButtonLink href="/cabinet/manage/checklists?view=own#expert-handover">Чек-лист сдачи</ButtonLink>
                 </FormActions>
               </Form>
             )
