@@ -10,7 +10,6 @@ import {
   Board,
   BoardColumn,
   Button,
-  Card,
   Checkbox,
   ButtonLink,
   Chip,
@@ -1093,10 +1092,10 @@ export default async function ProjectScreen({
           завершённой работы, пока оценки нет. Пятый блок карточки клиента:
           «Управления работой» у него нет (Р-183). */}
       {rating?.mayRate === true ? (
-        <Card id="rate" style={{ marginTop: 20 }}>
-          <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-            Оцените сопровождение
-          </Heading>
+        // Свёрткой, а не открытой формой: на экране работы на виду одна
+        // форма — отправка сообщения, и страница не прокручивается (Р-169).
+        // После отказа свёртка раскрыта с набранным (Р-279).
+        <Disclosure title="Оцените сопровождение" id="rate" open={draft.score !== undefined} style={{ marginTop: 20 }}>
           <Text muted size={14} style={{ marginBottom: 14 }}>
             Работа завершена. Оценка и отзыв помогут нам сопровождать следующие работы лучше. Оценку
             можно поставить один раз.
@@ -1126,7 +1125,7 @@ export default async function ProjectScreen({
               <Button>Отправить оценку</Button>
             </FormActions>
           </Form>
-        </Card>
+        </Disclosure>
       ) : null}
 
       {/* Ниже — то, что нужно не каждый раз: история и служебные действия.
