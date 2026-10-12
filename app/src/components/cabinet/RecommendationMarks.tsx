@@ -31,7 +31,7 @@ export default function RecommendationMarks({
 }: {
   markKey: string | null;
   mark: Mark | undefined;
-  back: 'recommendations' | 'calendar';
+  back: 'recommendations' | 'calendar' | 'ads';
   /** Серверное действие отметки — передаёт экран. */
   action: (form: FormData) => Promise<void>;
   /** Поручение по рекомендации: форма поручения с готовым текстом. */
@@ -148,7 +148,7 @@ export function CalendarRecommendationCard({
 }: {
   row: CalendarRow;
   mark: Mark | undefined;
-  back: 'recommendations' | 'calendar';
+  back: 'recommendations' | 'calendar' | 'ads';
   action: (form: FormData) => Promise<void>;
 }) {
   const title =
