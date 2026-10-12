@@ -10,7 +10,7 @@
 import { can, type Actor } from './access.ts';
 import { BRIEF_TEMPLATES } from './brief/templates.ts';
 import { DOWNLOAD_HREF, OWNER_TEMPLATE_PREFIX } from './downloads.ts';
-import { CLIENT_MEMO } from './memos.ts';
+import { CLIENT_MEMO, PREPARE_MEMO } from './memos.ts';
 
 export interface HubRow {
   readonly title: string;
@@ -58,6 +58,11 @@ export function clientMaterials(templates: readonly OwnerTemplateEntry[] = []): 
       files: BRIEF_TEMPLATES.filter((template) => template.key.startsWith('iskhodnye')).map((template) =>
         file(template.key, `${template.title}, .docx`),
       ),
+    },
+    {
+      title: PREPARE_MEMO.title,
+      note: 'Что прислать по виду сопровождения, чтобы работа началась без переспросов. На карточке работы — тот же перечень с кнопкой «Приложить».',
+      files: [file(PREPARE_MEMO.key, 'Скачать .docx')],
     },
     {
       title: CLIENT_MEMO.title,
@@ -110,9 +115,9 @@ export function staffMaterials(actor: Actor, templates: readonly OwnerTemplateEn
           },
         ]),
     {
-      title: `Памятка клиенту: «${CLIENT_MEMO.title}»`,
-      note: 'Можно передать клиенту файлом; клиент видит её в своих «Материалах».',
-      files: [file(CLIENT_MEMO.key, 'Скачать .docx')],
+      title: 'Памятки клиенту',
+      note: 'Можно передать клиенту файлом; клиент видит их в своих «Материалах».',
+      files: [file(CLIENT_MEMO.key, `${CLIENT_MEMO.title}, .docx`), file(PREPARE_MEMO.key, `${PREPARE_MEMO.title}, .docx`)],
     },
   ];
 }

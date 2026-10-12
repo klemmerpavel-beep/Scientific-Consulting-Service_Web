@@ -53,6 +53,7 @@ import {
   type Actor,
 } from '../../../../lib/cabinet/access';
 import { checklistCounts } from '../../../../lib/cabinet/checklist-marks';
+import { prepareList, prepareOpen, prepareStatus } from '../../../../lib/cabinet/prepare-lists';
 import {
   CONTACT_LABEL,
   contactsOf,
@@ -392,6 +393,14 @@ export default async function ProjectScreen({
     0,
   );
 
+  // «Что подготовить» (Р-560): пока первый этап не согласован — кнопка со
+  // счётом приложенного; клиенту — его перечень, сотруднику — отметки.
+  const prepare = prepareList(project.serviceType.code);
+  const prepareCount =
+    prepare !== null && withMaterials !== null && prepareOpen(project)
+      ? prepareStatus(prepare, withMaterials.materials.filter((material) => material.deletedAt === null))
+      : null;
+
   const stages = project.stages;
   const done = stages.filter((stage) => stage.state === 'DONE').length;
   // Текущий этап — первый незавершённый; он и отвечает на вопрос «где работа».
@@ -728,7 +737,7 @@ export default async function ProjectScreen({
         {/* Правка карточки, куратор и менеджер — на виду, а не только в
             свёрнутом «Управлении работой» в конце экрана: руководитель их
             не находил (замечание владельца 08.10.2026, решение Р-487). */}
-        {(mayEdit && !closed) || mayAssign || maySetManager || checklist !== undefined ? (
+        {(mayEdit && !closed) || mayAssign || maySetManager || checklist !== undefined || prepareCount !== null ? (
           <div style={{ flexBasis: '100%', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {mayEdit && !closed ? (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-card`}>
@@ -752,6 +761,13 @@ export default async function ProjectScreen({
             {checklist === undefined ? null : (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/checklist`}>
                 {`Чек-лист · ${checklist.done} из ${checklist.total}`}
+              </ButtonLink>
+            )}
+            {prepareCount === null ? null : (
+              <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/prepare`}>
+                {forClient
+                  ? `Что подготовить · ${prepareCount.done} из ${prepareCount.total}`
+                  : `Что подготовить · приложено ${prepareCount.done} из ${prepareCount.total}`}
               </ButtonLink>
             )}
           </div>

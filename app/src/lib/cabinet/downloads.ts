@@ -11,7 +11,7 @@
 import { can, type Actor } from './access.ts';
 import { BRIEF_TEMPLATES } from './brief/templates.ts';
 import { checklistsDocx, serviceChecklistsDocx } from './checklist-docs.ts';
-import { CLIENT_MEMO, memoDocx } from './memos.ts';
+import { CLIENT_MEMO, PREPARE_MEMO, memoDocx, prepareDocx } from './memos.ts';
 
 const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -46,6 +46,8 @@ export async function download(actor: Actor, key: string): Promise<Download | nu
   if (template !== undefined) return { file: template.file, ascii: template.ascii, type: template.type, bytes: template.build() };
   // Памятка по кабинету — клиенту и тем, кто передаёт её клиенту.
   if (key === CLIENT_MEMO.key) return { file: CLIENT_MEMO.file, ascii: CLIENT_MEMO.ascii, type: DOCX, bytes: memoDocx(CLIENT_MEMO) };
+  // «Что подготовить» — клиенту и тем, кто ведёт его работу (Р-560).
+  if (key === PREPARE_MEMO.key) return { file: PREPARE_MEMO.file, ascii: PREPARE_MEMO.ascii, type: DOCX, bytes: prepareDocx() };
   // Чек-листы — порядок работы практики: только сотрудникам (ответ
   // владельца 12.10.2026), у каждого — свои.
   if (!can(actor, 'CHECKLIST_VIEW')) return null;
