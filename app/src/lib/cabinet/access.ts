@@ -157,6 +157,8 @@ export const ACTIONS = [
   'CHECKLIST_MARK',
   // Оценка сопровождения после завершения работы (решение Р-565).
   'WORK_RATE',
+  // Анкеты экспертов со страницы сайта «Экспертам» (решение Р-580).
+  'EXPERT_APPLICATION_REVIEW',
 ] as const;
 
 export type Action = (typeof ACTIONS)[number];
@@ -353,6 +355,10 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     // не право на журналы: журналы — надзор, замечания — работа над сайтом,
     // и смешивать их значило бы выдавать одно вместе с другим.
     case 'FEEDBACK_REVIEW':
+    // Анкеты экспертов разбирает руководитель: он решает, кого звать в
+    // кураторы, и заводит учётную запись сам (решение Р-580). В анкете —
+    // данные кандидата, и менеджеру они не нужны.
+    case 'EXPERT_APPLICATION_REVIEW':
       return head;
 
     default: {

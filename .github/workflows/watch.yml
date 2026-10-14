@@ -79,7 +79,7 @@ jobs:
           if try health_ok; then say "здоровье: сайт, база и схема в порядке"
           else bad "проверка здоровья $SITE/api/health не отвечает ok"; fi
 
-          for page in / /main /students /business /offer /privacy /consent /cabinet; do
+          for page in / /main /students /business /offer /privacy /consent /experts /cabinet; do
             if try code_is 200 "$SITE$page"; then say "страница $page: 200"
             else bad "страница $page отвечает $got"; fi
           done
