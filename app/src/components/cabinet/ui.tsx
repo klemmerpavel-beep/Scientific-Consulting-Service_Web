@@ -2525,6 +2525,75 @@ export function Disclosure({
   );
 }
 
+/**
+ * Сворачиваемый блок экрана (замечание владельца 13.10.2026, решение
+ * Р-572): заголовок блока, пояснение и число строк видны всегда, тело —
+ * по нажатию. Для экранов, где блоков много и не все нужны с первого дня:
+ * свёрнутые, они не перегружают страницу, но и не прячутся от того, кому
+ * понадобятся.
+ *
+ * Та же основа, что у `Disclosure`, — `<details>` без своего состояния;
+ * отличается шапкой: в ней заголовок второго уровня, как у карточки
+ * блока, а не строка подписи.
+ */
+export function FoldCard({
+  title,
+  note,
+  count,
+  children,
+  open = false,
+  id,
+  style,
+}: {
+  title: string;
+  note?: string;
+  /** Сколько внутри: «13 материалов», «4 раздела». */
+  count?: string;
+  children: ReactNode;
+  open?: boolean;
+  id?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <details
+      className="cab-block cab-fold-card"
+      open={open || undefined}
+      id={id}
+      style={{
+        background: 'var(--pd-ink-inverse)',
+        border: '1px solid var(--pd-border)',
+        borderRadius: RADIUS.card,
+        boxShadow: SHADOW.level2,
+        marginBottom: 16,
+        ...style,
+      }}
+    >
+      <summary
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          minHeight: 44,
+          padding: '16px 20px',
+          borderRadius: RADIUS.card,
+        }}
+      >
+        <Caret />
+        <span style={{ display: 'grid', gap: 2, flex: '1 1 auto', minWidth: 0 }}>
+          <Heading level={2} size={3}>
+            {title}
+          </Heading>
+          {note === undefined ? null : (
+            <span style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5, color: 'var(--pd-ink-muted)' }}>{note}</span>
+          )}
+        </span>
+        {count === undefined ? null : <Chip>{count}</Chip>}
+      </summary>
+      <div style={{ padding: '8px 20px 20px' }}>{children}</div>
+    </details>
+  );
+}
+
 /** Уголок свёртки: поворачивается при раскрытии правилом `CABINET_CSS`. */
 /**
  * Значок снятия: тот же штриховой строй, что у отметки завершения.

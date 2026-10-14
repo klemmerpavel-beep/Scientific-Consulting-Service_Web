@@ -1,15 +1,16 @@
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
-import { SANS } from '../../../../components/cabinet/tokens';
 import {
   Card,
   Chip,
+  FoldCard,
   Heading,
   ScreenHead,
   Text,
+  plural,
 } from '../../../../components/cabinet/ui';
-import MaterialsList from '../../../../components/cabinet/MaterialsList';
+import MaterialsList, { MaterialRows } from '../../../../components/cabinet/MaterialsList';
 import { can, type Action } from '../../../../lib/cabinet/access';
 import { staffMaterials } from '../../../../lib/cabinet/materials-hub';
 import { ownerTemplates } from '../../../../lib/cabinet/owner-templates';
@@ -49,37 +50,6 @@ const GROUPS = [
 ] as const;
 
 type GroupKey = (typeof GROUPS)[number]['key'];
-
-/**
- * Порядок обычного дня.
- *
- * Заказчик сказал прямо: логика экрана непонятна и неясно, как с ним
- * работать. Перечень разделов на это не отвечает — отвечает распорядок:
- * с чего начинают, что проверяют раз в неделю и что раз в месяц
- * (решение Р-201).
- */
-const ROUTINE: readonly { term: string; text: string }[] = [
-  {
-    term: 'Утром',
-    text: 'Главная практики: что требует внимания — сорванные сроки, ждущие клиента работы, непрочитанные сообщения. Оттуда — в работу или в заявки.',
-  },
-  {
-    term: 'В течение дня',
-    text: 'Новые обращения разбираются в «Заявках», правка сроков и состава этапов — внутри самой работы.',
-  },
-  {
-    term: 'Раз в неделю',
-    text: 'Очередь уведомлений и зеркало на диске: дошли ли письма, ушла ли копия. Там же — реестры, если нужен полный вид клиента, и разбор замечаний с кнопки справа внизу.',
-  },
-  {
-    term: 'Раз в месяц',
-    text: 'Справочники: типы сопровождения и шаблоны этапов приводятся к тому, как работают на самом деле. Отчёт за период берётся с главной кнопкой справа вверху.',
-  },
-  {
-    term: 'По случаю',
-    text: 'Учётные записи, перенос книги заказов, журналы и требования субъектов — открываются по поводу, а не по расписанию.',
-  },
-];
 
 /** Частота задаёт порядок в группе: ежедневное выше редкого. */
 const OFTEN_ORDER: Record<string, number> = {
@@ -259,58 +229,47 @@ export default async function ToolsScreen() {
         title="Управление"
         note={
           head
-            ? 'Чек-листы и материалы, а также всё, что не входит в ежедневную работу с заказами: настройка практики, надзорные журналы и перенос истории. У каждого раздела названы повод и частота.'
+            ? 'Чек-листы и материалы, а также всё, что не входит в ежедневную работу с заказами: настройка практики, надзорные журналы и перенос истории. Блоки свёрнуты — откройте нужный.'
             : 'Чек-листы и материалы: открываются на экране и скачиваются файлом Word.'
         }
       />
 
-      {/* Чек-листы и материалы — первым блоком, со скачиванием (указание
-          владельца 12.10.2026, решение Р-559). */}
-      {materials.length === 0 ? null : (
+      {/* Чек-листы и материалы — первым блоком, со скачиванием (Р-559).
+          Блоки экрана свёрнуты и раскрываются по нажатию: все сразу
+          перегружали страницу, а с первого дня нужны не все (замечание
+          владельца 13.10.2026, решение Р-572). Распорядок дня «Как этим
+          пользоваться» (Р-201) снят тем же замечанием: порядок задают
+          метки частоты у разделов. */}
+      {materials.length === 0 ? null : groups.length === 0 ? (
+        // У куратора разделов нет, материалы — весь экран: сворачивать
+        // единственный блок незачем.
         <MaterialsList
           id="materials"
           title="Чек-листы и материалы"
           note="Открыть — экран кабинета; файлы — в Word. Чтобы сохранить экран в PDF, напечатайте его: Ctrl + P, на Mac ⌘ + P, — и выберите «Сохранить в PDF»."
           rows={materials}
         />
+      ) : (
+        <FoldCard
+          id="materials"
+          title="Чек-листы и материалы"
+          note="Открыть — экран кабинета; файлы — в Word. Чтобы сохранить экран в PDF, напечатайте его: Ctrl + P, на Mac ⌘ + P, — и выберите «Сохранить в PDF»."
+          count={`${materials.length} ${plural(materials.length, 'материал', 'материала', 'материалов')}`}
+        >
+          <MaterialRows rows={materials} />
+        </FoldCard>
       )}
 
-      {/* Порядок обычного дня: сверху сказано, с чего начинают и чем
-          заканчивают, а карточки ниже разложены по тому же порядку —
-          иначе перечень разделов читается как список ящиков без подписей
-          (решение Р-201). Распорядок — руководителя: его разделы. */}
-      {head ? (
-        <Card style={{ marginBottom: 24 }}>
-          <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-            Как этим пользоваться
-          </Heading>
-          <Text muted size={14} style={{ marginBottom: 14 }}>
-            Разделы идут по частоте: сверху то, что открывают каждый день, ниже — редкое. Метка у
-            названия говорит, как часто сюда заходят, строка под ним — по какому случаю.
-          </Text>
-          <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 8 }}>
-            {ROUTINE.map((step) => (
-              <li key={step.term} style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.6 }}>
-                <strong style={{ fontWeight: 600 }}>{step.term}.</strong> {step.text}
-              </li>
-            ))}
-          </ol>
-        </Card>
-      ) : null}
-
-
       {groups.map((group) => (
-        // Группа набрана `div`, а не `section`: сценарий движения сайта
-        // забирает `main > section` и дописывает плашкам задержку
-        // появления прямо в разметку, а снимок принимает облик, а не
-        // движение (решения Р-186, Р-192).
-        <div className="cab-block" key={group.key} style={{ marginBottom: 24 }}>
-          <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-            {group.title}
-          </Heading>
-          <Text muted size={14} style={{ marginBottom: 14 }}>
-            {group.note}
-          </Text>
+        // Группа — свёртка `details`, а не `section`: сценарий движения
+        // сайта забирает `main > section` и дописывает плашкам задержку
+        // появления прямо в разметку (решения Р-186, Р-192).
+        <FoldCard
+          key={group.key}
+          title={group.title}
+          note={group.note}
+          count={`${group.tools.length} ${plural(group.tools.length, 'раздел', 'раздела', 'разделов')}`}
+        >
           <ul
             style={{
               margin: 0,
@@ -356,7 +315,7 @@ export default async function ToolsScreen() {
               </Card>
             ))}
           </ul>
-        </div>
+        </FoldCard>
       ))}
     </Shell>
   );
