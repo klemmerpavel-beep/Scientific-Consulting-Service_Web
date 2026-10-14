@@ -2229,6 +2229,70 @@ export function BoardColumn({
 }
 
 /**
+ * Плашка-перечень с прокруткой внутри — для сетки плашек единого размера
+ * («Сводка», Р-576): шапка с названием и ссылкой, тело прокручивается
+ * внутри плашки. Тело получает фокус и имя, как тело колонки панели, —
+ * иначе с клавиатуры до нижних записей не добраться (Р-168). Ниже 960 px
+ * прокрутки нет: перечень идёт потоком (Р-320).
+ */
+export function ScrollCard({
+  title,
+  href,
+  hrefLabel,
+  children,
+}: {
+  title: string;
+  href?: string;
+  hrefLabel: string;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className="cab-card cab-dash-list"
+      style={{
+        background: 'var(--pd-ink-inverse)',
+        border: '1px solid var(--pd-border)',
+        borderRadius: RADIUS.card,
+        boxShadow: SHADOW.level2,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          padding: '18px 20px 12px',
+          borderBottom: '1px solid var(--pd-divider)',
+        }}
+      >
+        <Heading level={2} size={3}>
+          {title}
+        </Heading>
+        {href === undefined ? null : (
+          <a className="cab-mark" href={href} style={{ fontFamily: SANS, fontSize: 14 }}>
+            {hrefLabel}
+          </a>
+        )}
+      </div>
+      <div
+        className="cab-dash-body"
+        role="region"
+        aria-label={title}
+        tabIndex={0}
+        style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: '14px 20px 18px', scrollbarGutter: 'stable' }}
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/**
  * Готовность работы — самый крупный блок экрана заказа.
  *
  * Отвечает на три вопроса сразу: сколько сделано, где работа сейчас и что

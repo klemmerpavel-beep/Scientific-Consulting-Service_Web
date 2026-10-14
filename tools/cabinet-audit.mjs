@@ -49,7 +49,10 @@ for (const w of W) {
         if (r.height < 43.5) out.push(`цель ${Math.round(r.width)}×${Math.round(r.height)}: «${(el.textContent || el.getAttribute('aria-label') || el.name || '').trim().slice(0, 30)}»`);
       }
       // плашки в ряду и наложения
-      const cards = [...main.querySelectorAll('.cab-card')].filter(vis);
+      // Плашка ленты за краем прокрутки не видна: её место — под соседней
+      // плашкой сетки, и наложением это не считается (Р-575).
+      const inView = (el) => { const track = el.closest('.cab-slider-track'); if (track === null) return true; const r = el.getBoundingClientRect(), t = track.getBoundingClientRect(); return r.left < t.right - 1 && r.right > t.left + 1; };
+      const cards = [...main.querySelectorAll('.cab-card')].filter((el) => vis(el) && inView(el));
       const rows = new Map();
       const ids = new Map();
       for (const c of cards) { const parent = c.parentElement; if (!ids.has(parent)) ids.set(parent, ids.size); const id = ids.get(parent) + ':' + Math.round(c.getBoundingClientRect().top); rows.set(id, (rows.get(id) ?? 0) + 1); }

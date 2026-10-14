@@ -263,6 +263,15 @@ details[open].cab-block{border-color:var(--pd-accent-edge)!important}
 .cab-slider-track>li>*{flex:1 1 auto;min-width:0}
 .cab-slider-one{grid-auto-columns:100%}
 @container (max-width:719px){.cab-slider-track{grid-auto-columns:100%}}
+/* Плашки «Сводки» одного размера (Р-576): два столбца, у всех строк одна
+   высота; перечни ограничены той же высотой и прокручиваются внутри.
+   Раскрытые «Числа» растят свою строку — единый размер задан на открытие
+   экрана. Ниже 960 px — один столбец по содержимому, без вложенной
+   прокрутки (Т-23, Р-320). */
+.cab-dash{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(540px,auto);gap:20px;margin:0 0 24px}
+.cab-dash>*{min-width:0}
+.cab-dash-list{max-height:540px}
+@media (max-width:959px){.cab-dash{grid-template-columns:minmax(0,1fr);grid-auto-rows:auto}.cab-dash-list{max-height:none}.cab-dash-body{overflow:visible!important}}
 /* Узкие плашки (Р-575): по три, по две, по одной. */
 .cab-slider-compact .cab-slider-track{grid-auto-columns:calc((100% - 32px) / 3)}
 @container (max-width:719px){.cab-slider-compact .cab-slider-track{grid-auto-columns:calc((100% - 16px) / 2)}}
@@ -278,5 +287,5 @@ details[open].cab-block{border-color:var(--pd-accent-edge)!important}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
 @media (max-width:1024px){.cab-board-main{display:block!important;overflow:visible!important;padding-bottom:clamp(72px,7vw,112px)!important}.cab-board{grid-template-columns:minmax(0,1fr)!important}.cab-board-body{max-height:none!important;overflow:visible!important}.cab-board-main .cab-fold-body,.cab-board-main .cab-fold-tall{max-height:none!important;overflow:visible!important}}
-@media print{@page{margin:14mm}body{background:var(--pd-ink-inverse)}header,footer,nav,.pd-skip,.cab-no-print{display:none!important}main{padding:0!important;max-width:none!important}.cab-block{break-inside:avoid;box-shadow:none!important}details{break-inside:avoid}details>*:not(summary){display:block!important}details>summary{display:none!important}a{text-decoration:none;color:inherit}}
+@media print{@page{margin:14mm}body{background:var(--pd-ink-inverse)}header,footer,nav,.pd-skip,.cab-no-print{display:none!important}main{padding:0!important;max-width:none!important}.cab-block{break-inside:avoid;box-shadow:none!important}.cab-dash-list{max-height:none!important}.cab-dash-body{overflow:visible!important}details{break-inside:avoid}details>*:not(summary){display:block!important}details>summary{display:none!important}a{text-decoration:none;color:inherit}}
 `;
