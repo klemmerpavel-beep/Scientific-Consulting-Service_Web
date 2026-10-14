@@ -36,3 +36,13 @@ describe('«Реклама»: ближайшие шаги (Р-578)', () => {
   });
 });
 
+describe('«Реклама»: ключевые выводы (Р-579)', () => {
+  it('по две плашки в ряд, уверенность — меткой, «Подробнее» у нижнего края', () => {
+    const start = page.indexOf('Ключевые выводы');
+    const block = page.slice(start, page.indexOf('Ближайшие шаги', start));
+    assert.match(block, /minmax\(min\(100%, 440px\), 1fr\)/u);
+    assert.match(block, /<Chip nowrap tone=\{row\.confidence === 'sure'/u);
+    assert.doesNotMatch(block, /<Mono>/u);
+    assert.match(block, /marginTop: 'auto'[\s\S]{0,80}label="Подробнее"/u);
+  });
+});

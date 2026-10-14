@@ -73,6 +73,8 @@ const rub = (value: number | null) => (value === null ? '—' : formatAmount(Mat
 const share = (value: number | null) => (value === null ? '—' : `${(value * 100).toFixed(1).replace('.', ',')} %`);
 const count = (value: number) => value.toLocaleString('ru-RU');
 const day = (iso: string | null) => (iso === null ? '—' : iso.split('-').reverse().join('.'));
+/** Метка с прописной: «вероятно» в реестре — «Вероятно» на метке. */
+const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 function DocLink({ slug, docs, label }: { slug: string | null; docs: readonly AdsDoc[]; label?: string }) {
   const doc = slug === null ? undefined : docs.find((item) => item.slug === slug);
@@ -466,23 +468,35 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
           Ключевые выводы
         </Heading>
         {/* Каждый вывод — своя плашка, как карточки рекомендаций: подряд
-            идущие выводы без рамок сливались (замечание владельца 12.10.2026). */}
-        <div style={{ display: 'grid', gap: 12, marginTop: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))' }}>
+            идущие выводы без рамок сливались (замечание владельца 12.10.2026).
+            Плашки — по две в ряд, одной высоты в ряду (Р-189); в каждой одинаково
+            стоят три строки: уверенность меткой и дата, вывод, «Подробнее» у
+            нижнего края. Прежде плашек было по три, уверенность и дата шли
+            одной моноширинной строкой прописными, и подписи плашек читались
+            вразнобой (замечание владельца 12.10.2026, решение Р-579). */}
+        <div style={{ display: 'grid', gap: 16, marginTop: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 440px), 1fr))' }}>
           {registry.conclusions.map((row, index) => (
             <article
               key={index}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 8,
-                padding: '14px 16px 16px',
+                gap: 10,
+                padding: '16px 18px 18px',
                 border: '1px solid var(--pd-border)',
                 borderRadius: RADIUS.field,
                 background: 'var(--pd-surface-quiet)',
               }}
             >
-              <Mono>{`${labelOf(CONFIDENCE_LABEL, row.confidence)} · ${day(row.date)}`}</Mono>
-              <Text size={15} style={{ lineHeight: 1.5 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <Chip nowrap tone={row.confidence === 'sure' ? 'accent' : 'neutral'}>
+                  {capital(labelOf(CONFIDENCE_LABEL, row.confidence))}
+                </Chip>
+                <Text muted size={13}>
+                  {day(row.date)}
+                </Text>
+              </div>
+              <Text size={15} style={{ lineHeight: 1.6, color: 'var(--pd-ink)' }}>
                 {row.text}
               </Text>
               <Text muted size={13} style={{ marginTop: 'auto' }}>
