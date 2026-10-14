@@ -4,6 +4,7 @@ import { waitingPublication } from '../../../lib/cabinet/staff-texts';
 import Shell from '../../../components/cabinet/Shell';
 import { RADIUS, SANS } from '../../../components/cabinet/tokens';
 import { BarChart, RankChart, compactNumber } from '../../../components/cabinet/Charts';
+import CardSlider from '../../../components/cabinet/CardSlider';
 import {
   Block,
   Board,
@@ -203,7 +204,7 @@ export default async function ManageQueue({
   const parts = attentionParts(sources);
   const { light, unread, today, outbox } = sources;
   const term = actor.role === 'HEAD' ? await reactionDays() : 0;
-  // «Команда» — до пяти строк после «Требует внимания» (РК-06, Р-343; ОР-2).
+  // «Команда» — лента плашек всех сотрудников (РК-06, Р-343; Р-575).
   const team = actor.role === 'HEAD' ? teamBrief(await teamLoad(actor)) : [];
   // «Рекомендация месяца» — под ответом сводки (РК-17, Р-350).
   const advice = actor.role === 'HEAD' && can(actor, 'ANALYTICS_VIEW') ? (await recommendationsNow(actor)).month : null;
@@ -853,40 +854,60 @@ export default async function ManageQueue({
         </Block>
       )}
 
-      {/* «Команда»: строка на человека — работ, просрочено, ждёт его
-          решения; первыми — у кого больше просроченного и ждущего
+      {/* «Команда» — лента плашек: у каждого сотрудника своя плашка, её
+          листают кнопками, прокруткой и стрелками и выбирают нужного
+          человека (замечание владельца 13.10.2026, решение Р-575). В
+          плашке — работ, просрочено, ждёт его решения и где стоят его
+          работы; первыми — у кого больше просроченного и ждущего
           (требование РК-06, решение Р-343). */}
       {actor.role !== 'HEAD' ? null : (
         <Block style={{ marginBottom: 20 }}>
           <Heading level={2} size={3} style={{ marginBottom: 10 }}>
-            Команда
+            {team.length === 0 ? 'Команда' : `Команда · ${team.length}`}
           </Heading>
-          {/* Пустая команда — только фраза, без пустого перечня: читалка
+          {/* Пустая команда — только фраза, без пустой ленты: читалка
               объявляла «список, 0 пунктов» (решение Р-541). */}
           {team.length === 0 ? (
             <Text muted size={14}>
-              В команде пока нет людей с работами и делами.
+              В команде пока нет сотрудников.
             </Text>
           ) : (
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
+            <CardSlider label="Сотрудники практики" compact>
               {team.map((row) => (
-                <li key={`${row.side}-${row.id}`}>
-                  <a className="cab-mark" href={row.href} style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
-                    {row.fullName}
-                  </a>
-                  <Text muted size={13}>
+                <Card as="article" link key={`${row.side}-${row.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '16px 18px' }}>
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    {/* Ссылка растянута на плашку: нажимается плашка
+                        целиком (решения Р-209, Р-253). Ведёт в «Работы» с
+                        отбором по человеку (РК-03). */}
+                    <Heading level={3} size={3}>
+                      <a className="cab-stretch" href={row.href}>
+                        {row.fullName}
+                      </a>
+                    </Heading>
+                    <span>
+                      <Chip>{row.side}</Chip>
+                    </span>
+                  </div>
+                  <dl style={{ ...DASH_FIGURES, gridTemplateColumns: 'repeat(3, minmax(0,1fr))', margin: 0 }}>
                     {[
-                      row.side,
-                      `работ ${row.works}`,
-                      row.overdue === 0 ? null : `просрочено ${row.overdue}`,
-                      row.decide === 0 ? null : `ждёт решения ${row.decide}`,
-                    ]
-                      .filter((part) => part !== null)
-                      .join(' · ')}
+                      { key: 'works', label: 'Работ', value: row.works },
+                      { key: 'late', label: 'Просрочено', value: row.overdue },
+                      { key: 'decide', label: 'Ждёт решения', value: row.decide },
+                    ].map((figure) => (
+                      <div key={figure.key}>
+                        <dt style={DASH_FIGURE_LABEL}>{figure.label}</dt>
+                        <dd style={DASH_FIGURE_VALUE}>{figure.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <Text muted size={13}>
+                    {row.points.length === 0
+                      ? 'Действующих работ нет.'
+                      : row.points.map((point) => `${point.label.toLowerCase()} ${point.count}`).join(' · ')}
                   </Text>
-                </li>
+                </Card>
               ))}
-            </ul>
+            </CardSlider>
           )}
           {/* Новый человек — отдельной кнопкой, сразу в форму заведения
               с ролью и исходными данными (решение Р-488). */}

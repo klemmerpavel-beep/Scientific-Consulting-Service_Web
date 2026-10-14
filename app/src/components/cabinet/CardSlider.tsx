@@ -17,7 +17,20 @@ import { sameView, visibleSlides } from './slider-view';
  * Без сценария лента остаётся обычной горизонтальной прокруткой с
  * привязкой к карточкам: всё доступно, кнопки лишь не работают.
  */
-export default function CardSlider({ label, children }: { label: string; children: ReactNode }) {
+export default function CardSlider({
+  label,
+  compact = false,
+  children,
+}: {
+  label: string;
+  /**
+   * Узкие плашки — по три в ряд, ниже 720 px ширины ленты по две, ниже
+   * 420 — по одной. Для коротких карточек вроде людей «Команды» (Р-575):
+   * по две они стояли бы полупустыми.
+   */
+  compact?: boolean;
+  children: ReactNode;
+}) {
   const items = Children.toArray(children);
   const count = items.length;
   const track = useRef<HTMLUListElement>(null);
@@ -69,7 +82,7 @@ export default function CardSlider({ label, children }: { label: string; childre
   const shown = view.first === view.last ? `${view.first + 1}` : `${view.first + 1}–${view.last + 1}`;
 
   return (
-    <div className="cab-slider">
+    <div className={compact ? 'cab-slider cab-slider-compact' : 'cab-slider'}>
       {count < 2 ? null : (
         <div className="cab-slider-nav">
           <span className="cab-slider-count" aria-live={measured ? 'polite' : 'off'}>

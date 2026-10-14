@@ -263,6 +263,10 @@ details[open].cab-block{border-color:var(--pd-accent-edge)!important}
 .cab-slider-track>li>*{flex:1 1 auto;min-width:0}
 .cab-slider-one{grid-auto-columns:100%}
 @container (max-width:719px){.cab-slider-track{grid-auto-columns:100%}}
+/* Узкие плашки (Р-575): по три, по две, по одной. */
+.cab-slider-compact .cab-slider-track{grid-auto-columns:calc((100% - 32px) / 3)}
+@container (max-width:719px){.cab-slider-compact .cab-slider-track{grid-auto-columns:calc((100% - 16px) / 2)}}
+@container (max-width:419px){.cab-slider-compact .cab-slider-track{grid-auto-columns:100%}}
 @media (prefers-reduced-motion:no-preference){.cab-slider-track{scroll-behavior:smooth}}
 /* Бесконечные движения — покачивание волны (3,2 с) и пульс заготовки
    (1,4 с) — сняты: в системе движется только появление и отклик на

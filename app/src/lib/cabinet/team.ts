@@ -225,18 +225,21 @@ export async function teamLoad(
 }
 
 /**
- * Блок «Команда» на «Сводке» — до пяти строк: сначала те, у кого больше
- * просроченного и ждущего решения (ОР-2).
+ * Блок «Команда» на «Сводке»: сначала те, у кого больше просроченного и
+ * ждущего решения (ОР-2). С замечания владельца 13.10.2026 (Р-575) блок —
+ * лента плашек, и в ней все действующие сотрудники, а не пять строк:
+ * человека в ленте выбирают. Руководитель — только когда у него самого
+ * есть работы или дела.
  */
 export function teamBrief(
   team: { managers: readonly ManagerLoad[]; curators: readonly CuratorLoad[] },
-  limit = 5,
+  limit = Number.POSITIVE_INFINITY,
 ) {
   return [
-    ...team.managers.map((row) => ({ ...row, side: 'менеджер' as const })),
+    ...team.managers.map((row) => ({ ...row, side: row.role === 'HEAD' ? ('руководитель' as const) : ('менеджер' as const) })),
     ...team.curators.map((row) => ({ ...row, side: 'куратор' as const })),
   ]
-    .filter((row) => row.works > 0 || row.decide > 0)
+    .filter((row) => row.side !== 'руководитель' || row.works > 0 || row.decide > 0)
     .sort((a, b) => b.overdue + b.decide - (a.overdue + a.decide) || b.works - a.works || a.fullName.localeCompare(b.fullName))
     .slice(0, limit);
 }
