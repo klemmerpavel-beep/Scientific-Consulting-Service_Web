@@ -107,6 +107,9 @@ export const PHOTOS: Record<string, Slot> = {
   'bp-photo-1': { photo: EXPERT },      // круг 178px
   'bp-photo-2': { photo: CURATOR },     // круг 122px
   'bp-faq-photo': { photo: BLUEPRINTS }, // кадр во всю карточку, как на двух других профильных
+
+  // ——— Экспертам (Р-584) ———
+  'ex-faq-photo': { photo: ADVISER },   // научный руководитель с рукописью — кадр блока вопросов
 };
 
 /** Слоты первого экрана: грузятся сразу, а не по мере прокрутки */

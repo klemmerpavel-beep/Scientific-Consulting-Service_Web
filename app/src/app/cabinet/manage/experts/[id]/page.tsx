@@ -24,7 +24,7 @@ import { EXPERT_STATUSES, expertApplication } from '../../../../../lib/cabinet/e
 import { formatMoment } from '../../../../../lib/cabinet/journals';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { currentActor } from '../../../../../lib/cabinet/session';
-import { EXPERT_STATUS_LABEL } from '../../../../../lib/expert-application';
+import { EXPERT_STATUS_LABEL, consentVersionLabel } from '../../../../../lib/expert-application';
 import { removeExpertApplication, saveExpertReview } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -44,9 +44,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 /**
- * Анкета эксперта целиком (решение Р-580): что о себе написал человек,
- * его файлы, разбор и удаление. Связаться — из своей почты по адресу из
- * анкеты: кабинет кандидату писем не шлёт.
+ * Анкета эксперта целиком (решения Р-580, Р-584): что о себе написал
+ * человек, его файлы, разбор и удаление. Связаться — из своей почты по
+ * адресу из анкеты: кабинет кандидату писем не шлёт.
  */
 export default async function ExpertScreen({
   params,
@@ -97,12 +97,27 @@ export default async function ExpertScreen({
                 </a>
               </Row>
             )}
-            <Row label="Учёная степень">{row.degree}</Row>
+            <Row label="Учёная степень">
+              {row.academicTitle === null || row.academicTitle === 'Без звания' ? row.degree : `${row.degree}, ${row.academicTitle.toLowerCase()}`}
+            </Row>
             {row.speciality === null ? null : <Row label="Научная специальность">{row.speciality}</Row>}
+            {row.workplace === null ? null : <Row label="Место работы и должность">{row.workplace}</Row>}
+            {row.seniority === null ? null : <Row label="Стаж научной или преподавательской работы">{row.seniority}</Row>}
+            {row.services.length === 0 ? null : <Row label="Готов вести">{row.services.join(' · ')}</Row>}
             <Row label="Сфера: направления и темы">{row.fields}</Row>
+            {row.roles.length === 0 ? null : <Row label="Отметки опыта">{row.roles.join(' · ')}</Row>}
             <Row label="Опыт">{row.experience}</Row>
+            {row.elibrarySpin === null ? null : <Row label="SPIN-код eLIBRARY">{row.elibrarySpin}</Row>}
+            {row.orcid === null ? null : (
+              <Row label="ORCID">
+                <a className="cab-mark" href={`https://orcid.org/${encodeURIComponent(row.orcid)}`} target="_blank" rel="noopener noreferrer">
+                  {row.orcid}
+                </a>
+              </Row>
+            )}
             {row.links === null ? null : <Row label="Ссылки">{row.links}</Row>}
-            <Row label="Согласие на обработку данных">{`Дано, редакция от ${row.consentVersion.split('-').reverse().join('.')}`}</Row>
+            {row.weeklyHours === null ? null : <Row label="Готов уделять в неделю">{row.weeklyHours}</Row>}
+            <Row label="Согласие на обработку данных">{`Дано, редакция ${consentVersionLabel(row.consentVersion)}`}</Row>
           </div>
         </Card>
 

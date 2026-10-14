@@ -52,6 +52,14 @@ describe('анкеты экспертов', { skip: !enabled }, async () => {
     fields: 'Экономика отраслевых рынков',
     experience: 'Руководство ВКР, рецензирование, 30 публикаций',
     links: undefined,
+    academicTitle: 'Доцент' as const,
+    workplace: 'Кафедра экономики',
+    seniority: undefined,
+    services: ['Научные статьи'] as ('Научные статьи')[],
+    roles: [] as never[],
+    elibrarySpin: '1234-5678',
+    orcid: undefined,
+    weeklyHours: undefined,
     consent: true as const,
     ...extra,
   });
@@ -85,6 +93,9 @@ describe('анкеты экспертов', { skip: !enabled }, async () => {
     const row = await prisma.expertApplication.findUniqueOrThrow({ where: { id }, include: { files: true } });
     assert.equal(row.status, 'NEW');
     assert.equal(row.consentVersion, EXPERT_CONSENT_VERSION);
+    assert.equal(row.academicTitle, 'Доцент');
+    assert.deepEqual(row.services, ['Научные статьи']);
+    assert.deepEqual(row.roles, []);
     assert.equal(row.files.length, 1);
     assert.match(row.files[0]!.storageKey, new RegExp(`^experts/${id}/[0-9a-f-]{36}\\.pdf$`, 'u'));
     assert.ok(!row.files[0]!.storageKey.includes('Иванова'));
@@ -132,9 +143,15 @@ describe('анкеты экспертов', { skip: !enabled }, async () => {
     const at = (name: string) => masked.head.indexOf(name);
     const row = masked.data.find((cells) => String(cells[book.head.indexOf('Идентификатор')]).length > 0 && String(book.data[masked.data.indexOf(cells)]![1]).startsWith(marker));
     assert.ok(row !== undefined);
-    for (const column of ['Имя', 'Почта', 'Телефон', 'Опыт', 'Сфера']) assert.notEqual(at(column), -1, `нет столбца «${column}»`);
+    for (const column of ['Имя', 'Почта', 'Телефон', 'Опыт', 'Сфера', 'Место работы', 'SPIN-код', 'ORCID', 'Виды работ']) {
+      assert.notEqual(at(column), -1, `нет столбца «${column}»`);
+    }
     assert.equal(row[at('Почта')], 'скрыто');
     assert.equal(row[at('Опыт')], 'скрыто');
+    assert.equal(row[at('Место работы')], 'скрыто');
+    assert.equal(row[at('SPIN-код')], 'скрыто');
+    // Виды работ — выбор из перечня, человека не называют: остаются видны.
+    assert.equal(row[at('Виды работ')], 'Научные статьи');
   });
 
   it('удаление снимает анкету и её файлы из хранилища', async () => {

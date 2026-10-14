@@ -11,7 +11,10 @@ import { describe, it } from 'node:test';
 import {
   EXPERT_CONSENT_VERSION,
   ExpertInputError,
+  consentVersionLabel,
   expertFiles,
+  normalizeOrcid,
+  normalizeSpin,
   parseExpertForm,
 } from '../src/lib/expert-application.ts';
 import { receiveExpertApplication } from '../src/lib/expert-intake.ts';
@@ -39,6 +42,10 @@ function filled(extra: Record<string, string> = {}): FormData {
     ...extra,
   };
   for (const [key, value] of Object.entries(base)) form.set(key, value);
+  if (!('services' in extra)) {
+    form.append('services', 'ВКР и магистерские диссертации');
+    form.append('services', 'Научные статьи');
+  }
   return form;
 }
 
@@ -65,9 +72,59 @@ describe('анкета эксперта: поля (Р-580)', () => {
 
   it('редакция согласия кандидата — та, что названа на странице', () => {
     const page = read('design', 'ExpertsPage.dc.html');
-    const [year, month, day] = EXPERT_CONSENT_VERSION.split('-').map(Number);
+    const [, year, month, day, revision] = /^(\d{4})-(\d{2})-(\d{2})(?:\.(\d+))?$/u.exec(EXPERT_CONSENT_VERSION)!;
     const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-    assert.ok(page.includes(`Редакция согласия от ${day} ${months[month! - 1]} ${year} года`));
+    const label = revision === undefined ? 'Редакция согласия' : `Редакция согласия ${revision}`;
+    assert.ok(page.includes(`${label} от ${Number(day)} ${months[Number(month) - 1]} ${year} года`));
+    assert.equal(consentVersionLabel('2026-10-14.2'), '2 от 14.10.2026');
+    assert.equal(consentVersionLabel('2026-10-14'), 'от 14.10.2026');
+  });
+});
+
+describe('профессиональная анкета (Р-584)', () => {
+  it('разделы анкеты разбираются: звание, место работы, стаж, виды работ, опыт, профили, загрузка', () => {
+    const form = filled({
+      academicTitle: 'Доцент',
+      workplace: 'Доцент кафедры экономики',
+      seniority: '3–10 лет',
+      elibrarySpin: '1234 5678',
+      orcid: 'https://orcid.org/0000-0002-1825-0097',
+      weeklyHours: '5–10 часов',
+    });
+    form.append('roles', 'Руководство ВКР');
+    form.append('roles', 'Руководство ВКР');
+    const input = parseExpertForm(form);
+    assert.equal(input.academicTitle, 'Доцент');
+    assert.deepEqual(input.services, ['ВКР и магистерские диссертации', 'Научные статьи']);
+    assert.deepEqual(input.roles, ['Руководство ВКР']);
+    assert.equal(input.elibrarySpin, '1234-5678');
+    assert.equal(input.orcid, '0000-0002-1825-0097');
+  });
+
+  it('без вида работ, с чужим значением перечня, с неверным SPIN или ORCID — понятный отказ', () => {
+    const noServices = filled({ services: '' });
+    noServices.delete('services');
+    const foreign = filled();
+    foreign.append('roles', 'Ректор');
+    const cases: [FormData, RegExp][] = [
+      [noServices, /вид работ/u],
+      [filled({ academicTitle: 'Академик' }), /звание/u],
+      [foreign, /опыт/iu],
+      [filled({ elibrarySpin: '12-34' }), /SPIN/u],
+      [filled({ orcid: '0000-0002-1825-0098' }), /ORCID/u],
+      [filled({ weeklyHours: 'Сколько скажете' }), /загрузку/u],
+    ];
+    for (const [form, message] of cases) {
+      assert.throws(() => parseExpertForm(form), (error: unknown) => error instanceof ExpertInputError && message.test(error.message));
+    }
+  });
+
+  it('SPIN-код и ORCID приводятся к одному виду, контрольная цифра ORCID сверяется', () => {
+    assert.equal(normalizeSpin('12345678'), '1234-5678');
+    assert.equal(normalizeSpin('1234-567'), null);
+    assert.equal(normalizeOrcid('0000-0002-1694-233x'), '0000-0002-1694-233X');
+    assert.equal(normalizeOrcid('0000000218250097'), '0000-0002-1825-0097');
+    assert.equal(normalizeOrcid('0000-0002-1825-0098'), null);
   });
 });
 
