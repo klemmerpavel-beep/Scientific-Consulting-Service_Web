@@ -22,3 +22,17 @@ describe('«Реклама»: метки состояния (Р-577)', () => {
     for (const chip of chips) assert.match(chip, /\bnowrap\b/u, `метка переносится: ${chip}`);
   });
 });
+
+describe('«Реклама»: ближайшие шаги (Р-578)', () => {
+  it('шаги владельца — отдельно и целиком, у шага — срок, инструкция и состояние', () => {
+    assert.match(page, /const OWNER = 'Владелец';/u);
+    assert.match(page, /`Ваши шаги · \$\{mine\.length\}`/u);
+    assert.match(page, /`Шаги команды · \$\{team\.length\}`/u);
+    for (const column of ['Срок', 'Что сделать', 'Инструкция', 'Состояние']) {
+      assert.match(page, new RegExp(`>${column}</th>`, 'u'), `нет столбца «${column}»`);
+    }
+    // Прежняя строка «14.10 · Счётчик… · Владелец» снята.
+    assert.doesNotMatch(page, /\$\{work\.title\} · \$\{work\.owner\}/u);
+  });
+});
+

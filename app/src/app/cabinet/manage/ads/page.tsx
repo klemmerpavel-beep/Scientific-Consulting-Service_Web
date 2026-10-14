@@ -56,6 +56,8 @@ export const dynamic = 'force-dynamic';
 
 const HREF = '/cabinet/manage/ads';
 const DAY = 86_400_000;
+/** Исполнитель шага в реестре `marketing/`, который читает этот экран. */
+const OWNER = 'Владелец';
 
 const TABS = [
   { key: 'summary', label: 'Сводка' },
@@ -296,7 +298,15 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
   const total = figures(registry.campaigns);
   const phase = testPhase(registry, now);
   const weeks = spendByWeek(registry.weeks);
-  const steps = openWorks(registry.works).slice(0, 6);
+  // Ближайшие шаги — раздельно: ваши (владельца) целиком, шаги команды —
+  // первые четыре (замечание владельца 12.10.2026, Р-578).
+  const open = openWorks(registry.works);
+  const mine = open.filter((work) => work.owner === OWNER);
+  const team = open.filter((work) => work.owner !== OWNER);
+  const teamShown = team.slice(0, 4);
+  // Сегодня по Москве (UTC+3 круглый год) — той же записью, что срок в реестре.
+  const todayIso = new Date(now.getTime() + 3 * 3_600_000).toISOString().slice(0, 10);
+  const late = (work: { due: string | null }) => work.due !== null && work.due < todayIso;
   const leadsTotal = funnels.reduce((acc, row) => acc + row.test.total, 0);
   const leadsTargeted = funnels.reduce((acc, row) => acc + row.test.targeted, 0);
   const sourceLabel = (source: string) =>
@@ -483,24 +493,85 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
         </div>
       </Card>
 
+      {/* «Ближайшие шаги» — таблицами: что сделать, к какому сроку и где
+          инструкция. Ваши шаги — отдельно и целиком, шаги команды — ниже
+          (замечание владельца 12.10.2026, решение Р-578). Прежде шаги
+          стояли строкой «14.10 · Счётчик Метрики… · Владелец», без
+          инструкции и без состояния. */}
       <Card>
         <Heading level={2} size={3}>
           Ближайшие шаги
         </Heading>
-        {steps.length === 0 ? (
+        {open.length === 0 ? (
           <Text muted style={{ marginTop: 8 }}>
             Все работы реестра сделаны.
           </Text>
         ) : (
-          <ul style={{ margin: '12px 0 0', paddingLeft: 20, display: 'grid', gap: 6 }}>
-            {steps.map((work) => (
-              <li key={work.id} style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--pd-ink-secondary)' }}>
-                {`${day(work.due).slice(0, 5)} · ${work.title} · ${work.owner}`}
-              </li>
-            ))}
-          </ul>
+          <>
+            <Text muted size={13} style={{ margin: '6px 0 14px' }}>
+              Что сделать до запуска, к какому сроку и где инструкция. Сделанный шаг уходит из списка.
+            </Text>
+            {[
+              { key: 'mine', title: `Ваши шаги · ${mine.length}`, rows: mine, who: false },
+              { key: 'team', title: `Шаги команды · ${team.length}`, rows: teamShown, who: true },
+            ]
+              .filter((group) => group.rows.length > 0)
+              .map((group) => (
+                <div key={group.key} style={{ marginBottom: 18 }}>
+                  <Heading level={3} size={3} style={{ marginBottom: 8 }}>
+                    {group.title}
+                  </Heading>
+                  <TableScroll label={group.key === 'mine' ? 'Ваши шаги' : 'Шаги команды'}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th scope="col" style={{ ...TABLE_HEAD, width: 120 }}>Срок</th>
+                          <th scope="col" style={TABLE_HEAD}>Что сделать</th>
+                          {group.who ? <th scope="col" style={TABLE_HEAD}>Кто</th> : null}
+                          <th scope="col" style={TABLE_HEAD}>Инструкция</th>
+                          <th scope="col" style={TABLE_HEAD}>Состояние</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.rows.map((work) => (
+                          <tr key={work.id}>
+                            <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--pd-ink)' }}>
+                              {day(work.due)}
+                              {late(work) ? (
+                                <span style={{ display: 'block', fontWeight: 400, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                                  срок прошёл
+                                </span>
+                              ) : null}
+                            </td>
+                            <td style={{ ...TABLE_CELL, color: 'var(--pd-ink)' }}>{work.title}</td>
+                            {group.who ? <td style={TABLE_CELL}>{work.owner}</td> : null}
+                            <td style={TABLE_CELL}>
+                              {/* Ссылка — строкой текста, как в абзаце: цель нажатия — сама
+                                  строка (исключение для ссылок в тексте, WCAG 2.5.8). */}
+                              <Text size={15}>
+                                {work.doc === null ? '—' : <DocLink slug={work.doc} docs={registry.docs} />}
+                              </Text>
+                            </td>
+                            <td style={TABLE_CELL}>
+                              <Chip nowrap tone={work.status === 'IN_PROGRESS' ? 'accent' : 'neutral'}>
+                                {labelOf(WORK_STATUS_LABEL, work.status)}
+                              </Chip>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </TableScroll>
+                  {group.key === 'team' && team.length > teamShown.length ? (
+                    <Text muted size={13} style={{ marginTop: 8 }}>
+                      {`И ещё ${team.length - teamShown.length} — во вкладке «Работы и документы».`}
+                    </Text>
+                  ) : null}
+                </div>
+              ))}
+          </>
         )}
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 4 }}>
           <ButtonLink href={`${HREF}?tab=works`}>Все работы и документы</ButtonLink>
         </div>
       </Card>
