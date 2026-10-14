@@ -17,13 +17,76 @@ import { looksLikeEmail } from './lead-schema.ts';
 
 /**
  * Редакция согласия кандидата — дата, с которой действует текст на
- * странице. Пишется в анкету: по ней видно, с каким текстом согласился
- * человек. Меняется вместе с текстом согласия в макете.
+ * странице, и номер редакции за этот день после точки. Пишется в анкету:
+ * по ней видно, с каким текстом согласился человек. Меняется вместе с
+ * текстом согласия в макете.
+ *
+ * Вторая редакция 14.10.2026 (решение Р-584): в перечень данных вошли
+ * учёное звание, место работы и должность, стаж, виды работ, отметки опыта,
+ * идентификаторы автора (SPIN-код eLIBRARY, ORCID) и желаемая загрузка —
+ * поля профессиональной анкеты. Первая редакция их не называла.
  */
-export const EXPERT_CONSENT_VERSION = '2026-10-14';
+export const EXPERT_CONSENT_VERSION = '2026-10-14.2';
+
+/** Редакция согласия для людей: «2 от 14.10.2026» или «от 14.10.2026». */
+export function consentVersionLabel(version: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:\.(\d+))?$/u.exec(version);
+  if (match === null) return version;
+  const date = `${match[3]}.${match[2]}.${match[1]}`;
+  return match[4] === undefined ? `от ${date}` : `${match[4]} от ${date}`;
+}
 
 /** Учёная степень — выбор из четырёх, чтобы анкеты сравнивались. */
 export const DEGREES = ['Без степени', 'Кандидат наук', 'Доктор наук', 'PhD'] as const;
+
+/**
+ * Перечни профессиональной анкеты (решение Р-584). Закрытые, чтобы
+ * руководитель отбирал анкеты по ним, а не читал свободный текст.
+ */
+export const ACADEMIC_TITLES = ['Без звания', 'Доцент', 'Профессор'] as const;
+export const SENIORITY = ['До 3 лет', '3–10 лет', 'Более 10 лет'] as const;
+/** Виды работ — направления практики, где нужны кураторы. */
+export const SERVICES = [
+  'Кандидатские и докторские диссертации',
+  'ВКР и магистерские диссертации',
+  'Научные статьи',
+  'Подготовка к защите',
+  'Гранты и НИОКР',
+  'Нормоконтроль и оформление',
+] as const;
+/** Отметки опыта — то, что проверяется по открытым источникам. */
+export const ROLES = [
+  'Руководство ВКР',
+  'Научное руководство аспирантами',
+  'Член диссертационного совета',
+  'Официальный оппонент',
+  'Рецензент научных журналов',
+  'Рецензент заявок грантовых фондов',
+] as const;
+export const WEEKLY_HOURS = ['До 5 часов', '5–10 часов', '10–20 часов', 'Более 20 часов'] as const;
+
+/** SPIN-код eLIBRARY: восемь цифр, пишется «1234-5678». `null` — не похоже. */
+export function normalizeSpin(value: string): string | null {
+  const digits = value.replace(/[\s-]/gu, '');
+  return /^\d{8}$/u.test(digits) ? `${digits.slice(0, 4)}-${digits.slice(4)}` : null;
+}
+
+/**
+ * ORCID: шестнадцать знаков группами по четыре, последний — контрольный
+ * (ISO 7064 11,2, может быть X). Принимается и с адресом сайта. `null` —
+ * не похоже или не сходится контрольная цифра: опечатку видно сразу.
+ */
+export function normalizeOrcid(value: string): string | null {
+  const bare = value.trim().replace(/^https?:\/\/(www\.)?orcid\.org\//iu, '').toUpperCase();
+  const match = /^(\d{4})-?(\d{4})-?(\d{4})-?(\d{3}[\dX])$/u.exec(bare);
+  if (match === null) return null;
+  const chars = match.slice(1).join('');
+  let total = 0;
+  for (const char of chars.slice(0, 15)) total = (total + Number(char)) * 2;
+  const check = (12 - (total % 11)) % 11;
+  if (chars[15] !== (check === 10 ? 'X' : String(check))) return null;
+  return match.slice(1).join('-');
+}
 
 /** Файлов в анкете — резюме и до двух примеров работ. */
 export const FILES_MAX = 3;
@@ -86,6 +149,16 @@ export const expertApplicationSchema = z
     fields: text(2000).min(10, 'Расскажите, в каких областях и с какими темами вы работаете'),
     experience: text(4000).min(20, 'Расскажите об опыте: руководство, рецензирование, преподавание, публикации'),
     links: text(1000).optional(),
+    academicTitle: z.enum(ACADEMIC_TITLES, { message: 'Выберите учёное звание из перечня' }).optional(),
+    workplace: text(300).optional(),
+    seniority: z.enum(SENIORITY, { message: 'Выберите стаж из перечня' }).optional(),
+    services: z
+      .array(z.enum(SERVICES, { message: 'Отметьте виды работ из перечня' }))
+      .min(1, 'Отметьте хотя бы один вид работ, который готовы вести'),
+    roles: z.array(z.enum(ROLES, { message: 'Отметьте опыт из перечня' })),
+    elibrarySpin: text(20).optional(),
+    orcid: text(60).optional(),
+    weeklyHours: z.enum(WEEKLY_HOURS, { message: 'Выберите загрузку из перечня' }).optional(),
     consent: z.literal(true, { message: 'Без согласия на обработку данных анкету принять нельзя' }),
   })
   .superRefine((value, ctx) => {
@@ -95,9 +168,20 @@ export const expertApplicationSchema = z
     if (value.phone !== undefined && value.phone !== '' && !looksLikePhone(value.phone)) {
       ctx.addIssue({ code: 'custom', path: ['phone'], message: 'Проверьте номер: нужно от 10 до 15 цифр' });
     }
+    if (value.elibrarySpin !== undefined && normalizeSpin(value.elibrarySpin) === null) {
+      ctx.addIssue({ code: 'custom', path: ['elibrarySpin'], message: 'Проверьте SPIN-код: восемь цифр, например 1234-5678' });
+    }
+    if (value.orcid !== undefined && normalizeOrcid(value.orcid) === null) {
+      ctx.addIssue({ code: 'custom', path: ['orcid'], message: 'Проверьте ORCID: шестнадцать знаков, например 0000-0002-1825-0097' });
+    }
   });
 
 export type ExpertApplicationInput = z.infer<typeof expertApplicationSchema>;
+
+/** Отмеченные значения одного поля-набора: строки, без повторов. */
+function picks(form: FormData, name: string): string[] {
+  return [...new Set(form.getAll(name).filter((item): item is string => typeof item === 'string' && item.trim() !== '').map((item) => item.trim()))];
+}
 
 /** Поле формы — строкой; пустое и отсутствующее — `undefined`. */
 function field(form: FormData, name: string): string | undefined {
@@ -118,10 +202,23 @@ export function parseExpertForm(form: FormData): ExpertApplicationInput {
     fields: field(form, 'fields') ?? '',
     experience: field(form, 'experience') ?? '',
     links: field(form, 'links'),
+    academicTitle: field(form, 'academicTitle'),
+    workplace: field(form, 'workplace'),
+    seniority: field(form, 'seniority'),
+    services: picks(form, 'services'),
+    roles: picks(form, 'roles'),
+    elibrarySpin: field(form, 'elibrarySpin'),
+    orcid: field(form, 'orcid'),
+    weeklyHours: field(form, 'weeklyHours'),
     consent: form.get('consent') === 'on' || form.get('consent') === 'true',
   });
   if (!parsed.success) throw new ExpertInputError(parsed.error.issues[0]?.message ?? 'Проверьте поля анкеты');
-  return parsed.data;
+  const data = parsed.data;
+  return {
+    ...data,
+    elibrarySpin: data.elibrarySpin === undefined ? undefined : (normalizeSpin(data.elibrarySpin) ?? undefined),
+    orcid: data.orcid === undefined ? undefined : (normalizeOrcid(data.orcid) ?? undefined),
+  };
 }
 
 export interface ExpertFile {

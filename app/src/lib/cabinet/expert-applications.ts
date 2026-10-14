@@ -19,7 +19,8 @@ import { openObject, sha256, storage, type OpenedObject } from './storage.ts';
 
 /**
  * Анкеты экспертов (замечание владельца 13.10.2026, решение Р-580):
- * запись анкеты с сайта, разбор, файлы, удаление, таблица.
+ * запись анкеты с сайта, разбор, файлы, удаление, таблица. Разделы
+ * профессиональной анкеты — решение Р-584.
  *
  * Разбирает анкеты руководитель (`EXPERT_APPLICATION_REVIEW`): он решает,
  * кого звать в кураторы, и заводит учётную запись сам. Анкета учётной
@@ -61,6 +62,14 @@ export async function createExpertApplication(
       fields: input.fields,
       experience: input.experience,
       links: input.links ?? null,
+      academicTitle: input.academicTitle ?? null,
+      workplace: input.workplace ?? null,
+      seniority: input.seniority ?? null,
+      services: [...input.services],
+      roles: [...input.roles],
+      elibrarySpin: input.elibrarySpin ?? null,
+      orcid: input.orcid ?? null,
+      weeklyHours: input.weeklyHours ?? null,
       consentVersion: EXPERT_CONSENT_VERSION,
     },
     select: { id: true },
@@ -248,12 +257,15 @@ export async function expertsTable(): Promise<Table> {
   return table(
     'Анкеты кандидатов.xlsx',
     'kandidaty.csv',
-    ['Дата (МСК)', 'Имя', 'Почта', 'Телефон', 'Учёная степень', 'Специальность', 'Сфера', 'Опыт', 'Ссылки',
-     'Файлов', 'Состояние', 'Пометка', 'Согласие', 'Идентификатор'],
+    ['Дата (МСК)', 'Имя', 'Почта', 'Телефон', 'Учёная степень', 'Учёное звание', 'Специальность',
+     'Место работы', 'Стаж', 'Виды работ', 'Сфера', 'Отметки опыта', 'Опыт', 'SPIN-код', 'ORCID', 'Ссылки',
+     'Загрузка', 'Файлов', 'Состояние', 'Пометка', 'Согласие', 'Идентификатор'],
     rows.map((row) => [
-      mskMoment(row.createdAt), row.fullName, row.email, row.phone ?? '', row.degree, row.speciality ?? '',
-      row.fields, row.experience, row.links ?? '', row._count.files, EXPERT_STATUS_LABEL[row.status],
-      row.note ?? '', row.consentVersion, row.id,
+      mskMoment(row.createdAt), row.fullName, row.email, row.phone ?? '', row.degree, row.academicTitle ?? '',
+      row.speciality ?? '', row.workplace ?? '', row.seniority ?? '', row.services.join('; '), row.fields,
+      row.roles.join('; '), row.experience, row.elibrarySpin ?? '', row.orcid ?? '', row.links ?? '',
+      row.weeklyHours ?? '', row._count.files, EXPERT_STATUS_LABEL[row.status], row.note ?? '',
+      row.consentVersion, row.id,
     ]),
   );
 }
