@@ -2,10 +2,7 @@ import type { ReactNode } from 'react';
 
 import type { Actor } from '../../lib/cabinet/access.ts';
 import { BUTTON_QUIET, CONTAINER, GUTTER, MONO, SANS, SERIF } from './tokens.ts';
-import { activeItem, navFor, RECOMMENDATIONS_HREF, SUMMARY_HREF, type NavItem } from '../../lib/cabinet/nav.ts';
-import { headAttentionCount } from '../../lib/cabinet/attention.ts';
-import { headRecommendationCount } from '../../lib/cabinet/recommendations.ts';
-import { Chip, VISUALLY_HIDDEN, plural } from './ui.tsx';
+import { activeItem, navFor, type NavItem } from '../../lib/cabinet/nav.ts';
 
 /**
  * Каркас раздела: шапка с вордмарком и навигацией, рабочая область, подвал
@@ -100,18 +97,12 @@ export default async function Shell({
   board?: boolean;
   children: ReactNode;
 }) {
-  // Число дел у «Сводки» руководителя — один раз на запрос, тем же
-  // набором, что строит «Требует внимания» (требование РК-04, Р-342).
-  const count = actor === null ? null : await headAttentionCount(actor);
-  // Неотмеченные рекомендации — у пункта «Рекомендации» (РК-17, Р-350).
-  const advice = actor === null ? null : await headRecommendationCount(actor);
-  const items = (actor === null ? [] : navFor(actor)).map((item) =>
-    item.href === SUMMARY_HREF && count !== null && count > 0
-      ? { ...item, count }
-      : item.href === RECOMMENDATIONS_HREF && advice !== null && advice > 0
-        ? { ...item, count: advice }
-        : item,
-  );
+  // Пункты меню — без чисел (замечание владельца 13.10.2026, решение
+  // Р-573): число у «Сводки» (Р-342) и у «Рекомендаций» (Р-350) меняло
+  // ширину пункта, и строка меню сдвигалась. Числа остались на самих
+  // экранах: «Требует внимания» на «Сводке», «Ждут решения» в
+  // «Рекомендациях».
+  const items = actor === null ? [] : navFor(actor);
   const active = activeItem(items, current ?? '');
   return (
     <>
@@ -167,16 +158,6 @@ export default async function Shell({
                       }}
                     >
                       {item.label}
-                      {item.count === undefined ? null : (
-                        <Chip mono>
-                          {item.count}
-                          <span style={VISUALLY_HIDDEN}>
-                            {item.href === RECOMMENDATIONS_HREF
-                              ? ` ${plural(item.count, 'рекомендация не отмечена', 'рекомендации не отмечены', 'рекомендаций не отмечено')}`
-                              : ` ${plural(item.count, 'дело требует', 'дела требуют', 'дел требуют')} решения`}
-                          </span>
-                        </Chip>
-                      )}
                     </a>
                   </li>
                 ))}

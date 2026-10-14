@@ -176,19 +176,17 @@ describe('одни определения на «Сводке» (РК-04)', { sk
     assert.equal(rows.find((row) => row.code === code('pause'))?.paused, true);
   });
 
-  it('число у пункта меню равно числу дел «Требует внимания»', async () => {
+  it('число дел «Требует внимания» — сумма его частей (числа у пункта меню нет, Р-573)', async () => {
     const sources = await attention.attentionSources(head());
     const parts = attention.attentionParts(sources);
     const total = Object.values(parts).reduce((acc, part) => acc + part.length, 0);
-    assert.equal(await attention.headAttentionCount(head()), total);
-    // Сорванный срок своей работы руководителя — дело; число растёт на одно.
+    assert.equal(attention.attentionCount(sources), total);
+    // Сорванный срок своей работы руководителя — дело и в числе тоже.
     await prisma.project.update({ where: { id: ids.running }, data: { managerId: ids.head } });
     await prisma.stage.updateMany({ where: { projectId: ids.running }, data: { dueOn: new Date(Date.now() - 5 * DAY) } });
-    const after = await attention.headAttentionCount(head());
-    const parts2 = attention.attentionParts(await attention.attentionSources(head()));
+    const sources2 = await attention.attentionSources(head());
+    const parts2 = attention.attentionParts(sources2);
     assert.ok(parts2.overdue.some((stage) => stage.project.code === code('run')));
-    assert.equal(after, Object.values(parts2).reduce((acc, part) => acc + part.length, 0));
-    // Менеджеру числа у пункта меню нет.
-    assert.equal(await attention.headAttentionCount(who(ids.manager!, 'MANAGER')), null);
+    assert.equal(attention.attentionCount(sources2), Object.values(parts2).reduce((acc, part) => acc + part.length, 0));
   });
 });

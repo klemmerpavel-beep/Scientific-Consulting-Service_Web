@@ -1,7 +1,7 @@
 /**
  * Тяжёлые выборки руководителя — один раз на запрос (решение Р-476):
- * строки витрины и рекомендации обёрнуты в `cache`, а число у пункта меню,
- * «Сводка» и раздел «Рекомендации» берут один расчёт.
+ * строки витрины и рекомендации обёрнуты в `cache`, а «Сводка» и раздел
+ * «Рекомендации» берут один расчёт. Числа у пункта меню нет (Р-573).
  */
 
 import assert from 'node:assert/strict';
@@ -16,7 +16,6 @@ describe('выборки руководителя — один раз на за�
   it('строки витрины и рекомендации обёрнуты в cache', () => {
     assert.match(read('lib/cabinet/analytics/data.ts'), /export const loadRows = cache\(/u);
     assert.match(read('lib/cabinet/recommendations.ts'), /export const recommendationsNow = cache\(/u);
-    assert.match(read('lib/cabinet/recommendations.ts'), /await recommendationsNow\(actor\)\)\.unmarked/u);
   });
 
   it('экраны берут общий расчёт, а не считают заново', () => {
