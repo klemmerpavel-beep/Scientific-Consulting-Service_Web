@@ -641,7 +641,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <sc-for list="{{ reviews }}" as="r" hint-placeholder-count="5">
 <article aria-hidden="{{ r.hidden }}" style="position:absolute;left:50%;top:8px;width:min(430px,84vw);height:236px;margin-left:calc(min(430px,84vw) / -2);box-sizing:border-box;display:flex;flex-direction:column;gap:14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:transform 420ms cubic-bezier(.2,0,.2,1),filter 420ms cubic-bezier(.2,0,.2,1),opacity 420ms cubic-bezier(.2,0,.2,1);transform:{{ r.tf }};filter:{{ r.fl }};opacity:{{ r.op }};z-index:{{ r.z }};pointer-events:{{ r.pe }}">
 <div style="display:flex;align-items:center;gap:12px">
-<img src="{{ r.photo }}" alt="" aria-hidden="true" width="56" height="56" loading="lazy" decoding="async" style="width:56px;height:56px;flex:0 0 56px;border-radius:50%;object-fit:cover;background:var(--pd-surface-quiet)">
+<!-- Инициал автора отзыва вместо значка-силуэта (замечание владельца 14.10.2026, решение Р-590): фотографии авторов не публикуются, а чужое лицо у настоящего отзыва вводило бы в заблуждение. -->
+<span aria-hidden="true" style="width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);display:flex;align-items:center;justify-content:center;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1;font-weight:600;color:var(--pd-accent)">{{ r.initial }}</span>
 <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
 <span style="font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink)">{{ r.role }}</span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">{{ r.field }}</span>
@@ -937,21 +938,21 @@ class Component extends DCLogic {
     // двенадцати не опубликованы, потому что называют предметом работу,
     // выполненную за клиента.
     const REVIEWS = [
-      { photo: 'av-3', role: 'Роман', field: 'Авито · 30 сентября 2024',
+      { role: 'Роман', field: 'Авито · 30 сентября 2024',
         text: 'Работа была выполнена качественно. Все договоренности проработали, цена была объявлена сразу. Человек компетентный и опытный, довериться можно)' },
-      { photo: 'av-2', role: 'Ирина', field: 'Авито · 12 июля 2024',
+      { role: 'Ирина', field: 'Авито · 12 июля 2024',
         text: 'Цена соответствует качеству работы, все было выполнено даже раньше срока, в полном объёме. Быстрые ответы, вежливое общение, пояснения по всем вопросам)' },
-      { photo: 'av-8', role: 'Анастасия', field: 'Авито · 14 ноября 2024',
+      { role: 'Анастасия', field: 'Авито · 14 ноября 2024',
         text: 'Хочу выразить искреннюю благодарность за профессиональную помощь и поддержку в процессе работы. Все выполнено качественно и главное в срок, получила оценку «отлично»' },
-      { photo: 'av-5', role: 'Олег', field: 'Авито · 1 ноября 2024',
+      { role: 'Олег', field: 'Авито · 1 ноября 2024',
         text: 'Спасибо за работу, выполнено профессионально не смотря на сложную тему, однозначно буду обращаться ещё)' },
-      { photo: 'av-6', role: 'Ян', field: 'Авито · 2 ноября 2024',
+      { role: 'Ян', field: 'Авито · 2 ноября 2024',
         text: 'Цена оправдана. Срок и требования были идеально выполнены, я очень благодарен таким людям!' },
-      { photo: 'av-7', role: 'Велина', field: 'Авито · 3 ноября 2024',
+      { role: 'Велина', field: 'Авито · 3 ноября 2024',
         text: 'Работа выполнена качественно, в соответствии с заявленным объявлением, максимально быстро, без технических и иных проблем! Благодарю Вас!' },
-      { photo: 'av-4', role: 'Никита', field: 'Авито · 25 октября 2024',
+      { role: 'Никита', field: 'Авито · 25 октября 2024',
         text: 'Огромное спасибо за быстро и качественно выполненную работа. Всегда на связи. Спрашивают и переживают были ли замечания от преподавателей в работе.' },
-      { photo: 'av-1', role: 'Александра', field: 'Авито · 30 июня 2024',
+      { role: 'Александра', field: 'Авито · 30 июня 2024',
         text: 'вежливый, все сделал быстро и оперативно, как и просила, рекомендую!!! еще раз спасибо за оперативность и качество работы' },
     ];
     const revN = REVIEWS.length;
@@ -963,7 +964,7 @@ class Component extends DCLogic {
       const a = Math.abs(d);
       return {
         ...r,
-        photo: './assets/avatars/' + r.photo + '.svg',
+        initial: r.role.slice(0, 1),
         // Смещение подобрано так, чтобы дальняя карточка заходила за край
         // сцены, но оставалась видимой примерно на две трети.
         tf: 'translateX(' + (d < 0 ? -1 : 1) * (a === 0 ? 0 : a === 1 ? 62 : 112) + '%) '
