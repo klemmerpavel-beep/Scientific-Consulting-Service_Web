@@ -73,6 +73,15 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .sp-orbit{margin-top:156px}
 @media (max-width:1024px){.sp-orbit{margin-top:0}.sp-crewfig{position:relative;left:auto;top:auto;transform:none;display:block;height:190px;margin:0 auto -42px}}
 @media (max-width:480px){.sp-crewfig{height:168px;margin-bottom:-38px}}
+
+/* «Как это выглядит внутри» — кабинет клиента вкладками (С-1, Р-591): тот же
+   компонент, что на «Экспертам» (Р-584): pill-кнопки на тихой подложке,
+   слева текст, справа снимок экрана в рамке. */
+.pd-in-tablist{display:inline-flex;gap:4px;padding:4px;background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}
+.pd-in-tablist::-webkit-scrollbar{display:none}
+.pd-in-body{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
+@media (max-width:1024px){.pd-in-body{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:768px){.pd-in-sub{text-align:left!important;margin-left:0!important}}
 </style>
 </helmet>
 <div style="position:relative;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
@@ -472,6 +481,41 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <a href="#request" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:13px;font-weight:600;padding:14px 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Обсудить мой срок<span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
 </section>
+<!-- «Как это выглядит внутри» — кабинет клиента на вымышленных данных (план владельца по образцу, С-1, решение Р-591). -->
+<section id="inside" class="sp-pad" aria-labelledby="pd-in-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Личный кабинет</span>
+<h2 id="pd-in-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:balance">Как это выглядит внутри</h2>
+</div>
+<span class="pd-in-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border);max-width:44ch">Экраны кабинета клиента на вымышленных данных</span>
+</div>
+<div role="tablist" aria-label="Экраны кабинета клиента" class="pd-in-tablist" onKeyDown="{{ inTabKey }}">
+<sc-for list="{{ inTabs }}" as="t" hint-placeholder-count="4">
+<sc-if value="{{ t.active }}" hint-placeholder-val="{{ true }}">
+<button type="button" role="tab" id="{{ t.id }}" aria-selected="true" aria-controls="pd-in-panel" tabindex="{{ 0 }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:var(--pd-ink);color:var(--pd-ink-inverse);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">{{ t.label }}</button>
+</sc-if>
+<sc-if value="{{ t.inactive }}" hint-placeholder-val="{{ false }}">
+<button type="button" role="tab" id="{{ t.id }}" aria-selected="false" aria-controls="pd-in-panel" tabindex="{{ -1 }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:var(--pd-ink-muted);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-ink-inverse);color:var(--pd-ink)" style-active="transform:scale(.97)">{{ t.label }}</button>
+</sc-if>
+</sc-for>
+</div>
+<div id="pd-in-panel" role="tabpanel" aria-labelledby="{{ inTabLabelledBy }}" class="pd-in-body" style="gap:32px;align-items:center;margin-top:24px">
+<div style="display:flex;flex-direction:column;gap:14px">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ inTitle }}</h3>
+<p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">{{ inText }}</p>
+<ul style="margin:4px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ inPoints }}" as="p" hint-placeholder-count="3">
+<li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.5;color:var(--pd-ink)"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center;margin-top:-1px"><span style="width:12px;height:12px;display:block;background:var(--pd-accent);-webkit-mask:{{ inCheckMask }};mask:{{ inCheckMask }}"></span></span><span>{{ p.text }}</span></li>
+</sc-for>
+</ul>
+</div>
+<figure style="margin:0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:10px">
+<img src="{{ inImg }}" alt="{{ inAlt }}" width="1440" height="900" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider)">
+<figcaption style="padding:10px 6px 2px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ inCaption }}</figcaption>
+</figure>
+</div>
+</section>
 
 <section class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
 <div class="sp-team" style="gap:40px;align-items:center">
@@ -785,7 +829,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { revFormOpen: false, sentReview: false, revAt: 0, situation: 1, step: 0, open: -1, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false, navOpen: false };
+  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, situation: 1, step: 0, open: -1, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false, navOpen: false };
   componentDidMount(){
     // Всплывающее окно закрывается клавишей Esc — иначе с клавиатуры
     // из него не выйти, а закрывающая кнопка может быть прокручена.
@@ -1082,7 +1126,50 @@ class Component extends DCLogic {
         hidden: a === 0 ? undefined : 'true'
       };
     });
+    // «Как это выглядит внутри» — кабинет клиента вкладками (С-1, Р-591).
+    // Тексты сверены с экранами кабинета клиента; суммы на снимке оплат
+    // размыты: цены на сайте не публикуются (Р-03).
+    const IN_TABS = [
+      { label: 'Карточка работы', title: 'Карточка работы', text: 'План этапов, ход работы и то, что ждут от вас, — на одной карточке. Рядом — переписка с менеджером.',
+        points: ['Что нужно от вас — первой строкой, со сроком', 'Пройденные этапы отмечены на шкале', 'Переписка ведётся в кабинете и остаётся при работе'],
+        img: './assets/art/cl-tab-card.webp', alt: 'Карточка работы в кабинете клиента: этап на согласовании, план работ и переписка с менеджером. Данные вымышленные.',
+        caption: 'Карточка работы. На снимке вымышленные данные.' },
+      { label: 'Согласование этапа', title: 'Согласование этапа', text: 'Когда этап готов, менеджер публикует итог: что сделано и что дальше. Вы согласуете этап или возвращаете его с замечаниями.',
+        points: ['Итог этапа и последние версии материалов — на одной странице', 'Срок согласования виден заранее', 'Этап можно вернуть с замечаниями'],
+        img: './assets/art/cl-tab-stage.webp', alt: 'Страница этапа в кабинете клиента: итог этапа, срок согласования, кнопки «Согласовать этап» и «Вернуть с замечаниями». Данные вымышленные.',
+        caption: 'Этап на согласовании. На снимке вымышленные данные.' },
+      { label: 'Материалы и версии', title: 'Материалы и версии', text: 'Главы и другие материалы хранятся версиями: каждая загрузка — отдельная версия, прежние остаются доступными.',
+        points: ['Версии одного материала — по порядку, с датой и автором', 'Замечание оставляется к конкретной версии', 'Свои файлы вы прикладываете здесь же'],
+        img: './assets/art/cl-tab-materials.webp', alt: 'Материалы работы в кабинете клиента: две версии главы и загрузка новой. Данные вымышленные.',
+        caption: 'Материалы работы. На снимке вымышленные данные.' },
+      { label: 'Оплаты и документы', title: 'Оплаты и документы', text: 'Договор, платежи по нему и документы — на одном экране: что оплачено, что ожидается и каким документом закрыт платёж.',
+        points: ['Номер и дата договора', 'Платежи со сроками и состоянием', 'Счета и акты приложены к платежам'],
+        img: './assets/art/cl-tab-payments.webp', alt: 'Оплаты и документы в кабинете клиента: договор, доля оплаченного и платежи; суммы скрыты. Данные вымышленные.',
+        caption: 'Оплаты и документы. Суммы на снимке скрыты: смета считается для каждой работы.' },
+    ];
+    const inTab = IN_TABS[this.state.inTab];
     return {
+      inTabs: IN_TABS.map((t, i) => ({
+        label: t.label, id: 'pd-in-tab-' + i,
+        active: i === this.state.inTab, inactive: i !== this.state.inTab,
+        pick: () => this.setState({ inTab: i }),
+      })),
+      // Стрелки, Home и End переводят вкладку и фокус (WAI-ARIA, вкладки).
+      inTabKey: e => {
+        const n = IN_TABS.length;
+        let i = this.state.inTab;
+        if (e.key === 'ArrowRight') i = (i + 1) % n;
+        else if (e.key === 'ArrowLeft') i = (i - 1 + n) % n;
+        else if (e.key === 'Home') i = 0;
+        else if (e.key === 'End') i = n - 1;
+        else return;
+        e.preventDefault();
+        this.setState({ inTab: i }, () => { const el = document.getElementById('pd-in-tab-' + i); if (el) el.focus(); });
+      },
+      inTabLabelledBy: 'pd-in-tab-' + this.state.inTab,
+      inTitle: inTab.title, inText: inTab.text, inImg: inTab.img, inAlt: inTab.alt, inCaption: inTab.caption,
+      inPoints: inTab.points.map(text => ({ text })),
+      inCheckMask: "url('./assets/icons/check.svg') center/contain no-repeat",
       // Форма отзыва: раскрывается по кнопке, чтобы не занимать место у тех,
       // кто пришёл читать. Контакт обязателен — не для связи ради связи, а
       // потому что опубликовать отзыв без разрешения автора нельзя, и
