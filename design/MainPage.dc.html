@@ -51,7 +51,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .pd-request{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 @media (max-width:1024px){.pd-usp{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.pd-orbit>.pd-ring,.pd-orbit>.pd-dot,.pd-orbit>.pd-core{display:none!important}.pd-orbit>.pd-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}}
-.pd-nav{display:flex;align-items:center;gap:28px;flex-wrap:wrap}@media (max-width:1000px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-services,.pd-cost,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
+.pd-nav{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+/* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
+@media (max-width:1200px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-services,.pd-cost,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
 /* Подпись раздела на узком экране — под заголовком слева, а не прижатой вправо строкой (Р-250). */
 @media (max-width:768px){.pd-sub{text-align:left!important;margin-left:0!important}}
 @media (max-width:768px){.pd-metrics,.pd-usp,.pd-services,.pd-cost,}
@@ -102,11 +104,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span aria-hidden="true" style="width:18px;height:2px;background:var(--pd-ink);border-radius:999px;display:block"></span>
 </button>
 <nav id="pd-nav" class="pd-nav" hidden="{{ navHidden }}" aria-label="Разделы сайта">
-<a href="#services" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Направления</a>
-<a href="#cost" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Стоимость</a>
-<a href="#process" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Как мы работаем</a>
-<a href="#faq" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Вопросы</a>
-<a href="./cabinet.html" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Личный кабинет</a>
+<a href="#services" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Направления</a>
+<a href="#cost" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Стоимость</a>
+<a href="#process" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Как мы работаем</a>
+<a href="#faq" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Вопросы</a>
+<!-- «Стать экспертом» и «Личный кабинет» — обводка проявляется при наведении (замечание владельца 14.10.2026, решение Р-588). -->
+<a href="./experts.html" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink);border-color:var(--pd-ink)">Стать экспертом</a>
+<a href="./cabinet.html" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink);border-color:var(--pd-ink)">Личный кабинет</a>
 </nav>
 <a href="#request" style="display:inline-flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;height:46px;padding:0 30px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a>
 </div>
@@ -759,9 +763,10 @@ class Component extends DCLogic {
     this.measure();
     // Разделы в шапке: на широком экране они видны всегда, и атрибут
     // `hidden` там неуместен — читалка пропустила бы навигацию целиком.
-    // Ниже 1000 панель открывается кнопкой — там же появляется сама кнопка:
-    // пять разделов вместе с «Личным кабинетом» уже не помещаются в строку.
-    this.wide = window.matchMedia('(min-width:1001px)');
+    // Ниже 1200 панель открывается кнопкой — там же появляется сама кнопка:
+    // разделы вместе со «Стать экспертом» и «Личным кабинетом» уже не
+    // помещаются в строку (Р-588).
+    this.wide = window.matchMedia('(min-width:1201px)');
     this.syncNav = () => this.setState({ navOpen: this.wide.matches });
     this.syncNav();
     this.wide.addEventListener('change', this.syncNav);
