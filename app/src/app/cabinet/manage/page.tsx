@@ -128,6 +128,25 @@ const ALERT_WIDTH: Record<number, number> = { 0: 0, 1: 3, 2: 4, 3: 5, 4: 6 };
 const DASH_STACK = { display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0, alignSelf: 'start' } as const;
 
 /**
+ * Строка чисел в плашке сводки: подпись мелко, число крупнее (Р-574).
+ */
+const DASH_FIGURES = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+  gap: 12,
+} as const;
+const DASH_FIGURE_LABEL = { fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)', lineHeight: 1.5 } as const;
+const DASH_FIGURE_VALUE = {
+  margin: '4px 0 0',
+  fontFamily: SANS,
+  fontSize: 16,
+  fontWeight: 600,
+  lineHeight: 1.24,
+  color: 'var(--pd-ink)',
+  fontVariantNumeric: 'tabular-nums',
+} as const;
+
+/**
  * Запись в колонках «Ведутся сейчас» и «Заявки» — отдельной плашкой с
  * рамкой и тихим фоном, с промежутком до соседней. Прежде записи
  * разделяла едва заметная линия, и десяток работ читался сплошным текстом:
@@ -239,6 +258,9 @@ export default async function ManageQueue({
   const demand = demandAll.slice(0, 6);
   const demandTotal = demandAll.reduce((acc, item) => acc + item.orders, 0);
   const load = dashboard ? await stageLoad(actor) : null;
+  // Действующих — сумма по состояниям: тот же набор, что у плитки (Р-342).
+  const loadTotal = load === null ? 0 : load.points.reduce((acc, point) => acc + point.count, 0);
+  const loadOf = (key: string) => load?.points.find((point) => point.key === key)?.count ?? 0;
   // «Ближайшие сроки» — все этапы действующих работ и срок работы без
   // плана, сорванные сверху (требование РК-04, решение Р-342).
   const deadlines = dashboard ? await upcomingDeadlines(actor) : [];
@@ -1083,6 +1105,24 @@ export default async function ManageQueue({
               <Heading level={2} size={3} style={{ marginBottom: 12 }}>
                 Чем занята практика
               </Heading>
+              {/* Сначала — четыре числа действующих работ, ниже — где они
+                  стоят по текущему этапу. Пояснительный абзац и пилюля
+                  просрочки сняты: то же самое говорят числа (замечание
+                  владельца 13.10.2026, решение Р-574). Набор действующих —
+                  тот же, что у плиток (РК-04, Р-342). */}
+              <dl style={{ ...DASH_FIGURES, margin: '0 0 16px', paddingBottom: 14, borderBottom: '1px solid var(--pd-divider)' }}>
+                {[
+                  { key: 'live', label: 'Действующих', value: loadTotal },
+                  { key: 'work', label: 'Этап в работе', value: loadOf('IN_PROGRESS') },
+                  { key: 'pause', label: 'Приостановлено', value: load.paused },
+                  { key: 'late', label: 'Срок прошёл', value: load.overdue },
+                ].map((row) => (
+                  <div key={row.key}>
+                    <dt style={DASH_FIGURE_LABEL}>{row.label}</dt>
+                    <dd style={DASH_FIGURE_VALUE}>{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
               {load.points.length === 0 ? (
                 <Text muted>Действующих работ нет.</Text>
               ) : (
@@ -1094,24 +1134,6 @@ export default async function ManageQueue({
                   format={(value) => String(Math.round(value))}
                 />
               )}
-              <div
-                style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}
-              >
-                {load.overdue === 0 ? null : (
-                  <Chip tone="accent">
-                    {load.overdue} {plural(load.overdue, 'работа', 'работы', 'работ')} со сроком в
-                    прошлом
-                  </Chip>
-                )}
-                {/* Работы без плана стоят в графике своей строкой, пометкой
-                    они не повторяются (решение Р-216). */}
-              </div>
-              <Text muted size={13} style={{ marginTop: 10 }}>
-                {/* Тот же набор действующих, что у плиток (РК-04, Р-342). */}
-                {load.paused === 0 ? '' : `Из действующих приостановлено ${load.paused}. `}
-                Состояние берётся у первого незавершённого этапа: он и есть то, где работа стоит
-                сейчас. Работы, перенесённые из книги без плана, стоят своей строкой.
-              </Text>
               {/* Числа стоят и текстом: график объявлен картинкой, и читалка
                   получает от него одно название (правило Р-176). */}
               <div style={{ marginTop: 'auto' }} />
@@ -1120,8 +1142,9 @@ export default async function ManageQueue({
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
-                        <th style={TABLE_HEAD} scope="col">Состояние</th>
+                        <th style={TABLE_HEAD} scope="col">Текущий этап</th>
                         <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Работ</th>
+                        <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Доля</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1129,6 +1152,7 @@ export default async function ManageQueue({
                         <tr key={point.key}>
                           <td style={TABLE_CELL}>{point.label}</td>
                           <td style={TABLE_NUM}>{point.count}</td>
+                          <td style={TABLE_NUM}>{loadTotal === 0 ? '—' : `${Math.round((point.count / loadTotal) * 100)} %`}</td>
                         </tr>
                       ))}
                     </tbody>
