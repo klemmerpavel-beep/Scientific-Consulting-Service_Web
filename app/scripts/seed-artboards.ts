@@ -767,6 +767,40 @@ async function main() {
       createdAt: day(1),
     },
   });
+  // Анкеты экспертов со страницы «Экспертам» (решение Р-580): новая и
+  // разобранная, без файлов — снимок показывает перечень и экран анкеты.
+  // Люди вымышленные, как все люди прототипа.
+  await prisma.expertApplication.deleteMany({});
+  await prisma.expertApplication.createMany({
+    data: [
+      {
+        createdAt: day(2),
+        fullName: 'Белова Ирина Сергеевна',
+        email: 'belova@artboard.example',
+        phone: '+7 900 000-00-01',
+        degree: 'Кандидат наук',
+        speciality: '5.2.3. Региональная и отраслевая экономика',
+        fields: 'Экономика отраслевых рынков, ВКР и магистерские диссертации, методология эмпирических исследований.',
+        experience: 'Доцент кафедры экономики, руководство 30 ВКР, рецензент журнала из перечня ВАК, 24 публикации.',
+        links: 'https://elibrary.ru/author_profile.asp?id=000000',
+        consentVersion: '2026-10-14',
+      },
+      {
+        createdAt: day(9),
+        fullName: 'Орлов Дмитрий Андреевич',
+        email: 'orlov@artboard.example',
+        degree: 'Доктор наук',
+        speciality: '2.3.1. Системный анализ, управление и обработка информации',
+        fields: 'Системный анализ, НИОКР, отчёты по грантам.',
+        experience: 'Профессор, научный руководитель шести аспирантов, рецензент РНФ.',
+        consentVersion: '2026-10-14',
+        status: 'REVIEW',
+        statusChangedAt: day(5),
+        note: 'Созвониться о задачах по НИОКР.',
+      },
+    ],
+  });
+
   // Ветка «руководитель — сотрудник»: вопрос менеджера без ответа — дело
   // «Вопрос сотрудника» на «Сводке» руководителя (РК-07, Р-336).
   await prisma.message.deleteMany({ where: { thread: 'HEAD_STAFF', staffId: manager.id } });

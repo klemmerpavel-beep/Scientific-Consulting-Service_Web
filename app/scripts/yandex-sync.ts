@@ -36,6 +36,7 @@ import {
   yearsTable,
   type Table,
 } from '../src/lib/disk/registry.ts';
+import { expertsTable } from '../src/lib/cabinet/expert-applications.ts';
 import { anonymize } from '../src/lib/disk/sheet.ts';
 
 const MANIFEST = '.opis-zerkala.tsv';
@@ -90,6 +91,9 @@ async function main(): Promise<number> {
     await materialsTable(files),
     // Замечания с виджета — по ним раз в неделю делаются правки (Р-403).
     await feedbackTable(),
+    // Анкеты экспертов со страницы «Экспертам» (Р-580); файлы анкет в
+    // зеркало не уходят — только таблица.
+    await expertsTable(),
   ];
   if (actor !== null) {
     built.push(await yearsTable(actor));
