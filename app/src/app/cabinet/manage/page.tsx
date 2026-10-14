@@ -54,6 +54,7 @@ import { PULSE_PERIODS, pulseChange, pulseMetrics, pulsePeriod, pulseWindow } fr
 import { activeWorks, moneyBrief, orderSummary, stageLoad, upcomingDeadlines } from '../../../lib/cabinet/summary';
 import { teamBrief, teamLoad } from '../../../lib/cabinet/team';
 import { recommendationsNow } from '../../../lib/cabinet/recommendations';
+import { practiceReview } from '../../../lib/cabinet/practice-review';
 
 export const dynamic = 'force-dynamic';
 
@@ -194,8 +195,9 @@ export default async function ManageQueue({
   const term = actor.role === 'HEAD' ? await reactionDays() : 0;
   // «Команда» — лента плашек всех сотрудников (РК-06, Р-343; Р-575).
   const team = actor.role === 'HEAD' ? teamBrief(await teamLoad(actor)) : [];
-  // «Рекомендация месяца» — под ответом сводки (РК-17, Р-350).
-  const advice = actor.role === 'HEAD' && can(actor, 'ANALYTICS_VIEW') ? (await recommendationsNow(actor)).month : null;
+  // Рекомендации — для группы «Возможность» «Разбора практики»; первой
+  // строкой в ней — «Рекомендация месяца» (РК-17, Р-350; К-2, Р-586).
+  const advice = actor.role === 'HEAD' && can(actor, 'ANALYTICS_VIEW') ? await recommendationsNow(actor) : null;
   const queue = await leadQueue(actor, Number.isFinite(requested) ? requested : 1);
   const leads = queue.rows;
 
@@ -722,6 +724,21 @@ export default async function ManageQueue({
       ),
   };
 
+  // «Разбор практики» — руководителю с аналитикой (К-2, Р-586): дела
+  // блока «Требует внимания», сроки недели и рекомендации тремя группами.
+  const review =
+    advice === null
+      ? null
+      : practiceReview({
+          act: attention.map((row) => ({ title: row.title, note: row.mark, href: row.href })),
+          watch: today.week.map((row) => ({
+            title: row.title,
+            note: `до ${formatDate(row.dueOn)}${row.turn === null ? '' : ` · ${row.turn}`}`,
+            href: row.href,
+          })),
+          chance: { count: advice.unmarked, month: advice.month },
+        });
+
   // Плашки «Требует внимания» — одна разметка для «Моих» и «Контроля».
   const attentionList = (rows: typeof shownAttention) => (
     <ul
@@ -943,13 +960,43 @@ export default async function ManageQueue({
         }
       />
 
-      {advice === null ? null : (
-        <Text size={14} style={{ marginBottom: 20 }}>
-          Рекомендация месяца:{' '}
-          <a className="cab-mark" href={advice.href}>
-            {advice.title}
-          </a>
-        </Text>
+      {/* «Разбор практики» — три группы с числом и главной строкой: что
+          сделать, за чем наблюдать, какая есть возможность (К-2, Р-586).
+          Заменил строку «Рекомендация месяца»: она — первая строка группы
+          «Возможность». Перечни остаются ниже и на «Рекомендациях». */}
+      {review === null ? null : (
+        <section id="review" aria-label="Разбор практики" style={{ scrollMarginTop: 24 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 14 }}>
+            Разбор практики
+          </Heading>
+          <Tiles>
+            {review.map((group) => (
+              <Tile key={group.key} label={group.label} value={String(group.count)} note={group.scope}>
+                {group.first === null ? (
+                  <Text muted size={13} style={{ marginTop: 12 }}>
+                    {group.empty}
+                  </Text>
+                ) : (
+                  <div style={{ marginTop: 12, display: 'grid', gap: 2 }}>
+                    <a href={group.first.href} className="cab-mark" style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
+                      {clip(group.first.title, 90)}
+                    </a>
+                    {group.first.note === null ? null : (
+                      <Text muted size={13}>
+                        {group.first.note}
+                      </Text>
+                    )}
+                  </div>
+                )}
+                {group.all === null ? null : (
+                  <a href={group.all.href} className="cab-mark" style={{ display: 'inline-block', marginTop: 10, fontFamily: SANS, fontSize: 13 }}>
+                    {group.all.label}
+                  </a>
+                )}
+              </Tile>
+            ))}
+          </Tiles>
+        </section>
       )}
 
       {/* Ни почта, ни бот не настроены — уведомления копятся в очереди;
@@ -1013,7 +1060,7 @@ export default async function ManageQueue({
       {/* «На этой неделе» — отдельным блоком, в «N дел» не входит: срок ещё
           не сорван, но подходит (требование М-06, ОМ-10, решение Р-304). */}
       {today.week.length === 0 ? null : (
-        <Block style={{ marginBottom: 20 }}>
+        <Block id="week" style={{ marginBottom: 20 }}>
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             На этой неделе · {today.week.length}
           </Heading>
