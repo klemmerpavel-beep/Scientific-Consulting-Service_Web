@@ -266,10 +266,12 @@ tools/          средства сборки и снимков
 | `/offer` | публичная оферта | `OfferPage.dc.html` | `OfferPage.tsx` |
 | `/privacy` | политика обработки персональных данных | `PrivacyPage.dc.html` | `PrivacyPage.tsx` |
 | `/consent` | согласие на обработку персональных данных | `ConsentPage.dc.html` | `ConsentPage.tsx` |
+| `/experts` | экспертам: условия и анкета, вне поиска (Р-580) | `ExpertsPage.dc.html` | `ExpertsPage.tsx` |
 | несуществующий | «адрес не найден» | `NotFoundPage.dc.html` | `NotFoundPage.tsx` |
 | `/cabinet` | личный кабинет, закрыт входом | — | `src/app/cabinet/`, `src/components/cabinet/` |
 | `/cabinet-preview/` | прототип кабинета, статическая копия | — | `public/cabinet-preview/` |
 | `/api/lead` | приём заявки | — | — |
+| `/api/experts` | приём анкеты эксперта с файлами (Р-580) | — | — |
 | `/api/health` | проверка живости приложения и базы | — | — |
 
 Вторая строка — не опечатка: макет `MainPage`, компонент `PostgradPage`,

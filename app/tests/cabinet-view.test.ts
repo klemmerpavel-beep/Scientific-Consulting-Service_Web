@@ -561,7 +561,9 @@ describe('колонка сводки показывает столько, ск�
     const name = path.relative(PROTOTYPE, file);
     it(`${name}: счётчик колонки равен числу записей`, () => {
       const html = body(file).match(/<main\b[\s\S]*?<\/main>/u)?.[0] ?? '';
-      const board = html.match(/<div class="(?:[^"]*\s)?cab-board(?:\s[^"]*)?"[\s\S]*<\/div>/u)?.[0] ?? '';
+      // У руководителя работы и заявки стоят в сетке плашек `cab-dash`
+      // (Р-576), у менеджера — в панели `cab-board`.
+      const board = html.match(/<div class="(?:[^"]*\s)?cab-(?:board|dash)(?:\s[^"]*)?"[\s\S]*<\/div>/u)?.[0] ?? '';
       assert.ok(board.length > 0, 'панель сводки не найдена');
       const columns = board.match(/<section class="(?:[^"]*\s)?cab-card(?:\s[^"]*)?"[\s\S]*?<\/section>/gu) ?? [];
       assert.ok(columns.length >= 2, `колонок в сводке: ${columns.length}`);
@@ -595,8 +597,8 @@ describe('колонка сводки показывает столько, ск�
        * должна получать фокус и иметь имя.
        */
       const html = body(file).match(/<main\b[\s\S]*?<\/main>/u)?.[0] ?? '';
-      const board = html.match(/<div class="(?:[^"]*\s)?cab-board(?:\s[^"]*)?"[\s\S]*<\/div>/u)?.[0] ?? '';
-      for (const column of board.match(/<div class="cab-board-body"[^>]*>/gu) ?? []) {
+      const board = html.match(/<div class="(?:[^"]*\s)?cab-(?:board|dash)(?:\s[^"]*)?"[\s\S]*<\/div>/u)?.[0] ?? '';
+      for (const column of board.match(/<div class="cab-(?:board|dash)-body"[^>]*>/gu) ?? []) {
         if (!/overflow-y:\s*auto/u.test(column)) continue;
         assert.match(column, /tabindex="0"/u, 'прокручиваемая колонка не берёт фокус');
         assert.match(column, /aria-label="/u, 'у прокручиваемой колонки нет имени');

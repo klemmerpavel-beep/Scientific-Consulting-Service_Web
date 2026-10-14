@@ -234,10 +234,17 @@ export function Chip({
   children,
   tone = 'neutral',
   mono = false,
+  nowrap = false,
 }: {
   children: ReactNode;
   tone?: ChipTone;
   mono?: boolean;
+  /**
+   * Подпись в одну строку. В столбце состояния таблицы «Ждёт владельца»
+   * переносилось на две строки: метка превращалась в овал, и строки
+   * таблицы шли разной высоты (замечание владельца 12.10.2026, Р-577).
+   */
+  nowrap?: boolean;
 }) {
   return (
     <span
@@ -252,6 +259,7 @@ export function Chip({
         fontWeight: mono ? 400 : 500,
         letterSpacing: mono ? '.06em' : undefined,
         lineHeight: 1.4,
+        ...(nowrap ? { whiteSpace: 'nowrap' } : {}),
         ...CHIP_TONES[tone],
       }}
     >
@@ -2229,6 +2237,70 @@ export function BoardColumn({
 }
 
 /**
+ * Плашка-перечень с прокруткой внутри — для сетки плашек единого размера
+ * («Сводка», Р-576): шапка с названием и ссылкой, тело прокручивается
+ * внутри плашки. Тело получает фокус и имя, как тело колонки панели, —
+ * иначе с клавиатуры до нижних записей не добраться (Р-168). Ниже 960 px
+ * прокрутки нет: перечень идёт потоком (Р-320).
+ */
+export function ScrollCard({
+  title,
+  href,
+  hrefLabel,
+  children,
+}: {
+  title: string;
+  href?: string;
+  hrefLabel: string;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className="cab-card cab-dash-list"
+      style={{
+        background: 'var(--pd-ink-inverse)',
+        border: '1px solid var(--pd-border)',
+        borderRadius: RADIUS.card,
+        boxShadow: SHADOW.level2,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          padding: '18px 20px 12px',
+          borderBottom: '1px solid var(--pd-divider)',
+        }}
+      >
+        <Heading level={2} size={3}>
+          {title}
+        </Heading>
+        {href === undefined ? null : (
+          <a className="cab-mark" href={href} style={{ fontFamily: SANS, fontSize: 14 }}>
+            {hrefLabel}
+          </a>
+        )}
+      </div>
+      <div
+        className="cab-dash-body"
+        role="region"
+        aria-label={title}
+        tabIndex={0}
+        style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: '14px 20px 18px', scrollbarGutter: 'stable' }}
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/**
  * Готовность работы — самый крупный блок экрана заказа.
  *
  * Отвечает на три вопроса сразу: сколько сделано, где работа сейчас и что
@@ -2521,6 +2593,75 @@ export function Disclosure({
       >
         {children}
       </div>
+    </details>
+  );
+}
+
+/**
+ * Сворачиваемый блок экрана (замечание владельца 13.10.2026, решение
+ * Р-572): заголовок блока, пояснение и число строк видны всегда, тело —
+ * по нажатию. Для экранов, где блоков много и не все нужны с первого дня:
+ * свёрнутые, они не перегружают страницу, но и не прячутся от того, кому
+ * понадобятся.
+ *
+ * Та же основа, что у `Disclosure`, — `<details>` без своего состояния;
+ * отличается шапкой: в ней заголовок второго уровня, как у карточки
+ * блока, а не строка подписи.
+ */
+export function FoldCard({
+  title,
+  note,
+  count,
+  children,
+  open = false,
+  id,
+  style,
+}: {
+  title: string;
+  note?: string;
+  /** Сколько внутри: «13 материалов», «4 раздела». */
+  count?: string;
+  children: ReactNode;
+  open?: boolean;
+  id?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <details
+      className="cab-block cab-fold-card"
+      open={open || undefined}
+      id={id}
+      style={{
+        background: 'var(--pd-ink-inverse)',
+        border: '1px solid var(--pd-border)',
+        borderRadius: RADIUS.card,
+        boxShadow: SHADOW.level2,
+        marginBottom: 16,
+        ...style,
+      }}
+    >
+      <summary
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          minHeight: 44,
+          padding: '16px 20px',
+          borderRadius: RADIUS.card,
+        }}
+      >
+        <Caret />
+        <span style={{ display: 'grid', gap: 2, flex: '1 1 auto', minWidth: 0 }}>
+          <Heading level={2} size={3}>
+            {title}
+          </Heading>
+          {note === undefined ? null : (
+            <span style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5, color: 'var(--pd-ink-muted)' }}>{note}</span>
+          )}
+        </span>
+        {count === undefined ? null : <Chip>{count}</Chip>}
+      </summary>
+      <div style={{ padding: '8px 20px 20px' }}>{children}</div>
     </details>
   );
 }

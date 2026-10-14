@@ -127,15 +127,13 @@ describe('«Рекомендации» (РК-17)', { skip: !enabled }, async () 
     assert.equal(returns.find((row) => row.clientId === ids.erased), undefined, 'стёртый клиент в рекомендациях');
   });
 
-  it('отметка убирает рекомендацию из числа у пункта меню; число равно неотмеченным', async () => {
+  it('отметка убирает рекомендацию из числа «Ждут решения»', async () => {
     const before = await recommendations.recommendationsFor(head());
     assert.ok(before.month !== null, 'рекомендации месяца нет');
-    assert.equal(await recommendations.headRecommendationCount(head()), before.unmarked);
     const key = before.returns.find((row) => row.clientId === ids.agreed)!.key;
     await recommendations.markRecommendation(head(), key, 'DONE');
     const after = await recommendations.recommendationsFor(head());
     assert.equal(after.unmarked, before.unmarked - 1);
-    assert.equal(await recommendations.headRecommendationCount(who(ids.manager!, 'MANAGER')), null);
   });
 
   it('письмо 1-го числа — одно на месяц, без сумм; позже третьего числа не уходит', async () => {

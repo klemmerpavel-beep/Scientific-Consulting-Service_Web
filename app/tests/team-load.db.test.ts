@@ -168,12 +168,17 @@ describe('«Команда» (РК-06)', { skip: !enabled }, async () => {
     assert.equal(curator.contact?.value, '@kurator_tl');
   });
 
-  it('блок «Сводки» — первыми те, у кого больше просроченного и ждущего; до пяти строк', async () => {
-    const brief = teamBrief(await teamLoad(head()));
-    assert.ok(brief.length <= 5);
+  it('лента «Сводки» — все сотрудники, первыми те, у кого больше просроченного и ждущего (Р-575)', async () => {
+    const load = await teamLoad(head());
+    const brief = teamBrief(load);
     const manager = brief.find((row) => row.id === ids.manager);
-    assert.ok(manager !== undefined, 'менеджер с делами не попал в блок');
+    assert.ok(manager !== undefined, 'менеджер с делами не попал в ленту');
     assert.equal(manager.side, 'менеджер');
+    // Все менеджеры и кураторы — в ленте, а не первые пять.
+    const staff = [...load.managers.filter((row) => row.role === 'MANAGER'), ...load.curators];
+    for (const person of staff) assert.ok(brief.some((row) => row.id === person.id), `нет в ленте: ${person.fullName}`);
+    const weight = (row: { overdue: number; decide: number }) => row.overdue + row.decide;
+    for (let i = 1; i < brief.length; i += 1) assert.ok(weight(brief[i - 1]!) >= weight(brief[i]!), 'порядок ленты нарушен');
   });
 
   it('РК-22: «К пику» у куратора — столько же, сколько в «Работах» по отбору куратора и месяца', async () => {

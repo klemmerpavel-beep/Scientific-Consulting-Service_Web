@@ -6,6 +6,7 @@ import { after } from 'next/server';
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { AccessDenied, ensure, type Actor } from '../../lib/cabinet/access';
 import { saveChecklistMarks } from '../../lib/cabinet/checklist-marks';
+import { deleteExpertApplication, reviewExpertApplication } from '../../lib/cabinet/expert-applications';
 import { attachBrief, briefAttachment, dropBrief, stageBrief } from '../../lib/cabinet/brief/intake';
 import { applyWorkBrief, type WorkBriefKey } from '../../lib/cabinet/brief/work-apply';
 import { BRIEF_MAX_BYTES, BriefError } from '../../lib/cabinet/brief/read';
@@ -2248,4 +2249,47 @@ export async function saveFeedbackReview(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(`${back}${back.includes('?') ? '&' : '?'}saved=1`);
+}
+
+/**
+ * Разбор анкеты эксперта: состояние и пометка (решение Р-580). Возврат —
+ * на экран анкеты; право проверяет служба.
+ */
+export async function saveExpertReview(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const id = String(form.get('id') ?? '');
+  const back = `/cabinet/manage/experts/${encodeURIComponent(id)}`;
+  let failure: string | null = null;
+  try {
+    await reviewExpertApplication(actor, id, {
+      status: String(form.get('status') ?? ''),
+      note: String(form.get('note') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить разбор');
+  }
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(`${back}?saved=1`);
+}
+
+/**
+ * Удаление анкеты эксперта с файлами — по просьбе человека или когда она
+ * больше не нужна (решение Р-580). Без отметки подтверждения не удаляется.
+ */
+export async function removeExpertApplication(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const id = String(form.get('id') ?? '');
+  const back = `/cabinet/manage/experts/${encodeURIComponent(id)}`;
+  let failure: string | null = null;
+  if (form.get('confirm') !== 'on') {
+    failure = 'Отметьте, что анкету и её файлы нужно удалить безвозвратно';
+  } else {
+    try {
+      await deleteExpertApplication(actor, id);
+    } catch (error) {
+      failure = reasonOf(error, 'Не удалось удалить анкету');
+    }
+  }
+  if (failure !== null) redirect(await withError(back, failure, { anchor: 'delete' }));
+  redirect('/cabinet/manage/experts?deleted=1');
 }

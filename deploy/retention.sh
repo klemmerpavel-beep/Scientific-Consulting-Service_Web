@@ -104,6 +104,30 @@ for KEY in $(run "$SQL_PURGED_KEYS"); do
 done
 echo "$(date -Is) изъятые файлы: удалено оставшихся объектов: $PURGED_REMOVED, не удалось: $PURGED_LEFT"
 
+# ── Анкеты экспертов: шесть месяцев ────────────────────────────────────────
+#
+# Политика, п. 7.4: данные кандидатов, с которыми договор не заключён,
+# хранятся не более шести месяцев с даты обращения. Анкета со страницы
+# «Экспертам» договора не означает: приглашённого руководитель заводит в
+# команду отдельной учётной записью, и анкета ему больше не нужна
+# (решение Р-580). Файлы — до строк, тем же порядком, что у заявок.
+EXPERT_MONTHS=6
+SQL_EXPERT_KEYS="SELECT f.\"storageKey\" FROM \"ExpertApplicationFile\" f JOIN \"ExpertApplication\" a ON a.id = f.\"applicationId\" WHERE a.\"createdAt\" < now() - interval '$EXPERT_MONTHS months';"
+SQL_EXPERT_DELETE="DELETE FROM \"ExpertApplication\" WHERE \"createdAt\" < now() - interval '$EXPERT_MONTHS months';"
+
+EXPERT_FILES=0
+for KEY in $(run "$SQL_EXPERT_KEYS"); do
+  case "$KEY" in
+    /*|*..*) echo "$(date -Is) ВНИМАНИЕ: ключ файла анкеты вне хранилища пропущен: $KEY" >&2; continue ;;
+  esac
+  if [ -f "$DIR/storage/$KEY" ]; then
+    rm -f "$DIR/storage/$KEY"
+    EXPERT_FILES=$((EXPERT_FILES + 1))
+  fi
+done
+EXPERT_ROWS=$(run "WITH gone AS ($(echo "$SQL_EXPERT_DELETE" | sed 's/;$//') RETURNING 1) SELECT count(*) FROM gone;" | tr -d '[:space:]')
+echo "$(date -Is) анкеты экспертов старше $EXPERT_MONTHS месяцев: удалено анкет $EXPERT_ROWS, файлов $EXPERT_FILES"
+
 # ── Разобранные документы, не ставшие заказом ───────────────────────────────
 #
 # Анкета или исходные данные, загруженные на «Новом заказе», лежат в

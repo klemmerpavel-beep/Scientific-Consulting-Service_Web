@@ -138,6 +138,7 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   ASSIGNMENT_CREATE: [false, false, false, true],
   // Разбор замечаний с виджета — только руководитель (Р-403).
   FEEDBACK_REVIEW: [false, false, false, true],
+  EXPERT_APPLICATION_REVIEW: [false, false, false, true],
   // Чек-листы — куратору, менеджеру и руководителю (Р-494, Р-552).
   CHECKLIST_VIEW: [false, true, true, true],
   // Отметки чек-листа работы — менеджеру работы, куратору, руководителю (Р-555).

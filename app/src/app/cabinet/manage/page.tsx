@@ -4,6 +4,7 @@ import { waitingPublication } from '../../../lib/cabinet/staff-texts';
 import Shell from '../../../components/cabinet/Shell';
 import { RADIUS, SANS } from '../../../components/cabinet/tokens';
 import { BarChart, RankChart, compactNumber } from '../../../components/cabinet/Charts';
+import CardSlider from '../../../components/cabinet/CardSlider';
 import {
   Block,
   Board,
@@ -17,6 +18,7 @@ import {
   Mono,
   Notice,
   ScreenHead,
+  ScrollCard,
   TABLE_CELL,
   TABLE_HEAD,
   TABLE_NUM,
@@ -120,12 +122,30 @@ const ALERT_EDGE: Record<number, string | undefined> = {
 const ALERT_WIDTH: Record<number, number> = { 0: 0, 1: 3, 2: 4, 3: 5, 4: 6 };
 
 /**
- * Колонка плашек сводки. Плашки стоят двумя независимыми колонками, каждая
- * высотой по содержимому: в общей сетке короткая «Что заказывают» тянулась
- * до высокой соседки «Ближайшие сроки и деньги» и стояла наполовину пустой
- * (решение Р-489). Слева — приход заказов, справа — текущая работа.
+ * Сколько ближайших сроков стоит в плашке: столько, сколько входит в её
+ * единый размер (Р-576); остальные — строкой «И ещё N».
  */
-const DASH_STACK = { display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0, alignSelf: 'start' } as const;
+const DEADLINES_SHOWN = 3;
+
+
+/**
+ * Строка чисел в плашке сводки: подпись мелко, число крупнее (Р-574).
+ */
+const DASH_FIGURES = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+  gap: 12,
+} as const;
+const DASH_FIGURE_LABEL = { fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)', lineHeight: 1.5 } as const;
+const DASH_FIGURE_VALUE = {
+  margin: '4px 0 0',
+  fontFamily: SANS,
+  fontSize: 16,
+  fontWeight: 600,
+  lineHeight: 1.24,
+  color: 'var(--pd-ink)',
+  fontVariantNumeric: 'tabular-nums',
+} as const;
 
 /**
  * Запись в колонках «Ведутся сейчас» и «Заявки» — отдельной плашкой с
@@ -176,15 +196,15 @@ export default async function ManageQueue({
   const headReplies = actor.role === 'MANAGER' ? await staffThreadUnread(actor, actor.id) : 0;
   // Справочник типов сопровождения на сводке больше не нужен: формы
   // одобрения уехали на экран заявки (решение Р-172).
-  // Выборки «Требует внимания» — одним набором с числом у пункта меню
-  // «Сводка» (требование РК-04, решение Р-342): «Мои» дела руководителя по
+  // Выборки «Требует внимания» — одним набором с утренней сводкой
+  // (требование РК-04, решение Р-342): «Мои» дела руководителя по
   // его работам и «Контроль» по остальным (РК-05, Р-337), дела «акт и
   // счёт» (РК-12, Р-338), вопросы сотрудников (РК-07, Р-336).
   const sources = await attentionSources(actor);
   const parts = attentionParts(sources);
   const { light, unread, today, outbox } = sources;
   const term = actor.role === 'HEAD' ? await reactionDays() : 0;
-  // «Команда» — до пяти строк после «Требует внимания» (РК-06, Р-343; ОР-2).
+  // «Команда» — лента плашек всех сотрудников (РК-06, Р-343; Р-575).
   const team = actor.role === 'HEAD' ? teamBrief(await teamLoad(actor)) : [];
   // «Рекомендация месяца» — под ответом сводки (РК-17, Р-350).
   const advice = actor.role === 'HEAD' && can(actor, 'ANALYTICS_VIEW') ? (await recommendationsNow(actor)).month : null;
@@ -203,6 +223,20 @@ export default async function ManageQueue({
   // менеджеру `scopeProjects` оставляет те, где он куратор. Деньги в строке
   // появляются только при праве на маржу (решение Р-175).
   const works = await activeWorks(actor);
+  // Срез «по сроку работы» для «Чем занята практика» (Р-576): прошёл, в
+  // ближайшие две недели, позже, не назначен. День — московский (Р-257).
+  const dueDay = moscowToday(clockNow()).getTime();
+  const dueSoon = dueDay + 14 * 86_400_000;
+  const dueBands = [
+    { key: 'late', label: 'Прошёл', test: (due: number) => due < dueDay },
+    { key: 'soon', label: 'В ближайшие две недели', test: (due: number) => due >= dueDay && due < dueSoon },
+    { key: 'later', label: 'Позже', test: (due: number) => due >= dueSoon },
+  ].map((band) => ({
+    key: band.key,
+    label: band.label,
+    count: works.filter((work) => work.dueOn !== null && band.test(work.dueOn.getTime())).length,
+  }));
+  dueBands.push({ key: 'none', label: 'Не назначен', count: works.filter((work) => work.dueOn === null).length });
   // Состояние очереди уведомлений видит только руководитель (решение Р-154):
   // менеджеру служебная кухня не нужна, а недоставленное письмо — забота
   // того, кто отвечает за практику целиком.
@@ -239,6 +273,23 @@ export default async function ManageQueue({
   const demand = demandAll.slice(0, 6);
   const demandTotal = demandAll.reduce((acc, item) => acc + item.orders, 0);
   const load = dashboard ? await stageLoad(actor) : null;
+  // Поступления по месяцу оплаты — шесть последних месяцев ряда, в тысячах
+  // рублей (суммы хранятся в копейках). Та же функция, что «Получено за 90
+  // дней» и отчёт за период (Р-236), — по дате поступления (Р-576).
+  const cash = months.slice(-6).map((month) => ({
+    label: month.label,
+    value:
+      Number(
+        receivedBetween(
+          analyticsRows,
+          new Date(Date.UTC(month.year, month.month - 1, 1)),
+          new Date(Date.UTC(month.year, month.month, 1) - 1),
+        ),
+      ) / 100_000,
+  }));
+  // Действующих — сумма по состояниям: тот же набор, что у плитки (Р-342).
+  const loadTotal = load === null ? 0 : load.points.reduce((acc, point) => acc + point.count, 0);
+  const loadOf = (key: string) => load?.points.find((point) => point.key === key)?.count ?? 0;
   // «Ближайшие сроки» — все этапы действующих работ и срок работы без
   // плана, сорванные сверху (требование РК-04, решение Р-342).
   const deadlines = dashboard ? await upcomingDeadlines(actor) : [];
@@ -743,6 +794,134 @@ export default async function ManageQueue({
     </ul>
   );
 
+  // Перечни «Ведутся сейчас» и «Заявки» — одни для сетки плашек
+  // руководителя и колонок менеджера (Р-576).
+  const worksList = (
+    <>
+      {works.length === 0 ? (
+        <Text muted>Действующих работ нет.</Text>
+      ) : (
+        <>
+        {works.some((work) => work.paused) ? (
+          <Text muted size={13} style={{ marginBottom: 10 }}>
+            из них приостановлено {works.filter((work) => work.paused).length}
+          </Text>
+        ) : null}
+        <ul style={BOARD_LIST}>
+          {works.map((work) => {
+            const late = overdueDays(work.dueOn);
+            return (
+              // Каждая работа — своей плашкой (решение Р-490).
+              <li key={work.code} style={BOARD_ITEM}>
+                <a
+                  href={`/cabinet/projects/${work.code}`}
+                  className="cab-mark"
+                  style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}
+                >
+                  {work.title}
+                </a>
+                <Text muted size={13}>
+                  {work.client}
+                  {work.stage === null ? '' : ` · ${work.stage}`}
+                  {work.paused ? ' · приостановлена' : ''}
+                </Text>
+                {/* Кто ведёт работу — руководителю, ссылкой на «Работы»
+                    с отбором (требование РК-03, решение Р-341). */}
+                {actor.role !== 'HEAD' ? null : (
+                  <Text muted size={13}>
+                    менеджер —{' '}
+                    <a className="cab-mark" href={`/cabinet/projects?state=all&manager=${work.manager.id}`}>
+                      {work.manager.fullName}
+                    </a>
+                    {work.expert === null ? null : (
+                      <>
+                        {' · куратор — '}
+                        <a className="cab-mark" href={`/cabinet/projects?state=all&curator=${work.expert.id}`}>
+                          {work.expert.fullName}
+                        </a>
+                      </>
+                    )}
+                  </Text>
+                )}
+                {/* Срок работы — строкой, без пилюли «просрочено N
+                    дней»: число считалось от срока работы, а рядом
+                    стояло название этапа, и та же работа выше, в
+                    «Требует внимания», несла другое число — от срока
+                    этапа (решение Р-206). */}
+                <Text muted size={13}>
+                  {work.dueOn === null
+                    ? 'срок не назначен'
+                    : `срок работы — ${formatDate(work.dueOn)}${late === null ? '' : ' · прошёл'}`}
+                </Text>
+                {/* Работа без договора — «договор не заведён», а не
+                    «0 ₽ · оплачено полностью»; закрытый списанием
+                    остаток назван списанием (решение Р-257). */}
+                {work.contracted === null ? null : (
+                  <Text muted size={13}>
+                    {workMoneyNote(
+                      work.hasContract
+                        ? {
+                            contracted: work.contracted,
+                            outstanding: work.outstanding ?? 0n,
+                            writtenOff: work.writtenOff ?? 0n,
+                          }
+                        : null,
+                    )}
+                  </Text>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        </>
+      )}
+    </>
+  );
+  const leadsList = (
+    <>
+      {leads.length === 0 ? (
+        <Text muted>Новых заявок нет.</Text>
+      ) : (
+        <ul style={BOARD_LIST}>
+          {/* Контакт стоит в строке, а разбор начинается кнопкой:
+              прежде за тем и другим приходилось заходить внутрь, а
+              менеджер решает по заявке за секунды (решение Р-180).
+              Каждая заявка — своей плашкой (решение Р-490). */}
+          {leads.map((lead) => (
+            <li key={lead.id} style={{ ...BOARD_ITEM, gap: 4 }}>
+              <a
+                href={`/cabinet/manage/leads/${lead.id}`}
+                className="cab-mark"
+                style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}
+              >
+                {lead.name ?? 'Без имени'}
+              </a>
+              <Text muted size={13}>
+                {leadSourceLabel(lead.source)} · {formatDay(lead.createdAt)}
+                {lead.topic === null ? '' : ` · ${lead.topic}`}
+              </Text>
+              <Text size={13}>{lead.contact}</Text>
+              <div style={{ marginTop: 4 }}>
+                <ButtonLink href={`/cabinet/manage/leads/${lead.id}`}>Разобрать</ButtonLink>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {/* Очередь листается: прежде видна была только первая страница
+          (требование М-06, решение Р-304). */}
+      {/* Постраничность — общей частью (УМ-08, Р-390). */}
+      <Pager
+        label="Страницы очереди заявок"
+        page={queue.page}
+        pages={queue.pages}
+        hrefFor={(page) => `/cabinet/manage?page=${page}`}
+        textSize={13}
+        style={{ gap: 16, marginTop: 12 }}
+      />
+    </>
+  );
+
   return (
     <Shell actor={actor} current="/cabinet/manage" board>
       {/* Сводка — первый экран после входа обеих служебных ролей, и она
@@ -831,54 +1010,6 @@ export default async function ManageQueue({
         </Block>
       )}
 
-      {/* «Команда»: строка на человека — работ, просрочено, ждёт его
-          решения; первыми — у кого больше просроченного и ждущего
-          (требование РК-06, решение Р-343). */}
-      {actor.role !== 'HEAD' ? null : (
-        <Block style={{ marginBottom: 20 }}>
-          <Heading level={2} size={3} style={{ marginBottom: 10 }}>
-            Команда
-          </Heading>
-          {/* Пустая команда — только фраза, без пустого перечня: читалка
-              объявляла «список, 0 пунктов» (решение Р-541). */}
-          {team.length === 0 ? (
-            <Text muted size={14}>
-              В команде пока нет людей с работами и делами.
-            </Text>
-          ) : (
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
-              {team.map((row) => (
-                <li key={`${row.side}-${row.id}`}>
-                  <a className="cab-mark" href={row.href} style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
-                    {row.fullName}
-                  </a>
-                  <Text muted size={13}>
-                    {[
-                      row.side,
-                      `работ ${row.works}`,
-                      row.overdue === 0 ? null : `просрочено ${row.overdue}`,
-                      row.decide === 0 ? null : `ждёт решения ${row.decide}`,
-                    ]
-                      .filter((part) => part !== null)
-                      .join(' · ')}
-                  </Text>
-                </li>
-              ))}
-            </ul>
-          )}
-          {/* Новый человек — отдельной кнопкой, сразу в форму заведения
-              с ролью и исходными данными (решение Р-488). */}
-          <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <ButtonLink href="/cabinet/manage/team" tone="quiet">
-              Вся команда
-            </ButtonLink>
-            <ButtonLink href="/cabinet/manage/users?new=1#new" tone="quiet">
-              Добавить в команду
-            </ButtonLink>
-          </div>
-        </Block>
-      )}
-
       {/* «На этой неделе» — отдельным блоком, в «N дел» не входит: срок ещё
           не сорван, но подходит (требование М-06, ОМ-10, решение Р-304). */}
       {today.week.length === 0 ? null : (
@@ -932,512 +1063,546 @@ export default async function ManageQueue({
         </div>
       )}
 
-      {/* Два графика отвечают на два вопроса: сколько работ приходит
-          месяц за месяцем и чем практика занята прямо сейчас. Денег
-          здесь нет — им отведён свой экран (решение Р-194). Поле рисунка
-          совпадает с шириной карточки: при жёстком поле в 560 пикселей
-          на карточке в 580 всё растягивалось и кегли шли вразнобой.
-          Плашки — двумя колонками по содержимому (решение Р-489). */}
+      {/* Плашки «Сводки» — одного размера: сетка в два столбца, у всех
+          плашек одна высота (замечание владельца 13.10.2026, решение
+          Р-576). Прежде плашки стояли двумя колонками по содержимому
+          (Р-489), и высоты расходились вдвое. Что длиннее плашки —
+          работы, заявки — прокручивается внутри неё; «Числа» раскрываются
+          поверх единого размера. Ниже 960 px — один столбец по
+          содержимому (Р-320). */}
       {load === null ? null : (
-        <div
-          style={{
-            display: 'grid',
-            // Не больше двух плашек в ряду (решение Р-189).
-            gridTemplateColumns: 'repeat(auto-fill, minmax(min(440px,100%),1fr))',
-            gap: 20,
-            marginBottom: 24,
-            maxWidth: 'calc(2 * 600px + 20px)',
-          }}
-        >
-          <div style={DASH_STACK}>
-            <Card style={{ display: 'flex', flexDirection: 'column' }}>
-              <Heading level={2} size={3} style={{ marginBottom: 12 }}>
-                Заказы по месяцам
-              </Heading>
-              {/* Без заказов — фраза, а не пустые оси: график из нулей
-                  читался как сбой, а не как затишье (решение Р-257). */}
-              {yearOrders === 0 ? (
-                <Text muted>Заказов за двенадцать месяцев нет.</Text>
-              ) : (
-                <BarChart
-                  title="Принято заказов по месяцам"
-                  width={460}
-                  height={220}
-                  unit="работ"
-                  data={months.map((month) => ({ label: month.label, value: month.orders }))}
-                  format={(value) => String(Math.round(value))}
-                />
-              )}
-              <Text muted size={13} style={{ marginTop: 10 }}>
-                По месяцу начала работы, последние двенадцать месяцев, включая текущий.
+        <div className="cab-block cab-dash">
+        {/* «Команда» — лента плашек: у каждого сотрудника своя плашка, её
+            листают кнопками, прокруткой и стрелками и выбирают нужного
+            человека (замечание владельца 13.10.2026, решение Р-575). В
+            плашке — работ, просрочено, ждёт его решения и где стоят его
+            работы; первыми — у кого больше просроченного и ждущего
+            (требование РК-06, решение Р-343). */}
+        {actor.role !== 'HEAD' ? null : (
+          <Card style={{ display: 'flex', flexDirection: 'column' }}>
+            <Heading level={2} size={3} style={{ marginBottom: 10 }}>
+              {team.length === 0 ? 'Команда' : `Команда · ${team.length}`}
+            </Heading>
+            {/* Пустая команда — только фраза, без пустой ленты: читалка
+                объявляла «список, 0 пунктов» (решение Р-541). */}
+            {team.length === 0 ? (
+              <Text muted size={14}>
+                В команде пока нет сотрудников.
               </Text>
-              {yearOrders === 0 ? null : (
-                <dl
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, minmax(0,1fr))',
-                    gap: 12,
-                    margin: '16px 0 0',
-                    paddingTop: 14,
-                    borderTop: '1px solid var(--pd-divider)',
-                  }}
-                >
-                  {[
-                    { key: 'sum', label: 'За двенадцать месяцев', value: String(yearOrders) },
-                    { key: 'avg', label: 'В среднем в месяц', value: monthAverage },
-                    {
-                      key: 'best',
-                      label: 'Самый плотный месяц',
-                      value: bestMonth === null ? '—' : bestMonth.label,
-                    },
-                  ].map((row) => (
-                    <div key={row.key}>
-                      <dt style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)', lineHeight: 1.5 }}>
-                        {row.label}
-                      </dt>
-                      <dd
-                        style={{
-                          margin: '4px 0 0',
-                          fontFamily: SANS,
-                          fontSize: 16,
-                          fontWeight: 600,
-                          lineHeight: 1.24,
-                          color: 'var(--pd-ink)',
-                        }}
-                      >
-                        {row.value}
-                      </dd>
+            ) : (
+              <CardSlider label="Сотрудники практики" compact>
+                {team.map((row) => (
+                  <Card as="article" link key={`${row.side}-${row.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '16px 18px' }}>
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      {/* Ссылка растянута на плашку: нажимается плашка
+                          целиком (решения Р-209, Р-253). Ведёт в «Работы» с
+                          отбором по человеку (РК-03). */}
+                      <Heading level={3} size={3}>
+                        <a className="cab-stretch" href={row.href}>
+                          {row.fullName}
+                        </a>
+                      </Heading>
+                      <span>
+                        <Chip>{row.side}</Chip>
+                      </span>
                     </div>
-                  ))}
-                </dl>
-              )}
-              <div style={{ marginTop: 'auto' }} />
-              {yearOrders === 0 ? null : (
-                <Disclosure title="Числа" style={{ marginTop: 12 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr>
-                        <th style={TABLE_HEAD} scope="col">Месяц</th>
-                        <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Заказов</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {months.map((month) => (
-                        <tr key={month.key}>
-                          <td style={TABLE_CELL}>{month.label}</td>
-                          <td style={TABLE_NUM}>{month.orders}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </Disclosure>
-              )}
-            </Card>
-
-            {demand.length === 0 ? null : (
-              <Card style={{ display: 'flex', flexDirection: 'column' }}>
-                <Heading level={2} size={3} style={{ marginBottom: 12 }}>
-                  Что заказывают
-                </Heading>
-                <RankChart
-                  title="Заказы по типам сопровождения за год"
-                  width={460}
-                  labelWidth={200}
-                  data={demand.map((item) => ({ label: item.typeName, value: item.orders }))}
-                  format={(value) => String(Math.round(value))}
-                />
-                <Text muted size={13} style={{ marginTop: 10 }}>
-                  Те же двенадцать месяцев, что на графике выше, по дате начала работы; шесть
-                  крупнейших позиций из{' '}
-                  {demandTotal} {plural(demandTotal, 'заказа', 'заказов', 'заказов')}.
-                </Text>
-                <div style={{ marginTop: 'auto' }} />
-                <Disclosure title="Числа" style={{ marginTop: 12 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr>
-                        <th style={TABLE_HEAD} scope="col">Тип сопровождения</th>
-                        <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Заказов</th>
-                        <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Доля</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {demand.map((item) => (
-                        <tr key={item.typeCode}>
-                          <td style={TABLE_CELL}>{item.typeName}</td>
-                          <td style={TABLE_NUM}>{item.orders}</td>
-                          <td style={TABLE_NUM}>
-                            {demandTotal === 0 ? '—' : `${Math.round((item.orders / demandTotal) * 100)} %`}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </Disclosure>
-              </Card>
-            )}
-          </div>
-
-          <div style={DASH_STACK}>
-            <Card style={{ display: 'flex', flexDirection: 'column' }}>
-              <Heading level={2} size={3} style={{ marginBottom: 12 }}>
-                Чем занята практика
-              </Heading>
-              {load.points.length === 0 ? (
-                <Text muted>Действующих работ нет.</Text>
-              ) : (
-                <RankChart
-                  title="Работы по состоянию текущего этапа"
-                  width={460}
-                  labelWidth={200}
-                  data={load.points.map((point) => ({ label: point.label, value: point.count }))}
-                  format={(value) => String(Math.round(value))}
-                />
-              )}
-              <div
-                style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}
-              >
-                {load.overdue === 0 ? null : (
-                  <Chip tone="accent">
-                    {load.overdue} {plural(load.overdue, 'работа', 'работы', 'работ')} со сроком в
-                    прошлом
-                  </Chip>
-                )}
-                {/* Работы без плана стоят в графике своей строкой, пометкой
-                    они не повторяются (решение Р-216). */}
-              </div>
-              <Text muted size={13} style={{ marginTop: 10 }}>
-                {/* Тот же набор действующих, что у плиток (РК-04, Р-342). */}
-                {load.paused === 0 ? '' : `Из действующих приостановлено ${load.paused}. `}
-                Состояние берётся у первого незавершённого этапа: он и есть то, где работа стоит
-                сейчас. Работы, перенесённые из книги без плана, стоят своей строкой.
-              </Text>
-              {/* Числа стоят и текстом: график объявлен картинкой, и читалка
-                  получает от него одно название (правило Р-176). */}
-              <div style={{ marginTop: 'auto' }} />
-              {load.points.length === 0 ? null : (
-                <Disclosure title="Числа" style={{ marginTop: 12 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr>
-                        <th style={TABLE_HEAD} scope="col">Состояние</th>
-                        <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Работ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {load.points.map((point) => (
-                        <tr key={point.key}>
-                          <td style={TABLE_CELL}>{point.label}</td>
-                          <td style={TABLE_NUM}>{point.count}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </Disclosure>
-              )}
-            </Card>
-
-            {/* Четвёртая плашка: ближайшие сроки и деньги коротко. Прежде
-                справа снизу пустовало место, а сроки жили внутри карточки
-                загрузки и делали её график мелким (решение Р-201). */}
-            {money === null ? null : (
-              <Card style={{ display: 'flex', flexDirection: 'column' }}>
-                <Heading level={2} size={3} style={{ marginBottom: 12 }}>
-                  Ближайшие сроки и деньги
-                </Heading>
-
-                {/* Этапы действующих работ и срок работы без плана — в окне
-                    двух недель и сорванные; у строки — чей ход, менеджер,
-                    куратор, пометка приостановленной (РК-04, Р-342). */}
-                {deadlines.length === 0 ? (
-                  <Text muted size={14}>
-                    В ближайшие две недели сроков нет, сорванных сроков нет.
-                  </Text>
-                ) : (
-                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
-                    {deadlines.slice(0, 5).map((row) => (
-                      <li key={row.key} style={{ display: 'grid', gap: 2 }}>
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'minmax(0,1fr) auto',
-                            gap: 12,
-                            alignItems: 'baseline',
-                          }}
-                        >
-                          <a
-                            href={row.href}
-                            className="cab-mark"
-                            style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
-                          >
-                            {row.stage === null ? row.title : `${row.stage} · ${row.title}`}
-                          </a>
-                          <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
-                            {formatDate(row.dueOn)}
-                          </Text>
+                    {/* Числа — строками «подпись — число»: в узкой плашке
+                        три столбца рвали подписи посреди слова. */}
+                    <dl style={{ display: 'grid', gap: 4, margin: 0 }}>
+                      {[
+                        { key: 'works', label: 'Работ', value: row.works },
+                        { key: 'late', label: 'Просрочено', value: row.overdue },
+                        { key: 'decide', label: 'Ждёт решения', value: row.decide },
+                      ].map((figure) => (
+                        <div key={figure.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+                          <dt style={DASH_FIGURE_LABEL}>{figure.label}</dt>
+                          <dd style={{ ...DASH_FIGURE_VALUE, margin: 0 }}>{figure.value}</dd>
                         </div>
-                        <Text muted size={13}>
-                          {[
-                            row.late === null
-                              ? null
-                              : `просрочено ${row.late} ${plural(row.late, 'день', 'дня', 'дней')}`,
-                            row.stage === null ? 'срок работы, плана нет' : row.turn,
-                            `менеджер — ${row.manager}`,
-                            row.curator === null ? null : `куратор — ${row.curator}`,
-                            row.paused ? 'приостановлена' : null,
-                          ]
-                            .filter((part) => part !== null)
-                            .join(' · ')}
-                        </Text>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {deadlines.length <= 5 ? null : (
-                  <Text muted size={13} style={{ marginTop: 10 }}>
-                    И ещё {deadlines.length - 5}{' '}
-                    {plural(deadlines.length - 5, 'срок', 'срока', 'сроков')} в том же окне.
-                  </Text>
-                )}
-
-                <dl
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, minmax(0,1fr))',
-                    gap: 12,
-                    margin: '16px 0 0',
-                    paddingTop: 14,
-                    borderTop: '1px solid var(--pd-divider)',
-                  }}
-                >
-                  {[
-                    {
-                      key: 'got',
-                      label: receivedAll || !dashboard ? 'Получено за всё время' : 'Получено за 90 дней',
-                      value: formatPlain(received ?? money.received),
-                    },
-                    { key: 'wait', label: 'К получению', value: formatPlain(money.awaiting) },
-                    // Платежи со сроком раньше сегодняшнего дня. Не «остаток по
-                    // работам с прошедшим сроком» отчёта и аналитики — там мера
-                    // другая, и одно слово на двух экранах читалось как
-                    // расхождение (решение Р-257).
-                    {
-                      key: 'debt',
-                      label: 'Просрочено по траншам',
-                      value: formatPlain(money.overdue),
-                    },
-                  ].map((row) => (
-                    <div key={row.key}>
-                      <dt
-                        style={{
-                          fontFamily: SANS,
-                          fontSize: 13,
-                          color: 'var(--pd-ink-muted)',
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        {row.label}
-                      </dt>
-                      <dd
-                        style={{
-                          margin: '4px 0 0',
-                          fontFamily: SANS,
-                          fontSize: 16,
-                          fontWeight: 600,
-                          lineHeight: 1.24,
-                          color: 'var(--pd-ink)',
-                          fontVariantNumeric: 'tabular-nums',
-                        }}
-                      >
-                        {row.key === 'debt' && money.overdue > 0n ? (
-                          <a className="cab-mark" href="/cabinet/manage/finance/debtors">
-                            {row.value}
-                          </a>
-                        ) : (
-                          row.value
-                        )}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-                {/* Переключатель периода «Получено» (РК-04, Р-342). */}
-                {!dashboard ? null : (
-                  <Text muted size={13} style={{ marginTop: 10 }}>
-                    Получено:{' '}
-                    <a
-                      className="cab-mark"
-                      href="/cabinet/manage?received=90"
-                      aria-current={receivedAll ? undefined : 'true'}
-                    >
-                      за 90 дней
-                    </a>
-                    {' · '}
-                    <a
-                      className="cab-mark"
-                      href="/cabinet/manage?received=all"
-                      aria-current={receivedAll ? 'true' : undefined}
-                    >
-                      за всё время
-                    </a>
-                  </Text>
-                )}
-                <Text muted size={13} style={{ marginTop: 10 }}>
-                  Суммы в рублях; остаток отменённых работ к получению не считается. Остаток
-                  по каждой работе — на экране денег; просроченные платежи —{' '}
-                  {/* «Просрочено по траншам» ведёт в «Должники» (РК-10, Р-345). */}
-                  <a className="cab-mark" href="/cabinet/manage/finance/debtors">
-                    в «Должниках»
-                  </a>
-                  .
-                </Text>
-                <div style={{ marginTop: 'auto' }} />
-                <div style={{ marginTop: 12 }}>
-                  <ButtonLink href="/cabinet/manage/finance">Деньги и расчёты</ButtonLink>
-                </div>
-              </Card>
+                      ))}
+                    </dl>
+                    <Text muted size={13}>
+                      {row.points.length === 0
+                        ? 'Действующих работ нет.'
+                        : row.points.map((point) => `${point.label.toLowerCase()} ${point.count}`).join(' · ')}
+                    </Text>
+                  </Card>
+                ))}
+              </CardSlider>
             )}
-          </div>
-        </div>
-      )}
+            {/* Новый человек — отдельной кнопкой, сразу в форму заведения
+                с ролью и исходными данными (решение Р-488). */}
+            <div style={{ marginTop: 'auto', paddingTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <ButtonLink href="/cabinet/manage/team" tone="quiet">
+                Вся команда
+              </ButtonLink>
+              <ButtonLink href="/cabinet/manage/users?new=1#new" tone="quiet">
+                Добавить в команду
+              </ButtonLink>
+            </div>
+          </Card>
+        )}
 
-      {/* Ниже — два цельных блока с прокруткой: работы и заявки. Третья
-          колонка ужимала все три и заставляла строки рваться посреди
-          слова (решение Р-189). */}
-      <Board columns={2}>
-        {/* «Ведутся сейчас» — тот же набор действующих, что у плитки
-            «Действующих работ»: идущие и приостановленные, приостановленные
-            — пометкой (Р-257; требование РК-04, решение Р-342). */}
-        <BoardColumn
-          title={`${summary === null ? 'Мои работы' : 'Ведутся сейчас'} · ${works.length}`}
-          href="/cabinet/projects"
-          hrefLabel="все работы"
-        >
-          {works.length === 0 ? (
+        <Card style={{ display: 'flex', flexDirection: 'column' }}>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+            Чем занята практика
+          </Heading>
+          {/* Сначала — четыре числа действующих работ, ниже — где они
+              стоят по текущему этапу. Пояснительный абзац и пилюля
+              просрочки сняты: то же самое говорят числа (замечание
+              владельца 13.10.2026, решение Р-574). Набор действующих —
+              тот же, что у плиток (РК-04, Р-342). */}
+          <dl style={{ ...DASH_FIGURES, margin: '0 0 16px', paddingBottom: 14, borderBottom: '1px solid var(--pd-divider)' }}>
+            {[
+              { key: 'live', label: 'Действующих', value: loadTotal },
+              { key: 'work', label: 'Этап в работе', value: loadOf('IN_PROGRESS') },
+              { key: 'pause', label: 'Приостановлено', value: load.paused },
+              { key: 'plan', label: 'Без плана', value: load.planless },
+            ].map((row) => (
+              <div key={row.key}>
+                <dt style={DASH_FIGURE_LABEL}>{row.label}</dt>
+                <dd style={DASH_FIGURE_VALUE}>{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+          {load.points.length === 0 ? (
             <Text muted>Действующих работ нет.</Text>
           ) : (
             <>
-            {works.some((work) => work.paused) ? (
-              <Text muted size={13} style={{ marginBottom: 10 }}>
-                из них приостановлено {works.filter((work) => work.paused).length}
+              <Text muted size={13} style={{ marginBottom: 6 }}>
+                По текущему этапу
               </Text>
-            ) : null}
-            <ul style={BOARD_LIST}>
-              {works.map((work) => {
-                const late = overdueDays(work.dueOn);
-                return (
-                  // Каждая работа — своей плашкой (решение Р-490).
-                  <li key={work.code} style={BOARD_ITEM}>
-                    <a
-                      href={`/cabinet/projects/${work.code}`}
-                      className="cab-mark"
-                      style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}
-                    >
-                      {work.title}
-                    </a>
-                    <Text muted size={13}>
-                      {work.client}
-                      {work.stage === null ? '' : ` · ${work.stage}`}
-                      {work.paused ? ' · приостановлена' : ''}
-                    </Text>
-                    {/* Кто ведёт работу — руководителю, ссылкой на «Работы»
-                        с отбором (требование РК-03, решение Р-341). */}
-                    {actor.role !== 'HEAD' ? null : (
-                      <Text muted size={13}>
-                        менеджер —{' '}
-                        <a className="cab-mark" href={`/cabinet/projects?state=all&manager=${work.manager.id}`}>
-                          {work.manager.fullName}
-                        </a>
-                        {work.expert === null ? null : (
-                          <>
-                            {' · куратор — '}
-                            <a className="cab-mark" href={`/cabinet/projects?state=all&curator=${work.expert.id}`}>
-                              {work.expert.fullName}
-                            </a>
-                          </>
-                        )}
-                      </Text>
-                    )}
-                    {/* Срок работы — строкой, без пилюли «просрочено N
-                        дней»: число считалось от срока работы, а рядом
-                        стояло название этапа, и та же работа выше, в
-                        «Требует внимания», несла другое число — от срока
-                        этапа (решение Р-206). */}
-                    <Text muted size={13}>
-                      {work.dueOn === null
-                        ? 'срок не назначен'
-                        : `срок работы — ${formatDate(work.dueOn)}${late === null ? '' : ' · прошёл'}`}
-                    </Text>
-                    {/* Работа без договора — «договор не заведён», а не
-                        «0 ₽ · оплачено полностью»; закрытый списанием
-                        остаток назван списанием (решение Р-257). */}
-                    {work.contracted === null ? null : (
-                      <Text muted size={13}>
-                        {workMoneyNote(
-                          work.hasContract
-                            ? {
-                                contracted: work.contracted,
-                                outstanding: work.outstanding ?? 0n,
-                                writtenOff: work.writtenOff ?? 0n,
-                              }
-                            : null,
-                        )}
-                      </Text>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+              <RankChart
+                title="Работы по состоянию текущего этапа"
+                width={460}
+                labelWidth={200}
+                data={load.points.map((point) => ({ label: point.label, value: point.count }))}
+                format={(value) => String(Math.round(value))}
+              />
+              {/* Второй срез — по сроку работы: сколько сорвано, сколько
+                  подходит, сколько впереди (Р-576). */}
+              <Text muted size={13} style={{ margin: '14px 0 6px' }}>
+                По сроку работы
+              </Text>
+              <RankChart
+                title="Действующие работы по сроку работы"
+                width={460}
+                labelWidth={200}
+                data={dueBands.map((band) => ({ label: band.label, value: band.count }))}
+                format={(value) => String(Math.round(value))}
+              />
             </>
           )}
-        </BoardColumn>
+          {/* Числа стоят и текстом: график объявлен картинкой, и читалка
+              получает от него одно название (правило Р-176). */}
+          <div style={{ marginTop: 'auto' }} />
+          {load.points.length === 0 ? null : (
+            <Disclosure title="Числа" style={{ marginTop: 12 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={TABLE_HEAD} scope="col">Срез</th>
+                    <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Работ</th>
+                    <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Доля</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {load.points.map((point) => (
+                    <tr key={point.key}>
+                      <td style={TABLE_CELL}>{point.label}</td>
+                      <td style={TABLE_NUM}>{point.count}</td>
+                      <td style={TABLE_NUM}>{loadTotal === 0 ? '—' : `${Math.round((point.count / loadTotal) * 100)} %`}</td>
+                        </tr>
+                      ))}
+                      {dueBands.map((band) => (
+                        <tr key={band.key}>
+                          <td style={TABLE_CELL}>{`Срок работы: ${band.label.toLowerCase()}`}</td>
+                          <td style={TABLE_NUM}>{band.count}</td>
+                          <td style={TABLE_NUM}>{works.length === 0 ? '—' : `${Math.round((band.count / works.length) * 100)} %`}</td>
+                        </tr>
+                      ))}
+                </tbody>
+              </table>
+            </Disclosure>
+          )}
+        </Card>
 
-        <BoardColumn
-          title={queue.total === 0 ? 'Заявки' : `Заявки · ${queue.total}`}
-          href={queue.total > 0 ? '/cabinet/manage/leads' : undefined}
-          hrefLabel="все обращения"
-        >
-          {leads.length === 0 ? (
-            <Text muted>Новых заявок нет.</Text>
+        <Card style={{ display: 'flex', flexDirection: 'column' }}>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+            Заказы по месяцам
+          </Heading>
+          {/* Без заказов — фраза, а не пустые оси: график из нулей
+              читался как сбой, а не как затишье (решение Р-257). */}
+          {yearOrders === 0 ? (
+            <Text muted>Заказов за двенадцать месяцев нет.</Text>
           ) : (
-            <ul style={BOARD_LIST}>
-              {/* Контакт стоит в строке, а разбор начинается кнопкой:
-                  прежде за тем и другим приходилось заходить внутрь, а
-                  менеджер решает по заявке за секунды (решение Р-180).
-                  Каждая заявка — своей плашкой (решение Р-490). */}
-              {leads.map((lead) => (
-                <li key={lead.id} style={{ ...BOARD_ITEM, gap: 4 }}>
-                  <a
-                    href={`/cabinet/manage/leads/${lead.id}`}
-                    className="cab-mark"
-                    style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}
+            <BarChart
+              title="Принято заказов по месяцам"
+              width={460}
+              height={220}
+              unit="работ"
+              data={months.map((month) => ({ label: month.label, value: month.orders }))}
+              format={(value) => String(Math.round(value))}
+            />
+          )}
+          <Text muted size={13} style={{ marginTop: 10 }}>
+            По месяцу начала работы, последние двенадцать месяцев, включая текущий.
+          </Text>
+          {yearOrders === 0 ? null : (
+            <dl
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, minmax(0,1fr))',
+                gap: 12,
+                margin: '16px 0 0',
+                paddingTop: 14,
+                borderTop: '1px solid var(--pd-divider)',
+              }}
+            >
+              {[
+                { key: 'sum', label: 'За двенадцать месяцев', value: String(yearOrders) },
+                { key: 'avg', label: 'В среднем в месяц', value: monthAverage },
+                {
+                  key: 'best',
+                  label: 'Самый плотный месяц',
+                  value: bestMonth === null ? '—' : bestMonth.label,
+                },
+              ].map((row) => (
+                <div key={row.key}>
+                  <dt style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)', lineHeight: 1.5 }}>
+                    {row.label}
+                  </dt>
+                  <dd
+                    style={{
+                      margin: '4px 0 0',
+                      fontFamily: SANS,
+                      fontSize: 16,
+                      fontWeight: 600,
+                      lineHeight: 1.24,
+                      color: 'var(--pd-ink)',
+                    }}
                   >
-                    {lead.name ?? 'Без имени'}
-                  </a>
-                  <Text muted size={13}>
-                    {leadSourceLabel(lead.source)} · {formatDay(lead.createdAt)}
-                    {lead.topic === null ? '' : ` · ${lead.topic}`}
-                  </Text>
-                  <Text size={13}>{lead.contact}</Text>
-                  <div style={{ marginTop: 4 }}>
-                    <ButtonLink href={`/cabinet/manage/leads/${lead.id}`}>Разобрать</ButtonLink>
+                    {row.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          <div style={{ marginTop: 'auto' }} />
+          {yearOrders === 0 ? null : (
+            <Disclosure title="Числа" style={{ marginTop: 12 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={TABLE_HEAD} scope="col">Месяц</th>
+                    <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Заказов</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {months.map((month) => (
+                    <tr key={month.key}>
+                      <td style={TABLE_CELL}>{month.label}</td>
+                      <td style={TABLE_NUM}>{month.orders}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Disclosure>
+          )}
+        </Card>
+
+        {/* «Что заказывают» — с той же строкой чисел, что у соседних
+            плашек: в плашке единого размера график из шести строк
+            оставлял её наполовину пустой (Р-489, Р-576). */}
+        <Card style={{ display: 'flex', flexDirection: 'column' }}>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+            Что заказывают
+          </Heading>
+          {demand.length === 0 ? (
+            <Text muted>Заказов за двенадцать месяцев нет.</Text>
+          ) : (
+            <>
+              <RankChart
+                title="Заказы по типам сопровождения за год"
+                width={460}
+                labelWidth={200}
+                data={demand.map((item) => ({ label: item.typeName, value: item.orders }))}
+                format={(value) => String(Math.round(value))}
+              />
+              <Text muted size={13} style={{ marginTop: 10 }}>
+                Те же двенадцать месяцев, что у «Заказов по месяцам», по дате начала работы.
+              </Text>
+              <dl style={{ ...DASH_FIGURES, margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--pd-divider)' }}>
+                {[
+                  { key: 'sum', label: 'Заказов', value: String(demandTotal) },
+                  { key: 'types', label: 'Типов сопровождения', value: String(demandAll.length) },
+                  {
+                    key: 'lead',
+                    label: 'Ведущий тип',
+                    value: demandTotal === 0 ? '—' : `${Math.round((demand[0]!.orders / demandTotal) * 100)} %`,
+                  },
+                ].map((row) => (
+                  <div key={row.key}>
+                    <dt style={DASH_FIGURE_LABEL}>{row.label}</dt>
+                    <dd style={DASH_FIGURE_VALUE}>{row.value}</dd>
                   </div>
+                ))}
+              </dl>
+              <div style={{ marginTop: 'auto' }} />
+              <Disclosure title="Числа" style={{ marginTop: 12 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={TABLE_HEAD} scope="col">Тип сопровождения</th>
+                      <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Заказов</th>
+                      <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Доля</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {demandAll.map((item) => (
+                      <tr key={item.typeCode}>
+                        <td style={TABLE_CELL}>{item.typeName}</td>
+                        <td style={TABLE_NUM}>{item.orders}</td>
+                        <td style={TABLE_NUM}>
+                          {demandTotal === 0 ? '—' : `${Math.round((item.orders / demandTotal) * 100)} %`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Disclosure>
+            </>
+          )}
+        </Card>
+
+        {/* «Ближайшие сроки» и «Деньги» — две плашки: вместе они были
+            вдвое выше соседних (Р-576). Этапы действующих работ и срок
+            работы без плана — в окне двух недель и сорванные; у строки —
+            чей ход, менеджер, куратор, пометка приостановленной (РК-04,
+            Р-342). */}
+        <Card style={{ display: 'flex', flexDirection: 'column' }}>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+            Ближайшие сроки
+          </Heading>
+          {deadlines.length === 0 ? (
+            <Text muted size={14}>
+              В ближайшие две недели сроков нет, сорванных сроков нет.
+            </Text>
+          ) : (
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+              {deadlines.slice(0, DEADLINES_SHOWN).map((row) => (
+                <li key={row.key} style={{ display: 'grid', gap: 2 }}>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0,1fr) auto',
+                      gap: 12,
+                      alignItems: 'baseline',
+                    }}
+                  >
+                    <a
+                      href={row.href}
+                      className="cab-mark"
+                      style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
+                    >
+                      {row.stage === null ? row.title : `${row.stage} · ${row.title}`}
+                    </a>
+                    <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
+                      {formatDate(row.dueOn)}
+                    </Text>
+                  </div>
+                  <Text muted size={13}>
+                    {[
+                      row.late === null
+                        ? null
+                        : `просрочено ${row.late} ${plural(row.late, 'день', 'дня', 'дней')}`,
+                      row.stage === null ? 'срок работы, плана нет' : row.turn,
+                      `менеджер — ${row.manager}`,
+                      row.curator === null ? null : `куратор — ${row.curator}`,
+                      row.paused ? 'приостановлена' : null,
+                    ]
+                      .filter((part) => part !== null)
+                      .join(' · ')}
+                  </Text>
                 </li>
               ))}
             </ul>
           )}
-          {/* Очередь листается: прежде видна была только первая страница
-              (требование М-06, решение Р-304). */}
-          {/* Постраничность — общей частью (УМ-08, Р-390). */}
-          <Pager
-            label="Страницы очереди заявок"
-            page={queue.page}
-            pages={queue.pages}
-            hrefFor={(page) => `/cabinet/manage?page=${page}`}
-            textSize={13}
-            style={{ gap: 16, marginTop: 12 }}
-          />
-        </BoardColumn>
-      </Board>
+          {deadlines.length <= DEADLINES_SHOWN ? null : (
+            <Text muted size={13} style={{ marginTop: 10 }}>
+              И ещё {deadlines.length - DEADLINES_SHOWN}{' '}
+              {plural(deadlines.length - DEADLINES_SHOWN, 'срок', 'срока', 'сроков')} в том же окне.
+            </Text>
+          )}
+          <div style={{ marginTop: 'auto', paddingTop: 12 }}>
+            <ButtonLink href="/cabinet/projects" tone="quiet">
+              Все работы
+            </ButtonLink>
+          </div>
+        </Card>
+
+        {money === null ? null : (
+          <Card style={{ display: 'flex', flexDirection: 'column' }}>
+            <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+              Деньги
+            </Heading>
+              <dl
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, minmax(0,1fr))',
+                  gap: 12,
+                  margin: 0,
+                  paddingBottom: 14,
+                  borderBottom: '1px solid var(--pd-divider)',
+                }}
+              >
+                {[
+                  {
+                    key: 'got',
+                    label: receivedAll || !dashboard ? 'Получено за всё время' : 'Получено за 90 дней',
+                    value: formatPlain(received ?? money.received),
+                  },
+                  { key: 'wait', label: 'К получению', value: formatPlain(money.awaiting) },
+                  // Платежи со сроком раньше сегодняшнего дня. Не «остаток по
+                  // работам с прошедшим сроком» отчёта и аналитики — там мера
+                  // другая, и одно слово на двух экранах читалось как
+                  // расхождение (решение Р-257).
+                  {
+                    key: 'debt',
+                    label: 'Просрочено по траншам',
+                    value: formatPlain(money.overdue),
+                  },
+                ].map((row) => (
+                  <div key={row.key}>
+                    <dt
+                      style={{
+                        fontFamily: SANS,
+                        fontSize: 13,
+                        color: 'var(--pd-ink-muted)',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {row.label}
+                    </dt>
+                    <dd
+                      style={{
+                        margin: '4px 0 0',
+                        fontFamily: SANS,
+                        fontSize: 16,
+                        fontWeight: 600,
+                        lineHeight: 1.24,
+                        color: 'var(--pd-ink)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {row.key === 'debt' && money.overdue > 0n ? (
+                        <a className="cab-mark" href="/cabinet/manage/finance/debtors">
+                          {row.value}
+                        </a>
+                      ) : (
+                        row.value
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            {/* Поступления по месяцу оплаты — шесть последних месяцев: по
+                ним видно, ровно ли идут деньги (Р-576). Не «оплаты по
+                месяцу начала работы» экрана денег: здесь — когда деньги
+                пришли. */}
+            {cash.every((month) => month.value === 0) ? (
+              <Text muted size={13} style={{ marginTop: 12 }}>
+                За шесть месяцев поступлений нет.
+              </Text>
+            ) : (
+              <div style={{ marginTop: 12 }}>
+                <BarChart
+                  title="Поступления по месяцу оплаты"
+                  width={460}
+                  height={150}
+                  unit="тыс ₽"
+                  data={cash}
+                  format={(value) => String(Math.round(value))}
+                />
+              </div>
+            )}
+              {/* Переключатель периода «Получено» (РК-04, Р-342). */}
+              {!dashboard ? null : (
+                <Text muted size={13} style={{ marginTop: 10 }}>
+                  Получено:{' '}
+                  <a
+                    className="cab-mark"
+                    href="/cabinet/manage?received=90"
+                    aria-current={receivedAll ? undefined : 'true'}
+                  >
+                    за 90 дней
+                  </a>
+                  {' · '}
+                  <a
+                    className="cab-mark"
+                    href="/cabinet/manage?received=all"
+                    aria-current={receivedAll ? 'true' : undefined}
+                  >
+                    за всё время
+                  </a>
+                </Text>
+              )}
+            {/* Числа стоят и текстом: график объявлен картинкой (Р-176).
+                Суммы — в рублях; остаток по работам — на экране денег,
+                просроченные платежи — в «Должниках» по ссылке у числа (РК-10,
+                Р-345). */}
+            <Disclosure title="Числа" style={{ marginTop: 12 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={TABLE_HEAD} scope="col">Месяц оплаты</th>
+                    <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Поступило, тыс ₽</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cash.map((month) => (
+                    <tr key={month.label}>
+                      <td style={TABLE_CELL}>{month.label}</td>
+                      <td style={TABLE_NUM}>{String(Math.round(month.value))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Disclosure>
+            <div style={{ marginTop: 'auto', paddingTop: 12 }}>
+              <ButtonLink href="/cabinet/manage/finance">Деньги и расчёты</ButtonLink>
+            </div>
+          </Card>
+        )}
+
+          <ScrollCard title={`${summary === null ? 'Мои работы' : 'Ведутся сейчас'} · ${works.length}`} href="/cabinet/projects" hrefLabel="все работы">
+            {worksList}
+          </ScrollCard>
+          <ScrollCard
+            title={queue.total === 0 ? 'Заявки' : `Заявки · ${queue.total}`}
+            href={queue.total > 0 ? '/cabinet/manage/leads' : undefined}
+            hrefLabel="все обращения"
+          >
+            {leadsList}
+          </ScrollCard>
+        </div>
+      )}
+
+      {/* Менеджеру — две колонки: работы и заявки (решение Р-189). У
+          руководителя они стоят в сетке плашек выше (Р-576). */}
+      {load !== null ? null : (
+        <Board columns={2}>
+          <BoardColumn title={`${summary === null ? 'Мои работы' : 'Ведутся сейчас'} · ${works.length}`} href="/cabinet/projects" hrefLabel="все работы">
+            {worksList}
+          </BoardColumn>
+          <BoardColumn
+            title={queue.total === 0 ? 'Заявки' : `Заявки · ${queue.total}`}
+            href={queue.total > 0 ? '/cabinet/manage/leads' : undefined}
+            hrefLabel="все обращения"
+          >
+            {leadsList}
+          </BoardColumn>
+        </Board>
+      )}
 
       {/* «Спросить руководителя» заменён веткой «руководитель — сотрудник»:
           вопрос и ответ остаются в кабинете (требование РК-07, решение

@@ -113,11 +113,40 @@ export function telegramSignal(lead: Lead, id: string): string {
 }
 
 async function sendTelegram(lead: Lead, id: string): Promise<DeliveryResult> {
+  return postTelegram(telegramSignal(lead, id));
+}
+
+/**
+ * Сигнал о новой анкете эксперта (решение Р-580) — без имени и контакта:
+ * решение о данных в Telegram (Р-547) принято для заявок, а не для
+ * кандидатов. Согласие кандидата трансграничной передачи не называет.
+ */
+export function expertSignal(id: string): string {
+  const base = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') ?? '';
+  const at = new Intl.DateTimeFormat('ru-RU', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'Europe/Moscow',
+  }).format(new Date());
+  return [
+    '<b>Новая анкета кандидата</b>',
+    '',
+    `<b>Время:</b> ${escapeHtml(at)} МСК`,
+    '',
+    'Анкета и файлы — в кабинете:',
+    `${base}/cabinet/manage/experts/${encodeURIComponent(id)}`,
+  ].join('\n');
+}
+
+/** Отправить сигнал об анкете эксперта; канал не настроен — молча. */
+export async function sendExpertSignal(id: string): Promise<DeliveryResult> {
+  return postTelegram(expertSignal(id));
+}
+
+async function postTelegram(body: string): Promise<DeliveryResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chat = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chat) return { channel: 'telegram', ok: false, error: 'канал не настроен' };
-
-  const body = telegramSignal(lead, id);
 
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {

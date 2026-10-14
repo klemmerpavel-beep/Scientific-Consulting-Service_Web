@@ -1517,3 +1517,67 @@ model WorkRating {
   @@index([managerId])
   @@index([expertId])
 }
+
+/// Анкета эксперта со страницы сайта «Экспертам» (замечание владельца
+/// 13.10.2026, решение Р-580). Кандидат в кураторы рассказывает о себе и
+/// прикладывает резюме и примеры работ; анкету разбирает руководитель.
+/// Учётной записи анкета не создаёт: куратора заводит руководитель, когда
+/// договорится с человеком. Адрес соединения и строка браузера не
+/// хранятся — для оценки квалификации они не нужны (ч. 5 ст. 5 152-ФЗ).
+/// Срок хранения — шесть месяцев с даты анкеты (Политика, п. 7.4).
+model ExpertApplication {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fullName   String
+  email      String
+  phone      String?
+  /// «Без степени», «Кандидат наук», «Доктор наук», «PhD».
+  degree     String
+  /// Шифр и название научной специальности — как пишет кандидат.
+  speciality String?
+  /// Сфера: направления, темы, виды работ.
+  fields     String  @db.Text
+  /// Опыт: руководство, рецензирование, преподавание, публикации.
+  experience String  @db.Text
+  /// Ссылки: eLIBRARY, ORCID, публикации.
+  links      String? @db.Text
+
+  /// Редакция согласия кандидата, с которой он согласился.
+  consentVersion String
+
+  status          ExpertApplicationStatus @default(NEW)
+  statusChangedAt DateTime?
+  /// Пометка руководителя по разбору.
+  note            String?                 @db.Text
+
+  files ExpertApplicationFile[]
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+enum ExpertApplicationStatus {
+  NEW
+  REVIEW
+  INVITED
+  DECLINED
+}
+
+/// Файл анкеты эксперта: резюме, примеры работ. Ключ — случайный, без
+/// исходного имени файла (Р-580, как у вложений заявки).
+model ExpertApplicationFile {
+  id            String            @id @default(cuid())
+  applicationId String
+  application   ExpertApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  storageKey   String   @unique
+  originalName String
+  sizeBytes    BigInt
+  sha256       String
+  contentType  String
+  uploadedAt   DateTime @default(now())
+
+  @@index([applicationId])
+}

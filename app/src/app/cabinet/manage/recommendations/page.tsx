@@ -26,8 +26,7 @@ const RETURN_LIMIT = 10;
 
 /**
  * Заголовок блока: название и сколько рекомендаций ждёт решения (Р-491).
- * Сумма по трём блокам — то же число, что у пункта меню и в подписи
- * экрана. Прежде стояло «N из M», и M у календаря смешивал три
+ * Сумма по трём блокам — то же число, что в подписи экрана. Прежде стояло «N из M», и M у календаря смешивал три
  * показанных окна с отмеченными, не считая окон сверх трёх (Р-499).
  */
 function BlockHead({ title, open, any }: { title: string; open: number; any: boolean }) {
@@ -51,7 +50,7 @@ function BlockHead({ title, open, any }: { title: string; open: number; any: boo
  * Описательные правила по истории практики, не прогноз; каждое называет,
  * на чём основано. Блок — отдельная плашка, рекомендация — карточка в
  * ленте со слайдером; её принимают, отклоняют, откладывают или поручают
- * (решение Р-491). Отмеченное уходит из числа у пункта меню.
+ * (решение Р-491). Отмеченное уходит из числа «Ждут решения».
  */
 export default async function RecommendationsScreen({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const actor = await requireActor(RECOMMENDATIONS_HREF);
@@ -80,7 +79,7 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
     <Shell actor={actor} current={RECOMMENDATIONS_HREF}>
       <ScreenHead
         title="Рекомендации"
-        note={`Описательные правила по истории практики, не прогноз. Ждут решения: ${unmarked}. Принятое, отклонённое, отложенное и сделанное уходит из числа у пункта меню.`}
+        note={`Описательные правила по истории практики, не прогноз. Ждут решения: ${unmarked}. Принятое, отклонённое, отложенное и сделанное в это число не входит.`}
       />
       <ActionError id={flags.error} />
 
