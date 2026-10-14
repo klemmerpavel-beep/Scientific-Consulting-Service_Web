@@ -496,6 +496,7 @@ export function Checkbox({
   required = false,
   nowrap = false,
   describedBy,
+  dense = false,
 }: {
   label: ReactNode;
   name: string;
@@ -508,6 +509,8 @@ export function Checkbox({
   nowrap?: boolean;
   /** Пояснение, стоящее вне подписи отдельной строкой: читалка зачитает его с флажком (Р-540). */
   describedBy?: string;
+  /** Плотная строка — для пары согласий одна под другой (Р-587). */
+  dense?: boolean;
 }) {
   return (
     <label
@@ -515,7 +518,7 @@ export function Checkbox({
         display: 'flex',
         gap: 10,
         alignItems: 'center',
-        minHeight: 44,
+        minHeight: dense ? 32 : 44,
         fontFamily: SANS,
         fontSize: 14,
         color: 'var(--pd-ink)',
@@ -1370,7 +1373,19 @@ export function LongTable({
  * Держать две одинаковые плитки в разных файлах — верный способ получить
  * два разных кегля числа через месяц.
  */
-export function Tile({ label, value, note }: { label: string; value: string; note?: string }) {
+export function Tile({
+  label,
+  value,
+  note,
+  chart,
+  children,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  chart?: ReactNode;
+  children?: ReactNode;
+}) {
   // Плитка — ячейка полосы величин, а не отдельная карточка: четыре-пять
   // карточек в ряд нарушали правило «не более двух плашек в ряду» на
   // тринадцати экранах руководителя, а машинная проверка их не видела —
@@ -1403,6 +1418,10 @@ export function Tile({ label, value, note }: { label: string; value: string; not
           {note}
         </Text>
       )}
+      {/* Мини-график под числом — у плиток «Пульса» (Р-585). */}
+      {chart ?? null}
+      {/* Главная строка группы — у плиток «Разбора практики» (Р-586). */}
+      {children ?? null}
     </div>
   );
 }

@@ -641,3 +641,41 @@ export function WaveBar({ share, mood }: { share: number; mood: WaveMood }) {
 }
 
 export { compactMoney, compactNumber, seriesColor };
+
+/**
+ * Мини-график плитки «Пульса» на «Сводке» (решение Р-585): форма ряда без
+ * осей и подписей. Число и сравнение стоят в плитке текстом, поэтому
+ * рисунок для читалки скрыт: вывод не существует только картинкой.
+ * Отрезки прямые, без сглаживания: сглаженная линия уходила бы ниже нуля
+ * между двумя пустыми днями и рисовала спад, которого не было.
+ */
+export function Sparkline({ points, height = 36 }: { points: readonly number[]; height?: number }) {
+  if (points.length < 2) return null;
+  const W = 160;
+  const H = height;
+  const pad = 3;
+  const max = Math.max(0, ...points);
+  const xAt = (index: number) => pad + (index / (points.length - 1)) * (W - 2 * pad);
+  const yAt = (value: number) => (max === 0 ? H - pad : pad + (H - 2 * pad) - (value / max) * (H - 2 * pad));
+  const line = points.map((value, index) => `${index === 0 ? 'M' : 'L'} ${xAt(index).toFixed(1)} ${yAt(value).toFixed(1)}`).join(' ');
+  const area = `${line} L ${xAt(points.length - 1).toFixed(1)} ${H} L ${xAt(0).toFixed(1)} ${H} Z`;
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+      style={{ display: 'block', width: '100%', height: H, marginTop: 12 }}
+    >
+      <path d={area} style={{ fill: 'var(--pd-accent-tint)' }} />
+      <path
+        d={line}
+        vectorEffect="non-scaling-stroke"
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        style={{ fill: 'none', stroke: 'var(--pd-accent)' }}
+      />
+    </svg>
+  );
+}

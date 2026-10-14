@@ -51,7 +51,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .pd-request{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 @media (max-width:1024px){.pd-usp{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.pd-orbit>.pd-ring,.pd-orbit>.pd-dot,.pd-orbit>.pd-core{display:none!important}.pd-orbit>.pd-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}}
-.pd-nav{display:flex;align-items:center;gap:28px;flex-wrap:wrap}@media (max-width:1000px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-services,.pd-cost,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
+.pd-nav{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+/* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
+@media (max-width:1200px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-services,.pd-cost,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
 /* Подпись раздела на узком экране — под заголовком слева, а не прижатой вправо строкой (Р-250). */
 @media (max-width:768px){.pd-sub{text-align:left!important;margin-left:0!important}}
 @media (max-width:768px){.pd-metrics,.pd-usp,.pd-services,.pd-cost,}
@@ -102,11 +104,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span aria-hidden="true" style="width:18px;height:2px;background:var(--pd-ink);border-radius:999px;display:block"></span>
 </button>
 <nav id="pd-nav" class="pd-nav" hidden="{{ navHidden }}" aria-label="Разделы сайта">
-<a href="#services" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Направления</a>
-<a href="#cost" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Стоимость</a>
-<a href="#process" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Как мы работаем</a>
-<a href="#faq" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Вопросы</a>
-<a href="./cabinet.html" style="display:inline-flex;align-items:center;height:46px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Личный кабинет</a>
+<a href="#services" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Направления</a>
+<a href="#cost" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Стоимость</a>
+<a href="#process" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Как мы работаем</a>
+<a href="#faq" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Вопросы</a>
+<!-- «Стать экспертом» и «Личный кабинет» — обводка проявляется при наведении (замечание владельца 14.10.2026, решение Р-588). -->
+<a href="./experts.html" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink);border-color:var(--pd-ink)">Стать экспертом</a>
+<a href="./cabinet.html" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink);border-color:var(--pd-ink)">Личный кабинет</a>
 </nav>
 <a href="#request" style="display:inline-flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;height:46px;padding:0 30px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a>
 </div>
@@ -135,8 +139,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <input type="text" name="name" autocomplete="name" required="{{ true }}" placeholder="Как к вам обращаться" aria-label="Ваше имя" style="flex:1 1 220px;min-width:0;box-sizing:border-box;height:48px;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
 <input id="mp-contact-top" name="contact" type="{{ contactTypeTop }}" autocomplete="{{ contactAutoTop }}" required="{{ true }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" style="flex:1 1 220px;min-width:0;box-sizing:border-box;height:48px;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
-<label for="mp-consent-top" style="flex:1 1 100%;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="mp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
-<label for="mp-terms-top" style="flex:1 1 100%;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="mp-terms-top" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оферту</a> и <a href="./privacy.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">политику</a></span></label>
+<div class="pd-agree" style="display:flex;flex-direction:column;gap:0;flex:1 1 100%">
+<label for="mp-consent-top" style="display:flex;min-height:32px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="mp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
+<label for="mp-terms-top" style="display:flex;min-height:32px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="mp-terms-top" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оферту</a> и <a href="./privacy.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">политику</a></span></label>
+</div>
 <button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Оставить заявку</button>
 <sc-if value="{{ sentTop }}" hint-placeholder-val="{{ false }}">
 <div role="status" tabindex="{{ -1 }}" data-sent="top" style="flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
@@ -589,8 +595,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <label for="mp-spec" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Специальность<input id="mp-spec" type="text" name="speciality" autocomplete="off" placeholder="Например: 2.3.1" style="width:100%;height:52px;box-sizing:border-box;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.24;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:0 22px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
 <label for="mp-term" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Дата защиты<input id="mp-term" type="text" name="deadline" autocomplete="off" placeholder="Например: июнь 2027" style="width:100%;height:52px;box-sizing:border-box;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.24;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:0 22px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
 </div>
-<label for="mp-consent" style="margin:6px 0 0;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
-<label for="mp-terms" style="margin:6px 0 0;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-terms" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оферту</a> и <a href="./privacy.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">политику</a></span></label>
+<div class="pd-agree" style="display:flex;flex-direction:column;gap:0;margin:6px 0 0;max-width:60ch">
+<label for="mp-consent" style="display:flex;min-height:32px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
+<label for="mp-terms" style="display:flex;min-height:32px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:60ch;cursor:pointer"><input id="mp-terms" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оферту</a> и <a href="./privacy.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">политику</a></span></label>
+</div>
 <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:4px">
 <button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;height:52px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:0 32px;border-radius:999px;display:inline-flex;align-items:center;gap:10px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Отправить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span></button>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:var(--pd-ink-muted)">Консультация 20 мин · бесплатно</span>
@@ -633,7 +641,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <sc-for list="{{ reviews }}" as="r" hint-placeholder-count="5">
 <article aria-hidden="{{ r.hidden }}" style="position:absolute;left:50%;top:8px;width:min(430px,84vw);height:236px;margin-left:calc(min(430px,84vw) / -2);box-sizing:border-box;display:flex;flex-direction:column;gap:14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:transform 420ms cubic-bezier(.2,0,.2,1),filter 420ms cubic-bezier(.2,0,.2,1),opacity 420ms cubic-bezier(.2,0,.2,1);transform:{{ r.tf }};filter:{{ r.fl }};opacity:{{ r.op }};z-index:{{ r.z }};pointer-events:{{ r.pe }}">
 <div style="display:flex;align-items:center;gap:12px">
-<img src="{{ r.photo }}" alt="" aria-hidden="true" width="56" height="56" loading="lazy" decoding="async" style="width:56px;height:56px;flex:0 0 56px;border-radius:50%;object-fit:cover;background:var(--pd-surface-quiet)">
+<!-- Инициал автора отзыва вместо значка-силуэта (замечание владельца 14.10.2026, решение Р-590): фотографии авторов не публикуются, а чужое лицо у настоящего отзыва вводило бы в заблуждение. -->
+<span aria-hidden="true" style="width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);display:flex;align-items:center;justify-content:center;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1;font-weight:600;color:var(--pd-accent)">{{ r.initial }}</span>
 <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
 <span style="font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink)">{{ r.role }}</span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">{{ r.field }}</span>
@@ -755,9 +764,10 @@ class Component extends DCLogic {
     this.measure();
     // Разделы в шапке: на широком экране они видны всегда, и атрибут
     // `hidden` там неуместен — читалка пропустила бы навигацию целиком.
-    // Ниже 1000 панель открывается кнопкой — там же появляется сама кнопка:
-    // пять разделов вместе с «Личным кабинетом» уже не помещаются в строку.
-    this.wide = window.matchMedia('(min-width:1001px)');
+    // Ниже 1200 панель открывается кнопкой — там же появляется сама кнопка:
+    // разделы вместе со «Стать экспертом» и «Личным кабинетом» уже не
+    // помещаются в строку (Р-588).
+    this.wide = window.matchMedia('(min-width:1201px)');
     this.syncNav = () => this.setState({ navOpen: this.wide.matches });
     this.syncNav();
     this.wide.addEventListener('change', this.syncNav);
@@ -928,21 +938,21 @@ class Component extends DCLogic {
     // двенадцати не опубликованы, потому что называют предметом работу,
     // выполненную за клиента.
     const REVIEWS = [
-      { photo: 'av-3', role: 'Роман', field: 'Авито · 30 сентября 2024',
+      { role: 'Роман', field: 'Авито · 30 сентября 2024',
         text: 'Работа была выполнена качественно. Все договоренности проработали, цена была объявлена сразу. Человек компетентный и опытный, довериться можно)' },
-      { photo: 'av-2', role: 'Ирина', field: 'Авито · 12 июля 2024',
+      { role: 'Ирина', field: 'Авито · 12 июля 2024',
         text: 'Цена соответствует качеству работы, все было выполнено даже раньше срока, в полном объёме. Быстрые ответы, вежливое общение, пояснения по всем вопросам)' },
-      { photo: 'av-8', role: 'Анастасия', field: 'Авито · 14 ноября 2024',
+      { role: 'Анастасия', field: 'Авито · 14 ноября 2024',
         text: 'Хочу выразить искреннюю благодарность за профессиональную помощь и поддержку в процессе работы. Все выполнено качественно и главное в срок, получила оценку «отлично»' },
-      { photo: 'av-5', role: 'Олег', field: 'Авито · 1 ноября 2024',
+      { role: 'Олег', field: 'Авито · 1 ноября 2024',
         text: 'Спасибо за работу, выполнено профессионально не смотря на сложную тему, однозначно буду обращаться ещё)' },
-      { photo: 'av-6', role: 'Ян', field: 'Авито · 2 ноября 2024',
+      { role: 'Ян', field: 'Авито · 2 ноября 2024',
         text: 'Цена оправдана. Срок и требования были идеально выполнены, я очень благодарен таким людям!' },
-      { photo: 'av-7', role: 'Велина', field: 'Авито · 3 ноября 2024',
+      { role: 'Велина', field: 'Авито · 3 ноября 2024',
         text: 'Работа выполнена качественно, в соответствии с заявленным объявлением, максимально быстро, без технических и иных проблем! Благодарю Вас!' },
-      { photo: 'av-4', role: 'Никита', field: 'Авито · 25 октября 2024',
+      { role: 'Никита', field: 'Авито · 25 октября 2024',
         text: 'Огромное спасибо за быстро и качественно выполненную работа. Всегда на связи. Спрашивают и переживают были ли замечания от преподавателей в работе.' },
-      { photo: 'av-1', role: 'Александра', field: 'Авито · 30 июня 2024',
+      { role: 'Александра', field: 'Авито · 30 июня 2024',
         text: 'вежливый, все сделал быстро и оперативно, как и просила, рекомендую!!! еще раз спасибо за оперативность и качество работы' },
     ];
     const revN = REVIEWS.length;
@@ -954,7 +964,7 @@ class Component extends DCLogic {
       const a = Math.abs(d);
       return {
         ...r,
-        photo: './assets/avatars/' + r.photo + '.svg',
+        initial: r.role.slice(0, 1),
         // Смещение подобрано так, чтобы дальняя карточка заходила за край
         // сцены, но оставалась видимой примерно на две трети.
         tf: 'translateX(' + (d < 0 ? -1 : 1) * (a === 0 ? 0 : a === 1 ? 62 : 112) + '%) '

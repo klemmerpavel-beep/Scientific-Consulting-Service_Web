@@ -43,7 +43,7 @@ export const dynamic = 'force-dynamic';
 // отличалась лишь на 1,78:1 (решение Р-253).
 const LEGAL_LINK = {
   color: 'var(--pd-accent)',
-  padding: '14px 0',
+  padding: '6px 0',
 } as const;
 
 export default async function NewRequestScreen({
@@ -223,13 +223,15 @@ export default async function NewRequestScreen({
               {/* Согласие спрашивается, пока его нет в учётной записи: теми же
                   отметками и той же редакцией, что на сайте (решение Р-238).
                   Кто пришёл заявкой с сайта, дал его там — ему отметок нет.
-                  Ссылки внутри подписи добраны отступом до 44 пикселей:
-                  строчная ссылка давала цель нажатия в 17 пикселей. */}
+                  Две отметки стоят плотно, одна под другой, как в формах
+                  сайта (Р-587): строка в 32 пикселя, ссылка добрана отступом
+                  до высоты строки и не заходит на соседнюю. */}
               {defaults.consentNeeded ? (
                 <div style={{ marginTop: 8 }}>
                   <Checkbox
                     name="consent"
                     required
+                    dense
                     label={
                       <>
                         Даю{' '}
@@ -242,6 +244,7 @@ export default async function NewRequestScreen({
                   <Checkbox
                     name="terms"
                     required
+                    dense
                     label={
                       <>
                         Принимаю{' '}
