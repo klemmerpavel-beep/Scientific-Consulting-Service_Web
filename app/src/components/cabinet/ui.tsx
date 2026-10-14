@@ -496,6 +496,7 @@ export function Checkbox({
   required = false,
   nowrap = false,
   describedBy,
+  dense = false,
 }: {
   label: ReactNode;
   name: string;
@@ -508,6 +509,8 @@ export function Checkbox({
   nowrap?: boolean;
   /** Пояснение, стоящее вне подписи отдельной строкой: читалка зачитает его с флажком (Р-540). */
   describedBy?: string;
+  /** Плотная строка — для пары согласий одна под другой (Р-587). */
+  dense?: boolean;
 }) {
   return (
     <label
@@ -515,7 +518,7 @@ export function Checkbox({
         display: 'flex',
         gap: 10,
         alignItems: 'center',
-        minHeight: 44,
+        minHeight: dense ? 32 : 44,
         fontFamily: SANS,
         fontSize: 14,
         color: 'var(--pd-ink)',
