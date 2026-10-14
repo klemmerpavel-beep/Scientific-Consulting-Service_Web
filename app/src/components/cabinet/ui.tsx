@@ -1370,7 +1370,7 @@ export function LongTable({
  * Держать две одинаковые плитки в разных файлах — верный способ получить
  * два разных кегля числа через месяц.
  */
-export function Tile({ label, value, note }: { label: string; value: string; note?: string }) {
+export function Tile({ label, value, note, chart }: { label: string; value: string; note?: string; chart?: ReactNode }) {
   // Плитка — ячейка полосы величин, а не отдельная карточка: четыре-пять
   // карточек в ряд нарушали правило «не более двух плашек в ряду» на
   // тринадцати экранах руководителя, а машинная проверка их не видела —
@@ -1403,6 +1403,8 @@ export function Tile({ label, value, note }: { label: string; value: string; not
           {note}
         </Text>
       )}
+      {/* Мини-график под числом — у плиток «Пульса» (Р-585). */}
+      {chart ?? null}
     </div>
   );
 }

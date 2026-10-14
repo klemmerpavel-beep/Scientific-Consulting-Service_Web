@@ -3,7 +3,7 @@ import { waitingPublication } from '../../../lib/cabinet/staff-texts';
 
 import Shell from '../../../components/cabinet/Shell';
 import { RADIUS, SANS } from '../../../components/cabinet/tokens';
-import { BarChart, RankChart, compactNumber } from '../../../components/cabinet/Charts';
+import { BarChart, RankChart, Sparkline, compactNumber } from '../../../components/cabinet/Charts';
 import CardSlider from '../../../components/cabinet/CardSlider';
 import {
   Block,
@@ -22,6 +22,7 @@ import {
   TABLE_CELL,
   TABLE_HEAD,
   TABLE_NUM,
+  Tabs,
   Text,
   Tile,
   Tiles,
@@ -34,7 +35,7 @@ import {
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
-import { formatAmount, formatPlain, outstandingOf, workMoneyNote, type OpenTranche } from '../../../lib/cabinet/money';
+import { formatAmount, formatPlain, formatRounded, outstandingOf, workMoneyNote, type OpenTranche } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { staffThreadUnread } from '../../../lib/cabinet/messages';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
@@ -48,26 +49,13 @@ import { requireActor } from '../../../lib/cabinet/session';
 import { homeFor } from '../../../lib/cabinet/nav';
 import { byMonth, periodBounds, products, receivedBetween } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
+import { leadRows } from '../../../lib/cabinet/analytics/leads';
+import { PULSE_PERIODS, pulseChange, pulseMetrics, pulsePeriod, pulseWindow } from '../../../lib/cabinet/analytics/pulse';
 import { activeWorks, moneyBrief, orderSummary, stageLoad, upcomingDeadlines } from '../../../lib/cabinet/summary';
 import { teamBrief, teamLoad } from '../../../lib/cabinet/team';
 import { recommendationsNow } from '../../../lib/cabinet/recommendations';
-export const dynamic = 'force-dynamic';
 
-/**
- * Изменение к предыдущему такому же периоду.
- *
- * Число без сравнения не говорит ничего: «принято 2» — это много или
- * мало, зависит от того, сколько было кварталом раньше (решение Р-196).
- */
-function delta(now: number, before: number): string {
-  // Окно скользящее — 90 дней, а не календарный квартал: подпись говорит
-  // то, что считается (требование РК-04, решение Р-342).
-  if (before === 0) return now === 0 ? '90 днями раньше тоже ноль' : '90 днями раньше не было';
-  const change = now - before;
-  if (change === 0) return `столько же, сколько 90 днями раньше`;
-  const percent = Math.round((Math.abs(change) / before) * 100);
-  return `${change > 0 ? '+' : '−'}${Math.abs(change)} к прежним 90 дням (${percent} %)`;
-}
+export const dynamic = 'force-dynamic';
 
 /**
  * Сколько дней прошло с назначенного срока; до срока — ничего. День
@@ -184,7 +172,7 @@ function owed(contract: {
 export default async function ManageQueue({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; attention?: string; sent?: string; error?: string; received?: string }>;
+  searchParams: Promise<{ page?: string; attention?: string; sent?: string; error?: string; received?: string; period?: string }>;
 }) {
   const actor = await requireActor('/cabinet/manage');
   if (!can(actor, 'REQUEST_MODERATE')) redirect(homeFor(actor));
@@ -297,6 +285,18 @@ export default async function ManageQueue({
   // время. 90 дней — по дате поступления той же функцией, что отчёт за
   // период (Р-236); за всё время — итог по траншам (Р-201).
   const receivedAll = (await searchParams).received === 'all';
+  // «Пульс практики» (план владельца по образцу, К-1, решение Р-585):
+  // период переключается ссылкой, без сценария на странице. Деньги в нём —
+  // поэтому только тому, кому открыта маржа, как прежние плитки (Р-194).
+  const period = pulsePeriod((await searchParams).period);
+  const pulseWin = dashboard && maySeeMoney ? pulseWindow(period, moscowToday(clockNow())) : null;
+  const pulse = pulseWin === null ? null : pulseMetrics(analyticsRows, await leadRows(actor), pulseWin);
+  const periodHref = (key: string) => {
+    const query = new URLSearchParams();
+    if (key !== '90') query.set('period', key);
+    if (receivedAll) query.set('received', 'all');
+    return `/cabinet/manage${query.size === 0 ? '' : `?${query.toString()}`}#pulse`;
+  };
   // Девяносто московских дней по сегодняшний включительно (решение Р-448).
   const quarter = periodBounds(moscowToday(clockNow()), 90);
   const received =
@@ -1032,35 +1032,41 @@ export default async function ManageQueue({
         </Block>
       )}
 
-      {summary === null ? null : (
-        <div>
+      {/* «Пульс практики» — период и четыре показателя с изменением к
+          прошлому такому же периоду и мини-графиком (К-1, Р-585). Заменил
+          полосу «Заказов · Действующих · Принято за 90 · Закрыто за 90»:
+          действующие работы стоят в «Чем занята практика», окно в 90 дней
+          осталось периодом по умолчанию. */}
+      {pulse === null || pulseWin === null ? null : (
+        <section id="pulse" aria-label="Пульс практики" className="cab-block" style={{ marginBottom: 8, scrollMarginTop: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+            <Heading level={2} size={3}>
+              {`Пульс практики ${pulseWin.caption}`}
+            </Heading>
+            <Tabs
+              flush
+              label="Период пульса"
+              items={PULSE_PERIODS.map((item) => ({ href: periodHref(item.key), label: item.label, active: item.key === period }))}
+            />
+          </div>
           <Tiles>
-            <Tile label="Заказов" value={String(summary.orders)} note="за всё время" />
-            {/* «Действующих», а не «В работе»: рядом график называет «В
-                работе» состояние этапа, и два разных числа под одним словом
-                читались как расхождение (решение Р-211). Действующие —
-                идущие и приостановленные, как вкладка «Действующие»
-                перечня и диаграмма экрана денег; прежде плитка считала одни
-                идущие (решение Р-257). */}
-            <Tile
-              label="Действующих работ"
-              value={String(summary.active + summary.paused)}
-              note={summary.paused > 0 ? `из них приостановлено ${summary.paused}` : 'сейчас ведутся'}
-            />
-            <Tile
-              label="Принято за 90 дней"
-              value={String(summary.startedLastQuarter)}
-              note={delta(summary.startedLastQuarter, summary.startedPrevQuarter)}
-            />
-            {/* Две цифры: сданная работа и отказ одним числом читались
-                одинаково (требование РК-04, решение Р-342). */}
-            <Tile
-              label="Закрыто за 90 дней"
-              value={String(summary.closedLastQuarter)}
-              note={`завершено ${summary.completedLastQuarter} · отменено ${summary.cancelledLastQuarter}; ${delta(summary.closedLastQuarter, summary.closedPrevQuarter)}`}
-            />
+            {pulse.map((metric) => {
+              const money = metric.key === 'received';
+              const change = pulseChange(metric.now, metric.before, pulseWin.against, (value) =>
+                money ? formatRounded(value) : String(value),
+              );
+              return (
+                <Tile
+                  key={metric.key}
+                  label={metric.label}
+                  value={money ? formatRounded(metric.now) : String(metric.now)}
+                  note={metric.detail === null ? change : `${metric.detail}; ${change}`}
+                  chart={<Sparkline points={metric.series} />}
+                />
+              );
+            })}
           </Tiles>
-        </div>
+        </section>
       )}
 
       {/* Плашки «Сводки» — одного размера: сетка в два столбца, у всех
