@@ -234,10 +234,17 @@ export function Chip({
   children,
   tone = 'neutral',
   mono = false,
+  nowrap = false,
 }: {
   children: ReactNode;
   tone?: ChipTone;
   mono?: boolean;
+  /**
+   * Подпись в одну строку. В столбце состояния таблицы «Ждёт владельца»
+   * переносилось на две строки: метка превращалась в овал, и строки
+   * таблицы шли разной высоты (замечание владельца 12.10.2026, Р-577).
+   */
+  nowrap?: boolean;
 }) {
   return (
     <span
@@ -252,6 +259,7 @@ export function Chip({
         fontWeight: mono ? 400 : 500,
         letterSpacing: mono ? '.06em' : undefined,
         lineHeight: 1.4,
+        ...(nowrap ? { whiteSpace: 'nowrap' } : {}),
         ...CHIP_TONES[tone],
       }}
     >

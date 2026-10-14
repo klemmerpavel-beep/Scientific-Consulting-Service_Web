@@ -196,7 +196,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
                     <td style={TABLE_CELL}>{work.owner}</td>
                     <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{day(work.due)}</td>
                     <td style={TABLE_CELL}>
-                      <Chip tone={work.status === 'DONE' ? 'accent' : 'neutral'}>{labelOf(WORK_STATUS_LABEL, work.status)}</Chip>
+                      <Chip nowrap tone={work.status === 'DONE' ? 'accent' : 'neutral'}>{labelOf(WORK_STATUS_LABEL, work.status)}</Chip>
                     </td>
                     <td style={TABLE_CELL}>
                       <DocLink slug={work.doc} docs={registry.docs} />
@@ -264,7 +264,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
                     <td style={{ ...TABLE_CELL, fontWeight: 500, color: 'var(--pd-ink)' }}>{service.name}</td>
                     <td style={TABLE_CELL}>{service.purpose}</td>
                     <td style={TABLE_CELL}>
-                      <Chip tone={service.status === 'ACTIVE' || service.status === 'READ_ONLY' ? 'accent' : 'neutral'}>
+                      <Chip nowrap tone={service.status === 'ACTIVE' || service.status === 'READ_ONLY' ? 'accent' : 'neutral'}>
                         {labelOf(SERVICE_STATUS_LABEL, service.status)}
                       </Chip>
                       {service.mode === null ? null : (
@@ -360,7 +360,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
                     </td>
                     <td style={TABLE_CELL}>{labelOf(DIRECTION_LABEL, campaign.direction)}</td>
                     <td style={TABLE_CELL}>
-                      <Chip tone={campaign.status === 'ACTIVE' ? 'accent' : 'neutral'}>
+                      <Chip nowrap tone={campaign.status === 'ACTIVE' ? 'accent' : 'neutral'}>
                         {labelOf(CAMPAIGN_STATUS_LABEL, campaign.status)}
                       </Chip>
                     </td>
