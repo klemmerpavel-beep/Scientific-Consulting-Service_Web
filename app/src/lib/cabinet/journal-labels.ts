@@ -67,6 +67,7 @@ const ACTIONS: Record<string, string> = {
   CURATOR_PROFILE_SAVED: 'Профиль куратора изменён',
   NDA_REQUESTED: 'Куратор сообщил руководителю, что ждёт договор поручения',
   PRACTICE_SETTING_SAVED: 'Изменена настройка практики',
+  SUMMARY_LAYOUT_SAVED: 'Изменена раскладка «Сводки»',
   HEAD_CHECK_CLOSED: 'Закрыто дело руководителя',
   CALENDAR_DAY_REMOVED: 'День производственного календаря снят',
   STAGE_TEMPLATE_REMOVED: 'Этап шаблона снят',

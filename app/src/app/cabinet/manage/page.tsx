@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { Fragment, type ReactNode } from 'react';
 import { waitingPublication } from '../../../lib/cabinet/staff-texts';
 
 import Shell from '../../../components/cabinet/Shell';
@@ -55,6 +56,8 @@ import { activeWorks, moneyBrief, orderSummary, stageLoad, upcomingDeadlines } f
 import { teamBrief, teamLoad } from '../../../lib/cabinet/team';
 import { recommendationsNow } from '../../../lib/cabinet/recommendations';
 import { practiceReview } from '../../../lib/cabinet/practice-review';
+import { DEFAULT_LAYOUT, isShown, visiblePlates, type PlateKey } from '../../../lib/cabinet/summary-layout';
+import { summaryLayoutOf } from '../../../lib/cabinet/summary-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -236,6 +239,9 @@ export default async function ManageQueue({
   // (решение Р-180). Прокрутка здесь разрешена: витрину в окно не уложить,
   // не отрезав от неё смысл.
   const dashboard = can(actor, 'ANALYTICS_VIEW');
+  // Раскладка «Сводки» руководителя — какие плашки и полосы показывать и в
+  // каком порядке (К-5, Р-595); у менеджера сетки плашек нет.
+  const layout = dashboard ? await summaryLayoutOf(actor) : DEFAULT_LAYOUT;
   const analyticsRows = dashboard ? await loadRows(actor) : [];
   // Ряд доходит до текущего месяца: «последние двенадцать месяцев»
   // кончаются сегодняшним, а не месяцем последнего начала (решение Р-257).
@@ -939,192 +945,15 @@ export default async function ManageQueue({
     </>
   );
 
-  return (
-    <Shell actor={actor} current="/cabinet/manage" board>
-      {/* Сводка — первый экран после входа обеих служебных ролей, и она
-          показывает всё главное сразу: что нельзя оставить как есть, что
-          в работе и что ждёт разбора. Прежде заголовок первого уровня
-          плавал — у руководителя «Практика», у менеджера «Требует
-          внимания», — и один блок был набран двумя способами
-          (решение Р-172). */}
-      {/* Кнопка отчёта стоит справа вверху — там, где заказчик её просил:
-          общее действие страницы, а не карточка среди карточек
-          (решение Р-201). Менеджеру аналитика закрыта, и кнопки у него
-          нет вовсе. */}
-      <ScreenHead
-        // Заголовок руководителя — как пункт меню (требование РК-14, Р-340).
-        title={summary === null ? 'Работа на сегодня' : 'Сводка'}
-        answer={answer}
-        action={
-          dashboard ? <ButtonLink href="/cabinet/manage/report">Отчёт за период</ButtonLink> : undefined
-        }
-      />
-
-      {/* «Разбор практики» — три группы с числом и главной строкой: что
-          сделать, за чем наблюдать, какая есть возможность (К-2, Р-586).
-          Заменил строку «Рекомендация месяца»: она — первая строка группы
-          «Возможность». Перечни остаются ниже и на «Рекомендациях». */}
-      {review === null ? null : (
-        <section id="review" aria-label="Разбор практики" style={{ scrollMarginTop: 24 }}>
-          <Heading level={2} size={3} style={{ marginBottom: 14 }}>
-            Разбор практики
-          </Heading>
-          <Tiles>
-            {review.map((group) => (
-              <Tile key={group.key} label={group.label} value={String(group.count)} note={group.scope}>
-                {group.first === null ? (
-                  <Text muted size={13} style={{ marginTop: 12 }}>
-                    {group.empty}
-                  </Text>
-                ) : (
-                  <div style={{ marginTop: 12, display: 'grid', gap: 2 }}>
-                    <a href={group.first.href} className="cab-mark" style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
-                      {clip(group.first.title, 90)}
-                    </a>
-                    {group.first.note === null ? null : (
-                      <Text muted size={13}>
-                        {group.first.note}
-                      </Text>
-                    )}
-                  </div>
-                )}
-                {group.all === null ? null : (
-                  <a href={group.all.href} className="cab-mark" style={{ display: 'inline-block', marginTop: 10, fontFamily: SANS, fontSize: 13 }}>
-                    {group.all.label}
-                  </a>
-                )}
-              </Tile>
-            ))}
-          </Tiles>
-        </section>
-      )}
-
-      {/* Ни почта, ни бот не настроены — уведомления копятся в очереди;
-          плашка стоит, пока не настроен хотя бы один канал (требование
-          РК-02, решение Р-334). */}
-      {outbox !== null && notifyChannelsDown() ? (
-        <div style={{ marginBottom: 20 }}>
-          <Notice tone="quiet" role="alert">
-            Уведомления не уходят: настройте почту. Пока не настроены ни почта, ни бот Telegram, письма и
-            сигналы копятся в очереди.
-          </Notice>
-        </div>
-      ) : null}
-
-      {/* «Требует внимания» — верхней полосой отдельными плашками, а не
-          колонкой: заказчик смотрит сводку сверху вниз, и то, что нельзя
-          оставить как есть, должно встречать первым. Каждая запись —
-          своя плашка с переходом на задачу (решение Р-189). У
-          руководителя полоса стояла под плитками и графиками, на втором
-          экране прокрутки, — вопреки тому же решению; теперь она сразу
-          под ответом, а витрина практики ниже (решение Р-210). */}
-      {attention.length === 0 ? null : (
-        <Block id="attention" style={{ marginBottom: 20 }}>
-          <Heading level={2} style={{ marginBottom: 12 }}>
-            Требует внимания · {attention.length}
-          </Heading>
-          {actor.role === 'HEAD' ? (
-            <>
-              {/* «Мои» и «Контроль» разделены (требование РК-05, решение
-                  Р-337): свои дела руководителя — как у менеджера; чужие —
-                  только после срока реакции. */}
-              <Heading level={3} size={3} style={{ marginBottom: 10 }}>
-                Мои · {shownAttention.filter((row) => row.kind !== 'control').length}
-              </Heading>
-              {attentionList(shownAttention.filter((row) => row.kind !== 'control'))}
-              {parts.control.length === 0 ? null : (
-                <>
-                  <Heading level={3} size={3} style={{ margin: '20px 0 4px' }}>
-                    Контроль · {parts.control.length}
-                  </Heading>
-                  <Text muted size={13} style={{ marginBottom: 10 }}>
-                    {`Дела менеджеров, не закрытые за ${term} ${plural(term, 'рабочий день', 'рабочих дня', 'рабочих дней')}: закрыть можно самому — ответить, опубликовать или разобрать.`}
-                  </Text>
-                  {attentionList(shownAttention.filter((row) => row.kind === 'control'))}
-                </>
-              )}
-            </>
-          ) : (
-            attentionList(shownAttention)
-          )}
-          {shownAttention.length < attention.length ? (
-            <div style={{ marginTop: 12 }}>
-              <ButtonLink href="/cabinet/manage?attention=all#attention" tone="quiet">
-                Показать все {attention.length}
-              </ButtonLink>
-            </div>
-          ) : null}
-        </Block>
-      )}
-
-      {/* «На этой неделе» — отдельным блоком, в «N дел» не входит: срок ещё
-          не сорван, но подходит (требование М-06, ОМ-10, решение Р-304). */}
-      {today.week.length === 0 ? null : (
-        <Block id="week" style={{ marginBottom: 20 }}>
-          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
-            На этой неделе · {today.week.length}
-          </Heading>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
-            {today.week.slice(0, 8).map((row) => (
-              <li key={row.key} style={{ display: 'grid', gap: 2 }}>
-                <a href={row.href} className="cab-mark" style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
-                  {row.title}
-                </a>
-                <Text muted size={13}>
-                  {`до ${formatDate(row.dueOn)}${row.turn === null ? '' : ` · ${row.turn}`}`}
-                </Text>
-              </li>
-            ))}
-          </ul>
-        </Block>
-      )}
-
-      {/* «Пульс практики» — период и четыре показателя с изменением к
-          прошлому такому же периоду и мини-графиком (К-1, Р-585). Заменил
-          полосу «Заказов · Действующих · Принято за 90 · Закрыто за 90»:
-          действующие работы стоят в «Чем занята практика», окно в 90 дней
-          осталось периодом по умолчанию. */}
-      {pulse === null || pulseWin === null ? null : (
-        <section id="pulse" aria-label="Пульс практики" className="cab-block" style={{ marginBottom: 8, scrollMarginTop: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-            <Heading level={2} size={3}>
-              {`Пульс практики ${pulseWin.caption}`}
-            </Heading>
-            <Tabs
-              flush
-              label="Период пульса"
-              items={PULSE_PERIODS.map((item) => ({ href: periodHref(item.key), label: item.label, active: item.key === period }))}
-            />
-          </div>
-          <Tiles>
-            {pulse.map((metric) => {
-              const money = metric.key === 'received';
-              const change = pulseChange(metric.now, metric.before, pulseWin.against, (value) =>
-                money ? formatRounded(value) : String(value),
-              );
-              return (
-                <Tile
-                  key={metric.key}
-                  label={metric.label}
-                  value={money ? formatRounded(metric.now) : String(metric.now)}
-                  note={metric.detail === null ? change : `${metric.detail}; ${change}`}
-                  chart={<Sparkline points={metric.series} />}
-                />
-              );
-            })}
-          </Tiles>
-        </section>
-      )}
-
-      {/* Плашки «Сводки» — одного размера: сетка в два столбца, у всех
-          плашек одна высота (замечание владельца 13.10.2026, решение
-          Р-576). Прежде плашки стояли двумя колонками по содержимому
-          (Р-489), и высоты расходились вдвое. Что длиннее плашки —
-          работы, заявки — прокручивается внутри неё; «Числа» раскрываются
-          поверх единого размера. Ниже 960 px — один столбец по
-          содержимому (Р-320). */}
-      {load === null ? null : (
-        <div className="cab-block cab-dash">
+  // Плашки сетки «Сводки» по ключам раскладки (К-5, Р-595): руководитель
+  // выбирает, какие показывать и в каком порядке. Разметка плашек прежняя;
+  // порядок по умолчанию — порядок Р-576.
+  const plates: Record<PlateKey, ReactNode> | null =
+    load === null
+      ? null
+      : {
+    team: (
+      <>
         {/* «Команда» — лента плашек: у каждого сотрудника своя плашка, её
             листают кнопками, прокруткой и стрелками и выбирают нужного
             человека (замечание владельца 13.10.2026, решение Р-575). В
@@ -1194,7 +1023,10 @@ export default async function ManageQueue({
             </div>
           </Card>
         )}
-
+      </>
+    ),
+    load: (
+      <>
         <Card style={{ display: 'flex', flexDirection: 'column' }}>
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Чем занята практика
@@ -1278,7 +1110,10 @@ export default async function ManageQueue({
             </Disclosure>
           )}
         </Card>
-
+      </>
+    ),
+    months: (
+      <>
         <Card style={{ display: 'flex', flexDirection: 'column' }}>
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Заказы по месяцам
@@ -1362,7 +1197,10 @@ export default async function ManageQueue({
             </Disclosure>
           )}
         </Card>
-
+      </>
+    ),
+    demand: (
+      <>
         {/* «Что заказывают» — с той же строкой чисел, что у соседних
             плашек: в плашке единого размера график из шести строк
             оставлял её наполовину пустой (Р-489, Р-576). */}
@@ -1426,7 +1264,10 @@ export default async function ManageQueue({
             </>
           )}
         </Card>
-
+      </>
+    ),
+    deadlines: (
+      <>
         {/* «Ближайшие сроки» и «Деньги» — две плашки: вместе они были
             вдвое выше соседних (Р-576). Этапы действующих работ и срок
             работы без плана — в окне двух недель и сорванные; у строки —
@@ -1492,7 +1333,10 @@ export default async function ManageQueue({
             </ButtonLink>
           </div>
         </Card>
-
+      </>
+    ),
+    money: (
+      <>
         {money === null ? null : (
           <Card style={{ display: 'flex', flexDirection: 'column' }}>
             <Heading level={2} size={3} style={{ marginBottom: 12 }}>
@@ -1626,10 +1470,17 @@ export default async function ManageQueue({
             </div>
           </Card>
         )}
-
+      </>
+    ),
+    works: (
+      <>
           <ScrollCard title={`${summary === null ? 'Мои работы' : 'Ведутся сейчас'} · ${works.length}`} href="/cabinet/projects" hrefLabel="все работы">
             {worksList}
           </ScrollCard>
+      </>
+    ),
+    leads: (
+      <>
           <ScrollCard
             title={queue.total === 0 ? 'Заявки' : `Заявки · ${queue.total}`}
             href={queue.total > 0 ? '/cabinet/manage/leads' : undefined}
@@ -1637,6 +1488,207 @@ export default async function ManageQueue({
           >
             {leadsList}
           </ScrollCard>
+      </>
+    ),
+        };
+  const shownPlates = visiblePlates(layout);
+
+  return (
+    <Shell actor={actor} current="/cabinet/manage" board>
+      {/* Сводка — первый экран после входа обеих служебных ролей, и она
+          показывает всё главное сразу: что нельзя оставить как есть, что
+          в работе и что ждёт разбора. Прежде заголовок первого уровня
+          плавал — у руководителя «Практика», у менеджера «Требует
+          внимания», — и один блок был набран двумя способами
+          (решение Р-172). */}
+      {/* Кнопка отчёта стоит справа вверху — там, где заказчик её просил:
+          общее действие страницы, а не карточка среди карточек
+          (решение Р-201). Менеджеру аналитика закрыта, и кнопки у него
+          нет вовсе. */}
+      <ScreenHead
+        // Заголовок руководителя — как пункт меню (требование РК-14, Р-340).
+        title={summary === null ? 'Работа на сегодня' : 'Сводка'}
+        answer={answer}
+        action={
+          dashboard ? (
+            <>
+              {/* «Настроить» — какие плашки «Сводки» показывать и в каком
+                  порядке (К-5, Р-595). */}
+              <ButtonLink href="/cabinet/manage/layout">Настроить</ButtonLink>
+              <ButtonLink href="/cabinet/manage/report">Отчёт за период</ButtonLink>
+            </>
+          ) : undefined
+        }
+      />
+
+      {/* «Разбор практики» — три группы с числом и главной строкой: что
+          сделать, за чем наблюдать, какая есть возможность (К-2, Р-586).
+          Заменил строку «Рекомендация месяца»: она — первая строка группы
+          «Возможность». Перечни остаются ниже и на «Рекомендациях». */}
+      {review === null || !isShown(layout, 'review') ? null : (
+        <section id="review" aria-label="Разбор практики" style={{ scrollMarginTop: 24 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 14 }}>
+            Разбор практики
+          </Heading>
+          <Tiles>
+            {review.map((group) => (
+              <Tile key={group.key} label={group.label} value={String(group.count)} note={group.scope}>
+                {group.first === null ? (
+                  <Text muted size={13} style={{ marginTop: 12 }}>
+                    {group.empty}
+                  </Text>
+                ) : (
+                  <div style={{ marginTop: 12, display: 'grid', gap: 2 }}>
+                    <a href={group.first.href} className="cab-mark" style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
+                      {clip(group.first.title, 90)}
+                    </a>
+                    {group.first.note === null ? null : (
+                      <Text muted size={13}>
+                        {group.first.note}
+                      </Text>
+                    )}
+                  </div>
+                )}
+                {group.all === null ? null : (
+                  <a href={group.all.href} className="cab-mark" style={{ display: 'inline-block', marginTop: 10, fontFamily: SANS, fontSize: 13 }}>
+                    {group.all.label}
+                  </a>
+                )}
+              </Tile>
+            ))}
+          </Tiles>
+        </section>
+      )}
+
+      {/* Ни почта, ни бот не настроены — уведомления копятся в очереди;
+          плашка стоит, пока не настроен хотя бы один канал (требование
+          РК-02, решение Р-334). */}
+      {outbox !== null && notifyChannelsDown() ? (
+        <div style={{ marginBottom: 20 }}>
+          <Notice tone="quiet" role="alert">
+            Уведомления не уходят: настройте почту. Пока не настроены ни почта, ни бот Telegram, письма и
+            сигналы копятся в очереди.
+          </Notice>
+        </div>
+      ) : null}
+
+      {/* «Требует внимания» — верхней полосой отдельными плашками, а не
+          колонкой: заказчик смотрит сводку сверху вниз, и то, что нельзя
+          оставить как есть, должно встречать первым. Каждая запись —
+          своя плашка с переходом на задачу (решение Р-189). У
+          руководителя полоса стояла под плитками и графиками, на втором
+          экране прокрутки, — вопреки тому же решению; теперь она сразу
+          под ответом, а витрина практики ниже (решение Р-210). */}
+      {attention.length === 0 ? null : (
+        <Block id="attention" style={{ marginBottom: 20 }}>
+          <Heading level={2} style={{ marginBottom: 12 }}>
+            Требует внимания · {attention.length}
+          </Heading>
+          {actor.role === 'HEAD' ? (
+            <>
+              {/* «Мои» и «Контроль» разделены (требование РК-05, решение
+                  Р-337): свои дела руководителя — как у менеджера; чужие —
+                  только после срока реакции. */}
+              <Heading level={3} size={3} style={{ marginBottom: 10 }}>
+                Мои · {shownAttention.filter((row) => row.kind !== 'control').length}
+              </Heading>
+              {attentionList(shownAttention.filter((row) => row.kind !== 'control'))}
+              {parts.control.length === 0 ? null : (
+                <>
+                  <Heading level={3} size={3} style={{ margin: '20px 0 4px' }}>
+                    Контроль · {parts.control.length}
+                  </Heading>
+                  <Text muted size={13} style={{ marginBottom: 10 }}>
+                    {`Дела менеджеров, не закрытые за ${term} ${plural(term, 'рабочий день', 'рабочих дня', 'рабочих дней')}: закрыть можно самому — ответить, опубликовать или разобрать.`}
+                  </Text>
+                  {attentionList(shownAttention.filter((row) => row.kind === 'control'))}
+                </>
+              )}
+            </>
+          ) : (
+            attentionList(shownAttention)
+          )}
+          {shownAttention.length < attention.length ? (
+            <div style={{ marginTop: 12 }}>
+              <ButtonLink href="/cabinet/manage?attention=all#attention" tone="quiet">
+                Показать все {attention.length}
+              </ButtonLink>
+            </div>
+          ) : null}
+        </Block>
+      )}
+
+      {/* «На этой неделе» — отдельным блоком, в «N дел» не входит: срок ещё
+          не сорван, но подходит (требование М-06, ОМ-10, решение Р-304). */}
+      {today.week.length === 0 ? null : (
+        <Block id="week" style={{ marginBottom: 20 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
+            На этой неделе · {today.week.length}
+          </Heading>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+            {today.week.slice(0, 8).map((row) => (
+              <li key={row.key} style={{ display: 'grid', gap: 2 }}>
+                <a href={row.href} className="cab-mark" style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
+                  {row.title}
+                </a>
+                <Text muted size={13}>
+                  {`до ${formatDate(row.dueOn)}${row.turn === null ? '' : ` · ${row.turn}`}`}
+                </Text>
+              </li>
+            ))}
+          </ul>
+        </Block>
+      )}
+
+      {/* «Пульс практики» — период и четыре показателя с изменением к
+          прошлому такому же периоду и мини-графиком (К-1, Р-585). Заменил
+          полосу «Заказов · Действующих · Принято за 90 · Закрыто за 90»:
+          действующие работы стоят в «Чем занята практика», окно в 90 дней
+          осталось периодом по умолчанию. */}
+      {pulse === null || pulseWin === null || !isShown(layout, 'pulse') ? null : (
+        <section id="pulse" aria-label="Пульс практики" className="cab-block" style={{ marginBottom: 8, scrollMarginTop: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+            <Heading level={2} size={3}>
+              {`Пульс практики ${pulseWin.caption}`}
+            </Heading>
+            <Tabs
+              flush
+              label="Период пульса"
+              items={PULSE_PERIODS.map((item) => ({ href: periodHref(item.key), label: item.label, active: item.key === period }))}
+            />
+          </div>
+          <Tiles>
+            {pulse.map((metric) => {
+              const money = metric.key === 'received';
+              const change = pulseChange(metric.now, metric.before, pulseWin.against, (value) =>
+                money ? formatRounded(value) : String(value),
+              );
+              return (
+                <Tile
+                  key={metric.key}
+                  label={metric.label}
+                  value={money ? formatRounded(metric.now) : String(metric.now)}
+                  note={metric.detail === null ? change : `${metric.detail}; ${change}`}
+                  chart={<Sparkline points={metric.series} />}
+                />
+              );
+            })}
+          </Tiles>
+        </section>
+      )}
+
+      {/* Плашки «Сводки» — одного размера: сетка в два столбца, у всех
+          плашек одна высота (замечание владельца 13.10.2026, решение
+          Р-576). Прежде плашки стояли двумя колонками по содержимому
+          (Р-489), и высоты расходились вдвое. Что длиннее плашки —
+          работы, заявки — прокручивается внутри неё; «Числа» раскрываются
+          поверх единого размера. Ниже 960 px — один столбец по
+          содержимому (Р-320). */}
+      {plates === null || shownPlates.length === 0 ? null : (
+        <div className="cab-block cab-dash">
+          {shownPlates.map((key) => (
+            <Fragment key={key}>{plates[key]}</Fragment>
+          ))}
         </div>
       )}
 

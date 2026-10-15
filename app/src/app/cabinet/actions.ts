@@ -6,6 +6,8 @@ import { after } from 'next/server';
 import { CONSENT_VERSION } from '../../lib/lead-schema';
 import { AccessDenied, ensure, type Actor } from '../../lib/cabinet/access';
 import { saveChecklistMarks } from '../../lib/cabinet/checklist-marks';
+import { SUMMARY_BANDS, SUMMARY_PLATES, layoutFromChoices } from '../../lib/cabinet/summary-layout';
+import { saveSummaryLayout } from '../../lib/cabinet/summary-settings';
 import { deleteExpertApplication, reviewExpertApplication } from '../../lib/cabinet/expert-applications';
 import { attachBrief, briefAttachment, dropBrief, stageBrief } from '../../lib/cabinet/brief/intake';
 import { applyWorkBrief, type WorkBriefKey } from '../../lib/cabinet/brief/work-apply';
@@ -1217,6 +1219,45 @@ export async function postStaffMessage(form: FormData): Promise<void> {
  * Ссылка привязки Telegram — по нажатию (решение Р-245): метка заводится
  * здесь, и человек сразу уходит в бота.
  */
+/**
+ * Раскладка «Сводки» (К-5, Р-595): место и флажок показа у каждой плашки,
+ * флажок у каждой полосы. Строка ключа приходит скрытым полем — так
+ * снятый флажок отличается от ключа, которого в форме не было.
+ */
+export async function saveSummaryLayoutForm(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const keys = [...SUMMARY_PLATES, ...SUMMARY_BANDS].map((item) => item.key as string);
+  const choices = keys
+    .filter((key) => form.get(`row:${key}`) === '1')
+    .map((key) => ({
+      key,
+      place: Number(form.get(`place:${key}`)),
+      was: Number(form.get(`was:${key}`)),
+      shown: form.get(`shown:${key}`) === 'on',
+    }));
+  let failure: string | null = null;
+  try {
+    await saveSummaryLayout(actor, layoutFromChoices(choices));
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить раскладку «Сводки»');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/manage/layout', failure));
+  redirect('/cabinet/manage/layout?saved=1');
+}
+
+/** «Вернуть как было» — раскладка по умолчанию. */
+export async function resetSummaryLayout(): Promise<void> {
+  const actor = await actorOrRedirect();
+  let failure: string | null = null;
+  try {
+    await saveSummaryLayout(actor, null);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось вернуть раскладку «Сводки»');
+  }
+  if (failure !== null) redirect(await withError('/cabinet/manage/layout', failure));
+  redirect('/cabinet/manage/layout?saved=1');
+}
+
 /** «Понятно» в блоке первого входа (требование Т-10, решение Р-310). */
 export async function dismissWelcome(): Promise<void> {
   const actor = await actorOrRedirect();
