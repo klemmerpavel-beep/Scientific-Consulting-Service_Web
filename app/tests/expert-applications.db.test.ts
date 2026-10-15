@@ -25,7 +25,7 @@ describe('анкеты экспертов', { skip: !enabled }, async () => {
   const { LocalStorage, setStorage } = await import('../src/lib/cabinet/storage.ts');
   const service = await import('../src/lib/cabinet/expert-applications.ts');
   const { anonymize } = await import('../src/lib/disk/sheet.ts');
-  const { ExpertInputError, EXPERT_CONSENT_VERSION } = await import('../src/lib/expert-application.ts');
+  const { ExpertInputError, EXPERT_CONSENT_VERSION, EXPERIENCE_IN_RESUME } = await import('../src/lib/expert-application.ts');
 
   const stamp = Date.now();
   const marker = `Проверка ${stamp}`;
@@ -152,6 +152,17 @@ describe('анкеты экспертов', { skip: !enabled }, async () => {
     assert.equal(row[at('SPIN-код')], 'скрыто');
     // Виды работ — выбор из перечня, человека не называют: остаются видны.
     assert.equal(row[at('Виды работ')], 'Научные статьи');
+  });
+
+  it('пустой опыт при резюме — в таблице той же фразой, что на экране разбора (Р-597)', async () => {
+    const { id } = await service.createExpertApplication(input({ experience: '' }), [
+      { originalName: 'Резюме.pdf', contentType: 'application/pdf', body: PDF },
+    ]);
+    const book = await service.expertsTable();
+    const row = book.data.find((cells) => cells[book.head.indexOf('Идентификатор')] === id);
+    assert.ok(row !== undefined);
+    assert.equal(row[book.head.indexOf('Опыт')], EXPERIENCE_IN_RESUME);
+    assert.equal(row[book.head.indexOf('Файлов')], 1);
   });
 
   it('удаление снимает анкету и её файлы из хранилища', async () => {

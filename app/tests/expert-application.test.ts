@@ -10,8 +10,10 @@ import { describe, it } from 'node:test';
 
 import {
   EXPERT_CONSENT_VERSION,
+  EXPERIENCE_IN_RESUME,
   ExpertInputError,
   consentVersionLabel,
+  experienceLabel,
   expertFiles,
   normalizeOrcid,
   normalizeSpin,
@@ -55,6 +57,11 @@ describe('анкета эксперта: поля (Р-580)', () => {
     assert.equal(input.fullName, 'Иванова Мария Петровна');
     assert.equal(input.degree, 'Кандидат наук');
     assert.equal(input.consent, true);
+  });
+
+  it('пустой опыт называется одной фразой на экране и в выгрузке', () => {
+    assert.equal(experienceLabel(''), EXPERIENCE_IN_RESUME);
+    assert.equal(experienceLabel('Руководство ВКР'), 'Руководство ВКР');
   });
 
   it('опыт — текстом или резюме: с приложенным файлом поле опыта можно оставить пустым (Р-597)', () => {

@@ -142,6 +142,12 @@ function looksLikePhone(value: string): boolean {
 /** Опыт без резюме — не короче двух-трёх фраз. */
 export const EXPERIENCE_MIN = 20;
 export const EXPERIENCE_MISSING = 'Расскажите об опыте в двух-трёх фразах или приложите резюме';
+/** Пустой опыт — на экране разбора и в выгрузке одной фразой (Р-257, Р-597). */
+export const EXPERIENCE_IN_RESUME = 'Не описан — в приложенном резюме';
+
+export function experienceLabel(value: string): string {
+  return value === '' ? EXPERIENCE_IN_RESUME : value;
+}
 
 export const expertApplicationSchema = z
   .object({
