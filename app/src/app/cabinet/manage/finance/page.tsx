@@ -18,6 +18,7 @@ import {
   Tile,
   Tiles,
   FilterBar,
+  ButtonLink,
   Tabs,
   Text,
   TABLE_CELL,
@@ -30,6 +31,7 @@ import {
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { financeSummary } from '../../../../lib/cabinet/finance';
+import { COLUMN_SETS, FINANCE_COLUMNS, columnSet, pick } from '../../../../lib/cabinet/table-views';
 import { byMonth } from '../../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../../lib/cabinet/analytics/data';
 import { formatAmount } from '../../../../lib/cabinet/money';
@@ -55,7 +57,7 @@ const PAGE_SIZE = 20;
 export default async function FinanceScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ set?: string; page?: string }>;
+  searchParams: Promise<{ set?: string; page?: string; cols?: string }>;
 }) {
   const actor = await requireActor('/cabinet/manage/finance');
   // Финансовый контур ведёт руководитель: менеджер не видит ни начислений,
@@ -90,13 +92,19 @@ export default async function FinanceScreen({
   const pages = Math.max(1, Math.ceil(chosen.length / PAGE_SIZE));
   const page = Math.min(Math.max(1, Math.trunc(Number(sp.page)) || 1), pages);
   const shown = chosen.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const href = (set: 'owing' | 'all', next = 1) => {
+  // Набор столбцов — основные или подробно; выгрузка берёт тот же набор
+  // и тот же отбор (К-3, Р-593).
+  const cols = columnSet(sp.cols);
+  const columns = pick(FINANCE_COLUMNS, cols);
+  const href = (set: 'owing' | 'all', next = 1, nextCols = cols) => {
     const params = new URLSearchParams();
     if (set === 'all') params.set('set', 'all');
+    if (nextCols === 'full') params.set('cols', 'full');
     if (next > 1) params.set('page', String(next));
     const tail = params.toString();
     return tail === '' ? '/cabinet/manage/finance' : `/cabinet/manage/finance?${tail}`;
   };
+  const exportHref = `/cabinet/manage/finance/export${href(all ? 'all' : 'owing').replace('/cabinet/manage/finance', '')}`;
 
   const tiles = [
     { label: 'Законтрактовано', value: totals.contracted },
@@ -273,25 +281,37 @@ export default async function FinanceScreen({
             { href: href('all'), label: `Все работы с договором · ${rows.length}`, active: all },
           ]}
         />
+        {/* Ряд с переносом, как на «Всех заявках»: на телефоне кнопка
+            выгрузки уходит строкой ниже, а не сжимается в два яруса. */}
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Tabs
+            flush
+            label="Набор столбцов"
+            items={COLUMN_SETS.map((item) => ({ href: href(all ? 'all' : 'owing', 1, item.key), label: item.label, active: item.key === cols }))}
+          />
+          {chosen.length > 0 ? (
+            <ButtonLink href={exportHref} download>
+              Выгрузить .xlsx
+            </ButtonLink>
+          ) : null}
+        </span>
       </FilterBar>
 
       <TableCard label="Деньги по работам">
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: cols === 'full' ? 1200 : 720 }}>
           <thead>
             <tr>
-              <th style={TABLE_HEAD} scope="col">Проект</th>
-              <th style={TABLE_HEAD} scope="col">Клиент</th>
-              <th scope="col" style={TABLE_NUM_HEAD}>Договор</th>
-              <th scope="col" style={TABLE_NUM_HEAD}>Получено</th>
-              <th scope="col" style={TABLE_NUM_HEAD}>К получению</th>
-              <th scope="col" style={TABLE_NUM_HEAD}>Начислено</th>
-              <th scope="col" style={TABLE_NUM_HEAD}>Маржа</th>
+              {columns.map((column) => (
+                <th key={column.key} scope="col" style={column.numeric ? TABLE_NUM_HEAD : TABLE_HEAD}>
+                  {column.head}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {shown.length === 0 ? (
               <tr>
-                <td style={TABLE_CELL} colSpan={7}>
+                <td style={TABLE_CELL} colSpan={columns.length}>
                   {rows.length === 0
                     ? 'Договоров пока нет.'
                     : 'Незакрытых остатков нет. Неполученное по отменённым работам — потеря, а не долг: оно на вкладке «Потери» аналитики.'}
@@ -300,40 +320,50 @@ export default async function FinanceScreen({
             ) : (
               shown.map((row) => (
                 <tr key={row.projectId}>
-                  {/* Код и название одной строкой: двумя ярусами строка
-                      занимала 67 px, и двадцать строк давали полторы
-                      тысячи пикселей (решение Р-184). */}
-                  <td style={TABLE_CELL}>
-                    {/* Ссылкой служит вся строка, а не один код: ссылка
-                        посреди текста отличается только цветом, и
-                        проверка доступности законно против (Р-184). */}
-                    <a className="cab-mark" href={`/cabinet/projects/${row.code}/payments`}>
-                      {row.title}
-                    </a>
-                  </td>
-                  <td style={TABLE_CELL}>
-                    {row.client}
-                    {/* Кто ведёт работу — ссылкой на «Работы» с отбором (РК-03). */}
-                    <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
-                      менеджер —{' '}
-                      <a className="cab-mark" href={`/cabinet/projects?state=all&manager=${row.manager.id}`}>
-                        {row.manager.fullName}
-                      </a>
-                      {row.expert === null ? null : (
-                        <>
-                          {' · куратор — '}
-                          <a className="cab-mark" href={`/cabinet/projects?state=all&curator=${row.expert.id}`}>
-                            {row.expert.fullName}
+                  {columns.map((column) => {
+                    // Код и название одной строкой: двумя ярусами строка
+                    // занимала 67 px (решение Р-184). Ссылкой служит вся
+                    // строка названия, а не один код (Р-184).
+                    if (column.key === 'title') {
+                      return (
+                        <td key={column.key} style={TABLE_CELL}>
+                          <a className="cab-mark" href={`/cabinet/projects/${row.code}/payments`}>
+                            {row.title}
                           </a>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                  <td style={TABLE_NUM}>{formatAmount(row.contracted)}</td>
-                  <td style={TABLE_NUM}>{formatAmount(row.received)}</td>
-                  <td style={TABLE_NUM}>{formatAmount(row.awaiting)}</td>
-                  <td style={TABLE_NUM}>{formatAmount(row.accrued)}</td>
-                  <td style={TABLE_NUM}>{formatAmount(row.margin)}</td>
+                        </td>
+                      );
+                    }
+                    // В основном наборе под клиентом — кто ведёт работу,
+                    // ссылками на «Работы» с отбором (РК-03); в подробном у
+                    // менеджера и куратора свои столбцы.
+                    if (column.key === 'client' && cols === 'short') {
+                      return (
+                        <td key={column.key} style={TABLE_CELL}>
+                          {row.client}
+                          <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                            менеджер —{' '}
+                            <a className="cab-mark" href={`/cabinet/projects?state=all&manager=${row.manager.id}`}>
+                              {row.manager.fullName}
+                            </a>
+                            {row.expert === null ? null : (
+                              <>
+                                {' · куратор — '}
+                                <a className="cab-mark" href={`/cabinet/projects?state=all&curator=${row.expert.id}`}>
+                                  {row.expert.fullName}
+                                </a>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    }
+                    const value = column.value(row);
+                    return (
+                      <td key={column.key} style={column.numeric ? TABLE_NUM : TABLE_CELL}>
+                        {typeof value === 'object' && value !== null ? formatAmount(value.kopecks) : value === '' || value == null ? '—' : String(value)}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             )}

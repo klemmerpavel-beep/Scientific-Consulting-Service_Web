@@ -21,8 +21,11 @@ import {
   plural,
   TABLE_CELL,
   TABLE_HEAD,
+  TABLE_NUM,
   TableCard,
+  Tabs,
   Pager,
+  clip,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import {
@@ -30,7 +33,8 @@ import {
   LEAD_STATUS_LABEL,
   leadSourceLabel,
   } from '../../../../lib/cabinet/lead-labels';
-import { LEAD_LIST_PAGE_SIZE, leadList } from '../../../../lib/cabinet/queries';
+import { LEAD_LIST_PAGE_SIZE, leadList, leadStatusCounts } from '../../../../lib/cabinet/queries';
+import { COLUMN_SETS, columnSet, leadColumns } from '../../../../lib/cabinet/table-views';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 
@@ -58,23 +62,54 @@ export default async function AllLeadsScreen({
   const sp = await searchParams;
   const filter = {
     source: sp.source ?? '',
-    status: sp.status ?? '',
+    // Неизвестное состояние — «любое», как в выборке (Р-245).
+    status: sp.status && Object.hasOwn(LEAD_STATUS_LABEL, sp.status) ? sp.status : '',
     query: sp.query ?? '',
     page: Number(sp.page ?? '1'),
   };
-  const list = await leadList(actor, {
-    source: filter.source || undefined,
-    status: filter.status || undefined,
-    query: filter.query || undefined,
-    page: Number.isFinite(filter.page) ? filter.page : 1,
-  });
+  // Набор столбцов — основные или подробно; выгрузка берёт тот же (К-3, Р-593).
+  const set = columnSet(sp.cols);
+  const columns = leadColumns(set);
+  const [list, counts] = await Promise.all([
+    leadList(actor, {
+      source: filter.source || undefined,
+      status: filter.status || undefined,
+      query: filter.query || undefined,
+      page: Number.isFinite(filter.page) ? filter.page : 1,
+    }),
+    leadStatusCounts(actor, { source: filter.source || undefined, query: filter.query || undefined }),
+  ]);
 
   const kept = new URLSearchParams();
   if (filter.source) kept.set('source', filter.source);
   if (filter.status) kept.set('status', filter.status);
   if (filter.query) kept.set('query', filter.query);
+  if (set === 'full') kept.set('cols', 'full');
 
   const exportHref = `/cabinet/manage/leads/export${kept.toString() ? `?${kept.toString()}` : ''}`;
+  /** Адрес с другим состоянием или набором столбцов; страница — первая. */
+  const linkWith = (change: { status?: string; cols?: string }) => {
+    const next = new URLSearchParams(kept);
+    for (const [key, value] of Object.entries(change)) {
+      if (value === undefined) continue;
+      if (value === '' || (key === 'cols' && value === 'short')) next.delete(key);
+      else next.set(key, value);
+    }
+    const tail = next.toString();
+    return tail === '' ? '/cabinet/manage/leads' : `/cabinet/manage/leads?${tail}`;
+  };
+  // Плашки состояний с числами при том же отборе по странице и поиску
+  // (К-3, Р-593). Пустые состояния не показываются, кроме выбранного.
+  const statusTabs = [
+    { href: linkWith({ status: '' }), label: `Все · ${counts.all}`, active: filter.status === '' },
+    ...Object.entries(LEAD_STATUS_LABEL)
+      .filter(([value]) => (counts.byStatus[value] ?? 0) > 0 || value === filter.status)
+      .map(([value, label]) => ({
+        href: linkWith({ status: value }),
+        label: `${label} · ${counts.byStatus[value] ?? 0}`,
+        active: value === filter.status,
+      })),
+  ];
 
   return (
     <Shell actor={actor} current="/cabinet/manage/leads">
@@ -90,19 +125,14 @@ export default async function AllLeadsScreen({
       {/* Отбор здесь из трёх полей и двух кнопок — это блок, а не полоса:
           в полосу он встаёт столбиком и читается хуже (решение Р-183). */}
       <Card style={{ marginBottom: 20 }}>
+        <Tabs label="Состояние заявок" items={statusTabs} />
         <Form method="get">
+          {filter.status ? <input type="hidden" name="status" value={filter.status} /> : null}
+          {set === 'full' ? <input type="hidden" name="cols" value="full" /> : null}
           <FormRow>
             <Select label="Страница сайта" name="source" defaultValue={filter.source}>
               <option value="">Любая</option>
               {Object.entries(LEAD_SOURCE_LABEL).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-            <Select label="Состояние" name="status" defaultValue={filter.status}>
-              <option value="">Любое</option>
-              {Object.entries(LEAD_STATUS_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
@@ -139,7 +169,18 @@ export default async function AllLeadsScreen({
             ? `, показаны с ${(list.page - 1) * LEAD_LIST_PAGE_SIZE + 1} по ${(list.page - 1) * LEAD_LIST_PAGE_SIZE + list.rows.length}`
             : ''}
         </Text>
-        {list.total > 0 ? <ButtonLink href={exportHref}>Выгрузить в таблицу</ButtonLink> : null}
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Tabs
+            flush
+            label="Набор столбцов"
+            items={COLUMN_SETS.map((item) => ({ href: linkWith({ cols: item.key }), label: item.label, active: item.key === set }))}
+          />
+          {list.total > 0 ? (
+            <ButtonLink href={exportHref} download>
+              Выгрузить .xlsx
+            </ButtonLink>
+          ) : null}
+        </span>
       </Block>
 
       {list.rows.length === 0 ? (
@@ -156,34 +197,51 @@ export default async function AllLeadsScreen({
         </Empty>
       ) : (
         <TableCard label="Обращения">
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS, minWidth: set === 'full' ? 1900 : undefined }}>
             <thead>
               <tr>
-                <th style={TABLE_HEAD} scope="col">Дата</th>
-                <th style={TABLE_HEAD} scope="col">Страница</th>
-                <th style={TABLE_HEAD} scope="col">Кто</th>
-                <th style={TABLE_HEAD} scope="col">Контакт</th>
-                <th style={TABLE_HEAD} scope="col">Тема</th>
-                <th style={TABLE_HEAD} scope="col">Состояние</th>
+                {columns.map((column) => (
+                  <th key={column.key} style={TABLE_HEAD} scope="col">
+                    {column.head === 'Дата (МСК)' ? 'Дата' : column.head}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {list.rows.map((lead) => (
                 <tr key={lead.id}>
-                  {/* Мгновение — днём по Москве, как в выгрузке (Р-245). */}
-                  <td style={CELL}>{formatDay(lead.createdAt)}</td>
-                  <td style={CELL}>{leadSourceLabel(lead.source)}</td>
-                  {/* Имя ведёт на разбор: экран заявки заведён решением
-                      Р-172, но ссылки на него отсюда не было вовсе, и
-                      попасть туда можно было только со сводки (Р-183). */}
-                  <td style={CELL}>
-                    <a className="cab-mark" href={`/cabinet/manage/leads/${lead.id}`}>{lead.name ?? 'Без имени'}</a>
-                  </td>
-                  <td style={CELL}>{lead.contact}</td>
-                  <td style={CELL}>{lead.topic ?? lead.need ?? '—'}</td>
-                  <td style={CELL}>
-                    <LeadStatusChip status={lead.status} />
-                  </td>
+                  {columns.map((column) => {
+                    switch (column.key) {
+                      // Мгновение — днём по Москве; в книге — с минутами (Р-245).
+                      case 'createdAt':
+                        return <td key={column.key} style={{ ...CELL, whiteSpace: 'nowrap' }}>{formatDay(lead.createdAt)}</td>;
+                      // Имя ведёт на разбор: экран заявки заведён решением
+                      // Р-172, ссылки на него отсюда не было вовсе (Р-183).
+                      case 'name':
+                        return (
+                          <td key={column.key} style={CELL}>
+                            <a className="cab-mark" href={`/cabinet/manage/leads/${lead.id}`}>{lead.name ?? 'Без имени'}</a>
+                          </td>
+                        );
+                      case 'status':
+                        return (
+                          <td key={column.key} style={CELL}>
+                            <LeadStatusChip status={lead.status} />
+                          </td>
+                        );
+                      // Длинное сообщение на экране — началом; в книге целиком.
+                      case 'message':
+                        return <td key={column.key} style={CELL}>{clip(lead.message ?? '', 120) || '—'}</td>;
+                      default: {
+                        const value = column.value(lead);
+                        return (
+                          <td key={column.key} style={column.numeric ? TABLE_NUM : CELL}>
+                            {value === '' || value === null || value === undefined ? '—' : String(value)}
+                          </td>
+                        );
+                      }
+                    }
+                  })}
                 </tr>
               ))}
             </tbody>

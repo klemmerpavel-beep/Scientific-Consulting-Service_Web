@@ -44,43 +44,10 @@ export const PROJECT_FILTER_FROM = 8;
 /** Наборы перечня работ. Порядок тот же, что у вкладок на экране. */
 export type ProjectFilter = 'active' | 'waiting' | 'done' | 'all';
 
-/**
- * Перечень работ с отбором, поиском и постраничностью.
- *
- * У руководителя работ пятьдесят пять — весь объём книги заказов, — и
- * перечень вырастал до шести экранов прокрутки: чтобы найти работу, её
- * приходилось искать глазами (решение Р-171). Отбор ложится поверх
- * `scopeProjects`, то есть разграничение ролей остаётся на месте.
- *
- * Набор «ждут» — это этап в состоянии ожидания человека: клиенту он
- * говорит «ждут меня», практике — «ждут клиента». Состояние одно, назван
- * со стороны смотрящего.
- */
-export async function listProjects(
-  actor: Actor,
-  {
-    filter,
-    query = '',
-    page = 1,
-    manager,
-    curator,
-    due,
-  }: { filter?: ProjectFilter; query?: string; page?: number; manager?: string; curator?: string; due?: string } = {},
-) {
-  const scope = scopeProjects(actor);
-  if (scope === null) {
-    return { rows: [], total: 0, page: 1, pages: 1, all: 0, filter: 'all' as ProjectFilter };
-  }
-
-  // Сколько работ всего — по этому числу решается и вид экрана, и набор
-  // по умолчанию. Пока работ немного, отбора нет вовсе и показываются
-  // все; когда их десятки, первым делом нужны действующие.
-  const all = await prisma.project.count({ where: scope });
-  const applied: ProjectFilter = filter ?? (all > PROJECT_FILTER_FROM ? 'active' : 'all');
-
-  const byFilter =
-    applied === 'active'
-      ? // Приостановленная работа не закрыта: прежде она не попадала ни в
+/** Условие набора вкладки «Работ». */
+function projectFilterWhere(applied: ProjectFilter) {
+  return applied === 'active'
+    ? // Приостановленная работа не закрыта: прежде она не попадала ни в
         // «Действующие», ни в «Завершённые» и пропадала с экрана, открытого
         // по умолчанию (решение Р-245).
         { status: { in: ['ACTIVE' as const, 'PAUSED' as const] } }
@@ -94,7 +61,18 @@ export async function listProjects(
               stages: { some: { state: { in: ['AWAITING_CLIENT' as const, 'IN_APPROVAL' as const] } } },
             }
           : {};
+}
 
+/**
+ * Условие «Работ» без вкладки: область роли, поиск, отбор по сотруднику и
+ * месяцу срока. Одно для перечня, выгрузки и чисел на вкладках (К-3,
+ * Р-593): число на вкладке считается тем же условием, что и плашки под ней.
+ */
+function projectBaseWhere(
+  actor: Actor,
+  scope: NonNullable<ReturnType<typeof scopeProjects>>,
+  { query = '', manager, curator, due }: { query?: string; manager?: string; curator?: string; due?: string },
+) {
   const needle = query.trim();
   const byQuery =
     needle === ''
@@ -131,7 +109,62 @@ export async function listProjects(
             lt: new Date(Date.UTC(Number(dueMatch[1]), Number(dueMatch[2]), 1)),
           },
         };
-  const where = { ...scope, ...byFilter, ...byQuery, ...byPerson, ...byDue };
+  return { ...scope, ...byQuery, ...byPerson, ...byDue };
+}
+
+/**
+ * Сколько работ на каждой вкладке «Работ» при том же поиске и отборе —
+ * числа на вкладках (К-3, Р-593).
+ */
+export async function projectCounts(
+  actor: Actor,
+  opts: { query?: string; manager?: string; curator?: string; due?: string } = {},
+): Promise<Record<ProjectFilter, number>> {
+  const scope = scopeProjects(actor);
+  if (scope === null) return { active: 0, waiting: 0, done: 0, all: 0 };
+  const base = projectBaseWhere(actor, scope, opts);
+  const keys: readonly ProjectFilter[] = ['active', 'waiting', 'done', 'all'];
+  const counts = await Promise.all(keys.map((key) => prisma.project.count({ where: { ...base, ...projectFilterWhere(key) } })));
+  return { active: counts[0]!, waiting: counts[1]!, done: counts[2]!, all: counts[3]! };
+}
+
+/**
+ * Перечень работ с отбором, поиском и постраничностью.
+ *
+ * У руководителя работ пятьдесят пять — весь объём книги заказов, — и
+ * перечень вырастал до шести экранов прокрутки: чтобы найти работу, её
+ * приходилось искать глазами (решение Р-171). Отбор ложится поверх
+ * `scopeProjects`, то есть разграничение ролей остаётся на месте.
+ *
+ * Набор «ждут» — это этап в состоянии ожидания человека: клиенту он
+ * говорит «ждут меня», практике — «ждут клиента». Состояние одно, назван
+ * со стороны смотрящего.
+ */
+export async function listProjects(
+  actor: Actor,
+  {
+    filter,
+    query = '',
+    page = 1,
+    manager,
+    curator,
+    due,
+  }: { filter?: ProjectFilter; query?: string; page?: number; manager?: string; curator?: string; due?: string } = {},
+) {
+  const scope = scopeProjects(actor);
+  if (scope === null) {
+    return { rows: [], total: 0, page: 1, pages: 1, all: 0, filter: 'all' as ProjectFilter };
+  }
+
+  // Сколько работ всего — по этому числу решается и вид экрана, и набор
+  // по умолчанию. Пока работ немного, отбора нет вовсе и показываются
+  // все; когда их десятки, первым делом нужны действующие.
+  const all = await prisma.project.count({ where: scope });
+  const applied: ProjectFilter = filter ?? (all > PROJECT_FILTER_FROM ? 'active' : 'all');
+
+  const byFilter = projectFilterWhere(applied);
+
+  const where = { ...projectBaseWhere(actor, scope, { query, manager, curator, due }), ...byFilter };
   const total = await prisma.project.count({ where });
   const pages = Math.max(1, Math.ceil(total / PROJECT_PAGE_SIZE));
   const current = Math.min(Math.max(1, Math.trunc(page) || 1), pages);
@@ -983,22 +1016,18 @@ export interface LeadFilter {
 }
 
 /**
- * Все заявки с фильтрами — в отличие от очереди, которая показывает только
- * неразобранные.
- *
- * Раздел заменяет выгрузку во внешнее хранилище: смотреть обращения нужно
- * целиком, а вывоз персональных данных к третьему лицу требует договора
- * поручения обработки. Здесь данные не покидают сервер (решение Р-159).
+ * Условие выборки «Всех заявок» — одно для перечня, выгрузки и счёта по
+ * состояниям (К-3, Р-593): число на плашке отбора считается тем же
+ * условием, что и строки под ней. `null` — роли заявки не видны.
  */
-export async function leadList(actor: Actor, filter: LeadFilter = {}) {
-  ensure(actor, 'REQUEST_MODERATE');
+function leadWhere(actor: Actor, filter: LeadFilter) {
   // Заявки, развёрнутые в чужие работы, менеджеру не видны ни в перечне,
   // ни в выгрузке — она идёт через эту же выборку (решение Р-251).
   const scope = scopeLeads(actor);
-  if (scope === null) return { rows: [], total: 0, page: 1, pages: 1 };
+  if (scope === null) return null;
 
   const query = (filter.query ?? '').trim();
-  const where = {
+  return {
     // Условие видимости стоит в AND: поиск ниже занимает собственный OR,
     // и сложение объектов одно из условий потеряло бы.
     AND: [scope],
@@ -1029,6 +1058,41 @@ export async function leadList(actor: Actor, filter: LeadFilter = {}) {
           ],
         }),
   };
+}
+
+/**
+ * Сколько заявок в каждом состоянии при том же отборе по странице и
+ * поиску — числа на плашках отбора «Всех заявок» (К-3, Р-593).
+ */
+export async function leadStatusCounts(
+  actor: Actor,
+  filter: Pick<LeadFilter, 'source' | 'query'> = {},
+): Promise<{ readonly all: number; readonly byStatus: Readonly<Record<string, number>> }> {
+  ensure(actor, 'REQUEST_MODERATE');
+  const where = leadWhere(actor, { source: filter.source, query: filter.query });
+  if (where === null) return { all: 0, byStatus: {} };
+  const groups = await prisma.lead.groupBy({ by: ['status'], where, _count: { _all: true } });
+  const byStatus: Record<string, number> = {};
+  let all = 0;
+  for (const group of groups) {
+    byStatus[group.status] = group._count._all;
+    all += group._count._all;
+  }
+  return { all, byStatus };
+}
+
+/**
+ * Все заявки с фильтрами — в отличие от очереди, которая показывает только
+ * неразобранные.
+ *
+ * Раздел заменяет выгрузку во внешнее хранилище: смотреть обращения нужно
+ * целиком, а вывоз персональных данных к третьему лицу требует договора
+ * поручения обработки. Здесь данные не покидают сервер (решение Р-159).
+ */
+export async function leadList(actor: Actor, filter: LeadFilter = {}) {
+  ensure(actor, 'REQUEST_MODERATE');
+  const where = leadWhere(actor, filter);
+  if (where === null) return { rows: [], total: 0, page: 1, pages: 1 };
 
   const total = await prisma.lead.count({ where });
   const pages = Math.max(1, Math.ceil(total / LEAD_LIST_PAGE_SIZE));
