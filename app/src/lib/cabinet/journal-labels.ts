@@ -10,7 +10,10 @@
  * ищут и сверяют. На экране стоит название.
  */
 
+import { leadSourceLabel, leadStatusLabel } from './lead-labels.ts';
 import { formatAmount } from './money.ts';
+import { SUMMARY_BANDS, SUMMARY_PLATES } from './summary-layout.ts';
+import { COLUMN_SETS } from './table-views.ts';
 
 const ACTIONS: Record<string, string> = {
   ACCESS_LINK_ISSUED: 'Выдана ссылка входа',
@@ -223,6 +226,59 @@ const FIELDS: Record<string, string> = {
   staffLink: 'вход по ссылке сотрудника',
 };
 
+/** Правило поля у одного действия: своё имя и, если нужно, подпись значения. */
+interface FieldRule {
+  readonly name: string;
+  /** Подпись значения; пустая строка — поле называется одним именем. */
+  readonly value?: (raw: string) => string;
+}
+
+const byMap =
+  (map: Readonly<Record<string, string>>) =>
+  (raw: string): string =>
+    map[raw] ?? raw;
+
+const COLUMN_SET_LABEL = Object.fromEntries(COLUMN_SETS.map((set) => [set.key, set.label]));
+const LAYOUT_LABEL = Object.fromEntries([...SUMMARY_PLATES, ...SUMMARY_BANDS].map((item) => [item.key, item.label]));
+const filterRules = {
+  query: { name: 'поиск' },
+  manager: { name: 'отбор по менеджеру' },
+  curator: { name: 'отбор по куратору' },
+  due: { name: 'отбор по сроку' },
+  columns: { name: 'набор', value: byMap(COLUMN_SET_LABEL) },
+} satisfies Record<string, FieldRule>;
+
+/**
+ * Поля, которые у действия значат не то, что в общем словаре, или хранят
+ * код вместо слова. У выгрузки заявок `total` — число заявок в отборе, а
+ * не сумма договора; вкладка, набор столбцов и плашки «Сводки» записаны
+ * кодами, и руководитель читал бы «state all» и «hidden pulse» (К-3, К-5).
+ */
+const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>>> = {
+  LEAD_EXPORT: {
+    ...filterRules,
+    total: { name: 'всего в отборе' },
+    source: { name: 'страница', value: leadSourceLabel },
+    status: { name: 'состояние', value: leadStatusLabel },
+  },
+  PROJECTS_EXPORTED: {
+    ...filterRules,
+    state: {
+      name: 'вкладка',
+      value: byMap({ active: 'Действующие', waiting: 'Ждут клиента', done: 'Завершённые', all: 'Все' }),
+    },
+  },
+  FINANCE_EXPORTED: {
+    ...filterRules,
+    set: { name: 'отбор', value: byMap({ owing: 'С остатком', all: 'Все работы с договором' }) },
+  },
+  SUMMARY_LAYOUT_SAVED: {
+    order: { name: 'порядок', value: byMap(LAYOUT_LABEL) },
+    hidden: { name: 'скрыто', value: byMap(LAYOUT_LABEL) },
+    reset: { name: 'раскладка по умолчанию', value: () => '' },
+  },
+};
+
 /** Поля с суммой: журнал хранит их строкой копеек, bigint в JSON не кладётся. */
 const MONEY_KEYS = new Set(['amount', 'total', 'totalFrom']);
 
@@ -235,12 +291,12 @@ function valueLabel(key: string, value: unknown): string {
   return String(value);
 }
 
-export function detailsLabel(payload: unknown): string {
-  const parts = flatten(payload);
+export function detailsLabel(payload: unknown, action?: string): string {
+  const parts = flatten(payload, '', action === undefined ? undefined : ACTION_FIELDS[action]);
   return parts.length === 0 ? '—' : parts.join(' · ');
 }
 
-function flatten(value: unknown, prefix = ''): string[] {
+function flatten(value: unknown, prefix = '', rules?: Readonly<Record<string, FieldRule>>): string[] {
   if (value === null || value === undefined) return [];
   if (typeof value === 'boolean') return [`${prefix}${value ? 'да' : 'нет'}`];
   if (typeof value !== 'object') return [`${prefix}${String(value)}`];
@@ -250,7 +306,17 @@ function flatten(value: unknown, prefix = ''): string[] {
 
   const out: string[] = [];
   for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
-    const name = FIELDS[key] ?? key;
+    const rule = rules?.[key];
+    if (rule !== undefined && inner !== null && inner !== undefined && typeof inner !== 'object') {
+      const text = rule.value === undefined ? valueLabel('', inner) : rule.value(String(inner));
+      out.push(text === '' ? rule.name : `${rule.name} ${text}`);
+      continue;
+    }
+    if (rule?.value !== undefined && Array.isArray(inner)) {
+      if (inner.length > 0) out.push(`${rule.name}: ${inner.map((item) => rule.value!(String(item))).join(', ')}`);
+      continue;
+    }
+    const name = rule?.name ?? FIELDS[key] ?? key;
     if (inner !== null && typeof inner === 'object' && !Array.isArray(inner)) {
       out.push(...flatten(inner, `${name}: `));
     } else if (inner !== null && inner !== undefined && String(inner).length > 0) {
