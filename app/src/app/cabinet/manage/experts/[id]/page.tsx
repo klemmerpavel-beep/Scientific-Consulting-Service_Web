@@ -106,7 +106,8 @@ export default async function ExpertScreen({
             {row.services.length === 0 ? null : <Row label="Готов вести">{row.services.join(' · ')}</Row>}
             <Row label="Сфера: направления и темы">{row.fields}</Row>
             {row.roles.length === 0 ? null : <Row label="Отметки опыта">{row.roles.join(' · ')}</Row>}
-            <Row label="Опыт">{row.experience}</Row>
+            {/* Опыт можно не описывать, если приложено резюме (Р-597). */}
+            <Row label="Опыт">{row.experience === '' ? 'Не описан — в приложенном резюме' : row.experience}</Row>
             {row.elibrarySpin === null ? null : <Row label="SPIN-код eLIBRARY">{row.elibrarySpin}</Row>}
             {row.orcid === null ? null : (
               <Row label="ORCID">

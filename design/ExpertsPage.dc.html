@@ -72,6 +72,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .ex-drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
 .ex-consent summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;min-height:44px;color:var(--pd-accent)}
 .ex-consent summary::-webkit-details-marker{display:none}
+.ex-more>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;letter-spacing:0;text-transform:none;color:var(--pd-ink);border-radius:10px;transition:background 180ms cubic-bezier(.2,0,.2,1)}
+.ex-more>summary::-webkit-details-marker{display:none}
+.ex-more>summary::after{content:"+";flex:0 0 auto;font-size:20px;line-height:1;font-weight:400;color:var(--pd-ink-muted)}
+.ex-more[open]>summary::after{content:"−"}
+.ex-more>summary:hover{background:var(--pd-accent-tint)}
 .ex-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 @media (max-width:1024px){.ex-who{grid-template-columns:repeat(2,minmax(0,1fr))}.ex-dark,.ex-tabbody{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:1000px){.pd-nav{position:absolute;right:0;top:58px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px;z-index:6}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
@@ -274,7 +279,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <li style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);padding:22px 22px 22px;display:flex;flex-direction:column;gap:12px" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">01</span><span style="width:44px;height:44px;flex:0 0 44px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pencil-line.svg') center/contain no-repeat;mask:url('./assets/icons/pencil-line.svg') center/contain no-repeat"></span></span></div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Анкета</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Квалификация, направления, опыт, профили eLIBRARY и ORCID, резюме. Учётная запись при этом не создаётся.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Три раздела: контакты, квалификация, опыт; резюме — файлом, профили eLIBRARY и ORCID — по желанию. Учётная запись при этом не создаётся.</p>
 </li>
 <li style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);padding:22px 22px 22px;display:flex;flex-direction:column;gap:12px" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">02</span><span style="width:44px;height:44px;flex:0 0 44px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/message-circle.svg') center/contain no-repeat;mask:url('./assets/icons/message-circle.svg') center/contain no-repeat"></span></span></div>
@@ -333,7 +338,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <section id="anketa" class="pd-pad" aria-labelledby="ex-form-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div class="ex-apply" style="gap:32px">
 <aside class="ex-aside" style="display:flex;flex-direction:column;gap:20px">
-<div style="display:flex;flex-direction:column;gap:10px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Анкета</span><h2 id="ex-form-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);text-wrap:balance">Анкета кандидата</h2><p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary)">Четыре раздела, около десяти минут. Обязательные поля отмечены звёздочкой.</p></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Анкета</span><h2 id="ex-form-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);text-wrap:balance">Анкета кандидата</h2><p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary)">Три раздела, около пяти минут. Обязательные поля отмечены звёздочкой; резюме можно приложить файлом.</p></div>
 <ol aria-label="Разделы анкеты" class="ex-steplist" style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px">
 <sc-for list="{{ stepList }}" as="s" hint-placeholder-count="4">
 <li>
@@ -376,7 +381,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <h3 id="ex-step-title" tabindex="{{ -1 }}" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;color:var(--pd-ink);outline:none">{{ stepTitle }}</h3>
 <span style="font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-accent)">{{ stepCounter }}</span>
 </div>
-<div role="progressbar" aria-label="Заполнение анкеты" aria-valuemin="{{ 1 }}" aria-valuemax="{{ 4 }}" aria-valuenow="{{ stepNow }}" aria-valuetext="{{ stepCounter }}" style="margin:14px 0 24px;height:6px;border-radius:999px;background:var(--pd-divider);overflow:hidden">
+<div role="progressbar" aria-label="Заполнение анкеты" aria-valuemin="{{ 1 }}" aria-valuemax="{{ 3 }}" aria-valuenow="{{ stepNow }}" aria-valuetext="{{ stepCounter }}" style="margin:14px 0 24px;height:6px;border-radius:999px;background:var(--pd-divider);overflow:hidden">
 <div style="height:100%;border-radius:999px;background:var(--pd-accent);transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ stepScale }}"></div>
 </div>
 <fieldset data-step="0" hidden="{{ hide0 }}" style="border:0;margin:0;padding:0;min-width:0">
@@ -423,7 +428,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </fieldset>
 <fieldset data-step="2" hidden="{{ hide2 }}" style="border:0;margin:0;padding:0;min-width:0">
-<legend class="ex-sr">Направления и опыт</legend>
+<legend class="ex-sr">Опыт и резюме</legend>
 <div class="ex-form">
 <fieldset class="ex-wide" style="border:0;margin:0;padding:0;min-width:0">
 <legend style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);padding:0;margin-bottom:10px">Какие работы готовы вести *</legend>
@@ -450,27 +455,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <label class="ex-chip"><input type="checkbox" name="roles" value="Рецензент заявок грантовых фондов"><span><span class="ex-chip-mark" aria-hidden="true"></span>Рецензент заявок грантовых фондов</span></label>
 </div>
 </fieldset>
-<label for="ex-exp" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Опыт по выбранным направлениям *
-<textarea id="ex-exp" name="experience" required="{{ true }}" rows="{{ 5 }}" minlength="20" maxlength="4000" placeholder="Какие работы вели и сколько лет, публикации, рецензирование, преподавание" style="width:100%;box-sizing:border-box;padding:12px 16px;min-height:112px;resize:vertical;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></textarea></label>
-</div>
-</fieldset>
-<fieldset data-step="3" hidden="{{ hide3 }}" style="border:0;margin:0;padding:0;min-width:0">
-<legend class="ex-sr">Профили и файлы</legend>
-<div class="ex-form">
-<label for="ex-spin" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">SPIN-код eLIBRARY
-<input id="ex-spin" name="elibrarySpin" type="text" autocomplete="off" maxlength="20" pattern="[0-9]{4}(-| )?[0-9]{4}" placeholder="1234-5678" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
-<label for="ex-orcid" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">ORCID
-<input id="ex-orcid" name="orcid" type="text" autocomplete="off" maxlength="60" placeholder="0000-0002-1825-0097" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
-<label for="ex-links" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Другие ссылки
-<input id="ex-links" name="links" type="text" autocomplete="off" maxlength="1000" placeholder="Публикации, страница на сайте вуза, Scopus Author ID" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
-<label for="ex-hours" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Готовы уделять в неделю
-<select id="ex-hours" name="weeklyHours" style="height:48px;box-sizing:border-box;padding:0 12px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
-<option value="">Выберите</option>
-<option value="До 5 часов">До 5 часов</option>
-<option value="5–10 часов">5–10 часов</option>
-<option value="10–20 часов">10–20 часов</option>
-<option value="Более 20 часов">Более 20 часов</option>
-</select></label>
+<label for="ex-exp" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Опыт по выбранным направлениям
+<textarea id="ex-exp" aria-describedby="ex-exp-hint" name="experience" rows="{{ 5 }}" maxlength="4000" placeholder="Какие работы вели и сколько лет, публикации, рецензирование, преподавание" style="width:100%;box-sizing:border-box;padding:12px 16px;min-height:112px;resize:vertical;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></textarea><span id="ex-exp-hint" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;letter-spacing:0;text-transform:none;color:var(--pd-ink-muted)">Опишите опыт или приложите резюме ниже — достаточно одного</span></label>
 <div class="ex-wide" style="display:flex;flex-direction:column;gap:6px">
 <span id="ex-files-label" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Резюме и примеры работ</span>
 <label for="ex-files" class="ex-drop">
@@ -485,6 +471,25 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-for>
 </ul>
 </div>
+<details class="ex-wide ex-more" style="border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-surface-quiet)">
+<summary>Профили eLIBRARY и ORCID, ссылки, загрузка — по желанию</summary>
+<div class="ex-form" style="padding:4px 16px 16px">
+<label for="ex-spin" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">SPIN-код eLIBRARY
+<input id="ex-spin" name="elibrarySpin" type="text" autocomplete="off" maxlength="20" pattern="[0-9]{4}(-| )?[0-9]{4}" placeholder="1234-5678" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
+<label for="ex-orcid" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">ORCID
+<input id="ex-orcid" name="orcid" type="text" autocomplete="off" maxlength="60" placeholder="0000-0002-1825-0097" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
+<label for="ex-links" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Другие ссылки
+<input id="ex-links" name="links" type="text" autocomplete="off" maxlength="1000" placeholder="Публикации, страница на сайте вуза, Scopus Author ID" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
+<label for="ex-hours" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Готовы уделять в неделю
+<select id="ex-hours" name="weeklyHours" style="height:48px;box-sizing:border-box;padding:0 12px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
+<option value="">Выберите</option>
+<option value="До 5 часов">До 5 часов</option>
+<option value="5–10 часов">5–10 часов</option>
+<option value="10–20 часов">10–20 часов</option>
+<option value="Более 20 часов">Более 20 часов</option>
+</select></label>
+</div>
+</details>
 </div>
 <div class="ex-consent" style="margin-top:16px">
 <label for="ex-consent" style="display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="ex-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю согласие на обработку моих персональных данных на условиях, изложенных ниже *</span></label>
@@ -578,9 +583,24 @@ class Component extends DCLogic {
     if (!sec) return true;
     const services = Array.from(sec.querySelectorAll('input[name="services"]'));
     if (services.length) services[0].setCustomValidity(services.some(b => b.checked) ? '' : 'Отметьте хотя бы один вид работ, который готовы вести');
+    // Опыт — текстом или резюме файлом (Р-597): с приложенным файлом
+    // поле опыта можно оставить пустым.
+    const exp = sec.querySelector('#ex-exp');
+    if (exp) {
+      const picked = document.getElementById('ex-files');
+      const resume = !!(picked && picked.files && picked.files.length);
+      exp.setCustomValidity(resume || exp.value.trim().length >= 20 ? '' : 'Расскажите об опыте в двух-трёх фразах или приложите резюме');
+    }
     for (const f of sec.querySelectorAll('input, select, textarea')) {
       if (f.type === 'file' || f.name === 'company_website') continue;
-      if (!f.checkValidity()) { if (report) f.reportValidity(); return false; }
+      if (!f.checkValidity()) {
+        // Поле в свёрнутом блоке «по желанию» раскрывается, иначе подсказка
+        // браузера показалась бы у невидимого поля.
+        const more = f.closest('details');
+        if (report && more && !more.open) more.open = true;
+        if (report) f.reportValidity();
+        return false;
+      }
     }
     return true;
   }
@@ -598,8 +618,7 @@ class Component extends DCLogic {
     const STEPS = [
       ['Контакты', 'Имя, почта, телефон'],
       ['Квалификация', 'Степень, звание, специальность, место работы'],
-      ['Направления и опыт', 'Виды работ, направления, опыт'],
-      ['Профили и файлы', 'eLIBRARY, ORCID, резюме, согласие'],
+      ['Опыт и резюме', 'Виды работ, направления, опыт или резюме'],
     ];
     const step = this.state.step;
     // Вкладки — три рабочих экрана куратора (Р-589): этап со сдачей
@@ -672,7 +691,6 @@ class Component extends DCLogic {
       hide0: step === 0 ? undefined : true,
       hide1: step === 1 ? undefined : true,
       hide2: step === 2 ? undefined : true,
-      hide3: step === 3 ? undefined : true,
       canBack: step > 0, noBack: step === 0,
       notLast: step < STEPS.length - 1, last: step === STEPS.length - 1,
       back: () => this.go(Math.max(0, step - 1)),
@@ -701,12 +719,12 @@ class Component extends DCLogic {
       pending: this.state.busy,
       // Анкета уходит с файлами на /api/experts, а не JSON на /api/lead:
       // обработчик назван не «submit…», и обёртка заявки его не трогает
-      // (решение Р-580). Перед отправкой проверяются все четыре раздела:
+      // (решение Р-580). Перед отправкой проверяются все три раздела:
       // первый неполный открывается с подсказкой у поля.
       sendApplication: async e => {
         e.preventDefault();
         const form = e.currentTarget;
-        for (let i = 0; i < 4; i += 1) {
+        for (let i = 0; i < STEPS.length; i += 1) {
           if (!this.check(i, false)) { this.setState({ step: i, error: null }, () => this.check(i, true)); return; }
         }
         if (this.state.fileError) { this.setState({ error: this.state.fileError }); return; }

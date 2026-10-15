@@ -57,10 +57,23 @@ describe('анкета эксперта: поля (Р-580)', () => {
     assert.equal(input.consent, true);
   });
 
+  it('опыт — текстом или резюме: с приложенным файлом поле опыта можно оставить пустым (Р-597)', () => {
+    const form = filled({ experience: '' });
+    form.append('files', new File([PDF], 'Резюме.pdf', { type: 'application/pdf' }));
+    const input = parseExpertForm(form);
+    assert.equal(input.experience, '');
+    assert.equal('resume' in input, false);
+    // Пустое поле файла резюме не заменяет.
+    const empty = filled({ experience: '' });
+    empty.append('files', new File([], '', { type: 'application/octet-stream' }));
+    assert.throws(() => parseExpertForm(empty), (error: unknown) => error instanceof ExpertInputError && /резюме/u.test(error.message));
+  });
+
   it('без согласия, без опыта, с чужой степенью и неверной почтой — понятный отказ', () => {
     const cases: [Record<string, string>, RegExp][] = [
       [{ consent: '' }, /согласия/u],
       [{ experience: 'мало' }, /опыт/iu],
+      [{ experience: '' }, /опыт.*резюме/iu],
       [{ degree: 'Профессор' }, /степень/u],
       [{ email: 'maria@' }, /адрес/u],
       [{ phone: '12-34' }, /номер/u],
