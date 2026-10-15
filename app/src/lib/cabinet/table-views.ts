@@ -12,6 +12,7 @@ import { mskDay, mskMoment } from '../disk/table.ts';
 import { type XlsxCell, xlsx } from '../disk/xlsx.ts';
 import { leadFormLabel, leadSourceLabel, leadStatusLabel } from './lead-labels.ts';
 import { PROJECT_STATUS_LABEL, type ProjectStatusKey } from './project-status.ts';
+import type { StageStateKey } from './stage-state.ts';
 
 /** Набор столбцов таблицы: основные или подробно. */
 export type ColumnSet = 'short' | 'full';
@@ -166,14 +167,15 @@ export const FINANCE_COLUMNS: readonly Column<FinanceRowView>[] = [
 export interface ProjectRowView {
   readonly code: string;
   readonly title: string;
-  readonly status: string;
+  /** Перечни — те же, что в схеме: опечатка в состоянии не проходит проверку типов. */
+  readonly status: ProjectStatusKey;
   readonly dueOn: Date | null;
   readonly serviceType: { readonly name: string } | null;
   readonly client: { readonly fullName: string };
   readonly manager: { readonly fullName: string } | null;
   readonly expert: { readonly fullName: string } | null;
   readonly expertNameRaw?: string | null;
-  readonly stages: readonly { readonly state: string }[];
+  readonly stages: readonly { readonly state: StageStateKey }[];
 }
 
 /**
@@ -190,7 +192,7 @@ export const PROJECT_COLUMNS: readonly Column<ProjectRowView>[] = [
     key: 'status',
     head: 'Состояние',
     short: true,
-    value: (row) => PROJECT_STATUS_LABEL[row.status as ProjectStatusKey] ?? row.status,
+    value: (row) => PROJECT_STATUS_LABEL[row.status],
   },
   { key: 'dueOn', head: 'Срок работы', short: true, value: (row) => mskDay(row.dueOn) },
   {
@@ -200,13 +202,16 @@ export const PROJECT_COLUMNS: readonly Column<ProjectRowView>[] = [
     value: (row) =>
       row.stages.length === 0
         ? 'план не заведён'
-        : `${row.stages.filter((stage) => stage.state === 'COMPLETED').length} из ${row.stages.length}`,
+        : `${row.stages.filter((stage) => stage.state === 'DONE').length} из ${row.stages.length}`,
   },
   {
     key: 'waiting',
     head: 'Ждёт клиента',
     short: true,
-    value: (row) => yesNo(row.stages.some((stage) => stage.state === 'AWAITING_CLIENT' || stage.state === 'IN_APPROVAL')),
+    // То же условие, что у вкладки «Ждут клиента»: только действующая
+    // работа — у закрытой застрявший этап не ожидание человека (Р-206).
+    value: (row) =>
+      yesNo(row.status === 'ACTIVE' && row.stages.some((stage) => stage.state === 'AWAITING_CLIENT' || stage.state === 'IN_APPROVAL')),
   },
   { key: 'manager', head: 'Менеджер', short: true, value: (row) => row.manager?.fullName ?? '' },
   {

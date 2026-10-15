@@ -56,7 +56,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   await record(actor, {
     action: 'PROJECTS_EXPORTED',
     objectType: 'Project',
-    payload: { rows: rows.length, state: applied, query: options.query.trim().length > 0 },
+    // Отбор по сотруднику и сроку — признаками, как поиск: по журналу видно,
+    // что выгружен не весь перечень.
+    payload: {
+      rows: rows.length,
+      state: applied,
+      query: options.query.trim().length > 0,
+      manager: (options.manager ?? '') !== '',
+      curator: (options.curator ?? '') !== '',
+      due: (options.due ?? '') !== '',
+    },
     ip: await requestIp(),
   });
 

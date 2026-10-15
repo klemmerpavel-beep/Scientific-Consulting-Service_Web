@@ -174,10 +174,14 @@ export default async function ProjectsScreen({
   // Отбор по месяцу срока — из числа «К пику» на «Команде» (РК-22, Р-354).
   const dueKey = /^\d{4}-(0[1-9]|1[0-2])$/u.test(sp.due ?? '') ? sp.due! : null;
   const [managerList, curatorChoices] = forHead ? await Promise.all([curators(actor), experts(actor)]) : [[], []];
+  // Вкладка по умолчанию — та, что `listProjects` берёт без `state` в
+  // адресе. Остальные, и «Все» тоже, называются в адресе явно: без этого
+  // при десятках работ «Все», страницы и выгрузка уходили на «Действующие».
+  const defaultFilter: ProjectFilter = list.all > PROJECT_FILTER_FROM ? 'active' : 'all';
   const href = (next: { state?: ProjectFilter; page?: number }) => {
     const params = new URLSearchParams();
     const state = next.state ?? filter;
-    if (state !== 'all') params.set('state', state);
+    if (state !== defaultFilter) params.set('state', state);
     if (query !== '') params.set('q', query);
     if (person.manager !== '') params.set('manager', person.manager);
     if (person.curator !== '') params.set('curator', person.curator);
@@ -420,7 +424,7 @@ export default async function ProjectsScreen({
               сохранить или переслать. */}
           <FilterSearch>
             <Form method="get" inline>
-              {filter === 'all' ? null : <input type="hidden" name="state" value={filter} />}
+              {filter === defaultFilter ? null : <input type="hidden" name="state" value={filter} />}
               {/* Отбор по менеджеру и куратору — руководителю (РК-03). */}
               {forHead ? (
                 <>
