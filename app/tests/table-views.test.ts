@@ -55,6 +55,9 @@ const finance: FinanceRowView = {
   lost: 0n,
   accrued: 1_000_000n,
   margin: -50_000n,
+  typeExpenses: 120_000n,
+  net: -170_000n,
+  netShare: -1.3,
 };
 
 const project: ProjectRowView = {
@@ -195,12 +198,28 @@ describe('«Деньги по работам»', () => {
     assert.equal(at('Списано')?.value, '0.00');
     assert.equal(at('Куратор'), undefined);
     assert.equal(at('Код')?.value, 'PD-2026-001');
+    // Экономика работы (К-4, Р-594): расходы вида и маржа после них —
+    // деньгами, доля — числом процентов.
+    assert.equal(at('Расходы вида')?.value, '1200.00');
+    assert.equal(at('Маржа после расходов вида')?.value, '-1700.00');
+    assert.equal(at('Доля маржи после расходов, %')?.value, '-1.3');
+    assert.notEqual(at('Доля маржи после расходов, %')?.type, 'inlineStr');
   });
 
-  it('денежные столбцы помечены числовыми — экран выравнивает их вправо', () => {
+  it('подробный набор кончается экономикой работы; без доли — пустая ячейка', () => {
+    assert.deepEqual(
+      pick(FINANCE_COLUMNS, 'full').slice(-4).map((column) => column.head),
+      ['Маржа', 'Расходы вида', 'Маржа после расходов вида', 'Доля маржи после расходов, %'],
+    );
+    const share = FINANCE_COLUMNS.find((column) => column.key === 'netShare')!;
+    assert.equal(share.value({ ...finance, netShare: null }), null);
+  });
+
+  it('денежные и долевые столбцы помечены числовыми — экран выравнивает их вправо', () => {
     for (const column of FINANCE_COLUMNS) {
-      const money = typeof column.value(finance) === 'object';
-      assert.equal(Boolean(column.numeric), money, column.key);
+      const value = column.value(finance);
+      const numeric = typeof value === 'object' || typeof value === 'number';
+      assert.equal(Boolean(column.numeric), numeric, column.key);
     }
   });
 });

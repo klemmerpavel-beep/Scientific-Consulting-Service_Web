@@ -9,6 +9,8 @@ import { payoutLetter } from './curator-letters.ts';
 import { projectRef } from './projects.ts';
 import { ERASED_TEXT } from './erasure.ts';
 import { siteUrl } from '../site-url.ts';
+import { receiptOn } from './finance-years.ts';
+import { allocateTypeExpenses, economyOf, monthKey, type Receipt } from './unit-economy.ts';
 
 /**
  * Строка письма о платеже со ссылкой на экран оплат этой работы, а не на
@@ -610,10 +612,61 @@ export function marginOf(received: bigint, awaiting: bigint, accrued: bigint): b
   return received + awaiting - accrued;
 }
 
+export interface ProjectTypeExpenses {
+  readonly typeName: string;
+  /** Доля расходов вида на эту работу. */
+  readonly share: bigint;
+  /** Расход вида, ещё не разложенный ни на одну работу. */
+  readonly pending: bigint;
+}
+
+/**
+ * Доля расходов вида на одну работу — экрану оплат (К-4, Р-594). Только
+ * тому, кто видит экономику: остальным `null`, как и маржа в
+ * `projectMoney`. Раскладываются расходы вида работы по поступлениям всех
+ * работ этого вида — тем же расчётом, что в «Деньгах по работам».
+ */
+export async function projectTypeExpenses(actor: Actor, projectId: string): Promise<ProjectTypeExpenses | null> {
+  const ref = await projectRef(projectId);
+  if (ref === null || !can(actor, 'MARGIN_VIEW', ref)) return null;
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { serviceTypeId: true, serviceType: { select: { name: true } } },
+  });
+  if (project === null) return null;
+  const typeId = project.serviceTypeId;
+  const [tranches, expenses] = await Promise.all([
+    prisma.tranche.findMany({
+      where: { status: 'PAID', contract: { project: { serviceTypeId: typeId } } },
+      select: {
+        amount: true,
+        paidOn: true,
+        contract: { select: { projectId: true, signedOn: true, project: { select: { startedOn: true } } } },
+      },
+    }),
+    prisma.expense.findMany({ where: { serviceTypeId: typeId }, select: { month: true, amount: true } }),
+  ]);
+  const receipts: Receipt[] = [];
+  for (const tranche of tranches) {
+    const date = receiptOn(tranche);
+    if (date === null) continue;
+    receipts.push({ projectId: tranche.contract.projectId, typeId, month: monthKey(date), amount: tranche.amount });
+  }
+  const allocation = allocateTypeExpenses(
+    receipts,
+    expenses.map((row) => ({ typeId, month: monthKey(row.month), amount: row.amount })),
+  );
+  return {
+    typeName: project.serviceType.name,
+    share: allocation.byProject.get(projectId) ?? 0n,
+    pending: allocation.pending.get(typeId) ?? 0n,
+  };
+}
+
 /** Сводка по практике для руководителя. */
 export async function financeSummary(actor: Actor) {
   ensure(actor, 'MARGIN_VIEW');
-  const [contracts, payouts] = await Promise.all([
+  const [contracts, payouts, typedExpenses] = await Promise.all([
     prisma.contract.findMany({
       // Порядок задан явно. Без него строки шли физическим порядком в
       // таблице, и он менялся при всякой правке записи: два наполнения
@@ -631,14 +684,42 @@ export async function financeSummary(actor: Actor) {
             // Кто ведёт работу — в «Деньгах по работам» (РК-03, Р-341).
             manager: { select: { id: true, fullName: true } },
             expert: { select: { id: true, fullName: true } },
+            // Вид и начало — для доли расходов вида (К-4, Р-594).
+            serviceTypeId: true,
+            startedOn: true,
           },
         },
       },
     }),
     prisma.expertPayout.groupBy({ by: ['projectId'], _sum: { amount: true } }),
+    prisma.expense.findMany({
+      where: { serviceTypeId: { not: null } },
+      select: { month: true, amount: true, serviceTypeId: true },
+    }),
   ]);
 
   const payoutByProject = new Map(payouts.map((p) => [p.projectId, p._sum.amount ?? 0n]));
+
+  // Доля расходов вида на каждую работу — по поступлениям месяца, тем же
+  // разложением, что на экране оплат работы (К-4, Р-594).
+  const receipts: Receipt[] = [];
+  for (const contract of contracts) {
+    for (const tranche of contract.tranches) {
+      if (tranche.status !== 'PAID') continue;
+      const date = receiptOn({ paidOn: tranche.paidOn, contract });
+      if (date === null) continue;
+      receipts.push({
+        projectId: contract.projectId,
+        typeId: contract.project.serviceTypeId,
+        month: monthKey(date),
+        amount: tranche.amount,
+      });
+    }
+  }
+  const allocation = allocateTypeExpenses(
+    receipts,
+    typedExpenses.map((row) => ({ typeId: row.serviceTypeId!, month: monthKey(row.month), amount: row.amount })),
+  );
 
   const rows = contracts.map((contract) => {
     const received = contract.tranches
@@ -653,6 +734,10 @@ export async function financeSummary(actor: Actor) {
     const awaiting = receivableOf(contract.project.status, contract.totalAmount, contract.tranches);
     const lost = writtenOffOf(contract.totalAmount, contract.tranches);
     const accrued = payoutByProject.get(contract.projectId) ?? 0n;
+    // Полученное и ожидаемое без начислений (решения Р-244, Р-434).
+    const margin = marginOf(received, awaiting, accrued);
+    const typeExpenses = allocation.byProject.get(contract.projectId) ?? 0n;
+    const economy = economyOf({ received, awaiting, margin, typeExpenses });
     return {
       projectId: contract.projectId,
       code: contract.project.code,
@@ -666,8 +751,10 @@ export async function financeSummary(actor: Actor) {
       awaiting,
       lost,
       accrued,
-      // Полученное и ожидаемое без начислений (решения Р-244, Р-434).
-      margin: marginOf(received, awaiting, accrued),
+      margin,
+      typeExpenses,
+      net: economy.net,
+      netShare: economy.netShare,
     };
   });
 
@@ -691,6 +778,7 @@ export async function financeSummary(actor: Actor) {
       lost: total((r) => r.lost),
       accruedWithoutContract,
       margin: total((r) => r.margin) - accruedWithoutContract,
+      typeExpenses: total((r) => r.typeExpenses),
     },
   };
 }

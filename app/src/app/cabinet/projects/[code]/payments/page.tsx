@@ -20,12 +20,15 @@ import {
   ScreenHead,
   Select,
   Text,
+  TABLE_CELL,
+  TABLE_NUM,
   formatDate,
   formatDay,
   formatSize,
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
-import { projectContract, projectMoney, projectPayouts } from '../../../../../lib/cabinet/finance';
+import { projectContract, projectMoney, projectPayouts, projectTypeExpenses } from '../../../../../lib/cabinet/finance';
+import { economyOf, formatShare } from '../../../../../lib/cabinet/unit-economy';
 import { MATERIAL_KIND_LABEL, type MaterialKind } from '../../../../../lib/cabinet/materials';
 import {
   formatAmount,
@@ -103,12 +106,14 @@ export default async function PaymentsScreen({
   // Экран не ходит в базу сам: и договор, и начисления читаются службами,
   // которые сами спрашивают разрешение. Прежде условие доступа стояло
   // здесь, а выборка знала о нём только понаслышке (решение Р-185).
-  const [money, contract, payouts, checks] = await Promise.all([
+  const [money, contract, payouts, checks, typeSpend] = await Promise.all([
     projectMoney(actor, project.id),
     projectContract(actor, project.id),
     maySeeEconomy ? projectPayouts(actor, project.id) : Promise.resolve([]),
     // Дела руководителя по работе — акт и договор (РК-12, Р-338).
     openChecks(actor, project.id),
+    // Доля расходов вида — только тому, кто видит экономику (К-4, Р-594).
+    maySeeEconomy ? projectTypeExpenses(actor, project.id) : Promise.resolve(null),
   ]);
 
   // Просроченный платёж — тем же условием, что «Должники» и плитка
@@ -234,14 +239,6 @@ export default async function PaymentsScreen({
                   </Text>
                 ) : null}
               </div>
-              {maySeeEconomy && 'margin' in money ? (
-                <div>
-                  <Mono>Маржа</Mono>
-                  <Text size={20} style={{ marginTop: 6, color: 'var(--pd-ink)' }}>
-                    {formatAmount(money.margin)}
-                  </Text>
-                </div>
-              ) : null}
             </div>
 
             <div
@@ -271,6 +268,26 @@ export default async function PaymentsScreen({
                 : ''}
             </Text>
           </Card>
+
+          {/* Экономика работы — только руководителю: поступило,
+              вознаграждение куратора, маржа, расходы вида и маржа после
+              них с долями (план по образцу К-4, решение Р-594). Маржа
+              перенесена сюда из сводки выше: одна величина — одно место
+              на экране (Р-194). Клиенту и менеджеру этих чисел не
+              отдаёт служба, а не экран. */}
+          {maySeeEconomy && money.margin !== undefined && typeSpend !== null ? (
+            <EconomyBlock
+              received={money.received}
+              awaiting={money.awaiting}
+              cancelled={money.cancelled}
+              accrued={money.payoutsAccrued ?? 0n}
+              paid={money.payoutsPaid ?? 0n}
+              margin={money.margin}
+              typeName={typeSpend.typeName}
+              typeExpenses={typeSpend.share}
+              pending={typeSpend.pending}
+            />
+          ) : null}
 
           <Block style={{ marginBottom: 20 }}>
             <Heading level={2} size={3}>Транши</Heading>
@@ -717,3 +734,104 @@ export default async function PaymentsScreen({
     </Shell>
   );
 }
+
+/** Сумма со знаком: вычет — с минусом, как в расчёте на бумаге. */
+function signed(kopecks: bigint): string {
+  return kopecks < 0n ? `\u2212${formatAmount(-kopecks)}` : formatAmount(kopecks);
+}
+
+/**
+ * «Экономика работы» (К-4, Р-594): расчёт сверху вниз — что пришло, что
+ * ушло куратору, маржа, доля расходов вида и что осталось, у обеих маржей
+ * доля в выручке работы. Правило разложения расходов вида — под таблицей.
+ */
+function EconomyBlock({
+  received,
+  awaiting,
+  cancelled,
+  accrued,
+  paid,
+  margin,
+  typeName,
+  typeExpenses,
+  pending,
+}: {
+  received: bigint;
+  awaiting: bigint;
+  cancelled: boolean;
+  accrued: bigint;
+  paid: bigint;
+  margin: bigint;
+  typeName: string;
+  typeExpenses: bigint;
+  pending: bigint;
+}) {
+  const economy = economyOf({ received, awaiting, margin, typeExpenses });
+  const rows: { label: string; note: string | null; amount: bigint; total?: boolean }[] = [
+    { label: 'Поступило', note: null, amount: received },
+    {
+      label: 'Ожидается по договору',
+      note: cancelled ? 'работа отменена: остаток не ждут' : null,
+      amount: awaiting,
+    },
+    {
+      label: 'Вознаграждение куратора',
+      note: accrued === 0n ? 'начислений нет' : `начислено; выплачено ${formatAmount(paid)}`,
+      amount: -accrued,
+    },
+    {
+      label: 'Маржа',
+      note: `${formatShare(economy.marginShare)} от поступившего и ожидаемого`,
+      amount: margin,
+      total: true,
+    },
+    {
+      label: `Расходы вида «${typeName}»`,
+      note: 'доля работы по её поступлениям',
+      amount: -typeExpenses,
+    },
+    {
+      label: 'Маржа после расходов вида',
+      note: `${formatShare(economy.netShare)} от поступившего и ожидаемого`,
+      amount: economy.net,
+      total: true,
+    },
+  ];
+  return (
+    <Block style={{ marginBottom: 20 }}>
+      <Heading level={2} size={3}>Экономика работы</Heading>
+      <Card style={{ marginTop: 12 }}>
+        <table aria-label="Экономика работы" style={{ width: '100%', maxWidth: 720, borderCollapse: 'collapse', fontFamily: SANS }}>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label}>
+                <th
+                  scope="row"
+                  style={{ ...TABLE_CELL, textAlign: 'left', fontWeight: row.total ? 600 : 400, color: 'var(--pd-ink)' }}
+                >
+                  {row.label}
+                  {row.note === null ? null : (
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 400, color: 'var(--pd-ink-muted)' }}>
+                      {row.note}
+                    </span>
+                  )}
+                </th>
+                <td style={{ ...TABLE_NUM, fontWeight: row.total ? 600 : 400, color: 'var(--pd-ink)', whiteSpace: 'nowrap' }}>
+                  {signed(row.amount)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Text muted size={13} style={{ marginTop: 14 }}>
+          Расход вида за месяц делится между работами этого вида по их поступлениям в том же
+          месяце; расход месяца без поступлений переходит на следующий месяц, где они есть.
+          Общие расходы практики сюда не входят — они в{' '}
+          <a href="/cabinet/manage/finance/profit">«Прибыли по месяцам»</a>.
+          {pending > 0n ? ` По виду ещё не разложено ${formatAmount(pending)}: ляжет на следующие поступления.` : ''}
+        </Text>
+      </Card>
+    </Block>
+  );
+}
+

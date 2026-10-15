@@ -122,6 +122,11 @@ export interface FinanceRowView {
   readonly lost: bigint;
   readonly accrued: bigint;
   readonly margin: bigint;
+  /** Доля расходов вида на работу (К-4, Р-594). */
+  readonly typeExpenses: bigint;
+  readonly net: bigint;
+  /** Доля маржи после расходов вида в выручке работы, %; `null` — делить не на что. */
+  readonly netShare: number | null;
 }
 
 const money = (kopecks: bigint) => ({ kopecks });
@@ -129,7 +134,8 @@ const money = (kopecks: bigint) => ({ kopecks });
 /**
  * Столбцы «Денег по работам». Основной набор — семь столбцов экрана;
  * подробный добавляет код и состояние работы, менеджера и куратора
- * отдельными столбцами и списанное.
+ * отдельными столбцами, списанное и экономику работы: расходы вида, маржу
+ * после них и её долю (К-4, Р-594).
  */
 export const FINANCE_COLUMNS: readonly Column<FinanceRowView>[] = [
   { key: 'code', head: 'Код', short: false, value: (row) => row.code },
@@ -149,6 +155,9 @@ export const FINANCE_COLUMNS: readonly Column<FinanceRowView>[] = [
   { key: 'lost', head: 'Списано', short: false, numeric: true, value: (row) => money(row.lost) },
   { key: 'accrued', head: 'Начислено', short: true, numeric: true, value: (row) => money(row.accrued) },
   { key: 'margin', head: 'Маржа', short: true, numeric: true, value: (row) => money(row.margin) },
+  { key: 'typeExpenses', head: 'Расходы вида', short: false, numeric: true, value: (row) => money(row.typeExpenses) },
+  { key: 'net', head: 'Маржа после расходов вида', short: false, numeric: true, value: (row) => money(row.net) },
+  { key: 'netShare', head: 'Доля маржи после расходов, %', short: false, numeric: true, value: (row) => row.netShare },
 ];
 
 // ── Работы ──────────────────────────────────────────────────────────────
