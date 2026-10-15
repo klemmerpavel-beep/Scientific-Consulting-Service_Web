@@ -612,6 +612,22 @@ export function marginOf(received: bigint, awaiting: bigint, accrued: bigint): b
   return received + awaiting - accrued;
 }
 
+/**
+ * Поступление оплаченного транша для разложения расходов вида (К-4,
+ * Р-594) — одно правило для экрана оплат и «Денег по работам»: дата
+ * поступления та же, что в «Прибыли по месяцам» (`receiptOn`); транш без
+ * даты в разложение не идёт.
+ */
+function receiptOf(
+  projectId: string,
+  typeId: string,
+  tranche: { readonly amount: bigint; readonly paidOn: Date | null },
+  contract: { readonly signedOn: Date | null; readonly project: { readonly startedOn: Date | null } },
+): Receipt[] {
+  const date = receiptOn({ paidOn: tranche.paidOn, contract });
+  return date === null ? [] : [{ projectId, typeId, month: monthKey(date), amount: tranche.amount }];
+}
+
 export interface ProjectTypeExpenses {
   readonly typeName: string;
   /** Доля расходов вида на эту работу. */
@@ -646,12 +662,7 @@ export async function projectTypeExpenses(actor: Actor, projectId: string): Prom
     }),
     prisma.expense.findMany({ where: { serviceTypeId: typeId }, select: { month: true, amount: true } }),
   ]);
-  const receipts: Receipt[] = [];
-  for (const tranche of tranches) {
-    const date = receiptOn(tranche);
-    if (date === null) continue;
-    receipts.push({ projectId: tranche.contract.projectId, typeId, month: monthKey(date), amount: tranche.amount });
-  }
+  const receipts = tranches.flatMap((tranche) => receiptOf(tranche.contract.projectId, typeId, tranche, tranche.contract));
   const allocation = allocateTypeExpenses(
     receipts,
     expenses.map((row) => ({ typeId, month: monthKey(row.month), amount: row.amount })),
@@ -702,20 +713,11 @@ export async function financeSummary(actor: Actor) {
 
   // Доля расходов вида на каждую работу — по поступлениям месяца, тем же
   // разложением, что на экране оплат работы (К-4, Р-594).
-  const receipts: Receipt[] = [];
-  for (const contract of contracts) {
-    for (const tranche of contract.tranches) {
-      if (tranche.status !== 'PAID') continue;
-      const date = receiptOn({ paidOn: tranche.paidOn, contract });
-      if (date === null) continue;
-      receipts.push({
-        projectId: contract.projectId,
-        typeId: contract.project.serviceTypeId,
-        month: monthKey(date),
-        amount: tranche.amount,
-      });
-    }
-  }
+  const receipts = contracts.flatMap((contract) =>
+    contract.tranches
+      .filter((tranche) => tranche.status === 'PAID')
+      .flatMap((tranche) => receiptOf(contract.projectId, contract.project.serviceTypeId, tranche, contract)),
+  );
   const allocation = allocateTypeExpenses(
     receipts,
     typedExpenses.map((row) => ({ typeId: row.serviceTypeId!, month: monthKey(row.month), amount: row.amount })),
@@ -778,7 +780,6 @@ export async function financeSummary(actor: Actor) {
       lost: total((r) => r.lost),
       accruedWithoutContract,
       margin: total((r) => r.margin) - accruedWithoutContract,
-      typeExpenses: total((r) => r.typeExpenses),
     },
   };
 }
@@ -1236,7 +1237,7 @@ export async function receiptsPlan(actor: Actor, at: Date = clockNow()): Promise
   ensure(actor, 'MARGIN_VIEW');
   const day = moscowToday(at);
   const start = { year: day.getUTCFullYear(), month: day.getUTCMonth() };
-  const keyOf = (date: Date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  const keyOf = monthKey;
   const months = Array.from({ length: RECEIPTS_MONTHS }, (_, index) => {
     const first = new Date(Date.UTC(start.year, start.month + index, 1));
     return { key: keyOf(first), label: `${MONTH_NAMES[first.getUTCMonth()]} ${first.getUTCFullYear()}`, amount: 0n, count: 0 };

@@ -10,6 +10,7 @@ import { describe, it } from 'node:test';
 import {
   DEFAULT_LAYOUT,
   SUMMARY_BANDS,
+  formNumber,
   SUMMARY_PLATES,
   isDefaultLayout,
   isShown,
@@ -73,6 +74,24 @@ describe('раскладка «Сводки»', () => {
     assert.equal(isShown(layout, 'review'), true);
     // Место без числа — место по умолчанию.
     assert.deepEqual(layout.order, KEYS);
+  });
+
+  it('ключ без строки в форме сохраняет прежний показ, а не включается сам', () => {
+    const layout = layoutFromChoices(
+      KEYS.filter((key) => key !== 'leads').map((key, index) => ({ key, place: index + 1, was: index + 1, shown: true })),
+      { order: KEYS, hidden: ['pulse', 'leads'] },
+    );
+    assert.deepEqual(layout.hidden, ['leads', 'pulse']);
+  });
+
+  it('пустое и отсутствующее поле формы — не число, а не ноль: плашка не взлетает наверх', () => {
+    assert.ok(Number.isNaN(formNumber(null)));
+    assert.ok(Number.isNaN(formNumber('')));
+    assert.ok(Number.isNaN(formNumber('  ')));
+    assert.equal(formNumber('3'), 3);
+    const choices = KEYS.map((key, index) => ({ key, place: index + 1, was: index + 1, shown: true }));
+    choices[5] = { key: 'money', place: formNumber(null), was: formNumber(null), shown: true };
+    assert.deepEqual(layoutFromChoices(choices).order, KEYS);
   });
 
   it('раскладка по умолчанию не хранится; любое отличие — хранится', () => {

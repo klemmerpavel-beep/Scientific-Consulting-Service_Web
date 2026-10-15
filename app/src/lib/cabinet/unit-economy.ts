@@ -123,7 +123,11 @@ export function allocateTypeExpenses(receipts: readonly Receipt[], expenses: rea
  */
 export function shareOf(part: bigint, whole: bigint): number | null {
   if (whole <= 0n) return null;
-  return Number((part * 1000n) / whole) / 10;
+  // Отбрасывание вниз, а не к нулю: убыток не показывается меньше, чем он
+  // есть (−33,37 % — «−33,4 %», а не «−33,3 %»).
+  const scaled = part * 1000n;
+  const tenths = scaled / whole - (scaled % whole < 0n ? 1n : 0n);
+  return Number(tenths) / 10;
 }
 
 export interface EconomyInput {
@@ -151,5 +155,7 @@ export function economyOf(input: EconomyInput): Economy {
 
 /** Доля для экрана: «35,2 %»; `null` — «—» (Р-257). */
 export function formatShare(value: number | null): string {
-  return value === null ? '—' : `${value.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} %`;
+  if (value === null) return '—';
+  // Минус — тот же знак, что у сумм (`formatAmount`), а не дефис.
+  return `${value.toLocaleString('ru-RU', { maximumFractionDigits: 1 }).replace('-', '−')} %`;
 }

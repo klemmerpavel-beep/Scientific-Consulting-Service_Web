@@ -218,7 +218,7 @@ describe('«Деньги по работам»', () => {
   it('денежные и долевые столбцы помечены числовыми — экран выравнивает их вправо', () => {
     for (const column of FINANCE_COLUMNS) {
       const value = column.value(finance);
-      const numeric = typeof value === 'object' || typeof value === 'number';
+      const numeric = (typeof value === 'object' && value !== null) || typeof value === 'number';
       assert.equal(Boolean(column.numeric), numeric, column.key);
     }
   });

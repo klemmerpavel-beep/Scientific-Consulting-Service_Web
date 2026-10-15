@@ -113,10 +113,16 @@ describe('доли маржи', () => {
     assert.equal(formatShare(null), '—');
   });
 
-  it('доля с одним знаком, отрицательная — со знаком', () => {
+  it('доля с одним знаком отбрасыванием вниз: убыток не показывается меньше, чем он есть', () => {
     assert.equal(shareOf(1n, 3n), 33.3);
-    assert.equal(shareOf(-1n, 3n), -33.3);
+    assert.equal(shareOf(-1n, 3n), -33.4);
+    assert.equal(shareOf(-1_001_000n, 3_000_000n), -33.4);
+    assert.equal(shareOf(-3n, 10n), -30);
     assert.equal(formatShare(33.3), '33,3 %');
     assert.equal(formatShare(50), '50 %');
+  });
+
+  it('минус у доли — тот же знак, что у сумм, а не дефис', () => {
+    assert.equal(formatShare(-5.2), '\u22125,2\u00a0%');
   });
 });

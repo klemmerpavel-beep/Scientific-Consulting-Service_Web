@@ -13,6 +13,7 @@ import {
   ScreenHead,
   Select,
   Text,
+  VISUALLY_HIDDEN,
 } from '../../../../components/cabinet/ui';
 import { SANS } from '../../../../components/cabinet/tokens';
 import { can } from '../../../../lib/cabinet/access';
@@ -93,7 +94,19 @@ export default async function SummaryLayoutScreen({
                       </option>
                     ))}
                   </Select>
-                  <Checkbox label="показывать" name={`shown:${key}`} defaultChecked={isShown(layout, key)} dense nowrap />
+                  <Checkbox
+                    label={
+                      <>
+                        показывать
+                        {/* Читалке — какую плашку: восемь флажков «показывать» подряд неразличимы. */}
+                        <span style={VISUALLY_HIDDEN}>{` плашку «${label.get(key)}»`}</span>
+                      </>
+                    }
+                    name={`shown:${key}`}
+                    defaultChecked={isShown(layout, key)}
+                    dense
+                    nowrap
+                  />
                 </li>
               ))}
             </ol>

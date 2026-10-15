@@ -83,7 +83,7 @@ export interface LayoutChoice {
  * передвинутая встаёт на выбранное место, остальные сдвигаются, сохраняя
  * прежний порядок, — как при перестановке в списке.
  */
-export function layoutFromChoices(choices: readonly LayoutChoice[]): SummaryLayout {
+export function layoutFromChoices(choices: readonly LayoutChoice[], previous: SummaryLayout = DEFAULT_LAYOUT): SummaryLayout {
   const byKey = new Map(choices.filter((choice) => isKey(choice.key)).map((choice) => [choice.key as LayoutKey, choice]));
   const finite = (value: number | undefined): value is number => value !== undefined && Number.isFinite(value);
   const order = [...PLATE_KEYS]
@@ -100,8 +100,17 @@ export function layoutFromChoices(choices: readonly LayoutChoice[]): SummaryLayo
     .map((item) => item.key);
   // Флажок формы шлётся только отмеченным: строка ключа есть, а флажка
   // нет — плашка или полоса скрыта.
-  const hidden = LAYOUT_KEYS.filter((key) => byKey.has(key) && !byKey.get(key)!.shown);
+  // Ключа без строки в форме нет — его показ остаётся прежним, а не
+  // включается сам.
+  const hidden = LAYOUT_KEYS.filter((key) =>
+    byKey.has(key) ? !byKey.get(key)!.shown : previous.hidden.includes(key),
+  );
   return { order, hidden };
+}
+
+/** Число из поля формы; пустое и отсутствующее поле — не число, а не ноль. */
+export function formNumber(value: FormDataEntryValue | null): number {
+  return typeof value === 'string' && value.trim() !== '' ? Number(value) : Number.NaN;
 }
 
 /** Видимые плашки в порядке показа. */

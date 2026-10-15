@@ -298,7 +298,9 @@ export default async function ManageQueue({
   // поэтому только тому, кому открыта маржа, как прежние плитки (Р-194).
   const period = pulsePeriod((await searchParams).period);
   const pulseWin = dashboard && maySeeMoney ? pulseWindow(period, moscowToday(clockNow())) : null;
-  const pulse = pulseWin === null ? null : pulseMetrics(analyticsRows, await leadRows(actor), pulseWin);
+  // Скрытый «Пульс» не считается: выборка заявок ему одному и нужна (К-5).
+  const pulse =
+    pulseWin === null || !isShown(layout, 'pulse') ? null : pulseMetrics(analyticsRows, await leadRows(actor), pulseWin);
   const periodHref = (key: string) => {
     const query = new URLSearchParams();
     if (key !== '90') query.set('period', key);

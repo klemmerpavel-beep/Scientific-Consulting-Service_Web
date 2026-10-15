@@ -735,13 +735,8 @@ export default async function PaymentsScreen({
   );
 }
 
-/** Сумма со знаком: вычет — с минусом, как в расчёте на бумаге. */
-function signed(kopecks: bigint): string {
-  return kopecks < 0n ? `\u2212${formatAmount(-kopecks)}` : formatAmount(kopecks);
-}
-
 /**
- * «Экономика работы» (К-4, Р-594): расчёт сверху вниз — что пришло, что
+ * «Экономика работы» (К-4, Р-594): расчёт сверху вниз — что получено, что
  * ушло куратору, маржа, доля расходов вида и что осталось, у обеих маржей
  * доля в выручке работы. Правило разложения расходов вида — под таблицей.
  */
@@ -768,9 +763,11 @@ function EconomyBlock({
 }) {
   const economy = economyOf({ received, awaiting, margin, typeExpenses });
   const rows: { label: string; note: string | null; amount: bigint; total?: boolean }[] = [
-    { label: 'Поступило', note: null, amount: received },
+    // Те же имена, что в сводке договора выше: одна величина — одно имя
+    // на экране (Р-257).
+    { label: 'Получено', note: null, amount: received },
     {
-      label: 'Ожидается по договору',
+      label: 'Осталось оплатить',
       note: cancelled ? 'работа отменена: остаток не ждут' : null,
       amount: awaiting,
     },
@@ -781,7 +778,7 @@ function EconomyBlock({
     },
     {
       label: 'Маржа',
-      note: `${formatShare(economy.marginShare)} от поступившего и ожидаемого`,
+      note: `${formatShare(economy.marginShare)} от полученного и оставшегося к оплате`,
       amount: margin,
       total: true,
     },
@@ -792,7 +789,7 @@ function EconomyBlock({
     },
     {
       label: 'Маржа после расходов вида',
-      note: `${formatShare(economy.netShare)} от поступившего и ожидаемого`,
+      note: `${formatShare(economy.netShare)} от полученного и оставшегося к оплате`,
       amount: economy.net,
       total: true,
     },
@@ -817,7 +814,7 @@ function EconomyBlock({
                   )}
                 </th>
                 <td style={{ ...TABLE_NUM, fontWeight: row.total ? 600 : 400, color: 'var(--pd-ink)', whiteSpace: 'nowrap' }}>
-                  {signed(row.amount)}
+                  {formatAmount(row.amount)}
                 </td>
               </tr>
             ))}
