@@ -28,6 +28,18 @@ export const LEAD_STATUS_LABEL: Record<string, string> = {
 };
 
 /**
+ * Форма на странице, из которой пришла заявка (поле `form`, К-3, Р-593).
+ * Сайт пишет её по месту формы: первый экран, основная форма, форма внизу
+ * страницы; кабинет и форма без своего имени пишут `request`.
+ */
+export const LEAD_FORM_LABEL: Record<string, string> = {
+  top: 'Первый экран',
+  main: 'Основная форма',
+  bottom: 'Внизу страницы',
+  request: 'Основная форма',
+};
+
+/**
  * Неизвестное значение возвращается как есть, а не заменяется прочерком:
  * если в базе появится источник, о котором экран не знает, руководитель
  * должен увидеть его код, а не пустое место.
@@ -38,6 +50,10 @@ export function leadSourceLabel(value: string): string {
 
 export function leadStatusLabel(value: string): string {
   return LEAD_STATUS_LABEL[value] ?? value;
+}
+
+export function leadFormLabel(value: string): string {
+  return LEAD_FORM_LABEL[value] ?? value;
 }
 
 /**

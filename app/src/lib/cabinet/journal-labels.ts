@@ -33,6 +33,8 @@ const ACTIONS: Record<string, string> = {
   EXPERT_ASSIGNED: 'Назначен куратор',
   EXPERT_NDA_UPDATED: 'Отмечен договор поручения',
   FEEDBACK_EXPORTED: 'Замечания выгружены',
+  FINANCE_EXPORTED: 'Деньги по работам выгружены',
+  PROJECTS_EXPORTED: 'Работы выгружены',
   FEEDBACK_REVIEWED: 'Замечание разобрано',
   EXPERT_APPLICATION_REVIEWED: 'Анкета кандидата разобрана',
   EXPERT_APPLICATION_DELETED: 'Анкета кандидата удалена',

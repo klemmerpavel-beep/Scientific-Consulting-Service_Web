@@ -38,6 +38,7 @@ import { unreadByProject } from '../../../lib/cabinet/messages';
 import {
   PROJECT_FILTER_FROM,
   listProjects,
+  projectCounts,
   curatorTasksData,
   curators,
   experts,
@@ -118,6 +119,14 @@ export default async function ProjectsScreen({
   if (sole !== null) redirect(sole);
   const forExpert = actor.role === 'EXPERT';
   const showFilters = list.all > PROJECT_FILTER_FROM;
+  // Числа на вкладках — тем же поиском и отбором, что и перечень (К-3,
+  // Р-593). Без полосы отбора их негде показать, и счёт не нужен.
+  const tabCounts =
+    showFilters || actor.role === 'HEAD'
+      ? await projectCounts(actor, { query, manager: sp.manager, curator: sp.curator, due: sp.due })
+      : null;
+  // Выгрузка перечня — практике; клиенту и куратору книга ни к чему (К-3).
+  const mayExport = can(actor, 'REQUEST_MODERATE');
   // Требуемое действие показывается там, где человек его ищет, — на самой
   // работе. Пока блок «Требует внимания» перечислял этапы независимо от
   // перечня, одна и та же работа стояла на экране дважды: строкой сверху и
@@ -402,7 +411,7 @@ export default async function ProjectsScreen({
             label="Отбор работ"
             items={FILTERS.map((key) => ({
               href: href({ state: key }),
-              label: tabLabel(key),
+              label: tabCounts === null ? tabLabel(key) : `${tabLabel(key)} · ${tabCounts[key]}`,
               active: key === filter,
             }))}
           />
@@ -443,6 +452,14 @@ export default async function ProjectsScreen({
                 dense
               />
               <Button tone="quiet">Найти</Button>
+              {/* Книга Excel — тем же отбором и поиском (К-3, Р-593). В ряду
+                  формы, а не рядом с ней: на телефоне кнопка встаёт рядом с
+                  «Найти», а не сжимается в два яруса у края. */}
+              {mayExport && list.total > 0 ? (
+                <ButtonLink href={href({}).replace('/cabinet/projects', '/cabinet/projects/export')} download>
+                  Выгрузить .xlsx
+                </ButtonLink>
+              ) : null}
             </Form>
           </FilterSearch>
         </FilterBar>

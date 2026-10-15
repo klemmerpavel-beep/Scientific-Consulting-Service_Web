@@ -3,9 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { attachmentDisposition } from '../../../../../lib/cabinet/disposition';
 import { AccessDenied, ensure } from '../../../../../lib/cabinet/access';
 import { record } from '../../../../../lib/cabinet/audit';
-import { leadSourceLabel, leadStatusLabel } from '../../../../../lib/cabinet/lead-labels';
-import { toCsv } from '../../../../../lib/cabinet/csv';
 import { leadList } from '../../../../../lib/cabinet/queries';
+import { XLSX_TYPE, columnSet, leadColumns, workbook, type LeadRowView } from '../../../../../lib/cabinet/table-views';
 import { currentActor, requestIp } from '../../../../../lib/cabinet/session';
 import { moscowToday } from '../../../../../lib/cabinet/clock';
 
@@ -14,8 +13,10 @@ export const dynamic = 'force-dynamic';
 
 
 /**
- * Выгрузка отобранных заявок в таблицу — тем же отбором, что показан на
- * экране: что видно, то и выгружается.
+ * Выгрузка отобранных заявок в книгу Excel — тем же отбором и тем же
+ * набором столбцов, что показаны на экране: что видно, то и выгружается
+ * (К-3, решение Р-593). Прежде выгрузка шла в CSV; книга открывается без
+ * мастера импорта и держит даты и деньги своими типами.
  *
  * Выгрузка идёт в браузер и не оставляет файла на сервере: копия
  * персональных данных не должна заводиться там, где её никто не удалит.
@@ -48,58 +49,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // Выгружается весь отбор, а не одна страница: человек нажимает «выгрузить»,
   // чтобы получить всё найденное, а не первые полсотни строк. Страницы
   // перебираются по одной, чтобы не держать в памяти разом весь перечень.
-  const head = [
-    'Дата (МСК)',
-    'Страница',
-    'Форма',
-    'Имя',
-    'Контакт',
-    'Вид контакта',
-    'Организация',
-    'Тема',
-    'Что нужно',
-    'Срок',
-    'Сообщение',
-    'Согласие',
-    'Рассылка',
-    'Состояние',
-    'Работа заведена',
-  ];
-  // Строки собираются в общую выгрузку `toCsv`: она ставит апостроф перед
-  // значением, которое табличный редактор исполнил бы как формулу, и
-  // делит поля точкой с запятой, как ждёт русский Excel. Прежде здесь
-  // была своя выгрузка без того и другого, а имя и сообщение приходят
-  // с открытой формы сайта (решение Р-235).
-  const lines: string[][] = [head];
+  // Защита от формул — в записи книги: строка всегда пишется текстом
+  // (`lib/disk/xlsx.ts`, Р-246, Р-425).
+  const set = columnSet(params.get('cols') ?? undefined);
+  const columns = leadColumns(set);
+  const rows: LeadRowView[] = [];
 
   let page = 1;
   let total = 0;
   for (;;) {
     const chunk = await leadList(actor, { ...filter, page });
     total = chunk.total;
-    for (const lead of chunk.rows) {
-      lines.push(
-        [
-          // Время — московское, как на экранах: прежде стояло UTC без
-          // пометки, и заявка от 26.09 в 01:30 выглядела вчерашней (Р-245).
-          new Date(lead.createdAt.getTime() + 3 * 3_600_000).toISOString().slice(0, 16).replace('T', ' '),
-          leadSourceLabel(lead.source),
-          lead.form,
-          lead.name ?? '',
-          lead.contact,
-          lead.contactKind === 'phone' ? 'Телефон' : 'Почта',
-          lead.organization ?? '',
-          lead.topic ?? '',
-          lead.need ?? '',
-          lead.deadline ?? '',
-          lead.message ?? '',
-          lead.consentGiven ? 'да' : 'нет',
-          lead.marketingOptIn ? 'да' : 'нет',
-          leadStatusLabel(lead.status),
-          lead.projectId === null ? 'нет' : 'да',
-        ],
-      );
-    }
+    rows.push(...chunk.rows);
     if (page >= chunk.pages) break;
     page += 1;
   }
@@ -111,8 +72,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     action: 'LEAD_EXPORT',
     objectType: 'Lead',
     payload: {
-      rows: lines.length - 1,
+      rows: rows.length,
       total,
+      columns: set,
       source: filter.source,
       status: filter.status,
       query: (filter.query ?? '').trim().length > 0,
@@ -120,13 +82,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     ip: await requestIp(),
   });
 
-  const csv = toCsv(lines);
   const stamp = moscowToday().toISOString().slice(0, 10);
 
-  return new NextResponse(csv, {
+  return new NextResponse(workbook('Заявки', columns, rows), {
     headers: {
-      'content-type': 'text/csv; charset=utf-8',
-      'content-disposition': attachmentDisposition(`zayavki-${stamp}.csv`),
+      'content-type': XLSX_TYPE,
+      'content-disposition': attachmentDisposition(`Заявки ${stamp}.xlsx`, `zayavki-${stamp}.xlsx`),
       'cache-control': 'private, no-store',
     },
   });

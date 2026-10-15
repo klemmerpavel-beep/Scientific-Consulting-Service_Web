@@ -39,10 +39,18 @@ describe('разовые выгрузки заявок и отзывов (Р-425
 });
 
 describe('выгрузки', () => {
-  it('заявки выгружаются общей выгрузкой, без своего экранирования', () => {
-    const route = read('leads', 'export', 'route.ts');
-    assert.match(route, /toCsv\(/u);
-    assert.doesNotMatch(route, /function cell\(/u);
+  it('заявки, деньги и работы выгружаются общей книгой, без своего экранирования (Р-593)', () => {
+    const routes = [
+      read('leads', 'export', 'route.ts'),
+      read('finance', 'export', 'route.ts'),
+      readFileSync(path.join(MANAGE, '..', 'projects', 'export', 'route.ts'), 'utf8'),
+    ];
+    for (const route of routes) {
+      assert.match(route, /workbook\(/u);
+      assert.match(route, /XLSX_TYPE/u);
+      assert.doesNotMatch(route, /function cell\(/u);
+      assert.doesNotMatch(route, /text\/csv/u);
+    }
   });
 
   it('имя-формула из формы сайта не исполняется', () => {
