@@ -67,7 +67,21 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
    на странице, ничего не переигрывают при обновлении содержимого. */
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 [role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* Фон в движении (Р-624, по указанию владельца; устроено как на «Экспертам»,
+   Р-620): кольца с точками покачиваются вокруг центра, пятно света за
+   кольцом первого экрана дышит. Размах подобран по каждому кольцу так,
+   чтобы точки не заходили под строки текста. Только transform и opacity;
+   при уменьшенном движении всё стоит (Р-93). */
+@keyframes pd-swing{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
+@keyframes pd-swing-hero{from{transform:rotate(-24deg)}to{transform:rotate(24deg)}}
+@keyframes pd-swing-calm{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+@keyframes pd-breathe{from{opacity:.55;transform:scale(.9)}to{opacity:1;transform:scale(1.06)}}
+.pd-orb{transform-origin:51.5625% 51.7241%;animation:pd-swing 46s ease-in-out -23s infinite alternate}
+.pd-orb-b{animation-duration:58s;animation-delay:-29s;animation-direction:alternate-reverse}
+.pd-orb-hero{animation-name:pd-swing-hero;animation-duration:36s;animation-delay:-18s}
+.pd-orb-calm{animation-name:pd-swing-calm;animation-duration:30s;animation-delay:-15s}
+.pd-glow{animation:pd-breathe 13s ease-in-out infinite alternate}@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}
 .sp-crewcard{position:relative;z-index:1}
 .sp-crewfig{position:absolute;left:50%;transform:translateX(-50%);top:-166px;height:210px;width:auto;z-index:0;pointer-events:none}
 .sp-orbit{margin-top:156px}
@@ -89,37 +103,38 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="position:relative;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
 
 <div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none">
-<svg viewBox="0 0 640 580" width="1280" height="1160" fill="none" style="position:absolute;right:calc(50% - 610px - 230px);top:-190px">
+<div class="pd-glow" style="position:absolute;left:calc(50% - 172px);top:18px;width:784px;height:784px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.42),rgba(216,228,243,0))"></div>
+<svg class="pd-orb pd-orb-hero" viewBox="0 0 640 580" width="1280" height="1160" fill="none" style="position:absolute;right:calc(50% - 610px - 230px);top:-190px">
 <g stroke="#D9E1EC" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EDF2F8" stroke-width="1"></ellipse>
 <circle cx="450" cy="300" r="6" fill="#D8E4F3"></circle>
 <circle cx="330" cy="104" r="4" fill="#14417A"></circle>
 </svg>
-<svg viewBox="0 0 640 580" width="880" height="798" fill="none" style="position:absolute;left:calc(50% - 610px - 300px);top:980px">
+<svg class="pd-orb" viewBox="0 0 640 580" width="880" height="798" fill="none" style="position:absolute;left:calc(50% - 610px - 300px);top:980px">
 <g stroke="#E5EBF2" stroke-width="1"><ellipse cx="330" cy="300" rx="150" ry="150"></ellipse><ellipse cx="330" cy="300" rx="236" ry="236"></ellipse></g>
 
 <circle cx="470" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="96" r="4" fill="#B4C9E5"></circle>
 </svg>
-<svg viewBox="0 0 640 580" width="1000" height="906" fill="none" style="position:absolute;right:calc(50% - 610px - 340px);top:1880px">
+<svg class="pd-orb pd-orb-b" viewBox="0 0 640 580" width="1000" height="906" fill="none" style="position:absolute;right:calc(50% - 610px - 340px);top:1880px">
 <g stroke="#EDF2F8" stroke-width="1"><ellipse cx="330" cy="300" rx="134" ry="134"></ellipse><ellipse cx="330" cy="300" rx="214" ry="214"></ellipse></g>
 <ellipse cx="330" cy="300" rx="286" ry="286" stroke="#F6F7F9" stroke-width="1"></ellipse>
 <circle cx="470" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="96" r="4" fill="#D8E4F3"></circle>
 </svg>
-<svg viewBox="0 0 640 580" width="840" height="761" fill="none" style="position:absolute;left:calc(50% - 610px - 260px);top:2820px">
+<svg class="pd-orb" viewBox="0 0 640 580" width="840" height="761" fill="none" style="position:absolute;left:calc(50% - 610px - 260px);top:2820px">
 <g stroke="#E5EBF2" stroke-width="1"><ellipse cx="330" cy="300" rx="162" ry="162"></ellipse><ellipse cx="330" cy="300" rx="252" ry="252"></ellipse></g>
 
 <circle cx="470" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="96" r="4" fill="#B4C9E5"></circle>
 </svg>
-<svg viewBox="0 0 640 580" width="960" height="870" fill="none" style="position:absolute;right:calc(50% - 610px - 320px);top:3760px">
+<svg class="pd-orb pd-orb-b" viewBox="0 0 640 580" width="960" height="870" fill="none" style="position:absolute;right:calc(50% - 610px - 320px);top:3760px">
 <g stroke="#EDF2F8" stroke-width="1"><ellipse cx="330" cy="300" rx="140" ry="140"></ellipse><ellipse cx="330" cy="300" rx="224" ry="224"></ellipse></g>
 <ellipse cx="330" cy="300" rx="296" ry="296" stroke="#F6F7F9" stroke-width="1"></ellipse>
 <circle cx="470" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="96" r="4" fill="#D8E4F3"></circle>
 </svg>
-<svg viewBox="0 0 640 580" width="880" height="798" fill="none" style="position:absolute;left:calc(50% - 610px - 280px);top:4700px">
+<svg class="pd-orb" viewBox="0 0 640 580" width="880" height="798" fill="none" style="position:absolute;left:calc(50% - 610px - 280px);top:4700px">
 <g stroke="#E5EBF2" stroke-width="1"><ellipse cx="330" cy="300" rx="156" ry="156"></ellipse><ellipse cx="330" cy="300" rx="244" ry="244"></ellipse></g>
 
 <circle cx="330" cy="96" r="4" fill="#B4C9E5"></circle>
