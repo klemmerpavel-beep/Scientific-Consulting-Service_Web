@@ -20,7 +20,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const to = safeNext(request.nextUrl.searchParams.get('to')) ?? '/cabinet';
   const actor = await currentActor();
-  const response = NextResponse.redirect(new URL(actor === null ? '/cabinet' : to, request.url), { status: 303 });
+  // Адрес относительный: за nginx `request.url` несёт `localhost:3000`, а
+  // не имя сайта, и абсолютный адрес увёл бы браузер на машину самого
+  // человека (решение Р-600).
+  const response = new NextResponse(null, { status: 303, headers: { Location: actor === null ? '/cabinet' : to } });
   response.headers.set('Referrer-Policy', 'no-referrer');
   response.headers.set('Cache-Control', 'no-store');
   if (actor === null) {

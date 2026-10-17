@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { attachmentDisposition } from '../../../../lib/cabinet/disposition';
 import { download } from '../../../../lib/cabinet/downloads';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { currentActor, signInFirst } from '../../../../lib/cabinet/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,9 +13,9 @@ export const dynamic = 'force-dynamic';
  * Свои файлы собираются при выдаче и на сервере не остаются; персональных
  * данных ни в тех, ни в других нет.
  */
-export async function GET(_request: Request, { params }: { params: Promise<{ file: string }> }): Promise<NextResponse> {
+export async function GET(request: Request, { params }: { params: Promise<{ file: string }> }): Promise<NextResponse> {
   const actor = await currentActor();
-  if (actor === null) return new NextResponse('Требуется вход', { status: 401 });
+  if (actor === null) return signInFirst(request, '/cabinet');
   const item = await download(actor, (await params).file);
   if (item === null) return new NextResponse('Не найдено', { status: 404 });
   return new NextResponse(new Uint8Array(item.bytes), {

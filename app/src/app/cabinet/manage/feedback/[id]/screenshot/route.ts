@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { AccessDenied } from '../../../../../../lib/cabinet/access';
 import { openFeedbackScreenshot } from '../../../../../../lib/cabinet/feedback';
-import { currentActor } from '../../../../../../lib/cabinet/session';
+import { currentActor, signInFirst } from '../../../../../../lib/cabinet/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,11 +15,11 @@ export const dynamic = 'force-dynamic';
  * замечанию, исходное не хранится (решение Р-403).
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   const actor = await currentActor();
-  if (actor === null) return new NextResponse('Требуется вход', { status: 401 });
+  if (actor === null) return signInFirst(request, '/cabinet/manage/feedback');
 
   const { id } = await context.params;
   try {

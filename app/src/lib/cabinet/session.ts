@@ -1,9 +1,10 @@
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { NextResponse } from 'next/server';
 
 import { resolveSession } from './auth.ts';
 import type { Actor } from './access.ts';
-import { OPEN_COOKIE, OPEN_COOKIE_SECONDS, openPath, packOpen, unpackOpen } from './next-path.ts';
+import { OPEN_COOKIE, OPEN_COOKIE_SECONDS, fileOpenPath, openPath, packOpen, unpackOpen } from './next-path.ts';
 import { SESSION_COOKIE, SESSION_MAX_DAYS } from './token.ts';
 
 /**
@@ -25,6 +26,24 @@ export async function requireActor(path: string): Promise<Actor> {
   const actor = await currentActor();
   if (actor === null) redirect(openPath(path));
   return actor;
+}
+
+/**
+ * Ответ файла или выгрузки без сеанса (решение Р-599): вход через
+ * `/cabinet/open` и возврат на экран `screen` с отбором из адреса запроса —
+ * отбор выгрузки назван так же, как отбор её экрана. Прежде такие адреса
+ * отвечали 401 строкой «Требуется вход»: ссылка на выгрузку из письма или
+ * закладки после истечения сеанса открывала пустую страницу без формы
+ * входа.
+ */
+export function signInFirst(request: Request, screen: string): NextResponse {
+  // Адрес относительный: за nginx `request.url` несёт не имя сайта, а
+  // `localhost:3000` (Next собирает его из собственного адреса сервера),
+  // и абсолютный адрес увёл бы браузер на чужую машину (решение Р-600).
+  return new NextResponse(null, {
+    status: 303,
+    headers: { Location: fileOpenPath(screen, new URL(request.url).search), 'Cache-Control': 'no-store' },
+  });
 }
 
 /** Куда человек шёл и с каким адресом — из cookie обработчика открытия. */

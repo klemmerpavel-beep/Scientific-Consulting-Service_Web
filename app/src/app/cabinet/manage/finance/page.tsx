@@ -32,6 +32,7 @@ import {
 import { can } from '../../../../lib/cabinet/access';
 import { financeSummary } from '../../../../lib/cabinet/finance';
 import { COLUMN_SETS, FINANCE_COLUMNS, columnSet, pick } from '../../../../lib/cabinet/table-views';
+import { formatShare } from '../../../../lib/cabinet/unit-economy';
 import { byMonth } from '../../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../../lib/cabinet/analytics/data';
 import { formatAmount } from '../../../../lib/cabinet/money';
@@ -298,7 +299,7 @@ export default async function FinanceScreen({
       </FilterBar>
 
       <TableCard label="Деньги по работам">
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: cols === 'full' ? 1200 : 720 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: cols === 'full' ? 1560 : 720 }}>
           <thead>
             <tr>
               {columns.map((column) => (
@@ -357,9 +358,20 @@ export default async function FinanceScreen({
                         </td>
                       );
                     }
+                    // Доля маржи — процентом, без доли — «—» (К-4, Р-594).
+                    if (column.key === 'netShare') {
+                      return (
+                        <td key={column.key} style={TABLE_NUM}>
+                          {formatShare(row.netShare)}
+                        </td>
+                      );
+                    }
                     const value = column.value(row);
                     return (
-                      <td key={column.key} style={column.numeric ? TABLE_NUM : TABLE_CELL}>
+                      <td
+                        key={column.key}
+                        style={column.numeric ? TABLE_NUM : column.key === 'code' ? { ...TABLE_CELL, whiteSpace: 'nowrap' } : TABLE_CELL}
+                      >
                         {typeof value === 'object' && value !== null ? formatAmount(value.kopecks) : value === '' || value == null ? '—' : String(value)}
                       </td>
                     );

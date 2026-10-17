@@ -55,19 +55,22 @@ const finance: FinanceRowView = {
   lost: 0n,
   accrued: 1_000_000n,
   margin: -50_000n,
+  typeExpenses: 120_000n,
+  net: -170_000n,
+  netShare: -1.3,
 };
 
 const project: ProjectRowView = {
   code: 'PD-2026-002',
   title: 'Статья ВАК',
-  status: 'IN_PROGRESS',
+  status: 'ACTIVE',
   dueOn: new Date('2026-12-01T00:00:00Z'),
   serviceType: { name: 'Статья' },
   client: { fullName: 'Клиент Б.' },
   manager: { fullName: 'Менеджер М.' },
   expert: null,
   expertNameRaw: '  Куратор К.  ',
-  stages: [{ state: 'COMPLETED' }, { state: 'AWAITING_CLIENT' }, { state: 'PLANNED' }],
+  stages: [{ state: 'DONE' }, { state: 'DONE' }, { state: 'AWAITING_CLIENT' }, { state: 'NOT_STARTED' }],
 };
 
 describe('наборы столбцов', () => {
@@ -195,12 +198,28 @@ describe('«Деньги по работам»', () => {
     assert.equal(at('Списано')?.value, '0.00');
     assert.equal(at('Куратор'), undefined);
     assert.equal(at('Код')?.value, 'PD-2026-001');
+    // Экономика работы (К-4, Р-594): расходы вида и маржа после них —
+    // деньгами, доля — числом процентов.
+    assert.equal(at('Расходы вида')?.value, '1200.00');
+    assert.equal(at('Маржа после расходов вида')?.value, '-1700.00');
+    assert.equal(at('Доля маржи после расходов, %')?.value, '-1.3');
+    assert.notEqual(at('Доля маржи после расходов, %')?.type, 'inlineStr');
   });
 
-  it('денежные столбцы помечены числовыми — экран выравнивает их вправо', () => {
+  it('подробный набор кончается экономикой работы; без доли — пустая ячейка', () => {
+    assert.deepEqual(
+      pick(FINANCE_COLUMNS, 'full').slice(-4).map((column) => column.head),
+      ['Маржа', 'Расходы вида', 'Маржа после расходов вида', 'Доля маржи после расходов, %'],
+    );
+    const share = FINANCE_COLUMNS.find((column) => column.key === 'netShare')!;
+    assert.equal(share.value({ ...finance, netShare: null }), null);
+  });
+
+  it('денежные и долевые столбцы помечены числовыми — экран выравнивает их вправо', () => {
     for (const column of FINANCE_COLUMNS) {
-      const money = typeof column.value(finance) === 'object';
-      assert.equal(Boolean(column.numeric), money, column.key);
+      const value = column.value(finance);
+      const numeric = (typeof value === 'object' && value !== null) || typeof value === 'number';
+      assert.equal(Boolean(column.numeric), numeric, column.key);
     }
   });
 });
@@ -219,7 +238,8 @@ describe('выгрузка «Работ»', () => {
 
   it('этапы «N из M», ожидание клиента и куратор без записи — по имени из книги заказов', () => {
     const [row] = sheetRows(PROJECT_COLUMNS, [project]);
-    assert.equal(row![6], '1 из 3');
+    assert.equal(row![4], 'Действует');
+    assert.equal(row![6], '2 из 4');
     assert.equal(row![7], 'да');
     assert.equal(row![9], 'Куратор К.');
     const bare = sheetRows(PROJECT_COLUMNS, [{ ...project, stages: [], serviceType: null, manager: null, expertNameRaw: null }])[0]!;
@@ -228,5 +248,14 @@ describe('выгрузка «Работ»', () => {
     assert.equal(bare[2], '');
     assert.equal(bare[8], '');
     assert.equal(bare[9], '');
+  });
+
+  it('«Ждёт клиента» — только у действующей работы, как вкладка «Ждут клиента»', () => {
+    for (const status of ['PAUSED', 'COMPLETED', 'CANCELLED'] as const) {
+      const [row] = sheetRows(PROJECT_COLUMNS, [{ ...project, status }]);
+      assert.equal(row![7], 'нет', status);
+    }
+    const [approval] = sheetRows(PROJECT_COLUMNS, [{ ...project, stages: [{ state: 'IN_APPROVAL' }] }]);
+    assert.equal(approval![7], 'да');
   });
 });

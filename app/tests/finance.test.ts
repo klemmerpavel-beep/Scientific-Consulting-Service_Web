@@ -168,6 +168,39 @@ describe('суммы и признаки в журнале', () => {
     assert.match(text, /на модерации да/u);
     assert.match(text, /есть контакты нет/u);
   });
+
+  it('выгрузки и раскладка «Сводки» — словами, без кодов; число заявок не «сумма договора» (К-3, К-5)', async () => {
+    const { detailsLabel } = await import('../src/lib/cabinet/journal-labels.ts');
+    const leads = detailsLabel(
+      { rows: 6, total: 56, columns: 'full', source: 'postgrad', status: 'NEW', query: false },
+      'LEAD_EXPORT',
+    );
+    assert.equal(leads, 'строк 6 · всего в отборе 56 · набор Подробно · страница Аспирантам · состояние Новая · поиск нет');
+    const projects = detailsLabel(
+      { rows: 56, state: 'all', query: false, manager: true, curator: false, due: false },
+      'PROJECTS_EXPORTED',
+    );
+    assert.equal(
+      projects,
+      'строк 56 · вкладка Все · поиск нет · отбор по менеджеру да · отбор по куратору нет · отбор по сроку нет',
+    );
+    assert.equal(
+      detailsLabel({ rows: 3, set: 'owing', columns: 'short' }, 'FINANCE_EXPORTED'),
+      'строк 3 · отбор С остатком · набор Основные столбцы',
+    );
+    assert.equal(
+      detailsLabel({ order: ['money', 'team'], hidden: ['pulse', 'leads'] }, 'SUMMARY_LAYOUT_SAVED'),
+      'порядок: Деньги, Команда · скрыто: Пульс практики, Заявки',
+    );
+    assert.equal(detailsLabel({ reset: true }, 'SUMMARY_LAYOUT_SAVED'), 'раскладка по умолчанию');
+    for (const text of [leads, projects]) assert.doesNotMatch(text, /[a-z]|сумма/u);
+  });
+
+  it('без действия и у прочих действий — общий словарь, как прежде', async () => {
+    const { detailsLabel } = await import('../src/lib/cabinet/journal-labels.ts');
+    assert.match(detailsLabel({ total: '1000000' }), /сумма договора 10\s000\s₽/u);
+    assert.match(detailsLabel({ total: '1000000' }, 'CONTRACT_UPDATED'), /сумма договора/u);
+  });
 });
 
 describe('сторно транша (решение Р-249)', () => {
