@@ -31,6 +31,11 @@ import { useEffect } from 'react';
  * шапки скрыта классом `.ex-headcta`, и её копия пропадала вместе с ней
  * (Р-612). До 430 px кнопка полосы — 12 px с полями 16 px, как кнопки шапок
  * «Студентам» и «Компаниям».
+ *
+ * Отступ якорей 80 px — с `!important`: разделы макетов несут встроенный
+ * `scroll-margin-top: 24px`, он перебивал правило, и при переходе по якорю
+ * начало раздела вставало под полосу (на «Экспертам» «Заполнить анкету»
+ * прятала метку и верх заголовка анкеты, Р-621).
  */
 
 const CSS = `
@@ -41,7 +46,7 @@ const CSS = `
 .pd-stick-row>a{display:inline-flex!important;white-space:nowrap}
 @media (max-width:430px){.pd-stick-row>a:last-child{padding:12px 16px!important;font-size:12px!important}}
 @media (max-width:480px){.pd-stick-row{padding:0 20px}}
-.pd-has-stick [id]{scroll-margin-top:80px}
+.pd-has-stick [id]{scroll-margin-top:80px!important}
 @media print{.pd-stick{display:none}}
 `;
 

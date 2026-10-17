@@ -104,7 +104,7 @@ describe('закреплённая шапка длинных страниц', ()
       assert.ok(value >= 180 && value <= 260, `длительность ${value} мс вне 180—260`);
     }
     assert.match(BAR, /\.pd-stick\{[^}]*visibility:hidden/u);
-    assert.match(BAR, /\.pd-has-stick \[id\]\{scroll-margin-top:80px\}/u);
+    assert.match(BAR, /\.pd-has-stick \[id\]\{scroll-margin-top:80px!important\}/u);
     assert.match(BAR, /copy\.removeAttribute\('id'\)/u);
   });
 });
