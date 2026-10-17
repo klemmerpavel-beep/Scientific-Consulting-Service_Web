@@ -48,6 +48,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .ex-tabbody{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
 .ex-tablist{display:inline-flex;gap:4px;padding:4px;background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}
 .ex-tablist::-webkit-scrollbar{display:none}
+@media (max-width:768px){.ex-tablist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-radius:14px!important}.ex-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
 .ex-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .ex-apply{display:grid;grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);align-items:start}

@@ -101,6 +101,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
    слева текст, справа снимок экрана в рамке. */
 .pd-in-tablist{display:inline-flex;gap:4px;padding:4px;background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}
 .pd-in-tablist::-webkit-scrollbar{display:none}
+@media (max-width:768px){.pd-in-tablist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-radius:14px!important}.pd-in-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
 .pd-in-body{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
 @media (max-width:1024px){.pd-in-body{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:768px){.pd-in-sub{text-align:left!important;margin-left:0!important}}
