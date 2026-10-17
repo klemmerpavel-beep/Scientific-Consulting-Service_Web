@@ -199,7 +199,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </a>
 <a href="#process" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark);border-color:var(--pd-accent)" style-active="background:var(--pd-accent-mark)">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">6 этапов</span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">план работы, каждый этап закрывается актом приёмки</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">план работы от заявки до защиты</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Как устроена работа<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a href="#team" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet);border-color:var(--pd-accent)" style-active="background:var(--pd-surface-quiet)">
@@ -250,7 +250,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <div style="display:flex;flex-direction:column;gap:6px;padding-top:18px;border-top:1px solid var(--pd-divider)">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Как это выглядит у вас</span>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">После каждого этапа — отчёт и акт приёмки: что сделано и что дальше</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">План с датами: что сделано и что дальше</p>
 </div>
 <div role="group" aria-label="Ход работы по этапам" data-carousel="plan" tabindex="0" style="display:flex;gap:14px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:2px;margin:-2px">
 <sc-for list="{{ track }}" as="t" hint-placeholder-count="6">
@@ -475,7 +475,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;flex-direction:column;gap:24px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Команда</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:24ch;text-wrap:balance">Кто сопровождает проект</h2>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:40ch">Менеджер, эксперт по специальности, методолог и научный редактор ведут проект до защиты. Каждый отвечает за свой участок и подписывает NDA.</p>
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:40ch">Менеджер, эксперт по специальности, методолог и научный редактор ведут проект до защиты. Каждый отвечает за свой участок.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">С 2016</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">работаем с аспирантами и соискателями из России и СНГ</span></div>
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">04</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">специалиста закрепляем за проектом до самой защиты</span></div>
@@ -581,7 +581,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;flex-direction:column;gap:12px">
 <sc-for list="{{ faq }}" as="f" hint-placeholder-count="7">
 <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
-<div style="background:rgba(255,255,255,.94);border:1px solid var(--pd-accent-edge);border-radius:14px;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<div style="background:rgba(255,255,255,.92);border:1px solid var(--pd-accent-edge);border-radius:14px;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <button type="button" onClick="{{ f.toggle }}" aria-expanded="true" style="appearance:none;border:0;background:var(--pd-accent-mark);cursor:pointer;width:100%;text-align:left;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink);transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-edge)" style-active="transform:scale(.97)">
 <span>{{ f.q }}</span>
 <span aria-hidden="true" style="width:16px;height:2px;flex:0 0 16px;background:var(--pd-ink);border-radius:999px"></span>
@@ -622,7 +622,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary);padding-top:4px">{{ p.text }}</span>
 </div>
 </sc-for>
-</div><p style="margin:30px 0 0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">Оставьте контакты — куратор по вашей научной области свяжется в рабочее время и предложит формат сопровождения.</p>
+</div><p style="margin:30px 0 0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">Оставьте контакты — свяжемся в рабочее время и предложим формат сопровождения.</p>
 <form onSubmit="{{ submit }}" style="display:flex;flex-direction:column;gap:12px;margin-top:14px;padding-top:22px;border-top:1px solid var(--pd-divider)">
 <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
 <div role="group" aria-label="Способ связи" style="display:inline-flex;gap:4px;padding:4px;background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;align-self:flex-start;flex:0 0 auto">
@@ -857,7 +857,7 @@ class Component extends DCLogic {
       ['03', 'Анализ и ТЗ', '', 'Фиксируем структуру исследования, методологию и требования диссовета в договоре.'],
       ['04', 'Работа по этапам', '', 'Куратор ведёт разбор, автор пишет. Каждый этап проходит вычитку научного редактора.'],
       ['05', 'Приёмка и правки', '', 'Вы принимаете этап и видите, что изменено и почему. Правки в рамках объёма не тарифицируются.'],
-      ['06', 'Подготовка к защите', '', 'Доклад, презентация, репетиция ответов на вопросы совета и разбор замечаний рецензентов.']
+      ['06', 'Подготовка к защите', '', 'Репетиция ответов на вопросы совета и разбор замечаний рецензентов.']
     ];
     const stepTags = [
       ['Разбор задачи', 'Оценка объёма', 'Профиль куратора'],
@@ -865,7 +865,7 @@ class Component extends DCLogic {
       ['Структура работы', 'Методология', 'Смета и договор'],
       ['Разбор глав', 'Научная редактура', 'Оформление по ГОСТ'],
       ['Комментарии куратора', 'Правки автора', 'Акт по этапу'],
-      ['Текст доклада', 'Презентация', 'Репетиция вопросов']
+      ['Разбор доклада', 'Презентация', 'Репетиция вопросов']
     ];
     const steps = stepData.map(([num, title, time, text], i) => ({
       num, title, text,
