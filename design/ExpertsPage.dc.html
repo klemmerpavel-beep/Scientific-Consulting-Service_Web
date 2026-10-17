@@ -34,6 +34,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 [role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* Р-627: интерактивный блок под курсором поднимается на 5 px вместо синей рамки; при уменьшенном движении стоит на месте */
+.pd-lift{transition:transform 220ms cubic-bezier(.2,0,.2,1),box-shadow 220ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),opacity 460ms cubic-bezier(.2,0,.2,1)!important}
+.pd-lift:hover,.pd-lift:focus-visible{transform:translateY(-5px)!important;box-shadow:0 10px 20px rgba(20,22,28,.09)!important}
+@media (prefers-reduced-motion:reduce){html .pd-lift{transition:none!important}html .pd-lift:hover,html .pd-lift:focus-visible{transform:none!important}}
+
 /* Страница «Экспертам» (решения Р-584, Р-589): структура по образцу
    владельца — первый экран со снимком кабинета, направления, «кто за что
    отвечает», одна тёмная панель с ходом этапа, вкладки кабинета, шаги,
@@ -84,7 +89,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 /* Карточки условий (Р-618, Р-621): в покое светлые, без рамки; при наведении и фокусе вся карточка становится тёмно-синей, как панель «Как проходит этап работы», текст светлеет. Части окрашены классами: цвет части меняется по состоянию всей карточки. */
 .ex-term .ex-term-k,.ex-term .ex-term-t,.ex-term .ex-term-d,.ex-term .ex-term-l{transition:color 180ms cubic-bezier(.2,0,.2,1)}
 .ex-term .ex-term-a{transition:background 180ms cubic-bezier(.2,0,.2,1)}
-.ex-term:hover,.ex-term:focus-visible{background:var(--pd-accent-deep)!important;transform:translateY(-2px);box-shadow:0 12px 24px rgba(13,43,82,.28)}
+.ex-term:hover,.ex-term:focus-visible{background:var(--pd-accent-deep)!important;transform:translateY(-5px);box-shadow:0 12px 24px rgba(13,43,82,.28)}
 .ex-term:active{background:var(--pd-accent-active)!important;transform:none}
 .ex-term:hover .ex-term-t,.ex-term:focus-visible .ex-term-t,.ex-term:active .ex-term-t{color:var(--pd-ink-inverse)!important}
 .ex-term:hover .ex-term-d,.ex-term:focus-visible .ex-term-d,.ex-term:active .ex-term-d{color:var(--pd-accent-mark)!important}
@@ -231,7 +236,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border);max-width:44ch">Нужен опыт в том виде работ, который вы готовы вести</span>
 </div>
 <div class="ex-who" style="gap:16px">
-<article style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
+<article class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column">
 <img src="./assets/art/svc-dissertation.webp" alt="" aria-hidden="true" width="700" height="214" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;aspect-ratio:700 / 214;object-fit:cover;background:var(--pd-surface-quiet)">
 <div style="padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;flex:1 1 auto">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Кандидатские и докторские диссертации</h3>
@@ -239,7 +244,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)"><span style="font-weight:600;color:var(--pd-ink)">Нужен опыт:</span> учёная степень по профилю работы</p>
 </div>
 </article>
-<article style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
+<article class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column">
 <img src="./assets/art/svc-diploma.webp" alt="" aria-hidden="true" width="700" height="214" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;aspect-ratio:700 / 214;object-fit:cover;background:var(--pd-surface-quiet)">
 <div style="padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;flex:1 1 auto">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">ВКР и магистерские диссертации</h3>
@@ -247,7 +252,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)"><span style="font-weight:600;color:var(--pd-ink)">Нужен опыт:</span> руководство ВКР или преподавание в вузе</p>
 </div>
 </article>
-<article style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
+<article class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column">
 <img src="./assets/art/svc-articles.webp" alt="" aria-hidden="true" width="700" height="214" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;aspect-ratio:700 / 214;object-fit:cover;background:var(--pd-surface-quiet)">
 <div style="padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;flex:1 1 auto">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Научные статьи</h3>
@@ -255,7 +260,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)"><span style="font-weight:600;color:var(--pd-ink)">Нужен опыт:</span> собственные публикации в журналах перечня ВАК, RSCI или Scopus</p>
 </div>
 </article>
-<article style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
+<article class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column">
 <img src="./assets/art/svc-defense.webp" alt="" aria-hidden="true" width="700" height="214" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;aspect-ratio:700 / 214;object-fit:cover;background:var(--pd-surface-quiet)">
 <div style="padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;flex:1 1 auto">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Подготовка к защите</h3>
@@ -263,7 +268,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)"><span style="font-weight:600;color:var(--pd-ink)">Нужен опыт:</span> работа в диссертационном совете или официальное оппонирование</p>
 </div>
 </article>
-<article style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
+<article class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column">
 <img src="./assets/art/svc-grants.webp" alt="" aria-hidden="true" width="700" height="214" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;aspect-ratio:700 / 214;object-fit:cover;background:var(--pd-surface-quiet)">
 <div style="padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;flex:1 1 auto">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Гранты и НИОКР</h3>
@@ -271,7 +276,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)"><span style="font-weight:600;color:var(--pd-ink)">Нужен опыт:</span> подготовка заявок и отчётов или экспертиза заявок фондов</p>
 </div>
 </article>
-<article style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
+<article class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);overflow:hidden;display:flex;flex-direction:column">
 <img src="./assets/art/svc-norm.webp" alt="" aria-hidden="true" width="700" height="214" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;aspect-ratio:700 / 214;object-fit:cover;background:var(--pd-surface-quiet)">
 <div style="padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;flex:1 1 auto">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Нормоконтроль и оформление</h3>
@@ -365,17 +370,17 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </div>
 <ol class="ex-steps" style="margin:0;padding:0;list-style:none;gap:16px">
-<li style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);padding:22px 22px 22px;display:flex;flex-direction:column;gap:12px" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
+<li class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);padding:22px 22px 22px;display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">01</span><img src="./assets/art/ex-3d-form.webp" alt="" aria-hidden="true" width="72" height="72" decoding="async" loading="lazy" style="width:72px;height:72px;flex:0 0 72px;display:block;margin:-10px -6px -10px 0"></div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Анкета</h3>
 <p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Три раздела: контакты, квалификация, опыт; резюме — файлом, профили eLIBRARY и ORCID — по желанию. Учётная запись при этом не создаётся.</p>
 </li>
-<li style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);padding:22px 22px 22px;display:flex;flex-direction:column;gap:12px" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
+<li class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);padding:22px 22px 22px;display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">02</span><img src="./assets/art/ex-3d-envelope.webp" alt="" aria-hidden="true" width="72" height="72" decoding="async" loading="lazy" style="width:72px;height:72px;flex:0 0 72px;display:block;margin:-10px -6px -10px 0"></div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разговор</h3>
 <p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Руководитель практики разбирает анкету и отвечает на почту: обсуждаем направления, загрузку и размер вознаграждения.</p>
 </li>
-<li style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);padding:22px 22px 22px;display:flex;flex-direction:column;gap:12px" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
+<li class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);padding:22px 22px 22px;display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">03</span><img src="./assets/art/ex-3d-contract.webp" alt="" aria-hidden="true" width="72" height="72" decoding="async" loading="lazy" style="width:72px;height:72px;flex:0 0 72px;display:block;margin:-10px -6px -10px 0"></div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Договор и кабинет</h3>
 <p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Гражданско-правовой договор и договор поручения обработки персональных данных. Вход в кабинет — по ссылке из письма, без пароля.</p>
@@ -415,7 +420,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </sc-if>
 <sc-if value="{{ f.closed }}" hint-placeholder-val="{{ true }}">
-<button type="button" id="{{ f.id }}" onClick="{{ f.toggle }}" aria-expanded="false" style="scroll-margin-top:96px;appearance:none;border:1px solid var(--pd-border);background:rgba(255,255,255,.92);cursor:pointer;width:100%;text-align:left;padding:18px 22px;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)" style-active="opacity:.82">
+<button class="pd-lift" type="button" id="{{ f.id }}" onClick="{{ f.toggle }}" aria-expanded="false" style="scroll-margin-top:96px;appearance:none;border:1px solid var(--pd-border);background:rgba(255,255,255,.92);cursor:pointer;width:100%;text-align:left;padding:18px 22px;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-active="opacity:.82">
 <span>{{ f.q }}</span>
 <span aria-hidden="true" style="position:relative;width:16px;height:16px;flex:0 0 16px"><span style="position:absolute;left:0;top:7px;width:16px;height:2px;background:var(--pd-ink-muted);border-radius:999px"></span><span style="position:absolute;left:7px;top:0;width:2px;height:16px;background:var(--pd-ink-muted);border-radius:999px"></span></span>
 </button>
@@ -438,7 +443,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </sc-if>
 <sc-if value="{{ s.done }}" hint-placeholder-val="{{ false }}">
-<button type="button" onClick="{{ s.go }}" style="appearance:none;cursor:pointer;width:100%;text-align:left;display:flex;align-items:center;gap:14px;padding:12px 14px;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;transition:border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)">
+<button class="pd-lift" type="button" onClick="{{ s.go }}" style="appearance:none;cursor:pointer;width:100%;text-align:left;display:flex;align-items:center;gap:14px;padding:12px 14px;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;transition:border-color 180ms cubic-bezier(.2,0,.2,1)">
 <span aria-hidden="true" style="width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:16px;height:16px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span></span>
 <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span><span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Заполнено — вернуться к разделу</span></span>
 </button>
