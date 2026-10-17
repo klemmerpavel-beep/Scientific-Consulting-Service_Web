@@ -36,12 +36,10 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 .sp-support{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 /* Р-629: плашки с цифрами — в правой колонке первого экрана под портретами, по одной в ряд; первый экран не вытягивается вниз */
 .sp-support.sp-support-col{grid-template-columns:minmax(0,1fr)}
+/* Р-630: этапы «Студентам» по образцу «Как это выглядит внутри»; на телефоне карточка этапа сразу под перечнем */
+@media (min-width:1025px){.sp-rt-a{grid-column:1;grid-row:1}.sp-rt-b{grid-column:2;grid-row:1 / span 2}.sp-rt-c{grid-column:1;grid-row:2}}
 @media (max-width:480px){.sp-support-col>a{grid-template-columns:minmax(0,1fr)!important}.sp-support-col>a>span:first-child{grid-row:auto!important}}
 .sp-duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-.sp-route{display:grid;grid-template-columns:minmax(0,.4fr) minmax(0,.6fr);height:448px}
-.sp-rl{border-right:1px solid var(--pd-divider)}
-@media (max-width:1024px){.sp-route{grid-template-columns:minmax(0,1fr);height:auto}.sp-rl{border-right:0;border-bottom:1px solid var(--pd-divider)}}
-@media (max-width:560px){.sp-seg-t{display:none}}
 .sp-offer{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-cost{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-req{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
@@ -102,7 +100,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-in-tablist{display:inline-flex;gap:4px;padding:4px;background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}
 .pd-in-tablist::-webkit-scrollbar{display:none}
 @media (max-width:480px){.sp-guide{display:none}}
-@media (max-width:768px){.pd-in-tablist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-radius:14px!important}.pd-in-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
+@media (max-width:768px){.pd-in-tablist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-radius:14px!important}.pd-in-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}.sp-sit>button{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
 .pd-in-body{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
 @media (max-width:1024px){.pd-in-body{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:768px){.pd-in-sub{text-align:left!important;margin-left:0!important}}
@@ -481,59 +479,31 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Этапы работы</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:30ch;text-wrap:balance">Этапы под вашу стадию работы: <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-8px 0 0 var(--pd-accent-mark),8px 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone">от разбора до защиты</span></h2>
 </div>
-<span class="sp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Шаг 1 — стадия, шаг 2 — этапы</span>
+<span class="sp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Маршрут перестраивается под стадию работы</span>
 </div>
 
-<div style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);padding:16px 18px;box-shadow:0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:12px">
-<span id="sp-step1" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Шаг 1 · На какой стадии работа</span>
-<div role="group" aria-labelledby="sp-step1" style="display:flex;flex-wrap:wrap;gap:8px">
+<div role="group" aria-label="На какой стадии работа" class="pd-in-tablist sp-sit">
 <sc-for list="{{ situations }}" as="s" hint-placeholder-count="4">
 <sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" aria-pressed="true" onClick="{{ s.pick }}" style="appearance:none;border:1px solid var(--pd-ink);cursor:pointer;background:var(--pd-ink);color:var(--pd-ink-inverse);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">{{ s.label }}</button>
+<button type="button" aria-pressed="true" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;background:var(--pd-ink);color:var(--pd-ink-inverse);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)">{{ s.label }}</button>
 </sc-if>
 <sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" aria-pressed="false" onClick="{{ s.pick }}" style="appearance:none;border:1px solid var(--pd-border);cursor:pointer;background:var(--pd-ink-inverse);color:var(--pd-ink-secondary);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);color:var(--pd-ink)" style-active="transform:scale(.97)">{{ s.label }}</button>
+<button type="button" aria-pressed="false" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:var(--pd-ink-muted);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">{{ s.label }}</button>
 </sc-if>
 </sc-for>
 </div>
-</div>
-
-<div role="status" style="margin-top:12px;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:14px 18px;box-sizing:border-box;min-height:76px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px">
-<span style="display:inline-flex;align-items:center;gap:8px;min-width:0">
-<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:var(--pd-accent-press);-webkit-mask:{{ routeMask }};mask:{{ routeMask }}"></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ routeSummary }}</span>
-</span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary);min-width:0;max-width:72ch">{{ routeNote }}</span>
-</div>
-
-<div style="margin-top:16px;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05);overflow:hidden">
-<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 20px;background:var(--pd-surface-quiet);border-bottom:1px solid var(--pd-divider)">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Шаг 2 · Этапы до защиты</span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Полоса показывает долю срока; выберите этап — справа состав работ</span>
-</div>
-
-<div style="padding:16px 20px 14px;border-bottom:1px solid var(--pd-divider)">
-<div aria-hidden="true" style="display:flex;gap:4px">
-<sc-for list="{{ stages }}" as="s" hint-placeholder-count="5">
-<sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}"><span style="flex:{{ s.flex }} 1 0;min-width:0;height:34px;border-radius:10px;background:var(--pd-ink);display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="sp-seg-t" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.02em;color:var(--pd-ink-inverse);white-space:nowrap">{{ s.num }}</span></span></sc-if>
-<sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}"><span style="flex:{{ s.flex }} 1 0;min-width:0;height:34px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="sp-seg-t" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.02em;color:var(--pd-accent);white-space:nowrap">{{ s.num }}</span></span></sc-if>
-</sc-for>
-</div>
-<div aria-hidden="true" style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:8px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-ink-muted)">Разбор работы</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-ink-secondary)">{{ routeTerm }}</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-ink-muted)">Защита</span>
-</div>
-</div>
-
-<div class="sp-route">
-<ol class="sp-rl" aria-label="Этапы маршрута" style="list-style:none;margin:0;padding:10px;display:flex;flex-direction:column;gap:2px;overflow:auto">
+<div class="pd-in-body sp-rt" style="gap:14px 32px;align-items:start;margin-top:24px">
+<div class="sp-rt-a" style="display:flex;flex-direction:column;gap:14px;min-width:0">
+<h3 role="status" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ routeSummary }}</h3>
+<p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">{{ routeNote }}</p>
+<ol aria-label="Этапы маршрута" style="list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:2px">
 <sc-for list="{{ stages }}" as="s" hint-placeholder-count="5">
 <sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}"><li><button type="button" aria-pressed="true" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:44px;border-radius:10px;background:var(--pd-accent-tint)"><span aria-hidden="true" style="flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:var(--pd-ink);color:var(--pd-ink-inverse);display:inline-flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;font-weight:600">{{ s.num }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-accent)">{{ s.term }}</span></span></button></li></sc-if>
 <sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}"><li><button type="button" aria-pressed="false" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:44px;border-radius:10px;background:transparent;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)"><span aria-hidden="true" style="flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:var(--pd-surface-quiet);color:var(--pd-ink-muted);display:inline-flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;font-weight:600">{{ s.num }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary)">{{ s.title }}</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-ink-muted)">{{ s.term }}</span></span></button></li></sc-if>
 </sc-for>
 </ol>
-<div aria-live="polite" style="padding:18px 22px 20px;overflow:auto">
+</div>
+<div aria-live="polite" class="sp-stage sp-rt-b" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:22px 24px 24px;min-width:0">
 <sc-for list="{{ stages }}" as="s" hint-placeholder-count="1">
 <sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}">
 <div style="display:flex;flex-direction:column;gap:12px;height:100%">
@@ -573,19 +543,15 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink)">{{ s.result }}</span>
 </span>
 </div>
+
 </div>
 </sc-if>
 </sc-for>
 </div>
+<div class="sp-rt-c" style="display:flex;flex-direction:column;gap:14px;min-width:0">
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-muted);max-width:52ch">Каждый этап заканчивается приёмкой: следующий оплачивается только после неё. Сроки ориентировочные, точные даты фиксируем в&nbsp;договоре после разбора работы.</p>
+<a href="#request" style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:13px;font-weight:600;padding:14px 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Обсудить мой срок<span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
-</div>
-
-<div style="margin-top:16px;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
-<span style="display:flex;flex-direction:column;gap:6px;min-width:0;max-width:68ch">
-<span style="font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Каждый этап заканчивается приёмкой: следующий оплачивается только после неё.</span>
-<span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted)">Сроки этапов ориентировочные: точные даты фиксируем в договоре после разбора работы.</span>
-</span>
-<a href="#request" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:13px;font-weight:600;padding:14px 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Обсудить мой срок<span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
 </section>
 <!-- «Как это выглядит внутри» — кабинет клиента на вымышленных данных (план владельца по образцу, С-1, решение Р-591). -->
