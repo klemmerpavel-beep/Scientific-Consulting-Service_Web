@@ -75,8 +75,8 @@ def main():
     if num != nxt:
         print(f'Внимание: номер Р-{num}, а следующий по порядку — Р-{nxt}', file=sys.stderr)
 
-    write_atomic(journal, text.rstrip('\n') + '\n\n' + entry, text)
-
+    # Оба файла проверяются до записи: иначе отказ на сводке оставил бы
+    # журнал дописанным, а сводку — без строки.
     rows = read(summary)
     row = f'| Р-{num} | {args.summary.strip()} |'
     if f'| Р-{num} |' in rows:
@@ -86,6 +86,8 @@ def main():
         sys.exit('Отказ: в сводке не найдено строки с меньшим номером')
     _, pos = max(prev)
     line_end = rows.index('\n', pos)
+
+    write_atomic(journal, text.rstrip('\n') + '\n\n' + entry, text)
     write_atomic(summary, rows[:line_end + 1] + row + '\n' + rows[line_end + 1:], rows)
     print(f'Записано: Р-{num} в журнал и сводку')
 
