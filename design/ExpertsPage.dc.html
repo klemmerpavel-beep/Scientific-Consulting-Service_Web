@@ -48,7 +48,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .ex-tabbody{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
 .ex-tablist{display:inline-flex;gap:4px;padding:4px;background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}
 .ex-tablist::-webkit-scrollbar{display:none}
-@media (max-width:768px){.ex-tablist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-radius:14px!important}.ex-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
+/* Пять вкладок (Р-618) не помещаются в строку уже 900 px: сеткой по три, на телефоне — по две. */
+@media (max-width:900px){.ex-tablist{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;border-radius:14px!important}.ex-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
+@media (max-width:560px){.ex-tablist{grid-template-columns:repeat(2,minmax(0,1fr))}.ex-tablist [role=tab]:last-child:nth-child(odd){grid-column:1 / -1}}
 .ex-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .ex-apply{display:grid;grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);align-items:start}
@@ -328,7 +330,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <figure style="margin:0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:10px">
 <img src="{{ tabImg }}" alt="{{ tabAlt }}" width="1440" height="900" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider)">
-<figcaption style="padding:10px 6px 2px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">На снимке вымышленные данные.</figcaption>
+<figcaption style="padding:10px 6px 2px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ tabCaption }}</figcaption>
 </figure>
 </div>
 </section>
@@ -685,9 +687,11 @@ class Component extends DCLogic {
       ['Опыт и резюме', 'Виды работ, направления, опыт или резюме'],
     ];
     const step = this.state.step;
-    // Вкладки — три рабочих экрана куратора (Р-589): этап со сдачей
-    // менеджеру, материалы с версиями, чек-лист. Карточка работы стоит
-    // снимком на первом экране и здесь не повторяется.
+    // Вкладки — пять рабочих экранов куратора (Р-589, Р-618): этап со
+    // сдачей менеджеру, материалы с версиями, чек-лист, перечень
+    // назначенных работ и вознаграждение. Карточка работы стоит снимком на
+    // первом экране и здесь не повторяется. Суммы на снимке вознаграждения
+    // размыты: цены и суммы на сайте не публикуются (Р-03).
     const TABS = [
       { label: 'Этап', title: 'Этап и сдача менеджеру', text: 'На странице этапа — задание и срок, последние материалы клиента и ваши версии. Когда версия приложена, этап сдаётся менеджеру с запиской.',
         points: ['«Что сделать сейчас» — задание и срок этапа первым блоком', 'Из записки менеджер собирает «Итог этапа» для клиента', 'Рядом с кнопкой сдачи — «Чек-лист сдачи»'],
@@ -698,6 +702,13 @@ class Component extends DCLogic {
       { label: 'Чек-лист работы', title: 'Чек-лист работы', text: 'Шаги «Старт», «По ходу» и «Сдача» для каждого вида работ: ГОСТ, Положение о присуждении учёных степеней, требования вуза, совета и журнала.',
         points: ['Отметки сохраняются у работы', 'Их видят менеджер, куратор и руководитель; клиенту чек-лист не показывается', 'Свой чек-лист у каждого вида работ'],
         img: './assets/art/ex-tab-checklist.webp', alt: 'Чек-лист работы в кабинете куратора: шаги «Старт» и «По ходу». Данные вымышленные.' },
+      { label: 'Назначенные работы', title: 'Назначенные работы', text: 'Первый экран кабинета — все ваши работы. Сверху — главное дело и кнопка на его экран, ниже — работы с текущим этапом, его состоянием и ходом.',
+        points: ['Где ход за вами — в верхней строке, с кнопкой на экран этапа', 'Отборы «Действующие», «Ждут клиента», «Завершённые» с числом работ', 'Поиск по названию работы'],
+        img: './assets/art/ex-tab-works.webp', alt: 'Назначенные работы в кабинете куратора: главное дело сверху и карточки работ с ходом этапов. Данные вымышленные.' },
+      { label: 'Вознаграждение', title: 'Вознаграждение', text: 'Начисления ставит практика по этапу или по работе целиком. На экране — сколько начислено, выплачено и осталось к выплате, по каждой работе отдельно.',
+        points: ['Начисление и выплата — с датой и работой', 'Письмо приходит, когда практика ставит начисление', 'Размер вознаграждения обсуждается до договора'],
+        img: './assets/art/ex-tab-payout.webp', alt: 'Вознаграждение в кабинете куратора: начислено, выплачено и к выплате по работам. Суммы на снимке размыты.',
+        caption: 'На снимке вымышленные данные, суммы размыты: размер вознаграждения обсуждается до договора.' },
     ];
     const tab = TABS[this.state.tab];
     // Ответы сверены с кабинетом (Р-589): кто ставит начисления, как
@@ -754,7 +765,7 @@ class Component extends DCLogic {
         this.setState({ tab: i }, () => { const el = document.getElementById('ex-tab-' + i); if (el) el.focus(); });
       },
       tabLabelledBy: 'ex-tab-' + this.state.tab,
-      tabTitle: tab.title, tabText: tab.text, tabImg: tab.img, tabAlt: tab.alt,
+      tabTitle: tab.title, tabText: tab.text, tabImg: tab.img, tabAlt: tab.alt, tabCaption: tab.caption ?? 'На снимке вымышленные данные.',
       tabPoints: tab.points.map(text => ({ text })),
       faq: faqData.map(([q, a], i) => ({
         id: 'ex-faq-' + i,
