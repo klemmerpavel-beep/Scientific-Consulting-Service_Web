@@ -130,3 +130,16 @@ describe('файл или выгрузка без сеанса — вход и �
     }
   });
 });
+
+describe('перенаправления обработчиков — относительным адресом (Р-600)', () => {
+  it('ни один обработчик не строит адрес перенаправления из request.url', () => {
+    // За nginx Next собирает request.url из собственного адреса сервера:
+    // https://localhost:3000/…, а не https://prodisser.ru/….
+    const root = path.join(import.meta.dirname, '../src');
+    const files = (readdirSync(root, { recursive: true }) as string[]).filter((file) => /\.tsx?$/u.test(file));
+    const guilty = files.filter((file) =>
+      /redirect\(\s*new URL\([^)]*request\.url/u.test(readFileSync(path.join(root, file), 'utf8')),
+    );
+    assert.deepEqual(guilty, []);
+  });
+});
