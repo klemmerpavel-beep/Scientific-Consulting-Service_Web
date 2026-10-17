@@ -67,6 +67,7 @@ pkill -f "[n]ext dev -p 3200"         # скобки: иначе шаблон с
 cd app
 npm run typecheck
 env -u DATABASE_URL npm test          # как в CI; с адресом без базы падают *.db.test.ts
+pkill -f "[n]ext dev -p 3200"         # сервер разработки пишет в .next и роняет сборки
 DATABASE_URL=postgresql://ci:ci@127.0.0.1:5432/ci NEXT_PUBLIC_SITE_URL=https://prodisser.ru npm run build
 DATABASE_URL=postgresql://ci:ci@127.0.0.1:5432/ci npm run build:preview
 cd .. && node <скилл>/scripts/landing-audit.mjs --base http://localhost:3200 --paths /main,/students --out "$S/audit-after" --axe …
