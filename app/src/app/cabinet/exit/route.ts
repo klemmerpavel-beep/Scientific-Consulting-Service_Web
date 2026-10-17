@@ -15,10 +15,16 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // Чужая страница не выводит человека из кабинета формой, отправленной
   // от его имени: такой запрос ничего не меняет (решение Р-429).
-  if (crossSiteRequest(request.headers)) {
-    return NextResponse.redirect(new URL('/cabinet', request.url), { status: 303 });
-  }
+  if (crossSiteRequest(request.headers)) return toEntrance();
   await revokeSession(request.cookies.get(SESSION_COOKIE)?.value);
   await clearSessionCookie();
-  return NextResponse.redirect(new URL('/cabinet', request.url), { status: 303 });
+  return toEntrance();
+}
+
+/**
+ * На вход относительным адресом: за nginx `request.url` несёт
+ * `localhost:3000`, а не имя сайта (решение Р-600).
+ */
+function toEntrance(): NextResponse {
+  return new NextResponse(null, { status: 303, headers: { Location: '/cabinet' } });
 }

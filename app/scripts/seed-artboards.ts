@@ -741,6 +741,26 @@ async function main() {
       ],
     });
   }
+  // Расходы по статьям (требование РК-21, решение Р-353): продвижение
+  // вида витринной работы за три месяца и общий расход практики. По ним
+  // считается доля расходов вида в «Экономике работы» (К-4, Р-594).
+  // Повторное наполнение заменяет их, а не удваивает.
+  {
+    const showcaseType = await prisma.project.findUniqueOrThrow({ where: { id: showcase }, select: { serviceTypeId: true } });
+    // Март — месяц оплаты витринной работы: его расход ложится на неё;
+    // август — на работу, оплаченную в августе; сентябрь без поступлений —
+    // «ещё не разложен».
+    const month = (index: number) => new Date(Date.UTC(2026, index - 1, 1));
+    await prisma.expense.deleteMany({});
+    await prisma.expense.createMany({
+      data: [
+        { month: month(3), categoryId: 'promotion', amount: 2_400_000n, serviceTypeId: showcaseType.serviceTypeId, note: 'Объявления в поиске', createdById: head.id },
+        { month: month(8), categoryId: 'promotion', amount: 2_100_000n, serviceTypeId: showcaseType.serviceTypeId, note: 'Объявления в поиске', createdById: head.id },
+        { month: month(9), categoryId: 'promotion', amount: 1_800_000n, serviceTypeId: showcaseType.serviceTypeId, note: 'Объявления в поиске', createdById: head.id },
+        { month: month(9), categoryId: 'services', amount: 450_000n, serviceTypeId: null, note: 'Хостинг и почта', createdById: head.id },
+      ],
+    });
+  }
   // Дело руководителя «Этап принят: акт и счёт» по последнему принятому
   // этапу витринной работы (требование РК-12, решение Р-338).
   await prisma.headCheck.deleteMany({});

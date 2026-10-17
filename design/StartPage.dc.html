@@ -244,6 +244,42 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
+<!-- «Как это выглядит внутри» — кабинет клиента на вымышленных данных (план владельца по образцу, С-1, решение Р-591). -->
+<section id="inside" class="pd-pad" aria-labelledby="pd-in-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Личный кабинет</span>
+<h2 id="pd-in-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:balance">Как это выглядит внутри</h2>
+</div>
+<span class="pd-in-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border);max-width:44ch">Экраны кабинета клиента на вымышленных данных</span>
+</div>
+<div role="tablist" aria-label="Экраны кабинета клиента" class="pd-in-tablist" onKeyDown="{{ inTabKey }}">
+<sc-for list="{{ inTabs }}" as="t" hint-placeholder-count="4">
+<sc-if value="{{ t.active }}" hint-placeholder-val="{{ true }}">
+<button type="button" role="tab" id="{{ t.id }}" aria-selected="true" aria-controls="pd-in-panel" tabindex="{{ 0 }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:var(--pd-ink);color:var(--pd-ink-inverse);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">{{ t.label }}</button>
+</sc-if>
+<sc-if value="{{ t.inactive }}" hint-placeholder-val="{{ false }}">
+<button type="button" role="tab" id="{{ t.id }}" aria-selected="false" aria-controls="pd-in-panel" tabindex="{{ -1 }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:var(--pd-ink-muted);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-ink-inverse);color:var(--pd-ink)" style-active="transform:scale(.97)">{{ t.label }}</button>
+</sc-if>
+</sc-for>
+</div>
+<div id="pd-in-panel" role="tabpanel" aria-labelledby="{{ inTabLabelledBy }}" class="pd-in-body" style="gap:32px;align-items:center;margin-top:24px">
+<div style="display:flex;flex-direction:column;gap:14px">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ inTitle }}</h3>
+<p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">{{ inText }}</p>
+<ul style="margin:4px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ inPoints }}" as="p" hint-placeholder-count="3">
+<li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.5;color:var(--pd-ink)"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center;margin-top:-1px"><span style="width:12px;height:12px;display:block;background:var(--pd-accent);-webkit-mask:{{ inCheckMask }};mask:{{ inCheckMask }}"></span></span><span>{{ p.text }}</span></li>
+</sc-for>
+</ul>
+</div>
+<figure style="margin:0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:10px">
+<img src="{{ inImg }}" alt="{{ inAlt }}" width="1440" height="900" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider)">
+<figcaption style="padding:10px 6px 2px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ inCaption }}</figcaption>
+</figure>
+</div>
+</section>
+
 <section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:70px auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Что входит в сопровождение</h2>
@@ -295,41 +331,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <button type="button" aria-label="Предыдущие карточки" onClick="{{ prevScope }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
 <button type="button" aria-label="Следующие карточки" onClick="{{ nextScope }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
 </div>
-</div>
-</section>
-<!-- «Как это выглядит внутри» — кабинет клиента на вымышленных данных (план владельца по образцу, С-1, решение Р-591). -->
-<section id="inside" class="pd-pad" aria-labelledby="pd-in-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Личный кабинет</span>
-<h2 id="pd-in-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:balance">Как это выглядит внутри</h2>
-</div>
-<span class="pd-in-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border);max-width:44ch">Экраны кабинета клиента на вымышленных данных</span>
-</div>
-<div role="tablist" aria-label="Экраны кабинета клиента" class="pd-in-tablist" onKeyDown="{{ inTabKey }}">
-<sc-for list="{{ inTabs }}" as="t" hint-placeholder-count="4">
-<sc-if value="{{ t.active }}" hint-placeholder-val="{{ true }}">
-<button type="button" role="tab" id="{{ t.id }}" aria-selected="true" aria-controls="pd-in-panel" tabindex="{{ 0 }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:var(--pd-ink);color:var(--pd-ink-inverse);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">{{ t.label }}</button>
-</sc-if>
-<sc-if value="{{ t.inactive }}" hint-placeholder-val="{{ false }}">
-<button type="button" role="tab" id="{{ t.id }}" aria-selected="false" aria-controls="pd-in-panel" tabindex="{{ -1 }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:var(--pd-ink-muted);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-ink-inverse);color:var(--pd-ink)" style-active="transform:scale(.97)">{{ t.label }}</button>
-</sc-if>
-</sc-for>
-</div>
-<div id="pd-in-panel" role="tabpanel" aria-labelledby="{{ inTabLabelledBy }}" class="pd-in-body" style="gap:32px;align-items:center;margin-top:24px">
-<div style="display:flex;flex-direction:column;gap:14px">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ inTitle }}</h3>
-<p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">{{ inText }}</p>
-<ul style="margin:4px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px">
-<sc-for list="{{ inPoints }}" as="p" hint-placeholder-count="3">
-<li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.5;color:var(--pd-ink)"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center;margin-top:-1px"><span style="width:12px;height:12px;display:block;background:var(--pd-accent);-webkit-mask:{{ inCheckMask }};mask:{{ inCheckMask }}"></span></span><span>{{ p.text }}</span></li>
-</sc-for>
-</ul>
-</div>
-<figure style="margin:0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:10px">
-<img src="{{ inImg }}" alt="{{ inAlt }}" width="1440" height="900" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider)">
-<figcaption style="padding:10px 6px 2px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ inCaption }}</figcaption>
-</figure>
 </div>
 </section>
 
@@ -472,8 +473,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Политика конфиденциальности</a>
 <a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Обработка персональных данных</a>
 </span>
-<!-- Кнопка для экспертов (замечание владельца 13.10.2026, решение Р-582): в подвале, рядом с документами, чтобы не спорить с заявкой. -->
-<a href="./experts.html" style="display:inline-flex;align-items:center;min-height:44px;background:transparent;border:1px solid var(--pd-edge-neutral);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:0 22px;border-radius:999px;text-decoration:none;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-ink)" style-active="transform:scale(.97)">Стать экспертом</a>
 </div>
 <div style="padding-top:8px">
 <span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted)">© 2016—2026 ProDisser — научный консалтинг. Работаем по всей России</span>

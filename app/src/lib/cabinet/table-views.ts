@@ -12,6 +12,7 @@ import { mskDay, mskMoment } from '../disk/table.ts';
 import { type XlsxCell, xlsx } from '../disk/xlsx.ts';
 import { leadFormLabel, leadSourceLabel, leadStatusLabel } from './lead-labels.ts';
 import { PROJECT_STATUS_LABEL, type ProjectStatusKey } from './project-status.ts';
+import type { StageStateKey } from './stage-state.ts';
 
 /** Набор столбцов таблицы: основные или подробно. */
 export type ColumnSet = 'short' | 'full';
@@ -122,6 +123,11 @@ export interface FinanceRowView {
   readonly lost: bigint;
   readonly accrued: bigint;
   readonly margin: bigint;
+  /** Доля расходов вида на работу (К-4, Р-594). */
+  readonly typeExpenses: bigint;
+  readonly net: bigint;
+  /** Доля маржи после расходов вида в выручке работы, %; `null` — делить не на что. */
+  readonly netShare: number | null;
 }
 
 const money = (kopecks: bigint) => ({ kopecks });
@@ -129,7 +135,8 @@ const money = (kopecks: bigint) => ({ kopecks });
 /**
  * Столбцы «Денег по работам». Основной набор — семь столбцов экрана;
  * подробный добавляет код и состояние работы, менеджера и куратора
- * отдельными столбцами и списанное.
+ * отдельными столбцами, списанное и экономику работы: расходы вида, маржу
+ * после них и её долю (К-4, Р-594).
  */
 export const FINANCE_COLUMNS: readonly Column<FinanceRowView>[] = [
   { key: 'code', head: 'Код', short: false, value: (row) => row.code },
@@ -149,6 +156,9 @@ export const FINANCE_COLUMNS: readonly Column<FinanceRowView>[] = [
   { key: 'lost', head: 'Списано', short: false, numeric: true, value: (row) => money(row.lost) },
   { key: 'accrued', head: 'Начислено', short: true, numeric: true, value: (row) => money(row.accrued) },
   { key: 'margin', head: 'Маржа', short: true, numeric: true, value: (row) => money(row.margin) },
+  { key: 'typeExpenses', head: 'Расходы вида', short: false, numeric: true, value: (row) => money(row.typeExpenses) },
+  { key: 'net', head: 'Маржа после расходов вида', short: false, numeric: true, value: (row) => money(row.net) },
+  { key: 'netShare', head: 'Доля маржи после расходов, %', short: false, numeric: true, value: (row) => row.netShare },
 ];
 
 // ── Работы ──────────────────────────────────────────────────────────────
@@ -157,14 +167,15 @@ export const FINANCE_COLUMNS: readonly Column<FinanceRowView>[] = [
 export interface ProjectRowView {
   readonly code: string;
   readonly title: string;
-  readonly status: string;
+  /** Перечни — те же, что в схеме: опечатка в состоянии не проходит проверку типов. */
+  readonly status: ProjectStatusKey;
   readonly dueOn: Date | null;
   readonly serviceType: { readonly name: string } | null;
   readonly client: { readonly fullName: string };
   readonly manager: { readonly fullName: string } | null;
   readonly expert: { readonly fullName: string } | null;
   readonly expertNameRaw?: string | null;
-  readonly stages: readonly { readonly state: string }[];
+  readonly stages: readonly { readonly state: StageStateKey }[];
 }
 
 /**
@@ -181,7 +192,7 @@ export const PROJECT_COLUMNS: readonly Column<ProjectRowView>[] = [
     key: 'status',
     head: 'Состояние',
     short: true,
-    value: (row) => PROJECT_STATUS_LABEL[row.status as ProjectStatusKey] ?? row.status,
+    value: (row) => PROJECT_STATUS_LABEL[row.status],
   },
   { key: 'dueOn', head: 'Срок работы', short: true, value: (row) => mskDay(row.dueOn) },
   {
@@ -191,13 +202,16 @@ export const PROJECT_COLUMNS: readonly Column<ProjectRowView>[] = [
     value: (row) =>
       row.stages.length === 0
         ? 'план не заведён'
-        : `${row.stages.filter((stage) => stage.state === 'COMPLETED').length} из ${row.stages.length}`,
+        : `${row.stages.filter((stage) => stage.state === 'DONE').length} из ${row.stages.length}`,
   },
   {
     key: 'waiting',
     head: 'Ждёт клиента',
     short: true,
-    value: (row) => yesNo(row.stages.some((stage) => stage.state === 'AWAITING_CLIENT' || stage.state === 'IN_APPROVAL')),
+    // То же условие, что у вкладки «Ждут клиента»: только действующая
+    // работа — у закрытой застрявший этап не ожидание человека (Р-206).
+    value: (row) =>
+      yesNo(row.status === 'ACTIVE' && row.stages.some((stage) => stage.state === 'AWAITING_CLIENT' || stage.state === 'IN_APPROVAL')),
   },
   { key: 'manager', head: 'Менеджер', short: true, value: (row) => row.manager?.fullName ?? '' },
   {

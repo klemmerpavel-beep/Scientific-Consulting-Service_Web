@@ -5,7 +5,7 @@ import { AccessDenied, ensure } from '../../../../../lib/cabinet/access';
 import { record } from '../../../../../lib/cabinet/audit';
 import { leadList } from '../../../../../lib/cabinet/queries';
 import { XLSX_TYPE, columnSet, leadColumns, workbook, type LeadRowView } from '../../../../../lib/cabinet/table-views';
-import { currentActor, requestIp } from '../../../../../lib/cabinet/session';
+import { currentActor, requestIp, signInFirst } from '../../../../../lib/cabinet/session';
 import { moscowToday } from '../../../../../lib/cabinet/clock';
 
 export const runtime = 'nodejs';
@@ -27,7 +27,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const actor = await currentActor();
-  if (actor === null) return new NextResponse('Требуется вход', { status: 401 });
+  if (actor === null) return signInFirst(request, '/cabinet/manage/leads');
 
   try {
     ensure(actor, 'REQUEST_MODERATE');

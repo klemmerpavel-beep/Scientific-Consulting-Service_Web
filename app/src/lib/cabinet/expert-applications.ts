@@ -8,6 +8,7 @@ import {
   EXPERT_CONSENT_VERSION,
   EXPERT_STATUS_LABEL,
   ExpertInputError,
+  experienceLabel,
   type ExpertApplicationInput,
   type ExpertFile,
   type ExpertStatus,
@@ -263,7 +264,7 @@ export async function expertsTable(): Promise<Table> {
     rows.map((row) => [
       mskMoment(row.createdAt), row.fullName, row.email, row.phone ?? '', row.degree, row.academicTitle ?? '',
       row.speciality ?? '', row.workplace ?? '', row.seniority ?? '', row.services.join('; '), row.fields,
-      row.roles.join('; '), row.experience, row.elibrarySpin ?? '', row.orcid ?? '', row.links ?? '',
+      row.roles.join('; '), experienceLabel(row.experience), row.elibrarySpin ?? '', row.orcid ?? '', row.links ?? '',
       row.weeklyHours ?? '', row._count.files, EXPERT_STATUS_LABEL[row.status], row.note ?? '',
       row.consentVersion, row.id,
     ]),

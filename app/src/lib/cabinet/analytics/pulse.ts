@@ -198,5 +198,8 @@ export function pulseChange(now: bigint, before: bigint, against: string, format
   const percent = Math.round((Number(change) / Number(before)) * 100);
   const sign = change > 0n ? '+' : '−';
   const abs = change > 0n ? change : -change;
-  return `${sign}${format(abs)} (${sign}${Math.abs(percent)} %) ${against}`;
+  // Изменение меньше половины процента округлялось в «+0 %» рядом с
+  // ненулевой суммой: «+1 000 ₽ (+0 %)» читалось противоречием.
+  const share = percent === 0 ? 'менее 1 %' : `${sign}${Math.abs(percent)} %`;
+  return `${sign}${format(abs)} (${share}) ${against}`;
 }

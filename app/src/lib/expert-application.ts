@@ -139,6 +139,16 @@ function looksLikePhone(value: string): boolean {
   return /^[\d\s()+\-.]{10,24}$/u.test(value) && digits.length >= 10 && digits.length <= 15;
 }
 
+/** Опыт без резюме — не короче двух-трёх фраз. */
+export const EXPERIENCE_MIN = 20;
+export const EXPERIENCE_MISSING = 'Расскажите об опыте в двух-трёх фразах или приложите резюме';
+/** Пустой опыт — на экране разбора и в выгрузке одной фразой (Р-257, Р-597). */
+export const EXPERIENCE_IN_RESUME = 'Не описан — в приложенном резюме';
+
+export function experienceLabel(value: string): string {
+  return value === '' ? EXPERIENCE_IN_RESUME : value;
+}
+
 export const expertApplicationSchema = z
   .object({
     fullName: text(160).min(3, 'Напишите фамилию, имя и отчество'),
@@ -147,7 +157,10 @@ export const expertApplicationSchema = z
     degree: z.enum(DEGREES, { message: 'Выберите учёную степень' }),
     speciality: text(200).optional(),
     fields: text(2000).min(10, 'Расскажите, в каких областях и с какими темами вы работаете'),
-    experience: text(4000).min(20, 'Расскажите об опыте: руководство, рецензирование, преподавание, публикации'),
+    // Опыт — текстом или резюме файлом (замечание владельца 15.10.2026,
+    // Р-597): с приложенным резюме поле можно оставить пустым.
+    experience: text(4000),
+    resume: z.boolean(),
     links: text(1000).optional(),
     academicTitle: z.enum(ACADEMIC_TITLES, { message: 'Выберите учёное звание из перечня' }).optional(),
     workplace: text(300).optional(),
@@ -162,6 +175,9 @@ export const expertApplicationSchema = z
     consent: z.literal(true, { message: 'Без согласия на обработку данных анкету принять нельзя' }),
   })
   .superRefine((value, ctx) => {
+    if (!value.resume && value.experience.length < EXPERIENCE_MIN) {
+      ctx.addIssue({ code: 'custom', path: ['experience'], message: EXPERIENCE_MISSING });
+    }
     if (!looksLikeEmail(value.email)) {
       ctx.addIssue({ code: 'custom', path: ['email'], message: 'Проверьте адрес: он должен выглядеть как имя@домен' });
     }
@@ -176,7 +192,13 @@ export const expertApplicationSchema = z
     }
   });
 
-export type ExpertApplicationInput = z.infer<typeof expertApplicationSchema>;
+/** Анкета для записи: признак резюме нужен только проверке — файлы идут отдельно. */
+export type ExpertApplicationInput = Omit<z.infer<typeof expertApplicationSchema>, 'resume'>;
+
+/** Приложен ли хотя бы один непустой файл — пустое поле браузер присылает пустым файлом. */
+function hasResume(form: FormData): boolean {
+  return form.getAll('files').some((item) => typeof item !== 'string' && item.size > 0);
+}
 
 /** Отмеченные значения одного поля-набора: строки, без повторов. */
 function picks(form: FormData, name: string): string[] {
@@ -201,6 +223,7 @@ export function parseExpertForm(form: FormData): ExpertApplicationInput {
     speciality: field(form, 'speciality'),
     fields: field(form, 'fields') ?? '',
     experience: field(form, 'experience') ?? '',
+    resume: hasResume(form),
     links: field(form, 'links'),
     academicTitle: field(form, 'academicTitle'),
     workplace: field(form, 'workplace'),
@@ -213,7 +236,7 @@ export function parseExpertForm(form: FormData): ExpertApplicationInput {
     consent: form.get('consent') === 'on' || form.get('consent') === 'true',
   });
   if (!parsed.success) throw new ExpertInputError(parsed.error.issues[0]?.message ?? 'Проверьте поля анкеты');
-  const data = parsed.data;
+  const { resume: _resume, ...data } = parsed.data;
   return {
     ...data,
     elibrarySpin: data.elibrarySpin === undefined ? undefined : (normalizeSpin(data.elibrarySpin) ?? undefined),

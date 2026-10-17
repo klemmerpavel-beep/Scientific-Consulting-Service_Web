@@ -9,7 +9,7 @@ import {
   formatMoment,
   toCsv,
 } from '../../../../../lib/cabinet/journals';
-import { currentActor, requestIp } from '../../../../../lib/cabinet/session';
+import { currentActor, requestIp, signInFirst } from '../../../../../lib/cabinet/session';
 import { moscowToday } from '../../../../../lib/cabinet/clock';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +21,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: Request): Promise<Response> {
   const actor = await currentActor();
-  if (actor === null) return new NextResponse('Требуется вход', { status: 401 });
+  if (actor === null) return signInFirst(request, '/cabinet/manage/audit');
 
   const url = new URL(request.url);
   const files = url.searchParams.get('kind') === 'files';

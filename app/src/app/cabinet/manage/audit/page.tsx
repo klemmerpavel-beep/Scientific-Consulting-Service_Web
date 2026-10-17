@@ -233,7 +233,7 @@ export default async function AuditScreen({
                     <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{event.objectId ?? ''}</div>
                   </td>
                   <td style={{ ...TABLE_CELL, maxWidth: 320, wordBreak: 'break-word' }}>
-                    {detailsLabel(event.payload)}
+                    {detailsLabel(event.payload, event.action)}
                   </td>
                 </tr>
               ))}

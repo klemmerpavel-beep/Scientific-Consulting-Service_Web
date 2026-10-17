@@ -72,6 +72,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .ex-drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
 .ex-consent summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;min-height:44px;color:var(--pd-accent)}
 .ex-consent summary::-webkit-details-marker{display:none}
+.ex-more>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;letter-spacing:0;text-transform:none;color:var(--pd-ink);border-radius:10px;transition:background 180ms cubic-bezier(.2,0,.2,1)}
+.ex-more>summary::-webkit-details-marker{display:none}
+.ex-more>summary::after{content:"+";flex:0 0 auto;font-size:20px;line-height:1;font-weight:400;color:var(--pd-ink-muted)}
+.ex-more[open]>summary::after{content:"−"}
+.ex-more>summary:hover{background:var(--pd-accent-tint)}
+@media (max-width:1199px){.ex-node{display:none!important}}
 .ex-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 @media (max-width:1024px){.ex-who{grid-template-columns:repeat(2,minmax(0,1fr))}.ex-dark,.ex-tabbody{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:1000px){.pd-nav{position:absolute;right:0;top:58px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px;z-index:6}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
@@ -86,7 +92,59 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </helmet>
 <div style="position:relative;min-height:100vh;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
 <div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none">
-<div style="position:absolute;left:0;right:0;top:0;height:1180px;background-image:radial-gradient(var(--pd-art-dot) 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
+<div style="position:absolute;left:0;right:0;top:0;height:1326px;background-image:radial-gradient(var(--pd-art-dot) 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
+<svg viewBox="0 0 640 580" width="1000" height="906" fill="none" style="position:absolute;left:calc(50% + 94px);top:-25px">
+<g stroke="#D9E1EC" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EDF2F8" stroke-width="1" stroke-dasharray="4 6"></ellipse>
+<circle cx="450" cy="300" r="6" fill="#D8E4F3"></circle>
+<circle cx="469" cy="459" r="4" fill="#14417A"></circle>
+</svg>
+<svg viewBox="0 0 640 580" width="800" height="725" fill="none" style="position:absolute;left:calc(50% - 1022px);top:150px">
+<g stroke="#D9E1EC" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EDF2F8" stroke-width="1" stroke-dasharray="4 6"></ellipse>
+<circle cx="210" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="330" cy="496" r="4" fill="#B4C9E5"></circle>
+</svg>
+<span class="ex-node" style="position:absolute;left:calc(50% + 359px);top:268px;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/message-circle.svg') center/contain no-repeat;mask:url('./assets/icons/message-circle.svg') center/contain no-repeat"></span></span>
+<span class="ex-node" style="position:absolute;left:calc(50% + 384px);top:650px;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-degree.svg') center/contain no-repeat;mask:url('./assets/icons/pd-degree.svg') center/contain no-repeat"></span></span>
+<span class="ex-node" style="position:absolute;left:calc(50% - 409px);top:384px;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/file-text.svg') center/contain no-repeat;mask:url('./assets/icons/file-text.svg') center/contain no-repeat"></span></span>
+<span class="ex-node" style="position:absolute;left:calc(50% - 388px);top:628px;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/clipboard-list.svg') center/contain no-repeat;mask:url('./assets/icons/clipboard-list.svg') center/contain no-repeat"></span></span>
+<div style="position:absolute;left:calc(50% - 1000px);top:1866px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.5),rgba(216,228,243,0))"></div>
+<svg viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:1786px">
+<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
+<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
+</svg>
+<div style="position:absolute;left:calc(50% + 360px);top:2786px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
+<svg viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% + 238px);top:2706px">
+<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
+<circle cx="150" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="330" cy="536" r="4" fill="#14417A"></circle>
+</svg>
+<div style="position:absolute;left:calc(50% - 1020px);top:4296px;width:640px;height:640px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
+<svg viewBox="0 0 640 580" width="832" height="754" fill="none" style="position:absolute;left:calc(50% - 1089px);top:4236px">
+<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
+<circle cx="470" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="330" cy="96" r="4" fill="#B4C9E5"></circle>
+</svg>
+<div style="position:absolute;left:0;right:0;top:4966px;height:760px;background-image:radial-gradient(var(--pd-art-dot) 1px,transparent 1.2px);background-size:34px 34px;opacity:.35;-webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 30%,#000 70%,transparent 100%);mask-image:linear-gradient(180deg,transparent 0%,#000 30%,#000 70%,transparent 100%)"></div>
+<div style="position:absolute;left:calc(50% + 340px);top:5446px;width:700px;height:700px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
+<svg viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% + 218px);top:5366px">
+<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
+<circle cx="150" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="330" cy="96" r="4" fill="#14417A"></circle>
+</svg>
+<div style="position:absolute;left:calc(50% + 360px);top:6306px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.5),rgba(216,228,243,0))"></div>
+<svg viewBox="0 0 640 580" width="832" height="754" fill="none" style="position:absolute;left:calc(50% + 271px);top:6236px">
+<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
+<circle cx="150" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="330" cy="504" r="4" fill="#B4C9E5"></circle>
+</svg>
 </div>
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
 <header class="pd-pad" style="position:relative;z-index:5;max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px">
@@ -108,24 +166,24 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </header>
 <main id="main">
-<section aria-labelledby="ex-title" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:clamp(48px,6vw,80px) 30px 0">
+<section aria-labelledby="ex-title" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:clamp(56px,8.4vw,124px) 30px 0">
 <div style="max-width:880px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center">
 <span style="display:inline-flex;align-items:center;gap:12px;padding:6px 16px 6px 8px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05)"><span style="display:inline-flex"><img src="./assets/avatars/ph-curator.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);margin-left:0;background:var(--pd-accent-mark)"><img src="./assets/avatars/ph-expert.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);margin-left:-10px;background:var(--pd-accent-mark)"><img src="./assets/avatars/ph-editor.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);margin-left:-10px;background:var(--pd-accent-mark)"></span><span style="font-size:14px;line-height:1.4;color:var(--pd-ink-secondary)"><b style="font-weight:600;color:var(--pd-ink)">Научный коллектив</b> с 2016 года</span></span>
-<h1 id="ex-title" style="margin:28px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3.4vw,44px);line-height:1.36;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Консультируйте авторов научных работ <br class="ex-br"><span class="ex-hl" style="background:var(--pd-accent-mark);border-radius:6px;padding:0 10px;white-space:nowrap;box-decoration-break:clone;-webkit-box-decoration-break:clone">по своей специальности</span></h1>
-<p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:62ch">Куратор ProDisser отвечает за содержание: методология, разбор глав, подготовка к защите. Договор с клиентом, оплату, сроки этапов и публикацию материалов ведёт менеджер практики.</p>
-<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:32px">
+<h1 id="ex-title" style="margin:36px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3.8vw,54px);line-height:1.36;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Консультируйте авторов научных работ <br class="ex-br"><span class="ex-hl" style="background:var(--pd-accent-mark);border-radius:6px;padding:0 10px;white-space:nowrap;box-decoration-break:clone;-webkit-box-decoration-break:clone">по своей специальности</span></h1>
+<p style="margin:32px 0 0;font-size:17px;line-height:1.6;color:var(--pd-ink-secondary);max-width:62ch">Куратор ProDisser отвечает за содержание: методология, разбор глав, подготовка к защите. Договор с клиентом, оплату, сроки этапов и публикацию материалов ведёт менеджер практики.</p>
+<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:48px">
 <a href="#anketa" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;box-sizing:border-box;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:0 34px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Заполнить анкету</a>
 <a href="#how" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-edge-neutral);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:0 26px;border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-ink)" style-active="transform:scale(.97)">Как устроена работа<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></a>
 </div>
 </div>
-<figure style="margin:clamp(40px,5vw,64px) auto 0;max-width:1100px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:10px">
+<figure style="margin:clamp(48px,6.4vw,92px) auto 0;max-width:1100px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:10px">
 <img src="./assets/art/ex-cabinet.webp" alt="Карточка работы в кабинете куратора: ход этапа, план работ и блок «Ваша работа». Данные вымышленные." width="1600" height="1000" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider)">
 <figcaption style="padding:10px 6px 2px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">Карточка работы в кабинете куратора. На снимке вымышленные данные.</figcaption>
 </figure>
 <div class="ex-metrics" style="gap:12px;max-width:1100px;margin:16px auto 0">
-<div style="display:flex;flex-direction:column;gap:6px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px;box-shadow:0 1px 2px rgba(20,22,28,.05)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Формат</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:20px;line-height:1.3;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink)">Дистанционно</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Работа в кабинете и по почте; загрузку в часах в неделю обсуждаем до договора.</span></div>
-<div style="display:flex;flex-direction:column;gap:6px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px;box-shadow:0 1px 2px rgba(20,22,28,.05)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Договор</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:20px;line-height:1.3;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink)">Гражданско-правовой</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Вместе с ним — договор поручения обработки персональных данных клиентов.</span></div>
-<div style="display:flex;flex-direction:column;gap:6px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px;box-shadow:0 1px 2px rgba(20,22,28,.05)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Вознаграждение</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:20px;line-height:1.3;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink)">За этап или работу</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Размер обсуждаем до договора; начисления и выплаты видны в кабинете.</span></div>
+<a class="ex-term" href="#ex-faq-4" onClick="{{ termFormat }}" style="display:flex;flex-direction:column;gap:6px;box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:18px 20px;text-decoration:none;box-shadow:0 6px 14px rgba(13,43,82,.16);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent);border-color:var(--pd-accent);transform:translateY(-2px);box-shadow:0 12px 24px rgba(13,43,82,.24)" style-active="background:var(--pd-accent-active);border-color:var(--pd-accent-active);transform:none"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Формат</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:20px;line-height:1.3;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink-inverse)">Дистанционно</span><span style="font-size:14px;line-height:1.5;color:var(--pd-accent-mark)">Работа в кабинете и по почте; загрузку в часах в неделю обсуждаем до договора.</span><span style="display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Сколько времени занимает<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent-edge);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span></a>
+<a class="ex-term" href="#ex-faq-6" onClick="{{ termContract }}" style="display:flex;flex-direction:column;gap:6px;box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:18px 20px;text-decoration:none;box-shadow:0 6px 14px rgba(13,43,82,.16);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent);border-color:var(--pd-accent);transform:translateY(-2px);box-shadow:0 12px 24px rgba(13,43,82,.24)" style-active="background:var(--pd-accent-active);border-color:var(--pd-accent-active);transform:none"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Договор</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:20px;line-height:1.3;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink-inverse)">Гражданско-правовой</span><span style="font-size:14px;line-height:1.5;color:var(--pd-accent-mark)">Вместе с ним — договор поручения обработки персональных данных клиентов.</span><span style="display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Что с конфиденциальностью<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent-edge);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span></a>
+<a class="ex-term" href="#ex-faq-3" onClick="{{ termPay }}" style="display:flex;flex-direction:column;gap:6px;box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:18px 20px;text-decoration:none;box-shadow:0 6px 14px rgba(13,43,82,.16);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent);border-color:var(--pd-accent);transform:translateY(-2px);box-shadow:0 12px 24px rgba(13,43,82,.24)" style-active="background:var(--pd-accent-active);border-color:var(--pd-accent-active);transform:none"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Вознаграждение</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:20px;line-height:1.3;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink-inverse)">За этап или работу</span><span style="font-size:14px;line-height:1.5;color:var(--pd-accent-mark)">Размер обсуждаем до договора; начисления и выплаты видны в кабинете.</span><span style="display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Как устроено вознаграждение<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent-edge);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span></a>
 </div>
 </section>
 <section id="who" class="pd-pad" aria-labelledby="ex-who-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
@@ -274,7 +332,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <li style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);padding:22px 22px 22px;display:flex;flex-direction:column;gap:12px" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">01</span><span style="width:44px;height:44px;flex:0 0 44px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pencil-line.svg') center/contain no-repeat;mask:url('./assets/icons/pencil-line.svg') center/contain no-repeat"></span></span></div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Анкета</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Квалификация, направления, опыт, профили eLIBRARY и ORCID, резюме. Учётная запись при этом не создаётся.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Три раздела: контакты, квалификация, опыт; резюме — файлом, профили eLIBRARY и ORCID — по желанию. Учётная запись при этом не создаётся.</p>
 </li>
 <li style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1);padding:22px 22px 22px;display:flex;flex-direction:column;gap:12px" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">02</span><span style="width:44px;height:44px;flex:0 0 44px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/message-circle.svg') center/contain no-repeat;mask:url('./assets/icons/message-circle.svg') center/contain no-repeat"></span></span></div>
@@ -312,7 +370,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;flex-direction:column;gap:12px">
 <sc-for list="{{ faq }}" as="f" hint-placeholder-count="8">
 <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
-<div style="background:rgba(255,255,255,.94);border:1px solid var(--pd-accent-edge);border-radius:14px;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<div id="{{ f.id }}" style="background:rgba(255,255,255,.94);border:1px solid var(--pd-accent-edge);border-radius:14px;overflow:hidden;scroll-margin-top:96px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <button type="button" onClick="{{ f.toggle }}" aria-expanded="true" style="appearance:none;border:0;background:var(--pd-accent-mark);cursor:pointer;width:100%;text-align:left;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink);transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-edge)" style-active="transform:scale(.97)">
 <span>{{ f.q }}</span>
 <span aria-hidden="true" style="width:16px;height:2px;flex:0 0 16px;background:var(--pd-ink);border-radius:999px"></span>
@@ -321,7 +379,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </sc-if>
 <sc-if value="{{ f.closed }}" hint-placeholder-val="{{ true }}">
-<button type="button" onClick="{{ f.toggle }}" aria-expanded="false" style="appearance:none;border:1px solid var(--pd-border);background:rgba(255,255,255,.92);cursor:pointer;width:100%;text-align:left;padding:18px 22px;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)" style-active="opacity:.82">
+<button type="button" id="{{ f.id }}" onClick="{{ f.toggle }}" aria-expanded="false" style="scroll-margin-top:96px;appearance:none;border:1px solid var(--pd-border);background:rgba(255,255,255,.92);cursor:pointer;width:100%;text-align:left;padding:18px 22px;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="box-shadow:0 10px 20px rgba(20,22,28,.09);border-color:var(--pd-accent)" style-active="opacity:.82">
 <span>{{ f.q }}</span>
 <span aria-hidden="true" style="position:relative;width:16px;height:16px;flex:0 0 16px"><span style="position:absolute;left:0;top:7px;width:16px;height:2px;background:var(--pd-ink-muted);border-radius:999px"></span><span style="position:absolute;left:7px;top:0;width:2px;height:16px;background:var(--pd-ink-muted);border-radius:999px"></span></span>
 </button>
@@ -333,7 +391,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <section id="anketa" class="pd-pad" aria-labelledby="ex-form-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div class="ex-apply" style="gap:32px">
 <aside class="ex-aside" style="display:flex;flex-direction:column;gap:20px">
-<div style="display:flex;flex-direction:column;gap:10px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Анкета</span><h2 id="ex-form-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);text-wrap:balance">Анкета кандидата</h2><p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary)">Четыре раздела, около десяти минут. Обязательные поля отмечены звёздочкой.</p></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Анкета</span><h2 id="ex-form-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);text-wrap:balance">Анкета кандидата</h2><p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary)">Три раздела, около пяти минут. Обязательные поля отмечены звёздочкой; резюме можно приложить файлом.</p></div>
 <ol aria-label="Разделы анкеты" class="ex-steplist" style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px">
 <sc-for list="{{ stepList }}" as="s" hint-placeholder-count="4">
 <li>
@@ -376,7 +434,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <h3 id="ex-step-title" tabindex="{{ -1 }}" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;color:var(--pd-ink);outline:none">{{ stepTitle }}</h3>
 <span style="font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-accent)">{{ stepCounter }}</span>
 </div>
-<div role="progressbar" aria-label="Заполнение анкеты" aria-valuemin="{{ 1 }}" aria-valuemax="{{ 4 }}" aria-valuenow="{{ stepNow }}" aria-valuetext="{{ stepCounter }}" style="margin:14px 0 24px;height:6px;border-radius:999px;background:var(--pd-divider);overflow:hidden">
+<div role="progressbar" aria-label="Заполнение анкеты" aria-valuemin="{{ 1 }}" aria-valuemax="{{ 3 }}" aria-valuenow="{{ stepNow }}" aria-valuetext="{{ stepCounter }}" style="margin:14px 0 24px;height:6px;border-radius:999px;background:var(--pd-divider);overflow:hidden">
 <div style="height:100%;border-radius:999px;background:var(--pd-accent);transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ stepScale }}"></div>
 </div>
 <fieldset data-step="0" hidden="{{ hide0 }}" style="border:0;margin:0;padding:0;min-width:0">
@@ -423,7 +481,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </fieldset>
 <fieldset data-step="2" hidden="{{ hide2 }}" style="border:0;margin:0;padding:0;min-width:0">
-<legend class="ex-sr">Направления и опыт</legend>
+<legend class="ex-sr">Опыт и резюме</legend>
 <div class="ex-form">
 <fieldset class="ex-wide" style="border:0;margin:0;padding:0;min-width:0">
 <legend style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);padding:0;margin-bottom:10px">Какие работы готовы вести *</legend>
@@ -450,27 +508,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <label class="ex-chip"><input type="checkbox" name="roles" value="Рецензент заявок грантовых фондов"><span><span class="ex-chip-mark" aria-hidden="true"></span>Рецензент заявок грантовых фондов</span></label>
 </div>
 </fieldset>
-<label for="ex-exp" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Опыт по выбранным направлениям *
-<textarea id="ex-exp" name="experience" required="{{ true }}" rows="{{ 5 }}" minlength="20" maxlength="4000" placeholder="Какие работы вели и сколько лет, публикации, рецензирование, преподавание" style="width:100%;box-sizing:border-box;padding:12px 16px;min-height:112px;resize:vertical;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></textarea></label>
-</div>
-</fieldset>
-<fieldset data-step="3" hidden="{{ hide3 }}" style="border:0;margin:0;padding:0;min-width:0">
-<legend class="ex-sr">Профили и файлы</legend>
-<div class="ex-form">
-<label for="ex-spin" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">SPIN-код eLIBRARY
-<input id="ex-spin" name="elibrarySpin" type="text" autocomplete="off" maxlength="20" pattern="[0-9]{4}(-| )?[0-9]{4}" placeholder="1234-5678" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
-<label for="ex-orcid" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">ORCID
-<input id="ex-orcid" name="orcid" type="text" autocomplete="off" maxlength="60" placeholder="0000-0002-1825-0097" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
-<label for="ex-links" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Другие ссылки
-<input id="ex-links" name="links" type="text" autocomplete="off" maxlength="1000" placeholder="Публикации, страница на сайте вуза, Scopus Author ID" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
-<label for="ex-hours" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Готовы уделять в неделю
-<select id="ex-hours" name="weeklyHours" style="height:48px;box-sizing:border-box;padding:0 12px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
-<option value="">Выберите</option>
-<option value="До 5 часов">До 5 часов</option>
-<option value="5–10 часов">5–10 часов</option>
-<option value="10–20 часов">10–20 часов</option>
-<option value="Более 20 часов">Более 20 часов</option>
-</select></label>
+<label for="ex-exp" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Опыт по выбранным направлениям
+<textarea id="ex-exp" aria-describedby="ex-exp-hint" name="experience" rows="{{ 5 }}" maxlength="4000" placeholder="Какие работы вели и сколько лет, публикации, рецензирование, преподавание" style="width:100%;box-sizing:border-box;padding:12px 16px;min-height:112px;resize:vertical;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></textarea><span id="ex-exp-hint" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;letter-spacing:0;text-transform:none;color:var(--pd-ink-muted)">Опишите опыт или приложите резюме ниже — достаточно одного</span></label>
 <div class="ex-wide" style="display:flex;flex-direction:column;gap:6px">
 <span id="ex-files-label" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Резюме и примеры работ</span>
 <label for="ex-files" class="ex-drop">
@@ -485,6 +524,25 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-for>
 </ul>
 </div>
+<details class="ex-wide ex-more" style="border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-surface-quiet)">
+<summary>Профили eLIBRARY и ORCID, ссылки, загрузка — по желанию</summary>
+<div class="ex-form" style="padding:4px 16px 16px">
+<label for="ex-spin" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">SPIN-код eLIBRARY
+<input id="ex-spin" name="elibrarySpin" type="text" autocomplete="off" maxlength="20" pattern="[0-9]{4}(-| )?[0-9]{4}" placeholder="1234-5678" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
+<label for="ex-orcid" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">ORCID
+<input id="ex-orcid" name="orcid" type="text" autocomplete="off" maxlength="60" placeholder="0000-0002-1825-0097" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
+<label for="ex-links" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Другие ссылки
+<input id="ex-links" name="links" type="text" autocomplete="off" maxlength="1000" placeholder="Публикации, страница на сайте вуза, Scopus Author ID" style="height:48px;box-sizing:border-box;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
+<label for="ex-hours" class="ex-wide" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Готовы уделять в неделю
+<select id="ex-hours" name="weeklyHours" style="height:48px;box-sizing:border-box;padding:0 12px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-transform:none;letter-spacing:0;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
+<option value="">Выберите</option>
+<option value="До 5 часов">До 5 часов</option>
+<option value="5–10 часов">5–10 часов</option>
+<option value="10–20 часов">10–20 часов</option>
+<option value="Более 20 часов">Более 20 часов</option>
+</select></label>
+</div>
+</details>
 </div>
 <div class="ex-consent" style="margin-top:16px">
 <label for="ex-consent" style="display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="ex-consent" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю согласие на обработку моих персональных данных на условиях, изложенных ниже *</span></label>
@@ -578,9 +636,24 @@ class Component extends DCLogic {
     if (!sec) return true;
     const services = Array.from(sec.querySelectorAll('input[name="services"]'));
     if (services.length) services[0].setCustomValidity(services.some(b => b.checked) ? '' : 'Отметьте хотя бы один вид работ, который готовы вести');
+    // Опыт — текстом или резюме файлом (Р-597): с приложенным файлом
+    // поле опыта можно оставить пустым.
+    const exp = sec.querySelector('#ex-exp');
+    if (exp) {
+      const picked = document.getElementById('ex-files');
+      const resume = !!(picked && picked.files && picked.files.length);
+      exp.setCustomValidity(resume || exp.value.trim().length >= 20 ? '' : 'Расскажите об опыте в двух-трёх фразах или приложите резюме');
+    }
     for (const f of sec.querySelectorAll('input, select, textarea')) {
       if (f.type === 'file' || f.name === 'company_website') continue;
-      if (!f.checkValidity()) { if (report) f.reportValidity(); return false; }
+      if (!f.checkValidity()) {
+        // Поле в свёрнутом блоке «по желанию» раскрывается, иначе подсказка
+        // браузера показалась бы у невидимого поля.
+        const more = f.closest('details');
+        if (report && more && !more.open) more.open = true;
+        if (report) f.reportValidity();
+        return false;
+      }
     }
     return true;
   }
@@ -598,8 +671,7 @@ class Component extends DCLogic {
     const STEPS = [
       ['Контакты', 'Имя, почта, телефон'],
       ['Квалификация', 'Степень, звание, специальность, место работы'],
-      ['Направления и опыт', 'Виды работ, направления, опыт'],
-      ['Профили и файлы', 'eLIBRARY, ORCID, резюме, согласие'],
+      ['Опыт и резюме', 'Виды работ, направления, опыт или резюме'],
     ];
     const step = this.state.step;
     // Вкладки — три рабочих экрана куратора (Р-589): этап со сдачей
@@ -630,8 +702,25 @@ class Component extends DCLogic {
       ['Что будет с анкетой?', 'Руководитель практики разберёт её и ответит на почту. Анкета и файлы хранятся не дольше шести месяцев, затем удаляются; согласие можно отозвать письмом на info.prodisser@gmail.com.'],
     ];
     const servicesCount = this.state.services;
+    // Карточки условий ведут к своему ответу в «Вопросах» (замечание
+    // владельца 15.10.2026, Р-598): ответ раскрывается и встаёт в поле
+    // зрения, фокус — на его кнопке. Без сценария работает обычный якорь.
+    const toFaq = i => e => {
+      e.preventDefault();
+      this.setState({ open: i }, () => {
+        const el = document.getElementById('ex-faq-' + i);
+        if (!el) return;
+        const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'center' });
+        const btn = el.tagName === 'BUTTON' ? el : el.querySelector('button');
+        if (btn) btn.focus({ preventScroll: true });
+      });
+    };
     return {
       navHidden: this.state.navOpen ? undefined : true,
+      termFormat: toFaq(4),
+      termContract: toFaq(6),
+      termPay: toFaq(3),
       navOpenAttr: this.state.navOpen ? 'true' : 'false',
       toggleNav: () => this.setState(s => ({ navOpen: !s.navOpen })),
       checkMask: this.mask('check'),
@@ -657,6 +746,7 @@ class Component extends DCLogic {
       tabTitle: tab.title, tabText: tab.text, tabImg: tab.img, tabAlt: tab.alt,
       tabPoints: tab.points.map(text => ({ text })),
       faq: faqData.map(([q, a], i) => ({
+        id: 'ex-faq-' + i,
         q, a, open: this.state.open === i, closed: this.state.open !== i,
         toggle: () => this.setState(s => ({ open: s.open === i ? -1 : i })),
       })),
@@ -672,7 +762,6 @@ class Component extends DCLogic {
       hide0: step === 0 ? undefined : true,
       hide1: step === 1 ? undefined : true,
       hide2: step === 2 ? undefined : true,
-      hide3: step === 3 ? undefined : true,
       canBack: step > 0, noBack: step === 0,
       notLast: step < STEPS.length - 1, last: step === STEPS.length - 1,
       back: () => this.go(Math.max(0, step - 1)),
@@ -701,12 +790,12 @@ class Component extends DCLogic {
       pending: this.state.busy,
       // Анкета уходит с файлами на /api/experts, а не JSON на /api/lead:
       // обработчик назван не «submit…», и обёртка заявки его не трогает
-      // (решение Р-580). Перед отправкой проверяются все четыре раздела:
+      // (решение Р-580). Перед отправкой проверяются все три раздела:
       // первый неполный открывается с подсказкой у поля.
       sendApplication: async e => {
         e.preventDefault();
         const form = e.currentTarget;
-        for (let i = 0; i < 4; i += 1) {
+        for (let i = 0; i < STEPS.length; i += 1) {
           if (!this.check(i, false)) { this.setState({ step: i, error: null }, () => this.check(i, true)); return; }
         }
         if (this.state.fileError) { this.setState({ error: this.state.fileError }); return; }

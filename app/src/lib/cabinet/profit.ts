@@ -16,12 +16,15 @@ import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { moscowToday, now as clockNow } from './clock.ts';
 import { receiptOn } from './finance-years.ts';
+import { monthKey } from './unit-economy.ts';
 
 export const EXPENSE_NOTE_MAX = 500;
 const GENERAL = 'general';
 
 const monthStart = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-const keyOf = (date: Date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+// Ключ месяца — общий с разложением расходов вида (Р-594): месяц один и тот же
+// на «Прибыли по месяцам» и в экономике работы.
+const keyOf = monthKey;
 
 export interface ExpenseInput {
   /** Месяц `ГГГГ-ММ`. */

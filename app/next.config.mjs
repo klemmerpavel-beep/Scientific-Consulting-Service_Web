@@ -74,7 +74,14 @@ const nextConfig = {
         // 413 раньше, чем кабинет проверял размер. Предел — обращение из
         // пяти файлов по 25 МБ с запасом на поля формы; nginx держит тот же
         // предел для /cabinet (решение Р-231).
-        experimental: { serverActions: { bodySizeLimit: '130mb' } },
+        // Сборка образа на сервере с 2 ГБ памяти идёт одним потоком: каждый
+        // поток сборки страниц — отдельный процесс Node (решение Р-606).
+        // Число задаёт Dockerfile; локальная сборка и CI берут его по числу
+        // ядер, как прежде.
+        experimental: {
+          serverActions: { bodySizeLimit: '130mb' },
+          ...(process.env.NEXT_BUILD_CPUS ? { cpus: Number(process.env.NEXT_BUILD_CPUS) } : {}),
+        },
       }),
 
   poweredByHeader: false,
