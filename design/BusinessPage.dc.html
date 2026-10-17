@@ -729,8 +729,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <sc-for list="{{ reviews }}" as="r" hint-placeholder-count="5">
 <article aria-hidden="{{ r.hidden }}" style="position:absolute;left:50%;top:8px;width:min(430px,84vw);height:236px;margin-left:calc(min(430px,84vw) / -2);box-sizing:border-box;display:flex;flex-direction:column;gap:14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:transform 420ms cubic-bezier(.2,0,.2,1),filter 420ms cubic-bezier(.2,0,.2,1),opacity 420ms cubic-bezier(.2,0,.2,1);transform:{{ r.tf }};filter:{{ r.fl }};opacity:{{ r.op }};z-index:{{ r.z }};pointer-events:{{ r.pe }}">
 <div style="display:flex;align-items:center;gap:12px">
-<!-- Инициал автора отзыва вместо значка-силуэта (замечание владельца 14.10.2026, решение Р-590): фотографии авторов не публикуются, а чужое лицо у настоящего отзыва вводило бы в заблуждение. -->
+<!-- Фото автора отзыва — только присланное им самим с письменным согласием на публикацию (Р-590, Р-617); без фото — инициал. Сгенерированные и чужие лица не ставятся: читатель принял бы их за автора. -->
+<sc-if value="{{ r.hasPhoto }}" hint-placeholder-val="{{ false }}">
+<img src="{{ r.photo }}" alt="" aria-hidden="true" width="56" height="56" loading="lazy" decoding="async" style="display:block;width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint);object-fit:cover">
+</sc-if>
+<sc-if value="{{ r.noPhoto }}" hint-placeholder-val="{{ true }}">
 <span aria-hidden="true" style="width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);display:flex;align-items:center;justify-content:center;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1;font-weight:600;color:var(--pd-accent)">{{ r.initial }}</span>
+</sc-if>
 <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
 <span style="font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink)">{{ r.role }}</span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">{{ r.field }}</span>
@@ -1121,6 +1126,11 @@ class Component extends DCLogic {
     // с площадки — нет. Отбор описан в решении Р-113: четыре отзыва из
     // двенадцати не опубликованы, потому что называют предметом работу,
     // выполненную за клиента.
+    // Фото автора (Р-590, Р-617): поле photo ставится, только если автор
+    // сам прислал снимок и письменно согласился на его публикацию; рядом —
+    // consent, дата согласия. Файл — 112×112 WebP в design/assets/reviews/
+    // и app/public/assets/reviews/. Без photo у карточки инициал имени.
+    // Сгенерированные и чужие лица не ставятся.
     const REVIEWS = [
       // Отзывы, где речь об оценке и преподавателях, — студенческие: на «Компаниям» их нет (Р-605).
       { role: 'Роман', field: 'Авито · 30 сентября 2024',
@@ -1146,6 +1156,8 @@ class Component extends DCLogic {
       return {
         ...r,
         initial: r.role.slice(0, 1),
+        hasPhoto: Boolean(r.photo),
+        noPhoto: !r.photo,
         // Смещение подобрано так, чтобы дальняя карточка заходила за край
         // сцены, но оставалась видимой примерно на две трети.
         tf: 'translateX(' + (d < 0 ? -1 : 1) * (a === 0 ? 0 : a === 1 ? 62 : 112) + '%) '
