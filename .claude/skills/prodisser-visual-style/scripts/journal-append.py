@@ -9,7 +9,8 @@ open(f, 'w').write(open(f).read() ...) обнуляет файл до чтени
   journal-append.py --repo . --next
       печатает следующий свободный номер решения
   journal-append.py --repo . --entry r-618.md --summary "Суть одной строкой"
-      дописывает запись в конец DECISIONS.md и строку «| Р-618 | … |»
+      дописывает запись в DECISIONS.md (в конец, а номер, оставленный
+      свободным, — перед следующей по номеру записью) и строку «| Р-618 | … |»
       в DECISIONS-SUMMARY.md сразу после строки предыдущего номера
 
 Файл записи начинается с заголовка «## Р-NNN · Заголовок (дд.мм.гггг)».
@@ -73,7 +74,7 @@ def main():
     if num in numbers:
         sys.exit(f'Отказ: Р-{num} уже есть в журнале; свободный номер — Р-{nxt}')
     if num != nxt:
-        print(f'Внимание: номер Р-{num}, а следующий по порядку — Р-{nxt}', file=sys.stderr)
+        print(f'Внимание: номер Р-{num}, а следующий по порядку — Р-{nxt}; запись встанет по номеру', file=sys.stderr)
 
     # Оба файла проверяются до записи: иначе отказ на сводке оставил бы
     # журнал дописанным, а сводку — без строки.
@@ -87,7 +88,16 @@ def main():
     _, pos = max(prev)
     line_end = rows.index('\n', pos)
 
-    write_atomic(journal, text.rstrip('\n') + '\n\n' + entry, text)
+    # Номер, оставленный свободным под другую ветку (параллельный сеанс занял
+    # следующие), встаёт перед первой записью с большим номером: порядок
+    # журнала сохраняется. Обычный следующий номер дописывается в конец.
+    later = [mm for mm in HEAD.finditer(text) if int(mm.group(1)) > num]
+    if later:
+        at = min(later, key=lambda mm: int(mm.group(1))).start()
+        new_text = text[:at] + entry + '\n' + text[at:]
+    else:
+        new_text = text.rstrip('\n') + '\n\n' + entry
+    write_atomic(journal, new_text, text)
     write_atomic(summary, rows[:line_end + 1] + row + '\n' + rows[line_end + 1:], rows)
     print(f'Записано: Р-{num} в журнал и сводку')
 
