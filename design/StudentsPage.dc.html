@@ -34,6 +34,9 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 .sp-cta{white-space:nowrap}
 .sp-hero{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr)}
 .sp-support{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+/* Р-629: плашки с цифрами — в правой колонке первого экрана под портретами, по одной в ряд; первый экран не вытягивается вниз */
+.sp-support.sp-support-col{grid-template-columns:minmax(0,1fr)}
+@media (max-width:480px){.sp-support-col>a{grid-template-columns:minmax(0,1fr)!important}.sp-support-col>a>span:first-child{grid-row:auto!important}}
 .sp-duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .sp-route{display:grid;grid-template-columns:minmax(0,.4fr) minmax(0,.6fr);height:448px}
 .sp-rl{border-right:1px solid var(--pd-divider)}
@@ -238,26 +241,26 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Научный редактор<br><span style="color:var(--pd-ink-muted)">и нормоконтроль</span></span>
 </div>
 </div>
-</div>
-</div>
-
-<div class="sp-support" style="gap:12px;margin-top:clamp(48px,4.5vw,64px)">
-<a class="pd-lift" href="#works" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-hover);border-color:var(--pd-accent-hover)" style-active="background:var(--pd-accent-active)">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink-inverse)">23 позиции</span>
+<div class="sp-support sp-support-col" style="gap:10px;margin-top:8px">
+<a class="pd-lift" href="#works" style="display:grid;grid-template-columns:132px minmax(0,1fr);align-items:center;column-gap:16px;row-gap:6px;box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:14px 16px;min-height:0;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-hover);border-color:var(--pd-accent-hover)" style-active="background:var(--pd-accent-active)">
+<span style="grid-row:1 / span 2;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink-inverse)">23 позиции</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-accent-edge)">в перечне работ: шесть основных направлений и полный список</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Услуги куратора<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent-edge);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
-<a class="pd-lift" href="#cost" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark)" style-active="background:var(--pd-accent-mark)">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">7 причин</span>
+<a class="pd-lift" href="#cost" style="display:grid;grid-template-columns:132px minmax(0,1fr);align-items:center;column-gap:16px;row-gap:6px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:14px 16px;min-height:0;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark)" style-active="background:var(--pd-accent-mark)">
+<span style="grid-row:1 / span 2;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">7 причин</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">по которым нормоконтроль возвращает работу с кафедры</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Смета и нормоконтроль<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
-<a class="pd-lift" href="#route" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">4 ситуации</span>
+<a class="pd-lift" href="#route" style="display:grid;grid-template-columns:132px minmax(0,1fr);align-items:center;column-gap:16px;row-gap:6px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:14px 16px;min-height:0;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)">
+<span style="grid-row:1 / span 2;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">4 ситуации</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">маршрут этапов пересобирается под стадию вашей работы</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Этапы до защиты<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 </div>
+</div>
+</div>
+
 </section>
 
 <section class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
