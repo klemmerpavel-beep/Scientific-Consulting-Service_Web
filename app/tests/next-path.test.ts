@@ -5,10 +5,13 @@
  */
 
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, it } from 'node:test';
 
 import {
   defaultPath,
+  fileOpenPath,
   openEmail,
   openLink,
   openPath,
@@ -91,5 +94,39 @@ describe('намерение открытия в cookie', () => {
     assert.equal(unpackOpen(forged), null);
     assert.equal(unpackOpen('%%%'), null);
     assert.equal(unpackOpen(undefined), null);
+  });
+});
+
+describe('файл или выгрузка без сеанса — вход и возврат к экрану (Р-599)', () => {
+  const open = (to: string) => `/cabinet/open?to=${encodeURIComponent(to)}`;
+
+  it('экран выгрузки с тем же отбором', () => {
+    assert.equal(
+      fileOpenPath('/cabinet/manage/leads', '?status=NEW&query=%D0%BC%D0%B0'),
+      open('/cabinet/manage/leads?status=NEW&query=%D0%BC%D0%B0'),
+    );
+    assert.equal(fileOpenPath('/cabinet/manage/feedback'), open('/cabinet/manage/feedback'));
+  });
+
+  it('отбор, не прошедший проверку пути, отбрасывается — остаётся экран', () => {
+    assert.equal(fileOpenPath('/cabinet/projects', '?q=%2F%2Fevil.com'), open('/cabinet/projects'));
+    assert.equal(fileOpenPath('/cabinet/projects', `?q=${'я'.repeat(400)}`), open('/cabinet/projects'));
+  });
+
+  it('ни один файл и ни одна выгрузка кабинета не отвечают пустой страницей 401', () => {
+    // Служебные адреса отвечают по-своему: проверка сеанса для nginx — 401
+    // или 204, «Открыть кабинет» сам ведёт на вход.
+    const own = new Set(['api/session/route.ts', 'open/route.ts']);
+    const root = path.join(import.meta.dirname, '../src/app/cabinet');
+    const routes = (readdirSync(root, { recursive: true }) as string[])
+      .map((file) => file.split(path.sep).join('/'))
+      .filter((file) => file.endsWith('route.ts') && !own.has(file));
+    const checked = routes.filter((file) => readFileSync(path.join(root, file), 'utf8').includes('currentActor()'));
+    assert.equal(checked.length, 11, checked.join(', '));
+    for (const file of checked) {
+      const text = readFileSync(path.join(root, file), 'utf8');
+      assert.doesNotMatch(text, /status: 401/u, file);
+      assert.match(text, /if \(actor === null\) return signInFirst\(request, '\/cabinet[a-z/]*'\);/u, file);
+    }
   });
 });

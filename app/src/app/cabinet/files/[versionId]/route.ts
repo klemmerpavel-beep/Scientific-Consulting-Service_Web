@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { attachmentDisposition } from '../../../../lib/cabinet/disposition';
 import { AccessDenied } from '../../../../lib/cabinet/access';
 import { readVersion } from '../../../../lib/cabinet/materials';
-import { currentActor, requestIp } from '../../../../lib/cabinet/session';
+import { currentActor, requestIp, signInFirst } from '../../../../lib/cabinet/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,11 +30,11 @@ function safeType(contentType: string): string {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ versionId: string }> },
 ): Promise<NextResponse> {
   const actor = await currentActor();
-  if (actor === null) return new NextResponse('Требуется вход', { status: 401 });
+  if (actor === null) return signInFirst(request, '/cabinet');
 
   const { versionId } = await context.params;
   try {

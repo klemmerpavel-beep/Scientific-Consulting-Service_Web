@@ -5,7 +5,7 @@ import { record } from '../../../../../lib/cabinet/audit';
 import { moscowToday } from '../../../../../lib/cabinet/clock';
 import { attachmentDisposition } from '../../../../../lib/cabinet/disposition';
 import { financeSummary } from '../../../../../lib/cabinet/finance';
-import { currentActor, requestIp } from '../../../../../lib/cabinet/session';
+import { currentActor, requestIp, signInFirst } from '../../../../../lib/cabinet/session';
 import { FINANCE_COLUMNS, XLSX_TYPE, columnSet, pick, workbook } from '../../../../../lib/cabinet/table-views';
 
 export const runtime = 'nodejs';
@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const actor = await currentActor();
-  if (actor === null) return new NextResponse('Требуется вход', { status: 401 });
+  if (actor === null) return signInFirst(request, '/cabinet/manage/finance');
 
   let summary;
   try {

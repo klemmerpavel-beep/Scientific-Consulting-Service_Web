@@ -5,7 +5,7 @@ import { record } from '../../../../lib/cabinet/audit';
 import { moscowToday } from '../../../../lib/cabinet/clock';
 import { attachmentDisposition } from '../../../../lib/cabinet/disposition';
 import { listProjects, type ProjectFilter } from '../../../../lib/cabinet/queries';
-import { currentActor, requestIp } from '../../../../lib/cabinet/session';
+import { currentActor, requestIp, signInFirst } from '../../../../lib/cabinet/session';
 import { PROJECT_COLUMNS, XLSX_TYPE, workbook, type ProjectRowView } from '../../../../lib/cabinet/table-views';
 
 export const runtime = 'nodejs';
@@ -23,7 +23,7 @@ const FILTERS: readonly ProjectFilter[] = ['active', 'waiting', 'done', 'all'];
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const actor = await currentActor();
-  if (actor === null) return new NextResponse('Требуется вход', { status: 401 });
+  if (actor === null) return signInFirst(request, '/cabinet/projects');
   try {
     ensure(actor, 'REQUEST_MODERATE');
   } catch (error) {
