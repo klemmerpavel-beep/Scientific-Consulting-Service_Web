@@ -48,7 +48,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .ex-tabbody{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
 .ex-tablist{display:inline-flex;gap:4px;padding:4px;background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}
 .ex-tablist::-webkit-scrollbar{display:none}
-/* Пять вкладок (Р-618) не помещаются в строку уже 900 px: сеткой по три, на телефоне — по две. */
+/* Пять вкладок (Р-619) не помещаются в строку уже 900 px: сеткой по три, на телефоне — по две. */
 @media (max-width:900px){.ex-tablist{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;border-radius:14px!important}.ex-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
 @media (max-width:560px){.ex-tablist{grid-template-columns:repeat(2,minmax(0,1fr))}.ex-tablist [role=tab]:last-child:nth-child(odd){grid-column:1 / -1}}
 .ex-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -81,7 +81,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .ex-more[open]>summary::after{content:"−"}
 .ex-more>summary:hover{background:var(--pd-accent-tint)}
 @media (max-width:1199px){.ex-node{display:none!important}}
-/* Карточки условий (Р-617): в покое светлые, без рамки; при наведении и фокусе вся карточка синеет, текст светлеет. Части окрашены классами: цвет части меняется по состоянию всей карточки. */
+/* Карточки условий (Р-618): в покое светлые, без рамки; при наведении и фокусе вся карточка синеет, текст светлеет. Части окрашены классами: цвет части меняется по состоянию всей карточки. */
 .ex-term .ex-term-k,.ex-term .ex-term-t,.ex-term .ex-term-d,.ex-term .ex-term-l{transition:color 180ms cubic-bezier(.2,0,.2,1)}
 .ex-term .ex-term-a{transition:background 180ms cubic-bezier(.2,0,.2,1)}
 .ex-term:hover,.ex-term:focus-visible{background:var(--pd-accent-soft)!important;transform:translateY(-2px);box-shadow:0 12px 24px rgba(42,99,180,.22)}
@@ -91,7 +91,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .ex-term:hover .ex-term-k,.ex-term:focus-visible .ex-term-k,.ex-term:active .ex-term-k,.ex-term:hover .ex-term-l,.ex-term:focus-visible .ex-term-l,.ex-term:active .ex-term-l{color:var(--pd-accent-tint)!important}
 .ex-term:hover .ex-term-a,.ex-term:focus-visible .ex-term-a,.ex-term:active .ex-term-a{background:var(--pd-accent-tint)!important}
 @media (prefers-reduced-motion:reduce){.ex-term,.ex-term:hover,.ex-term:focus-visible{transform:none!important}}
-/* Фон в движении (Р-619, по указанию владельца): кольца с точками
+/* Фон в движении (Р-620, по указанию владельца): кольца с точками
    покачиваются вокруг своего центра, пятна света дышат, узлы первого экрана
    парят. Полный оборот провёл бы точки под заголовком и абзацами; размах
    подобран так, чтобы точки оставались на фоне (±30° на первом экране,
@@ -708,7 +708,7 @@ class Component extends DCLogic {
       ['Опыт и резюме', 'Виды работ, направления, опыт или резюме'],
     ];
     const step = this.state.step;
-    // Вкладки — пять рабочих экранов куратора (Р-589, Р-618): этап со
+    // Вкладки — пять рабочих экранов куратора (Р-589, Р-619): этап со
     // сдачей менеджеру, материалы с версиями, чек-лист, перечень
     // назначенных работ и вознаграждение. Карточка работы стоит снимком на
     // первом экране и здесь не повторяется. Суммы на снимке вознаграждения
