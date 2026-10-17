@@ -26,6 +26,11 @@ import { useEffect } from 'react';
  * `globals.css`, сама полоса остаётся — это навигация, а не движение. Без
  * сценариев полосы нет, шапка остаётся обычной. Скрытая полоса недоступна
  * ни фокусу, ни чтению с экрана (`visibility`).
+ *
+ * Копии видны при любых правилах страницы: на «Экспертам» до 768 px кнопка
+ * шапки скрыта классом `.ex-headcta`, и её копия пропадала вместе с ней
+ * (Р-599). До 430 px кнопка полосы — 12 px с полями 16 px, как кнопки шапок
+ * «Студентам» и «Компаниям».
  */
 
 const CSS = `
@@ -33,6 +38,8 @@ const CSS = `
 .pd-stick.pd-stick-on{transform:none;visibility:visible;transition:transform 180ms cubic-bezier(.2,0,.2,1),visibility 0s}
 .pd-stick-row{max-width:1220px;height:64px;margin:0 auto;padding:0 30px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .pd-stick-row>a:first-child{font-size:21px!important}
+.pd-stick-row>a{display:inline-flex!important;white-space:nowrap}
+@media (max-width:430px){.pd-stick-row>a:last-child{padding:12px 16px!important;font-size:12px!important}}
 @media (max-width:480px){.pd-stick-row{padding:0 20px}}
 .pd-has-stick [id]{scroll-margin-top:80px}
 @media print{.pd-stick{display:none}}
