@@ -253,7 +253,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 
 
 <section class="bp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
-<div class="bp-team" style="gap:40px;align-items:center">
+<div class="bp-team" style="gap:40px;align-items:start">
 <div style="display:flex;flex-direction:column;gap:24px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Команда</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:24ch;text-wrap:pretty">Кто работает над проектом</h2>
@@ -557,6 +557,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.5;color:var(--pd-ink)"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center;margin-top:-1px"><span style="width:12px;height:12px;display:block;background:var(--pd-accent);-webkit-mask:{{ inCheckMask }};mask:{{ inCheckMask }}"></span></span><span>{{ p.text }}</span></li>
 </sc-for>
 </ul>
+<div style="margin-top:12px"><a href="#request" style="display:inline-flex;align-items:center;min-height:44px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a></div>
 </div>
 <figure style="margin:0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:10px">
 <img src="{{ inImg }}" alt="{{ inAlt }}" width="1440" height="900" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider)">
@@ -717,7 +718,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section id="reviews" class="pd-pad" style="position:relative;z-index:20;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="reviews" class="bp-pad" style="position:relative;z-index:20;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
 <div>
 <span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Отзывы</span>
@@ -889,8 +890,8 @@ class Component extends DCLogic {
     if (this.wide) this.wide.removeEventListener('change', this.syncNav);
   }
   renderVals(){
-    const edges = ['var(--pd-accent)', 'var(--pd-accent)', 'var(--pd-edge-neutral)'];
-    const inks = ['var(--pd-accent)', 'var(--pd-accent)', 'var(--pd-ink-secondary)'];
+    const edges = ['var(--pd-accent)', 'var(--pd-accent)', 'var(--pd-accent)'];
+    const inks = ['var(--pd-accent)', 'var(--pd-accent)', 'var(--pd-accent)'];
 
     const packData = [
       ['pack-1', '01', 'Техзадание и патентная чистота', 'от 3 недель', 4, '17px',
@@ -903,17 +904,17 @@ class Component extends DCLogic {
         'Ведём работу по этапам, разрабатываем методику и программу испытаний, обрабатываем данные. Готовим отчётность и сопровождаем приёмку.',
         [['Отчёт о научно-исследовательской работе', 'ГОСТ 7.32-2017'], ['Программа и методика испытаний', 'ГОСТ Р 15.301-2016'], ['Акты сдачи-приёмки этапов', 'по договору'], ['Комплект для учёта НИОКТР', 'ПП РФ № 327'], ['Обоснование расходов на НИОКР', 'п. 7 ст. 262 НК РФ']],
         'Документ, собранный под требования заказчика и под налоговый учёт.'],
-      ['pack-3', '03', 'Заявка на грант или субсидию', 'от 3 недель', 2, '15px',
+      ['pack-3', '03', 'Заявка на грант или субсидию', 'от 3 недель', 2, '17px',
         'Есть проект и конкурс с дедлайном.',
         'Подбираем программу под стадию и отрасль, готовим заявку по форме конкурса. Считаем бюджет и разбираем с командой вопросы экспертного совета.',
         [['Заявка по форме конкурса', ''], ['Финансово-экономическое обоснование', 'по форме конкурса'], ['Дорожная карта и план коммерциализации', 'по форме конкурса'], ['Презентация и разбор вопросов совета', 'к дате защиты']],
         'Чтобы заявку не вернули по формальным основаниям.'],
-      ['pack-4', '04', 'Разработка в нематериальный актив', 'от 4 недель', 2, '15px',
+      ['pack-4', '04', 'Разработка в нематериальный актив', 'от 4 недель', 2, '17px',
         'Результат получен, его нужно защитить и поставить на баланс.',
         'Строим патентный ландшафт, проверяем свободу использования, оформляем заявку на охранный документ. Вводим режим коммерческой тайны и служебные результаты.',
         [['Патентный ландшафт и заключение', 'по итогам поиска'], ['Заявка на изобретение или полезную модель', 'гл. 72 ГК РФ'], ['Заявка на программу для ЭВМ или базу данных', 'ст. 1262 ГК РФ'], ['Документы по коммерческой тайне', '98-ФЗ'], ['Документы для постановки прав на баланс', 'ФСБУ 14/2022']],
         'Результат разработки учитывается на балансе как нематериальный актив.'],
-      ['pack-5', '05', 'Рынок и решение о внедрении', 'от 3 недель', 2, '15px',
+      ['pack-5', '05', 'Рынок и решение о внедрении', 'от 3 недель', 2, '17px',
         'Нужно решение о внедрении: технология, рынок и экономика.',
         'Считаем объём рынка по вторичным источникам, сравниваем с решениями конкурентов. Разбираем нормативные барьеры и считаем экономику внедрения.',
         [['Аналитический отчёт по рынку', 'вторичные источники'], ['Технологический бенчмаркинг', 'открытые данные'], ['Обзор нормативных барьеров', 'действующие требования'], ['Технико-экономическое обоснование', 'расчёт эффекта']],

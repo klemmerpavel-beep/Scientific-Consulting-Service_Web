@@ -79,6 +79,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
    слева текст, справа снимок экрана в рамке. */
 .pd-in-tablist{display:inline-flex;gap:4px;padding:4px;background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}
 .pd-in-tablist::-webkit-scrollbar{display:none}
+@media (max-width:480px){.sp-guide{display:none}}
 @media (max-width:768px){.pd-in-tablist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-radius:14px!important}.pd-in-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
 .pd-in-body{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
 @media (max-width:1024px){.pd-in-body{grid-template-columns:minmax(0,1fr)}}
@@ -124,8 +125,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <circle cx="330" cy="96" r="4" fill="#B4C9E5"></circle>
 </svg>
 <div style="position:absolute;left:0;right:0;top:0;height:1180px;background-image:radial-gradient(var(--pd-art-dot) 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
-<div style="position:absolute;top:0;bottom:0;left:max(30px,calc(50% - 610px + 30px));width:1px;background:var(--pd-art-line)"></div>
-<div style="position:absolute;top:0;bottom:0;right:max(30px,calc(50% - 610px + 30px));width:1px;background:var(--pd-art-line)"></div>
+<div class="sp-guide" style="position:absolute;top:0;bottom:0;left:max(30px,calc(50% - 610px + 30px));width:1px;background:var(--pd-art-line)"></div>
+<div class="sp-guide" style="position:absolute;top:0;bottom:0;right:max(30px,calc(50% - 610px + 30px));width:1px;background:var(--pd-art-line)"></div>
 </div>
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
 
@@ -297,9 +298,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span>
 </a>
 </sc-for>
-<button type="button" onClick="{{ toggleOffer }}" aria-expanded="{{ offerOpen }}" style="appearance:none;border:0;cursor:pointer;background:var(--pd-ink);border-radius:14px;padding:16px 24px;display:flex;align-items:center;justify-content:center;gap:12px;transition:background 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="opacity:.82">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-inverse)">{{ offerToggleLabel }}</span>
-<span aria-hidden="true" style="width:17px;height:17px;flex:0 0 17px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ offerToggleMask }};mask:{{ offerToggleMask }}"></span>
+<button type="button" onClick="{{ toggleOffer }}" aria-expanded="{{ offerOpen }}" style="appearance:none;cursor:pointer;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px 24px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:12px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="opacity:.82">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ offerToggleLabel }}</span>
+<span aria-hidden="true" style="width:17px;height:17px;flex:0 0 17px;display:block;background:var(--pd-accent);-webkit-mask:{{ offerToggleMask }};mask:{{ offerToggleMask }}"></span>
 </button>
 </div>
 </section>
@@ -535,7 +536,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Нормоконтроль</span>
 <span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Доклад и презентация</span>
 </div>
-<a href="#request" style="align-self:flex-start;display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:16px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Обсудить работу<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
+<a href="#request" style="align-self:flex-start;display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Обсудить работу<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
 <div class="sp-orbit" style="justify-self:stretch;position:relative;width:100%;aspect-ratio:648.388 / 650">
 <div style="position:absolute;left:0;top:0;width:98.482%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(216,228,243,.62) 0%,rgba(180,201,229,.16) 58%,rgba(255,255,255,0) 74%)"></div>
