@@ -39,6 +39,20 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 [role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* Фон в движении (Р-624, по указанию владельца; устроено как на «Экспертам»,
+   Р-620): кольца с точками покачиваются вокруг центра, пятно света за
+   кольцом первого экрана дышит. Размах подобран по каждому кольцу так,
+   чтобы точки не заходили под строки текста. Только transform и opacity;
+   при уменьшенном движении всё стоит (Р-93). */
+@keyframes pd-swing{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
+@keyframes pd-swing-hero{from{transform:rotate(-24deg)}to{transform:rotate(24deg)}}
+@keyframes pd-swing-calm{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+@keyframes pd-breathe{from{opacity:.55;transform:scale(.9)}to{opacity:1;transform:scale(1.06)}}
+.pd-orb{transform-origin:51.5625% 51.7241%;animation:pd-swing 46s ease-in-out -23s infinite alternate}
+.pd-orb-b{animation-duration:58s;animation-delay:-29s;animation-direction:alternate-reverse}
+.pd-orb-hero{animation-name:pd-swing-hero;animation-duration:36s;animation-delay:-18s}
+.pd-orb-calm{animation-name:pd-swing-calm;animation-duration:30s;animation-delay:-15s}
+.pd-glow{animation:pd-breathe 13s ease-in-out infinite alternate}
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}
 .pd-skip:focus{left:0;color:var(--pd-ink-inverse)}
 .pd-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
@@ -73,13 +87,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </helmet>
 <div style="position:relative;min-height:100vh;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip;min-height:0">
 <div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none">
-<svg viewBox="0 0 640 580" width="1280" height="1160" fill="none" style="position:absolute;right:calc(50% - 610px - 230px);top:-290px;-webkit-mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);">
+<div class="pd-glow" style="position:absolute;left:calc(50% - 172px);top:-82px;width:784px;height:784px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.42),rgba(216,228,243,0))"></div>
+<svg class="pd-orb pd-orb-hero" viewBox="0 0 640 580" width="1280" height="1160" fill="none" style="position:absolute;right:calc(50% - 610px - 230px);top:-290px;-webkit-mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);">
 <g stroke="#D9E1EC" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EDF2F8" stroke-width="1"></ellipse>
 <circle cx="450" cy="300" r="6" fill="#D8E4F3"></circle>
 <circle cx="330" cy="104" r="4" fill="#14417A"></circle>
 </svg>
-<svg viewBox="0 0 640 580" width="900" height="816" fill="none" style="position:absolute;left:calc(50% - 610px - 300px);top:820px;-webkit-mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);">
+<svg class="pd-orb" viewBox="0 0 640 580" width="900" height="816" fill="none" style="position:absolute;left:calc(50% - 610px - 300px);top:820px;-webkit-mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);">
 <g stroke="#E5EBF2" stroke-width="1"><ellipse cx="330" cy="300" rx="150" ry="150"></ellipse><ellipse cx="330" cy="300" rx="236" ry="236"></ellipse></g>
 
 <circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
