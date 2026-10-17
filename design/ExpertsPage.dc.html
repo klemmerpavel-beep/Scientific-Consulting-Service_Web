@@ -81,11 +81,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .ex-more[open]>summary::after{content:"−"}
 .ex-more>summary:hover{background:var(--pd-accent-tint)}
 @media (max-width:1199px){.ex-node{display:none!important}}
-/* Карточки условий (Р-618): в покое светлые, без рамки; при наведении и фокусе вся карточка синеет, текст светлеет. Части окрашены классами: цвет части меняется по состоянию всей карточки. */
+/* Карточки условий (Р-618, Р-621): в покое светлые, без рамки; при наведении и фокусе вся карточка становится тёмно-синей, как панель «Как проходит этап работы», текст светлеет. Части окрашены классами: цвет части меняется по состоянию всей карточки. */
 .ex-term .ex-term-k,.ex-term .ex-term-t,.ex-term .ex-term-d,.ex-term .ex-term-l{transition:color 180ms cubic-bezier(.2,0,.2,1)}
 .ex-term .ex-term-a{transition:background 180ms cubic-bezier(.2,0,.2,1)}
-.ex-term:hover,.ex-term:focus-visible{background:var(--pd-accent-soft)!important;transform:translateY(-2px);box-shadow:0 12px 24px rgba(42,99,180,.22)}
-.ex-term:active{background:var(--pd-accent)!important;transform:none}
+.ex-term:hover,.ex-term:focus-visible{background:var(--pd-accent-deep)!important;transform:translateY(-2px);box-shadow:0 12px 24px rgba(13,43,82,.28)}
+.ex-term:active{background:var(--pd-accent-active)!important;transform:none}
 .ex-term:hover .ex-term-t,.ex-term:focus-visible .ex-term-t,.ex-term:active .ex-term-t{color:var(--pd-ink-inverse)!important}
 .ex-term:hover .ex-term-d,.ex-term:focus-visible .ex-term-d,.ex-term:active .ex-term-d{color:var(--pd-accent-mark)!important}
 .ex-term:hover .ex-term-k,.ex-term:focus-visible .ex-term-k,.ex-term:active .ex-term-k,.ex-term:hover .ex-term-l,.ex-term:focus-visible .ex-term-l,.ex-term:active .ex-term-l{color:var(--pd-accent-tint)!important}
