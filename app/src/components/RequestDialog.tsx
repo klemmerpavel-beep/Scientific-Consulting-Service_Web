@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 
 import { LEAD_SENT_EVENT } from './LeadThanks';
+import StickyBar from './StickyBar';
 
 /**
  * Заявка из шапки — окном поверх страницы (решение Р-484).
@@ -219,7 +220,8 @@ export default function RequestDialog() {
       if (event.defaultPrevented || event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const link = (event.target as Element | null)?.closest?.('a[href="#request"]');
-      if (!(link instanceof HTMLElement) || link.closest('header') === null) return;
+      // Кнопка шапки и её копия в закреплённой полосе (Р-609).
+      if (!(link instanceof HTMLElement) || link.closest('header, .pd-stick') === null) return;
       const form = document.querySelector<HTMLFormElement>('#request form');
       if (form === null) return;
       event.preventDefault();
@@ -246,5 +248,11 @@ export default function RequestDialog() {
     };
   }, []);
 
-  return <style dangerouslySetInnerHTML={{ __html: CSS }} />;
+  // Закреплённая шапка длинных страниц — вторая точка входа в то же окно (Р-609).
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
+      <StickyBar />
+    </>
+  );
 }

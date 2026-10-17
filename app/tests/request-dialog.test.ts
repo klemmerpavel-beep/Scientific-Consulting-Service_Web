@@ -25,9 +25,9 @@ describe('заявка из шапки — окном', () => {
     assert.match(LAYOUT, /<RequestDialog \/>/u);
   });
 
-  it('перехватывается только ссылка «#request» в шапке, форма — нижняя форма страницы', () => {
+  it('перехватывается только ссылка «#request» в шапке и её копия в закреплённой полосе, форма — нижняя форма страницы', () => {
     assert.match(COMPONENT, /closest\?\.\('a\[href="#request"\]'\)/u);
-    assert.match(COMPONENT, /link\.closest\('header'\) === null\) return;/u);
+    assert.match(COMPONENT, /link\.closest\('header, \.pd-stick'\) === null\) return;/u);
     assert.match(COMPONENT, /document\.querySelector<HTMLFormElement>\('#request form'\)/u);
     // Своей формы у окна нет: ни полей, ни отправки.
     assert.doesNotMatch(COMPONENT, /<form|<input|fetch\(/u);
@@ -69,6 +69,43 @@ describe('заявка из шапки — окном', () => {
     // Слой ниже благодарности (45) и уведомления о cookies (50).
     const layers = [...COMPONENT.matchAll(/z-index:(\d+)/gu)].map((m) => Number(m[1]));
     assert.ok(layers.length > 0 && layers.every((z) => z < 45), `слои окна: ${layers.join(', ')}`);
+  });
+});
+
+/**
+ * Закреплённая шапка длинных страниц (решение Р-609). Живая проверка в
+ * браузере — в описании решения.
+ */
+describe('закреплённая шапка длинных страниц', () => {
+  const BAR = read('app', 'src', 'components', 'StickyBar.tsx');
+  const LONG = ['MainPage', 'StudentsPage', 'BusinessPage', 'ExpertsPage'];
+
+  it('полоса смонтирована окном заявки, общий макет и отпечаток кабинета не тронуты', () => {
+    assert.match(COMPONENT, /import StickyBar from '\.\/StickyBar';/u);
+    assert.match(COMPONENT, /<StickyBar \/>/u);
+    assert.doesNotMatch(LAYOUT, /StickyBar/u);
+  });
+
+  it('метку несут шапки длинных страниц и одна главная кнопка в каждой; на главной полосы нет', () => {
+    for (const page of LONG) {
+      const design = read('design', `${page}.dc.html`);
+      const header = design.slice(design.indexOf('<header'), design.indexOf('</header>'));
+      assert.match(header, /^<header data-pd-stick /u, `${page}: шапка без метки`);
+      assert.equal(header.match(/data-pd-stick-cta/gu)?.length, 1, `${page}: главная кнопка шапки не отмечена`);
+    }
+    assert.doesNotMatch(read('design', 'StartPage.dc.html'), /data-pd-stick/u);
+  });
+
+  it('слой между разделами и кнопкой замечаний, движение по шкале, скрытая полоса вне фокуса', () => {
+    const layers = [...BAR.matchAll(/z-index:(\d+)/gu)].map((m) => Number(m[1]));
+    assert.deepEqual(layers, [20]);
+    for (const ms of BAR.matchAll(/(\d+)ms/gu)) {
+      const value = Number(ms[1]);
+      assert.ok(value >= 180 && value <= 260, `длительность ${value} мс вне 180—260`);
+    }
+    assert.match(BAR, /\.pd-stick\{[^}]*visibility:hidden/u);
+    assert.match(BAR, /\.pd-has-stick \[id\]\{scroll-margin-top:80px\}/u);
+    assert.match(BAR, /copy\.removeAttribute\('id'\)/u);
   });
 });
 
