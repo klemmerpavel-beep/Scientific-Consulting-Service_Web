@@ -220,7 +220,7 @@ export default function RequestDialog() {
       if (event.defaultPrevented || event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const link = (event.target as Element | null)?.closest?.('a[href="#request"]');
-      // Кнопка шапки и её копия в закреплённой полосе (Р-596).
+      // Кнопка шапки и её копия в закреплённой полосе (Р-609).
       if (!(link instanceof HTMLElement) || link.closest('header, .pd-stick') === null) return;
       const form = document.querySelector<HTMLFormElement>('#request form');
       if (form === null) return;
@@ -248,7 +248,7 @@ export default function RequestDialog() {
     };
   }, []);
 
-  // Закреплённая шапка длинных страниц — вторая точка входа в то же окно (Р-596).
+  // Закреплённая шапка длинных страниц — вторая точка входа в то же окно (Р-609).
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
