@@ -39,6 +39,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 [role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* Р-627: интерактивный блок под курсором поднимается на 5 px вместо синей рамки; при уменьшенном движении стоит на месте */
+.pd-lift{transition:transform 220ms cubic-bezier(.2,0,.2,1),box-shadow 220ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),opacity 460ms cubic-bezier(.2,0,.2,1)!important}
+.pd-lift:hover,.pd-lift:focus-visible{transform:translateY(-5px)!important;box-shadow:0 10px 20px rgba(20,22,28,.09)!important}
+@media (prefers-reduced-motion:reduce){html .pd-lift{transition:none!important}html .pd-lift:hover,html .pd-lift:focus-visible{transform:none!important}}
+
 /* Фон в движении (Р-624, по указанию владельца; устроено как на «Экспертам»,
    Р-620): кольца с точками покачиваются вокруг центра, пятно света за
    кольцом первого экрана дышит. Размах подобран по каждому кольцу так,
@@ -86,7 +91,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </style>
 </helmet>
 <div style="position:relative;min-height:100vh;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip;min-height:0">
-<div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none">
+<div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden">
 <div class="pd-glow" style="position:absolute;left:calc(50% - 172px);top:-82px;width:784px;height:784px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.42),rgba(216,228,243,0))"></div>
 <svg class="pd-orb pd-orb-hero" viewBox="0 0 640 580" width="1280" height="1160" fill="none" style="position:absolute;right:calc(50% - 610px - 230px);top:-290px;-webkit-mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);">
 <g stroke="#D9E1EC" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
@@ -94,13 +99,20 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <circle cx="450" cy="300" r="6" fill="#D8E4F3"></circle>
 <circle cx="330" cy="104" r="4" fill="#14417A"></circle>
 </svg>
-<svg class="pd-orb" viewBox="0 0 640 580" width="900" height="816" fill="none" style="position:absolute;left:calc(50% - 610px - 300px);top:820px;-webkit-mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);mask:radial-gradient(closest-side at 50% 50%,#000 46%,rgba(0,0,0,.55) 72%,transparent 92%);">
-<g stroke="#E5EBF2" stroke-width="1"><ellipse cx="330" cy="300" rx="150" ry="150"></ellipse><ellipse cx="330" cy="300" rx="236" ry="236"></ellipse></g>
-
+<div class="pd-glow" style="position:absolute;left:calc(50% - 1020px);top:1070px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
+<svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:1000px">
+<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
 <circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
-
+<div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:2120px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
+<svg class="pd-orb pd-orb-b" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% + 238px);top:2050px">
+<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
+<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
+</svg>
 </div>
 
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
@@ -187,17 +199,17 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 
 </div><div class="pd-metrics" style="gap:12px;margin-top:auto">
-<a href="./business.html#catalog" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-hover);border-color:var(--pd-accent-hover)" style-active="background:var(--pd-accent-active)">
+<a class="pd-lift" href="./business.html#catalog" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-hover);border-color:var(--pd-accent-hover)" style-active="background:var(--pd-accent-active)">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink-inverse)">52 позиции</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-accent-edge)">в семи направлениях работ&nbsp;— каталог открыт целиком, без заявки</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Каталог для компаний<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent-edge);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
-<a href="./main.html#process" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark);border-color:var(--pd-accent)" style-active="background:var(--pd-accent-mark)">
+<a class="pd-lift" href="./main.html#process" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark)" style-active="background:var(--pd-accent-mark)">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">6 этапов</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">от разбора методологии до репетиции защиты, каждый с приёмкой</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">План работы<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
-<a href="./main.html#team" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet);border-color:var(--pd-accent)" style-active="background:var(--pd-surface-quiet)">
+<a class="pd-lift" href="./main.html#team" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">с 2016</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">сопровождаем научные работы; роли команды описаны ниже</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Проектная команда<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
@@ -214,7 +226,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span class="pd-sub" style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">На каждой странице — состав работ, сроки и порядок сметы</span>
 </div>
 <div class="pd-routes" style="gap:16px;align-items:stretch">
-<a href="./main.html" style="display:flex;flex-direction:column;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);box-shadow:0 10px 20px rgba(20,22,28,.09)" style-active="transform:translateY(1px)">
+<a class="pd-lift" href="./main.html" style="display:flex;flex-direction:column;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-active="transform:translateY(1px)">
 <span class="pd-routebg" style="display:block;height:355px;background:var(--pd-accent-mark);transition:background 220ms cubic-bezier(.2,0,.2,1)">
 <span style="display:block;width:100%;height:355px">
 <image-slot id="sp-route-1" shape="rect" fit="cover" data-alt="Аспирант готовит диссертацию к защите" placeholder="Фото: аспирант" style="width:100%;height:355px"></image-slot>
@@ -229,7 +241,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </span>
 </span>
 </a>
-<a href="./students.html" style="display:flex;flex-direction:column;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);box-shadow:0 10px 20px rgba(20,22,28,.09)" style-active="transform:translateY(1px)">
+<a class="pd-lift" href="./students.html" style="display:flex;flex-direction:column;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-active="transform:translateY(1px)">
 <span class="pd-routebg" style="display:block;height:355px;background:var(--pd-accent-mark);transition:background 220ms cubic-bezier(.2,0,.2,1)">
 <span style="display:block;width:100%;height:355px">
 <image-slot id="sp-route-2b" shape="rect" fit="cover" data-alt="Студент работает над дипломом и научной статьёй" placeholder="Фото: студент" style="width:100%;height:355px"></image-slot>
@@ -244,7 +256,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </span>
 </span>
 </a>
-<a href="./business.html" style="display:flex;flex-direction:column;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 var(--pd-edge-neutral),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);box-shadow:0 10px 20px rgba(20,22,28,.09)" style-active="transform:translateY(1px)">
+<a class="pd-lift" href="./business.html" style="display:flex;flex-direction:column;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 var(--pd-edge-neutral),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-active="transform:translateY(1px)">
 <span class="pd-routebg" style="display:block;height:355px;background:var(--pd-accent-mark);transition:background 220ms cubic-bezier(.2,0,.2,1)">
 <span style="display:block;width:100%;height:355px">
 <image-slot id="sp-route-3" shape="rect" fit="cover" data-alt="Научный коллектив компании обсуждает разработку" placeholder="Фото: команда" style="width:100%;height:355px"></image-slot>
