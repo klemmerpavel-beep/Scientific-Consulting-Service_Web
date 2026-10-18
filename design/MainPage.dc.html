@@ -467,10 +467,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div data-carousel="process" tabindex="0" role="group" aria-label="Этапы работы — прокрутите стрелками" onScroll="{{ onStepScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:10px 2px 12px;margin:-10px -2px -12px">
 <sc-for list="{{ steps }}" as="p" hint-placeholder-count="6">
 <article class="pd-lift" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px 22px;min-height:232px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
-<div style="display:flex;align-items:center;gap:14px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
 <span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:{{ p.numColor }};font-variant-numeric:tabular-nums">{{ p.num }}</span>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ p.title }}</h3>
+<img src="{{ p.img }}" alt="" aria-hidden="true" width="72" height="72" decoding="async" loading="lazy" style="width:72px;height:72px;flex:0 0 72px;display:block;margin:-10px -6px -10px 0">
 </div>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ p.title }}</h3>
 <p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ p.text }}</p>
 <div style="margin-top:auto;padding-top:14px;border-top:1px solid var(--pd-divider);display:flex;flex-wrap:wrap;gap:6px">
 <sc-for list="{{ p.tags }}" as="tag" hint-placeholder-count="3">
@@ -929,8 +930,9 @@ class Component extends DCLogic {
       ['Комментарии куратора', 'Правки автора', 'Акт по этапу'],
       ['Разбор доклада', 'Презентация', 'Репетиция вопросов']
     ];
+    const stepImg = ['ex-3d-envelope', 'ex-3d-question', 'pd-3d-checklist', 'ex-3d-form', 'pd-3d-badge', 'pd-3d-bubbles'];
     const steps = stepData.map(([num, title, time, text], i) => ({
-      num, title, text,
+      num, title, text, img: './assets/art/' + stepImg[i] + '.webp',
       numColor: i === this.state.stepPage ? 'var(--pd-accent)' : 'var(--pd-ink-muted)',
       tags: (stepTags[i] || []).map(text => ({ text }))
     }));
