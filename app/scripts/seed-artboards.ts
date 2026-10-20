@@ -588,7 +588,6 @@ async function main() {
         summary: stage.summary,
         state: stage.state,
         dueOn: day(stage.offset - 30),
-        expertId: expertUser.id,
         startedAt: stage.state === 'NOT_STARTED' ? null : day(stage.offset + 20),
         completedAt: stage.state === 'DONE' ? day(stage.offset) : null,
         awaitingClientSince: stage.state === 'AWAITING_CLIENT' ? day(18) : null,
@@ -599,14 +598,13 @@ async function main() {
         approvalDueOn: stage.state === 'IN_APPROVAL' ? addWorkdays(moscowToday(day(2)), 5, new Map()) : null,
       },
       // Этап показательной работы переписывается целиком при каждом
-      // наполнении: состояние, срок и исполнитель — то, что снимок
+      // наполнении: состояние и срок — то, что снимок
       // показывает, и они не должны зависеть от истории базы (Р-213).
       update: {
         title: stage.title,
         summary: stage.summary,
         state: stage.state,
         dueOn: day(stage.offset - 30),
-        expertId: expertUser.id,
         startedAt: stage.state === 'NOT_STARTED' ? null : day(stage.offset + 20),
         completedAt: stage.state === 'DONE' ? day(stage.offset) : null,
         awaitingClientSince: stage.state === 'AWAITING_CLIENT' ? day(18) : null,

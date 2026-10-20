@@ -216,7 +216,6 @@ model User {
 
   managedProjects Project[] @relation("ProjectManager")
   expertProjects  Project[] @relation("ProjectExpert")
-  expertStages    Stage[]   @relation("StageExpert")
 
   stageChanges        StageStateChange[]
   projectEvents       ProjectEvent[]
@@ -571,9 +570,6 @@ model Stage {
   /// на согласование; клиент читает его над кнопками и в письме
   /// (требование Т-14, решение Р-289). Обезличивание затирает поле.
   outcome String? @db.Text
-
-  expertId String?
-  expert   User?   @relation("StageExpert", fields: [expertId], references: [id], onDelete: SetNull)
 
   /// Момент перехода в «ждём клиента». Питает светофор «ждёт клиента
   /// дольше 14 дней» у менеджера.

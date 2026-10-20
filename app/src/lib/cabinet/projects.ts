@@ -968,7 +968,6 @@ export interface AddStageInput {
   /** Суть выполнения: что делается на этапе и чем он закончится. */
   readonly summary?: string | null;
   readonly dueOn?: Date | null;
-  readonly expertId?: string | null;
 }
 
 /** Завести этап. Название — свободный текст менеджера, состояние — из перечня. */
@@ -994,7 +993,6 @@ export async function addStage(actor: Actor, input: AddStageInput) {
         title,
         summary: input.summary?.trim() || null,
         dueOn: input.dueOn ?? null,
-        expertId: input.expertId ?? null,
       },
     });
   });
