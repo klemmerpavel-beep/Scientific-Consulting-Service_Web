@@ -1,3 +1,4 @@
+import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { record } from './audit.ts';
 import { ensure, scopeProjects, staffThreadAllowed, withoutStaffNames, type Actor } from './access.ts';
@@ -22,17 +23,41 @@ import { projectRef } from './projects.ts';
 /** Условие ветки «клиент — менеджер» — в каждой её выборке. */
 const CLIENT_THREAD = { thread: 'CLIENT_MANAGER' as const };
 
-export async function listMessages(actor: Actor, projectId: string) {
+/**
+ * Сколько читать из ветки: `last` — последние N сообщений, без него — вся
+ * ветка. Экраны переписки берут окно (`thread-window.ts`), карточка работы —
+ * восемь последних строк (решение Р-636).
+ */
+export interface ListOptions {
+  readonly last?: number;
+}
+
+/**
+ * Последние N — выборкой с конца; иначе вся ветка по времени. Равное время
+ * разводит идентификатор, чтобы окно и полная лента шли в одном порядке.
+ */
+function orderOf(last: number | undefined): Pick<Prisma.MessageFindManyArgs, 'orderBy' | 'take'> {
+  return last === undefined
+    ? { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }
+    : { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: last };
+}
+
+/** Выборка с конца разворачивается: лента всегда идёт от ранних к поздним. */
+function chronological<T>(rows: T[], last: number | undefined): T[] {
+  return last === undefined ? rows : rows.reverse();
+}
+
+export async function listMessages(actor: Actor, projectId: string, options: ListOptions = {}) {
   const ref = await projectRef(projectId);
   if (ref === null) return [];
   ensure(actor, 'MESSAGE_READ', ref);
   const messages = await prisma.message.findMany({
     where: { projectId, ...CLIENT_THREAD },
-    orderBy: { createdAt: 'asc' },
+    ...orderOf(options.last),
     include: { author: { select: { id: true, fullName: true, role: true } } },
   });
   // Клиенту — без имени менеджера и руководителя в данных (Э-01, ОЭ-3б).
-  return withoutStaffNames(actor, messages);
+  return withoutStaffNames(actor, chronological(messages, options.last));
 }
 
 /** Предел длины сообщения в переписке. */
@@ -429,15 +454,16 @@ async function markThread(actor: Actor, thread: InternalThread, target: string):
 }
 
 /** Внутренняя переписка по работе — менеджер работы и руководитель. */
-export async function listInternal(actor: Actor, projectId: string) {
+export async function listInternal(actor: Actor, projectId: string, options: ListOptions = {}) {
   const ref = await projectRef(projectId);
   if (ref === null) return [];
   ensure(actor, 'INTERNAL_MESSAGE', ref);
-  return prisma.message.findMany({
+  const rows = await prisma.message.findMany({
     where: threadWhere('WORK_INTERNAL', projectId),
-    orderBy: { createdAt: 'asc' },
+    ...orderOf(options.last),
     include: AUTHOR,
   });
+  return chronological(rows, options.last);
 }
 
 /** Непрочитанное во внутренней ветке работы — для вкладки. */
@@ -502,14 +528,15 @@ async function staffOf(staffId: string) {
 }
 
 /** Ветка «руководитель — сотрудник»: руководителю — любая, менеджеру — своя. */
-export async function listStaffThread(actor: Actor, staffId: string) {
+export async function listStaffThread(actor: Actor, staffId: string, options: ListOptions = {}) {
   if (!staffThreadAllowed(actor, staffId)) throw new Error('Действие не разрешено');
   await staffOf(staffId);
-  return prisma.message.findMany({
+  const rows = await prisma.message.findMany({
     where: threadWhere('HEAD_STAFF', staffId),
-    orderBy: { createdAt: 'asc' },
+    ...orderOf(options.last),
     include: AUTHOR,
   });
+  return chronological(rows, options.last);
 }
 
 export async function readStaffThread(actor: Actor, staffId: string): Promise<void> {

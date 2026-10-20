@@ -366,7 +366,7 @@ export default async function ProjectScreen({
   // Короткий разговор виден прямо на экране заказа: уходить за ним на
   // отдельный экран, чтобы прочитать три строки, незачем. Прочитанным он
   // здесь не помечается — отметку ставит открытие самой переписки.
-  const thread = mayWrite ? (await listMessages(actor, project.id)).slice(-8) : [];
+  const thread = mayWrite ? await listMessages(actor, project.id, { last: 8 }) : [];
   const expertList = mayAssign ? await experts(actor) : [];
   // Передать работу другому менеджеру может только руководитель (Р-149;
   // названия ролей — РК-01).

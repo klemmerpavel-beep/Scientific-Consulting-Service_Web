@@ -255,6 +255,34 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     assert.ok(mine.count > 0);
   });
 
+  it('окно ленты — последние сообщения в порядке времени, как хвост полной ветки (Р-636)', async () => {
+    const base = Date.now() + 60_000;
+    for (const [index, body] of ['Окно 1', 'Окно 2', 'Окно 3'].entries()) {
+      const sent = await messages.sendMessage(client(), ids.project!, body);
+      // Время задано явно: сообщения одной миллисекунды разводил бы только
+      // идентификатор, и проверка зависела бы от случая.
+      await prisma.message.update({ where: { id: sent.id }, data: { createdAt: new Date(base + index * 1000) } });
+    }
+    const full = await messages.listMessages(manager(), ids.project!);
+    const last = await messages.listMessages(manager(), ids.project!, { last: 2 });
+    assert.deepEqual(
+      last.map((row) => row.body),
+      ['Окно 2', 'Окно 3'],
+    );
+    assert.deepEqual(
+      last.map((row) => row.id),
+      full.slice(-2).map((row) => row.id),
+    );
+    // Клиенту окно приходит без имён сотрудников, как и вся ветка (Э-01).
+    const forClient = await messages.listMessages(client(), ids.project!, { last: 5 });
+    assert.equal(forClient.length, 5);
+    for (const row of forClient) {
+      if (row.author.role !== 'CLIENT') assert.equal(row.author.fullName, '', 'клиенту ушло имя сотрудника');
+    }
+    // Эксперту окно закрыто так же, как вся ветка (Р-150).
+    await assert.rejects(() => messages.listMessages(expert(), ids.project!, { last: 2 }), AccessDenied);
+  });
+
   it('по закрытой работе с приостановленным менеджером сигнал — руководителю (Р-462)', async () => {
     await prisma.message.updateMany({ where: { projectId: ids.project! }, data: { readAt: new Date() } });
     await prisma.project.update({ where: { id: ids.project! }, data: { status: 'COMPLETED' } });

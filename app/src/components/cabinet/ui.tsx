@@ -963,11 +963,17 @@ export function Thread({
   flagContacts = false,
   empty = 'Сообщений пока нет.',
   dense = false,
+  earlierHref,
 }: {
   messages: readonly ThreadMessage[];
   viewer: { id: string; role: string };
   flagContacts?: boolean;
   empty?: string;
+  /**
+   * Лента показывает окно последних сообщений, а раньше есть ещё: ссылка
+   * над лентой добавляет следующее окно (решение Р-636).
+   */
+  earlierHref?: string;
   /**
    * Переписка стоит колонкой панели, а не во всю ширину экрана.
    *
@@ -1001,122 +1007,131 @@ export function Thread({
   });
 
   return (
-    <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-      {rows.map(({ message, opensDay, named }, index) => {
-        const mine = message.author.id === viewer.id;
-        const gap = index === 0 ? 0 : named ? (dense ? 14 : 18) : 6;
-        return (
-          <Fragment key={message.id}>
-            {opensDay ? (
-              <li
-                style={{
-                  display: 'flex',
-                  gap: 12,
-                  alignItems: 'center',
-                  margin: index === 0 ? '0 0 14px' : '20px 0 14px',
-                }}
-              >
-                <span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid var(--pd-divider)' }} />
-                <span
+    <>
+      {earlierHref === undefined ? null : (
+        <p style={{ margin: '0 0 18px', textAlign: 'center' }}>
+          <a className="cab-mark" href={earlierHref}>
+            Показать ранние сообщения
+          </a>
+        </p>
+      )}
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+        {rows.map(({ message, opensDay, named }, index) => {
+          const mine = message.author.id === viewer.id;
+          const gap = index === 0 ? 0 : named ? (dense ? 14 : 18) : 6;
+          return (
+            <Fragment key={message.id}>
+              {opensDay ? (
+                <li
                   style={{
-                    fontFamily: MONO,
-                    fontSize: 12,
-                    lineHeight: 1.4,
-                    color: 'var(--pd-ink-muted)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {formatDay(message.createdAt)}
-                </span>
-                <span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid var(--pd-divider)' }} />
-              </li>
-            ) : null}
-            <li
-              style={{
-                display: 'flex',
-                justifyContent: mine ? 'flex-end' : 'flex-start',
-                marginTop: opensDay ? 0 : gap,
-              }}
-            >
-              <div style={{ maxWidth: dense ? '100%' : '78%', width: dense ? '100%' : undefined }}>
-                {named ? (
-                  <div
-                    style={{
-                      marginBottom: 6,
-                      textAlign: mine ? 'right' : 'left',
-                      fontFamily: SANS,
-                      fontSize: 13,
-                      lineHeight: 1.4,
-                      fontWeight: 500,
-                      color: 'var(--pd-ink-secondary)',
-                    }}
-                  >
-                    {authorName(message.author, viewer, message.author.id)}
-                    {/* Свою роль человек знает: «Вы · клиент» читалось как
-                        пометка системы о нём самом (решение Р-206). Клиенту
-                        сотрудник подписан ролью вместо имени — «Менеджер», и
-                        повтор «· менеджер» не нужен (Э-01, ОЭ-3б, С-3). */}
-                    {mine || viewer.role === 'CLIENT' ? null : (
-                      <span style={{ fontWeight: 400, color: 'var(--pd-ink-muted)' }}>
-                        {' · '}
-                        {ROLE_LABEL[message.author.role] ?? message.author.role}
-                      </span>
-                    )}
-                  </div>
-                ) : null}
-                <div
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: 14,
-                    background: mine ? 'var(--pd-accent-tint)' : 'var(--pd-surface-quiet)',
-                    border: `1px solid ${mine ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
-                    fontFamily: SANS,
-                    fontSize: 15,
-                    lineHeight: 1.6,
-                    color: 'var(--pd-ink)',
-                    whiteSpace: 'pre-wrap',
-                  }}
-                >
-                  {message.body}
-                </div>
-                <div
-                  style={{
-                    marginTop: 4,
                     display: 'flex',
-                    gap: 8,
+                    gap: 12,
                     alignItems: 'center',
-                    justifyContent: mine ? 'flex-end' : 'flex-start',
-                    flexWrap: 'wrap',
+                    margin: index === 0 ? '0 0 14px' : '20px 0 14px',
                   }}
                 >
+                  <span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid var(--pd-divider)' }} />
                   <span
                     style={{
                       fontFamily: MONO,
                       fontSize: 12,
                       lineHeight: 1.4,
                       color: 'var(--pd-ink-muted)',
-                      fontVariantNumeric: 'tabular-nums',
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {formatTime(message.createdAt)}
+                    {formatDay(message.createdAt)}
                   </span>
-                  {/* Клиент видит, что менеджер прочитал его сообщение
-                      (часть F, П-07, решение Р-399). */}
-                  {viewer.role === 'CLIENT' && mine && message.readAt ? (
-                    <span style={{ fontFamily: SANS, fontSize: 12, lineHeight: 1.4, color: 'var(--pd-ink-muted)' }}>
-                      · прочитано менеджером
+                  <span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid var(--pd-divider)' }} />
+                </li>
+              ) : null}
+              <li
+                style={{
+                  display: 'flex',
+                  justifyContent: mine ? 'flex-end' : 'flex-start',
+                  marginTop: opensDay ? 0 : gap,
+                }}
+              >
+                <div style={{ maxWidth: dense ? '100%' : '78%', width: dense ? '100%' : undefined }}>
+                  {named ? (
+                    <div
+                      style={{
+                        marginBottom: 6,
+                        textAlign: mine ? 'right' : 'left',
+                        fontFamily: SANS,
+                        fontSize: 13,
+                        lineHeight: 1.4,
+                        fontWeight: 500,
+                        color: 'var(--pd-ink-secondary)',
+                      }}
+                    >
+                      {authorName(message.author, viewer, message.author.id)}
+                      {/* Свою роль человек знает: «Вы · клиент» читалось как
+                          пометка системы о нём самом (решение Р-206). Клиенту
+                          сотрудник подписан ролью вместо имени — «Менеджер», и
+                          повтор «· менеджер» не нужен (Э-01, ОЭ-3б, С-3). */}
+                      {mine || viewer.role === 'CLIENT' ? null : (
+                        <span style={{ fontWeight: 400, color: 'var(--pd-ink-muted)' }}>
+                          {' · '}
+                          {ROLE_LABEL[message.author.role] ?? message.author.role}
+                        </span>
+                      )}
+                    </div>
+                  ) : null}
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: 14,
+                      background: mine ? 'var(--pd-accent-tint)' : 'var(--pd-surface-quiet)',
+                      border: `1px solid ${mine ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
+                      fontFamily: SANS,
+                      fontSize: 15,
+                      lineHeight: 1.6,
+                      color: 'var(--pd-ink)',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {message.body}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 4,
+                      display: 'flex',
+                      gap: 8,
+                      alignItems: 'center',
+                      justifyContent: mine ? 'flex-end' : 'flex-start',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: MONO,
+                        fontSize: 12,
+                        lineHeight: 1.4,
+                        color: 'var(--pd-ink-muted)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {formatTime(message.createdAt)}
                     </span>
-                  ) : null}
-                  {flagContacts && message.containsContactHint ? (
-                    <Chip>похоже на передачу контактов</Chip>
-                  ) : null}
+                    {/* Клиент видит, что менеджер прочитал его сообщение
+                        (часть F, П-07, решение Р-399). */}
+                    {viewer.role === 'CLIENT' && mine && message.readAt ? (
+                      <span style={{ fontFamily: SANS, fontSize: 12, lineHeight: 1.4, color: 'var(--pd-ink-muted)' }}>
+                        · прочитано менеджером
+                      </span>
+                    ) : null}
+                    {flagContacts && message.containsContactHint ? (
+                      <Chip>похоже на передачу контактов</Chip>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            </li>
-          </Fragment>
-        );
-      })}
-    </ul>
+              </li>
+            </Fragment>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
