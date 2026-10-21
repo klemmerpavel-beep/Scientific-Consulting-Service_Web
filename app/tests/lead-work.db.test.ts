@@ -110,6 +110,27 @@ describe('работа с заявкой', { skip: !enabled }, async () => {
     await prisma.lead.update({ where: { id: ids.lead! }, data: { status: 'AWAITING_REPLY' } });
   });
 
+  it('Р-641: отклонённая заявка плашкой в разбор не возвращается и не одобряется', async () => {
+    const { approveLead, declineLead } = await import('../src/lib/cabinet/projects.ts');
+    const head = actor(ids.head!, 'HEAD');
+    const declined = await prisma.lead.create({
+      data: { source: 'landing', form: 'top', name: 'Отклонённый', contactKind: 'email', contact: `lw-no-${stamp}@example.org`, consentGiven: true, consentVersion: '2026-08-21' },
+    });
+    try {
+      await declineLead(head, declined.id, 'Не наш профиль');
+      await assert.rejects(work.setLeadStatus(head, declined.id, 'NEW'), work.LeadWorkError);
+      const lead = await prisma.lead.findUniqueOrThrow({ where: { id: declined.id } });
+      assert.equal(lead.status, 'DECLINED', 'плашка вернула отклонённую заявку в разбор');
+      await assert.rejects(
+        approveLead(head, { leadId: declined.id, title: 'Работа', serviceTypeId: 'none', managerId: ids.head! }),
+        /отклонена/u,
+      );
+    } finally {
+      await prisma.auditEvent.deleteMany({ where: { objectId: declined.id } });
+      await prisma.lead.delete({ where: { id: declined.id } });
+    }
+  });
+
   it('правка сохраняет значения, а в журнал идут только названия полей', async () => {
     const head = actor(ids.head!, 'HEAD');
     await work.editLead(head, ids.lead!, { name: 'Иванов Иван', topic: 'Статья Q1', contact: `lw-${stamp}@example.org` });

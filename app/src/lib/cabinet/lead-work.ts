@@ -32,7 +32,8 @@ async function visibleLead(actor: Actor, leadId: string) {
 /**
  * Сменить состояние плашкой. «Договор заключён» и «Отказ» так не ставятся:
  * у них есть последствия — работа и письмо заявителю, — и они ставятся
- * своими формами. Заявка, ставшая работой, своё состояние уже не меняет.
+ * своими формами. Заявка, ставшая работой или отклонённая, своё состояние
+ * уже не меняет.
  */
 export async function setLeadStatus(actor: Actor, leadId: string, status: string): Promise<void> {
   if (!isLeadSwitchStatus(status)) {
@@ -41,6 +42,12 @@ export async function setLeadStatus(actor: Actor, leadId: string, status: string
   const lead = await visibleLead(actor, leadId);
   if (lead.projectId !== null) {
     throw new LeadWorkError('Заявка уже стала работой: её состояние ведётся в карточке работы');
+  }
+  // Отклонённой заявке ушло письмо с причиной. Плашка возвращала её в
+  // разбор, и одобрение заводило работу вопреки этому письму, а повторный
+  // отказ переписывал причину при прежнем письме (решение Р-641).
+  if (lead.status === 'DECLINED') {
+    throw new LeadWorkError('Заявка отклонена, заявителю уже ответили: состояние больше не меняется');
   }
   if (lead.status === status) return;
   // Давность состояния — для дела «Заявки в разборе» (М-06, Р-304).
