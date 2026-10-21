@@ -350,10 +350,12 @@ export default async function ManageQueue({
         detail: [
           // Чей ход — той же подписью, что на шкале и экране этапа;
           // руководителю по чужой работе — «за куратором» (Р-206, Р-288).
+          // Сданный куратором этап — ход за менеджером (Р-325, Р-648).
           turnLabel(
             stage.state as StageStateKey,
             stage.project.managerId !== actor.id ? 'foreign-head' : 'curator',
             stage.project.expertId !== null || (stage.project.expertNameRaw ?? '').trim() !== '',
+            stage.handedOverAt,
           ),
           stage.project.client.fullName,
           rest > 0n ? `не получено ${formatAmount(rest)}` : null,

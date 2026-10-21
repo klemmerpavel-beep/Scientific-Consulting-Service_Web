@@ -1529,11 +1529,13 @@ export async function todayItems(actor: Actor) {
           title: `${stage.title} · ${project.title}`,
           dueOn: stage.dueOn,
           href: `/cabinet/stages/${stage.id}`,
-          // Подпись хода — та же, что на шкале и экране этапа (Р-288).
+          // Подпись хода — та же, что на шкале и экране этапа (Р-288):
+          // сданный куратором этап — ход за менеджером (Р-325, Р-648).
           turn: turnLabel(
             stage.state as StageStateKey,
             'curator',
             project.expertId !== null || (project.expertNameRaw ?? '').trim() !== '',
+            stage.handedOverAt,
           ),
         });
       }
