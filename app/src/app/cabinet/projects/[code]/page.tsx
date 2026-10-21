@@ -624,12 +624,13 @@ export default async function ProjectScreen({
   //
   // Тип работы часто и есть её название — у всего, что перенесено из книги
   // заказов; тема тоже нередко повторяет название другими словами. Ни то,
-  // ни другое не печатается дважды.
+  // ни другое не печатается дважды. Работа без темы строки «Тема» не
+  // получает: подпись стояла с пустым значением (решение Р-652).
   const about = [
     project.title === project.serviceType.name
       ? null
       : { term: 'Тип сопровождения', value: project.serviceType.name },
-    project.topic === project.title ? null : { term: 'Тема', value: project.topic },
+    project.topic === null || project.topic === project.title ? null : { term: 'Тема', value: project.topic },
     { term: 'Срок работы', value: formatDate(project.dueOn) ?? 'не назначен' },
     // Менеджер — с регалиями, но только практике: клиенту имя менеджера не
     // показывается (Э-01, ответ ОЭ-3б). Куратор — регалиями без ФИО и
