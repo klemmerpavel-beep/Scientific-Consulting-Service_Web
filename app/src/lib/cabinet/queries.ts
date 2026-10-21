@@ -470,6 +470,18 @@ export async function liveWorks(actor: Actor) {
 }
 
 /**
+ * Сколько у человека приостановленных работ — для ответа в шапке, когда
+ * идущих нет: приостановленная работа тоже действует (Р-245, Р-257,
+ * Р-342), и «Действующих работ нет» над её плашкой вводило в заблуждение
+ * (решение Р-651).
+ */
+export async function pausedWorksCount(actor: Actor): Promise<number> {
+  const scope = scopeProjects(actor);
+  if (scope === null) return 0;
+  return prisma.project.count({ where: { ...scope, status: 'PAUSED' } });
+}
+
+/**
  * Дела куратора (требование Э-04, решение Р-329): этапы его работ,
  * действующих и приостановленных (Д-4), свои версии и замечания с решением
  * менеджера — одной выборкой на вид. Правила — в `curatorTasks`.

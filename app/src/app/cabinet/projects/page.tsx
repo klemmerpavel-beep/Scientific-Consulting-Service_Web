@@ -43,9 +43,11 @@ import {
   curators,
   experts,
   liveWorks,
+  pausedWorksCount,
   pendingActions,
   type ProjectFilter,
 } from '../../../lib/cabinet/queries';
+import { idleAnswer } from '../../../lib/cabinet/works-answer';
 import { daysPast, now } from '../../../lib/cabinet/clock';
 import { can, staffExpertLine } from '../../../lib/cabinet/access';
 import { checklistCounts } from '../../../lib/cabinet/checklist-marks';
@@ -215,6 +217,10 @@ export default async function ProjectsScreen({
       project,
       stage: project.stages.find((stage) => stage.state !== 'DONE') ?? null,
     }));
+  // Приостановленные считаются, только когда идущих нет: лишь тогда
+  // ответ о них и нужен (решение Р-651).
+  const paused =
+    (forClient || (forExpert && !awaitingNda)) && live.length === 0 ? await pausedWorksCount(actor) : 0;
   const nearest =
     live
       .filter((row) => row.stage?.dueOn != null)
@@ -228,6 +234,9 @@ export default async function ProjectsScreen({
   let answer: { lead: string; detail?: string | null; action?: ReactNode } | undefined;
   if (forClient) {
     const first = pendingAll[0] ?? null;
+    // Приостановленная работа — действующая: клиент не читает
+    // «Действующих работ нет» над её плашкой (решение Р-651).
+    const idle = idleAnswer({ forClient: true, live: live.length, paused, due: dueLine(nearest) });
     answer =
       first !== null
         ? {
@@ -254,34 +263,22 @@ export default async function ProjectsScreen({
               .join(' '),
             action: <ButtonLink href={`/cabinet/stages/${first.id}`}>Открыть этап</ButtonLink>,
           }
-        : live.length > 0
-          ? {
-              lead:
-                live.length === 1
-                  ? 'Сейчас от вас ничего не требуется — работа идёт.'
-                  : 'Сейчас от вас ничего не требуется — работы идут.',
-              detail: dueLine(nearest),
-            }
-          : {
-              lead: 'Действующих работ нет.',
-              detail: 'Заявку на сопровождение новой работы можно оставить здесь же.',
-              action: <ButtonLink href="/cabinet/request">Новая заявка</ButtonLink>,
-            };
+        : {
+            lead: idle.lead,
+            detail: idle.detail,
+            action: idle.request ? <ButtonLink href="/cabinet/request">Новая заявка</ButtonLink> : undefined,
+          };
   } else if (forExpert && !awaitingNda) {
     // Ответ куратору — главное дело по ближайшему сроку, число остальных и
     // кнопка на экран, где дело закрывается. «Не начат» делом не является:
     // этап запускает менеджер (требование Э-04, решение Р-329).
     const tasks = await curatorTasksData(actor);
     const main = tasks[0] ?? null;
+    // Все работы приостановлены — так и сказано (решение Р-651).
+    const idle = idleAnswer({ forClient: false, live: live.length, paused });
     answer =
       main === null
-        ? {
-            lead: 'Сейчас ход не за вами.',
-            detail:
-              live.length === 0
-                ? 'Действующих назначений нет.'
-                : 'Этапы ваших работ сданы менеджеру, ждут клиента, ещё не запущены или закрыты; менеджер сообщит, когда продолжать.',
-          }
+        ? { lead: idle.lead, detail: idle.detail }
         : {
             lead: `${main.label}.`,
             detail: [
