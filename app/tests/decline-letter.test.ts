@@ -53,6 +53,14 @@ describe('судьба письма на экране заявки', () => {
     assert.match(declineLetterNote(mail, null), /не ставилось/u);
   });
 
+  it('Р-642: телефон, исправленный на почту после отказа, не выдаётся за машинную заявку', () => {
+    // Отказ при телефоне письма не ставит; правка контакта (Р-374) делает
+    // заявку «почтовой», и письма при ней по-прежнему нет.
+    const note = declineLetterNote(mail, null);
+    assert.doesNotMatch(note, /заявка была помечена как машинная либо отклонена до 24\.09\.2026/u);
+    assert.match(note, /при отказе в заявке был телефон, а не почта/u);
+  });
+
   it('ожидание канала отличается от обычной очереди и от отказа', () => {
     const waiting = declineLetterNote(mail, { state: 'PENDING', lastError: CHANNEL_OFF });
     const queued = declineLetterNote(mail, { state: 'PENDING', lastError: null });
