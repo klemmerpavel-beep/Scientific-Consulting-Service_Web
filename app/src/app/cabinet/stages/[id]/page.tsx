@@ -17,6 +17,7 @@ import {
   stageLabel,
   Text,
   formatDate,
+  formatDay,
   versionState,
   authorName,
   formatSize,
@@ -33,7 +34,7 @@ import {
   staffExpertLine,
   workClosed,
 } from '../../../../lib/cabinet/access';
-import { autoAcceptEnabled, formatDay } from '../../../../lib/cabinet/approval';
+import { autoAcceptEnabled } from '../../../../lib/cabinet/approval';
 import { approvalStaffLine } from '../../../../lib/cabinet/approval-text';
 import { formDraft } from '../../../../lib/cabinet/flash';
 import { stagePaperwork } from '../../../../lib/cabinet/projects';
