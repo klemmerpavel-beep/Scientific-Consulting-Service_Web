@@ -1433,27 +1433,23 @@ export default async function ProjectScreen({
                   )}
                   {/* Вход клиенту открывает куратор работы: прежде это умел
                       только руководитель, и клиенты ручных заказов в кабинет
-                      не попадали (решение Р-285). */}
+                      не попадали (решение Р-285). Почты в карточке нет —
+                      её вписывают здесь же (решение Р-655). */}
                   {can(actor, 'CLIENT_ACCESS_OPEN', ref) ? (
                     <div style={{ marginTop: 14 }}>
-                      {project.client.userId === null && (project.client.email ?? '').trim() === '' ? (
-                        <Text muted size={13}>
-                          Чтобы открыть клиенту вход в кабинет, нужен адрес почты в его карточке.
-                        </Text>
-                      ) : (
-                        <AccessLink
-                          people={[
-                            {
-                              id: project.id,
-                              label: `${project.client.fullName}${project.client.email === null ? '' : ` · ${project.client.email}`}`,
-                            },
-                          ]}
-                          action={openAccessForClient}
-                          field="projectId"
-                          selectLabel="Открыть вход в кабинет"
-                          submitLabel="Открыть клиенту вход"
-                        />
-                      )}
+                      <AccessLink
+                        people={[
+                          {
+                            id: project.id,
+                            label: `${project.client.fullName}${(project.client.email ?? '').trim() === '' ? '' : ` · ${project.client.email}`}`,
+                          },
+                        ]}
+                        action={openAccessForClient}
+                        field="projectId"
+                        selectLabel="Открыть вход в кабинет"
+                        submitLabel="Открыть клиенту вход"
+                        askEmail={project.client.userId === null && (project.client.email ?? '').trim() === ''}
+                      />
                     </div>
                   ) : null}
                 </div>

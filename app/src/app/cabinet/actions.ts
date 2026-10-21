@@ -1764,14 +1764,22 @@ export async function changeUserStatus(form: FormData): Promise<void> {
   redirect('/cabinet/manage/users');
 }
 
-/** «Открыть клиенту вход» с карточки работы (требование М-03, решение Р-285). */
+/**
+ * «Открыть клиенту вход» с карточки работы (требование М-03, решение Р-285).
+ * Почту клиенту без неё вписывают в той же форме (решение Р-655).
+ */
 export async function openAccessForClient(
   _previous: AccessLinkState,
   form: FormData,
 ): Promise<AccessLinkState> {
   const actor = await actorOrRedirect();
   try {
-    const issued = await openClientAccess(actor, String(form.get('projectId') ?? ''), await requestIp());
+    const issued = await openClientAccess(
+      actor,
+      String(form.get('projectId') ?? ''),
+      await requestIp(),
+      String(form.get('email') ?? ''),
+    );
     const until = issued.expiresAt.toLocaleTimeString('ru-RU', {
       timeZone: 'Europe/Moscow',
       hour: '2-digit',

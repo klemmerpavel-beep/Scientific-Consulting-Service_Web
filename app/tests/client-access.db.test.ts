@@ -33,7 +33,7 @@ describe('открыть клиенту вход', { skip: !enabled }, async () 
     expertNdaSignedAt: null,
   });
 
-  const user = async (email: string, role: 'MANAGER' | 'HEAD' | 'CLIENT') => {
+  const user = async (email: string, role: 'MANAGER' | 'HEAD' | 'CLIENT' | 'EXPERT') => {
     const row = await prisma.user.create({ data: { email, fullName: `${role} ${stamp}`, role } });
     users.push(row.id);
     return row.id;
@@ -128,6 +128,95 @@ describe('открыть клиенту вход', { skip: !enabled }, async () 
 
     const foreign = await work('D', ids.other!, `client-d-${stamp}@example.org`);
     await assert.rejects(openClientAccess(staff(ids.manager!, 'MANAGER'), foreign.projectId), AccessDenied);
+  });
+
+  it('почты в карточке нет — её вписывают в форме входа; адрес проверяется, вписанный не затирается (Р-655)', async () => {
+    const card = async (profileId: string) =>
+      prisma.clientProfile.findUniqueOrThrow({ where: { id: profileId }, select: { email: true, userId: true } });
+
+    // Менеджер своей работы вписывает почту и сразу открывает вход.
+    const own = await work('J', ids.manager!, null);
+    const issued = await openClientAccess(
+      staff(ids.manager!, 'MANAGER'),
+      own.projectId,
+      '127.0.0.1',
+      `  Client-J-${stamp}@Example.org `,
+    );
+    assert.match(issued.link, /\/cabinet\/enter\//u);
+    const written = await card(own.profileId);
+    assert.equal(written.email, `client-j-${stamp}@example.org`, 'почта не записана в карточку');
+    assert.ok(written.userId !== null, 'карточка не привязана к учётной записи');
+    const account = await prisma.user.findUniqueOrThrow({ where: { id: written.userId } });
+    assert.equal(account.email, `client-j-${stamp}@example.org`);
+    const event = await prisma.auditEvent.findFirst({
+      where: { projectId: own.projectId, action: 'CLIENT_EMAIL_ADDED', objectId: own.profileId },
+    });
+    assert.ok(event !== null, 'запись почты не попала в журнал');
+    assert.equal(event.actorId, ids.manager);
+
+    // Руководитель — так же.
+    const byHead = await work('K', ids.manager!, null);
+    await openClientAccess(staff(ids.head!, 'HEAD'), byHead.projectId, null, `client-k-${stamp}@example.org`);
+    assert.equal((await card(byHead.profileId)).email, `client-k-${stamp}@example.org`);
+
+    // Чужой менеджер, клиент и куратор работы — отказ; карточка не тронута.
+    const expert = await user(`ca-x-${stamp}@example.org`, 'EXPERT');
+    const customer = await user(`ca-c-${stamp}@example.org`, 'CLIENT');
+    const target = await work('L', ids.manager!, null);
+    await prisma.project.update({ where: { id: target.projectId }, data: { expertId: expert } });
+    const outsiders: Actor[] = [
+      staff(ids.other!, 'MANAGER'),
+      { id: customer, role: 'CLIENT', status: 'ACTIVE', clientProfileId: target.profileId, expertNdaSignedAt: null },
+      { id: expert, role: 'EXPERT', status: 'ACTIVE', clientProfileId: null, expertNdaSignedAt: new Date() },
+    ];
+    for (const outsider of outsiders) {
+      await assert.rejects(
+        openClientAccess(outsider, target.projectId, null, `client-l-${stamp}@example.org`),
+        AccessDenied,
+      );
+    }
+    assert.deepEqual(await card(target.profileId), { email: null, userId: null }, 'отказ записал почту');
+
+    // Адрес сотрудника, адрес другой карточки и адрес с ошибкой — отказ.
+    const twin = await prisma.clientProfile.create({
+      data: { fullName: 'Клиент двойник', normalizedName: `ca twin ${stamp}`, email: `twin-${stamp}@example.org` },
+    });
+    profiles.push(twin.id);
+    const linked = await work('M', ids.manager!, null);
+    await openClientAccess(staff(ids.manager!, 'MANAGER'), linked.projectId, null, `client-m-${stamp}@example.org`);
+    const refusals: [string, RegExp][] = [
+      [`ca-m2-${stamp}@example.org`, /принадлежит сотруднику/u],
+      [`Twin-${stamp}@example.org`, /другой карточки/u],
+      [`client-m-${stamp}@example.org`, /другой карточки/u],
+      ['не почта', /с ошибкой/u],
+    ];
+    for (const [email, reason] of refusals) {
+      await assert.rejects(openClientAccess(staff(ids.manager!, 'MANAGER'), target.projectId, null, email), reason);
+    }
+    assert.deepEqual(await card(target.profileId), { email: null, userId: null }, 'отказ записал почту');
+
+    // Почта появилась в карточке, пока форма была открыта, — не затирается.
+    const stale = await work('N', ids.manager!, null);
+    await prisma.clientProfile.update({ where: { id: stale.profileId }, data: { email: `first-${stamp}@example.org` } });
+    await assert.rejects(
+      openClientAccess(staff(ids.manager!, 'MANAGER'), stale.projectId, null, `second-${stamp}@example.org`),
+      /уже есть почта/u,
+    );
+    assert.deepEqual(await card(stale.profileId), { email: `first-${stamp}@example.org`, userId: null });
+
+    // Два одновременных нажатия с разными адресами: записывается один.
+    const race = await work('O', ids.manager!, null);
+    const results = await Promise.allSettled(
+      ['p', 'q'].map((letter) =>
+        openClientAccess(staff(ids.manager!, 'MANAGER'), race.projectId, null, `race-${letter}-${stamp}@example.org`),
+      ),
+    );
+    const won = results.flatMap((result, index) => (result.status === 'fulfilled' ? [index] : []));
+    assert.equal(won.length, 1, 'обе выдачи прошли или обе отказали');
+    const raced = await card(race.profileId);
+    assert.equal(raced.email, `race-${won[0] === 0 ? 'p' : 'q'}-${stamp}@example.org`);
+    const lost = await prisma.user.count({ where: { email: `race-${won[0] === 0 ? 'q' : 'p'}-${stamp}@example.org` } });
+    assert.equal(lost, 0, 'проигравшее нажатие завело учётную запись');
   });
 
   it('у клиента есть работа другого менеджера — вход открывает только руководитель (Р-416)', async () => {

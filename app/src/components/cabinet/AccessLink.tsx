@@ -40,6 +40,7 @@ export function AccessLink({
   field = 'userId',
   selectLabel = 'Кому открыть вход',
   submitLabel = 'Выдать ссылку',
+  askEmail = false,
 }: {
   people: readonly { id: string; label: string }[];
   action: (state: AccessLinkState, form: FormData) => Promise<AccessLinkState>;
@@ -47,6 +48,11 @@ export function AccessLink({
   field?: string;
   selectLabel?: string;
   submitLabel?: string;
+  /**
+   * Поле «Почта клиента»: в карточке её нет, и вход открыть не на что.
+   * После выдачи адрес уже в карточке, и поле уходит (решение Р-655).
+   */
+  askEmail?: boolean;
 }) {
   const [state, submit, pending] = useActionState<AccessLinkState, FormData>(action, {
     link: null,
@@ -83,6 +89,35 @@ export function AccessLink({
             ))}
           </select>
         </div>
+        {askEmail && state.link === null ? (
+          <div>
+            <label htmlFor="access-link-email" style={label}>
+              Почта клиента
+            </label>
+            <input
+              id="access-link-email"
+              name="email"
+              type="email"
+              required
+              autoComplete="off"
+              aria-describedby="access-link-email-hint"
+              style={control}
+            />
+            <span
+              id="access-link-email-hint"
+              style={{
+                display: 'block',
+                marginTop: 6,
+                fontFamily: SANS,
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: 'var(--pd-ink-muted)',
+              }}
+            >
+              В карточке клиента почты нет: адрес запишется в карточку, и вход откроется на него.
+            </span>
+          </div>
+        ) : null}
         <div>
           <button
             type="submit"

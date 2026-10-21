@@ -26,6 +26,7 @@ const ACTIONS: Record<string, string> = {
   TELEGRAM_UNBOUND: 'Отвязан Telegram',
   HELP_REQUESTED: 'Менеджер обратился за помощью',
   CLIENT_MERGED: 'Карточки клиента сведены',
+  CLIENT_EMAIL_ADDED: 'В карточку клиента вписана почта',
   DISK_SYNC: 'Зеркало на Диске обновлено',
   BOOK_PULL: 'Книга заказов перенесена с Диска',
   BRIEF_APPLIED: 'Карточка обновлена из документа',

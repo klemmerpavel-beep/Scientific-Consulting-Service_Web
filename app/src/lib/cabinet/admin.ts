@@ -157,6 +157,11 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
  * негоден; адрес принадлежит сотруднику; запись закрыта; адрес уже у
  * другой карточки клиента — их сводит руководитель.
  *
+ * Почты в карточке нет — её вписывают в той же форме (`email`): прежде
+ * оставалась подсказка, а обходом служил новый заказ с тем же телефоном,
+ * и он заводил вторую работу (решение Р-655). Адрес проверяется как у
+ * ручного заказа (Р-308) и записывается, только пока почты в карточке нет.
+ *
  * Согласие на обработку ПДн здесь не спрашивается: основание для
  * заказчика — договор (п. 5 ч. 1 ст. 6 152-ФЗ, так это и сказано в
  * Политике); новую заявку из кабинета клиент подаёт с отметками, как
@@ -167,6 +172,7 @@ export async function openClientAccess(
   actor: Actor,
   projectId: string,
   ip?: string | null,
+  email?: string | null,
 ): Promise<{ link: string; expiresAt: Date; fullName: string }> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -207,6 +213,12 @@ export async function openClientAccess(
   // Учётная запись: своя у карточки, найденная по адресу или новая.
   let userId: string;
   let created = false;
+  const typed = email?.trim() ? normalizeEmail(email) : null;
+  // Форму с полем почты показали карточке без почты и без записи: если
+  // с тех пор она изменилась, вписанный адрес не к месту.
+  if (typed !== null && (client.userId !== null || (client.email ?? '').trim() !== '')) {
+    throw new Error('В карточке клиента уже есть почта: обновите страницу');
+  }
   if (client.userId !== null) {
     const user = await prisma.user.findUnique({
       where: { id: client.userId },
@@ -216,12 +228,15 @@ export async function openClientAccess(
     if (user.status !== 'ACTIVE') throw new Error('Учётная запись клиента закрыта: вход не открывается');
     userId = client.userId;
   } else {
-    const email = normalizeEmail(client.email ?? '');
-    if (email === '' || !EMAIL_SHAPE.test(email)) {
+    const address = typed ?? normalizeEmail(client.email ?? '');
+    if (typed !== null && !EMAIL_SHAPE.test(typed)) {
+      throw new Error('Почта клиента записана с ошибкой: проверьте адрес');
+    }
+    if (address === '' || !EMAIL_SHAPE.test(address)) {
       throw new Error('В карточке клиента нет адреса почты: впишите его, и вход можно будет открыть');
     }
     const existing = await prisma.user.findUnique({
-      where: { email },
+      where: { email: address },
       select: { id: true, role: true, status: true, clientProfile: { select: { id: true } } },
     });
     if (existing !== null) {
@@ -232,10 +247,37 @@ export async function openClientAccess(
       if (existing.clientProfile !== null && existing.clientProfile.id !== client.id) {
         throw new Error('Этот адрес уже у другой карточки клиента: карточки сводит руководитель');
       }
+    }
+    if (typed !== null) {
+      const twin = await prisma.clientProfile.count({
+        where: {
+          id: { not: client.id },
+          mergedIntoId: null,
+          erasedAt: null,
+          email: { equals: typed, mode: 'insensitive' },
+        },
+      });
+      if (twin > 0) throw new Error('Этот адрес уже у другой карточки клиента: карточки сводит руководитель');
+      // Запись — условием «почты в карточке всё ещё нет»: адрес, вписанный
+      // за это время другим действием, не затирается.
+      const written = await prisma.clientProfile.updateMany({
+        where: { id: client.id, userId: null, email: client.email },
+        data: { email: typed },
+      });
+      if (written.count === 0) throw new Error('В карточке клиента уже есть почта: обновите страницу');
+      await record(actor, {
+        action: 'CLIENT_EMAIL_ADDED',
+        objectType: 'ClientProfile',
+        objectId: client.id,
+        projectId: project.id,
+        ip,
+      });
+    }
+    if (existing !== null) {
       userId = existing.id;
     } else {
       const user = await prisma.user.create({
-        data: { email, fullName: client.fullName, role: 'CLIENT' },
+        data: { email: address, fullName: client.fullName, role: 'CLIENT' },
         select: { id: true },
       });
       userId = user.id;
