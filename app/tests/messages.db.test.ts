@@ -230,6 +230,26 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     assert.ok(!row.body.includes('Отвечаю на оба'), 'текст сообщения ушёл во внешний канал');
   });
 
+  it('Р-643: сигнал клиенту называет работу названием, сотруднику — кодом (Р-362)', async () => {
+    await messages.markRead(client(), ids.project!);
+    const reply = await messages.sendMessage(manager(), ids.project!, 'Сигнал с названием');
+    const toClient = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { dedupKey: `message:${reply.id}:${ids.client!}:email` },
+    });
+    assert.doesNotMatch(toClient.subject, /PD-\d{4}-\d{3}/u);
+    assert.ok(!toClient.subject.includes(`PD-MS-${stamp}`), `код работы в теме клиенту: ${toClient.subject}`);
+    assert.equal(toClient.subject, 'Новое сообщение по работе «Работа с перепиской»');
+    assert.ok(toClient.body.startsWith('Работа «Работа с перепиской».\n'), toClient.body);
+    assert.ok(!toClient.body.includes(`PD-MS-${stamp}`), 'код работы в письме клиенту');
+
+    await messages.markRead(manager(), ids.project!);
+    const question = await messages.sendMessage(client(), ids.project!, 'Сигнал с кодом');
+    const toStaff = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { dedupKey: `message:${question.id}:${ids.manager!}:email` },
+    });
+    assert.equal(toStaff.subject, `Новое сообщение по работе PD-MS-${stamp}`);
+  });
+
   it('правило куратора отключает сигнал о сообщении', async () => {
     await prisma.notifyRule.create({
       data: { userId: ids.manager!, eventKind: 'MESSAGE_RECEIVED', channel: 'EMAIL', enabled: false },

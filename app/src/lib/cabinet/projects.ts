@@ -355,9 +355,11 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
         userId,
         projectId: created.id,
         eventKind: 'PROJECT_OPENED',
+        // Клиенту работа называется названием: код ему ничего не говорит
+        // (Р-362; решение Р-643).
         subject: firstTime
-          ? `Заявка принята: работа ${code}`
-          : `Заведена новая работа ${code}`,
+          ? `Заявка принята: работа «${title}»`
+          : `Заведена новая работа «${title}»`,
         body:
           `${title}${created.topic === null ? '' : ` — ${created.topic}`}.\n` +
           (firstTime

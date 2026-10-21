@@ -5,6 +5,7 @@ import { ensure, scopeProjects, staffThreadAllowed, withoutStaffNames, type Acto
 import { hasContacts } from './contacts.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
+import { workLine } from './work-line.ts';
 
 /**
  * Переписка «клиент — менеджер». Канал один: эксперт высказывается
@@ -157,7 +158,7 @@ async function signalMessage(
 
   const project = await tx.project.findUnique({
     where: { id: ref.id },
-    select: { code: true, client: { select: { userId: true } } },
+    select: { code: true, title: true, client: { select: { userId: true } } },
   });
   if (project === null) return;
   const recipients = fromClient
@@ -168,12 +169,19 @@ async function signalMessage(
 
   for (const userId of recipients) {
     if (userId === actor.id) continue;
+    // Клиенту — название работы, сотруднику — код: клиенту код ничего не
+    // говорит (Р-189, Р-362; решение Р-643).
+    const forClient = userId === project.client.userId;
     await enqueue(tx, {
       userId,
       projectId: ref.id,
       eventKind: 'MESSAGE_RECEIVED',
-      subject: `Новое сообщение по работе ${project.code}`,
-      body: 'В переписке по работе новое сообщение. Прочитать и ответить можно в кабинете.',
+      subject: forClient
+        ? `Новое сообщение по работе «${project.title}»`
+        : `Новое сообщение по работе ${project.code}`,
+      body:
+        (forClient ? `${workLine(project, true)}\n` : '') +
+        'В переписке по работе новое сообщение. Прочитать и ответить можно в кабинете.',
       dedupKey: `message:${messageId}:${userId}`,
       // Кнопка письма — в переписку работы (Т-06, Р-309).
       path: `/cabinet/projects/${project.code}/messages`,

@@ -134,7 +134,10 @@ describe('сквозной контур', { skip: !enabled }, async () => {
       where: { userId: user.id, eventKind: 'PROJECT_OPENED' },
     });
     assert.equal(invite.projectId, project.id);
-    assert.ok(invite.subject.includes(project.code), 'в теме нет кода работы');
+    // Клиенту работа называется названием, а не кодом: код с экранов снят,
+    // и в письме он клиенту ничего не говорит (Р-362, Р-643).
+    assert.doesNotMatch(invite.subject, /PD-\d{4}-\d{3}/u);
+    assert.equal(invite.subject, 'Заявка принята: работа «Сопровождение кандидатской диссертации»');
     assert.match(invite.body, /ссылка для входа/);
     // Одноразовая ссылка живёт пятнадцать минут и к моменту прочтения была
     // бы мертва — в письмо она не кладётся.
@@ -165,6 +168,8 @@ describe('сквозной контур', { skip: !enabled }, async () => {
       where: { projectId: second.id, eventKind: 'PROJECT_OPENED' },
     });
     assert.ok(letter.subject.startsWith('Заведена новая работа'), letter.subject);
+    assert.doesNotMatch(letter.subject, /PD-\d{4}-\d{3}/u);
+    assert.equal(letter.subject, 'Заведена новая работа «Сопровождение статьи»');
     // Объяснение про вход в кабинет прежнему клиенту не повторяется.
     assert.ok(!letter.body.includes('Пароль не нужен'), 'повторному клиенту шлётся приглашение');
 
