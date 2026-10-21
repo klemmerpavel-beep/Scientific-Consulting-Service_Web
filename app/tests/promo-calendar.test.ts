@@ -10,7 +10,14 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
-import { calendarKey, calendarNow, nearestPeak, promoCalendar } from '../src/lib/cabinet/analytics/calendar.ts';
+import {
+  calendarKey,
+  calendarNow,
+  legacyCalendarKey,
+  nearestPeak,
+  promoCalendar,
+  seasonMarks,
+} from '../src/lib/cabinet/analytics/calendar.ts';
 import { ANALYTICS_SINCE_DEFAULT, seasonalNorm, type ProjectRow } from '../src/lib/cabinet/analytics/metrics.ts';
 
 interface BookOrder {
@@ -131,5 +138,60 @@ describe('календарь продвижения (РК-16, таблица 6.4
     ]);
     const marked = new Set([calendarKey(of('diploma'))!]);
     assert.ok(!calendarNow(calendar, marked).some((row) => row.typeCode === 'diploma'));
+  });
+});
+
+describe('отметка окна — по сезону: вид и месяц сдачи (Р-656)', () => {
+  // Два новых заказа ВКР со сроком в декабре сдвигают медиану с 56 до 50
+  // дней: расчётная дата заказа уходит с 20.10 на 26.10, сезон тот же.
+  const extra = [0, 1].map(
+    (index) =>
+      ({
+        id: `x${index}`,
+        code: `PD-X-${index}`,
+        title: 'Работа',
+        typeCode: 'diploma',
+        typeName: of('diploma').typeName,
+        startedOn: day('2025-11-25'),
+        dueOn: day('2025-12-15'),
+        cost: 5_500_000n,
+      }) as unknown as ProjectRow,
+  );
+  const shifted = promoCalendar([...rows, ...extra], AT, OPTIONS);
+  const diploma = shifted.find((row) => row.typeCode === 'diploma')!;
+
+  it('новые заказы вида сдвигают дату заказа, а ключ отметки — сезон — не меняется', () => {
+    assert.equal(iso(diploma.orderOn), '2026-10-26');
+    assert.equal(diploma.state, 'main');
+    assert.equal(calendarKey(of('diploma')), 'calendar:diploma:2026-12');
+    assert.equal(calendarKey(diploma), calendarKey(of('diploma')));
+  });
+
+  it('отмеченное окно после сдвига медианы в «Сейчас» не возвращается', () => {
+    const marked = new Set([calendarKey(of('diploma'))!]);
+    assert.ok(calendarNow(shifted, new Set()).some((row) => row.typeCode === 'diploma'), 'заготовка: окно ВКР в «Сейчас»');
+    assert.ok(!calendarNow(shifted, marked).some((row) => row.typeCode === 'diploma'), 'отмеченное окно вернулось в «Сейчас»');
+  });
+
+  it('отметка прежнего вида считается, пока её ключ совпадает с расчётом; видна под ключом сезона', () => {
+    const pairs = (rows: typeof calendar) => rows.map((row) => [calendarKey(row), legacyCalendarKey(row)] as const);
+    const stored = new Map([['calendar:diploma:2026-10-20', { status: 'ACCEPTED' }]]);
+    assert.equal(legacyCalendarKey(of('diploma')), 'calendar:diploma:2026-10-20');
+    const marks = seasonMarks(stored, pairs(calendar));
+    assert.deepEqual(marks.get('calendar:diploma:2026-12'), { status: 'ACCEPTED', legacy: 'calendar:diploma:2026-10-20' });
+    assert.ok(!calendarNow(calendar, new Set(marks.keys())).some((row) => row.typeCode === 'diploma'));
+    // Медиана сдвинулась — прежний ключ с расчётом не совпадает, как и до Р-656.
+    const moved = seasonMarks(stored, pairs(shifted));
+    assert.equal(moved.has('calendar:diploma:2026-12'), false);
+    assert.ok(calendarNow(shifted, new Set(moved.keys())).some((row) => row.typeCode === 'diploma'));
+  });
+
+  it('стоят обе отметки — видна отметка сезона, а прежний ключ она помнит', () => {
+    const stored = new Map([
+      ['calendar:diploma:2026-10-20', { status: 'ACCEPTED' }],
+      ['calendar:diploma:2026-12', { status: 'DONE' }],
+    ]);
+    const marks = seasonMarks(stored, [[calendarKey(of('diploma')), legacyCalendarKey(of('diploma'))]]);
+    assert.deepEqual(marks.get('calendar:diploma:2026-12'), { status: 'DONE', legacy: 'calendar:diploma:2026-10-20' });
   });
 });

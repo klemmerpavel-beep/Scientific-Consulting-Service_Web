@@ -45,6 +45,8 @@ export default function RecommendationMarks({
       {/* Снимается и меняется та отметка, что видна на экране (Р-498, Р-537);
           пустое значение — отметки не было. */}
       <input type="hidden" name="current" value={mark?.status ?? ''} />
+      {/* Отметка видна по ключу прежнего вида — снятие снимает и его (Р-656). */}
+      {mark?.legacy === undefined ? null : <input type="hidden" name="legacy" value={mark.legacy} />}
       <input type="hidden" name="back" value={back} />
       <Button tone={tone}>{label}</Button>
     </Form>

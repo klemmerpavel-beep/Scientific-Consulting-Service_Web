@@ -13,6 +13,7 @@
  * - расчётная дата заказа — 15-е число ближайшего месяца сдачи минус
  *   медиана; ближайшего — с датой заказа не раньше сегодняшнего дня;
  * - окно — шесть недель до даты заказа, последние четыре главные;
+ * - сезон окна — вид и месяц сдачи: по нему ставится отметка (Р-656);
  * - пик заказов — справочно: норма месяца и значения по годам;
  * - вес — норма заказов вида в окне по долям дней месяцев (ДР-4) ×
  *   средний чек вида;
@@ -66,6 +67,8 @@ export interface CalendarRow {
   readonly deliverySeasons: number;
   readonly medianDays: number | null;
   readonly orderOn: Date | null;
+  /** Середина месяца сдачи, от которой отсчитана дата заказа, — сезон окна (Р-656). */
+  readonly deliveryOn: Date | null;
   readonly windowStart: Date | null;
   readonly mainStart: Date | null;
   readonly peak: { readonly month: number; readonly norm: number; readonly years: readonly { year: number; orders: number }[] } | null;
@@ -173,6 +176,7 @@ export function promoCalendar(rows: readonly ProjectRow[], controlDate: Date, op
     );
 
     let orderOn: Date | null = null;
+    let deliveryOn: Date | null = null;
     if (confidence !== 'FEW' && medianDays !== null && deliveryMonths.length > 0) {
       const shift = roundHalfEven(medianDays) * DAY;
       const candidates: Date[] = [];
@@ -186,6 +190,7 @@ export function promoCalendar(rows: readonly ProjectRow[], controlDate: Date, op
         }
       }
       orderOn = candidates.sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+      deliveryOn = orderOn === null ? null : new Date(orderOn.getTime() + shift);
     }
     const windowStart = orderOn === null ? null : new Date(orderOn.getTime() - 42 * DAY);
     const mainStart = orderOn === null ? null : new Date(orderOn.getTime() - 28 * DAY);
@@ -213,6 +218,7 @@ export function promoCalendar(rows: readonly ProjectRow[], controlDate: Date, op
       deliverySeasons,
       medianDays,
       orderOn,
+      deliveryOn,
       windowStart,
       mainStart,
       peak: peakMonth === null ? null : { month: peakMonth.month, norm: peakMonth.norm, years: peakMonth.years },
@@ -232,9 +238,37 @@ export function promoCalendar(rows: readonly ProjectRow[], controlDate: Date, op
   });
 }
 
-/** Ключ отметки окна: вид и дата заказа — у следующего сезона своя отметка. */
-export function calendarKey(row: Pick<CalendarRow, 'typeCode' | 'orderOn'>): string | null {
+/**
+ * Ключ отметки окна — сезон: вид и месяц сдачи (решение Р-656). Новый
+ * заказ вида сдвигает медиану и с ней дату заказа, но не сезон: отметка
+ * остаётся при окне. У следующего сезона своя отметка.
+ */
+export function calendarKey(row: Pick<CalendarRow, 'typeCode' | 'deliveryOn'>): string | null {
+  return row.deliveryOn === null ? null : `calendar:${row.typeCode}:${row.deliveryOn.toISOString().slice(0, 7)}`;
+}
+
+/** Ключ прежнего вида — вид и дата заказа (Р-349): отметкой считается, пока совпадает с расчётом. */
+export function legacyCalendarKey(row: Pick<CalendarRow, 'typeCode' | 'orderOn'>): string | null {
   return row.orderOn === null ? null : `calendar:${row.typeCode}:${row.orderOn.toISOString().slice(0, 10)}`;
+}
+
+/**
+ * Отметки по ключу сезона (решение Р-656). Отметки прежнего вида не
+ * переносились: такая считается, пока её ключ совпадает с вычисленным
+ * сейчас, видна под ключом сезона и помнит свой ключ — снятие снимает оба.
+ * Пары — ключ сезона и ключ прежнего вида одной рекомендации.
+ */
+export function seasonMarks<M extends object>(
+  marks: ReadonlyMap<string, M>,
+  pairs: Iterable<readonly [string | null, string | null]>,
+): Map<string, M & { readonly legacy?: string }> {
+  const out = new Map<string, M & { readonly legacy?: string }>(marks);
+  for (const [key, legacy] of pairs) {
+    const old = legacy === null ? undefined : marks.get(legacy);
+    if (key === null || legacy === null || old === undefined) continue;
+    out.set(key, { ...(marks.get(key) ?? old), legacy });
+  }
+  return out;
 }
 
 /**

@@ -2074,6 +2074,7 @@ export async function markRecommendationAction(form: FormData): Promise<void> {
         : '/cabinet/manage/recommendations/calendar';
   const raw = String(form.get('status') ?? '');
   const current = String(form.get('current') ?? '');
+  const legacy = String(form.get('legacy') ?? '');
   let failure: string | null = null;
   try {
     await markRecommendation(
@@ -2082,6 +2083,8 @@ export async function markRecommendationAction(form: FormData): Promise<void> {
       raw === '' ? null : (raw as RecommendationMarkStatus),
       // Пустое `current` — на экране отметки не было (Р-537).
       current === '' ? null : (current as RecommendationMarkStatus),
+      // Ключ прежнего вида, по которому видна отметка (Р-656).
+      legacy === '' ? undefined : legacy,
     );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отметить рекомендацию');

@@ -24,7 +24,10 @@ export const MIN_TRANSITIONS = 5;
 const iso = (date: Date) => date.toISOString().slice(0, 10);
 
 export interface PriceAdvice {
+  /** Ключ отметки — сезон окна вида: месяц сдачи (Р-656); без окна — год. */
   readonly key: string;
+  /** Ключ прежнего вида — начало окна (Р-350); без окна — `null`. */
+  readonly legacyKey: string | null;
   readonly typeCode: string;
   readonly typeName: string;
   readonly orders: number;
@@ -43,9 +46,13 @@ export function priceAdvice(rows: readonly ProjectRow[], calendar: readonly Cale
   return products(rows)
     .filter((product) => product.needsPriceList && product.orders >= 3 && product.medianCheck !== null && product.averageCheck !== null)
     .map((product) => {
-      const window = calendar.find((row) => row.typeCode === product.typeCode)?.windowStart ?? null;
+      const own = calendar.find((row) => row.typeCode === product.typeCode);
+      const window = own?.windowStart ?? null;
+      const season = own?.deliveryOn ?? null;
       return {
-        key: `price:${product.typeCode}:${window === null ? String(controlDate.getUTCFullYear()) : iso(window)}`,
+        // Сдвиг медианы двигает начало окна, но не сезон: отметка остаётся (Р-656).
+        key: `price:${product.typeCode}:${season === null ? String(controlDate.getUTCFullYear()) : season.toISOString().slice(0, 7)}`,
+        legacyKey: window === null ? null : `price:${product.typeCode}:${iso(window)}`,
         typeCode: product.typeCode,
         typeName: product.typeName,
         orders: product.orders,
