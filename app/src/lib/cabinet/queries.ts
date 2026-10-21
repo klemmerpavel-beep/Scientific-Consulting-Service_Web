@@ -527,7 +527,10 @@ export async function curatorTasksData(actor: Actor) {
         createdAt: true,
         moderationStatus: true,
         version: {
-          select: { material: { select: { title: true, project: { select: { code: true } }, stage: stageRef } } },
+          select: {
+            moderation: { select: { status: true } },
+            material: { select: { id: true, title: true, project: { select: { code: true } }, stage: stageRef } },
+          },
         },
       },
     }),
@@ -545,6 +548,8 @@ export async function curatorTasksData(actor: Actor) {
     })),
     comments.map((comment) => ({
       versionId: comment.versionId,
+      materialId: comment.version.material.id,
+      versionRejected: comment.version.moderation?.status === 'REJECTED',
       createdAt: comment.createdAt,
       status: comment.moderationStatus,
       materialTitle: comment.version.material.title,

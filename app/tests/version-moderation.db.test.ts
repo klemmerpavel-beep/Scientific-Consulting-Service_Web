@@ -210,6 +210,36 @@ describe('версия эксперта — после публикации', { 
     assert.equal(journal.actorId, ids.manager);
   });
 
+  it('пояснение куратора к неопубликованной версии отклоняется вместе с ней (Р-646)', async () => {
+    const waiting = async () =>
+      (await materials.pendingComments(curator())).find((row) => row.stageId === ids.stage)?.count ?? 0;
+    const before = await waiting();
+    const noted = await materials.uploadVersion(expert(), {
+      projectId: ids.project!,
+      stageId: ids.stage!,
+      materialId: ids.material!,
+      originalName: 'glava3.docx',
+      contentType: 'application/octet-stream',
+      body: Buffer.from('глава 3'),
+      note: 'Добавлены выводы к главе',
+    });
+    assert.equal(await waiting(), before + 1);
+    await materials.moderateVersion(curator(), noted.id, 'REJECTED', 'Нет выводов');
+    const note = await prisma.versionComment.findFirstOrThrow({ where: { versionId: noted.id } });
+    assert.equal(note.moderationStatus, 'REJECTED', 'пояснение к отклонённой версии ждёт публикации');
+    assert.equal(note.moderationNote, 'Нет выводов');
+    assert.equal(note.moderatedById, ids.manager);
+    assert.equal(note.publishedAt, null);
+    assert.equal(await waiting(), before, 'пояснение к отклонённой версии осталось в очереди менеджера');
+    // Куратору — одно письмо об отказе по версии, без второго о пояснении.
+    assert.equal(
+      await prisma.notificationOutbox.count({
+        where: { userId: ids.expert, dedupKey: { startsWith: `expert-decision:comment:${note.id}` } },
+      }),
+      0,
+    );
+  });
+
   it('УК-03: фамилия куратора в имени файла — пометка для менеджера (Р-396)', async () => {
     // ФИО куратора в этом тесте — «EXPERT {метка}»: фамилия — «EXPERT».
     const named = await materials.uploadVersion(expert(), {

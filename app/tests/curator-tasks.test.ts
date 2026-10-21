@@ -118,10 +118,42 @@ describe('дела «отклонено менеджером»', () => {
   });
 
   it('отклонённое последнее замечание — дело; новое замечание к той же версии закрывает', () => {
-    const rejected = { ...base, versionId: 'v1', createdAt: day(3), status: 'REJECTED' };
+    const rejected = { ...base, versionId: 'v1', materialId: 'm1', createdAt: day(3), status: 'REJECTED', versionRejected: false };
     assert.equal(curatorTasks([work('PD-1', [])], [], [rejected])[0]!.kind, 'COMMENT_REJECTED');
     const fixed = curatorTasks([work('PD-1', [])], [], [rejected, { ...rejected, createdAt: day(4), status: 'PENDING' }]);
     assert.equal(fixed.length, 0);
+  });
+
+  it('замечание к новой версии материала закрывает дело по прежней (Р-647)', () => {
+    // Форма замечания стоит только у новейшей версии: к v1 после выхода v2
+    // замечание оставить негде.
+    const rejected = { ...base, versionId: 'v1', materialId: 'm1', createdAt: day(3), status: 'REJECTED', versionRejected: false };
+    const fixed = curatorTasks(
+      [work('PD-1', [])],
+      [],
+      [rejected, { ...rejected, versionId: 'v2', createdAt: day(4), status: 'PENDING' }],
+    );
+    assert.deepEqual(fixed.map((task) => task.kind), []);
+    // Замечание к другому материалу дела не закрывает.
+    const other = curatorTasks(
+      [work('PD-1', [])],
+      [],
+      [rejected, { ...rejected, versionId: 'v9', materialId: 'm2', createdAt: day(4), status: 'PENDING' }],
+    );
+    assert.deepEqual(other.map((task) => task.kind), ['COMMENT_REJECTED']);
+  });
+
+  it('пояснение к неопубликованной версии — одно дело, по версии (Р-646)', () => {
+    const version = { ...base, versionId: 'v2', materialId: 'm1', number: 2, status: 'REJECTED' };
+    const note = { ...base, versionId: 'v2', materialId: 'm1', createdAt: day(4), status: 'REJECTED', versionRejected: true };
+    assert.deepEqual(curatorTasks([work('PD-1', [])], [version], [note]).map((task) => task.kind), ['VERSION_REJECTED']);
+    // Оно же — последнее замечание к материалу: отклонённое прежде к v1 не
+    // возвращается делом.
+    const earlier = { ...note, versionId: 'v1', createdAt: day(3), versionRejected: false };
+    assert.deepEqual(
+      curatorTasks([work('PD-1', [])], [version], [earlier, note]).map((task) => task.kind),
+      ['VERSION_REJECTED'],
+    );
   });
 
   it('по закрытой работе отклонённое делом не считается', () => {

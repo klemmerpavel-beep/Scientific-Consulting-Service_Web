@@ -499,7 +499,9 @@ async function commentAftermath(
  * При публикации клиент получает письмо «Новая версия материала», в
  * истории работы появляется событие, а пояснения эксперта к этой версии
  * без контактов публикуются вместе с ней: замечание к невидимой версии
- * отдельно не публикуется.
+ * отдельно не публикуется. При отказе пояснения не публикуются вместе с
+ * ней: прежде они навсегда оставались в очереди менеджера, а кнопка
+ * «Опубликовать клиенту» кончалась ошибкой (решение Р-646).
  */
 export async function moderateVersion(
   actor: Actor,
@@ -580,6 +582,12 @@ export async function moderateVersion(
           'Исправленную версию можно загрузить в личном кабинете.',
         dedupKey: `version:${version.id}:rejected`,
         path: materialPath(project.code, version.material.stageId),
+      });
+      // Пояснения — вместе с версией и с её причиной; отдельного письма о
+      // них нет: куратору хватает письма об отказе (Р-646).
+      await tx.versionComment.updateMany({
+        where: { versionId, authorId: version.uploadedById, moderationStatus: 'PENDING' },
+        data: { moderationStatus: 'REJECTED', moderatedById: actor.id, moderatedAt: now, moderationNote: reason },
       });
       return 0;
     }
