@@ -10,6 +10,8 @@
  * Модуль чистый: проверяется встроенным `node --test` без базы.
  */
 
+import { draftFits } from './flash-value.ts';
+
 /** Почта в виде для записи и сверки; `null` — не похоже на адрес. */
 export function orderEmail(raw: string | null | undefined): string | null {
   const value = (raw ?? '').trim().toLowerCase();
@@ -61,4 +63,44 @@ export class ClientChoiceNeeded extends Error {
   constructor() {
     super('Заказчик с таким ФИО уже есть в практике: выберите его карточку или заведите новую.');
   }
+}
+
+/**
+ * Поля «Нового заказа», которые уступают место признаку выбора карточки, —
+ * по убыванию обычной длины, с подписями формы.
+ */
+const YIELDING: readonly (readonly [string, string])[] = [
+  ['summary', 'Суть задачи'],
+  ['topic', 'Описание работы'],
+  ['university', 'Вуз или организация'],
+  ['speciality', 'Направление или специальность'],
+];
+
+/**
+ * Черновик «Нового заказа» после отказа. Выбор карточки открывается
+ * признаком в черновике, а черновик больше cookie не сохраняется вовсе:
+ * при длинной сути задачи экран не показывал списка карточек, и форма
+ * отказывала раз за разом (решение Р-645). Поэтому при выборе длинные поля
+ * по одному уступают место признаку, а причина называет их — менеджер
+ * вставит их снова.
+ */
+export function orderRetryDraft(
+  fields: Readonly<Record<string, string>>,
+  choiceNeeded: boolean,
+): { readonly draft: Readonly<Record<string, string>>; readonly note: string | null } {
+  if (!choiceNeeded) return { draft: fields, note: null };
+  const draft: Record<string, string> = { ...fields, clientChoiceNeeded: '1' };
+  const dropped: string[] = [];
+  for (const [name, label] of YIELDING) {
+    if (draftFits(draft)) break;
+    if (!draft[name]) continue;
+    delete draft[name];
+    dropped.push(`«${label}»`);
+  }
+  if (dropped.length === 0) return { draft, note: null };
+  if (dropped.length === 1) {
+    return { draft, note: `Поле ${dropped[0]} не сохранено — вставьте его снова после выбора карточки.` };
+  }
+  const list = `${dropped.slice(0, -1).join(', ')} и ${dropped[dropped.length - 1]}`;
+  return { draft, note: `Поля ${list} не сохранены — вставьте их снова после выбора карточки.` };
 }

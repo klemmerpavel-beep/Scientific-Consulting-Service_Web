@@ -17,7 +17,7 @@ import { rateWork, RatingError } from '../../lib/cabinet/ratings';
 import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
-import { ClientChoiceNeeded } from '../../lib/cabinet/client-match';
+import { ClientChoiceNeeded, orderRetryDraft } from '../../lib/cabinet/client-match';
 import { homeFor } from '../../lib/cabinet/nav';
 import {
   LEAD_EDIT_FIELDS,
@@ -1393,11 +1393,14 @@ export async function createOrder(form: FormData): Promise<void> {
     // Набранное возвращается в форму; совпадение только по ФИО открывает
     // выбор карточки заказчика (требование М-18, решение Р-308).
     const fields = ['customer', 'email', 'phone', 'serviceTypeId', 'title', 'topic', 'summary', 'university', 'speciality', 'orderedOn', 'dueOn', 'cost', 'paid', 'status', 'managerId'];
-    const draft: Record<string, string> = Object.fromEntries(fields.map((name) => [name, text(name)]));
-    if (choiceNeeded) draft.clientChoiceNeeded = '1';
+    const values: Record<string, string> = Object.fromEntries(fields.map((name) => [name, text(name)]));
+    // Длинная суть задачи не вытесняет выбор карточки: она уступает место,
+    // и причина просит вставить её снова (решение Р-645).
+    const { draft, note } = orderRetryDraft(values, choiceNeeded);
+    const reason = failure ?? 'Не удалось завести заказ';
     // Документ остаётся при форме: отказ не теряет разобранное (Р-560).
     const back = brief === '' ? '/cabinet/manage/orders/new' : `/cabinet/manage/orders/new?brief=${encodeURIComponent(brief)}`;
-    redirect(await withError(back, failure ?? 'Не удалось завести заказ', { draft }));
+    redirect(await withError(back, note === null ? reason : `${reason} ${note}`, { draft }));
   }
   // Документ, из которого заполнен заказ, — в материалы работы (Р-560).
   // Отказ хранилища заказ не отменяет: он уже заведён.
