@@ -3,9 +3,9 @@
 @font-face{font-family:JetBrains Mono;src:url(fonts/90c2d1c930c8.woff2)format("woff2");font-display:swap;font-weight:400 600}
 @font-face{font-family:Inter Fallback;src:local(Arial);ascent-override:89.79%;descent-override:22.36%;line-gap-override:0%;size-adjust:107.89%}
 @font-face{font-family:Literata Fallback;src:local(Times New Roman);ascent-override:99.63%;descent-override:26.07%;line-gap-override:0%;size-adjust:118.14%}
-.literata_ab4f2c72-module__hYKiZW__className{font-family:literata}
-.inter_cfa8acff-module__MS80na__className{font-family:inter}
-.mono_6f60d971-module__IXaqbq__className{font-family:mono}
+.hYKiZW_className{font-family:literata}
+.MS80na_className{font-family:inter}
+.IXaqbq_className{font-family:mono}
 html,body{background:#fff;min-height:100%;margin:0;padding:0}body{font-family:var(--pd-sans), "Helvetica Neue", Arial, sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}:root{--pd-serif:"Literata", "Literata Fallback";--pd-sans:"Inter", "Inter Fallback";--pd-mono:"JetBrains Mono"}*,:before,:after{box-sizing:border-box}:focus-visible{outline-offset:2px;outline:2px solid #14417a}input[type=checkbox]{accent-color:#14417a}@media (prefers-reduced-motion:reduce){*,:before,:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}html{scroll-behavior:smooth}@media (prefers-reduced-motion:no-preference){.pd-js .pd-rise{opacity:0;transform:translateY(14px)}.pd-js .pd-rise.pd-in{opacity:1;transform:none}.pd-js .pd-rise{transition:opacity .52s cubic-bezier(.2,0,.2,1),transform .52s cubic-bezier(.2,0,.2,1)}.pd-js .pd-rise .pd-rise-kid{opacity:0;transform:translateY(10px)}.pd-js .pd-rise.pd-in .pd-rise-kid{opacity:1;transform:none}.pd-js .pd-rise .pd-rise-kid{transition:opacity .46s cubic-bezier(.2,0,.2,1),transform .46s cubic-bezier(.2,0,.2,1)}}.pd-progress{z-index:40;transform-origin:0;pointer-events:none;will-change:transform;background:#14417a;height:2px;position:fixed;inset:0 0 auto;transform:scaleX(0)}@media print{.pd-progress{display:none}}
 
 
