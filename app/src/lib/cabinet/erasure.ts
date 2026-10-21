@@ -609,6 +609,23 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
         merged.map((row) => `curator-digest:${moscowToday(row.scheduledAt).toISOString().slice(0, 10)}:${row.userId}`),
       ),
     ];
+    // Письмо руководителю 1-го числа называет клиента в рекомендации месяца
+    // («Вернуться к клиенту: …»), письмо менеджеру о договоре куратора
+    // перечисляет коды и названия его работ. Ни работы, ни записи клиента
+    // у этих строк нет, они находятся по тексту — и отбираются до
+    // затирания: после него текст уже не совпадёт, и снятие с отправки
+    // ниже их бы не нашло (решение Р-644).
+    const byText = await tx.notificationOutbox.findMany({
+      where: {
+        OR: [
+          ...spellings
+            .filter((name) => name.trim().length > 0 && name !== ERASED)
+            .map((name) => ({ eventKind: 'HEAD_MONTHLY', body: { contains: name } })),
+          ...allProjects.map((project) => ({ eventKind: 'CURATOR_NDA_SIGNED', body: { contains: `— ${project.code} — ` } })),
+        ],
+      },
+      select: { id: true },
+    });
     const touched = {
         OR: [
           ...requests.map((row) => ({ dedupKey: { startsWith: `erasure-request:${row.id}:` } })),
@@ -622,6 +639,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
           // менеджеру, а не заявке, и называют автора и тему; заявку они
           // помнят только в ключе от повторов (решение Р-234).
           ...leadIds.map((leadId) => ({ dedupKey: { startsWith: `lead:${leadId}:` } })),
+          byText.length === 0 ? { id: '—нет такой строки—' } : { id: { in: byText.map((row) => row.id) } },
         ],
       };
     const notifications = await tx.notificationOutbox.updateMany({
