@@ -782,7 +782,13 @@ export default async function ProjectsScreen({
                     <a className="cab-mark" href={`/cabinet/stages/${waiting.id}`}>
                       {waitingLine(waiting)}
                     </a>
-                    {waiting.dueOn === null ? '' : ` — до ${formatDate(waiting.dueOn)}`}
+                    {/* На согласовании — срок согласования, как в шапке и в
+                        блоке «Требует внимания» (Т-15, Р-290, решение Р-650). */}
+                    {waiting.state === 'IN_APPROVAL' && waiting.approvalDueOn !== null
+                      ? ` — срок согласования до ${formatDate(waiting.approvalDueOn)}`
+                      : waiting.dueOn === null
+                        ? ''
+                        : ` — до ${formatDate(waiting.dueOn)}`}
                   </Text>
                 )}
 
