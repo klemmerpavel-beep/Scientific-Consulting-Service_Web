@@ -946,7 +946,11 @@ export interface OutboxDigest {
   readonly deliveryFailed: number;
   /** Ждут настройки канала: попытки им не наращиваются (см. `dispatch`). */
   readonly waitingChannel: number;
-  /** Закрыты без отправки за последние сутки: устарели в очереди. */
+  /**
+   * Закрыты без отправки за последние сутки: устарели в очереди или сняты
+   * с отправки — смена роли, снятие куратора, отзыв договора, удаление
+   * данных (решение Р-714).
+   */
   readonly expiredLastDay: number;
   readonly lastSentAt: Date | null;
   readonly failures: readonly OutboxFailure[];
