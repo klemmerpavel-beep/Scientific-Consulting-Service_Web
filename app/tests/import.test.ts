@@ -19,6 +19,7 @@ import {
   findHeader,
   money,
   normalizeName,
+  normalizeTypeAlias,
   parseBook,
   parseDeadline,
   type IssueCode,
@@ -237,6 +238,20 @@ describe('свод типа работы', () => {
     // «Аспирантура» содержит слово «диссертационный» в описании курса, но
     // относится к другой позиции справочника.
     assert.equal(classifyType('Аспирантура, диссертационный совет'), 'postgrad');
+  });
+
+  it('историческое написание из справочника сводит строку, которую правила не распознали (Р-657)', () => {
+    const aliases = new Map([
+      [normalizeTypeAlias('Курсовая по педагогике'), 'coursework'],
+      [normalizeTypeAlias('Отчёт по статье'), 'article'],
+    ]);
+    assert.equal(classifyType('Курсовая по педагогике'), null);
+    assert.equal(classifyType('  курсовая  по Педагогике ', aliases), 'coursework');
+    // Правила сильнее привязки: вид работ, уже сведённых правилами, при
+    // повторном переносе не меняется.
+    assert.equal(classifyType('Отчет по статье', aliases), classifyType('Отчет по статье'));
+    assert.notEqual(classifyType('Отчет по статье'), null);
+    assert.equal(classifyType('Диссертция', aliases), 'dissertation');
   });
 });
 

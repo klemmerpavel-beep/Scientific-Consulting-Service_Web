@@ -30,6 +30,7 @@ import {
   erasedKey,
   erasedTwin,
   normalizeName,
+  normalizeTypeAlias,
   parseBook,
   signatureBase,
   type IssueCode,
@@ -451,7 +452,16 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
   for (const color of await prisma.importColorMap.findMany()) {
     if (color.mapsTo in STATUS_LABEL) fills[color.argb.toUpperCase()] = color.mapsTo as LegacyStatus;
   }
-  const book = parseBook(readWorkbook(input.bytes), fills);
+  // Исторические написания — тоже из справочника: прежде их только
+  // записывали и показывали, а разбор их не читал (решение Р-657).
+  const aliases = new Map(
+    (
+      await prisma.serviceTypeAlias.findMany({
+        select: { alias: true, serviceType: { select: { code: true } } },
+      })
+    ).map((alias) => [normalizeTypeAlias(alias.alias), alias.serviceType.code]),
+  );
+  const book = parseBook(readWorkbook(input.bytes), fills, aliases);
   if (book.rows.length === 0) {
     throw new ImportError('EMPTY_HEADER', 'В книге не нашлось ни одной содержательной строки.');
   }
@@ -1002,6 +1012,17 @@ export async function applyBatch(
         batchId,
       );
 
+      // Написание, привязанное в «Справочниках» уже после предпросмотра, тоже
+      // сводит строку: руководитель видит несведённое написание в отчёте,
+      // привязывает его и фиксирует ту же загрузку (решение Р-657).
+      const aliases = new Map(
+        (
+          await tx.serviceTypeAlias.findMany({
+            select: { alias: true, serviceType: { select: { id: true, code: true } } },
+          })
+        ).map((alias) => [normalizeTypeAlias(alias.alias), alias.serviceType]),
+      );
+
       const clients = new Map<string, string>();
 
       for (const [index, row] of stored.entries()) {
@@ -1293,8 +1314,14 @@ export async function applyBatch(
         // строке с несведённым написанием отклонялась при каждом прогоне
         // моста — он замен написаний не передаёт (решение Р-252).
         const override = input.typeOverrides?.[raw.type];
+        const bound =
+          override === undefined && parsed.typeCode === null
+            ? aliases.get(normalizeTypeAlias(raw.type))
+            : undefined;
         const serviceTypeId =
-          override ?? (parsed.typeCode === null ? undefined : typeByCode.get(parsed.typeCode));
+          override ??
+          bound?.id ??
+          (parsed.typeCode === null ? undefined : typeByCode.get(parsed.typeCode));
         if (serviceTypeId === undefined) {
           rejected.push({
             rowNumber: row.rowNumber,
@@ -1373,9 +1400,25 @@ export async function applyBatch(
           await openContract(tx, { projectId: project.id, code, orderDate, deadline, rowCost, rowPaid });
         }
 
+        // Написание, сведённое только при фиксации, записывается в строку:
+        // иначе отчёт зафиксированной загрузки числил бы её несведённой.
+        const kept =
+          bound !== undefined && Array.isArray(row.errors)
+            ? (row.errors as Prisma.InputJsonObject[]).filter((issue) => issue.code !== 'UNKNOWN_SUPPORT_TYPE')
+            : [];
         await tx.importRow.update({
           where: { id: row.id },
-          data: { projectId: project.id, action: 'CREATE' },
+          data: {
+            projectId: project.id,
+            action: 'CREATE',
+            ...(bound === undefined
+              ? {}
+              : {
+                  parsed: { ...parsed, typeCode: bound.code },
+                  errors: kept,
+                  ...(kept.length === 0 ? { severity: 'OK' as const } : {}),
+                }),
+          },
         });
         created += 1;
         cost += rowCost;

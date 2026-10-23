@@ -131,11 +131,31 @@ const TYPE_RULES: readonly [RegExp, string][] = [
   [/диплом|специалитет|бакалавр|магистр/iu, 'diploma'],
 ];
 
-export function classifyType(raw: string): string | null {
+/**
+ * Написание типа работы в виде поиска по историческим написаниям
+ * справочника (`ServiceTypeAlias`). Одно правило на запись и на чтение:
+ * привязку заводит `addAlias`, а сверяет с ней разбор книги (решение Р-657).
+ */
+export function normalizeTypeAlias(raw: string): string {
+  return raw.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * `aliases` — исторические написания из справочника: «написание → код
+ * позиции». Прежде их только записывали и показывали, а разбор сводил тип
+ * одними правилами, и строка с привязанным написанием отклонялась при
+ * каждом переносе. Привязка сводит написание, которое правила не
+ * распознали; правила сильнее, поэтому вид работ, уже сведённых ими, при
+ * повторном переносе не меняется (решение Р-657).
+ */
+export function classifyType(
+  raw: string,
+  aliases: ReadonlyMap<string, string> = new Map(),
+): string | null {
   const text = raw.toLowerCase().replace(/ё/g, 'е').trim();
   if (text.length === 0) return null;
   for (const [pattern, code] of TYPE_RULES) if (pattern.test(text)) return code;
-  return null;
+  return aliases.get(normalizeTypeAlias(raw)) ?? null;
 }
 
 // ─────────────────────────── Даты ───────────────────────────────────────────
@@ -470,6 +490,7 @@ export function parseRow(
   row: Row,
   columns: ColumnMap,
   fills: Readonly<Record<string, LegacyStatus>> = DEFAULT_FILLS,
+  aliases: ReadonlyMap<string, string> = new Map(),
 ): ParsedRow | null {
   const customer = cellOf(row, columns.customer).value.trim();
   if (customer.length === 0) return null;
@@ -482,7 +503,7 @@ export function parseRow(
     : null;
 
   const rawType = cellOf(row, columns.type).value.trim();
-  const typeCode = classifyType(rawType);
+  const typeCode = classifyType(rawType, aliases);
   if (typeCode === null && rawType.length > 0) {
     issues.push({
       code: 'UNKNOWN_SUPPORT_TYPE',
@@ -606,6 +627,7 @@ export interface ParsedBook {
 export function parseBook(
   sheets: readonly Sheet[],
   fills: Readonly<Record<string, LegacyStatus>> = DEFAULT_FILLS,
+  aliases: ReadonlyMap<string, string> = new Map(),
 ): ParsedBook {
   const sheet = sheets.find((s) => s.rows.length > 0);
   if (sheet === undefined) {
@@ -618,7 +640,7 @@ export function parseBook(
 
   for (const row of sheet.rows) {
     if (row.number <= headerRow) continue;
-    const parsed = parseRow(row, columns, fills);
+    const parsed = parseRow(row, columns, fills, aliases);
     if (parsed === null) continue;
     rows.push(parsed);
     const { conflict } = classifyStatus(parsed.rawStatus, parsed.fill, fills);

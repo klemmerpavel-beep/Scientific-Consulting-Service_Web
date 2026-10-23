@@ -16,6 +16,7 @@ import { parseAmount } from './money.ts';
 import { enqueue, LEAD_RETRY_PAUSE_MS, pruneCuratorDigests } from './outbox.ts';
 import { curatorAccessLetter, invitationLetter, ndaSignedLetter } from './curator-letters.ts';
 import { ndaRequestOpen, ndaWaitingLetter } from './curator-welcome.ts';
+import { normalizeTypeAlias } from './import/etl.ts';
 
 export type Role = 'CLIENT' | 'EXPERT' | 'MANAGER' | 'HEAD';
 export type Status = 'ACTIVE' | 'SUSPENDED' | 'ERASED';
@@ -1113,7 +1114,7 @@ export async function saveServiceType(actor: Actor, input: ServiceTypeInput) {
  */
 export async function addAlias(actor: Actor, serviceTypeId: string, rawAlias: string) {
   ensure(actor, 'DIRECTORY_EDIT');
-  const alias = rawAlias.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+  const alias = normalizeTypeAlias(rawAlias);
   if (alias.length === 0) throw new Error('Написание не указано');
 
   const saved = await prisma.serviceTypeAlias.upsert({

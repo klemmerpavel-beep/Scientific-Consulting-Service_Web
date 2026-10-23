@@ -81,9 +81,15 @@ function book(paidSecond = '40000', extra: TestRow[] = [], deadlineSecond = '20.
   ]);
 }
 
+/** Отдельная строка книги для проверок одного случая: в работе, без заливки. */
+function line(date: string, customer: string, type: string, deadline: string, cost: string, paid = '0'): TestRow {
+  return [excelSerial(date), customer, type, 'Тема', deadline, cost, { value: 'в работе', fill: null }, paid];
+}
+
 describe('перенос книги заказов', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
   const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
+  const { addAlias } = await import('../src/lib/cabinet/admin.ts');
   const { applyBatch, loadBatch, mergeClients, previewBook } = await import(
     '../src/lib/cabinet/import/apply.ts'
   );
@@ -138,6 +144,7 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     await prisma.clientProfile.deleteMany({
       where: { normalizedName: { contains: String(stamp) } },
     });
+    await prisma.serviceTypeAlias.deleteMany({ where: { alias: { contains: String(stamp) } } });
     await prisma.auditEvent.deleteMany({ where: { actorId: { in: [ids.head, ids.manager] } } });
     await prisma.user.deleteMany({ where: { id: { in: [ids.head, ids.manager] } } });
     await prisma.$disconnect();
@@ -561,6 +568,63 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     assert.equal(created.clientId, merged.mergedIntoId, 'новая работа легла не в основную карточку');
     const dupes = await prisma.clientProfile.count({ where: { fullName: merged.fullName, mergedIntoId: null } });
     assert.equal(dupes, 0, 'заведена карточка-дубль сведённой');
+  });
+
+  it('написание, привязанное в «Справочниках», сводит строку к позиции (Р-657)', async () => {
+    // Прежде привязку только записывали и показывали: разбор её не читал,
+    // и строка с таким написанием отклонялась при каждом переносе.
+    const head = actor(ids.head, 'HEAD');
+    const type = await prisma.serviceType.upsert({
+      where: { code: 'coursework' },
+      create: { code: 'coursework', name: 'Курсовая работа' },
+      update: {},
+    });
+    ids.coursework = type.id;
+    await addAlias(head, type.id, `Курсовая по педагогике ${stamp}`);
+
+    // В книге то же написание — с другим регистром и двойным пробелом.
+    const preview = await previewBook(head, {
+      fileName: `книга-${stamp}-псевдоним.xlsx`,
+      bytes: makeWorkbook([HEADER, line('2026-09-01', `Зайцева Нина ${stamp}`, `курсовая  по Педагогике ${stamp}`, '20.12.2026', '30000')]),
+    });
+    batches.push(preview.batchId);
+    assert.equal(preview.rows[0]?.typeCode, 'coursework', 'привязанное написание не сведено к позиции');
+    assert.ok(!preview.rows[0]?.issues.some((issue) => issue.code === 'UNKNOWN_SUPPORT_TYPE'));
+    assert.equal(preview.unresolvedTypes.length, 0);
+
+    const report = await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    assert.deepEqual(report.rejected, [], 'строка с привязанным написанием отклонена');
+    assert.equal(report.created, 1);
+    const work = await prisma.project.findFirstOrThrow({
+      where: { client: { normalizedName: `зайцева нина ${stamp}` } },
+      select: { serviceTypeId: true },
+    });
+    assert.equal(work.serviceTypeId, type.id);
+  });
+
+  it('привязка, сделанная после предпросмотра, действует при фиксации (Р-657)', async () => {
+    const head = actor(ids.head, 'HEAD');
+    const spelling = `Курсовая по психологии ${stamp}`;
+    const preview = await previewBook(head, {
+      fileName: `книга-${stamp}-псевдоним-2.xlsx`,
+      bytes: makeWorkbook([HEADER, line('2026-09-02', `Зайцева Нина ${stamp}`, spelling, '20.12.2026', '40000')]),
+    });
+    batches.push(preview.batchId);
+    assert.equal(preview.rows[0]?.typeCode, null);
+
+    // Руководитель привязал написание, увидев его в отчёте, и фиксирует ту же загрузку.
+    await addAlias(head, ids.coursework, spelling);
+    const report = await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    assert.deepEqual(report.rejected, [], 'привязка после предпросмотра не дошла до фиксации');
+    const work = await prisma.project.findFirstOrThrow({
+      where: { client: { normalizedName: `зайцева нина ${stamp}` }, contract: { totalAmount: 4_000_000n } },
+      select: { serviceTypeId: true },
+    });
+    assert.equal(work.serviceTypeId, ids.coursework);
+    // Отчёт зафиксированной загрузки не числит строку несведённой.
+    const reopened = await loadBatch(head, preview.batchId);
+    assert.equal(reopened?.rows[0]?.typeCode, 'coursework');
+    assert.equal(reopened?.unresolvedTypes.length, 0);
   });
 
   it('перенос записан в журнал действий', async () => {
