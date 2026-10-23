@@ -10,6 +10,8 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, it } from 'node:test';
 
 import {
@@ -224,6 +226,42 @@ describe('помесячный ряд', () => {
       points.map((point) => point.key),
       ['2024-11', '2024-12', '2025-01', '2025-02'],
     );
+  });
+
+  // Ряд не берёт работу без даты начала, плитка «Законтрактовано» — берёт:
+  // экран называет такие работы отдельной строкой, и строки «Чисел»
+  // складываются в плитку (решение Р-696).
+  it('ряд и работы без даты начала вместе дают итог обзора', () => {
+    const rows = [
+      row({ code: 'PD-1', startedOn: new Date(Date.UTC(2025, 0, 5)), cost: 30_000_000n }),
+      row({ code: 'PD-2', startedOn: new Date(Date.UTC(2025, 2, 5)), cost: 50_000_000n }),
+      row({ code: 'PD-3', startedOn: null, status: 'ACTIVE', cost: 24_000_000n }),
+    ];
+    const points = byMonth(rows, new Date(Date.UTC(2025, 2, 20)));
+    const undated = rows.filter((item) => item.startedOn === null);
+    const total = overview(rows);
+    assert.equal(
+      points.reduce((acc, point) => acc + point.contracted, 0n) + undated.reduce((acc, item) => acc + item.cost, 0n),
+      total.contracted,
+    );
+    assert.equal(points.reduce((acc, point) => acc + point.orders, 0) + undated.length, total.projects);
+  });
+});
+
+describe('«Законтрактовано по месяцам» называет работы без даты начала (Р-696)', () => {
+  const page = readFileSync(
+    path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'manage', 'analytics', 'page.tsx'),
+    'utf8',
+  );
+
+  it('подпись графика говорит, что такие работы в ряд не входят', () => {
+    assert.match(page, /Работ без даты начала: \$\{undated\.length\} на \$\{formatAmount\(undatedCost\)\} — в ряд не входят\./u);
+  });
+
+  it('в «Числах» — последняя строка «Без даты начала»', () => {
+    const table = page.slice(page.indexOf('title="Законтрактовано по месяцам"'), page.indexOf('<BarChart'));
+    assert.match(table, /<td style=\{cell\}>Без даты начала<\/td>/u);
+    assert.ok(table.indexOf('Без даты начала') > table.indexOf('months.map('), 'строка без даты — после месяцев');
   });
 });
 
