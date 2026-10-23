@@ -121,16 +121,18 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
             Менеджеры
           </Heading>
           <TableCard label="Менеджеры" style={{ marginBottom: 12 }}>
+            {/* Ширину съедали шапки в одну строку, а не данные: многословные
+                переносятся, и таблица встаёт в карточку (Р-692). */}
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
               <thead>
                 <tr>
                   <th style={TABLE_HEAD} scope="col">Менеджер</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Работ</th>
-                  <th style={TABLE_HEAD} scope="col">Где стоят</th>
+                  <th style={{ ...TABLE_HEAD, whiteSpace: 'normal' }} scope="col">Где стоят</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Просрочено</th>
-                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Клиент ждёт ответа</th>
-                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Ждёт публикации</th>
-                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Сдано, ждёт решения</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right', whiteSpace: 'normal' }} scope="col">Клиент ждёт ответа</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right', whiteSpace: 'normal' }} scope="col">Ждёт публикации</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right', whiteSpace: 'normal' }} scope="col">Сдано, ждёт решения</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Поручения</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Оценка</th>
                 </tr>
@@ -149,7 +151,13 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
                         <a className="cab-mark" href={row.href}>
                           {row.fullName}
                         </a>
-                        {row.role === 'HEAD' ? ' · руководитель' : ''}
+                        {/* Пометка роли не отрывается от точки (Р-692). */}
+                        {row.role === 'HEAD' ? (
+                          <>
+                            {' '}
+                            <span style={{ whiteSpace: 'nowrap' }}>· руководитель</span>
+                          </>
+                        ) : null}
                       </td>
                       <td style={TABLE_NUM}>
                         {row.works}
@@ -179,18 +187,19 @@ export default async function TeamScreen({ searchParams }: { searchParams: Promi
             Кураторы
           </Heading>
           <TableCard label="Кураторы" style={{ marginBottom: 12 }}>
+            {/* Многословные шапки переносятся, как у менеджеров (Р-692). */}
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
               <thead>
                 <tr>
                   <th style={TABLE_HEAD} scope="col">Куратор</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Работ</th>
-                  <th style={TABLE_HEAD} scope="col">Где стоят</th>
+                  <th style={{ ...TABLE_HEAD, whiteSpace: 'normal' }} scope="col">Где стоят</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Просрочено</th>
-                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Его дела</th>
-                  <th style={TABLE_HEAD} scope="col">Договор поручения</th>
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right', whiteSpace: 'normal' }} scope="col">Его дела</th>
+                  <th style={{ ...TABLE_HEAD, whiteSpace: 'normal' }} scope="col">Договор поручения</th>
                   <th style={TABLE_HEAD} scope="col">Связь</th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Поручения</th>
-                  <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">
+                  <th style={{ ...TABLE_HEAD, textAlign: 'right', whiteSpace: 'normal' }} scope="col">
                     {peakLabel === null ? 'К пику сдачи' : `К пику: ${peakLabel}`}
                   </th>
                   <th style={{ ...TABLE_HEAD, textAlign: 'right' }} scope="col">Оценка</th>

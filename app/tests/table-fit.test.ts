@@ -169,3 +169,26 @@ describe('Р-691. пояснение таблицы — абзацем над о
     assert.doesNotMatch(imports.slice(table), /caption=/u);
   });
 });
+
+describe('Р-692. таблицы «Команды» — в ширину карточки', () => {
+  const team = code(read(SCREENS, 'manage', 'team', 'page.tsx'));
+
+  for (const label of ['Менеджеры', 'Кураторы']) {
+    it(`многословные шапки «${label}» переносятся`, () => {
+      const start = team.indexOf(`<TableCard label="${label}"`);
+      assert.ok(start >= 0, label);
+      const head = team.slice(start, team.indexOf('</thead>', start));
+      const cells = [...head.matchAll(/<th style=\{([^}]*\}?)\}[^>]*>([\s\S]*?)<\/th>/gu)];
+      assert.ok(cells.length > 0, label);
+      for (const [, style, title] of cells) {
+        if (!title!.trim().includes(' ')) continue;
+        assert.match(style!, /whiteSpace: 'normal'/u, title!.trim());
+      }
+    });
+  }
+
+  it('пометка роли не отрывается от точки', () => {
+    assert.match(team, /<span style=\{\{ whiteSpace: 'nowrap' \}\}>· руководитель<\/span>/u);
+    assert.doesNotMatch(team, /' · руководитель'/u);
+  });
+});
