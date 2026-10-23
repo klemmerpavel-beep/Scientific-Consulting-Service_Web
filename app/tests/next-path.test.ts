@@ -131,6 +131,25 @@ describe('файл или выгрузка без сеанса — вход и �
   });
 });
 
+describe('анкеты экспертов без сеанса — вход и возврат к анкете (решение Р-675)', () => {
+  // Сигнал Telegram о новой анкете ведёт прямо на её экран: без пути
+  // возврата руководитель после входа оказывался на начальном экране.
+  const root = path.join(import.meta.dirname, '../src/app/cabinet/manage/experts');
+  const screens: Array<[string, RegExp]> = [
+    ['page.tsx', /await requireActor\('\/cabinet\/manage\/experts'\)/u],
+    ['[id]/page.tsx', /await requireActor\(`\/cabinet\/manage\/experts\/\$\{encodeURIComponent\(id\)\}`\)/u],
+  ];
+
+  for (const [file, call] of screens) {
+    it(`${file}: requireActor со своим экраном, а не переход на /cabinet`, () => {
+      const text = readFileSync(path.join(root, file), 'utf8');
+      assert.match(text, call, file);
+      assert.doesNotMatch(text, /if \(actor === null\) redirect\('\/cabinet'\)/u, file);
+      assert.doesNotMatch(text, /currentActor\(\)/u, file);
+    });
+  }
+});
+
 describe('перенаправления обработчиков — относительным адресом (Р-600)', () => {
   it('ни один обработчик не строит адрес перенаправления из request.url', () => {
     // За nginx Next собирает request.url из собственного адреса сервера:

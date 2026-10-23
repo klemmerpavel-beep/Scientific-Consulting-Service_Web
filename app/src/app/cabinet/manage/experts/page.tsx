@@ -20,7 +20,7 @@ import { can } from '../../../../lib/cabinet/access';
 import { EXPERT_STATUSES, expertApplications } from '../../../../lib/cabinet/expert-applications';
 import { formatMoment } from '../../../../lib/cabinet/journals';
 import { homeFor } from '../../../../lib/cabinet/nav';
-import { currentActor } from '../../../../lib/cabinet/session';
+import { requireActor } from '../../../../lib/cabinet/session';
 import { EXPERT_STATUS_LABEL, type ExpertStatus } from '../../../../lib/expert-application';
 
 export const dynamic = 'force-dynamic';
@@ -41,8 +41,8 @@ export default async function ExpertsScreen({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
+  // После входа — обратно к анкетам (Р-309, решение Р-675).
+  const actor = await requireActor('/cabinet/manage/experts');
   if (!can(actor, 'EXPERT_APPLICATION_REVIEW')) redirect(homeFor(actor));
 
   const sp = await searchParams;

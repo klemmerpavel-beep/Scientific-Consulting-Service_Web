@@ -23,7 +23,7 @@ import { can } from '../../../../../lib/cabinet/access';
 import { EXPERT_STATUSES, expertApplication } from '../../../../../lib/cabinet/expert-applications';
 import { formatMoment } from '../../../../../lib/cabinet/journals';
 import { homeFor } from '../../../../../lib/cabinet/nav';
-import { currentActor } from '../../../../../lib/cabinet/session';
+import { requireActor } from '../../../../../lib/cabinet/session';
 import { EXPERT_STATUS_LABEL, consentVersionLabel, experienceLabel } from '../../../../../lib/expert-application';
 import { removeExpertApplication, saveExpertReview } from '../../../actions';
 
@@ -55,10 +55,11 @@ export default async function ExpertScreen({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const actor = await currentActor();
-  if (actor === null) redirect('/cabinet');
-  if (!can(actor, 'EXPERT_APPLICATION_REVIEW')) redirect(homeFor(actor));
   const { id } = await params;
+  // Сигнал о новой анкете ведёт сюда: после входа — обратно на анкету
+  // (Р-309, решение Р-675).
+  const actor = await requireActor(`/cabinet/manage/experts/${encodeURIComponent(id)}`);
+  if (!can(actor, 'EXPERT_APPLICATION_REVIEW')) redirect(homeFor(actor));
   const sp = await searchParams;
   const row = await expertApplication(actor, id);
   if (row === null) notFound();
