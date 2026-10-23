@@ -15,6 +15,7 @@ import {
   compactMoney,
   compactNumber,
   donutArc,
+  integerScale,
   niceCeil,
   seriesColor,
   seriesInkDark,
@@ -117,6 +118,7 @@ export function BarChart({
   height = 260,
   width = 720,
   unit,
+  integer = false,
 }: {
   data: readonly BarDatum[];
   format?: (value: number) => string;
@@ -135,13 +137,16 @@ export function BarChart({
    * столбцы, а не каждый третий.
    */
   unit?: string;
+  /** Счётный ряд: деления шкалы только на целых (решение Р-684). */
+  integer?: boolean;
 }) {
   const W = width;
   const H = height;
   const pad = { t: 26, r: 14, b: 36, l: 52 };
   const iw = W - pad.l - pad.r;
   const ih = H - pad.t - pad.b;
-  const max = niceCeil(Math.max(0, ...data.map((item) => item.value)) || 1);
+  const top = Math.max(0, ...data.map((item) => item.value));
+  const { max, count } = integer ? integerScale(top) : { max: niceCeil(top || 1), count: 4 };
   const n = Math.max(1, data.length);
   const gap = Math.max(6, (iw * 0.012 * 8) / n);
   const bw = Math.min(64, (iw - gap * (n - 1)) / n);
@@ -173,7 +178,7 @@ export function BarChart({
     <Frame width={W} title={title}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
         fontFamily={SANS} role="img" aria-label={title}>
-        <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} format={format} />
+        <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} count={count} format={format} />
         {unit === undefined ? null : (
           <text x={4} y={12} textAnchor="start" fontSize={12} fill={MUTED}>
             {unit}
@@ -314,6 +319,7 @@ export function LineChart({
   title,
   height = 280,
   width = 720,
+  integer = false,
 }: {
   categories: readonly string[];
   series: readonly Series[];
@@ -322,13 +328,16 @@ export function LineChart({
   height?: number;
   /** Ширина поля рисунка; на широкой карточке задаётся по месту (Р-176). */
   width?: number;
+  /** Счётный ряд: деления шкалы только на целых (решение Р-684). */
+  integer?: boolean;
 }) {
   const W = width;
   const H = height;
   const pad = { t: 26, r: 16, b: 34, l: 52 };
   const iw = W - pad.l - pad.r;
   const ih = H - pad.t - pad.b;
-  const max = niceCeil(Math.max(1, ...series.flatMap((line) => [...line.points])));
+  const top = Math.max(1, ...series.flatMap((line) => [...line.points]));
+  const { max, count } = integer ? integerScale(top) : { max: niceCeil(top), count: 4 };
   const xAt = (index: number): number =>
     pad.l + (categories.length <= 1 ? iw / 2 : (index / (categories.length - 1)) * iw);
   const yAt = (value: number): number => pad.t + ih - (value / max) * ih;
@@ -348,7 +357,7 @@ export function LineChart({
     <Frame width={W} title={title}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
         fontFamily={SANS} role="img" aria-label={title}>
-        <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} format={format} />
+        <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} count={count} format={format} />
         {series.map((line, lineIndex) => {
           const color = line.color ?? seriesColor(lineIndex);
           const points = line.points.map((value, index) => ({ x: xAt(index), y: yAt(value) }));

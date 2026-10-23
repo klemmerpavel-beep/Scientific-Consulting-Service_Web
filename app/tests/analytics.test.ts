@@ -39,6 +39,7 @@ import {
   compactMoney,
   compactNumber,
   donutArc,
+  integerScale,
   niceCeil,
   seriesColor,
   seriesInkDark,
@@ -529,6 +530,32 @@ describe('геометрия графиков', () => {
 
   it('деления идут сверху вниз и включают ноль', () => {
     assert.deepEqual(ticks(100, 4), [100, 75, 50, 25, 0]);
+  });
+
+  it('у счётного ряда деления целые и подписи не повторяются', () => {
+    // Четыре равных шага от потолка 1 дают деления 1; 0,75; 0,5; 0,25, и
+    // округлённые подписи читались «1, 1, 1, 0, 0»; при максимуме 5
+    // подпись «3» стояла на линии 3,75 (решение Р-684).
+    const label = (value: number) => String(Math.round(value));
+    const scale = (raw: number) => {
+      const { max, count } = integerScale(raw);
+      return ticks(max, count);
+    };
+    assert.deepEqual(ticks(niceCeil(1), 4).map(label), ['1', '1', '1', '0', '0']);
+    for (const raw of [0, 1, 2, 3, 5, 7, 12, 23, 37, 1234]) {
+      const values = scale(raw);
+      assert.ok(values[0]! >= raw && values[0]! >= 1, `потолок ${values[0]} ниже максимума ${raw}`);
+      assert.ok(values.every((value) => Number.isInteger(value)), `${raw}: деления ${values.join(', ')}`);
+      const labels = values.map(label);
+      assert.equal(new Set(labels).size, labels.length, `${raw}: подписи ${labels.join(', ')}`);
+    }
+    assert.deepEqual(scale(1), [1, 0]);
+    assert.deepEqual(scale(5), [6, 4, 2, 0]);
+    assert.deepEqual(scale(7), [8, 6, 4, 2, 0]);
+    assert.deepEqual(scale(12), [12, 9, 6, 3, 0]);
+    // На больших числах шаг круглый, а не «309»: поступления в тысячах
+    // рублей идут той же шкалой.
+    assert.deepEqual(scale(1234), [1500, 1000, 500, 0]);
   });
 
   it('столбец нулевой высоты не рисуется', () => {

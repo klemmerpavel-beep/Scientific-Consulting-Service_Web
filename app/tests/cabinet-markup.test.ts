@@ -161,6 +161,21 @@ describe('общие части остаются единственным мес
     );
     assert.ok(owners.length > 0, 'вид кнопки не найден ни в одной общей части');
   });
+
+  it('график штук объявляет целую шкалу', () => {
+    // Подпись `String(Math.round(value))` значит, что ряд считает штуки.
+    // Без признака `integer` шкала делится на четверти потолка, и подписи
+    // оси читаются «1, 1, 1, 0, 0» (решение Р-684).
+    let counted = 0;
+    for (const file of sources(SCREENS)) {
+      for (const chart of readFileSync(file, 'utf8').matchAll(/<(?:BarChart|LineChart)\b[\s\S]*?\/>/gu)) {
+        if (!chart[0].includes('String(Math.round(value))')) continue;
+        counted += 1;
+        assert.match(chart[0], /^\s+integer$/mu, `${path.relative(SCREENS, file)}: шкала не целая`);
+      }
+    }
+    assert.ok(counted > 0, 'графиков штук не нашлось');
+  });
 });
 
 describe('слои кабинета не смешиваются', () => {

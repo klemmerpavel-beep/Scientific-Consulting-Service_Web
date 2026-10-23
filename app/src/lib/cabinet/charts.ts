@@ -72,9 +72,30 @@ export function niceCeil(value: number): number {
   return nice * power;
 }
 
-/** Значения делений шкалы сверху вниз. */
+/**
+ * Значения делений шкалы сверху вниз. Умножение идёт прежде деления:
+ * `15 × (1 − 1/3)` даёт 10,000000000000002, а целой шкале нужно 10.
+ */
 export function ticks(max: number, count = 4): number[] {
-  return Array.from({ length: count + 1 }, (_, index) => max * (1 - index / count));
+  return Array.from({ length: count + 1 }, (_, index) => (max * (count - index)) / count);
+}
+
+/**
+ * Шкала счётного ряда — заказов, заявок, работ: деления только на целых.
+ *
+ * Четыре равных шага от «красивого» потолка годятся для денег, но не для
+ * штук: при потолке 1 деления выходили 1; 0,75; 0,5; 0,25, и округлённые
+ * подписи читались «1, 1, 1, 0, 0», а при потолке 5 подпись «3» стояла на
+ * линии 3,75 — столбец «2» оказывался ниже линии «3» (решение Р-684).
+ * Здесь шаг целый: до пяти — любой, дальше 10, 20, 25, 50 на степень
+ * десяти, чтобы на тысячах не выходил шаг «309». Потолок — ближайшее
+ * кратное шага, делений — сколько вышло, не больше четырёх.
+ */
+export function integerScale(rawMax: number): { max: number; count: number } {
+  const quarter = Math.max(0, rawMax) / 4;
+  const step = quarter <= 5 ? Math.max(1, Math.ceil(quarter)) : niceCeil(quarter);
+  const max = step * Math.max(1, Math.ceil(rawMax / step));
+  return { max, count: max / step };
 }
 
 /** Столбец со скруглённым только верхом: низ упирается в ось. */

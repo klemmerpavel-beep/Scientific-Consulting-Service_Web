@@ -1136,6 +1136,7 @@ export default async function ManageQueue({
               unit="работ"
               data={months.map((month) => ({ label: month.label, value: month.orders }))}
               format={(value) => String(Math.round(value))}
+              integer
             />
           )}
           <Text muted size={13} style={{ marginTop: 10 }}>
@@ -1429,6 +1430,7 @@ export default async function ManageQueue({
                   unit="тыс ₽"
                   data={cash}
                   format={(value) => String(Math.round(value))}
+                  integer
                 />
               </div>
             )}

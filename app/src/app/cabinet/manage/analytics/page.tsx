@@ -266,6 +266,7 @@ export default async function AnalyticsOverview() {
                     value: month.leads,
                   }))}
                   format={(value) => String(Math.round(value))}
+                  integer
                 />
                 {/* Откуда приходят заказы: страница сайта и конверсия (РК-18). */}
                 <div style={{ marginTop: 16 }}>
