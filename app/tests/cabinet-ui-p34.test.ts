@@ -16,7 +16,9 @@ import { describe, it } from 'node:test';
 import {
   BUTTON_BASE,
   CABINET_CSS,
+  CONTAINER,
   FIELD_CONTROL,
+  GUTTER,
   ROOT_TOKENS,
 } from '../src/components/cabinet/tokens.ts';
 
@@ -327,5 +329,16 @@ describe('подвал кабинета без реквизитов', () => {
   it('Shell.tsx: в подвале нет ИНН и ОГРН', () => {
     const footer = read(COMPONENTS, 'Shell.tsx').split('<footer')[1] ?? '';
     assert.equal(/ИНН|ОГРН|КПП/u.test(code(footer)), false);
+  });
+});
+
+describe('10. кнопка замечаний не закрывает ссылки подвала (Р-711)', () => {
+  // Кнопка 52 px закреплена в правом нижнем углу с отступом 16 px, а у
+  // подвала поле 10 px: у самого низа страницы она вставала на «Политику
+  // обработки данных». Поле подвала — 52 + 16 + 8 запаса, пока ссылки
+  // доходят до кнопки: до 1295 px (1220 + 2 × (52 + 16 − 30) = 1296).
+  it('у подвала нижнее поле под кнопку на всех ширинах, где ссылки доходят до неё', () => {
+    assert.match(CABINET_CSS, /@media \(max-width:1295px\)\{footer>\.cab-pad\{padding-bottom:76px!important\}\}/u);
+    assert.equal(CONTAINER + 2 * (52 + 16 - GUTTER), 1296);
   });
 });

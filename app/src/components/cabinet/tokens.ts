@@ -311,6 +311,12 @@ details[open].cab-block>summary{border-radius:${RADIUS.card - 1}px ${RADIUS.card
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
+/* Кнопка замечаний 52 px стоит в правом нижнем углу с отступом 16 px и у
+   низа страницы закрывала ссылку «Политика обработки данных»: подвалу —
+   нижнее поле под кнопку, 52 + 16 + 8 запаса. Шире 1295 px ссылки кончаются
+   левее кнопки: 1220 + 2 × (52 + 16 − 30). Поле задано встроенным стилем,
+   отсюда !important (решение Р-711). */
+@media (max-width:1295px){footer>.cab-pad{padding-bottom:76px!important}}
 @media (max-width:1024px){.cab-board-main{display:block!important;overflow:visible!important;padding-bottom:clamp(72px,7vw,112px)!important}.cab-board{grid-template-columns:minmax(0,1fr)!important}.cab-board-body{max-height:none!important;overflow:visible!important}.cab-board-main .cab-fold-body,.cab-board-main .cab-fold-tall{max-height:none!important;overflow:visible!important}}
 @media print{@page{margin:14mm}body{background:var(--pd-ink-inverse)}header,footer,nav,.pd-skip,.cab-no-print{display:none!important}main{padding:0!important;max-width:none!important}.cab-block{break-inside:avoid;box-shadow:none!important}.cab-dash-list{max-height:none!important}.cab-dash-body{overflow:visible!important}details{break-inside:avoid}details>*:not(summary){display:block!important}details>summary{display:none!important}a{text-decoration:none;color:inherit}}
 `;
