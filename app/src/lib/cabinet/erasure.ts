@@ -650,10 +650,11 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     });
     // Неотправленное после затирания не уходит: письмо с темой и текстом
     // «[удалено…]» и строка сводки «— [удалено…]» адресату ничего не
-    // сообщают (решение Р-461).
+    // сообщают (решение Р-461). Недоставленное — тоже: «Отправить ещё
+    // раз» вернуло бы его в очередь (решение Р-668).
     await tx.notificationOutbox.updateMany({
-      where: { AND: [touched, { state: 'PENDING' }] },
-      data: { state: 'EXPIRED', lastError: ERASED_NOTE, scheduledAt: new Date() },
+      where: { AND: [touched, { state: { in: ['PENDING', 'FAILED'] } }] },
+      data: { state: 'EXPIRED', failure: null, lastError: ERASED_NOTE, scheduledAt: new Date() },
     });
 
     // Заявки: персональные поля затираются, отметка согласия и её

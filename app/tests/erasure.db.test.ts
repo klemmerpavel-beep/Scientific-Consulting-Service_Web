@@ -203,6 +203,21 @@ describe('удаление данных субъекта', { skip: !enabled }, a
         dedupKey: `era-outbox-${stamp}`,
       },
     });
+    // Письмо, которое ящик не принял: ждёт «Отправить ещё раз» (Р-668).
+    const undelivered = await prisma.notificationOutbox.create({
+      data: {
+        userId: clientUser.id,
+        projectId: project.id,
+        channel: 'EMAIL',
+        eventKind: 'STAGE_AWAITING_CLIENT',
+        subject: 'Смирнов О. П.: этап ждёт ваших данных',
+        body: 'Олег Петрович, этап ждёт ваших данных',
+        state: 'FAILED',
+        failure: 'DELIVERY',
+        attempts: 5,
+        dedupKey: `era-undelivered-${stamp}`,
+      },
+    });
     const batch = await prisma.importBatch.create({
       data: { fileName: 'книга.xlsx', sha256: 'a'.repeat(64), uploadedById: head.id },
     });
@@ -428,6 +443,7 @@ describe('удаление данных субъекта', { skip: !enabled }, a
       event: event.id,
       lead: lead.id,
       outbox: outbox.id,
+      undelivered: undelivered.id,
       batch: batch.id,
       importRow: importRow.id,
       head: head.id,
@@ -448,7 +464,7 @@ describe('удаление данных субъекта', { skip: !enabled }, a
       where: {
         id: {
           in: [
-            ids.outbox!, ids.requestNotice!, ids.erasureLetter!, ids.mergedRow!, ids.digest!,
+            ids.outbox!, ids.undelivered!, ids.requestNotice!, ids.erasureLetter!, ids.mergedRow!, ids.digest!,
             ids.monthly!, ids.accessLetter!, ids.otherMonthly!, ids.otherAccessLetter!,
           ],
         },
@@ -571,6 +587,11 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     // Неотправленное затёртое письмо не уходит (Р-461).
     assert.equal(outbox?.state, 'EXPIRED', 'затёртое письмо осталось в очереди');
     assert.equal(outbox?.lastError, ERASED_NOTE);
+    // И недоставленное: повтор отправил бы «[удалено…]» (решение Р-668).
+    const undelivered = await prisma.notificationOutbox.findUnique({ where: { id: ids.undelivered } });
+    assert.equal(undelivered?.subject, ERASED_TEXT);
+    assert.equal(undelivered?.state, 'EXPIRED', 'затёртое недоставленное письмо осталось к повтору');
+    assert.equal(undelivered?.lastError, ERASED_NOTE);
 
     // Заявка не удаляется никогда: отметка согласия и её редакция —
     // доказательство законности прошлой обработки.

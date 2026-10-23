@@ -56,10 +56,27 @@ describe('смена роли и письма прежней роли (Р-667)',
   it('письмо руководителю, не ушедшее до понижения, менеджеру не уходит', async () => {
     const overdue = await letter(ids.second!, 'TRANCHE_OVERDUE', 'Транш просрочен: PD-RCL');
     assert.equal(overdue.state, 'PENDING');
+    // Сводка, которую ящик не принял, ждёт «Отправить ещё раз» (Р-668).
+    const undelivered = await prisma.notificationOutbox.create({
+      data: {
+        userId: ids.second!,
+        channel: 'EMAIL',
+        eventKind: 'HEAD_DIGEST',
+        subject: 'Сводка руководителя',
+        body: '—',
+        state: 'FAILED',
+        failure: 'DELIVERY',
+        attempts: 5,
+        dedupKey: `rcl:undelivered:${stamp}`,
+      },
+    });
     await admin.setUserRole(head(), ids.second!, 'MANAGER');
     const done = await row(overdue.id);
     assert.equal(done.state, 'EXPIRED', 'письмо руководителю ушло бы менеджеру');
     assert.equal(done.lastError, admin.ROLE_CHANGED_NOTE);
+    const failed = await row(undelivered.id);
+    assert.equal(failed.state, 'EXPIRED', 'повтор отправил бы сводку руководителя менеджеру');
+    assert.equal(failed.lastError, admin.ROLE_CHANGED_NOTE);
   });
 
   it('повышение менеджера до руководителя письма не гасит', async () => {

@@ -284,7 +284,8 @@ function curatorDigestText(subjects: readonly string[]): { subject: string; body
  * Сводка находит свои строки по первой вошедшей (ключ, Р-436): все
  * строки одной сводки помечены её моментом. Отброшенные строки гаснут с
  * причиной `note`; сводка пересобирается из оставшихся, а без них гаснет
- * сама.
+ * сама. Недоставленная сводка — так же, как ждущая отправки: «Отправить
+ * ещё раз» вернуло бы её в очередь с прежним телом (решение Р-668).
  */
 export async function pruneCuratorDigests(
   db: Db,
@@ -293,7 +294,7 @@ export async function pruneCuratorDigests(
   note: string,
 ): Promise<void> {
   const digests = await db.notificationOutbox.findMany({
-    where: { userId, eventKind: 'CURATOR_DIGEST', state: 'PENDING' },
+    where: { userId, eventKind: 'CURATOR_DIGEST', state: { in: ['PENDING', 'FAILED'] } },
     select: { id: true, dedupKey: true },
   });
   for (const digest of digests) {
@@ -318,10 +319,10 @@ export async function pruneCuratorDigests(
       data: { state: 'EXPIRED', lastError: note },
     });
     await db.notificationOutbox.updateMany({
-      where: { id: digest.id, state: 'PENDING' },
+      where: { id: digest.id, state: { in: ['PENDING', 'FAILED'] } },
       data:
         kept.length === 0
-          ? { state: 'EXPIRED', lastError: note, scheduledAt: at }
+          ? { state: 'EXPIRED', failure: null, lastError: note, scheduledAt: at }
           : curatorDigestText(kept.map((row) => row.subject)),
     });
   }

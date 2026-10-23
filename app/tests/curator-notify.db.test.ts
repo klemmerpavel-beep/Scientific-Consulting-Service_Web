@@ -31,7 +31,7 @@ describe('уведомления куратору (Э-09)', { skip: !enabled }, 
   const finance = await import('../src/lib/cabinet/finance.ts');
   const channels = await import('../src/lib/cabinet/channels.ts');
   const admin = await import('../src/lib/cabinet/admin.ts');
-  const { enqueueDeadlineReminders } = await import('../src/lib/cabinet/outbox.ts');
+  const { enqueueDeadlineReminders, retryFailed } = await import('../src/lib/cabinet/outbox.ts');
   const { moscowToday } = await import('../src/lib/cabinet/clock.ts');
 
   const ids: Record<string, string> = {};
@@ -302,5 +302,45 @@ describe('уведомления куратору (Э-09)', { skip: !enabled }, 
       where: { userId: ids.newcomer, eventKind: 'CURATOR_TURN', state: 'EXPIRED', lastError: admin.NDA_REVOKED_NOTE },
     });
     assert.ok(expired > 0, 'письмо «ход за вами» не погашено');
+  });
+
+  /** Письмо о работе, которое ящик не принял: «Отправить ещё раз» вернуло бы его в очередь. */
+  const undelivered = (userId: string, tag: string) =>
+    prisma.notificationOutbox.create({
+      data: {
+        userId,
+        projectId: ids.project!,
+        channel: 'EMAIL',
+        eventKind: 'CURATOR_TURN',
+        subject: 'Ход за вами: этап «Обзор литературы»',
+        body: 'Флотация медно-никелевых руд',
+        state: 'FAILED',
+        failure: 'DELIVERY',
+        attempts: 5,
+        dedupKey: `cn-undelivered-${tag}-${stamp}`,
+      },
+    });
+
+  it('снятие с работы гасит и недоставленные письма о ней (решение Р-668)', async () => {
+    // Куратор работы сейчас — второй куратор: передача выше.
+    const failed = await undelivered(ids.newcomer!, 'unassigned');
+    await projects.assignExpert(head(), ids.project!, ids.curator!);
+    const gone = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: failed.id } });
+    assert.equal(gone.state, 'EXPIRED', 'недоставленное письмо о чужой работе осталось к повтору');
+    assert.equal(gone.lastError, projects.UNASSIGNED_NOTE);
+    await retryFailed(head(), failed.id);
+    const after = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: failed.id } });
+    assert.equal(after.state, 'EXPIRED', 'повтор вернул в очередь письмо снятому куратору');
+  });
+
+  it('отзыв договора гасит и недоставленные письма о работах (решение Р-668)', async () => {
+    const failed = await undelivered(ids.curator!, 'revoked');
+    await admin.signExpertNda(head(), ids.curator!, null);
+    const gone = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: failed.id } });
+    assert.equal(gone.state, 'EXPIRED', 'недоставленное письмо о работе осталось к повтору');
+    assert.equal(gone.lastError, admin.NDA_REVOKED_NOTE);
+    await retryFailed(head(), failed.id);
+    const after = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: failed.id } });
+    assert.equal(after.state, 'EXPIRED', 'повтор вернул в очередь письмо куратору без договора');
   });
 });

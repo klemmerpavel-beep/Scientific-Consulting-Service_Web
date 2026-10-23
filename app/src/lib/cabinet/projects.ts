@@ -705,18 +705,19 @@ export async function assignExpert(
   if (ref.expertId !== null) {
     // Неотправленные письма о работе прежнему куратору гаснут: отложенные
     // до утренней сводки ушли бы ему в 09:00 уже о чужой работе
-    // (улучшение УЭ-01, Р-398; решение Р-421). Письмо о снятии ставится
-    // следом и уходит. Начисление и выплата вознаграждения — его
+    // (улучшение УЭ-01, Р-398; решение Р-421), а недоставленные вернуло бы
+    // в очередь «Отправить ещё раз» (решение Р-668). Письмо о снятии
+    // ставится следом и уходит. Начисление и выплата вознаграждения — его
     // собственные деньги, они остаются на экране вознаграждения (Р-332) и
     // письмом уходят (решение Р-460).
     await prisma.notificationOutbox.updateMany({
       where: {
         userId: ref.expertId,
         projectId,
-        state: 'PENDING',
+        state: { in: ['PENDING', 'FAILED'] },
         eventKind: { notIn: ['PAYOUT_ACCRUED', 'PAYOUT_PAID'] },
       },
-      data: { state: 'EXPIRED', lastError: UNASSIGNED_NOTE, scheduledAt: new Date() },
+      data: { state: 'EXPIRED', failure: null, lastError: UNASSIGNED_NOTE, scheduledAt: new Date() },
     });
     // И письма о ней, уже вошедшие в неотправленную сводку (решение Р-534).
     await pruneCuratorDigests(

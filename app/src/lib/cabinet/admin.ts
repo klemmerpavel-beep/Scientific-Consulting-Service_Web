@@ -804,14 +804,15 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
     // клиентов об удалении, сводка — уходили пониженному до менеджера, а
     // письма о работах — бывшему куратору. По виду письма не видно, по
     // какой роли оно поставлено; сигналы о новых событиях после смены роли
-    // ставятся заново. Сводка куратора — вместе с вошедшими в неё письмами
+    // ставятся заново. Гаснут и недоставленные — их вернуло бы «Отправить
+    // ещё раз» (Р-668). Сводка куратора — вместе с вошедшими в неё письмами
     // (Р-534). Повышение менеджера до руководителя ничего не отнимает
     // (решение Р-667).
     if (!(before.role === 'MANAGER' && role === 'HEAD')) {
       if (before.role === 'EXPERT') await pruneCuratorDigests(tx, userId, () => true, ROLE_CHANGED_NOTE);
       await tx.notificationOutbox.updateMany({
-        where: { userId, state: 'PENDING' },
-        data: { state: 'EXPIRED', lastError: ROLE_CHANGED_NOTE, scheduledAt: new Date() },
+        where: { userId, state: { in: ['PENDING', 'FAILED'] } },
+        data: { state: 'EXPIRED', failure: null, lastError: ROLE_CHANGED_NOTE, scheduledAt: new Date() },
       });
     }
     // И сессии клиентов по ссылкам, которые он выдал (решение Р-424).
@@ -834,7 +835,7 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
     // на сегодня, иначе вернувшийся куратор остался бы без письма (Р-667).
     await prisma.notificationOutbox.updateMany({
       where: { userId, eventKind: 'CURATOR_INVITED', state: 'EXPIRED', lastError: ROLE_CHANGED_NOTE },
-      data: { state: 'PENDING', lastError: null, scheduledAt: new Date(), ...invitationLetter(signed) },
+      data: { state: 'PENDING', attempts: 0, lastError: null, scheduledAt: new Date(), ...invitationLetter(signed) },
     });
     await inviteCurator(userId, signed);
   }
@@ -919,11 +920,18 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
   // Отзыв договора гасит неотправленные письма о работах: отложенные до
   // утренней сводки ушли бы в 09:00 с названиями этапов и материалов
   // куратору, которому они уже не положены (Р-237; решение Р-456).
-  // Нейтральное «работа снята» уходит.
+  // Недоставленные письма о работах гаснут тоже: «Отправить ещё раз»
+  // вернуло бы их в очередь (решение Р-668). Нейтральное «работа снята»
+  // уходит.
   if ((before?.ndaSignedAt ?? null) !== null && signedOn === null) {
     await prisma.notificationOutbox.updateMany({
-      where: { userId, projectId: { not: null }, state: 'PENDING', eventKind: { not: 'WORK_UNASSIGNED' } },
-      data: { state: 'EXPIRED', lastError: NDA_REVOKED_NOTE, scheduledAt: new Date() },
+      where: {
+        userId,
+        projectId: { not: null },
+        state: { in: ['PENDING', 'FAILED'] },
+        eventKind: { not: 'WORK_UNASSIGNED' },
+      },
+      data: { state: 'EXPIRED', failure: null, lastError: NDA_REVOKED_NOTE, scheduledAt: new Date() },
     });
     // И письма о работах, уже вошедшие в неотправленную сводку: сводка
     // без работы под условие выше не подходит (решение Р-534).
