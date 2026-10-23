@@ -81,6 +81,10 @@ export default async function UsersScreen({
   const failure = await flashText(flags.error);
   // Набранное в форме заведения — после отказа (решение Р-543).
   const draft = (await formDraft(flags.error)) ?? {};
+  // Отказ заведения возвращает к свёртке по якорю #new, и верх свёртки
+  // встаёт на верх экрана: причина над ней оставалась выше края. Она
+  // выводится в самой свёртке, над полями (решение Р-706).
+  const inviteFailed = flags.new === '1' && failure !== undefined;
   const role = ROLES.includes(flags.role as Role) ? (flags.role as Role) : undefined;
   const status = STATES.includes(flags.status as UserState)
     ? (flags.status as UserState)
@@ -120,7 +124,7 @@ export default async function UsersScreen({
         note="Роль назначается здесь и нигде больше: она не приходит с формы входа и не меняется самим пользователем. При смене роли и при приостановке доступа все сессии отзываются."
       />
 
-      {failure === undefined ? null : (
+      {failure === undefined || inviteFailed ? null : (
         <Block as="div" style={{ marginBottom: 20 }}>
           <Notice tone="error" role="alert">
             {failure}
@@ -148,6 +152,11 @@ export default async function UsersScreen({
           свёртку сразу (решение Р-488). */}
       <Disclosure title="Завести учётную запись" open={flags.new === '1'} id="new" style={{ marginBottom: 20 }}>
         <Form action={inviteUser}>
+          {inviteFailed ? (
+            <Notice tone="error" role="alert">
+              {failure}
+            </Notice>
+          ) : null}
           <FormRow>
             <Field
               label="Имя и отчество"
