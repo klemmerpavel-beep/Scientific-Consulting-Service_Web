@@ -324,6 +324,24 @@ export async function stageById(actor: Actor, stageId: string) {
   return withoutStaffNames(actor, stage);
 }
 
+/**
+ * Есть ли у работы этап после этого — для подсказки закрытого этапа: у
+ * последнего следующего нет, и совет «проверьте, что следующий начат»
+ * расходился с экраном работы (решение Р-710). Видимость работы — та же,
+ * что у `stageById`.
+ */
+export async function hasNextStage(
+  actor: Actor,
+  stage: { projectId: string; position: number },
+): Promise<boolean> {
+  const scope = scopeProjects(actor);
+  if (scope === null) return false;
+  const later = await prisma.stage.count({
+    where: { projectId: stage.projectId, position: { gt: stage.position }, project: scope },
+  });
+  return later > 0;
+}
+
 /** Условие «у материала есть видимая версия»; практике — без условия. */
 /**
  * Какие материалы входят в число на плашке перечня — те же, что в списке

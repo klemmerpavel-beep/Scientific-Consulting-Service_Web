@@ -38,7 +38,7 @@ import { autoAcceptEnabled } from '../../../../lib/cabinet/approval';
 import { approvalStaffLine } from '../../../../lib/cabinet/approval-text';
 import { formDraft } from '../../../../lib/cabinet/flash';
 import { stagePaperwork } from '../../../../lib/cabinet/projects';
-import { stageById, stageClientWait } from '../../../../lib/cabinet/queries';
+import { hasNextStage, stageById, stageClientWait } from '../../../../lib/cabinet/queries';
 import { daysPast, now as clockNow } from '../../../../lib/cabinet/clock';
 import ActionError from '../../../../components/cabinet/ActionError';
 import CommentList from '../../../../components/cabinet/CommentList';
@@ -84,6 +84,13 @@ const STAFF_TODO: Record<StageStateKey, string> = {
     'Клиент смотрит материалы. Замечания куратора на модерации опубликуйте: до этого клиент их не видит.',
   DONE: 'Этап закрыт. Проверьте, что следующий начат и у него есть срок.',
 };
+
+/**
+ * Подсказка закрытого последнего этапа: следующего нет, и совет проверить
+ * его расходился с экраном работы — «Все этапы завершены» (решение Р-710).
+ */
+const DONE_LAST =
+  'Все этапы закрыты: проверьте оплату и завершите работу в «Управлении работой».';
 
 /**
  * Подсказка согласования без замечаний на модерации. Прежде «опубликуйте
@@ -153,6 +160,8 @@ export default async function StageScreen({
   const mayModerate = can(actor, 'COMMENT_MODERATE', ref) && refusal === null;
   const forStaff = actor.role !== 'CLIENT' && mayEdit;
   const late = overdueDays(stage.dueOn);
+  // Следующий этап — только для подсказки закрытого этапа (решение Р-710).
+  const hasNext = forStaff && state === 'DONE' ? await hasNextStage(actor, stage) : false;
   // Акты и оплаченные транши — предупреждение перед возвратом этапа (ОМ-21).
   const paperwork =
     state === 'DONE' && live && can(actor, 'STAGE_SET_STATE', ref) && actor.role !== 'CLIENT'
@@ -482,7 +491,11 @@ export default async function StageScreen({
             Что сделать сейчас
           </Heading>
           <Text style={{ marginBottom: 12 }}>
-            {state === 'IN_APPROVAL' && pendingComments === 0 ? IN_APPROVAL_CLEAR : STAFF_TODO[state]}
+            {state === 'IN_APPROVAL' && pendingComments === 0
+              ? IN_APPROVAL_CLEAR
+              : state === 'DONE' && !hasNext
+                ? DONE_LAST
+                : STAFF_TODO[state]}
             {/* «Напишите в переписке» — ссылкой с заготовкой (УМ-09, Р-377). */}
             {state === 'AWAITING_CLIENT' || (state === 'IN_APPROVAL' && pendingComments === 0) ? (
               <>
