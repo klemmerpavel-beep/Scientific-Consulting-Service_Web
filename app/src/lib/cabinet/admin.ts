@@ -757,6 +757,9 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
   });
 }
 
+/** Почему письмо не ушло: роль адресата сменилась (Р-667). */
+export const ROLE_CHANGED_NOTE = 'роль сменилась до отправки';
+
 /**
  * Сменить роль. Все сессии отзываются: роль хранится в сессии на время
  * запроса, и вкладка, открытая до понижения, иначе доработала бы старыми
@@ -796,6 +799,21 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
     if (role === 'EXPERT') {
       await tx.expertProfile.upsert({ where: { userId }, create: { userId }, update: {} });
     }
+    // Неотправленные письма адресата гаснут все: рассылка роль адресата не
+    // проверяет, и письма руководителю — просроченные транши, требования
+    // клиентов об удалении, сводка — уходили пониженному до менеджера, а
+    // письма о работах — бывшему куратору. По виду письма не видно, по
+    // какой роли оно поставлено; сигналы о новых событиях после смены роли
+    // ставятся заново. Сводка куратора — вместе с вошедшими в неё письмами
+    // (Р-534). Повышение менеджера до руководителя ничего не отнимает
+    // (решение Р-667).
+    if (!(before.role === 'MANAGER' && role === 'HEAD')) {
+      if (before.role === 'EXPERT') await pruneCuratorDigests(tx, userId, () => true, ROLE_CHANGED_NOTE);
+      await tx.notificationOutbox.updateMany({
+        where: { userId, state: 'PENDING' },
+        data: { state: 'EXPIRED', lastError: ROLE_CHANGED_NOTE, scheduledAt: new Date() },
+      });
+    }
     // И сессии клиентов по ссылкам, которые он выдал (решение Р-424).
     await revokeStaffIssuedSessions(tx, userId);
     await tx.session.updateMany({
@@ -810,7 +828,15 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
   // Новый куратор узнаёт о кабинете письмом (требование Э-03).
   if (role === 'EXPERT') {
     const profile = await prisma.expertProfile.findUnique({ where: { userId }, select: { ndaSignedAt: true } });
-    await inviteCurator(userId, (profile?.ndaSignedAt ?? null) !== null);
+    const signed = (profile?.ndaSignedAt ?? null) !== null;
+    // Ключ приглашения — один на учётную запись: приглашение, погашенное
+    // прежней сменой роли до отправки, ставится в очередь заново текстом
+    // на сегодня, иначе вернувшийся куратор остался бы без письма (Р-667).
+    await prisma.notificationOutbox.updateMany({
+      where: { userId, eventKind: 'CURATOR_INVITED', state: 'EXPIRED', lastError: ROLE_CHANGED_NOTE },
+      data: { state: 'PENDING', lastError: null, scheduledAt: new Date(), ...invitationLetter(signed) },
+    });
+    await inviteCurator(userId, signed);
   }
 
   await record(actor, {
