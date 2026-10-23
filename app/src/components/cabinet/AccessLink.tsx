@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 
 import { BUTTON_PRIMARY, BUTTON_QUIET, FIELD_CONTROL, MONO, RADIUS, SANS } from './tokens.ts';
 import { Notice } from './ui.tsx';
@@ -60,6 +60,17 @@ export function AccessLink({
     error: null,
   });
   const [copied, setCopied] = useState(false);
+  // Выбор держится состоянием: после действия React 19 сбрасывал список к
+  // первой строке, и «Выдать новую ссылку» выдавала вход первому в списке,
+  // а не тому, кому выдали только что (решение Р-704). Сброс формы после
+  // действия — родной `form.reset()`: он ставит строку «по умолчанию» и
+  // управляемого значения не знает, поэтому строкой по умолчанию делается
+  // выбранная.
+  const [picked, setPicked] = useState(people[0]?.id ?? '');
+  const pickRef = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    for (const option of pickRef.current?.options ?? []) option.defaultSelected = option.value === picked;
+  }, [picked, people]);
 
   const label: React.CSSProperties = {
     display: 'block',
@@ -81,7 +92,15 @@ export function AccessLink({
           <label htmlFor="access-link-user" style={label}>
             {selectLabel}
           </label>
-          <select id="access-link-user" name={field} required style={control}>
+          <select
+            ref={pickRef}
+            id="access-link-user"
+            name={field}
+            required
+            value={picked}
+            onChange={(event) => setPicked(event.target.value)}
+            style={control}
+          >
             {people.map((person) => (
               <option key={person.id} value={person.id}>
                 {person.label}
