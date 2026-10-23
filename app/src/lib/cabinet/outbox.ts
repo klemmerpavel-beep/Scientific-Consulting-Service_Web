@@ -680,19 +680,28 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
       });
       break;
     }
+    // Строка перечитывается под своей арендой, и итог пишется с тем же
+    // условием. Порция читается один раз, а аренда блокировку не держит:
+    // снятие куратора, отзыв договора, обезличивание гасят строку и во
+    // время прогона. Прежде погашенная строка получала «отправлено» или
+    // после временного отказа снова ждала отправки — и следующий прогон
+    // отправлял «[удалено…]» (решение Р-669). Тема и текст — перечитанные:
+    // сводку куратора за это время могли пересобрать (Р-534).
+    const live = await prisma.notificationOutbox.findFirst({
+      where: { id: item.id, state: 'PENDING', scheduledAt: leaseUntil },
+      select: { subject: true, body: true },
+    });
+    if (live === null) continue;
+    const settle = (data: Prisma.NotificationOutboxUpdateManyMutationInput) =>
+      prisma.notificationOutbox.updateMany({ where: { id: item.id, state: 'PENDING', scheduledAt: leaseUntil }, data });
+
     if (isExpired(item, now)) {
-      await prisma.notificationOutbox.update({
-        where: { id: item.id },
-        data: { state: 'EXPIRED', lastError: EXPIRED_NOTE, scheduledAt: now },
-      });
+      await settle({ state: 'EXPIRED', lastError: EXPIRED_NOTE, scheduledAt: now });
       continue;
     }
 
     if (down.has(item.channel)) {
-      await prisma.notificationOutbox.update({
-        where: { id: item.id },
-        data: { scheduledAt: new Date(Date.now() + UNREACHABLE_DELAY_MS) },
-      });
+      await settle({ scheduledAt: new Date(Date.now() + UNREACHABLE_DELAY_MS) });
       continue;
     }
 
@@ -705,10 +714,7 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
         (item.channel === 'EMAIL' && !item.user.notifyEmail) ||
         (item.channel === 'TELEGRAM' && !item.user.notifyTelegram));
     if (recipientOff) {
-      await prisma.notificationOutbox.update({
-        where: { id: item.id },
-        data: { state: 'FAILED', failure: 'RECIPIENT_OFF', lastError: RECIPIENT_OFF, scheduledAt: new Date() },
-      });
+      await settle({ state: 'FAILED', failure: 'RECIPIENT_OFF', lastError: RECIPIENT_OFF, scheduledAt: new Date() });
       continue;
     }
 
@@ -721,31 +727,25 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     const screen = item.path ?? defaultPath(item.project?.code ?? null);
     const base = siteUrl();
     const open = item.user === null || base === null ? null : openLink(base, screen, address);
-    const text = open === null ? item.body : `${item.body}\n\nОткрыть кабинет: ${open}`;
+    const text = open === null ? live.body : `${live.body}\n\nОткрыть кабинет: ${open}`;
     const result: SendResult =
       address === null && item.channel === 'EMAIL'
         ? { ok: false, error: NO_ADDRESS }
         : item.channel === 'EMAIL'
-          ? await sendMailTo(address!, item.subject, renderLetter(item.subject, item.body, footer, open), text)
+          ? await sendMailTo(address!, live.subject, renderLetter(live.subject, live.body, footer, open), text)
           : chatId === null
             ? { ok: false, error: TG_UNBOUND }
             : await sendTelegram(chatId, telegramNote(item.eventKind, item.project?.code ?? null, screen));
 
     // Без адреса повторять нечего: строка сразу помечается неудачей.
     if (result.error === NO_ADDRESS) {
-      await prisma.notificationOutbox.update({
-        where: { id: item.id },
-        data: { state: 'FAILED', failure: 'NO_ADDRESS', attempts: { increment: 1 }, lastError: NO_ADDRESS },
-      });
+      await settle({ state: 'FAILED', failure: 'NO_ADDRESS', attempts: { increment: 1 }, lastError: NO_ADDRESS });
       failed += 1;
       continue;
     }
 
     if (result.ok) {
-      await prisma.notificationOutbox.update({
-        where: { id: item.id },
-        data: { state: 'SENT', sentAt: new Date(), attempts: { increment: 1 } },
-      });
+      await settle({ state: 'SENT', sentAt: new Date(), attempts: { increment: 1 } });
       sent += 1;
       continue;
     }
@@ -754,12 +754,9 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     // а не перегорает. Отдельного состояния для этого не заводится —
     // причина в `lastError` и так называет положение дел.
     if (result.error === CHANNEL_OFF) {
-      await prisma.notificationOutbox.update({
-        where: { id: item.id },
-        data: {
-          lastError: CHANNEL_OFF,
-          scheduledAt: new Date(Date.now() + CHANNEL_OFF_DELAY_MS),
-        },
+      await settle({
+        lastError: CHANNEL_OFF,
+        scheduledAt: new Date(Date.now() + CHANNEL_OFF_DELAY_MS),
       });
       failed += 1;
       continue;
@@ -775,20 +772,20 @@ export async function dispatch(limit = 20): Promise<DispatchReport> {
     // Снятая привязка — отказ получателя; остальное — отказ доставки, о
     // котором руководитель узнаёт делом и сигналом (РК-02, Р-334).
     const failure = !giveUp ? null : result.error === TG_UNBOUND ? 'RECIPIENT_OFF' : 'DELIVERY';
-    await prisma.notificationOutbox.update({
-      where: { id: item.id },
-      data: {
-        state: giveUp ? 'FAILED' : 'PENDING',
-        failure,
-        attempts,
-        lastError: result.error ?? null,
-        // Отступ растёт с числом попыток: временная недоступность почты не
-        // должна выливаться в сотню обращений подряд.
-        scheduledAt: giveUp ? now : new Date(Date.now() + attempts * 5 * 60 * 1000),
-      },
+    const { count } = await settle({
+      state: giveUp ? 'FAILED' : 'PENDING',
+      failure,
+      attempts,
+      lastError: result.error ?? null,
+      // Отступ растёт с числом попыток: временная недоступность почты не
+      // должна выливаться в сотню обращений подряд.
+      scheduledAt: giveUp ? now : new Date(Date.now() + attempts * 5 * 60 * 1000),
     });
-    // Сбой самого сигнала нового сигнала не порождает.
-    if (failure === 'DELIVERY' && item.eventKind !== 'OUTBOX_FAILED') await signalFailure(item.channel, now);
+    // Сбой самого сигнала нового сигнала не порождает; погашенная за время
+    // отправки строка — тоже: в очереди она не «не доставлена» (Р-669).
+    if (count === 1 && failure === 'DELIVERY' && item.eventKind !== 'OUTBOX_FAILED') {
+      await signalFailure(item.channel, now);
+    }
     failed += 1;
   }
 

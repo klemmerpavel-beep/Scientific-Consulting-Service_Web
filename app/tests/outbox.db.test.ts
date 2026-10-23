@@ -290,6 +290,81 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
     for (const row of rows) assert.equal(row.attempts, 1);
   });
 
+  it('строка, погашенная во время прогона, итога отправки не получает (решение Р-669)', async () => {
+    // Обезличивание или снятие куратора гасит строку, пока прогон её
+    // отправляет: аренда блокировку не держит, и гашение по «ждёт
+    // отправки» строку задевает. Отправка подменена: Telegram отвечает
+    // заданным кодом, а перед ответом строку гасят.
+    const { ERASED_NOTE, ERASED_TEXT } = await import('../src/lib/cabinet/erasure.ts');
+    const saved = { token: process.env.TELEGRAM_BOT_TOKEN, fetch: globalThis.fetch };
+    process.env.TELEGRAM_BOT_TOKEN = 'test-token';
+    const reader = await prisma.user.create({
+      data: {
+        email: `outbox-live-${stamp}@example.org`,
+        fullName: 'Смирнов Олег Петрович',
+        role: 'CLIENT',
+        notifyTelegram: true,
+        telegramChatId: `outbox-live-${stamp}`,
+      },
+    });
+    // Своя строка — первой в порции, как в проверках выше (Р-191).
+    const row = (tag: string, at: number) =>
+      prisma.notificationOutbox.create({
+        data: {
+          userId: reader.id,
+          channel: 'TELEGRAM',
+          eventKind: 'STAGE_AWAITING_CLIENT',
+          subject: 'Смирнов О. П.: этап ждёт данных',
+          body: 'Олег Петрович, этап ждёт ваших данных',
+          dedupKey: `t-${stamp}-live-${tag}`,
+          scheduledAt: new Date(at),
+        },
+      });
+    const state = async (id: string) => (await prisma.notificationOutbox.findUniqueOrThrow({ where: { id } })).state;
+    let status = 500;
+    let victim = '';
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      await prisma.notificationOutbox.updateMany({
+        where: { id: victim, state: 'PENDING' },
+        data: { state: 'EXPIRED', subject: ERASED_TEXT, body: ERASED_TEXT, lastError: ERASED_NOTE, scheduledAt: new Date() },
+      });
+      return new Response('{"ok":false}', { status });
+    }) as typeof fetch;
+    try {
+      // Временный отказ не возвращает погашенную строку в очередь.
+      const retried = await row('retry', -30_000);
+      victim = retried.id;
+      await dispatch(1);
+      assert.equal(await state(retried.id), 'EXPIRED', 'погашенная строка вернулась в очередь');
+      assert.equal((await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: retried.id } })).attempts, 0);
+
+      // Успешная отправка не ставит погашенной строке «отправлено».
+      status = 200;
+      const sent = await row('sent', -30_000);
+      victim = sent.id;
+      await dispatch(1);
+      assert.equal(await state(sent.id), 'EXPIRED', 'погашенной строке поставлено «отправлено»');
+
+      // Строка порции, погашенная до своей очереди, не отправляется.
+      const first = await row('first', -30_000);
+      const second = await row('second', -29_999);
+      victim = second.id;
+      calls = 0;
+      await dispatch(2);
+      assert.equal(calls, 1, 'погашенная в прогоне строка ушла');
+      assert.equal(await state(first.id), 'SENT');
+      assert.equal(await state(second.id), 'EXPIRED');
+    } finally {
+      globalThis.fetch = saved.fetch;
+      if (saved.token === undefined) delete process.env.TELEGRAM_BOT_TOKEN;
+      else process.env.TELEGRAM_BOT_TOKEN = saved.token;
+      await prisma.notificationOutbox.deleteMany({ where: { userId: reader.id } });
+      await prisma.user.delete({ where: { id: reader.id } });
+    }
+  });
+
   it('о сроке этапа приостановленной работы не напоминается', async () => {
     const { enqueueDeadlineReminders } = await import('../src/lib/cabinet/outbox.ts');
     const type = await prisma.serviceType.upsert({
