@@ -124,15 +124,18 @@ export default async function AssignmentsScreen({
               return (
                 <li key={row.id} style={{ display: 'grid', gap: 6, borderBottom: '1px solid var(--pd-divider)', paddingBottom: 12 }}>
                   <Text size={15}>{row.text}</Text>
+                  {/* Работа — ссылкой и с кодом: перенос книги называет
+                      работы по виду, и у разных работ одно название
+                      (решение Р-708). */}
                   <Text muted size={13}>
-                    {[
-                      `${row.assignee.fullName}${row.assignee.role === 'EXPERT' ? ' — куратор' : ' — менеджер'}`,
-                      `срок ${formatDate(row.dueOn)}`,
-                      row.project === null ? null : `работа «${row.project.title}»`,
-                      `поставлено ${formatDay(row.createdAt)}`,
-                    ]
-                      .filter((part) => part !== null)
-                      .join(' · ')}
+                    {`${row.assignee.fullName}${row.assignee.role === 'EXPERT' ? ' — куратор' : ' — менеджер'} · срок ${formatDate(row.dueOn)} · `}
+                    {row.project === null ? null : (
+                      <>
+                        <a href={`/cabinet/projects/${row.project.code}`}>работа «{row.project.title}»</a>
+                        {` · ${row.project.code} · `}
+                      </>
+                    )}
+                    {`поставлено ${formatDay(row.createdAt)}`}
                   </Text>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <Chip>{ASSIGNMENT_STATUS_LABEL[row.status]}</Chip>
