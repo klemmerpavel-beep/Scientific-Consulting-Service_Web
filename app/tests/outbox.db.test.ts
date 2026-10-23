@@ -175,6 +175,10 @@ describe('очередь уведомлений', { skip: !enabled }, async () =
     assert.equal(isExpired({ eventKind: 'DEADLINE_IN_3_DAYS', createdAt: new Date(now.getTime() - day - 1) }, now), true);
     assert.equal(isExpired({ eventKind: 'DEADLINE_IN_3_DAYS', createdAt: new Date(now.getTime() - day + 1) }, now), false);
     assert.equal(isExpired({ eventKind: 'LEAD_DECLINED', createdAt: new Date(now.getTime() - 30 * day) }, now), false);
+    // «Завтра срок поручения» — тоже напоминание о сроке: накопленное до
+    // настройки почты, оно ушло бы по давно прошедшим срокам (Р-663).
+    assert.equal(isExpired({ eventKind: 'ASSIGNMENT_DUE', createdAt: new Date(now.getTime() - day - 1) }, now), true);
+    assert.equal(isExpired({ eventKind: 'ASSIGNMENT_DUE', createdAt: new Date(now.getTime() - day + 1) }, now), false);
   });
 
   it('настоящий отказ наращивает попытки и кончается пометкой неудачи', async () => {
