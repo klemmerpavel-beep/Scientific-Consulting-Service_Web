@@ -9,7 +9,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
@@ -238,6 +238,29 @@ describe('версия эксперта — после публикации', { 
       }),
       0,
     );
+  });
+
+  it('Р-671: к своей отклонённой версии куратор замечаний не пишет', async () => {
+    // Отклонённая версия клиенту не уйдёт, а замечание к неопубликованной
+    // версии отдельно не публикуется: оно повисало у менеджера «ожидает
+    // публикации» без выхода, кроме отказа с причиной.
+    const waiting = async () =>
+      (await materials.pendingComments(curator())).find((row) => row.stageId === ids.stage)?.count ?? 0;
+    const rejected = await upload(ids.material!);
+    await materials.moderateVersion(curator(), rejected.id, 'REJECTED', 'Причина');
+    const before = await waiting();
+    await assert.rejects(
+      materials.addComment(expert(), rejected.id, 'Пояснение'),
+      /загрузите исправленную версию/u,
+    );
+    assert.equal(await prisma.versionComment.count({ where: { versionId: rejected.id } }), 0);
+    assert.equal(await waiting(), before, 'замечание к отклонённой версии ждёт публикации');
+    // Форма замечания у отклонённой версии куратору не выводится.
+    const page = readFileSync(
+      path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'stages', '[id]', 'page.tsx'),
+      'utf8',
+    );
+    assert.match(page, /index === 0 && mayComment && !\(curatorView && version\.moderation\?\.status === 'REJECTED'\)/u);
   });
 
   it('УК-03: фамилия куратора в имени файла — пометка для менеджера (Р-396)', async () => {

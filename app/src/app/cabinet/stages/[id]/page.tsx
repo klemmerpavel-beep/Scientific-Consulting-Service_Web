@@ -933,8 +933,9 @@ export default async function StageScreen({
                       {/* Поле комментария стояло раскрытым под свежей
                           версией и занимало полтораста пикселей, хотя
                           пишут в него изредка. Раскрывается по нажатию
-                          (решение Р-178). */}
-                      {index === 0 && mayComment ? (
+                          (решение Р-178). К своей отклонённой версии
+                          куратор замечаний не пишет (решение Р-671). */}
+                      {index === 0 && mayComment && !(curatorView && version.moderation?.status === 'REJECTED') ? (
                         <Disclosure title="Оставить комментарий" style={{ marginTop: 14 }}>
                           <Form action={commentOnVersion}>
                             <input type="hidden" name="versionId" value={version.id} />

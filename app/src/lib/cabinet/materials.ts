@@ -752,6 +752,12 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
   ensure(actor, 'COMMENT_CREATE', version.material.project);
   // К невидимой версии эксперта клиент замечаний не пишет (Т-18, Р-294).
   if (!versionVisible(actor, version)) throw new Error('Версия не найдена');
+  // Своя отклонённая версия куратору видна, но клиенту уже не уйдёт, а
+  // замечание к неопубликованной версии публикуется только вместе с ней:
+  // оно висело бы у менеджера «ожидает публикации» без выхода (решение Р-671).
+  if (actor.role === 'EXPERT' && version.moderation?.status === 'REJECTED') {
+    throw new Error('Версия не опубликована менеджером: загрузите исправленную версию');
+  }
   // И к документу скрытого транша — тоже (УК-01, Р-356).
   if (!trancheDocumentVisible(actor, version.material)) throw new Error('Версия не найдена');
   // Закрытая работа и завершённый этап — только чтение (Т-17, М-10, Р-293).
