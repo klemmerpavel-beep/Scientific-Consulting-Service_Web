@@ -13,6 +13,7 @@ import {
   TABLE_HEAD,
   LongTable,
   TABLE_NUM,
+  TableScroll,
   Text,
   Tile,
   Tiles,
@@ -111,7 +112,10 @@ export function ChartCard({
       )}
       {numbers === undefined ? null : (
         <Disclosure title="Числа" style={{ marginTop: 16 }}>
-          {numbers}
+          {/* Тело свёртки не прокручивается, и таблица с шапками в одну
+              строку выходила за рамку на телефоне — прокрутка своя, с
+              фокусом и именем (решения Р-168, Р-688). */}
+          <TableScroll label={`${title}: числа`}>{numbers}</TableScroll>
         </Disclosure>
       )}
     </Card>

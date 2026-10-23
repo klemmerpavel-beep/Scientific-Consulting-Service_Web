@@ -5,6 +5,8 @@
  * (360 — требование Т-23, решение Р-320):
  * горизонтальное переполнение, кегль ниже 12 px, цель нажатия ниже 44 px,
  * обрезанный текст, наложение карточек, больше двух плашек в ряду.
+ * Затем свёртки раскрываются: переполнение страницы и таблица шире своей
+ * свёртки без области прокрутки (решение Р-688).
  * Прежде обход жил во временном каталоге исполнителя и не повторялся
  * следующим; теперь он рядом с инструментами съёмки.
  *
@@ -62,6 +64,18 @@ for (const w of W) {
         const r1 = a.getBoundingClientRect(), r2 = c.getBoundingClientRect();
         if (r1.left < r2.right - 1 && r2.left < r1.right - 1 && r1.top < r2.bottom - 1 && r2.top < r1.bottom - 1) out.push('наложение карточек');
       }
+      // Сомкнутая свёртка прячет таблицу от обхода, а раскрытая голая
+      // таблица раздвигала страницу вбок на телефоне (Р-688).
+      const folds = [...document.querySelectorAll('details:not([open])')];
+      for (const d of folds) d.open = true;
+      if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`переполнение при раскрытых свёртках ${document.documentElement.scrollWidth}>${innerWidth}`);
+      for (const t of main.querySelectorAll('details.cab-block table')) {
+        const fold = t.closest('details.cab-block');
+        let scroll = false;
+        for (let el = t.parentElement; el !== fold; el = el.parentElement) if (/auto|scroll/.test(getComputedStyle(el).overflowX)) { scroll = true; break; }
+        if (!scroll && t.getBoundingClientRect().right > fold.getBoundingClientRect().right + 1) out.push(`таблица шире свёртки «${(fold.querySelector('summary')?.textContent ?? '').trim().slice(0, 30)}»`);
+      }
+      for (const d of folds) d.open = false;
       return [...new Set(out)];
     });
     if (issues.length) { total += issues.length; for (const i of issues) console.log(w + '\t' + path.relative(ROOT, file) + '\t' + i); }

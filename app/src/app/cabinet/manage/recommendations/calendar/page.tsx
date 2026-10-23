@@ -18,6 +18,7 @@ import {
   TABLE_NUM,
   TABLE_NUM_HEAD,
   TableCard,
+  TableScroll,
   Text,
   formatDate,
   plural,
@@ -203,6 +204,9 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
               {/* Заявки — по направлению формы сайта, к которому относится вид (РК-18). */}
               {leads.get(row.typeCode)?.direction == null ? '' : ` · заявки — по направлению «${leads.get(row.typeCode)!.direction}»`}
             </Text>
+            {/* В свёртке таблица прокручивается в своей области: голая
+                раздвигала страницу вбок на телефоне (Р-688). */}
+            <TableScroll label={`${row.typeName}: заказы по месяцам`}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -225,6 +229,7 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
                   ))}
               </tbody>
             </table>
+            </TableScroll>
           </div>
         ))}
       </Disclosure>
