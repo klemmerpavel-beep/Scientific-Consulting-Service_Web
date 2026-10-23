@@ -37,10 +37,11 @@ describe('расходы и прибыль по месяцам (РК-21)', { ski
   const head = () => who(ids.head!, 'HEAD');
   const today = moscowToday();
   const thisMonth = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}`;
-  const nextMonth = (() => {
-    const next = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
-    return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`;
-  })();
+  const monthAgo = (shift: number) => {
+    const first = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - shift, 1));
+    return `${first.getUTCFullYear()}-${String(first.getUTCMonth() + 1).padStart(2, '0')}`;
+  };
+  const nextMonth = monthAgo(-1);
 
   before(async () => {
     const [headUser, managerUser] = await Promise.all([
@@ -93,6 +94,28 @@ describe('расходы и прибыль по месяцам (РК-21)', { ski
     const row = years.rows.find((item) => item.year === year)!;
     assert.equal(months.reduce((acc, month) => acc + month.revenue, 0n), row.counted.revenue);
     assert.equal(months.reduce((acc, month) => acc + month.payouts + month.expenses, 0n), row.counted.costs);
+  });
+
+  it('расход раньше окна двенадцати месяцев отклоняется; первый месяц окна принимается (Р-699)', async () => {
+    // Расход старше окна входил в «Итоги по годам», а в перечне не было ни
+    // строки, ни кнопки «Удалить»: исправить запись было нельзя.
+    const yearsBefore = await yearlyRows(head());
+    for (const shift of [13, 12]) {
+      await assert.rejects(
+        profit.addExpense(head(), { month: monthAgo(shift), categoryId: 'other', amount: 100_000n }),
+        /старше двенадцати месяцев здесь не вносится/u,
+        `месяц ${monthAgo(shift)} — раньше окна`,
+      );
+    }
+    const yearsAfter = await yearlyRows(head());
+    for (const row of yearsAfter.rows) {
+      const was = yearsBefore.rows.find((item) => item.year === row.year);
+      assert.equal(row.counted.costs, was?.counted.costs ?? 0n, `расходы ${row.year} года не изменились`);
+    }
+    const inside = await profit.addExpense(head(), { month: monthAgo(11), categoryId: 'other', amount: 100_000n });
+    const data = await profit.monthlyProfit(head());
+    assert.ok(data.expenses.some((row) => row.id === inside.id), 'расход первого месяца окна — в перечне');
+    await profit.removeExpense(head(), inside.id);
   });
 
   it('удаление расхода — в журнал с прежними величинами', async () => {

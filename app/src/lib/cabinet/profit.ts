@@ -26,6 +26,16 @@ const monthStart = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date
 // на «Прибыли по месяцам» и в экономике работы.
 const keyOf = monthKey;
 
+/**
+ * Первый месяц окна «Прибыли по месяцам»: двенадцать месяцев по текущий.
+ * Одна функция для таблицы и для проверки при внесении расхода, чтобы
+ * окно не разошлось (решение Р-699).
+ */
+export function profitWindowStart(at: Date = clockNow()): Date {
+  const today = moscowToday(at);
+  return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 11, 1));
+}
+
 export interface ExpenseInput {
   /** Месяц `ГГГГ-ММ`. */
   readonly month: string;
@@ -50,6 +60,11 @@ export async function addExpense(actor: Actor, input: ExpenseInput): Promise<{ i
     throw new Error('Укажите месяц расхода');
   }
   if (month.getTime() > monthStart(moscowToday()).getTime()) throw new Error('Расход будущего месяца не вносится');
+  // Расход раньше окна входил в «Итоги по годам», а в перечне ниже не было
+  // ни строки, ни кнопки «Удалить» (решение Р-699).
+  if (month.getTime() < profitWindowStart().getTime()) {
+    throw new Error('Расход старше двенадцати месяцев здесь не вносится: он вошёл бы в «Итоги по годам» без строки в перечне');
+  }
   if (input.amount === null || input.amount <= 0n) throw new Error('Сумма расхода — больше нуля');
   const category = await prisma.expenseCategory.findFirst({ where: { id: input.categoryId, isActive: true }, select: { id: true } });
   if (category === null) throw new Error('Выберите статью расхода из справочника');
@@ -121,12 +136,11 @@ export interface TypeProfit {
  */
 export async function monthlyProfit(actor: Actor, at: Date = clockNow()) {
   ensure(actor, 'MARGIN_VIEW');
-  const today = moscowToday(at);
+  const from = profitWindowStart(at);
   const months = Array.from({ length: 12 }, (_, index) => {
-    const first = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 11 + index, 1));
+    const first = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + index, 1));
     return { key: keyOf(first), year: first.getUTCFullYear(), month: first.getUTCMonth() + 1, revenue: 0n, payouts: 0n, expenses: 0n };
   });
-  const from = new Date(Date.UTC(months[0]!.year, months[0]!.month - 1, 1));
   const byKey = new Map(months.map((month) => [month.key, month]));
   const types = new Map<string, { typeName: string; revenue: bigint; payouts: bigint; expenses: bigint }>();
   const typeCell = (code: string, name: string) => {
