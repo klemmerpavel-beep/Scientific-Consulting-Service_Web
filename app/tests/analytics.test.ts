@@ -36,6 +36,8 @@ import {
 } from '../src/lib/cabinet/analytics/metrics.ts';
 import {
   SERIES_COLORS,
+  axisPad,
+  categoryLabels,
   compactMoney,
   compactNumber,
   donutArc,
@@ -570,6 +572,57 @@ describe('геометрия графиков', () => {
       smoothPath([{ x: 0, y: 0 }, { x: 10, y: 5 }, { x: 20, y: 0 }]),
       /^M0 0C/u,
     );
+  });
+
+  it('сглаженная линия не уходит под ось', () => {
+    // Между двумя нулями подряд Катмулл — Ром ставил опорные точки ниже
+    // базовой линии, и кривая проваливалась под ось (решение Р-685).
+    const points = [{ x: 0, y: 50 }, { x: 10, y: 200 }, { x: 20, y: 200 }, { x: 30, y: 50 }];
+    const ys = (path: string) =>
+      [...path.matchAll(/C([^C]+)/gu)].flatMap((m) => {
+        const n = m[1]!.trim().split(/\s+/u).map(Number);
+        return [n[1]!, n[3]!, n[5]!];
+      });
+    assert.ok(Math.max(...ys(smoothPath(points))) > 200, 'без пола провал есть');
+    assert.ok(Math.max(...ys(smoothPath(points, 200))) <= 200, smoothPath(points, 200));
+    // Без пола путь прежний.
+    assert.equal(smoothPath(points, Infinity), smoothPath(points));
+  });
+
+  it('подписи оси категорий не налезают друг на друга', () => {
+    // Последняя подпись прижата к краю концом, первая — началом, прочие
+    // стоят по центру. Шага в 46 px хватало только между центрированными:
+    // «июл 26» и «сен 26» у правого края сливались (решение Р-685).
+    const width = 46;
+    for (const count of [1, 2, 3, 5, 12, 16, 24, 32]) {
+      for (const gap of [12, 30, 35, 40, 47, 61.6, 70, 100]) {
+        const shown = categoryLabels(count, gap, width);
+        assert.equal(shown.at(-1), count - 1, 'свежий месяц подписан');
+        const span = (index: number): [number, number] => {
+          const x = index * gap;
+          if (count > 1 && index === count - 1) return [x - width, x];
+          if (index === 0) return [x, x + width];
+          return [x - width / 2, x + width / 2];
+        };
+        for (let i = 1; i < shown.length; i += 1) {
+          assert.ok(
+            span(shown[i - 1]!)[1] <= span(shown[i]!)[0],
+            `${count} точек с шагом ${gap}: ${shown[i - 1]} и ${shown[i]} налезают`,
+          );
+        }
+      }
+    }
+    // Шестнадцать месяцев на поле 924 px: шаг 61,6 px меньше полутора
+    // подписей, предпоследний месяц пропускается, остальные подписаны.
+    assert.deepEqual(categoryLabels(16, 61.6).slice(-3), [12, 13, 15]);
+  });
+
+  it('левое поле вмещает самую длинную подпись шкалы', () => {
+    // Постоянное поле в 52 px вмещало 45 px подписи: у «500 тыс» срезалась
+    // первая цифра (решение Р-685).
+    assert.equal(axisPad(['5', '4', '0']), 52);
+    const pad = axisPad(['1 млн', '750 тыс', '500 тыс', '250 тыс', '0']);
+    assert.ok(pad - 7 >= '750 тыс'.length * 7, `поле ${pad}`);
   });
 
   it('дуга кольца замыкается', () => {

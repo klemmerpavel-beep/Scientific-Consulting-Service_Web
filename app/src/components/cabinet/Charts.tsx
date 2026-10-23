@@ -12,6 +12,8 @@ import { Fragment } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
 import {
+  axisPad,
+  categoryLabels,
   compactMoney,
   compactNumber,
   donutArc,
@@ -142,11 +144,12 @@ export function BarChart({
 }) {
   const W = width;
   const H = height;
-  const pad = { t: 26, r: 14, b: 36, l: 52 };
-  const iw = W - pad.l - pad.r;
-  const ih = H - pad.t - pad.b;
   const top = Math.max(0, ...data.map((item) => item.value));
   const { max, count } = integer ? integerScale(top) : { max: niceCeil(top || 1), count: 4 };
+  // Левое поле — по самой длинной подписи шкалы (решение Р-685).
+  const pad = { t: 26, r: 14, b: 36, l: axisPad(ticks(max, count).map(format)) };
+  const iw = W - pad.l - pad.r;
+  const ih = H - pad.t - pad.b;
   const n = Math.max(1, data.length);
   const gap = Math.max(6, (iw * 0.012 * 8) / n);
   const bw = Math.min(64, (iw - gap * (n - 1)) / n);
@@ -333,11 +336,12 @@ export function LineChart({
 }) {
   const W = width;
   const H = height;
-  const pad = { t: 26, r: 16, b: 34, l: 52 };
-  const iw = W - pad.l - pad.r;
-  const ih = H - pad.t - pad.b;
   const top = Math.max(1, ...series.flatMap((line) => [...line.points]));
   const { max, count } = integer ? integerScale(top) : { max: niceCeil(top), count: 4 };
+  // Левое поле — по самой длинной подписи шкалы (решение Р-685).
+  const pad = { t: 26, r: 16, b: 34, l: axisPad(ticks(max, count).map(format)) };
+  const iw = W - pad.l - pad.r;
+  const ih = H - pad.t - pad.b;
   const xAt = (index: number): number =>
     pad.l + (categories.length <= 1 ? iw / 2 : (index / (categories.length - 1)) * iw);
   const yAt = (value: number): number => pad.t + ih - (value / max) * ih;
@@ -349,9 +353,11 @@ export function LineChart({
    * начала ряда: на тридцати двух месяцах подписанным оказывался каждый
    * третий начиная с первого, и самый свежий месяц — тот, ради которого
    * на график и смотрят, — оставался без подписи (решение Р-176).
+   * Крайние подписи прижаты к краю, и соседней нужно до них полторы
+   * ширины подписи, а не одна (решение Р-685).
    */
   const gapX = categories.length <= 1 ? iw : iw / (categories.length - 1);
-  const everyLabel = Math.max(1, Math.ceil(46 / gapX));
+  const labelled = new Set(categoryLabels(categories.length, gapX));
 
   return (
     <Frame width={W} title={title}>
@@ -364,7 +370,7 @@ export function LineChart({
           return (
             <g key={line.name}>
               <path
-                d={smoothPath(points)}
+                d={smoothPath(points, pad.t + ih)}
                 fill="none"
                 stroke={color}
                 strokeWidth={2.5}
@@ -381,7 +387,7 @@ export function LineChart({
           );
         })}
         {categories.map((category, index) =>
-          (categories.length - 1 - index) % everyLabel === 0 ? (
+          labelled.has(index) ? (
             <text
               key={`tick-${category}-${index}`}
               x={xAt(index)}
