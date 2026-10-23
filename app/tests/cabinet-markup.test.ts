@@ -183,6 +183,14 @@ describe('общие части остаются единственным мес
     assert.match(charts, /width: `\$\{rankShare\(item\.value, max\)\}%`/u);
     assert.equal(/Math\.max\(2,/u.test(charts), false, 'наименьшая длина задана в разметке');
   });
+
+  it('подпись легенды-столбца не рвётся посреди слова', () => {
+    // Сумма и доля сжимали столбец подписи до 74 px, и общее правило
+    // переноса рвало слово: «Действую / щие · 10» (решение Р-687).
+    const charts = readFileSync(path.join(COMPONENTS, 'Charts.tsx'), 'utf8');
+    assert.match(charts, /gridTemplateColumns: '12px minmax\(min-content,1fr\) auto auto'/u);
+    assert.match(charts, /<span style=\{\{ overflowWrap: 'normal' \}\}>\{item\.label\}<\/span>/u);
+  });
 });
 
 describe('слои кабинета не смешиваются', () => {

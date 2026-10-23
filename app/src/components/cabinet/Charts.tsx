@@ -558,6 +558,10 @@ export function StackBar({
  * секторов, — а сумма и доля стоят столбиком и сравниваются по разряду.
  * Легенда со значениями и есть текстовый дублёр кольца: доля больше не
  * живёт в одной подсказке под мышью (решение Р-175).
+ *
+ * Столбец подписи не уже самого длинного слова: сумма и доля сжимали его
+ * до 74 px, и общее правило переноса рвало слово посередине — «Действую /
+ * щие · 10». Подпись переносится только по пробелам (решение Р-687).
  */
 export function Legend({
   items,
@@ -574,7 +578,7 @@ export function Legend({
             key={item.label}
             style={{
               display: 'grid',
-              gridTemplateColumns: '12px minmax(0,1fr) auto auto',
+              gridTemplateColumns: '12px minmax(min-content,1fr) auto auto',
               alignItems: 'baseline',
               gap: 12,
               fontFamily: SANS,
@@ -584,7 +588,7 @@ export function Legend({
             }}
           >
             <i aria-hidden="true" style={{ ...swatch, background: item.color }} />
-            <span>{item.label}</span>
+            <span style={{ overflowWrap: 'normal' }}>{item.label}</span>
             <span style={{ color: INK, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
               {item.value ?? ''}
             </span>
