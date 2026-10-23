@@ -88,9 +88,9 @@ function line(date: string, customer: string, type: string, deadline: string, co
 
 describe('перенос книги заказов', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
-  const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
+  const { AccessDenied, scopeProjects } = await import('../src/lib/cabinet/access.ts');
   const { addAlias } = await import('../src/lib/cabinet/admin.ts');
-  const { applyBatch, loadBatch, mergeClients, previewBook } = await import(
+  const { applyBatch, loadBatch, mergeCandidates, mergeClients, normalizeName, previewBook } = await import(
     '../src/lib/cabinet/import/apply.ts'
   );
 
@@ -145,8 +145,9 @@ describe('перенос книги заказов', { skip: !enabled }, async (
       where: { normalizedName: { contains: String(stamp) } },
     });
     await prisma.serviceTypeAlias.deleteMany({ where: { alias: { contains: String(stamp) } } });
-    await prisma.auditEvent.deleteMany({ where: { actorId: { in: [ids.head, ids.manager] } } });
-    await prisma.user.deleteMany({ where: { id: { in: [ids.head, ids.manager] } } });
+    const users = [ids.head, ids.manager, ids.client].filter((id): id is string => id !== undefined);
+    await prisma.auditEvent.deleteMany({ where: { actorId: { in: users } } });
+    await prisma.user.deleteMany({ where: { id: { in: users } } });
     await prisma.$disconnect();
   });
 
@@ -681,6 +682,60 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     });
     assert.equal(work.dueOn?.toISOString().slice(0, 10), '2026-12-01');
     assert.equal(work.contract?.tranches[0]?.plannedDate?.toISOString().slice(0, 10), '2026-10-15');
+  });
+
+  it('строка с ФИО клиента со входом в кабинет не ложится на его карточку (Р-659)', async () => {
+    // Прежде строка ложилась на карточку по одному совпадению ФИО, и
+    // однофамилец из книги видел бы в кабинете чужую тему, договор и оплаты.
+    const head = actor(ids.head, 'HEAD');
+    const name = `Иванов Иван Иванович ${stamp}`;
+    const user = await prisma.user.create({
+      data: { email: `imp-client-${stamp}@example.org`, fullName: name, role: 'CLIENT' },
+    });
+    ids.client = user.id;
+    const card = await prisma.clientProfile.create({
+      data: { userId: user.id, fullName: name, normalizedName: normalizeName(name) },
+    });
+
+    const preview = await previewBook(head, {
+      fileName: `книга-${stamp}-вход.xlsx`,
+      bytes: makeWorkbook([HEADER, line('2026-09-05', name, 'Диссертция', '20.12.2026', '120000')]),
+    });
+    batches.push(preview.batchId);
+    const report = await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    assert.equal(report.created, 1);
+    assert.equal(report.clientsCreated, 1);
+    const work = await prisma.project.findFirstOrThrow({
+      where: { client: { normalizedName: normalizeName(name) } },
+      select: { id: true, clientId: true, client: { select: { userId: true } } },
+    });
+    assert.notEqual(work.clientId, card.id, 'работа из книги легла на карточку клиента со входом');
+    assert.equal(work.client.userId, null);
+
+    // Если это один человек, руководитель сведёт карточки сам.
+    const groups = await mergeCandidates(head);
+    assert.ok(
+      groups.some((group) => group.some((item) => item.id === card.id) && group.some((item) => item.id === work.clientId)),
+      'карточки с одним ФИО не попали в кандидаты на сведение',
+    );
+    const client: Actor = { id: user.id, role: 'CLIENT', status: 'ACTIVE', clientProfileId: card.id, expertNdaSignedAt: null };
+    assert.equal(await prisma.project.count({ where: { ...scopeProjects(client), id: work.id } }), 0);
+
+    // Следующая строка с тем же ФИО ложится на карточку без входа (Р-133).
+    const again = await previewBook(head, {
+      fileName: `книга-${stamp}-вход-2.xlsx`,
+      bytes: makeWorkbook([HEADER, line('2026-09-06', name, 'Аспирнтура', '20.12.2026', '60000')]),
+    });
+    batches.push(again.batchId);
+    const second = await applyBatch(head, again.batchId, { managerId: ids.manager });
+    assert.equal(second.created, 1);
+    assert.equal(second.clientsReused, 1);
+    assert.equal(second.clientsCreated, 0);
+    const next = await prisma.project.findFirstOrThrow({
+      where: { client: { normalizedName: normalizeName(name) }, contract: { totalAmount: 6_000_000n } },
+      select: { clientId: true },
+    });
+    assert.equal(next.clientId, work.clientId);
   });
 
   it('перенос записан в журнал действий', async () => {

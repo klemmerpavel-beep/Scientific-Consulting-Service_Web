@@ -1357,8 +1357,12 @@ export async function applyBatch(
           // написания, и строка с написанием сведённой прежде заводила
           // новую карточку-дубль (решение Р-453). Живая карточка с тем же
           // написанием — впереди сведённой.
+          // Карточка со входом в кабинет по одному совпадению ФИО не берётся:
+          // однофамилец из книги увидел бы чужую тему, договор и оплаты.
+          // Строка получает свою карточку без входа, а если это один
+          // человек, руководитель сводит их среди кандидатов (решение Р-659).
           let existing = await tx.clientProfile.findFirst({
-            where: { normalizedName: parsed.normalizedName, erasedAt: null },
+            where: { normalizedName: parsed.normalizedName, erasedAt: null, userId: null },
             orderBy: [{ mergedIntoId: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }],
             select: { id: true, mergedIntoId: true, erasedAt: true },
           });
