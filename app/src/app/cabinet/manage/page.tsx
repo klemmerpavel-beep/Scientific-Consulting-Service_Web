@@ -1332,7 +1332,8 @@ export default async function ManageQueue({
     money: (
       <>
         {money === null ? null : (
-          <Card style={{ display: 'flex', flexDirection: 'column' }}>
+          // Якорь — для переключателя «Получено» ниже (решение Р-697).
+          <Card id="money" style={{ display: 'flex', flexDirection: 'column', scrollMarginTop: 24 }}>
             <Heading level={2} size={3} style={{ marginBottom: 12 }}>
               Деньги
             </Heading>
@@ -1423,7 +1424,7 @@ export default async function ManageQueue({
                   Получено:{' '}
                   <a
                     className="cab-mark"
-                    href="/cabinet/manage?received=90"
+                    href="/cabinet/manage?received=90#money"
                     aria-current={receivedAll ? undefined : 'true'}
                   >
                     за 90 дней
@@ -1431,7 +1432,7 @@ export default async function ManageQueue({
                   {' · '}
                   <a
                     className="cab-mark"
-                    href="/cabinet/manage?received=all"
+                    href="/cabinet/manage?received=all#money"
                     aria-current={receivedAll ? 'true' : undefined}
                   >
                     за всё время

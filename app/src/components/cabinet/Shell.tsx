@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Actor } from '../../lib/cabinet/access.ts';
 import { BUTTON_QUIET, CONTAINER, GUTTER, MONO, SANS, SERIF } from './tokens.ts';
 import { activeItem, navFor, type NavItem } from '../../lib/cabinet/nav.ts';
+import HashScroll from './HashScroll';
 
 /**
  * Каркас раздела: шапка с вордмарком и навигацией, рабочая область, подвал
@@ -247,6 +248,8 @@ export default async function Shell({
           </span>
         </div>
       </footer>
+      {/* Якорь адреса — после прихода экрана потоком (решение Р-697). */}
+      <HashScroll />
     </>
   );
 }
