@@ -72,6 +72,23 @@ describe('корректировка суммы — и руководителю 
   });
 });
 
+describe('вознаграждение куратора без начислений (Р-701)', () => {
+  const payments = readFileSync(
+    path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'projects', '[code]', 'payments', 'page.tsx'),
+    'utf8',
+  );
+  it('не пишет «маржа равна сумме договора»: маржа уже показана числом', () => {
+    assert.doesNotMatch(payments, /маржа равна/u);
+    assert.doesNotMatch(payments, /У исторических проектов/u);
+  });
+  it('текст — по тому, указан ли куратор у работы', () => {
+    const empty = /payouts\.length === 0 \? \(([\s\S]*?)\) : \(/u.exec(payments)?.[1] ?? '';
+    assert.match(empty, /project\.expertId !== null/u);
+    assert.match(empty, /Начислений нет: вознаграждение куратора ещё не начислено и в марже выше не учтено\./u);
+    assert.match(empty, /Начислений нет: куратор у работы не указан\./u);
+  });
+});
+
 describe('причина приостановки в шапке карточки (УК-13, Р-379)', async () => {
   const { pauseReasonOf } = await import('../src/lib/cabinet/project-status.ts');
   const events = [

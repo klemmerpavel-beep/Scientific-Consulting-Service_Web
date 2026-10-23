@@ -592,10 +592,13 @@ export default async function PaymentsScreen({
             <Block>
               <Heading level={2} size={3}>Вознаграждение куратора</Heading>
               <Card style={{ marginTop: 12 }}>
+                {/* Маржа выше уже показана числом: текст не спорит с ней, а
+                    говорит, почему начислений нет (решение Р-701). */}
                 {payouts.length === 0 ? (
                   <Text muted>
-                    Начислений нет. У исторических проектов куратор не указан, и маржа равна
-                    сумме договора.
+                    {project.expertId !== null
+                      ? 'Начислений нет: вознаграждение куратора ещё не начислено и в марже выше не учтено.'
+                      : 'Начислений нет: куратор у работы не указан.'}
                   </Text>
                 ) : (
                   <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
