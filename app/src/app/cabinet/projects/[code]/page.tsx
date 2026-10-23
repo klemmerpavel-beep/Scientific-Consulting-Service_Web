@@ -712,8 +712,9 @@ export default async function ProjectScreen({
     <Shell actor={actor} current="/cabinet/projects" board listHref={forClient ? '/cabinet/projects?state=all' : undefined}>
       {/* Шапка заказа — одной полосой. Прежде код, название и тема занимали
           три яруса и 154 пикселя: на панели это четверть места, отведённого
-          колонкам (решение Р-169). */}
-      <ScreenTop style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          колонкам (решение Р-169). Нижний отступ — у самой шапки: отказ
+          и исход вставали вплотную к ряду кнопок (решение Р-709). */}
+      <ScreenTop style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
         {/* Код работы с экранов убран (решение Р-189): человеку он
             ничего не сообщает, а взгляд цепляет первым. */}
         <Heading level={1} size={2}>
@@ -788,7 +789,7 @@ export default async function ProjectScreen({
       {rated === undefined || rating?.score === null || rating === null ? null : (
         <Outcome>{`Спасибо за оценку: ${rating.score} из 5.`}</Outcome>
       )}
-      <Disclosure title="О работе" style={{ marginTop: 12 }}>
+      <Disclosure title="О работе">
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
           {/* Подпись и значение — строкой, пока значению хватает места, и
               одно под другим на телефоне, как на карточке заявки (Р-217):
