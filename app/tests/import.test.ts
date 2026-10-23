@@ -264,6 +264,14 @@ describe('разбор срока', () => {
     assert.equal(result.issues.length, 0);
   });
 
+  it('серийное число со временем суток не переносит срок на следующий день (решение Р-660)', () => {
+    // 46096.75 — 15 марта 2026 года, 18:00. Округление до ближайших суток
+    // давало 16 марта.
+    const result = parseDeadline('46096.75', order);
+    assert.equal(result.date?.toISOString().slice(0, 10), '2026-03-15');
+    assert.equal(result.issues.length, 0);
+  });
+
   it('точечная запись', () => {
     assert.equal(
       parseDeadline('20.12.2025', order).date?.toISOString().slice(0, 10),
@@ -406,6 +414,18 @@ describe('книга целиком', () => {
       assert.equal(typeof ISSUE_LABEL[code], 'string');
       assert.ok(ISSUE_LABEL[code].length > 0);
     }
+  });
+
+  it('дата заказа 31 декабря после полудня остаётся в своём году (решение Р-660)', () => {
+    // 46387.6 — 31 декабря 2026 года, 14:24. Год кода работы берётся из
+    // даты заказа, и округление уводило заказ в 2027 год.
+    const late = makeWorkbook([
+      HEADER,
+      ['46387.6', 'Иванов Иван Иванович', 'Статья ВАК', 'Статья', '46400.9', '5000', 'закрыт', '5000'],
+    ]);
+    const { rows } = parseBook(readWorkbook(late));
+    assert.equal(rows[0]?.orderDate?.toISOString().slice(0, 10), '2026-12-31');
+    assert.equal(rows[0]?.deadline?.toISOString().slice(0, 10), '2027-01-13');
   });
 
   it('нераспознанный тип называет строку и написание', () => {

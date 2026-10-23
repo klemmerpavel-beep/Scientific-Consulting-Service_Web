@@ -163,6 +163,17 @@ export function classifyType(
 /** Начало отсчёта Excel. 1900-й в нём високосный по ошибке — отсюда 30 декабря. */
 const EXCEL_EPOCH = Date.UTC(1899, 11, 30);
 
+/**
+ * День по серийному числу Excel. Дробная часть — время суток, и она
+ * отбрасывается: прежде число округлялось до ближайших суток, и всё после
+ * полудня уходило на следующий день, а заказ 31 декабря — в код работы
+ * следующего года (решение Р-660). Запас 1e-6 гасит погрешность двоичной
+ * дроби у ячеек, записанных ровно на полночь.
+ */
+function excelDay(raw: string): Date {
+  return new Date(EXCEL_EPOCH + Math.floor(Number(raw) + 1e-6) * 86_400_000);
+}
+
 const MONTHS: readonly [RegExp, number][] = [
   [/^январ/iu, 0],
   [/^феврал/iu, 1],
@@ -205,7 +216,7 @@ export function parseDeadline(raw: string, orderDate: Date | null): ParsedDate {
   if (text.length === 0) return { date: null, issues: [] };
 
   if (/^\d{4,6}(\.\d+)?$/.test(text)) {
-    return { date: new Date(EXCEL_EPOCH + Math.round(Number(text)) * 86_400_000), issues: [] };
+    return { date: excelDay(text), issues: [] };
   }
 
   const numeric = text.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})$/);
@@ -498,9 +509,7 @@ export function parseRow(
   const issues: Issue[] = [];
 
   const rawDate = cellOf(row, columns.date).value.trim();
-  const orderDate = /^\d{4,6}(\.\d+)?$/.test(rawDate)
-    ? new Date(EXCEL_EPOCH + Math.round(Number(rawDate)) * 86_400_000)
-    : null;
+  const orderDate = /^\d{4,6}(\.\d+)?$/.test(rawDate) ? excelDay(rawDate) : null;
 
   const rawType = cellOf(row, columns.type).value.trim();
   const typeCode = classifyType(rawType, aliases);
