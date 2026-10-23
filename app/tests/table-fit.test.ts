@@ -83,3 +83,40 @@ describe('Р-688. таблица в свёртке прокручивается 
     assert.deepEqual(bare, []);
   });
 });
+
+/** Шапки таблицы, стоящей в `TableCard` с этим именем: разметка `<th>` подряд. */
+function tableHeads(text: string, label: string): string[] {
+  const start = text.indexOf(`<TableCard label="${label}"`);
+  assert.ok(start >= 0, `таблица «${label}» не найдена`);
+  const head = text.slice(start, text.indexOf('</thead>', start));
+  return [...head.matchAll(/<th\b[^>]*>([^<]*)<\/th>/gu)].map((match) => match[1]!.trim());
+}
+
+describe('Р-689. «Виды работ» календаря — в ширину карточки', () => {
+  const page = code(read(SCREENS, 'manage', 'recommendations', 'calendar', 'page.tsx'));
+
+  it('«Заказ около» и окно — один столбец, пика в таблице нет', () => {
+    const heads = tableHeads(page, 'Виды работ');
+    assert.ok(heads.includes('Окно — заказ около'), heads.join(' | '));
+    assert.equal(heads.some((head) => /^Заказ около|^Пик заказов/u.test(head)), false, heads.join(' | '));
+  });
+
+  it('пик заказов — в «На чём основано»', () => {
+    const basis = page.slice(page.indexOf('<Disclosure title="На чём основано"'));
+    assert.match(basis, /пик заказов/u);
+    assert.match(basis, /row\.peak/u);
+  });
+
+  it('многословные шапки переносятся', () => {
+    const start = page.indexOf('<TableCard label="Виды работ"');
+    const head = page.slice(start, page.indexOf('</thead>', start));
+    for (const title of ['Месяц сдачи (сроков / сезонов)', 'Медиана, дней', 'Окно — заказ около']) {
+      assert.match(head, new RegExp(`whiteSpace: 'normal' \\}\\} scope="col">${title.replace(/[()]/gu, '\\$&')}<`, 'u'), title);
+    }
+  });
+
+  it('кнопки отметки стоят в строку с переносом', () => {
+    const marks = code(read(COMPONENTS, 'RecommendationMarks.tsx'));
+    assert.match(marks, /const ROW: CSSProperties = \{[^}]*display: 'flex'[^}]*flexWrap: 'wrap'/u);
+  });
+});
