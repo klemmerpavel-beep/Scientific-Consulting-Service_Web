@@ -180,6 +180,13 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   if (note.length > COMMENT_MAX) {
     throw new Error(`Пояснение длиннее ${COMMENT_MAX} знаков: сократите его — ни файл, ни пояснение не сохранены`);
   }
+  // Название нового материала уходит в темы писем, перечни и заголовок
+  // этапа — предел как у названия работы (Р-242, Р-279; решение Р-672).
+  // Без названия материал зовётся именем файла, урезанным, как у версии.
+  const title = (input.title ?? input.originalName.slice(0, 300)).trim();
+  if (existing === null && title.length > 300) {
+    throw new Error('Название материала — не длиннее 300 знаков: ни файл, ни пояснение не сохранены');
+  }
 
   if (input.body.byteLength === 0) throw new Error('Пустой файл не принимается');
   if (input.body.byteLength > MAX_UPLOAD_BYTES) {
@@ -212,7 +219,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
           kind,
           contractId,
           trancheId,
-          title: (input.title ?? input.originalName).trim(),
+          title,
           createdById: actor.id,
         },
       }));

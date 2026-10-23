@@ -1011,6 +1011,7 @@ export default async function StageScreen({
               <Field
                 label="Название"
                 name="title"
+                maxLength={300}
                 scope="new-material"
                 placeholder="Протокол испытаний"
               />

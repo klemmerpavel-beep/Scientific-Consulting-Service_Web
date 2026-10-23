@@ -265,7 +265,7 @@ export default async function ProjectMaterialsScreen({
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="back" value={`/cabinet/projects/${project.code}/materials`} />
             <FormRow>
-              <Field label="Название" name="title" placeholder="Черновик главы 2" />
+              <Field label="Название" name="title" maxLength={300} placeholder="Черновик главы 2" />
               <Select label="Этап" name="stageId" defaultValue="">
                 <option value="">без привязки к этапу</option>
                 {openStages.map((stage) => (

@@ -982,6 +982,7 @@ export default async function ProjectScreen({
                   <Field
                     label="Название материала"
                     name="title"
+                    maxLength={300}
                     required
                     placeholder="Глава 2 диссертации"
                     defaultValue={draft.title ?? ''}

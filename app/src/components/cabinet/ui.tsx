@@ -360,6 +360,7 @@ export function Field({
   labelHidden = false,
   minWidth,
   dense = false,
+  maxLength,
 }: {
   label: string;
   name: string;
@@ -369,6 +370,8 @@ export function Field({
   defaultValue?: string;
   hint?: string;
   multiline?: boolean;
+  /** Предел длины, который держит и сервер: форма не даёт набрать больше. */
+  maxLength?: number;
   /** Строка перечня, в которой стоит поле: от неё зависит идентификатор. */
   scope?: string;
   /** Подпись остаётся в дереве, но не занимает места: поле в строке таблицы. */
@@ -392,7 +395,7 @@ export function Field({
   // «Электронная почта Тот адрес, который вы указывали при обращении.»
   const id = fieldId(name, scope);
   const hintId = hint === undefined ? undefined : `${id}-hint`;
-  const shared = { name, required, placeholder, defaultValue, 'aria-describedby': hintId };
+  const shared = { name, required, placeholder, defaultValue, maxLength, 'aria-describedby': hintId };
   const box = minWidth === undefined ? control : { ...control, minWidth };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

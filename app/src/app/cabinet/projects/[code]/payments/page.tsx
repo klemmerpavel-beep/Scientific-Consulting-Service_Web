@@ -565,6 +565,7 @@ export default async function PaymentsScreen({
                     <Field
                       label="Название"
                       name="title"
+                      maxLength={300}
                       scope="contract"
                       placeholder="Договор № Д-2026-001"
                     />
