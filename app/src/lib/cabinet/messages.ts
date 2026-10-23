@@ -145,17 +145,6 @@ async function signalMessage(
   messageId: string,
 ): Promise<void> {
   const fromClient = actor.role === 'CLIENT';
-  const pending = await tx.message.count({
-    where: {
-      projectId: ref.id,
-      ...CLIENT_THREAD,
-      id: { not: messageId },
-      readAt: null,
-      author: fromClient ? { role: 'CLIENT' } : { role: { not: 'CLIENT' } },
-    },
-  });
-  if (pending > 0) return;
-
   const project = await tx.project.findUnique({
     where: { id: ref.id },
     select: { code: true, title: true, client: { select: { userId: true } } },
@@ -169,6 +158,7 @@ async function signalMessage(
 
   for (const userId of recipients) {
     if (userId === actor.id) continue;
+    if ((await pendingFor(tx, fromClient, ref, messageId, userId)) > 0) continue;
     // Клиенту — название работы, сотруднику — код: клиенту код ничего не
     // говорит (Р-189, Р-362; решение Р-643).
     const forClient = userId === project.client.userId;
@@ -187,6 +177,40 @@ async function signalMessage(
       path: `/cabinet/projects/${project.code}/messages`,
     });
   }
+}
+
+/**
+ * Ждущее получателя — непрочитанные сообщения той же стороны, кроме нового.
+ * Руководителю по чужой работе — по его курсору, как в `headUnread`: отметку
+ * `readAt` на сообщении клиента ставит только менеджер работы, и у закрытой
+ * работы приостановленного менеджера первое же сообщение клиента прежде
+ * гасило руководителям все следующие сигналы, хотя они его прочли (решение
+ * Р-670). Менеджеру работы и клиенту — по отметке на сообщении, как прежде.
+ */
+async function pendingFor(
+  tx: Tx,
+  fromClient: boolean,
+  ref: { id: string; managerId: string },
+  messageId: string,
+  userId: string,
+): Promise<number> {
+  const cursor =
+    fromClient && userId !== ref.managerId
+      ? await tx.messageThreadRead.findUnique({
+          where: { userId_threadKey: { userId, threadKey: `CLIENT_MANAGER:${ref.id}` } },
+          select: { readAt: true },
+        })
+      : null;
+  return tx.message.count({
+    where: {
+      projectId: ref.id,
+      ...CLIENT_THREAD,
+      id: { not: messageId },
+      readAt: null,
+      author: fromClient ? { role: 'CLIENT' } : { role: { not: 'CLIENT' } },
+      ...(cursor === null ? {} : { createdAt: { gt: cursor.readAt } }),
+    },
+  });
 }
 
 /**

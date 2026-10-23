@@ -321,4 +321,31 @@ describe('переписка по работе', { skip: !enabled }, async () =>
       await prisma.project.update({ where: { id: ids.project! }, data: { status: 'ACTIVE' } });
     }
   });
+
+  it('Р-670: руководитель, прочитавший сообщение клиента по чужой работе, получает сигнал о следующем', async () => {
+    // Отметку `readAt` на сообщении клиента ставит только менеджер работы;
+    // приостановленный менеджер её не поставит, и прежде первое
+    // сообщение гасило руководителю все следующие сигналы.
+    const head = actorOf(ids.head!, 'HEAD');
+    await prisma.message.updateMany({ where: { projectId: ids.project! }, data: { readAt: new Date() } });
+    await prisma.project.update({ where: { id: ids.project! }, data: { status: 'COMPLETED' } });
+    await prisma.user.update({ where: { id: ids.manager! }, data: { status: 'SUSPENDED' } });
+    const toHead = (messageId: string) =>
+      prisma.notificationOutbox.count({ where: { dedupKey: `message:${messageId}:${ids.head!}:email` } });
+    try {
+      const first = await messages.sendMessage(client(), ids.project!, 'Первый вопрос по закрытой работе');
+      assert.equal(await toHead(first.id), 1, 'руководитель не получил сигнала о первом сообщении');
+      // Пока руководитель не открыл переписку, второй сигнал не ставится.
+      const unread = await messages.sendMessage(client(), ids.project!, 'Уточнение до ответа');
+      assert.equal(await toHead(unread.id), 0, 'сигнал на каждую реплику');
+
+      await messages.markRead(head, ids.project!);
+      await messages.sendMessage(head, ids.project!, 'Руководитель ответил');
+      const second = await messages.sendMessage(client(), ids.project!, 'Второй вопрос после ответа');
+      assert.equal(await toHead(second.id), 1, 'руководитель не получил сигнала о втором сообщении');
+    } finally {
+      await prisma.user.update({ where: { id: ids.manager! }, data: { status: 'ACTIVE' } });
+      await prisma.project.update({ where: { id: ids.project! }, data: { status: 'ACTIVE' } });
+    }
+  });
 });
