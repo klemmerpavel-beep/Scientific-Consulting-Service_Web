@@ -1231,7 +1231,7 @@ export async function applyBatch(
             select: {
               id: true,
               totalAmount: true,
-              tranches: { select: { id: true, title: true, amount: true, status: true } },
+              tranches: { select: { id: true, title: true, amount: true, status: true, plannedDate: true } },
             },
           });
           // Работа заведена с нулевой суммой, и договора у неё нет, а в книге
@@ -1283,7 +1283,18 @@ export async function applyBatch(
             const left = total - others - received;
             if (rest !== undefined) {
               if (left > 0n) {
-                await tx.tranche.update({ where: { id: rest.id }, data: { amount: left } });
+                // Остаток стоит на сроке книги (`openContract`) и переносится
+                // вместе с ним: прежде срок работы переносился, а остаток
+                // оставался на прежнем и со следующего дня числился
+                // просроченным. Дата, перенесённая в кабинете, с прежним сроком
+                // книги не совпадает и остаётся (Р-451, Р-503, решение Р-658).
+                const priorDeadline = typeof prior?.deadline === 'string' ? prior.deadline : null;
+                const movedWithBook =
+                  deadlineChanged && (rest.plannedDate?.toISOString() ?? null) === priorDeadline;
+                await tx.tranche.update({
+                  where: { id: rest.id },
+                  data: { amount: left, ...(movedWithBook ? { plannedDate: deadline } : {}) },
+                });
               } else {
                 await tx.tranche.delete({ where: { id: rest.id } });
               }

@@ -627,6 +627,62 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     assert.equal(reopened?.unresolvedTypes.length, 0);
   });
 
+  /** Перенести строку книги дважды: сначала со сроком 01.10.2026, затем с 01.12.2026. */
+  async function moveDeadline(customer: string, date: string, between?: (projectId: string) => Promise<void>) {
+    const head = actor(ids.head, 'HEAD');
+    const first = await previewBook(head, {
+      fileName: `книга-${stamp}-срок-1.xlsx`,
+      bytes: makeWorkbook([HEADER, line(date, customer, 'Диссертция', '01.10.2026', '100000', '50000')]),
+    });
+    batches.push(first.batchId);
+    await applyBatch(head, first.batchId, { managerId: ids.manager });
+    const { id } = await prisma.project.findFirstOrThrow({
+      where: { client: { normalizedName: customer.toLowerCase() } },
+      select: { id: true },
+    });
+    await between?.(id);
+    const second = await previewBook(head, {
+      fileName: `книга-${stamp}-срок-2.xlsx`,
+      bytes: makeWorkbook([HEADER, line(date, customer, 'Диссертция', '01.12.2026', '100000', '50000')]),
+    });
+    batches.push(second.batchId);
+    assert.equal(second.counts.UPDATE, 1);
+    const report = await applyBatch(head, second.batchId, { managerId: ids.manager });
+    assert.equal(report.updated, 1);
+    return prisma.project.findUniqueOrThrow({
+      where: { id },
+      select: {
+        dueOn: true,
+        contract: { select: { tranches: { where: { title: 'Остаток по договору' }, select: { plannedDate: true, amount: true } } } },
+      },
+    });
+  }
+
+  it('перенос срока в книге переносит и дату остатка по договору (Р-658)', async () => {
+    // Прежде срок работы переносился, а остаток оставался на прежнем сроке
+    // книги и со следующего дня числился просроченным.
+    const work = await moveDeadline(`Белова Ольга ${stamp}`, '2026-09-03');
+    assert.equal(work.dueOn?.toISOString().slice(0, 10), '2026-12-01');
+    assert.equal(work.contract?.tranches.length, 1);
+    assert.equal(work.contract?.tranches[0]?.amount, 5_000_000n);
+    assert.equal(
+      work.contract?.tranches[0]?.plannedDate?.toISOString().slice(0, 10),
+      '2026-12-01',
+      'остаток остался на прежнем сроке книги',
+    );
+  });
+
+  it('дата остатка, перенесённая в кабинете, переносом срока в книге не затирается (Р-658)', async () => {
+    const work = await moveDeadline(`Гусева Ирина ${stamp}`, '2026-09-04', async (projectId) => {
+      await prisma.tranche.updateMany({
+        where: { title: 'Остаток по договору', contract: { projectId } },
+        data: { plannedDate: new Date('2026-10-15T00:00:00Z') },
+      });
+    });
+    assert.equal(work.dueOn?.toISOString().slice(0, 10), '2026-12-01');
+    assert.equal(work.contract?.tranches[0]?.plannedDate?.toISOString().slice(0, 10), '2026-10-15');
+  });
+
   it('перенос записан в журнал действий', async () => {
     const events = await prisma.auditEvent.findMany({
       where: { actorId: ids.head, action: { in: ['IMPORT_PREVIEWED', 'IMPORT_APPLIED'] } },
