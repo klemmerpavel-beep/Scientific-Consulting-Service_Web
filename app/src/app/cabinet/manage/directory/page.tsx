@@ -392,39 +392,45 @@ export default async function DirectoryScreen({
         <>
           {/* Срок реакции: через столько рабочих дней неразобранное дело
               менеджера становится контрольным делом руководителя
-              (требование РК-05, решение Р-337). */}
+              (требование РК-05, решение Р-337). Кнопка — отдельной строкой
+              под полем: в ряду по низу она вставала напротив подсказки
+              (решение Р-715). */}
           <Card style={{ marginBottom: 20 }}>
-            <Form action={saveReaction} inline>
+            <Form action={saveReaction}>
               <Field
                 label="Срок реакции, рабочих дней"
                 name="days"
                 type="number"
                 defaultValue={String(reaction)}
                 hint="Сообщение клиента, публикация, заявка или сданный этап, не разобранные за этот срок, поднимаются руководителю в «Контроль»."
-                minWidth={140}
               />
-              <Button tone="quiet">Сохранить</Button>
+              <FormActions>
+                <Button tone="quiet">Сохранить</Button>
+              </FormActions>
             </Form>
           </Card>
           {since === null || thresholds === null ? null : (
             <Card style={{ marginBottom: 20 }}>
-              <Form action={saveAnalyticsSettings} inline>
-                <Field
-                  label="Дата начала учёта"
-                  name="since"
-                  type="date"
-                  defaultValue={since.toISOString().slice(0, 10)}
-                  hint="С неё считаются сезонные нормы и календарь продвижения; текущий неполный месяц не считается."
-                  minWidth={170}
-                />
-                <Field
-                  label="Пороги уверенности, наблюдений"
-                  name="thresholds"
-                  defaultValue={`${thresholds.sure}, ${thresholds.likely}, ${thresholds.maybe}`}
-                  hint="«Уверенно», «вероятно», «предположительно»; меньше последнего — «мало данных»."
-                  minWidth={170}
-                />
-                <Button tone="quiet">Сохранить</Button>
+              {/* Кнопка сохраняет оба поля и стоит под обоими (решение Р-715). */}
+              <Form action={saveAnalyticsSettings}>
+                <FormRow>
+                  <Field
+                    label="Дата начала учёта"
+                    name="since"
+                    type="date"
+                    defaultValue={since.toISOString().slice(0, 10)}
+                    hint="С неё считаются сезонные нормы и календарь продвижения; текущий неполный месяц не считается."
+                  />
+                  <Field
+                    label="Пороги уверенности, наблюдений"
+                    name="thresholds"
+                    defaultValue={`${thresholds.sure}, ${thresholds.likely}, ${thresholds.maybe}`}
+                    hint="«Уверенно», «вероятно», «предположительно»; меньше последнего — «мало данных»."
+                  />
+                </FormRow>
+                <FormActions>
+                  <Button tone="quiet">Сохранить</Button>
+                </FormActions>
               </Form>
             </Card>
           )}
