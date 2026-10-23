@@ -167,8 +167,11 @@ async function hasOpenRequest(tx: Tx, clientId: string): Promise<boolean> {
  * этапа, Р-292).
  */
 export async function requestOwnErasure(actor: Actor): Promise<Date> {
-  if (actor.role !== 'CLIENT' || actor.clientProfileId === null || actor.status !== 'ACTIVE') {
-    throw new Error('Действие не разрешено');
+  if (actor.role !== 'CLIENT' || actor.status !== 'ACTIVE') throw new Error('Действие не разрешено');
+  // Учётная запись клиента без карточки — штатная (Р-285): требование не к
+  // чему привязать, и отказ называет путь, а не запрет (решение Р-674).
+  if (actor.clientProfileId === null) {
+    throw new Error('Запрос из кабинета доступен после привязки карточки: напишите на адрес практики');
   }
   const clientId = actor.clientProfileId;
   const staffLink = actor.viaStaffLink === true;
