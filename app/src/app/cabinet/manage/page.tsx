@@ -36,7 +36,7 @@ import {
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
-import { formatAmount, formatPlain, formatRounded, outstandingOf, workMoneyNote, type OpenTranche } from '../../../lib/cabinet/money';
+import { formatAmount, formatRounded, outstandingOf, workMoneyNote, type OpenTranche } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { staffThreadUnread } from '../../../lib/cabinet/messages';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
@@ -1347,13 +1347,15 @@ export default async function ManageQueue({
                   borderBottom: '1px solid var(--pd-divider)',
                 }}
               >
+                {/* Суммы — со знаком рубля: шапки со знаком у блока нет, а
+                    плитка «Получено» в «Пульсе» пишет его (решение Р-698). */}
                 {[
                   {
                     key: 'got',
                     label: receivedAll || !dashboard ? 'Получено за всё время' : 'Получено за 90 дней',
-                    value: formatPlain(received ?? money.received),
+                    value: formatAmount(received ?? money.received),
                   },
-                  { key: 'wait', label: 'К получению', value: formatPlain(money.awaiting) },
+                  { key: 'wait', label: 'К получению', value: formatAmount(money.awaiting) },
                   // Платежи со сроком раньше сегодняшнего дня. Не «остаток по
                   // работам с прошедшим сроком» отчёта и аналитики — там мера
                   // другая, и одно слово на двух экранах читалось как
@@ -1361,7 +1363,7 @@ export default async function ManageQueue({
                   {
                     key: 'debt',
                     label: 'Просрочено по траншам',
-                    value: formatPlain(money.overdue),
+                    value: formatAmount(money.overdue),
                   },
                 ].map((row) => (
                   <div key={row.key}>
