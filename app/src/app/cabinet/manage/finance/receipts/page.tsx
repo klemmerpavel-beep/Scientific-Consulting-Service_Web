@@ -100,8 +100,10 @@ export default async function ReceiptsScreen() {
         </table>
       </TableCard>
 
+      {/* Три коротких столбца помещаются в телефон без предела ширины:
+          при 560 px суммы уходили за край области (Р-690). */}
       <TableCard label="Вне помесячного ряда" style={{ marginBottom: 12 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             <tr>
               <th style={TABLE_CELL} scope="row">

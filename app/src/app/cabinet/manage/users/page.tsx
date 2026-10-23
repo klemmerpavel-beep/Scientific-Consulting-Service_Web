@@ -230,7 +230,10 @@ export default async function UsersScreen({
         </Empty>
       ) : (
       <TableCard label="Пользователи кабинета">
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1240 }}>
+        {/* Предел — не шире карточки настольного экрана (1158 px): действия
+            «Правки» переносятся в ячейке, а при 1240 кнопки «Сменить»
+            срезались краем области (Р-690). */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
           <thead>
             <tr>
               <th style={TABLE_HEAD} scope="col">Кто</th>

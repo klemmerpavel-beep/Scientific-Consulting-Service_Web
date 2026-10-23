@@ -120,3 +120,25 @@ describe('Р-689. «Виды работ» календаря — в ширину
     assert.match(marks, /const ROW: CSSProperties = \{[^}]*display: 'flex'[^}]*flexWrap: 'wrap'/u);
   });
 });
+
+/** Предел ширины таблицы, стоящей в `TableCard` с этим именем; `null` — предела нет. */
+function tableMinWidth(text: string, label: string): number | null {
+  const start = text.indexOf(`<TableCard label="${label}"`);
+  assert.ok(start >= 0, `таблица «${label}» не найдена`);
+  const table = /<table style=\{\{([^}]*)\}\}>/u.exec(text.slice(start))?.[1] ?? '';
+  const width = /minWidth: (\d+)/u.exec(table)?.[1];
+  return width === undefined ? null : Number(width);
+}
+
+describe('Р-690. предел ширины таблицы не шире карточки', () => {
+  // Карточка на 1440 px — 1158 px; на телефоне область таблицы — 348 px.
+  it('«Пользователи кабинета» помещаются в карточку настольного экрана', () => {
+    const width = tableMinWidth(code(read(SCREENS, 'manage', 'users', 'page.tsx')), 'Пользователи кабинета');
+    assert.ok(width !== null && width <= 1100, `minWidth ${width}`);
+  });
+
+  it('«Вне помесячного ряда» помещается в телефон', () => {
+    const width = tableMinWidth(code(read(SCREENS, 'manage', 'finance', 'receipts', 'page.tsx')), 'Вне помесячного ряда');
+    assert.ok(width === null || width <= 320, `minWidth ${width}`);
+  });
+});
