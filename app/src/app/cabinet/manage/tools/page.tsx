@@ -310,7 +310,7 @@ export default async function ToolsScreen() {
                   <Heading level={3} size={3}>
                     <a className="cab-stretch" href={tool.href}>{tool.title}</a>
                   </Heading>
-                  <Chip>{tool.often}</Chip>
+                  <Chip nowrap>{tool.often}</Chip>
                 </div>
                 <Text muted size={14} style={{ marginBottom: 8 }}>
                   {tool.note}

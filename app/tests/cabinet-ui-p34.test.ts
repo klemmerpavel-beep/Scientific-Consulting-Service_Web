@@ -274,6 +274,13 @@ describe('13. кнопки несут класс общей кнопки', () =>
     assert.equal(BUTTON_BASE.fontWeight, 600);
   });
 
+  it('двухстрочная надпись кнопки отходит от рамки (Р-681)', () => {
+    // При высоте 44 px однострочная кнопка та же: строка 21 px и поля по
+    // 10 px в неё помещаются; перенесённая надпись больше не касается рамки.
+    assert.equal(BUTTON_BASE.padding, '10px 20px');
+    assert.equal(BUTTON_BASE.minHeight, 44);
+  });
+
   it('состояния кнопки перекрывают встроенный стиль', () => {
     assert.match(CABINET_CSS, /\.cab-btn-primary:hover,\.cab-btn-primary:focus-visible\{background:var\(--pd-accent-hover\)!important\}/u);
     assert.match(CABINET_CSS, /\.cab-btn-quiet:hover,\.cab-btn-quiet:focus-visible\{border-color:var\(--pd-accent\)!important;color:var\(--pd-accent\)!important\}/u);

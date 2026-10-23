@@ -2697,7 +2697,9 @@ export function FoldCard({
             <span style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5, color: 'var(--pd-ink-muted)' }}>{note}</span>
           )}
         </span>
-        {count === undefined ? null : <Chip>{count}</Chip>}
+        {/* Счётчик — в одну строку: перенесённый, он делал из пилюли овал
+            (Р-577, решение Р-681). */}
+        {count === undefined ? null : <Chip nowrap>{count}</Chip>}
       </summary>
       <div style={{ padding: '8px 20px 20px' }}>{children}</div>
     </details>

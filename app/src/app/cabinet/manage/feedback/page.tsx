@@ -229,7 +229,7 @@ export default async function FeedbackScreen({
                     </div>
                   </td>
                   <td style={TABLE_CELL}>
-                    <Chip>{STATUS_LABEL[row.status]}</Chip>
+                    <Chip nowrap>{STATUS_LABEL[row.status]}</Chip>
                   </td>
                   <td style={{ ...TABLE_CELL, minWidth: 340 }}>
                     <Form action={saveFeedbackReview}>

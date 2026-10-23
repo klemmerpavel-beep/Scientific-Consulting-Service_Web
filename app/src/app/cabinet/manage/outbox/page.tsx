@@ -139,7 +139,7 @@ export default async function OutboxScreen({
                   <td style={TABLE_CELL}>
                     <Form action={retryNotification} inline>
                       <input type="hidden" name="id" value={row.id} />
-                      <Button tone="quiet">Отправить ещё раз</Button>
+                      <Button tone="quiet" style={{ whiteSpace: 'nowrap' }}>Отправить ещё раз</Button>
                     </Form>
                   </td>
                 </tr>

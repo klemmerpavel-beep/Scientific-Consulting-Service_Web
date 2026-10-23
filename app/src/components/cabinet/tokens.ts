@@ -81,6 +81,10 @@ export const EASING = 'cubic-bezier(.2,0,.2,1)';
  * каркасе состояние отправки не нужно — им нужен только вид.
  *
  * Цель нажатия не меньше 44 px — правило дизайн-системы сайта.
+ *
+ * Поля сверху и снизу — по 10 px: однострочная кнопка остаётся в 44 px
+ * (строка 21 px), а надпись, перенесённая на узком экране на две строки,
+ * больше не касается рамки (решение Р-681).
  */
 export const BUTTON_BASE: CSSProperties = {
   display: 'inline-flex',
@@ -88,7 +92,7 @@ export const BUTTON_BASE: CSSProperties = {
   justifyContent: 'center',
   gap: 8,
   minHeight: 44,
-  padding: '0 20px',
+  padding: '10px 20px',
   borderRadius: RADIUS.pill,
   fontFamily: SANS,
   fontSize: 15,

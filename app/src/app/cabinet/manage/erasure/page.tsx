@@ -163,7 +163,7 @@ export default async function ErasureScreen({
                 </td>
                 <td style={TABLE_CELL}>
                   {request.executedAt === null ? (
-                    <Chip>ожидает исполнения</Chip>
+                    <Chip nowrap>ожидает исполнения</Chip>
                   ) : (
                     <>
                       <Chip>исполнено</Chip>
