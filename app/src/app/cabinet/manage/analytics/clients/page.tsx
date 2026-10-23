@@ -38,6 +38,12 @@ function segmentShare(value: number, total: number): string {
 
 const SEGMENT_ORDER: ClientSegment[] = ['CORE', 'ACTIVE', 'DORMANT_VALUABLE', 'DORMANT_ONCE'];
 
+// Ширины столбцов «Клиентов» — общие для первых строк и остатка под
+// свёрткой: так числа и суммы продолжения стоят под верхними (решение
+// Р-682). Последний заказ шире прочих: дата и давность идут одной строкой;
+// числам хватает места и в 760 px таблицы на телефоне.
+const CLIENT_COLUMNS = ['14%', '14%', '12%', '16%', '15%', '29%'] as const;
+
 export default async function AnalyticsClients() {
   const { actor, rows } = await analyticsScreen();
   const report = clients(rows, clockNow());
@@ -129,6 +135,7 @@ export default async function AnalyticsClients() {
           <LongTable
             label="Клиенты"
             minWidth={760}
+            widths={CLIENT_COLUMNS}
             columns={
               <tr>
                 <th style={head} scope="col">Клиент</th>

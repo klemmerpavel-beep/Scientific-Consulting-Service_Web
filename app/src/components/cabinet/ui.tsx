@@ -1343,6 +1343,7 @@ export function LongTable({
   visible = 10,
   minWidth = 720,
   caption,
+  widths,
 }: {
   label: string;
   /** Строка заголовков: те же `<th scope="col">`, что и были. */
@@ -1351,16 +1352,35 @@ export function LongTable({
   visible?: number;
   minWidth?: number;
   caption?: ReactNode;
+  /**
+   * Ширины столбцов, по одной на `<th>`. С ними первые строки и остаток
+   * под свёрткой идут одной сеткой: при автоматической раскладке каждая
+   * таблица считала ширины по своим строкам, и столбцы продолжения уезжали
+   * на 15–20 px (решение Р-682).
+   */
+  widths?: readonly string[];
 }) {
   const shown = rows.slice(0, visible);
   const rest = rows.slice(visible);
-  const style = { width: '100%', borderCollapse: 'collapse' as const, minWidth };
+  const style = {
+    width: '100%',
+    borderCollapse: 'collapse' as const,
+    minWidth,
+    ...(widths === undefined ? {} : { tableLayout: 'fixed' as const }),
+  };
+  const cols =
+    widths === undefined ? null : (
+      <colgroup>{widths.map((width, index) => (
+        <col key={index} style={{ width }} />
+      ))}</colgroup>
+    );
 
   return (
     <>
       <TableCard label={label}>
         <table style={style}>
           {caption === undefined ? null : caption}
+          {cols}
           <thead>{columns}</thead>
           <tbody>{shown}</tbody>
         </table>
@@ -1372,9 +1392,16 @@ export function LongTable({
         >
           {/* Тело свёртки на обычной странице не прокручивается, и голая
               таблица в 720 px раздвигала страницу вбок на телефоне —
-              прокрутка своя, с фокусом и именем (решения Р-168, Р-253). */}
-          <TableScroll label={`${label}: остальные строки`}>
+              прокрутка своя, с фокусом и именем (решения Р-168, Р-253).
+              С общими ширинами остаток выведен из поля тела свёртки
+              (18 px) к краям карточки: обе таблицы одной ширины, и
+              столбцы стоят друг под другом (решение Р-682). */}
+          <TableScroll
+            label={`${label}: остальные строки`}
+            style={widths === undefined ? undefined : { margin: '0 -18px' }}
+          >
             <table style={style}>
+              {cols}
               <thead>{columns}</thead>
               <tbody>{rest}</tbody>
             </table>
@@ -1492,9 +1519,18 @@ export function Tiles({ children, inset = false }: { children: ReactNode; inset?
  * раздвигали страницу вбок (решение Р-209). Прокрутка — с фокусом и
  * именем, как у всех областей прокрутки кабинета (решение Р-168).
  */
-export function TableScroll({ label, children }: { label: string; children: ReactNode }) {
+export function TableScroll({
+  label,
+  children,
+  style,
+}: {
+  label: string;
+  children: ReactNode;
+  /** Отступы области: остаток `LongTable` выводится к краям карточки (Р-682). */
+  style?: CSSProperties;
+}) {
   return (
-    <div role="region" aria-label={label} tabIndex={0} style={{ position: 'relative', overflowX: 'auto' }}>
+    <div role="region" aria-label={label} tabIndex={0} style={{ position: 'relative', overflowX: 'auto', ...style }}>
       {children}
     </div>
   );
