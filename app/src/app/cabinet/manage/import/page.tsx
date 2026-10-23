@@ -17,6 +17,7 @@ import {
   TABLE_HEAD,
   TableCard,
   TABLE_NUM,
+  TABLE_NUM_HEAD,
   Text,
   formatDay,
 } from '../../../../components/cabinet/ui';
@@ -114,7 +115,7 @@ export default async function ImportScreen({
               <th style={TABLE_HEAD} scope="col">Файл</th>
               <th style={TABLE_HEAD} scope="col">Загружена</th>
               <th style={TABLE_HEAD} scope="col">Состояние</th>
-              <th style={TABLE_HEAD} scope="col">Строк</th>
+              <th style={TABLE_NUM_HEAD} scope="col">Строк</th>
               <th style={TABLE_HEAD} scope="col">Суммы</th>
             </tr>
           }

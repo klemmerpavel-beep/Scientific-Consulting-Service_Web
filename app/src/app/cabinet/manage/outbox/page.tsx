@@ -10,6 +10,7 @@ import {
   TABLE_HEAD,
   TableCard,
   TABLE_NUM,
+  TABLE_NUM_HEAD,
   Text,
   Tile,
   Tiles,
@@ -111,7 +112,7 @@ export default async function OutboxScreen({
                 <th style={TABLE_HEAD} scope="col">Событие</th>
                 <th style={TABLE_HEAD} scope="col">Кому</th>
                 <th style={TABLE_HEAD} scope="col">Канал</th>
-                <th style={TABLE_HEAD} scope="col">Попыток</th>
+                <th style={TABLE_NUM_HEAD} scope="col">Попыток</th>
                 <th style={TABLE_HEAD} scope="col">Причина</th>
                 <th style={TABLE_HEAD} scope="col">Действие</th>
               </tr>

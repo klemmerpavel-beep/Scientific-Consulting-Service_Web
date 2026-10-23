@@ -21,6 +21,7 @@ import {
   TABLE_CELL,
   TABLE_HEAD,
   TABLE_NUM,
+  TABLE_NUM_HEAD,
   TableCard,
   FilterBar,
   Tabs,
@@ -140,7 +141,7 @@ export default async function DirectoryScreen({
               <thead>
                 <tr>
                   <th style={TABLE_HEAD} scope="col">Позиция</th>
-                  <th style={TABLE_HEAD} scope="col">Проектов</th>
+                  <th style={TABLE_NUM_HEAD} scope="col">Проектов</th>
                   <th style={TABLE_HEAD} scope="col">Базовая цена</th>
                   <th style={TABLE_HEAD} scope="col">Исторические написания</th>
                 </tr>

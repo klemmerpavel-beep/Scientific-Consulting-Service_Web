@@ -192,3 +192,25 @@ describe('Р-692. таблицы «Команды» — в ширину карт
     assert.doesNotMatch(team, /' · руководитель'/u);
   });
 });
+
+/** Стиль шапки столбца с этим заголовком: всё, что стоит в `style={…}`. */
+function headStyle(text: string, title: string): string {
+  const match = new RegExp(`<th style=\\{([^>]*)\\} scope="col">\\s*${title}\\s*</th>`, 'u').exec(text);
+  assert.ok(match !== null, `шапки «${title}» нет`);
+  return match[1]!;
+}
+
+describe('Р-693. шапка числового столбца — по правому краю, над числами', () => {
+  const cases: [string[], string[]][] = [
+    [['manage', 'import', 'page.tsx'], ['Строк']],
+    [['manage', 'import', '[batchId]', 'page.tsx'], ['Строк', 'Стоимость', 'Оплачено']],
+    [['manage', 'outbox', 'page.tsx'], ['Попыток']],
+    [['manage', 'directory', 'page.tsx'], ['Проектов']],
+  ];
+  for (const [file, titles] of cases) {
+    it(file.slice(0, -1).join('/'), () => {
+      const text = code(read(SCREENS, ...file));
+      for (const title of titles) assert.equal(headStyle(text, title), 'TABLE_NUM_HEAD', title);
+    });
+  }
+});
