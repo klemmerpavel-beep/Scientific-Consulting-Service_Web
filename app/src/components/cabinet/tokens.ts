@@ -257,6 +257,15 @@ details[open].cab-block{border-color:var(--pd-accent-edge)!important}
    тело. Кольцо фокуса идёт по тому же скруглению. */
 details.cab-block>summary{border-radius:${RADIUS.card - 1}px}
 details[open].cab-block>summary{border-radius:${RADIUS.card - 1}px ${RADIUS.card - 1}px 0 0}
+/* Прокручиваемое тело — свёртки на экране-панели и плашки-перечня
+   «Сводки» — рисовало дорожку полосы прокрутки квадратом поверх
+   скруглённого нижнего правого угла: снаружи рамка скруглена, внутри угол
+   прямой. Скругление самого тела дорожку не обрезает, обрезает блок. Пределы
+   ширины — те же, ниже которых прокрутка снята (Р-320), так что на телефоне
+   ничего не обрезается. Наружное кольцо фокуса обрезка срезала бы, поэтому
+   внутри этих блоков оно уведено внутрь (решение Р-678). */
+@media (min-width:1025px){.cab-board-main details.cab-block{overflow:clip}.cab-board-main details.cab-block>summary:focus-visible,.cab-board-main .cab-fold-body:focus-visible{outline-offset:-2px}}
+@media (min-width:960px){.cab-dash-list{overflow:clip}.cab-dash-body:focus-visible{outline-offset:-2px}}
 /* Лента карточек (решение Р-491): по две карточки в ряд, ниже 720 px
    ширины блока — по одной; привязка прокрутки к карточке. Кнопки листания
    — круг 44 px, как крестик окна заявки на сайте. */
