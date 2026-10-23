@@ -953,6 +953,64 @@ export async function listErasureRequests(actor: Actor) {
   return { rows: rows.map((row) => ({ ...row, viaStaffLink: viaStaff.has(row.id) })), total };
 }
 
+/** Объём требования, который руководитель видит перед исполнением. */
+export interface ErasureVolume {
+  readonly requestId: string;
+  readonly clientName: string;
+  readonly scope: 'PERSONAL_DATA' | 'PERSONAL_DATA_AND_FILES';
+  readonly projects: number;
+  readonly messages: number;
+  /**
+   * Версии материалов работ, ещё лежащие в хранилище. Вложения заявок сюда
+   * не входят: исполнение находит их и по контактам, и экран называет их
+   * без числа (решение Р-716).
+   */
+  readonly files: number;
+}
+
+/**
+ * Объём неисполненного требования — для подтверждения перед исполнением.
+ *
+ * Исполнение необратимо, а «Исполнить» в строке требования затирало
+ * данные одним нажатием. Теперь оно открывает подтверждение с объёмом
+ * (по образцу Р-346; решение Р-716). Работы считаются так же, как при
+ * исполнении: со сведёнными в карточку другими написаниями того же ФИО
+ * (решение Р-234). Сам подсчёт ничего не меняет.
+ */
+export async function erasureVolume(actor: Actor, requestId: string): Promise<ErasureVolume | null> {
+  ensure(actor, 'ERASURE_EXECUTE');
+  const request = await prisma.erasureRequest.findUnique({
+    where: { id: requestId },
+    select: { id: true, clientId: true, scope: true, executedAt: true, client: { select: { fullName: true } } },
+  });
+  if (request === null || request.executedAt !== null) return null;
+
+  const cardIds = [request.clientId];
+  for (let frontier = [request.clientId]; frontier.length > 0; ) {
+    const merged = await prisma.clientProfile.findMany({
+      where: { mergedIntoId: { in: frontier } },
+      select: { id: true },
+    });
+    frontier = merged.map((card) => card.id).filter((id) => !cardIds.includes(id));
+    cardIds.push(...frontier);
+  }
+
+  const ofClient = { project: { clientId: { in: cardIds } } };
+  const [projects, messages, files] = await Promise.all([
+    prisma.project.count({ where: { clientId: { in: cardIds } } }),
+    prisma.message.count({ where: ofClient }),
+    prisma.materialVersion.count({ where: { material: ofClient, purgedAt: null } }),
+  ]);
+  return {
+    requestId: request.id,
+    clientName: request.client.fullName,
+    scope: request.scope,
+    projects,
+    messages,
+    files,
+  };
+}
+
 /** Карточки, по которым требование ещё не исполнено. */
 export async function erasableClients(actor: Actor) {
   ensure(actor, 'ERASURE_EXECUTE');

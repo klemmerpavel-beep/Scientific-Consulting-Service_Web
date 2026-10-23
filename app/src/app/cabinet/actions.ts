@@ -1703,8 +1703,14 @@ export async function requestMyErasure(form: FormData): Promise<void> {
 
 export async function executeErasureRequest(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
+  const requestId = String(form.get('requestId') ?? '');
+  // Исполняет только вторая форма — из подтверждения с объёмом; без его
+  // отметки действие возвращает на подтверждение (решение Р-716).
+  if (form.get('confirmed') !== '1') {
+    redirect(`/cabinet/manage/erasure?confirm=${encodeURIComponent(requestId)}`);
+  }
   try {
-    await executeErasure(actor, String(form.get('requestId') ?? ''));
+    await executeErasure(actor, requestId);
   } catch (error) {
     // Отказ из-за действующих работ — не сбой, а условие: экран называет
     // коды работ, которые надо закрыть (решение Р-234).
