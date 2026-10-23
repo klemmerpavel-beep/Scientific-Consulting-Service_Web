@@ -518,6 +518,39 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     );
   });
 
+  it('номер исключённой строки, которой нет в загрузке, — отказ до фиксации (Р-661)', async () => {
+    // Прежде номер со строками загрузки не сверялся: опечатка в поле
+    // «Исключить строки» молча пропускалась, и строка, которую хотели
+    // исключить, заводилась работой с договором и траншами.
+    const head = actor(ids.head, 'HEAD');
+    const extra: TestRow[] = [
+      [
+        excelSerial('2025-09-01'),
+        `Лебедева Ольга ${stamp}`,
+        'Диссертция',
+        'Кандидатская, биология',
+        '20.12.2025',
+        '80000',
+        { value: 'в работе', fill: null },
+        '0',
+      ],
+    ];
+    const preview = await previewBook(head, { fileName: `книга-${stamp}-9.xlsx`, bytes: book('90000', extra) });
+    batches.push(preview.batchId);
+    assert.ok(preview.rows.every((row) => row.rowNumber !== 9999));
+
+    await assert.rejects(
+      applyBatch(head, preview.batchId, { managerId: ids.manager, excludeRows: [9999] }),
+      /В загрузке нет строки 9999/u,
+    );
+    const batch = await prisma.importBatch.findUnique({ where: { id: preview.batchId }, select: { state: true } });
+    assert.equal(batch?.state, 'PREVIEWED');
+    assert.equal(
+      await prisma.project.count({ where: { client: { normalizedName: { contains: `лебедева ольга ${stamp}` } } } }),
+      0,
+    );
+  });
+
   it('карточки сводятся вручную, проекты переходят к основной', async () => {
     const clients = await prisma.clientProfile.findMany({
       where: { normalizedName: { contains: String(stamp) }, mergedIntoId: null },

@@ -96,6 +96,7 @@ import {
 import { ActiveWorkError, executeErasure, requestErasure, requestOwnErasure } from '../../lib/cabinet/erasure';
 import { createCabinetRequest } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
+import { parseRowNumbers } from '../../lib/cabinet/import/etl';
 import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue, retryFailed, retryLeadLetter } from '../../lib/cabinet/outbox';
 import { reviewFeedback } from '../../lib/cabinet/feedback';
@@ -1623,10 +1624,17 @@ export async function applyOrderBook(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const batchId = String(form.get('batchId') ?? '');
   const managerId = String(form.get('managerId') ?? '');
-  const excludeRows = String(form.get('excludeRows') ?? '')
-    .split(/[\s,]+/)
-    .map((value) => Number(value))
-    .filter((value) => Number.isInteger(value) && value > 0);
+  // Нераспознанный номер — отказ до фиксации, а не молчаливый пропуск:
+  // иначе строка, которую хотели исключить, заводится работой (Р-661).
+  const { rows: excludeRows, bad } = parseRowNumbers(String(form.get('excludeRows') ?? ''));
+  if (bad.length > 0) {
+    redirect(
+      await withError(
+        `/cabinet/manage/import/${batchId}`,
+        `Не разобраны номера строк: ${bad.map((part) => `«${part}»`).join(', ')}. Пишите номера через запятую.`,
+      ),
+    );
+  }
 
   let failure: string | null = null;
   try {
@@ -1634,8 +1642,9 @@ export async function applyOrderBook(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось зафиксировать загрузку');
   }
-  // Отказ — фразой на экране загрузки: куратор не из числа сотрудников
-  // или загрузка уже зафиксирована (решение Р-251).
+  // Отказ — фразой на экране загрузки: куратор не из числа сотрудников,
+  // исключённой строки нет в загрузке или загрузка уже зафиксирована
+  // (решения Р-251, Р-661).
   if (failure !== null) redirect(await withError(`/cabinet/manage/import/${batchId}`, failure));
   redirect(`/cabinet/manage/import/${batchId}?applied=1`);
 }

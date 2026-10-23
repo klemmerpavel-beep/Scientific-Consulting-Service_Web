@@ -22,6 +22,7 @@ import {
   normalizeTypeAlias,
   parseBook,
   parseDeadline,
+  parseRowNumbers,
   type IssueCode,
 } from '../src/lib/cabinet/import/etl.ts';
 import { readWorkbook } from '../src/lib/cabinet/import/xlsx.ts';
@@ -591,6 +592,24 @@ describe('суммы книги', () => {
       assert.equal(money(raw), expected);
     });
   }
+});
+
+describe('исключённые строки с формы фиксации', () => {
+  // Прежде нераспознанный фрагмент молча отбрасывался: «12; 31» давало
+  // только 31, «12–15» — пустой перечень, и строки, которые хотели
+  // исключить, заводились работами (решение Р-661).
+  it('точка с запятой, пробелы и переносы разделяют номера', () => {
+    assert.deepEqual(parseRowNumbers('12; 31'), { rows: [12, 31], bad: [] });
+    assert.deepEqual(parseRowNumbers(' 12, 31\n40 '), { rows: [12, 31, 40], bad: [] });
+  });
+
+  it('пустое поле — ни одной исключённой строки', () => {
+    assert.deepEqual(parseRowNumbers('   '), { rows: [], bad: [] });
+  });
+
+  it('диапазон и номер с точкой называются, а не отбрасываются', () => {
+    assert.deepEqual(parseRowNumbers('12–15, 20, 31.'), { rows: [20], bad: ['12–15', '31.'] });
+  });
 });
 
 describe('архив книги', () => {

@@ -970,7 +970,17 @@ export async function applyBatch(
   const types = await prisma.serviceType.findMany({ select: { id: true, code: true } });
   const typeByCode = new Map(types.map((type) => [type.code, type.id]));
 
+  // Исключаемый номер сверяется со строками загрузки: опечатка в поле
+  // «Исключить строки» прежде молча пропускалась, и строка, которую хотели
+  // исключить, заводилась работой (решение Р-661).
   const excluded = new Set(input.excludeRows ?? []);
+  const present = new Set(stored.map((row) => row.rowNumber));
+  const missing = [...excluded].filter((rowNumber) => !present.has(rowNumber));
+  if (missing.length > 0) {
+    throw new Error(
+      `В загрузке нет ${missing.length === 1 ? 'строки' : 'строк'} ${missing.join(', ')}: проверьте номера исключённых строк`,
+    );
+  }
   const rejected: { rowNumber: number; reason: string }[] = [];
   let created = 0;
   let updated = 0;
