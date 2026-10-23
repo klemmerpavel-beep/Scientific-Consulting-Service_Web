@@ -214,3 +214,18 @@ describe('Р-693. шапка числового столбца — по прав
     });
   }
 });
+
+describe('Р-694. «О работе» на телефоне: подпись встаёт над значением', () => {
+  const card = code(read(SCREENS, 'projects', '[code]', 'page.tsx'));
+
+  it('сетки с колонкой подписей в 170 px нет', () => {
+    assert.doesNotMatch(card, /minmax\(0,170px\) minmax\(0,1fr\)/u);
+  });
+
+  it('строки обоих перечней переносятся, как на карточке заявки', () => {
+    const rows = [...card.matchAll(/style=\{\{ display: 'flex', flexWrap: 'wrap', columnGap: 14, rowGap: 2 \}\}/gu)];
+    assert.equal(rows.length, 2);
+    assert.equal([...card.matchAll(/<dt style=\{\{ margin: 0, flex: '0 0 170px', minWidth: 0 \}\}>/gu)].length, 2);
+    assert.equal([...card.matchAll(/<dd style=\{\{ margin: 0, flex: '1 1 220px', minWidth: 0 \}\}>/gu)].length, 2);
+  });
+});

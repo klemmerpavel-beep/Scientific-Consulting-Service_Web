@@ -790,21 +790,18 @@ export default async function ProjectScreen({
       )}
       <Disclosure title="О работе" style={{ marginTop: 12 }}>
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
+          {/* Подпись и значение — строкой, пока значению хватает места, и
+              одно под другим на телефоне, как на карточке заявки (Р-217):
+              сетка отдавала значению на 390 px 128 px, и слова рвались
+              посередине (Р-694). */}
           {about.map((row) => (
-            <div
-              key={row.term}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0,170px) minmax(0,1fr)',
-                gap: 14,
-              }}
-            >
-              <dt style={{ margin: 0 }}>
+            <div key={row.term} style={{ display: 'flex', flexWrap: 'wrap', columnGap: 14, rowGap: 2 }}>
+              <dt style={{ margin: 0, flex: '0 0 170px', minWidth: 0 }}>
                 <Text muted size={13}>
                   {row.term}
                 </Text>
               </dt>
-              <dd style={{ margin: 0 }}>
+              <dd style={{ margin: 0, flex: '1 1 220px', minWidth: 0 }}>
                 <Text size={14}>{row.value}</Text>
               </dd>
             </div>
@@ -846,21 +843,15 @@ export default async function ProjectScreen({
               {`Строка книги заказов — как в книге на ${formatDay(bookRow.appliedAt)}`}
             </Text>
             <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
+              {/* Строкой с переносом, как «О работе» выше (Р-694). */}
               {bookFacts.map((row) => (
-                <div
-                  key={row.term}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0,170px) minmax(0,1fr)',
-                    gap: 14,
-                  }}
-                >
-                  <dt style={{ margin: 0 }}>
+                <div key={row.term} style={{ display: 'flex', flexWrap: 'wrap', columnGap: 14, rowGap: 2 }}>
+                  <dt style={{ margin: 0, flex: '0 0 170px', minWidth: 0 }}>
                     <Text muted size={13}>
                       {row.term}
                     </Text>
                   </dt>
-                  <dd style={{ margin: 0 }}>
+                  <dd style={{ margin: 0, flex: '1 1 220px', minWidth: 0 }}>
                     <Text size={14}>{row.value}</Text>
                   </dd>
                 </div>
