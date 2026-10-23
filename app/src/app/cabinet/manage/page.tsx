@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { Fragment, type ReactNode } from 'react';
-import { waitingPublication } from '../../../lib/cabinet/staff-texts';
 
 import Shell from '../../../components/cabinet/Shell';
 import { RADIUS, SANS } from '../../../components/cabinet/tokens';
@@ -42,7 +41,8 @@ import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { staffThreadUnread } from '../../../lib/cabinet/messages';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
 import { leadQueue } from '../../../lib/cabinet/queries';
-import { attentionParts, attentionSources } from '../../../lib/cabinet/attention';
+import { attentionParts, attentionSources, practiceLight } from '../../../lib/cabinet/attention';
+import { answerDetail } from '../../../lib/cabinet/summary-answer';
 import { CHECK_TITLE } from '../../../lib/cabinet/head-checks';
 import { reactionDays } from '../../../lib/cabinet/practice-settings';
 import { notifyChannelsDown } from '../../../lib/cabinet/outbox';
@@ -692,45 +692,21 @@ export default async function ManageQueue({
 
   // Ответ сводки одной фразой: сколько дел требуют решения и с чего
   // начать. Прежде его собирали глазами из плашек ниже (решение Р-207).
-  // Сорванные сроки — этапов и работ без просроченного этапа; старший
-  // срок — самый давний из тех и других (решение Р-216).
-  const lateCount = light.overdue.length + light.lateWorks.length;
-  const oldest =
-    [
-      ...light.overdue.map((stage: (typeof light.overdue)[number]) => ({ title: stage.title, dueOn: stage.dueOn })),
-      ...light.lateWorks.map((work: (typeof light.lateWorks)[number]) => ({ title: work.title, dueOn: work.dueOn })),
-    ]
-      .filter((row) => row.dueOn !== null)
-      .sort((a, b) => a.dueOn!.getTime() - b.dueOn!.getTime())[0] ?? null;
-  const oldestLate = oldest === null ? null : overdueDays(oldest.dueOn);
+  // Пояснение руководителю — по всей практике, как «Действующих работ»
+  // в нём же; плашки «Мои» — по своим работам (Р-337, решение Р-695).
+  const practice = await practiceLight(actor, sources);
   const answer = {
     lead:
       attention.length === 0
         ? 'Сегодня ничего не горит.'
         : `${attention.length} ${plural(attention.length, 'дело требует', 'дела требуют', 'дел требуют')} решения.`,
-    detail:
-      [
-        // «Этапов и работ»: число складывает сорванные этапы и работы без
-        // сорванного этапа, и без уточнения его сверяли с «Работ с прошедшим
-        // сроком» отчёта — другой величиной (решение Р-257).
-        lateCount === 0
-          ? null
-          : `Сорвано сроков этапов и работ — ${lateCount}; старший — «${clip(oldest?.title ?? '', 48)}»${
-              oldestLate === null ? '' : `, ${oldestLate} ${plural(oldestLate, 'день', 'дня', 'дней')}`
-            }.`,
-        summary === null ? null : `Действующих работ — ${summary.active + summary.paused}.`,
-        // Всё, что ждёт публикации, — одной строкой по видам (улучшение
-        // УЭ-04, решение Р-382); сами дела — ниже, по этапам.
-        waitingPublication(
-          parts.comment.reduce((acc, row) => acc + row.count, 0),
-          parts.version.reduce((acc, row) => acc + row.count, 0),
-        ),
-        queue.total === 0
-          ? null
-          : `${queue.total} ${plural(queue.total, 'заявка ждёт', 'заявки ждут', 'заявок ждут')} разбора.`,
-      ]
-        .filter((part) => part !== null)
-        .join(' ') || null,
+    detail: answerDetail({
+      light: practice,
+      live: summary === null ? null : summary.active + summary.paused,
+      comments: parts.comment.reduce((acc, row) => acc + row.count, 0),
+      versions: parts.version.reduce((acc, row) => acc + row.count, 0),
+      leads: queue.total,
+    }),
     action:
       attention.length === 0 ? undefined : (
         <ButtonLink href={attention[0]!.href}>Начать с главного</ButtonLink>

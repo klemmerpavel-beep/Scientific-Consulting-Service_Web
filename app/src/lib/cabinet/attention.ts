@@ -80,6 +80,17 @@ export const attentionSources = cache(collect);
 export type AttentionSources = Awaited<ReturnType<typeof collect>>;
 
 /**
+ * Светофор для ответа «Сводки»: руководителю — по всей практике, как и
+ * «Действующих работ» рядом (решение Р-207); менеджеру — тот же набор,
+ * что у плашек. Плашки «Мои» руководителя по-прежнему берут `light`
+ * набора, суженный до своих работ (Р-337): фразу ответа это сужение не
+ * касается (решение Р-695).
+ */
+export async function practiceLight(actor: Actor, sources: AttentionSources): Promise<AttentionSources['light']> {
+  return actor.role === 'HEAD' ? trafficLight(actor) : sources.light;
+}
+
+/**
  * Части «Требует внимания»: каждая запись — одна плашка.
  *
  * Этап, уже названный просроченным, второй плашкой «ждёт клиента» не
