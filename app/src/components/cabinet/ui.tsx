@@ -535,7 +535,9 @@ export function Checkbox({
         disabled={disabled}
         required={required}
         aria-describedby={describedBy}
-        style={{ width: 18, height: 18 }}
+        // Флажок не сжимается: длинная подпись ужимала его до 13 px, и
+        // флажки соседних пунктов выходили разной ширины (решение Р-680).
+        style={{ width: 18, height: 18, flexShrink: 0, margin: 0 }}
       />
       <span style={nowrap ? { whiteSpace: 'nowrap' } : undefined}>{label}</span>
     </label>
