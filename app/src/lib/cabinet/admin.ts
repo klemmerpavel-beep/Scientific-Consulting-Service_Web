@@ -776,6 +776,16 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
   if ((staff(before.role) && !staff(role)) || (before.role === 'EXPERT' && role !== 'EXPERT')) {
     await ensureNoOpenWorks(userId);
   }
+  // Сотрудник не бывает клиентом работы — как при одобрении заявки и
+  // открытии входа клиенту. Клиент, ставший сотрудником, терял свои
+  // действующие работы: согласовать этап может только роль клиента, а
+  // выборка сотрудника по его карточке их не отдаёт (решение Р-666).
+  if (before.role === 'CLIENT') {
+    const open = await prisma.project.count({
+      where: { client: { userId }, status: { in: ['ACTIVE', 'PAUSED'] } },
+    });
+    if (open > 0) throw new Error('У клиента действующие работы: роль сотрудника — после их завершения');
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.user.update({ where: { id: userId }, data: { role } });
