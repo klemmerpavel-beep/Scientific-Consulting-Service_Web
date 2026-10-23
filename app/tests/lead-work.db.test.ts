@@ -153,6 +153,27 @@ describe('работа с заявкой', { skip: !enabled }, async () => {
     assert.equal(work.contactKindOf('@telegram_nick'), 'phone');
   });
 
+  it('почта с опечаткой не сохраняется: она уходит в карточку клиента и учётную запись (Р-705)', async () => {
+    const head = actor(ids.head!, 'HEAD');
+    const before = await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } });
+    for (const contact of ['a@@example', 'a@example', 'sokolova@почта']) {
+      await assert.rejects(work.editLead(head, ids.lead!, { contact }), work.LeadWorkError, contact);
+    }
+    const kept = await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } });
+    assert.equal(kept.contact, before.contact);
+    assert.equal(kept.contactKind, before.contactKind);
+    // Ник с «@» в начале и телефон проходят, как прежде.
+    await work.editLead(head, ids.lead!, { contact: '@telegram_nick' });
+    assert.equal((await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } })).contactKind, 'phone');
+    await work.editLead(head, ids.lead!, { contact: 'мария@почта.рф' });
+    assert.equal((await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } })).contactKind, 'email');
+    // Прежний адрес, который не меняют, правку других полей не держит.
+    await prisma.lead.update({ where: { id: ids.lead }, data: { contact: 'old@example' } });
+    await work.editLead(head, ids.lead!, { name: 'Иванов И.', contact: 'old@example' });
+    assert.equal((await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } })).name, 'Иванов И.');
+    await work.editLead(head, ids.lead!, { contact: before.contact, name: before.name ?? '' });
+  });
+
   it('комментарий сохраняется с автором; пустой отклоняется', async () => {
     const head = actor(ids.head!, 'HEAD');
     await work.addLeadComment(head, ids.lead!, '  Позвонил, ждём ответа  ');

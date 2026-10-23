@@ -1,4 +1,5 @@
 import { prisma } from '../db.ts';
+import { looksLikeEmail } from '../lead-schema.ts';
 import { ensure, scopeLeads, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { isLeadSwitchStatus } from './lead-labels.ts';
@@ -115,7 +116,15 @@ export async function editLead(
     if (raw.length > LIMITS[field]) throw new LeadWorkError(`Слишком длинное значение поля (${LIMITS[field]} знаков предел)`);
     const next = raw.length === 0 ? null : raw;
     if (field === 'contact' && next === null) throw new LeadWorkError('Контакт заявителя не может быть пустым');
-    if (next !== (current as Record<string, string | null>)[field]) data[field] = next;
+    if (next === (current as Record<string, string | null>)[field]) continue;
+    // Почта с опечаткой уходила в карточку клиента и в учётную запись при
+    // одобрении: «Новый заказ» и форма сайта такой адрес отвергают. Ник с
+    // «@» в начале и телефон проходят как прежде; прежний контакт, который
+    // не меняют, правку других полей не держит (решение Р-705).
+    if (field === 'contact' && next !== null && /^[^\s@]+@/u.test(next) && !looksLikeEmail(next)) {
+      throw new LeadWorkError('Проверьте адрес: он должен выглядеть как имя@домен');
+    }
+    data[field] = next;
   }
   const changed = Object.keys(data);
   if (changed.length === 0) return;
