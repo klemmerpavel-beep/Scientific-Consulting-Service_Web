@@ -266,7 +266,7 @@ export default async function ToolsScreen() {
           note="Открыть — экран кабинета; файлы — в Word. Чтобы сохранить экран в PDF, напечатайте его: Ctrl + P, на Mac ⌘ + P, — и выберите «Сохранить в PDF»."
           count={`${materials.length} ${plural(materials.length, 'материал', 'материала', 'материалов')}`}
         >
-          <MaterialRows rows={materials} />
+          <MaterialRows rows={materials} flushTop />
         </FoldCard>
       )}
 

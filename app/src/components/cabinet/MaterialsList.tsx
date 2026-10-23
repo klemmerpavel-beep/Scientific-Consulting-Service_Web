@@ -38,13 +38,28 @@ export default function MaterialsList({
 }
 
 /** Строки перечня без карточки — для свёрнутого блока (Р-572). */
-export function MaterialRows({ rows }: { rows: readonly MaterialRow[] }) {
+export function MaterialRows({
+  rows,
+  flushTop = false,
+}: {
+  rows: readonly MaterialRow[];
+  /**
+   * Первая строка без линии над собой. В свёртке линия над первой строкой
+   * удваивала кромку раскрытой шапки; в отдельной карточке она отделяет
+   * пояснение от перечня и остаётся (решение Р-683).
+   */
+  flushTop?: boolean;
+}) {
   return (
     <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
-      {rows.map((row) => (
+      {rows.map((row, index) => (
         <li
           key={row.title}
-          style={{ display: 'grid', gap: 8, paddingTop: 12, borderTop: '1px solid var(--pd-divider)' }}
+          style={{
+            display: 'grid',
+            gap: 8,
+            ...(flushTop && index === 0 ? {} : { paddingTop: 12, borderTop: '1px solid var(--pd-divider)' }),
+          }}
         >
           <div>
             <Heading level={3} size={3} style={{ marginBottom: 2 }}>
