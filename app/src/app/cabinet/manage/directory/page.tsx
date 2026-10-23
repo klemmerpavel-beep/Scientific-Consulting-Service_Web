@@ -1,4 +1,4 @@
-import { flashText } from '../../../../lib/cabinet/flash';
+import { flashText, formDraft } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -15,6 +15,7 @@ import {
   FormActions,
   FormRow,
   Heading,
+  Notice,
   Outcome,
   ScreenHead,
   Select,
@@ -82,7 +83,7 @@ const TABS: readonly Tab[] = ['types', 'stages', 'colors', 'calendar'];
 export default async function DirectoryScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; error?: string }>;
+  searchParams: Promise<{ tab?: string; error?: string; new?: string }>;
 }) {
   const actor = await requireActor('/cabinet/manage/directory');
   if (!can(actor, 'DIRECTORY_EDIT')) redirect(homeFor(actor));
@@ -91,6 +92,11 @@ export default async function DirectoryScreen({
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
   const failure = await flashText(sp.error);
   const tab: Tab = TABS.includes(sp.tab as Tab) ? (sp.tab as Tab) : 'types';
+  // Отказ «Добавить позицию» возвращает к свёртке по якорю #new-type: она
+  // раскрыта, поля держат набранное, а причина стоит в ней, над полями, —
+  // вверху экрана её не было бы видно (решения Р-543, Р-706, Р-707).
+  const draft = (await formDraft(sp.error)) ?? {};
+  const typeFailed = sp.new === '1' && failure !== undefined && tab === 'types';
 
   // Типы нужны и вкладке шаблонов — выбором в форме. Остальные выборки
   // идут только там, где их показывают.
@@ -128,7 +134,7 @@ export default async function DirectoryScreen({
         />
       </FilterBar>
 
-      {failure === undefined ? null : (
+      {failure === undefined || typeFailed ? null : (
         <Outcome tone="error">
           {failure}
         </Outcome>
@@ -220,8 +226,13 @@ export default async function DirectoryScreen({
             </Form>
           </Disclosure>
 
-          <Disclosure title="Добавить позицию">
+          <Disclosure title="Добавить позицию" open={sp.new === '1'} id="new-type">
             <Form action={saveType}>
+              {typeFailed ? (
+                <Notice tone="error" role="alert">
+                  {failure}
+                </Notice>
+              ) : null}
               <FormRow>
                 <Field
                   label="Код"
@@ -229,10 +240,11 @@ export default async function DirectoryScreen({
                   required
                   placeholder="translation"
                   hint="Латиницей, без пробелов"
+                  defaultValue={draft.code}
                 />
-                <Field label="Название" name="name" required placeholder="Научный перевод" />
-                <Field label="Базовая цена" name="basePrice" placeholder="необязательно" />
-                <Field label="Порядок" name="sortOrder" placeholder="70" />
+                <Field label="Название" name="name" required placeholder="Научный перевод" defaultValue={draft.name} />
+                <Field label="Базовая цена" name="basePrice" placeholder="необязательно" defaultValue={draft.basePrice} />
+                <Field label="Порядок" name="sortOrder" placeholder="70" defaultValue={draft.sortOrder} />
               </FormRow>
               <FormActions>
                 <Button>Сохранить</Button>

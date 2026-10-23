@@ -1908,18 +1908,27 @@ export async function updateExpertNda(form: FormData): Promise<void> {
 
 export async function saveType(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const name = String(form.get('name') ?? '');
   const rawPrice = String(form.get('basePrice') ?? '').trim();
   const rawOrder = String(form.get('sortOrder') ?? '').trim();
   try {
     await saveServiceType(actor, {
-      code: String(form.get('code') ?? ''),
-      name: String(form.get('name') ?? ''),
+      code,
+      name,
       basePrice: rawPrice.length === 0 ? null : parseAmount(rawPrice),
       sortOrder: rawOrder.length === 0 ? undefined : Number(rawOrder),
     });
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось сохранить позицию');
-    redirect(await withError(`/cabinet/manage/directory`, reason));
+    // Отказ возвращает в раскрытую форму с набранным: прежде свёртка
+    // закрывалась и введённое пропадало (решения Р-543, Р-707).
+    redirect(
+      await withError('/cabinet/manage/directory?new=1', reason, {
+        draft: { code, name, basePrice: rawPrice, sortOrder: rawOrder },
+        anchor: 'new-type',
+      }),
+    );
   }
   redirect('/cabinet/manage/directory');
 }
