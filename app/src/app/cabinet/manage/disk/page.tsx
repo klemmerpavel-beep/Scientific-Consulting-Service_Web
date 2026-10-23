@@ -92,10 +92,18 @@ export default async function DiskScreen() {
               : `${last.removed} ${plural(last.removed, 'удалён', 'удалено', 'удалено')}`
           }
         />
+        {/* До первого прогона чистым назвать нечего: плитка говорит то же,
+            что соседние (решение Р-712). */}
         <Tile
           label="Ошибок"
           value={last === null ? '—' : String(last.failed)}
-          note={last === null || last.failed === 0 ? 'последний прогон чистый' : 'разберите журнал прогона'}
+          note={
+            last === null
+              ? 'прогонов ещё не было'
+              : last.failed === 0
+                ? 'последний прогон чистый'
+                : 'разберите журнал прогона'
+          }
         />
       </Tiles>
 
