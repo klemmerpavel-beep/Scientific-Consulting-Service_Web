@@ -142,3 +142,30 @@ describe('Р-690. предел ширины таблицы не шире кар�
     assert.ok(width === null || width <= 320, `minWidth ${width}`);
   });
 });
+
+describe('Р-691. пояснение таблицы — абзацем над областью прокрутки', () => {
+  const report = code(read(SCREENS, 'manage', 'report', 'page.tsx'));
+  const imports = code(read(SCREENS, 'manage', 'import', 'page.tsx'));
+
+  it('подписи <caption> нет: она шириной с таблицу и режется краем области', () => {
+    assert.doesNotMatch(report, /<caption\b/u);
+    assert.doesNotMatch(imports, /<caption\b/u);
+  });
+
+  it('таблица отчёта ссылается на свой абзац, абзац стоит до области прокрутки', () => {
+    for (const label of ['Договоры и оплаты по месяцу начала работы', 'Что заказывали']) {
+      const region = report.indexOf(`<TableScroll label="${label}"`);
+      assert.ok(region >= 0, label);
+      const id = /<table\s+aria-describedby="([^"]+)"/u.exec(report.slice(region))?.[1];
+      assert.ok(id !== undefined, `${label}: у таблицы нет aria-describedby`);
+      const note = report.indexOf(`id="${id}"`);
+      assert.ok(note >= 0 && note < region, `${label}: абзаца ${id} нет над таблицей`);
+    }
+  });
+
+  it('пояснение «Загрузок» стоит над LongTable, а не в ней', () => {
+    const table = imports.indexOf('<LongTable');
+    assert.match(imports.slice(0, table), /История переносов: отчёт каждой загрузки открывается повторно\./u);
+    assert.doesNotMatch(imports.slice(table), /caption=/u);
+  });
+});

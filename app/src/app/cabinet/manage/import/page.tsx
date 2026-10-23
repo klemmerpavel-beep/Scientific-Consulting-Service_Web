@@ -99,14 +99,16 @@ export default async function ImportScreen({
           Первая загрузка покажет отчёт со всеми расхождениями исходного файла.
         </Empty>
       ) : (
+        <>
+        {/* Пояснение — абзацем над таблицей: подпись внутри неё шириной с
+            таблицу, и на телефоне край области резал её посреди слова
+            (Р-691). */}
+        <Text muted size={14} style={{ marginBottom: 12 }}>
+          История переносов: отчёт каждой загрузки открывается повторно.
+        </Text>
         <LongTable
           label="Загрузки книги заказов"
           minWidth={640}
-          caption={
-            <caption style={{ ...TABLE_CELL, captionSide: 'top', borderBottom: 'none' }}>
-              История переносов: отчёт каждой загрузки открывается повторно.
-            </caption>
-          }
           columns={
             <tr>
               <th style={TABLE_HEAD} scope="col">Файл</th>
@@ -144,6 +146,7 @@ export default async function ImportScreen({
             );
           })}
         />
+        </>
       )}
     </Shell>
   );
