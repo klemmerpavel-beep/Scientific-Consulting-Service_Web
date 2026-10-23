@@ -249,6 +249,14 @@ details[open]>summary .cab-caret{transform:rotate(90deg)}
    кривой (решение Р-197). */
 details[open]>summary{background:var(--pd-accent-mark);color:var(--pd-accent-deep)!important}
 details[open].cab-block{border-color:var(--pd-accent-edge)!important}
+/* Шапка свёртки скругляется вместе с блоком: без этого заливка раскрытой
+   шапки ложилась прямоугольником поверх скруглённой рамки, и углы
+   раскрытого блока становились прямыми (замечание владельца 23.10.2026,
+   решение Р-677). Радиус внутренний — радиус блока минус рамка; у
+   раскрытой шапки скруглены только верхние углы, снизу к ней примыкает
+   тело. Кольцо фокуса идёт по тому же скруглению. */
+details.cab-block>summary{border-radius:${RADIUS.card - 1}px}
+details[open].cab-block>summary{border-radius:${RADIUS.card - 1}px ${RADIUS.card - 1}px 0 0}
 /* Лента карточек (решение Р-491): по две карточки в ряд, ниже 720 px
    ширины блока — по одной; привязка прокрутки к карточке. Кнопки листания
    — круг 44 px, как крестик окна заявки на сайте. */

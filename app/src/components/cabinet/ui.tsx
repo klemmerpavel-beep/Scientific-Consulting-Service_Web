@@ -2684,7 +2684,6 @@ export function FoldCard({
           gap: 12,
           minHeight: 44,
           padding: '16px 20px',
-          borderRadius: RADIUS.card,
         }}
       >
         <Caret />
