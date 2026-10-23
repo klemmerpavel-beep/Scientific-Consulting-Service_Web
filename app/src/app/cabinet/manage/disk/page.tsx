@@ -139,6 +139,10 @@ export default async function DiskScreen() {
             на экране <a href="/cabinet/manage/import">«Перенос книги заказов»</a>.
           </Text>
         )}
+        {/* Удержанные на разбор строки мост передаёт исключёнными, и
+            фиксация считает их в пропущенных: в «уже было» они не входят,
+            иначе каждая считалась бы дважды. Отклонённые фиксацией строки
+            названы отдельно (решение Р-662). */}
         {pull === null ? (
           <Text muted size={13} style={{ marginTop: 10 }}>
             Прогонов ещё не было.
@@ -147,10 +151,18 @@ export default async function DiskScreen() {
           <Text muted size={13} style={{ marginTop: 10 }}>
             Последний прогон {formatDay(pull.occurredAt)} в {formatTime(pull.occurredAt)}: из{' '}
             {pull.rows} {plural(pull.rows, 'строки', 'строк', 'строк')} заведено {pull.created},
-            обновлено {pull.updated}, уже было {pull.skipped}
+            обновлено {pull.updated}, уже было {pull.skipped - pull.held}
             {pull.held === 0
-              ? '.'
-              : `; ${pull.held} ${plural(pull.held, 'строка требует', 'строки требуют', 'строк требуют')} разбора.`}
+              ? ''
+              : `; ${pull.held} ${plural(pull.held, 'строка требует', 'строки требуют', 'строк требуют')} разбора`}
+            {pull.rejected === 0 ? (
+              '.'
+            ) : (
+              <>
+                ; отклонено {pull.rejected} — причины в{' '}
+                <a href="/cabinet/manage/import">отчёте переноса</a>.
+              </>
+            )}
           </Text>
         )}
         {status.pullRuns.length === 0 ? null : (
