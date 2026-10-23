@@ -75,6 +75,14 @@ const FILTER_LABEL: Record<ProjectFilter, string> = {
   all: 'Все',
 };
 
+// Менеджер и куратор на плашке — ссылки внутри строки текста, а
+// `cab-mark` отведён для ссылок вне строки: коробка 44 px раздвигала
+// строку «менеджер — … · куратор — …» до 88 px и рвала её на куски. Цель
+// нажатия добирается отступом, строку он не меняет — как у ссылок в
+// документе «Рекламы» (Р-567). Над растянутой ссылкой плашки ссылки стоят
+// по-прежнему (Р-341, решение Р-679).
+const PERSON_LINK = { position: 'relative', zIndex: 1, padding: '14px 0' } as const;
+
 export default async function ProjectsScreen({
   searchParams,
 }: {
@@ -773,19 +781,22 @@ export default async function ProjectsScreen({
                     на этап: отдельной строкой сверху оно повторяло бы то,
                     что и так видно в шкале (решение Р-175). */}
                 {waiting === null ? null : (
-                  <Text size={13} style={{ marginTop: 10 }}>
+                  <Text size={13} style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 4 }}>
                     {/* Призыв к действию — цель в 44 px, а не строка в
-                        девятнадцать (решение Р-253). */}
+                        девятнадцать (решение Р-253). Строка — ряд: коробка
+                        ссылки и хвост срока стоят отдельными кусками на
+                        одной средней линии, и хвост переносится целиком, а
+                        не рвётся вокруг коробки (решение Р-679). */}
                     <a className="cab-mark" href={`/cabinet/stages/${waiting.id}`}>
                       {waitingLine(waiting)}
                     </a>
                     {/* На согласовании — срок согласования, как в шапке и в
                         блоке «Требует внимания» (Т-15, Р-290, решение Р-650). */}
-                    {waiting.state === 'IN_APPROVAL' && waiting.approvalDueOn !== null
-                      ? ` — срок согласования до ${formatDate(waiting.approvalDueOn)}`
-                      : waiting.dueOn === null
-                        ? ''
-                        : ` — до ${formatDate(waiting.dueOn)}`}
+                    {waiting.state === 'IN_APPROVAL' && waiting.approvalDueOn !== null ? (
+                      <span>{`— срок согласования до ${formatDate(waiting.approvalDueOn)}`}</span>
+                    ) : waiting.dueOn === null ? null : (
+                      <span>{`— до ${formatDate(waiting.dueOn)}`}</span>
+                    )}
                   </Text>
                 )}
 
@@ -869,8 +880,7 @@ export default async function ProjectsScreen({
                       <Text muted size={13} style={{ margin: 0 }}>
                         менеджер —{' '}
                         <a
-                          className="cab-mark"
-                          style={{ position: 'relative', zIndex: 1 }}
+                          style={PERSON_LINK}
                           href={`/cabinet/projects?state=all&manager=${project.managerId}`}
                         >
                           {project.manager.fullName}
@@ -882,8 +892,7 @@ export default async function ProjectsScreen({
                           <>
                             {'куратор — '}
                             <a
-                              className="cab-mark"
-                              style={{ position: 'relative', zIndex: 1 }}
+                              style={PERSON_LINK}
                               href={`/cabinet/projects?state=all&curator=${project.expertId}`}
                             >
                               {project.expert.fullName}

@@ -1299,10 +1299,14 @@ export default async function ManageQueue({
                       alignItems: 'baseline',
                     }}
                   >
+                    {/* Цель в 44 px набрана отступом, который раскладку не
+                        трогает: коробка `cab-mark` давала однострочному
+                        названию 11 px пустоты снизу, двухстрочному — нет, и
+                        пункты шли с разным зазором (решение Р-679; приём —
+                        как у ссылки на оферту, Р-253). */}
                     <a
                       href={row.href}
-                      className="cab-mark"
-                      style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5 }}
+                      style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5, display: 'block', padding: '12px 0', margin: '-12px 0' }}
                     >
                       {row.stage === null ? row.title : `${row.stage} · ${row.title}`}
                     </a>

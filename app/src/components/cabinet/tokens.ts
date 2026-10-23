@@ -219,6 +219,10 @@ a:hover{color:var(--pd-accent-press)}
 .cab-card{transition:box-shadow 200ms ${EASING},border-color 200ms ${EASING}}
 .cab-link-card:hover,.cab-link-card:focus-within{box-shadow:${SHADOW.hover}!important;border-color:var(--pd-accent-edge)!important}
 .cab-mark{display:inline-flex;align-items:center;min-height:44px}
+/* В ячейке таблицы и в dd соседи стоят по верху: строка ссылки, отцентрованная
+   в коробке 44 px, опускалась на 10–12 px ниже соседних величин. Цель
+   нажатия та же, текст — на линии соседей (решение Р-679). */
+:is(td,th,dd) .cab-mark{align-items:flex-start}
 /* Ссылка, растянутая на плашку: нажимается вся плашка, которая и так
    подсвечивается при наведении, а не строка названия (решение Р-209). */
 .cab-stretch::after{content:"";position:absolute;inset:0;border-radius:14px}
