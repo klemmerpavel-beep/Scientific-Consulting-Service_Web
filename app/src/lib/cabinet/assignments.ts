@@ -186,17 +186,20 @@ export const CLOSED_ASSIGNMENTS_SHOWN = 500;
  * предел стоял на общей выборке по раннему сроку: когда выполненных и
  * отозванных накапливалось больше пятисот, в неё попадали старые
  * закрытые, а новое открытое поручение со сроком через неделю пропадало с
- * экрана (решение Р-535).
+ * экрана (решение Р-535). У работы — имя клиента: перенос книги называет
+ * работы по виду, и одноимённые работы различаются по нему, а код на экран
+ * не выводится (решения Р-189, Р-708).
  */
 export async function allAssignments(actor: Actor) {
   ensure(actor, 'ASSIGNMENT_CREATE');
   const order = [{ dueOn: 'asc' as const }, { createdAt: 'asc' as const }];
+  const select = { ...view, project: { select: { code: true, title: true, client: { select: { fullName: true } } } } };
   const [open, closed] = await Promise.all([
-    prisma.assignment.findMany({ where: { status: { in: OPEN } }, orderBy: order, select: view }),
+    prisma.assignment.findMany({ where: { status: { in: OPEN } }, orderBy: order, select }),
     prisma.assignment.findMany({
       where: { status: { notIn: OPEN } },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: view,
+      select,
       take: CLOSED_ASSIGNMENTS_SHOWN,
     }),
   ]);

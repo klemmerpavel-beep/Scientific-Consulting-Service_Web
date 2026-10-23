@@ -124,15 +124,16 @@ export default async function AssignmentsScreen({
               return (
                 <li key={row.id} style={{ display: 'grid', gap: 6, borderBottom: '1px solid var(--pd-divider)', paddingBottom: 12 }}>
                   <Text size={15}>{row.text}</Text>
-                  {/* Работа — ссылкой и с кодом: перенос книги называет
-                      работы по виду, и у разных работ одно название
-                      (решение Р-708). */}
+                  {/* Работа — ссылкой и с именем клиента: перенос книги
+                      называет работы по виду, и у разных работ одно
+                      название; код на экран не выводится (решения Р-189,
+                      Р-708). */}
                   <Text muted size={13}>
                     {`${row.assignee.fullName}${row.assignee.role === 'EXPERT' ? ' — куратор' : ' — менеджер'} · срок ${formatDate(row.dueOn)} · `}
                     {row.project === null ? null : (
                       <>
                         <a href={`/cabinet/projects/${row.project.code}`}>работа «{row.project.title}»</a>
-                        {` · ${row.project.code} · `}
+                        {` · клиент ${row.project.client.fullName} · `}
                       </>
                     )}
                     {`поставлено ${formatDay(row.createdAt)}`}
