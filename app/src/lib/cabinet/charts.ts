@@ -113,6 +113,17 @@ export function topRoundedBar(x: number, y: number, w: number, h: number, r = 5)
   ].join(' ');
 }
 
+/**
+ * Длина полосы ранжирования, в процентах дорожки.
+ *
+ * Наименьшие 2 % нужны, чтобы малое ненулевое значение было видно. У нуля
+ * они рисовали начало полосы, и строка «0» читалась как «немного»; у
+ * столбцов ноль — пустое место, у полосы теперь тоже (решение Р-686).
+ */
+export function rankShare(value: number, max: number): number {
+  return value > 0 ? Math.max(2, (value / max) * 100) : 0;
+}
+
 export interface Point {
   readonly x: number;
   readonly y: number;

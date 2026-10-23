@@ -176,6 +176,13 @@ describe('общие части остаются единственным мес
     }
     assert.ok(counted > 0, 'графиков штук не нашлось');
   });
+
+  it('длина полосы ранжирования берётся из геометрии графиков', () => {
+    // Своя формула в разметке рисовала у нуля полосу в 2 % (решение Р-686).
+    const charts = readFileSync(path.join(COMPONENTS, 'Charts.tsx'), 'utf8');
+    assert.match(charts, /width: `\$\{rankShare\(item\.value, max\)\}%`/u);
+    assert.equal(/Math\.max\(2,/u.test(charts), false, 'наименьшая длина задана в разметке');
+  });
 });
 
 describe('слои кабинета не смешиваются', () => {

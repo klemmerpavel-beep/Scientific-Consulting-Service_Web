@@ -19,6 +19,7 @@ import {
   donutArc,
   integerScale,
   niceCeil,
+  rankShare,
   seriesColor,
   seriesInkDark,
   smoothPath,
@@ -292,7 +293,7 @@ export function RankChart({
             <span
               style={{
                 display: 'block',
-                width: `${Math.max(2, (item.value / max) * 100)}%`,
+                width: `${rankShare(item.value, max)}%`,
                 height: '100%',
                 borderRadius: RADIUS.pill,
                 background: item.color ?? seriesColor(1),

@@ -43,6 +43,7 @@ import {
   donutArc,
   integerScale,
   niceCeil,
+  rankShare,
   seriesColor,
   seriesInkDark,
   smoothPath,
@@ -563,6 +564,16 @@ describe('геометрия графиков', () => {
   it('столбец нулевой высоты не рисуется', () => {
     assert.equal(topRoundedBar(0, 0, 10, 0), '');
     assert.match(topRoundedBar(0, 10, 20, 30), /^M0 40 L0 /u);
+  });
+
+  it('нулевая полоса ранжирования пуста, малая — видна', () => {
+    // Наименьшие 2 % нужны, чтобы малое значение было видно; у нуля они
+    // рисовали начало полосы, и строка «Не назначен 0» читалась как
+    // «немного» (решение Р-686).
+    assert.equal(rankShare(0, 5), 0);
+    assert.equal(rankShare(0.01, 5), 2);
+    assert.equal(rankShare(5, 5), 100);
+    assert.equal(rankShare(1, 4), 25);
   });
 
   it('сглаживание вырождается в ломаную на двух точках', () => {
