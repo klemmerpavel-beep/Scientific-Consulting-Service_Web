@@ -40,6 +40,7 @@ describe('письмо «Заявка получена»', { skip: !enabled }, a
   after(async () => {
     await prisma.notificationOutbox.deleteMany({ where: { leadId: { in: leadIds } } });
     await prisma.lead.deleteMany({ where: { id: { in: leadIds } } });
+    await prisma.user.deleteMany({ where: { email: `lr-head-${stamp}@example.org` } });
   });
 
   it('заявке с почтой — письмо на адрес заявки, без ссылки входа', async () => {
@@ -84,6 +85,39 @@ describe('письмо «Заявка получена»', { skip: !enabled }, a
     });
     const fresh = await lead({ contact: `lr-fresh-${stamp}@example.org` });
     assert.equal(await enqueueLeadReceived(fresh), false, 'потолок в час не сработал');
+  });
+
+  it('повтор письма старше суток отклоняется с причиной про само письмо, не про срок (Р-664)', async () => {
+    const { retryFailed } = await import('../src/lib/cabinet/outbox.ts');
+    const boss = await prisma.user.create({
+      data: { email: `lr-head-${stamp}@example.org`, fullName: 'Руководитель', role: 'HEAD' },
+    });
+    const head = {
+      id: boss.id,
+      role: 'HEAD' as const,
+      status: 'ACTIVE' as const,
+      clientProfileId: null,
+      expertNdaSignedAt: null,
+    };
+    // Письмо отвергнуто почтовым сервером, повтор нажат через двое суток.
+    const id = await lead({ contact: `lr-stale-${stamp}@example.org` });
+    const row = await prisma.notificationOutbox.create({
+      data: {
+        leadId: id,
+        channel: 'EMAIL',
+        eventKind: 'LEAD_RECEIVED',
+        subject: 'Заявка получена',
+        body: '—',
+        dedupKey: `lr-stale-${stamp}`,
+        state: 'FAILED',
+        failure: 'DELIVERY',
+        attempts: 1,
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      },
+    });
+    await assert.rejects(() => retryFailed(head, row.id), /Заявка получена/u);
+    const kept = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: row.id } });
+    assert.equal(kept.state, 'FAILED', 'устаревшее письмо вернулось в очередь');
   });
 
   it('телефону, отзыву и машинной заявке — письма нет', async () => {
