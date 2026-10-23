@@ -68,7 +68,7 @@ export default async function ExpertScreen({
     <Shell actor={actor} current={BASE}>
       <ScreenHead
         backHref={BASE}
-        backLabel="к анкетам"
+        backLabel="Анкеты кандидатов"
         title={row.fullName}
         note={`Анкета от ${formatMoment(row.createdAt)} МСК · ${EXPERT_STATUS_LABEL[row.status]}`}
       />

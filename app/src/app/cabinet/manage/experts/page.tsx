@@ -60,7 +60,7 @@ export default async function ExpertsScreen({
     <Shell actor={actor} current={BASE}>
       <ScreenHead
         backHref="/cabinet/manage/tools"
-        backLabel="к управлению"
+        backLabel="Управление"
         title="Анкеты кандидатов"
         note="Анкеты кандидатов в кураторы со страницы сайта /experts: опыт, сфера, резюме и примеры работ. Хранятся шесть месяцев с даты анкеты, затем удаляются вместе с файлами."
         action={

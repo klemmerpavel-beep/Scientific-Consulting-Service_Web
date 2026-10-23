@@ -45,7 +45,7 @@ export default async function DiskScreen() {
     <Shell actor={actor} current="/cabinet/manage/tools">
       <ScreenHead
         backHref="/cabinet/manage/tools"
-        backLabel="к служебным разделам"
+        backLabel="Управление"
         title="Зеркало на облачном диске"
         note="Таблицы реестров и файлы материалов уходят на диск раз в час; обратно с диска приходит только книга заказов, и только строками без замечаний. Всё прочее, правленное на диске, в кабинет не вернётся и будет затёрто ближайшим прогоном."
       />
