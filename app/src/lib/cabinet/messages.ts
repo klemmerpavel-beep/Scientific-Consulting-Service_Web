@@ -176,8 +176,11 @@ async function signalMessage(
         (forClient ? `${workLine(project, true)}\n` : '') +
         'В переписке по работе новое сообщение. Прочитать и ответить можно в кабинете.',
       dedupKey: `message:${messageId}:${userId}`,
-      // Кнопка письма — в переписку работы (Т-06, Р-309).
-      path: `/cabinet/projects/${project.code}/messages`,
+      // Кнопка письма — в переписку работы (Т-06, Р-309), сразу к полю
+      // ответа с последними сообщениями над ним: открытая сверху лента
+      // на телефоне уводила поле на четыре экрана вниз (решение Р-740;
+      // якорь — Р-316, Р-697).
+      path: `/cabinet/projects/${project.code}/messages#body`,
     });
   }
 }

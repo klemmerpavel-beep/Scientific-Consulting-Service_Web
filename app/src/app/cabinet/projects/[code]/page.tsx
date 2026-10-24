@@ -1043,7 +1043,10 @@ export default async function ProjectScreen({
         {mayWrite ? (
           <BoardColumn
             title={forClient ? 'Переписка с менеджером' : 'Переписка с клиентом'}
-            href={`/cabinet/projects/${project.code}/messages`}
+            // «вся переписка» и «вся · N новых» открывают экран у поля
+            // ответа, последние сообщения — над ним; порядок ленты и
+            // «Показать ранние сообщения» прежние (решение Р-740).
+            href={`/cabinet/projects/${project.code}/messages#body`}
             hrefLabel={
               unread > 0
                 ? `вся · ${unread} ${plural(unread, 'новое', 'новых', 'новых')}`
