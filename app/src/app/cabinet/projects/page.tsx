@@ -59,6 +59,7 @@ import { dismissWelcome, requestNdaAction, startTelegramBind, transferWorks } fr
 import ActionError from '../../../components/cabinet/ActionError';
 import { ndaRequestedAt } from '../../../lib/cabinet/admin';
 import { CURATOR_WELCOME, ndaRequestOpen } from '../../../lib/cabinet/curator-welcome';
+import { moreTasksAnchor } from '../../../lib/cabinet/curator-tasks';
 import { myAssignments } from '../../../lib/cabinet/assignments';
 import { MONTH_NAMES } from '../../../lib/cabinet/analytics/calendar';
 
@@ -277,6 +278,17 @@ export default async function ProjectsScreen({
       : daysPast(row.stage.dueOn) === null
         ? `Ближайший срок — ${formatDate(row.stage.dueOn)}, этап «${clip(row.stage.title, 60)}».`
         : `Срок этапа «${clip(row.stage.title, 60)}» прошёл ${formatDate(row.stage.dueOn)}.`;
+  // Дела куратора — для ответа и для строки дела на плашке его работы
+  // (решение Р-730; дела — Э-04, Р-329).
+  const tasks = forExpert && !awaitingNda ? await curatorTasksData(actor) : [];
+  const taskOf = new Map<string, (typeof tasks)[number]>();
+  for (const task of tasks) if (!taskOf.has(task.code)) taskOf.set(task.code, task);
+  // Якорь «Ещё дел: N» — первая плашка этой страницы с делом другой
+  // работы, чем главное дело ответа; других нет — первая плашка с делом.
+  const taskAnchor = moreTasksAnchor(
+    projects.map((project) => project.code),
+    tasks,
+  );
   let answer: { lead: string; detail?: string | null; action?: ReactNode } | undefined;
   if (forClient) {
     const first = pendingAll[0] ?? null;
@@ -330,27 +342,51 @@ export default async function ProjectsScreen({
     // Ответ куратору — главное дело по ближайшему сроку, число остальных и
     // кнопка на экран, где дело закрывается. «Не начат» делом не является:
     // этап запускает менеджер (требование Э-04, решение Р-329).
-    const tasks = await curatorTasksData(actor);
     const main = tasks[0] ?? null;
     // Все работы приостановлены — так и сказано (решение Р-651).
     const idle = idleAnswer({ forClient: false, live: live.length, paused });
+    const mainDue =
+      main === null || main.dueOn === null
+        ? null
+        : daysPast(main.dueOn) === null
+          ? `Срок этапа — ${formatDate(main.dueOn)}.`
+          : `Срок этапа прошёл ${formatDate(main.dueOn)}.`;
+    // Одноимённые работы различаются заказчиком — тем, что стоит в строке
+    // фактов плашки. Срок тогда — первым: с заказчиком перед сроком
+    // пояснение на 390 и 360 px занимало четыре строки, и срок уходил за
+    // срез трёх (Р-210, решение Р-730).
+    const namesake = main !== null && main.namesake && main.client !== null;
     answer =
       main === null
         ? { lead: idle.lead, detail: idle.detail }
         : {
             lead: `${main.label}.`,
             detail: [
-              `Работа «${clip(main.work, 60)}».`,
-              main.dueOn === null
-                ? null
-                : daysPast(main.dueOn) === null
-                  ? `Срок этапа — ${formatDate(main.dueOn)}.`
-                  : `Срок этапа прошёл ${formatDate(main.dueOn)}.`,
-              tasks.length > 1 ? `Ещё дел: ${tasks.length - 1}.` : null,
+              namesake ? null : `Работа «${clip(main.work, 60)}».`,
+              mainDue,
+              namesake ? `${main.client}, работа «${clip(main.work, 60)}».` : null,
+              tasks.length > 1 && taskAnchor === null ? `Ещё дел: ${tasks.length - 1}.` : null,
             ]
               .filter((part) => part !== null)
               .join(' '),
-            action: <ButtonLink href={main.href}>{main.action}</ButtonLink>,
+            // «Ещё дел: N» — ссылкой к плашке с делом другой работы, рядом
+            // с кнопкой, а не в конце пояснения: там на 390 и 360 px оно
+            // уходило за срез трёх строк (Р-210) и нажать его было нельзя
+            // (решение Р-730). Кнопка по-прежнему одна (Р-329).
+            action: (
+              <>
+                <ButtonLink href={main.href}>{main.action}</ButtonLink>
+                {tasks.length > 1 && taskAnchor !== null ? (
+                  <a
+                    className="cab-mark"
+                    href="#curator-task"
+                    style={{ fontFamily: SANS, fontSize: 15, color: 'var(--pd-accent-mark)', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                  >
+                    {`Ещё дел: ${tasks.length - 1}`}
+                  </a>
+                ) : null}
+              </>
+            ),
           };
   }
 
@@ -733,17 +769,27 @@ export default async function ProjectsScreen({
             ].filter((fact) => fact !== null);
 
             const waiting = onPage.get(project.code) ?? null;
+            // Куратору — строка его дела и рамка у плашки с делом; строка
+            // «ждут клиента» остаётся, но рамки не даёт: куратору чужие
+            // действия не нужны (Р-206, решение Р-730).
+            const task = forExpert ? (taskOf.get(project.code) ?? null) : null;
+            const handed = forExpert
+              ? (project.stages.find((stage) => stage.state === 'IN_PROGRESS' && stage.handedOverAt !== null) ?? null)
+              : null;
+            const accent = forExpert ? task !== null : waiting !== null;
 
             return (
               <Card
                 as="li"
                 key={project.id}
+                id={project.code === taskAnchor ? 'curator-task' : undefined}
                 link
                 style={{
                   padding: '16px 20px 18px',
                   display: 'flex',
                   flexDirection: 'column',
-                  ...(waiting === null ? {} : { borderColor: 'var(--pd-accent-edge)' }),
+                  ...(accent ? { borderColor: 'var(--pd-accent-edge)' } : {}),
+                  ...(project.code === taskAnchor ? { scrollMarginTop: 24 } : {}),
                 }}
               >
                 {/* Код работы с экранов убран: он ничего не говорит
@@ -849,6 +895,19 @@ export default async function ProjectsScreen({
                 {/* Требуемое действие стоит на самой работе и ведёт прямо
                     на этап: отдельной строкой сверху оно повторяло бы то,
                     что и так видно в шкале (решение Р-175). */}
+                {task === null ? null : (
+                  <Text size={13} style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 4 }}>
+                    <a className="cab-mark" href={task.href}>
+                      {task.label}
+                    </a>
+                    {task.dueOn === null ? null : <span>{`— до ${formatDate(task.dueOn)}`}</span>}
+                  </Text>
+                )}
+                {handed === null || handed.handedOverAt === null ? null : (
+                  <Text muted size={13} style={{ marginTop: 10 }}>
+                    {`Этап сдан ${formatDay(handed.handedOverAt)}: ход за менеджером`}
+                  </Text>
+                )}
                 {waiting === null ? null : waitingRow(waiting)}
                 {(onPageMore.get(project.code) ?? []).map((stage) => (
                   <Fragment key={stage.id}>{waitingRow(stage)}</Fragment>

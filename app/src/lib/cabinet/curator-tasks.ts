@@ -32,6 +32,14 @@ export interface CuratorTask {
   readonly code: string;
   /** Название работы: код на экране не выводится (Р-189). */
   readonly work: string;
+  /** Обозначение заказчика — как в строке фактов плашки; `null` — не известно. */
+  readonly client: string | null;
+  /**
+   * У куратора есть другая открытая работа с тем же названием: ответ
+   * дописывает заказчика, иначе две работы «Сопровождение
+   * диссертационного исследования» не различались (решение Р-730).
+   */
+  readonly namesake: boolean;
 }
 
 export interface CuratorStage {
@@ -49,6 +57,8 @@ export interface CuratorWork {
   readonly title: string;
   readonly status: string;
   readonly stages: readonly CuratorStage[];
+  /** Обозначение заказчика (Р-730). */
+  readonly client?: string | null;
 }
 
 /** Этап материала: срок для порядка дел, состояние — открыт ли он куратору. */
@@ -120,6 +130,14 @@ export function curatorTasks(
 ): CuratorTask[] {
   const open = new Set(works.filter((work) => OPEN_WORK.has(work.status)).map((work) => work.code));
   const titles = new Map(works.map((work) => [work.code, work.title]));
+  // Одноимённые открытые работы различаются заказчиком (Р-730).
+  const sameTitle = new Map<string, number>();
+  for (const work of works) if (open.has(work.code)) sameTitle.set(work.title, (sameTitle.get(work.title) ?? 0) + 1);
+  const clients = new Map(works.map((work) => [work.code, work.client ?? null]));
+  const whose = (code: string) => ({
+    client: clients.get(code) ?? null,
+    namesake: (sameTitle.get(titles.get(code) ?? '') ?? 0) > 1,
+  });
   const tasks: CuratorTask[] = [];
 
   for (const work of works) {
@@ -140,6 +158,7 @@ export function curatorTasks(
         dueOn: stage.dueOn,
         code: work.code,
         work: work.title,
+        ...whose(work.code),
       });
     }
   }
@@ -160,6 +179,7 @@ export function curatorTasks(
       dueOn: version.stage?.dueOn ?? null,
       code: version.code,
       work: titles.get(version.code) ?? '',
+      ...whose(version.code),
     });
   }
 
@@ -181,6 +201,7 @@ export function curatorTasks(
       dueOn: comment.stage?.dueOn ?? null,
       code: comment.code,
       work: titles.get(comment.code) ?? '',
+      ...whose(comment.code),
     });
   }
 
@@ -196,4 +217,20 @@ export function curatorTasks(
       return aw !== bw ? aw - bw : a.index - b.index;
     })
     .map(({ task }) => task);
+}
+
+/**
+ * Плашка, к которой ведёт ссылка «Ещё дел: N» в ответе «Назначенных работ»
+ * (решение Р-730): первая на странице плашка с делом другой работы —
+ * дело главной работы ответ уже назвал; если других нет — первая плашка с
+ * делом. `null` — плашек с делом на странице нет, и «Ещё дел» остаётся
+ * текстом. `tasks` — в порядке `curatorTasks`: первое — главное дело.
+ */
+export function moreTasksAnchor(
+  pageCodes: readonly string[],
+  tasks: readonly { readonly code: string }[],
+): string | null {
+  const withTask = new Set(tasks.map((task) => task.code));
+  const onPage = pageCodes.filter((code) => withTask.has(code));
+  return onPage.find((code) => code !== tasks[0]?.code) ?? onPage[0] ?? null;
 }

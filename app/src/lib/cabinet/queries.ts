@@ -549,6 +549,8 @@ export async function curatorTasksData(actor: Actor) {
         code: true,
         title: true,
         status: true,
+        // Заказчик — различить одноимённые работы в ответе (Р-730).
+        client: { select: { fullName: true } },
         stages: {
           where: { state: 'IN_PROGRESS', handedOverAt: null },
           orderBy: { position: 'asc' },
@@ -597,7 +599,7 @@ export async function curatorTasksData(actor: Actor) {
     }),
   ]);
   return curatorTasks(
-    works,
+    works.map(({ client, ...work }) => ({ ...work, client: client.fullName })),
     versions.map((version) => ({
       versionId: version.id,
       materialId: version.material.id,
