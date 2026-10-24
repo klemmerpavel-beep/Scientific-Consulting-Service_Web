@@ -99,7 +99,9 @@ export default async function CuratorPayoutsScreen({
                 {lines.map((line) => (
                   <tr key={line.id}>
                     <td style={TABLE_CELL}>
-                      <a className="cab-mark" href={`/cabinet/projects/${line.project.code}/payments`}>
+                      {/* Строка ведёт к «Вознаграждению куратора» на экране
+                          оплат, а не на его верх (решение Р-747). */}
+                      <a className="cab-mark" href={`/cabinet/projects/${line.project.code}/payments#payout`}>
                         {line.project.title}
                       </a>
                       {/* Как у куратора: работу ведёт уже другой (УЭ-06, Р-383). */}

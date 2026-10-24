@@ -302,7 +302,10 @@ export default async function PaymentsScreen({
             />
           ) : null}
 
-          <Block style={{ marginBottom: 20 }}>
+          {/* Якорь `tranches` — один для всех ролей, подпись по роли: к нему и
+              к своему траншу ведут строки «Должников» (решение Р-747);
+              после потоковой загрузки его доводит HashScroll (Р-697). */}
+          <Block id="tranches" style={{ marginBottom: 20, scrollMarginTop: 24 }}>
             {/* Клиенту — «Платежи»: «транш» в его словаре не закреплён
                 (Р-277, решение Р-746). */}
             <Heading level={2} size={3}>{forClient ? 'Платежи' : 'Транши'}</Heading>
@@ -314,7 +317,11 @@ export default async function PaymentsScreen({
                   {contract.tranches.map((tranche) => (
                     <li
                       key={tranche.id}
+                      id={`tranche-${tranche.id}`}
                       style={{
+                        // Отступ — чтобы у первой строки был виден и
+                        // заголовок «Транши» над ней (решение Р-747).
+                        scrollMarginTop: 88,
                         display: 'flex',
                         gap: 16,
                         alignItems: 'center',
@@ -625,7 +632,9 @@ export default async function PaymentsScreen({
           </Block>
 
           {maySeeEconomy ? (
-            <Block>
+            // К блоку ведут строки «Вознаграждения кураторов»: отметка
+            // выплаты — без прокрутки через формы траншей (решение Р-747).
+            <Block id="payout" style={{ scrollMarginTop: 24 }}>
               <Heading level={2} size={3}>Вознаграждение куратора</Heading>
               <Card style={{ marginTop: 12 }}>
                 {/* Маржа выше уже показана числом: текст не спорит с ней, а
