@@ -111,6 +111,18 @@ export function homeFor(actor: Actor): string {
   return actor.role === 'MANAGER' || actor.role === 'HEAD' ? '/cabinet/manage' : '/cabinet/projects';
 }
 
+/**
+ * Название экрана по пункту меню роли — подпись ссылки «назад» на экранах,
+ * общих для менеджера и руководителя (Р-703): `/cabinet/manage` — «Сегодня»
+ * менеджеру и «Сводка» руководителю, `/cabinet/projects` — «Мои работы» и
+ * «Работы». Прежде заявки и новый заказ вели менеджера «к сводке» и «к
+ * работам» — таких экранов в его меню нет (задача ВК-М08, решение Р-756).
+ * `null` — пункта у роли нет.
+ */
+export function menuLabel(actor: Actor, href: string): string | null {
+  return navFor(actor).find((item) => item.href === href)?.label ?? null;
+}
+
 /** Есть ли в меню роли промежуточный экран служебных разделов. */
 export function hasToolsScreen(actor: Actor): boolean {
   return navFor(actor).some((item) => item.href === TOOLS_HREF);

@@ -23,6 +23,7 @@ import {
   formatSize,
 } from '../../../../../components/cabinet/ui';
 import { ensure } from '../../../../../lib/cabinet/access';
+import { SUMMARY_HREF, menuLabel } from '../../../../../lib/cabinet/nav';
 import { chosenServiceType, contactHref, leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
 import { declineLetterNote, leadAddress } from '../../../../../lib/cabinet/lead-letter';
 import { curators, leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
@@ -94,8 +95,10 @@ export default async function LeadScreen({
     <Shell actor={actor} current="/cabinet/manage/leads">
       <Narrow width={780}>
         <ScreenHead
-          backHref="/cabinet/manage"
-          backLabel="к сводке"
+          backHref={SUMMARY_HREF}
+          // Менеджеру — «Сегодня», руководителю — «Сводка» (Р-703; решение
+          // Р-756).
+          backLabel={menuLabel(actor, SUMMARY_HREF) ?? 'Сводка'}
           title={lead.name ?? 'Заявка без имени'}
           chips={
             <>

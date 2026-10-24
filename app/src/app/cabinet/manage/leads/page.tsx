@@ -36,7 +36,7 @@ import {
 import { LEAD_LIST_PAGE_SIZE, leadList, leadStatusCounts } from '../../../../lib/cabinet/queries';
 import { COLUMN_SETS, columnSet, leadColumns } from '../../../../lib/cabinet/table-views';
 import { requireActor } from '../../../../lib/cabinet/session';
-import { homeFor } from '../../../../lib/cabinet/nav';
+import { SUMMARY_HREF, homeFor, menuLabel } from '../../../../lib/cabinet/nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,10 +114,14 @@ export default async function AllLeadsScreen({
   return (
     <Shell actor={actor} current="/cabinet/manage/leads">
       <ScreenHead
-        backHref="/cabinet/manage"
-        backLabel="к сводке"
+        backHref={SUMMARY_HREF}
+        // Экран-цель — по меню роли: менеджеру «Сегодня», руководителю
+        // «Сводка» (Р-703; решение Р-756).
+        backLabel={menuLabel(actor, SUMMARY_HREF) ?? 'Сводка'}
         title="Все заявки"
-        note="Обращения с сайта целиком, включая разобранные. Очередь на «Сводке» показывает только те, что ждут решения. Отзывы сюда не попадают — у них свой порядок."
+        note={`Обращения с сайта целиком, включая разобранные. Очередь на «${
+          actor.role === 'MANAGER' ? 'Сегодня' : 'Сводке'
+        }» показывает только те, что ждут решения. Отзывы сюда не попадают — у них свой порядок.`}
       />
 
       {/* Метод get: фильтры остаются в адресе, страницу можно сохранить и
