@@ -41,6 +41,8 @@ export function AccessLink({
   selectLabel = 'Кому открыть вход',
   submitLabel = 'Выдать ссылку',
   askEmail = false,
+  placeholder,
+  initial,
 }: {
   people: readonly { id: string; label: string }[];
   action: (state: AccessLinkState, form: FormData) => Promise<AccessLinkState>;
@@ -53,6 +55,13 @@ export function AccessLink({
    * После выдачи адрес уже в карточке, и поле уходит (решение Р-655).
    */
   askEmail?: boolean;
+  /**
+   * Первая строка выбора без человека: без явного выбора ссылка не уходит
+   * первому в списке (решение Р-727). Без неё — прежний выбор первого.
+   */
+  placeholder?: string;
+  /** Выбранный заранее: только что заведённая запись (Р-727). */
+  initial?: string;
 }) {
   const [state, submit, pending] = useActionState<AccessLinkState, FormData>(action, {
     link: null,
@@ -66,7 +75,15 @@ export function AccessLink({
   // действия — родной `form.reset()`: он ставит строку «по умолчанию» и
   // управляемого значения не знает, поэтому строкой по умолчанию делается
   // выбранная.
-  const [picked, setPicked] = useState(people[0]?.id ?? '');
+  // Заранее выбранный — только из перечня: чужой идентификатор из адреса
+  // выбора не делает (решение Р-727).
+  const [picked, setPicked] = useState(
+    initial !== undefined && people.some((person) => person.id === initial)
+      ? initial
+      : placeholder !== undefined
+        ? ''
+        : (people[0]?.id ?? ''),
+  );
   const pickRef = useRef<HTMLSelectElement>(null);
   useEffect(() => {
     for (const option of pickRef.current?.options ?? []) option.defaultSelected = option.value === picked;
@@ -101,6 +118,11 @@ export function AccessLink({
             onChange={(event) => setPicked(event.target.value)}
             style={control}
           >
+            {placeholder === undefined ? null : (
+              <option value="" disabled>
+                {placeholder}
+              </option>
+            )}
             {people.map((person) => (
               <option key={person.id} value={person.id}>
                 {person.label}

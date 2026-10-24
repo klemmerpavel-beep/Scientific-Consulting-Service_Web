@@ -1865,8 +1865,9 @@ export async function inviteUser(form: FormData): Promise<void> {
     degree: String(form.get('degree') ?? ''),
     specialization: String(form.get('specialization') ?? ''),
   };
+  let createdId = '';
   try {
-    await createUser(actor, input);
+    createdId = (await createUser(actor, input)).id;
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось завести запись');
     // Отказ возвращает в открытую форму с набранным: прежде свёртка
@@ -1878,7 +1879,9 @@ export async function inviteUser(form: FormData): Promise<void> {
       }),
     );
   }
-  redirect(`/cabinet/manage/users?created=${role === 'EXPERT' ? 'curator' : '1'}`);
+  // Заведённая запись — в адресе: раздел «Выдать ссылку входа» выбирает её,
+  // а не первого в списке (решение Р-727; по образцу ?new=1, Р-488).
+  redirect(`/cabinet/manage/users?created=${role === 'EXPERT' ? 'curator' : '1'}&link=${encodeURIComponent(createdId)}`);
 }
 
 export async function changeUserRole(form: FormData): Promise<void> {

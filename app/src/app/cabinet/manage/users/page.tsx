@@ -58,6 +58,9 @@ export const dynamic = 'force-dynamic';
 
 const ROLES: Role[] = ['CLIENT', 'EXPERT', 'MANAGER', 'HEAD'];
 
+/** Ссылка в строке исхода — подчёркнута цветом строки (Р-727). */
+const NOTICE_LINK = { color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 } as const;
+
 type UserState = 'ACTIVE' | 'SUSPENDED' | 'ERASED';
 const STATES: UserState[] = ['ACTIVE', 'SUSPENDED', 'ERASED'];
 
@@ -67,6 +70,7 @@ export default async function UsersScreen({
   searchParams: Promise<{
     error?: string;
     created?: string;
+    link?: string;
     new?: string;
     role?: string;
     status?: string;
@@ -104,6 +108,14 @@ export default async function UsersScreen({
   // Текст блока зависит от того, настроена ли почта: с ней ссылка отсюда
   // — запасной путь, без неё — единственный.
   const mailReady = mailConfigured();
+  // Только что заведённая запись: раздел «Выдать ссылку входа» выбирает её
+  // и без почты раскрыт — ссылка не уходит первому в списке (решение
+  // Р-727). Чужой идентификатор в адресе ничего не выбирает.
+  const fresh =
+    flags.link === undefined || flags.created === undefined
+      ? undefined
+      : active.find((user) => user.id === flags.link);
+  const linkOpen = fresh !== undefined && !mailReady;
 
   /** Адрес того же экрана с другим отбором или страницей. */
   const href = (next: { role?: Role | null; status?: UserState | null; page?: number }) => {
@@ -140,7 +152,19 @@ export default async function UsersScreen({
               ? flags.created === 'curator'
                 ? 'Учётная запись заведена. Куратору ушло письмо «Вам открыт кабинет куратора ProDisser» с кнопкой «Открыть кабинет»; ссылку входа он запросит на странице входа.'
                 : 'Учётная запись заведена. Ссылку входа человек запрашивает сам на странице входа — почта уходит только по его действию.'
-              : 'Учётная запись заведена. Почта практики не подключена, и письмо со ссылкой не придёт: выдайте ссылку ниже, в разделе «Выдать ссылку входа», и передайте её человеку.'}
+              : (
+                  <>
+                    {'Учётная запись заведена. Почта практики не подключена, и письмо со ссылкой не придёт: выдайте ссылку в разделе «'}
+                    {/* Раздел раскрыт и человек в нём выбран — переход
+                        якорем, без прокрутки через перечень (Р-727). */}
+                    <a href="#access-link" style={NOTICE_LINK}>
+                      Выдать ссылку входа
+                    </a>
+                    {fresh === undefined
+                      ? '» и передайте её человеку.'
+                      : `» — запись «${fresh.fullName}» в нём уже выбрана — и передайте ссылку человеку.`}
+                  </>
+                )}
           </Notice>
         </Block>
       )}
@@ -372,7 +396,7 @@ export default async function UsersScreen({
           на вход выдавали командой на сервере, и открытие кабинета
           клиенту было делом системного администратора. Теперь это делает
           руководитель (решение Р-195). */}
-      <Disclosure title="Выдать ссылку входа" style={{ marginTop: 20 }}>
+      <Disclosure title="Выдать ссылку входа" id="access-link" open={linkOpen} style={{ marginTop: 20 }}>
         <Text size={14} style={{ marginBottom: 14 }}>
           {mailReady
             ? 'Письмо со ссылкой приходит человеку само, когда он запрашивает вход. Ссылка отсюда нужна, если письмо не дошло: она действует два часа и срабатывает один раз.'
@@ -387,6 +411,10 @@ export default async function UsersScreen({
               id: user.id,
               label: `${user.fullName} · ${ROLE_LABEL[user.role as Role]} · ${user.email}`,
             }))}
+            // Без явного выбора — «Выберите человека», а не первый в списке
+            // (решение Р-727); после заведения — заведённый.
+            placeholder="Выберите человека"
+            initial={fresh?.id}
           />
         )}
       </Disclosure>
