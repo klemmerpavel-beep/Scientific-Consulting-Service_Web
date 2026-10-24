@@ -534,11 +534,17 @@ export async function pausedWorksCount(actor: Actor): Promise<number> {
  * Дела куратора (требование Э-04, решение Р-329): этапы его работ,
  * действующих и приостановленных (Д-4), свои версии и замечания с решением
  * менеджера — одной выборкой на вид. Правила — в `curatorTasks`.
+ *
+ * С кодом — дела одной работы: для её карточки (решение Р-744).
  */
-export async function curatorTasksData(actor: Actor) {
+export async function curatorTasksData(actor: Actor, code?: string) {
   const scope = scopeProjects(actor);
   if (actor.role !== 'EXPERT' || scope === null) return curatorTasks([]);
-  const openWork = { ...scope, status: { in: ['ACTIVE' as const, 'PAUSED' as const] } };
+  const openWork = {
+    ...scope,
+    ...(code === undefined ? {} : { code }),
+    status: { in: ['ACTIVE' as const, 'PAUSED' as const] },
+  };
   // Состояние — чтобы не брать дел с завершённого этапа (Р-524).
   const stageRef = { select: { id: true, dueOn: true, state: true } };
   const [works, versions, comments] = await Promise.all([
@@ -620,6 +626,21 @@ export async function curatorTasksData(actor: Actor) {
       stage: comment.version.material.stage,
     })),
   );
+}
+
+/**
+ * Последний возврат этапа клиентом — замечания для карточки работы
+ * куратора, те же, что под шапкой экрана этапа (решения Р-744, Р-281).
+ * Текст эксперту отдаёт `presentReturnText`.
+ */
+export async function lastClientReturn(actor: Actor, stageId: string) {
+  const scope = scopeProjects(actor);
+  if (scope === null) return null;
+  return prisma.stageStateChange.findFirst({
+    where: { stageId, via: 'CLIENT_RETURN', stage: { project: scope } },
+    orderBy: { createdAt: 'desc' },
+    select: { reason: true, contactHint: true, createdAt: true },
+  });
 }
 
 /**

@@ -84,12 +84,15 @@ import { noticeFate } from '../../../../lib/cabinet/outbox';
 import DropFlag from '../../../../components/cabinet/DropFlag';
 import {
   curators,
+  curatorTasksData,
   executorNames,
   experts,
+  lastClientReturn,
   projectByCode,
   projectMaterials,
   pendingActions,
 } from '../../../../lib/cabinet/queries';
+import { curatorPanel, curatorReturnHead } from '../../../../lib/cabinet/curator-tasks';
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
 import { PAYMENT_CLOSED_STATUSES, formatAmount } from '../../../../lib/cabinet/money';
 import { ownPayoutTotals, paymentDocumentLines, projectContract } from '../../../../lib/cabinet/finance';
@@ -526,6 +529,29 @@ export default async function ProjectScreen({
         {'.'}
       </>
     );
+  // Дела куратора по этой работе (решение Р-744; Р-329): подпись «Что
+  // от вас ждут» — только при деле; когда ход за ним, панель ведёт на экран
+  // дела, как клиента; у возврата менеджером или клиентом — дата и
+  // причина тем же текстом, что на экране этапа.
+  const myTasks = forExpert ? await curatorTasksData(actor, project.code) : [];
+  const curatorTurn = forExpert ? curatorPanel(myTasks, current?.id ?? null, project.status) : null;
+  const returnTask = myTasks.find((task) => task.kind === 'MANAGER_RETURN' || task.kind === 'CLIENT_RETURN') ?? null;
+  const returnStage = returnTask === null ? undefined : stages.find((stage) => stage.id === returnTask.stageId);
+  const clientReturn =
+    returnTask?.kind === 'CLIENT_RETURN' && returnStage !== undefined ? await lastClientReturn(actor, returnStage.id) : null;
+  const returnNote =
+    returnTask === null || returnStage === undefined
+      ? null
+      : returnTask.kind === 'MANAGER_RETURN'
+        ? returnStage.handbackAt === null
+          ? null
+          : { head: curatorReturnHead('MANAGER_RETURN', formatDay(returnStage.handbackAt)), body: returnStage.handbackReason }
+        : clientReturn === null
+          ? null
+          : {
+              head: curatorReturnHead('CLIENT_RETURN', formatDay(clientReturn.createdAt)),
+              body: presentReturnText(actor, clientReturn),
+            };
   const staff = !forClient;
   // Работа без этапов — заголовок шкалы, ответ и пустой план одной
   // таблицей по роли и состоянию работы (решение Р-742): у закрытой —
@@ -1031,9 +1057,9 @@ export default async function ProjectScreen({
           approvalDueOn={formatDate(approvalDue)}
           approvalLate={daysPast(approvalDue) !== null}
           staff={staff}
-          action={action ?? plan?.answer ?? null}
-          actionHref={first === null ? (plan?.actionHref ?? null) : `/cabinet/stages/${first.id}`}
-          actionLabel={first === null ? (plan?.actionLabel ?? undefined) : undefined}
+          action={action ?? curatorTurn?.action ?? plan?.answer ?? null}
+          actionHref={first === null ? (curatorTurn?.href ?? plan?.actionHref ?? null) : `/cabinet/stages/${first.id}`}
+          actionLabel={first === null ? (curatorTurn?.label ?? plan?.actionLabel ?? undefined) : undefined}
           more={more}
           waiting={forClient ? first !== null : undefined}
           projectStatus={project.status}
@@ -1193,11 +1219,27 @@ export default async function ProjectScreen({
           >
             <div style={{ display: 'grid', gap: 14 }}>
               <div>
-                <Mono>Что от вас ждут</Mono>
+                {/* «Что от вас ждут» — только когда по работе есть дело
+                    куратора: при ходе клиента или менеджера подпись
+                    противоречила панели хода (решение Р-744). */}
+                <Mono>{myTasks.length > 0 ? 'Что от вас ждут' : 'Описание текущего этапа'}</Mono>
+                {returnNote === null ? null : (
+                  <div style={{ marginTop: 8 }}>
+                    <Notice tone="quiet" role="status">
+                      {returnNote.head}
+                      {returnNote.body === null ? null : (
+                        <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnNote.body}</span>
+                      )}
+                    </Notice>
+                  </div>
+                )}
                 <Text size={15} style={{ marginTop: 6 }}>
                   {current === null
                     ? stages.length === 0
-                      ? 'План работ ещё не заведён: этапы и задание назначит менеджер.'
+                      ? // У закрытой работы плана не будет (Р-742, Р-206).
+                        closed
+                        ? 'Новых заданий по этой работе нет.'
+                        : 'План работ ещё не заведён: этапы и задание назначит менеджер.'
                       : 'Все этапы закрыты — новых заданий по этой работе нет.'
                     : (current.summary ?? 'Менеджер не описал этап: спросите его письмом, почта — в «О работе».')}
                 </Text>

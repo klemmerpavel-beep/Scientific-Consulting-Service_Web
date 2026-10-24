@@ -86,8 +86,13 @@ describe('карточка работы берёт тексты пустого �
   it('шкала: заголовок, ответ и кнопка — из emptyPlan', () => {
     assert.match(page, /const plan =\s*stages\.length === 0\s*\? emptyPlan\(\{/u);
     assert.match(page, /emptyTitle=\{plan\?\.title\}/u);
-    assert.match(page, /action=\{action \?\? plan\?\.answer \?\? null\}/u);
-    assert.match(page, /actionHref=\{first === null \? \(plan\?\.actionHref \?\? null\) : `\/cabinet\/stages\/\$\{first\.id\}`\}/u);
+    // Ход куратора (Р-744) стоит перед пустым планом: у работы без
+    // этапов его нет, и ответ берётся из таблицы.
+    assert.match(page, /action=\{action \?\? curatorTurn\?\.action \?\? plan\?\.answer \?\? null\}/u);
+    assert.match(
+      page,
+      /actionHref=\{first === null \? \(curatorTurn\?\.href \?\? plan\?\.actionHref \?\? null\) : `\/cabinet\/stages\/\$\{first\.id\}`\}/u,
+    );
   });
 
   it('«План работ»: пустой план — из той же таблицы', () => {

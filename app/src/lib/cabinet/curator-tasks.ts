@@ -40,6 +40,8 @@ export interface CuratorTask {
    * диссертационного исследования» не различались (решение Р-730).
    */
   readonly namesake: boolean;
+  /** Этап дела; `null` — материал без этапа. */
+  readonly stageId: string | null;
 }
 
 export interface CuratorStage {
@@ -159,6 +161,7 @@ export function curatorTasks(
         code: work.code,
         work: work.title,
         ...whose(work.code),
+        stageId: stage.id,
       });
     }
   }
@@ -180,6 +183,7 @@ export function curatorTasks(
       code: version.code,
       work: titles.get(version.code) ?? '',
       ...whose(version.code),
+      stageId: version.stage?.id ?? null,
     });
   }
 
@@ -202,6 +206,7 @@ export function curatorTasks(
       code: comment.code,
       work: titles.get(comment.code) ?? '',
       ...whose(comment.code),
+      stageId: comment.stage?.id ?? null,
     });
   }
 
@@ -233,4 +238,43 @@ export function moreTasksAnchor(
   const withTask = new Set(tasks.map((task) => task.code));
   const onPage = pageCodes.filter((code) => withTask.has(code));
   return onPage.find((code) => code !== tasks[0]?.code) ?? onPage[0] ?? null;
+}
+
+/** Дела по этапу «В работе»: подпись хода панели у текущего этапа уже их называет. */
+const STAGE_TURN: ReadonlySet<CuratorTaskKind> = new Set(['STAGE', 'MANAGER_RETURN', 'CLIENT_RETURN']);
+
+/**
+ * Панель хода на карточке работы глазами куратора (решение Р-744;
+ * Р-329): когда ход за ним, — кнопка на экран главного дела, как у клиента;
+ * прежде её не было, и на телефоне до этапа было два с половиной экрана
+ * прокрутки. Фраза — прежняя подпись хода, если дело — у текущего этапа;
+ * иначе — само дело. У приостановленной и закрытой работы хода за
+ * куратором нет (Р-329, Р-527): `null`.
+ *
+ * `tasks` — дела этой работы в порядке `curatorTasks`.
+ */
+export function curatorPanel(
+  tasks: readonly CuratorTask[],
+  currentStageId: string | null,
+  workStatus: string,
+): { action: string | null; href: string; label: string } | null {
+  const task = tasks[0];
+  if (task === undefined || workStatus !== 'ACTIVE') return null;
+  const atCurrent = task.stageId !== null && task.stageId === currentStageId && STAGE_TURN.has(task.kind);
+  return {
+    action: atCurrent ? null : `Ход за вами: ${task.label.charAt(0).toLowerCase()}${task.label.slice(1)}.`,
+    href: task.href,
+    label: task.action,
+  };
+}
+
+/**
+ * Первая строка о возврате этапа в «Вашей работе» — тем же текстом, что
+ * на экране этапа (решение Р-744; Э-05, Р-325, Р-281): причина видна
+ * на карточке, без раскрытия «Истории работы». `null` — дело не о возврате.
+ */
+export function curatorReturnHead(kind: CuratorTaskKind, day: string): string | null {
+  if (kind === 'MANAGER_RETURN') return `Менеджер вернул этап ${day}`;
+  if (kind === 'CLIENT_RETURN') return `Клиент вернул этап с замечаниями ${day}`;
+  return null;
 }
