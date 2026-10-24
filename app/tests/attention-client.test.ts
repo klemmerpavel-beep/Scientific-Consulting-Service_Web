@@ -20,8 +20,11 @@ const page = read('app', 'cabinet', 'manage', 'page.tsx');
 const assignmentsPage = read('app', 'cabinet', 'assignments', 'page.tsx');
 const assignments = read('lib', 'cabinet', 'assignments.ts');
 
-/** Части «Требует внимания», не связанные с работой: вопрос сотрудника, заявки, очередь, календарь, договор куратора. */
-const NOT_WORK = new Set(['staff', 'lateLeads', 'reviewLeads', 'outbox', 'calendar', 'ndaWaiting']);
+/**
+ * Части «Требует внимания», не связанные с работой: вопрос сотрудника,
+ * ответ руководителя (Р-739), заявки, очередь, календарь, договор куратора.
+ */
+const NOT_WORK = new Set(['staff', 'headReply', 'lateLeads', 'reviewLeads', 'outbox', 'calendar', 'ndaWaiting']);
 
 describe('дела «Требует внимания» называют клиента (Р-721)', () => {
   const blocks = [...page.matchAll(/\.\.\.parts\.(\w+)\.map\(([\s\S]*?)\n    \}\)\)?,/gu)].map((match) => ({

@@ -38,7 +38,6 @@ import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
 import { formatAmount, formatRounded, outstandingOf, workMoneyNote, type OpenTranche } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
-import { staffThreadUnread } from '../../../lib/cabinet/messages';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
 import { leadQueue } from '../../../lib/cabinet/queries';
 import { attentionParts, attentionSources, practiceLight } from '../../../lib/cabinet/attention';
@@ -179,8 +178,6 @@ export default async function ManageQueue({
   const requested = Number((await searchParams).page ?? '1');
   // Вопрос руководителю задаётся внизу «Сегодня»: промежуточного экрана
   // «Управление» у менеджера больше нет (требование М-05, решение Р-305).
-  // Новые ответы руководителя в ветке менеджера (РК-07, Р-336).
-  const headReplies = actor.role === 'MANAGER' ? await staffThreadUnread(actor, actor.id) : 0;
   // Справочник типов сопровождения на сводке больше не нужен: формы
   // одобрения уехали на экран заявки (решение Р-172).
   // Выборки «Требует внимания» — одним набором с утренней сводкой
@@ -190,6 +187,9 @@ export default async function ManageQueue({
   const sources = await attentionSources(actor);
   const parts = attentionParts(sources);
   const { light, unread, today, outbox } = sources;
+  // Новые ответы руководителя в ветке менеджера (РК-07, Р-336) — тем же
+  // набором, что дело «Ответ руководителя» (решение Р-739).
+  const { headReplies } = sources;
   const term = actor.role === 'HEAD' ? await reactionDays() : 0;
   // «Команда» — лента плашек всех сотрудников (РК-06, Р-343; Р-575).
   const team = actor.role === 'HEAD' ? teamBrief(await teamLoad(actor)) : [];
@@ -500,6 +500,35 @@ export default async function ManageQueue({
       detail: row.client,
       todo: 'Ответить клиенту',
       href: `/cabinet/projects/${row.code}/messages`,
+    })),
+    // Сторона менеджера — симметрично: ответ руководителя в своей ветке и
+    // непрочитанное во внутренней ветке своей работы; гаснут прочтением
+    // ветки (решение Р-739, дополняет Р-304; Р-336). Стоят после сообщений
+    // клиента: у них общий предел свёртки, и непрочитанное клиента не должно
+    // уходить под «Показать все» (Р-257).
+    ...parts.headReply.map((row) => ({
+      key: 'head-reply',
+      kind: 'unread' as const,
+      step: 0 as const,
+      title: 'Ответ руководителя',
+      mark: `${row.count} ${plural(row.count, 'новое', 'новых', 'новых')}`,
+      urgent: false,
+      detail: null,
+      todo: 'Прочитать и ответить в кабинете',
+      href: '/cabinet/head',
+    })),
+    ...parts.internal.map((row) => ({
+      key: `internal-${row.code}`,
+      kind: 'unread' as const,
+      step: 0 as const,
+      title: row.title,
+      mark: `внутренняя переписка · ${row.count} ${plural(row.count, 'новое', 'новых', 'новых')}`,
+      urgent: false,
+      // Клиент — как у прочих дел по работе (Р-721); клиент этой ветки не
+      // видит (Р-336).
+      detail: row.client,
+      todo: 'Прочитать руководителя и ответить во внутренней переписке',
+      href: `/cabinet/projects/${row.code}/messages?tab=internal#body`,
     })),
     ...parts.comment.map((row) => ({
       key: `comment-${row.stageId ?? row.materialId}`,

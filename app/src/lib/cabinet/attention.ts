@@ -20,7 +20,7 @@ import { myAssignments, overdueAssignments } from './assignments.ts';
 import { controlItems } from './control.ts';
 import { calendarGaps, openChecks } from './head-checks.ts';
 import { pendingComments, pendingVersions } from './materials.ts';
-import { staffThreads, unreadInbox } from './messages.ts';
+import { internalInbox, staffThreadUnread, staffThreads, unreadInbox } from './messages.ts';
 import { activeFirst } from './missed.ts';
 import { outboxDigest } from './outbox.ts';
 import { returnedStages, todayItems, trafficLight } from './queries.ts';
@@ -31,7 +31,7 @@ async function collect(actor: Actor) {
   // реакции (требование РК-05, решение Р-337). Набор строится выборками
   // менеджера: роль здесь задаёт только сужение до своих работ.
   const mine: Actor = actor.role === 'HEAD' ? { ...actor, role: 'MANAGER' } : actor;
-  const [light, returned, threads, unread, moderation, versions, today, outbox, checks, control, mineAssigned, lateAssigned, calendar] =
+  const [light, returned, threads, unread, moderation, versions, today, outbox, checks, control, mineAssigned, lateAssigned, calendar, headReplies, internal] =
     await Promise.all([
       trafficLight(mine),
       // Клиент вернул этап с замечаниями: ход за куратором (решение Р-283).
@@ -57,6 +57,12 @@ async function collect(actor: Actor) {
       overdueAssignments(actor),
       // Год срока согласования без производственного календаря (УК-15, Р-394).
       calendarGaps(actor),
+      // Менеджеру — ответ руководителя в своей ветке и непрочитанное во
+      // внутренних ветках своих работ: тот же счёт, что у экрана «Руководитель»
+      // и вкладки «Внутренняя»; сторона менеджера симметрична делу «Вопрос
+      // сотрудника» руководителя (решение Р-739, дополняет Р-304; Р-336).
+      actor.role === 'MANAGER' ? staffThreadUnread(actor, actor.id) : Promise.resolve(0),
+      internalInbox(actor),
     ]);
   return {
     light,
@@ -72,6 +78,8 @@ async function collect(actor: Actor) {
     mineAssigned,
     lateAssigned,
     calendar,
+    headReplies,
+    internal,
   };
 }
 
@@ -117,6 +125,8 @@ export function attentionParts(sources: AttentionSources) {
     stalled: light.stalled.filter((stage) => !overdueIds.has(stage.id)),
     returned: sources.returned,
     staff: sources.staffQuestions,
+    headReply: sources.headReplies > 0 ? [{ count: sources.headReplies }] : [],
+    internal: sources.internal,
     unread: sources.unread,
     comment: sources.moderation,
     handover: today.handedOver,

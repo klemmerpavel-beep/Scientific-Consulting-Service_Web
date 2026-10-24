@@ -511,6 +511,33 @@ export async function internalUnread(actor: Actor, projectId: string): Promise<n
   return unreadFor(actor.id, 'WORK_INTERNAL', projectId);
 }
 
+/**
+ * Внутренние ветки своих работ с непрочитанным — дела «Сегодня» менеджера
+ * (решение Р-739, дополняет Р-304). Счёт тот же, что у вкладки
+ * «Внутренняя» (`internalUnread`): чужие сообщения ветки новее курсора
+ * менеджера. Участник ветки — менеджер работы (Р-336); клиенту и куратору
+ * её нет, и выборка для них пуста по построению.
+ */
+export async function internalInbox(
+  actor: Actor,
+): Promise<{ code: string; title: string; client: string; count: number }[]> {
+  if (actor.role !== 'MANAGER' || actor.status !== 'ACTIVE') return [];
+  const projects = await prisma.project.findMany({
+    where: { managerId: actor.id, messages: { some: { thread: 'WORK_INTERNAL', authorId: { not: actor.id } } } },
+    select: { id: true, code: true, title: true, client: { select: { fullName: true } } },
+  });
+  const rows = await Promise.all(
+    projects.map(async (project) => ({
+      code: project.code,
+      title: project.title,
+      client: project.client.fullName,
+      count: await unreadFor(actor.id, 'WORK_INTERNAL', project.id),
+    })),
+  );
+  // Порядок — как у дел «непрочитанные сообщения клиента» (Р-190).
+  return rows.filter((row) => row.count > 0).sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
+}
+
 export async function readInternal(actor: Actor, projectId: string): Promise<void> {
   const ref = await projectRef(projectId);
   if (ref === null) return;

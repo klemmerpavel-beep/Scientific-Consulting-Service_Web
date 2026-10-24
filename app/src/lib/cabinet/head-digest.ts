@@ -36,6 +36,8 @@ export const DIGEST_LABEL: Record<keyof Parts, string> = {
   stalled: 'этап ждёт клиента',
   returned: 'клиент вернул этап с замечаниями',
   staff: 'вопрос сотрудника',
+  headReply: 'ответ руководителя',
+  internal: 'внутренняя переписка по работе',
   unread: 'клиент ждёт ответа',
   comment: 'замечания куратора ждут публикации',
   handover: 'куратор сдал этап',

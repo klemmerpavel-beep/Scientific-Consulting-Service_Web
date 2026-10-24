@@ -76,7 +76,7 @@ import { templateLength } from '../../../../lib/cabinet/projects';
 import { daysPast } from '../../../../lib/cabinet/clock';
 import { UPLOADED_NEXT, uploadedLine } from '../../../../lib/cabinet/works-answer';
 import { workDuePassed } from '../../../../lib/cabinet/missed';
-import { MESSAGE_MAX, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
+import { MESSAGE_MAX, internalUnread, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import { OUTCOME_ANCHOR, OUTCOME_FLAGS, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
 import { noticeFate } from '../../../../lib/cabinet/outbox';
 import DropFlag from '../../../../components/cabinet/DropFlag';
@@ -371,6 +371,10 @@ export default async function ProjectScreen({
   // Своё вознаграждение по этой работе — в «Ваша работа» (Э-13, Р-332).
   const myPayout = forExpert ? await ownPayoutTotals(actor, project.id) : null;
   const unread = mayWrite ? await unreadCount(actor, project.id) : 0;
+  // Непрочитанное во внутренней ветке — только участнику ветки, менеджеру
+  // работы и руководителю: клиенту и куратору число не считается и в данные
+  // экрана не попадает (решение Р-739; Р-336).
+  const internalNew = can(actor, 'INTERNAL_MESSAGE', ref) ? await internalUnread(actor, project.id) : 0;
   // Короткий разговор виден прямо на экране заказа: уходить за ним на
   // отдельный экран, чтобы прочитать три строки, незачем. Прочитанным он
   // здесь не помечается — отметку ставит открытие самой переписки.
@@ -1044,6 +1048,16 @@ export default async function ProjectScreen({
               unread > 0
                 ? `вся · ${unread} ${plural(unread, 'новое', 'новых', 'новых')}`
                 : 'вся переписка'
+            }
+            // Новое во внутренней ветке — ссылкой рядом, на её вкладку
+            // (решение Р-739).
+            extra={
+              internalNew > 0
+                ? {
+                    href: `/cabinet/projects/${project.code}/messages?tab=internal#body`,
+                    label: `внутренняя · ${internalNew} ${plural(internalNew, 'новое', 'новых', 'новых')}`,
+                  }
+                : undefined
             }
             anchor="end"
             footer={
