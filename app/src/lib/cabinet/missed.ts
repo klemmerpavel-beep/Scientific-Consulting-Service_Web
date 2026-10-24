@@ -54,3 +54,15 @@ export function workMissed(work: DueWork, day: Date = moscowToday(now())): boole
 export function missedCount(work: DueWork, day: Date = moscowToday(now())): number {
   return missedStages(work, day) + (workMissed(work, day) ? 1 : 0);
 }
+
+/**
+ * Порядок дел «срок работы прошёл» на «Сегодня» и «Сводке»: действующие
+ * работы впереди приостановленных, внутри каждой группы — прежний порядок
+ * выборки (по сроку, давние сверху). Прежде самые давние сроки были у
+ * приостановленных, и в свёрнутом перечне стояли только они, а три
+ * действующие работы с сорванным сроком уходили под «Показать все»
+ * (решение Р-720). Число дел не меняется — только порядок.
+ */
+export function activeFirst<T extends { readonly status: string }>(rows: readonly T[]): T[] {
+  return [...rows.filter((row) => row.status !== 'PAUSED'), ...rows.filter((row) => row.status === 'PAUSED')];
+}

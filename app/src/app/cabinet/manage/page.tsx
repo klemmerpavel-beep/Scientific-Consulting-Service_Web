@@ -376,6 +376,9 @@ export default async function ManageQueue({
       return {
         key: `late-${work.id}`,
         kind: 'late' as const,
+        // Приостановленная — после действующих и не первым делом дня
+        // (решение Р-720).
+        paused: work.status === 'PAUSED',
         title: work.title,
         mark:
           late === null
@@ -667,7 +670,11 @@ export default async function ManageQueue({
   // Остальное — по ссылке «Показать все» (решение Р-257).
   const ATTENTION_LIMIT: Record<(typeof attention)[number]['kind'], number> = {
     overdue: 4,
-    late: 2,
+    // Действующие работы стоят первыми и заполняют предел: по ним можно
+    // действовать сегодня. Приостановленные — следом, если осталось место,
+    // иначе в полном перечне. Предел три вместо двух — чтобы место
+    // действующих не отнимали давние сроки работ на паузе (решение Р-720).
+    late: 3,
     returned: 3,
     stalled: 2,
     unread: 3,
@@ -697,6 +704,10 @@ export default async function ManageQueue({
   // Пояснение руководителю — по всей практике, как «Действующих работ»
   // в нём же; плашки «Мои» — по своим работам (Р-337, решение Р-695).
   const practice = await practiceLight(actor, sources);
+  // «Начать с главного» — первое дело, кроме срока приостановленной работы:
+  // первое нажатие дня не уходит на работу, которая стоит полтора года
+  // (решение Р-720; Р-207 уточняется выбором первого дела).
+  const main = attention.find((row) => !('paused' in row && row.paused)) ?? attention[0];
   const answer = {
     lead:
       attention.length === 0
@@ -710,8 +721,8 @@ export default async function ManageQueue({
       leads: queue.total,
     }),
     action:
-      attention.length === 0 ? undefined : (
-        <ButtonLink href={attention[0]!.href}>Начать с главного</ButtonLink>
+      main === undefined ? undefined : (
+        <ButtonLink href={main.href}>Начать с главного</ButtonLink>
       ),
   };
 
@@ -721,7 +732,10 @@ export default async function ManageQueue({
     advice === null
       ? null
       : practiceReview({
-          act: attention.map((row) => ({ title: row.title, note: row.mark, href: row.href })),
+          // Первая строка «Сделать» — то же дело, что «Начать с главного».
+          act: [main, ...attention.filter((row) => row !== main)]
+            .filter((row) => row !== undefined)
+            .map((row) => ({ title: row.title, note: row.mark, href: row.href })),
           watch: today.week.map((row) => ({
             title: row.title,
             note: `до ${formatDate(row.dueOn)}${row.turn === null ? '' : ` · ${row.turn}`}`,

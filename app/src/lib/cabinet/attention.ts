@@ -21,6 +21,7 @@ import { controlItems } from './control.ts';
 import { calendarGaps, openChecks } from './head-checks.ts';
 import { pendingComments, pendingVersions } from './materials.ts';
 import { staffThreads, unreadInbox } from './messages.ts';
+import { activeFirst } from './missed.ts';
 import { outboxDigest } from './outbox.ts';
 import { returnedStages, todayItems, trafficLight } from './queries.ts';
 
@@ -102,7 +103,8 @@ export function attentionParts(sources: AttentionSources) {
   const overdueIds = new Set(light.overdue.map((stage) => stage.id));
   return {
     overdue: light.overdue,
-    late: light.lateWorks,
+    // Действующие работы — впереди приостановленных (решение Р-720).
+    late: activeFirst(light.lateWorks),
     stalled: light.stalled.filter((stage) => !overdueIds.has(stage.id)),
     returned: sources.returned,
     staff: sources.staffQuestions,
