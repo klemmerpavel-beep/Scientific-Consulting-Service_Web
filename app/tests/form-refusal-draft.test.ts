@@ -91,7 +91,7 @@ describe('экраны раскрывают свою форму и держат 
   it('«Материалы работы»: новый материал и новая версия', () => {
     assert.match(materials, /<Card id="new-material"/u);
     assert.match(materials, /id=\{`upload-\$\{material\.id\}`\}/u);
-    assert.match(materials, /defaultValue=\{draft\.upload === 'new' \? \(draft\.stageId \?\? ''\) : ''\}/u);
+    assert.match(materials, /defaultValue=\{draft\.upload === 'new' \? \(draft\.stageId \?\? ''\) : \(defaultStage\?\.id \?\? ''\)\}/u);
     assert.match(materials, /unplaced=\{uploadPlaced \? \[\] : \['upload'\]\}/u);
     // Экран «Что подготовить» берёт то же действие: причина — вверху, как прежде.
     assert.match(read('projects', '[code]', 'prepare', 'page.tsx'), /unplaced=\{\['upload'\]\}/u);

@@ -63,6 +63,19 @@ export default async function ProjectMaterialsScreen({
   const openStages = project.stages.filter(
     (stage) => contributionRefusal(actor, project.status, stage.state) === null,
   );
+  // Этап по умолчанию в «Приложить материал» — первый открытый «Ждём ваших
+  // данных», иначе текущий незавершённый: файл, приложенный без смены
+  // выбора, встаёт на этап и виден на его экране. «Без привязки к этапу»
+  // остаётся вариантом выбора (Р-284; решение Р-745).
+  // Правило — клиенту: его ход «Ждём ваших данных». У куратора этап по
+  // умолчанию подставляет форма «Ваша работа» на карточке по своему ходу
+  // (Р-326), у практики — прежнее «без привязки».
+  const currentStage = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
+  const defaultStage =
+    actor.role !== 'CLIENT'
+      ? null
+      : (openStages.find((stage) => stage.state === 'AWAITING_CLIENT') ??
+        (currentStage !== null && openStages.includes(currentStage) ? currentStage : null));
   // Отказ загрузки возвращает к своей форме — новому материалу или новой
   // версии — с набранным названием и выбранным этапом; причина стоит у формы
   // (решение Р-722). Формы нет на экране — причина вверху.
@@ -297,7 +310,7 @@ export default async function ProjectMaterialsScreen({
             <FormRow>
               <Field label="Название" name="title" maxLength={300} placeholder="Черновик главы 2"
                 defaultValue={draft.upload === 'new' ? draft.title : undefined} />
-              <Select label="Этап" name="stageId" defaultValue={draft.upload === 'new' ? (draft.stageId ?? '') : ''}>
+              <Select label="Этап" name="stageId" defaultValue={draft.upload === 'new' ? (draft.stageId ?? '') : (defaultStage?.id ?? '')}>
                 <option value="">без привязки к этапу</option>
                 {openStages.map((stage) => (
                   <option key={stage.id} value={stage.id}>
