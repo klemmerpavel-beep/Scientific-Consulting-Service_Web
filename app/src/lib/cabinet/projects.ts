@@ -1225,7 +1225,7 @@ export async function reopenStage(
       letter: (work) => ({
         subject: `Ход за вами: этап «${stage.title}»`,
         body:
-          `Работа ${work.code}.\n` +
+          `${workLine(work, false)}\n` +
           `Завершённый этап «${stage.title}» возвращён в работу. Задание и срок — в блоке «Что сделать сейчас» на экране этапа.\n` +
           stageLink(stage.id),
       }),
@@ -2113,7 +2113,7 @@ export async function setStageState(
         letter: (work) => ({
           subject: `Этап «${stage.title}» согласован`,
           body:
-            `Работа ${work.code}.\n` +
+            `${workLine(work, false)}\n` +
             (forClient
               ? `Этап «${stage.title}» согласован менеджером по подтверждению клиента.\n`
               : `Клиент согласовал этап «${stage.title}».\n`) +
@@ -2135,7 +2135,7 @@ export async function setStageState(
         letter: (work) => ({
           subject: `Ход за вами: этап «${stage.title}»`,
           body:
-            `Работа ${work.code}.\n` +
+            `${workLine(work, false)}\n` +
             (from === 'NOT_STARTED'
               ? `Менеджер запустил этап «${stage.title}».`
               : `Этап «${stage.title}» снова «В работе».`) +
@@ -2367,7 +2367,7 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
       letter: (work) => ({
         subject: `Клиент вернул этап «${stage.title}» с замечаниями`,
         body:
-          `Работа ${work.code}.\n` +
+          `${workLine(work, false)}\n` +
           `Клиент вернул этап «${stage.title}» с замечаниями; этап снова «В работе».\n` +
           'Текст замечаний — в блоке «Что сделать сейчас» на экране этапа.\n' +
           stageLink(stageId),

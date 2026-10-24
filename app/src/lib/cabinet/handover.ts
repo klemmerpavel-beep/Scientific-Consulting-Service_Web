@@ -16,6 +16,7 @@ import { stageLink } from './approval.ts';
 import { record } from './audit.ts';
 import { notifyCurator, notifyExpert } from './outbox.ts';
 import { OUTCOME_LIMIT } from './projects.ts';
+import { workLine } from './work-line.ts';
 
 /** Предел записки и причины возврата — тот же, что у «Итога этапа». */
 export const HANDOVER_LIMIT = OUTCOME_LIMIT;
@@ -171,7 +172,7 @@ export async function handBackStage(actor: Actor, stageId: string, reason: strin
       eventKind: 'CURATOR_TURN',
       letter: (work) => ({
         subject: `Этап «${stage.title}» возвращён вам`,
-        body: `Работа ${work.code}.\nМенеджер вернул этап «${stage.title}». Причина: ${text}\n` + stageLink(stageId),
+        body: `${workLine(work, false)}\nМенеджер вернул этап «${stage.title}». Причина: ${text}\n` + stageLink(stageId),
       }),
       key: `stage:${stageId}:handed-back:${now.toISOString()}`,
       path: `/cabinet/stages/${stageId}`,
