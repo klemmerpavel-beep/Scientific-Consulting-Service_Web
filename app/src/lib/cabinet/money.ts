@@ -21,6 +21,38 @@ export const STATUS_LABEL: Record<TrancheStatus, string> = {
 };
 
 /**
+ * Статус платежа словами клиента (решение Р-746): запланированный
+ * платёж ему — «счёт ещё не выставлен», а не «ожидается»: слово учёта не
+ * говорит, ждать ли счёта или платить (словарь клиента — Р-277).
+ * Сотрудникам — `STATUS_LABEL`, прежние подписи.
+ */
+export const CLIENT_STATUS_LABEL: Record<TrancheStatus, string> = {
+  ...STATUS_LABEL,
+  PLANNED: 'счёт ещё не выставлен',
+};
+
+/**
+ * Доля оплаты в процентах для полосы экрана оплат.
+ *
+ * Сотрудникам — от суммы договора, как прежде. Клиенту при корректировке
+ * — от суммы к оплате: договор минус корректировка, то есть полученное и
+ * оставшееся (Р-315). Прежде при «Осталось оплатить 0 ₽» клиент читал
+ * «Оплачено 90 % суммы договора» и считал, что за ним долг (решение
+ * Р-746). Доля считается из уже показанных величин: списанное по
+ * траншам клиенту не отдаётся (Р-251, Р-700).
+ */
+export function paidPercent(
+  money: { readonly contractTotal: bigint; readonly received: bigint; readonly adjustment: bigint },
+  ofPayable: boolean,
+): number {
+  if (ofPayable && money.adjustment > 0n) {
+    const payable = money.contractTotal - money.adjustment;
+    return payable <= 0n ? (money.received > 0n ? 100 : 0) : Number((money.received * 100n) / payable);
+  }
+  return money.contractTotal === 0n ? 0 : Number((money.received * 100n) / money.contractTotal);
+}
+
+/**
  * Допустимые смены статуса транша (решение Р-224).
  *
  * Прежде статус принимался любой, в том числе откат оплаченного в

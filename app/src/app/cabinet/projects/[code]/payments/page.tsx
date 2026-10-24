@@ -31,9 +31,11 @@ import { projectContract, projectMoney, projectPayouts, projectTypeExpenses } fr
 import { economyOf, formatShare } from '../../../../../lib/cabinet/unit-economy';
 import { MATERIAL_KIND_LABEL, type MaterialKind } from '../../../../../lib/cabinet/materials';
 import {
+  CLIENT_STATUS_LABEL,
   formatAmount,
   isTrancheOverdue,
   nextTrancheStatuses,
+  paidPercent,
   STATUS_LABEL,
   type TrancheStatus,
   writtenOffBeyond,
@@ -123,10 +125,12 @@ export default async function PaymentsScreen({
   // Списанное сверх остатка договора: видит только ведущий оплаты — у
   // остальных списанных траншей в выборке нет (Р-251, Р-700).
   const beyond = money === null || contract === null ? 0n : writtenOffBeyond(money.adjustment, contract.tranches);
-  const progress =
-    money === null || money.contractTotal === 0n
-      ? 0
-      : Number((money.received * 100n) / money.contractTotal);
+  // Клиенту — его словами и доля от суммы к оплате, если она изменена по
+  // договорённости; экран сотрудников и арифметика прежние (Р-315, решение
+  // Р-746).
+  const forClient = actor.role === 'CLIENT';
+  const ofPayable = forClient && money !== null && money.adjustment > 0n;
+  const progress = money === null ? 0 : paidPercent(money, forClient);
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -268,7 +272,7 @@ export default async function PaymentsScreen({
               />
             </div>
             <Text muted size={13} style={{ marginTop: 8 }}>
-              Оплачено {progress}% суммы договора
+              Оплачено {progress}% {ofPayable ? 'суммы к оплате' : 'суммы договора'}
               {/* Остаток по договору, не разнесённый траншами, — подсказка
                   тому, кто ведёт оплаты: без транша у суммы нет срока и
                   счёта (решение Р-254). */}
@@ -299,10 +303,12 @@ export default async function PaymentsScreen({
           ) : null}
 
           <Block style={{ marginBottom: 20 }}>
-            <Heading level={2} size={3}>Транши</Heading>
+            {/* Клиенту — «Платежи»: «транш» в его словаре не закреплён
+                (Р-277, решение Р-746). */}
+            <Heading level={2} size={3}>{forClient ? 'Платежи' : 'Транши'}</Heading>
             <Card style={{ marginTop: 12 }}>
               {contract.tranches.length === 0 ? (
-                <Text muted>Транши ещё не заведены.</Text>
+                <Text muted>{forClient ? 'Платежей пока нет.' : 'Транши ещё не заведены.'}</Text>
               ) : (
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 16 }}>
                   {contract.tranches.map((tranche) => (
@@ -322,21 +328,48 @@ export default async function PaymentsScreen({
                           {tranche.title}
                           {tranche.stage === null ? '' : ` · этап ${tranche.stage.position}: ${tranche.stage.title}`}
                         </Text>
-                        <Text muted size={13} style={{ marginTop: 2 }}>
-                          {tranche.plannedDate === null
-                            ? 'срок не задан'
-                            : !isTrancheOverdue(tranche, project.status, today)
-                              ? `срок ${formatDate(tranche.plannedDate)}`
-                              : actor.role === 'CLIENT'
-                                ? `срок оплаты прошёл ${formatDate(tranche.plannedDate)}`
+                        {forClient ? (
+                          // Клиенту: у оплаченного без плановой даты — только
+                          // дата оплаты; у просроченного без счёта — кто и что
+                          // делает дальше и куда спросить (решение Р-746;
+                          // «срок оплаты прошёл» — Р-345).
+                          <Text muted size={13} style={{ marginTop: 2 }}>
+                            {[
+                              tranche.plannedDate === null
+                                ? tranche.paidOn === null
+                                  ? 'срок не задан'
+                                  : null
+                                : isTrancheOverdue(tranche, project.status, today)
+                                  ? `срок оплаты прошёл ${formatDate(tranche.plannedDate)}`
+                                  : `срок ${formatDate(tranche.plannedDate)}`,
+                              tranche.paidOn === null ? null : `оплачен ${formatDate(tranche.paidOn)}`,
+                            ]
+                              .filter((part) => part !== null)
+                              .join(' · ')}
+                            {tranche.status === 'PLANNED' && tranche.documents.length === 0 && isTrancheOverdue(tranche, project.status, today) ? (
+                              <>
+                                {' · счёт пришлёт менеджер · '}
+                                <a className="cab-mark" href={`/cabinet/projects/${project.code}/messages#body`}>
+                                  вопрос — в переписке
+                                </a>
+                              </>
+                            ) : null}
+                          </Text>
+                        ) : (
+                          <Text muted size={13} style={{ marginTop: 2 }}>
+                            {tranche.plannedDate === null
+                              ? 'срок не задан'
+                              : !isTrancheOverdue(tranche, project.status, today)
+                                ? `срок ${formatDate(tranche.plannedDate)}`
                                 : `срок ${formatDate(tranche.plannedDate)} · просрочен`}
-                          {tranche.paidOn === null
-                            ? ''
-                            : ` · оплачен ${formatDate(tranche.paidOn)}`}
-                        </Text>
+                            {tranche.paidOn === null
+                              ? ''
+                              : ` · оплачен ${formatDate(tranche.paidOn)}`}
+                          </Text>
+                        )}
                       </div>
                       <Chip tone={TONE[tranche.status as TrancheStatus]}>
-                        {STATUS_LABEL[tranche.status as TrancheStatus]}
+                        {(forClient ? CLIENT_STATUS_LABEL : STATUS_LABEL)[tranche.status as TrancheStatus]}
                       </Chip>
                       <Text size={16} style={{ color: 'var(--pd-ink)', fontVariantNumeric: 'tabular-nums' }}>
                         {formatAmount(tranche.amount)}
@@ -530,8 +563,11 @@ export default async function PaymentsScreen({
             <Card style={{ marginTop: 12 }}>
               {contract.documents.length === 0 ? (
                 <Text muted>
-                  Файл договора пока не приложен. Счета и акты прикладываются к траншам — так
-                  видно, какой платёж каким документом закрыт.
+                  {/* Клиент документы не прикладывает: ему — что и где
+                      появится (решение Р-746). */}
+                  {forClient
+                    ? 'Договор ещё не приложен. Счета и акты появятся у платежей выше.'
+                    : 'Файл договора пока не приложен. Счета и акты прикладываются к траншам — так видно, какой платёж каким документом закрыт.'}
                 </Text>
               ) : (
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 12 }}>
