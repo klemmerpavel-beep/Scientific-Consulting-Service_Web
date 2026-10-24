@@ -416,7 +416,11 @@ export async function flaggedMessages(actor: Actor) {
     take: 50,
     include: {
       author: { select: { fullName: true, role: true } },
-      project: { select: { code: true, title: true } },
+      // Код — для ссылки на переписку работы, клиент — для подписи:
+      // одноимённых работ у менеджера несколько, и одно название не
+      // говорило, какая из них (решение Р-757). Выборка — по-прежнему
+      // в пределах видимого (Р-220).
+      project: { select: { code: true, title: true, client: { select: { fullName: true } } } },
     },
   });
 }
