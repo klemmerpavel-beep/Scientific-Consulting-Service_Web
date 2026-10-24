@@ -27,7 +27,13 @@ import {
   type StageStateKey,
   turnLabel,
 } from '../../../../components/cabinet/ui';
-import { curatorWorkLine } from '../../../../lib/cabinet/stage-state';
+import {
+  CLIENT_ANSWER_LEAD,
+  WRITE_MANAGER,
+  clientEmptyMaterials,
+  clientMessagesHref,
+  curatorWorkLine,
+} from '../../../../lib/cabinet/stage-state';
 import { SANS } from '../../../../components/cabinet/tokens';
 import {
   can,
@@ -238,6 +244,24 @@ export default async function StageScreen({
             .map((version) => version.uploadedAt),
         )
       : null;
+  // Клиенту на «Ждём ваших данных» — что ответ можно и словами, ссылкой в
+  // поле переписки (решение Р-750; Р-316). После загрузки строка
+  // остаётся под «Вы приложили материалы…» (Р-728): ход по-прежнему за
+  // клиентом, и к файлу можно дописать слова.
+  const clientAnswer = actor.role === 'CLIENT' && live && state === 'AWAITING_CLIENT';
+  // Строка встаёт в блок описания; без описания, причины и пометок её
+  // несёт блок «Материалы и версии» — новый блок не заводится (Р-183).
+  const stageDescribed =
+    (stage.summary ?? '').trim() !== '' || stage.blockedReason !== null || lastReturn !== undefined || uploadedByClient !== null;
+  const answerLine = clientAnswer ? (
+    <Text size={14} style={{ marginTop: 12 }}>
+      {CLIENT_ANSWER_LEAD}
+      <a href={clientMessagesHref(stage.project.code)}>
+        написать менеджеру
+      </a>
+      .
+    </Text>
+  ) : null;
   // Последние материалы клиента — до трёх версий, новые сверху (Д-5).
   const clientVersions = stage.materials
     .flatMap((material) => material.versions.map((version) => ({ material, version })))
@@ -591,6 +615,7 @@ export default async function StageScreen({
               </Notice>
             </div>
           )}
+          {answerLine}
         </Block>
       )}
 
@@ -1026,10 +1051,13 @@ export default async function StageScreen({
         {stage.materials.length === 0 ? (
           <Text muted>
             {/* Куратору «приложите первый» — только когда ход за ним
-                (решение Р-723). */}
-            {mayUpload && !(curatorView && curatorLine.idle)
-              ? 'Материалов по этапу пока нет — приложите первый.'
-              : 'Материалов по этапу пока нет.'}
+                (решение Р-723); клиенту — только на «Ждём ваших данных»
+                (Р-750). */}
+            {actor.role === 'CLIENT'
+              ? clientEmptyMaterials(state, mayUpload)
+              : mayUpload && !(curatorView && curatorLine.idle)
+                ? 'Материалов по этапу пока нет — приложите первый.'
+                : 'Материалов по этапу пока нет.'}
           </Text>
         ) : (
           <div style={{ display: 'grid', gap: 20, marginTop: 12 }}>
@@ -1231,10 +1259,24 @@ export default async function StageScreen({
           </div>
         )}
 
-        {/* Вместо форм — почему их нет и что делать (Т-17, М-10, Р-293). */}
+        {/* Строка ответа словами — здесь, если блока описания нет (Р-750). */}
+        {stageDescribed ? null : answerLine}
+
+        {/* Вместо форм — почему их нет и что делать (Т-17, М-10, Р-293).
+            Клиенту «напишите менеджеру» — ссылкой в переписку (Р-750). */}
         {refusal !== null && can(actor, 'MATERIAL_UPLOAD', ref) ? (
           <Text muted size={14} style={{ marginTop: 16 }}>
-            {refusal}.
+            {actor.role === 'CLIENT' && refusal.endsWith(WRITE_MANAGER) ? (
+              <>
+                {refusal.slice(0, -WRITE_MANAGER.length)}
+                <a href={clientMessagesHref(stage.project.code)}>
+                  {WRITE_MANAGER}
+                </a>
+                .
+              </>
+            ) : (
+              `${refusal}.`
+            )}
           </Text>
         ) : null}
 

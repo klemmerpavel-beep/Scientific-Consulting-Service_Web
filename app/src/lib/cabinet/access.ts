@@ -66,6 +66,9 @@ export function workClosed(projectStatus: string): boolean {
 }
 
 export const CLOSED_FOR_PRACTICE = 'Работа закрыта: чтобы изменить, возобновите её';
+// Хвост «напишите менеджеру» клиенту ставится ссылкой в переписку
+// (`WRITE_MANAGER` в stage-state.ts, решение Р-750): слова не менять
+// порознь.
 export const CLOSED_FOR_PARTY = 'Работа закрыта. Если нужно передать файл, напишите менеджеру';
 export const STAGE_DONE_FOR_PARTY = 'Этап завершён. Если нужно передать файл, напишите менеджеру';
 
