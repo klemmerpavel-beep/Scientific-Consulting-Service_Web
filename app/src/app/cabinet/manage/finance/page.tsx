@@ -111,7 +111,9 @@ export default async function FinanceScreen({
   const tiles = [
     { label: 'Законтрактовано', value: totals.contracted },
     { label: 'Получено', value: totals.received },
-    { label: 'К получению', value: totals.awaiting },
+    // «К получению» — к «Поступлениям», где тот же итог разложен по
+    // месяцам (Р-348; решение Р-752).
+    { label: 'К получению', value: totals.awaiting, href: totals.awaiting > 0n ? '/cabinet/manage/finance/receipts' : undefined },
     // «Списано», а не «Потери»: здесь считаются транши со статусом
     // списания, а вкладка аналитики «Потери» считает недополученное по
     // остановленным работам. Две разные величины под одним словом на
@@ -151,7 +153,7 @@ export default async function FinanceScreen({
 
       <Tiles>
         {tiles.map((tile) => (
-          <Tile key={tile.label} label={tile.label} value={formatAmount(tile.value)} note={tile.note} />
+          <Tile key={tile.label} label={tile.label} value={formatAmount(tile.value)} note={tile.note} href={tile.href} />
         ))}
       </Tiles>
 

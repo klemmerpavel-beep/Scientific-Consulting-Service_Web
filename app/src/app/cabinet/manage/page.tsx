@@ -1474,6 +1474,12 @@ export default async function ManageQueue({
                         <a className="cab-mark" href="/cabinet/manage/finance/debtors">
                           {row.value}
                         </a>
+                      ) : row.key === 'wait' && money.awaiting > 0n ? (
+                        // «К получению» — к «Поступлениям», где тот же итог
+                        // разложен по месяцам (Р-348; решение Р-752).
+                        <a className="cab-mark" href="/cabinet/manage/finance/receipts">
+                          {row.value}
+                        </a>
                       ) : (
                         row.value
                       )}

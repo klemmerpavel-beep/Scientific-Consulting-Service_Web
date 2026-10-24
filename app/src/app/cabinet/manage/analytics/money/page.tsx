@@ -71,8 +71,9 @@ export default async function AnalyticsMoney() {
               value={formatAmount(total.received)}
               note={total.collection === null ? 'нет завершённых работ с договором' : `${collectionPercent(total.collection)} по завершённым`}
             />
+            {/* Имя величины — как на «Сводке» и в «Деньгах» (решение Р-752). */}
             <Tile
-              label="Задолженность"
+              label="К получению"
               value={formatAmount(total.outstanding)}
               note={`${debts.length} ${plural(debts.length, 'работа', 'работы', 'работ')} с остатком, кроме отменённых`}
             />

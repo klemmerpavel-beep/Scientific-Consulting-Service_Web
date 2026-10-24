@@ -117,7 +117,10 @@ export default async function AnalyticsOverview() {
             />
             {/* Отменённые не входят: их неоплаченное — потеря, а не долг
                 (решение Р-257). */}
-            <Tile label="Задолженность" value={formatAmount(total.outstanding)} note="остаток по каждой работе, кроме отменённых" />
+            {/* Та же величина, что «К получению» на «Сводке» и в «Деньгах», —
+                и то же имя: «задолженность» читалась как просроченный долг
+                (Р-257; решение Р-752). */}
+            <Tile label="К получению" value={formatAmount(total.outstanding)} note="остаток по каждой работе, кроме отменённых" />
             <Tile label="Средний чек" value={formatRounded(total.averageCheck)} note={`клиентов ${total.clients}`} />
           </Tiles>
 

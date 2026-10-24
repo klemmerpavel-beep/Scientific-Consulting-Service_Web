@@ -35,7 +35,8 @@ export default async function AnalyticsLosses() {
               note={`${report.rows.length} ${plural(report.rows.length, 'работа', 'работы', 'работ')} с остатком`}
             />
             <Tile label="Приостановлено" value={String(report.stopped)} note={`отменено ${report.cancelled}`} />
-            <Tile label="Задолженность всего" value={formatAmount(total.outstanding)} note="по всем работам, кроме отменённых" />
+            {/* Имя величины — как на «Сводке» и в «Деньгах» (решение Р-752). */}
+            <Tile label="К получению" value={formatAmount(total.outstanding)} note="по всем работам, кроме отменённых" />
           </Tiles>
 
           <Heading level={2} style={{ marginBottom: 12 }}>

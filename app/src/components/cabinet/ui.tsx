@@ -1440,12 +1440,15 @@ export function Tile({
   label,
   value,
   note,
+  href,
   chart,
   children,
 }: {
   label: string;
   value: string;
   note?: string;
+  /** Число — ссылкой на экран, где оно разложено (решение Р-752). */
+  href?: string;
   chart?: ReactNode;
   children?: ReactNode;
 }) {
@@ -1474,7 +1477,16 @@ export function Tile({
           fontVariantNumeric: 'tabular-nums',
         }}
       >
-        {value}
+        {href === undefined ? (
+          value
+        ) : (
+          // Цель нажатия 44 px, а строка числа — прежней высоты: поля
+          // ссылки уходят за строку, плитка не растёт и число стоит
+          // вровень с соседними (Р-679).
+          <a className="cab-mark" href={href} style={{ margin: 'calc((1.24em - 44px) / 2) 0' }}>
+            {value}
+          </a>
+        )}
       </Text>
       {note === undefined ? null : (
         <Text muted size={13} style={{ marginTop: 6 }}>
