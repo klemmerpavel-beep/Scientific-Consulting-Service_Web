@@ -1,5 +1,6 @@
 import { PRACTICE_EMAIL, PRACTICE_PHONE } from '../lib/practice-contacts';
 import { siteUrl } from '../lib/site-url';
+import { OG_COVER } from './og-cover';
 
 /**
  * Описание организации для поисковых систем (schema.org, JSON-LD).
@@ -55,7 +56,7 @@ export default function OrgSchema({ requisites = false }: { requisites?: boolean
   // значит плодить второй «официальный» адрес компании.
   if (!url || process.env.NEXT_PUBLIC_PREVIEW === '1') return null;
 
-  const data = { ...ORG, ...(requisites ? REQUISITES : {}), url, logo: `${url}/icon.svg`, image: `${url}/og-cover.png` };
+  const data = { ...ORG, ...(requisites ? REQUISITES : {}), url, logo: `${url}/icon.svg`, image: `${url}${OG_COVER.url}` };
 
   return (
     <script
