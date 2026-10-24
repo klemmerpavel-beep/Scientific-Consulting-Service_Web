@@ -338,7 +338,49 @@ export default async function ProjectsScreen({
             detail: idle.detail,
             action: idle.request ? <ButtonLink href="/cabinet/request">Новая заявка</ButtonLink> : undefined,
           };
-  } else if (forExpert && !awaitingNda) {
+  } else if (awaitingNda) {
+    // Без договора поручения — ответ в шапке, как в остальных состояниях
+    // (Р-207): причина закрытого доступа (Р-150) и единственное доступное
+    // действие «Сообщить руководителю» (Р-331). Прежде ответа не было, а
+    // кнопка стояла под блоком первого входа — на 390 px на 1208 px от
+    // верха (решение Р-735). Тексты и правило «раз в сутки» прежние.
+    const asked = askedAt !== null && !ndaRequestOpen(askedAt, now());
+    answer = {
+      lead: 'Доступ к материалам ещё не открыт.',
+      // Пояснение — не длиннее трёх строк (Р-210): обе фразы прежнего блока
+      // занимали на 390 px пять строк и срезались. Вторая фраза и строка о
+      // времени уведомления стоят в ряду действия, рядом с кнопкой.
+      detail: 'Он открывается после подписания договора поручения обработки персональных данных.',
+      action: (
+        <>
+          {asked ? null : (
+            <Form action={requestNdaAction} inline>
+              <Button tone="quiet">Сообщить руководителю</Button>
+            </Form>
+          )}
+          <span
+            style={{
+              flex: '1 1 260px',
+              alignSelf: 'center',
+              fontFamily: SANS,
+              fontSize: 15,
+              lineHeight: 1.6,
+              color: 'var(--pd-accent-mark)',
+            }}
+          >
+            {[
+              'Договор оформляет руководитель практики и отмечает его в кабинете.',
+              asked
+                ? `Руководитель получил уведомление ${formatDay(askedAt)} в ${formatTime(askedAt)}. Повторно сообщить можно через сутки.`
+                : null,
+            ]
+              .filter((part) => part !== null)
+              .join(' ')}
+          </span>
+        </>
+      ),
+    };
+  } else if (forExpert) {
     // Ответ куратору — главное дело по ближайшему сроку, число остальных и
     // кнопка на экран, где дело закрывается. «Не начат» делом не является:
     // этап запускает менеджер (требование Э-04, решение Р-329).
@@ -422,6 +464,8 @@ export default async function ProjectsScreen({
           }
         />
       )}
+      {/* Отказ «Сообщить руководителю» — под ответом, где кнопка (Р-735). */}
+      {awaitingNda ? <ActionError id={sp.error} /> : null}
       {assigned.length === 0 ? null : (
         <Text size={14} style={{ marginBottom: 20 }}>
           {`Поручения руководителя: ${assigned.length}${assignedLate === 0 ? '' : `, из них просрочено ${assignedLate}`} — `}
@@ -648,26 +692,9 @@ export default async function ProjectsScreen({
         </Block>
       )}
 
-      {awaitingNda ? <ActionError id={sp.error} /> : null}
-      {awaitingNda ? (
-        <>
-          <Empty title="Доступ к материалам ещё не открыт">
-            Он открывается после подписания договора поручения обработки персональных данных.
-            Договор оформляет руководитель практики и отмечает его в кабинете.
-          </Empty>
-          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center', textAlign: 'center' }}>
-            {askedAt !== null && !ndaRequestOpen(askedAt, now()) ? (
-              <Text size={14}>
-                {`Руководитель получил уведомление ${formatDay(askedAt)} в ${formatTime(askedAt)}. Повторно сообщить можно через сутки.`}
-              </Text>
-            ) : (
-              <Form action={requestNdaAction} inline>
-                <Button>Сообщить руководителю</Button>
-              </Form>
-            )}
-          </div>
-        </>
-      ) : projects.length === 0 ? (
+      {/* Без договора поручения причина и кнопка — в ответе шапки
+          (решение Р-735); перечня работ нет: выборка отдаёт пусто. */}
+      {awaitingNda ? null : projects.length === 0 ? (
         list.all === 0 ? (
           <Empty
             title={

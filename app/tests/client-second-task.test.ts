@@ -34,7 +34,7 @@ describe('«Мои работы»: второе дело видно (Р-729)', (
   });
 
   it('в ответе — одна кнопка', () => {
-    const answer = list.slice(list.indexOf('if (forClient) {'), list.indexOf('} else if (forExpert && !awaitingNda) {'));
+    const answer = list.slice(list.indexOf('if (forClient) {'), list.indexOf('} else if (awaitingNda) {'));
     // Три варианта ответа клиенту — после загрузки, дело, дел нет — по
     // одной кнопке на вариант.
     assert.equal([...answer.matchAll(/<ButtonLink\b/gu)].length, 3);
