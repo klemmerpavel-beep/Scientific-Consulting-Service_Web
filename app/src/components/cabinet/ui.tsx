@@ -2463,6 +2463,7 @@ export function ProgressPanel({
   action,
   actionHref,
   actionLabel,
+  more,
   waiting: waitingFor,
   projectStatus,
   turnViewer,
@@ -2491,6 +2492,12 @@ export function ProgressPanel({
   action?: string | null;
   actionHref?: string | null;
   actionLabel?: string;
+  /**
+   * Следующее дело того же человека по работе — строкой со ссылкой на его
+   * этап под главной фразой (решение Р-729): прежде «Ещё дел: 1.» не
+   * называло дела и никуда не вело.
+   */
+  more?: ReactNode;
   /**
    * Работа ждёт клиента — на любом этапе, а не только на первом
    * незавершённом (решение Р-287). Без значения — по текущему этапу.
@@ -2590,6 +2597,11 @@ export function ProgressPanel({
           </ButtonLink>
         )}
       </div>
+
+      {/* Абзац, а не блок: ссылка в строке текста подчёркнута (Р-168). */}
+      {more == null ? null : (
+        <p style={{ margin: 0, fontFamily: SANS, fontSize: 14, lineHeight: 1.5, color: 'var(--pd-ink)' }}>{more}</p>
+      )}
 
       <div
         style={{

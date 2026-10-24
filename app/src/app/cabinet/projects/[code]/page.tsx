@@ -483,10 +483,35 @@ export default async function ProjectScreen({
             : first.dueOn === null
               ? null
               : `Срок этапа — ${formatDate(first.dueOn)}.`,
-          yourTurn.length > 1 ? `Ещё дел: ${yourTurn.length - 1}.` : null,
         ]
           .filter((part) => part !== null)
           .join(' ');
+  // Следующее дело клиента по работе — ссылкой на его этап, а не «Ещё дел:
+  // N.» без названия: второе дело клиент находил, только листая «План
+  // работ» (решение Р-729).
+  const second = yourTurn[1] ?? null;
+  const more =
+    second === null ? null : (
+      <>
+        {'Ещё: '}
+        <a href={`/cabinet/stages/${second.id}`}>
+          {second.clientUploadedAt !== null
+            ? `материалы к этапу «${second.title}» приложены ${formatDay(second.clientUploadedAt)}`
+            : second.state === 'AWAITING_CLIENT'
+              ? `загрузить материалы к этапу «${second.title}»`
+              : `согласовать этап «${second.title}»`}
+        </a>
+        {second.clientUploadedAt !== null
+          ? ''
+          : second.state === 'IN_APPROVAL' && second.approvalDueOn !== null
+            ? ` — до ${formatDate(second.approvalDueOn)}`
+            : second.dueOn === null
+              ? ''
+              : ` — до ${formatDate(second.dueOn)}`}
+        {yourTurn.length > 2 ? ` и ещё ${yourTurn.length - 2}` : ''}
+        {'.'}
+      </>
+    );
   const staff = !forClient;
   // Причина приостановки — под пометкой в шапке, а не только в истории и
   // письме; куратору — без причины, как в его письмах (УК-13, Р-379; Р-328).
@@ -957,6 +982,7 @@ export default async function ProjectScreen({
           staff={staff}
           action={action}
           actionHref={first === null ? null : `/cabinet/stages/${first.id}`}
+          more={more}
           waiting={forClient ? first !== null : undefined}
           projectStatus={project.status}
           // Исполнитель под шкалой — у практики (требование М-16, ОМ-23).

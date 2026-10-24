@@ -31,7 +31,7 @@ describe('срок дела на плашке работы (Р-650)', () => {
   // Строка плашки — от призыва к действию до конца её абзаца.
   const source = code(page);
   // Строка — функция `waitingRow`: одна разметка для всех ждущих этапов
-  // работы (решения Р-728, Р-ВК-К02).
+  // работы (решения Р-728, Р-729).
   const start = source.indexOf('waitingLine(waiting)');
   const line = source.slice(start, source.indexOf('</Text>', start));
 

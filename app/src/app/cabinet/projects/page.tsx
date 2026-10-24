@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
@@ -149,9 +149,16 @@ export default async function ProjectsScreen({
   // `new Map` из пар оставлял последнее, и ответ и плашка называли разные
   // этапы одной работы (решение Р-213).
   const onPage = new Map<string, (typeof pendingAll)[number]>();
+  // Остальные дела клиента по той же работе — строками под первой: второе
+  // дело (согласование и материалы) было видно только числом «Ещё дел» в
+  // срезанном пояснении (решение Р-729).
+  const onPageMore = new Map<string, (typeof pendingAll)[number][]>();
   for (const stage of pendingAll) {
-    if (shown.has(stage.project.code) && !onPage.has(stage.project.code)) {
+    if (!shown.has(stage.project.code)) continue;
+    if (!onPage.has(stage.project.code)) {
       onPage.set(stage.project.code, stage);
+    } else if (forClient) {
+      onPageMore.set(stage.project.code, [...(onPageMore.get(stage.project.code) ?? []), stage]);
     }
   }
   // Эксперту блок «Требует внимания» с чужими действиями не нужен: ждут
@@ -294,7 +301,9 @@ export default async function ProjectsScreen({
                 ? `От вас ждут материалы к этапу «${clip(first.title, 48)}».`
                 : `От вас ждут согласования этапа «${clip(first.title, 48)}».`,
             // Срок — первым: пояснение режется тремя строками, и на
-            // телефоне срок уходил за многоточие (решение Р-213).
+            // телефоне срок уходил за многоточие (решение Р-213). «Ещё дел
+            // за вами» — сразу за сроком: последней частью оно срезалось
+            // вместе с фразой о работе (решение Р-729).
             detail: [
               // На согласовании клиента ждут к сроку согласования, а не к
               // сроку этапа (требование Т-15, решение Р-290).
@@ -303,10 +312,10 @@ export default async function ProjectsScreen({
                 : first.dueOn === null
                   ? null
                   : `Срок этапа — ${formatDate(first.dueOn)}.`,
+              pendingAll.length > 1 ? `Ещё дел за вами: ${pendingAll.length - 1}.` : null,
               first.state === 'AWAITING_CLIENT'
                 ? `Работа «${clip(first.project.title, 60)}» стоит, пока их нет.`
                 : `Работа «${clip(first.project.title, 60)}» продолжится после вашего согласования.`,
-              pendingAll.length > 1 ? `Ещё дел за вами: ${pendingAll.length - 1}.` : null,
             ]
               .filter((part) => part !== null)
               .join(' '),
@@ -841,6 +850,9 @@ export default async function ProjectsScreen({
                     на этап: отдельной строкой сверху оно повторяло бы то,
                     что и так видно в шкале (решение Р-175). */}
                 {waiting === null ? null : waitingRow(waiting)}
+                {(onPageMore.get(project.code) ?? []).map((stage) => (
+                  <Fragment key={stage.id}>{waitingRow(stage)}</Fragment>
+                ))}
 
                 {/* Плашка раскрывается на месте: план работ виден без
                     ухода с перечня, а в саму работу ведёт её название.
