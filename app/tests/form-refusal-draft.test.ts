@@ -33,7 +33,8 @@ describe('действия возвращают черновик, место п�
     ['postMessage', /withError\(target, failure, \{ slot: 'message', draft: \{ body \}, anchor: 'message' \}\)/u],
     ['commentOnVersion', /failedForm\(failure, \{ commentVersion: versionId \}, \{ comment: body \}\)[\s\S]*slot: 'comment'[\s\S]*anchor: `comment-\$\{mark\}`/u],
     ['returnStageWithRemarks', /slot: 'return',\s*draft: \{ remarks: text \},\s*anchor: 'return'/u],
-    ['uploadMaterial', /failedForm\(reason, \{ upload: [^}]+\}, \{ title \}\)[\s\S]*slot: 'upload'[\s\S]*anchor: `upload-\$\{mark\}`/u],
+    // Пояснение куратора к новому материалу — тоже (решение Р-755).
+    ['uploadMaterial', /failedForm\(reason, \{ upload: [^}]+\}, \{ title, uploadNote: note \}\)[\s\S]*slot: 'upload'[\s\S]*anchor: `upload-\$\{mark\}`/u],
     ['addMaterialVersion', /failedForm\(reason, \{ upload: [^}]+, stageId \}, \{ title \}\)[\s\S]*slot: 'upload'/u],
     ['addContactChannel', /failedForm\(failure, \{ kind, preferred: [^}]+\}, \{ value, note \}\)[\s\S]*slot: 'contact', draft: back\.draft, anchor: 'new-contact'/u],
   ];

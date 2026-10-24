@@ -1182,7 +1182,11 @@ export default async function StageScreen({
                           куратор замечаний не пишет (решение Р-671). */}
                       {index === 0 && mayComment && !(curatorView && version.moderation?.status === 'REJECTED') ? (
                         <Disclosure
-                          title="Оставить комментарий"
+                          // У куратора — «замечание» (Р-327); «Оставить
+                          // замечание» — плавающая кнопка отзыва о кабинете
+                          // (Р-403), поэтому свёртка названа по полю (решение
+                          // Р-755).
+                          title={curatorView ? 'Замечание к текущей версии' : 'Оставить комментарий'}
                           id={`comment-${version.id}`}
                           open={draft.commentVersion === version.id}
                           style={{ marginTop: 14 }}
@@ -1196,7 +1200,7 @@ export default async function StageScreen({
                                 замечание, когда его увидит клиент и где
                                 граница работы куратора. */}
                             <Field
-                              label="Комментарий к текущей версии"
+                              label={curatorView ? 'Замечание к текущей версии' : 'Комментарий к текущей версии'}
                               name="body"
                               scope={version.id}
                               multiline
@@ -1306,8 +1310,25 @@ export default async function StageScreen({
                 required
                 hint="Каждая загрузка сохраняется отдельной версией: прежние остаются доступными."
               />
+              {/* Пояснение куратора — как в форме «Ваша работа» на карточке:
+                  замечанием к той же версии одной операцией (Р-326); отказ
+                  возвращает набранное (Р-722). Кнопка — «Приложить
+                  материал», как в двух других формах загрузки (задача
+                  ВК-Кр09, решение Р-755). */}
+              {curatorView ? (
+                <Field
+                  label="Пояснение"
+                  name="note"
+                  scope="new-material"
+                  multiline
+                  maxLength={COMMENT_MAX}
+                  placeholder="Что сделано в этой редакции и на что смотреть в первую очередь"
+                  hint={`Пояснение уходит замечанием к версии: клиент увидит его после публикации менеджером. До ${COMMENT_MAX.toLocaleString('ru-RU')} знаков.`}
+                  defaultValue={draft.upload === 'new' ? draft.uploadNote : undefined}
+                />
+              ) : null}
               <FormActions>
-                <Button tone="quiet">Загрузить</Button>
+                <Button tone="quiet">Приложить материал</Button>
               </FormActions>
             </Form>
           </Disclosure>

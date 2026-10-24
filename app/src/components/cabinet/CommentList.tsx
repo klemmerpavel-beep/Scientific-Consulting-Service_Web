@@ -55,7 +55,11 @@ export default function CommentList({
               {comment.moderationStatus === 'PENDING'
                 ? mayModerate && hasContacts(comment.body)
                   ? ' · ожидает публикации · есть контакты'
-                  : ' · ожидает публикации'
+                  : // Куратору — одним написанием с его версиями (решение
+                    // Р-755); клиенту и практике — как прежде.
+                    actor.role === 'EXPERT'
+                    ? ' · ждёт публикации менеджером'
+                    : ' · ожидает публикации'
                 : comment.moderationStatus === 'REJECTED'
                   ? ' · не опубликовано менеджером'
                   : ''}

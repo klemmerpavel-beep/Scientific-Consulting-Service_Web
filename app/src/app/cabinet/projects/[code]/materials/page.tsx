@@ -311,17 +311,20 @@ export default async function ProjectMaterialsScreen({
               <Field label="Название" name="title" maxLength={300} placeholder="Черновик главы 2"
                 defaultValue={draft.upload === 'new' ? draft.title : undefined} />
               <Select label="Этап" name="stageId" defaultValue={draft.upload === 'new' ? (draft.stageId ?? '') : (defaultStage?.id ?? '')}>
-                <option value="">без привязки к этапу</option>
                 {openStages.map((stage) => (
                   <option key={stage.id} value={stage.id}>
                     {stage.position}. {stage.title}
                   </option>
                 ))}
+                {/* «Без привязки» — последним, кнопка — «Приложить
+                    материал»: как в «Вашей работе» и на экране этапа
+                    (задача ВК-Кр09, решение Р-755). */}
+                <option value="">без привязки к этапу</option>
               </Select>
               <FileField label="Файл" name="file" required />
             </FormRow>
             <FormActions>
-              <Button>Приложить</Button>
+              <Button>Приложить материал</Button>
             </FormActions>
           </Form>
         </Card>

@@ -482,10 +482,13 @@ export async function uploadMaterial(form: FormData): Promise<void> {
   const projectId = String(form.get('projectId') ?? '');
   const materialId = String(form.get('materialId') ?? '');
   const title = String(form.get('title') ?? '');
+  // Пояснение куратора к новому материалу — замечанием к версии той же
+  // операцией, как в форме «Ваша работа» (Р-326, решение Р-755).
+  const note = String(form.get('note') ?? '');
   // Отказ возвращает в раскрытую свёртку своей формы: новый материал или
-  // следующая версия, с набранным названием (решение Р-722).
+  // следующая версия, с набранным названием и пояснением (решение Р-722).
   const refuse = async (reason: string): Promise<string> => {
-    const back = failedForm(reason, { upload: materialId === '' ? 'new' : materialId }, { title });
+    const back = failedForm(reason, { upload: materialId === '' ? 'new' : materialId }, { title, uploadNote: note });
     const mark = materialId === '' ? 'new' : anchorPart(materialId);
     return withError(`/cabinet/stages/${stageId}`, back.reason, {
       slot: 'upload',
@@ -506,6 +509,7 @@ export async function uploadMaterial(form: FormData): Promise<void> {
         stageId: stageId || null,
         materialId: materialId || null,
         title: title || undefined,
+        note,
         originalName: file.name,
         contentType: file.type || 'application/octet-stream',
         body: Buffer.from(await file.arrayBuffer()),

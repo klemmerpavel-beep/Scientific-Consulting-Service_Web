@@ -3048,7 +3048,9 @@ export function formatDay(value: Date | null | undefined): string | null {
 
 /**
  * Состояние своей версии у куратора (требование Э-06, решение Р-326):
- * «ждёт публикации», «опубликована {дата}» — днём решения менеджера по
+ * «ждёт публикации менеджером» — одним написанием с пометкой версии на
+ * экране этапа и строкой «Ждут публикации менеджером» в «Вашей работе»
+ * (решение Р-755), «опубликована {дата}» — днём решения менеджера по
  * Москве, «отклонена: {причина}». `null` — у версии нет модерации: её
  * загрузил менеджер или клиент.
  */
@@ -3056,7 +3058,7 @@ export function versionState(
   moderation: { status: string; decidedAt?: Date | null; note: string | null } | null,
 ): string | null {
   if (moderation === null) return null;
-  if (moderation.status === 'PENDING') return 'ждёт публикации';
+  if (moderation.status === 'PENDING') return 'ждёт публикации менеджером';
   if (moderation.status === 'PUBLISHED') {
     return moderation.decidedAt == null ? 'опубликована' : `опубликована ${formatDay(moderation.decidedAt)}`;
   }
