@@ -316,6 +316,15 @@ details[open].cab-block>summary{border-radius:${RADIUS.card - 1}px ${RADIUS.card
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
+/* Шапка на телефоне: прежде вордмарк, две строки меню и строка «роль +
+   Выйти» занимали 293 px из 844 — треть первого экрана. До 480 px «Выйти»
+   стоит в строке вордмарка справа, меню — строками ниже через 8 px,
+   отступы сверху и снизу — 12 px; состав, порядок и подписи меню прежние,
+   цели — 44 px (Р-57). Подпись роли на телефоне не выводится ни у кого:
+   у сотрудников она не помещалась рядом с «Выйти». Высота формы не
+   задана: при крупном шрифте или очень узком экране «Выйти» уходит на
+   свою строку целиком, а не срезается (WCAG 1.4.4) (задача ВК-К09, решение Р-754). */
+@media (max-width:480px){.cab-head{padding-top:12px!important;padding-bottom:12px!important;row-gap:12px!important}.cab-head>.cab-nav{order:2!important;flex:0 0 100%!important}.cab-nav>ul{row-gap:8px!important}.cab-exit{order:1!important;margin-left:auto!important}.cab-role{display:none!important}}
 /* Таблица «Какое событие каким каналом» на телефоне: подписи «письмом» и
    «в Telegram» в ячейках убраны с глаз, но остаются для читалки — столбцы
    подписаны в шапке; поля ячеек уже, и три столбца входят без прокрутки
