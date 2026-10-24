@@ -321,6 +321,15 @@ details[open].cab-block>summary{border-radius:${RADIUS.card - 1}px ${RADIUS.card
    подписаны в шапке; поля ячеек уже, и три столбца входят без прокрутки
    вбок (решение Р-736). */
 @media (max-width:600px){.cab-rule-seen{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.cab-rules th,.cab-rules td{padding-left:8px!important;padding-right:8px!important}}
+/* «Вознаграждение» на телефоне: «За что» — второй строкой под работой, как
+   комментарий к начислению; столбец «За что» и наименьшая ширина таблицы
+   сняты, поля между столбцами уже — «Состояние» и «Сумма» входят в ширину
+   без прокрутки вбок. На 360 px поля 10 и 5 px: «диссертационного»,
+   «выплачено» и «Сумма, ₽» с полями 16 и 8 px в 318 px не входили. На
+   широком экране таблица прежняя (решение Р-737). */
+.cab-pay-for-line{display:none}
+@media (max-width:768px){.cab-pay{min-width:0!important}.cab-pay .cab-pay-for{display:none}.cab-pay-for-line{display:block;margin-top:2px}.cab-pay th,.cab-pay td{padding-left:8px!important;padding-right:8px!important}.cab-pay th:first-child,.cab-pay td:first-child{padding-left:16px!important}.cab-pay th:last-child,.cab-pay td:last-child{padding-right:16px!important}}
+@media (max-width:480px){.cab-pay th,.cab-pay td{padding-left:5px!important;padding-right:5px!important}.cab-pay th:first-child,.cab-pay td:first-child{padding-left:10px!important}.cab-pay th:last-child,.cab-pay td:last-child{padding-right:10px!important}}
 /* Кнопка замечаний 52 px стоит в правом нижнем углу с отступом 16 px и у
    низа страницы закрывала ссылку «Политика обработки данных»: подвалу —
    нижнее поле под кнопку, 52 + 16 + 8 запаса. Шире 1295 px ссылки кончаются
