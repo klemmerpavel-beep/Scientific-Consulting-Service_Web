@@ -25,6 +25,7 @@ import {
   type StageStateKey,
   turnLabel,
 } from '../../../../components/cabinet/ui';
+import { curatorWorkLine } from '../../../../lib/cabinet/stage-state';
 import { SANS } from '../../../../components/cabinet/tokens';
 import {
   can,
@@ -44,6 +45,7 @@ import { daysPast, now as clockNow } from '../../../../lib/cabinet/clock';
 import ActionError from '../../../../components/cabinet/ActionError';
 import CommentList from '../../../../components/cabinet/CommentList';
 import { handoverOf, stageStateButtons } from '../../../../lib/cabinet/stage-state';
+import { curatorStageLine, pendingVersionsLine, staffStageTodo } from '../../../../lib/cabinet/stage-todo';
 import {
   PROJECT_STATUS_LABEL,
   type ProjectStatusKey,
@@ -73,33 +75,11 @@ export const dynamic = 'force-dynamic';
 
 /** Переходы, которые менеджер может выполнить с этого состояния. */
 
-/** Что делать куратору в этом состоянии этапа. */
-const STAFF_TODO: Record<StageStateKey, string> = {
-  NOT_STARTED:
-    'Этап не начат: назначьте куратора на работе и переведите этап в работу, когда он приступил.',
-  IN_PROGRESS:
-    'Работа идёт. Следите за сроком: если куратор не успевает, перенесите срок сейчас, а не в день сдачи.',
-  AWAITING_CLIENT:
-    'Ждём материалы от клиента. Если молчит дольше недели — напишите в переписке: причина остановки ему видна, но напоминание работает лучше.',
-  IN_APPROVAL:
-    'Клиент смотрит материалы. Замечания куратора на модерации опубликуйте: до этого клиент их не видит.',
-  DONE: 'Этап закрыт. Проверьте, что следующий начат и у него есть срок.',
-};
-
-/**
- * Подсказка закрытого последнего этапа: следующего нет, и совет проверить
- * его расходился с экраном работы — «Все этапы завершены» (решение Р-710).
+/*
+ * Подсказки «Что сделать сейчас» — по фактическому состоянию и ходу, в
+ * чистом модуле `lib/cabinet/stage-todo.ts` (решение Р-723; закрытый
+ * последний этап — Р-710, согласование без замечаний — Р-254).
  */
-const DONE_LAST =
-  'Все этапы закрыты: проверьте оплату и завершите работу в «Управлении работой».';
-
-/**
- * Подсказка согласования без замечаний на модерации. Прежде «опубликуйте
- * замечания» стояло на этапе всегда, и после публикации куратор искал на
- * экране то, чего уже нет (решение Р-254).
- */
-const IN_APPROVAL_CLEAR =
-  'Клиент смотрит материалы. Если он молчит дольше недели — напомните в переписке; согласовать этап за него можно кнопкой ниже.';
 
 /**
  * Сколько дней прошло с назначенного срока; до срока — ничего. День
@@ -108,6 +88,15 @@ const IN_APPROVAL_CLEAR =
  */
 const overdueDays = (dueOn: Date | null): number | null => daysPast(dueOn);
 
+
+// Ссылка в строке фактов — подчёркнута: одним цветом ссылка среди
+// подписей не отличается (Р-168, решение Р-723).
+const FACT_LINK = {
+  color: 'var(--pd-accent)',
+  textDecoration: 'underline',
+  textUnderlineOffset: 3,
+  textDecorationThickness: 1,
+} as const;
 
 // Ссылка на оферту — строчная, как в форме заявки: подпись переносится как
 // текст, а цель нажатия добирается до 44 пикселей отступом (Р-253).
@@ -238,6 +227,35 @@ export default async function StageScreen({
       ),
     0,
   );
+  // Версии куратора, ждущие публикации клиенту: строка фактов называет их
+  // и ведёт к первой на этом же экране (решение Р-723; публикация — Р-294).
+  const pendingVersions = forStaff
+    ? stage.materials.flatMap((material) => material.versions).filter((version) => version.moderation?.status === 'PENDING')
+    : [];
+  // «Что сделать сейчас» практике — по сдаче, возврату, материалу, версиям
+  // на публикации и просрочке (Р-723).
+  const todo = staffStageTodo({
+    state,
+    handedOver: handover === 'handed',
+    materials: stage.materials.length,
+    pendingVersions: pendingVersions.length,
+    pendingComments,
+    returnedUnacked: lastReturn !== undefined && stage.returnAckAt === null,
+    hasNext,
+    lateDays: late,
+  });
+  // Куратору первой строкой — чей ход с его стороны (Р-288, Р-329, Р-723).
+  const curatorLine = curatorStageLine({
+    state,
+    projectStatus: stage.project.status,
+    hasExpert: stage.project.expertId !== null,
+    handedOverAt: stage.handedOverAt,
+  });
+  // У сданного этапа приостановленной или закрытой работы первая строка —
+  // о работе, а пометка сдачи остаётся своей строкой «Этап сдан …: ход за
+  // менеджером» (Р-723).
+  const curatorWork = curatorWorkLine(stage.project.status);
+  const handedLine = `${turnLabel(state, 'expert', stage.project.expertId !== null, stage.handedOverAt)}.`;
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -276,16 +294,43 @@ export default async function StageScreen({
           блоком: на экране куратора и без них до четырёх блоков (решения
           Р-183, Р-281). Описание целиком: клиент решает о согласовании,
           зная, что входило в этап (Р-190, Р-286). */}
-      {/* Куратору — один блок «Что сделать сейчас»: задание, срок, причина
-          возврата, последние материалы клиента и сдача этапа менеджеру
-          (требование Э-05, решение Р-325). */}
+      {/* Куратору — один блок «Что сделать сейчас»: чей ход, описание этапа,
+          срок, причина возврата, последние материалы клиента и сдача этапа
+          менеджеру (требование Э-05, решение Р-325). Первая строка — ход со
+          стороны куратора; сданный этап — первой строкой с запиской и
+          отзывом сдачи (решение Р-723). */}
       {curatorView ? (
         <Card style={{ marginBottom: 24, borderColor: 'var(--pd-accent-edge)' }}>
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Что сделать сейчас
           </Heading>
+          {handover === 'handed' && stage.handedOverAt !== null ? (
+            <div style={{ marginBottom: 12 }}>
+              {curatorWork === null ? null : (
+                <Text style={{ marginBottom: 12, fontWeight: 600 }}>{curatorLine.text}</Text>
+              )}
+              <Notice tone="quiet" role="status">
+                {curatorWork === null ? curatorLine.text : handedLine}
+                {(stage.handoverNote ?? '').trim() === '' ? null : (
+                  <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>
+                    {stage.handoverNote}
+                  </span>
+                )}
+              </Notice>
+              {can(actor, 'STAGE_HAND_OVER', ref) && refusal === null ? (
+                <Form action={recallHandoverAction} inline style={{ marginTop: 12 }}>
+                  <input type="hidden" name="stageId" value={stage.id} />
+                  <Button tone="quiet">Отозвать сдачу</Button>
+                </Form>
+              ) : null}
+            </div>
+          ) : (
+            <Text style={{ marginBottom: 12, fontWeight: 600 }}>{curatorLine.text}</Text>
+          )}
+          {/* Описание этапа написано клиенту: «Нужен ваш выбор журнала» —
+              не задание куратору (Р-723). */}
           <Text muted size={13} style={{ marginBottom: 4 }}>
-            Задание
+            Описание этапа (его читает клиент)
           </Text>
           <Text size={15} style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>
             {(stage.summary ?? '').trim() === ''
@@ -346,24 +391,7 @@ export default async function StageScreen({
               ))}
             </ul>
           )}
-          {handover === 'handed' && stage.handedOverAt !== null ? (
-            <>
-              <Notice tone="quiet" role="status">
-                {`Этап сдан ${formatDay(stage.handedOverAt)}: ход за менеджером.`}
-                {(stage.handoverNote ?? '').trim() === '' ? null : (
-                  <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>
-                    {stage.handoverNote}
-                  </span>
-                )}
-              </Notice>
-              {can(actor, 'STAGE_HAND_OVER', ref) && refusal === null ? (
-                <Form action={recallHandoverAction} inline style={{ marginTop: 12 }}>
-                  <input type="hidden" name="stageId" value={stage.id} />
-                  <Button tone="quiet">Отозвать сдачу</Button>
-                </Form>
-              ) : null}
-            </>
-          ) : mayHandOver ? (
+          {handover === 'handed' ? null : mayHandOver ? (
             ownVersions === 0 ? (
               <Text muted size={13}>
                 Сдать этап менеджеру можно, когда к нему приложена ваша версия материала — загрузите её
@@ -513,14 +541,12 @@ export default async function StageScreen({
           <Heading level={2} size={3} style={{ marginBottom: 8 }}>
             Что сделать сейчас
           </Heading>
+          {/* Подсказка — по сдаче, возврату, материалу, версиям на
+              публикации и просрочке (решение Р-723). */}
           <Text style={{ marginBottom: 12 }}>
-            {state === 'IN_APPROVAL' && pendingComments === 0
-              ? IN_APPROVAL_CLEAR
-              : state === 'DONE' && !hasNext
-                ? DONE_LAST
-                : STAFF_TODO[state]}
+            {todo.text}
             {/* «Напишите в переписке» — ссылкой с заготовкой (УМ-09, Р-377). */}
-            {state === 'AWAITING_CLIENT' || (state === 'IN_APPROVAL' && pendingComments === 0) ? (
+            {todo.draft !== null ? (
               <>
                 {' '}
                 <a
@@ -582,6 +608,13 @@ export default async function StageScreen({
                 {pendingComments} {plural(pendingComments, 'замечание', 'замечания', 'замечаний')} на
                 модерации
               </span>
+            )}
+            {/* Версия на публикации стоит ниже формы перевода: ссылка ведёт к
+                ней на этом же экране (решение Р-723). */}
+            {pendingVersions.length === 0 ? null : (
+              <a href={`#version-${pendingVersions[0].id}`} style={FACT_LINK}>
+                {pendingVersionsLine(pendingVersions.length)}
+              </a>
             )}
           </div>
 
@@ -855,7 +888,9 @@ export default async function StageScreen({
         <Heading level={2} style={{ marginBottom: 12 }}>Материалы и версии</Heading>
         {stage.materials.length === 0 ? (
           <Text muted>
-            {mayUpload
+            {/* Куратору «приложите первый» — только когда ход за ним
+                (решение Р-723). */}
+            {mayUpload && !(curatorView && curatorLine.idle)
               ? 'Материалов по этапу пока нет — приложите первый.'
               : 'Материалов по этапу пока нет.'}
           </Text>
@@ -871,6 +906,8 @@ export default async function StageScreen({
                   {material.versions.map((version, index) => (
                     <li
                       key={version.id}
+                      // Якорь строки фактов «N версий ждут публикации» (Р-723).
+                      id={forStaff ? `version-${version.id}` : undefined}
                       style={{
                         borderTop: '1px solid var(--pd-divider)',
                         paddingTop: 16,

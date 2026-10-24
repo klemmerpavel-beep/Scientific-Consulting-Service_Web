@@ -28,17 +28,31 @@ const page = readFileSync(
   'utf8',
 );
 
-describe('подсказка закрытого последнего этапа (Р-710)', () => {
+describe('подсказка закрытого последнего этапа (Р-710)', async () => {
+  // Подсказки — в чистом модуле `stage-todo.ts` (решение Р-723): строка
+  // проверяется вызовом, а не по тексту экрана.
+  const { DONE_LAST, STAFF_TODO, staffStageTodo } = await import('../src/lib/cabinet/stage-todo.ts');
+  const done = (hasNext: boolean) =>
+    staffStageTodo({
+      state: 'DONE',
+      handedOver: false,
+      materials: 1,
+      pendingVersions: 0,
+      pendingComments: 0,
+      returnedUnacked: false,
+      hasNext,
+      lateDays: null,
+    }).text;
+
   it('у последнего этапа — своя строка', () => {
-    assert.match(
-      page,
-      /const DONE_LAST =\s*'Все этапы закрыты: проверьте оплату и завершите работу в «Управлении работой»\.';/u,
-    );
+    assert.equal(DONE_LAST, 'Все этапы закрыты: проверьте оплату и завершите работу в «Управлении работой».');
   });
 
   it('строка выбирается по тому, есть ли следующий этап', () => {
     assert.match(page, /const hasNext = forStaff && state === 'DONE' \? await hasNextStage\(actor, stage\) : false;/u);
-    assert.match(page, /state === 'DONE' && !hasNext\s*\?\s*DONE_LAST/u);
+    assert.match(page, /staffStageTodo\(\{[^}]*\bhasNext,/u);
+    assert.equal(done(false), DONE_LAST);
+    assert.equal(done(true), STAFF_TODO.DONE);
   });
 });
 
