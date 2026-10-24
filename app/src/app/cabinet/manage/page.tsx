@@ -604,7 +604,9 @@ export default async function ManageQueue({
       urgent: false,
       detail: row.client,
       todo: row.noExpert ? 'Завести план и назначить куратора' : 'Завести план — по шаблону или вручную',
-      href: `/cabinet/projects/${row.code}#manage`,
+      // Дело открывает «Управление работой» раскрытым: первая форма в нём —
+      // «Новый этап» и «Завести план по шаблону» (решение Р-743; Р-487).
+      href: `/cabinet/projects/${row.code}?manage=1#manage`,
     })),
     ...parts.noExpert.map((row) => ({
       key: `noexpert-${row.code}`,
@@ -615,7 +617,8 @@ export default async function ManageQueue({
       urgent: false,
       detail: row.client,
       todo: 'Назначить куратора',
-      href: `/cabinet/projects/${row.code}#manage`,
+      // Сразу на форме «Куратор», как кнопка под названием (Р-743; Р-487).
+      href: `/cabinet/projects/${row.code}?manage=1#manage-expert`,
     })),
     ...parts.lateLeads.map((lead) => ({
       key: `latelead-${lead.id}`,

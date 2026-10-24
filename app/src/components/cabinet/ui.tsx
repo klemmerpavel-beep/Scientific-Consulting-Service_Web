@@ -2473,6 +2473,7 @@ export function ProgressPanel({
   projectLate = false,
   projectLateDays = null,
   emptyTitle,
+  emptyTitleHref = null,
   approvalDueOn = null,
   approvalLate = false,
   staff = false,
@@ -2509,6 +2510,11 @@ export function ProgressPanel({
    * отменена», а не «План работы ещё составляется» (Р-742, Р-206).
    */
   emptyTitle?: string;
+  /**
+   * Заголовок пустого плана — ссылкой на форму «Новый этап» (практике
+   * действующей работы, Р-743): «Плана нет: заведите этапы…».
+   */
+  emptyTitleHref?: string | null;
   /**
    * Срок согласования текущего этапа — клиенту, вместо срока этапа: одна
    * дата, к которой ответить (решение Р-741). Практике не передаётся.
@@ -2551,6 +2557,7 @@ export function ProgressPanel({
   // из состояния, а не из текущего времени, — иначе снимок менялся бы ото
   // дня ко дню (решение Р-186).
   const mood: WaveMood = current === null && total > 0 ? 'done' : waiting ? 'waiting' : 'active';
+  const answer = action ?? panelAnswer(current, total, staff, projectStatus, turnViewer, hasExpert);
   return (
     <section
       className="cab-block"
@@ -2576,7 +2583,13 @@ export function ProgressPanel({
         >
           {current === null
             ? total === 0
-              ? (emptyTitle ?? 'План работы ещё составляется')
+              ? emptyTitleHref == null
+                ? (emptyTitle ?? 'План работы ещё составляется')
+                : (
+                    <a className="cab-mark" href={emptyTitleHref}>
+                      {emptyTitle}
+                    </a>
+                  )
               : 'Все этапы завершены'
             : `${stageLabel(current.state, staff)}: ${current.title}`}
         </span>
@@ -2604,28 +2617,32 @@ export function ProgressPanel({
           левого края. */}
       <WaveBar share={share} mood={mood} />
 
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-        {/* Фраза — ответ на вопрос, с которым сюда приходят, и набрана
-            антиквой, как лид на страницах сайта: она главнее строки
-            состояния над шкалой (решение Р-207). */}
-        <span
-          style={{
-            fontFamily: SERIF,
-            fontSize: 20,
-            fontWeight: 500,
-            lineHeight: 1.4,
-            letterSpacing: '-.005em',
-            color: 'var(--pd-ink)',
-          }}
-        >
-          {action ?? panelAnswer(current, total, staff, projectStatus, turnViewer, hasExpert)}
-        </span>
-        {actionHref == null ? null : (
-          <ButtonLink href={actionHref} tone="primary">
-            {actionLabel ?? 'Открыть этап'}
-          </ButtonLink>
-        )}
-      </div>
+      {/* Пустая фраза без кнопки — ряда нет: заголовок уже назвал и факт,
+          и шаг (практике работы без плана, решение Р-743). */}
+      {answer === '' && actionHref == null ? null : (
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Фраза — ответ на вопрос, с которым сюда приходят, и набрана
+              антиквой, как лид на страницах сайта: она главнее строки
+              состояния над шкалой (решение Р-207). */}
+          <span
+            style={{
+              fontFamily: SERIF,
+              fontSize: 20,
+              fontWeight: 500,
+              lineHeight: 1.4,
+              letterSpacing: '-.005em',
+              color: 'var(--pd-ink)',
+            }}
+          >
+            {answer}
+          </span>
+          {actionHref == null ? null : (
+            <ButtonLink href={actionHref} tone="primary">
+              {actionLabel ?? 'Открыть этап'}
+            </ButtonLink>
+          )}
+        </div>
+      )}
 
       {/* Абзац, а не блок: ссылка в строке текста подчёркнута (Р-168). */}
       {more == null ? null : (

@@ -530,12 +530,15 @@ export default async function ProjectScreen({
   // Работа без этапов — заголовок шкалы, ответ и пустой план одной
   // таблицей по роли и состоянию работы (решение Р-742): у закрытой —
   // «Работа завершена» и «Этапов у работы нет», у новой «план
-  // составляется» один раз, а ответ ведёт на «Что подготовить» (Р-564).
+  // составляется» один раз, а ответ ведёт на «Что подготовить» (Р-564);
+  // практике — «Плана нет» ссылкой на форму «Новый этап» (Р-743).
   const plan =
     stages.length === 0
       ? emptyPlan({
           viewer: forClient ? 'client' : forExpert ? 'curator' : 'practice',
           status: project.status,
+          // Форма «Новый этап» — тому, кто заводит план (Р-743; Р-487).
+          planHref: mayEditStages ? `/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage` : null,
           prepare:
             forClient && prepareCount !== null
               ? {
@@ -1024,6 +1027,7 @@ export default async function ProjectScreen({
           projectLate={practice ? workLateDays !== null : current !== null && daysPast(project.dueOn) !== null}
           projectLateDays={workLateDays}
           emptyTitle={plan?.title}
+          emptyTitleHref={plan?.titleHref}
           approvalDueOn={formatDate(approvalDue)}
           approvalLate={daysPast(approvalDue) !== null}
           staff={staff}
