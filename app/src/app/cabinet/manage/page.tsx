@@ -453,7 +453,10 @@ export default async function ManageQueue({
       title: row.title,
       mark: `${row.count} ${plural(row.count, 'непрочитанное', 'непрочитанных', 'непрочитанных')}`,
       urgent: false,
-      detail: null,
+      // Клиент — у каждого дела по работе: у менеджера несколько работ с
+      // одним названием, и дело без клиента не говорило, какая из них
+      // (решение Р-721).
+      detail: row.client,
       todo: 'Ответить клиенту',
       href: `/cabinet/projects/${row.code}/messages`,
     })),
@@ -464,7 +467,7 @@ export default async function ManageQueue({
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: `${row.count} ${plural(row.count, 'замечание', 'замечания', 'замечаний')} на модерации`,
       urgent: false,
-      detail: row.material,
+      detail: `${row.material} · ${row.client}`,
       todo: 'Опубликовать или отклонить — до этого клиент их не видит',
       // Замечание вне этапа разбирается на «Материалах работы», у своего
       // материала (решение Р-284).
@@ -480,7 +483,7 @@ export default async function ManageQueue({
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: 'куратор сдал этап',
       urgent: false,
-      detail: `сдан ${formatDay(row.handedOverAt)}`,
+      detail: `сдан ${formatDay(row.handedOverAt)} · ${row.client}`,
       todo: 'Посмотреть материалы и записку куратора: на согласование или вернуть куратору',
       href: row.href,
     })),
@@ -491,7 +494,7 @@ export default async function ManageQueue({
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: 'этап принят',
       urgent: false,
-      detail: null,
+      detail: row.client,
       todo: row.nextTitle === null ? 'Все этапы приняты — завершить работу' : `Запустить следующий этап «${row.nextTitle}»`,
       href: row.href,
     })),
@@ -517,7 +520,7 @@ export default async function ManageQueue({
       title: row.title,
       mark: 'куратор без доступа',
       urgent: false,
-      detail: row.expert,
+      detail: `${row.expert} · ${row.client}`,
       todo: 'Без договора поручения куратор не видит материалов: договор отмечает руководитель',
       href: `/cabinet/projects/${row.code}#manage`,
     })),
@@ -572,7 +575,7 @@ export default async function ManageQueue({
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: `${row.count} ${plural(row.count, 'версия', 'версии', 'версий')} куратора на публикации`,
       urgent: false,
-      detail: row.material,
+      detail: `${row.material} · ${row.client}`,
       todo: 'Опубликовать клиенту или не публиковать — до этого клиент их не видит',
       href:
         row.stageId === null
@@ -613,10 +616,11 @@ export default async function ManageQueue({
       title: check.stage === null ? check.project.title : `${check.stage.title} · ${check.project.title}`,
       mark: check.kind === 'CONTRACT_BY_MANAGER' ? 'проверьте договор' : check.kind === 'ACT_AFTER_REOPEN' ? 'этап возвращён в работу' : 'этап принят',
       urgent: false,
+      // Клиент вместо кода работы: код на экран не выводится (Р-189, Р-721).
       detail:
         check.kind === 'CONTRACT_BY_MANAGER' && check.project.contract !== null
-          ? `${check.project.code}, ${formatAmount(check.project.contract.totalAmount)}`
-          : null,
+          ? `${check.project.client.fullName}, ${formatAmount(check.project.contract.totalAmount)}`
+          : check.project.client.fullName,
       todo: CHECK_TITLE[check.kind],
       href: `/cabinet/projects/${check.project.code}/payments`,
     })),
@@ -631,7 +635,14 @@ export default async function ManageQueue({
         title: clip(row.text, 80),
         mark: late === null ? `поручение до ${formatDate(row.dueOn)}` : `поручение просрочено на ${late} ${plural(late, 'день', 'дня', 'дней')}`,
         urgent: late !== null,
-        detail: row.project === null ? null : (row.project.title ?? row.project.code),
+        // Работа и клиент — пока исполнитель её видит; иначе работа не
+        // называется и код на экран не выводится (Р-420, Р-721).
+        detail:
+          row.project === null
+            ? null
+            : row.project.title === null
+              ? 'работа вам недоступна'
+              : `${row.project.title} · ${row.project.client}`,
         todo: 'Отметить «в работе» или «сделано»',
         href: '/cabinet/assignments',
       };
@@ -645,7 +656,7 @@ export default async function ManageQueue({
         title: `Поручение просрочено: ${row.assignee.fullName}`,
         mark: late === null ? 'срок сегодня' : `просрочено на ${late} ${plural(late, 'день', 'дня', 'дней')}`,
         urgent: true,
-        detail: clip(row.text, 80),
+        detail: row.project === null ? clip(row.text, 80) : `${clip(row.text, 80)} · ${row.project.client.fullName}`,
         todo: 'Узнать у сотрудника, перенести срок или отозвать поручение',
         href: '/cabinet/manage/assignments',
       };
@@ -658,7 +669,7 @@ export default async function ManageQueue({
       title: row.title,
       mark: `${row.manager === null ? 'заявка' : row.manager} · ждёт ${row.waitDays} ${plural(row.waitDays, 'день', 'дня', 'дней')}`,
       urgent: false,
-      detail: null,
+      detail: row.client,
       todo: row.todo,
       href: row.href,
     })),

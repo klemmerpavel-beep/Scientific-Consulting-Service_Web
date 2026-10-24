@@ -32,6 +32,8 @@ export interface ControlItem {
   readonly title: string;
   /** Менеджер работы; у заявки — `null`. */
   readonly manager: string | null;
+  /** Клиент работы — в пояснении дела; у заявки — `null` (решение Р-721). */
+  readonly client: string | null;
   /** С какого мгновения ждёт. */
   readonly since: Date;
   /** Сколько календарных дней ждёт. */
@@ -58,7 +60,9 @@ export async function controlItems(actor: Actor, at: Date = clockNow()): Promise
   // Грубый отбор по дате — заведомо раньше срока; точный — по календарю.
   const before = new Date(today.getTime() - term * DAY);
   const foreign = { managerId: { not: actor.id }, status: { in: ['ACTIVE' as const, 'PAUSED' as const] } };
-  const work = { select: { code: true, title: true, manager: { select: { fullName: true } } } };
+  const work = {
+    select: { code: true, title: true, manager: { select: { fullName: true } }, client: { select: { fullName: true } } },
+  };
 
   const [messages, comments, versions, leads, handed] = await Promise.all([
     prisma.message.findMany({
@@ -114,6 +118,7 @@ export async function controlItems(actor: Actor, at: Date = clockNow()): Promise
       kind: 'client',
       title: message.project.title,
       manager: message.project.manager.fullName,
+      client: message.project.client.fullName,
       since: message.createdAt,
       href: `/cabinet/projects/${message.project.code}/messages`,
       todo: 'Клиент ждёт ответа — ответить в переписке',
@@ -131,6 +136,7 @@ export async function controlItems(actor: Actor, at: Date = clockNow()): Promise
       kind: 'moderation',
       title: material.project.title,
       manager: material.project.manager.fullName,
+      client: material.project.client.fullName,
       since: row.createdAt,
       href:
         material.stageId === null
@@ -146,6 +152,7 @@ export async function controlItems(actor: Actor, at: Date = clockNow()): Promise
       kind: 'lead',
       title: `Заявка${lead.name === null ? '' : `: ${lead.name}`}`,
       manager: null,
+      client: null,
       since: lead.statusChangedAt,
       href: `/cabinet/manage/leads/${lead.id}`,
       todo: 'Заявка без ответа — разобрать',
@@ -158,6 +165,7 @@ export async function controlItems(actor: Actor, at: Date = clockNow()): Promise
       kind: 'handover',
       title: `${stage.title} · ${stage.project.title}`,
       manager: stage.project.manager.fullName,
+      client: stage.project.client.fullName,
       since: stage.handedOverAt!,
       href: `/cabinet/stages/${stage.id}`,
       todo: 'Куратор сдал этап, решения нет — на согласование или вернуть куратору',

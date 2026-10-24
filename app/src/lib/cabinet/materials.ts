@@ -968,6 +968,8 @@ export interface PendingComment {
   readonly projectTitle: string;
   readonly stageTitle: string;
   readonly material: string;
+  /** Клиент работы — в пояснении дела «Требует внимания» (решение Р-721). */
+  readonly client: string;
   readonly count: number;
 }
 
@@ -1014,7 +1016,7 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
               title: true,
               stageId: true,
               stage: { select: { id: true, title: true } },
-              project: { select: { title: true, code: true } },
+              project: { select: { title: true, code: true, client: { select: { fullName: true } } } },
             },
           },
         },
@@ -1039,6 +1041,7 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
         projectTitle: material.project.title,
         stageTitle: material.stage?.title ?? material.title,
         material: material.title,
+        client: material.project.client.fullName,
         count: 1,
       });
     } else {
@@ -1071,7 +1074,7 @@ export async function pendingVersions(actor: Actor): Promise<PendingComment[]> {
               id: true,
               title: true,
               stage: { select: { id: true, title: true } },
-              project: { select: { title: true, code: true } },
+              project: { select: { title: true, code: true, client: { select: { fullName: true } } } },
             },
           },
         },
@@ -1093,6 +1096,7 @@ export async function pendingVersions(actor: Actor): Promise<PendingComment[]> {
             projectTitle: material.project.title,
             stageTitle: material.stage?.title ?? material.title,
             material: material.title,
+            client: material.project.client.fullName,
             count: 1,
           }
         : { ...seen, count: seen.count + 1 },

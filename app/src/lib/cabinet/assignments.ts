@@ -152,10 +152,10 @@ const view = {
 } as const;
 
 /**
- * Открытые поручения исполнителя — его дела. Название работы — только
- * пока исполнитель её видит: после смены куратора, передачи работы другому
- * менеджеру или без договора поручения остаётся код, как в письмах куратору
- * без договора (Р-301, решение Р-420).
+ * Открытые поручения исполнителя — его дела. Название работы и клиент —
+ * только пока исполнитель её видит: после смены куратора, передачи работы
+ * другому менеджеру или без договора поручения остаётся код — для адреса,
+ * на экран он не выводится (Р-301, решения Р-420, Р-721).
  */
 export async function myAssignments(actor: Actor) {
   if (actor.status !== 'ACTIVE' || (actor.role !== 'MANAGER' && actor.role !== 'EXPERT')) return [];
@@ -164,16 +164,31 @@ export async function myAssignments(actor: Actor) {
     orderBy: [{ dueOn: 'asc' }, { createdAt: 'asc' }],
     select: {
       ...view,
-      project: { select: { id: true, code: true, title: true, clientId: true, managerId: true, expertId: true } },
+      project: {
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          clientId: true,
+          managerId: true,
+          expertId: true,
+          client: { select: { fullName: true } },
+        },
+      },
     },
   });
-  return rows.map(({ project, ...row }) => ({
-    ...row,
-    project:
-      project === null
-        ? null
-        : { code: project.code, title: can(actor, 'PROJECT_VIEW', project) ? project.title : null },
-  }));
+  return rows.map(({ project, ...row }) => {
+    if (project === null) return { ...row, project: null };
+    const visible = can(actor, 'PROJECT_VIEW', project);
+    return {
+      ...row,
+      project: {
+        code: project.code,
+        title: visible ? project.title : null,
+        client: visible ? project.client.fullName : null,
+      },
+    };
+  });
 }
 
 /** Сколько закрытых поручений показывать руководителю: последние по дате. */
@@ -214,7 +229,8 @@ export async function overdueAssignments(actor: Actor, at: Date = clockNow()) {
   return prisma.assignment.findMany({
     where: { status: { in: OPEN }, dueOn: { lt: moscowToday(at) } },
     orderBy: { dueOn: 'asc' },
-    select: view,
+    // Клиент работы — в пояснении дела руководителя (решение Р-721).
+    select: { ...view, project: { select: { code: true, title: true, client: { select: { fullName: true } } } } },
   });
 }
 

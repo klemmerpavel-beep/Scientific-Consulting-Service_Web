@@ -126,7 +126,10 @@ export async function openChecks(actor: Actor, projectId?: string) {
       kind: true,
       createdAt: true,
       stage: { select: { title: true } },
-      project: { select: { code: true, title: true, contract: { select: { totalAmount: true } } } },
+      // Клиент — в пояснении дела вместо кода работы (решения Р-721, Р-189).
+      project: {
+        select: { code: true, title: true, client: { select: { fullName: true } }, contract: { select: { totalAmount: true } } },
+      },
     },
   });
 }

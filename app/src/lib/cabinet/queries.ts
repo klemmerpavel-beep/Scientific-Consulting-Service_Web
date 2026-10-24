@@ -1457,11 +1457,13 @@ export async function pendingReview(
  */
 export async function todayItems(actor: Actor) {
   const empty = {
-    accepted: [] as { stageTitle: string; projectTitle: string; nextTitle: string | null; href: string }[],
-    handedOver: [] as { stageTitle: string; projectTitle: string; handedOverAt: Date; href: string }[],
+    // Клиент — в пояснении дела: одноимённые работы различаются по нему
+    // (решение Р-721).
+    accepted: [] as { stageTitle: string; projectTitle: string; client: string; nextTitle: string | null; href: string }[],
+    handedOver: [] as { stageTitle: string; projectTitle: string; client: string; handedOverAt: Date; href: string }[],
     noPlan: [] as { code: string; title: string; client: string }[],
     noExpert: [] as { code: string; title: string; client: string }[],
-    noNda: [] as { code: string; title: string; expert: string }[],
+    noNda: [] as { code: string; title: string; expert: string; client: string }[],
     ndaWaiting: [] as { id: string; fullName: string; requestedAt: Date | null; works: number }[],
     week: [] as { key: string; title: string; dueOn: Date; href: string; turn: string | null }[],
     lateLeads: [] as { id: string; name: string | null; createdAt: Date }[],
@@ -1518,6 +1520,7 @@ export async function todayItems(actor: Actor) {
         out.accepted.push({
           stageTitle: done.title,
           projectTitle: project.title,
+          client: project.client.fullName,
           nextTitle: next?.title ?? null,
           href: next === null ? `/cabinet/projects/${project.code}/status?to=COMPLETED` : `/cabinet/stages/${next.id}`,
         });
@@ -1530,6 +1533,7 @@ export async function todayItems(actor: Actor) {
         out.handedOver.push({
           stageTitle: stage.title,
           projectTitle: project.title,
+          client: project.client.fullName,
           handedOverAt: stage.handedOverAt,
           href: `/cabinet/stages/${stage.id}`,
         });
@@ -1550,7 +1554,7 @@ export async function todayItems(actor: Actor) {
       project.expert !== null &&
       (project.expert.expertProfile?.ndaSignedAt ?? null) === null
     ) {
-      out.noNda.push({ code: project.code, title: project.title, expert: project.expert.fullName });
+      out.noNda.push({ code: project.code, title: project.title, expert: project.expert.fullName, client: project.client.fullName });
     }
     for (const stage of stages) {
       if (stage.state !== 'DONE' && stage.dueOn !== null && stage.dueOn >= today && stage.dueOn <= inWeek) {

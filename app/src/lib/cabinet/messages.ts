@@ -332,7 +332,7 @@ export async function unreadByProject(
  */
 export async function unreadInbox(
   actor: Actor,
-): Promise<{ code: string; title: string; count: number }[]> {
+): Promise<{ code: string; title: string; client: string; count: number }[]> {
   const scope = scopeProjects(actor);
   if (scope === null) return [];
   const grouped = await prisma.message.groupBy({
@@ -352,7 +352,9 @@ export async function unreadInbox(
 
   const projects = await prisma.project.findMany({
     where: { id: { in: rows.map((row) => row.projectId) } },
-    select: { id: true, code: true, title: true },
+    // Клиент — в пояснении дела: одноимённые работы различаются по нему
+    // (решение Р-721).
+    select: { id: true, code: true, title: true, client: { select: { fullName: true } } },
   });
   const byId = new Map(projects.map((project) => [project.id, project]));
 
@@ -361,7 +363,7 @@ export async function unreadInbox(
       const project = byId.get(row.projectId);
       return project === undefined
         ? []
-        : [{ code: project.code, title: project.title, count: row.count }];
+        : [{ code: project.code, title: project.title, client: project.client.fullName, count: row.count }];
     })
     // Последний ключ сортировки — код работы: при равном числе
     // непрочитанных порядок иначе задавался бы группировкой в базе и
