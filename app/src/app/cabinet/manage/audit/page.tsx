@@ -33,9 +33,14 @@ import {
   formatMoment,
   journalActions,
   journalActors,
+  journalWorks,
 } from '../../../../lib/cabinet/journals';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
+
+// Работа — ссылкой в строке текста ячейки: цель нажатия добирается
+// отступом, строка не раздвигается (Р-679; решение Р-758).
+const WORK_LINK = { padding: '14px 0' } as const;
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +86,7 @@ export default async function AuditScreen({
   const [actions, actors] = await Promise.all([journalActions(actor), journalActors(actor)]);
   const events = files ? [] : await auditEvents(actor, filter);
   const accesses = files ? await fileAccessEvents(actor, filter) : [];
+  const works = await journalWorks(actor, events.map((event) => event.projectId));
 
   const exportHref = `/cabinet/manage/audit/export?${new URLSearchParams({
     kind: files ? 'files' : 'actions',
@@ -205,38 +211,56 @@ export default async function AuditScreen({
         <Empty title="Записей нет">За выбранный период действий не совершалось.</Empty>
       ) : (
         <TableCard label="Действия в кабинете">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980 }}>
             <thead>
               <tr>
                 <th style={TABLE_HEAD} scope="col">Когда</th>
                 <th style={TABLE_HEAD} scope="col">Кто</th>
                 <th style={TABLE_HEAD} scope="col">Действие</th>
                 <th style={TABLE_HEAD} scope="col">Объект</th>
+                <th style={TABLE_HEAD} scope="col">Работа</th>
                 <th style={TABLE_HEAD} scope="col">Подробности</th>
               </tr>
             </thead>
             <tbody>
-              {events.map((event) => (
-                <tr key={event.id}>
-                  <td style={TABLE_CELL}>{formatMoment(event.occurredAt)}</td>
-                  <td style={TABLE_CELL}>
-                    {event.actor?.fullName ?? 'система'}
-                    <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
-                      {event.actorRole === null ? '' : roleLabel(event.actorRole)}
-                    </div>
-                  </td>
-                  {/* Машинный код остаётся в выгрузке CSV — там он по
-                      назначению; на экране стоит название (решение Р-179). */}
-                  <td style={TABLE_CELL}>{actionLabel(event.action)}</td>
-                  <td style={TABLE_CELL}>
-                    {objectLabel(event.objectType)}
-                    <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{event.objectId ?? ''}</div>
-                  </td>
-                  <td style={{ ...TABLE_CELL, maxWidth: 320, wordBreak: 'break-word' }}>
-                    {detailsLabel(event.payload, event.action)}
-                  </td>
-                </tr>
-              ))}
+              {events.map((event) => {
+                const work = event.projectId === null ? undefined : works.get(event.projectId);
+                return (
+                  <tr key={event.id}>
+                    <td style={TABLE_CELL}>{formatMoment(event.occurredAt)}</td>
+                    <td style={TABLE_CELL}>
+                      {event.actor?.fullName ?? 'система'}
+                      <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                        {event.actorRole === null ? '' : roleLabel(event.actorRole)}
+                      </div>
+                    </td>
+                    {/* Машинный код остаётся в выгрузке CSV — там он по
+                        назначению; на экране стоит название (решение Р-179).
+                        Так же и идентификатор объекта: на экране — вид
+                        объекта, идентификатор — в выгрузке (Р-758). */}
+                    <td style={TABLE_CELL}>{actionLabel(event.action)}</td>
+                    <td style={TABLE_CELL}>{objectLabel(event.objectType)}</td>
+                    {/* Работа события — названием и клиентом, ссылкой на
+                        карточку: одноимённых работ десятки (Р-245), код на
+                        экран не выводится (Р-189; решение Р-758). */}
+                    <td style={TABLE_CELL}>
+                      {work === undefined ? (
+                        '—'
+                      ) : (
+                        <>
+                          <a href={`/cabinet/projects/${work.code}`} style={WORK_LINK}>
+                            {work.title}
+                          </a>
+                          <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>клиент {work.client}</div>
+                        </>
+                      )}
+                    </td>
+                    <td style={{ ...TABLE_CELL, maxWidth: 320, wordBreak: 'break-word' }}>
+                      {detailsLabel(event.payload, event.action)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </TableCard>

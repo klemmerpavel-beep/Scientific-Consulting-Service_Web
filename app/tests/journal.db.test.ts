@@ -21,7 +21,7 @@ describe('журнал действий', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
   const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
   const { record } = await import('../src/lib/cabinet/audit.ts');
-  const { auditEvents, journalActors } = await import('../src/lib/cabinet/journals.ts');
+  const { auditEvents, journalActors, journalWorks } = await import('../src/lib/cabinet/journals.ts');
 
   const stamp = Date.now();
   const ACTION = `TEST_ACTION_${stamp}`;
@@ -42,7 +42,20 @@ describe('журнал действий', { skip: !enabled }, async () => {
     const manager = await prisma.user.create({
       data: { email: `jr-mgr-${stamp}@example.org`, fullName: 'Куратор', role: 'MANAGER' },
     });
-    Object.assign(ids, { boss: boss.id, manager: manager.id });
+    const type = await prisma.serviceType.create({ data: { code: `jr-type-${stamp}`, name: 'Журнал' } });
+    const client = await prisma.clientProfile.create({
+      data: { fullName: `Заказчик журнала ${stamp}`, normalizedName: `jr-client-${stamp}` },
+    });
+    const project = await prisma.project.create({
+      data: {
+        code: `PD-JR-${stamp}`,
+        clientId: client.id,
+        serviceTypeId: type.id,
+        title: 'Сопровождение диссертационного исследования',
+        managerId: manager.id,
+      },
+    });
+    Object.assign(ids, { boss: boss.id, manager: manager.id, type: type.id, client: client.id, project: project.id });
   });
 
   after(async () => {
@@ -50,6 +63,9 @@ describe('журнал действий', { skip: !enabled }, async () => {
       where: { actorId: { in: [ids.boss!, ids.manager!] } },
     });
     await prisma.auditEvent.deleteMany({ where: { action: ACTION } });
+    await prisma.project.deleteMany({ where: { id: ids.project } });
+    await prisma.clientProfile.deleteMany({ where: { id: ids.client } });
+    await prisma.serviceType.deleteMany({ where: { id: ids.type } });
     await prisma.user.deleteMany({ where: { id: { in: [ids.boss!, ids.manager!] } } });
     await prisma.$disconnect();
   });
@@ -111,6 +127,29 @@ describe('журнал действий', { skip: !enabled }, async () => {
   it('перечень авторов journalActors называет тех, кто писал', async () => {
     const people = await journalActors(actorOf(ids.boss!, 'HEAD'));
     assert.ok(people.some((person) => person.id === ids.manager), 'автор записей не назван');
+  });
+
+  it('работа события — названием и клиентом по projectId, код — только для адреса', async () => {
+    // Экран журнала печатал вместо работы идентификатор объекта
+    // (решение Р-758).
+    await record(actorOf(ids.manager!, 'MANAGER'), {
+      action: ACTION,
+      objectType: 'Contract',
+      objectId: 'with-work',
+      projectId: ids.project!,
+    });
+    const rows = await auditEvents(actorOf(ids.boss!, 'HEAD'), { action: ACTION });
+    const row = rows.find((item) => item.objectId === 'with-work');
+    assert.equal(row?.projectId, ids.project);
+    const works = await journalWorks(actorOf(ids.boss!, 'HEAD'), [row!.projectId, null, `c${'0'.repeat(24)}`]);
+    assert.deepEqual([...works.entries()], [
+      [
+        ids.project,
+        { code: `PD-JR-${stamp}`, title: 'Сопровождение диссертационного исследования', client: `Заказчик журнала ${stamp}` },
+      ],
+    ]);
+    assert.equal((await journalWorks(actorOf(ids.boss!, 'HEAD'), [null])).size, 0);
+    await assert.rejects(() => journalWorks(actorOf(ids.manager!, 'MANAGER'), [ids.project!]), AccessDenied);
   });
 
   it('журнал закрыт всем, кроме руководителя', async () => {

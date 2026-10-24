@@ -111,6 +111,37 @@ export async function auditEvents(actor: Actor, filter: JournalFilter = {}) {
   });
 }
 
+/** Работа события на экране журнала: код — только для адреса ссылки (Р-189). */
+export interface JournalWork {
+  readonly code: string;
+  readonly title: string;
+  readonly client: string;
+}
+
+/**
+ * Работы событий журнала — названием и клиентом, по `projectId` записи.
+ *
+ * Событие хранит работу идентификатором, и экран печатал вместо неё
+ * идентификатор объекта: по каким работам «Комментарий опубликован» или
+ * «Договор сохранён», было не видно, а одноимённых работ десятки (Р-245).
+ * Выгрузка CSV этим не пользуется: в ней идентификаторы остаются
+ * (решение Р-758). Связи с работой у записи журнала в схеме нет —
+ * работы добираются одним запросом по идентификаторам страницы.
+ */
+export async function journalWorks(
+  actor: Actor,
+  projectIds: readonly (string | null)[],
+): Promise<Map<string, JournalWork>> {
+  ensure(actor, 'AUDIT_VIEW');
+  const ids = [...new Set(projectIds.filter((id): id is string => id !== null))];
+  if (ids.length === 0) return new Map();
+  const rows = await prisma.project.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, code: true, title: true, client: { select: { fullName: true } } },
+  });
+  return new Map(rows.map((row) => [row.id, { code: row.code, title: row.title, client: row.client.fullName }]));
+}
+
 export async function fileAccessEvents(actor: Actor, filter: JournalFilter = {}) {
   ensure(actor, 'AUDIT_VIEW');
 
