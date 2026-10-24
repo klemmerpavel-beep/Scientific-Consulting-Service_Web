@@ -43,6 +43,7 @@ import {
   CLOSED_FOR_PRACTICE,
   can,
   contributionRefusal,
+  staffClientLine,
   staffExpertLine,
   curatorLine,
   EXPERT_ROLE_LABEL,
@@ -777,6 +778,9 @@ export default async function ProjectScreen({
       : { term: 'Тип сопровождения', value: project.serviceType.name },
     project.topic === null || project.topic === project.title ? null : { term: 'Тема', value: project.topic },
     { term: 'Срок работы', value: formatDate(project.dueOn) ?? 'не назначен' },
+    // Клиент — практике: прежде его ФИО стояло только в свёрнутом
+    // «Управлении работой» внизу экрана (решение Р-748).
+    practice ? { term: 'Клиент', value: project.client.fullName } : null,
     // Менеджер — с регалиями, но только практике: клиенту имя менеджера не
     // показывается (Э-01, ответ ОЭ-3б). Куратор — регалиями без ФИО и
     // контактов; пустые части не выводятся (требование Т-11, Р-297).
@@ -1063,7 +1067,9 @@ export default async function ProjectScreen({
           more={more}
           waiting={forClient ? first !== null : undefined}
           projectStatus={project.status}
-          // Исполнитель под шкалой — у практики (требование М-16, ОМ-23).
+          // Клиент и исполнитель под шкалой — у практики: одноимённые
+          // работы различаются без раскрытия свёрток (Р-748; М-16, ОМ-23).
+          client={practice ? staffClientLine(project.client.fullName) : null}
           executor={
             actor.role === 'MANAGER' || actor.role === 'HEAD'
               ? staffExpertLine(project.expert, project.expertNameRaw)

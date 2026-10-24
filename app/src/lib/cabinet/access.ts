@@ -756,3 +756,12 @@ export function staffExpertLine(
   const raw = (expertNameRaw ?? '').trim();
   return raw === '' ? 'куратор не назначен' : `куратор — ${raw}`;
 }
+
+/**
+ * Клиент работы для практики — тем же приёмом, что куратор под шкалой
+ * (решение Р-748; Р-298): одноимённые работы различаются, не раскрывая
+ * «Управление работой». Клиенту не показывается.
+ */
+export function staffClientLine(fullName: string): string {
+  return `клиент — ${fullName}`;
+}

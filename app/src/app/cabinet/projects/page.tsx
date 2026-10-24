@@ -771,6 +771,10 @@ export default async function ProjectsScreen({
             // захода внутрь: сколько этапов сделано, сколько приложено
             // материалов, есть ли непрочитанное (решение Р-169).
             const facts = [
+              // ФИО клиента — первым: одноимённые работы различаются им, а в
+              // конце строки после «чек-лист 0 из 11» его не находили
+              // (решение Р-748; Р-721).
+              forClient ? null : project.client.fullName,
               project.stages.length === 0
                 ? null
                 : `${done} из ${project.stages.length} ${plural(project.stages.length, 'этапа', 'этапов', 'этапов')}`,
@@ -789,7 +793,6 @@ export default async function ProjectsScreen({
                   ? null
                   : `чек-лист ${marks.done} из ${marks.total}`;
               })(),
-              forClient ? null : project.client.fullName,
               // Исполнитель на виду у практики (требование М-16, ОМ-23);
               // руководителю — менеджер и куратор ссылками ниже (РК-03).
               forClient || forExpert || forHead ? null : staffExpertLine(project.expert, project.expertNameRaw),

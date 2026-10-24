@@ -2485,6 +2485,7 @@ export function ProgressPanel({
   projectStatus,
   turnViewer,
   hasExpert,
+  client,
   executor,
   style,
 }: {
@@ -2543,6 +2544,8 @@ export function ProgressPanel({
   /** Кто смотрит и назначен ли эксперт — для подписи хода (Р-288). */
   turnViewer?: TurnViewer;
   hasExpert?: boolean;
+  /** Клиент работы — практике, в нижней строке перед куратором (Р-748). */
+  client?: string | null;
   /** Исполнитель работы — практике, в нижней строке (М-16, Р-298). */
   executor?: string | null;
   style?: CSSProperties;
@@ -2686,6 +2689,7 @@ export function ProgressPanel({
               : ''}
           </span>
         )}
+        {client == null ? null : <span>{client}</span>}
         {executor == null ? null : <span>{executor}</span>}
       </div>
     </section>
