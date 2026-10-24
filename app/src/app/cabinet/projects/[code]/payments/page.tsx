@@ -36,6 +36,7 @@ import {
   nextTrancheStatuses,
   STATUS_LABEL,
   type TrancheStatus,
+  writtenOffBeyond,
 } from '../../../../../lib/cabinet/money';
 import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
@@ -119,6 +120,9 @@ export default async function PaymentsScreen({
   // Просроченный платёж — тем же условием, что «Должники» и плитка
   // «Сводки» (требование РК-10, решение Р-345).
   const today = moscowToday(clockNow());
+  // Списанное сверх остатка договора: видит только ведущий оплаты — у
+  // остальных списанных траншей в выборке нет (Р-251, Р-700).
+  const beyond = money === null || contract === null ? 0n : writtenOffBeyond(money.adjustment, contract.tranches);
   const progress =
     money === null || money.contractTotal === 0n
       ? 0
@@ -202,7 +206,8 @@ export default async function PaymentsScreen({
                   Корректировка − Получено = Осталось оплатить» (требования
                   Т-19, М-22, О-4, ОМ-30, решение Р-315). Одна арифметика для
                   всех ролей: ведущему оплаты она названа списанием по
-                  траншам (улучшение УМ-07, решение Р-376). */}
+                  траншам (улучшение УМ-07, решение Р-376); списанное сверх
+                  остатка договора названо числом (решение Р-700). */}
               {money.adjustment === 0n ? null : (
                 <div>
                   <Mono>{money.adjustment > 0n ? 'Корректировка суммы' : 'Оплачено сверх суммы договора'}</Mono>
@@ -211,7 +216,11 @@ export default async function PaymentsScreen({
                   </Text>
                   {money.adjustment > 0n && !money.cancelled ? (
                     <Text muted size={13} style={{ marginTop: 4 }}>
-                      {mayEdit ? 'списано по траншам ниже' : 'сумма к оплате изменена по договорённости'}
+                      {!mayEdit
+                        ? 'сумма к оплате изменена по договорённости'
+                        : beyond > 0n
+                          ? `списано по траншам ниже в пределах остатка договора; ещё ${formatAmount(beyond)} сверх договора долгом не были`
+                          : 'списано по траншам ниже'}
                     </Text>
                   ) : null}
                 </div>
@@ -565,6 +574,7 @@ export default async function PaymentsScreen({
                     <Field
                       label="Название"
                       name="title"
+                      maxLength={300}
                       scope="contract"
                       placeholder="Договор № Д-2026-001"
                     />
@@ -582,10 +592,13 @@ export default async function PaymentsScreen({
             <Block>
               <Heading level={2} size={3}>Вознаграждение куратора</Heading>
               <Card style={{ marginTop: 12 }}>
+                {/* Маржа выше уже показана числом: текст не спорит с ней, а
+                    говорит, почему начислений нет (решение Р-701). */}
                 {payouts.length === 0 ? (
                   <Text muted>
-                    Начислений нет. У исторических проектов куратор не указан, и маржа равна
-                    сумме договора.
+                    {project.expertId !== null
+                      ? 'Начислений нет: вознаграждение куратора ещё не начислено и в марже выше не учтено.'
+                      : 'Начислений нет: куратор у работы не указан.'}
                   </Text>
                 ) : (
                   <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>

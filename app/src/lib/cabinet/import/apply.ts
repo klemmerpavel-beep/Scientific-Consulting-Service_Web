@@ -30,6 +30,7 @@ import {
   erasedKey,
   erasedTwin,
   normalizeName,
+  normalizeTypeAlias,
   parseBook,
   signatureBase,
   type IssueCode,
@@ -451,7 +452,16 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
   for (const color of await prisma.importColorMap.findMany()) {
     if (color.mapsTo in STATUS_LABEL) fills[color.argb.toUpperCase()] = color.mapsTo as LegacyStatus;
   }
-  const book = parseBook(readWorkbook(input.bytes), fills);
+  // Исторические написания — тоже из справочника: прежде их только
+  // записывали и показывали, а разбор их не читал (решение Р-657).
+  const aliases = new Map(
+    (
+      await prisma.serviceTypeAlias.findMany({
+        select: { alias: true, serviceType: { select: { code: true } } },
+      })
+    ).map((alias) => [normalizeTypeAlias(alias.alias), alias.serviceType.code]),
+  );
+  const book = parseBook(readWorkbook(input.bytes), fills, aliases);
   if (book.rows.length === 0) {
     throw new ImportError('EMPTY_HEADER', 'В книге не нашлось ни одной содержательной строки.');
   }
@@ -960,7 +970,17 @@ export async function applyBatch(
   const types = await prisma.serviceType.findMany({ select: { id: true, code: true } });
   const typeByCode = new Map(types.map((type) => [type.code, type.id]));
 
+  // Исключаемый номер сверяется со строками загрузки: опечатка в поле
+  // «Исключить строки» прежде молча пропускалась, и строка, которую хотели
+  // исключить, заводилась работой (решение Р-661).
   const excluded = new Set(input.excludeRows ?? []);
+  const present = new Set(stored.map((row) => row.rowNumber));
+  const missing = [...excluded].filter((rowNumber) => !present.has(rowNumber));
+  if (missing.length > 0) {
+    throw new Error(
+      `В загрузке нет ${missing.length === 1 ? 'строки' : 'строк'} ${missing.join(', ')}: проверьте номера исключённых строк`,
+    );
+  }
   const rejected: { rowNumber: number; reason: string }[] = [];
   let created = 0;
   let updated = 0;
@@ -1000,6 +1020,17 @@ export async function applyBatch(
           };
         }),
         batchId,
+      );
+
+      // Написание, привязанное в «Справочниках» уже после предпросмотра, тоже
+      // сводит строку: руководитель видит несведённое написание в отчёте,
+      // привязывает его и фиксирует ту же загрузку (решение Р-657).
+      const aliases = new Map(
+        (
+          await tx.serviceTypeAlias.findMany({
+            select: { alias: true, serviceType: { select: { id: true, code: true } } },
+          })
+        ).map((alias) => [normalizeTypeAlias(alias.alias), alias.serviceType]),
       );
 
       const clients = new Map<string, string>();
@@ -1210,7 +1241,7 @@ export async function applyBatch(
             select: {
               id: true,
               totalAmount: true,
-              tranches: { select: { id: true, title: true, amount: true, status: true } },
+              tranches: { select: { id: true, title: true, amount: true, status: true, plannedDate: true } },
             },
           });
           // Работа заведена с нулевой суммой, и договора у неё нет, а в книге
@@ -1262,7 +1293,18 @@ export async function applyBatch(
             const left = total - others - received;
             if (rest !== undefined) {
               if (left > 0n) {
-                await tx.tranche.update({ where: { id: rest.id }, data: { amount: left } });
+                // Остаток стоит на сроке книги (`openContract`) и переносится
+                // вместе с ним: прежде срок работы переносился, а остаток
+                // оставался на прежнем и со следующего дня числился
+                // просроченным. Дата, перенесённая в кабинете, с прежним сроком
+                // книги не совпадает и остаётся (Р-451, Р-503, решение Р-658).
+                const priorDeadline = typeof prior?.deadline === 'string' ? prior.deadline : null;
+                const movedWithBook =
+                  deadlineChanged && (rest.plannedDate?.toISOString() ?? null) === priorDeadline;
+                await tx.tranche.update({
+                  where: { id: rest.id },
+                  data: { amount: left, ...(movedWithBook ? { plannedDate: deadline } : {}) },
+                });
               } else {
                 await tx.tranche.delete({ where: { id: rest.id } });
               }
@@ -1293,8 +1335,14 @@ export async function applyBatch(
         // строке с несведённым написанием отклонялась при каждом прогоне
         // моста — он замен написаний не передаёт (решение Р-252).
         const override = input.typeOverrides?.[raw.type];
+        const bound =
+          override === undefined && parsed.typeCode === null
+            ? aliases.get(normalizeTypeAlias(raw.type))
+            : undefined;
         const serviceTypeId =
-          override ?? (parsed.typeCode === null ? undefined : typeByCode.get(parsed.typeCode));
+          override ??
+          bound?.id ??
+          (parsed.typeCode === null ? undefined : typeByCode.get(parsed.typeCode));
         if (serviceTypeId === undefined) {
           rejected.push({
             rowNumber: row.rowNumber,
@@ -1319,8 +1367,12 @@ export async function applyBatch(
           // написания, и строка с написанием сведённой прежде заводила
           // новую карточку-дубль (решение Р-453). Живая карточка с тем же
           // написанием — впереди сведённой.
+          // Карточка со входом в кабинет по одному совпадению ФИО не берётся:
+          // однофамилец из книги увидел бы чужую тему, договор и оплаты.
+          // Строка получает свою карточку без входа, а если это один
+          // человек, руководитель сводит их среди кандидатов (решение Р-659).
           let existing = await tx.clientProfile.findFirst({
-            where: { normalizedName: parsed.normalizedName, erasedAt: null },
+            where: { normalizedName: parsed.normalizedName, erasedAt: null, userId: null },
             orderBy: [{ mergedIntoId: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }],
             select: { id: true, mergedIntoId: true, erasedAt: true },
           });
@@ -1373,9 +1425,25 @@ export async function applyBatch(
           await openContract(tx, { projectId: project.id, code, orderDate, deadline, rowCost, rowPaid });
         }
 
+        // Написание, сведённое только при фиксации, записывается в строку:
+        // иначе отчёт зафиксированной загрузки числил бы её несведённой.
+        const kept =
+          bound !== undefined && Array.isArray(row.errors)
+            ? (row.errors as Prisma.InputJsonObject[]).filter((issue) => issue.code !== 'UNKNOWN_SUPPORT_TYPE')
+            : [];
         await tx.importRow.update({
           where: { id: row.id },
-          data: { projectId: project.id, action: 'CREATE' },
+          data: {
+            projectId: project.id,
+            action: 'CREATE',
+            ...(bound === undefined
+              ? {}
+              : {
+                  parsed: { ...parsed, typeCode: bound.code },
+                  errors: kept,
+                  ...(kept.length === 0 ? { severity: 'OK' as const } : {}),
+                }),
+          },
         });
         created += 1;
         cost += rowCost;

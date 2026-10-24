@@ -46,19 +46,28 @@ describe('цена и пакеты (РК-17)', () => {
     row({ typeCode: 'diploma', typeName: 'ВКР', cost: 4_800_000n }),
   ];
   const window = new Date('2026-11-01T00:00:00Z');
-  const calendar = [{ typeCode: 'article', windowStart: window } as CalendarRow];
+  const calendar = [{ typeCode: 'article', windowStart: window, deliveryOn: new Date('2026-12-15T00:00:00Z') } as CalendarRow];
 
   it('разброс выше 40 % — зафиксировать по медиане до окна вида; ровная цена — без рекомендации', () => {
     const advice = priceAdvice(rows, calendar, AT);
     assert.deepEqual(advice.map((item) => item.typeCode), ['article']);
     assert.equal(advice[0]!.medianCheck, 6_000_000n);
     assert.equal(advice[0]!.before?.toISOString().slice(0, 10), '2026-11-01');
-    assert.equal(advice[0]!.key, 'price:article:2026-11-01');
+    assert.equal(advice[0]!.key, 'price:article:2026-12');
+    assert.equal(advice[0]!.legacyKey, 'price:article:2026-11-01');
     assert.ok(advice[0]!.variation > 0.4);
   });
 
   it('без окна вида — ключ по году', () => {
     assert.equal(priceAdvice(rows, [], AT)[0]!.key, 'price:article:2026');
+    assert.equal(priceAdvice(rows, [], AT)[0]!.legacyKey, null);
+  });
+
+  it('ключ — сезон: сдвиг окна при том же месяце сдачи отметку не теряет (Р-656)', () => {
+    // Новый заказ вида сдвинул медиану: окно начинается 04.11, а не 01.11.
+    const moved = [{ typeCode: 'article', windowStart: new Date('2026-11-04T00:00:00Z'), deliveryOn: new Date('2026-12-15T00:00:00Z') } as CalendarRow];
+    assert.equal(priceAdvice(rows, moved, AT)[0]!.key, 'price:article:2026-12');
+    assert.equal(priceAdvice(rows, moved, AT)[0]!.key, priceAdvice(rows, calendar, AT)[0]!.key);
   });
 });
 

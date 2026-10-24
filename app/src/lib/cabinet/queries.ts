@@ -324,6 +324,24 @@ export async function stageById(actor: Actor, stageId: string) {
   return withoutStaffNames(actor, stage);
 }
 
+/**
+ * Есть ли у работы этап после этого — для подсказки закрытого этапа: у
+ * последнего следующего нет, и совет «проверьте, что следующий начат»
+ * расходился с экраном работы (решение Р-710). Видимость работы — та же,
+ * что у `stageById`.
+ */
+export async function hasNextStage(
+  actor: Actor,
+  stage: { projectId: string; position: number },
+): Promise<boolean> {
+  const scope = scopeProjects(actor);
+  if (scope === null) return false;
+  const later = await prisma.stage.count({
+    where: { projectId: stage.projectId, position: { gt: stage.position }, project: scope },
+  });
+  return later > 0;
+}
+
 /** Условие «у материала есть видимая версия»; практике — без условия. */
 /**
  * Какие материалы входят в число на плашке перечня — те же, что в списке
@@ -470,6 +488,18 @@ export async function liveWorks(actor: Actor) {
 }
 
 /**
+ * Сколько у человека приостановленных работ — для ответа в шапке, когда
+ * идущих нет: приостановленная работа тоже действует (Р-245, Р-257,
+ * Р-342), и «Действующих работ нет» над её плашкой вводило в заблуждение
+ * (решение Р-651).
+ */
+export async function pausedWorksCount(actor: Actor): Promise<number> {
+  const scope = scopeProjects(actor);
+  if (scope === null) return 0;
+  return prisma.project.count({ where: { ...scope, status: 'PAUSED' } });
+}
+
+/**
  * Дела куратора (требование Э-04, решение Р-329): этапы его работ,
  * действующих и приостановленных (Д-4), свои версии и замечания с решением
  * менеджера — одной выборкой на вид. Правила — в `curatorTasks`.
@@ -527,7 +557,10 @@ export async function curatorTasksData(actor: Actor) {
         createdAt: true,
         moderationStatus: true,
         version: {
-          select: { material: { select: { title: true, project: { select: { code: true } }, stage: stageRef } } },
+          select: {
+            moderation: { select: { status: true } },
+            material: { select: { id: true, title: true, project: { select: { code: true } }, stage: stageRef } },
+          },
         },
       },
     }),
@@ -545,6 +578,8 @@ export async function curatorTasksData(actor: Actor) {
     })),
     comments.map((comment) => ({
       versionId: comment.versionId,
+      materialId: comment.version.material.id,
+      versionRejected: comment.version.moderation?.status === 'REJECTED',
       createdAt: comment.createdAt,
       status: comment.moderationStatus,
       materialTitle: comment.version.material.title,
@@ -1524,11 +1559,13 @@ export async function todayItems(actor: Actor) {
           title: `${stage.title} · ${project.title}`,
           dueOn: stage.dueOn,
           href: `/cabinet/stages/${stage.id}`,
-          // Подпись хода — та же, что на шкале и экране этапа (Р-288).
+          // Подпись хода — та же, что на шкале и экране этапа (Р-288):
+          // сданный куратором этап — ход за менеджером (Р-325, Р-648).
           turn: turnLabel(
             stage.state as StageStateKey,
             'curator',
             project.expertId !== null || (project.expertNameRaw ?? '').trim() !== '',
+            stage.handedOverAt,
           ),
         });
       }

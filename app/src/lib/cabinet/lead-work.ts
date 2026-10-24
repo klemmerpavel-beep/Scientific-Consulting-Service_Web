@@ -1,4 +1,5 @@
 import { prisma } from '../db.ts';
+import { looksLikeEmail } from '../lead-schema.ts';
 import { ensure, scopeLeads, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { isLeadSwitchStatus } from './lead-labels.ts';
@@ -32,7 +33,8 @@ async function visibleLead(actor: Actor, leadId: string) {
 /**
  * Сменить состояние плашкой. «Договор заключён» и «Отказ» так не ставятся:
  * у них есть последствия — работа и письмо заявителю, — и они ставятся
- * своими формами. Заявка, ставшая работой, своё состояние уже не меняет.
+ * своими формами. Заявка, ставшая работой или отклонённая, своё состояние
+ * уже не меняет.
  */
 export async function setLeadStatus(actor: Actor, leadId: string, status: string): Promise<void> {
   if (!isLeadSwitchStatus(status)) {
@@ -41,6 +43,12 @@ export async function setLeadStatus(actor: Actor, leadId: string, status: string
   const lead = await visibleLead(actor, leadId);
   if (lead.projectId !== null) {
     throw new LeadWorkError('Заявка уже стала работой: её состояние ведётся в карточке работы');
+  }
+  // Отклонённой заявке ушло письмо с причиной. Плашка возвращала её в
+  // разбор, и одобрение заводило работу вопреки этому письму, а повторный
+  // отказ переписывал причину при прежнем письме (решение Р-641).
+  if (lead.status === 'DECLINED') {
+    throw new LeadWorkError('Заявка отклонена, заявителю уже ответили: состояние больше не меняется');
   }
   if (lead.status === status) return;
   // Давность состояния — для дела «Заявки в разборе» (М-06, Р-304).
@@ -108,7 +116,15 @@ export async function editLead(
     if (raw.length > LIMITS[field]) throw new LeadWorkError(`Слишком длинное значение поля (${LIMITS[field]} знаков предел)`);
     const next = raw.length === 0 ? null : raw;
     if (field === 'contact' && next === null) throw new LeadWorkError('Контакт заявителя не может быть пустым');
-    if (next !== (current as Record<string, string | null>)[field]) data[field] = next;
+    if (next === (current as Record<string, string | null>)[field]) continue;
+    // Почта с опечаткой уходила в карточку клиента и в учётную запись при
+    // одобрении: «Новый заказ» и форма сайта такой адрес отвергают. Ник с
+    // «@» в начале и телефон проходят как прежде; прежний контакт, который
+    // не меняют, правку других полей не держит (решение Р-705).
+    if (field === 'contact' && next !== null && /^[^\s@]+@/u.test(next) && !looksLikeEmail(next)) {
+      throw new LeadWorkError('Проверьте адрес: он должен выглядеть как имя@домен');
+    }
+    data[field] = next;
   }
   const changed = Object.keys(data);
   if (changed.length === 0) return;

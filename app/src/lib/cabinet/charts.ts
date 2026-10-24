@@ -72,9 +72,30 @@ export function niceCeil(value: number): number {
   return nice * power;
 }
 
-/** Значения делений шкалы сверху вниз. */
+/**
+ * Значения делений шкалы сверху вниз. Умножение идёт прежде деления:
+ * `15 × (1 − 1/3)` даёт 10,000000000000002, а целой шкале нужно 10.
+ */
 export function ticks(max: number, count = 4): number[] {
-  return Array.from({ length: count + 1 }, (_, index) => max * (1 - index / count));
+  return Array.from({ length: count + 1 }, (_, index) => (max * (count - index)) / count);
+}
+
+/**
+ * Шкала счётного ряда — заказов, заявок, работ: деления только на целых.
+ *
+ * Четыре равных шага от «красивого» потолка годятся для денег, но не для
+ * штук: при потолке 1 деления выходили 1; 0,75; 0,5; 0,25, и округлённые
+ * подписи читались «1, 1, 1, 0, 0», а при потолке 5 подпись «3» стояла на
+ * линии 3,75 — столбец «2» оказывался ниже линии «3» (решение Р-684).
+ * Здесь шаг целый: до пяти — любой, дальше 10, 20, 25, 50 на степень
+ * десяти, чтобы на тысячах не выходил шаг «309». Потолок — ближайшее
+ * кратное шага, делений — сколько вышло, не больше четырёх.
+ */
+export function integerScale(rawMax: number): { max: number; count: number } {
+  const quarter = Math.max(0, rawMax) / 4;
+  const step = quarter <= 5 ? Math.max(1, Math.ceil(quarter)) : niceCeil(quarter);
+  const max = step * Math.max(1, Math.ceil(rawMax / step));
+  return { max, count: max / step };
 }
 
 /** Столбец со скруглённым только верхом: низ упирается в ось. */
@@ -92,16 +113,79 @@ export function topRoundedBar(x: number, y: number, w: number, h: number, r = 5)
   ].join(' ');
 }
 
+/**
+ * Длина полосы ранжирования, в процентах дорожки.
+ *
+ * Наименьшие 2 % нужны, чтобы малое ненулевое значение было видно. У нуля
+ * они рисовали начало полосы, и строка «0» читалась как «немного»; у
+ * столбцов ноль — пустое место, у полосы теперь тоже (решение Р-686).
+ */
+export function rankShare(value: number, max: number): number {
+  return value > 0 ? Math.max(2, (value / max) * 100) : 0;
+}
+
 export interface Point {
   readonly x: number;
   readonly y: number;
 }
 
 /**
+ * Левое поле рисунка под подписи шкалы.
+ *
+ * Подпись стоит концом в 7 px от оси, и постоянное поле в 52 px вмещало
+ * 45 px текста: у «500 тыс» первая цифра срезалась краем рисунка. Ширина
+ * оценивается той же меркой, что у чисел над столбцами, — 7 px на знак при
+ * кегле 12, — и ещё 4 px запаса (решение Р-685). Короткие подписи поля
+ * не меняют.
+ */
+export function axisPad(labels: readonly string[], min = 52): number {
+  const longest = Math.max(0, ...labels.map((label) => label.length));
+  return Math.max(min, longest * 7 + 7 + 4);
+}
+
+/**
+ * Какие подписи оси категорий выводить у линейного графика.
+ *
+ * Шаг — тот же, что у столбцов: подпись месяца занимает около 46 px, и
+ * выводится каждая k-я, считая от последней, чтобы свежий месяц был
+ * подписан всегда (решение Р-176). Но крайние подписи прижаты к краю
+ * поля — последняя концом, первая началом, — и соседней центрированной
+ * подписи нужно до них полторы ширины, а не одна: «июл 26» и «сен 26»
+ * сливались в одну строку. Соседняя подпись, которая налезает на
+ * крайнюю, пропускается (решение Р-685).
+ */
+export function categoryLabels(count: number, gap: number, width = 46): number[] {
+  if (count <= 0) return [];
+  const last = count - 1;
+  const every = Math.max(1, Math.ceil(width / gap));
+  const span = (index: number): [number, number] => {
+    const x = index * gap;
+    if (count > 1 && index === last) return [x - width, x];
+    if (index === 0) return [x, x + width];
+    return [x - width / 2, x + width / 2];
+  };
+  const apart = (left: number, right: number): boolean => span(left)[1] <= span(right)[0];
+  const shown: number[] = [];
+  for (let index = last; index >= 0; index -= every) shown.unshift(index);
+  if (shown.length > 1 && !apart(shown[shown.length - 2]!, last)) shown.splice(shown.length - 2, 1);
+  // Первую подпись теснит соседняя; если соседняя — последняя, уступает
+  // первая: свежий месяц важнее.
+  if (shown.length > 1 && shown[0] === 0 && !apart(0, shown[1]!)) {
+    shown.splice(shown[1] === last ? 0 : 1, 1);
+  }
+  return shown;
+}
+
+/**
  * Сглаженная ломаная: Катмулл — Ром, переведённый в кубические Безье.
  * Прямые отрезки на помесячном ряде читаются как скачки, которых в данных нет.
+ *
+ * `floorY` — базовая линия. Между двумя нулями подряд опорные точки
+ * ложились ниже неё, и кривая проваливалась под ось, рисуя отрицательные
+ * суммы, которых не бывает. Опорные точки прижимаются к базовой линии, а
+ * кривая Безье не выходит за свои опорные точки (решение Р-685).
  */
-export function smoothPath(points: readonly Point[]): string {
+export function smoothPath(points: readonly Point[], floorY = Infinity): string {
   if (points.length === 0) return '';
   if (points.length < 3) {
     return `M${points.map((point) => `${point.x} ${point.y}`).join(' L')}`;
@@ -113,9 +197,9 @@ export function smoothPath(points: readonly Point[]): string {
     const p2 = points[i + 1]!;
     const p3 = points[i + 2] ?? p2;
     const c1x = p1.x + (p2.x - p0.x) / 6;
-    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c1y = Math.min(floorY, p1.y + (p2.y - p0.y) / 6);
     const c2x = p2.x - (p3.x - p1.x) / 6;
-    const c2y = p2.y - (p3.y - p1.y) / 6;
+    const c2y = Math.min(floorY, p2.y - (p3.y - p1.y) / 6);
     path += `C${c1x} ${c1y} ${c2x} ${c2y} ${p2.x} ${p2.y}`;
   }
   return path;

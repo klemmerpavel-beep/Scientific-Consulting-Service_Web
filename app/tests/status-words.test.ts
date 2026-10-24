@@ -44,6 +44,49 @@ describe('корректировка суммы — и руководителю 
     assert.match(payments, /'списано по траншам ниже'/u);
     assert.doesNotMatch(payments, /сторнировано по траншам ниже/u);
   });
+
+  it('списанное сверх договора названо под корректировкой числом (Р-700)', async () => {
+    // Договор 300 000, оплачено 100 000, списан транш 250 000: корректировка —
+    // 200 000 (в пределах остатка, Р-530), а строка транша — «списан
+    // 250 000». Подпись называет разницу, чтобы плитка и транш не спорили.
+    const { formatAmount, receivableOf, writtenOffBeyond } = await import('../src/lib/cabinet/money.ts');
+    const total = 30_000_000n;
+    const tranches = [
+      { id: 'paid', amount: 10_000_000n, status: 'PAID', plannedDate: new Date('2026-03-01T00:00:00Z') },
+      { id: 'off', amount: 25_000_000n, status: 'WRITTEN_OFF', plannedDate: new Date('2026-06-01T00:00:00Z') },
+    ];
+    const adjustment = total - 10_000_000n - receivableOf('ACTIVE', total, tranches);
+    assert.equal(formatAmount(adjustment), formatAmount(20_000_000n));
+    assert.equal(formatAmount(writtenOffBeyond(adjustment, tranches)), formatAmount(5_000_000n));
+    assert.match(formatAmount(writtenOffBeyond(adjustment, tranches)), /^50\s000\s₽$/u);
+    // Без превышения — прежняя подпись: разницы нет.
+    const within = [tranches[0]!, { ...tranches[1]!, amount: 5_000_000n }];
+    assert.equal(writtenOffBeyond(total - 10_000_000n - receivableOf('ACTIVE', total, within), within), 0n);
+
+    const payments = readFileSync(
+      path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'projects', '[code]', 'payments', 'page.tsx'),
+      'utf8',
+    );
+    assert.match(payments, /writtenOffBeyond\(money\.adjustment, contract\.tranches\)/u);
+    assert.match(payments, /списано по траншам ниже в пределах остатка договора; ещё \$\{formatAmount\(beyond\)\} сверх договора долгом не были/u);
+  });
+});
+
+describe('вознаграждение куратора без начислений (Р-701)', () => {
+  const payments = readFileSync(
+    path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'projects', '[code]', 'payments', 'page.tsx'),
+    'utf8',
+  );
+  it('не пишет «маржа равна сумме договора»: маржа уже показана числом', () => {
+    assert.doesNotMatch(payments, /маржа равна/u);
+    assert.doesNotMatch(payments, /У исторических проектов/u);
+  });
+  it('текст — по тому, указан ли куратор у работы', () => {
+    const empty = /payouts\.length === 0 \? \(([\s\S]*?)\) : \(/u.exec(payments)?.[1] ?? '';
+    assert.match(empty, /project\.expertId !== null/u);
+    assert.match(empty, /Начислений нет: вознаграждение куратора ещё не начислено и в марже выше не учтено\./u);
+    assert.match(empty, /Начислений нет: куратор у работы не указан\./u);
+  });
 });
 
 describe('причина приостановки в шапке карточки (УК-13, Р-379)', async () => {

@@ -486,7 +486,10 @@ describe('книга заказов и обезличивание', { skip: !ena
     assert.equal(access.ip, null);
     assert.equal(access.userAgent, null);
     const letter = await prisma.notificationOutbox.findFirstOrThrow({ where: { dedupKey: `be-outbox-${stamp}` } });
-    assert.equal(letter.lastError, null, 'адрес остался в тексте ошибки доставки');
+    // Недоставленное письмо гаснет с причиной обезличивания вместо текста
+    // отказа с адресом (решение Р-668).
+    assert.doesNotMatch(letter.lastError ?? '', /@/u, 'адрес остался в тексте ошибки доставки');
+    assert.equal(letter.state, 'EXPIRED', 'затёртое недоставленное письмо осталось к повтору');
   });
 
   it('исправленное ФИО в книге не заводит вторую работу и на базе (Р-452, Р-502)', async () => {

@@ -45,6 +45,11 @@ export default async function AnalyticsOverview() {
 
   const total = overview(rows);
   const months = byMonth(rows, now);
+  // Работа без даты начала в ряд по месяцам не входит, а в плитку
+  // «Законтрактовано» — входит: подпись и «Числа» называют её отдельно, и
+  // строки таблицы складываются в плитку (решения Р-257, Р-696).
+  const undated = rows.filter((row) => row.startedOn === null);
+  const undatedCost = undated.reduce((acc, row) => acc + row.cost, 0n);
   const productRows = products(rows);
   // Сезонная норма — от даты начала учёта практики (РК-16, Р-349; ОР-6).
   const since = await analyticsSince();
@@ -192,7 +197,11 @@ export default async function AnalyticsOverview() {
 
           <ChartCard
             title="Законтрактовано по месяцам"
-            note="По месяцу начала работы, до текущего месяца включительно. Месяц без заказов показан нулём, а не пропуском: разрыв читался бы как отсутствие данных."
+            note={`По месяцу начала работы, до текущего месяца включительно. Месяц без заказов показан нулём, а не пропуском: разрыв читался бы как отсутствие данных.${
+              undated.length === 0
+                ? ''
+                : ` Работ без даты начала: ${undated.length} на ${formatAmount(undatedCost)} — в ряд не входят.`
+            }`}
             numbers={
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -210,6 +219,13 @@ export default async function AnalyticsOverview() {
                       <td style={num}>{formatAmount(month.contracted)}</td>
                     </tr>
                   ))}
+                  {undated.length === 0 ? null : (
+                    <tr>
+                      <td style={cell}>Без даты начала</td>
+                      <td style={num}>{undated.length}</td>
+                      <td style={num}>{formatAmount(undatedCost)}</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             }
@@ -266,6 +282,7 @@ export default async function AnalyticsOverview() {
                     value: month.leads,
                   }))}
                   format={(value) => String(Math.round(value))}
+                  integer
                 />
                 {/* Откуда приходят заказы: страница сайта и конверсия (РК-18). */}
                 <div style={{ marginTop: 16 }}>

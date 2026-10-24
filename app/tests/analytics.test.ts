@@ -10,6 +10,8 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, it } from 'node:test';
 
 import {
@@ -36,10 +38,14 @@ import {
 } from '../src/lib/cabinet/analytics/metrics.ts';
 import {
   SERIES_COLORS,
+  axisPad,
+  categoryLabels,
   compactMoney,
   compactNumber,
   donutArc,
+  integerScale,
   niceCeil,
+  rankShare,
   seriesColor,
   seriesInkDark,
   smoothPath,
@@ -220,6 +226,42 @@ describe('помесячный ряд', () => {
       points.map((point) => point.key),
       ['2024-11', '2024-12', '2025-01', '2025-02'],
     );
+  });
+
+  // Ряд не берёт работу без даты начала, плитка «Законтрактовано» — берёт:
+  // экран называет такие работы отдельной строкой, и строки «Чисел»
+  // складываются в плитку (решение Р-696).
+  it('ряд и работы без даты начала вместе дают итог обзора', () => {
+    const rows = [
+      row({ code: 'PD-1', startedOn: new Date(Date.UTC(2025, 0, 5)), cost: 30_000_000n }),
+      row({ code: 'PD-2', startedOn: new Date(Date.UTC(2025, 2, 5)), cost: 50_000_000n }),
+      row({ code: 'PD-3', startedOn: null, status: 'ACTIVE', cost: 24_000_000n }),
+    ];
+    const points = byMonth(rows, new Date(Date.UTC(2025, 2, 20)));
+    const undated = rows.filter((item) => item.startedOn === null);
+    const total = overview(rows);
+    assert.equal(
+      points.reduce((acc, point) => acc + point.contracted, 0n) + undated.reduce((acc, item) => acc + item.cost, 0n),
+      total.contracted,
+    );
+    assert.equal(points.reduce((acc, point) => acc + point.orders, 0) + undated.length, total.projects);
+  });
+});
+
+describe('«Законтрактовано по месяцам» называет работы без даты начала (Р-696)', () => {
+  const page = readFileSync(
+    path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'manage', 'analytics', 'page.tsx'),
+    'utf8',
+  );
+
+  it('подпись графика говорит, что такие работы в ряд не входят', () => {
+    assert.match(page, /Работ без даты начала: \$\{undated\.length\} на \$\{formatAmount\(undatedCost\)\} — в ряд не входят\./u);
+  });
+
+  it('в «Числах» — последняя строка «Без даты начала»', () => {
+    const table = page.slice(page.indexOf('title="Законтрактовано по месяцам"'), page.indexOf('<BarChart'));
+    assert.match(table, /<td style=\{cell\}>Без даты начала<\/td>/u);
+    assert.ok(table.indexOf('Без даты начала') > table.indexOf('months.map('), 'строка без даты — после месяцев');
   });
 });
 
@@ -531,9 +573,45 @@ describe('геометрия графиков', () => {
     assert.deepEqual(ticks(100, 4), [100, 75, 50, 25, 0]);
   });
 
+  it('у счётного ряда деления целые и подписи не повторяются', () => {
+    // Четыре равных шага от потолка 1 дают деления 1; 0,75; 0,5; 0,25, и
+    // округлённые подписи читались «1, 1, 1, 0, 0»; при максимуме 5
+    // подпись «3» стояла на линии 3,75 (решение Р-684).
+    const label = (value: number) => String(Math.round(value));
+    const scale = (raw: number) => {
+      const { max, count } = integerScale(raw);
+      return ticks(max, count);
+    };
+    assert.deepEqual(ticks(niceCeil(1), 4).map(label), ['1', '1', '1', '0', '0']);
+    for (const raw of [0, 1, 2, 3, 5, 7, 12, 23, 37, 1234]) {
+      const values = scale(raw);
+      assert.ok(values[0]! >= raw && values[0]! >= 1, `потолок ${values[0]} ниже максимума ${raw}`);
+      assert.ok(values.every((value) => Number.isInteger(value)), `${raw}: деления ${values.join(', ')}`);
+      const labels = values.map(label);
+      assert.equal(new Set(labels).size, labels.length, `${raw}: подписи ${labels.join(', ')}`);
+    }
+    assert.deepEqual(scale(1), [1, 0]);
+    assert.deepEqual(scale(5), [6, 4, 2, 0]);
+    assert.deepEqual(scale(7), [8, 6, 4, 2, 0]);
+    assert.deepEqual(scale(12), [12, 9, 6, 3, 0]);
+    // На больших числах шаг круглый, а не «309»: поступления в тысячах
+    // рублей идут той же шкалой.
+    assert.deepEqual(scale(1234), [1500, 1000, 500, 0]);
+  });
+
   it('столбец нулевой высоты не рисуется', () => {
     assert.equal(topRoundedBar(0, 0, 10, 0), '');
     assert.match(topRoundedBar(0, 10, 20, 30), /^M0 40 L0 /u);
+  });
+
+  it('нулевая полоса ранжирования пуста, малая — видна', () => {
+    // Наименьшие 2 % нужны, чтобы малое значение было видно; у нуля они
+    // рисовали начало полосы, и строка «Не назначен 0» читалась как
+    // «немного» (решение Р-686).
+    assert.equal(rankShare(0, 5), 0);
+    assert.equal(rankShare(0.01, 5), 2);
+    assert.equal(rankShare(5, 5), 100);
+    assert.equal(rankShare(1, 4), 25);
   });
 
   it('сглаживание вырождается в ломаную на двух точках', () => {
@@ -543,6 +621,57 @@ describe('геометрия графиков', () => {
       smoothPath([{ x: 0, y: 0 }, { x: 10, y: 5 }, { x: 20, y: 0 }]),
       /^M0 0C/u,
     );
+  });
+
+  it('сглаженная линия не уходит под ось', () => {
+    // Между двумя нулями подряд Катмулл — Ром ставил опорные точки ниже
+    // базовой линии, и кривая проваливалась под ось (решение Р-685).
+    const points = [{ x: 0, y: 50 }, { x: 10, y: 200 }, { x: 20, y: 200 }, { x: 30, y: 50 }];
+    const ys = (path: string) =>
+      [...path.matchAll(/C([^C]+)/gu)].flatMap((m) => {
+        const n = m[1]!.trim().split(/\s+/u).map(Number);
+        return [n[1]!, n[3]!, n[5]!];
+      });
+    assert.ok(Math.max(...ys(smoothPath(points))) > 200, 'без пола провал есть');
+    assert.ok(Math.max(...ys(smoothPath(points, 200))) <= 200, smoothPath(points, 200));
+    // Без пола путь прежний.
+    assert.equal(smoothPath(points, Infinity), smoothPath(points));
+  });
+
+  it('подписи оси категорий не налезают друг на друга', () => {
+    // Последняя подпись прижата к краю концом, первая — началом, прочие
+    // стоят по центру. Шага в 46 px хватало только между центрированными:
+    // «июл 26» и «сен 26» у правого края сливались (решение Р-685).
+    const width = 46;
+    for (const count of [1, 2, 3, 5, 12, 16, 24, 32]) {
+      for (const gap of [12, 30, 35, 40, 47, 61.6, 70, 100]) {
+        const shown = categoryLabels(count, gap, width);
+        assert.equal(shown.at(-1), count - 1, 'свежий месяц подписан');
+        const span = (index: number): [number, number] => {
+          const x = index * gap;
+          if (count > 1 && index === count - 1) return [x - width, x];
+          if (index === 0) return [x, x + width];
+          return [x - width / 2, x + width / 2];
+        };
+        for (let i = 1; i < shown.length; i += 1) {
+          assert.ok(
+            span(shown[i - 1]!)[1] <= span(shown[i]!)[0],
+            `${count} точек с шагом ${gap}: ${shown[i - 1]} и ${shown[i]} налезают`,
+          );
+        }
+      }
+    }
+    // Шестнадцать месяцев на поле 924 px: шаг 61,6 px меньше полутора
+    // подписей, предпоследний месяц пропускается, остальные подписаны.
+    assert.deepEqual(categoryLabels(16, 61.6).slice(-3), [12, 13, 15]);
+  });
+
+  it('левое поле вмещает самую длинную подпись шкалы', () => {
+    // Постоянное поле в 52 px вмещало 45 px подписи: у «500 тыс» срезалась
+    // первая цифра (решение Р-685).
+    assert.equal(axisPad(['5', '4', '0']), 52);
+    const pad = axisPad(['1 млн', '750 тыс', '500 тыс', '250 тыс', '0']);
+    assert.ok(pad - 7 >= '750 тыс'.length * 7, `поле ${pad}`);
   });
 
   it('дуга кольца замыкается', () => {

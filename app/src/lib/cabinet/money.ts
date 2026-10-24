@@ -79,6 +79,18 @@ export function writtenOffOf(total: bigint, tranches: readonly OpenTranche[]): b
 }
 
 /**
+ * Списано сверх договора: часть списанных траншей, не вошедшая в
+ * «Корректировку суммы» (`writtenOffOf`, Р-530) — долгом она и не была.
+ * Транш больше остатка заводится с предупреждением, и после его списания
+ * плитка «Корректировка суммы» и строка «списан» расходились без пояснения;
+ * подпись под плиткой называет разницу числом (решение Р-700).
+ */
+export function writtenOffBeyond(adjustment: bigint, tranches: readonly OpenTranche[]): bigint {
+  const total = tranches.filter((tranche) => tranche.status === 'WRITTEN_OFF').reduce((acc, tranche) => acc + tranche.amount, 0n);
+  return total > adjustment ? total - adjustment : 0n;
+}
+
+/**
  * Списанное в пределах остатка: списанные транши разносятся по остатку
  * вместе с открытыми, в том же порядке сроков, что `allocateOpen`
  * (Р-447), и учитывается только их часть в пределах остатка. Прежде

@@ -81,10 +81,16 @@ function book(paidSecond = '40000', extra: TestRow[] = [], deadlineSecond = '20.
   ]);
 }
 
+/** Отдельная строка книги для проверок одного случая: в работе, без заливки. */
+function line(date: string, customer: string, type: string, deadline: string, cost: string, paid = '0'): TestRow {
+  return [excelSerial(date), customer, type, 'Тема', deadline, cost, { value: 'в работе', fill: null }, paid];
+}
+
 describe('перенос книги заказов', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
-  const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
-  const { applyBatch, loadBatch, mergeClients, previewBook } = await import(
+  const { AccessDenied, scopeProjects } = await import('../src/lib/cabinet/access.ts');
+  const { addAlias } = await import('../src/lib/cabinet/admin.ts');
+  const { applyBatch, loadBatch, mergeCandidates, mergeClients, normalizeName, previewBook } = await import(
     '../src/lib/cabinet/import/apply.ts'
   );
 
@@ -138,8 +144,10 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     await prisma.clientProfile.deleteMany({
       where: { normalizedName: { contains: String(stamp) } },
     });
-    await prisma.auditEvent.deleteMany({ where: { actorId: { in: [ids.head, ids.manager] } } });
-    await prisma.user.deleteMany({ where: { id: { in: [ids.head, ids.manager] } } });
+    await prisma.serviceTypeAlias.deleteMany({ where: { alias: { contains: String(stamp) } } });
+    const users = [ids.head, ids.manager, ids.client].filter((id): id is string => id !== undefined);
+    await prisma.auditEvent.deleteMany({ where: { actorId: { in: users } } });
+    await prisma.user.deleteMany({ where: { id: { in: users } } });
     await prisma.$disconnect();
   });
 
@@ -510,6 +518,39 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     );
   });
 
+  it('номер исключённой строки, которой нет в загрузке, — отказ до фиксации (Р-661)', async () => {
+    // Прежде номер со строками загрузки не сверялся: опечатка в поле
+    // «Исключить строки» молча пропускалась, и строка, которую хотели
+    // исключить, заводилась работой с договором и траншами.
+    const head = actor(ids.head, 'HEAD');
+    const extra: TestRow[] = [
+      [
+        excelSerial('2025-09-01'),
+        `Лебедева Ольга ${stamp}`,
+        'Диссертция',
+        'Кандидатская, биология',
+        '20.12.2025',
+        '80000',
+        { value: 'в работе', fill: null },
+        '0',
+      ],
+    ];
+    const preview = await previewBook(head, { fileName: `книга-${stamp}-9.xlsx`, bytes: book('90000', extra) });
+    batches.push(preview.batchId);
+    assert.ok(preview.rows.every((row) => row.rowNumber !== 9999));
+
+    await assert.rejects(
+      applyBatch(head, preview.batchId, { managerId: ids.manager, excludeRows: [9999] }),
+      /В загрузке нет строки 9999/u,
+    );
+    const batch = await prisma.importBatch.findUnique({ where: { id: preview.batchId }, select: { state: true } });
+    assert.equal(batch?.state, 'PREVIEWED');
+    assert.equal(
+      await prisma.project.count({ where: { client: { normalizedName: { contains: `лебедева ольга ${stamp}` } } } }),
+      0,
+    );
+  });
+
   it('карточки сводятся вручную, проекты переходят к основной', async () => {
     const clients = await prisma.clientProfile.findMany({
       where: { normalizedName: { contains: String(stamp) }, mergedIntoId: null },
@@ -561,6 +602,173 @@ describe('перенос книги заказов', { skip: !enabled }, async (
     assert.equal(created.clientId, merged.mergedIntoId, 'новая работа легла не в основную карточку');
     const dupes = await prisma.clientProfile.count({ where: { fullName: merged.fullName, mergedIntoId: null } });
     assert.equal(dupes, 0, 'заведена карточка-дубль сведённой');
+  });
+
+  it('написание, привязанное в «Справочниках», сводит строку к позиции (Р-657)', async () => {
+    // Прежде привязку только записывали и показывали: разбор её не читал,
+    // и строка с таким написанием отклонялась при каждом переносе.
+    const head = actor(ids.head, 'HEAD');
+    const type = await prisma.serviceType.upsert({
+      where: { code: 'coursework' },
+      create: { code: 'coursework', name: 'Курсовая работа' },
+      update: {},
+    });
+    ids.coursework = type.id;
+    await addAlias(head, type.id, `Курсовая по педагогике ${stamp}`);
+
+    // В книге то же написание — с другим регистром и двойным пробелом.
+    const preview = await previewBook(head, {
+      fileName: `книга-${stamp}-псевдоним.xlsx`,
+      bytes: makeWorkbook([HEADER, line('2026-09-01', `Зайцева Нина ${stamp}`, `курсовая  по Педагогике ${stamp}`, '20.12.2026', '30000')]),
+    });
+    batches.push(preview.batchId);
+    assert.equal(preview.rows[0]?.typeCode, 'coursework', 'привязанное написание не сведено к позиции');
+    assert.ok(!preview.rows[0]?.issues.some((issue) => issue.code === 'UNKNOWN_SUPPORT_TYPE'));
+    assert.equal(preview.unresolvedTypes.length, 0);
+
+    const report = await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    assert.deepEqual(report.rejected, [], 'строка с привязанным написанием отклонена');
+    assert.equal(report.created, 1);
+    const work = await prisma.project.findFirstOrThrow({
+      where: { client: { normalizedName: `зайцева нина ${stamp}` } },
+      select: { serviceTypeId: true },
+    });
+    assert.equal(work.serviceTypeId, type.id);
+  });
+
+  it('привязка, сделанная после предпросмотра, действует при фиксации (Р-657)', async () => {
+    const head = actor(ids.head, 'HEAD');
+    const spelling = `Курсовая по психологии ${stamp}`;
+    const preview = await previewBook(head, {
+      fileName: `книга-${stamp}-псевдоним-2.xlsx`,
+      bytes: makeWorkbook([HEADER, line('2026-09-02', `Зайцева Нина ${stamp}`, spelling, '20.12.2026', '40000')]),
+    });
+    batches.push(preview.batchId);
+    assert.equal(preview.rows[0]?.typeCode, null);
+
+    // Руководитель привязал написание, увидев его в отчёте, и фиксирует ту же загрузку.
+    await addAlias(head, ids.coursework, spelling);
+    const report = await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    assert.deepEqual(report.rejected, [], 'привязка после предпросмотра не дошла до фиксации');
+    const work = await prisma.project.findFirstOrThrow({
+      where: { client: { normalizedName: `зайцева нина ${stamp}` }, contract: { totalAmount: 4_000_000n } },
+      select: { serviceTypeId: true },
+    });
+    assert.equal(work.serviceTypeId, ids.coursework);
+    // Отчёт зафиксированной загрузки не числит строку несведённой.
+    const reopened = await loadBatch(head, preview.batchId);
+    assert.equal(reopened?.rows[0]?.typeCode, 'coursework');
+    assert.equal(reopened?.unresolvedTypes.length, 0);
+  });
+
+  /** Перенести строку книги дважды: сначала со сроком 01.10.2026, затем с 01.12.2026. */
+  async function moveDeadline(customer: string, date: string, between?: (projectId: string) => Promise<void>) {
+    const head = actor(ids.head, 'HEAD');
+    const first = await previewBook(head, {
+      fileName: `книга-${stamp}-срок-1.xlsx`,
+      bytes: makeWorkbook([HEADER, line(date, customer, 'Диссертция', '01.10.2026', '100000', '50000')]),
+    });
+    batches.push(first.batchId);
+    await applyBatch(head, first.batchId, { managerId: ids.manager });
+    const { id } = await prisma.project.findFirstOrThrow({
+      where: { client: { normalizedName: customer.toLowerCase() } },
+      select: { id: true },
+    });
+    await between?.(id);
+    const second = await previewBook(head, {
+      fileName: `книга-${stamp}-срок-2.xlsx`,
+      bytes: makeWorkbook([HEADER, line(date, customer, 'Диссертция', '01.12.2026', '100000', '50000')]),
+    });
+    batches.push(second.batchId);
+    assert.equal(second.counts.UPDATE, 1);
+    const report = await applyBatch(head, second.batchId, { managerId: ids.manager });
+    assert.equal(report.updated, 1);
+    return prisma.project.findUniqueOrThrow({
+      where: { id },
+      select: {
+        dueOn: true,
+        contract: { select: { tranches: { where: { title: 'Остаток по договору' }, select: { plannedDate: true, amount: true } } } },
+      },
+    });
+  }
+
+  it('перенос срока в книге переносит и дату остатка по договору (Р-658)', async () => {
+    // Прежде срок работы переносился, а остаток оставался на прежнем сроке
+    // книги и со следующего дня числился просроченным.
+    const work = await moveDeadline(`Белова Ольга ${stamp}`, '2026-09-03');
+    assert.equal(work.dueOn?.toISOString().slice(0, 10), '2026-12-01');
+    assert.equal(work.contract?.tranches.length, 1);
+    assert.equal(work.contract?.tranches[0]?.amount, 5_000_000n);
+    assert.equal(
+      work.contract?.tranches[0]?.plannedDate?.toISOString().slice(0, 10),
+      '2026-12-01',
+      'остаток остался на прежнем сроке книги',
+    );
+  });
+
+  it('дата остатка, перенесённая в кабинете, переносом срока в книге не затирается (Р-658)', async () => {
+    const work = await moveDeadline(`Гусева Ирина ${stamp}`, '2026-09-04', async (projectId) => {
+      await prisma.tranche.updateMany({
+        where: { title: 'Остаток по договору', contract: { projectId } },
+        data: { plannedDate: new Date('2026-10-15T00:00:00Z') },
+      });
+    });
+    assert.equal(work.dueOn?.toISOString().slice(0, 10), '2026-12-01');
+    assert.equal(work.contract?.tranches[0]?.plannedDate?.toISOString().slice(0, 10), '2026-10-15');
+  });
+
+  it('строка с ФИО клиента со входом в кабинет не ложится на его карточку (Р-659)', async () => {
+    // Прежде строка ложилась на карточку по одному совпадению ФИО, и
+    // однофамилец из книги видел бы в кабинете чужую тему, договор и оплаты.
+    const head = actor(ids.head, 'HEAD');
+    const name = `Иванов Иван Иванович ${stamp}`;
+    const user = await prisma.user.create({
+      data: { email: `imp-client-${stamp}@example.org`, fullName: name, role: 'CLIENT' },
+    });
+    ids.client = user.id;
+    const card = await prisma.clientProfile.create({
+      data: { userId: user.id, fullName: name, normalizedName: normalizeName(name) },
+    });
+
+    const preview = await previewBook(head, {
+      fileName: `книга-${stamp}-вход.xlsx`,
+      bytes: makeWorkbook([HEADER, line('2026-09-05', name, 'Диссертция', '20.12.2026', '120000')]),
+    });
+    batches.push(preview.batchId);
+    const report = await applyBatch(head, preview.batchId, { managerId: ids.manager });
+    assert.equal(report.created, 1);
+    assert.equal(report.clientsCreated, 1);
+    const work = await prisma.project.findFirstOrThrow({
+      where: { client: { normalizedName: normalizeName(name) } },
+      select: { id: true, clientId: true, client: { select: { userId: true } } },
+    });
+    assert.notEqual(work.clientId, card.id, 'работа из книги легла на карточку клиента со входом');
+    assert.equal(work.client.userId, null);
+
+    // Если это один человек, руководитель сведёт карточки сам.
+    const groups = await mergeCandidates(head);
+    assert.ok(
+      groups.some((group) => group.some((item) => item.id === card.id) && group.some((item) => item.id === work.clientId)),
+      'карточки с одним ФИО не попали в кандидаты на сведение',
+    );
+    const client: Actor = { id: user.id, role: 'CLIENT', status: 'ACTIVE', clientProfileId: card.id, expertNdaSignedAt: null };
+    assert.equal(await prisma.project.count({ where: { ...scopeProjects(client), id: work.id } }), 0);
+
+    // Следующая строка с тем же ФИО ложится на карточку без входа (Р-133).
+    const again = await previewBook(head, {
+      fileName: `книга-${stamp}-вход-2.xlsx`,
+      bytes: makeWorkbook([HEADER, line('2026-09-06', name, 'Аспирнтура', '20.12.2026', '60000')]),
+    });
+    batches.push(again.batchId);
+    const second = await applyBatch(head, again.batchId, { managerId: ids.manager });
+    assert.equal(second.created, 1);
+    assert.equal(second.clientsReused, 1);
+    assert.equal(second.clientsCreated, 0);
+    const next = await prisma.project.findFirstOrThrow({
+      where: { client: { normalizedName: normalizeName(name) }, contract: { totalAmount: 6_000_000n } },
+      select: { clientId: true },
+    });
+    assert.equal(next.clientId, work.clientId);
   });
 
   it('перенос записан в журнал действий', async () => {

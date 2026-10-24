@@ -82,6 +82,8 @@ describe('дела «не опубликовал» не берутся с зав
   });
   const comment = (state: string) => ({
     versionId: 'v1',
+    materialId: 'm1',
+    versionRejected: false,
     createdAt: day(3),
     status: 'REJECTED',
     materialTitle: 'Глава 2',

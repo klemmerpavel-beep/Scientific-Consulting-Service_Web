@@ -16,7 +16,9 @@ import { describe, it } from 'node:test';
 import {
   BUTTON_BASE,
   CABINET_CSS,
+  CONTAINER,
   FIELD_CONTROL,
+  GUTTER,
   ROOT_TOKENS,
 } from '../src/components/cabinet/tokens.ts';
 
@@ -274,6 +276,13 @@ describe('13. кнопки несут класс общей кнопки', () =>
     assert.equal(BUTTON_BASE.fontWeight, 600);
   });
 
+  it('двухстрочная надпись кнопки отходит от рамки (Р-681)', () => {
+    // При высоте 44 px однострочная кнопка та же: строка 21 px и поля по
+    // 10 px в неё помещаются; перенесённая надпись больше не касается рамки.
+    assert.equal(BUTTON_BASE.padding, '10px 20px');
+    assert.equal(BUTTON_BASE.minHeight, 44);
+  });
+
   it('состояния кнопки перекрывают встроенный стиль', () => {
     assert.match(CABINET_CSS, /\.cab-btn-primary:hover,\.cab-btn-primary:focus-visible\{background:var\(--pd-accent-hover\)!important\}/u);
     assert.match(CABINET_CSS, /\.cab-btn-quiet:hover,\.cab-btn-quiet:focus-visible\{border-color:var\(--pd-accent\)!important;color:var\(--pd-accent\)!important\}/u);
@@ -320,5 +329,16 @@ describe('подвал кабинета без реквизитов', () => {
   it('Shell.tsx: в подвале нет ИНН и ОГРН', () => {
     const footer = read(COMPONENTS, 'Shell.tsx').split('<footer')[1] ?? '';
     assert.equal(/ИНН|ОГРН|КПП/u.test(code(footer)), false);
+  });
+});
+
+describe('10. кнопка замечаний не закрывает ссылки подвала (Р-711)', () => {
+  // Кнопка 52 px закреплена в правом нижнем углу с отступом 16 px, а у
+  // подвала поле 10 px: у самого низа страницы она вставала на «Политику
+  // обработки данных». Поле подвала — 52 + 16 + 8 запаса, пока ссылки
+  // доходят до кнопки: до 1295 px (1220 + 2 × (52 + 16 − 30) = 1296).
+  it('у подвала нижнее поле под кнопку на всех ширинах, где ссылки доходят до неё', () => {
+    assert.match(CABINET_CSS, /@media \(max-width:1295px\)\{footer>\.cab-pad\{padding-bottom:76px!important\}\}/u);
+    assert.equal(CONTAINER + 2 * (52 + 16 - GUTTER), 1296);
   });
 });

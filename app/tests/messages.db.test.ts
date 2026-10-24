@@ -230,6 +230,26 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     assert.ok(!row.body.includes('Отвечаю на оба'), 'текст сообщения ушёл во внешний канал');
   });
 
+  it('Р-643: сигнал клиенту называет работу названием, сотруднику — кодом (Р-362)', async () => {
+    await messages.markRead(client(), ids.project!);
+    const reply = await messages.sendMessage(manager(), ids.project!, 'Сигнал с названием');
+    const toClient = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { dedupKey: `message:${reply.id}:${ids.client!}:email` },
+    });
+    assert.doesNotMatch(toClient.subject, /PD-\d{4}-\d{3}/u);
+    assert.ok(!toClient.subject.includes(`PD-MS-${stamp}`), `код работы в теме клиенту: ${toClient.subject}`);
+    assert.equal(toClient.subject, 'Новое сообщение по работе «Работа с перепиской»');
+    assert.ok(toClient.body.startsWith('Работа «Работа с перепиской».\n'), toClient.body);
+    assert.ok(!toClient.body.includes(`PD-MS-${stamp}`), 'код работы в письме клиенту');
+
+    await messages.markRead(manager(), ids.project!);
+    const question = await messages.sendMessage(client(), ids.project!, 'Сигнал с кодом');
+    const toStaff = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { dedupKey: `message:${question.id}:${ids.manager!}:email` },
+    });
+    assert.equal(toStaff.subject, `Новое сообщение по работе PD-MS-${stamp}`);
+  });
+
   it('правило куратора отключает сигнал о сообщении', async () => {
     await prisma.notifyRule.create({
       data: { userId: ids.manager!, eventKind: 'MESSAGE_RECEIVED', channel: 'EMAIL', enabled: false },
@@ -255,6 +275,34 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     assert.ok(mine.count > 0);
   });
 
+  it('окно ленты — последние сообщения в порядке времени, как хвост полной ветки (Р-636)', async () => {
+    const base = Date.now() + 60_000;
+    for (const [index, body] of ['Окно 1', 'Окно 2', 'Окно 3'].entries()) {
+      const sent = await messages.sendMessage(client(), ids.project!, body);
+      // Время задано явно: сообщения одной миллисекунды разводил бы только
+      // идентификатор, и проверка зависела бы от случая.
+      await prisma.message.update({ where: { id: sent.id }, data: { createdAt: new Date(base + index * 1000) } });
+    }
+    const full = await messages.listMessages(manager(), ids.project!);
+    const last = await messages.listMessages(manager(), ids.project!, { last: 2 });
+    assert.deepEqual(
+      last.map((row) => row.body),
+      ['Окно 2', 'Окно 3'],
+    );
+    assert.deepEqual(
+      last.map((row) => row.id),
+      full.slice(-2).map((row) => row.id),
+    );
+    // Клиенту окно приходит без имён сотрудников, как и вся ветка (Э-01).
+    const forClient = await messages.listMessages(client(), ids.project!, { last: 5 });
+    assert.equal(forClient.length, 5);
+    for (const row of forClient) {
+      if (row.author.role !== 'CLIENT') assert.equal(row.author.fullName, '', 'клиенту ушло имя сотрудника');
+    }
+    // Эксперту окно закрыто так же, как вся ветка (Р-150).
+    await assert.rejects(() => messages.listMessages(expert(), ids.project!, { last: 2 }), AccessDenied);
+  });
+
   it('по закрытой работе с приостановленным менеджером сигнал — руководителю (Р-462)', async () => {
     await prisma.message.updateMany({ where: { projectId: ids.project! }, data: { readAt: new Date() } });
     await prisma.project.update({ where: { id: ids.project! }, data: { status: 'COMPLETED' } });
@@ -268,6 +316,33 @@ describe('переписка по работе', { skip: !enabled }, async () =>
       const to = new Set(signals.map((row) => row.userId));
       assert.ok(to.has(ids.head!), 'руководитель не получил сигнала');
       assert.ok(!to.has(ids.manager!), 'сигнал ушёл приостановленному менеджеру');
+    } finally {
+      await prisma.user.update({ where: { id: ids.manager! }, data: { status: 'ACTIVE' } });
+      await prisma.project.update({ where: { id: ids.project! }, data: { status: 'ACTIVE' } });
+    }
+  });
+
+  it('Р-670: руководитель, прочитавший сообщение клиента по чужой работе, получает сигнал о следующем', async () => {
+    // Отметку `readAt` на сообщении клиента ставит только менеджер работы;
+    // приостановленный менеджер её не поставит, и прежде первое
+    // сообщение гасило руководителю все следующие сигналы.
+    const head = actorOf(ids.head!, 'HEAD');
+    await prisma.message.updateMany({ where: { projectId: ids.project! }, data: { readAt: new Date() } });
+    await prisma.project.update({ where: { id: ids.project! }, data: { status: 'COMPLETED' } });
+    await prisma.user.update({ where: { id: ids.manager! }, data: { status: 'SUSPENDED' } });
+    const toHead = (messageId: string) =>
+      prisma.notificationOutbox.count({ where: { dedupKey: `message:${messageId}:${ids.head!}:email` } });
+    try {
+      const first = await messages.sendMessage(client(), ids.project!, 'Первый вопрос по закрытой работе');
+      assert.equal(await toHead(first.id), 1, 'руководитель не получил сигнала о первом сообщении');
+      // Пока руководитель не открыл переписку, второй сигнал не ставится.
+      const unread = await messages.sendMessage(client(), ids.project!, 'Уточнение до ответа');
+      assert.equal(await toHead(unread.id), 0, 'сигнал на каждую реплику');
+
+      await messages.markRead(head, ids.project!);
+      await messages.sendMessage(head, ids.project!, 'Руководитель ответил');
+      const second = await messages.sendMessage(client(), ids.project!, 'Второй вопрос после ответа');
+      assert.equal(await toHead(second.id), 1, 'руководитель не получил сигнала о втором сообщении');
     } finally {
       await prisma.user.update({ where: { id: ids.manager! }, data: { status: 'ACTIVE' } });
       await prisma.project.update({ where: { id: ids.project! }, data: { status: 'ACTIVE' } });

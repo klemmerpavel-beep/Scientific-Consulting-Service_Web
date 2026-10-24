@@ -10,7 +10,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { mkdtempSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
@@ -138,6 +138,24 @@ describe('материал с пояснением одной операцией
     const before = await counts();
     await assert.rejects(upload(ids.open!, 'я'.repeat(COMMENT_MAX + 1)), /Пояснение длиннее/u);
     assert.deepEqual(await counts(), before);
+  });
+
+  it('Р-672: название материала длиннее 300 знаков — отказ, ничего не сохранено', async () => {
+    // Название уходит в темы писем и заголовки этапа; у соседних полей
+    // предел есть, у названия материала его не было.
+    const before = await counts();
+    await assert.rejects(upload(ids.open!, 'Пояснение', 'я'.repeat(301)), /не длиннее 300 знаков/u);
+    assert.deepEqual(await counts(), before);
+    const fits = await upload(ids.open!, '', 'я'.repeat(300));
+    const material = await prisma.material.findUniqueOrThrow({ where: { id: fits.materialId } });
+    assert.equal(material.title.length, 300);
+    // Поля «Название» в формах загрузки ограничены тем же пределом.
+    const screen = (...parts: string[]) =>
+      readFileSync(path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', ...parts, 'page.tsx'), 'utf8');
+    assert.match(screen('stages', '[id]'), /label="Название"\s+name="title"\s+maxLength=\{300\}/u);
+    assert.match(screen('projects', '[code]'), /label="Название материала"\s+name="title"\s+maxLength=\{300\}/u);
+    assert.match(screen('projects', '[code]', 'materials'), /label="Название" name="title" maxLength=\{300\}/u);
+    assert.match(screen('projects', '[code]', 'payments'), /label="Название"\s+name="title"\s+maxLength=\{300\}/u);
   });
 
   it('пояснение — замечанием к той же версии, ждущим публикации; версия тоже ждёт', async () => {

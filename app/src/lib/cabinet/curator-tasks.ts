@@ -79,6 +79,9 @@ export interface OwnVersion {
 /** Своё замечание куратора с решением менеджера. */
 export interface OwnComment {
   readonly versionId: string;
+  readonly materialId: string;
+  /** Версию менеджер не опубликовал: замечание отклонено вместе с ней (Р-646). */
+  readonly versionRejected: boolean;
   readonly createdAt: Date;
   readonly status: string;
   readonly materialTitle: string;
@@ -103,7 +106,10 @@ const materialHref = (code: string, stage: { readonly id: string } | null) =>
  * - «Менеджер не опубликовал вашу версию» — последняя своя версия
  *   материала отклонена; закрывается новой версией того же материала.
  * - «Менеджер не опубликовал ваше замечание» — последнее своё замечание к
- *   версии отклонено; закрывается новым замечанием к той же версии.
+ *   материалу отклонено; закрывается новым замечанием к любой его версии:
+ *   форма замечания стоит только у новейшей (решение Р-647). Замечание к
+ *   неопубликованной версии делом не становится: его покрывает «не
+ *   опубликовал вашу версию» (Р-646).
  * - Оба «не опубликовал» не берутся с завершённого этапа: закрыть их там
  *   нечем (решение Р-524).
  */
@@ -157,14 +163,16 @@ export function curatorTasks(
     });
   }
 
-  // Последнее своё замечание к каждой версии.
+  // Последнее своё замечание к каждому материалу: после выхода новой
+  // версии к прежней замечание оставить негде (Р-647).
   const lastComment = new Map<string, OwnComment>();
   for (const comment of comments) {
-    const known = lastComment.get(comment.versionId);
-    if (known === undefined || comment.createdAt > known.createdAt) lastComment.set(comment.versionId, comment);
+    const known = lastComment.get(comment.materialId);
+    if (known === undefined || comment.createdAt > known.createdAt) lastComment.set(comment.materialId, comment);
   }
   for (const comment of lastComment.values()) {
-    if (comment.status !== 'REJECTED' || !open.has(comment.code) || closedForCurator(comment.stage)) continue;
+    if (comment.status !== 'REJECTED' || comment.versionRejected) continue;
+    if (!open.has(comment.code) || closedForCurator(comment.stage)) continue;
     tasks.push({
       kind: 'COMMENT_REJECTED',
       label: `Менеджер не опубликовал ваше замечание: «${name(comment.materialTitle)}»`,

@@ -110,6 +110,27 @@ describe('работа с заявкой', { skip: !enabled }, async () => {
     await prisma.lead.update({ where: { id: ids.lead! }, data: { status: 'AWAITING_REPLY' } });
   });
 
+  it('Р-641: отклонённая заявка плашкой в разбор не возвращается и не одобряется', async () => {
+    const { approveLead, declineLead } = await import('../src/lib/cabinet/projects.ts');
+    const head = actor(ids.head!, 'HEAD');
+    const declined = await prisma.lead.create({
+      data: { source: 'landing', form: 'top', name: 'Отклонённый', contactKind: 'email', contact: `lw-no-${stamp}@example.org`, consentGiven: true, consentVersion: '2026-08-21' },
+    });
+    try {
+      await declineLead(head, declined.id, 'Не наш профиль');
+      await assert.rejects(work.setLeadStatus(head, declined.id, 'NEW'), work.LeadWorkError);
+      const lead = await prisma.lead.findUniqueOrThrow({ where: { id: declined.id } });
+      assert.equal(lead.status, 'DECLINED', 'плашка вернула отклонённую заявку в разбор');
+      await assert.rejects(
+        approveLead(head, { leadId: declined.id, title: 'Работа', serviceTypeId: 'none', managerId: ids.head! }),
+        /отклонена/u,
+      );
+    } finally {
+      await prisma.auditEvent.deleteMany({ where: { objectId: declined.id } });
+      await prisma.lead.delete({ where: { id: declined.id } });
+    }
+  });
+
   it('правка сохраняет значения, а в журнал идут только названия полей', async () => {
     const head = actor(ids.head!, 'HEAD');
     await work.editLead(head, ids.lead!, { name: 'Иванов Иван', topic: 'Статья Q1', contact: `lw-${stamp}@example.org` });
@@ -130,6 +151,27 @@ describe('работа с заявкой', { skip: !enabled }, async () => {
     assert.equal((await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } })).contactKind, 'email');
     assert.equal(work.contactKindOf(' a@b.ru '), 'email');
     assert.equal(work.contactKindOf('@telegram_nick'), 'phone');
+  });
+
+  it('почта с опечаткой не сохраняется: она уходит в карточку клиента и учётную запись (Р-705)', async () => {
+    const head = actor(ids.head!, 'HEAD');
+    const before = await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } });
+    for (const contact of ['a@@example', 'a@example', 'sokolova@почта']) {
+      await assert.rejects(work.editLead(head, ids.lead!, { contact }), work.LeadWorkError, contact);
+    }
+    const kept = await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } });
+    assert.equal(kept.contact, before.contact);
+    assert.equal(kept.contactKind, before.contactKind);
+    // Ник с «@» в начале и телефон проходят, как прежде.
+    await work.editLead(head, ids.lead!, { contact: '@telegram_nick' });
+    assert.equal((await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } })).contactKind, 'phone');
+    await work.editLead(head, ids.lead!, { contact: 'мария@почта.рф' });
+    assert.equal((await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } })).contactKind, 'email');
+    // Прежний адрес, который не меняют, правку других полей не держит.
+    await prisma.lead.update({ where: { id: ids.lead }, data: { contact: 'old@example' } });
+    await work.editLead(head, ids.lead!, { name: 'Иванов И.', contact: 'old@example' });
+    assert.equal((await prisma.lead.findUniqueOrThrow({ where: { id: ids.lead } })).name, 'Иванов И.');
+    await work.editLead(head, ids.lead!, { contact: before.contact, name: before.name ?? '' });
   });
 
   it('комментарий сохраняется с автором; пустой отклоняется', async () => {

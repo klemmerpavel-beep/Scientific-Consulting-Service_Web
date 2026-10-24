@@ -205,6 +205,13 @@ describe('переписка и учётные записи', { skip: !enabled }
     await prisma.project.update({ where: { id: ids.project }, data: { status: 'ACTIVE' } });
   });
 
+  it('клиент с действующей работой роль сотрудника не получает (решение Р-666)', async () => {
+    await assert.rejects(() => admin.setUserRole(head(), ids.clientUser!, 'EXPERT'), /действующие работы/u);
+    await assert.rejects(() => admin.setUserRole(head(), ids.clientUser!, 'HEAD'), /действующие работы/u);
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: ids.clientUser }, select: { role: true } });
+    assert.equal(user.role, 'CLIENT', 'клиент потерял доступ к своей работе');
+  });
+
   it('новая запись: адрес с опечаткой и неизвестная роль отклоняются', async () => {
     await assert.rejects(
       () => admin.createUser(head(), { email: 'ivanov@mail', fullName: 'Иванов', role: 'EXPERT' }),

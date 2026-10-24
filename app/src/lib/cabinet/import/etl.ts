@@ -131,17 +131,48 @@ const TYPE_RULES: readonly [RegExp, string][] = [
   [/диплом|специалитет|бакалавр|магистр/iu, 'diploma'],
 ];
 
-export function classifyType(raw: string): string | null {
+/**
+ * Написание типа работы в виде поиска по историческим написаниям
+ * справочника (`ServiceTypeAlias`). Одно правило на запись и на чтение:
+ * привязку заводит `addAlias`, а сверяет с ней разбор книги (решение Р-657).
+ */
+export function normalizeTypeAlias(raw: string): string {
+  return raw.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * `aliases` — исторические написания из справочника: «написание → код
+ * позиции». Прежде их только записывали и показывали, а разбор сводил тип
+ * одними правилами, и строка с привязанным написанием отклонялась при
+ * каждом переносе. Привязка сводит написание, которое правила не
+ * распознали; правила сильнее, поэтому вид работ, уже сведённых ими, при
+ * повторном переносе не меняется (решение Р-657).
+ */
+export function classifyType(
+  raw: string,
+  aliases: ReadonlyMap<string, string> = new Map(),
+): string | null {
   const text = raw.toLowerCase().replace(/ё/g, 'е').trim();
   if (text.length === 0) return null;
   for (const [pattern, code] of TYPE_RULES) if (pattern.test(text)) return code;
-  return null;
+  return aliases.get(normalizeTypeAlias(raw)) ?? null;
 }
 
 // ─────────────────────────── Даты ───────────────────────────────────────────
 
 /** Начало отсчёта Excel. 1900-й в нём високосный по ошибке — отсюда 30 декабря. */
 const EXCEL_EPOCH = Date.UTC(1899, 11, 30);
+
+/**
+ * День по серийному числу Excel. Дробная часть — время суток, и она
+ * отбрасывается: прежде число округлялось до ближайших суток, и всё после
+ * полудня уходило на следующий день, а заказ 31 декабря — в код работы
+ * следующего года (решение Р-660). Запас 1e-6 гасит погрешность двоичной
+ * дроби у ячеек, записанных ровно на полночь.
+ */
+function excelDay(raw: string): Date {
+  return new Date(EXCEL_EPOCH + Math.floor(Number(raw) + 1e-6) * 86_400_000);
+}
 
 const MONTHS: readonly [RegExp, number][] = [
   [/^январ/iu, 0],
@@ -185,7 +216,7 @@ export function parseDeadline(raw: string, orderDate: Date | null): ParsedDate {
   if (text.length === 0) return { date: null, issues: [] };
 
   if (/^\d{4,6}(\.\d+)?$/.test(text)) {
-    return { date: new Date(EXCEL_EPOCH + Math.round(Number(text)) * 86_400_000), issues: [] };
+    return { date: excelDay(text), issues: [] };
   }
 
   const numeric = text.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})$/);
@@ -470,6 +501,7 @@ export function parseRow(
   row: Row,
   columns: ColumnMap,
   fills: Readonly<Record<string, LegacyStatus>> = DEFAULT_FILLS,
+  aliases: ReadonlyMap<string, string> = new Map(),
 ): ParsedRow | null {
   const customer = cellOf(row, columns.customer).value.trim();
   if (customer.length === 0) return null;
@@ -477,12 +509,10 @@ export function parseRow(
   const issues: Issue[] = [];
 
   const rawDate = cellOf(row, columns.date).value.trim();
-  const orderDate = /^\d{4,6}(\.\d+)?$/.test(rawDate)
-    ? new Date(EXCEL_EPOCH + Math.round(Number(rawDate)) * 86_400_000)
-    : null;
+  const orderDate = /^\d{4,6}(\.\d+)?$/.test(rawDate) ? excelDay(rawDate) : null;
 
   const rawType = cellOf(row, columns.type).value.trim();
-  const typeCode = classifyType(rawType);
+  const typeCode = classifyType(rawType, aliases);
   if (typeCode === null && rawType.length > 0) {
     issues.push({
       code: 'UNKNOWN_SUPPORT_TYPE',
@@ -606,6 +636,7 @@ export interface ParsedBook {
 export function parseBook(
   sheets: readonly Sheet[],
   fills: Readonly<Record<string, LegacyStatus>> = DEFAULT_FILLS,
+  aliases: ReadonlyMap<string, string> = new Map(),
 ): ParsedBook {
   const sheet = sheets.find((s) => s.rows.length > 0);
   if (sheet === undefined) {
@@ -618,7 +649,7 @@ export function parseBook(
 
   for (const row of sheet.rows) {
     if (row.number <= headerRow) continue;
-    const parsed = parseRow(row, columns, fills);
+    const parsed = parseRow(row, columns, fills, aliases);
     if (parsed === null) continue;
     rows.push(parsed);
     const { conflict } = classifyStatus(parsed.rawStatus, parsed.fill, fills);
@@ -679,5 +710,24 @@ export function parseBook(
     },
     issueCounts,
     conflicts,
+  };
+}
+
+// ─────────────────────────── Исключённые строки ─────────────────────────────
+
+/**
+ * Номера строк, которые руководитель исключил из переноса, — из поля формы
+ * фиксации. Разделители — запятая, точка с запятой, пробел и перенос.
+ *
+ * Фрагмент, который не читается номером («12–15», «12а»), не отбрасывается,
+ * а возвращается отдельно: прежде «12; 31» молча давало одну строку 31, и
+ * строка 12, которую хотели исключить, заводилась работой с договором и
+ * траншами (решение Р-661). Отказ с перечнем — дело действия формы.
+ */
+export function parseRowNumbers(raw: string): { rows: number[]; bad: string[] } {
+  const parts = raw.split(/[\s,;]+/u).filter(Boolean);
+  return {
+    rows: parts.filter((part) => /^\d+$/u.test(part)).map(Number),
+    bad: parts.filter((part) => !/^\d+$/u.test(part)),
   };
 }

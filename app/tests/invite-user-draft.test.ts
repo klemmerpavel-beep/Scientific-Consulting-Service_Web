@@ -29,4 +29,21 @@ describe('отказ заведения учётной записи не тер�
     }
     assert.match(page, /name="role" defaultValue=\{ROLES\.includes\(draft\.role as Role\) \? draft\.role : 'EXPERT'\}/u);
   });
+
+  // Якорь #new ставит верх свёртки на верх экрана, и причина над свёрткой
+  // оказывалась выше края: человек видел форму, но не отказ (Р-706).
+  it('причина отказа — внутри свёртки, над полями, а не над ней', () => {
+    const start = page.indexOf('<Disclosure title="Завести учётную запись"');
+    assert.ok(start > 0, 'свёртка не найдена');
+    const fold = page.slice(start, page.indexOf('</Disclosure>', start));
+    assert.match(fold, /id="new"/u);
+    const notice = fold.indexOf('<Notice tone="error" role="alert">');
+    assert.ok(notice > 0, 'в свёртке нет причины отказа');
+    assert.ok(notice < fold.indexOf('name="fullName"'), 'причина ниже полей');
+    assert.match(fold.slice(notice, notice + 80), /\{failure\}/u);
+    // Над свёрткой та же причина не выводится второй раз.
+    const top = page.slice(0, start);
+    assert.match(top, /failure === undefined \|\| inviteFailed \? null : \(/u);
+    assert.match(page, /const inviteFailed = flags\.new === '1' && failure !== undefined;/u);
+  });
 });

@@ -18,6 +18,7 @@ import {
   TABLE_NUM,
   TABLE_NUM_HEAD,
   TableCard,
+  TableScroll,
   Text,
   formatDate,
   plural,
@@ -117,17 +118,19 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
           владельца 08.10.2026, решение Р-493). */}
       {windowed.length === 0 ? null : <PromoGantt rows={windowed} today={today} />}
 
+      {/* Таблица — в ширину карточки: столбец отметок прежде уходил за
+          правый край. Заказ — конец окна и стоит с ним в одном столбце, пик
+          заказов — справочный, перенесён в «На чём основано», многословные
+          шапки переносятся (Р-689). */}
       <TableCard label="Виды работ" style={{ marginBottom: 12 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1120 }}>
           <thead>
             <tr>
               <th style={TABLE_HEAD} scope="col">Вид работ</th>
               <th style={TABLE_NUM_HEAD} scope="col">Наблюдений</th>
-              <th style={TABLE_HEAD} scope="col">Месяц сдачи (сроков / сезонов)</th>
-              <th style={TABLE_NUM_HEAD} scope="col">Медиана, дней</th>
-              <th style={TABLE_HEAD} scope="col">Заказ около</th>
-              <th style={TABLE_HEAD} scope="col">Окно (главное с)</th>
-              <th style={TABLE_HEAD} scope="col">Пик заказов, справочно</th>
+              <th style={{ ...TABLE_HEAD, whiteSpace: 'normal' }} scope="col">Месяц сдачи (сроков / сезонов)</th>
+              <th style={{ ...TABLE_NUM_HEAD, whiteSpace: 'normal' }} scope="col">Медиана, дней</th>
+              <th style={{ ...TABLE_HEAD, whiteSpace: 'normal' }} scope="col">Окно — заказ около</th>
               <th style={TABLE_NUM_HEAD} scope="col">Вес</th>
               <th style={TABLE_HEAD} scope="col">Уверенность</th>
               <th style={TABLE_HEAD} scope="col">Отметка</th>
@@ -139,21 +142,31 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
                 <th style={TABLE_CELL} scope="row">{row.typeName}</th>
                 <td style={TABLE_NUM}>{row.observations}</td>
                 <td style={TABLE_CELL}>
-                  {row.deliveryMonths.length === 0
-                    ? '—'
-                    : `${row.deliveryMonths.map((month) => MONTH_NAMES[month - 1]).join(' и ')} (${row.deliveryCount} / ${row.deliverySeasons})`}
+                  {row.deliveryMonths.length === 0 ? (
+                    '—'
+                  ) : (
+                    <>
+                      {`${row.deliveryMonths.map((month) => MONTH_NAMES[month - 1]).join(' и ')} `}
+                      {/* Шапка столбца переносится — дробь сроков не рвётся (Р-689). */}
+                      <span style={{ whiteSpace: 'nowrap' }}>{`(${row.deliveryCount} / ${row.deliverySeasons})`}</span>
+                    </>
+                  )}
                 </td>
                 <td style={TABLE_NUM}>{row.medianDays === null ? '—' : days(row.medianDays)}</td>
-                <td style={TABLE_CELL}>{row.orderOn === null ? '—' : formatDate(row.orderOn)}</td>
                 <td style={TABLE_CELL}>
-                  {row.windowStart === null
-                    ? '—'
-                    : `${formatDate(row.windowStart)} — ${formatDate(row.orderOn)} (${formatDate(row.mainStart)})`}
-                </td>
-                <td style={TABLE_CELL}>
-                  {row.peak === null
-                    ? '—'
-                    : `${MONTH_NAMES[row.peak.month - 1]}: ${norm(row.peak.norm)}; по годам ${row.peak.years.map((year) => year.orders).join(' и ')}`}
+                  {row.windowStart === null ? (
+                    '—'
+                  ) : (
+                    <>
+                      {/* Дата не рвётся: столбец уже прочих, и «2026 — 11»
+                          читалось отдельно от месяца (Р-689). */}
+                      <span style={{ whiteSpace: 'nowrap' }}>{`${formatDate(row.windowStart)} —`}</span>{' '}
+                      <span style={{ whiteSpace: 'nowrap' }}>{formatDate(row.orderOn)}</span>
+                      <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+                        главное с <span style={{ whiteSpace: 'nowrap' }}>{formatDate(row.mainStart)}</span>
+                      </div>
+                    </>
+                  )}
                 </td>
                 <td style={TABLE_NUM}>{row.weight === null ? '—' : formatAmount(row.weight)}</td>
                 <td style={TABLE_CELL}>{CONFIDENCE_LABEL[row.confidence]}</td>
@@ -200,9 +213,16 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
             </Text>
             <Text muted size={13} style={{ marginBottom: 6 }}>
               {`медиана ${row.medianDays === null ? '—' : `${days(row.medianDays)} дн.`} · средний чек ${row.averageCheck === null ? '—' : formatAmount(row.averageCheck)}`}
+              {/* Пик заказов — справочно, из таблицы видов (Р-689). */}
+              {row.peak === null
+                ? ''
+                : ` · пик заказов — ${MONTH_NAMES[row.peak.month - 1]}: ${norm(row.peak.norm)}; по годам ${row.peak.years.map((year) => year.orders).join(' и ')}`}
               {/* Заявки — по направлению формы сайта, к которому относится вид (РК-18). */}
               {leads.get(row.typeCode)?.direction == null ? '' : ` · заявки — по направлению «${leads.get(row.typeCode)!.direction}»`}
             </Text>
+            {/* В свёртке таблица прокручивается в своей области: голая
+                раздвигала страницу вбок на телефоне (Р-688). */}
+            <TableScroll label={`${row.typeName}: заказы по месяцам`}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -225,6 +245,7 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
                   ))}
               </tbody>
             </table>
+            </TableScroll>
           </div>
         ))}
       </Disclosure>

@@ -5,6 +5,7 @@ import Shell from '../../../components/cabinet/Shell';
 import { Button, Card, Field, Form, FormActions, Narrow, ScreenHead, Thread } from '../../../components/cabinet/ui';
 import { formDraft } from '../../../lib/cabinet/flash';
 import { listStaffThread, readStaffThread } from '../../../lib/cabinet/messages';
+import { THREAD_WINDOW, sliceWindow, threadWindow } from '../../../lib/cabinet/thread-window';
 import { homeFor } from '../../../lib/cabinet/nav';
 import { requireActor } from '../../../lib/cabinet/session';
 import { postStaffMessage } from '../actions';
@@ -20,12 +21,14 @@ export const dynamic = 'force-dynamic';
 export default async function HeadThreadScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; show?: string }>;
 }) {
   const actor = await requireActor('/cabinet/head');
   if (actor.role !== 'MANAGER') redirect(homeFor(actor));
   const sp = await searchParams;
-  const messages = await listStaffThread(actor, actor.id);
+  // Окно последних сообщений и ссылка на ранние (решение Р-636).
+  const shown = threadWindow(sp.show);
+  const { messages, earlier } = sliceWindow(await listStaffThread(actor, actor.id, { last: shown + 1 }), shown);
   await readStaffThread(actor, actor.id);
   const draft = (await formDraft(sp.error)) ?? {};
 
@@ -43,6 +46,7 @@ export default async function HeadThreadScreen({
           <Thread
             messages={messages}
             viewer={actor}
+            earlierHref={earlier ? `/cabinet/head?show=${shown + THREAD_WINDOW}` : undefined}
             empty="Переписки пока нет. Спорный случай, нестандартная просьба клиента, сомнение по срокам или цене — напишите руководителю."
           />
           <Form action={postStaffMessage} style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--pd-divider)' }}>

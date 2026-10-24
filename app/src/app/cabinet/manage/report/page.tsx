@@ -350,24 +350,27 @@ export default async function ReportScreen({
               : `; средний чек за период — ${formatRounded(signed.averageCheck)}.`}
           </Text>
           {months.length === 0 ? null : (
+            <>
+            {/* Пояснение — абзацем над областью прокрутки: подпись таблицы
+                шириной с таблицу, и на телефоне край области резал её
+                посреди слова (Р-691). */}
+            <Text
+              muted
+              size={13}
+              id="report-months-note"
+              style={{ marginTop: 16, marginBottom: 8 }}
+            >
+              Работы, начатые в периоде, по месяцу начала: сумма договоров и
+              полученное по ним — когда бы оно ни пришло.
+            </Text>
             <TableScroll label="Договоры и оплаты по месяцу начала работы">
             <table
+              aria-describedby="report-months-note"
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                marginTop: 16,
               }}
             >
-              <caption
-                style={{
-                  ...TABLE_CELL,
-                  textAlign: "left",
-                  color: "var(--pd-ink-secondary)",
-                }}
-              >
-                Работы, начатые в периоде, по месяцу начала: сумма договоров и
-                полученное по ним — когда бы оно ни пришло.
-              </caption>
               <thead>
                 <tr>
                   <th style={TABLE_HEAD} scope="col">
@@ -396,6 +399,7 @@ export default async function ReportScreen({
               </tbody>
             </table>
             </TableScroll>
+            </>
           )}
         </Card>
 
@@ -425,23 +429,24 @@ export default async function ReportScreen({
             />
           </Tiles>
           {demand.length === 0 ? null : (
+            <>
+            {/* Пояснение — абзацем над областью прокрутки (Р-691). */}
+            <Text
+              muted
+              size={13}
+              id="report-demand-note"
+              style={{ marginTop: 16, marginBottom: 8 }}
+            >
+              Работы, начатые в периоде.
+            </Text>
             <TableScroll label="Что заказывали">
             <table
+              aria-describedby="report-demand-note"
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                marginTop: 16,
               }}
             >
-              <caption
-                style={{
-                  ...TABLE_CELL,
-                  textAlign: "left",
-                  color: "var(--pd-ink-secondary)",
-                }}
-              >
-                Работы, начатые в периоде.
-              </caption>
               <thead>
                 <tr>
                   <th style={TABLE_HEAD} scope="col">
@@ -478,6 +483,7 @@ export default async function ReportScreen({
               </tbody>
             </table>
             </TableScroll>
+            </>
           )}
         </Card>
 

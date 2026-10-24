@@ -16,6 +16,7 @@ import { parseAmount } from './money.ts';
 import { enqueue, LEAD_RETRY_PAUSE_MS, pruneCuratorDigests } from './outbox.ts';
 import { curatorAccessLetter, invitationLetter, ndaSignedLetter } from './curator-letters.ts';
 import { ndaRequestOpen, ndaWaitingLetter } from './curator-welcome.ts';
+import { normalizeTypeAlias } from './import/etl.ts';
 
 export type Role = 'CLIENT' | 'EXPERT' | 'MANAGER' | 'HEAD';
 export type Status = 'ACTIVE' | 'SUSPENDED' | 'ERASED';
@@ -157,6 +158,11 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
  * негоден; адрес принадлежит сотруднику; запись закрыта; адрес уже у
  * другой карточки клиента — их сводит руководитель.
  *
+ * Почты в карточке нет — её вписывают в той же форме (`email`): прежде
+ * оставалась подсказка, а обходом служил новый заказ с тем же телефоном,
+ * и он заводил вторую работу (решение Р-655). Адрес проверяется как у
+ * ручного заказа (Р-308) и записывается, только пока почты в карточке нет.
+ *
  * Согласие на обработку ПДн здесь не спрашивается: основание для
  * заказчика — договор (п. 5 ч. 1 ст. 6 152-ФЗ, так это и сказано в
  * Политике); новую заявку из кабинета клиент подаёт с отметками, как
@@ -167,6 +173,7 @@ export async function openClientAccess(
   actor: Actor,
   projectId: string,
   ip?: string | null,
+  email?: string | null,
 ): Promise<{ link: string; expiresAt: Date; fullName: string }> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -207,6 +214,12 @@ export async function openClientAccess(
   // Учётная запись: своя у карточки, найденная по адресу или новая.
   let userId: string;
   let created = false;
+  const typed = email?.trim() ? normalizeEmail(email) : null;
+  // Форму с полем почты показали карточке без почты и без записи: если
+  // с тех пор она изменилась, вписанный адрес не к месту.
+  if (typed !== null && (client.userId !== null || (client.email ?? '').trim() !== '')) {
+    throw new Error('В карточке клиента уже есть почта: обновите страницу');
+  }
   if (client.userId !== null) {
     const user = await prisma.user.findUnique({
       where: { id: client.userId },
@@ -216,12 +229,15 @@ export async function openClientAccess(
     if (user.status !== 'ACTIVE') throw new Error('Учётная запись клиента закрыта: вход не открывается');
     userId = client.userId;
   } else {
-    const email = normalizeEmail(client.email ?? '');
-    if (email === '' || !EMAIL_SHAPE.test(email)) {
+    const address = typed ?? normalizeEmail(client.email ?? '');
+    if (typed !== null && !EMAIL_SHAPE.test(typed)) {
+      throw new Error('Почта клиента записана с ошибкой: проверьте адрес');
+    }
+    if (address === '' || !EMAIL_SHAPE.test(address)) {
       throw new Error('В карточке клиента нет адреса почты: впишите его, и вход можно будет открыть');
     }
     const existing = await prisma.user.findUnique({
-      where: { email },
+      where: { email: address },
       select: { id: true, role: true, status: true, clientProfile: { select: { id: true } } },
     });
     if (existing !== null) {
@@ -232,10 +248,37 @@ export async function openClientAccess(
       if (existing.clientProfile !== null && existing.clientProfile.id !== client.id) {
         throw new Error('Этот адрес уже у другой карточки клиента: карточки сводит руководитель');
       }
+    }
+    if (typed !== null) {
+      const twin = await prisma.clientProfile.count({
+        where: {
+          id: { not: client.id },
+          mergedIntoId: null,
+          erasedAt: null,
+          email: { equals: typed, mode: 'insensitive' },
+        },
+      });
+      if (twin > 0) throw new Error('Этот адрес уже у другой карточки клиента: карточки сводит руководитель');
+      // Запись — условием «почты в карточке всё ещё нет»: адрес, вписанный
+      // за это время другим действием, не затирается.
+      const written = await prisma.clientProfile.updateMany({
+        where: { id: client.id, userId: null, email: client.email },
+        data: { email: typed },
+      });
+      if (written.count === 0) throw new Error('В карточке клиента уже есть почта: обновите страницу');
+      await record(actor, {
+        action: 'CLIENT_EMAIL_ADDED',
+        objectType: 'ClientProfile',
+        objectId: client.id,
+        projectId: project.id,
+        ip,
+      });
+    }
+    if (existing !== null) {
       userId = existing.id;
     } else {
       const user = await prisma.user.create({
-        data: { email, fullName: client.fullName, role: 'CLIENT' },
+        data: { email: address, fullName: client.fullName, role: 'CLIENT' },
         select: { id: true },
       });
       userId = user.id;
@@ -714,6 +757,9 @@ export async function createUser(actor: Actor, input: CreateUserInput) {
   });
 }
 
+/** Почему письмо не ушло: роль адресата сменилась (Р-667). */
+export const ROLE_CHANGED_NOTE = 'роль сменилась до отправки';
+
 /**
  * Сменить роль. Все сессии отзываются: роль хранится в сессии на время
  * запроса, и вкладка, открытая до понижения, иначе доработала бы старыми
@@ -733,6 +779,16 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
   if ((staff(before.role) && !staff(role)) || (before.role === 'EXPERT' && role !== 'EXPERT')) {
     await ensureNoOpenWorks(userId);
   }
+  // Сотрудник не бывает клиентом работы — как при одобрении заявки и
+  // открытии входа клиенту. Клиент, ставший сотрудником, терял свои
+  // действующие работы: согласовать этап может только роль клиента, а
+  // выборка сотрудника по его карточке их не отдаёт (решение Р-666).
+  if (before.role === 'CLIENT') {
+    const open = await prisma.project.count({
+      where: { client: { userId }, status: { in: ['ACTIVE', 'PAUSED'] } },
+    });
+    if (open > 0) throw new Error('У клиента действующие работы: роль сотрудника — после их завершения');
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.user.update({ where: { id: userId }, data: { role } });
@@ -742,6 +798,22 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
     // показывал — исправить было нечем (решение Р-225).
     if (role === 'EXPERT') {
       await tx.expertProfile.upsert({ where: { userId }, create: { userId }, update: {} });
+    }
+    // Неотправленные письма адресата гаснут все: рассылка роль адресата не
+    // проверяет, и письма руководителю — просроченные транши, требования
+    // клиентов об удалении, сводка — уходили пониженному до менеджера, а
+    // письма о работах — бывшему куратору. По виду письма не видно, по
+    // какой роли оно поставлено; сигналы о новых событиях после смены роли
+    // ставятся заново. Гаснут и недоставленные — их вернуло бы «Отправить
+    // ещё раз» (Р-668). Сводка куратора — вместе с вошедшими в неё письмами
+    // (Р-534). Повышение менеджера до руководителя ничего не отнимает
+    // (решение Р-667).
+    if (!(before.role === 'MANAGER' && role === 'HEAD')) {
+      if (before.role === 'EXPERT') await pruneCuratorDigests(tx, userId, () => true, ROLE_CHANGED_NOTE);
+      await tx.notificationOutbox.updateMany({
+        where: { userId, state: { in: ['PENDING', 'FAILED'] } },
+        data: { state: 'EXPIRED', failure: null, lastError: ROLE_CHANGED_NOTE, scheduledAt: new Date() },
+      });
     }
     // И сессии клиентов по ссылкам, которые он выдал (решение Р-424).
     await revokeStaffIssuedSessions(tx, userId);
@@ -757,7 +829,15 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
   // Новый куратор узнаёт о кабинете письмом (требование Э-03).
   if (role === 'EXPERT') {
     const profile = await prisma.expertProfile.findUnique({ where: { userId }, select: { ndaSignedAt: true } });
-    await inviteCurator(userId, (profile?.ndaSignedAt ?? null) !== null);
+    const signed = (profile?.ndaSignedAt ?? null) !== null;
+    // Ключ приглашения — один на учётную запись: приглашение, погашенное
+    // прежней сменой роли до отправки, ставится в очередь заново текстом
+    // на сегодня, иначе вернувшийся куратор остался бы без письма (Р-667).
+    await prisma.notificationOutbox.updateMany({
+      where: { userId, eventKind: 'CURATOR_INVITED', state: 'EXPIRED', lastError: ROLE_CHANGED_NOTE },
+      data: { state: 'PENDING', attempts: 0, lastError: null, scheduledAt: new Date(), ...invitationLetter(signed) },
+    });
+    await inviteCurator(userId, signed);
   }
 
   await record(actor, {
@@ -840,11 +920,18 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
   // Отзыв договора гасит неотправленные письма о работах: отложенные до
   // утренней сводки ушли бы в 09:00 с названиями этапов и материалов
   // куратору, которому они уже не положены (Р-237; решение Р-456).
-  // Нейтральное «работа снята» уходит.
+  // Недоставленные письма о работах гаснут тоже: «Отправить ещё раз»
+  // вернуло бы их в очередь (решение Р-668). Нейтральное «работа снята»
+  // уходит.
   if ((before?.ndaSignedAt ?? null) !== null && signedOn === null) {
     await prisma.notificationOutbox.updateMany({
-      where: { userId, projectId: { not: null }, state: 'PENDING', eventKind: { not: 'WORK_UNASSIGNED' } },
-      data: { state: 'EXPIRED', lastError: NDA_REVOKED_NOTE, scheduledAt: new Date() },
+      where: {
+        userId,
+        projectId: { not: null },
+        state: { in: ['PENDING', 'FAILED'] },
+        eventKind: { not: 'WORK_UNASSIGNED' },
+      },
+      data: { state: 'EXPIRED', failure: null, lastError: NDA_REVOKED_NOTE, scheduledAt: new Date() },
     });
     // И письма о работах, уже вошедшие в неотправленную сводку: сводка
     // без работы под условие выше не подходит (решение Р-534).
@@ -1071,7 +1158,7 @@ export async function saveServiceType(actor: Actor, input: ServiceTypeInput) {
  */
 export async function addAlias(actor: Actor, serviceTypeId: string, rawAlias: string) {
   ensure(actor, 'DIRECTORY_EDIT');
-  const alias = rawAlias.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+  const alias = normalizeTypeAlias(rawAlias);
   if (alias.length === 0) throw new Error('Написание не указано');
 
   const saved = await prisma.serviceTypeAlias.upsert({

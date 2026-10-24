@@ -51,13 +51,21 @@ const SLOT = /^[a-z-]{1,24}$/u;
 export const MAX_DRAFT_BYTES = 2800;
 
 /**
+ * Помещается ли черновик в cookie — тот же замер, что у `packDraft`: метка
+ * всегда двенадцать знаков. Форма, которой черновик нужен для следующего
+ * шага, укорачивает его заранее (решение Р-645).
+ */
+export function draftFits(fields: Readonly<Record<string, string>>): boolean {
+  return Buffer.byteLength(JSON.stringify({ id: '000000000000', fields }), 'utf8') <= MAX_DRAFT_BYTES;
+}
+
+/**
  * Черновик формы — значения полей, введённые до отказа (решение Р-279).
  * `null`, если черновик не помещается в cookie.
  */
 export function packDraft(id: string, fields: Readonly<Record<string, string>>): string | null {
-  const json = JSON.stringify({ id, fields });
-  if (Buffer.byteLength(json, 'utf8') > MAX_DRAFT_BYTES) return null;
-  return Buffer.from(json, 'utf8').toString('base64url');
+  if (!draftFits(fields)) return null;
+  return Buffer.from(JSON.stringify({ id, fields }), 'utf8').toString('base64url');
 }
 
 /** Значения полей черновика, если метка совпала; иначе ничего. */

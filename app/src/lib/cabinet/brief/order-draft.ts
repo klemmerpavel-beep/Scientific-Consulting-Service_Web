@@ -9,6 +9,7 @@
  * Модуль чистый: справочник видов передаётся параметром.
  */
 
+import { moscowToday } from '../clock.ts';
 import { parseDeadline } from '../import/etl.ts';
 import { guessServiceCode, type ParsedBrief } from './parse.ts';
 
@@ -26,16 +27,27 @@ function normalize(text: string): string {
   return text.toLowerCase().replace(/ё/gu, 'е').replace(/\s+/gu, ' ').trim();
 }
 
-/** Дата документа → значение поля даты; не читается — пусто и заметка. */
-function isoDate(raw: string | undefined, label: string, notes: string[]): string {
-  if (raw === undefined) return '';
-  const { date } = parseDeadline(raw, null);
-  if (date === null) {
+/**
+ * Дата документа → день; не читается — `null` и заметка. Догадки разбора
+ * (восстановленный год, последний день месяца) идут в «Проверьте вручную»:
+ * ручной заказ прошедший срок принимает намеренно, и поймать ошибку может
+ * только черновик (решение Р-673).
+ */
+function readDate(raw: string | undefined, label: string, notes: string[], orderDate: Date | null): Date | null {
+  if (raw === undefined) return null;
+  const { date, issues } = parseDeadline(raw, orderDate);
+  // Четыре–шесть цифр разбор книги читает как порядковый день Excel: номер
+  // из ячейки таблицы (45000 — 2023 год) проходит, а «2027» из документа
+  // стало бы 1905 годом.
+  if (date === null || date.getUTCFullYear() < 2000) {
     notes.push(`«${label}»: дата «${raw}» не прочитана — укажите вручную.`);
-    return '';
+    return null;
   }
-  return date.toISOString().slice(0, 10);
+  for (const issue of issues) notes.push(`«${label}»: ${issue.note}, проверьте.`);
+  return date;
 }
+
+const isoDay = (date: Date | null): string => (date === null ? '' : date.toISOString().slice(0, 10));
 
 /**
  * Суть задачи из документа: цель, задачи, научный руководитель, журнал — в
@@ -69,6 +81,7 @@ export function universityLine(fields: ParsedBrief['fields']): string {
 export function orderDraftFromBrief(
   brief: Pick<ParsedBrief, 'fields' | 'article' | 'manual'>,
   types: readonly { readonly id: string; readonly code: string; readonly name: string }[],
+  today: Date = moscowToday(),
 ): OrderDraft {
   const { fields } = brief;
   const notes: string[] = [...brief.manual];
@@ -94,6 +107,12 @@ export function orderDraftFromBrief(
   const topic = fields.topic ?? '';
   if (topic.length > TOPIC_LIMIT) notes.push('Тема длиннее 500 знаков — сократите вручную.');
 
+  // Срок читается от даты обращения, а её нет — от сегодняшнего дня, как
+  // ручной заказ без даты. Сама дата обращения на следующий год не
+  // переносится: она в прошлом (Р-673).
+  const orderedOn = readDate(fields.orderedOn, 'Дата заказа', notes, null);
+  const dueOn = readDate(fields.deadline, 'Срок', notes, orderedOn ?? today);
+
   return {
     values: {
       customer: fields.customer ?? '',
@@ -105,8 +124,8 @@ export function orderDraftFromBrief(
       summary: summary.text,
       university: universityLine(fields),
       speciality: (fields.direction ?? '').slice(0, 300),
-      orderedOn: isoDate(fields.orderedOn, 'Дата заказа', notes),
-      dueOn: isoDate(fields.deadline, 'Срок', notes),
+      orderedOn: isoDay(orderedOn),
+      dueOn: isoDay(dueOn),
     },
     notes,
   };

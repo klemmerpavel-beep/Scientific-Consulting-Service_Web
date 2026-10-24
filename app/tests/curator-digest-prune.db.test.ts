@@ -119,4 +119,37 @@ describe('сводка куратору при снятии и отзыве до
     const merged = await prisma.notificationOutbox.count({ where: { userId: ids.curator, state: 'MERGED' } });
     assert.equal(merged, 0);
   });
+
+  it('недоставленная сводка чистится так же, как неотправленная (решение Р-668)', async () => {
+    await admin.signExpertNda(head(), ids.curator!, NDA);
+    await outbox.enqueue(prisma, {
+      userId: ids.curator!,
+      projectId: ids.second!,
+      eventKind: 'CURATOR_TURN',
+      subject: 'Ход за вами: этап «Выводы»',
+      body: '—',
+      dedupKey: `cdp:failed:${stamp}`,
+    });
+    await outbox.enqueueCuratorDigest(outbox.nextDigestAt(new Date()));
+    const fresh = await prisma.notificationOutbox.findFirstOrThrow({
+      where: { userId: ids.curator, eventKind: 'CURATOR_DIGEST', state: 'PENDING' },
+    });
+    // Ящик сводку не принял: строка ждёт «Отправить ещё раз».
+    await prisma.notificationOutbox.update({
+      where: { id: fresh.id },
+      data: { state: 'FAILED', failure: 'DELIVERY', attempts: 5 },
+    });
+
+    // В сводку вошло и нейтральное «работа передана» после снятия выше:
+    // оно остаётся, письмо об этапе выпадает.
+    assert.match(fresh.subject, /2 события/u);
+
+    await admin.signExpertNda(head(), ids.curator!, null);
+    const after = await prisma.notificationOutbox.findUniqueOrThrow({ where: { id: fresh.id } });
+    assert.doesNotMatch(after.body, /Выводы/u, 'повтор отправил бы название этапа куратору без договора');
+    assert.match(after.subject, /1 событие/u);
+    const gone = await prisma.notificationOutbox.findFirstOrThrow({ where: { userId: ids.curator, dedupKey: { startsWith: `cdp:failed:${stamp}` } } });
+    assert.equal(gone.state, 'EXPIRED');
+    assert.equal(gone.lastError, admin.NDA_REVOKED_NOTE);
+  });
 });

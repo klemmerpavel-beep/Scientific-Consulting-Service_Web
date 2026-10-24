@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 
 import { BUTTON_PRIMARY, BUTTON_QUIET, FIELD_CONTROL, MONO, RADIUS, SANS } from './tokens.ts';
 import { Notice } from './ui.tsx';
@@ -40,6 +40,7 @@ export function AccessLink({
   field = 'userId',
   selectLabel = 'Кому открыть вход',
   submitLabel = 'Выдать ссылку',
+  askEmail = false,
 }: {
   people: readonly { id: string; label: string }[];
   action: (state: AccessLinkState, form: FormData) => Promise<AccessLinkState>;
@@ -47,6 +48,11 @@ export function AccessLink({
   field?: string;
   selectLabel?: string;
   submitLabel?: string;
+  /**
+   * Поле «Почта клиента»: в карточке её нет, и вход открыть не на что.
+   * После выдачи адрес уже в карточке, и поле уходит (решение Р-655).
+   */
+  askEmail?: boolean;
 }) {
   const [state, submit, pending] = useActionState<AccessLinkState, FormData>(action, {
     link: null,
@@ -54,6 +60,17 @@ export function AccessLink({
     error: null,
   });
   const [copied, setCopied] = useState(false);
+  // Выбор держится состоянием: после действия React 19 сбрасывал список к
+  // первой строке, и «Выдать новую ссылку» выдавала вход первому в списке,
+  // а не тому, кому выдали только что (решение Р-704). Сброс формы после
+  // действия — родной `form.reset()`: он ставит строку «по умолчанию» и
+  // управляемого значения не знает, поэтому строкой по умолчанию делается
+  // выбранная.
+  const [picked, setPicked] = useState(people[0]?.id ?? '');
+  const pickRef = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    for (const option of pickRef.current?.options ?? []) option.defaultSelected = option.value === picked;
+  }, [picked, people]);
 
   const label: React.CSSProperties = {
     display: 'block',
@@ -75,7 +92,15 @@ export function AccessLink({
           <label htmlFor="access-link-user" style={label}>
             {selectLabel}
           </label>
-          <select id="access-link-user" name={field} required style={control}>
+          <select
+            ref={pickRef}
+            id="access-link-user"
+            name={field}
+            required
+            value={picked}
+            onChange={(event) => setPicked(event.target.value)}
+            style={control}
+          >
             {people.map((person) => (
               <option key={person.id} value={person.id}>
                 {person.label}
@@ -83,6 +108,35 @@ export function AccessLink({
             ))}
           </select>
         </div>
+        {askEmail && state.link === null ? (
+          <div>
+            <label htmlFor="access-link-email" style={label}>
+              Почта клиента
+            </label>
+            <input
+              id="access-link-email"
+              name="email"
+              type="email"
+              required
+              autoComplete="off"
+              aria-describedby="access-link-email-hint"
+              style={control}
+            />
+            <span
+              id="access-link-email-hint"
+              style={{
+                display: 'block',
+                marginTop: 6,
+                fontFamily: SANS,
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: 'var(--pd-ink-muted)',
+              }}
+            >
+              В карточке клиента почты нет: адрес запишется в карточку, и вход откроется на него.
+            </span>
+          </div>
+        ) : null}
         <div>
           <button
             type="submit"

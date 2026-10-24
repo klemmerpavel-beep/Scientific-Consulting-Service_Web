@@ -1,12 +1,15 @@
 /**
  * Запрос клиента на удаление данных из «Настроек» (часть F, П-08, решение
  * Р-400): требование ложится руководителю с письмом, второе до исполнения
- * не принимается, сотруднику действие закрыто.
+ * не принимается, сотруднику действие закрыто, клиенту без карточки —
+ * понятная причина и нет формы (решение Р-674).
  *
  * Пропускается без заданного адреса базы; запускается `npm run test:db`.
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 
 import type { Actor } from '../src/lib/cabinet/access.ts';
@@ -116,5 +119,28 @@ describe('запрос клиента на удаление данных (П-08)
       erasure.requestOwnErasure({ id: ids.head!, role: 'HEAD', status: 'ACTIVE', clientProfileId: null, expertNdaSignedAt: null }),
       /не разрешено/u,
     );
+  });
+
+  it('клиенту без карточки — понятная причина, а не «Действие не разрешено» (решение Р-674)', async () => {
+    const orphan: Actor = { id: ids.user!, role: 'CLIENT', status: 'ACTIVE', clientProfileId: null, expertNdaSignedAt: null };
+    await assert.rejects(erasure.requestOwnErasure(orphan), (error: Error) => {
+      assert.equal(error.message, 'Запрос из кабинета доступен после привязки карточки: напишите на адрес практики');
+      return true;
+    });
+    assert.equal(await erasure.ownErasureRequest(orphan), null);
+  });
+});
+
+// Проверка ходит по исходнику, как `cabinet-markup.test.ts`: страница
+// «Настроек» не рендерится в тестах.
+describe('форма удаления данных в «Настройках» (решение Р-674)', () => {
+  const page = readFileSync(path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'settings', 'page.tsx'), 'utf8');
+
+  it('клиенту без карточки форма «Отправить запрос» не показывается, строка с адресом практики — всем', () => {
+    // Условие показа карточки — ближайшее к её заголовку.
+    const card = page.slice(page.lastIndexOf('actor.role', page.indexOf('Удаление персональных данных')), page.indexOf('Отправить запрос'));
+    assert.ok(card.includes('requestMyErasure'), 'карточка удаления не найдена');
+    assert.match(card, /^actor\.role !== 'CLIENT' \|\| actor\.clientProfileId === null \? null : \(/u);
+    assert.match(page, /href=\{`mailto:\$\{PRACTICE_EMAIL\}`\}/u);
   });
 });

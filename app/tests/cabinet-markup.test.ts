@@ -161,6 +161,36 @@ describe('общие части остаются единственным мес
     );
     assert.ok(owners.length > 0, 'вид кнопки не найден ни в одной общей части');
   });
+
+  it('график штук объявляет целую шкалу', () => {
+    // Подпись `String(Math.round(value))` значит, что ряд считает штуки.
+    // Без признака `integer` шкала делится на четверти потолка, и подписи
+    // оси читаются «1, 1, 1, 0, 0» (решение Р-684).
+    let counted = 0;
+    for (const file of sources(SCREENS)) {
+      for (const chart of readFileSync(file, 'utf8').matchAll(/<(?:BarChart|LineChart)\b[\s\S]*?\/>/gu)) {
+        if (!chart[0].includes('String(Math.round(value))')) continue;
+        counted += 1;
+        assert.match(chart[0], /^\s+integer$/mu, `${path.relative(SCREENS, file)}: шкала не целая`);
+      }
+    }
+    assert.ok(counted > 0, 'графиков штук не нашлось');
+  });
+
+  it('длина полосы ранжирования берётся из геометрии графиков', () => {
+    // Своя формула в разметке рисовала у нуля полосу в 2 % (решение Р-686).
+    const charts = readFileSync(path.join(COMPONENTS, 'Charts.tsx'), 'utf8');
+    assert.match(charts, /width: `\$\{rankShare\(item\.value, max\)\}%`/u);
+    assert.equal(/Math\.max\(2,/u.test(charts), false, 'наименьшая длина задана в разметке');
+  });
+
+  it('подпись легенды-столбца не рвётся посреди слова', () => {
+    // Сумма и доля сжимали столбец подписи до 74 px, и общее правило
+    // переноса рвало слово: «Действую / щие · 10» (решение Р-687).
+    const charts = readFileSync(path.join(COMPONENTS, 'Charts.tsx'), 'utf8');
+    assert.match(charts, /gridTemplateColumns: '12px minmax\(min-content,1fr\) auto auto'/u);
+    assert.match(charts, /<span style=\{\{ overflowWrap: 'normal' \}\}>\{item\.label\}<\/span>/u);
+  });
 });
 
 describe('слои кабинета не смешиваются', () => {

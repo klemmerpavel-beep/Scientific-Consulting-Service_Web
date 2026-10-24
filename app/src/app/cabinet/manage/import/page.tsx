@@ -17,6 +17,7 @@ import {
   TABLE_HEAD,
   TableCard,
   TABLE_NUM,
+  TABLE_NUM_HEAD,
   Text,
   formatDay,
 } from '../../../../components/cabinet/ui';
@@ -31,7 +32,8 @@ export const dynamic = 'force-dynamic';
 
 const ERRORS: Record<string, string> = {
   empty: 'Файл не выбран или пуст.',
-  EMPTY: 'Файл пуст.',
+  // Код EMPTY разборщик ставит и непустому файлу короче 22 байт (Р-713).
+  EMPTY: 'Файл пуст или слишком мал для книги Excel. Ожидается .xlsx.',
   NOT_ZIP: 'Это не книга Excel: файл не является архивом. Ожидается .xlsx, а не .xls и не .csv.',
   NOT_XLSX: 'В архиве нет листов книги. Возможно, файл повреждён.',
   EMPTY_HEADER: 'В книге не нашлось строки заголовка с колонками «Заказчик», «Стоимость», «Оплачено».',
@@ -61,7 +63,7 @@ export default async function ImportScreen({
     <Shell actor={actor} current="/cabinet/manage/import">
       <ScreenHead
         backHref="/cabinet/manage/tools"
-        backLabel="к служебным разделам"
+        backLabel="Управление"
         title="Книга заказов"
         note="Книга разбирается вместе с заливкой ячеек: статус работы в исходном файле закодирован цветом. Состояние работы определяет цвет строки: зелёная — доведена, жёлтая — идёт, голубая — на старте, красная — остановлена; без заливки решает текст статуса. Расхождения цвета с текстом выводятся отдельным перечнем, сам текст статуса сохраняется в карточке работы. Ни один проект не заводится до того, как отчёт прочитан и фиксация подтверждена."
       />
@@ -99,20 +101,22 @@ export default async function ImportScreen({
           Первая загрузка покажет отчёт со всеми расхождениями исходного файла.
         </Empty>
       ) : (
+        <>
+        {/* Пояснение — абзацем над таблицей: подпись внутри неё шириной с
+            таблицу, и на телефоне край области резал её посреди слова
+            (Р-691). */}
+        <Text muted size={14} style={{ marginBottom: 12 }}>
+          История переносов: отчёт каждой загрузки открывается повторно.
+        </Text>
         <LongTable
           label="Загрузки книги заказов"
           minWidth={640}
-          caption={
-            <caption style={{ ...TABLE_CELL, captionSide: 'top', borderBottom: 'none' }}>
-              История переносов: отчёт каждой загрузки открывается повторно.
-            </caption>
-          }
           columns={
             <tr>
               <th style={TABLE_HEAD} scope="col">Файл</th>
               <th style={TABLE_HEAD} scope="col">Загружена</th>
               <th style={TABLE_HEAD} scope="col">Состояние</th>
-              <th style={TABLE_HEAD} scope="col">Строк</th>
+              <th style={TABLE_NUM_HEAD} scope="col">Строк</th>
               <th style={TABLE_HEAD} scope="col">Суммы</th>
             </tr>
           }
@@ -144,6 +148,7 @@ export default async function ImportScreen({
             );
           })}
         />
+        </>
       )}
     </Shell>
   );

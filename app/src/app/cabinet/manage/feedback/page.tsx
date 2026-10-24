@@ -98,7 +98,7 @@ export default async function FeedbackScreen({
     <Shell actor={actor} current={BASE}>
       <ScreenHead
         backHref="/cabinet/manage/tools"
-        backLabel="к управлению"
+        backLabel="Управление"
         title="Замечания"
         note="Замечания с кнопки справа внизу — с сайта и из кабинета. Виджет не собирает персональные данные: ни имени, ни контакта, ни адреса страницы с идентификаторами. Разбираются раз в неделю."
         action={
@@ -229,7 +229,7 @@ export default async function FeedbackScreen({
                     </div>
                   </td>
                   <td style={TABLE_CELL}>
-                    <Chip>{STATUS_LABEL[row.status]}</Chip>
+                    <Chip nowrap>{STATUS_LABEL[row.status]}</Chip>
                   </td>
                   <td style={{ ...TABLE_CELL, minWidth: 340 }}>
                     <Form action={saveFeedbackReview}>

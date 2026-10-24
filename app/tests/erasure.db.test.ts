@@ -31,7 +31,8 @@ const phone = `+7 9${String(stamp).slice(-9)}`;
 describe('удаление данных субъекта', { skip: !enabled }, async () => {
   const { prisma } = await import('../src/lib/db.ts');
   const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
-  const { ERASED_NOTE, executeErasure, requestErasure } = await import('../src/lib/cabinet/erasure.ts');
+  const { ERASED_NOTE, ERASED_TEXT, executeErasure, requestErasure } = await import('../src/lib/cabinet/erasure.ts');
+  const { curatorAccessLetter } = await import('../src/lib/cabinet/curator-letters.ts');
   const { storage, materialKey, sha256 } = await import('../src/lib/cabinet/storage.ts');
 
   const ids: Record<string, string> = {};
@@ -202,6 +203,21 @@ describe('удаление данных субъекта', { skip: !enabled }, a
         dedupKey: `era-outbox-${stamp}`,
       },
     });
+    // Письмо, которое ящик не принял: ждёт «Отправить ещё раз» (Р-668).
+    const undelivered = await prisma.notificationOutbox.create({
+      data: {
+        userId: clientUser.id,
+        projectId: project.id,
+        channel: 'EMAIL',
+        eventKind: 'STAGE_AWAITING_CLIENT',
+        subject: 'Смирнов О. П.: этап ждёт ваших данных',
+        body: 'Олег Петрович, этап ждёт ваших данных',
+        state: 'FAILED',
+        failure: 'DELIVERY',
+        attempts: 5,
+        dedupKey: `era-undelivered-${stamp}`,
+      },
+    });
     const batch = await prisma.importBatch.create({
       data: { fileName: 'книга.xlsx', sha256: 'a'.repeat(64), uploadedById: head.id },
     });
@@ -352,7 +368,68 @@ describe('удаление данных субъекта', { skip: !enabled }, a
       }),
     ]);
 
+    // Письма без работы и без записи клиента (решение Р-644): руководителю
+    // 1-го числа — рекомендация вернуться к клиенту по ФИО, менеджеру —
+    // открытый куратору доступ с кодом и названием работы. Рядом — такие же
+    // письма о другом клиенте и о работе с кодом-продолжением: их затирание
+    // не трогает.
+    const monthlyBody = (name: string) =>
+      `Рекомендация месяца: Вернуться к клиенту: ${name}.\n` +
+      'Календарь продвижения — 0, цена и пакеты — 0, возврат клиентов — 1.';
+    const access = curatorAccessLetter('Куратор', [{ code: project.code, title: project.title }]);
+    const otherAccess = curatorAccessLetter('Куратор', [{ code: `${project.code}7`, title: 'Сопровождение магистерской' }]);
+    const [monthly, accessLetter, otherMonthly, otherAccessLetter] = await Promise.all([
+      prisma.notificationOutbox.create({
+        data: {
+          userId: head.id,
+          channel: 'EMAIL',
+          eventKind: 'HEAD_MONTHLY',
+          subject: 'Рекомендации на месяц: 1',
+          body: monthlyBody('Смирнов Олег Петрович'),
+          state: 'SENT',
+          sentAt: digestAt,
+          dedupKey: `head-monthly:2026-09:${head.id}:email`,
+        },
+      }),
+      prisma.notificationOutbox.create({
+        data: {
+          userId: manager.id,
+          channel: 'EMAIL',
+          eventKind: 'CURATOR_NDA_SIGNED',
+          subject: access.subject,
+          body: access.body,
+          dedupKey: `nda-signed:era-curator-${stamp}:manager:${manager.id}:email`,
+        },
+      }),
+      prisma.notificationOutbox.create({
+        data: {
+          userId: head.id,
+          channel: 'EMAIL',
+          eventKind: 'HEAD_MONTHLY',
+          subject: 'Рекомендации на месяц: 1',
+          body: monthlyBody('Кузнецова Анна Сергеевна'),
+          state: 'SENT',
+          sentAt: digestAt,
+          dedupKey: `head-monthly:2026-08:${head.id}:email`,
+        },
+      }),
+      prisma.notificationOutbox.create({
+        data: {
+          userId: manager.id,
+          channel: 'EMAIL',
+          eventKind: 'CURATOR_NDA_SIGNED',
+          subject: otherAccess.subject,
+          body: otherAccess.body,
+          dedupKey: `nda-signed:era-other-${stamp}:manager:${manager.id}:email`,
+        },
+      }),
+    ]);
+
     Object.assign(ids, {
+      monthly: monthly.id,
+      accessLetter: accessLetter.id,
+      otherMonthly: otherMonthly.id,
+      otherAccessLetter: otherAccessLetter.id,
       assignment: assignment.id,
       erasureLetter: erasureLetter.id,
       mergedRow: mergedRow.id,
@@ -366,6 +443,7 @@ describe('удаление данных субъекта', { skip: !enabled }, a
       event: event.id,
       lead: lead.id,
       outbox: outbox.id,
+      undelivered: undelivered.id,
       batch: batch.id,
       importRow: importRow.id,
       head: head.id,
@@ -383,7 +461,14 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     await prisma.importRow.deleteMany({ where: { batchId: ids.batch } });
     await prisma.importBatch.deleteMany({ where: { id: ids.batch } });
     await prisma.notificationOutbox.deleteMany({
-      where: { id: { in: [ids.outbox!, ids.requestNotice!, ids.erasureLetter!, ids.mergedRow!, ids.digest!] } },
+      where: {
+        id: {
+          in: [
+            ids.outbox!, ids.undelivered!, ids.requestNotice!, ids.erasureLetter!, ids.mergedRow!, ids.digest!,
+            ids.monthly!, ids.accessLetter!, ids.otherMonthly!, ids.otherAccessLetter!,
+          ],
+        },
+      },
     });
     await prisma.assignment.deleteMany({ where: { id: ids.assignment } });
     await prisma.workRating.deleteMany({ where: { projectId: ids.project } });
@@ -502,6 +587,11 @@ describe('удаление данных субъекта', { skip: !enabled }, a
     // Неотправленное затёртое письмо не уходит (Р-461).
     assert.equal(outbox?.state, 'EXPIRED', 'затёртое письмо осталось в очереди');
     assert.equal(outbox?.lastError, ERASED_NOTE);
+    // И недоставленное: повтор отправил бы «[удалено…]» (решение Р-668).
+    const undelivered = await prisma.notificationOutbox.findUnique({ where: { id: ids.undelivered } });
+    assert.equal(undelivered?.subject, ERASED_TEXT);
+    assert.equal(undelivered?.state, 'EXPIRED', 'затёртое недоставленное письмо осталось к повтору');
+    assert.equal(undelivered?.lastError, ERASED_NOTE);
 
     // Заявка не удаляется никогда: отметка согласия и её редакция —
     // доказательство законности прошлой обработки.
@@ -569,6 +659,25 @@ describe('удаление данных субъекта', { skip: !enabled }, a
       const row = await prisma.notificationOutbox.findUnique({ where: { id } });
       assert.doesNotMatch(`${row?.subject}\n${row?.body}`, /Смирнов/u, `строка очереди ${row?.eventKind} называет клиента`);
     }
+  });
+
+  it('письмо руководителю 1-го числа и письмо менеджеру о доступе куратора затёрты (Р-644)', async () => {
+    // У этих писем нет ни работы, ни записи клиента: первое называет его
+    // по ФИО, второе — код и название его работы.
+    const monthly = await prisma.notificationOutbox.findUnique({ where: { id: ids.monthly } });
+    assert.equal(monthly?.body, ERASED_TEXT, 'письмо 1-го числа называет клиента');
+    assert.equal(monthly?.state, 'SENT');
+    const access = await prisma.notificationOutbox.findUnique({ where: { id: ids.accessLetter } });
+    assert.equal(access?.body, ERASED_TEXT, 'письмо о доступе куратора называет работу клиента');
+    // Неотправленное затёртое письмо не уходит (Р-461).
+    assert.equal(access?.state, 'EXPIRED', 'затёртое письмо осталось в очереди');
+    assert.equal(access?.lastError, ERASED_NOTE);
+    // Письма о другом клиенте и о другой работе остаются как были.
+    const otherMonthly = await prisma.notificationOutbox.findUnique({ where: { id: ids.otherMonthly } });
+    assert.match(otherMonthly?.body ?? '', /Кузнецова Анна Сергеевна/u, 'затёрто письмо о другом клиенте');
+    const otherAccess = await prisma.notificationOutbox.findUnique({ where: { id: ids.otherAccessLetter } });
+    assert.match(otherAccess?.body ?? '', /Сопровождение магистерской/u, 'затёрто письмо о другой работе');
+    assert.equal(otherAccess?.state, 'PENDING', 'с отправки снято письмо о другой работе');
   });
 
   it('объект изъят из хранилища, строка версии осталась', async () => {

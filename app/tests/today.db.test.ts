@@ -8,6 +8,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { after, before, describe, it } from 'node:test';
 
 import type { Actor } from '../src/lib/cabinet/access.ts';
@@ -112,6 +113,23 @@ describe('рабочий экран «Сегодня»', { skip: !enabled }, asy
     assert.ok(!items.accepted.some((row) => row.href === `/cabinet/stages/${next.id}`), 'дело не исчезло');
   });
 
+  it('этап, сданный куратором, на «На этой неделе» — ход за менеджером, а не за куратором', async () => {
+    // Подпись хода — та же, что на шкале и экране этапа: сдача куратора
+    // переводит ход к менеджеру (решения Р-288, Р-325, Р-648).
+    const project = await work('F', { expertId: ids.expert! });
+    const stage = await prisma.stage.create({
+      data: {
+        projectId: project.id, position: 1, title: 'Анализ', state: 'IN_PROGRESS',
+        dueOn: new Date(Date.now() + 2 * DAY), handedOverAt: new Date(Date.now() - DAY),
+      },
+    });
+    const items = await todayItems(curator());
+    assert.ok(items.handedOver.some((row) => row.href === `/cabinet/stages/${stage.id}`), 'сданный этап — не дело');
+    const row = items.week.find((item) => item.key === `stage-${stage.id}`);
+    assert.ok(row !== undefined, 'срок на неделе не попал в «На этой неделе»');
+    assert.match(row.turn ?? '', /^Ход за вами: куратор сдал этап /u);
+  });
+
   it('заявка без ответа дольше рабочего дня и заявка в разборе — с давностью', async () => {
     const old = await prisma.lead.create({
       data: {
@@ -152,5 +170,25 @@ describe('рабочий экран «Сегодня»', { skip: !enabled }, asy
     await prisma.message.create({ data: { projectId: project.id, authorId: ids.manager!, body: 'Напоминаем о данных' } });
     light = await trafficLight(curator());
     assert.ok(!light.stalled.some((row) => row.id === stage.id), 'дело не погасло после письма практики');
+  });
+});
+
+// Экран «Сегодня» собирает «Требует внимания» в самой странице: подпись
+// хода у просроченного этапа проверяется по тексту источника — сданный
+// куратором этап не должен читаться «Ход за куратором» (решение Р-648).
+describe('«Требует внимания»: подпись хода у сданного этапа', () => {
+  it('просроченный этап передаёт в подпись хода отметку сдачи', () => {
+    const source = readFileSync(new URL('../src/app/cabinet/manage/page.tsx', import.meta.url), 'utf8');
+    // Вызов целиком, до парной скобки: внутри аргументов есть свои скобки.
+    const calls = [...source.matchAll(/\bturnLabel\(/gu)].map((found) => {
+      let depth = 0;
+      for (let at = found.index; at < source.length; at += 1) {
+        if (source[at] === '(') depth += 1;
+        if (source[at] === ')' && --depth === 0) return source.slice(found.index, at + 1);
+      }
+      return source.slice(found.index);
+    });
+    assert.ok(calls.length > 0, 'подпись хода на экране не найдена');
+    for (const call of calls) assert.match(call, /stage\.handedOverAt/u);
   });
 });

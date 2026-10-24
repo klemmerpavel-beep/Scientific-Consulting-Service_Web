@@ -1316,5 +1316,18 @@ export async function receiptsPlan(actor: Actor, at: Date = clockNow()): Promise
       unallocated.count += 1;
     }
   }
+  // Строки — по плановой дате, без даты — в конце, при равенстве — по коду
+  // работы: договоры читаются по коду, и в группе «Просрочено» сентябрь
+  // стоял перед маем, а «Должники» те же платежи ведут от давнего к новому
+  // (решение Р-702). Сортировка устойчива: строки одной работы с одной датой
+  // остаются в порядке разнесения.
+  lines.sort((a, b) => {
+    if (a.plannedDate === null || b.plannedDate === null) {
+      if (a.plannedDate !== b.plannedDate) return a.plannedDate === null ? 1 : -1;
+    } else if (a.plannedDate.getTime() !== b.plannedDate.getTime()) {
+      return a.plannedDate.getTime() - b.plannedDate.getTime();
+    }
+    return a.code < b.code ? -1 : a.code > b.code ? 1 : 0;
+  });
   return { months, later, overdue, undated, unallocated, excess, total, lines };
 }

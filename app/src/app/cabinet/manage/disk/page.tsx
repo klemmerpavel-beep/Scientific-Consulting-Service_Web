@@ -45,7 +45,7 @@ export default async function DiskScreen() {
     <Shell actor={actor} current="/cabinet/manage/tools">
       <ScreenHead
         backHref="/cabinet/manage/tools"
-        backLabel="к служебным разделам"
+        backLabel="Управление"
         title="Зеркало на облачном диске"
         note="Таблицы реестров и файлы материалов уходят на диск раз в час; обратно с диска приходит только книга заказов, и только строками без замечаний. Всё прочее, правленное на диске, в кабинет не вернётся и будет затёрто ближайшим прогоном."
       />
@@ -92,10 +92,18 @@ export default async function DiskScreen() {
               : `${last.removed} ${plural(last.removed, 'удалён', 'удалено', 'удалено')}`
           }
         />
+        {/* До первого прогона чистым назвать нечего: плитка говорит то же,
+            что соседние (решение Р-712). */}
         <Tile
           label="Ошибок"
           value={last === null ? '—' : String(last.failed)}
-          note={last === null || last.failed === 0 ? 'последний прогон чистый' : 'разберите журнал прогона'}
+          note={
+            last === null
+              ? 'прогонов ещё не было'
+              : last.failed === 0
+                ? 'последний прогон чистый'
+                : 'разберите журнал прогона'
+          }
         />
       </Tiles>
 
@@ -139,6 +147,10 @@ export default async function DiskScreen() {
             на экране <a href="/cabinet/manage/import">«Перенос книги заказов»</a>.
           </Text>
         )}
+        {/* Удержанные на разбор строки мост передаёт исключёнными, и
+            фиксация считает их в пропущенных: в «уже было» они не входят,
+            иначе каждая считалась бы дважды. Отклонённые фиксацией строки
+            названы отдельно (решение Р-662). */}
         {pull === null ? (
           <Text muted size={13} style={{ marginTop: 10 }}>
             Прогонов ещё не было.
@@ -147,10 +159,18 @@ export default async function DiskScreen() {
           <Text muted size={13} style={{ marginTop: 10 }}>
             Последний прогон {formatDay(pull.occurredAt)} в {formatTime(pull.occurredAt)}: из{' '}
             {pull.rows} {plural(pull.rows, 'строки', 'строк', 'строк')} заведено {pull.created},
-            обновлено {pull.updated}, уже было {pull.skipped}
+            обновлено {pull.updated}, уже было {pull.skipped - pull.held}
             {pull.held === 0
-              ? '.'
-              : `; ${pull.held} ${plural(pull.held, 'строка требует', 'строки требуют', 'строк требуют')} разбора.`}
+              ? ''
+              : `; ${pull.held} ${plural(pull.held, 'строка требует', 'строки требуют', 'строк требуют')} разбора`}
+            {pull.rejected === 0 ? (
+              '.'
+            ) : (
+              <>
+                ; отклонено {pull.rejected} — причины в{' '}
+                <a href="/cabinet/manage/import">отчёте переноса</a>.
+              </>
+            )}
           </Text>
         )}
         {status.pullRuns.length === 0 ? null : (

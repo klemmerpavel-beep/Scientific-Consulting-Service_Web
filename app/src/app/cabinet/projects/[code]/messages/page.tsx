@@ -27,6 +27,7 @@ import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { draftsFor, draftText } from '../../../../../lib/cabinet/message-drafts';
 import { trancheForReminder } from '../../../../../lib/cabinet/finance';
+import { THREAD_WINDOW, sliceWindow, threadWindow } from '../../../../../lib/cabinet/thread-window';
 import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
 import { postInternalMessage, postMessage } from '../../../actions';
 
@@ -37,7 +38,7 @@ export default async function MessagesScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string; draft?: string; tab?: string; tranche?: string }>;
+  searchParams: Promise<{ error?: string; draft?: string; tab?: string; tranche?: string; show?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}/messages`);
 
@@ -59,7 +60,18 @@ export default async function MessagesScreen({
   // Р-336).
   const mayInternal = can(actor, 'INTERNAL_MESSAGE', ref);
   const internalTab = mayInternal && (await searchParams).tab === 'internal';
-  const messages = internalTab ? await listInternal(actor, project.id) : await listMessages(actor, project.id);
+  // Лента открывается на последних ста сообщениях; ранние — ссылкой над
+  // ней, каждое нажатие добавляет ещё сто (решение Р-636).
+  const shown = threadWindow((await searchParams).show);
+  const { messages, earlier } = sliceWindow(
+    internalTab
+      ? await listInternal(actor, project.id, { last: shown + 1 })
+      : await listMessages(actor, project.id, { last: shown + 1 }),
+    shown,
+  );
+  const earlierHref = earlier
+    ? `/cabinet/projects/${project.code}/messages?${internalTab ? 'tab=internal&' : ''}show=${shown + THREAD_WINDOW}`
+    : undefined;
   // Открытие экрана и есть прочтение: отдельная кнопка «отметить прочитанным»
   // ничего не добавляет, а счётчик без неё не обнулялся бы.
   if (internalTab) await readInternal(actor, project.id);
@@ -122,7 +134,12 @@ export default async function MessagesScreen({
 
         {internalTab ? (
           <Card>
-            <Thread messages={messages} viewer={actor} empty="Внутренней переписки пока нет." />
+            <Thread
+              messages={messages}
+              viewer={actor}
+              earlierHref={earlierHref}
+              empty="Внутренней переписки пока нет."
+            />
             <Form
               action={postInternalMessage}
               style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--pd-divider)' }}
@@ -148,6 +165,7 @@ export default async function MessagesScreen({
           <Thread
             messages={messages}
             viewer={actor}
+            earlierHref={earlierHref}
             flagContacts={mayModerate}
             empty={
               forClient

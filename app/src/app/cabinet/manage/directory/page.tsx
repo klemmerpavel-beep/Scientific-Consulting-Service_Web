@@ -1,4 +1,4 @@
-import { flashText } from '../../../../lib/cabinet/flash';
+import { flashText, formDraft } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -15,12 +15,14 @@ import {
   FormActions,
   FormRow,
   Heading,
+  Notice,
   Outcome,
   ScreenHead,
   Select,
   TABLE_CELL,
   TABLE_HEAD,
   TABLE_NUM,
+  TABLE_NUM_HEAD,
   TableCard,
   FilterBar,
   Tabs,
@@ -81,7 +83,7 @@ const TABS: readonly Tab[] = ['types', 'stages', 'colors', 'calendar'];
 export default async function DirectoryScreen({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; error?: string }>;
+  searchParams: Promise<{ tab?: string; error?: string; new?: string }>;
 }) {
   const actor = await requireActor('/cabinet/manage/directory');
   if (!can(actor, 'DIRECTORY_EDIT')) redirect(homeFor(actor));
@@ -90,6 +92,11 @@ export default async function DirectoryScreen({
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
   const failure = await flashText(sp.error);
   const tab: Tab = TABS.includes(sp.tab as Tab) ? (sp.tab as Tab) : 'types';
+  // Отказ «Добавить позицию» возвращает к свёртке по якорю #new-type: она
+  // раскрыта, поля держат набранное, а причина стоит в ней, над полями, —
+  // вверху экрана её не было бы видно (решения Р-543, Р-706, Р-707).
+  const draft = (await formDraft(sp.error)) ?? {};
+  const typeFailed = sp.new === '1' && failure !== undefined && tab === 'types';
 
   // Типы нужны и вкладке шаблонов — выбором в форме. Остальные выборки
   // идут только там, где их показывают.
@@ -127,7 +134,7 @@ export default async function DirectoryScreen({
         />
       </FilterBar>
 
-      {failure === undefined ? null : (
+      {failure === undefined || typeFailed ? null : (
         <Outcome tone="error">
           {failure}
         </Outcome>
@@ -140,7 +147,7 @@ export default async function DirectoryScreen({
               <thead>
                 <tr>
                   <th style={TABLE_HEAD} scope="col">Позиция</th>
-                  <th style={TABLE_HEAD} scope="col">Проектов</th>
+                  <th style={TABLE_NUM_HEAD} scope="col">Проектов</th>
                   <th style={TABLE_HEAD} scope="col">Базовая цена</th>
                   <th style={TABLE_HEAD} scope="col">Исторические написания</th>
                 </tr>
@@ -219,8 +226,13 @@ export default async function DirectoryScreen({
             </Form>
           </Disclosure>
 
-          <Disclosure title="Добавить позицию">
+          <Disclosure title="Добавить позицию" open={sp.new === '1'} id="new-type">
             <Form action={saveType}>
+              {typeFailed ? (
+                <Notice tone="error" role="alert">
+                  {failure}
+                </Notice>
+              ) : null}
               <FormRow>
                 <Field
                   label="Код"
@@ -228,10 +240,11 @@ export default async function DirectoryScreen({
                   required
                   placeholder="translation"
                   hint="Латиницей, без пробелов"
+                  defaultValue={draft.code}
                 />
-                <Field label="Название" name="name" required placeholder="Научный перевод" />
-                <Field label="Базовая цена" name="basePrice" placeholder="необязательно" />
-                <Field label="Порядок" name="sortOrder" placeholder="70" />
+                <Field label="Название" name="name" required placeholder="Научный перевод" defaultValue={draft.name} />
+                <Field label="Базовая цена" name="basePrice" placeholder="необязательно" defaultValue={draft.basePrice} />
+                <Field label="Порядок" name="sortOrder" placeholder="70" defaultValue={draft.sortOrder} />
               </FormRow>
               <FormActions>
                 <Button>Сохранить</Button>
@@ -379,39 +392,45 @@ export default async function DirectoryScreen({
         <>
           {/* Срок реакции: через столько рабочих дней неразобранное дело
               менеджера становится контрольным делом руководителя
-              (требование РК-05, решение Р-337). */}
+              (требование РК-05, решение Р-337). Кнопка — отдельной строкой
+              под полем: в ряду по низу она вставала напротив подсказки
+              (решение Р-715). */}
           <Card style={{ marginBottom: 20 }}>
-            <Form action={saveReaction} inline>
+            <Form action={saveReaction}>
               <Field
                 label="Срок реакции, рабочих дней"
                 name="days"
                 type="number"
                 defaultValue={String(reaction)}
                 hint="Сообщение клиента, публикация, заявка или сданный этап, не разобранные за этот срок, поднимаются руководителю в «Контроль»."
-                minWidth={140}
               />
-              <Button tone="quiet">Сохранить</Button>
+              <FormActions>
+                <Button tone="quiet">Сохранить</Button>
+              </FormActions>
             </Form>
           </Card>
           {since === null || thresholds === null ? null : (
             <Card style={{ marginBottom: 20 }}>
-              <Form action={saveAnalyticsSettings} inline>
-                <Field
-                  label="Дата начала учёта"
-                  name="since"
-                  type="date"
-                  defaultValue={since.toISOString().slice(0, 10)}
-                  hint="С неё считаются сезонные нормы и календарь продвижения; текущий неполный месяц не считается."
-                  minWidth={170}
-                />
-                <Field
-                  label="Пороги уверенности, наблюдений"
-                  name="thresholds"
-                  defaultValue={`${thresholds.sure}, ${thresholds.likely}, ${thresholds.maybe}`}
-                  hint="«Уверенно», «вероятно», «предположительно»; меньше последнего — «мало данных»."
-                  minWidth={170}
-                />
-                <Button tone="quiet">Сохранить</Button>
+              {/* Кнопка сохраняет оба поля и стоит под обоими (решение Р-715). */}
+              <Form action={saveAnalyticsSettings}>
+                <FormRow>
+                  <Field
+                    label="Дата начала учёта"
+                    name="since"
+                    type="date"
+                    defaultValue={since.toISOString().slice(0, 10)}
+                    hint="С неё считаются сезонные нормы и календарь продвижения; текущий неполный месяц не считается."
+                  />
+                  <Field
+                    label="Пороги уверенности, наблюдений"
+                    name="thresholds"
+                    defaultValue={`${thresholds.sure}, ${thresholds.likely}, ${thresholds.maybe}`}
+                    hint="«Уверенно», «вероятно», «предположительно»; меньше последнего — «мало данных»."
+                  />
+                </FormRow>
+                <FormActions>
+                  <Button tone="quiet">Сохранить</Button>
+                </FormActions>
               </Form>
             </Card>
           )}

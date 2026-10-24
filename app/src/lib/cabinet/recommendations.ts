@@ -8,7 +8,8 @@
  * Расчёт — чистый модуль `analytics/calendar.ts`; здесь — данные
  * практики, настройки (дата начала учёта, пороги уверенности) и отметки.
  * Отметка общая для практики: ключ — экземпляр рекомендации, у следующего
- * сезона свой ключ.
+ * сезона свой ключ. У календаря и цены ключ — вид и месяц сдачи: новый
+ * заказ вида двигает медиану, но отметку не теряет (решение Р-656).
  */
 
 import { cache } from 'react';
@@ -18,7 +19,7 @@ import { prisma } from '../db.ts';
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { priceAdvice, returnAdvice, type PriceAdvice, type ReturnAdvice } from './analytics/advice.ts';
-import { calendarKey, calendarNow, promoCalendar, type CalendarRow } from './analytics/calendar.ts';
+import { calendarKey, calendarNow, legacyCalendarKey, promoCalendar, seasonMarks, type CalendarRow } from './analytics/calendar.ts';
 import { loadRows } from './analytics/data.ts';
 import { leadRows, leadsForType } from './analytics/leads.ts';
 import { now as clockNow } from './clock.ts';
@@ -28,6 +29,8 @@ export interface Mark {
   readonly status: RecommendationMarkStatus;
   readonly at: Date;
   readonly by: string | null;
+  /** Отметка стоит и под ключом прежнего вида — снятие снимает оба (Р-656). */
+  readonly legacy?: string;
 }
 
 export const MARK_LABEL: Record<RecommendationMarkStatus, string> = {
@@ -50,6 +53,8 @@ export async function recommendationMarks(actor: Actor): Promise<Map<string, Mar
 }
 
 const KEY = /^[a-z]+(?::[\w.-]+){1,3}$/u;
+/** Раздел и вид рекомендации: у ключа сезона и прежнего вида они общие. */
+const family = (key: string) => key.split(':').slice(0, 2).join(':');
 
 /**
  * Отметить рекомендацию «принято», «отклонено», «сделано» или «отложено»
@@ -65,15 +70,24 @@ const KEY = /^[a-z]+(?::[\w.-]+){1,3}$/u;
  * базе всё ещё такое; «сделано» ставится только у принятой рекомендации.
  * Иначе — тот же отказ, чужое решение не перезаписывается (решение Р-537).
  * Без `expected` (внутренние вызовы) отметка ставится без сверки.
+ *
+ * `legacy` — ключ прежнего вида, если отметка видна по нему (решение
+ * Р-656): новая отметка пишется ключом сезона и снимает прежнюю строку,
+ * снятие снимает оба ключа.
  */
 export async function markRecommendation(
   actor: Actor,
   key: string,
   status: RecommendationMarkStatus | null,
   expected?: RecommendationMarkStatus | null,
+  legacy?: string,
 ): Promise<void> {
   ensure(actor, 'ANALYTICS_VIEW');
   if (!KEY.test(key)) throw new Error('Неизвестная рекомендация');
+  if (legacy !== undefined && (!KEY.test(legacy) || legacy === key || family(legacy) !== family(key))) {
+    throw new Error('Неизвестная рекомендация');
+  }
+  const keys = legacy === undefined ? [key] : [key, legacy];
   if (status !== null && !MARK_STATUSES.includes(status)) throw new Error('Неизвестная отметка');
   if (expected !== undefined && expected !== null && !MARK_STATUSES.includes(expected)) throw new Error('Неизвестная отметка');
   const changed = new Error('Отметку уже изменили: обновите экран и посмотрите её текущее состояние');
@@ -83,12 +97,19 @@ export async function markRecommendation(
   if (status === null) {
     if (expected === null) {
       // На экране отметки не было: снимать нечего, а появившуюся — не трогаем.
-      if ((await prisma.recommendationMark.count({ where: { key } })) > 0) throw changed;
+      if ((await prisma.recommendationMark.count({ where: { key: { in: keys } } })) > 0) throw changed;
       return;
     }
-    const removed = await prisma.recommendationMark.deleteMany({
-      where: expected === undefined ? { key } : { key, status: expected },
+    let removed = await prisma.recommendationMark.deleteMany({
+      where: expected === undefined ? { key: { in: keys } } : { key, status: expected },
     });
+    if (legacy !== undefined && expected !== undefined) {
+      // Видна отметка сезона, а без неё — прежнего вида; снимаются обе (Р-656).
+      if (removed.count > 0) await prisma.recommendationMark.deleteMany({ where: { key: legacy } });
+      else if ((await prisma.recommendationMark.count({ where: { key } })) === 0) {
+        removed = await prisma.recommendationMark.deleteMany({ where: { key: legacy, status: expected } });
+      }
+    }
     if (expected !== undefined && removed.count === 0) throw changed;
   } else if (expected === undefined) {
     await prisma.recommendationMark.upsert({
@@ -103,10 +124,19 @@ export async function markRecommendation(
     });
     if (created.count === 0) throw changed;
   } else {
-    const updated = await prisma.recommendationMark.updateMany({
+    let updated = await prisma.recommendationMark.updateMany({
       where: { key, status: expected },
       data: { status, userId: actor.id, at: new Date() },
     });
+    if (updated.count === 0 && legacy !== undefined) {
+      // Видна отметка прежнего вида: новая пишется ключом сезона (Р-656).
+      if ((await prisma.recommendationMark.count({ where: { key: legacy, status: expected } })) > 0) {
+        updated = await prisma.recommendationMark.createMany({ data: [{ key, status, userId: actor.id }], skipDuplicates: true });
+        // Прежняя строка своё отслужила: при обратном сдвиге медианы она
+        // снова стала бы видна рядом с отметкой сезона.
+        if (updated.count > 0) await prisma.recommendationMark.deleteMany({ where: { key: legacy } });
+      }
+    }
     if (updated.count === 0) throw changed;
   }
   await record(actor, {
@@ -133,7 +163,7 @@ export async function calendarFor(
   readonly leads: Map<string, ReturnType<typeof leadsForType>>;
 }> {
   ensure(actor, 'ANALYTICS_VIEW');
-  const [data, since, thresholds, marks, requests] = await Promise.all([
+  const [data, since, thresholds, stored, requests] = await Promise.all([
     loadRows(actor),
     analyticsSince(),
     confidenceThresholds(),
@@ -141,6 +171,8 @@ export async function calendarFor(
     leadRows(actor),
   ]);
   const rows = promoCalendar(data, at, { since, thresholds });
+  // Отметка окна — по сезону; прежняя — пока её ключ совпадает с расчётом (Р-656).
+  const marks = seasonMarks(stored, rows.map((row) => [calendarKey(row), legacyCalendarKey(row)] as const));
   const leads = new Map(rows.map((row) => [row.typeCode, leadsForType(requests, row.typeCode)]));
   return {
     rows,
@@ -199,8 +231,8 @@ async function erasedClients(clientIds: readonly string[]): Promise<Set<string>>
 export async function recommendationsFor(actor: Actor, at: Date = clockNow()): Promise<Recommendations> {
   ensure(actor, 'ANALYTICS_VIEW');
   const [calendar, data] = await Promise.all([calendarFor(actor, at), loadRows(actor)]);
-  const marks = calendar.marks;
   const price = priceAdvice(data, calendar.rows, at);
+  const marks = seasonMarks(calendar.marks, price.map((row) => [row.key, row.legacyKey] as const));
   // Клиент, чьи данные удалены по его требованию, к возврату не
   // предлагается: у его заявок остаётся отметка согласия на рассылку как
   // доказательство прошлой обработки, но писать ему больше нельзя

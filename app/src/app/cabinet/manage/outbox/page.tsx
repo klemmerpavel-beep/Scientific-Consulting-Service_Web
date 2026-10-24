@@ -10,6 +10,7 @@ import {
   TABLE_HEAD,
   TableCard,
   TABLE_NUM,
+  TABLE_NUM_HEAD,
   Text,
   Tile,
   Tiles,
@@ -78,13 +79,19 @@ export default async function OutboxScreen({
               : `последняя ${formatMoment(digest.lastSentAt)}`
           }
         />
+        {/* В счёте все отказы: отключённый получателем канал закрывает
+            строку без попытки, нет адреса и окончательный отказ сервера —
+            после одной; «после пяти попыток» спорило с колонкой «Попыток»
+            (решение Р-665). Закрытые без отправки — не только устаревшие:
+            смена роли, снятие куратора, отзыв договора и удаление данных
+            гасят неотправленное тем же состоянием (решение Р-714). */}
         <Tile
           label="Не доставлено"
           value={String(digest.failed)}
           note={
             digest.expiredLastDay > 0
-              ? `после пяти попыток; ещё ${digest.expiredLastDay} за сутки устарели в очереди и не отправлялись`
-              : 'после пяти попыток'
+              ? `после всех попыток или отказа получателя; ещё ${digest.expiredLastDay} за сутки закрыты без отправки: устарели или сняты (смена роли, снятие куратора, отзыв договора, удаление данных)`
+              : 'после всех попыток или отказа получателя'
           }
         />
       </Tiles>
@@ -107,7 +114,7 @@ export default async function OutboxScreen({
                 <th style={TABLE_HEAD} scope="col">Событие</th>
                 <th style={TABLE_HEAD} scope="col">Кому</th>
                 <th style={TABLE_HEAD} scope="col">Канал</th>
-                <th style={TABLE_HEAD} scope="col">Попыток</th>
+                <th style={TABLE_NUM_HEAD} scope="col">Попыток</th>
                 <th style={TABLE_HEAD} scope="col">Причина</th>
                 <th style={TABLE_HEAD} scope="col">Действие</th>
               </tr>
@@ -135,7 +142,7 @@ export default async function OutboxScreen({
                   <td style={TABLE_CELL}>
                     <Form action={retryNotification} inline>
                       <input type="hidden" name="id" value={row.id} />
-                      <Button tone="quiet">Отправить ещё раз</Button>
+                      <Button tone="quiet" style={{ whiteSpace: 'nowrap' }}>Отправить ещё раз</Button>
                     </Form>
                   </td>
                 </tr>

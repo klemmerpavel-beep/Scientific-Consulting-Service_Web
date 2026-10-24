@@ -17,7 +17,7 @@ import { rateWork, RatingError } from '../../lib/cabinet/ratings';
 import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
-import { ClientChoiceNeeded } from '../../lib/cabinet/client-match';
+import { ClientChoiceNeeded, orderRetryDraft } from '../../lib/cabinet/client-match';
 import { homeFor } from '../../lib/cabinet/nav';
 import {
   LEAD_EDIT_FIELDS,
@@ -96,6 +96,7 @@ import {
 import { ActiveWorkError, executeErasure, requestErasure, requestOwnErasure } from '../../lib/cabinet/erasure';
 import { createCabinetRequest } from '../../lib/cabinet/queries';
 import { applyBatch, mergeClients, previewBook } from '../../lib/cabinet/import/apply';
+import { parseRowNumbers } from '../../lib/cabinet/import/etl';
 import { ImportError } from '../../lib/cabinet/import/zip';
 import { enqueue, retryFailed, retryLeadLetter } from '../../lib/cabinet/outbox';
 import { reviewFeedback } from '../../lib/cabinet/feedback';
@@ -1393,11 +1394,14 @@ export async function createOrder(form: FormData): Promise<void> {
     // Набранное возвращается в форму; совпадение только по ФИО открывает
     // выбор карточки заказчика (требование М-18, решение Р-308).
     const fields = ['customer', 'email', 'phone', 'serviceTypeId', 'title', 'topic', 'summary', 'university', 'speciality', 'orderedOn', 'dueOn', 'cost', 'paid', 'status', 'managerId'];
-    const draft: Record<string, string> = Object.fromEntries(fields.map((name) => [name, text(name)]));
-    if (choiceNeeded) draft.clientChoiceNeeded = '1';
+    const values: Record<string, string> = Object.fromEntries(fields.map((name) => [name, text(name)]));
+    // Длинная суть задачи не вытесняет выбор карточки: она уступает место,
+    // и причина просит вставить её снова (решение Р-645).
+    const { draft, note } = orderRetryDraft(values, choiceNeeded);
+    const reason = failure ?? 'Не удалось завести заказ';
     // Документ остаётся при форме: отказ не теряет разобранное (Р-560).
     const back = brief === '' ? '/cabinet/manage/orders/new' : `/cabinet/manage/orders/new?brief=${encodeURIComponent(brief)}`;
-    redirect(await withError(back, failure ?? 'Не удалось завести заказ', { draft }));
+    redirect(await withError(back, note === null ? reason : `${reason} ${note}`, { draft }));
   }
   // Документ, из которого заполнен заказ, — в материалы работы (Р-560).
   // Отказ хранилища заказ не отменяет: он уже заведён.
@@ -1620,10 +1624,17 @@ export async function applyOrderBook(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const batchId = String(form.get('batchId') ?? '');
   const managerId = String(form.get('managerId') ?? '');
-  const excludeRows = String(form.get('excludeRows') ?? '')
-    .split(/[\s,]+/)
-    .map((value) => Number(value))
-    .filter((value) => Number.isInteger(value) && value > 0);
+  // Нераспознанный номер — отказ до фиксации, а не молчаливый пропуск:
+  // иначе строка, которую хотели исключить, заводится работой (Р-661).
+  const { rows: excludeRows, bad } = parseRowNumbers(String(form.get('excludeRows') ?? ''));
+  if (bad.length > 0) {
+    redirect(
+      await withError(
+        `/cabinet/manage/import/${batchId}`,
+        `Не разобраны номера строк: ${bad.map((part) => `«${part}»`).join(', ')}. Пишите номера через запятую.`,
+      ),
+    );
+  }
 
   let failure: string | null = null;
   try {
@@ -1631,8 +1642,9 @@ export async function applyOrderBook(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось зафиксировать загрузку');
   }
-  // Отказ — фразой на экране загрузки: куратор не из числа сотрудников
-  // или загрузка уже зафиксирована (решение Р-251).
+  // Отказ — фразой на экране загрузки: куратор не из числа сотрудников,
+  // исключённой строки нет в загрузке или загрузка уже зафиксирована
+  // (решения Р-251, Р-661).
   if (failure !== null) redirect(await withError(`/cabinet/manage/import/${batchId}`, failure));
   redirect(`/cabinet/manage/import/${batchId}?applied=1`);
 }
@@ -1691,8 +1703,14 @@ export async function requestMyErasure(form: FormData): Promise<void> {
 
 export async function executeErasureRequest(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
+  const requestId = String(form.get('requestId') ?? '');
+  // Исполняет только вторая форма — из подтверждения с объёмом; без его
+  // отметки действие возвращает на подтверждение (решение Р-716).
+  if (form.get('confirmed') !== '1') {
+    redirect(`/cabinet/manage/erasure?confirm=${encodeURIComponent(requestId)}`);
+  }
   try {
-    await executeErasure(actor, String(form.get('requestId') ?? ''));
+    await executeErasure(actor, requestId);
   } catch (error) {
     // Отказ из-за действующих работ — не сбой, а условие: экран называет
     // коды работ, которые надо закрыть (решение Р-234).
@@ -1761,14 +1779,22 @@ export async function changeUserStatus(form: FormData): Promise<void> {
   redirect('/cabinet/manage/users');
 }
 
-/** «Открыть клиенту вход» с карточки работы (требование М-03, решение Р-285). */
+/**
+ * «Открыть клиенту вход» с карточки работы (требование М-03, решение Р-285).
+ * Почту клиенту без неё вписывают в той же форме (решение Р-655).
+ */
 export async function openAccessForClient(
   _previous: AccessLinkState,
   form: FormData,
 ): Promise<AccessLinkState> {
   const actor = await actorOrRedirect();
   try {
-    const issued = await openClientAccess(actor, String(form.get('projectId') ?? ''), await requestIp());
+    const issued = await openClientAccess(
+      actor,
+      String(form.get('projectId') ?? ''),
+      await requestIp(),
+      String(form.get('email') ?? ''),
+    );
     const until = issued.expiresAt.toLocaleTimeString('ru-RU', {
       timeZone: 'Europe/Moscow',
       hour: '2-digit',
@@ -1888,18 +1914,27 @@ export async function updateExpertNda(form: FormData): Promise<void> {
 
 export async function saveType(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const name = String(form.get('name') ?? '');
   const rawPrice = String(form.get('basePrice') ?? '').trim();
   const rawOrder = String(form.get('sortOrder') ?? '').trim();
   try {
     await saveServiceType(actor, {
-      code: String(form.get('code') ?? ''),
-      name: String(form.get('name') ?? ''),
+      code,
+      name,
       basePrice: rawPrice.length === 0 ? null : parseAmount(rawPrice),
       sortOrder: rawOrder.length === 0 ? undefined : Number(rawOrder),
     });
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось сохранить позицию');
-    redirect(await withError(`/cabinet/manage/directory`, reason));
+    // Отказ возвращает в раскрытую форму с набранным: прежде свёртка
+    // закрывалась и введённое пропадало (решения Р-543, Р-707).
+    redirect(
+      await withError('/cabinet/manage/directory?new=1', reason, {
+        draft: { code, name, basePrice: rawPrice, sortOrder: rawOrder },
+        anchor: 'new-type',
+      }),
+    );
   }
   redirect('/cabinet/manage/directory');
 }
@@ -2063,6 +2098,7 @@ export async function markRecommendationAction(form: FormData): Promise<void> {
         : '/cabinet/manage/recommendations/calendar';
   const raw = String(form.get('status') ?? '');
   const current = String(form.get('current') ?? '');
+  const legacy = String(form.get('legacy') ?? '');
   let failure: string | null = null;
   try {
     await markRecommendation(
@@ -2071,6 +2107,8 @@ export async function markRecommendationAction(form: FormData): Promise<void> {
       raw === '' ? null : (raw as RecommendationMarkStatus),
       // Пустое `current` — на экране отметки не было (Р-537).
       current === '' ? null : (current as RecommendationMarkStatus),
+      // Ключ прежнего вида, по которому видна отметка (Р-656).
+      legacy === '' ? undefined : legacy,
     );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отметить рекомендацию');

@@ -180,6 +180,13 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   if (note.length > COMMENT_MAX) {
     throw new Error(`Пояснение длиннее ${COMMENT_MAX} знаков: сократите его — ни файл, ни пояснение не сохранены`);
   }
+  // Название нового материала уходит в темы писем, перечни и заголовок
+  // этапа — предел как у названия работы (Р-242, Р-279; решение Р-672).
+  // Без названия материал зовётся именем файла, урезанным, как у версии.
+  const title = (input.title ?? input.originalName.slice(0, 300)).trim();
+  if (existing === null && title.length > 300) {
+    throw new Error('Название материала — не длиннее 300 знаков: ни файл, ни пояснение не сохранены');
+  }
 
   if (input.body.byteLength === 0) throw new Error('Пустой файл не принимается');
   if (input.body.byteLength > MAX_UPLOAD_BYTES) {
@@ -212,7 +219,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
           kind,
           contractId,
           trancheId,
-          title: (input.title ?? input.originalName).trim(),
+          title,
           createdById: actor.id,
         },
       }));
@@ -499,7 +506,9 @@ async function commentAftermath(
  * При публикации клиент получает письмо «Новая версия материала», в
  * истории работы появляется событие, а пояснения эксперта к этой версии
  * без контактов публикуются вместе с ней: замечание к невидимой версии
- * отдельно не публикуется.
+ * отдельно не публикуется. При отказе пояснения не публикуются вместе с
+ * ней: прежде они навсегда оставались в очереди менеджера, а кнопка
+ * «Опубликовать клиенту» кончалась ошибкой (решение Р-646).
  */
 export async function moderateVersion(
   actor: Actor,
@@ -580,6 +589,12 @@ export async function moderateVersion(
           'Исправленную версию можно загрузить в личном кабинете.',
         dedupKey: `version:${version.id}:rejected`,
         path: materialPath(project.code, version.material.stageId),
+      });
+      // Пояснения — вместе с версией и с её причиной; отдельного письма о
+      // них нет: куратору хватает письма об отказе (Р-646).
+      await tx.versionComment.updateMany({
+        where: { versionId, authorId: version.uploadedById, moderationStatus: 'PENDING' },
+        data: { moderationStatus: 'REJECTED', moderatedById: actor.id, moderatedAt: now, moderationNote: reason },
       });
       return 0;
     }
@@ -744,6 +759,12 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
   ensure(actor, 'COMMENT_CREATE', version.material.project);
   // К невидимой версии эксперта клиент замечаний не пишет (Т-18, Р-294).
   if (!versionVisible(actor, version)) throw new Error('Версия не найдена');
+  // Своя отклонённая версия куратору видна, но клиенту уже не уйдёт, а
+  // замечание к неопубликованной версии публикуется только вместе с ней:
+  // оно висело бы у менеджера «ожидает публикации» без выхода (решение Р-671).
+  if (actor.role === 'EXPERT' && version.moderation?.status === 'REJECTED') {
+    throw new Error('Версия не опубликована менеджером: загрузите исправленную версию');
+  }
   // И к документу скрытого транша — тоже (УК-01, Р-356).
   if (!trancheDocumentVisible(actor, version.material)) throw new Error('Версия не найдена');
   // Закрытая работа и завершённый этап — только чтение (Т-17, М-10, Р-293).

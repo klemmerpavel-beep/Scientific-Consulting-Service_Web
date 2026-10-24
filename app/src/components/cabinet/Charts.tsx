@@ -12,10 +12,14 @@ import { Fragment } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
 import {
+  axisPad,
+  categoryLabels,
   compactMoney,
   compactNumber,
   donutArc,
+  integerScale,
   niceCeil,
+  rankShare,
   seriesColor,
   seriesInkDark,
   smoothPath,
@@ -117,6 +121,7 @@ export function BarChart({
   height = 260,
   width = 720,
   unit,
+  integer = false,
 }: {
   data: readonly BarDatum[];
   format?: (value: number) => string;
@@ -135,13 +140,17 @@ export function BarChart({
    * столбцы, а не каждый третий.
    */
   unit?: string;
+  /** Счётный ряд: деления шкалы только на целых (решение Р-684). */
+  integer?: boolean;
 }) {
   const W = width;
   const H = height;
-  const pad = { t: 26, r: 14, b: 36, l: 52 };
+  const top = Math.max(0, ...data.map((item) => item.value));
+  const { max, count } = integer ? integerScale(top) : { max: niceCeil(top || 1), count: 4 };
+  // Левое поле — по самой длинной подписи шкалы (решение Р-685).
+  const pad = { t: 26, r: 14, b: 36, l: axisPad(ticks(max, count).map(format)) };
   const iw = W - pad.l - pad.r;
   const ih = H - pad.t - pad.b;
-  const max = niceCeil(Math.max(0, ...data.map((item) => item.value)) || 1);
   const n = Math.max(1, data.length);
   const gap = Math.max(6, (iw * 0.012 * 8) / n);
   const bw = Math.min(64, (iw - gap * (n - 1)) / n);
@@ -173,7 +182,7 @@ export function BarChart({
     <Frame width={W} title={title}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
         fontFamily={SANS} role="img" aria-label={title}>
-        <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} format={format} />
+        <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} count={count} format={format} />
         {unit === undefined ? null : (
           <text x={4} y={12} textAnchor="start" fontSize={12} fill={MUTED}>
             {unit}
@@ -284,7 +293,7 @@ export function RankChart({
             <span
               style={{
                 display: 'block',
-                width: `${Math.max(2, (item.value / max) * 100)}%`,
+                width: `${rankShare(item.value, max)}%`,
                 height: '100%',
                 borderRadius: RADIUS.pill,
                 background: item.color ?? seriesColor(1),
@@ -314,6 +323,7 @@ export function LineChart({
   title,
   height = 280,
   width = 720,
+  integer = false,
 }: {
   categories: readonly string[];
   series: readonly Series[];
@@ -322,13 +332,17 @@ export function LineChart({
   height?: number;
   /** Ширина поля рисунка; на широкой карточке задаётся по месту (Р-176). */
   width?: number;
+  /** Счётный ряд: деления шкалы только на целых (решение Р-684). */
+  integer?: boolean;
 }) {
   const W = width;
   const H = height;
-  const pad = { t: 26, r: 16, b: 34, l: 52 };
+  const top = Math.max(1, ...series.flatMap((line) => [...line.points]));
+  const { max, count } = integer ? integerScale(top) : { max: niceCeil(top), count: 4 };
+  // Левое поле — по самой длинной подписи шкалы (решение Р-685).
+  const pad = { t: 26, r: 16, b: 34, l: axisPad(ticks(max, count).map(format)) };
   const iw = W - pad.l - pad.r;
   const ih = H - pad.t - pad.b;
-  const max = niceCeil(Math.max(1, ...series.flatMap((line) => [...line.points])));
   const xAt = (index: number): number =>
     pad.l + (categories.length <= 1 ? iw / 2 : (index / (categories.length - 1)) * iw);
   const yAt = (value: number): number => pad.t + ih - (value / max) * ih;
@@ -340,22 +354,24 @@ export function LineChart({
    * начала ряда: на тридцати двух месяцах подписанным оказывался каждый
    * третий начиная с первого, и самый свежий месяц — тот, ради которого
    * на график и смотрят, — оставался без подписи (решение Р-176).
+   * Крайние подписи прижаты к краю, и соседней нужно до них полторы
+   * ширины подписи, а не одна (решение Р-685).
    */
   const gapX = categories.length <= 1 ? iw : iw / (categories.length - 1);
-  const everyLabel = Math.max(1, Math.ceil(46 / gapX));
+  const labelled = new Set(categoryLabels(categories.length, gapX));
 
   return (
     <Frame width={W} title={title}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
         fontFamily={SANS} role="img" aria-label={title}>
-        <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} format={format} />
+        <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} count={count} format={format} />
         {series.map((line, lineIndex) => {
           const color = line.color ?? seriesColor(lineIndex);
           const points = line.points.map((value, index) => ({ x: xAt(index), y: yAt(value) }));
           return (
             <g key={line.name}>
               <path
-                d={smoothPath(points)}
+                d={smoothPath(points, pad.t + ih)}
                 fill="none"
                 stroke={color}
                 strokeWidth={2.5}
@@ -372,7 +388,7 @@ export function LineChart({
           );
         })}
         {categories.map((category, index) =>
-          (categories.length - 1 - index) % everyLabel === 0 ? (
+          labelled.has(index) ? (
             <text
               key={`tick-${category}-${index}`}
               x={xAt(index)}
@@ -542,6 +558,10 @@ export function StackBar({
  * секторов, — а сумма и доля стоят столбиком и сравниваются по разряду.
  * Легенда со значениями и есть текстовый дублёр кольца: доля больше не
  * живёт в одной подсказке под мышью (решение Р-175).
+ *
+ * Столбец подписи не уже самого длинного слова: сумма и доля сжимали его
+ * до 74 px, и общее правило переноса рвало слово посередине — «Действую /
+ * щие · 10». Подпись переносится только по пробелам (решение Р-687).
  */
 export function Legend({
   items,
@@ -558,7 +578,7 @@ export function Legend({
             key={item.label}
             style={{
               display: 'grid',
-              gridTemplateColumns: '12px minmax(0,1fr) auto auto',
+              gridTemplateColumns: '12px minmax(min-content,1fr) auto auto',
               alignItems: 'baseline',
               gap: 12,
               fontFamily: SANS,
@@ -568,7 +588,7 @@ export function Legend({
             }}
           >
             <i aria-hidden="true" style={{ ...swatch, background: item.color }} />
-            <span>{item.label}</span>
+            <span style={{ overflowWrap: 'normal' }}>{item.label}</span>
             <span style={{ color: INK, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
               {item.value ?? ''}
             </span>

@@ -19,6 +19,7 @@ import {
   TABLE_CELL,
   TABLE_HEAD,
   TABLE_NUM,
+  TABLE_NUM_HEAD,
   TableCard,
   Text,
   Tile,
@@ -156,7 +157,7 @@ export default async function ImportBatchScreen({
                 <th style={TABLE_HEAD} scope="col">
                   Замечание
                 </th>
-                <th style={TABLE_HEAD} scope="col">
+                <th style={TABLE_NUM_HEAD} scope="col">
                   Строк
                 </th>
                 <th style={TABLE_HEAD} scope="col">
@@ -281,8 +282,8 @@ export default async function ImportBatchScreen({
               <th style={TABLE_HEAD} scope="col">Заказчик</th>
               <th style={TABLE_HEAD} scope="col">Тип работы</th>
               <th style={TABLE_HEAD} scope="col">Срок</th>
-              <th style={TABLE_HEAD} scope="col">Стоимость</th>
-              <th style={TABLE_HEAD} scope="col">Оплачено</th>
+              <th style={TABLE_NUM_HEAD} scope="col">Стоимость</th>
+              <th style={TABLE_NUM_HEAD} scope="col">Оплачено</th>
               <th style={TABLE_HEAD} scope="col">Состояние</th>
               <th style={TABLE_HEAD} scope="col">Решение</th>
             </tr>

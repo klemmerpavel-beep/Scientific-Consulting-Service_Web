@@ -66,6 +66,30 @@ describe('черновик нового заказа из документа (Р
     assert.ok(notes.some((note) => note.startsWith('«Срок»: дата «когда-нибудь»')));
   });
 
+  it('срок без года — от даты обращения, догадка — в «Проверьте вручную» (Р-673)', () => {
+    const { values, notes } = fromDocx(['Дата обращения: 20.10.2026', 'Срок: 15 марта']);
+    assert.equal(values.orderedOn, '2026-10-20');
+    assert.equal(values.dueOn, '2027-03-15', 'срок раньше обращения — следующий год');
+    assert.ok(notes.includes('«Срок»: «15 марта» — год восстановлен как 2027, проверьте.'));
+  });
+
+  it('срок без года и без даты обращения — от сегодняшнего дня (Р-673)', () => {
+    const doc = parseBrief(readBrief(makeDocx(['Срок: 15 марта'])).lines);
+    const { values, notes } = orderDraftFromBrief(doc, TYPES, new Date('2026-10-23T00:00:00Z'));
+    assert.equal(values.dueOn, '2027-03-15');
+    assert.ok(notes.includes('«Срок»: «15 марта» — год восстановлен как 2027, проверьте.'));
+  });
+
+  it('год вместо даты и несуществующий день — не молча (Р-673)', () => {
+    const year = fromDocx(['Срок: 2027']);
+    assert.equal(year.values.dueOn, '', '«2027» — не порядковый день Excel 1905 года');
+    assert.ok(year.notes.includes('«Срок»: дата «2027» не прочитана — укажите вручную.'));
+
+    const february = fromDocx(['Срок: 31.02.2027']);
+    assert.equal(february.values.dueOn, '2027-02-28');
+    assert.ok(february.notes.some((note) => note.startsWith('«Срок»: «31.02.2027» — в месяце 28 дн.')));
+  });
+
   it('суть задачи сверх 2000 знаков: не влезшее называется, а не обрезается', () => {
     // Цель и задачи каждая в своём пределе (1000 и 1600), вместе — больше 2000.
     const goal = `Цель работы: ${'обосновать решение '.repeat(45)}`.trim();

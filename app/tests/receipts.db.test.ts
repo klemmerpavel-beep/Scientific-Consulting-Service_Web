@@ -188,6 +188,46 @@ describe('«Поступления» (РК-20)', { skip: !enabled }, async () =>
     }
   });
 
+  it('строки идут по плановой дате, а не по коду работы; без даты — в конце (Р-702)', async () => {
+    // У работы с меньшим кодом просроченный транш позже, чем у второй: прежде
+    // строки шли в порядке договоров, и сентябрь стоял перед августом.
+    const make = async (suffix: string, plannedDate: string) => {
+      const project = await prisma.project.create({
+        data: {
+          code: `PD-RC-${String(stamp).slice(-6)}-${suffix}`,
+          clientId: ids.client!,
+          serviceTypeId: ids.type!,
+          managerId: ids.manager!,
+          title: `Порядок ${suffix}`,
+          status: 'ACTIVE',
+        },
+      });
+      const contract = await prisma.contract.create({ data: { projectId: project.id, number: `RC${suffix}-${stamp}`, totalAmount: 2_000_00n } });
+      await prisma.tranche.create({ data: { contractId: contract.id, title: `Порядок ${suffix}`, amount: 1_000_00n, plannedDate: on(plannedDate) } });
+      return { project: project.id, contract: contract.id };
+    };
+    const made = [await make('PA', '2026-09-15'), await make('PB', '2026-08-01')];
+    try {
+      const plan = await finance.receiptsPlan(head(), AT);
+      const order = mine(plan)
+        .filter((line) => line.bucket === 'overdue' && line.title.startsWith('Порядок'))
+        .map((line) => line.title);
+      assert.deepEqual(order, ['Порядок PB', 'Порядок PA']);
+      const dated = plan.lines.filter((line) => line.plannedDate !== null);
+      for (let index = 1; index < dated.length; index += 1) {
+        assert.ok(dated[index - 1]!.plannedDate!.getTime() <= dated[index]!.plannedDate!.getTime(), 'строки не по возрастанию даты');
+      }
+      const firstUndated = plan.lines.findIndex((line) => line.plannedDate === null);
+      if (firstUndated >= 0) assert.ok(plan.lines.slice(firstUndated).every((line) => line.plannedDate === null), 'строка без даты не в конце');
+    } finally {
+      for (const row of made) {
+        await prisma.tranche.deleteMany({ where: { contractId: row.contract } });
+        await prisma.contract.delete({ where: { id: row.contract } });
+        await prisma.project.delete({ where: { id: row.project } });
+      }
+    }
+  });
+
   it('остаток без траншей — «не разнесено по траншам»', async () => {
     // У рабочей работы остаток 80 000 ₽, траншей на 50 000 ₽: 30 000 ₽ не разнесено.
     const before = await finance.receiptsPlan(head(), AT);

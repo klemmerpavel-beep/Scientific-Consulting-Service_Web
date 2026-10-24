@@ -43,9 +43,11 @@ import {
   curators,
   experts,
   liveWorks,
+  pausedWorksCount,
   pendingActions,
   type ProjectFilter,
 } from '../../../lib/cabinet/queries';
+import { idleAnswer } from '../../../lib/cabinet/works-answer';
 import { daysPast, now } from '../../../lib/cabinet/clock';
 import { can, staffExpertLine } from '../../../lib/cabinet/access';
 import { checklistCounts } from '../../../lib/cabinet/checklist-marks';
@@ -72,6 +74,14 @@ const FILTER_LABEL: Record<ProjectFilter, string> = {
   done: 'Завершённые',
   all: 'Все',
 };
+
+// Менеджер и куратор на плашке — ссылки внутри строки текста, а
+// `cab-mark` отведён для ссылок вне строки: коробка 44 px раздвигала
+// строку «менеджер — … · куратор — …» до 88 px и рвала её на куски. Цель
+// нажатия добирается отступом, строку он не меняет — как у ссылок в
+// документе «Рекламы» (Р-567). Над растянутой ссылкой плашки ссылки стоят
+// по-прежнему (Р-341, решение Р-679).
+const PERSON_LINK = { position: 'relative', zIndex: 1, padding: '14px 0' } as const;
 
 export default async function ProjectsScreen({
   searchParams,
@@ -215,6 +225,10 @@ export default async function ProjectsScreen({
       project,
       stage: project.stages.find((stage) => stage.state !== 'DONE') ?? null,
     }));
+  // Приостановленные считаются, только когда идущих нет: лишь тогда
+  // ответ о них и нужен (решение Р-651).
+  const paused =
+    (forClient || (forExpert && !awaitingNda)) && live.length === 0 ? await pausedWorksCount(actor) : 0;
   const nearest =
     live
       .filter((row) => row.stage?.dueOn != null)
@@ -228,6 +242,9 @@ export default async function ProjectsScreen({
   let answer: { lead: string; detail?: string | null; action?: ReactNode } | undefined;
   if (forClient) {
     const first = pendingAll[0] ?? null;
+    // Приостановленная работа — действующая: клиент не читает
+    // «Действующих работ нет» над её плашкой (решение Р-651).
+    const idle = idleAnswer({ forClient: true, live: live.length, paused, due: dueLine(nearest) });
     answer =
       first !== null
         ? {
@@ -254,34 +271,22 @@ export default async function ProjectsScreen({
               .join(' '),
             action: <ButtonLink href={`/cabinet/stages/${first.id}`}>Открыть этап</ButtonLink>,
           }
-        : live.length > 0
-          ? {
-              lead:
-                live.length === 1
-                  ? 'Сейчас от вас ничего не требуется — работа идёт.'
-                  : 'Сейчас от вас ничего не требуется — работы идут.',
-              detail: dueLine(nearest),
-            }
-          : {
-              lead: 'Действующих работ нет.',
-              detail: 'Заявку на сопровождение новой работы можно оставить здесь же.',
-              action: <ButtonLink href="/cabinet/request">Новая заявка</ButtonLink>,
-            };
+        : {
+            lead: idle.lead,
+            detail: idle.detail,
+            action: idle.request ? <ButtonLink href="/cabinet/request">Новая заявка</ButtonLink> : undefined,
+          };
   } else if (forExpert && !awaitingNda) {
     // Ответ куратору — главное дело по ближайшему сроку, число остальных и
     // кнопка на экран, где дело закрывается. «Не начат» делом не является:
     // этап запускает менеджер (требование Э-04, решение Р-329).
     const tasks = await curatorTasksData(actor);
     const main = tasks[0] ?? null;
+    // Все работы приостановлены — так и сказано (решение Р-651).
+    const idle = idleAnswer({ forClient: false, live: live.length, paused });
     answer =
       main === null
-        ? {
-            lead: 'Сейчас ход не за вами.',
-            detail:
-              live.length === 0
-                ? 'Действующих назначений нет.'
-                : 'Этапы ваших работ сданы менеджеру, ждут клиента, ещё не запущены или закрыты; менеджер сообщит, когда продолжать.',
-          }
+        ? { lead: idle.lead, detail: idle.detail }
         : {
             lead: `${main.label}.`,
             detail: [
@@ -776,13 +781,22 @@ export default async function ProjectsScreen({
                     на этап: отдельной строкой сверху оно повторяло бы то,
                     что и так видно в шкале (решение Р-175). */}
                 {waiting === null ? null : (
-                  <Text size={13} style={{ marginTop: 10 }}>
+                  <Text size={13} style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 4 }}>
                     {/* Призыв к действию — цель в 44 px, а не строка в
-                        девятнадцать (решение Р-253). */}
+                        девятнадцать (решение Р-253). Строка — ряд: коробка
+                        ссылки и хвост срока стоят отдельными кусками на
+                        одной средней линии, и хвост переносится целиком, а
+                        не рвётся вокруг коробки (решение Р-679). */}
                     <a className="cab-mark" href={`/cabinet/stages/${waiting.id}`}>
                       {waitingLine(waiting)}
                     </a>
-                    {waiting.dueOn === null ? '' : ` — до ${formatDate(waiting.dueOn)}`}
+                    {/* На согласовании — срок согласования, как в шапке и в
+                        блоке «Требует внимания» (Т-15, Р-290, решение Р-650). */}
+                    {waiting.state === 'IN_APPROVAL' && waiting.approvalDueOn !== null ? (
+                      <span>{`— срок согласования до ${formatDate(waiting.approvalDueOn)}`}</span>
+                    ) : waiting.dueOn === null ? null : (
+                      <span>{`— до ${formatDate(waiting.dueOn)}`}</span>
+                    )}
                   </Text>
                 )}
 
@@ -866,8 +880,7 @@ export default async function ProjectsScreen({
                       <Text muted size={13} style={{ margin: 0 }}>
                         менеджер —{' '}
                         <a
-                          className="cab-mark"
-                          style={{ position: 'relative', zIndex: 1 }}
+                          style={PERSON_LINK}
                           href={`/cabinet/projects?state=all&manager=${project.managerId}`}
                         >
                           {project.manager.fullName}
@@ -879,8 +892,7 @@ export default async function ProjectsScreen({
                           <>
                             {'куратор — '}
                             <a
-                              className="cab-mark"
-                              style={{ position: 'relative', zIndex: 1 }}
+                              style={PERSON_LINK}
                               href={`/cabinet/projects?state=all&curator=${project.expertId}`}
                             >
                               {project.expert.fullName}

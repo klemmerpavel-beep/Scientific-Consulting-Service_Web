@@ -40,7 +40,7 @@ describe('ход за куратором (Э-04)', { skip: !enabled }, async () 
   const curator = () => who(ids.curator!, 'EXPERT');
   const manager = () => who(ids.manager!, 'MANAGER');
   const tasks = () => curatorTasksData(curator());
-  const upload = (materialId: string | null) =>
+  const upload = (materialId: string | null, note?: string) =>
     materials.uploadVersion(curator(), {
       projectId: ids.project!,
       stageId: ids.started!,
@@ -49,6 +49,7 @@ describe('ход за куратором (Э-04)', { skip: !enabled }, async () 
       originalName: 'glava3.docx',
       contentType: 'application/octet-stream',
       body: Buffer.from('глава 3'),
+      note,
     });
 
   before(async () => {
@@ -151,8 +152,23 @@ describe('ход за куратором (Э-04)', { skip: !enabled }, async () 
     const withRejected = await tasks();
     assert.ok(withRejected.some((task) => task.kind === 'VERSION_REJECTED' && /v1: «Глава 3»/u.test(task.label)));
     const material = await prisma.materialVersion.findUniqueOrThrow({ where: { id: first.id }, select: { materialId: true } });
+    ids.material = material.materialId;
     await upload(material.materialId);
     assert.ok(!(await tasks()).some((task) => task.kind === 'VERSION_REJECTED'), 'новая версия не закрыла дело');
+  });
+
+  it('пояснение к отклонённой версии второго дела не даёт (Р-646)', async () => {
+    const noted = await upload(ids.material!, 'Добавлены выводы');
+    await materials.moderateVersion(manager(), noted.id, 'REJECTED', 'Нет выводов');
+    const kinds = (await tasks()).map((task) => task.kind);
+    assert.ok(kinds.includes('VERSION_REJECTED'));
+    assert.ok(!kinds.includes('COMMENT_REJECTED'), 'пояснение к отклонённой версии — отдельное дело');
+    await upload(ids.material!);
+    assert.deepEqual(
+      (await tasks()).filter((task) => task.kind !== 'STAGE').map((task) => task.kind),
+      [],
+      'новая версия не закрыла дела',
+    );
   });
 
   it('сдача этапа закрывает дело; приостановленная работа дела сохраняет', async () => {

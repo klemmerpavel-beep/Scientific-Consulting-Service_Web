@@ -5,6 +5,7 @@ import Shell from '../../../../../components/cabinet/Shell';
 import { Button, Card, Field, Form, FormActions, Narrow, ScreenHead, Thread } from '../../../../../components/cabinet/ui';
 import { formDraft } from '../../../../../lib/cabinet/flash';
 import { listStaffThread, readStaffThread, staffThreads } from '../../../../../lib/cabinet/messages';
+import { THREAD_WINDOW, sliceWindow, threadWindow } from '../../../../../lib/cabinet/thread-window';
 import { TOOLS_HREF, homeFor } from '../../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { postStaffMessage } from '../../../actions';
@@ -17,7 +18,7 @@ export default async function StaffThreadScreen({
   searchParams,
 }: {
   params: Promise<{ staffId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; show?: string }>;
 }) {
   const { staffId } = await params;
   const actor = await requireActor(`/cabinet/manage/team/${staffId}`);
@@ -25,7 +26,9 @@ export default async function StaffThreadScreen({
   const staff = (await staffThreads(actor)).find((row) => row.staffId === staffId);
   if (staff === undefined) notFound();
   const sp = await searchParams;
-  const messages = await listStaffThread(actor, staffId);
+  // Окно последних сообщений и ссылка на ранние (решение Р-636).
+  const shown = threadWindow(sp.show);
+  const { messages, earlier } = sliceWindow(await listStaffThread(actor, staffId, { last: shown + 1 }), shown);
   await readStaffThread(actor, staffId);
   const draft = (await formDraft(sp.error)) ?? {};
 
@@ -35,7 +38,12 @@ export default async function StaffThreadScreen({
         <ScreenHead backHref="/cabinet/manage/team" backLabel="Команда" title={staff.fullName} note="переписка с менеджером" />
         <ActionError id={sp.error} />
         <Card>
-          <Thread messages={messages} viewer={actor} empty="Переписки пока нет." />
+          <Thread
+            messages={messages}
+            viewer={actor}
+            earlierHref={earlier ? `/cabinet/manage/team/${staffId}?show=${shown + THREAD_WINDOW}` : undefined}
+            empty="Переписки пока нет."
+          />
           <Form action={postStaffMessage} style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--pd-divider)' }}>
             <input type="hidden" name="staffId" value={staffId} />
             <Field

@@ -167,8 +167,11 @@ async function hasOpenRequest(tx: Tx, clientId: string): Promise<boolean> {
  * этапа, Р-292).
  */
 export async function requestOwnErasure(actor: Actor): Promise<Date> {
-  if (actor.role !== 'CLIENT' || actor.clientProfileId === null || actor.status !== 'ACTIVE') {
-    throw new Error('Действие не разрешено');
+  if (actor.role !== 'CLIENT' || actor.status !== 'ACTIVE') throw new Error('Действие не разрешено');
+  // Учётная запись клиента без карточки — штатная (Р-285): требование не к
+  // чему привязать, и отказ называет путь, а не запрет (решение Р-674).
+  if (actor.clientProfileId === null) {
+    throw new Error('Запрос из кабинета доступен после привязки карточки: напишите на адрес практики');
   }
   const clientId = actor.clientProfileId;
   const staffLink = actor.viaStaffLink === true;
@@ -609,6 +612,23 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
         merged.map((row) => `curator-digest:${moscowToday(row.scheduledAt).toISOString().slice(0, 10)}:${row.userId}`),
       ),
     ];
+    // Письмо руководителю 1-го числа называет клиента в рекомендации месяца
+    // («Вернуться к клиенту: …»), письмо менеджеру о договоре куратора
+    // перечисляет коды и названия его работ. Ни работы, ни записи клиента
+    // у этих строк нет, они находятся по тексту — и отбираются до
+    // затирания: после него текст уже не совпадёт, и снятие с отправки
+    // ниже их бы не нашло (решение Р-644).
+    const byText = await tx.notificationOutbox.findMany({
+      where: {
+        OR: [
+          ...spellings
+            .filter((name) => name.trim().length > 0 && name !== ERASED)
+            .map((name) => ({ eventKind: 'HEAD_MONTHLY', body: { contains: name } })),
+          ...allProjects.map((project) => ({ eventKind: 'CURATOR_NDA_SIGNED', body: { contains: `— ${project.code} — ` } })),
+        ],
+      },
+      select: { id: true },
+    });
     const touched = {
         OR: [
           ...requests.map((row) => ({ dedupKey: { startsWith: `erasure-request:${row.id}:` } })),
@@ -622,6 +642,7 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
           // менеджеру, а не заявке, и называют автора и тему; заявку они
           // помнят только в ключе от повторов (решение Р-234).
           ...leadIds.map((leadId) => ({ dedupKey: { startsWith: `lead:${leadId}:` } })),
+          byText.length === 0 ? { id: '—нет такой строки—' } : { id: { in: byText.map((row) => row.id) } },
         ],
       };
     const notifications = await tx.notificationOutbox.updateMany({
@@ -632,10 +653,11 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     });
     // Неотправленное после затирания не уходит: письмо с темой и текстом
     // «[удалено…]» и строка сводки «— [удалено…]» адресату ничего не
-    // сообщают (решение Р-461).
+    // сообщают (решение Р-461). Недоставленное — тоже: «Отправить ещё
+    // раз» вернуло бы его в очередь (решение Р-668).
     await tx.notificationOutbox.updateMany({
-      where: { AND: [touched, { state: 'PENDING' }] },
-      data: { state: 'EXPIRED', lastError: ERASED_NOTE, scheduledAt: new Date() },
+      where: { AND: [touched, { state: { in: ['PENDING', 'FAILED'] } }] },
+      data: { state: 'EXPIRED', failure: null, lastError: ERASED_NOTE, scheduledAt: new Date() },
     });
 
     // Заявки: персональные поля затираются, отметка согласия и её
@@ -929,6 +951,64 @@ export async function listErasureRequests(actor: Actor) {
       .map((event) => event.objectId),
   );
   return { rows: rows.map((row) => ({ ...row, viaStaffLink: viaStaff.has(row.id) })), total };
+}
+
+/** Объём требования, который руководитель видит перед исполнением. */
+export interface ErasureVolume {
+  readonly requestId: string;
+  readonly clientName: string;
+  readonly scope: 'PERSONAL_DATA' | 'PERSONAL_DATA_AND_FILES';
+  readonly projects: number;
+  readonly messages: number;
+  /**
+   * Версии материалов работ, ещё лежащие в хранилище. Вложения заявок сюда
+   * не входят: исполнение находит их и по контактам, и экран называет их
+   * без числа (решение Р-716).
+   */
+  readonly files: number;
+}
+
+/**
+ * Объём неисполненного требования — для подтверждения перед исполнением.
+ *
+ * Исполнение необратимо, а «Исполнить» в строке требования затирало
+ * данные одним нажатием. Теперь оно открывает подтверждение с объёмом
+ * (по образцу Р-346; решение Р-716). Работы считаются так же, как при
+ * исполнении: со сведёнными в карточку другими написаниями того же ФИО
+ * (решение Р-234). Сам подсчёт ничего не меняет.
+ */
+export async function erasureVolume(actor: Actor, requestId: string): Promise<ErasureVolume | null> {
+  ensure(actor, 'ERASURE_EXECUTE');
+  const request = await prisma.erasureRequest.findUnique({
+    where: { id: requestId },
+    select: { id: true, clientId: true, scope: true, executedAt: true, client: { select: { fullName: true } } },
+  });
+  if (request === null || request.executedAt !== null) return null;
+
+  const cardIds = [request.clientId];
+  for (let frontier = [request.clientId]; frontier.length > 0; ) {
+    const merged = await prisma.clientProfile.findMany({
+      where: { mergedIntoId: { in: frontier } },
+      select: { id: true },
+    });
+    frontier = merged.map((card) => card.id).filter((id) => !cardIds.includes(id));
+    cardIds.push(...frontier);
+  }
+
+  const ofClient = { project: { clientId: { in: cardIds } } };
+  const [projects, messages, files] = await Promise.all([
+    prisma.project.count({ where: { clientId: { in: cardIds } } }),
+    prisma.message.count({ where: ofClient }),
+    prisma.materialVersion.count({ where: { material: ofClient, purgedAt: null } }),
+  ]);
+  return {
+    requestId: request.id,
+    clientName: request.client.fullName,
+    scope: request.scope,
+    projects,
+    messages,
+    files,
+  };
 }
 
 /** Карточки, по которым требование ещё не исполнено. */

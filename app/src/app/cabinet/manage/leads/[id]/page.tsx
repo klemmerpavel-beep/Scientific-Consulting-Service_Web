@@ -207,7 +207,9 @@ export default async function LeadScreen({
           <Heading level={2} size={3} style={{ marginBottom: 12 }}>
             Работа с заявкой
           </Heading>
-          {lead.project === null ? (
+          {/* Отклонённой заявке плашек нет: её возвращение в разбор открывало
+              одобрение вопреки письму с отказом (решение Р-641). */}
+          {lead.project === null && lead.status !== 'DECLINED' ? (
             <>
               <LeadStatusSwitch
                 current={lead.status}
@@ -219,6 +221,10 @@ export default async function LeadScreen({
                 с работой, «Отказ» — форма отказа с причиной.
               </Text>
             </>
+          ) : lead.project === null ? (
+            <Text muted size={13}>
+              Заявка отклонена: состояние больше не меняется.
+            </Text>
           ) : (
             <Text muted size={13}>
               Заявка стала работой: дальше её ход ведётся в карточке работы.

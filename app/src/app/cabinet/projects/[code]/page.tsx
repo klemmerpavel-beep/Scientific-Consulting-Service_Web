@@ -366,7 +366,7 @@ export default async function ProjectScreen({
   // Короткий разговор виден прямо на экране заказа: уходить за ним на
   // отдельный экран, чтобы прочитать три строки, незачем. Прочитанным он
   // здесь не помечается — отметку ставит открытие самой переписки.
-  const thread = mayWrite ? (await listMessages(actor, project.id)).slice(-8) : [];
+  const thread = mayWrite ? await listMessages(actor, project.id, { last: 8 }) : [];
   const expertList = mayAssign ? await experts(actor) : [];
   // Передать работу другому менеджеру может только руководитель (Р-149;
   // названия ролей — РК-01).
@@ -624,12 +624,13 @@ export default async function ProjectScreen({
   //
   // Тип работы часто и есть её название — у всего, что перенесено из книги
   // заказов; тема тоже нередко повторяет название другими словами. Ни то,
-  // ни другое не печатается дважды.
+  // ни другое не печатается дважды. Работа без темы строки «Тема» не
+  // получает: подпись стояла с пустым значением (решение Р-652).
   const about = [
     project.title === project.serviceType.name
       ? null
       : { term: 'Тип сопровождения', value: project.serviceType.name },
-    project.topic === project.title ? null : { term: 'Тема', value: project.topic },
+    project.topic === null || project.topic === project.title ? null : { term: 'Тема', value: project.topic },
     { term: 'Срок работы', value: formatDate(project.dueOn) ?? 'не назначен' },
     // Менеджер — с регалиями, но только практике: клиенту имя менеджера не
     // показывается (Э-01, ответ ОЭ-3б). Куратор — регалиями без ФИО и
@@ -711,8 +712,9 @@ export default async function ProjectScreen({
     <Shell actor={actor} current="/cabinet/projects" board listHref={forClient ? '/cabinet/projects?state=all' : undefined}>
       {/* Шапка заказа — одной полосой. Прежде код, название и тема занимали
           три яруса и 154 пикселя: на панели это четверть места, отведённого
-          колонкам (решение Р-169). */}
-      <ScreenTop style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          колонкам (решение Р-169). Нижний отступ — у самой шапки: отказ
+          и исход вставали вплотную к ряду кнопок (решение Р-709). */}
+      <ScreenTop style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
         {/* Код работы с экранов убран (решение Р-189): человеку он
             ничего не сообщает, а взгляд цепляет первым. */}
         <Heading level={1} size={2}>
@@ -787,23 +789,20 @@ export default async function ProjectScreen({
       {rated === undefined || rating?.score === null || rating === null ? null : (
         <Outcome>{`Спасибо за оценку: ${rating.score} из 5.`}</Outcome>
       )}
-      <Disclosure title="О работе" style={{ marginTop: 12 }}>
+      <Disclosure title="О работе">
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
+          {/* Подпись и значение — строкой, пока значению хватает места, и
+              одно под другим на телефоне, как на карточке заявки (Р-217):
+              сетка отдавала значению на 390 px 128 px, и слова рвались
+              посередине (Р-694). */}
           {about.map((row) => (
-            <div
-              key={row.term}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0,170px) minmax(0,1fr)',
-                gap: 14,
-              }}
-            >
-              <dt style={{ margin: 0 }}>
+            <div key={row.term} style={{ display: 'flex', flexWrap: 'wrap', columnGap: 14, rowGap: 2 }}>
+              <dt style={{ margin: 0, flex: '0 0 170px', minWidth: 0 }}>
                 <Text muted size={13}>
                   {row.term}
                 </Text>
               </dt>
-              <dd style={{ margin: 0 }}>
+              <dd style={{ margin: 0, flex: '1 1 220px', minWidth: 0 }}>
                 <Text size={14}>{row.value}</Text>
               </dd>
             </div>
@@ -845,21 +844,15 @@ export default async function ProjectScreen({
               {`Строка книги заказов — как в книге на ${formatDay(bookRow.appliedAt)}`}
             </Text>
             <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
+              {/* Строкой с переносом, как «О работе» выше (Р-694). */}
               {bookFacts.map((row) => (
-                <div
-                  key={row.term}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0,170px) minmax(0,1fr)',
-                    gap: 14,
-                  }}
-                >
-                  <dt style={{ margin: 0 }}>
+                <div key={row.term} style={{ display: 'flex', flexWrap: 'wrap', columnGap: 14, rowGap: 2 }}>
+                  <dt style={{ margin: 0, flex: '0 0 170px', minWidth: 0 }}>
                     <Text muted size={13}>
                       {row.term}
                     </Text>
                   </dt>
-                  <dd style={{ margin: 0 }}>
+                  <dd style={{ margin: 0, flex: '1 1 220px', minWidth: 0 }}>
                     <Text size={14}>{row.value}</Text>
                   </dd>
                 </div>
@@ -981,6 +974,7 @@ export default async function ProjectScreen({
                   <Field
                     label="Название материала"
                     name="title"
+                    maxLength={300}
                     required
                     placeholder="Глава 2 диссертации"
                     defaultValue={draft.title ?? ''}
@@ -1432,27 +1426,23 @@ export default async function ProjectScreen({
                   )}
                   {/* Вход клиенту открывает куратор работы: прежде это умел
                       только руководитель, и клиенты ручных заказов в кабинет
-                      не попадали (решение Р-285). */}
+                      не попадали (решение Р-285). Почты в карточке нет —
+                      её вписывают здесь же (решение Р-655). */}
                   {can(actor, 'CLIENT_ACCESS_OPEN', ref) ? (
                     <div style={{ marginTop: 14 }}>
-                      {project.client.userId === null && (project.client.email ?? '').trim() === '' ? (
-                        <Text muted size={13}>
-                          Чтобы открыть клиенту вход в кабинет, нужен адрес почты в его карточке.
-                        </Text>
-                      ) : (
-                        <AccessLink
-                          people={[
-                            {
-                              id: project.id,
-                              label: `${project.client.fullName}${project.client.email === null ? '' : ` · ${project.client.email}`}`,
-                            },
-                          ]}
-                          action={openAccessForClient}
-                          field="projectId"
-                          selectLabel="Открыть вход в кабинет"
-                          submitLabel="Открыть клиенту вход"
-                        />
-                      )}
+                      <AccessLink
+                        people={[
+                          {
+                            id: project.id,
+                            label: `${project.client.fullName}${(project.client.email ?? '').trim() === '' ? '' : ` · ${project.client.email}`}`,
+                          },
+                        ]}
+                        action={openAccessForClient}
+                        field="projectId"
+                        selectLabel="Открыть вход в кабинет"
+                        submitLabel="Открыть клиенту вход"
+                        askEmail={project.client.userId === null && (project.client.email ?? '').trim() === ''}
+                      />
                     </div>
                   ) : null}
                 </div>

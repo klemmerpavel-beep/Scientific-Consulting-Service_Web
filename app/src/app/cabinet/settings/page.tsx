@@ -473,8 +473,10 @@ export default async function SettingsScreen({
               </Card>
             )}
             {withRules ? null : telegramCard}
-          {/* Запрос удаления данных прямо из кабинета (часть F, П-08, Р-400). */}
-            {actor.role !== 'CLIENT' ? null : (
+          {/* Запрос удаления данных прямо из кабинета (часть F, П-08, Р-400).
+              Клиенту без карточки запрос из кабинета не принять — ему строка
+              с адресом практики ниже (решение Р-674). */}
+            {actor.role !== 'CLIENT' || actor.clientProfileId === null ? null : (
               <Card>
                 <Heading level={2} size={3} style={{ marginBottom: 8 }}>
                   Удаление персональных данных

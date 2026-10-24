@@ -360,6 +360,7 @@ export function Field({
   labelHidden = false,
   minWidth,
   dense = false,
+  maxLength,
 }: {
   label: string;
   name: string;
@@ -369,6 +370,8 @@ export function Field({
   defaultValue?: string;
   hint?: string;
   multiline?: boolean;
+  /** Предел длины, который держит и сервер: форма не даёт набрать больше. */
+  maxLength?: number;
   /** Строка перечня, в которой стоит поле: от неё зависит идентификатор. */
   scope?: string;
   /** Подпись остаётся в дереве, но не занимает места: поле в строке таблицы. */
@@ -392,7 +395,7 @@ export function Field({
   // «Электронная почта Тот адрес, который вы указывали при обращении.»
   const id = fieldId(name, scope);
   const hintId = hint === undefined ? undefined : `${id}-hint`;
-  const shared = { name, required, placeholder, defaultValue, 'aria-describedby': hintId };
+  const shared = { name, required, placeholder, defaultValue, maxLength, 'aria-describedby': hintId };
   const box = minWidth === undefined ? control : { ...control, minWidth };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -532,7 +535,9 @@ export function Checkbox({
         disabled={disabled}
         required={required}
         aria-describedby={describedBy}
-        style={{ width: 18, height: 18 }}
+        // Флажок не сжимается: длинная подпись ужимала его до 13 px, и
+        // флажки соседних пунктов выходили разной ширины (решение Р-680).
+        style={{ width: 18, height: 18, flexShrink: 0, margin: 0 }}
       />
       <span style={nowrap ? { whiteSpace: 'nowrap' } : undefined}>{label}</span>
     </label>
@@ -963,11 +968,17 @@ export function Thread({
   flagContacts = false,
   empty = 'Сообщений пока нет.',
   dense = false,
+  earlierHref,
 }: {
   messages: readonly ThreadMessage[];
   viewer: { id: string; role: string };
   flagContacts?: boolean;
   empty?: string;
+  /**
+   * Лента показывает окно последних сообщений, а раньше есть ещё: ссылка
+   * над лентой добавляет следующее окно (решение Р-636).
+   */
+  earlierHref?: string;
   /**
    * Переписка стоит колонкой панели, а не во всю ширину экрана.
    *
@@ -1001,122 +1012,131 @@ export function Thread({
   });
 
   return (
-    <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-      {rows.map(({ message, opensDay, named }, index) => {
-        const mine = message.author.id === viewer.id;
-        const gap = index === 0 ? 0 : named ? (dense ? 14 : 18) : 6;
-        return (
-          <Fragment key={message.id}>
-            {opensDay ? (
-              <li
-                style={{
-                  display: 'flex',
-                  gap: 12,
-                  alignItems: 'center',
-                  margin: index === 0 ? '0 0 14px' : '20px 0 14px',
-                }}
-              >
-                <span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid var(--pd-divider)' }} />
-                <span
+    <>
+      {earlierHref === undefined ? null : (
+        <p style={{ margin: '0 0 18px', textAlign: 'center' }}>
+          <a className="cab-mark" href={earlierHref}>
+            Показать ранние сообщения
+          </a>
+        </p>
+      )}
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+        {rows.map(({ message, opensDay, named }, index) => {
+          const mine = message.author.id === viewer.id;
+          const gap = index === 0 ? 0 : named ? (dense ? 14 : 18) : 6;
+          return (
+            <Fragment key={message.id}>
+              {opensDay ? (
+                <li
                   style={{
-                    fontFamily: MONO,
-                    fontSize: 12,
-                    lineHeight: 1.4,
-                    color: 'var(--pd-ink-muted)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {formatDay(message.createdAt)}
-                </span>
-                <span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid var(--pd-divider)' }} />
-              </li>
-            ) : null}
-            <li
-              style={{
-                display: 'flex',
-                justifyContent: mine ? 'flex-end' : 'flex-start',
-                marginTop: opensDay ? 0 : gap,
-              }}
-            >
-              <div style={{ maxWidth: dense ? '100%' : '78%', width: dense ? '100%' : undefined }}>
-                {named ? (
-                  <div
-                    style={{
-                      marginBottom: 6,
-                      textAlign: mine ? 'right' : 'left',
-                      fontFamily: SANS,
-                      fontSize: 13,
-                      lineHeight: 1.4,
-                      fontWeight: 500,
-                      color: 'var(--pd-ink-secondary)',
-                    }}
-                  >
-                    {authorName(message.author, viewer, message.author.id)}
-                    {/* Свою роль человек знает: «Вы · клиент» читалось как
-                        пометка системы о нём самом (решение Р-206). Клиенту
-                        сотрудник подписан ролью вместо имени — «Менеджер», и
-                        повтор «· менеджер» не нужен (Э-01, ОЭ-3б, С-3). */}
-                    {mine || viewer.role === 'CLIENT' ? null : (
-                      <span style={{ fontWeight: 400, color: 'var(--pd-ink-muted)' }}>
-                        {' · '}
-                        {ROLE_LABEL[message.author.role] ?? message.author.role}
-                      </span>
-                    )}
-                  </div>
-                ) : null}
-                <div
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: 14,
-                    background: mine ? 'var(--pd-accent-tint)' : 'var(--pd-surface-quiet)',
-                    border: `1px solid ${mine ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
-                    fontFamily: SANS,
-                    fontSize: 15,
-                    lineHeight: 1.6,
-                    color: 'var(--pd-ink)',
-                    whiteSpace: 'pre-wrap',
-                  }}
-                >
-                  {message.body}
-                </div>
-                <div
-                  style={{
-                    marginTop: 4,
                     display: 'flex',
-                    gap: 8,
+                    gap: 12,
                     alignItems: 'center',
-                    justifyContent: mine ? 'flex-end' : 'flex-start',
-                    flexWrap: 'wrap',
+                    margin: index === 0 ? '0 0 14px' : '20px 0 14px',
                   }}
                 >
+                  <span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid var(--pd-divider)' }} />
                   <span
                     style={{
                       fontFamily: MONO,
                       fontSize: 12,
                       lineHeight: 1.4,
                       color: 'var(--pd-ink-muted)',
-                      fontVariantNumeric: 'tabular-nums',
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {formatTime(message.createdAt)}
+                    {formatDay(message.createdAt)}
                   </span>
-                  {/* Клиент видит, что менеджер прочитал его сообщение
-                      (часть F, П-07, решение Р-399). */}
-                  {viewer.role === 'CLIENT' && mine && message.readAt ? (
-                    <span style={{ fontFamily: SANS, fontSize: 12, lineHeight: 1.4, color: 'var(--pd-ink-muted)' }}>
-                      · прочитано менеджером
+                  <span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid var(--pd-divider)' }} />
+                </li>
+              ) : null}
+              <li
+                style={{
+                  display: 'flex',
+                  justifyContent: mine ? 'flex-end' : 'flex-start',
+                  marginTop: opensDay ? 0 : gap,
+                }}
+              >
+                <div style={{ maxWidth: dense ? '100%' : '78%', width: dense ? '100%' : undefined }}>
+                  {named ? (
+                    <div
+                      style={{
+                        marginBottom: 6,
+                        textAlign: mine ? 'right' : 'left',
+                        fontFamily: SANS,
+                        fontSize: 13,
+                        lineHeight: 1.4,
+                        fontWeight: 500,
+                        color: 'var(--pd-ink-secondary)',
+                      }}
+                    >
+                      {authorName(message.author, viewer, message.author.id)}
+                      {/* Свою роль человек знает: «Вы · клиент» читалось как
+                          пометка системы о нём самом (решение Р-206). Клиенту
+                          сотрудник подписан ролью вместо имени — «Менеджер», и
+                          повтор «· менеджер» не нужен (Э-01, ОЭ-3б, С-3). */}
+                      {mine || viewer.role === 'CLIENT' ? null : (
+                        <span style={{ fontWeight: 400, color: 'var(--pd-ink-muted)' }}>
+                          {' · '}
+                          {ROLE_LABEL[message.author.role] ?? message.author.role}
+                        </span>
+                      )}
+                    </div>
+                  ) : null}
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: 14,
+                      background: mine ? 'var(--pd-accent-tint)' : 'var(--pd-surface-quiet)',
+                      border: `1px solid ${mine ? 'var(--pd-accent-edge)' : 'var(--pd-border)'}`,
+                      fontFamily: SANS,
+                      fontSize: 15,
+                      lineHeight: 1.6,
+                      color: 'var(--pd-ink)',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {message.body}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 4,
+                      display: 'flex',
+                      gap: 8,
+                      alignItems: 'center',
+                      justifyContent: mine ? 'flex-end' : 'flex-start',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: MONO,
+                        fontSize: 12,
+                        lineHeight: 1.4,
+                        color: 'var(--pd-ink-muted)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {formatTime(message.createdAt)}
                     </span>
-                  ) : null}
-                  {flagContacts && message.containsContactHint ? (
-                    <Chip>похоже на передачу контактов</Chip>
-                  ) : null}
+                    {/* Клиент видит, что менеджер прочитал его сообщение
+                        (часть F, П-07, решение Р-399). */}
+                    {viewer.role === 'CLIENT' && mine && message.readAt ? (
+                      <span style={{ fontFamily: SANS, fontSize: 12, lineHeight: 1.4, color: 'var(--pd-ink-muted)' }}>
+                        · прочитано менеджером
+                      </span>
+                    ) : null}
+                    {flagContacts && message.containsContactHint ? (
+                      <Chip>похоже на передачу контактов</Chip>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            </li>
-          </Fragment>
-        );
-      })}
-    </ul>
+              </li>
+            </Fragment>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
@@ -1323,6 +1343,7 @@ export function LongTable({
   visible = 10,
   minWidth = 720,
   caption,
+  widths,
 }: {
   label: string;
   /** Строка заголовков: те же `<th scope="col">`, что и были. */
@@ -1331,16 +1352,35 @@ export function LongTable({
   visible?: number;
   minWidth?: number;
   caption?: ReactNode;
+  /**
+   * Ширины столбцов, по одной на `<th>`. С ними первые строки и остаток
+   * под свёрткой идут одной сеткой: при автоматической раскладке каждая
+   * таблица считала ширины по своим строкам, и столбцы продолжения уезжали
+   * на 15–20 px (решение Р-682).
+   */
+  widths?: readonly string[];
 }) {
   const shown = rows.slice(0, visible);
   const rest = rows.slice(visible);
-  const style = { width: '100%', borderCollapse: 'collapse' as const, minWidth };
+  const style = {
+    width: '100%',
+    borderCollapse: 'collapse' as const,
+    minWidth,
+    ...(widths === undefined ? {} : { tableLayout: 'fixed' as const }),
+  };
+  const cols =
+    widths === undefined ? null : (
+      <colgroup>{widths.map((width, index) => (
+        <col key={index} style={{ width }} />
+      ))}</colgroup>
+    );
 
   return (
     <>
       <TableCard label={label}>
         <table style={style}>
           {caption === undefined ? null : caption}
+          {cols}
           <thead>{columns}</thead>
           <tbody>{shown}</tbody>
         </table>
@@ -1352,9 +1392,16 @@ export function LongTable({
         >
           {/* Тело свёртки на обычной странице не прокручивается, и голая
               таблица в 720 px раздвигала страницу вбок на телефоне —
-              прокрутка своя, с фокусом и именем (решения Р-168, Р-253). */}
-          <TableScroll label={`${label}: остальные строки`}>
+              прокрутка своя, с фокусом и именем (решения Р-168, Р-253).
+              С общими ширинами остаток выведен из поля тела свёртки
+              (18 px) к краям карточки: обе таблицы одной ширины, и
+              столбцы стоят друг под другом (решение Р-682). */}
+          <TableScroll
+            label={`${label}: остальные строки`}
+            style={widths === undefined ? undefined : { margin: '0 -18px' }}
+          >
             <table style={style}>
+              {cols}
               <thead>{columns}</thead>
               <tbody>{rest}</tbody>
             </table>
@@ -1472,9 +1519,18 @@ export function Tiles({ children, inset = false }: { children: ReactNode; inset?
  * раздвигали страницу вбок (решение Р-209). Прокрутка — с фокусом и
  * именем, как у всех областей прокрутки кабинета (решение Р-168).
  */
-export function TableScroll({ label, children }: { label: string; children: ReactNode }) {
+export function TableScroll({
+  label,
+  children,
+  style,
+}: {
+  label: string;
+  children: ReactNode;
+  /** Отступы области: остаток `LongTable` выводится к краям карточки (Р-682). */
+  style?: CSSProperties;
+}) {
   return (
-    <div role="region" aria-label={label} tabIndex={0} style={{ position: 'relative', overflowX: 'auto' }}>
+    <div role="region" aria-label={label} tabIndex={0} style={{ position: 'relative', overflowX: 'auto', ...style }}>
       {children}
     </div>
   );
@@ -2666,7 +2722,6 @@ export function FoldCard({
           gap: 12,
           minHeight: 44,
           padding: '16px 20px',
-          borderRadius: RADIUS.card,
         }}
       >
         <Caret />
@@ -2678,7 +2733,9 @@ export function FoldCard({
             <span style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5, color: 'var(--pd-ink-muted)' }}>{note}</span>
           )}
         </span>
-        {count === undefined ? null : <Chip>{count}</Chip>}
+        {/* Счётчик — в одну строку: перенесённый, он делал из пилюли овал
+            (Р-577, решение Р-681). */}
+        {count === undefined ? null : <Chip nowrap>{count}</Chip>}
       </summary>
       <div style={{ padding: '8px 20px 20px' }}>{children}</div>
     </details>
