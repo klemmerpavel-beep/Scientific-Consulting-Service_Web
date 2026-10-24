@@ -39,6 +39,7 @@ import {
 } from '../../../../lib/cabinet/access';
 import { autoAcceptEnabled } from '../../../../lib/cabinet/approval';
 import { approvalDueLabel, approvalStaffLine, clientApprovalDue } from '../../../../lib/cabinet/approval-text';
+import { managerMailHref } from '../../../../lib/cabinet/staff-texts';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import { COMMENT_MAX } from '../../../../lib/cabinet/materials';
 import { RETURN_TEXT_MAX, stagePaperwork } from '../../../../lib/cabinet/projects';
@@ -431,9 +432,19 @@ export default async function StageScreen({
             Описание этапа (его читает клиент)
           </Text>
           <Text size={15} style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>
-            {(stage.summary ?? '').trim() === ''
-              ? 'Менеджер не описал этап: спросите его письмом, почта — в «О работе» на карточке работы.'
-              : stage.summary}
+            {(stage.summary ?? '').trim() === '' ? (
+              // Письмо менеджеру — одним нажатием, с темой этапа, а не
+              // отсылка к адресу в «О работе» (решение Р-749).
+              <>
+                {'Менеджер не описал этап: спросите его письмом — '}
+                <a href={managerMailHref(stage.project.manager.email, stage.title)}>
+                  написать менеджеру
+                </a>
+                .
+              </>
+            ) : (
+              stage.summary
+            )}
           </Text>
           <Text size={14} style={{ marginBottom: 12 }}>
             {stage.dueOn === null

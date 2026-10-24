@@ -258,3 +258,15 @@ export function assignableWorkLabels(rows: readonly AssignableWorkFacts[]): stri
     return `${label}${due}${state}`;
   });
 }
+
+/**
+ * Письмо менеджеру работы от куратора — ссылкой `mailto`, одним нажатием
+ * (решение Р-749; Э-12, Р-331): прежде куратор копировал адрес из «О
+ * работе». С этапом — тема «Вопрос по этапу «…»», закодированная для
+ * адреса. Переписки куратора с клиентом это не заводит (Р-150, Р-336).
+ */
+export function managerMailHref(email: string, stageTitle?: string | null): string {
+  return stageTitle == null
+    ? `mailto:${email}`
+    : `mailto:${email}?subject=${encodeURIComponent(`Вопрос по этапу «${stageTitle}»`)}`;
+}

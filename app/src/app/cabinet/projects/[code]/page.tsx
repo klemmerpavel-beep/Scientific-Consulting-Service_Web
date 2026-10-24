@@ -67,7 +67,7 @@ import {
   fullSupportOn,
   listedContacts,
 } from '../../../../lib/cabinet/channels';
-import { contactLabelFor, messageFormTexts } from '../../../../lib/cabinet/staff-texts';
+import { contactLabelFor, managerMailHref, messageFormTexts } from '../../../../lib/cabinet/staff-texts';
 import { stageLabel } from '../../../../lib/cabinet/stage-state';
 import {
   PROJECT_STATUS_ACTION,
@@ -790,7 +790,17 @@ export default async function ProjectScreen({
       ? null
       : {
           term: 'Менеджер',
-          value: forExpert ? `${curatorLine(project.manager)} · ${project.manager.email}` : curatorLine(project.manager),
+          // Почта — ссылкой: письмо одним нажатием (решение Р-749).
+          value: forExpert ? (
+            <>
+              {`${curatorLine(project.manager)} · `}
+              <a className="cab-mark" href={managerMailHref(project.manager.email)}>
+                {project.manager.email}
+              </a>
+            </>
+          ) : (
+            curatorLine(project.manager)
+          ),
         },
     // Практике — куратор по имени, с ролью в работе и отметкой о договоре
     // поручения (требование М-16, решение Р-298); клиенту и самому куратору —
@@ -1247,7 +1257,17 @@ export default async function ProjectScreen({
                         ? 'Новых заданий по этой работе нет.'
                         : 'План работ ещё не заведён: этапы и задание назначит менеджер.'
                       : 'Все этапы закрыты — новых заданий по этой работе нет.'
-                    : (current.summary ?? 'Менеджер не описал этап: спросите его письмом, почта — в «О работе».')}
+                    : (current.summary ?? (
+                        // Письмо менеджеру с темой этапа — одним нажатием
+                        // (решение Р-749).
+                        <>
+                          {'Менеджер не описал этап: спросите его письмом — '}
+                          <a href={managerMailHref(project.manager.email, current.title)}>
+                            написать менеджеру
+                          </a>
+                          .
+                        </>
+                      ))}
                 </Text>
                 {current === null ? null : (
                   <Text muted size={13} style={{ marginTop: 6 }}>
