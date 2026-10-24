@@ -74,6 +74,7 @@ import {
 } from '../../../../lib/cabinet/project-status';
 import { templateLength } from '../../../../lib/cabinet/projects';
 import { daysPast } from '../../../../lib/cabinet/clock';
+import { workDuePassed } from '../../../../lib/cabinet/missed';
 import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import {
   curators,
@@ -409,6 +410,11 @@ export default async function ProjectScreen({
       : null;
 
   const stages = project.stages;
+  // Срок работы сорван — по правилу ответа «Сводки»: у идущей и
+  // приостановленной, с планом и без; практике — числом дней в шапке и
+  // под шкалой (решение Р-719). Клиенту и куратору — как прежде (Р-654).
+  const practice = actor.role === 'MANAGER' || actor.role === 'HEAD';
+  const workLateDays = practice && workDuePassed(project) ? daysPast(project.dueOn) : null;
   const done = stages.filter((stage) => stage.state === 'DONE').length;
   // Текущий этап — первый незавершённый; он и отвечает на вопрос «где работа».
   const current = stages.find((stage) => stage.state !== 'DONE') ?? null;
@@ -736,6 +742,7 @@ export default async function ProjectScreen({
             }}
           >
             срок — {formatDate(project.dueOn)}
+            {workLateDays === null ? null : ` · прошёл ${workLateDays} ${plural(workLateDays, 'день', 'дня', 'дней')}`}
           </span>
         )}
         {pauseReason === null ? null : (
@@ -873,8 +880,11 @@ export default async function ProjectScreen({
           }
           stageDueOn={current === null ? null : formatDate(current.dueOn)}
           projectDueOn={formatDate(project.dueOn)}
-          stageLate={current !== null && daysPast(current.dueOn) !== null}
-          projectLate={current !== null && daysPast(project.dueOn) !== null}
+          // Практике этап приостановленной или закрытой работы сорванным не
+          // помечается — то же правило, что у ответа «Сводки» (Р-719).
+          stageLate={current !== null && daysPast(current.dueOn) !== null && (!practice || project.status === 'ACTIVE')}
+          projectLate={practice ? workLateDays !== null : current !== null && daysPast(project.dueOn) !== null}
+          projectLateDays={workLateDays}
           staff={staff}
           action={action}
           actionHref={first === null ? null : `/cabinet/stages/${first.id}`}

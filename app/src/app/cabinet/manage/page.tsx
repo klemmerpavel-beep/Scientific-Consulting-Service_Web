@@ -397,7 +397,9 @@ export default async function ManageQueue({
             : work._count.stages === 0
             ? 'Назначить новый срок, завести план или закрыть работу'
             : 'Назначить новый срок работы или закрыть её',
-        href: `/cabinet/projects/${work.code}`,
+        // Срок меняется в форме «Изменить карточку»: дело открывает её
+        // раскрытой, а не верх карточки (решение Р-719; Р-487).
+        href: `/cabinet/projects/${work.code}?manage=1#manage-card`,
       };
     }),
     // Этап, уже названный просроченным, второй плашкой «ждёт клиента» не
@@ -1303,7 +1305,9 @@ export default async function ManageQueue({
                       row.late === null
                         ? null
                         : `просрочено ${row.late} ${plural(row.late, 'день', 'дня', 'дней')}`,
-                      row.stage === null ? 'срок работы, плана нет' : row.turn,
+                      // Срок работы с планом — строкой «срок работы прошёл»: сорванных
+                      // строк столько же, сколько в ответе «Сводки» (Р-719).
+                      row.stage === null ? (row.planless ? 'срок работы, плана нет' : 'срок работы прошёл') : row.turn,
                       `менеджер — ${row.manager}`,
                       row.curator === null ? null : `куратор — ${row.curator}`,
                       row.paused ? 'приостановлена' : null,

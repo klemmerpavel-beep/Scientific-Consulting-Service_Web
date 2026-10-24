@@ -49,6 +49,7 @@ import {
 } from '../../../lib/cabinet/queries';
 import { idleAnswer } from '../../../lib/cabinet/works-answer';
 import { daysPast, now } from '../../../lib/cabinet/clock';
+import { missedStages, workDuePassed } from '../../../lib/cabinet/missed';
 import { can, staffExpertLine } from '../../../lib/cabinet/access';
 import { checklistCounts } from '../../../lib/cabinet/checklist-marks';
 import { requireActor } from '../../../lib/cabinet/session';
@@ -635,6 +636,21 @@ export default async function ProjectsScreen({
             const done = project.stages.filter((stage) => stage.state === 'DONE').length;
             const currentStage = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
             const newMessages = unread.get(project.id) ?? 0;
+            // Пометка срыва у практики — по правилу ответа «Сводки», и у
+            // приостановленной работы тоже: прежде «прошёл» стоял только у
+            // идущих, а сорванный срок одного этапа не помечался вовсе
+            // (решение Р-719). Клиенту и куратору — как прежде (Р-654).
+            const practice = !forClient && !forExpert;
+            const stageMissed = practice && !workDuePassed(project) && missedStages(project) > 0;
+            const dueMark = practice
+              ? workDuePassed(project)
+                ? ' · прошёл'
+                : stageMissed
+                  ? ' · срок этапа прошёл'
+                  : ''
+              : project.status === 'ACTIVE' && daysPast(project.dueOn) !== null
+                ? ' · прошёл'
+                : '';
             // Строка под шкалой отвечает на вопрос «что с этим заказом» без
             // захода внутрь: сколько этапов сделано, сколько приложено
             // материалов, есть ли непрочитанное (решение Р-169).
@@ -852,20 +868,24 @@ export default async function ProjectsScreen({
                     последний в плашке: раскрытие «Этапы» стоит над ним, и
                     у плашек ряда подвал встаёт на одни линии, есть план
                     или нет (Р-272). */}
-                {facts.length === 0 && project.dueOn === null && !forHead ? (
+                {facts.length === 0 && project.dueOn === null && !forHead && !stageMissed ? (
                   <span aria-hidden="true" style={{ marginTop: 'auto' }} />
                 ) : (
                   <div style={{ marginTop: 'auto', paddingTop: 10, display: 'grid', gap: 2 }}>
-                    {project.dueOn === null ? null : (
+                    {project.dueOn === null && !stageMissed ? null : (
                       <Text
                         muted
                         size={13}
                         style={{ margin: 0, fontFamily: MONO, lineHeight: 1.4 }}
                       >
-                        срок — {formatDate(project.dueOn)}
-                        {project.status === 'ACTIVE' && daysPast(project.dueOn) !== null
-                          ? ' · прошёл'
-                          : ''}
+                        {project.dueOn === null ? (
+                          'срок этапа прошёл'
+                        ) : (
+                          <>
+                            срок — {formatDate(project.dueOn)}
+                            {dueMark}
+                          </>
+                        )}
                       </Text>
                     )}
                     {facts.length === 0 ? null : (

@@ -10,6 +10,7 @@ import { can, ensure, type Actor } from './access.ts';
 import { prisma } from '../db.ts';
 import { scopeProjects } from './access.ts';
 import { daysPast, moscowToday, now as today } from './clock.ts';
+import { missedCount, workMissed } from './missed.ts';
 import { outstandingOf, overdueWithinRest, receivableOf, writtenOffOf } from './money.ts';
 import { turnLabel, type StageStateKey } from './stage-state.ts';
 
@@ -136,15 +137,19 @@ export interface LoadPoint {
 /**
  * Срок ближайших двух недель или уже сорванный: этап действующей работы
  * либо работа без плана — по сроку работы (требование РК-04, решение
- * Р-342; Р-182 и Р-216 дополняются).
+ * Р-342; Р-182 и Р-216 дополняются). Сорванные строки — ровно сорванные
+ * сроки ответа «Сводки»: с ними и строка «срок работы прошёл» у работы с
+ * планом (решение Р-719).
  */
 export interface Deadline {
   readonly key: string;
   readonly code: string;
   /** Название работы: код с экранов убран и человеку ничего не говорит. */
   readonly title: string;
-  /** Этап; у работы без плана — `null`, срок — срок работы. */
+  /** Этап; у строки срока работы — `null`, срок — срок работы. */
   readonly stage: string | null;
+  /** Строка срока работы без плана; у работы с планом — «срок работы прошёл» (Р-719). */
+  readonly planless: boolean;
   readonly client: string;
   readonly dueOn: Date;
   /** Сколько дней прошло после срока; `null` — срок не прошёл. */
@@ -225,6 +230,8 @@ export async function stageLoad(
 
   for (const project of projects) {
     if (project.status === 'PAUSED') paused += 1;
+    // Просрочка — сорванные сроки по правилу ответа «Сводки» (Р-719).
+    overdue += missedCount(project, day);
     const current = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
     // Работа без плана — это почти вся перенесённая книга: этапов в ней
     // нет, одна строка на заказ. Прежде такие работы выпадали из графика и
@@ -234,12 +241,10 @@ export async function stageLoad(
     if (project.stages.length === 0) {
       planless += 1;
       counts.set('PLANLESS', (counts.get('PLANLESS') ?? 0) + 1);
-      if (project.dueOn !== null && project.dueOn < day) overdue += 1;
       continue;
     }
     const key = current?.state ?? 'DONE';
     counts.set(key, (counts.get(key) ?? 0) + 1);
-    if (current?.dueOn != null && current.dueOn < day) overdue += 1;
   }
 
   return {
@@ -261,6 +266,14 @@ export async function stageLoad(
  * сроком в ближайшие две недели и сорванные, а у работы без плана — срок
  * работы. У строки — менеджер, куратор и чей ход; приостановленная
  * работа помечена. Порядок — по сроку: сорванные сверху.
+ *
+ * Сорванные строки — те же сорванные сроки, что в ответе «Сводки»
+ * (решение Р-719, Р-342 уточняется): этап идущей работы и срок работы —
+ * идущей без сорванного этапа или приостановленной, с планом или без.
+ * Прежде у работы с планом прошедший срок работы не выводился, а этап
+ * приостановленной работы с прошедшим сроком стоял «просрочено», хотя
+ * ответ его не считает: строк «просрочено» выходило не столько, сколько
+ * назвала «Сводка».
  */
 export async function upcomingDeadlines(actor: Actor, now: Date = today()): Promise<Deadline[]> {
   ensure(actor, 'PROJECT_VIEW');
@@ -275,7 +288,7 @@ export async function upcomingDeadlines(actor: Actor, now: Date = today()): Prom
     expert: { select: { fullName: true } },
   } as const;
 
-  const [stages, planless] = await Promise.all([
+  const [stages, works] = await Promise.all([
     prisma.stage.findMany({
       where: {
         state: { not: 'DONE' },
@@ -294,13 +307,28 @@ export async function upcomingDeadlines(actor: Actor, now: Date = today()): Prom
       },
     }),
     prisma.project.findMany({
-      where: { ...(scope ?? {}), ...LIVE, stages: { none: {} }, dueOn: { lte: horizon } },
-      select: { code: true, title: true, status: true, dueOn: true, client: { select: { fullName: true } }, ...people },
+      where: { ...(scope ?? {}), ...LIVE, dueOn: { lte: horizon } },
+      select: {
+        code: true,
+        title: true,
+        status: true,
+        dueOn: true,
+        client: { select: { fullName: true } },
+        stages: { select: { state: true, dueOn: true } },
+        ...people,
+      },
     }),
   ]);
+  // Срок работы — строкой у работы без плана, а у работы с планом — только
+  // сорванный по правилу ответа (Р-719). Этап приостановленной работы со
+  // сроком в прошлом сорванным не считается: срыв назван сроком работы.
+  const workRows = works.filter((work) => work.stages.length === 0 || workMissed(work, day));
+  const stageRows = stages.filter(
+    (stage) => stage.project.status === 'ACTIVE' || stage.dueOn!.getTime() >= day.getTime(),
+  );
 
   const rows: Deadline[] = [
-    ...stages.map((stage) => {
+    ...stageRows.map((stage) => {
       const project = stage.project;
       const hasCurator = project.expertId !== null || (project.expertNameRaw ?? '').trim() !== '';
       return {
@@ -308,6 +336,7 @@ export async function upcomingDeadlines(actor: Actor, now: Date = today()): Prom
         code: project.code,
         title: project.title,
         stage: stage.title,
+        planless: false,
         client: project.client.fullName,
         dueOn: stage.dueOn!,
         late: daysPast(stage.dueOn, now),
@@ -323,11 +352,12 @@ export async function upcomingDeadlines(actor: Actor, now: Date = today()): Prom
         href: `/cabinet/stages/${stage.id}`,
       };
     }),
-    ...planless.map((project) => ({
+    ...workRows.map((project) => ({
       key: `work-${project.code}`,
       code: project.code,
       title: project.title,
       stage: null,
+      planless: project.stages.length === 0,
       client: project.client.fullName,
       dueOn: project.dueOn!,
       late: daysPast(project.dueOn, now),

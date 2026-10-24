@@ -2433,6 +2433,7 @@ export function ProgressPanel({
   projectDueOn,
   stageLate = false,
   projectLate = false,
+  projectLateDays = null,
   staff = false,
   action,
   actionHref,
@@ -2453,6 +2454,13 @@ export function ProgressPanel({
   /** Срок прошёл: называется словом, не цветом (решение Р-206). */
   stageLate?: boolean;
   projectLate?: boolean;
+  /**
+   * Сколько дней прошло после срока работы — практике, по правилу ответа
+   * «Сводки» (решение Р-719). Клиенту не передаётся: у него, как
+   * прежде, одно слово «прошёл» (Р-654). Число дней снимок не ломает:
+   * съёмка идёт при остановленных часах кабинета (Р-205).
+   */
+  projectLateDays?: number | null;
   /** Панель читает практика, а не клиент. */
   staff?: boolean;
   action?: string | null;
@@ -2583,7 +2591,11 @@ export function ProgressPanel({
         {projectDueOn == null ? null : (
           <span>
             срок работы — {projectDueOn}
-            {projectLate ? ' · прошёл' : ''}
+            {projectLate
+              ? projectLateDays == null
+                ? ' · прошёл'
+                : ` · прошёл ${projectLateDays} ${plural(projectLateDays, 'день', 'дня', 'дней')}`
+              : ''}
           </span>
         )}
         {executor == null ? null : <span>{executor}</span>}

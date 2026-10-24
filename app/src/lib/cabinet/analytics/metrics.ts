@@ -18,7 +18,8 @@
  * (решение Р-257).
  */
 
-import { isPastDue, moscowToday } from '../clock.ts';
+import { moscowToday } from '../clock.ts';
+import { workDuePassed } from '../missed.ts';
 import { expectsPayment } from '../money.ts';
 
 /** Строка витрины: один проект со сведёнными деньгами. */
@@ -104,9 +105,9 @@ export function openBalance(row: ProjectRow): bigint {
  * срок с текущим моментом, а не с началом дня (решение Р-257).
  */
 export function lateOpen(rows: readonly ProjectRow[], controlDate: Date): ProjectRow[] {
-  return rows.filter(
-    (row) => (row.status === 'ACTIVE' || row.status === 'PAUSED') && isPastDue(row.dueOn, controlDate),
-  );
+  // Правило — общее с экранами сотрудников (Р-719): одно определение.
+  const day = moscowToday(controlDate);
+  return rows.filter((row) => workDuePassed(row, day));
 }
 
 /** Действующие работы — идущие и приостановленные, как вкладка перечня. */
