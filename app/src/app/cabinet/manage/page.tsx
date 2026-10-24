@@ -42,7 +42,7 @@ import { staffThreadUnread } from '../../../lib/cabinet/messages';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
 import { leadQueue } from '../../../lib/cabinet/queries';
 import { attentionParts, attentionSources, practiceLight } from '../../../lib/cabinet/attention';
-import { answerDetail } from '../../../lib/cabinet/summary-answer';
+import { answerSegments } from '../../../lib/cabinet/summary-answer';
 import { CHECK_TITLE } from '../../../lib/cabinet/head-checks';
 import { reactionDays } from '../../../lib/cabinet/practice-settings';
 import { notifyChannelsDown } from '../../../lib/cabinet/outbox';
@@ -113,12 +113,6 @@ const ALERT_EDGE: Record<number, string | undefined> = {
  * ещё и шириной: 3, 4, 5, 6 px (решение Р-212).
  */
 const ALERT_WIDTH: Record<number, number> = { 0: 0, 1: 3, 2: 4, 3: 5, 4: 6 };
-
-/**
- * Сколько ближайших сроков стоит в плашке: столько, сколько входит в её
- * единый размер (Р-576); остальные — строкой «И ещё N».
- */
-const DEADLINES_SHOWN = 3;
 
 
 /**
@@ -290,6 +284,50 @@ export default async function ManageQueue({
   // «Ближайшие сроки» — все этапы действующих работ и срок работы без
   // плана, сорванные сверху (требование РК-04, решение Р-342).
   const deadlines = dashboard ? await upcomingDeadlines(actor) : [];
+  // Строка «Ближайших сроков»; все строки окна идут одним перечнем
+  // (решение Р-724).
+  const deadlineItem = (row: (typeof deadlines)[number]) => (
+    <li key={row.key} style={{ display: 'grid', gap: 2 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0,1fr) auto',
+          gap: 12,
+          alignItems: 'baseline',
+        }}
+      >
+        {/* Цель в 44 px набрана отступом, который раскладку не
+            трогает: коробка `cab-mark` давала однострочному
+            названию 11 px пустоты снизу, двухстрочному — нет, и
+            пункты шли с разным зазором (решение Р-679; приём —
+            как у ссылки на оферту, Р-253). */}
+        <a
+          href={row.href}
+          style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5, display: 'block', padding: '12px 0', margin: '-12px 0' }}
+        >
+          {row.stage === null ? row.title : `${row.stage} · ${row.title}`}
+        </a>
+        <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
+          {formatDate(row.dueOn)}
+        </Text>
+      </div>
+      <Text muted size={13}>
+        {[
+          row.late === null
+            ? null
+            : `просрочено ${row.late} ${plural(row.late, 'день', 'дня', 'дней')}`,
+          // Срок работы с планом — строкой «срок работы прошёл»: сорванных
+          // строк столько же, сколько в ответе «Сводки» (Р-719).
+          row.stage === null ? (row.planless ? 'срок работы, плана нет' : 'срок работы прошёл') : row.turn,
+          `менеджер — ${row.manager}`,
+          row.curator === null ? null : `куратор — ${row.curator}`,
+          row.paused ? 'приостановлена' : null,
+        ]
+          .filter((part) => part !== null)
+          .join(' · ')}
+      </Text>
+    </li>
+  );
   // «Получено» — с подписью периода: за 90 дней, как плитки, или за всё
   // время. 90 дней — по дате поступления той же функцией, что отчёт за
   // период (Р-236); за всё время — итог по траншам (Р-201).
@@ -719,18 +757,47 @@ export default async function ManageQueue({
   // первое нажатие дня не уходит на работу, которая стоит полтора года
   // (решение Р-720; Р-207 уточняется выбором первого дела).
   const main = attention.find((row) => !('paused' in row && row.paused)) ?? attention[0];
+  // Число сорванных сроков в ответе ведёт к «Ближайшим срокам», старший
+  // срок — на свой экран: этап — на экран этапа, работа — на её карточку
+  // (решение Р-724). Ссылка на блок — только если он на этом экране.
+  const answerParts = answerSegments({
+    light: {
+      overdue: practice.overdue.map((stage) => ({ title: stage.title, dueOn: stage.dueOn, href: `/cabinet/stages/${stage.id}` })),
+      lateWorks: practice.lateWorks.map((work) => ({ title: work.title, dueOn: work.dueOn, href: `/cabinet/projects/${work.code}` })),
+    },
+    live: summary === null ? null : summary.active + summary.paused,
+    comments: parts.comment.reduce((acc, row) => acc + row.count, 0),
+    versions: parts.version.reduce((acc, row) => acc + row.count, 0),
+    leads: queue.total,
+  });
+  const deadlinesHere = dashboard && isShown(layout, 'deadlines') && deadlines.length > 0;
+  // Ссылка на тёмной панели ответа — цветом текста пояснения и
+  // подчёркнутая (правило ссылок в абзаце, Р-168): акцентный синий на
+  // тёмно-синем не читается.
+  const answerText =
+    answerParts.length === 0 ? null : (
+      <>
+        {answerParts.map((part, index) =>
+          part.deadlines === true && deadlinesHere ? (
+            <a key={index} href="#deadlines" style={{ color: 'inherit' }}>
+              {part.text}
+            </a>
+          ) : part.href !== undefined ? (
+            <a key={index} href={part.href} style={{ color: 'inherit' }}>
+              {part.text}
+            </a>
+          ) : (
+            <Fragment key={index}>{part.text}</Fragment>
+          ),
+        )}
+      </>
+    );
   const answer = {
     lead:
       attention.length === 0
         ? 'Сегодня ничего не горит.'
         : `${attention.length} ${plural(attention.length, 'дело требует', 'дела требуют', 'дел требуют')} решения.`,
-    detail: answerDetail({
-      light: practice,
-      live: summary === null ? null : summary.active + summary.paused,
-      comments: parts.comment.reduce((acc, row) => acc + row.count, 0),
-      versions: parts.version.reduce((acc, row) => acc + row.count, 0),
-      leads: queue.total,
-    }),
+    detail: answerText,
     action:
       main === undefined ? undefined : (
         <ButtonLink href={main.href}>Начать с главного</ButtonLink>
@@ -1290,72 +1357,22 @@ export default async function ManageQueue({
             работы без плана — в окне двух недель и сорванные; у строки —
             чей ход, менеджер, куратор, пометка приостановленной (РК-04,
             Р-342). */}
-        <Card style={{ display: 'flex', flexDirection: 'column' }}>
-          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
-            Ближайшие сроки
-          </Heading>
+        {/* Все строки окна — одним перечнем с прокруткой внутри плашки,
+            как «Ведутся сейчас»: плашка держит единый размер (Р-576).
+            Прежде видны были три строки, остальные — числом без перехода
+            (решение Р-724). Данные уже выбраны. Якорь — для числа
+            сорванных сроков в ответе «Сводки». */}
+        <ScrollCard id="deadlines" title="Ближайшие сроки" href="/cabinet/projects" hrefLabel="все работы">
           {deadlines.length === 0 ? (
             <Text muted size={14}>
               В ближайшие две недели сроков нет, сорванных сроков нет.
             </Text>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
-              {deadlines.slice(0, DEADLINES_SHOWN).map((row) => (
-                <li key={row.key} style={{ display: 'grid', gap: 2 }}>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0,1fr) auto',
-                      gap: 12,
-                      alignItems: 'baseline',
-                    }}
-                  >
-                    {/* Цель в 44 px набрана отступом, который раскладку не
-                        трогает: коробка `cab-mark` давала однострочному
-                        названию 11 px пустоты снизу, двухстрочному — нет, и
-                        пункты шли с разным зазором (решение Р-679; приём —
-                        как у ссылки на оферту, Р-253). */}
-                    <a
-                      href={row.href}
-                      style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5, display: 'block', padding: '12px 0', margin: '-12px 0' }}
-                    >
-                      {row.stage === null ? row.title : `${row.stage} · ${row.title}`}
-                    </a>
-                    <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
-                      {formatDate(row.dueOn)}
-                    </Text>
-                  </div>
-                  <Text muted size={13}>
-                    {[
-                      row.late === null
-                        ? null
-                        : `просрочено ${row.late} ${plural(row.late, 'день', 'дня', 'дней')}`,
-                      // Срок работы с планом — строкой «срок работы прошёл»: сорванных
-                      // строк столько же, сколько в ответе «Сводки» (Р-719).
-                      row.stage === null ? (row.planless ? 'срок работы, плана нет' : 'срок работы прошёл') : row.turn,
-                      `менеджер — ${row.manager}`,
-                      row.curator === null ? null : `куратор — ${row.curator}`,
-                      row.paused ? 'приостановлена' : null,
-                    ]
-                      .filter((part) => part !== null)
-                      .join(' · ')}
-                  </Text>
-                </li>
-              ))}
+              {deadlines.map(deadlineItem)}
             </ul>
           )}
-          {deadlines.length <= DEADLINES_SHOWN ? null : (
-            <Text muted size={13} style={{ marginTop: 10 }}>
-              И ещё {deadlines.length - DEADLINES_SHOWN}{' '}
-              {plural(deadlines.length - DEADLINES_SHOWN, 'срок', 'срока', 'сроков')} в том же окне.
-            </Text>
-          )}
-          <div style={{ marginTop: 'auto', paddingTop: 12 }}>
-            <ButtonLink href="/cabinet/projects" tone="quiet">
-              Все работы
-            </ButtonLink>
-          </div>
-        </Card>
+        </ScrollCard>
       </>
     ),
     money: (

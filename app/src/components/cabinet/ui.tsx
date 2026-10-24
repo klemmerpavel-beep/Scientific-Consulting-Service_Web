@@ -1963,7 +1963,8 @@ export function ScreenHead({
    */
   answer?: {
     lead: string;
-    detail?: string | null;
+    /** Пояснение; на «Сводке» — со ссылками к срокам (решение Р-724). */
+    detail?: ReactNode;
     action?: ReactNode;
   };
 }) {
@@ -2330,11 +2331,18 @@ export function BoardColumn({
  * прокрутки нет: перечень идёт потоком (Р-320).
  */
 export function ScrollCard({
+  id,
   title,
   href,
   hrefLabel,
   children,
 }: {
+  /**
+   * Якорь плашки — для ссылки на неё с того же экрана («Ближайшие сроки» из
+   * ответа «Сводки», решение Р-724); верх плашки встаёт в 24 px от края
+   * окна, как у других якорных блоков «Сводки».
+   */
+  id?: string;
   title: string;
   href?: string;
   hrefLabel: string;
@@ -2342,8 +2350,10 @@ export function ScrollCard({
 }) {
   return (
     <section
+      id={id}
       className="cab-card cab-dash-list"
       style={{
+        ...(id === undefined ? {} : { scrollMarginTop: 24 }),
         background: 'var(--pd-ink-inverse)',
         border: '1px solid var(--pd-border)',
         borderRadius: RADIUS.card,

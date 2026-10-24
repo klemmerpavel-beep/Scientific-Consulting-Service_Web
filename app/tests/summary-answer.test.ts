@@ -54,9 +54,11 @@ describe('пояснение ответа «Сводки» (Р-207, Р-216)', ()
 });
 
 describe('«Сводка» берёт для ответа светофор практики (Р-695)', () => {
-  it('пояснение собирает `answerDetail` по `practiceLight`, а не по набору «Моих»', () => {
+  it('пояснение собирает `answerSegments` по `practiceLight`, а не по набору «Моих»', () => {
     assert.match(page, /const practice = await practiceLight\(actor, sources\);/u);
-    assert.match(page, /answerDetail\(\{\s*light: practice,/u);
+    // Сроки берутся из `practice` со ссылками на свои экраны (Р-724).
+    assert.match(page, /answerSegments\(\{\s*light: \{\s*overdue: practice\.overdue\.map\(/u);
+    assert.match(page, /lateWorks: practice\.lateWorks\.map\(/u);
     assert.doesNotMatch(page, /light\.overdue\.length \+ light\.lateWorks\.length/u);
   });
 
