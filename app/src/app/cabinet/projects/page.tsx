@@ -47,7 +47,7 @@ import {
   pendingActions,
   type ProjectFilter,
 } from '../../../lib/cabinet/queries';
-import { idleAnswer } from '../../../lib/cabinet/works-answer';
+import { UPLOADED_NEXT, UPLOADED_TITLE_MAX, idleAnswer, uploadedLine } from '../../../lib/cabinet/works-answer';
 import { daysPast, now } from '../../../lib/cabinet/clock';
 import { missedStages, workDuePassed } from '../../../lib/cabinet/missed';
 import { can, staffExpertLine } from '../../../lib/cabinet/access';
@@ -179,6 +179,36 @@ export default async function ProjectsScreen({
       : stage.state === 'AWAITING_CLIENT'
         ? `Ждём материалов клиента: ${stage.title}`
         : `На согласовании у клиента: ${stage.title}`;
+  /**
+   * Строка дела клиента на плашке — ссылка на этап и хвост срока. Клиенту,
+   * приложившему материалы после просьбы менеджера, — «Вы приложили
+   * материалы…»: прежде до перевода этапа он читал «Загрузить материалы» и
+   * прикладывал файл повторно (решение Р-728).
+   */
+  const waitingRow = (waiting: (typeof pendingAll)[number]) => {
+    const uploaded = forClient ? waiting.clientUploadedAt : null;
+    return (
+      <Text size={13} style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 4 }}>
+        {/* Призыв к действию — цель в 44 px, а не строка в
+            девятнадцать (решение Р-253). Строка — ряд: коробка
+            ссылки и хвост срока стоят отдельными кусками на
+            одной средней линии, и хвост переносится целиком, а
+            не рвётся вокруг коробки (решение Р-679). */}
+        <a className="cab-mark" href={`/cabinet/stages/${waiting.id}`}>
+          {uploaded === null ? waitingLine(waiting) : uploadedLine(waiting.title, formatDay(uploaded))}
+        </a>
+        {/* На согласовании — срок согласования, как в шапке и в
+            блоке «Требует внимания» (Т-15, Р-290, решение Р-650). */}
+        {uploaded !== null ? (
+          <span>— менеджер проверит их и переведёт этап в работу</span>
+        ) : waiting.state === 'IN_APPROVAL' && waiting.approvalDueOn !== null ? (
+          <span>{`— срок согласования до ${formatDate(waiting.approvalDueOn)}`}</span>
+        ) : waiting.dueOn === null ? null : (
+          <span>{`— до ${formatDate(waiting.dueOn)}`}</span>
+        )}
+      </Text>
+    );
+  };
   const forHead = actor.role === 'HEAD';
   // Отбор по сотруднику — руководителю; сохраняется в адресе (РК-03, Р-341).
   const person = forHead ? { manager: sp.manager ?? '', curator: sp.curator ?? '' } : { manager: '', curator: '' };
@@ -247,7 +277,17 @@ export default async function ProjectsScreen({
     // «Действующих работ нет» над её плашкой (решение Р-651).
     const idle = idleAnswer({ forClient: true, live: live.length, paused, due: dueLine(nearest) });
     answer =
-      first !== null
+      first !== null && first.clientUploadedAt !== null
+        ? {
+            // Материалы приложены после просьбы менеджера: клиент сделал
+            // свою часть, и «работа стоит, пока их нет» было бы неправдой
+            // (решение Р-728). Такие дела стоят после дел без загрузки:
+            // первым оно бывает, только когда других нет.
+            lead: `${uploadedLine(clip(first.title, UPLOADED_TITLE_MAX), formatDay(first.clientUploadedAt))}.`,
+            detail: UPLOADED_NEXT,
+            action: <ButtonLink href={`/cabinet/stages/${first.id}`}>Открыть этап</ButtonLink>,
+          }
+        : first !== null
         ? {
             lead:
               first.state === 'AWAITING_CLIENT'
@@ -530,7 +570,11 @@ export default async function ProjectsScreen({
                   }}
                 >
                   <div style={{ flex: '1 1 340px', minWidth: 0 }}>
-                    <Heading level={3}>{waitingLine(stage)}</Heading>
+                    <Heading level={3}>
+                      {forClient && stage.clientUploadedAt !== null
+                        ? uploadedLine(stage.title, formatDay(stage.clientUploadedAt))
+                        : waitingLine(stage)}
+                    </Heading>
                     <Text muted size={14} style={{ marginTop: 4 }}>
                       {stage.project.title}
                     </Text>
@@ -796,25 +840,7 @@ export default async function ProjectsScreen({
                 {/* Требуемое действие стоит на самой работе и ведёт прямо
                     на этап: отдельной строкой сверху оно повторяло бы то,
                     что и так видно в шкале (решение Р-175). */}
-                {waiting === null ? null : (
-                  <Text size={13} style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 4 }}>
-                    {/* Призыв к действию — цель в 44 px, а не строка в
-                        девятнадцать (решение Р-253). Строка — ряд: коробка
-                        ссылки и хвост срока стоят отдельными кусками на
-                        одной средней линии, и хвост переносится целиком, а
-                        не рвётся вокруг коробки (решение Р-679). */}
-                    <a className="cab-mark" href={`/cabinet/stages/${waiting.id}`}>
-                      {waitingLine(waiting)}
-                    </a>
-                    {/* На согласовании — срок согласования, как в шапке и в
-                        блоке «Требует внимания» (Т-15, Р-290, решение Р-650). */}
-                    {waiting.state === 'IN_APPROVAL' && waiting.approvalDueOn !== null ? (
-                      <span>{`— срок согласования до ${formatDate(waiting.approvalDueOn)}`}</span>
-                    ) : waiting.dueOn === null ? null : (
-                      <span>{`— до ${formatDate(waiting.dueOn)}`}</span>
-                    )}
-                  </Text>
-                )}
+                {waiting === null ? null : waitingRow(waiting)}
 
                 {/* Плашка раскрывается на месте: план работ виден без
                     ухода с перечня, а в саму работу ведёт её название.

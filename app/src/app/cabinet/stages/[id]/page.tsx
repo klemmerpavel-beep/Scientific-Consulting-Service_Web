@@ -56,6 +56,7 @@ import {
 } from '../../../../lib/cabinet/outcome-lines';
 import { noticeFate } from '../../../../lib/cabinet/outbox';
 import DropFlag from '../../../../components/cabinet/DropFlag';
+import { UPLOADED_NEXT, clientUploadedAt, uploadedLine } from '../../../../lib/cabinet/works-answer';
 import ActionError from '../../../../components/cabinet/ActionError';
 import CommentList from '../../../../components/cabinet/CommentList';
 import { handoverOf, stageStateButtons } from '../../../../lib/cabinet/stage-state';
@@ -216,6 +217,18 @@ export default async function StageScreen({
   const ownVersions = stage.materials
     .flatMap((material) => material.versions)
     .filter((version) => version.uploadedById === actor.id && version.moderation?.status !== 'REJECTED').length;
+  // Клиент приложил материалы после просьбы менеджера — строкой под
+  // описанием этапа, как на «Моих работах» и карточке (решение Р-728).
+  const uploadedByClient =
+    actor.role === 'CLIENT'
+      ? clientUploadedAt(
+          { state, awaitingClientSince: stage.awaitingClientSince },
+          stage.materials
+            .flatMap((material) => material.versions)
+            .filter((version) => version.uploadedBy.role === 'CLIENT')
+            .map((version) => version.uploadedAt),
+        )
+      : null;
   // Последние материалы клиента — до трёх версий, новые сверху (Д-5).
   const clientVersions = stage.materials
     .flatMap((material) => material.versions.map((version) => ({ material, version })))
@@ -491,18 +504,29 @@ export default async function StageScreen({
             )
           ) : null}
         </Card>
-      ) : (stage.summary ?? '').trim() === '' && stage.blockedReason === null && lastReturn === undefined ? null : (
+      ) : (stage.summary ?? '').trim() === '' &&
+        stage.blockedReason === null &&
+        lastReturn === undefined &&
+        uploadedByClient === null ? null : (
         <Block as="div" style={{ marginBottom: 24 }}>
           {(stage.summary ?? '').trim() === '' ? null : (
             <Text
               size={15}
               style={{
                 whiteSpace: 'pre-wrap',
-                marginBottom: stage.blockedReason === null && lastReturn === undefined ? 0 : 14,
+                marginBottom:
+                  stage.blockedReason === null && lastReturn === undefined && uploadedByClient === null ? 0 : 14,
               }}
             >
               {stage.summary}
             </Text>
+          )}
+          {uploadedByClient === null ? null : (
+            <div style={{ marginBottom: stage.blockedReason === null && lastReturn === undefined ? 0 : 12 }}>
+              <Notice tone="quiet" role="status">
+                {`${uploadedLine(stage.title, formatDay(uploadedByClient))}. ${UPLOADED_NEXT}`}
+              </Notice>
+            </div>
           )}
           {lastReturn === undefined ? null : (
             <Notice tone="quiet" role="status">

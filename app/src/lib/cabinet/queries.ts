@@ -22,6 +22,7 @@ import { curatorTasks } from './curator-tasks.ts';
 import { moscowToday, now as today } from './clock.ts';
 import { LEAD_STATUS_LABEL } from './lead-labels.ts';
 import { outcomeSince } from './outcome-lines.ts';
+import { clientUploadedAt, uploadedLast } from './works-answer.ts';
 
 /**
  * Выборки экранов кабинета. Каждая строится через ограничение из модуля
@@ -662,9 +663,36 @@ export async function pendingActions(actor: Actor) {
       state: { in: ['AWAITING_CLIENT', 'IN_APPROVAL'] },
     },
     orderBy: [{ dueOn: 'asc' }, { awaitingClientSince: 'asc' }, { id: 'asc' }],
-    include: { project: { select: { code: true, title: true } } },
+    include: {
+      project: { select: { code: true, title: true } },
+      // Последняя версия клиента по этапу: после неё дело клиента говорит
+      // «Вы приложили материалы…» и встаёт после его дел без загрузки
+      // (решение Р-728). Состояние этапа, права и уведомления не
+      // меняются.
+      materials: {
+        where: { deletedAt: null },
+        select: {
+          versions: {
+            where: { purgedAt: null, uploadedBy: { role: 'CLIENT' } },
+            orderBy: { uploadedAt: 'desc' },
+            take: 1,
+            select: { uploadedAt: true },
+          },
+        },
+      },
+    },
   });
-  return stages;
+  const rows = stages.map(({ materials, ...stage }) => ({
+    ...stage,
+    clientUploadedAt: clientUploadedAt(
+      stage,
+      materials.flatMap((material) => material.versions.map((version) => version.uploadedAt)),
+    ),
+  }));
+  // Дела с загрузкой встают после дел без неё только у клиента: это его
+  // ход. Менеджеру, руководителю и куратору плашки и «Требует внимания»
+  // идут по сроку, как прежде (решение Р-728).
+  return actor.role === 'CLIENT' ? uploadedLast(rows) : rows;
 }
 
 /** Очередь заявок для менеджера и руководителя. */

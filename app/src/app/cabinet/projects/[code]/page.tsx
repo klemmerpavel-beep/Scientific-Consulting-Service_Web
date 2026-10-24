@@ -74,6 +74,7 @@ import {
 } from '../../../../lib/cabinet/project-status';
 import { templateLength } from '../../../../lib/cabinet/projects';
 import { daysPast } from '../../../../lib/cabinet/clock';
+import { UPLOADED_NEXT, uploadedLine } from '../../../../lib/cabinet/works-answer';
 import { workDuePassed } from '../../../../lib/cabinet/missed';
 import { MESSAGE_MAX, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import { OUTCOME_ANCHOR, OUTCOME_FLAGS, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
@@ -468,6 +469,10 @@ export default async function ProjectScreen({
   const action =
     first === null
       ? null
+      : first.clientUploadedAt !== null
+        ? // Материалы приложены после просьбы менеджера — фраза о том, что
+          // будет дальше, а не «от вас ждут» (решение Р-728).
+          `${uploadedLine(first.title, formatDay(first.clientUploadedAt))}. ${UPLOADED_NEXT}`
       : [
           first.state === 'AWAITING_CLIENT'
             ? `От вас ждут материалы к этапу «${first.title}».`

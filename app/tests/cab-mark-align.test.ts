@@ -68,7 +68,9 @@ describe('«Работы» — ссылки в строке текста не р
   });
 
   it('ссылка на ждущий этап — cab-mark в строке-ряду, хвост срока отдельным куском', () => {
-    const start = page.indexOf('{waiting === null ? null : (');
+    // Строка дела — одна разметка для всех ждущих этапов работы
+    // (решения Р-728, Р-ВК-К02).
+    const start = page.indexOf('const waitingRow');
     const block = page.slice(start, page.indexOf('</Text>', start));
     assert.match(
       block,

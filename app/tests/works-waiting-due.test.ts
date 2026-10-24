@@ -30,7 +30,9 @@ function code(text: string): string {
 describe('срок дела на плашке работы (Р-650)', () => {
   // Строка плашки — от призыва к действию до конца её абзаца.
   const source = code(page);
-  const start = source.indexOf('{waitingLine(waiting)}');
+  // Строка — функция `waitingRow`: одна разметка для всех ждущих этапов
+  // работы (решения Р-728, Р-ВК-К02).
+  const start = source.indexOf('waitingLine(waiting)');
   const line = source.slice(start, source.indexOf('</Text>', start));
 
   it('строка плашки найдена', () => {

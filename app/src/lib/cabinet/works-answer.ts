@@ -68,3 +68,54 @@ export function idleAnswer(input: {
     request: false,
   };
 }
+
+/**
+ * Клиент приложил материалы к этапу «Ждём ваших данных» (решение Р-728).
+ *
+ * Прежде ответ «Моих работ», карточка и плашка до перевода этапа менеджером
+ * повторяли «От вас ждут материалы… Работа стоит, пока их нет», хотя файл
+ * уже лежал в этапе: клиент прикладывал его повторно или спрашивал
+ * «получили?». Ход по-прежнему за клиентом (Р-287), этап переводит только
+ * практика (Р-240) — меняется формулировка.
+ *
+ * Считается только версия клиента, приложенная после перехода этапа в
+ * «Ждём ваших данных» (`Stage.awaitingClientSince`): прежняя загрузка
+ * просьбу менеджера не закрывает. `null` — такой версии нет.
+ */
+export function clientUploadedAt(
+  stage: { readonly state: string; readonly awaitingClientSince: Date | null },
+  uploads: readonly Date[],
+): Date | null {
+  if (stage.state !== 'AWAITING_CLIENT' || stage.awaitingClientSince === null) return null;
+  const since = stage.awaitingClientSince.getTime();
+  const after = uploads.filter((at) => at.getTime() > since);
+  return after.length === 0 ? null : new Date(Math.max(...after.map((at) => at.getTime())));
+}
+
+/**
+ * Дела с приложенными материалами — после дел без загрузки; внутри —
+ * прежний порядок. Только для дел клиента: порядок у практики не меняется.
+ */
+export function uploadedLast<T extends { readonly clientUploadedAt: Date | null }>(rows: readonly T[]): T[] {
+  return [...rows.filter((row) => row.clientUploadedAt === null), ...rows.filter((row) => row.clientUploadedAt !== null)];
+}
+
+/** Строка после загрузки: «Вы приложили материалы к этапу «…» {день}» — без точки, для ссылки плашки. */
+export function uploadedLine(stageTitle: string, day: string): string {
+  return `Вы приложили материалы к этапу «${stageTitle}» ${day}`;
+}
+
+/**
+ * Длина названия этапа во фразе ответа «Моих работ». Фраза ответа — не
+ * длиннее 90 знаков (Р-210): постоянная часть «Вы приложили материалы к
+ * этапу «» .» с самым длинным днём («29 сентября 2026») — 51 знак, на
+ * название остаётся 39. При 48 длинное название давало 97—99 знаков.
+ */
+export const UPLOADED_TITLE_MAX = 39;
+
+/**
+ * Вторая фраза: что будет дальше — словами задачи, без «их»: с «их» на
+ * 360 px пояснение ответа занимало четыре строки и срезалось, а пояснение
+ * — не длиннее трёх (Р-210). Одна редакция — на всех экранах клиента.
+ */
+export const UPLOADED_NEXT = 'Менеджер проверит и переведёт этап в работу; если нужно что-то ещё — напишет в переписке.';
