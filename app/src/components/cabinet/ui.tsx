@@ -1779,17 +1779,24 @@ export interface RoadmapItem extends StepItem {
 export function Roadmap({
   items,
   staff = false,
+  empty,
 }: {
   items: readonly RoadmapItem[];
   /** Подписи глазами практики; куратору не пишется «куратор добавит». */
   staff?: boolean;
+  /**
+   * Пустой план — по роли и состоянию работы (`emptyPlan`): у закрытой
+   * работы «Этапов у работы нет», а не обещание плана (Р-742, Р-206).
+   */
+  empty?: string;
 }) {
   if (items.length === 0) {
     return (
       <Text muted>
-        {staff
-          ? 'План работ ещё не заведён.'
-          : 'Этапы ещё не заведены — менеджер добавит их после согласования плана.'}
+        {empty ??
+          (staff
+            ? 'План работ ещё не заведён.'
+            : 'Этапы ещё не заведены — менеджер добавит их после согласования плана.')}
       </Text>
     );
   }
@@ -2465,6 +2472,7 @@ export function ProgressPanel({
   stageLate = false,
   projectLate = false,
   projectLateDays = null,
+  emptyTitle,
   approvalDueOn = null,
   approvalLate = false,
   staff = false,
@@ -2495,6 +2503,12 @@ export function ProgressPanel({
    * съёмка идёт при остановленных часах кабинета (Р-205).
    */
   projectLateDays?: number | null;
+  /**
+   * Заголовок шкалы пустого плана — по роли и состоянию работы
+   * (`emptyPlan`): у закрытой работы «Работа завершена» или «Работа
+   * отменена», а не «План работы ещё составляется» (Р-742, Р-206).
+   */
+  emptyTitle?: string;
   /**
    * Срок согласования текущего этапа — клиенту, вместо срока этапа: одна
    * дата, к которой ответить (решение Р-741). Практике не передаётся.
@@ -2562,7 +2576,7 @@ export function ProgressPanel({
         >
           {current === null
             ? total === 0
-              ? 'План работы ещё составляется'
+              ? (emptyTitle ?? 'План работы ещё составляется')
               : 'Все этапы завершены'
             : `${stageLabel(current.state, staff)}: ${current.title}`}
         </span>

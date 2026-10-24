@@ -56,6 +56,7 @@ import {
 import { checklistCounts } from '../../../../lib/cabinet/checklist-marks';
 import { prepareList, prepareOpen, prepareStatus } from '../../../../lib/cabinet/prepare-lists';
 import { approvalDueLabel, clientApprovalDue } from '../../../../lib/cabinet/approval-text';
+import { emptyPlan } from '../../../../lib/cabinet/empty-plan';
 import { ratingFor } from '../../../../lib/cabinet/ratings';
 import { RATING_TEXT_MAX } from '../../../../lib/cabinet/rating-stats';
 import {
@@ -526,6 +527,25 @@ export default async function ProjectScreen({
       </>
     );
   const staff = !forClient;
+  // Работа без этапов — заголовок шкалы, ответ и пустой план одной
+  // таблицей по роли и состоянию работы (решение Р-742): у закрытой —
+  // «Работа завершена» и «Этапов у работы нет», у новой «план
+  // составляется» один раз, а ответ ведёт на «Что подготовить» (Р-564).
+  const plan =
+    stages.length === 0
+      ? emptyPlan({
+          viewer: forClient ? 'client' : forExpert ? 'curator' : 'practice',
+          status: project.status,
+          prepare:
+            forClient && prepareCount !== null
+              ? {
+                  done: prepareCount.done,
+                  total: prepareCount.total,
+                  href: `/cabinet/projects/${encodeURIComponent(project.code)}/prepare`,
+                }
+              : null,
+        })
+      : null;
   // Причина приостановки — под пометкой в шапке, а не только в истории и
   // письме; куратору — без причины, как в его письмах (УК-13, Р-379; Р-328).
   // Список событий — от новых к старым.
@@ -1003,11 +1023,13 @@ export default async function ProjectScreen({
           stageLate={current !== null && daysPast(current.dueOn) !== null && (!practice || project.status === 'ACTIVE')}
           projectLate={practice ? workLateDays !== null : current !== null && daysPast(project.dueOn) !== null}
           projectLateDays={workLateDays}
+          emptyTitle={plan?.title}
           approvalDueOn={formatDate(approvalDue)}
           approvalLate={daysPast(approvalDue) !== null}
           staff={staff}
-          action={action}
-          actionHref={first === null ? null : `/cabinet/stages/${first.id}`}
+          action={action ?? plan?.answer ?? null}
+          actionHref={first === null ? (plan?.actionHref ?? null) : `/cabinet/stages/${first.id}`}
+          actionLabel={first === null ? (plan?.actionLabel ?? undefined) : undefined}
           more={more}
           waiting={forClient ? first !== null : undefined}
           projectStatus={project.status}
@@ -1049,7 +1071,7 @@ export default async function ProjectScreen({
               : undefined
           }
         >
-          <Roadmap items={roadmap} staff={staff} />
+          <Roadmap items={roadmap} staff={staff} empty={plan?.roadmap} />
         </BoardColumn>
 
         {mayWrite ? (
