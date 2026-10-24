@@ -16,6 +16,7 @@ import {
   FormActions,
   FormRow,
   Heading,
+  Outcome,
   ScreenHead,
   Select,
   Text,
@@ -27,6 +28,8 @@ import {
 } from '../../../../../components/cabinet/ui';
 import { can, contributionRefusal } from '../../../../../lib/cabinet/access';
 import { formDraft } from '../../../../../lib/cabinet/flash';
+import { OUTCOME_ANCHOR, OUTCOME_FLAGS, PUBLISHED_LINE } from '../../../../../lib/cabinet/outcome-lines';
+import DropFlag from '../../../../../components/cabinet/DropFlag';
 import { projectMaterials } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { addMaterialVersion, decideOnComment, decideOnVersion } from '../../../actions';
@@ -38,7 +41,7 @@ export default async function ProjectMaterialsScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; published?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}/materials`);
 
@@ -65,6 +68,16 @@ export default async function ProjectMaterialsScreen({
   // (решение Р-722). Формы нет на экране — причина вверху.
   const errorId = (await searchParams).error;
   const draft = (await formDraft(errorId)) ?? {};
+  // «Опубликовать клиенту» — строкой исхода, если версия и правда
+  // опубликована (решение Р-725).
+  const { published } = await searchParams;
+  const publishedShown =
+    errorId === undefined &&
+    published !== undefined &&
+    can(actor, 'COMMENT_MODERATE', ref) &&
+    project.materials.some((material) =>
+      material.versions.some((version) => version.id === published && version.moderation?.status === 'PUBLISHED'),
+    );
   const versionForm = (material: (typeof project.materials)[number]) =>
     mayUpload && contributionRefusal(actor, project.status, material.stage?.state ?? null) === null;
   const uploadPlaced =
@@ -81,6 +94,8 @@ export default async function ProjectMaterialsScreen({
       />
       {/* Отказ загрузки возвращается сюда причиной (решение Р-255). */}
       <ActionError id={errorId} unplaced={uploadPlaced ? [] : ['upload']} />
+      {publishedShown ? <Outcome id={OUTCOME_ANCHOR}>{PUBLISHED_LINE}</Outcome> : null}
+      {published === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
 
       {project.materials.length === 0 ? (
         <Empty title="Материалов пока нет" />

@@ -18,6 +18,7 @@ import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
 import { draftFits, markedDraft } from '../../lib/cabinet/flash-value';
 import { draftsFor } from '../../lib/cabinet/message-drafts';
+import { OUTCOME_ANCHOR } from '../../lib/cabinet/outcome-lines';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
 import { ClientChoiceNeeded, orderRetryDraft } from '../../lib/cabinet/client-match';
 import { homeFor } from '../../lib/cabinet/nav';
@@ -207,6 +208,17 @@ function anchorPart(value: string): string {
   return /^[A-Za-z0-9_-]{1,64}$/u.test(value) ? value : '';
 }
 
+/**
+ * Адрес возврата с признаком исхода (решение Р-725): экран покажет
+ * строку исхода один раз, окно — на ней. Текста в адресе нет: строку
+ * собирает экран по данным, признак только называет действие.
+ */
+function withOutcome(path: string, flag: string, value: string): string {
+  const [bare] = path.split('#');
+  const glue = bare!.includes('?') ? '&' : '?';
+  return `${bare}${glue}${flag}=${encodeURIComponent(value)}#${OUTCOME_ANCHOR}`;
+}
+
 
 /**
  * Запрос ссылки входа. Ответ одинаков для любого исхода: иначе форма
@@ -279,7 +291,8 @@ export async function approveStage(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось согласовать этап');
   }
   if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
-  redirect(`/cabinet/stages/${stageId}`);
+  // Клиенту — «Этап согласован … Дальше — …» (решение Р-725).
+  redirect(withOutcome(`/cabinet/stages/${stageId}`, 'done', 'approved'));
 }
 
 /**
@@ -410,7 +423,12 @@ export async function changeStageState(form: FormData): Promise<void> {
       ),
     );
   }
-  redirect(`/cabinet/stages/${stageId}`);
+  // На согласование — со строкой «Этап отправлен клиенту … до …» (Р-725).
+  redirect(
+    to === 'IN_APPROVAL'
+      ? withOutcome(`/cabinet/stages/${stageId}`, 'done', 'approval')
+      : `/cabinet/stages/${stageId}`,
+  );
 }
 
 /** Правка итога этапа на согласовании (требование Т-14, решение Р-289). */
@@ -581,8 +599,9 @@ export async function moderateLead(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError(`/cabinet/manage/leads/${leadId}`, failure));
   // После отказа — назад на экран заявки: там виден исход — причина и
-  // судьба письма.
-  redirect(code === null ? `/cabinet/manage/leads/${leadId}` : `/cabinet/projects/${code}`);
+  // судьба письма. После одобрения — карточка работы со строкой «Работа
+  // заведена; менеджер — …» (решение Р-725).
+  redirect(code === null ? `/cabinet/manage/leads/${leadId}` : withOutcome(`/cabinet/projects/${code}`, 'created', 'lead'));
 }
 
 export async function createStage(form: FormData): Promise<void> {
@@ -709,7 +728,8 @@ export async function moveStageDue(form: FormData): Promise<void> {
       }),
     );
   }
-  redirect(`/cabinet/stages/${stageId}`);
+  // «Срок этапа перенесён на …» и судьба уведомления клиенту (Р-725).
+  redirect(withOutcome(`/cabinet/stages/${stageId}`, 'done', 'due'));
 }
 
 /**
@@ -1019,7 +1039,9 @@ export async function decideOnVersion(form: FormData): Promise<void> {
       }),
     );
   }
-  redirect(target);
+  // Опубликованная версия — строкой «Версия опубликована: клиент её видит»
+  // (решение Р-725); у отказа строка исхода своя — причина у версии.
+  redirect(decision === 'PUBLISHED' ? withOutcome(target, 'published', versionId) : target);
 }
 
 /**
@@ -1513,7 +1535,9 @@ export async function createOrder(form: FormData): Promise<void> {
       console.error('[cabinet] документ заказа не перенесён в материалы', error);
     }
   }
-  redirect(`/cabinet/projects/${code}?created=1`);
+  // Карточка работы читает признак: «Работа заведена; менеджер — …»
+  // (решение Р-725).
+  redirect(withOutcome(`/cabinet/projects/${code}`, 'created', '1'));
 }
 
 export async function saveProjectContract(form: FormData): Promise<void> {

@@ -76,6 +76,9 @@ import { templateLength } from '../../../../lib/cabinet/projects';
 import { daysPast } from '../../../../lib/cabinet/clock';
 import { workDuePassed } from '../../../../lib/cabinet/missed';
 import { MESSAGE_MAX, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
+import { OUTCOME_ANCHOR, OUTCOME_FLAGS, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
+import { noticeFate } from '../../../../lib/cabinet/outbox';
+import DropFlag from '../../../../components/cabinet/DropFlag';
 import {
   curators,
   executorNames,
@@ -86,7 +89,7 @@ import {
 } from '../../../../lib/cabinet/queries';
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
 import { formatAmount } from '../../../../lib/cabinet/money';
-import { ownPayoutTotals, paymentDocumentLines } from '../../../../lib/cabinet/finance';
+import { ownPayoutTotals, paymentDocumentLines, projectContract } from '../../../../lib/cabinet/finance';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import {
@@ -299,6 +302,9 @@ function eventLine(
  */
 const MATERIALS_IN_COLUMN = 12;
 
+/** Ссылка в строке исхода — подчёркнута цветом строки (решение Р-725). */
+const OUTCOME_LINK = { color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 } as const;
+
 /** Якорь формы «Управления работой»: прокрутка не прячет её под шапкой (Р-487). */
 const MANAGE_ANCHOR = { display: 'block', height: 0, scrollMarginTop: 96 } as const;
 
@@ -307,14 +313,14 @@ export default async function ProjectScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string; manage?: string; briefApplied?: string; rated?: string }>;
+  searchParams: Promise<{ error?: string; manage?: string; briefApplied?: string; rated?: string; created?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}`);
 
   const { code } = await params;
   // Отказ действия «Управления работой»: причина у своей формы, свёртка
   // раскрыта, поля заполнены введённым (решение Р-279).
-  const { error: errorId, manage, briefApplied, rated } = await searchParams;
+  const { error: errorId, manage, briefApplied, rated, created } = await searchParams;
   const failure = await flashEntry(errorId);
   const draft = (await formDraft(errorId)) ?? {};
   // Кнопки «Изменить карточку», «Куратор», «Менеджер» под названием открывают
@@ -571,6 +577,41 @@ export default async function ProjectScreen({
   // Счётчик берётся у полного перечня: колонка показывает дюжину, и
   // число, снятое с неё, врало бы у работы с тринадцатью материалами.
   const materialCount = withMaterials?.materials.length ?? 0;
+  // Строка исхода после одобрения заявки и «Нового заказа» (решение
+  // Р-725): кто менеджер, ушло ли ему уведомление (не обещая письма,
+  // которого не будет, — Р-163, Р-267), где файлы и что дальше. Признак у
+  // работы, заведённой раньше окна исхода (час), ничего не выводит.
+  const createdShown =
+    created !== undefined &&
+    errorId === undefined &&
+    !forClient &&
+    !forExpert &&
+    inOutcomeWindow(project.createdAt);
+  const selfManaged = project.managerId === actor.id;
+  const createdLine = createdShown
+    ? workCreatedLine({
+        manager: selfManaged ? null : project.manager.fullName,
+        fate: selfManaged
+          ? 'none'
+          : await noticeFate(project.managerId, 'CURATOR_ASSIGNED', `project:${project.id}:curator-assigned:${project.managerId}:`),
+        files: materialCount === 0 ? null : created === 'lead' ? 'lead' : 'order',
+      })
+    : null;
+  // «Дальше» — ссылками на те же кнопки, что под названием (Р-487).
+  // Договор, уже внесённый «Новым заказом», в «Дальше» не зовёт.
+  const contractDue =
+    createdLine !== null && can(actor, 'PAYMENT_EDIT', ref) && (await projectContract(actor, project.id)) === null;
+  const createdNext = [
+    mayEdit && !closed
+      ? { what: 'срок', label: 'Изменить карточку', href: `/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-card` }
+      : null,
+    contractDue
+      ? { what: 'договор', label: 'Оплаты и документы', href: `/cabinet/projects/${project.code}/payments` }
+      : null,
+    mayAssign && project.expertId === null
+      ? { what: 'куратор', label: 'Назначить куратора', href: `/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-expert` }
+      : null,
+  ].filter((step) => step !== null);
   const materials: MaterialRow[] = (withMaterials?.materials ?? [])
     .slice(0, MATERIALS_IN_COLUMN)
     .map((material) => {
@@ -798,6 +839,27 @@ export default async function ProjectScreen({
       {rated === undefined || rating?.score === null || rating === null ? null : (
         <Outcome>{`Спасибо за оценку: ${rating.score} из 5.`}</Outcome>
       )}
+      {createdLine === null ? null : (
+        <Outcome id={OUTCOME_ANCHOR}>
+          {createdLine}
+          {createdNext.length === 0 ? null : (
+            <>
+              {' Дальше: '}
+              {createdNext.map((step, index) => (
+                <span key={step.label}>
+                  {`${index === 0 ? '' : ', '}${step.what} — «`}
+                  <a href={step.href} style={OUTCOME_LINK}>
+                    {step.label}
+                  </a>
+                  {'»'}
+                </span>
+              ))}
+              .
+            </>
+          )}
+        </Outcome>
+      )}
+      {created === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
       <Disclosure title="О работе">
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
           {/* Подпись и значение — строкой, пока значению хватает места, и

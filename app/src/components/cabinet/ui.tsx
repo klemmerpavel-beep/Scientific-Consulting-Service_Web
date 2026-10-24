@@ -1320,12 +1320,16 @@ export function Notice({
 export function Outcome({
   children,
   tone = 'ok',
+  id,
 }: {
   children: ReactNode;
   tone?: 'ok' | 'error';
+  /** Якорь: после действия окно открывается на строке исхода (Р-725). */
+  id?: string;
 }) {
   return (
-    <div className="cab-outcome" style={{ marginBottom: 20 }}>
+    // Отступ над строкой при переходе по якорю: она не прилипает к краю окна.
+    <div className="cab-outcome" id={id} style={{ marginBottom: 20, scrollMarginTop: 24 }}>
       <Notice tone={tone} role={tone === 'error' ? 'alert' : 'status'}>
         {children}
       </Notice>

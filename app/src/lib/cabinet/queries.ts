@@ -21,6 +21,7 @@ import { clientWaitDays, turnLabel, type StageStateKey } from './stage-state.ts'
 import { curatorTasks } from './curator-tasks.ts';
 import { moscowToday, now as today } from './clock.ts';
 import { LEAD_STATUS_LABEL } from './lead-labels.ts';
+import { outcomeSince } from './outcome-lines.ts';
 
 /**
  * Выборки экранов кабинета. Каждая строится через ограничение из модуля
@@ -386,6 +387,35 @@ export async function stageClientWait(
   // Срок, перенесённый на те же дни: календарные дни, как в оферте.
   const until = stage.dueOn === null || days === 0 ? null : new Date(stage.dueOn.getTime() + days * 86_400_000);
   return { days, until };
+}
+
+/**
+ * Подтверждение признака `?done=due` (решение Р-725): этот человек
+ * только что перенёс срок именно этого этапа, и новый срок — нынешний.
+ * Событие «срок перенесён» пишет `rescheduleStage` — этап, прежний и новый
+ * срок, кто и когда (Р-302). Признак, подставленный в адрес руками, у
+ * этапа без свежего переноса строки «Срок этапа перенесён на …» не даёт.
+ */
+export async function dueMovedJustNow(
+  actor: Actor,
+  stage: { readonly id: string; readonly projectId: string; readonly dueOn: Date | null },
+  at: Date = new Date(),
+): Promise<boolean> {
+  if (stage.dueOn === null) return false;
+  const moved = await prisma.projectEvent.findFirst({
+    where: {
+      projectId: stage.projectId,
+      actorId: actor.id,
+      kind: 'STAGE_DUE_CHANGED',
+      createdAt: { gte: outcomeSince(at) },
+      AND: [
+        { payload: { path: ['stageId'], equals: stage.id } },
+        { payload: { path: ['dueTo'], equals: stage.dueOn.toISOString().slice(0, 10) } },
+      ],
+    },
+    select: { id: true },
+  });
+  return moved !== null;
 }
 
 /**

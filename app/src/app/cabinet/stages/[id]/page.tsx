@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   notFound,
   redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import { MONO } from '../../../../components/cabinet/tokens'; import {   Button,
@@ -13,6 +14,7 @@ import {
   Heading,
   Mono,
   Notice,
+  Outcome,
   ScreenHead,
   stageLabel,
   Text,
@@ -40,8 +42,20 @@ import { approvalStaffLine } from '../../../../lib/cabinet/approval-text';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import { COMMENT_MAX } from '../../../../lib/cabinet/materials';
 import { RETURN_TEXT_MAX, stagePaperwork } from '../../../../lib/cabinet/projects';
-import { hasNextStage, stageById, stageClientWait } from '../../../../lib/cabinet/queries';
-import { daysPast, now as clockNow } from '../../../../lib/cabinet/clock';
+import { dueMovedJustNow, hasNextStage, pendingActions, stageById, stageClientWait } from '../../../../lib/cabinet/queries';
+import { daysPast, moscowToday, now as clockNow } from '../../../../lib/cabinet/clock';
+import {
+  OUTCOME_ANCHOR,
+  OUTCOME_FLAGS,
+  PUBLISHED_LINE,
+  approvalSentLine,
+  approvedLine,
+  clientNextLabel,
+  dueMovedLine,
+  inOutcomeWindow,
+} from '../../../../lib/cabinet/outcome-lines';
+import { noticeFate } from '../../../../lib/cabinet/outbox';
+import DropFlag from '../../../../components/cabinet/DropFlag';
 import ActionError from '../../../../components/cabinet/ActionError';
 import CommentList from '../../../../components/cabinet/CommentList';
 import { handoverOf, stageStateButtons } from '../../../../lib/cabinet/stage-state';
@@ -89,6 +103,10 @@ export const dynamic = 'force-dynamic';
 const overdueDays = (dueOn: Date | null): number | null => daysPast(dueOn);
 
 
+// Ссылка в строке исхода — подчёркнута цветом строки: следующее дело
+// клиента (решение Р-725).
+const OUTCOME_LINK = { color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 } as const;
+
 // Ссылка в строке фактов — подчёркнута: одним цветом ссылка среди
 // подписей не отличается (Р-168, решение Р-723).
 const FACT_LINK = {
@@ -121,7 +139,7 @@ export default async function StageScreen({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; done?: string; published?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/stages/${(await params).id}`);
 
@@ -256,6 +274,59 @@ export default async function StageScreen({
   // менеджером» (Р-723).
   const curatorWork = curatorWorkLine(stage.project.status);
   const handedLine = `${turnLabel(state, 'expert', stage.project.expertId !== null, stage.handedOverAt)}.`;
+  // Строка исхода после действия — по признаку в адресе и по данным этапа:
+  // признак без подтверждения в данных ничего не выводит (решение Р-725).
+  // «Согласован» и «срок перенесён» подтверждаются свежим событием — этап
+  // завершён, срок перенесён этим человеком в окне исхода; признак,
+  // подставленный в адрес руками, строки не даёт. При отказе признака нет —
+  // стоит прежняя причина.
+  const { done, published } = await searchParams;
+  let outcome: ReactNode = null;
+  if (errorId === undefined) {
+    if (
+      done === 'approved' &&
+      actor.role === 'CLIENT' &&
+      state === 'DONE' &&
+      stage.completedAt !== null &&
+      inOutcomeWindow(stage.completedAt)
+    ) {
+      // Следующее дело клиента по этой работе — тем же перечнем, что у
+      // карточки работы (Р-287); дел нет — к работе.
+      const next =
+        (await pendingActions(actor)).find((row) => row.projectId === stage.project.id && row.id !== stage.id) ?? null;
+      outcome = (
+        <>
+          {`${approvedLine(formatDay(moscowToday(stage.completedAt)))} Дальше — `}
+          <a
+            href={next === null ? `/cabinet/projects/${stage.project.code}` : `/cabinet/stages/${next.id}`}
+            style={OUTCOME_LINK}
+          >
+            {clientNextLabel(next)}
+          </a>
+          .
+        </>
+      );
+    } else if (done === 'approval' && forStaff && state === 'IN_APPROVAL') {
+      outcome = approvalSentLine(stage.approvalDueOn === null ? null : formatDay(stage.approvalDueOn));
+    } else if (done === 'due' && forStaff && stage.dueOn !== null && (await dueMovedJustNow(actor, stage))) {
+      // Уведомление клиенту — по очереди уведомлений: строка не обещает
+      // письма, которого не будет (Р-163, Р-267).
+      const fate = await noticeFate(
+        stage.project.client.userId,
+        'STAGE_DUE_CHANGED',
+        `stage:${stage.id}:due-changed:${stage.dueOn.toISOString().slice(0, 10)}:`,
+      );
+      outcome = dueMovedLine(formatDate(stage.dueOn) ?? '', fate);
+    } else if (
+      published !== undefined &&
+      mayModerate &&
+      stage.materials.some((material) =>
+        material.versions.some((version) => version.id === published && version.moderation?.status === 'PUBLISHED'),
+      )
+    ) {
+      outcome = PUBLISHED_LINE;
+    }
+  }
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -289,6 +360,8 @@ export default async function StageScreen({
       />
 
       <ActionError id={errorId} unplaced={unplaced} />
+      {outcome === null ? null : <Outcome id={OUTCOME_ANCHOR}>{outcome}</Outcome>}
+      {done === undefined && published === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
 
       {/* Описание этапа, замечания клиента и причина остановки — одним
           блоком: на экране куратора и без них до четырёх блоков (решения
