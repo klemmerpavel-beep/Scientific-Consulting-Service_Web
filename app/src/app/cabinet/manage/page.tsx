@@ -1605,7 +1605,12 @@ export default async function ManageQueue({
               {/* «Настроить» — какие плашки «Сводки» показывать и в каком
                   порядке (К-5, Р-595). */}
               <ButtonLink href="/cabinet/manage/layout">Настроить</ButtonLink>
-              <ButtonLink href="/cabinet/manage/report">Отчёт за период</ButtonLink>
+              {/* Отчёт — за период «Пульса»: 90 дней — за 90 дней, иначе
+                  за 30. Прежде отчёт всегда открывался за 30 дней, и числа
+                  «Пульса за 90 дней» с ним не сходились (решение Р-759). */}
+              <ButtonLink href={`/cabinet/manage/report?period=${period === '90' ? 'quarter' : 'month'}`}>
+                Отчёт за период
+              </ButtonLink>
             </>
           ) : undefined
         }

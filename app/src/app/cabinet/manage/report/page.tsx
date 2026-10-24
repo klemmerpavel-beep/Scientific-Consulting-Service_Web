@@ -65,6 +65,10 @@ export const dynamic = "force-dynamic";
 
 type PeriodKey = "month" | "quarter" | "year";
 
+// Вкладки подписаны по содержанию: «Месяц» и «Квартал» читались как
+// календарные, а это последние 30 и 90 дней — те же, что «90 дней»
+// «Пульса» на «Сводке». Ключи в адресе прежние, счёт периода прежний
+// (Р-236, Р-448; решение Р-759).
 const PERIODS: readonly {
   key: PeriodKey;
   label: string;
@@ -73,19 +77,19 @@ const PERIODS: readonly {
 }[] = [
   {
     key: "month",
-    label: "Месяц",
+    label: "30 дней",
     days: 30,
     words: "за последние тридцать дней",
   },
   {
     key: "quarter",
-    label: "Квартал",
+    label: "90 дней",
     days: 90,
     words: "за последние девяносто дней",
   },
   {
     key: "year",
-    label: "Год",
+    label: "12 месяцев",
     days: 365,
     words: "за последние двенадцать месяцев",
   },
