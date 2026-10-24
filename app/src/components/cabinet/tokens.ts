@@ -316,6 +316,11 @@ details[open].cab-block>summary{border-radius:${RADIUS.card - 1}px ${RADIUS.card
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
+/* Таблица «Какое событие каким каналом» на телефоне: подписи «письмом» и
+   «в Telegram» в ячейках убраны с глаз, но остаются для читалки — столбцы
+   подписаны в шапке; поля ячеек уже, и три столбца входят без прокрутки
+   вбок (решение Р-736). */
+@media (max-width:600px){.cab-rule-seen{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.cab-rules th,.cab-rules td{padding-left:8px!important;padding-right:8px!important}}
 /* Кнопка замечаний 52 px стоит в правом нижнем углу с отступом 16 px и у
    низа страницы закрывала ссылку «Политика обработки данных»: подвалу —
    нижнее поле под кнопку, 52 + 16 + 8 запаса. Шире 1295 px ссылки кончаются

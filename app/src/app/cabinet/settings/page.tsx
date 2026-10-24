@@ -14,6 +14,7 @@ import {
   FormActions,
   Heading,
   Narrow,
+  Notice,
   Outcome,
   ScreenHead,
   Select,
@@ -24,6 +25,7 @@ import {
   formatDay,
   formatTime,
   TableScroll,
+  VISUALLY_HIDDEN,
 } from '../../../components/cabinet/ui';
 import { telegramBindAvailable } from '../../../lib/cabinet/auth';
 import { ownChannels, ownCuratorProfile } from '../../../lib/cabinet/admin';
@@ -42,6 +44,7 @@ import {
   ownRules,
   type ContactKind,
 } from '../../../lib/cabinet/channels';
+import { silentEvents } from '../../../lib/cabinet/notify-rules';
 import {
   contactKindsFor,
   contactLabelFor,
@@ -130,6 +133,22 @@ export default async function SettingsScreen({
   // живую метку (решение Р-245).
   const mayBind = !bound && telegramBindAvailable();
 
+  // События, о которых не сообщат ни одним каналом: почта у них снята или
+  // выключена целиком, а Telegram не подключён, выключен или снят. Экран
+  // называет их — после сохранения и у самой таблицы, чтобы событие нельзя
+  // было оставить без канала незаметно (решение Р-736).
+  const ruleEvents = withRules ? rulesFor(actor.role) : [];
+  const silent = silentEvents(ruleEvents, ruleOn, {
+    email: user.notifyEmail,
+    telegram: user.notifyTelegram && bound,
+  });
+  const silentLine =
+    silent.length === 0
+      ? null
+      : silent.length === ruleEvents.length
+        ? 'Сейчас ни об одном событии не сообщим — ни письмом, ни в Telegram.'
+        : `Не сообщим ни письмом, ни в Telegram: ${silent.map((event) => `«${event.title}»`).join(', ')}.`;
+
   // Telegram — в левой колонке у сотрудников и в правой у клиента: правая
   // колонка сотрудника занята правилами событий (решение Р-485).
   const telegramCard = (
@@ -176,7 +195,7 @@ export default async function SettingsScreen({
         )}
 
         {params.saved === undefined ? null : (
-          <Outcome>Настройки сохранены.</Outcome>
+          <Outcome>{silentLine === null ? 'Настройки сохранены.' : `Настройки сохранены. ${silentLine}`}</Outcome>
         )}
 
         {/* Экран во всю ширину: две колонки карточек, каждая своей высоты —
@@ -432,9 +451,29 @@ export default async function SettingsScreen({
                     : 'Уведомлений о практике много; срочное удобно получать в Telegram, а остальное — письмом. '}
                   Снятая всюду строка означает, что о таком событии не сообщать вовсе.
                 </Text>
+                {/* Пока чат не привязан, Telegram из правил не берётся, и
+                    флажки его столбца неактивны; сохранённые правила
+                    Telegram при этом не меняются (решение Р-736).
+                    Слова — те же, что у переключателя «Telegram» (Р-540). */}
+                {bound ? null : (
+                  <Text id="rules-telegram-hint" muted size={13} style={{ marginBottom: 16 }}>
+                    {mayBind
+                      ? 'Сначала подключите Telegram в карточке «Telegram».'
+                      : 'Telegram не настроен на стороне сервиса.'}
+                  </Text>
+                )}
+                {silentLine === null ? null : (
+                  <div style={{ marginBottom: 16 }}>
+                    <Notice tone="quiet">{silentLine}</Notice>
+                  </div>
+                )}
                 <Form action={saveNotifyRules}>
                   <TableScroll label="Какое событие каким каналом">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
+                  {/* На узком экране подписи «письмом» и «в Telegram» в
+                      ячейках скрыты с глаз — столбцы подписаны в шапке; для
+                      читалки флажок по-прежнему называет событие и канал
+                      (решение Р-736). */}
+                  <table className="cab-rules" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
                     <thead>
                       <tr>
                         <th scope="col" style={TABLE_HEAD}>
@@ -451,7 +490,7 @@ export default async function SettingsScreen({
                     <tbody>
                       {/* Строки — по роли и группами: менеджеру не показываются
                           события, которые ему не приходят (М-07, Р-300). */}
-                      {rulesFor(actor.role).map((event, index, rows) => (
+                      {ruleEvents.map((event, index, rows) => (
                         <Fragment key={event.kind}>
                         {index === 0 || rows[index - 1]!.group !== event.group ? (
                           <tr>
@@ -467,7 +506,14 @@ export default async function SettingsScreen({
                               <Checkbox
                                 name={`rule:${event.kind}:${channel}`}
                                 defaultChecked={ruleOn(event.kind, channel)}
-                                label={channel === 'EMAIL' ? 'письмом' : 'в Telegram'}
+                                disabled={channel === 'TELEGRAM' && !bound}
+                                describedBy={channel === 'TELEGRAM' && !bound ? 'rules-telegram-hint' : undefined}
+                                label={
+                                  <>
+                                    <span style={VISUALLY_HIDDEN}>{`${event.title} — `}</span>
+                                    <span className="cab-rule-seen">{channel === 'EMAIL' ? 'письмом' : 'в Telegram'}</span>
+                                  </>
+                                }
                                 nowrap
                               />
                             </td>

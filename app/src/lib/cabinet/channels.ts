@@ -20,6 +20,7 @@
 import { ensure, type Actor, type ProjectRef } from './access.ts';
 import { record } from './audit.ts';
 import { NOTIFY_LOG_SIZE, type NotifyLogRow } from './notify-log.ts';
+import { savableRules, savedChannels } from './notify-rules.ts';
 
 import { prisma } from '../db.ts';
 
@@ -394,10 +395,20 @@ export async function saveRules(
   rules: readonly { eventKind: string; channel: Channel; enabled: boolean }[],
 ): Promise<void> {
   const known = new Set(rulesFor(actor.role).map((event) => event.kind));
-  const clean = rules.filter((rule) => known.has(rule.eventKind));
+  // Без привязанного чата правила Telegram не перезаписываются: неактивный
+  // флажок форма не присылает, и его отсутствие — не «выключено». Привязка
+  // проверяется здесь, по базе, а не по виду формы (решение Р-736).
+  const owner = await prisma.user.findUnique({ where: { id: actor.id }, select: { telegramChatId: true } });
+  const bound = (owner?.telegramChatId ?? null) !== null;
+  const clean = savableRules(
+    rules.filter((rule) => known.has(rule.eventKind)),
+    bound,
+  );
 
   await prisma.$transaction(async (tx) => {
-    await tx.notifyRule.deleteMany({ where: { userId: actor.id } });
+    await tx.notifyRule.deleteMany({
+      where: { userId: actor.id, channel: { in: [...savedChannels(bound)] } },
+    });
     if (clean.length > 0) {
       await tx.notifyRule.createMany({
         data: clean.map((rule) => ({
