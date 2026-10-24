@@ -85,6 +85,7 @@ import {
 } from '../../actions';
 
 import { nextStageUnpaid } from '../../../../lib/cabinet/head-checks';
+import { CHECKLISTS, stepText } from '../../../../lib/cabinet/checklists';
 
 export const dynamic = 'force-dynamic';
 
@@ -129,6 +130,9 @@ const OFFER_LINK = {
  * — в материалах (решение Р-722).
  */
 const TEXT_LIMIT = `До ${COMMENT_MAX.toLocaleString('ru-RU')} знаков; файлы — в материалах работы.`;
+
+/** Шаги «Проверки версии перед сдачей этапа» — те же, что на экране чек-листов (Р-552, Р-733). */
+const HANDOVER_STEPS = (CHECKLISTS.find((list) => list.key === 'expert-handover')?.steps ?? []).map(stepText);
 
 /** Подпись состояния стоит отдельной строкой — с прописной буквы. */
 function sentence(text: string | null): string {
@@ -486,6 +490,25 @@ export default async function StageScreen({
             ) : (
               <Form action={handOverStageAction}>
                 <input type="hidden" name="stageId" value={stage.id} />
+                {/* Проверка перед сдачей — чек-листом куратора (Р-552) —
+                    свёрткой над запиской: переход на экран чек-листов мог
+                    стереть набранную записку, а назад к этапу вели три
+                    перехода (решение Р-733). Шаги — из того же
+                    определения, что на экране чек-листов. */}
+                <Disclosure title="Чек-лист сдачи" style={{ marginBottom: 16 }}>
+                  <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 6 }}>
+                    {HANDOVER_STEPS.map((step) => (
+                      <li key={step}>
+                        <Text size={14} style={{ margin: 0 }}>
+                          {step}
+                        </Text>
+                      </li>
+                    ))}
+                  </ol>
+                  <Text size={13} style={{ marginTop: 10 }}>
+                    <a href="/cabinet/manage/checklists?view=own#expert-handover">Все чек-листы куратора</a>
+                  </Text>
+                </Disclosure>
                 <Field
                   label="Что сделано и на что обратить внимание клиента"
                   name="note"
@@ -497,8 +520,6 @@ export default async function StageScreen({
                 />
                 <FormActions>
                   <Button>Сдать этап менеджеру</Button>
-                  {/* Проверка перед сдачей — чек-листом куратора (Р-552). */}
-                  <ButtonLink href="/cabinet/manage/checklists?view=own#expert-handover">Чек-лист сдачи</ButtonLink>
                 </FormActions>
               </Form>
             )

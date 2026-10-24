@@ -143,7 +143,10 @@ describe('чек-листы практики (Р-494, Р-552, Р-553)', () => {
     const works = readFileSync(path.join(APP, 'cabinet', 'projects', 'page.tsx'), 'utf8');
     assert.match(works, /forExpert && can\(actor, 'CHECKLIST_VIEW'\)[\s\S]{0,80}<ButtonLink href="\/cabinet\/manage\/checklists">Чек-листы<\/ButtonLink>/u);
     const stage = readFileSync(path.join(APP, 'cabinet', 'stages', '[id]', 'page.tsx'), 'utf8');
-    assert.match(stage, /<ButtonLink href="\/cabinet\/manage\/checklists\?view=own#expert-handover">Чек-лист сдачи<\/ButtonLink>/u);
+    // Вход со сдачи этапа — свёрткой «Чек-лист сдачи» в форме сдачи со
+    // ссылкой на экран чек-листов внутри (решение Р-733).
+    assert.match(stage, /<Disclosure title="Чек-лист сдачи"/u);
+    assert.match(stage, /<a href="\/cabinet\/manage\/checklists\?view=own#expert-handover">/u);
     assert.ok(CHECKLISTS.some((list) => list.key === 'expert-handover'));
   });
 });
