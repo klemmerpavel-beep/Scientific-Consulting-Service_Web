@@ -82,11 +82,28 @@ describe('поручения руководителя (РК-19)', { skip: !enabl
     await prisma.notificationOutbox.deleteMany({ where: { userId: { in: users } } });
     await prisma.assignment.deleteMany({ where: { assigneeId: { in: users } } });
     await prisma.auditEvent.deleteMany({ where: { actorId: { in: users } } });
-    await prisma.project.deleteMany({ where: { id: ids.project } });
+    await prisma.project.deleteMany({ where: { id: { in: [ids.project!, ids.done, ids.cancelled].filter((id) => id !== undefined) } } });
     await prisma.clientProfile.deleteMany({ where: { id: ids.client } });
     await prisma.serviceType.deleteMany({ where: { id: ids.type } });
     await prisma.expertProfile.deleteMany({ where: { userId: { in: users } } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
+  });
+
+  // Отказ называет, кто ведёт работу; работа выбирается из перечня без
+  // кода на экране (решение Р-731).
+  it('отказ по сотруднику, не ведущему работу, называет менеджера и куратора; перечень работ — без кода', async () => {
+    const input = { assigneeId: ids.other!, text: 'Позвонить клиенту', dueOn: new Date(today().getTime() + 3 * DAY), projectCode: ids.code };
+    await assert.rejects(
+      assignments.createAssignment(head(), input),
+      /не ведёт эту работу и не увидит её\. Работу ведёт менеджер Менеджер Поручений, куратор Куратор Поручений/u,
+    );
+    const works = await assignments.assignableWorks(head());
+    const own = works.find((row) => row.code === ids.code);
+    assert.ok(own !== undefined, 'работы нет в перечне');
+    assert.equal(own.label, 'Работа поручений · Клиент Поручений · Менеджер Поручений');
+    assert.equal(own.managerId, ids.manager);
+    assert.doesNotMatch(own.label, /PD-/u);
+    await assert.rejects(assignments.assignableWorks(manager()), AccessDenied);
   });
 
   it('ставит только руководитель; исполнитель должен вести работу поручения', async () => {
@@ -189,5 +206,60 @@ describe('поручения руководителя (РК-19)', { skip: !enabl
     await assignments.enqueueAssignmentReminders();
     const reminders = (await outbox(ids.manager!, 'ASSIGNMENT_DUE')).filter((row) => row.dedupKey.startsWith(`assignment:${id}:`));
     assert.equal(reminders.length, 1);
+  });
+
+  // «Должники» показывают и завершённые работы с остатком — исключены только
+  // отменённые (Р-257, Р-447). Работа из адреса строки должника — в выборе
+  // формы при любом состоянии, кроме отменённой, и поручение привязывается к
+  // ней, как при прежнем поле кода; проверка исполнителя прежняя (Р-352,
+  // решение Р-731).
+  it('строка должника по завершённой работе: работа выбрана с пометкой «завершена», поручение привязано', async () => {
+    const { overdueTranches } = await import('../src/lib/cabinet/finance.ts');
+    const debt = async (key: string, title: string, status: 'COMPLETED' | 'CANCELLED') => {
+      const project = await prisma.project.create({
+        data: {
+          code: `PD-A${key}-${String(stamp).slice(-6)}`,
+          clientId: ids.client!,
+          serviceTypeId: ids.type!,
+          title,
+          status,
+          managerId: ids.manager!,
+          expertId: ids.curator!,
+          closedOn: new Date(today().getTime() - 20 * DAY),
+          contract: {
+            create: {
+              number: `AS-${key}-${stamp}`,
+              totalAmount: 5_000_000n,
+              tranches: { create: { title: 'Окончательный расчёт', amount: 5_000_000n, plannedDate: new Date(today().getTime() - 10 * DAY) } },
+            },
+          },
+        },
+        select: { id: true, code: true },
+      });
+      ids[key === 'D' ? 'done' : 'cancelled'] = project.id;
+      return project;
+    };
+    const done = await debt('D', 'Завершённая работа поручений', 'COMPLETED');
+    const cancelled = await debt('C', 'Отменённая работа поручений', 'CANCELLED');
+
+    const debtors = await overdueTranches(head());
+    const row = debtors.find((item) => item.code === done.code);
+    assert.ok(row !== undefined, 'завершённой работы с остатком нет в «Должниках»');
+    assert.equal(row.workStatus, 'COMPLETED');
+    assert.ok(!debtors.some((item) => item.code === cancelled.code), 'отменённая работа в «Должниках»');
+
+    // Без адреса завершённой работы в выборе нет; из строки должника — есть.
+    assert.ok(!(await assignments.assignableWorks(head())).some((item) => item.code === done.code));
+    const picked = (await assignments.assignableWorks(head(), row.code)).find((item) => item.code === done.code);
+    assert.ok(picked !== undefined, 'работа строки должника не в выборе — форма откроется с «Без работы»');
+    assert.equal(picked.label, 'Завершённая работа поручений · Клиент Поручений · Менеджер Поручений · завершена');
+    assert.equal(picked.managerId, ids.manager);
+    assert.ok(!(await assignments.assignableWorks(head(), cancelled.code)).some((item) => item.code === cancelled.code), 'отменённая работа в выборе');
+
+    const input = { text: 'Напомнить клиенту об оплате', dueOn: new Date(today().getTime() + 3 * DAY), projectCode: row.code };
+    await assert.rejects(assignments.createAssignment(head(), { ...input, assigneeId: ids.other! }), /Работу ведёт менеджер Менеджер Поручений/u);
+    const { id } = await assignments.createAssignment(head(), { ...input, assigneeId: picked.managerId });
+    const made = await prisma.assignment.findUniqueOrThrow({ where: { id }, select: { projectId: true } });
+    assert.equal(made.projectId, done.id, 'поручение не привязано к работе');
   });
 });

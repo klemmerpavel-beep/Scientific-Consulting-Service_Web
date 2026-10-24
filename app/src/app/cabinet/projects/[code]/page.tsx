@@ -89,7 +89,7 @@ import {
   pendingActions,
 } from '../../../../lib/cabinet/queries';
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
-import { formatAmount } from '../../../../lib/cabinet/money';
+import { PAYMENT_CLOSED_STATUSES, formatAmount } from '../../../../lib/cabinet/money';
 import { ownPayoutTotals, paymentDocumentLines, projectContract } from '../../../../lib/cabinet/finance';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
@@ -379,6 +379,11 @@ export default async function ProjectScreen({
   // Передать работу другому менеджеру может только руководитель (Р-149;
   // названия ролей — РК-01).
   const maySetManager = can(actor, 'PROJECT_SET_MANAGER', ref);
+  // Поручение по этой работе — руководителю, одним нажатием на форму с
+  // выбранной работой (решение Р-731; поручения — Р-352). Правило то же, что
+  // у выбора работы на «Поручениях»: любая работа, кроме отменённой, — по
+  // завершённой бывает долг («Должники», Р-447).
+  const mayInstruct = can(actor, 'ASSIGNMENT_CREATE') && !(PAYMENT_CLOSED_STATUSES as readonly string[]).includes(project.status);
   // Чек-лист вида работы — отдельным экраном со счётом отметок (Р-555):
   // руководителю, менеджеру работы и назначенному куратору.
   const checklist = (
@@ -824,7 +829,7 @@ export default async function ProjectScreen({
         {/* Правка карточки, куратор и менеджер — на виду, а не только в
             свёрнутом «Управлении работой» в конце экрана: руководитель их
             не находил (замечание владельца 08.10.2026, решение Р-487). */}
-        {(mayEdit && !closed) || mayAssign || maySetManager || checklist !== undefined || prepareCount !== null ? (
+        {(mayEdit && !closed) || mayAssign || maySetManager || mayInstruct || checklist !== undefined || prepareCount !== null ? (
           <div style={{ flexBasis: '100%', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {mayEdit && !closed ? (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-card`}>
@@ -843,6 +848,11 @@ export default async function ProjectScreen({
             {maySetManager ? (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-manager`}>
                 Сменить менеджера
+              </ButtonLink>
+            ) : null}
+            {mayInstruct ? (
+              <ButtonLink href={`/cabinet/manage/assignments?project=${encodeURIComponent(project.code)}#new`}>
+                Поручить
               </ButtonLink>
             ) : null}
             {checklist === undefined ? null : (
