@@ -24,9 +24,9 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
-    "dotenv": "^18.0.7",
+    "dotenv": "^18.0.8",
     "next": "^16.4.2",
-    "nodemailer": "^10.1.2",
+    "nodemailer": "^10.1.7",
     "pg": "^8.23.1",
     "prisma": "^7.10.1",
     "react": "^19.3.1",
