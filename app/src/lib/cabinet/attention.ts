@@ -101,10 +101,19 @@ export async function practiceLight(actor: Actor, sources: AttentionSources): Pr
 export function attentionParts(sources: AttentionSources) {
   const { light, today, outbox } = sources;
   const overdueIds = new Set(light.overdue.map((stage) => stage.id));
+  // Одна карточка на работу (решение Р-738, уточняет Р-304): «нет плана
+  // этапов» и «нет куратора» одной работы — одна карточка; у работы с
+  // прошедшим сроком обе беды — в строке пояснения её карточки, как уже
+  // было с «план работ не заведён». Прежде одна работа стояла в перечне
+  // трижды, число дел было завышено и перечень сворачивался раньше времени.
+  const late = activeFirst(light.lateWorks);
+  const lateCodes = new Set(late.map((work) => work.code));
+  const planless = new Set(today.noPlan.map((row) => row.code));
+  const unassigned = new Set(today.noExpert.map((row) => row.code));
   return {
     overdue: light.overdue,
     // Действующие работы — впереди приостановленных (решение Р-720).
-    late: activeFirst(light.lateWorks),
+    late: late.map((work) => ({ ...work, noExpert: unassigned.has(work.code) })),
     stalled: light.stalled.filter((stage) => !overdueIds.has(stage.id)),
     returned: sources.returned,
     staff: sources.staffQuestions,
@@ -114,8 +123,10 @@ export function attentionParts(sources: AttentionSources) {
     accepted: today.accepted,
     ndaWaiting: today.ndaWaiting,
     noNda: today.noNda,
-    noPlan: today.noPlan,
-    noExpert: today.noExpert,
+    noPlan: today.noPlan
+      .filter((row) => !lateCodes.has(row.code))
+      .map((row) => ({ ...row, noExpert: unassigned.has(row.code) })),
+    noExpert: today.noExpert.filter((row) => !lateCodes.has(row.code) && !planless.has(row.code)),
     lateLeads: today.lateLeads,
     reviewLeads: today.reviewLeads,
     version: sources.versions,

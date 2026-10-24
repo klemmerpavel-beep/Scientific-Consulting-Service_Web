@@ -36,7 +36,10 @@ describe('порядок дел «срок работы прошёл» (Р-720)'
   });
 
   it('части «Требует внимания» берут вид в этом порядке', () => {
-    assert.match(attention, /late: activeFirst\(light\.lateWorks\),/u);
+    // Карточка срока несёт пометку «нет куратора» (решение Р-738):
+    // порядок — тот же `activeFirst`.
+    assert.match(attention, /const late = activeFirst\(light\.lateWorks\);/u);
+    assert.match(attention, /late: late\.map\(\(work\) => \(\{ \.\.\.work, noExpert: unassigned\.has\(work\.code\) \}\)\),/u);
   });
 
   it('в свёрнутом перечне три дела вида: действующие заполняют предел первыми', () => {

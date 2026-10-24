@@ -408,7 +408,7 @@ export default async function ManageQueue({
     // Работа, у которой прошёл срок работы, а просроченного этапа нет, —
     // почти вся перенесённая книга: этапов у неё нет. Прежде такие работы
     // на сводку не попадали вовсе (решение Р-216).
-    ...parts.late.map((work: (typeof light.lateWorks)[number]) => {
+    ...parts.late.map((work) => {
       const late = overdueDays(work.dueOn);
       const rest = maySeeMoney ? owed(work.contract) : 0n;
       return {
@@ -427,6 +427,9 @@ export default async function ManageQueue({
         detail: [
           work.status === 'PAUSED' ? 'приостановлена' : null,
           work._count.stages === 0 ? 'план работ не заведён' : null,
+          // Без куратора — здесь же, а не отдельной карточкой той же
+          // работы (решение Р-738).
+          work.noExpert ? 'нет куратора' : null,
           work.client.fullName,
           rest > 0n ? `не получено ${formatAmount(rest)}` : null,
         ]
@@ -567,10 +570,11 @@ export default async function ManageQueue({
       kind: 'work' as const,
       step: 0 as const,
       title: row.title,
-      mark: 'нет плана этапов',
+      // Без плана и без куратора — одна карточка работы (решение Р-738).
+      mark: row.noExpert ? 'нет плана этапов и куратора' : 'нет плана этапов',
       urgent: false,
       detail: row.client,
-      todo: 'Завести план — по шаблону или вручную',
+      todo: row.noExpert ? 'Завести план и назначить куратора' : 'Завести план — по шаблону или вручную',
       href: `/cabinet/projects/${row.code}#manage`,
     })),
     ...parts.noExpert.map((row) => ({
