@@ -198,3 +198,24 @@ export function waitingPublication(comments: number, versions: number): string |
   ].filter((part) => part !== null);
   return parts.length === 0 ? null : `Ждут публикации: ${parts.join(' и ')}.`;
 }
+
+/** Подпись поля и кнопки формы переписки. */
+export interface MessageFormTexts {
+  readonly label: string;
+  readonly button: string;
+}
+
+/**
+ * Поле и кнопка переписки называют адресата (решение Р-726). Ветки «С
+ * клиентом» и «Внутренняя» стояли одинаковыми формами — «Новое сообщение»
+ * и «Отправить», адресат был только в подсказке поля, исчезающей с первым
+ * знаком, и сообщение руководителю уходило клиенту одним нажатием, не
+ * заметив вкладки. Ветки и права прежние (Р-336); клиенту подписи прежние.
+ */
+export function messageFormTexts(role: Role, thread: 'client' | 'internal'): MessageFormTexts {
+  if (role === 'CLIENT') return { label: 'Новое сообщение', button: 'Отправить' };
+  if (thread === 'client') return { label: 'Сообщение клиенту', button: 'Отправить клиенту' };
+  return role === 'HEAD'
+    ? { label: 'Сообщение менеджеру работы (клиент не видит)', button: 'Отправить менеджеру' }
+    : { label: 'Сообщение руководителю (клиент не видит)', button: 'Отправить руководителю' };
+}

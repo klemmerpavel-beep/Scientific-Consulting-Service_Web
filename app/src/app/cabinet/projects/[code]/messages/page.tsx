@@ -27,6 +27,7 @@ import { formDraft } from '../../../../../lib/cabinet/flash';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { draftsFor, draftText, withTemplate } from '../../../../../lib/cabinet/message-drafts';
+import { messageFormTexts } from '../../../../../lib/cabinet/staff-texts';
 import { trancheForReminder } from '../../../../../lib/cabinet/finance';
 import { THREAD_WINDOW, sliceWindow, threadWindow } from '../../../../../lib/cabinet/thread-window';
 import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
@@ -91,8 +92,8 @@ export default async function MessagesScreen({
 
   const mayModerate = can(actor, 'COMMENT_MODERATE', ref);
   const forClient = actor.role === 'CLIENT';
-  // Заготовка подставляет текст в поле; отправляет только «Отправить»
-  // (требование Т-20, решение Р-316). Этап — текущий: первый не
+  // Заготовка подставляет текст в поле; отправляет только кнопка отправки
+  // (требование Т-20, решения Р-316, Р-726). Этап — текущий: первый не
   // завершённый.
   const sp = await searchParams;
   const current = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
@@ -111,6 +112,9 @@ export default async function MessagesScreen({
   // Заготовка ставится перед набранным текстом и не стирает его (Р-722).
   const fieldText = withTemplate(draft, internalTab ? undefined : formBack.body);
   const templates = draftsFor(actor.role);
+  // Поле и кнопка называют адресата: клиенту или руководителю (менеджеру),
+  // которого клиент не видит (решение Р-726).
+  const form = messageFormTexts(actor.role, internalTab ? 'internal' : 'client');
   // Подзаголовок называет собеседника, а не повторяет название работы:
   // оно уже стоит строкой возврата над заголовком (решение Р-190).
   const counterpart = forClient
@@ -160,7 +164,7 @@ export default async function MessagesScreen({
               <input type="hidden" name="projectId" value={project.id} />
               <input type="hidden" name="code" value={project.code} />
               <Field
-                label="Новое сообщение"
+                label={form.label}
                 name="body"
                 multiline
                 required
@@ -170,7 +174,7 @@ export default async function MessagesScreen({
                 defaultValue={internalDraft.body}
               />
               <FormActions>
-                <Button>Отправить</Button>
+                <Button>{form.button}</Button>
               </FormActions>
             </Form>
           </Card>
@@ -202,7 +206,7 @@ export default async function MessagesScreen({
             {/* Отказ отправки — у формы, набранное — в поле (Р-722). */}
             <ActionError id={sp.error} slot="message" />
             <Field
-              label="Новое сообщение"
+              label={form.label}
               name="body"
               multiline
               required
@@ -221,7 +225,7 @@ export default async function MessagesScreen({
             />
             {/* Заготовки — кнопки своего действия: текст поля уходит вместе
                 с выбором и возвращается после заготовки; сообщение не
-                отправляется — только «Отправить» (Т-20, Р-316, Р-178,
+                отправляется — только кнопка отправки (Т-20, Р-316, Р-178,
                 решение Р-722). Проверка поля снята: заготовке пустое поле
                 не помеха. */}
             {templates.length === 0 ? null : (
@@ -239,7 +243,7 @@ export default async function MessagesScreen({
               </div>
             )}
             <FormActions>
-              <Button>Отправить</Button>
+              <Button>{form.button}</Button>
             </FormActions>
           </Form>
         </Card>

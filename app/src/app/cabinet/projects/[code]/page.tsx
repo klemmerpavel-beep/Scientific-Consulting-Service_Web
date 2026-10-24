@@ -64,7 +64,7 @@ import {
   fullSupportOn,
   listedContacts,
 } from '../../../../lib/cabinet/channels';
-import { contactLabelFor } from '../../../../lib/cabinet/staff-texts';
+import { contactLabelFor, messageFormTexts } from '../../../../lib/cabinet/staff-texts';
 import { stageLabel } from '../../../../lib/cabinet/stage-state';
 import {
   PROJECT_STATUS_ACTION,
@@ -1014,8 +1014,10 @@ export default async function ProjectScreen({
                   <input type="hidden" name="code" value={project.code} />
                   {/* Отправив отсюда, человек остаётся на экране заказа. */}
                   <input type="hidden" name="back" value="project" />
+                  {/* Сотрудникам поле и кнопка называют адресата — клиента
+                      (решение Р-726); клиенту подписи прежние. */}
                   <Field
-                    label="Сообщение"
+                    label={forClient ? 'Сообщение' : 'Сообщение клиенту'}
                     name="body"
                     required
                     labelHidden
@@ -1025,7 +1027,7 @@ export default async function ProjectScreen({
                     defaultValue={draft.body}
                     describedBy="message-limit"
                   />
-                  <Button>Отправить</Button>
+                  <Button>{forClient ? 'Отправить' : messageFormTexts(actor.role, 'client').button}</Button>
                 </Form>
                 {/* Предел — строкой под рядом: подсказка под полем сбила бы
                     ряд «поле — кнопка». */}
