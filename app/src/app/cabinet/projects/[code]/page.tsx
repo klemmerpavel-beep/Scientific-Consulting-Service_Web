@@ -55,6 +55,7 @@ import {
 } from '../../../../lib/cabinet/access';
 import { checklistCounts } from '../../../../lib/cabinet/checklist-marks';
 import { prepareList, prepareOpen, prepareStatus } from '../../../../lib/cabinet/prepare-lists';
+import { approvalDueLabel, clientApprovalDue } from '../../../../lib/cabinet/approval-text';
 import { ratingFor } from '../../../../lib/cabinet/ratings';
 import { RATING_TEXT_MAX } from '../../../../lib/cabinet/rating-stats';
 import {
@@ -434,6 +435,9 @@ export default async function ProjectScreen({
   const done = stages.filter((stage) => stage.state === 'DONE').length;
   // Текущий этап — первый незавершённый; он и отвечает на вопрос «где работа».
   const current = stages.find((stage) => stage.state !== 'DONE') ?? null;
+  // Клиенту у этапа на согласовании шкала называет одну дату — срок
+  // согласования, а не срок этапа (решение Р-741; Р-290, Р-650).
+  const approvalDue = current === null ? null : clientApprovalDue(current, forClient);
   // Форма «Ваша работа» (требование Э-06, решение Р-326). В закрытой
   // работе её нет; в поле «Этап» — этапы, открытые для загрузки. По
   // умолчанию — этап, где ход за куратором: «В работе» и не сдан
@@ -532,7 +536,13 @@ export default async function ProjectScreen({
     title: stage.title,
     state: stage.state as StageStateKey,
     dueOn: formatDate(stage.dueOn),
-    late: daysPast(stage.dueOn) !== null,
+    // Клиенту у этапа на согласовании и в плане одна дата — срок
+    // согласования, как на шкале и в шапке этапа (решение Р-741).
+    dueText: (() => {
+      const approval = clientApprovalDue(stage, forClient);
+      return approval === null ? null : approvalDueLabel(formatDate(approval) ?? '');
+    })(),
+    late: daysPast(clientApprovalDue(stage, forClient) ?? stage.dueOn) !== null,
     href: `/cabinet/stages/${stage.id}`,
     // Причину «ждём материалы» менеджер пишет клиенту: куратору пометка
     // шкалы её не показывает (Р-414, Р-522).
@@ -993,6 +1003,8 @@ export default async function ProjectScreen({
           stageLate={current !== null && daysPast(current.dueOn) !== null && (!practice || project.status === 'ACTIVE')}
           projectLate={practice ? workLateDays !== null : current !== null && daysPast(project.dueOn) !== null}
           projectLateDays={workLateDays}
+          approvalDueOn={formatDate(approvalDue)}
+          approvalLate={daysPast(approvalDue) !== null}
           staff={staff}
           action={action}
           actionHref={first === null ? null : `/cabinet/stages/${first.id}`}

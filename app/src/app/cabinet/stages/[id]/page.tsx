@@ -38,7 +38,7 @@ import {
   workClosed,
 } from '../../../../lib/cabinet/access';
 import { autoAcceptEnabled } from '../../../../lib/cabinet/approval';
-import { approvalStaffLine } from '../../../../lib/cabinet/approval-text';
+import { approvalDueLabel, approvalStaffLine, clientApprovalDue } from '../../../../lib/cabinet/approval-text';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import { COMMENT_MAX } from '../../../../lib/cabinet/materials';
 import { RETURN_TEXT_MAX, stagePaperwork } from '../../../../lib/cabinet/projects';
@@ -182,6 +182,10 @@ export default async function StageScreen({
   const mayModerate = can(actor, 'COMMENT_MODERATE', ref) && refusal === null;
   const forStaff = actor.role !== 'CLIENT' && mayEdit;
   const late = overdueDays(stage.dueOn);
+  // Клиенту у этапа на согласовании шапка называет срок согласования, а не
+  // срок этапа: одна дата, к которой ответить (решение Р-741; Р-290).
+  const approvalDue = clientApprovalDue(stage, actor.role === 'CLIENT');
+  const approvalLate = overdueDays(approvalDue);
   // Следующий этап — только для подсказки закрытого этапа (решение Р-710).
   const hasNext = forStaff && state === 'DONE' ? await hasNextStage(actor, stage) : false;
   // Акты и оплаченные транши — предупреждение перед возвратом этапа (ОМ-21).
@@ -366,7 +370,11 @@ export default async function StageScreen({
         // Просрочка называется всем ролям, а не только куратору: эксперт
         // не узнавал о сорванном сроке своего же этапа (решение Р-206).
         aside={
-          stage.dueOn === null
+          approvalDue !== null
+            ? `${approvalDueLabel(formatDay(approvalDue))}${
+                approvalLate === null ? '' : ` · прошёл ${approvalLate} ${plural(approvalLate, 'день', 'дня', 'дней')} назад`
+              }`
+            : stage.dueOn === null
             ? null
             : `срок — ${formatDate(stage.dueOn)}${
                 late === null || state === 'DONE'

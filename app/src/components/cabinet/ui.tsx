@@ -15,6 +15,7 @@ import {
 } from './tokens.ts';
 import type { WaveMood } from '../../lib/cabinet/charts';
 import { presentAuthor } from '../../lib/cabinet/access';
+import { approvalDueLabel } from '../../lib/cabinet/approval-text';
 import { BLOCKED_HINT } from '../../lib/cabinet/file-guard';
 import {
   STAGE_STATE_LABEL,
@@ -1753,6 +1754,11 @@ export interface RoadmapItem extends StepItem {
   readonly note?: string | null;
   readonly done?: boolean;
   /**
+   * Подпись срока вместо «срок {дата}»: клиенту у этапа на согласовании —
+   * «согласовать до {дата}», одна дата на карточке (решение Р-741).
+   */
+  readonly dueText?: string | null;
+  /**
    * Суть выполнения этапа: что на нём делается и чем он закончится.
    * Заполняет менеджер; показывается под раскрытием, чтобы план оставался
    * обозримым (решение Р-190).
@@ -1854,7 +1860,7 @@ export function Roadmap({
               }}
             >
               {stageLabel(item.state, staff)}
-              {item.dueOn ? ` · срок ${item.dueOn}` : ''}
+              {item.dueText ? ` · ${item.dueText}` : item.dueOn ? ` · срок ${item.dueOn}` : ''}
               {item.late === true && item.state !== 'DONE' ? ' · срок прошёл' : ''}
             </span>
             {item.note === null || item.note === undefined ? null : (
@@ -2459,6 +2465,8 @@ export function ProgressPanel({
   stageLate = false,
   projectLate = false,
   projectLateDays = null,
+  approvalDueOn = null,
+  approvalLate = false,
   staff = false,
   action,
   actionHref,
@@ -2487,6 +2495,13 @@ export function ProgressPanel({
    * съёмка идёт при остановленных часах кабинета (Р-205).
    */
   projectLateDays?: number | null;
+  /**
+   * Срок согласования текущего этапа — клиенту, вместо срока этапа: одна
+   * дата, к которой ответить (решение Р-741). Практике не передаётся.
+   */
+  approvalDueOn?: string | null;
+  /** Срок согласования прошёл — словом, как у срока этапа (Р-206). */
+  approvalLate?: boolean;
   /** Панель читает практика, а не клиент. */
   staff?: boolean;
   action?: string | null;
@@ -2619,7 +2634,12 @@ export function ProgressPanel({
             {done} из {total} {plural(total, 'этапа', 'этапов', 'этапов')} завершено
           </span>
         )}
-        {stageDueOn == null ? null : (
+        {approvalDueOn != null ? (
+          <span>
+            {approvalDueLabel(approvalDueOn)}
+            {approvalLate ? ' · прошёл' : ''}
+          </span>
+        ) : stageDueOn == null ? null : (
           <span>
             срок этапа — {stageDueOn}
             {stageLate ? ' · прошёл' : ''}

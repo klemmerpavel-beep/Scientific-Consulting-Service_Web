@@ -59,3 +59,23 @@ export function approvalStaffLine(input: {
   }
   return null;
 }
+
+/**
+ * Какой срок назвать клиенту у этапа (решение Р-741; Т-15, Р-290,
+ * Р-650): у этапа «На согласовании» со сроком согласования — его, одной
+ * датой и на шкале карточки, и в шапке экрана этапа. Прежде рядом стояли
+ * две даты, и клиент ориентировался на позднюю — срок этапа, пропуская
+ * срок ответа. `null` — называется срок этапа, как прежде: этапу без
+ * срока согласования и практике, у которой шапка и шкала не меняются.
+ */
+export function clientApprovalDue(
+  stage: { readonly state: string; readonly approvalDueOn: Date | null },
+  forClient: boolean,
+): Date | null {
+  return forClient && stage.state === 'IN_APPROVAL' ? stage.approvalDueOn : null;
+}
+
+/** Подпись срока согласования на шкале и в шапке этапа: «согласовать до 28 сентября 2026». */
+export function approvalDueLabel(day: string): string {
+  return `согласовать до ${day}`;
+}
