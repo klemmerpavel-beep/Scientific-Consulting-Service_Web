@@ -171,6 +171,13 @@ export default async function AnalyticsOverview() {
                     <strong style={{ fontWeight: 600 }}>Что делать: </strong>
                     {item.action}
                   </Text>
+                  {/* Экран, где действие делается, — одним нажатием
+                      (решение Р-751). */}
+                  <Text size={14} style={{ marginTop: 8 }}>
+                    <a className="cab-mark" href={item.next.href}>
+                      {item.next.label}
+                    </a>
+                  </Text>
                   <div style={{ marginTop: 'auto' }} />
                   <div
                     style={{

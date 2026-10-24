@@ -205,7 +205,11 @@ export default async function AnalyticsMoney() {
                   {/* Код и тема — одной строкой: вторым ярусом они делали
                       строку таблицы вдвое выше без нужды. */}
                   <td style={cell}>
-                    {debt.title}
+                    {/* Название — ссылкой на карточку работы; код только в
+                        адресе (Р-189; решение Р-751). */}
+                    <a className="cab-mark" href={`/cabinet/projects/${debt.code}`}>
+                      {debt.title}
+                    </a>
                   </td>
                   <td style={cell}>{debt.client}</td>
                   <td style={num}>{formatAmount(debt.cost)}</td>

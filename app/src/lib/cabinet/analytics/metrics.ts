@@ -863,7 +863,22 @@ export interface Conclusion {
   readonly term: string;
   /** Оценка эффекта в копейках; `null` — величина не считается честно. */
   readonly effect: bigint | null;
+  /**
+   * Экран, где действие делается, и подпись ссылки. Вывод называл действие,
+   * но к нему вели три перехода через абзацы (решение Р-751); ссылка
+   * ведёт к месту действия, а не к тому же числу (Р-257).
+   */
+  readonly next: { readonly href: string; readonly label: string };
 }
+
+/** Экраны действия выводов (решение Р-751; приём — как у «Календаря продвижения», Р-349). */
+const NEXT = {
+  debtors: { href: '/cabinet/manage/finance/debtors', label: '«Должники»: напомнить, перенести дату или списать' },
+  deadlines: { href: '/cabinet/manage#deadlines', label: '«Ближайшие сроки» на «Сводке»' },
+  calendar: { href: '/cabinet/manage/recommendations/calendar', label: '«Календарь продвижения»' },
+  returns: { href: '/cabinet/manage/recommendations#returns', label: '«Рекомендации»: возврат клиентов' },
+  price: { href: '/cabinet/manage/recommendations#price', label: '«Рекомендации»: цена и пакеты' },
+} as const;
 
 /**
  * Выводы обзора с рекомендациями.
@@ -912,6 +927,7 @@ export function conclusions(
       confidence: 'sure',
       term: 'две недели',
       effect: overdueSum,
+      next: NEXT.debtors,
     });
   }
 
@@ -931,6 +947,7 @@ export function conclusions(
       confidence: 'sure',
       term: 'неделя',
       effect: null,
+      next: NEXT.deadlines,
     });
   }
 
@@ -958,6 +975,7 @@ export function conclusions(
       confidence: 'likely',
       term: 'к началу сезона',
       effect: null,
+      next: NEXT.calendar,
     });
   }
 
@@ -984,6 +1002,7 @@ export function conclusions(
       confidence: 'likely',
       term: 'месяц',
       effect: money.averageCheck * BigInt(sleeping.length),
+      next: NEXT.returns,
     });
   }
 
@@ -1012,6 +1031,7 @@ export function conclusions(
       confidence: 'risky',
       term: 'месяц',
       effect: uplift > 0n ? uplift : null,
+      next: NEXT.price,
     });
   }
 
@@ -1032,6 +1052,7 @@ export function conclusions(
       confidence: 'risky',
       term: 'квартал',
       effect: null,
+      next: NEXT.returns,
     });
   }
 

@@ -60,7 +60,13 @@ export default async function AnalyticsLosses() {
                 <tbody>
                   {report.rows.map((row) => (
                     <tr key={row.code}>
-                      <td style={cell}>{row.title}</td>
+                      {/* Название — ссылкой на карточку работы; код только
+                          в адресе (Р-189; решение Р-751). */}
+                      <td style={cell}>
+                        <a className="cab-mark" href={`/cabinet/projects/${row.code}`}>
+                          {row.title}
+                        </a>
+                      </td>
                       <td style={cell}>{row.client}</td>
                       <td style={num}>{formatAmount(row.cost)}</td>
                       <td style={num}>{formatAmount(row.paid)}</td>
