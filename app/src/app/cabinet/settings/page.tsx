@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
-import { flashText } from '../../../lib/cabinet/flash';
+import { flashEntry, formDraft } from '../../../lib/cabinet/flash';
+import ActionError from '../../../components/cabinet/ActionError';
 
 import Shell from '../../../components/cabinet/Shell';
 import {
@@ -29,6 +30,7 @@ import { ownChannels, ownCuratorProfile } from '../../../lib/cabinet/admin';
 import { CURATOR_FOR_CLIENT, expertLine } from '../../../lib/cabinet/access';
 import {
   CONTACT_LABEL,
+  CONTACT_MAX,
   CONTACT_NOTE,
   FULL_SUPPORT_NOTE,
   fullSupportOn,
@@ -99,7 +101,12 @@ export default async function SettingsScreen({
     ownNotifications(actor),
   ]);
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
-  const failure = await flashText(params.error);
+  // Отказ «Добавить способ связи» — у своей формы, в раскрытой свёртке, с
+  // введённым (решение Р-722); остальные — вверху экрана, как прежде.
+  const failed = await flashEntry(params.error);
+  const failure = failed === undefined || failed.slot !== undefined ? undefined : failed.text;
+  const contactFailed = failed?.slot === 'contact';
+  const draft = contactFailed ? ((await formDraft(params.error)) ?? {}) : {};
   // Полное сопровождение — отдельная отметка, не строка перечня (П-09, Р-401).
   const contacts = listedContacts(allContacts);
   const fullSupport = fullSupportOn(allContacts);
@@ -297,9 +304,10 @@ export default async function SettingsScreen({
                 </ul>
               )}
 
-              <Disclosure title="Добавить способ связи">
+              <Disclosure title="Добавить способ связи" id="new-contact" open={contactFailed}>
                 <Form action={addContactChannel}>
-                  <Select label="Способ" name="kind">
+                  <ActionError id={params.error} slot="contact" />
+                  <Select label="Способ" name="kind" defaultValue={draft.kind}>
                     {contactKindsFor(actor.role, Object.keys(CONTACT_LABEL) as ContactKind[]).map((kind) => (
                       <option key={kind} value={kind}>
                         {contactLabelFor(actor.role, kind, CONTACT_LABEL)}
@@ -309,16 +317,20 @@ export default async function SettingsScreen({
                   <Field
                     label="Номер или ссылка"
                     name="value"
+                    maxLength={CONTACT_MAX}
                     hint="Нужно для звонка и мессенджера: телефон либо ссылка или имя в сети."
                     placeholder="+7 900 000-00-00 либо @имя"
+                    defaultValue={draft.value}
                   />
                   <Field
                     label="Оговорка"
                     name="note"
+                    maxLength={CONTACT_MAX}
                     hint="Когда удобно и когда не стоит: «звонить после 18:00», «в выходные не писать»."
                     placeholder="Звонить после 18:00"
+                    defaultValue={draft.note}
                   />
-                  <Checkbox name="preferred" label="Это предпочтительный способ" />
+                  <Checkbox name="preferred" label="Это предпочтительный способ" defaultChecked={draft.preferred === 'on'} />
                   <FormActions>
                     <Button>Добавить</Button>
                   </FormActions>

@@ -223,6 +223,11 @@ a:hover{color:var(--pd-accent-press)}
 .cab-card{transition:box-shadow 200ms ${EASING},border-color 200ms ${EASING}}
 .cab-link-card:hover,.cab-link-card:focus-within{box-shadow:${SHADOW.hover}!important;border-color:var(--pd-accent-edge)!important}
 .cab-mark{display:inline-flex;align-items:center;min-height:44px}
+/* Кнопка, которая выглядит строчной ссылкой: заготовка переписки отправляет
+   набранный текст своему действию и стоит в ряду таких же ссылок, как
+   прежде (решение Р-722). */
+.cab-linkbtn{appearance:none;background:none;border:0;margin:0;padding:0;font:inherit;color:var(--pd-accent);text-align:left;cursor:pointer}
+.cab-linkbtn:hover{color:var(--pd-accent-press)}
 /* В ячейке таблицы и в dd соседи стоят по верху: строка ссылки, отцентрованная
    в коробке 44 px, опускалась на 10–12 px ниже соседних величин. Цель
    нажатия та же, текст — на линии соседей (решение Р-679). */

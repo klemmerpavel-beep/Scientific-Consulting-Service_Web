@@ -178,7 +178,9 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   // повтор давал дубль (требование Э-06, решение Р-326).
   const note = (input.note ?? '').trim();
   if (note.length > COMMENT_MAX) {
-    throw new Error(`Пояснение длиннее ${COMMENT_MAX} знаков: сократите его — ни файл, ни пояснение не сохранены`);
+    throw new Error(
+      `Пояснение длиннее ${COMMENT_MAX.toLocaleString('ru-RU')} знаков: сократите его — ни файл, ни пояснение не сохранены`,
+    );
   }
   // Название нового материала уходит в темы писем, перечни и заголовок
   // этапа — предел как у названия работы (Р-242, Р-279; решение Р-672).
@@ -783,7 +785,8 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
   const text = body.trim();
   if (text.length === 0) throw new Error('Пустой комментарий не сохраняется');
   if (text.length > COMMENT_MAX) {
-    throw new Error(`Замечание длиннее ${COMMENT_MAX} знаков: разделите его на несколько`);
+    // Число — с разрядом, как в подсказке поля (решение Р-722).
+    throw new Error(`Замечание длиннее ${COMMENT_MAX.toLocaleString('ru-RU')} знаков: разделите его на несколько`);
   }
 
   const remark = commentRow(actor, versionId, text);

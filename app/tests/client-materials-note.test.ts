@@ -28,7 +28,11 @@ describe('«Материалы» клиента не зовут приклады
   });
 
   it('переписка по-прежнему отсылает файлы в материалы работы', () => {
-    assert.match(read('projects', '[code]', 'messages', 'page.tsx'), /Файлы прикладывайте в материалах работы/u);
+    // Ссылка стоит в подсказке под полем, а не в ряду заготовок (Р-722).
+    assert.match(
+      read('projects', '[code]', 'messages', 'page.tsx'),
+      /файлы — `\}\s*<a href=\{`\/cabinet\/projects\/\$\{project\.code\}\/materials`\}[^>]*>\s*в материалах работы/u,
+    );
     assert.match(read('projects', '[code]', 'materials', 'page.tsx'), /title="Материалы работы"/u);
   });
 });

@@ -361,6 +361,7 @@ export function Field({
   minWidth,
   dense = false,
   maxLength,
+  describedBy,
 }: {
   label: string;
   name: string;
@@ -368,7 +369,8 @@ export function Field({
   required?: boolean;
   placeholder?: string;
   defaultValue?: string;
-  hint?: string;
+  /** Подсказка; ссылка в ней — переход на соседний экран (Р-722). */
+  hint?: ReactNode;
   multiline?: boolean;
   /** Предел длины, который держит и сервер: форма не даёт набрать больше. */
   maxLength?: number;
@@ -384,6 +386,11 @@ export function Field({
    * масштабирует вьюпорт (Р-86), поэтому высота снимается отступом.
    */
   dense?: boolean;
+  /**
+   * Пояснение, стоящее вне поля: строка под рядом «поле — кнопка», где
+   * подсказка под самим полем сбила бы ряд (карточка работы, Р-722).
+   */
+  describedBy?: string;
 }) {
   // Рамка — `--pd-field-edge`, не светлее 3:1 к белому и к тихой
   // поверхности: прежняя кромка давала 1,65:1 (решение Р-253).
@@ -395,7 +402,8 @@ export function Field({
   // «Электронная почта Тот адрес, который вы указывали при обращении.»
   const id = fieldId(name, scope);
   const hintId = hint === undefined ? undefined : `${id}-hint`;
-  const shared = { name, required, placeholder, defaultValue, maxLength, 'aria-describedby': hintId };
+  const described = [hintId, describedBy].filter((part) => part !== undefined).join(' ') || undefined;
+  const shared = { name, required, placeholder, defaultValue, maxLength, 'aria-describedby': described };
   const box = minWidth === undefined ? control : { ...control, minWidth };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -451,6 +459,7 @@ export function Form({
   method,
   encType,
   inline = false,
+  id,
   children,
   style,
 }: {
@@ -470,6 +479,8 @@ export function Form({
    * на всю ячейку — иначе строка таблицы разъезжается.
    */
   inline?: boolean;
+  /** Якорь: отказ формы возвращает к ней, а не в начало экрана (Р-722). */
+  id?: string;
   children: ReactNode;
   style?: CSSProperties;
 }) {
@@ -477,7 +488,7 @@ export function Form({
     ? { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'end' }
     : { display: 'flex', flexDirection: 'column', gap: FORM_GAP, height: '100%' };
   return (
-    <form action={action} method={method} encType={encType} style={{ ...shape, ...style }}>
+    <form id={id} action={action} method={method} encType={encType} style={{ ...shape, ...style }}>
       {children}
     </form>
   );

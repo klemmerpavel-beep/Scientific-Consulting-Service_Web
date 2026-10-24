@@ -16,6 +16,7 @@ import {
 } from '../../../../../components/cabinet/ui';
 import { can } from '../../../../../lib/cabinet/access';
 import {
+  MESSAGE_MAX,
   internalUnread,
   listInternal,
   listMessages,
@@ -25,13 +26,19 @@ import {
 import { formDraft } from '../../../../../lib/cabinet/flash';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
-import { draftsFor, draftText } from '../../../../../lib/cabinet/message-drafts';
+import { draftsFor, draftText, withTemplate } from '../../../../../lib/cabinet/message-drafts';
 import { trancheForReminder } from '../../../../../lib/cabinet/finance';
 import { THREAD_WINDOW, sliceWindow, threadWindow } from '../../../../../lib/cabinet/thread-window';
 import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
-import { postInternalMessage, postMessage } from '../../../actions';
+import { insertMessageTemplate, postInternalMessage, postMessage } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
+
+/** Предел в подсказке — с разрядом, как в тексте отказа (решение Р-722). */
+const LIMIT = MESSAGE_MAX.toLocaleString('ru-RU');
+
+/** Ссылка в подсказке поля — подчёркнута, как ссылка в сплошном тексте (Р-168). */
+const HINT_LINK = { textDecoration: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1 } as const;
 
 export default async function MessagesScreen({
   params,
@@ -77,7 +84,10 @@ export default async function MessagesScreen({
   if (internalTab) await readInternal(actor, project.id);
   else await markRead(actor, project.id);
   const internalNew = mayInternal && !internalTab ? await internalUnread(actor, project.id) : 0;
-  const internalDraft = internalTab ? ((await formDraft((await searchParams).error)) ?? {}) : {};
+  // Набранное возвращается в поле своей ветки: после отказа и после выбора
+  // заготовки (Р-336 и решение Р-722).
+  const formBack = (await formDraft((await searchParams).error)) ?? {};
+  const internalDraft = internalTab ? formBack : {};
 
   const mayModerate = can(actor, 'COMMENT_MODERATE', ref);
   const forClient = actor.role === 'CLIENT';
@@ -98,6 +108,9 @@ export default async function MessagesScreen({
     today: formatDate(moscowToday(clockNow())) ?? '',
     payment: tranche === null ? null : { title: tranche.title, date: formatDate(tranche.plannedDate) },
   });
+  // Заготовка ставится перед набранным текстом и не стирает его (Р-722).
+  const fieldText = withTemplate(draft, internalTab ? undefined : formBack.body);
+  const templates = draftsFor(actor.role);
   // Подзаголовок называет собеседника, а не повторяет название работы:
   // оно уже стоит строкой возврата над заголовком (решение Р-190).
   const counterpart = forClient
@@ -151,8 +164,9 @@ export default async function MessagesScreen({
                 name="body"
                 multiline
                 required
+                maxLength={MESSAGE_MAX}
                 placeholder={actor.role === 'HEAD' ? 'Написать менеджеру работы' : 'Написать руководителю'}
-                hint="Клиент и куратор этой переписки не видят. До 10 000 знаков; файлы — в материалах работы."
+                hint={`Клиент и куратор этой переписки не видят. До ${LIMIT} знаков; файлы — в материалах работы.`}
                 defaultValue={internalDraft.body}
               />
               <FormActions>
@@ -176,6 +190,7 @@ export default async function MessagesScreen({
 
           <Form
             action={postMessage}
+            id="message"
             style={{
               marginTop: 24,
               paddingTop: 20,
@@ -184,32 +199,45 @@ export default async function MessagesScreen({
           >
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="code" value={project.code} />
+            {/* Отказ отправки — у формы, набранное — в поле (Р-722). */}
+            <ActionError id={sp.error} slot="message" />
             <Field
               label="Новое сообщение"
               name="body"
               multiline
               required
+              maxLength={MESSAGE_MAX}
               placeholder={forClient ? 'Написать менеджеру' : 'Написать клиенту'}
-              hint="Переписка ведётся внутри кабинета: она остаётся при работе и доступна обеим сторонам."
-              defaultValue={draft ?? undefined}
+              hint={
+                <>
+                  {`Переписка ведётся внутри кабинета: она остаётся при работе и доступна обеим сторонам. До ${LIMIT} знаков; файлы — `}
+                  <a href={`/cabinet/projects/${project.code}/materials`} style={HINT_LINK}>
+                    в материалах работы
+                  </a>
+                  .
+                </>
+              }
+              defaultValue={fieldText}
             />
-            {/* Файлы — в материалах, заготовки — ссылками на этот же экран:
-                ни одна не отправляет сообщение сама (Т-20, Р-316, Р-178). */}
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'baseline', marginTop: 4 }}>
-              <a className="cab-mark" href={`/cabinet/projects/${project.code}/materials`} style={{ fontSize: 14 }}>
-                Файлы прикладывайте в материалах работы
-              </a>
-              {draftsFor(actor.role).map((item) => (
-                <a
-                  key={item.key}
-                  className="cab-mark"
-                  href={`/cabinet/projects/${project.code}/messages?draft=${item.key}#body`}
-                  style={{ fontSize: 14 }}
-                >
-                  {item.label}
-                </a>
-              ))}
-            </div>
+            {/* Заготовки — кнопки своего действия: текст поля уходит вместе
+                с выбором и возвращается после заготовки; сообщение не
+                отправляется — только «Отправить» (Т-20, Р-316, Р-178,
+                решение Р-722). Проверка поля снята: заготовке пустое поле
+                не помеха. */}
+            {templates.length === 0 ? null : (
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'baseline', marginTop: 4 }}>
+                {templates.map((item) => (
+                  <Button
+                    key={item.key}
+                    tone="link"
+                    formAction={insertMessageTemplate.bind(null, item.key)}
+                    formNoValidate
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+            )}
             <FormActions>
               <Button>Отправить</Button>
             </FormActions>

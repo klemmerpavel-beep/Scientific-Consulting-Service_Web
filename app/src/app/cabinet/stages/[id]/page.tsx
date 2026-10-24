@@ -36,8 +36,9 @@ import {
 } from '../../../../lib/cabinet/access';
 import { autoAcceptEnabled } from '../../../../lib/cabinet/approval';
 import { approvalStaffLine } from '../../../../lib/cabinet/approval-text';
-import { formDraft } from '../../../../lib/cabinet/flash';
-import { stagePaperwork } from '../../../../lib/cabinet/projects';
+import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
+import { COMMENT_MAX } from '../../../../lib/cabinet/materials';
+import { RETURN_TEXT_MAX, stagePaperwork } from '../../../../lib/cabinet/projects';
 import { hasNextStage, stageById, stageClientWait } from '../../../../lib/cabinet/queries';
 import { daysPast, now as clockNow } from '../../../../lib/cabinet/clock';
 import ActionError from '../../../../components/cabinet/ActionError';
@@ -115,6 +116,12 @@ const OFFER_LINK = {
   padding: '14px 0',
 } as const;
 
+/**
+ * Предел длины в подсказках полей — тот же, что у служб, с разрядом; файлы
+ * — в материалах (решение Р-722).
+ */
+const TEXT_LIMIT = `До ${COMMENT_MAX.toLocaleString('ru-RU')} знаков; файлы — в материалах работы.`;
+
 /** Подпись состояния стоит отдельной строкой — с прописной буквы. */
 function sentence(text: string | null): string {
   return text === null ? '' : text.charAt(0).toUpperCase() + text.slice(1);
@@ -146,8 +153,11 @@ export default async function StageScreen({
   // Пометка «возвращён с замечаниями» стоит до новой сдачи этапа.
   const lastReturn = stage.returnedAt === null ? undefined : stage.changes[0];
   // Отказ возвращает набранные замечания или итог этапа в поле
-  // (решения Р-279, Р-289).
-  const draft = (await formDraft((await searchParams).error)) ?? {};
+  // (решения Р-279, Р-289); замечание, комментарий и загрузку — в
+  // раскрытую свёртку своей формы, с причиной у неё (решение Р-722).
+  const errorId = (await searchParams).error;
+  const failure = await flashEntry(errorId);
+  const draft = (await formDraft(errorId)) ?? {};
   const returnText = lastReturn === undefined ? null : presentReturnText(actor, lastReturn);
   // На закрытом этапе клиенту не предлагается приложить «первый» материал:
   // этап сдан, и новая загрузка в него ничего не сдвинет (решение Р-206).
@@ -205,6 +215,19 @@ export default async function StageScreen({
     .filter((row) => row.version.uploadedBy.role === 'CLIENT')
     .sort((a, b) => b.version.uploadedAt.getTime() - a.version.uploadedAt.getTime())
     .slice(0, 3);
+  // Формы, у которых стоит причина отказа. Формы нет на экране — этап ушёл
+  // с согласования, работа закрыта — причина выводится вверху (Р-722).
+  // Условие формы комментария — то же, что у самой формы ниже (Р-671).
+  const commentForm = (version: (typeof stage.materials)[number]['versions'][number]) =>
+    mayComment && !(curatorView && version.moderation?.status === 'REJECTED');
+  const placed: Record<string, boolean> = {
+    return: mayApprove && actor.role === 'CLIENT' && mayReturn,
+    comment: stage.materials.some(
+      (material) => material.versions[0]?.id === draft.commentVersion && commentForm(material.versions[0]),
+    ),
+    upload: mayUpload && (draft.upload === 'new' || stage.materials.some((material) => material.id === draft.upload)),
+  };
+  const unplaced = Object.keys(placed).filter((slot) => !placed[slot]);
   const pendingComments = stage.materials.reduce(
     (sum, material) =>
       sum +
@@ -247,7 +270,7 @@ export default async function StageScreen({
         }
       />
 
-      <ActionError id={(await searchParams).error} />
+      <ActionError id={errorId} unplaced={unplaced} />
 
       {/* Описание этапа, замечания клиента и причина остановки — одним
           блоком: на экране куратора и без них до четырёх блоков (решения
@@ -729,17 +752,24 @@ export default async function StageScreen({
               экране один, а форма замечаний нужна не каждому
               (решения Р-165, Р-178, Р-281). */}
           {mayReturn ? (
-            <Disclosure title="Вернуть с замечаниями" style={{ marginTop: 16 }}>
+            <Disclosure
+              title="Вернуть с замечаниями"
+              id="return"
+              open={failure?.slot === 'return'}
+              style={{ marginTop: 16 }}
+            >
               <Form action={returnStageWithRemarks}>
                 <input type="hidden" name="stageId" value={stage.id} />
+                <ActionError id={errorId} slot="return" />
                 <Field
                   label="Что исправить или дополнить"
                   name="remarks"
                   scope="return"
                   multiline
                   required
+                  maxLength={RETURN_TEXT_MAX}
                   defaultValue={draft.remarks ?? ''}
-                  hint="Замечания увидит менеджер; этап вернётся в работу."
+                  hint={`Замечания увидит менеджер; этап вернётся в работу. ${TEXT_LIMIT}`}
                 />
                 <FormActions>
                   <Button tone="quiet">Вернуть с замечаниями</Button>
@@ -949,10 +979,16 @@ export default async function StageScreen({
                           (решение Р-178). К своей отклонённой версии
                           куратор замечаний не пишет (решение Р-671). */}
                       {index === 0 && mayComment && !(curatorView && version.moderation?.status === 'REJECTED') ? (
-                        <Disclosure title="Оставить комментарий" style={{ marginTop: 14 }}>
+                        <Disclosure
+                          title="Оставить комментарий"
+                          id={`comment-${version.id}`}
+                          open={draft.commentVersion === version.id}
+                          style={{ marginTop: 14 }}
+                        >
                           <Form action={commentOnVersion}>
                             <input type="hidden" name="versionId" value={version.id} />
                             <input type="hidden" name="stageId" value={stage.id} />
+                            {draft.commentVersion === version.id ? <ActionError id={errorId} slot="comment" /> : null}
                             {/* У куратора — три подсказки (Э-07 в составе
                                 ответа С-1, решение Р-327): как писать
                                 замечание, когда его увидит клиент и где
@@ -963,13 +999,19 @@ export default async function StageScreen({
                               scope={version.id}
                               multiline
                               required
+                              maxLength={COMMENT_MAX}
                               placeholder={curatorView ? 'Раздел — что не так — как исправить' : undefined}
-                              hint={
+                              defaultValue={draft.commentVersion === version.id ? draft.comment : undefined}
+                              hint={[
                                 curatorView ? 'Клиент увидит замечание после проверки менеджером.'
                                 // Р-546: практике — о неопубликованной версии куратора.
                                 : version.moderation?.status === 'PENDING' ? 'Версия куратора ещё не опубликована. Когда её опубликуют, клиент увидит и этот комментарий с подписью «Менеджер». Замечание только для куратора напишите в причине «Не публиковать».'
-                                : undefined
-                              }
+                                : null,
+                                // Предел длины — у каждого поля (решение Р-722).
+                                TEXT_LIMIT,
+                              ]
+                                .filter((part) => part !== null)
+                                .join(' ')}
                             />
                             {curatorView ? (
                               <Text muted size={13}>
@@ -987,11 +1029,17 @@ export default async function StageScreen({
                 </ul>
 
                 {mayUpload ? (
-                  <Disclosure title="Загрузить следующую версию" style={{ marginTop: 20 }}>
+                  <Disclosure
+                    title="Загрузить следующую версию"
+                    id={`upload-${material.id}`}
+                    open={draft.upload === material.id}
+                    style={{ marginTop: 20 }}
+                  >
                     <Form action={uploadMaterial} encType="multipart/form-data">
                       <input type="hidden" name="projectId" value={stage.project.id} />
                       <input type="hidden" name="stageId" value={stage.id} />
                       <input type="hidden" name="materialId" value={material.id} />
+                      {draft.upload === material.id ? <ActionError id={errorId} slot="upload" /> : null}
                       <FileField
                         label="Файл следующей версии"
                         name="file"
@@ -1017,16 +1065,23 @@ export default async function StageScreen({
         ) : null}
 
         {mayUpload ? (
-          <Disclosure title="Приложить новый материал" style={{ marginTop: 20 }}>
+          <Disclosure
+            title="Приложить новый материал"
+            id="upload-new"
+            open={draft.upload === 'new'}
+            style={{ marginTop: 20 }}
+          >
             <Form action={uploadMaterial} encType="multipart/form-data">
               <input type="hidden" name="projectId" value={stage.project.id} />
               <input type="hidden" name="stageId" value={stage.id} />
+              {draft.upload === 'new' ? <ActionError id={errorId} slot="upload" /> : null}
               <Field
                 label="Название"
                 name="title"
                 maxLength={300}
                 scope="new-material"
                 placeholder="Протокол испытаний"
+                defaultValue={draft.upload === 'new' ? draft.title : undefined}
               />
               <FileField
                 label="Файл"

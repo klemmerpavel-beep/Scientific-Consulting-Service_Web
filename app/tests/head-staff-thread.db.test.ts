@@ -147,7 +147,7 @@ describe('внутренняя переписка (РК-07)', { skip: !enabled }
   it('чужую ветку менеджер не читает и не пишет в неё; предел длины', async () => {
     await assert.rejects(messages.listStaffThread(other(), ids.manager!), /не разрешено/u);
     await assert.rejects(messages.sendStaff(other(), ids.manager!, 'Вопрос'), /не разрешено/u);
-    await assert.rejects(messages.sendStaff(manager(), ids.manager!, 'я'.repeat(10_001)), /длиннее 10000/u);
+    await assert.rejects(messages.sendStaff(manager(), ids.manager!, 'я'.repeat(10_001)), /длиннее 10\s000/u);
     await assert.rejects(messages.sendStaff(head(), ids.curator!, 'Куратору'), /Сотрудник не найден/u);
   });
 });

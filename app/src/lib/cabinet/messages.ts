@@ -72,7 +72,10 @@ function cleanBody(body: string): string {
   const text = body.trim();
   if (text.length === 0) throw new Error('Пустое сообщение не отправляется');
   if (text.length > MESSAGE_MAX) {
-    throw new Error(`Сообщение длиннее ${MESSAGE_MAX} знаков: разделите его или приложите файлом`);
+    // Число — с разрядом, как в подсказке поля (решение Р-722).
+    throw new Error(
+      `Сообщение длиннее ${MESSAGE_MAX.toLocaleString('ru-RU')} знаков: разделите его или приложите файлом`,
+    );
   }
   return text;
 }

@@ -16,6 +16,8 @@ import { removeOwnerTemplate, saveOwnerTemplate, TEMPLATE_MAX_BYTES, TemplateErr
 import { rateWork, RatingError } from '../../lib/cabinet/ratings';
 import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
+import { draftFits, markedDraft } from '../../lib/cabinet/flash-value';
+import { draftsFor } from '../../lib/cabinet/message-drafts';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
 import { ClientChoiceNeeded, orderRetryDraft } from '../../lib/cabinet/client-match';
 import { homeFor } from '../../lib/cabinet/nav';
@@ -173,6 +175,38 @@ function reasonOf(error: unknown, fallback: string): string {
   return fallback;
 }
 
+/** Не поместившийся черновик — те же слова, что у `flash` (решение Р-645). */
+const TEXT_LOST = 'Введённый текст слишком длинный и не сохранён — наберите его заново.';
+
+/** Отказ загрузки: файл браузер заново не подставляет (Р-326, Р-722). */
+const REPICK = 'Выберите файл ещё раз.';
+
+/** Две фразы причины через точку; одноразовое сообщение держит 300 знаков. */
+function joinReason(head: string, tail: string): string {
+  const room = 300 - tail.length - 2;
+  const clipped = head.length > room ? `${head.slice(0, room - 1)}…` : head;
+  return /[.!?…]$/u.test(clipped) ? `${clipped} ${tail}` : `${clipped}. ${tail}`;
+}
+
+/**
+ * Черновик отказавшей формы (решение Р-722; приём Р-279, Р-326, Р-707):
+ * примета формы уходит всегда, набранное — если помещается; не
+ * поместившийся текст причина называет (Р-645).
+ */
+function failedForm(
+  reason: string,
+  mark: Readonly<Record<string, string>>,
+  text: Readonly<Record<string, string>>,
+): { reason: string; draft: Record<string, string> } {
+  const { draft, kept } = markedDraft(mark, text);
+  return { reason: kept ? reason : joinReason(reason, TEXT_LOST), draft };
+}
+
+/** Якорь формы — только знаки идентификатора: значение поля в адрес как есть не идёт. */
+function anchorPart(value: string): string {
+  return /^[A-Za-z0-9_-]{1,64}$/u.test(value) ? value : '';
+}
+
 
 /**
  * Запрос ссылки входа. Ответ одинаков для любого исхода: иначе форма
@@ -279,8 +313,15 @@ export async function returnStageWithRemarks(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось вернуть этап');
   }
+  // Набранное — в раскрытую свёртку, причина — у формы (решение Р-722).
   if (failure !== null) {
-    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { remarks: text } }));
+    redirect(
+      await withError(`/cabinet/stages/${stageId}`, failure, {
+        slot: 'return',
+        draft: { remarks: text },
+        anchor: 'return',
+      }),
+    );
   }
   redirect(`/cabinet/stages/${stageId}`);
 }
@@ -393,25 +434,48 @@ export async function commentOnVersion(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const versionId = String(form.get('versionId') ?? '');
   const stageId = String(form.get('stageId') ?? '');
+  const body = String(form.get('body') ?? '');
   let failure: string | null = null;
   try {
-    await addComment(actor, versionId, String(form.get('body') ?? ''));
+    await addComment(actor, versionId, body);
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить замечание');
   }
-  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
+  // Набранное возвращается в раскрытую свёртку своей версии, причина — у
+  // формы (решение Р-722).
+  if (failure !== null) {
+    const back = failedForm(failure, { commentVersion: versionId }, { comment: body });
+    const mark = anchorPart(versionId);
+    redirect(
+      await withError(`/cabinet/stages/${stageId}`, back.reason, {
+        slot: 'comment',
+        draft: back.draft,
+        ...(mark === '' ? {} : { anchor: `comment-${mark}` }),
+      }),
+    );
+  }
   redirect(`/cabinet/stages/${stageId}`);
 }
 
 export async function uploadMaterial(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const file = form.get('file');
-  if (!(file instanceof File) || file.size === 0) {
-    redirect(await withError(`/cabinet/stages/${String(form.get('stageId') ?? '')}`, 'Файл не выбран'));
-  }
   const stageId = String(form.get('stageId') ?? '');
   const projectId = String(form.get('projectId') ?? '');
   const materialId = String(form.get('materialId') ?? '');
+  const title = String(form.get('title') ?? '');
+  // Отказ возвращает в раскрытую свёртку своей формы: новый материал или
+  // следующая версия, с набранным названием (решение Р-722).
+  const refuse = async (reason: string): Promise<string> => {
+    const back = failedForm(reason, { upload: materialId === '' ? 'new' : materialId }, { title });
+    const mark = materialId === '' ? 'new' : anchorPart(materialId);
+    return withError(`/cabinet/stages/${stageId}`, back.reason, {
+      slot: 'upload',
+      draft: back.draft,
+      ...(mark === '' ? {} : { anchor: `upload-${mark}` }),
+    });
+  };
+  if (!(file instanceof File) || file.size === 0) redirect(await refuse('Файл не выбран'));
   // Отказ загрузки — контакт в названии, неподходящий файл, недоступное
   // хранилище — возвращается на экран этапа причиной, а не общим экраном
   // сбоя (решение Р-255). Перенаправление вне `try`: оно само — исключение.
@@ -423,7 +487,7 @@ export async function uploadMaterial(form: FormData): Promise<void> {
         projectId,
         stageId: stageId || null,
         materialId: materialId || null,
-        title: String(form.get('title') ?? '') || undefined,
+        title: title || undefined,
         originalName: file.name,
         contentType: file.type || 'application/octet-stream',
         body: Buffer.from(await file.arrayBuffer()),
@@ -433,7 +497,7 @@ export async function uploadMaterial(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, uploadFailedText(actor.role));
   }
-  if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
+  if (failure !== null) redirect(await refuse(joinReason(failure, REPICK)));
   redirect(`/cabinet/stages/${stageId}`);
 }
 
@@ -1079,17 +1143,48 @@ export async function postMessage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const projectId = String(form.get('projectId') ?? '');
   const code = String(form.get('code') ?? '');
+  const body = String(form.get('body') ?? '');
   let failure: string | null = null;
   try {
-    await sendMessage(actor, projectId, String(form.get('body') ?? ''));
+    await sendMessage(actor, projectId, body);
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отправить сообщение');
   }
   const back = String(form.get('back') ?? '');
   const target =
     back === 'project' ? `/cabinet/projects/${code}` : `/cabinet/projects/${code}/messages`;
-  if (failure !== null) redirect(await withError(target, failure));
+  // Набранное возвращается в поле, причина — у формы (решение Р-722, как
+  // у внутренней ветки, Р-336). Не поместившийся текст причина называет.
+  if (failure !== null) {
+    redirect(await withError(target, failure, { slot: 'message', draft: { body }, anchor: 'message' }));
+  }
   redirect(target);
+}
+
+/**
+ * Заготовка переписки ставится перед набранным текстом и не стирает его
+ * (решение Р-722; заготовки — Р-316, Р-317). Кнопка заготовки отправляет
+ * форму сюда, а не в `postMessage`: текст поля возвращается на экран
+ * черновиком, как при отказе (Р-279), и ничего не отправляется — отправляет
+ * только «Отправить». Ключ заготовки — из привязки кнопки; чужой роли ключ
+ * отбрасывается, как и в адресе (`draftText`).
+ */
+export async function insertMessageTemplate(key: string, form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const body = String(form.get('body') ?? '');
+  const known = draftsFor(actor.role).some((item) => item.key === key);
+  const target = `/cabinet/projects/${code}/messages${known ? `?draft=${key}` : ''}`;
+  if (body.trim() === '') redirect(`${target}#message`);
+  // Черновик больше cookie не хранится (Р-645): заготовка подставляется, а
+  // причина называет, что набранное придётся вставить заново.
+  if (!draftFits({ body })) {
+    redirect(
+      await withError(target, `Заготовка подставлена. ${TEXT_LOST}`, { slot: 'message', anchor: 'message' }),
+    );
+  }
+  // Причины нет — только черновик: пустой текст экран не выводит.
+  redirect(await withError(target, '', { draft: { body }, anchor: 'message' }));
 }
 
 /**
@@ -1127,16 +1222,22 @@ export async function saveNotificationChannels(form: FormData): Promise<void> {
 export async function addContactChannel(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const kind = String(form.get('kind') ?? '') as ContactKind;
+  const value = String(form.get('value') ?? '');
+  const note = String(form.get('note') ?? '');
+  const preferred = form.get('preferred') === 'on';
+  let failure: string | null = null;
   try {
-    await addContact(actor, {
-      kind,
-      value: String(form.get('value') ?? ''),
-      note: String(form.get('note') ?? ''),
-      preferred: form.get('preferred') === 'on',
-    });
+    await addContact(actor, { kind, value, note, preferred });
   } catch (error) {
-    const text = reasonOf(error, 'Не удалось добавить способ связи');
-    redirect(await withError(`/cabinet/settings`, text));
+    failure = reasonOf(error, 'Не удалось добавить способ связи');
+  }
+  // Способ, номер, оговорка и отметка возвращаются в раскрытую свёртку,
+  // причина — у формы (решение Р-722; отказ на экране настроек — Р-373).
+  if (failure !== null) {
+    const back = failedForm(failure, { kind, preferred: preferred ? 'on' : '' }, { value, note });
+    redirect(
+      await withError('/cabinet/settings', back.reason, { slot: 'contact', draft: back.draft, anchor: 'new-contact' }),
+    );
   }
   redirect('/cabinet/settings?saved=1');
 }
@@ -2203,18 +2304,30 @@ export async function addMaterialVersion(form: FormData): Promise<void> {
     rawBack.startsWith('/cabinet/') && !rawBack.startsWith('//') && !rawBack.includes('\\')
       ? rawBack
       : '/cabinet/projects';
-  if (!(file instanceof File) || file.size === 0) {
-    redirect(await withError(back, 'Файл не выбран'));
-  }
+  const stageId = String(form.get('stageId') ?? '');
+  const materialId = String(form.get('materialId') ?? '');
+  const title = String(form.get('title') ?? '');
+  // Отказ возвращает к своей форме — новому материалу или новой версии — с
+  // набранным названием и выбранным этапом (решение Р-722).
+  const refuse = async (reason: string): Promise<string> => {
+    const draft = failedForm(reason, { upload: materialId === '' ? 'new' : materialId, stageId }, { title });
+    const mark = materialId === '' ? 'new-material' : `upload-${anchorPart(materialId)}`;
+    return withError(back, draft.reason, {
+      slot: 'upload',
+      draft: draft.draft,
+      ...(mark === 'upload-' ? {} : { anchor: mark }),
+    });
+  };
+  if (!(file instanceof File) || file.size === 0) redirect(await refuse('Файл не выбран'));
   let failure: string | null = null;
   try {
     await uploadVersion(
       actor,
       {
         projectId: String(form.get('projectId') ?? ''),
-        stageId: String(form.get('stageId') ?? '') || null,
-        materialId: String(form.get('materialId') ?? '') || null,
-        title: String(form.get('title') ?? '') || undefined,
+        stageId: stageId || null,
+        materialId: materialId || null,
+        title: title || undefined,
         originalName: file.name,
         contentType: file.type || 'application/octet-stream',
         body: Buffer.from(await file.arrayBuffer()),
@@ -2224,7 +2337,7 @@ export async function addMaterialVersion(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, uploadFailedText(actor.role));
   }
-  if (failure !== null) redirect(await withError(back, failure));
+  if (failure !== null) redirect(await refuse(joinReason(failure, REPICK)));
   redirect(back);
 }
 

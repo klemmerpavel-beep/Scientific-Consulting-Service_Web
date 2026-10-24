@@ -26,6 +26,7 @@ import {
   plural,
 } from '../../../../../components/cabinet/ui';
 import { can, contributionRefusal } from '../../../../../lib/cabinet/access';
+import { formDraft } from '../../../../../lib/cabinet/flash';
 import { projectMaterials } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { addMaterialVersion, decideOnComment, decideOnVersion } from '../../../actions';
@@ -59,6 +60,17 @@ export default async function ProjectMaterialsScreen({
   const openStages = project.stages.filter(
     (stage) => contributionRefusal(actor, project.status, stage.state) === null,
   );
+  // Отказ загрузки возвращает к своей форме — новому материалу или новой
+  // версии — с набранным названием и выбранным этапом; причина стоит у формы
+  // (решение Р-722). Формы нет на экране — причина вверху.
+  const errorId = (await searchParams).error;
+  const draft = (await formDraft(errorId)) ?? {};
+  const versionForm = (material: (typeof project.materials)[number]) =>
+    mayUpload && contributionRefusal(actor, project.status, material.stage?.state ?? null) === null;
+  const uploadPlaced =
+    mayUpload &&
+    (draft.upload === 'new' ||
+      project.materials.some((material) => material.id === draft.upload && versionForm(material)));
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -68,7 +80,7 @@ export default async function ProjectMaterialsScreen({
         title="Материалы работы"
       />
       {/* Отказ загрузки возвращается сюда причиной (решение Р-255). */}
-      <ActionError id={(await searchParams).error} />
+      <ActionError id={errorId} unplaced={uploadPlaced ? [] : ['upload']} />
 
       {project.materials.length === 0 ? (
         <Empty title="Материалов пока нет" />
@@ -223,9 +235,10 @@ export default async function ProjectMaterialsScreen({
                       ))
                   : null}
 
-                {mayUpload && contributionRefusal(actor, project.status, material.stage?.state ?? null) === null ? (
+                {versionForm(material) ? (
                   <Form
                     action={addMaterialVersion}
+                    id={`upload-${material.id}`}
                     style={{
                       marginTop: 16,
                       paddingTop: 16,
@@ -235,6 +248,7 @@ export default async function ProjectMaterialsScreen({
                     <input type="hidden" name="projectId" value={project.id} />
                     <input type="hidden" name="materialId" value={material.id} />
                     <input type="hidden" name="back" value={`/cabinet/projects/${project.code}/materials`} />
+                    {draft.upload === material.id ? <ActionError id={errorId} slot="upload" /> : null}
                     <FileField
                       label={`Новая версия материала «${material.title}»`}
                       name="file"
@@ -259,14 +273,16 @@ export default async function ProjectMaterialsScreen({
       ) : null}
 
       {mayUpload ? (
-        <Card style={{ marginTop: 28 }}>
+        <Card id="new-material" style={{ marginTop: 28 }}>
           <Heading level={2} style={{ marginBottom: 16 }}>Приложить материал</Heading>
           <Form action={addMaterialVersion}>
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="back" value={`/cabinet/projects/${project.code}/materials`} />
+            {draft.upload === 'new' ? <ActionError id={errorId} slot="upload" /> : null}
             <FormRow>
-              <Field label="Название" name="title" maxLength={300} placeholder="Черновик главы 2" />
-              <Select label="Этап" name="stageId" defaultValue="">
+              <Field label="Название" name="title" maxLength={300} placeholder="Черновик главы 2"
+                defaultValue={draft.upload === 'new' ? draft.title : undefined} />
+              <Select label="Этап" name="stageId" defaultValue={draft.upload === 'new' ? (draft.stageId ?? '') : ''}>
                 <option value="">без привязки к этапу</option>
                 {openStages.map((stage) => (
                   <option key={stage.id} value={stage.id}>

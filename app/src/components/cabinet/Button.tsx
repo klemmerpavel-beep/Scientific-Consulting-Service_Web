@@ -23,6 +23,8 @@ const TONES = {
   primary: BUTTON_PRIMARY,
   quiet: BUTTON_QUIET,
   chip: BUTTON_CHIP,
+  // Строчная ссылка в ряду ссылок: заготовка переписки (решение Р-722).
+  link: { fontSize: 14 },
 } as const;
 
 export function Button({
@@ -33,15 +35,24 @@ export function Button({
   value,
   style,
   onClick,
+  formAction,
+  formNoValidate = false,
 }: {
   children: ReactNode;
-  tone?: 'primary' | 'quiet' | 'chip';
+  tone?: 'primary' | 'quiet' | 'chip' | 'link';
   type?: 'submit' | 'button';
   name?: string;
   value?: string;
   style?: CSSProperties;
   /** Действие кнопки вне формы: «Открыть снова» на экране сбоя. */
   onClick?: () => void;
+  /**
+   * Своё действие кнопки в общей форме: заготовка переписки отправляет
+   * набранный текст не в «Отправить», а в подстановку (решение Р-722).
+   */
+  formAction?: (form: FormData) => void | Promise<void>;
+  /** Без проверки полей формы: заготовке пустое поле не помеха. */
+  formNoValidate?: boolean;
 }) {
   const status = useFormStatus();
   // Ждём только свою форму: у кнопки вне формы состояния нет, и
@@ -56,7 +67,11 @@ export function Button({
       disabled={busy}
       aria-busy={busy}
       onClick={onClick}
-      className={`cab-btn ${tone === 'primary' ? 'cab-btn-primary' : 'cab-btn-quiet'}`}
+      formAction={formAction}
+      formNoValidate={formNoValidate || undefined}
+      className={`cab-btn ${
+        tone === 'primary' ? 'cab-btn-primary' : tone === 'link' ? 'cab-mark cab-linkbtn' : 'cab-btn-quiet'
+      }`}
       style={{ ...TONES[tone], ...style }}
     >
       {children}

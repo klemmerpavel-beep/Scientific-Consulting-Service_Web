@@ -60,6 +60,22 @@ export function draftFits(fields: Readonly<Record<string, string>>): boolean {
 }
 
 /**
+ * Черновик с приметой формы (решение Р-722). `mark` — какая из одинаковых
+ * форм экрана отказала (версия, материал, этап): примета короткая и
+ * сохраняется всегда — по ней экран раскрывает свою свёртку и ставит
+ * причину у формы. `text` — набранные поля: они сохраняются, если весь
+ * черновик помещается в cookie; иначе `kept` ложно, и причина называет
+ * потерю (Р-645).
+ */
+export function markedDraft(
+  mark: Readonly<Record<string, string>>,
+  text: Readonly<Record<string, string>>,
+): { readonly draft: Record<string, string>; readonly kept: boolean } {
+  const full = { ...mark, ...text };
+  return draftFits(full) ? { draft: full, kept: true } : { draft: { ...mark }, kept: false };
+}
+
+/**
  * Черновик формы — значения полей, введённые до отказа (решение Р-279).
  * `null`, если черновик не помещается в cookie.
  */

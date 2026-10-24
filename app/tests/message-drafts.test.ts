@@ -75,15 +75,25 @@ describe('заготовки куратора (М-21)', () => {
 });
 
 describe('разметка заготовок', () => {
-  it('заготовки — ссылки на тот же экран, а не кнопки отправки', () => {
+  // Заготовка — кнопка своего действия, а не ссылка: набранный текст уходит
+  // вместе с выбором и возвращается в поле (решение Р-722). Сообщение она
+  // не отправляет — действие подстановки не зовёт отправку.
+  it('заготовки — кнопки подстановки, а не отправки', () => {
     const page = readFileSync(
       path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'projects', '[code]', 'messages', 'page.tsx'),
       'utf8',
     );
-    const start = page.indexOf('{draftsFor(actor.role).map(');
-    assert.ok(start > 0, 'ссылок заготовок на экране нет');
+    const start = page.indexOf('{templates.map(');
+    assert.ok(start > 0, 'заготовок на экране нет');
     const block = page.slice(start, page.indexOf('))}', start));
-    assert.match(block, /href=\{`\/cabinet\/projects\/\$\{project\.code\}\/messages\?draft=\$\{item\.key\}/u);
-    assert.doesNotMatch(block, /type="submit"|<Button|<Form/u, 'заготовка отправляет сообщение сама');
+    assert.match(block, /formAction=\{insertMessageTemplate\.bind\(null, item\.key\)\}/u);
+    assert.match(block, /formNoValidate/u);
+    assert.doesNotMatch(block, /postMessage|<Form/u, 'заготовка отправляет сообщение сама');
+    const actions = readFileSync(path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'actions.ts'), 'utf8');
+    const at = actions.indexOf('export async function insertMessageTemplate(');
+    assert.ok(at > 0, 'нет действия подстановки');
+    const body = actions.slice(at, actions.indexOf('\nexport ', at + 1));
+    assert.doesNotMatch(body, /sendMessage|sendInternal|sendStaff/u, 'подстановка отправляет сообщение');
+    assert.match(body, /draftsFor\(actor\.role\)/u, 'ключ заготовки не сверяется с ролью');
   });
 });

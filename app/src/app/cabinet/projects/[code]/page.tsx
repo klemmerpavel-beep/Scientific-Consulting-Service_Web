@@ -75,7 +75,7 @@ import {
 import { templateLength } from '../../../../lib/cabinet/projects';
 import { daysPast } from '../../../../lib/cabinet/clock';
 import { workDuePassed } from '../../../../lib/cabinet/missed';
-import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
+import { MESSAGE_MAX, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import {
   curators,
   executorNames,
@@ -789,7 +789,9 @@ export default async function ProjectScreen({
           </div>
         ) : null}
       </ScreenTop>
-      <ActionError id={errorId} />
+      {/* Причина отказа переписки — у её формы; без формы на экране — здесь
+          (решение Р-722). */}
+      <ActionError id={errorId} unplaced={mayWrite ? [] : ['message']} />
       {/* Исход «Обновить из документа» (Р-561): блок исхода в счёт пяти
           не входит (Р-253). */}
       {briefApplied === undefined ? null : <Outcome>Карточка обновлена из документа, документ приложен к работе.</Outcome>}
@@ -942,21 +944,33 @@ export default async function ProjectScreen({
             }
             anchor="end"
             footer={
-              <Form action={postMessage} inline>
-                <input type="hidden" name="projectId" value={project.id} />
-                <input type="hidden" name="code" value={project.code} />
-                {/* Отправив отсюда, человек остаётся на экране заказа. */}
-                <input type="hidden" name="back" value="project" />
-                <Field
-                  label="Сообщение"
-                  name="body"
-                  required
-                  labelHidden
-                  placeholder={forClient ? 'Написать менеджеру' : 'Написать клиенту'}
-                  minWidth={140}
-                />
-                <Button>Отправить</Button>
-              </Form>
+              <div id="message">
+                {/* Отказ — у формы, набранное — в поле (решение Р-722). */}
+                <ActionError id={errorId} slot="message" />
+                <Form action={postMessage} inline>
+                  <input type="hidden" name="projectId" value={project.id} />
+                  <input type="hidden" name="code" value={project.code} />
+                  {/* Отправив отсюда, человек остаётся на экране заказа. */}
+                  <input type="hidden" name="back" value="project" />
+                  <Field
+                    label="Сообщение"
+                    name="body"
+                    required
+                    labelHidden
+                    maxLength={MESSAGE_MAX}
+                    placeholder={forClient ? 'Написать менеджеру' : 'Написать клиенту'}
+                    minWidth={140}
+                    defaultValue={draft.body}
+                    describedBy="message-limit"
+                  />
+                  <Button>Отправить</Button>
+                </Form>
+                {/* Предел — строкой под рядом: подсказка под полем сбила бы
+                    ряд «поле — кнопка». */}
+                <Text id="message-limit" muted size={13} style={{ marginTop: 6 }}>
+                  {`До ${MESSAGE_MAX.toLocaleString('ru-RU')} знаков; файлы — в материалах работы.`}
+                </Text>
+              </div>
             }
           >
             <Thread
