@@ -1240,6 +1240,7 @@ export default async function ManageQueue({
           ) : (
             <BarChart
               title="Принято заказов по месяцам"
+              latest
               width={460}
               height={220}
               unit="работ"
@@ -1499,6 +1500,7 @@ export default async function ManageQueue({
               <div style={{ marginTop: 12 }}>
                 <BarChart
                   title="Поступления по месяцу оплаты"
+                  latest
                   width={460}
                   height={150}
                   unit="тыс ₽"

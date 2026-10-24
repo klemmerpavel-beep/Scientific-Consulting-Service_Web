@@ -48,10 +48,32 @@ const svgStyle: CSSProperties = { width: '100%', height: 'auto', display: 'block
  * фокус и имя, как у широких таблиц (решение Р-168). Поля рисунков
  * подобраны так, чтобы на компьютере от 1100 px прокрутки не было.
  */
-function Frame({ width, title, children }: { width: number; title: string; children: ReactNode }) {
+function Frame({
+  width,
+  title,
+  latest = false,
+  children,
+}: {
+  width: number;
+  title: string;
+  /**
+   * Ряд по времени: где рисунок шире области, она открывается у правого
+   * края — последний месяц на виду, прокрутка влево ведёт к прошлым. Без
+   * сценария: область — справа налево, рисунок внутри — слева направо;
+   * порядок в разметке, фокус и имя области прежние (решение Р-753;
+   * Р-168, Р-209). Где рисунок входит целиком, вид не меняется.
+   */
+  latest?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div role="region" aria-label={title} tabIndex={0} style={{ overflowX: 'auto' }}>
-      <div style={{ minWidth: width }}>{children}</div>
+    <div
+      role="region"
+      aria-label={title}
+      tabIndex={0}
+      style={{ overflowX: 'auto', ...(latest ? { direction: 'rtl' as const } : {}) }}
+    >
+      <div style={{ minWidth: width, ...(latest ? { direction: 'ltr' as const } : {}) }}>{children}</div>
     </div>
   );
 }
@@ -122,6 +144,7 @@ export function BarChart({
   width = 720,
   unit,
   integer = false,
+  latest = false,
 }: {
   data: readonly BarDatum[];
   format?: (value: number) => string;
@@ -142,6 +165,8 @@ export function BarChart({
   unit?: string;
   /** Счётный ряд: деления шкалы только на целых (решение Р-684). */
   integer?: boolean;
+  /** Ряд по месяцам: на узком экране открывается на последнем (Р-753). */
+  latest?: boolean;
 }) {
   const W = width;
   const H = height;
@@ -179,7 +204,7 @@ export function BarChart({
   const everyValue = Math.max(1, Math.ceil(valueWidth / step));
 
   return (
-    <Frame width={W} title={title}>
+    <Frame width={W} title={title} latest={latest}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
         fontFamily={SANS} role="img" aria-label={title}>
         <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} count={count} format={format} />
@@ -324,6 +349,7 @@ export function LineChart({
   height = 280,
   width = 720,
   integer = false,
+  latest = false,
 }: {
   categories: readonly string[];
   series: readonly Series[];
@@ -334,6 +360,8 @@ export function LineChart({
   width?: number;
   /** Счётный ряд: деления шкалы только на целых (решение Р-684). */
   integer?: boolean;
+  /** Ряд по месяцам: на узком экране открывается на последнем (Р-753). */
+  latest?: boolean;
 }) {
   const W = width;
   const H = height;
@@ -361,7 +389,7 @@ export function LineChart({
   const labelled = new Set(categoryLabels(categories.length, gapX));
 
   return (
-    <Frame width={W} title={title}>
+    <Frame width={W} title={title} latest={latest}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={svgStyle}
         fontFamily={SANS} role="img" aria-label={title}>
         <Axis padL={pad.l} padT={pad.t} iw={iw} ih={ih} max={max} count={count} format={format} />

@@ -245,6 +245,7 @@ export default async function AnalyticsOverview() {
                 оказываются все столбцы, а не каждый третий (решение Р-175). */}
             <BarChart
               title="Законтрактовано по месяцам"
+              latest
               width={1000}
               unit="тыс ₽"
               data={months.map((month) => ({
@@ -285,6 +286,7 @@ export default async function AnalyticsOverview() {
               <>
                 <BarChart
                   title="Заявки по месяцам"
+                  latest
                   width={1000}
                   unit="заявок"
                   data={leadMonths.map((month) => ({

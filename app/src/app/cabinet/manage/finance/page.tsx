@@ -184,6 +184,7 @@ export default async function FinanceScreen({
             <>
               <BarChart
                 title="Оплаты по месяцу начала работы"
+                latest
                 width={460}
                 height={220}
                 unit="тыс ₽"

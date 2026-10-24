@@ -119,6 +119,7 @@ export default async function AnalyticsMoney() {
           >
             <LineChart
               title="Договоры и оплаты по месяцу начала работы"
+              latest
               width={1000}
               categories={months.map((month) => month.label)}
               series={[
