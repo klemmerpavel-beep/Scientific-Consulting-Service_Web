@@ -414,10 +414,12 @@ export function Field({
       ) : (
         <input id={id} type={type} {...shared} style={box} />
       )}
+      {/* Подсказка — строка текста: абзацем, и ссылка в ней — строчная
+          ссылка текста, а не отдельная цель нажатия (Р-57; решение Р-761). */}
       {hint === undefined ? null : (
-        <span id={hintId} style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+        <p id={hintId} style={{ margin: 0, fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
           {hint}
-        </span>
+        </p>
       )}
     </div>
   );

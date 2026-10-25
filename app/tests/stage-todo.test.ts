@@ -132,7 +132,7 @@ describe('экран этапа', () => {
   it('практике — подсказка по фактам, версия на публикации ссылкой на этом экране', () => {
     assert.match(page, /staffStageTodo\(\{[\s\S]*handedOver: handover === 'handed',[\s\S]*pendingVersions: pendingVersions\.length,[\s\S]*returnedUnacked: lastReturn !== undefined && stage\.returnAckAt === null,[\s\S]*lateDays: late,/u);
     assert.match(page, /\{todo\.text\}/u);
-    assert.match(page, /<a href=\{`#version-\$\{pendingVersions\[0\]\.id\}`\} style=\{FACT_LINK\}>/u);
+    assert.match(page, /<a className="cab-mark" href=\{`#version-\$\{pendingVersions\[0\]\.id\}`\} style=\{FACT_LINK\}>/u);
     assert.match(page, /id=\{forStaff \? `version-\$\{version\.id\}` : undefined\}/u);
     assert.doesNotMatch(page, /: STAFF_TODO\[state\]/u, 'подсказка по одному состоянию');
   });

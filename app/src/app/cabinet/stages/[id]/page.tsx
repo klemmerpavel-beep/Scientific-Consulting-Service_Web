@@ -774,7 +774,7 @@ export default async function StageScreen({
             {/* Версия на публикации стоит ниже формы перевода: ссылка ведёт к
                 ней на этом же экране (решение Р-723). */}
             {pendingVersions.length === 0 ? null : (
-              <a href={`#version-${pendingVersions[0].id}`} style={FACT_LINK}>
+              <a className="cab-mark" href={`#version-${pendingVersions[0].id}`} style={FACT_LINK}>
                 {pendingVersionsLine(pendingVersions.length)}
               </a>
             )}
