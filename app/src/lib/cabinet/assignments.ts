@@ -18,7 +18,9 @@ import { can, ensure, type Actor } from './access.ts';
 import { formatDay } from './approval-text.ts';
 import { record } from './audit.ts';
 import { moscowToday, now as clockNow } from './clock.ts';
+import { PAYMENT_CLOSED_STATUSES } from './money.ts';
 import { enqueue } from './outbox.ts';
+import { assignableWorkLabels, whoLeads } from './staff-texts.ts';
 import { dayKey } from './workdays.ts';
 
 const DAY = 86_400_000;
@@ -40,6 +42,56 @@ export interface AssignmentInput {
   readonly projectCode?: string | null;
 }
 
+/** Работа в выборе формы поручения: название · клиент · менеджер. */
+export interface AssignableWork {
+  readonly code: string;
+  readonly label: string;
+  readonly managerId: string;
+}
+
+/**
+ * Работы для поля «Работа» формы поручения (решение Р-731): идущие и
+ * приостановленные, а работа из адреса или черновика (`picked`) — при
+ * любом состоянии, кроме отменённой. «Должники» показывают и завершённые
+ * работы с остатком — исключены только отменённые (`PAYMENT_CLOSED_STATUSES`,
+ * Р-257, Р-447), и поручение по такой строке должно остаться привязанным к
+ * работе, как было при поле кода. Код работы — значение выбора, на экран он
+ * не выводится (Р-189): подпись — название, клиент и менеджер (как в
+ * Р-708), см. `assignableWorkLabels`.
+ */
+export async function assignableWorks(actor: Actor, picked?: string | null): Promise<AssignableWork[]> {
+  ensure(actor, 'ASSIGNMENT_CREATE');
+  const code = (picked ?? '').trim();
+  const rows = await prisma.project.findMany({
+    where: {
+      OR: [
+        { status: { in: ['ACTIVE', 'PAUSED'] } },
+        ...(code === '' ? [] : [{ code, status: { notIn: [...PAYMENT_CLOSED_STATUSES] } }]),
+      ],
+    },
+    orderBy: [{ title: 'asc' }, { code: 'asc' }],
+    select: {
+      code: true,
+      title: true,
+      status: true,
+      dueOn: true,
+      managerId: true,
+      manager: { select: { fullName: true } },
+      client: { select: { fullName: true } },
+    },
+  });
+  const labels = assignableWorkLabels(
+    rows.map((row) => ({
+      title: row.title,
+      client: row.client.fullName,
+      manager: row.manager.fullName,
+      status: row.status,
+      dueOn: row.dueOn,
+    })),
+  );
+  return rows.map((row, index) => ({ code: row.code, managerId: row.managerId, label: labels[index]! }));
+}
+
 /** Поставить поручение — только руководитель (В-19). */
 export async function createAssignment(actor: Actor, input: AssignmentInput): Promise<{ id: string }> {
   ensure(actor, 'ASSIGNMENT_CREATE');
@@ -59,12 +111,21 @@ export async function createAssignment(actor: Actor, input: AssignmentInput): Pr
   if (code !== '') {
     const project = await prisma.project.findUnique({
       where: { code },
-      select: { id: true, code: true, managerId: true, expertId: true },
+      select: {
+        id: true,
+        code: true,
+        managerId: true,
+        expertId: true,
+        manager: { select: { fullName: true } },
+        expert: { select: { fullName: true } },
+      },
     });
     if (project === null) throw new Error('Работа с таким кодом не найдена');
     // Исполнитель должен видеть работу: менеджер — свою, куратор — назначенную.
     const sees = assignee.role === 'MANAGER' ? project.managerId === assignee.id : project.expertId === assignee.id;
-    if (!sees) throw new Error('Сотрудник не ведёт эту работу и не увидит её');
+    // Отказ называет, кто ведёт работу: руководителю не нужно уходить её
+    // искать (решение Р-731). Экран руководителя — ФИО сотрудников видны.
+    if (!sees) throw new Error(whoLeads(project.manager.fullName, project.expert?.fullName ?? null));
     projectId = project.id;
     projectCode = project.code;
   }
@@ -152,10 +213,10 @@ const view = {
 } as const;
 
 /**
- * Открытые поручения исполнителя — его дела. Название работы — только
- * пока исполнитель её видит: после смены куратора, передачи работы другому
- * менеджеру или без договора поручения остаётся код, как в письмах куратору
- * без договора (Р-301, решение Р-420).
+ * Открытые поручения исполнителя — его дела. Название работы и клиент —
+ * только пока исполнитель её видит: после смены куратора, передачи работы
+ * другому менеджеру или без договора поручения остаётся код — для адреса,
+ * на экран он не выводится (Р-301, решения Р-420, Р-721).
  */
 export async function myAssignments(actor: Actor) {
   if (actor.status !== 'ACTIVE' || (actor.role !== 'MANAGER' && actor.role !== 'EXPERT')) return [];
@@ -164,16 +225,31 @@ export async function myAssignments(actor: Actor) {
     orderBy: [{ dueOn: 'asc' }, { createdAt: 'asc' }],
     select: {
       ...view,
-      project: { select: { id: true, code: true, title: true, clientId: true, managerId: true, expertId: true } },
+      project: {
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          clientId: true,
+          managerId: true,
+          expertId: true,
+          client: { select: { fullName: true } },
+        },
+      },
     },
   });
-  return rows.map(({ project, ...row }) => ({
-    ...row,
-    project:
-      project === null
-        ? null
-        : { code: project.code, title: can(actor, 'PROJECT_VIEW', project) ? project.title : null },
-  }));
+  return rows.map(({ project, ...row }) => {
+    if (project === null) return { ...row, project: null };
+    const visible = can(actor, 'PROJECT_VIEW', project);
+    return {
+      ...row,
+      project: {
+        code: project.code,
+        title: visible ? project.title : null,
+        client: visible ? project.client.fullName : null,
+      },
+    };
+  });
 }
 
 /** Сколько закрытых поручений показывать руководителю: последние по дате. */
@@ -214,7 +290,8 @@ export async function overdueAssignments(actor: Actor, at: Date = clockNow()) {
   return prisma.assignment.findMany({
     where: { status: { in: OPEN }, dueOn: { lt: moscowToday(at) } },
     orderBy: { dueOn: 'asc' },
-    select: view,
+    // Клиент работы — в пояснении дела руководителя (решение Р-721).
+    select: { ...view, project: { select: { code: true, title: true, client: { select: { fullName: true } } } } },
   });
 }
 

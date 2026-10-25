@@ -71,8 +71,9 @@ export default async function AnalyticsMoney() {
               value={formatAmount(total.received)}
               note={total.collection === null ? 'нет завершённых работ с договором' : `${collectionPercent(total.collection)} по завершённым`}
             />
+            {/* Имя величины — как на «Сводке» и в «Деньгах» (решение Р-752). */}
             <Tile
-              label="Задолженность"
+              label="К получению"
               value={formatAmount(total.outstanding)}
               note={`${debts.length} ${plural(debts.length, 'работа', 'работы', 'работ')} с остатком, кроме отменённых`}
             />
@@ -118,6 +119,7 @@ export default async function AnalyticsMoney() {
           >
             <LineChart
               title="Договоры и оплаты по месяцу начала работы"
+              latest
               width={1000}
               categories={months.map((month) => month.label)}
               series={[
@@ -205,7 +207,11 @@ export default async function AnalyticsMoney() {
                   {/* Код и тема — одной строкой: вторым ярусом они делали
                       строку таблицы вдвое выше без нужды. */}
                   <td style={cell}>
-                    {debt.title}
+                    {/* Название — ссылкой на карточку работы; код только в
+                        адресе (Р-189; решение Р-751). */}
+                    <a className="cab-mark" href={`/cabinet/projects/${debt.code}`}>
+                      {debt.title}
+                    </a>
                   </td>
                   <td style={cell}>{debt.client}</td>
                   <td style={num}>{formatAmount(debt.cost)}</td>

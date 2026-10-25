@@ -48,7 +48,10 @@ export function practiceReview(input: ReviewInput): ReviewGroup[] {
       key: 'act',
       label: 'Сделать',
       count: act.length,
-      scope: 'сорванные сроки, ответы и решения',
+      // Число — дела «Требует внимания» («Мои» и «Контроль»), а не сорванные
+      // сроки практики из ответа: подпись прежде читалась как они
+      // (решение Р-724).
+      scope: 'ваши дела и контроль менеджеров',
       first: act[0] ?? null,
       empty: 'Ничего не горит.',
       all: act.length === 0 ? null : { href: '#attention', label: 'Все дела' },

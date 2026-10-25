@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -21,6 +22,7 @@ import {
   Pager,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
+import { contactHref } from '../../../../lib/cabinet/lead-labels';
 import { flaggedMessages } from '../../../../lib/cabinet/messages';
 import { clientRegistry, expertRegistry } from '../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../lib/cabinet/session';
@@ -30,6 +32,42 @@ export const dynamic = 'force-dynamic';
 
 /** Сколько строк реестра показывается на одной странице. */
 const PAGE_SIZE = 20;
+
+// Ссылки реестра стоят в строке текста: цель нажатия добирается
+// отступом, строка в 46 px не растёт — как у ссылок на «Работах» (Р-679,
+// Р-184; решение Р-757).
+const LINE_LINK = { padding: '14px 0' } as const;
+
+/**
+ * Работы клиента — «Мои работы» с отбором «Все» и поиском по ФИО: прежде
+ * менеджер шёл туда сам, переключал отбор и набирал имя (решение
+ * Р-757, тот же приём, что ссылки на отбор у руководителя, Р-341).
+ * Выборка «Работ» — в пределах видимого: менеджеру только свои (Р-149).
+ */
+function clientWorksHref(fullName: string): string {
+  return `/cabinet/projects?${new URLSearchParams({ state: 'all', q: fullName }).toString()}`;
+}
+
+/** Почта и телефон клиента одной строкой, каждое — своей ссылкой. */
+function ContactLinks({ email, phone }: { email?: string | null; phone?: string | null }) {
+  const parts: { kind: 'email' | 'phone'; value: string }[] = [];
+  if (email) parts.push({ kind: 'email', value: email });
+  if (phone) parts.push({ kind: 'phone', value: phone });
+  if (parts.length === 0) return <>—</>;
+  return parts.map(({ kind, value }, index) => {
+    const link = contactHref(kind, value);
+    return (
+      <Fragment key={kind}>
+        {index > 0 ? ' · ' : null}
+        {link === null ? value : (
+          <a href={link} style={LINE_LINK}>
+            {value}
+          </a>
+        )}
+      </Fragment>
+    );
+  });
+}
 
 type Tab = 'clients' | 'experts' | 'flagged';
 
@@ -158,15 +196,22 @@ export default async function RegistryScreen({
                       </td>
                       {/* Почта и телефон одной строкой: двумя ярусами они
                           давали строку в 67 px, и двадцать строк реестра
-                          занимали полторы тысячи пикселей (решение Р-184). */}
+                          занимали полторы тысячи пикселей (решение Р-184).
+                          Каждое — ссылкой mailto: и tel:, как на карточке
+                          заявки (Р-276): письмо или звонок — одно нажатие;
+                          нечитаемое значение — текстом (решение Р-757). */}
                       {'email' in client ? (
                         <td style={TABLE_CELL}>
-                          {[client.email, client.phone].filter(Boolean).join(' · ') || '—'}
+                          <ContactLinks email={client.email} phone={client.phone} />
                         </td>
                       ) : null}
+                      {/* Число работ — ссылкой на «Мои работы» с его
+                          работами (решение Р-757). */}
                       <td style={TABLE_CELL}>
-                        {client.projects}
-                        {client.active > 0 ? ` · ${client.active} в работе` : ''}
+                        <a href={clientWorksHref(client.fullName)} style={LINE_LINK}>
+                          {client.projects}
+                          {client.active > 0 ? ` · ${client.active} в работе` : ''}
+                        </a>
                       </td>
                       <td style={TABLE_CELL}>{client.lastLoginAt === null ? 'не входил' : formatDay(client.lastLoginAt)}</td>
                     </tr>
@@ -245,15 +290,37 @@ export default async function RegistryScreen({
             <Text muted>Таких сообщений нет.</Text>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 14 }}>
-              {flagged.map((message) => (
-                <li key={message.id}>
-                  <Text size={14}>{message.body}</Text>
-                  <Text muted size={13} style={{ marginTop: 4 }}>
-                    {message.author.fullName} · {message.project?.title ?? ''} ·{' '}
-                    {formatDay(message.createdAt)}
-                  </Text>
-                </li>
-              ))}
+              {/* Работа — ссылкой на свою переписку, у поля ответа (Р-740),
+                  и с ФИО клиента из карточки: работ с одним названием у
+                  менеджера несколько, и подпись одним названием не
+                  говорила, какая из них. Автор назван, как прежде; если
+                  это сам клиент под тем же именем — «…, клиент», без
+                  повтора имени (решение Р-757). */}
+              {flagged.map((message) => {
+                const project = message.project;
+                const selfClient =
+                  project !== null &&
+                  message.author.role === 'CLIENT' &&
+                  message.author.fullName === project.client.fullName;
+                return (
+                  <li key={message.id}>
+                    <Text size={14}>{message.body}</Text>
+                    <Text muted size={13} style={{ marginTop: 4 }}>
+                      {selfClient ? `${message.author.fullName}, клиент` : message.author.fullName}
+                      {project === null ? null : (
+                        <>
+                          {' · '}
+                          <a href={`/cabinet/projects/${project.code}/messages#body`} style={LINE_LINK}>
+                            {project.title}
+                          </a>
+                          {selfClient ? null : ` · клиент ${project.client.fullName}`}
+                        </>
+                      )}
+                      {` · ${formatDay(message.createdAt)}`}
+                    </Text>
+                  </li>
+                );
+              })}
             </ul>
           )}
           <Text muted size={13} style={{ marginTop: 12 }}>

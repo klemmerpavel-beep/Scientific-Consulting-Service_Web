@@ -38,11 +38,10 @@ import { can } from '../../../lib/cabinet/access';
 import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
 import { formatAmount, formatRounded, outstandingOf, workMoneyNote, type OpenTranche } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
-import { staffThreadUnread } from '../../../lib/cabinet/messages';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
 import { leadQueue } from '../../../lib/cabinet/queries';
 import { attentionParts, attentionSources, practiceLight } from '../../../lib/cabinet/attention';
-import { answerDetail } from '../../../lib/cabinet/summary-answer';
+import { answerSegments } from '../../../lib/cabinet/summary-answer';
 import { CHECK_TITLE } from '../../../lib/cabinet/head-checks';
 import { reactionDays } from '../../../lib/cabinet/practice-settings';
 import { notifyChannelsDown } from '../../../lib/cabinet/outbox';
@@ -114,12 +113,6 @@ const ALERT_EDGE: Record<number, string | undefined> = {
  */
 const ALERT_WIDTH: Record<number, number> = { 0: 0, 1: 3, 2: 4, 3: 5, 4: 6 };
 
-/**
- * Сколько ближайших сроков стоит в плашке: столько, сколько входит в её
- * единый размер (Р-576); остальные — строкой «И ещё N».
- */
-const DEADLINES_SHOWN = 3;
-
 
 /**
  * Строка чисел в плашке сводки: подпись мелко, число крупнее (Р-574).
@@ -185,8 +178,6 @@ export default async function ManageQueue({
   const requested = Number((await searchParams).page ?? '1');
   // Вопрос руководителю задаётся внизу «Сегодня»: промежуточного экрана
   // «Управление» у менеджера больше нет (требование М-05, решение Р-305).
-  // Новые ответы руководителя в ветке менеджера (РК-07, Р-336).
-  const headReplies = actor.role === 'MANAGER' ? await staffThreadUnread(actor, actor.id) : 0;
   // Справочник типов сопровождения на сводке больше не нужен: формы
   // одобрения уехали на экран заявки (решение Р-172).
   // Выборки «Требует внимания» — одним набором с утренней сводкой
@@ -196,6 +187,9 @@ export default async function ManageQueue({
   const sources = await attentionSources(actor);
   const parts = attentionParts(sources);
   const { light, unread, today, outbox } = sources;
+  // Новые ответы руководителя в ветке менеджера (РК-07, Р-336) — тем же
+  // набором, что дело «Ответ руководителя» (решение Р-739).
+  const { headReplies } = sources;
   const term = actor.role === 'HEAD' ? await reactionDays() : 0;
   // «Команда» — лента плашек всех сотрудников (РК-06, Р-343; Р-575).
   const team = actor.role === 'HEAD' ? teamBrief(await teamLoad(actor)) : [];
@@ -290,6 +284,50 @@ export default async function ManageQueue({
   // «Ближайшие сроки» — все этапы действующих работ и срок работы без
   // плана, сорванные сверху (требование РК-04, решение Р-342).
   const deadlines = dashboard ? await upcomingDeadlines(actor) : [];
+  // Строка «Ближайших сроков»; все строки окна идут одним перечнем
+  // (решение Р-724).
+  const deadlineItem = (row: (typeof deadlines)[number]) => (
+    <li key={row.key} style={{ display: 'grid', gap: 2 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0,1fr) auto',
+          gap: 12,
+          alignItems: 'baseline',
+        }}
+      >
+        {/* Цель в 44 px набрана отступом, который раскладку не
+            трогает: коробка `cab-mark` давала однострочному
+            названию 11 px пустоты снизу, двухстрочному — нет, и
+            пункты шли с разным зазором (решение Р-679; приём —
+            как у ссылки на оферту, Р-253). */}
+        <a
+          href={row.href}
+          style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5, display: 'block', padding: '12px 0', margin: '-12px 0' }}
+        >
+          {row.stage === null ? row.title : `${row.stage} · ${row.title}`}
+        </a>
+        <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
+          {formatDate(row.dueOn)}
+        </Text>
+      </div>
+      <Text muted size={13}>
+        {[
+          row.late === null
+            ? null
+            : `просрочено ${row.late} ${plural(row.late, 'день', 'дня', 'дней')}`,
+          // Срок работы с планом — строкой «срок работы прошёл»: сорванных
+          // строк столько же, сколько в ответе «Сводки» (Р-719).
+          row.stage === null ? (row.planless ? 'срок работы, плана нет' : 'срок работы прошёл') : row.turn,
+          `менеджер — ${row.manager}`,
+          row.curator === null ? null : `куратор — ${row.curator}`,
+          row.paused ? 'приостановлена' : null,
+        ]
+          .filter((part) => part !== null)
+          .join(' · ')}
+      </Text>
+    </li>
+  );
   // «Получено» — с подписью периода: за 90 дней, как плитки, или за всё
   // время. 90 дней — по дате поступления той же функцией, что отчёт за
   // период (Р-236); за всё время — итог по траншам (Р-201).
@@ -370,12 +408,15 @@ export default async function ManageQueue({
     // Работа, у которой прошёл срок работы, а просроченного этапа нет, —
     // почти вся перенесённая книга: этапов у неё нет. Прежде такие работы
     // на сводку не попадали вовсе (решение Р-216).
-    ...parts.late.map((work: (typeof light.lateWorks)[number]) => {
+    ...parts.late.map((work) => {
       const late = overdueDays(work.dueOn);
       const rest = maySeeMoney ? owed(work.contract) : 0n;
       return {
         key: `late-${work.id}`,
         kind: 'late' as const,
+        // Приостановленная — после действующих и не первым делом дня
+        // (решение Р-720).
+        paused: work.status === 'PAUSED',
         title: work.title,
         mark:
           late === null
@@ -386,6 +427,9 @@ export default async function ManageQueue({
         detail: [
           work.status === 'PAUSED' ? 'приостановлена' : null,
           work._count.stages === 0 ? 'план работ не заведён' : null,
+          // Без куратора — здесь же, а не отдельной карточкой той же
+          // работы (решение Р-738).
+          work.noExpert ? 'нет куратора' : null,
           work.client.fullName,
           rest > 0n ? `не получено ${formatAmount(rest)}` : null,
         ]
@@ -397,7 +441,9 @@ export default async function ManageQueue({
             : work._count.stages === 0
             ? 'Назначить новый срок, завести план или закрыть работу'
             : 'Назначить новый срок работы или закрыть её',
-        href: `/cabinet/projects/${work.code}`,
+        // Срок меняется в форме «Изменить карточку»: дело открывает её
+        // раскрытой, а не верх карточки (решение Р-719; Р-487).
+        href: `/cabinet/projects/${work.code}?manage=1#manage-card`,
       };
     }),
     // Этап, уже названный просроченным, второй плашкой «ждёт клиента» не
@@ -448,9 +494,41 @@ export default async function ManageQueue({
       title: row.title,
       mark: `${row.count} ${plural(row.count, 'непрочитанное', 'непрочитанных', 'непрочитанных')}`,
       urgent: false,
-      detail: null,
+      // Клиент — у каждого дела по работе: у менеджера несколько работ с
+      // одним названием, и дело без клиента не говорило, какая из них
+      // (решение Р-721).
+      detail: row.client,
       todo: 'Ответить клиенту',
       href: `/cabinet/projects/${row.code}/messages`,
+    })),
+    // Сторона менеджера — симметрично: ответ руководителя в своей ветке и
+    // непрочитанное во внутренней ветке своей работы; гаснут прочтением
+    // ветки (решение Р-739, дополняет Р-304; Р-336). Стоят после сообщений
+    // клиента: у них общий предел свёртки, и непрочитанное клиента не должно
+    // уходить под «Показать все» (Р-257).
+    ...parts.headReply.map((row) => ({
+      key: 'head-reply',
+      kind: 'unread' as const,
+      step: 0 as const,
+      title: 'Ответ руководителя',
+      mark: `${row.count} ${plural(row.count, 'новое', 'новых', 'новых')}`,
+      urgent: false,
+      detail: null,
+      todo: 'Прочитать и ответить в кабинете',
+      href: '/cabinet/head',
+    })),
+    ...parts.internal.map((row) => ({
+      key: `internal-${row.code}`,
+      kind: 'unread' as const,
+      step: 0 as const,
+      title: row.title,
+      mark: `внутренняя переписка · ${row.count} ${plural(row.count, 'новое', 'новых', 'новых')}`,
+      urgent: false,
+      // Клиент — как у прочих дел по работе (Р-721); клиент этой ветки не
+      // видит (Р-336).
+      detail: row.client,
+      todo: 'Прочитать руководителя и ответить во внутренней переписке',
+      href: `/cabinet/projects/${row.code}/messages?tab=internal#body`,
     })),
     ...parts.comment.map((row) => ({
       key: `comment-${row.stageId ?? row.materialId}`,
@@ -459,7 +537,7 @@ export default async function ManageQueue({
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: `${row.count} ${plural(row.count, 'замечание', 'замечания', 'замечаний')} на модерации`,
       urgent: false,
-      detail: row.material,
+      detail: `${row.material} · ${row.client}`,
       todo: 'Опубликовать или отклонить — до этого клиент их не видит',
       // Замечание вне этапа разбирается на «Материалах работы», у своего
       // материала (решение Р-284).
@@ -475,7 +553,7 @@ export default async function ManageQueue({
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: 'куратор сдал этап',
       urgent: false,
-      detail: `сдан ${formatDay(row.handedOverAt)}`,
+      detail: `сдан ${formatDay(row.handedOverAt)} · ${row.client}`,
       todo: 'Посмотреть материалы и записку куратора: на согласование или вернуть куратору',
       href: row.href,
     })),
@@ -486,7 +564,7 @@ export default async function ManageQueue({
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: 'этап принят',
       urgent: false,
-      detail: null,
+      detail: row.client,
       todo: row.nextTitle === null ? 'Все этапы приняты — завершить работу' : `Запустить следующий этап «${row.nextTitle}»`,
       href: row.href,
     })),
@@ -512,7 +590,7 @@ export default async function ManageQueue({
       title: row.title,
       mark: 'куратор без доступа',
       urgent: false,
-      detail: row.expert,
+      detail: `${row.expert} · ${row.client}`,
       todo: 'Без договора поручения куратор не видит материалов: договор отмечает руководитель',
       href: `/cabinet/projects/${row.code}#manage`,
     })),
@@ -521,11 +599,14 @@ export default async function ManageQueue({
       kind: 'work' as const,
       step: 0 as const,
       title: row.title,
-      mark: 'нет плана этапов',
+      // Без плана и без куратора — одна карточка работы (решение Р-738).
+      mark: row.noExpert ? 'нет плана этапов и куратора' : 'нет плана этапов',
       urgent: false,
       detail: row.client,
-      todo: 'Завести план — по шаблону или вручную',
-      href: `/cabinet/projects/${row.code}#manage`,
+      todo: row.noExpert ? 'Завести план и назначить куратора' : 'Завести план — по шаблону или вручную',
+      // Дело открывает «Управление работой» раскрытым: первая форма в нём —
+      // «Новый этап» и «Завести план по шаблону» (решение Р-743; Р-487).
+      href: `/cabinet/projects/${row.code}?manage=1#manage`,
     })),
     ...parts.noExpert.map((row) => ({
       key: `noexpert-${row.code}`,
@@ -536,7 +617,8 @@ export default async function ManageQueue({
       urgent: false,
       detail: row.client,
       todo: 'Назначить куратора',
-      href: `/cabinet/projects/${row.code}#manage`,
+      // Сразу на форме «Куратор», как кнопка под названием (Р-743; Р-487).
+      href: `/cabinet/projects/${row.code}?manage=1#manage-expert`,
     })),
     ...parts.lateLeads.map((lead) => ({
       key: `latelead-${lead.id}`,
@@ -567,7 +649,7 @@ export default async function ManageQueue({
       title: `${row.stageTitle} · ${row.projectTitle}`,
       mark: `${row.count} ${plural(row.count, 'версия', 'версии', 'версий')} куратора на публикации`,
       urgent: false,
-      detail: row.material,
+      detail: `${row.material} · ${row.client}`,
       todo: 'Опубликовать клиенту или не публиковать — до этого клиент их не видит',
       href:
         row.stageId === null
@@ -608,10 +690,11 @@ export default async function ManageQueue({
       title: check.stage === null ? check.project.title : `${check.stage.title} · ${check.project.title}`,
       mark: check.kind === 'CONTRACT_BY_MANAGER' ? 'проверьте договор' : check.kind === 'ACT_AFTER_REOPEN' ? 'этап возвращён в работу' : 'этап принят',
       urgent: false,
+      // Клиент вместо кода работы: код на экран не выводится (Р-189, Р-721).
       detail:
         check.kind === 'CONTRACT_BY_MANAGER' && check.project.contract !== null
-          ? `${check.project.code}, ${formatAmount(check.project.contract.totalAmount)}`
-          : null,
+          ? `${check.project.client.fullName}, ${formatAmount(check.project.contract.totalAmount)}`
+          : check.project.client.fullName,
       todo: CHECK_TITLE[check.kind],
       href: `/cabinet/projects/${check.project.code}/payments`,
     })),
@@ -626,7 +709,14 @@ export default async function ManageQueue({
         title: clip(row.text, 80),
         mark: late === null ? `поручение до ${formatDate(row.dueOn)}` : `поручение просрочено на ${late} ${plural(late, 'день', 'дня', 'дней')}`,
         urgent: late !== null,
-        detail: row.project === null ? null : (row.project.title ?? row.project.code),
+        // Работа и клиент — пока исполнитель её видит; иначе работа не
+        // называется и код на экран не выводится (Р-420, Р-721).
+        detail:
+          row.project === null
+            ? null
+            : row.project.title === null
+              ? 'работа вам недоступна'
+              : `${row.project.title} · ${row.project.client}`,
         todo: 'Отметить «в работе» или «сделано»',
         href: '/cabinet/assignments',
       };
@@ -640,7 +730,7 @@ export default async function ManageQueue({
         title: `Поручение просрочено: ${row.assignee.fullName}`,
         mark: late === null ? 'срок сегодня' : `просрочено на ${late} ${plural(late, 'день', 'дня', 'дней')}`,
         urgent: true,
-        detail: clip(row.text, 80),
+        detail: row.project === null ? clip(row.text, 80) : `${clip(row.text, 80)} · ${row.project.client.fullName}`,
         todo: 'Узнать у сотрудника, перенести срок или отозвать поручение',
         href: '/cabinet/manage/assignments',
       };
@@ -653,7 +743,7 @@ export default async function ManageQueue({
       title: row.title,
       mark: `${row.manager === null ? 'заявка' : row.manager} · ждёт ${row.waitDays} ${plural(row.waitDays, 'день', 'дня', 'дней')}`,
       urgent: false,
-      detail: null,
+      detail: row.client,
       todo: row.todo,
       href: row.href,
     })),
@@ -665,7 +755,11 @@ export default async function ManageQueue({
   // Остальное — по ссылке «Показать все» (решение Р-257).
   const ATTENTION_LIMIT: Record<(typeof attention)[number]['kind'], number> = {
     overdue: 4,
-    late: 2,
+    // Действующие работы стоят первыми и заполняют предел: по ним можно
+    // действовать сегодня. Приостановленные — следом, если осталось место,
+    // иначе в полном перечне. Предел три вместо двух — чтобы место
+    // действующих не отнимали давние сроки работ на паузе (решение Р-720).
+    late: 3,
     returned: 3,
     stalled: 2,
     unread: 3,
@@ -695,21 +789,54 @@ export default async function ManageQueue({
   // Пояснение руководителю — по всей практике, как «Действующих работ»
   // в нём же; плашки «Мои» — по своим работам (Р-337, решение Р-695).
   const practice = await practiceLight(actor, sources);
+  // «Начать с главного» — первое дело, кроме срока приостановленной работы:
+  // первое нажатие дня не уходит на работу, которая стоит полтора года
+  // (решение Р-720; Р-207 уточняется выбором первого дела).
+  const main = attention.find((row) => !('paused' in row && row.paused)) ?? attention[0];
+  // Число сорванных сроков в ответе ведёт к «Ближайшим срокам», старший
+  // срок — на свой экран: этап — на экран этапа, работа — на её карточку
+  // (решение Р-724). Ссылка на блок — только если он на этом экране.
+  const answerParts = answerSegments({
+    light: {
+      overdue: practice.overdue.map((stage) => ({ title: stage.title, dueOn: stage.dueOn, href: `/cabinet/stages/${stage.id}` })),
+      lateWorks: practice.lateWorks.map((work) => ({ title: work.title, dueOn: work.dueOn, href: `/cabinet/projects/${work.code}` })),
+    },
+    live: summary === null ? null : summary.active + summary.paused,
+    comments: parts.comment.reduce((acc, row) => acc + row.count, 0),
+    versions: parts.version.reduce((acc, row) => acc + row.count, 0),
+    leads: queue.total,
+  });
+  const deadlinesHere = dashboard && isShown(layout, 'deadlines') && deadlines.length > 0;
+  // Ссылка на тёмной панели ответа — цветом текста пояснения и
+  // подчёркнутая (правило ссылок в абзаце, Р-168): акцентный синий на
+  // тёмно-синем не читается.
+  const answerText =
+    answerParts.length === 0 ? null : (
+      <>
+        {answerParts.map((part, index) =>
+          part.deadlines === true && deadlinesHere ? (
+            <a key={index} href="#deadlines" style={{ color: 'inherit' }}>
+              {part.text}
+            </a>
+          ) : part.href !== undefined ? (
+            <a key={index} href={part.href} style={{ color: 'inherit' }}>
+              {part.text}
+            </a>
+          ) : (
+            <Fragment key={index}>{part.text}</Fragment>
+          ),
+        )}
+      </>
+    );
   const answer = {
     lead:
       attention.length === 0
         ? 'Сегодня ничего не горит.'
         : `${attention.length} ${plural(attention.length, 'дело требует', 'дела требуют', 'дел требуют')} решения.`,
-    detail: answerDetail({
-      light: practice,
-      live: summary === null ? null : summary.active + summary.paused,
-      comments: parts.comment.reduce((acc, row) => acc + row.count, 0),
-      versions: parts.version.reduce((acc, row) => acc + row.count, 0),
-      leads: queue.total,
-    }),
+    detail: answerText,
     action:
-      attention.length === 0 ? undefined : (
-        <ButtonLink href={attention[0]!.href}>Начать с главного</ButtonLink>
+      main === undefined ? undefined : (
+        <ButtonLink href={main.href}>Начать с главного</ButtonLink>
       ),
   };
 
@@ -719,7 +846,10 @@ export default async function ManageQueue({
     advice === null
       ? null
       : practiceReview({
-          act: attention.map((row) => ({ title: row.title, note: row.mark, href: row.href })),
+          // Первая строка «Сделать» — то же дело, что «Начать с главного».
+          act: [main, ...attention.filter((row) => row !== main)]
+            .filter((row) => row !== undefined)
+            .map((row) => ({ title: row.title, note: row.mark, href: row.href })),
           watch: today.week.map((row) => ({
             title: row.title,
             note: `до ${formatDate(row.dueOn)}${row.turn === null ? '' : ` · ${row.turn}`}`,
@@ -1110,6 +1240,7 @@ export default async function ManageQueue({
           ) : (
             <BarChart
               title="Принято заказов по месяцам"
+              latest
               width={460}
               height={220}
               unit="работ"
@@ -1263,70 +1394,22 @@ export default async function ManageQueue({
             работы без плана — в окне двух недель и сорванные; у строки —
             чей ход, менеджер, куратор, пометка приостановленной (РК-04,
             Р-342). */}
-        <Card style={{ display: 'flex', flexDirection: 'column' }}>
-          <Heading level={2} size={3} style={{ marginBottom: 12 }}>
-            Ближайшие сроки
-          </Heading>
+        {/* Все строки окна — одним перечнем с прокруткой внутри плашки,
+            как «Ведутся сейчас»: плашка держит единый размер (Р-576).
+            Прежде видны были три строки, остальные — числом без перехода
+            (решение Р-724). Данные уже выбраны. Якорь — для числа
+            сорванных сроков в ответе «Сводки». */}
+        <ScrollCard id="deadlines" title="Ближайшие сроки" href="/cabinet/projects" hrefLabel="все работы">
           {deadlines.length === 0 ? (
             <Text muted size={14}>
               В ближайшие две недели сроков нет, сорванных сроков нет.
             </Text>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
-              {deadlines.slice(0, DEADLINES_SHOWN).map((row) => (
-                <li key={row.key} style={{ display: 'grid', gap: 2 }}>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0,1fr) auto',
-                      gap: 12,
-                      alignItems: 'baseline',
-                    }}
-                  >
-                    {/* Цель в 44 px набрана отступом, который раскладку не
-                        трогает: коробка `cab-mark` давала однострочному
-                        названию 11 px пустоты снизу, двухстрочному — нет, и
-                        пункты шли с разным зазором (решение Р-679; приём —
-                        как у ссылки на оферту, Р-253). */}
-                    <a
-                      href={row.href}
-                      style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.5, display: 'block', padding: '12px 0', margin: '-12px 0' }}
-                    >
-                      {row.stage === null ? row.title : `${row.stage} · ${row.title}`}
-                    </a>
-                    <Text muted size={13} style={{ whiteSpace: 'nowrap' }}>
-                      {formatDate(row.dueOn)}
-                    </Text>
-                  </div>
-                  <Text muted size={13}>
-                    {[
-                      row.late === null
-                        ? null
-                        : `просрочено ${row.late} ${plural(row.late, 'день', 'дня', 'дней')}`,
-                      row.stage === null ? 'срок работы, плана нет' : row.turn,
-                      `менеджер — ${row.manager}`,
-                      row.curator === null ? null : `куратор — ${row.curator}`,
-                      row.paused ? 'приостановлена' : null,
-                    ]
-                      .filter((part) => part !== null)
-                      .join(' · ')}
-                  </Text>
-                </li>
-              ))}
+              {deadlines.map(deadlineItem)}
             </ul>
           )}
-          {deadlines.length <= DEADLINES_SHOWN ? null : (
-            <Text muted size={13} style={{ marginTop: 10 }}>
-              И ещё {deadlines.length - DEADLINES_SHOWN}{' '}
-              {plural(deadlines.length - DEADLINES_SHOWN, 'срок', 'срока', 'сроков')} в том же окне.
-            </Text>
-          )}
-          <div style={{ marginTop: 'auto', paddingTop: 12 }}>
-            <ButtonLink href="/cabinet/projects" tone="quiet">
-              Все работы
-            </ButtonLink>
-          </div>
-        </Card>
+        </ScrollCard>
       </>
     ),
     money: (
@@ -1392,6 +1475,12 @@ export default async function ManageQueue({
                         <a className="cab-mark" href="/cabinet/manage/finance/debtors">
                           {row.value}
                         </a>
+                      ) : row.key === 'wait' && money.awaiting > 0n ? (
+                        // «К получению» — к «Поступлениям», где тот же итог
+                        // разложен по месяцам (Р-348; решение Р-752).
+                        <a className="cab-mark" href="/cabinet/manage/finance/receipts">
+                          {row.value}
+                        </a>
                       ) : (
                         row.value
                       )}
@@ -1411,6 +1500,7 @@ export default async function ManageQueue({
               <div style={{ marginTop: 12 }}>
                 <BarChart
                   title="Поступления по месяцу оплаты"
+                  latest
                   width={460}
                   height={150}
                   unit="тыс ₽"
@@ -1515,7 +1605,12 @@ export default async function ManageQueue({
               {/* «Настроить» — какие плашки «Сводки» показывать и в каком
                   порядке (К-5, Р-595). */}
               <ButtonLink href="/cabinet/manage/layout">Настроить</ButtonLink>
-              <ButtonLink href="/cabinet/manage/report">Отчёт за период</ButtonLink>
+              {/* Отчёт — за период «Пульса»: 90 дней — за 90 дней, иначе
+                  за 30. Прежде отчёт всегда открывался за 30 дней, и числа
+                  «Пульса за 90 дней» с ним не сходились (решение Р-759). */}
+              <ButtonLink href={`/cabinet/manage/report?period=${period === '90' ? 'quarter' : 'month'}`}>
+                Отчёт за период
+              </ButtonLink>
             </>
           ) : undefined
         }

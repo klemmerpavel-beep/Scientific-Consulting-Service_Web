@@ -22,6 +22,7 @@ import { can } from '../../../../lib/cabinet/access';
 import {
   ASSIGNMENT_STATUS_LABEL,
   allAssignments,
+  assignableWorks,
   isAssignmentOverdue,
 } from '../../../../lib/cabinet/assignments';
 import { daysPast, now as clockNow } from '../../../../lib/cabinet/clock';
@@ -37,10 +38,12 @@ export const dynamic = 'force-dynamic';
  * «Управление → Поручения» (требование РК-19, решение Р-352; В-19).
  *
  * Руководитель ставит поручение менеджеру или куратору: текст, срок, по
- * желанию — код работы. Форма принимает готовый текст и работу из адреса
- * (`?text=`, `?project=`) — так открывают поручение из рекомендации и из
- * строки должника. Ниже — все поручения: открытые сверху, просроченные
- * помечены; открытое можно отозвать.
+ * желанию — работа, выбором из идущих и приостановленных (работа из адреса
+ * — и завершённая, кроме отменённой). Форма принимает
+ * готовый текст и работу из адреса (`?text=`, `?project=`) — так открывают
+ * поручение из рекомендации, из строки должника и с карточки работы; с
+ * работой «Кому» — её менеджер (решение Р-731). Ниже — все поручения:
+ * открытые сверху, просроченные помечены; открытое можно отозвать.
  */
 export default async function AssignmentsScreen({
   searchParams,
@@ -51,11 +54,25 @@ export default async function AssignmentsScreen({
   if (!can(actor, 'ASSIGNMENT_CREATE')) redirect(homeFor(actor));
   const flags = await searchParams;
   const draft = (await formDraft(flags.error)) ?? {};
-  const [rows, managers, curatorList] = await Promise.all([allAssignments(actor), curators(actor), experts(actor)]);
+  // Работа из адреса («Должники», карточка, рекомендация) или черновика —
+  // в выборе при любом состоянии, кроме отменённой: «Должники» показывают
+  // и завершённые работы (решение Р-731).
+  const picked = draft.project ?? flags.project ?? '';
+  const [rows, managers, curatorList, works] = await Promise.all([
+    allAssignments(actor),
+    curators(actor),
+    experts(actor),
+    assignableWorks(actor, picked),
+  ]);
   const people = [
     ...managers.filter((row) => row.role === 'MANAGER').map((row) => ({ id: row.id, label: `${row.fullName} — менеджер` })),
     ...curatorList.map((row) => ({ id: row.id, label: `${row.fullName} — куратор` })),
   ];
+  // Работа из адреса или черновика выбрана, «Кому» — её менеджер, если
+  // поручение ему можно поставить (решение Р-731).
+  const work = works.find((row) => row.code === picked) ?? null;
+  const assignee =
+    draft.assigneeId ?? (work !== null && people.some((person) => person.id === work.managerId) ? work.managerId : '');
   const at = clockNow();
   const open = rows.filter((row) => row.status === 'ASSIGNED' || row.status === 'IN_PROGRESS');
   const late = open.filter((row) => isAssignmentOverdue(row, at));
@@ -80,7 +97,7 @@ export default async function AssignmentsScreen({
           Новое поручение
         </Heading>
         <Form action={createAssignmentAction}>
-          <Select label="Кому" name="assigneeId" required defaultValue={draft.assigneeId ?? ''}>
+          <Select label="Кому" name="assigneeId" required defaultValue={assignee}>
             <option value="">Выберите сотрудника</option>
             {people.map((person) => (
               <option key={person.id} value={person.id}>
@@ -97,12 +114,21 @@ export default async function AssignmentsScreen({
             hint="Не длиннее 2000 знаков. Сотрудник получит текст в уведомлении."
           />
           <Field label="Срок" name="dueOn" type="date" required defaultValue={draft.dueOn ?? ''} />
-          <Field
-            label="Код работы, если поручение по работе"
+          {/* Работа — выбором, а не кодом: код на экраны не выводится
+              (решения Р-189, Р-731); он — значение выбора. */}
+          <Select
+            label="Работа, если поручение по работе"
             name="project"
-            defaultValue={draft.project ?? flags.project ?? ''}
+            defaultValue={work?.code ?? ''}
             hint="Сотрудник должен вести эту работу: менеджер — свою, куратор — назначенную."
-          />
+          >
+            <option value="">Без работы</option>
+            {works.map((row) => (
+              <option key={row.code} value={row.code}>
+                {row.label}
+              </option>
+            ))}
+          </Select>
           <FormActions>
             <Button>Поставить поручение</Button>
           </FormActions>

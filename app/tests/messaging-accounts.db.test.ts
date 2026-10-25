@@ -162,11 +162,11 @@ describe('переписка и учётные записи', { skip: !enabled }
   it('пределы длины: замечание, сообщение, способ связи', async () => {
     await assert.rejects(
       () => materials.addComment(client(), ids.version!, 'а'.repeat(10_001)),
-      /длиннее 10000/u,
+      /длиннее 10\s000/u,
     );
     await assert.rejects(
       () => sendMessage(client(), ids.project!, 'б'.repeat(10_001)),
-      /длиннее 10000/u,
+      /длиннее 10\s000/u,
     );
     await assert.rejects(
       () => channels.addContact(client(), { kind: 'PHONE_CALL', value: '1'.repeat(501) }),

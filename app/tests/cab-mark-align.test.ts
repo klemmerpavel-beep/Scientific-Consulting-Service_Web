@@ -38,8 +38,10 @@ describe('cab-mark в ячейке и в dd — текст на линии со�
 
 describe('«Сводка» — ближайшие сроки: название не получает пустоты снизу', () => {
   const page = code('manage', 'page.tsx');
-  const start = page.indexOf('Ближайшие сроки');
-  const block = page.slice(start, page.indexOf('</ul>', start));
+  // Строка срока — одна разметка для первых строк и для раскрытия
+  // остальных на месте (решение Р-724).
+  const start = page.indexOf('const deadlineItem');
+  const block = page.slice(start, page.indexOf('</li>', start));
 
   it('ссылка пункта — блок с отступом, который не трогает раскладку', () => {
     assert.match(
@@ -66,7 +68,9 @@ describe('«Работы» — ссылки в строке текста не р
   });
 
   it('ссылка на ждущий этап — cab-mark в строке-ряду, хвост срока отдельным куском', () => {
-    const start = page.indexOf('{waiting === null ? null : (');
+    // Строка дела — одна разметка для всех ждущих этапов работы
+    // (решения Р-728, Р-729).
+    const start = page.indexOf('const waitingRow');
     const block = page.slice(start, page.indexOf('</Text>', start));
     assert.match(
       block,

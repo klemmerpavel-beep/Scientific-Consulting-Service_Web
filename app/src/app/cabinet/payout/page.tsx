@@ -38,10 +38,9 @@ export default async function PayoutScreen() {
 
   return (
     <Shell actor={actor} current="/cabinet/payout">
-      <ScreenHead
-        title="Начислено и выплачено"
-        note="Начисления ставит практика по этапу или работе целиком."
-      />
+      {/* Заголовок — как пункт меню и ссылка с карточки работы
+          (решение Р-737); подзаголовок прежний. */}
+      <ScreenHead title="Вознаграждение" note="Начисления ставит практика по этапу или работе целиком." />
 
       {/* Плитка была переписана здесь вручную, и числа разошлись с общей
           частью: 180 против 190 в минимальной ширине, 24 против 28 в
@@ -58,12 +57,15 @@ export default async function PayoutScreen() {
         // Суммы шли строкой во flex и друг под другом по разряду не
         // вставали: сравнить их глазом было нельзя. Таблица ставит их в
         // столбец, как на прочих денежных экранах.
+        // На узком экране «За что» — второй строкой под работой, как
+        // комментарий к начислению: «Состояние» и «Сумма» входят в ширину
+        // без прокрутки вбок; на широком таблица прежняя (решение Р-737).
         <TableCard label="Начисления по работам">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+          <table className="cab-pay" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
             <thead>
               <tr>
                 <th style={TABLE_HEAD} scope="col">Работа</th>
-                <th style={TABLE_HEAD} scope="col">За что</th>
+                <th className="cab-pay-for" style={TABLE_HEAD} scope="col">За что</th>
                 <th style={TABLE_HEAD} scope="col">Состояние</th>
                 <th style={TABLE_NUM_HEAD} scope="col">Сумма, ₽</th>
               </tr>
@@ -86,8 +88,14 @@ export default async function PayoutScreen() {
                     ) : (
                       <a className="cab-mark" href={`/cabinet/projects/${row.project.code}`}>{row.project.title}</a>
                     )}
+                    {row.project === null && row.comment === null ? null : (
+                      <div className="cab-pay-for-line" style={{ fontSize: 13 }}>
+                        {row.project === null ? null : <div>{row.stage?.title ?? 'по работе в целом'}</div>}
+                        {row.comment === null ? null : <div style={{ color: 'var(--pd-ink-muted)' }}>{row.comment}</div>}
+                      </div>
+                    )}
                   </td>
-                  <td style={TABLE_CELL}>
+                  <td className="cab-pay-for" style={TABLE_CELL}>
                     {row.project === null ? '—' : (row.stage?.title ?? 'по работе в целом')}
                     {row.comment === null ? null : (
                       <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{row.comment}</div>

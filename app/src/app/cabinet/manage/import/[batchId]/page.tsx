@@ -32,6 +32,7 @@ import { can } from '../../../../../lib/cabinet/access';
 import { curators } from '../../../../../lib/cabinet/queries';
 import { loadBatch, mergeCandidates } from '../../../../../lib/cabinet/import/apply';
 import { formatAmount } from '../../../../../lib/cabinet/money';
+import { deadlineFixed, issueExplanation } from '../../../../../lib/cabinet/import/issue-note';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { applyOrderBook, mergeClientCards } from '../../../actions';
@@ -43,6 +44,16 @@ const ACTION_LABEL = {
   UPDATE: 'обновить',
   SKIP: 'уже перенесена',
 } as const;
+
+/**
+ * Наименьшая ширина таблицы «Строки книги», px. С пояснениями замечаний
+ * (решение Р-732) при прежних 880 px столбец «Состояние» на 390 px
+ * сжимался до 155 px, и строка вытягивалась в высоту; при 1100 px он
+ * получает около 300 px. Предел — у таблицы, а не у столбца: наименьшая
+ * ширина столбца меняла бы раскладку и на 1440, где таблица и так шире
+ * (1158 px), — там облик прежний.
+ */
+const BOOK_TABLE_MIN_WIDTH = 1100;
 
 /**
  * Строка зафиксированной загрузки, которая работой не стала: разбор нашёл
@@ -275,7 +286,7 @@ export default async function ImportBatchScreen({
       <div style={{ marginBottom: 28 }}>
         <LongTable
           label="Строки книги"
-          minWidth={880}
+          minWidth={BOOK_TABLE_MIN_WIDTH}
           columns={
             <tr>
               <th style={TABLE_HEAD} scope="col">№</th>
@@ -296,14 +307,26 @@ export default async function ImportBatchScreen({
                 {row.rawType}
                 {row.typeCode === null ? ' · не сведено' : ''}
               </td>
-              <td style={TABLE_CELL}>{formatDate(row.deadline) ?? '—'}</td>
+              {/* Срок, поправленный разбором, помечен: он переходит в
+                  карточку работы как настоящий (решение Р-732). */}
+              <td style={TABLE_CELL}>
+                {formatDate(row.deadline) ?? '—'}
+                {deadlineFixed(row.issues) ? ' · поправлено' : ''}
+              </td>
               <td style={TABLE_NUM}>{formatAmount(row.cost)}</td>
               <td style={TABLE_NUM}>{formatAmount(row.paid)}</td>
               <td style={TABLE_CELL}>
                 {row.statusLabel}
+                {/* У замечания — пояснение разбора: исходный текст ячейки и
+                    что с ним сделано (решение Р-732). */}
                 {row.issues.length === 0
                   ? ''
-                  : ` · ${row.issues.map((issue) => issue.label).join('; ')}`}
+                  : ` · ${row.issues
+                      .map((issue) => {
+                        const why = issueExplanation(issue, row);
+                        return why === null ? issue.label : `${issue.label}: ${why}`;
+                      })
+                      .join('; ')}`}
               </td>
               <td style={TABLE_CELL}>
                 <Chip tone={row.action === 'SKIP' ? 'neutral' : 'accent'}>

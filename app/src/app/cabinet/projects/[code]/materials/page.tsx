@@ -16,6 +16,7 @@ import {
   FormActions,
   FormRow,
   Heading,
+  Outcome,
   ScreenHead,
   Select,
   Text,
@@ -26,6 +27,9 @@ import {
   plural,
 } from '../../../../../components/cabinet/ui';
 import { can, contributionRefusal } from '../../../../../lib/cabinet/access';
+import { formDraft } from '../../../../../lib/cabinet/flash';
+import { OUTCOME_ANCHOR, OUTCOME_FLAGS, PUBLISHED_LINE } from '../../../../../lib/cabinet/outcome-lines';
+import DropFlag from '../../../../../components/cabinet/DropFlag';
 import { projectMaterials } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { addMaterialVersion, decideOnComment, decideOnVersion } from '../../../actions';
@@ -37,7 +41,7 @@ export default async function ProjectMaterialsScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; published?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}/materials`);
 
@@ -59,6 +63,40 @@ export default async function ProjectMaterialsScreen({
   const openStages = project.stages.filter(
     (stage) => contributionRefusal(actor, project.status, stage.state) === null,
   );
+  // Этап по умолчанию в «Приложить материал» — первый открытый «Ждём ваших
+  // данных», иначе текущий незавершённый: файл, приложенный без смены
+  // выбора, встаёт на этап и виден на его экране. «Без привязки к этапу»
+  // остаётся вариантом выбора (Р-284; решение Р-745).
+  // Правило — клиенту: его ход «Ждём ваших данных». У куратора этап по
+  // умолчанию подставляет форма «Ваша работа» на карточке по своему ходу
+  // (Р-326), у практики — прежнее «без привязки».
+  const currentStage = project.stages.find((stage) => stage.state !== 'DONE') ?? null;
+  const defaultStage =
+    actor.role !== 'CLIENT'
+      ? null
+      : (openStages.find((stage) => stage.state === 'AWAITING_CLIENT') ??
+        (currentStage !== null && openStages.includes(currentStage) ? currentStage : null));
+  // Отказ загрузки возвращает к своей форме — новому материалу или новой
+  // версии — с набранным названием и выбранным этапом; причина стоит у формы
+  // (решение Р-722). Формы нет на экране — причина вверху.
+  const errorId = (await searchParams).error;
+  const draft = (await formDraft(errorId)) ?? {};
+  // «Опубликовать клиенту» — строкой исхода, если версия и правда
+  // опубликована (решение Р-725).
+  const { published } = await searchParams;
+  const publishedShown =
+    errorId === undefined &&
+    published !== undefined &&
+    can(actor, 'COMMENT_MODERATE', ref) &&
+    project.materials.some((material) =>
+      material.versions.some((version) => version.id === published && version.moderation?.status === 'PUBLISHED'),
+    );
+  const versionForm = (material: (typeof project.materials)[number]) =>
+    mayUpload && contributionRefusal(actor, project.status, material.stage?.state ?? null) === null;
+  const uploadPlaced =
+    mayUpload &&
+    (draft.upload === 'new' ||
+      project.materials.some((material) => material.id === draft.upload && versionForm(material)));
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -68,7 +106,9 @@ export default async function ProjectMaterialsScreen({
         title="Материалы работы"
       />
       {/* Отказ загрузки возвращается сюда причиной (решение Р-255). */}
-      <ActionError id={(await searchParams).error} />
+      <ActionError id={errorId} unplaced={uploadPlaced ? [] : ['upload']} />
+      {publishedShown ? <Outcome id={OUTCOME_ANCHOR}>{PUBLISHED_LINE}</Outcome> : null}
+      {published === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
 
       {project.materials.length === 0 ? (
         <Empty title="Материалов пока нет" />
@@ -223,9 +263,10 @@ export default async function ProjectMaterialsScreen({
                       ))
                   : null}
 
-                {mayUpload && contributionRefusal(actor, project.status, material.stage?.state ?? null) === null ? (
+                {versionForm(material) ? (
                   <Form
                     action={addMaterialVersion}
+                    id={`upload-${material.id}`}
                     style={{
                       marginTop: 16,
                       paddingTop: 16,
@@ -235,6 +276,7 @@ export default async function ProjectMaterialsScreen({
                     <input type="hidden" name="projectId" value={project.id} />
                     <input type="hidden" name="materialId" value={material.id} />
                     <input type="hidden" name="back" value={`/cabinet/projects/${project.code}/materials`} />
+                    {draft.upload === material.id ? <ActionError id={errorId} slot="upload" /> : null}
                     <FileField
                       label={`Новая версия материала «${material.title}»`}
                       name="file"
@@ -259,25 +301,30 @@ export default async function ProjectMaterialsScreen({
       ) : null}
 
       {mayUpload ? (
-        <Card style={{ marginTop: 28 }}>
+        <Card id="new-material" style={{ marginTop: 28 }}>
           <Heading level={2} style={{ marginBottom: 16 }}>Приложить материал</Heading>
           <Form action={addMaterialVersion}>
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="back" value={`/cabinet/projects/${project.code}/materials`} />
+            {draft.upload === 'new' ? <ActionError id={errorId} slot="upload" /> : null}
             <FormRow>
-              <Field label="Название" name="title" maxLength={300} placeholder="Черновик главы 2" />
-              <Select label="Этап" name="stageId" defaultValue="">
-                <option value="">без привязки к этапу</option>
+              <Field label="Название" name="title" maxLength={300} placeholder="Черновик главы 2"
+                defaultValue={draft.upload === 'new' ? draft.title : undefined} />
+              <Select label="Этап" name="stageId" defaultValue={draft.upload === 'new' ? (draft.stageId ?? '') : (defaultStage?.id ?? '')}>
                 {openStages.map((stage) => (
                   <option key={stage.id} value={stage.id}>
                     {stage.position}. {stage.title}
                   </option>
                 ))}
+                {/* «Без привязки» — последним, кнопка — «Приложить
+                    материал»: как в «Вашей работе» и на экране этапа
+                    (задача ВК-Кр09, решение Р-755). */}
+                <option value="">без привязки к этапу</option>
               </Select>
               <FileField label="Файл" name="file" required />
             </FormRow>
             <FormActions>
-              <Button>Приложить</Button>
+              <Button>Приложить материал</Button>
             </FormActions>
           </Form>
         </Card>

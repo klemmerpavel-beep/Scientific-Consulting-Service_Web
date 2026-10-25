@@ -117,7 +117,10 @@ export default async function AnalyticsOverview() {
             />
             {/* Отменённые не входят: их неоплаченное — потеря, а не долг
                 (решение Р-257). */}
-            <Tile label="Задолженность" value={formatAmount(total.outstanding)} note="остаток по каждой работе, кроме отменённых" />
+            {/* Та же величина, что «К получению» на «Сводке» и в «Деньгах», —
+                и то же имя: «задолженность» читалась как просроченный долг
+                (Р-257; решение Р-752). */}
+            <Tile label="К получению" value={formatAmount(total.outstanding)} note="остаток по каждой работе, кроме отменённых" />
             <Tile label="Средний чек" value={formatRounded(total.averageCheck)} note={`клиентов ${total.clients}`} />
           </Tiles>
 
@@ -170,6 +173,13 @@ export default async function AnalyticsOverview() {
                   <Text size={14} style={{ marginTop: 10 }}>
                     <strong style={{ fontWeight: 600 }}>Что делать: </strong>
                     {item.action}
+                  </Text>
+                  {/* Экран, где действие делается, — одним нажатием
+                      (решение Р-751). */}
+                  <Text size={14} style={{ marginTop: 8 }}>
+                    <a className="cab-mark" href={item.next.href}>
+                      {item.next.label}
+                    </a>
                   </Text>
                   <div style={{ marginTop: 'auto' }} />
                   <div
@@ -235,6 +245,7 @@ export default async function AnalyticsOverview() {
                 оказываются все столбцы, а не каждый третий (решение Р-175). */}
             <BarChart
               title="Законтрактовано по месяцам"
+              latest
               width={1000}
               unit="тыс ₽"
               data={months.map((month) => ({
@@ -275,6 +286,7 @@ export default async function AnalyticsOverview() {
               <>
                 <BarChart
                   title="Заявки по месяцам"
+                  latest
                   width={1000}
                   unit="заявок"
                   data={leadMonths.map((month) => ({

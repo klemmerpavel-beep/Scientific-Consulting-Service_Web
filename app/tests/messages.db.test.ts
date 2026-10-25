@@ -128,6 +128,11 @@ describe('переписка по работе', { skip: !enabled }, async () =>
     assert.equal(sent.containsContactHint, true);
     const flagged = await messages.flaggedMessages(manager());
     assert.ok(flagged.some((row) => row.id === sent.id), 'помеченное сообщение не попало в реестр');
+    // Строка реестра ведёт к переписке своей работы и называет клиента:
+    // одноимённых работ у менеджера несколько (решение Р-757).
+    const row = flagged.find((item) => item.id === sent.id);
+    assert.equal(row?.project?.code, `PD-MS-${stamp}`);
+    assert.equal(row?.project?.client.fullName, `Заказчик ${stamp}`);
     // Менеджер другой работы этого сообщения не видит: в нём контакт
     // чужого клиента (решение Р-220).
     const foreign = await messages.flaggedMessages(actorOf(`ms-other-${stamp}`, 'MANAGER'));

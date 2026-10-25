@@ -15,6 +15,7 @@ import {
 } from './tokens.ts';
 import type { WaveMood } from '../../lib/cabinet/charts';
 import { presentAuthor } from '../../lib/cabinet/access';
+import { approvalDueLabel } from '../../lib/cabinet/approval-text';
 import { BLOCKED_HINT } from '../../lib/cabinet/file-guard';
 import {
   STAGE_STATE_LABEL,
@@ -361,6 +362,7 @@ export function Field({
   minWidth,
   dense = false,
   maxLength,
+  describedBy,
 }: {
   label: string;
   name: string;
@@ -368,7 +370,8 @@ export function Field({
   required?: boolean;
   placeholder?: string;
   defaultValue?: string;
-  hint?: string;
+  /** Подсказка; ссылка в ней — переход на соседний экран (Р-722). */
+  hint?: ReactNode;
   multiline?: boolean;
   /** Предел длины, который держит и сервер: форма не даёт набрать больше. */
   maxLength?: number;
@@ -384,6 +387,11 @@ export function Field({
    * масштабирует вьюпорт (Р-86), поэтому высота снимается отступом.
    */
   dense?: boolean;
+  /**
+   * Пояснение, стоящее вне поля: строка под рядом «поле — кнопка», где
+   * подсказка под самим полем сбила бы ряд (карточка работы, Р-722).
+   */
+  describedBy?: string;
 }) {
   // Рамка — `--pd-field-edge`, не светлее 3:1 к белому и к тихой
   // поверхности: прежняя кромка давала 1,65:1 (решение Р-253).
@@ -395,7 +403,8 @@ export function Field({
   // «Электронная почта Тот адрес, который вы указывали при обращении.»
   const id = fieldId(name, scope);
   const hintId = hint === undefined ? undefined : `${id}-hint`;
-  const shared = { name, required, placeholder, defaultValue, maxLength, 'aria-describedby': hintId };
+  const described = [hintId, describedBy].filter((part) => part !== undefined).join(' ') || undefined;
+  const shared = { name, required, placeholder, defaultValue, maxLength, 'aria-describedby': described };
   const box = minWidth === undefined ? control : { ...control, minWidth };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -405,10 +414,12 @@ export function Field({
       ) : (
         <input id={id} type={type} {...shared} style={box} />
       )}
+      {/* Подсказка — строка текста: абзацем, и ссылка в ней — строчная
+          ссылка текста, а не отдельная цель нажатия (Р-57; решение Р-761). */}
       {hint === undefined ? null : (
-        <span id={hintId} style={{ fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
+        <p id={hintId} style={{ margin: 0, fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-muted)' }}>
           {hint}
-        </span>
+        </p>
       )}
     </div>
   );
@@ -451,6 +462,7 @@ export function Form({
   method,
   encType,
   inline = false,
+  id,
   children,
   style,
 }: {
@@ -470,6 +482,8 @@ export function Form({
    * на всю ячейку — иначе строка таблицы разъезжается.
    */
   inline?: boolean;
+  /** Якорь: отказ формы возвращает к ней, а не в начало экрана (Р-722). */
+  id?: string;
   children: ReactNode;
   style?: CSSProperties;
 }) {
@@ -477,7 +491,7 @@ export function Form({
     ? { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'end' }
     : { display: 'flex', flexDirection: 'column', gap: FORM_GAP, height: '100%' };
   return (
-    <form action={action} method={method} encType={encType} style={{ ...shape, ...style }}>
+    <form id={id} action={action} method={method} encType={encType} style={{ ...shape, ...style }}>
       {children}
     </form>
   );
@@ -1309,12 +1323,16 @@ export function Notice({
 export function Outcome({
   children,
   tone = 'ok',
+  id,
 }: {
   children: ReactNode;
   tone?: 'ok' | 'error';
+  /** Якорь: после действия окно открывается на строке исхода (Р-725). */
+  id?: string;
 }) {
   return (
-    <div className="cab-outcome" style={{ marginBottom: 20 }}>
+    // Отступ над строкой при переходе по якорю: она не прилипает к краю окна.
+    <div className="cab-outcome" id={id} style={{ marginBottom: 20, scrollMarginTop: 24 }}>
       <Notice tone={tone} role={tone === 'error' ? 'alert' : 'status'}>
         {children}
       </Notice>
@@ -1424,12 +1442,15 @@ export function Tile({
   label,
   value,
   note,
+  href,
   chart,
   children,
 }: {
   label: string;
   value: string;
   note?: string;
+  /** Число — ссылкой на экран, где оно разложено (решение Р-752). */
+  href?: string;
   chart?: ReactNode;
   children?: ReactNode;
 }) {
@@ -1458,7 +1479,16 @@ export function Tile({
           fontVariantNumeric: 'tabular-nums',
         }}
       >
-        {value}
+        {href === undefined ? (
+          value
+        ) : (
+          // Цель нажатия 44 px, а строка числа — прежней высоты: поля
+          // ссылки уходят за строку, плитка не растёт и число стоит
+          // вровень с соседними (Р-679).
+          <a className="cab-mark" href={href} style={{ margin: 'calc((1.24em - 44px) / 2) 0' }}>
+            {value}
+          </a>
+        )}
       </Text>
       {note === undefined ? null : (
         <Text muted size={13} style={{ marginTop: 6 }}>
@@ -1738,6 +1768,11 @@ export interface RoadmapItem extends StepItem {
   readonly note?: string | null;
   readonly done?: boolean;
   /**
+   * Подпись срока вместо «срок {дата}»: клиенту у этапа на согласовании —
+   * «согласовать до {дата}», одна дата на карточке (решение Р-741).
+   */
+  readonly dueText?: string | null;
+  /**
    * Суть выполнения этапа: что на нём делается и чем он закончится.
    * Заполняет менеджер; показывается под раскрытием, чтобы план оставался
    * обозримым (решение Р-190).
@@ -1758,17 +1793,24 @@ export interface RoadmapItem extends StepItem {
 export function Roadmap({
   items,
   staff = false,
+  empty,
 }: {
   items: readonly RoadmapItem[];
   /** Подписи глазами практики; куратору не пишется «куратор добавит». */
   staff?: boolean;
+  /**
+   * Пустой план — по роли и состоянию работы (`emptyPlan`): у закрытой
+   * работы «Этапов у работы нет», а не обещание плана (Р-742, Р-206).
+   */
+  empty?: string;
 }) {
   if (items.length === 0) {
     return (
       <Text muted>
-        {staff
-          ? 'План работ ещё не заведён.'
-          : 'Этапы ещё не заведены — менеджер добавит их после согласования плана.'}
+        {empty ??
+          (staff
+            ? 'План работ ещё не заведён.'
+            : 'Этапы ещё не заведены — менеджер добавит их после согласования плана.')}
       </Text>
     );
   }
@@ -1839,7 +1881,7 @@ export function Roadmap({
               }}
             >
               {stageLabel(item.state, staff)}
-              {item.dueOn ? ` · срок ${item.dueOn}` : ''}
+              {item.dueText ? ` · ${item.dueText}` : item.dueOn ? ` · срок ${item.dueOn}` : ''}
               {item.late === true && item.state !== 'DONE' ? ' · срок прошёл' : ''}
             </span>
             {item.note === null || item.note === undefined ? null : (
@@ -1952,7 +1994,8 @@ export function ScreenHead({
    */
   answer?: {
     lead: string;
-    detail?: string | null;
+    /** Пояснение; на «Сводке» — со ссылками к срокам (решение Р-724). */
+    detail?: ReactNode;
     action?: ReactNode;
   };
 }) {
@@ -2319,11 +2362,18 @@ export function BoardColumn({
  * прокрутки нет: перечень идёт потоком (Р-320).
  */
 export function ScrollCard({
+  id,
   title,
   href,
   hrefLabel,
   children,
 }: {
+  /**
+   * Якорь плашки — для ссылки на неё с того же экрана («Ближайшие сроки» из
+   * ответа «Сводки», решение Р-724); верх плашки встаёт в 24 px от края
+   * окна, как у других якорных блоков «Сводки».
+   */
+  id?: string;
   title: string;
   href?: string;
   hrefLabel: string;
@@ -2331,8 +2381,10 @@ export function ScrollCard({
 }) {
   return (
     <section
+      id={id}
       className="cab-card cab-dash-list"
       style={{
+        ...(id === undefined ? {} : { scrollMarginTop: 24 }),
         background: 'var(--pd-ink-inverse)',
         border: '1px solid var(--pd-border)',
         borderRadius: RADIUS.card,
@@ -2433,14 +2485,21 @@ export function ProgressPanel({
   projectDueOn,
   stageLate = false,
   projectLate = false,
+  projectLateDays = null,
+  emptyTitle,
+  emptyTitleHref = null,
+  approvalDueOn = null,
+  approvalLate = false,
   staff = false,
   action,
   actionHref,
   actionLabel,
+  more,
   waiting: waitingFor,
   projectStatus,
   turnViewer,
   hasExpert,
+  client,
   executor,
   style,
 }: {
@@ -2453,11 +2512,42 @@ export function ProgressPanel({
   /** Срок прошёл: называется словом, не цветом (решение Р-206). */
   stageLate?: boolean;
   projectLate?: boolean;
+  /**
+   * Сколько дней прошло после срока работы — практике, по правилу ответа
+   * «Сводки» (решение Р-719). Клиенту не передаётся: у него, как
+   * прежде, одно слово «прошёл» (Р-654). Число дней снимок не ломает:
+   * съёмка идёт при остановленных часах кабинета (Р-205).
+   */
+  projectLateDays?: number | null;
+  /**
+   * Заголовок шкалы пустого плана — по роли и состоянию работы
+   * (`emptyPlan`): у закрытой работы «Работа завершена» или «Работа
+   * отменена», а не «План работы ещё составляется» (Р-742, Р-206).
+   */
+  emptyTitle?: string;
+  /**
+   * Заголовок пустого плана — ссылкой на форму «Новый этап» (практике
+   * действующей работы, Р-743): «Плана нет: заведите этапы…».
+   */
+  emptyTitleHref?: string | null;
+  /**
+   * Срок согласования текущего этапа — клиенту, вместо срока этапа: одна
+   * дата, к которой ответить (решение Р-741). Практике не передаётся.
+   */
+  approvalDueOn?: string | null;
+  /** Срок согласования прошёл — словом, как у срока этапа (Р-206). */
+  approvalLate?: boolean;
   /** Панель читает практика, а не клиент. */
   staff?: boolean;
   action?: string | null;
   actionHref?: string | null;
   actionLabel?: string;
+  /**
+   * Следующее дело того же человека по работе — строкой со ссылкой на его
+   * этап под главной фразой (решение Р-729): прежде «Ещё дел: 1.» не
+   * называло дела и никуда не вело.
+   */
+  more?: ReactNode;
   /**
    * Работа ждёт клиента — на любом этапе, а не только на первом
    * незавершённом (решение Р-287). Без значения — по текущему этапу.
@@ -2468,6 +2558,8 @@ export function ProgressPanel({
   /** Кто смотрит и назначен ли эксперт — для подписи хода (Р-288). */
   turnViewer?: TurnViewer;
   hasExpert?: boolean;
+  /** Клиент работы — практике, в нижней строке перед куратором (Р-748). */
+  client?: string | null;
   /** Исполнитель работы — практике, в нижней строке (М-16, Р-298). */
   executor?: string | null;
   style?: CSSProperties;
@@ -2482,6 +2574,7 @@ export function ProgressPanel({
   // из состояния, а не из текущего времени, — иначе снимок менялся бы ото
   // дня ко дню (решение Р-186).
   const mood: WaveMood = current === null && total > 0 ? 'done' : waiting ? 'waiting' : 'active';
+  const answer = action ?? panelAnswer(current, total, staff, projectStatus, turnViewer, hasExpert);
   return (
     <section
       className="cab-block"
@@ -2507,7 +2600,13 @@ export function ProgressPanel({
         >
           {current === null
             ? total === 0
-              ? 'План работы ещё составляется'
+              ? emptyTitleHref == null
+                ? (emptyTitle ?? 'План работы ещё составляется')
+                : (
+                    <a className="cab-mark" href={emptyTitleHref}>
+                      {emptyTitle}
+                    </a>
+                  )
               : 'Все этапы завершены'
             : `${stageLabel(current.state, staff)}: ${current.title}`}
         </span>
@@ -2535,28 +2634,37 @@ export function ProgressPanel({
           левого края. */}
       <WaveBar share={share} mood={mood} />
 
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-        {/* Фраза — ответ на вопрос, с которым сюда приходят, и набрана
-            антиквой, как лид на страницах сайта: она главнее строки
-            состояния над шкалой (решение Р-207). */}
-        <span
-          style={{
-            fontFamily: SERIF,
-            fontSize: 20,
-            fontWeight: 500,
-            lineHeight: 1.4,
-            letterSpacing: '-.005em',
-            color: 'var(--pd-ink)',
-          }}
-        >
-          {action ?? panelAnswer(current, total, staff, projectStatus, turnViewer, hasExpert)}
-        </span>
-        {actionHref == null ? null : (
-          <ButtonLink href={actionHref} tone="primary">
-            {actionLabel ?? 'Открыть этап'}
-          </ButtonLink>
-        )}
-      </div>
+      {/* Пустая фраза без кнопки — ряда нет: заголовок уже назвал и факт,
+          и шаг (практике работы без плана, решение Р-743). */}
+      {answer === '' && actionHref == null ? null : (
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Фраза — ответ на вопрос, с которым сюда приходят, и набрана
+              антиквой, как лид на страницах сайта: она главнее строки
+              состояния над шкалой (решение Р-207). */}
+          <span
+            style={{
+              fontFamily: SERIF,
+              fontSize: 20,
+              fontWeight: 500,
+              lineHeight: 1.4,
+              letterSpacing: '-.005em',
+              color: 'var(--pd-ink)',
+            }}
+          >
+            {answer}
+          </span>
+          {actionHref == null ? null : (
+            <ButtonLink href={actionHref} tone="primary">
+              {actionLabel ?? 'Открыть этап'}
+            </ButtonLink>
+          )}
+        </div>
+      )}
+
+      {/* Абзац, а не блок: ссылка в строке текста подчёркнута (Р-168). */}
+      {more == null ? null : (
+        <p style={{ margin: 0, fontFamily: SANS, fontSize: 14, lineHeight: 1.5, color: 'var(--pd-ink)' }}>{more}</p>
+      )}
 
       <div
         style={{
@@ -2574,7 +2682,12 @@ export function ProgressPanel({
             {done} из {total} {plural(total, 'этапа', 'этапов', 'этапов')} завершено
           </span>
         )}
-        {stageDueOn == null ? null : (
+        {approvalDueOn != null ? (
+          <span>
+            {approvalDueLabel(approvalDueOn)}
+            {approvalLate ? ' · прошёл' : ''}
+          </span>
+        ) : stageDueOn == null ? null : (
           <span>
             срок этапа — {stageDueOn}
             {stageLate ? ' · прошёл' : ''}
@@ -2583,9 +2696,14 @@ export function ProgressPanel({
         {projectDueOn == null ? null : (
           <span>
             срок работы — {projectDueOn}
-            {projectLate ? ' · прошёл' : ''}
+            {projectLate
+              ? projectLateDays == null
+                ? ' · прошёл'
+                : ` · прошёл ${projectLateDays} ${plural(projectLateDays, 'день', 'дня', 'дней')}`
+              : ''}
           </span>
         )}
+        {client == null ? null : <span>{client}</span>}
         {executor == null ? null : <span>{executor}</span>}
       </div>
     </section>
@@ -2932,7 +3050,9 @@ export function formatDay(value: Date | null | undefined): string | null {
 
 /**
  * Состояние своей версии у куратора (требование Э-06, решение Р-326):
- * «ждёт публикации», «опубликована {дата}» — днём решения менеджера по
+ * «ждёт публикации менеджером» — одним написанием с пометкой версии на
+ * экране этапа и строкой «Ждут публикации менеджером» в «Вашей работе»
+ * (решение Р-755), «опубликована {дата}» — днём решения менеджера по
  * Москве, «отклонена: {причина}». `null` — у версии нет модерации: её
  * загрузил менеджер или клиент.
  */
@@ -2940,7 +3060,7 @@ export function versionState(
   moderation: { status: string; decidedAt?: Date | null; note: string | null } | null,
 ): string | null {
   if (moderation === null) return null;
-  if (moderation.status === 'PENDING') return 'ждёт публикации';
+  if (moderation.status === 'PENDING') return 'ждёт публикации менеджером';
   if (moderation.status === 'PUBLISHED') {
     return moderation.decidedAt == null ? 'опубликована' : `опубликована ${formatDay(moderation.decidedAt)}`;
   }

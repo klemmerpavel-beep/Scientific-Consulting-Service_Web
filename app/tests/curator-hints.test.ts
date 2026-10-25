@@ -35,7 +35,10 @@ function stageScreens(role: string): string[] {
 describe('подсказки у поля замечания (Э-07, С-1)', () => {
   it('у куратора — все три, только при `curatorView`', () => {
     const source = readFileSync(STAGE_PAGE, 'utf8');
-    const field = source.slice(source.indexOf('label="Комментарий к текущей версии"'));
+    // У куратора поле — «Замечание к текущей версии» (решение Р-755).
+    const at = source.indexOf("label={curatorView ? 'Замечание к текущей версии'");
+    assert.ok(at >= 0, 'поле замечания куратора не найдено');
+    const field = source.slice(at);
     const form = field.slice(0, field.indexOf('</Form>'));
     for (const hint of HINTS) {
       assert.equal(source.split(hint).length - 1, 1, `подсказка «${hint}» не одна на экране`);

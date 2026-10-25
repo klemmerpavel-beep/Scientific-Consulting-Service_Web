@@ -316,7 +316,7 @@ export async function autoAcceptExpired(at: Date = new Date()): Promise<number> 
         eventKind: 'STAGE_APPROVED',
         letter: (work) => ({
           subject: `Этап «${stage.title}» принят по истечении срока`,
-          body: `Работа ${work.code}.\n${AUTO_ACCEPT_NOTE}: «${stage.title}».\n${stageLink(stage.id)}`,
+          body: `${workLine(work, false)}\n${AUTO_ACCEPT_NOTE}: «${stage.title}».\n${stageLink(stage.id)}`,
         }),
         key: `stage:${stage.id}:auto-accepted-expert:${change.id}`,
         path: `/cabinet/stages/${stage.id}`,

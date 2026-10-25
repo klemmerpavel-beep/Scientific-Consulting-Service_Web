@@ -21,6 +21,8 @@ import { clientWaitDays, turnLabel, type StageStateKey } from './stage-state.ts'
 import { curatorTasks } from './curator-tasks.ts';
 import { moscowToday, now as today } from './clock.ts';
 import { LEAD_STATUS_LABEL } from './lead-labels.ts';
+import { outcomeSince } from './outcome-lines.ts';
+import { clientUploadedAt, uploadedLast } from './works-answer.ts';
 
 /**
  * Выборки экранов кабинета. Каждая строится через ограничение из модуля
@@ -287,6 +289,11 @@ export async function stageById(actor: Actor, stageId: string) {
           // Есть ли у клиента вход: без него срок согласования не идёт
           // (требование М-13, решение Р-291).
           client: { select: { userId: true } },
+          // Почта менеджера — куратору ссылкой «написать менеджеру» у этапа
+          // без описания (решение Р-749; Э-12, Р-331): на карточке
+          // работы она ему уже видна. Клиенту адрес затирает
+          // `withoutStaffNames` по роли — поэтому роль в выборке.
+          manager: { select: { email: true, role: true } },
         },
       },
 
@@ -386,6 +393,35 @@ export async function stageClientWait(
   // Срок, перенесённый на те же дни: календарные дни, как в оферте.
   const until = stage.dueOn === null || days === 0 ? null : new Date(stage.dueOn.getTime() + days * 86_400_000);
   return { days, until };
+}
+
+/**
+ * Подтверждение признака `?done=due` (решение Р-725): этот человек
+ * только что перенёс срок именно этого этапа, и новый срок — нынешний.
+ * Событие «срок перенесён» пишет `rescheduleStage` — этап, прежний и новый
+ * срок, кто и когда (Р-302). Признак, подставленный в адрес руками, у
+ * этапа без свежего переноса строки «Срок этапа перенесён на …» не даёт.
+ */
+export async function dueMovedJustNow(
+  actor: Actor,
+  stage: { readonly id: string; readonly projectId: string; readonly dueOn: Date | null },
+  at: Date = new Date(),
+): Promise<boolean> {
+  if (stage.dueOn === null) return false;
+  const moved = await prisma.projectEvent.findFirst({
+    where: {
+      projectId: stage.projectId,
+      actorId: actor.id,
+      kind: 'STAGE_DUE_CHANGED',
+      createdAt: { gte: outcomeSince(at) },
+      AND: [
+        { payload: { path: ['stageId'], equals: stage.id } },
+        { payload: { path: ['dueTo'], equals: stage.dueOn.toISOString().slice(0, 10) } },
+      ],
+    },
+    select: { id: true },
+  });
+  return moved !== null;
 }
 
 /**
@@ -503,11 +539,17 @@ export async function pausedWorksCount(actor: Actor): Promise<number> {
  * Дела куратора (требование Э-04, решение Р-329): этапы его работ,
  * действующих и приостановленных (Д-4), свои версии и замечания с решением
  * менеджера — одной выборкой на вид. Правила — в `curatorTasks`.
+ *
+ * С кодом — дела одной работы: для её карточки (решение Р-744).
  */
-export async function curatorTasksData(actor: Actor) {
+export async function curatorTasksData(actor: Actor, code?: string) {
   const scope = scopeProjects(actor);
   if (actor.role !== 'EXPERT' || scope === null) return curatorTasks([]);
-  const openWork = { ...scope, status: { in: ['ACTIVE' as const, 'PAUSED' as const] } };
+  const openWork = {
+    ...scope,
+    ...(code === undefined ? {} : { code }),
+    status: { in: ['ACTIVE' as const, 'PAUSED' as const] },
+  };
   // Состояние — чтобы не брать дел с завершённого этапа (Р-524).
   const stageRef = { select: { id: true, dueOn: true, state: true } };
   const [works, versions, comments] = await Promise.all([
@@ -518,6 +560,8 @@ export async function curatorTasksData(actor: Actor) {
         code: true,
         title: true,
         status: true,
+        // Заказчик — различить одноимённые работы в ответе (Р-730).
+        client: { select: { fullName: true } },
         stages: {
           where: { state: 'IN_PROGRESS', handedOverAt: null },
           orderBy: { position: 'asc' },
@@ -566,7 +610,7 @@ export async function curatorTasksData(actor: Actor) {
     }),
   ]);
   return curatorTasks(
-    works,
+    works.map(({ client, ...work }) => ({ ...work, client: client.fullName })),
     versions.map((version) => ({
       versionId: version.id,
       materialId: version.material.id,
@@ -587,6 +631,21 @@ export async function curatorTasksData(actor: Actor) {
       stage: comment.version.material.stage,
     })),
   );
+}
+
+/**
+ * Последний возврат этапа клиентом — замечания для карточки работы
+ * куратора, те же, что под шапкой экрана этапа (решения Р-744, Р-281).
+ * Текст эксперту отдаёт `presentReturnText`.
+ */
+export async function lastClientReturn(actor: Actor, stageId: string) {
+  const scope = scopeProjects(actor);
+  if (scope === null) return null;
+  return prisma.stageStateChange.findFirst({
+    where: { stageId, via: 'CLIENT_RETURN', stage: { project: scope } },
+    orderBy: { createdAt: 'desc' },
+    select: { reason: true, contactHint: true, createdAt: true },
+  });
 }
 
 /**
@@ -632,9 +691,36 @@ export async function pendingActions(actor: Actor) {
       state: { in: ['AWAITING_CLIENT', 'IN_APPROVAL'] },
     },
     orderBy: [{ dueOn: 'asc' }, { awaitingClientSince: 'asc' }, { id: 'asc' }],
-    include: { project: { select: { code: true, title: true } } },
+    include: {
+      project: { select: { code: true, title: true } },
+      // Последняя версия клиента по этапу: после неё дело клиента говорит
+      // «Вы приложили материалы…» и встаёт после его дел без загрузки
+      // (решение Р-728). Состояние этапа, права и уведомления не
+      // меняются.
+      materials: {
+        where: { deletedAt: null },
+        select: {
+          versions: {
+            where: { purgedAt: null, uploadedBy: { role: 'CLIENT' } },
+            orderBy: { uploadedAt: 'desc' },
+            take: 1,
+            select: { uploadedAt: true },
+          },
+        },
+      },
+    },
   });
-  return stages;
+  const rows = stages.map(({ materials, ...stage }) => ({
+    ...stage,
+    clientUploadedAt: clientUploadedAt(
+      stage,
+      materials.flatMap((material) => material.versions.map((version) => version.uploadedAt)),
+    ),
+  }));
+  // Дела с загрузкой встают после дел без неё только у клиента: это его
+  // ход. Менеджеру, руководителю и куратору плашки и «Требует внимания»
+  // идут по сроку, как прежде (решение Р-728).
+  return actor.role === 'CLIENT' ? uploadedLast(rows) : rows;
 }
 
 /** Очередь заявок для менеджера и руководителя. */
@@ -1457,11 +1543,13 @@ export async function pendingReview(
  */
 export async function todayItems(actor: Actor) {
   const empty = {
-    accepted: [] as { stageTitle: string; projectTitle: string; nextTitle: string | null; href: string }[],
-    handedOver: [] as { stageTitle: string; projectTitle: string; handedOverAt: Date; href: string }[],
+    // Клиент — в пояснении дела: одноимённые работы различаются по нему
+    // (решение Р-721).
+    accepted: [] as { stageTitle: string; projectTitle: string; client: string; nextTitle: string | null; href: string }[],
+    handedOver: [] as { stageTitle: string; projectTitle: string; client: string; handedOverAt: Date; href: string }[],
     noPlan: [] as { code: string; title: string; client: string }[],
     noExpert: [] as { code: string; title: string; client: string }[],
-    noNda: [] as { code: string; title: string; expert: string }[],
+    noNda: [] as { code: string; title: string; expert: string; client: string }[],
     ndaWaiting: [] as { id: string; fullName: string; requestedAt: Date | null; works: number }[],
     week: [] as { key: string; title: string; dueOn: Date; href: string; turn: string | null }[],
     lateLeads: [] as { id: string; name: string | null; createdAt: Date }[],
@@ -1518,6 +1606,7 @@ export async function todayItems(actor: Actor) {
         out.accepted.push({
           stageTitle: done.title,
           projectTitle: project.title,
+          client: project.client.fullName,
           nextTitle: next?.title ?? null,
           href: next === null ? `/cabinet/projects/${project.code}/status?to=COMPLETED` : `/cabinet/stages/${next.id}`,
         });
@@ -1530,6 +1619,7 @@ export async function todayItems(actor: Actor) {
         out.handedOver.push({
           stageTitle: stage.title,
           projectTitle: project.title,
+          client: project.client.fullName,
           handedOverAt: stage.handedOverAt,
           href: `/cabinet/stages/${stage.id}`,
         });
@@ -1550,7 +1640,7 @@ export async function todayItems(actor: Actor) {
       project.expert !== null &&
       (project.expert.expertProfile?.ndaSignedAt ?? null) === null
     ) {
-      out.noNda.push({ code: project.code, title: project.title, expert: project.expert.fullName });
+      out.noNda.push({ code: project.code, title: project.title, expert: project.expert.fullName, client: project.client.fullName });
     }
     for (const stage of stages) {
       if (stage.state !== 'DONE' && stage.dueOn !== null && stage.dueOn >= today && stage.dueOn <= inWeek) {

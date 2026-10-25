@@ -12,6 +12,7 @@ import { escapeHtml } from './token.ts';
 import { formatDay } from './approval-text.ts';
 import { DAILY_MAIL_HOUR, moscowToday, now as clockNow } from './clock.ts';
 import { LEASE_MS, leaseRunningOut } from './outbox-lease.ts';
+import { fateOf, outcomeSince, type NoticeFate } from './outcome-lines.ts';
 
 /**
  * Очередь исходящих уведомлений.
@@ -818,6 +819,31 @@ async function signalFailure(channel: 'EMAIL' | 'TELEGRAM', at: Date): Promise<v
       only: other,
     });
   }
+}
+
+/**
+ * Что стало с уведомлением о действии — для строки исхода на экране
+ * (решение Р-725): строка не обещает письма, которого не будет (Р-163,
+ * Р-267). Берутся строки очереди человека по событию и началу ключа
+ * (ключ называет этап или работу) — только поставленные в окне исхода:
+ * строка прошлого переноса на тот же срок о нынешнем действии не говорит.
+ * Канал без настройки не в счёт.
+ */
+export async function noticeFate(
+  userId: string | null,
+  eventKind: EventKind,
+  dedupPrefix: string,
+  at: Date = new Date(),
+): Promise<NoticeFate> {
+  if (userId === null) return 'none';
+  const rows = await prisma.notificationOutbox.findMany({
+    where: { userId, eventKind, dedupKey: { startsWith: dedupPrefix }, createdAt: { gte: outcomeSince(at) } },
+    select: { channel: true },
+  });
+  return fateOf(
+    rows.map((row) => row.channel),
+    { mail: mailConfigured(), telegram: Boolean((process.env.TELEGRAM_BOT_TOKEN ?? '').trim()) },
+  );
 }
 
 /**

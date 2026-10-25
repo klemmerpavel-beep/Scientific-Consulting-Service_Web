@@ -223,6 +223,11 @@ a:hover{color:var(--pd-accent-press)}
 .cab-card{transition:box-shadow 200ms ${EASING},border-color 200ms ${EASING}}
 .cab-link-card:hover,.cab-link-card:focus-within{box-shadow:${SHADOW.hover}!important;border-color:var(--pd-accent-edge)!important}
 .cab-mark{display:inline-flex;align-items:center;min-height:44px}
+/* Кнопка, которая выглядит строчной ссылкой: заготовка переписки отправляет
+   набранный текст своему действию и стоит в ряду таких же ссылок, как
+   прежде (решение Р-722). */
+.cab-linkbtn{appearance:none;background:none;border:0;margin:0;padding:0;font:inherit;color:var(--pd-accent);text-align:left;cursor:pointer}
+.cab-linkbtn:hover{color:var(--pd-accent-press)}
 /* В ячейке таблицы и в dd соседи стоят по верху: строка ссылки, отцентрованная
    в коробке 44 px, опускалась на 10–12 px ниже соседних величин. Цель
    нажатия та же, текст — на линии соседей (решение Р-679). */
@@ -311,6 +316,29 @@ details[open].cab-block>summary{border-radius:${RADIUS.card - 1}px ${RADIUS.card
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:768px){.cab-two{grid-template-columns:minmax(0,1fr)!important}}
 @media (max-width:480px){.cab-pad{padding-left:20px!important;padding-right:20px!important}}
+/* Шапка на телефоне: прежде вордмарк, две строки меню и строка «роль +
+   Выйти» занимали 293 px из 844 — треть первого экрана. До 480 px «Выйти»
+   стоит в строке вордмарка справа, меню — строками ниже через 8 px,
+   отступы сверху и снизу — 12 px; состав, порядок и подписи меню прежние,
+   цели — 44 px (Р-57). Подпись роли на телефоне не выводится ни у кого:
+   у сотрудников она не помещалась рядом с «Выйти». Высота формы не
+   задана: при крупном шрифте или очень узком экране «Выйти» уходит на
+   свою строку целиком, а не срезается (WCAG 1.4.4) (задача ВК-К09, решение Р-754). */
+@media (max-width:480px){.cab-head{padding-top:12px!important;padding-bottom:12px!important;row-gap:12px!important}.cab-head>.cab-nav{order:2!important;flex:0 0 100%!important}.cab-nav>ul{row-gap:8px!important}.cab-exit{order:1!important;margin-left:auto!important}.cab-role{display:none!important}}
+/* Таблица «Какое событие каким каналом» на телефоне: подписи «письмом» и
+   «в Telegram» в ячейках убраны с глаз, но остаются для читалки — столбцы
+   подписаны в шапке; поля ячеек уже, и три столбца входят без прокрутки
+   вбок (решение Р-736). */
+@media (max-width:600px){.cab-rule-seen{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.cab-rules th,.cab-rules td{padding-left:8px!important;padding-right:8px!important}}
+/* «Вознаграждение» на телефоне: «За что» — второй строкой под работой, как
+   комментарий к начислению; столбец «За что» и наименьшая ширина таблицы
+   сняты, поля между столбцами уже — «Состояние» и «Сумма» входят в ширину
+   без прокрутки вбок. На 360 px поля 10 и 5 px: «диссертационного»,
+   «выплачено» и «Сумма, ₽» с полями 16 и 8 px в 318 px не входили. На
+   широком экране таблица прежняя (решение Р-737). */
+.cab-pay-for-line{display:none}
+@media (max-width:768px){.cab-pay{min-width:0!important}.cab-pay .cab-pay-for{display:none}.cab-pay-for-line{display:block;margin-top:2px}.cab-pay th,.cab-pay td{padding-left:8px!important;padding-right:8px!important}.cab-pay th:first-child,.cab-pay td:first-child{padding-left:16px!important}.cab-pay th:last-child,.cab-pay td:last-child{padding-right:16px!important}}
+@media (max-width:480px){.cab-pay th,.cab-pay td{padding-left:5px!important;padding-right:5px!important}.cab-pay th:first-child,.cab-pay td:first-child{padding-left:10px!important}.cab-pay th:last-child,.cab-pay td:last-child{padding-right:10px!important}}
 /* Кнопка замечаний 52 px стоит в правом нижнем углу с отступом 16 px и у
    низа страницы закрывала ссылку «Политика обработки данных»: подвалу —
    нижнее поле под кнопку, 52 + 16 + 8 запаса. Шире 1295 px ссылки кончаются

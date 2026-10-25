@@ -52,18 +52,23 @@ export default async function MyAssignmentsScreen({ searchParams }: { searchPara
                 return (
                   <li key={row.id} style={{ borderBottom: '1px solid var(--pd-divider)', paddingBottom: 14 }}>
                     <Text size={15}>{row.text}</Text>
+                    {/* Работа — ссылкой и с именем клиента, как у руководителя
+                        (Р-708), пока исполнитель её видит (Р-420): одноимённые
+                        работы различаются по клиенту, и от поручения до работы
+                        — один переход. Без доступа работа не называется, код
+                        на экран не выводится (Р-189, решение Р-721). */}
                     <Text muted size={13} style={{ marginTop: 6 }}>
-                      {[
-                        `срок ${formatDate(row.dueOn)}`,
-                        row.project === null
-                          ? null
-                          : row.project.title === null
-                            ? `работа ${row.project.code}`
-                            : `работа «${row.project.title}»`,
-                        row.createdBy === null ? null : `поставил ${row.createdBy.fullName}`,
-                      ]
-                        .filter((part) => part !== null)
-                        .join(' · ')}
+                      {`срок ${formatDate(row.dueOn)}`}
+                      {row.project === null ? null : row.project.title === null ? (
+                        ' · работа вам недоступна'
+                      ) : (
+                        <>
+                          {' · '}
+                          <a href={`/cabinet/projects/${row.project.code}`}>работа «{row.project.title}»</a>
+                          {` · клиент ${row.project.client}`}
+                        </>
+                      )}
+                      {row.createdBy === null ? null : ` · поставил ${row.createdBy.fullName}`}
                     </Text>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
                       <Chip>{ASSIGNMENT_STATUS_LABEL[row.status]}</Chip>

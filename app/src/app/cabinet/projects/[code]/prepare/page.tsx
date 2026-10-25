@@ -62,7 +62,9 @@ export default async function PrepareScreen({
           </ButtonLink>
         }
       />
-      <ActionError id={(await searchParams).error} />
+      {/* Отказ загрузки идёт с местом «upload» экрана материалов; здесь
+          формы с этим местом нет — причина вверху, как прежде (Р-722). */}
+      <ActionError id={(await searchParams).error} unplaced={['upload']} />
 
       {rows.length === 0 ? null : (
         <Card>

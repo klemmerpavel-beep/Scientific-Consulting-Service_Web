@@ -117,8 +117,14 @@ export default async function Shell({
           borderBottom: '1px solid var(--pd-border)',
         }}
       >
+        {/* До 480 px шапка сжата классами `cab-head`, `cab-exit`, `cab-role`
+            (Р-25, Р-33): «Выйти» — в строке вордмарка справа, отступы
+            12 px, строки меню через 8 px; состав, порядок и подписи меню
+            прежние. Подпись роли на телефоне не выводится; высота формы
+            не задана, и «Выйти» при крупном шрифте не срезается
+            (задача ВК-К09, решение Р-754). */}
         <div
-          className="cab-pad"
+          className="cab-pad cab-head"
           style={{
             boxSizing: 'border-box',
             maxWidth: CONTAINER,
@@ -170,9 +176,11 @@ export default async function Shell({
             <form
               action="/cabinet/exit"
               method="post"
+              className="cab-exit"
               style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}
             >
               <span
+                className="cab-role"
                 style={{
                   fontFamily: MONO,
                   fontSize: 12,

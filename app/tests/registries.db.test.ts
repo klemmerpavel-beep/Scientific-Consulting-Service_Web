@@ -211,6 +211,29 @@ describe('реестры и служебные экраны', { skip: !enabled }
     assert.equal(row?.projects, 1);
   });
 
+  it('ссылка числа работ открывает столько же работ клиента, сколько в реестре, и не чужие', async () => {
+    // Ссылка реестра — «Мои работы» с отбором «Все» и поиском по ФИО
+    // (решение Р-757). Менеджеру — только его работы клиента, как и
+    // число в реестре (Р-149, Р-220); завершённая тоже в счёте.
+    const fullName = `Ссылка Клиент ${tail}`;
+    const client = await newClient(fullName);
+    const mine = [
+      await newProject('L1', client, { managerId: ids.manager }),
+      await newProject('L2', client, { managerId: ids.manager, status: 'COMPLETED' }),
+    ];
+    await newProject('L3', client);
+    const manager = who(ids.manager!, 'MANAGER');
+    for (const [actor, expected] of [[manager, 2], [head(), 3]] as const) {
+      const row = (await queries.clientRegistry(actor)).find((item) => item.id === client);
+      const list = await queries.listProjects(actor, { filter: 'all', query: fullName });
+      assert.equal(row?.projects, expected);
+      assert.equal(list.total, expected, `${actor.role}: по ссылке ${list.total}, в реестре ${row?.projects}`);
+      assert.ok(list.rows.every((item) => item.clientId === client));
+    }
+    const forManager = await queries.listProjects(manager, { filter: 'all', query: fullName });
+    assert.deepEqual(forManager.rows.map((item) => item.id).sort(), [...mine].sort());
+  });
+
   it('приостановленная работа — среди действующих', async () => {
     const client = await newClient(`Пауза Клиент ${tail}`);
     const paused = await newProject('PA', client, { status: 'PAUSED' });

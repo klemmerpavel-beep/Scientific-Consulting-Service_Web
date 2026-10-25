@@ -20,6 +20,21 @@ import { clip } from './text-clip.ts';
 export interface LateRow {
   readonly title: string;
   readonly dueOn: Date | null;
+  /** Экран срока: старший срок в ответе ведёт сюда (решение Р-724). */
+  readonly href?: string;
+}
+
+/**
+ * Кусок пояснения. Число сорванных сроков ведёт к «Ближайшим срокам» той же
+ * «Сводки», старший срок — на свой экран (решение Р-724): прежде фраза
+ * называла шесть сроков и старшую работу, а перейти к ним было нельзя.
+ */
+export interface AnswerSegment {
+  readonly text: string;
+  /** Кусок — число сорванных сроков: ссылка на «Ближайшие сроки», если блок на экране. */
+  readonly deadlines?: true;
+  /** Адрес экрана старшего срока. */
+  readonly href?: string;
 }
 
 function word(count: number, one: string, few: string, many: string): string {
@@ -31,7 +46,7 @@ function word(count: number, one: string, few: string, many: string): string {
   return many;
 }
 
-export function answerDetail(input: {
+export interface AnswerInput {
   readonly light: { readonly overdue: readonly LateRow[]; readonly lateWorks: readonly LateRow[] };
   /** Действующих работ; `null` — смотрящему практика целиком не открыта. */
   readonly live: number | null;
@@ -42,7 +57,16 @@ export function answerDetail(input: {
   readonly leads: number;
   /** День счёта просрочки — у часов кабинета (Р-205). */
   readonly at?: Date;
-}): string | null {
+}
+
+/** Пояснение одной строкой — та же фраза, что `answerSegments`, без ссылок. */
+export function answerDetail(input: AnswerInput): string | null {
+  const segments = answerSegments(input);
+  return segments.length === 0 ? null : segments.map((segment) => segment.text).join('');
+}
+
+/** Пояснение кусками: текст тот же, что у `answerDetail`, у двух кусков — переход. */
+export function answerSegments(input: AnswerInput): AnswerSegment[] {
   const { light } = input;
   // Сорванные сроки — этапов и работ без просроченного этапа; старший
   // срок — самый давний из тех и других (решение Р-216).
@@ -52,25 +76,31 @@ export function answerDetail(input: {
       .filter((row) => row.dueOn !== null)
       .sort((a, b) => a.dueOn!.getTime() - b.dueOn!.getTime())[0] ?? null;
   const oldestLate = oldest === null ? null : daysPast(oldest.dueOn, input.at ?? now());
-  return (
-    [
-      // «Этапов и работ»: число складывает сорванные этапы и работы без
-      // сорванного этапа, и без уточнения его сверяли с «Работ с прошедшим
-      // сроком» отчёта — другой величиной (решение Р-257).
-      lateCount === 0
-        ? null
-        : `Сорвано сроков этапов и работ — ${lateCount}; старший — «${clip(oldest?.title ?? '', 48)}»${
-            oldestLate === null ? '' : `, ${oldestLate} ${word(oldestLate, 'день', 'дня', 'дней')}`
-          }.`,
-      input.live === null ? null : `Действующих работ — ${input.live}.`,
-      // Всё, что ждёт публикации, — одной строкой по видам (улучшение
-      // УЭ-04, решение Р-382); сами дела — ниже, по этапам.
-      waitingPublication(input.comments, input.versions),
-      input.leads === 0
-        ? null
-        : `${input.leads} ${word(input.leads, 'заявка ждёт', 'заявки ждут', 'заявок ждут')} разбора.`,
-    ]
-      .filter((part) => part !== null)
-      .join(' ') || null
-  );
+  const out: AnswerSegment[] = [];
+  // «Этапов и работ»: число складывает сорванные этапы и работы без
+  // сорванного этапа, и без уточнения его сверяли с «Работ с прошедшим
+  // сроком» отчёта — другой величиной (решение Р-257).
+  if (lateCount > 0) {
+    out.push({ text: `Сорвано сроков этапов и работ — ${lateCount}`, deadlines: true });
+    out.push({ text: '; старший — «' });
+    const title = clip(oldest?.title ?? '', 48);
+    out.push(oldest?.href === undefined ? { text: title } : { text: title, href: oldest.href });
+    out.push({
+      text: `»${oldestLate === null ? '' : `, ${oldestLate} ${word(oldestLate, 'день', 'дня', 'дней')}`}.`,
+    });
+  }
+  for (const sentence of [
+    input.live === null ? null : `Действующих работ — ${input.live}.`,
+    // Всё, что ждёт публикации, — одной строкой по видам (улучшение
+    // УЭ-04, решение Р-382); сами дела — ниже, по этапам.
+    waitingPublication(input.comments, input.versions),
+    input.leads === 0
+      ? null
+      : `${input.leads} ${word(input.leads, 'заявка ждёт', 'заявки ждут', 'заявок ждут')} разбора.`,
+  ]) {
+    if (sentence === null) continue;
+    if (out.length > 0) out.push({ text: ' ' });
+    out.push({ text: sentence });
+  }
+  return out;
 }

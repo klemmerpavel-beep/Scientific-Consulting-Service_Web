@@ -23,7 +23,8 @@ import {
   formatSize,
 } from '../../../../../components/cabinet/ui';
 import { ensure } from '../../../../../lib/cabinet/access';
-import { contactHref, leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
+import { SUMMARY_HREF, menuLabel } from '../../../../../lib/cabinet/nav';
+import { chosenServiceType, contactHref, leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
 import { declineLetterNote, leadAddress } from '../../../../../lib/cabinet/lead-letter';
 import { curators, leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
@@ -64,11 +65,23 @@ export default async function LeadScreen({
   const onlyManager = managers.filter((row) => row.role === 'MANAGER');
   const managerDefault = onlyManager.length === 1 ? onlyManager[0]!.id : '';
   const letter = lead.notifications[0] ?? null;
+  // Тип, выбранный заявителем, — значение формы одобрения; без выбора или
+  // при несовпадении со справочником — пустая первая строка, и одобрить
+  // без явного выбора нельзя, как без менеджера (решение Р-718).
+  const chosenType = chosenServiceType(types, lead.need);
 
   const callHref = contactHref(lead.contactKind, lead.contact);
   const extraHref = lead.phone === null ? null : contactHref('phone', lead.phone);
 
   const facts = [
+    // Выбор заявителя стоял только в свёртке «Исправить сведения заявки»
+    // полем «Что нужно» (решение Р-718). Тип сопровождения — это выбор из
+    // справочника: у заявки из кабинета или при совпадении со справочником.
+    // Форма сайта пишет в то же поле свободный ответ («Ещё не
+    // определились»), и он подписан, как на сайте и в письме, — «Что нужно».
+    lead.need === null || lead.need.trim() === ''
+      ? null
+      : { term: chosenType !== null || lead.source === 'cabinet' ? 'Тип сопровождения' : 'Что нужно', value: lead.need },
     lead.supervisorName === null
       ? null
       : { term: 'Научный руководитель', value: lead.supervisorName },
@@ -82,8 +95,10 @@ export default async function LeadScreen({
     <Shell actor={actor} current="/cabinet/manage/leads">
       <Narrow width={780}>
         <ScreenHead
-          backHref="/cabinet/manage"
-          backLabel="к сводке"
+          backHref={SUMMARY_HREF}
+          // Менеджеру — «Сегодня», руководителю — «Сводка» (Р-703; решение
+          // Р-756).
+          backLabel={menuLabel(actor, SUMMARY_HREF) ?? 'Сводка'}
           title={lead.name ?? 'Заявка без имени'}
           chips={
             <>
@@ -124,9 +139,9 @@ export default async function LeadScreen({
             <Text style={{ whiteSpace: 'pre-wrap' }}>{lead.message}</Text>
           )}
 
-          {/* Сведения, которые собирает заявка из кабинета: научный
-              руководитель, место учёбы, телефон. У обращений с сайта их
-              нет, и строка не печатается (решение Р-191). */}
+          {/* Сведения заявки: тип сопровождения или «что нужно» (Р-718),
+              а у заявки из кабинета ещё научный руководитель, место учёбы,
+              телефон. Пустые строки не печатаются (решение Р-191). */}
           {facts.length === 0 ? null : (
             <dl
               style={{
@@ -216,9 +231,11 @@ export default async function LeadScreen({
                 action={switchLeadStatus}
                 hidden={<input type="hidden" name="leadId" value={lead.id} />}
               />
+              {/* Подсказка называет кнопки экрана: плашек «Договор заключён» и
+                  «Отказ» здесь нет (решение Р-718). */}
               <Text muted size={13} style={{ marginTop: 10 }}>
-                Состояние меняется одним нажатием. «Договор заключён» ставит одобрение ниже — вместе
-                с работой, «Отказ» — форма отказа с причиной.
+                Состояние меняется одним нажатием. Договор — кнопка «Одобрить и создать работу»
+                ниже, отказ — «Отклонить заявку» в свёртке под ней.
               </Text>
             </>
           ) : lead.project === null ? (
@@ -368,7 +385,13 @@ export default async function LeadScreen({
                   defaultValue={lead.topic ?? ''}
                   placeholder="Сопровождение кандидатской диссертации"
                 />
-                <Select label="Тип сопровождения" name="serviceTypeId" required>
+                <Select
+                  label="Тип сопровождения"
+                  name="serviceTypeId"
+                  required
+                  defaultValue={chosenType?.id ?? ''}
+                >
+                  <option value="">Выберите тип сопровождения</option>
                   {types.map((type) => (
                     <option key={type.id} value={type.id}>
                       {type.hasTemplate ? `${type.name} · есть шаблон этапов` : type.name}

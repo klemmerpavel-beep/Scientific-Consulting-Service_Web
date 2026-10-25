@@ -25,7 +25,7 @@ import { NEW_CLIENT, candidateLine } from '../../../../../lib/cabinet/client-mat
 import { formDraft } from '../../../../../lib/cabinet/flash';
 import { nameCandidates } from '../../../../../lib/cabinet/manual-order';
 import { requireActor } from '../../../../../lib/cabinet/session';
-import { homeFor } from '../../../../../lib/cabinet/nav';
+import { homeFor, menuLabel } from '../../../../../lib/cabinet/nav';
 import { createOrder, parseOrderBrief } from '../../../actions';
 
 export const metadata: Metadata = { title: 'Новый заказ — ProDisser' };
@@ -62,7 +62,9 @@ export default async function NewOrderScreen({
     <Shell actor={actor} current="/cabinet/projects">
       <ScreenHead
         backHref="/cabinet/projects"
-        backLabel="к работам"
+        // Менеджеру — «Мои работы», руководителю — «Работы» (Р-703; решение
+        // Р-756).
+        backLabel={menuLabel(actor, '/cabinet/projects') ?? 'Работы'}
         title="Новый заказ"
         note={`Для заказа, пришедшего звонком, письмом или от постоянного клиента. Поля — как в книге заказов. Заказчик ищется по почте и телефону; если совпало только ФИО, выберите его карточку или заведите новую. Писем клиенту не уходит. Вход в кабинет открывается кнопкой «Открыть клиенту вход» в «Управлении работой» созданной работы: нужен адрес почты клиента.${
           head ? '' : ' Договор со стоимостью увидит руководитель: ему уходит уведомление, а менять суммы после сохранения может только он.'

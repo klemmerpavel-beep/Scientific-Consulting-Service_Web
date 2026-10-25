@@ -178,6 +178,16 @@ export function roleLabel(code: string): string {
 }
 
 /**
+ * Идентификатор записи базы (`cuid`: «c» и строчная латиница с цифрами).
+ * На экране журнала он не печатается — человеку он ничего не говорит, а
+ * сверяют по нему в выгрузке CSV, где он остаётся, как машинный код
+ * действия (Р-179; решение Р-758).
+ */
+export function isRecordId(value: unknown): value is string {
+  return typeof value === 'string' && /^c[a-z0-9]{20,}$/u.test(value);
+}
+
+/**
  * Подробности события словами.
  *
  * В поле лежит объект «было — стало»: состав зависит от действия, и общего
@@ -232,7 +242,19 @@ interface FieldRule {
   readonly name: string;
   /** Подпись значения; пустая строка — поле называется одним именем. */
   readonly value?: (raw: string) => string;
+  /**
+   * Поле на экран не выводится: его значение уже стоит в строке журнала
+   * словами (код работы — названием работы, Р-189) и остаётся в выгрузке
+   * CSV (решение Р-758).
+   */
+  readonly hidden?: true;
 }
+
+/** Код работы в подробностях: работа названа в строке журнала (Р-189). */
+const WORK_CODE: FieldRule = { name: 'код', hidden: true };
+
+/** Роль — словом, как роль действующего лица (решение Р-758). */
+const roleValue = (raw: string): string => roleLabel(raw);
 
 const byMap =
   (map: Readonly<Record<string, string>>) =>
@@ -278,6 +300,14 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
     hidden: { name: 'скрыто', value: byMap(LAYOUT_LABEL) },
     reset: { name: 'раскладка по умолчанию', value: () => '' },
   },
+  // Роль учётной записи хранится кодом: руководитель читал «роль MANAGER»
+  // (решение Р-758).
+  USER_CREATED: { role: { name: 'роль', value: roleValue } },
+  USER_ROLE_CHANGED: { from: { name: 'было', value: roleValue }, to: { name: 'стало', value: roleValue } },
+  // Код работы — в адресе ссылки на работу и в выгрузке, не на экране (Р-189).
+  LEAD_APPROVED: { code: WORK_CODE },
+  ORDER_CREATED: { code: WORK_CODE },
+  ASSIGNMENT_CREATED: { project: WORK_CODE },
 };
 
 /** Поля с суммой: журнал хранит их строкой копеек, bigint в JSON не кладётся. */
@@ -300,14 +330,27 @@ export function detailsLabel(payload: unknown, action?: string): string {
 function flatten(value: unknown, prefix = '', rules?: Readonly<Record<string, FieldRule>>): string[] {
   if (value === null || value === undefined) return [];
   if (typeof value === 'boolean') return [`${prefix}${value ? 'да' : 'нет'}`];
+  // Идентификатор записи на экран не выводится — он остаётся в выгрузке
+  // CSV (решение Р-758).
+  if (isRecordId(value)) return [];
   if (typeof value !== 'object') return [`${prefix}${String(value)}`];
   if (Array.isArray(value)) {
-    return value.length === 0 ? [] : [`${prefix}${value.map((item) => String(item)).join(', ')}`];
+    const shown = value.filter((item) => !isRecordId(item));
+    return shown.length === 0 ? [] : [`${prefix}${shown.map((item) => String(item)).join(', ')}`];
   }
 
   const out: string[] = [];
   for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
     const rule = rules?.[key];
+    if (rule?.hidden === true) continue;
+    // Поле со значением-идентификатором: у поля со своим правилом остаётся
+    // имя — «отбор по менеджеру» и без идентификатора говорит, что отбор
+    // был; общее поле («было», «куратор») без значения ничего не говорит и
+    // не печатается вовсе (решение Р-758).
+    if (isRecordId(inner)) {
+      if (rule !== undefined) out.push(rule.name);
+      continue;
+    }
     if (rule !== undefined && inner !== null && inner !== undefined && typeof inner !== 'object') {
       const text = rule.value === undefined ? valueLabel('', inner) : rule.value(String(inner));
       out.push(text === '' ? rule.name : `${rule.name} ${text}`);
@@ -318,7 +361,11 @@ function flatten(value: unknown, prefix = '', rules?: Readonly<Record<string, Fi
       continue;
     }
     const name = rule?.name ?? FIELDS[key] ?? key;
-    if (inner !== null && typeof inner === 'object' && !Array.isArray(inner)) {
+    if (Array.isArray(inner)) {
+      // Перечень — без идентификаторов (решение Р-758), в прежнем виде.
+      const shown = inner.filter((item) => !isRecordId(item));
+      if (String(shown).length > 0) out.push(`${name} ${valueLabel(key, shown)}`);
+    } else if (inner !== null && typeof inner === 'object') {
       out.push(...flatten(inner, `${name}: `));
     } else if (inner !== null && inner !== undefined && String(inner).length > 0) {
       // Суммы — рублями, признаки — «да»/«нет» (решения Р-242, Р-244).

@@ -178,7 +178,9 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   // повтор давал дубль (требование Э-06, решение Р-326).
   const note = (input.note ?? '').trim();
   if (note.length > COMMENT_MAX) {
-    throw new Error(`Пояснение длиннее ${COMMENT_MAX} знаков: сократите его — ни файл, ни пояснение не сохранены`);
+    throw new Error(
+      `Пояснение длиннее ${COMMENT_MAX.toLocaleString('ru-RU')} знаков: сократите его — ни файл, ни пояснение не сохранены`,
+    );
   }
   // Название нового материала уходит в темы писем, перечни и заголовок
   // этапа — предел как у названия работы (Р-242, Р-279; решение Р-672).
@@ -783,7 +785,8 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
   const text = body.trim();
   if (text.length === 0) throw new Error('Пустой комментарий не сохраняется');
   if (text.length > COMMENT_MAX) {
-    throw new Error(`Замечание длиннее ${COMMENT_MAX} знаков: разделите его на несколько`);
+    // Число — с разрядом, как в подсказке поля (решение Р-722).
+    throw new Error(`Замечание длиннее ${COMMENT_MAX.toLocaleString('ru-RU')} знаков: разделите его на несколько`);
   }
 
   const remark = commentRow(actor, versionId, text);
@@ -968,6 +971,8 @@ export interface PendingComment {
   readonly projectTitle: string;
   readonly stageTitle: string;
   readonly material: string;
+  /** Клиент работы — в пояснении дела «Требует внимания» (решение Р-721). */
+  readonly client: string;
   readonly count: number;
 }
 
@@ -1014,7 +1019,7 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
               title: true,
               stageId: true,
               stage: { select: { id: true, title: true } },
-              project: { select: { title: true, code: true } },
+              project: { select: { title: true, code: true, client: { select: { fullName: true } } } },
             },
           },
         },
@@ -1039,6 +1044,7 @@ export async function pendingComments(actor: Actor): Promise<PendingComment[]> {
         projectTitle: material.project.title,
         stageTitle: material.stage?.title ?? material.title,
         material: material.title,
+        client: material.project.client.fullName,
         count: 1,
       });
     } else {
@@ -1071,7 +1077,7 @@ export async function pendingVersions(actor: Actor): Promise<PendingComment[]> {
               id: true,
               title: true,
               stage: { select: { id: true, title: true } },
-              project: { select: { title: true, code: true } },
+              project: { select: { title: true, code: true, client: { select: { fullName: true } } } },
             },
           },
         },
@@ -1093,6 +1099,7 @@ export async function pendingVersions(actor: Actor): Promise<PendingComment[]> {
             projectTitle: material.project.title,
             stageTitle: material.stage?.title ?? material.title,
             material: material.title,
+            client: material.project.client.fullName,
             count: 1,
           }
         : { ...seen, count: seen.count + 1 },

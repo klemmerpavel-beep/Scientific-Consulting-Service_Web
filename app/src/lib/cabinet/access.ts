@@ -66,6 +66,9 @@ export function workClosed(projectStatus: string): boolean {
 }
 
 export const CLOSED_FOR_PRACTICE = 'Работа закрыта: чтобы изменить, возобновите её';
+// Хвост «напишите менеджеру» клиенту ставится ссылкой в переписку
+// (`WRITE_MANAGER` в stage-state.ts, решение Р-750): слова не менять
+// порознь.
 export const CLOSED_FOR_PARTY = 'Работа закрыта. Если нужно передать файл, напишите менеджеру';
 export const STAGE_DONE_FOR_PARTY = 'Этап завершён. Если нужно передать файл, напишите менеджеру';
 
@@ -755,4 +758,13 @@ export function staffExpertLine(
   }
   const raw = (expertNameRaw ?? '').trim();
   return raw === '' ? 'куратор не назначен' : `куратор — ${raw}`;
+}
+
+/**
+ * Клиент работы для практики — тем же приёмом, что куратор под шкалой
+ * (решение Р-748; Р-298): одноимённые работы различаются, не раскрывая
+ * «Управление работой». Клиенту не показывается.
+ */
+export function staffClientLine(fullName: string): string {
+  return `клиент — ${fullName}`;
 }

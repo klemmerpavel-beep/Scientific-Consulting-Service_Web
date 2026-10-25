@@ -8,8 +8,10 @@
  * - работ — действующих, идущих и приостановленных (`LIVE_STATUSES`, Р-342);
  * - где стоят — по первому незавершённому этапу, как «Чем занята
  *   практика» (Р-180, Р-216);
- * - просрочено — работа, у которой прошёл срок текущего этапа, а без
- *   плана — срок работы (тот же счёт, что у «Чем занята практика»);
+ * - просрочено — сорванные сроки этапов и работ по его работам: тот же
+ *   счёт, что у ответа «Сводки» (`missedCount`, решение Р-719). Прежде
+ *   брался срок текущего этапа, а срок работы — только без плана, и у
+ *   менеджера с пятью сорванными сроками стояло «4»;
  * - у менеджера «ждёт его решения» — его дела контроля без срока
  *   реакции (Р-337): клиент ждёт ответа (одно на работу), ждёт
  *   публикации (одно на материал), куратор сдал этап;
@@ -21,6 +23,7 @@ import { prisma } from '../db.ts';
 import { can, type Actor, type ProjectRef } from './access.ts';
 import { curatorContacts, type ContactRow } from './channels.ts';
 import { moscowToday, now as clockNow } from './clock.ts';
+import { missedCount } from './missed.ts';
 import { curatorTasksData } from './queries.ts';
 import { LIVE_STATUSES, LOAD_ORDER } from './summary.ts';
 import { nearestPeak } from './analytics/calendar.ts';
@@ -41,7 +44,7 @@ interface PersonLoad {
   readonly paused: number;
   /** Где стоят работы — по текущему этапу. */
   readonly points: readonly TeamPoint[];
-  /** Работ с прошедшим сроком текущего этапа или работы без плана. */
+  /** Сорванных сроков этапов и работ — как в ответе «Сводки» (Р-719). */
   readonly overdue: number;
   /** Ждёт его решения. */
   readonly decide: number;
@@ -84,15 +87,15 @@ function personLoad(works: readonly WorkRow[], day: Date) {
   const counts = new Map<string, number>();
   let overdue = 0;
   for (const work of works) {
+    // Сумма по менеджерам равна числу в ответе «Сводки» (решение Р-719).
+    overdue += missedCount(work, day);
     if (work.stages.length === 0) {
       counts.set('PLANLESS', (counts.get('PLANLESS') ?? 0) + 1);
-      if (work.dueOn !== null && work.dueOn < day) overdue += 1;
       continue;
     }
     const current = work.stages.find((stage) => stage.state !== 'DONE') ?? null;
     const key = current?.state ?? 'DONE';
     counts.set(key, (counts.get(key) ?? 0) + 1);
-    if (current?.dueOn != null && current.dueOn < day) overdue += 1;
   }
   return {
     works: works.length,

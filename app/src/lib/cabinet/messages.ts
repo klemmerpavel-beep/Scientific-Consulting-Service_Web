@@ -72,7 +72,10 @@ function cleanBody(body: string): string {
   const text = body.trim();
   if (text.length === 0) throw new Error('Пустое сообщение не отправляется');
   if (text.length > MESSAGE_MAX) {
-    throw new Error(`Сообщение длиннее ${MESSAGE_MAX} знаков: разделите его или приложите файлом`);
+    // Число — с разрядом, как в подсказке поля (решение Р-722).
+    throw new Error(
+      `Сообщение длиннее ${MESSAGE_MAX.toLocaleString('ru-RU')} знаков: разделите его или приложите файлом`,
+    );
   }
   return text;
 }
@@ -173,8 +176,11 @@ async function signalMessage(
         (forClient ? `${workLine(project, true)}\n` : '') +
         'В переписке по работе новое сообщение. Прочитать и ответить можно в кабинете.',
       dedupKey: `message:${messageId}:${userId}`,
-      // Кнопка письма — в переписку работы (Т-06, Р-309).
-      path: `/cabinet/projects/${project.code}/messages`,
+      // Кнопка письма — в переписку работы (Т-06, Р-309), сразу к полю
+      // ответа с последними сообщениями над ним: открытая сверху лента
+      // на телефоне уводила поле на четыре экрана вниз (решение Р-740;
+      // якорь — Р-316, Р-697).
+      path: `/cabinet/projects/${project.code}/messages#body`,
     });
   }
 }
@@ -332,7 +338,7 @@ export async function unreadByProject(
  */
 export async function unreadInbox(
   actor: Actor,
-): Promise<{ code: string; title: string; count: number }[]> {
+): Promise<{ code: string; title: string; client: string; count: number }[]> {
   const scope = scopeProjects(actor);
   if (scope === null) return [];
   const grouped = await prisma.message.groupBy({
@@ -352,7 +358,9 @@ export async function unreadInbox(
 
   const projects = await prisma.project.findMany({
     where: { id: { in: rows.map((row) => row.projectId) } },
-    select: { id: true, code: true, title: true },
+    // Клиент — в пояснении дела: одноимённые работы различаются по нему
+    // (решение Р-721).
+    select: { id: true, code: true, title: true, client: { select: { fullName: true } } },
   });
   const byId = new Map(projects.map((project) => [project.id, project]));
 
@@ -361,7 +369,7 @@ export async function unreadInbox(
       const project = byId.get(row.projectId);
       return project === undefined
         ? []
-        : [{ code: project.code, title: project.title, count: row.count }];
+        : [{ code: project.code, title: project.title, client: project.client.fullName, count: row.count }];
     })
     // Последний ключ сортировки — код работы: при равном числе
     // непрочитанных порядок иначе задавался бы группировкой в базе и
@@ -408,7 +416,11 @@ export async function flaggedMessages(actor: Actor) {
     take: 50,
     include: {
       author: { select: { fullName: true, role: true } },
-      project: { select: { code: true, title: true } },
+      // Код — для ссылки на переписку работы, клиент — для подписи:
+      // одноимённых работ у менеджера несколько, и одно название не
+      // говорило, какая из них (решение Р-757). Выборка — по-прежнему
+      // в пределах видимого (Р-220).
+      project: { select: { code: true, title: true, client: { select: { fullName: true } } } },
     },
   });
 }
@@ -504,6 +516,33 @@ export async function internalUnread(actor: Actor, projectId: string): Promise<n
   if (ref === null) return 0;
   ensure(actor, 'INTERNAL_MESSAGE', ref);
   return unreadFor(actor.id, 'WORK_INTERNAL', projectId);
+}
+
+/**
+ * Внутренние ветки своих работ с непрочитанным — дела «Сегодня» менеджера
+ * (решение Р-739, дополняет Р-304). Счёт тот же, что у вкладки
+ * «Внутренняя» (`internalUnread`): чужие сообщения ветки новее курсора
+ * менеджера. Участник ветки — менеджер работы (Р-336); клиенту и куратору
+ * её нет, и выборка для них пуста по построению.
+ */
+export async function internalInbox(
+  actor: Actor,
+): Promise<{ code: string; title: string; client: string; count: number }[]> {
+  if (actor.role !== 'MANAGER' || actor.status !== 'ACTIVE') return [];
+  const projects = await prisma.project.findMany({
+    where: { managerId: actor.id, messages: { some: { thread: 'WORK_INTERNAL', authorId: { not: actor.id } } } },
+    select: { id: true, code: true, title: true, client: { select: { fullName: true } } },
+  });
+  const rows = await Promise.all(
+    projects.map(async (project) => ({
+      code: project.code,
+      title: project.title,
+      client: project.client.fullName,
+      count: await unreadFor(actor.id, 'WORK_INTERNAL', project.id),
+    })),
+  );
+  // Порядок — как у дел «непрочитанные сообщения клиента» (Р-190).
+  return rows.filter((row) => row.count > 0).sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
 }
 
 export async function readInternal(actor: Actor, projectId: string): Promise<void> {

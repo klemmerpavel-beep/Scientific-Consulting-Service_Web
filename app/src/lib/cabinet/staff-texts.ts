@@ -9,6 +9,7 @@
  */
 
 import type { Role } from './access.ts';
+import { formatDay } from './approval-text.ts';
 import type { ContactKind } from './channels.ts';
 
 /** Тексты экрана настроек, обращённые к смотрящему. */
@@ -197,4 +198,75 @@ export function waitingPublication(comments: number, versions: number): string |
     versions === 0 ? null : `${versions} ${word(versions, 'версия', 'версии', 'версий')} куратора`,
   ].filter((part) => part !== null);
   return parts.length === 0 ? null : `Ждут публикации: ${parts.join(' и ')}.`;
+}
+
+/** Подпись поля и кнопки формы переписки. */
+export interface MessageFormTexts {
+  readonly label: string;
+  readonly button: string;
+}
+
+/**
+ * Поле и кнопка переписки называют адресата (решение Р-726). Ветки «С
+ * клиентом» и «Внутренняя» стояли одинаковыми формами — «Новое сообщение»
+ * и «Отправить», адресат был только в подсказке поля, исчезающей с первым
+ * знаком, и сообщение руководителю уходило клиенту одним нажатием, не
+ * заметив вкладки. Ветки и права прежние (Р-336); клиенту подписи прежние.
+ */
+export function messageFormTexts(role: Role, thread: 'client' | 'internal'): MessageFormTexts {
+  if (role === 'CLIENT') return { label: 'Новое сообщение', button: 'Отправить' };
+  if (thread === 'client') return { label: 'Сообщение клиенту', button: 'Отправить клиенту' };
+  return role === 'HEAD'
+    ? { label: 'Сообщение менеджеру работы (клиент не видит)', button: 'Отправить менеджеру' }
+    : { label: 'Сообщение руководителю (клиент не видит)', button: 'Отправить руководителю' };
+}
+
+/**
+ * Отказ поручения по сотруднику, не ведущему работу: кто её ведёт
+ * (решение Р-731). Экран руководителя — ФИО сотрудников видны.
+ */
+export function whoLeads(manager: string, expert: string | null): string {
+  return `Сотрудник не ведёт эту работу и не увидит её. Работу ведёт менеджер ${manager}, ${
+    expert === null ? 'куратор не назначен' : `куратор ${expert}`
+  }`;
+}
+
+/** Что подписи работы в форме поручения нужно знать о работе. */
+export interface AssignableWorkFacts {
+  readonly title: string;
+  readonly client: string;
+  readonly manager: string;
+  readonly status: string;
+  readonly dueOn: Date | null;
+}
+
+/**
+ * Подписи работ в выборе формы поручения (решение Р-731): «название ·
+ * клиент · менеджер», без кода (Р-189). Если у клиента две работы одного
+ * вида у одного менеджера, подписи совпали бы — к совпадающим дописан срок
+ * работы. Состояние — в конце: « · приостановлена», « · завершена»
+ * (завершённая попадает в выбор только из адреса — строка «Должников»).
+ */
+export function assignableWorkLabels(rows: readonly AssignableWorkFacts[]): string[] {
+  const head = rows.map((row) => `${row.title} · ${row.client} · ${row.manager}`);
+  const seen = new Map<string, number>();
+  for (const label of head) seen.set(label, (seen.get(label) ?? 0) + 1);
+  return rows.map((row, index) => {
+    const label = head[index]!;
+    const due = (seen.get(label) ?? 0) > 1 ? ` · ${row.dueOn === null ? 'без срока' : `срок ${formatDay(row.dueOn)}`}` : '';
+    const state = row.status === 'PAUSED' ? ' · приостановлена' : row.status === 'COMPLETED' ? ' · завершена' : '';
+    return `${label}${due}${state}`;
+  });
+}
+
+/**
+ * Письмо менеджеру работы от куратора — ссылкой `mailto`, одним нажатием
+ * (решение Р-749; Э-12, Р-331): прежде куратор копировал адрес из «О
+ * работе». С этапом — тема «Вопрос по этапу «…»», закодированная для
+ * адреса. Переписки куратора с клиентом это не заводит (Р-150, Р-336).
+ */
+export function managerMailHref(email: string, stageTitle?: string | null): string {
+  return stageTitle == null
+    ? `mailto:${email}`
+    : `mailto:${email}?subject=${encodeURIComponent(`Вопрос по этапу «${stageTitle}»`)}`;
 }

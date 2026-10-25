@@ -69,6 +69,25 @@ export function isLeadSwitchStatus(value: string): value is LeadSwitchStatus {
   return (LEAD_SWITCH_STATUSES as readonly string[]).includes(value);
 }
 
+/**
+ * Тип сопровождения, выбранный заявителем, — для значения по умолчанию в
+ * форме одобрения (решение Р-718). Заявка из кабинета хранит название
+ * типа (поле `need`); совпадение ищется по названию без учёта регистра и
+ * лишних пробелов. Без выбора («уточню при разговоре»), при названии, которого
+ * в справочнике нет, и при «что нужно» с сайта — `null`: форма открывается
+ * без типа, и одобрить её без явного выбора нельзя. Прежде форма стояла на
+ * первом типе справочника, и одобрение без проверки заводило работу чужого
+ * вида с чужим шаблоном этапов.
+ */
+export function chosenServiceType<T extends { readonly name: string }>(
+  types: readonly T[],
+  need: string | null | undefined,
+): T | null {
+  const key = (value: string) => value.trim().replace(/\s+/gu, ' ').toLocaleLowerCase('ru-RU');
+  if (need == null || key(need) === '') return null;
+  return types.find((type) => key(type.name) === key(need)) ?? null;
+}
+
 /** Цвет плашки состояния: фон, текст и кромка из токенов кабинета. */
 export const LEAD_STATUS_TONE: Record<string, { bg: string; ink: string; edge: string }> = {
   NEW: { bg: 'var(--pd-accent-tint)', ink: 'var(--pd-accent)', edge: 'var(--pd-accent-edge)' },

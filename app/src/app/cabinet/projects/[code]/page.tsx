@@ -43,6 +43,7 @@ import {
   CLOSED_FOR_PRACTICE,
   can,
   contributionRefusal,
+  staffClientLine,
   staffExpertLine,
   curatorLine,
   EXPERT_ROLE_LABEL,
@@ -55,6 +56,8 @@ import {
 } from '../../../../lib/cabinet/access';
 import { checklistCounts } from '../../../../lib/cabinet/checklist-marks';
 import { prepareList, prepareOpen, prepareStatus } from '../../../../lib/cabinet/prepare-lists';
+import { approvalDueLabel, clientApprovalDue } from '../../../../lib/cabinet/approval-text';
+import { emptyPlan } from '../../../../lib/cabinet/empty-plan';
 import { ratingFor } from '../../../../lib/cabinet/ratings';
 import { RATING_TEXT_MAX } from '../../../../lib/cabinet/rating-stats';
 import {
@@ -64,7 +67,7 @@ import {
   fullSupportOn,
   listedContacts,
 } from '../../../../lib/cabinet/channels';
-import { contactLabelFor } from '../../../../lib/cabinet/staff-texts';
+import { contactLabelFor, managerMailHref, messageFormTexts } from '../../../../lib/cabinet/staff-texts';
 import { stageLabel } from '../../../../lib/cabinet/stage-state';
 import {
   PROJECT_STATUS_ACTION,
@@ -74,18 +77,26 @@ import {
 } from '../../../../lib/cabinet/project-status';
 import { templateLength } from '../../../../lib/cabinet/projects';
 import { daysPast } from '../../../../lib/cabinet/clock';
-import { listMessages, unreadCount } from '../../../../lib/cabinet/messages';
+import { UPLOADED_NEXT, uploadedLine } from '../../../../lib/cabinet/works-answer';
+import { workDuePassed } from '../../../../lib/cabinet/missed';
+import { MESSAGE_MAX, internalUnread, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
+import { OUTCOME_ANCHOR, OUTCOME_FLAGS, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
+import { noticeFate } from '../../../../lib/cabinet/outbox';
+import DropFlag from '../../../../components/cabinet/DropFlag';
 import {
   curators,
+  curatorTasksData,
   executorNames,
   experts,
+  lastClientReturn,
   projectByCode,
   projectMaterials,
   pendingActions,
 } from '../../../../lib/cabinet/queries';
+import { curatorPanel, curatorReturnHead } from '../../../../lib/cabinet/curator-tasks';
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
-import { formatAmount } from '../../../../lib/cabinet/money';
-import { ownPayoutTotals, paymentDocumentLines } from '../../../../lib/cabinet/finance';
+import { PAYMENT_CLOSED_STATUSES, formatAmount } from '../../../../lib/cabinet/money';
+import { ownPayoutTotals, paymentDocumentLines, projectContract } from '../../../../lib/cabinet/finance';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import {
@@ -298,6 +309,9 @@ function eventLine(
  */
 const MATERIALS_IN_COLUMN = 12;
 
+/** Ссылка в строке исхода — подчёркнута цветом строки (решение Р-725). */
+const OUTCOME_LINK = { color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 } as const;
+
 /** Якорь формы «Управления работой»: прокрутка не прячет её под шапкой (Р-487). */
 const MANAGE_ANCHOR = { display: 'block', height: 0, scrollMarginTop: 96 } as const;
 
@@ -306,14 +320,14 @@ export default async function ProjectScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string; manage?: string; briefApplied?: string; rated?: string }>;
+  searchParams: Promise<{ error?: string; manage?: string; briefApplied?: string; rated?: string; created?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}`);
 
   const { code } = await params;
   // Отказ действия «Управления работой»: причина у своей формы, свёртка
   // раскрыта, поля заполнены введённым (решение Р-279).
-  const { error: errorId, manage, briefApplied, rated } = await searchParams;
+  const { error: errorId, manage, briefApplied, rated, created } = await searchParams;
   const failure = await flashEntry(errorId);
   const draft = (await formDraft(errorId)) ?? {};
   // Кнопки «Изменить карточку», «Куратор», «Менеджер» под названием открывают
@@ -363,6 +377,10 @@ export default async function ProjectScreen({
   // Своё вознаграждение по этой работе — в «Ваша работа» (Э-13, Р-332).
   const myPayout = forExpert ? await ownPayoutTotals(actor, project.id) : null;
   const unread = mayWrite ? await unreadCount(actor, project.id) : 0;
+  // Непрочитанное во внутренней ветке — только участнику ветки, менеджеру
+  // работы и руководителю: клиенту и куратору число не считается и в данные
+  // экрана не попадает (решение Р-739; Р-336).
+  const internalNew = can(actor, 'INTERNAL_MESSAGE', ref) ? await internalUnread(actor, project.id) : 0;
   // Короткий разговор виден прямо на экране заказа: уходить за ним на
   // отдельный экран, чтобы прочитать три строки, незачем. Прочитанным он
   // здесь не помечается — отметку ставит открытие самой переписки.
@@ -371,6 +389,11 @@ export default async function ProjectScreen({
   // Передать работу другому менеджеру может только руководитель (Р-149;
   // названия ролей — РК-01).
   const maySetManager = can(actor, 'PROJECT_SET_MANAGER', ref);
+  // Поручение по этой работе — руководителю, одним нажатием на форму с
+  // выбранной работой (решение Р-731; поручения — Р-352). Правило то же, что
+  // у выбора работы на «Поручениях»: любая работа, кроме отменённой, — по
+  // завершённой бывает долг («Должники», Р-447).
+  const mayInstruct = can(actor, 'ASSIGNMENT_CREATE') && !(PAYMENT_CLOSED_STATUSES as readonly string[]).includes(project.status);
   // Чек-лист вида работы — отдельным экраном со счётом отметок (Р-555):
   // руководителю, менеджеру работы и назначенному куратору.
   const checklist = (
@@ -409,9 +432,17 @@ export default async function ProjectScreen({
       : null;
 
   const stages = project.stages;
+  // Срок работы сорван — по правилу ответа «Сводки»: у идущей и
+  // приостановленной, с планом и без; практике — числом дней в шапке и
+  // под шкалой (решение Р-719). Клиенту и куратору — как прежде (Р-654).
+  const practice = actor.role === 'MANAGER' || actor.role === 'HEAD';
+  const workLateDays = practice && workDuePassed(project) ? daysPast(project.dueOn) : null;
   const done = stages.filter((stage) => stage.state === 'DONE').length;
   // Текущий этап — первый незавершённый; он и отвечает на вопрос «где работа».
   const current = stages.find((stage) => stage.state !== 'DONE') ?? null;
+  // Клиенту у этапа на согласовании шкала называет одну дату — срок
+  // согласования, а не срок этапа (решение Р-741; Р-290, Р-650).
+  const approvalDue = current === null ? null : clientApprovalDue(current, forClient);
   // Форма «Ваша работа» (требование Э-06, решение Р-326). В закрытой
   // работе её нет; в поле «Этап» — этапы, открытые для загрузки. По
   // умолчанию — этап, где ход за куратором: «В работе» и не сдан
@@ -456,6 +487,10 @@ export default async function ProjectScreen({
   const action =
     first === null
       ? null
+      : first.clientUploadedAt !== null
+        ? // Материалы приложены после просьбы менеджера — фраза о том, что
+          // будет дальше, а не «от вас ждут» (решение Р-728).
+          `${uploadedLine(first.title, formatDay(first.clientUploadedAt))}. ${UPLOADED_NEXT}`
       : [
           first.state === 'AWAITING_CLIENT'
             ? `От вас ждут материалы к этапу «${first.title}».`
@@ -466,11 +501,81 @@ export default async function ProjectScreen({
             : first.dueOn === null
               ? null
               : `Срок этапа — ${formatDate(first.dueOn)}.`,
-          yourTurn.length > 1 ? `Ещё дел: ${yourTurn.length - 1}.` : null,
         ]
           .filter((part) => part !== null)
           .join(' ');
+  // Следующее дело клиента по работе — ссылкой на его этап, а не «Ещё дел:
+  // N.» без названия: второе дело клиент находил, только листая «План
+  // работ» (решение Р-729).
+  const second = yourTurn[1] ?? null;
+  const more =
+    second === null ? null : (
+      <>
+        {'Ещё: '}
+        <a href={`/cabinet/stages/${second.id}`}>
+          {second.clientUploadedAt !== null
+            ? `материалы к этапу «${second.title}» приложены ${formatDay(second.clientUploadedAt)}`
+            : second.state === 'AWAITING_CLIENT'
+              ? `загрузить материалы к этапу «${second.title}»`
+              : `согласовать этап «${second.title}»`}
+        </a>
+        {second.clientUploadedAt !== null
+          ? ''
+          : second.state === 'IN_APPROVAL' && second.approvalDueOn !== null
+            ? ` — до ${formatDate(second.approvalDueOn)}`
+            : second.dueOn === null
+              ? ''
+              : ` — до ${formatDate(second.dueOn)}`}
+        {yourTurn.length > 2 ? ` и ещё ${yourTurn.length - 2}` : ''}
+        {'.'}
+      </>
+    );
+  // Дела куратора по этой работе (решение Р-744; Р-329): подпись «Что
+  // от вас ждут» — только при деле; когда ход за ним, панель ведёт на экран
+  // дела, как клиента; у возврата менеджером или клиентом — дата и
+  // причина тем же текстом, что на экране этапа.
+  const myTasks = forExpert ? await curatorTasksData(actor, project.code) : [];
+  const curatorTurn = forExpert ? curatorPanel(myTasks, current?.id ?? null, project.status) : null;
+  const returnTask = myTasks.find((task) => task.kind === 'MANAGER_RETURN' || task.kind === 'CLIENT_RETURN') ?? null;
+  const returnStage = returnTask === null ? undefined : stages.find((stage) => stage.id === returnTask.stageId);
+  const clientReturn =
+    returnTask?.kind === 'CLIENT_RETURN' && returnStage !== undefined ? await lastClientReturn(actor, returnStage.id) : null;
+  const returnNote =
+    returnTask === null || returnStage === undefined
+      ? null
+      : returnTask.kind === 'MANAGER_RETURN'
+        ? returnStage.handbackAt === null
+          ? null
+          : { head: curatorReturnHead('MANAGER_RETURN', formatDay(returnStage.handbackAt)), body: returnStage.handbackReason }
+        : clientReturn === null
+          ? null
+          : {
+              head: curatorReturnHead('CLIENT_RETURN', formatDay(clientReturn.createdAt)),
+              body: presentReturnText(actor, clientReturn),
+            };
   const staff = !forClient;
+  // Работа без этапов — заголовок шкалы, ответ и пустой план одной
+  // таблицей по роли и состоянию работы (решение Р-742): у закрытой —
+  // «Работа завершена» и «Этапов у работы нет», у новой «план
+  // составляется» один раз, а ответ ведёт на «Что подготовить» (Р-564);
+  // практике — «Плана нет» ссылкой на форму «Новый этап» (Р-743).
+  const plan =
+    stages.length === 0
+      ? emptyPlan({
+          viewer: forClient ? 'client' : forExpert ? 'curator' : 'practice',
+          status: project.status,
+          // Форма «Новый этап» — тому, кто заводит план (Р-743; Р-487).
+          planHref: mayEditStages ? `/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage` : null,
+          prepare:
+            forClient && prepareCount !== null
+              ? {
+                  done: prepareCount.done,
+                  total: prepareCount.total,
+                  href: `/cabinet/projects/${encodeURIComponent(project.code)}/prepare`,
+                }
+              : null,
+        })
+      : null;
   // Причина приостановки — под пометкой в шапке, а не только в истории и
   // письме; куратору — без причины, как в его письмах (УК-13, Р-379; Р-328).
   // Список событий — от новых к старым.
@@ -481,7 +586,13 @@ export default async function ProjectScreen({
     title: stage.title,
     state: stage.state as StageStateKey,
     dueOn: formatDate(stage.dueOn),
-    late: daysPast(stage.dueOn) !== null,
+    // Клиенту у этапа на согласовании и в плане одна дата — срок
+    // согласования, как на шкале и в шапке этапа (решение Р-741).
+    dueText: (() => {
+      const approval = clientApprovalDue(stage, forClient);
+      return approval === null ? null : approvalDueLabel(formatDate(approval) ?? '');
+    })(),
+    late: daysPast(clientApprovalDue(stage, forClient) ?? stage.dueOn) !== null,
     href: `/cabinet/stages/${stage.id}`,
     // Причину «ждём материалы» менеджер пишет клиенту: куратору пометка
     // шкалы её не показывает (Р-414, Р-522).
@@ -565,6 +676,41 @@ export default async function ProjectScreen({
   // Счётчик берётся у полного перечня: колонка показывает дюжину, и
   // число, снятое с неё, врало бы у работы с тринадцатью материалами.
   const materialCount = withMaterials?.materials.length ?? 0;
+  // Строка исхода после одобрения заявки и «Нового заказа» (решение
+  // Р-725): кто менеджер, ушло ли ему уведомление (не обещая письма,
+  // которого не будет, — Р-163, Р-267), где файлы и что дальше. Признак у
+  // работы, заведённой раньше окна исхода (час), ничего не выводит.
+  const createdShown =
+    created !== undefined &&
+    errorId === undefined &&
+    !forClient &&
+    !forExpert &&
+    inOutcomeWindow(project.createdAt);
+  const selfManaged = project.managerId === actor.id;
+  const createdLine = createdShown
+    ? workCreatedLine({
+        manager: selfManaged ? null : project.manager.fullName,
+        fate: selfManaged
+          ? 'none'
+          : await noticeFate(project.managerId, 'CURATOR_ASSIGNED', `project:${project.id}:curator-assigned:${project.managerId}:`),
+        files: materialCount === 0 ? null : created === 'lead' ? 'lead' : 'order',
+      })
+    : null;
+  // «Дальше» — ссылками на те же кнопки, что под названием (Р-487).
+  // Договор, уже внесённый «Новым заказом», в «Дальше» не зовёт.
+  const contractDue =
+    createdLine !== null && can(actor, 'PAYMENT_EDIT', ref) && (await projectContract(actor, project.id)) === null;
+  const createdNext = [
+    mayEdit && !closed
+      ? { what: 'срок', label: 'Изменить карточку', href: `/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-card` }
+      : null,
+    contractDue
+      ? { what: 'договор', label: 'Оплаты и документы', href: `/cabinet/projects/${project.code}/payments` }
+      : null,
+    mayAssign && project.expertId === null
+      ? { what: 'куратор', label: 'Назначить куратора', href: `/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-expert` }
+      : null,
+  ].filter((step) => step !== null);
   const materials: MaterialRow[] = (withMaterials?.materials ?? [])
     .slice(0, MATERIALS_IN_COLUMN)
     .map((material) => {
@@ -632,6 +778,9 @@ export default async function ProjectScreen({
       : { term: 'Тип сопровождения', value: project.serviceType.name },
     project.topic === null || project.topic === project.title ? null : { term: 'Тема', value: project.topic },
     { term: 'Срок работы', value: formatDate(project.dueOn) ?? 'не назначен' },
+    // Клиент — практике: прежде его ФИО стояло только в свёрнутом
+    // «Управлении работой» внизу экрана (решение Р-748).
+    practice ? { term: 'Клиент', value: project.client.fullName } : null,
     // Менеджер — с регалиями, но только практике: клиенту имя менеджера не
     // показывается (Э-01, ответ ОЭ-3б). Куратор — регалиями без ФИО и
     // контактов; пустые части не выводятся (требование Т-11, Р-297).
@@ -641,7 +790,17 @@ export default async function ProjectScreen({
       ? null
       : {
           term: 'Менеджер',
-          value: forExpert ? `${curatorLine(project.manager)} · ${project.manager.email}` : curatorLine(project.manager),
+          // Почта — ссылкой: письмо одним нажатием (решение Р-749).
+          value: forExpert ? (
+            <>
+              {`${curatorLine(project.manager)} · `}
+              <a className="cab-mark" href={managerMailHref(project.manager.email)}>
+                {project.manager.email}
+              </a>
+            </>
+          ) : (
+            curatorLine(project.manager)
+          ),
         },
     // Практике — куратор по имени, с ролью в работе и отметкой о договоре
     // поручения (требование М-16, решение Р-298); клиенту и самому куратору —
@@ -736,6 +895,7 @@ export default async function ProjectScreen({
             }}
           >
             срок — {formatDate(project.dueOn)}
+            {workLateDays === null ? null : ` · прошёл ${workLateDays} ${plural(workLateDays, 'день', 'дня', 'дней')}`}
           </span>
         )}
         {pauseReason === null ? null : (
@@ -746,7 +906,7 @@ export default async function ProjectScreen({
         {/* Правка карточки, куратор и менеджер — на виду, а не только в
             свёрнутом «Управлении работой» в конце экрана: руководитель их
             не находил (замечание владельца 08.10.2026, решение Р-487). */}
-        {(mayEdit && !closed) || mayAssign || maySetManager || checklist !== undefined || prepareCount !== null ? (
+        {(mayEdit && !closed) || mayAssign || maySetManager || mayInstruct || checklist !== undefined || prepareCount !== null ? (
           <div style={{ flexBasis: '100%', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {mayEdit && !closed ? (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-card`}>
@@ -767,6 +927,11 @@ export default async function ProjectScreen({
                 Сменить менеджера
               </ButtonLink>
             ) : null}
+            {mayInstruct ? (
+              <ButtonLink href={`/cabinet/manage/assignments?project=${encodeURIComponent(project.code)}#new`}>
+                Поручить
+              </ButtonLink>
+            ) : null}
             {checklist === undefined ? null : (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/checklist`}>
                 {`Чек-лист · ${checklist.done} из ${checklist.total}`}
@@ -782,13 +947,36 @@ export default async function ProjectScreen({
           </div>
         ) : null}
       </ScreenTop>
-      <ActionError id={errorId} />
+      {/* Причина отказа переписки — у её формы; без формы на экране — здесь
+          (решение Р-722). */}
+      <ActionError id={errorId} unplaced={mayWrite ? [] : ['message']} />
       {/* Исход «Обновить из документа» (Р-561): блок исхода в счёт пяти
           не входит (Р-253). */}
       {briefApplied === undefined ? null : <Outcome>Карточка обновлена из документа, документ приложен к работе.</Outcome>}
       {rated === undefined || rating?.score === null || rating === null ? null : (
         <Outcome>{`Спасибо за оценку: ${rating.score} из 5.`}</Outcome>
       )}
+      {createdLine === null ? null : (
+        <Outcome id={OUTCOME_ANCHOR}>
+          {createdLine}
+          {createdNext.length === 0 ? null : (
+            <>
+              {' Дальше: '}
+              {createdNext.map((step, index) => (
+                <span key={step.label}>
+                  {`${index === 0 ? '' : ', '}${step.what} — «`}
+                  <a href={step.href} style={OUTCOME_LINK}>
+                    {step.label}
+                  </a>
+                  {'»'}
+                </span>
+              ))}
+              .
+            </>
+          )}
+        </Outcome>
+      )}
+      {created === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
       <Disclosure title="О работе">
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
           {/* Подпись и значение — строкой, пока значению хватает места, и
@@ -873,14 +1061,25 @@ export default async function ProjectScreen({
           }
           stageDueOn={current === null ? null : formatDate(current.dueOn)}
           projectDueOn={formatDate(project.dueOn)}
-          stageLate={current !== null && daysPast(current.dueOn) !== null}
-          projectLate={current !== null && daysPast(project.dueOn) !== null}
+          // Практике этап приостановленной или закрытой работы сорванным не
+          // помечается — то же правило, что у ответа «Сводки» (Р-719).
+          stageLate={current !== null && daysPast(current.dueOn) !== null && (!practice || project.status === 'ACTIVE')}
+          projectLate={practice ? workLateDays !== null : current !== null && daysPast(project.dueOn) !== null}
+          projectLateDays={workLateDays}
+          emptyTitle={plan?.title}
+          emptyTitleHref={plan?.titleHref}
+          approvalDueOn={formatDate(approvalDue)}
+          approvalLate={daysPast(approvalDue) !== null}
           staff={staff}
-          action={action}
-          actionHref={first === null ? null : `/cabinet/stages/${first.id}`}
+          action={action ?? curatorTurn?.action ?? plan?.answer ?? null}
+          actionHref={first === null ? (curatorTurn?.href ?? plan?.actionHref ?? null) : `/cabinet/stages/${first.id}`}
+          actionLabel={first === null ? (curatorTurn?.label ?? plan?.actionLabel ?? undefined) : undefined}
+          more={more}
           waiting={forClient ? first !== null : undefined}
           projectStatus={project.status}
-          // Исполнитель под шкалой — у практики (требование М-16, ОМ-23).
+          // Клиент и исполнитель под шкалой — у практики: одноимённые
+          // работы различаются без раскрытия свёрток (Р-748; М-16, ОМ-23).
+          client={practice ? staffClientLine(project.client.fullName) : null}
           executor={
             actor.role === 'MANAGER' || actor.role === 'HEAD'
               ? staffExpertLine(project.expert, project.expertNameRaw)
@@ -918,35 +1117,62 @@ export default async function ProjectScreen({
               : undefined
           }
         >
-          <Roadmap items={roadmap} staff={staff} />
+          <Roadmap items={roadmap} staff={staff} empty={plan?.roadmap} />
         </BoardColumn>
 
         {mayWrite ? (
           <BoardColumn
             title={forClient ? 'Переписка с менеджером' : 'Переписка с клиентом'}
-            href={`/cabinet/projects/${project.code}/messages`}
+            // «вся переписка» и «вся · N новых» открывают экран у поля
+            // ответа, последние сообщения — над ним; порядок ленты и
+            // «Показать ранние сообщения» прежние (решение Р-740).
+            href={`/cabinet/projects/${project.code}/messages#body`}
             hrefLabel={
               unread > 0
                 ? `вся · ${unread} ${plural(unread, 'новое', 'новых', 'новых')}`
                 : 'вся переписка'
             }
+            // Новое во внутренней ветке — ссылкой рядом, на её вкладку
+            // (решение Р-739).
+            extra={
+              internalNew > 0
+                ? {
+                    href: `/cabinet/projects/${project.code}/messages?tab=internal#body`,
+                    label: `внутренняя · ${internalNew} ${plural(internalNew, 'новое', 'новых', 'новых')}`,
+                  }
+                : undefined
+            }
             anchor="end"
             footer={
-              <Form action={postMessage} inline>
-                <input type="hidden" name="projectId" value={project.id} />
-                <input type="hidden" name="code" value={project.code} />
-                {/* Отправив отсюда, человек остаётся на экране заказа. */}
-                <input type="hidden" name="back" value="project" />
-                <Field
-                  label="Сообщение"
-                  name="body"
-                  required
-                  labelHidden
-                  placeholder={forClient ? 'Написать менеджеру' : 'Написать клиенту'}
-                  minWidth={140}
-                />
-                <Button>Отправить</Button>
-              </Form>
+              <div id="message">
+                {/* Отказ — у формы, набранное — в поле (решение Р-722). */}
+                <ActionError id={errorId} slot="message" />
+                <Form action={postMessage} inline>
+                  <input type="hidden" name="projectId" value={project.id} />
+                  <input type="hidden" name="code" value={project.code} />
+                  {/* Отправив отсюда, человек остаётся на экране заказа. */}
+                  <input type="hidden" name="back" value="project" />
+                  {/* Сотрудникам поле и кнопка называют адресата — клиента
+                      (решение Р-726); клиенту подписи прежние. */}
+                  <Field
+                    label={forClient ? 'Сообщение' : 'Сообщение клиенту'}
+                    name="body"
+                    required
+                    labelHidden
+                    maxLength={MESSAGE_MAX}
+                    placeholder={forClient ? 'Написать менеджеру' : 'Написать клиенту'}
+                    minWidth={140}
+                    defaultValue={draft.body}
+                    describedBy="message-limit"
+                  />
+                  <Button>{forClient ? 'Отправить' : messageFormTexts(actor.role, 'client').button}</Button>
+                </Form>
+                {/* Предел — строкой под рядом: подсказка под полем сбила бы
+                    ряд «поле — кнопка». */}
+                <Text id="message-limit" muted size={13} style={{ marginTop: 6 }}>
+                  {`До ${MESSAGE_MAX.toLocaleString('ru-RU')} знаков; файлы — в материалах работы.`}
+                </Text>
+              </div>
             }
           >
             <Thread
@@ -1009,13 +1235,39 @@ export default async function ProjectScreen({
           >
             <div style={{ display: 'grid', gap: 14 }}>
               <div>
-                <Mono>Что от вас ждут</Mono>
+                {/* «Что от вас ждут» — только когда по работе есть дело
+                    куратора: при ходе клиента или менеджера подпись
+                    противоречила панели хода (решение Р-744). */}
+                <Mono>{myTasks.length > 0 ? 'Что от вас ждут' : 'Описание текущего этапа'}</Mono>
+                {returnNote === null ? null : (
+                  <div style={{ marginTop: 8 }}>
+                    <Notice tone="quiet" role="status">
+                      {returnNote.head}
+                      {returnNote.body === null ? null : (
+                        <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnNote.body}</span>
+                      )}
+                    </Notice>
+                  </div>
+                )}
                 <Text size={15} style={{ marginTop: 6 }}>
                   {current === null
                     ? stages.length === 0
-                      ? 'План работ ещё не заведён: этапы и задание назначит менеджер.'
+                      ? // У закрытой работы плана не будет (Р-742, Р-206).
+                        closed
+                        ? 'Новых заданий по этой работе нет.'
+                        : 'План работ ещё не заведён: этапы и задание назначит менеджер.'
                       : 'Все этапы закрыты — новых заданий по этой работе нет.'
-                    : (current.summary ?? 'Менеджер не описал этап: спросите его письмом, почта — в «О работе».')}
+                    : (current.summary ?? (
+                        // Письмо менеджеру с темой этапа — одним нажатием
+                        // (решение Р-749).
+                        <>
+                          {'Менеджер не описал этап: спросите его письмом — '}
+                          <a href={managerMailHref(project.manager.email, current.title)}>
+                            написать менеджеру
+                          </a>
+                          .
+                        </>
+                      ))}
                 </Text>
                 {current === null ? null : (
                   <Text muted size={13} style={{ marginTop: 6 }}>

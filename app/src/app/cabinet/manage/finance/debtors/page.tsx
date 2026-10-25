@@ -103,7 +103,9 @@ export default async function DebtorsScreen({
                   <tr key={row.trancheId}>
                     <td style={TABLE_CELL}>{row.client}</td>
                     <td style={TABLE_CELL}>
-                      <a className="cab-mark" href={`/cabinet/projects/${row.code}/payments`}>
+                      {/* Строка должника — к своему траншу на экране оплат
+                          (решение Р-747). */}
+                      <a className="cab-mark" href={`/cabinet/projects/${row.code}/payments#tranche-${row.trancheId}`}>
                         {row.work}
                       </a>
                       {row.workStatus === 'PAUSED' ? ' · приостановлена' : ''}

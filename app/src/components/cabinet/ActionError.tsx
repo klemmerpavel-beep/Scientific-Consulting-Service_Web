@@ -14,10 +14,27 @@ import { Outcome } from './ui';
  * Блок собран общей частью исхода: он помечен как исход и в счёт пяти
  * блоков экрана не входит (решение Р-253).
  */
-export default async function ActionError({ id, slot }: { id: string | undefined; slot?: string }) {
+export default async function ActionError({
+  id,
+  slot,
+  unplaced = [],
+}: {
+  id: string | undefined;
+  slot?: string;
+  /**
+   * Места, формы которых на экране сейчас нет: этап ушёл с согласования,
+   * работа закрыта. Причина такой формы выводится здесь, вверху экрана, —
+   * иначе её не увидели бы вовсе (решение Р-722). Только для вывода без
+   * своего места (`slot` не задан).
+   */
+  unplaced?: readonly string[];
+}) {
   // Причина с местом вывода показывается только у своей формы, без места —
   // вверху экрана: одна причина не выводится дважды (решение Р-279).
   const entry = await flashEntry(id);
-  if (entry === undefined || entry.text.trim() === '' || entry.slot !== slot) return null;
+  if (entry === undefined || entry.text.trim() === '') return null;
+  const here =
+    entry.slot === slot || (slot === undefined && entry.slot !== undefined && unplaced.includes(entry.slot));
+  if (!here) return null;
   return <Outcome tone="error">{entry.text.slice(0, 300)}</Outcome>;
 }

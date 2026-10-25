@@ -35,7 +35,8 @@ export default async function AnalyticsLosses() {
               note={`${report.rows.length} ${plural(report.rows.length, 'работа', 'работы', 'работ')} с остатком`}
             />
             <Tile label="Приостановлено" value={String(report.stopped)} note={`отменено ${report.cancelled}`} />
-            <Tile label="Задолженность всего" value={formatAmount(total.outstanding)} note="по всем работам, кроме отменённых" />
+            {/* Имя величины — как на «Сводке» и в «Деньгах» (решение Р-752). */}
+            <Tile label="К получению" value={formatAmount(total.outstanding)} note="по всем работам, кроме отменённых" />
           </Tiles>
 
           <Heading level={2} style={{ marginBottom: 12 }}>
@@ -60,7 +61,13 @@ export default async function AnalyticsLosses() {
                 <tbody>
                   {report.rows.map((row) => (
                     <tr key={row.code}>
-                      <td style={cell}>{row.title}</td>
+                      {/* Название — ссылкой на карточку работы; код только
+                          в адресе (Р-189; решение Р-751). */}
+                      <td style={cell}>
+                        <a className="cab-mark" href={`/cabinet/projects/${row.code}`}>
+                          {row.title}
+                        </a>
+                      </td>
                       <td style={cell}>{row.client}</td>
                       <td style={num}>{formatAmount(row.cost)}</td>
                       <td style={num}>{formatAmount(row.paid)}</td>

@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
-import { flashText } from '../../../lib/cabinet/flash';
+import { flashEntry, formDraft } from '../../../lib/cabinet/flash';
+import ActionError from '../../../components/cabinet/ActionError';
 
 import Shell from '../../../components/cabinet/Shell';
 import {
@@ -13,6 +14,7 @@ import {
   FormActions,
   Heading,
   Narrow,
+  Notice,
   Outcome,
   ScreenHead,
   Select,
@@ -23,12 +25,14 @@ import {
   formatDay,
   formatTime,
   TableScroll,
+  VISUALLY_HIDDEN,
 } from '../../../components/cabinet/ui';
 import { telegramBindAvailable } from '../../../lib/cabinet/auth';
 import { ownChannels, ownCuratorProfile } from '../../../lib/cabinet/admin';
 import { CURATOR_FOR_CLIENT, expertLine } from '../../../lib/cabinet/access';
 import {
   CONTACT_LABEL,
+  CONTACT_MAX,
   CONTACT_NOTE,
   FULL_SUPPORT_NOTE,
   fullSupportOn,
@@ -40,6 +44,7 @@ import {
   ownRules,
   type ContactKind,
 } from '../../../lib/cabinet/channels';
+import { silentEvents } from '../../../lib/cabinet/notify-rules';
 import {
   contactKindsFor,
   contactLabelFor,
@@ -99,7 +104,12 @@ export default async function SettingsScreen({
     ownNotifications(actor),
   ]);
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
-  const failure = await flashText(params.error);
+  // Отказ «Добавить способ связи» — у своей формы, в раскрытой свёртке, с
+  // введённым (решение Р-722); остальные — вверху экрана, как прежде.
+  const failed = await flashEntry(params.error);
+  const failure = failed === undefined || failed.slot !== undefined ? undefined : failed.text;
+  const contactFailed = failed?.slot === 'contact';
+  const draft = contactFailed ? ((await formDraft(params.error)) ?? {}) : {};
   // Полное сопровождение — отдельная отметка, не строка перечня (П-09, Р-401).
   const contacts = listedContacts(allContacts);
   const fullSupport = fullSupportOn(allContacts);
@@ -122,6 +132,22 @@ export default async function SettingsScreen({
   // прежде каждое открытие и каждое «Сохранить» писали в базу новую
   // живую метку (решение Р-245).
   const mayBind = !bound && telegramBindAvailable();
+
+  // События, о которых не сообщат ни одним каналом: почта у них снята или
+  // выключена целиком, а Telegram не подключён, выключен или снят. Экран
+  // называет их — после сохранения и у самой таблицы, чтобы событие нельзя
+  // было оставить без канала незаметно (решение Р-736).
+  const ruleEvents = withRules ? rulesFor(actor.role) : [];
+  const silent = silentEvents(ruleEvents, ruleOn, {
+    email: user.notifyEmail,
+    telegram: user.notifyTelegram && bound,
+  });
+  const silentLine =
+    silent.length === 0
+      ? null
+      : silent.length === ruleEvents.length
+        ? 'Сейчас ни об одном событии не сообщим — ни письмом, ни в Telegram.'
+        : `Не сообщим ни письмом, ни в Telegram: ${silent.map((event) => `«${event.title}»`).join(', ')}.`;
 
   // Telegram — в левой колонке у сотрудников и в правой у клиента: правая
   // колонка сотрудника занята правилами событий (решение Р-485).
@@ -169,7 +195,7 @@ export default async function SettingsScreen({
         )}
 
         {params.saved === undefined ? null : (
-          <Outcome>Настройки сохранены.</Outcome>
+          <Outcome>{silentLine === null ? 'Настройки сохранены.' : `Настройки сохранены. ${silentLine}`}</Outcome>
         )}
 
         {/* Экран во всю ширину: две колонки карточек, каждая своей высоты —
@@ -297,9 +323,10 @@ export default async function SettingsScreen({
                 </ul>
               )}
 
-              <Disclosure title="Добавить способ связи">
+              <Disclosure title="Добавить способ связи" id="new-contact" open={contactFailed}>
                 <Form action={addContactChannel}>
-                  <Select label="Способ" name="kind">
+                  <ActionError id={params.error} slot="contact" />
+                  <Select label="Способ" name="kind" defaultValue={draft.kind}>
                     {contactKindsFor(actor.role, Object.keys(CONTACT_LABEL) as ContactKind[]).map((kind) => (
                       <option key={kind} value={kind}>
                         {contactLabelFor(actor.role, kind, CONTACT_LABEL)}
@@ -309,16 +336,20 @@ export default async function SettingsScreen({
                   <Field
                     label="Номер или ссылка"
                     name="value"
+                    maxLength={CONTACT_MAX}
                     hint="Нужно для звонка и мессенджера: телефон либо ссылка или имя в сети."
                     placeholder="+7 900 000-00-00 либо @имя"
+                    defaultValue={draft.value}
                   />
                   <Field
                     label="Оговорка"
                     name="note"
+                    maxLength={CONTACT_MAX}
                     hint="Когда удобно и когда не стоит: «звонить после 18:00», «в выходные не писать»."
                     placeholder="Звонить после 18:00"
+                    defaultValue={draft.note}
                   />
-                  <Checkbox name="preferred" label="Это предпочтительный способ" />
+                  <Checkbox name="preferred" label="Это предпочтительный способ" defaultChecked={draft.preferred === 'on'} />
                   <FormActions>
                     <Button>Добавить</Button>
                   </FormActions>
@@ -420,9 +451,29 @@ export default async function SettingsScreen({
                     : 'Уведомлений о практике много; срочное удобно получать в Telegram, а остальное — письмом. '}
                   Снятая всюду строка означает, что о таком событии не сообщать вовсе.
                 </Text>
+                {/* Пока чат не привязан, Telegram из правил не берётся, и
+                    флажки его столбца неактивны; сохранённые правила
+                    Telegram при этом не меняются (решение Р-736).
+                    Слова — те же, что у переключателя «Telegram» (Р-540). */}
+                {bound ? null : (
+                  <Text id="rules-telegram-hint" muted size={13} style={{ marginBottom: 16 }}>
+                    {mayBind
+                      ? 'Сначала подключите Telegram в карточке «Telegram».'
+                      : 'Telegram не настроен на стороне сервиса.'}
+                  </Text>
+                )}
+                {silentLine === null ? null : (
+                  <div style={{ marginBottom: 16 }}>
+                    <Notice tone="quiet">{silentLine}</Notice>
+                  </div>
+                )}
                 <Form action={saveNotifyRules}>
                   <TableScroll label="Какое событие каким каналом">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
+                  {/* На узком экране подписи «письмом» и «в Telegram» в
+                      ячейках скрыты с глаз — столбцы подписаны в шапке; для
+                      читалки флажок по-прежнему называет событие и канал
+                      (решение Р-736). */}
+                  <table className="cab-rules" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
                     <thead>
                       <tr>
                         <th scope="col" style={TABLE_HEAD}>
@@ -439,7 +490,7 @@ export default async function SettingsScreen({
                     <tbody>
                       {/* Строки — по роли и группами: менеджеру не показываются
                           события, которые ему не приходят (М-07, Р-300). */}
-                      {rulesFor(actor.role).map((event, index, rows) => (
+                      {ruleEvents.map((event, index, rows) => (
                         <Fragment key={event.kind}>
                         {index === 0 || rows[index - 1]!.group !== event.group ? (
                           <tr>
@@ -455,7 +506,14 @@ export default async function SettingsScreen({
                               <Checkbox
                                 name={`rule:${event.kind}:${channel}`}
                                 defaultChecked={ruleOn(event.kind, channel)}
-                                label={channel === 'EMAIL' ? 'письмом' : 'в Telegram'}
+                                disabled={channel === 'TELEGRAM' && !bound}
+                                describedBy={channel === 'TELEGRAM' && !bound ? 'rules-telegram-hint' : undefined}
+                                label={
+                                  <>
+                                    <span style={VISUALLY_HIDDEN}>{`${event.title} — `}</span>
+                                    <span className="cab-rule-seen">{channel === 'EMAIL' ? 'письмом' : 'в Telegram'}</span>
+                                  </>
+                                }
                                 nowrap
                               />
                             </td>
