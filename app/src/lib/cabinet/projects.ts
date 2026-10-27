@@ -1468,7 +1468,7 @@ async function announceDueChange(
       projectId: project.id,
       eventKind: 'STAGE_DUE_CHANGED',
       subject: `Срок этапа «${stage.title}» изменён`,
-      body: `Работа ${project.code}.\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
+      body: `${workLine(project, false)}\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
       dedupKey: `stage:${stageId}:due-changed-expert:${dueKey(to) ?? 'none'}:${Date.now()}`,
       path: `/cabinet/stages/${stageId}`,
     });

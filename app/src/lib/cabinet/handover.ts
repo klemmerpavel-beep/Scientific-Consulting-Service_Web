@@ -32,7 +32,7 @@ async function loadStage(stageId: string) {
       projectId: true,
       handedOverAt: true,
       project: {
-        select: { id: true, code: true, clientId: true, managerId: true, expertId: true, status: true },
+        select: { id: true, code: true, title: true, clientId: true, managerId: true, expertId: true, status: true },
       },
     },
   });
@@ -93,7 +93,7 @@ export async function handOverStage(actor: Actor, stageId: string, note: string)
       eventKind: 'STAGE_HANDED_OVER',
       subject: `Куратор сдал этап «${stage.title}»`,
       body:
-        `Работа ${stage.project.code}.\n` +
+        `${workLine(stage.project, false)}\n` +
         `Куратор сдал этап «${stage.title}». Посмотрите материалы и записку куратора: ` +
         'переведите этап на согласование или верните куратору с причиной.\n' +
         stageLink(stageId),
