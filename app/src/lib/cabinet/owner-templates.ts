@@ -20,10 +20,9 @@ import { sha256, storage } from './storage.ts';
 
 export type TemplateAudience = 'STAFF' | 'ALL';
 
-export const AUDIENCE_LABEL: Readonly<Record<TemplateAudience, string>> = {
-  STAFF: 'команде',
-  ALL: 'всем, включая клиентов',
-};
+// Подпись — в чистом модуле: её читает и журнал действий, который
+// проверяется без базы (решение Р-766).
+export { AUDIENCE_LABEL } from './code-labels.ts';
 
 /** Предел файла шаблона: документ Word или таблица, не архив материалов. */
 export const TEMPLATE_MAX_BYTES = 25 * 1024 * 1024;

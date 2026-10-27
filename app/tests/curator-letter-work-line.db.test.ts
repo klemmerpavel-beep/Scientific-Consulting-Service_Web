@@ -89,6 +89,17 @@ describe('письма куратору называют работу (Р-734)',
     assert.ok(turn.body.startsWith(`Работа ${code} — Сопровождение диссертационного исследования.\n`), turn.body);
   });
 
+  it('«Срок этапа изменён» куратору — с названием работы (Р-764)', async () => {
+    await projects.rescheduleStage(manager(), {
+      stageId: ids.stage!,
+      dueOn: new Date(Date.UTC(2026, 11, 15)),
+      reason: 'Клиент просил перенести',
+    });
+    const moved = (await letters(ids.curator!)).find((row) => row.subject === 'Срок этапа «Глава 3» изменён');
+    assert.ok(moved !== undefined, 'нет письма о сроке');
+    assert.ok(moved.body.startsWith(`Работа ${code} — Сопровождение диссертационного исследования.\n`), moved.body);
+  });
+
   it('«возвращён вам» — с названием работы', async () => {
     await prisma.stage.update({ where: { id: ids.stage }, data: { handedOverAt: new Date() } });
     await handover.handBackStage(manager(), ids.stage!, 'Добавьте выводы');

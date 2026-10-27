@@ -10,8 +10,29 @@
  * ищут и сверяют. На экране стоит название.
  */
 
+import { EXPERT_STATUS_LABEL } from '../expert-application.ts';
+import { SEVERITY_LABEL, STATUS_LABEL as FEEDBACK_STATUS_LABEL } from '../feedback.ts';
+import { expertRoleLabel } from './access.ts';
+import type { CuratorProfileInput } from './admin.ts';
+import { MONTHS_SHORT } from './analytics/metrics.ts';
+import { formatDay } from './approval-text.ts';
+import { WORK_BRIEF_LABEL } from './brief/work-rows.ts';
+import {
+  ACCOUNT_STATUS_LABEL,
+  APPROVAL_VIA_LABEL,
+  ASSIGNMENT_STATUS_LABEL,
+  AUDIENCE_LABEL,
+  CHECK_TITLE,
+  CONTACT_LABEL,
+  MARK_LABEL,
+} from './code-labels.ts';
+import { eventLabel } from './events.ts';
 import { leadSourceLabel, leadStatusLabel } from './lead-labels.ts';
-import { formatAmount } from './money.ts';
+import type { LeadEditField } from './lead-work.ts';
+import { formatAmount, STATUS_LABEL as TRANCHE_STATUS_LABEL } from './money.ts';
+import { PROJECT_STATUS_LABEL } from './project-status.ts';
+import { SERVICE_CHECKLISTS } from './service-checklists.ts';
+import { stageStateLabel } from './stage-state.ts';
 import { SUMMARY_BANDS, SUMMARY_PLATES } from './summary-layout.ts';
 import { COLUMN_SETS } from './table-views.ts';
 
@@ -115,23 +136,39 @@ const ACTIONS: Record<string, string> = {
   MESSAGE_SENT: 'Отправлено сообщение',
 };
 
+/**
+ * Виды объектов. Каждый вид, который пишет сервисный слой, назван здесь:
+ * правило проверки следит, чтобы новый не завёлся мимо словаря, — иначе
+ * руководитель читал бы «HeadCheck» и «PracticeSetting» (решение Р-766).
+ */
 const OBJECTS: Record<string, string> = {
+  Assignment: 'поручение',
+  AuditEvent: 'журнал действий',
   CalendarDay: 'день календаря',
   ClientProfile: 'карточка клиента',
+  ContactChannel: 'способ связи',
   Contract: 'договор',
   DocumentTemplate: 'шаблон документа',
   ErasureRequest: 'требование об удалении',
+  Expense: 'расход',
   ExpertApplication: 'анкета кандидата',
   ExpertPayout: 'вознаграждение',
   ExpertProfile: 'карточка куратора',
   Feedback: 'замечание с виджета',
+  FileAccessLog: 'журнал доступа к файлам',
+  HeadCheck: 'дело руководителя',
   ImportBatch: 'загрузка книги',
   Lead: 'заявка',
+  LeadAttachment: 'вложение заявки',
   Material: 'материал',
   MaterialVersion: 'версия материала',
   Message: 'сообщение',
+  Mirror: 'зеркало на Диске',
   NotificationOutbox: 'уведомление',
+  NotifyRule: 'правила уведомлений',
+  PracticeSetting: 'настройка практики',
   Project: 'работа',
+  RecommendationMark: 'отметка рекомендации',
   ServiceType: 'позиция справочника',
   ServiceTypeAlias: 'историческое написание',
   Stage: 'этап',
@@ -178,6 +215,23 @@ export function roleLabel(code: string): string {
 }
 
 /**
+ * Действия журнала доступа к файлам. Стояли на экране журнала; отсюда их
+ * берёт и экран, и подробности выгрузки журнала, где отбор по действию
+ * записан кодом (решение Р-766).
+ */
+export const FILE_ACTION_LABEL: Record<string, string> = {
+  UPLOAD: 'загрузка',
+  PRESIGN: 'выдача ссылки',
+  DOWNLOAD: 'скачивание',
+  PURGE: 'изъятие',
+};
+
+/** Момент по московскому времени — так он стоит в столбце «Когда». */
+export function formatMoment(value: Date): string {
+  return value.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
+}
+
+/**
  * Идентификатор записи базы (`cuid`: «c» и строчная латиница с цифрами).
  * На экране журнала он не печатается — человеку он ничего не говорит, а
  * сверяют по нему в выгрузке CSV, где он остаётся, как машинный код
@@ -196,6 +250,12 @@ export function isRecordId(value: unknown): value is string {
  * «имя поля — значение», имя переводится по словарю, вложенный объект
  * разворачивается в те же пары. Неизвестное имя остаётся собой: оно
  * честнее выдуманного перевода.
+ *
+ * Каждый ключ, который сервисный слой пишет в данные события, назван здесь
+ * или правилом действия ниже: правило проверки следит, чтобы новый не
+ * завёлся мимо словаря (решение Р-766). Названы и поля, где лежит
+ * идентификатор: сам он на экран не выводится (Р-758), а имя печатается,
+ * если значение — не идентификатор.
  */
 const FIELDS: Record<string, string> = {
   rows: 'строк',
@@ -235,13 +295,75 @@ const FIELDS: Record<string, string> = {
   year: 'год',
   consentGiven: 'согласие и акцепт отмечены в ней',
   staffLink: 'вход по ссылке сотрудника',
+  // Ниже — поля, которые печатались ключом (решение Р-766). Слова — с
+  // экранов, где поле правится или показывается.
+  name: 'название',
+  number: 'номер',
+  note: 'заметка',
+  file: 'файл',
+  files: 'файлов',
+  material: 'материал',
+  version: 'версия',
+  moderated: 'ждёт публикации',
+  comments: 'опубликовано пояснений куратора',
+  withNote: 'с причиной',
+  clientId: 'клиент',
+  userId: 'учётная запись',
+  leadId: 'заявка',
+  assigneeId: 'кому поручено',
+  stageId: 'этап',
+  commentId: 'комментарий',
+  serviceTypeId: 'вид работ',
+  actorId: 'действующее лицо',
+  into: 'сведена в карточку',
+  dueOn: 'срок',
+  signedOn: 'подписан',
+  expiresAt: 'действует до',
+  degree: 'учёная степень',
+  specialization: 'научная специальность',
+  defaultPayout: 'ставка по умолчанию',
+  dailyDigest: 'письма о работах — одной сводкой',
+  heads: 'уведомлено руководителей',
+  rules: 'включено правил',
+  variant: 'вариант темы',
+  attached: 'документ приложен к материалам',
+  byClient: 'подано клиентом в кабинете',
+  projects: 'работ',
+  objectsPurged: 'объектов изъято',
+  objectsFailed: 'объектов не изъято',
+  contractTotal: 'сумма договоров',
+  truncated: 'выгрузка обрезана',
+  revenue: 'выручка',
+  costs: 'расходы',
+  created: 'заведено',
+  updated: 'обновлено',
+  skipped: 'пропущено',
+  rejected: 'отклонено',
+  letter: 'письмо заявителю',
+  approvalDaysFrom: 'срок согласования был, рабочих дней',
+  approvalDaysTo: 'срок согласования стал, рабочих дней',
+  score: 'оценка',
+  withText: 'с отзывом',
+  publishAllowed: 'публикация отзыва на сайте разрешена',
 };
 
 /** Правило поля у одного действия: своё имя и, если нужно, подпись значения. */
 interface FieldRule {
+  /** Имя поля; пустое — значение говорит само за себя («клиент согласовал этап»). */
   readonly name: string;
-  /** Подпись значения; пустая строка — поле называется одним именем. */
-  readonly value?: (raw: string) => string;
+  /**
+   * Подпись значения; пустая строка — поле называется одним именем.
+   * Второй аргумент — данные события, где стоит поле: шаг чек-листа
+   * называется по своему чек-листу, ключи шагов у чек-листов совпадают.
+   */
+  readonly value?: (raw: string, data: Readonly<Record<string, unknown>>) => string;
+  /**
+   * Правила полей вложенного объекта. У разбора замечания `status` и
+   * `severity` — оба `{from, to}`, и листья подписываются каждый своим
+   * перечнем, а имя поля стоит перед ними: «состояние: было новое, стало
+   * исправлено» (решение Р-766).
+   */
+  readonly fields?: Readonly<Record<string, FieldRule>>;
   /**
    * Поле на экран не выводится: его значение уже стоит в строке журнала
    * словами (код работы — названием работы, Р-189) и остаётся в выгрузке
@@ -261,6 +383,92 @@ const byMap =
   (raw: string): string =>
     map[raw] ?? raw;
 
+const quoted = (text: string): string => `«${text}»`;
+
+/**
+ * «Было — стало» со своей подписью значения. Одно и то же состояние у
+ * разных действий значит разное — `DONE` этапа «Завершён», поручения
+ * «сделано», рекомендации «сделано», — поэтому подпись берётся по
+ * действию, а не одним словарём кодов (решение Р-766).
+ */
+const change = (value: (raw: string) => string) =>
+  ({ from: { name: 'было', value }, to: { name: 'стало', value } }) satisfies Record<string, FieldRule>;
+
+/** День, как на экранах: «30 сентября 2026». Не дата — как есть. */
+function dayLabel(raw: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z)?$/u.test(raw)) return raw;
+  const day = new Date(raw);
+  return Number.isNaN(day.getTime()) ? raw : formatDay(day);
+}
+
+/** Момент — по Москве, как в столбце «Когда». Не момент — как есть. */
+function momentLabel(raw: string): string {
+  const at = /^\d{4}-\d{2}-\d{2}T/u.test(raw) ? new Date(raw) : null;
+  return at === null || Number.isNaN(at.getTime()) ? raw : formatMoment(at);
+}
+
+/** Месяц `ГГГГ-ММ` — как в перечне расходов «Прибыли по месяцам»: «окт 2026». */
+function monthLabel(raw: string): string {
+  const match = /^(\d{4})-(\d{2})$/u.exec(raw);
+  const name = match === null ? undefined : MONTHS_SHORT[Number(match[2]) - 1];
+  return match === null || name === undefined ? raw : `${name} ${match[1]}`;
+}
+
+/** Объём требования — словами экрана «Удаление по требованию субъекта». */
+const ERASURE_SCOPE_LABEL: Readonly<Record<string, string>> = {
+  PERSONAL_DATA_AND_FILES: 'данные и файлы',
+  PERSONAL_DATA: 'только данные',
+};
+
+/** Что уходит в зеркало — словами экрана «Зеркало на облачном диске». */
+const DISK_SCOPE_LABEL: Readonly<Record<string, string>> = {
+  all: 'таблицы и материалы работ',
+  tables: 'только таблицы реестров',
+  anon: 'таблицы без персональных данных',
+};
+
+/**
+ * Ветка переписки — как она названа на экранах: внутренняя — как в сигнале
+ * о новом сообщении, ветка с руководителем — как на экране менеджера
+ * «Руководитель».
+ */
+const THREAD_LABEL: Readonly<Record<string, string>> = {
+  WORK_INTERNAL: eventLabel('INTERNAL_MESSAGE'),
+  HEAD_STAFF: 'переписка с руководителем практики',
+};
+
+/** Поля регалий и профиля куратора — подписями формы «Учётные записи». */
+const PROFILE_FIELD_LABEL = {
+  position: 'Должность',
+  degree: 'Учёная степень',
+  academicTitle: 'Учёное звание',
+  specialtyCode: 'Шифр специальности',
+  specialization: 'Научная специальность',
+  university: 'Вуз',
+  defaultPayout: 'Ставка по умолчанию',
+} satisfies Record<keyof CuratorProfileInput, string>;
+
+/** Поля заявки — подписями формы правки на экране заявки. */
+const LEAD_FIELD_LABEL = {
+  name: 'Имя',
+  contact: 'Контакт',
+  phone: 'Дополнительный телефон',
+  organization: 'Организация или вуз',
+  topic: 'Тема',
+  need: 'Что нужно',
+  deadline: 'Желаемый срок',
+  message: 'Текст обращения',
+} satisfies Record<LeadEditField, string>;
+
+/** Чек-лист вида работы по ключу (решения Р-554, Р-555). */
+const checklistOf = (key: unknown) => SERVICE_CHECKLISTS.find((list) => list.key === key);
+
+/** Шаг — текстом своего чек-листа: ключ шага у разных чек-листов один. */
+const stepValue = (raw: string, data: Readonly<Record<string, unknown>>): string => {
+  const text = checklistOf(data.checklist)?.steps.find((step) => step.key === raw)?.text;
+  return text === undefined ? raw : quoted(text.replace(/\.$/u, ''));
+};
+
 const COLUMN_SET_LABEL = Object.fromEntries(COLUMN_SETS.map((set) => [set.key, set.label]));
 const LAYOUT_LABEL = Object.fromEntries([...SUMMARY_PLATES, ...SUMMARY_BANDS].map((item) => [item.key, item.label]));
 const filterRules = {
@@ -271,11 +479,27 @@ const filterRules = {
   columns: { name: 'набор', value: byMap(COLUMN_SET_LABEL) },
 } satisfies Record<string, FieldRule>;
 
+/** Переход этапа — подписями практики (Р-206); способ согласования — словами. */
+const STAGE_CHANGE = {
+  ...change(stageStateLabel),
+  via: { name: '', value: byMap(APPROVAL_VIA_LABEL) },
+} satisfies Record<string, FieldRule>;
+const CONTACT_KIND = { kind: { name: 'способ', value: byMap(CONTACT_LABEL) } } satisfies Record<string, FieldRule>;
+const TEMPLATE_AUDIENCE = { audience: { name: 'кому', value: byMap(AUDIENCE_LABEL) } } satisfies Record<string, FieldRule>;
+const EXPENSE = { month: { name: 'месяц', value: monthLabel }, category: { name: 'статья' } } satisfies Record<
+  string,
+  FieldRule
+>;
+/** Разбор и выгрузка замечаний службой по ключу (решение Р-405). */
+const BY_KEY = { name: '', value: byMap({ key: 'по ключу выгрузки' }) } satisfies FieldRule;
+
 /**
  * Поля, которые у действия значат не то, что в общем словаре, или хранят
  * код вместо слова. У выгрузки заявок `total` — число заявок в отборе, а
  * не сумма договора; вкладка, набор столбцов и плашки «Сводки» записаны
  * кодами, и руководитель читал бы «state all» и «hidden pulse» (К-3, К-5).
+ * Состояния «было — стало», виды и ключи полей — так же: подписи берутся
+ * из тех перечней, которыми их называют экраны (решение Р-766).
  */
 const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>>> = {
   LEAD_EXPORT: {
@@ -302,25 +526,127 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
   },
   // Роль учётной записи хранится кодом: руководитель читал «роль MANAGER»
   // (решение Р-758).
-  USER_CREATED: { role: { name: 'роль', value: roleValue } },
-  USER_ROLE_CHANGED: { from: { name: 'было', value: roleValue }, to: { name: 'стало', value: roleValue } },
+  USER_CREATED: {
+    role: { name: 'роль', value: roleValue },
+    profile: { name: 'заполнено', value: byMap(PROFILE_FIELD_LABEL) },
+  },
+  USER_ROLE_CHANGED: change(roleValue),
   // Код работы — в адресе ссылки на работу и в выгрузке, не на экране (Р-189).
   LEAD_APPROVED: { code: WORK_CODE },
   ORDER_CREATED: { code: WORK_CODE },
   ASSIGNMENT_CREATED: { project: WORK_CODE },
+  // Ниже — коды значений, которые печатались как есть (решение Р-766).
+  ACCESS_LINK_ISSUED: { via: { name: '', value: byMap({ project: 'вход открыт клиенту на карточке работы' }) } },
+  OUTBOX_RETRY: { eventKind: { name: 'уведомление', value: (raw) => quoted(eventLabel(raw)) } },
+  STAFF_REGALIA_SAVED: { position: { name: 'должность' }, code: { name: 'шифр специальности' } },
+  CURATOR_PROFILE_SAVED: { changed: { name: 'изменено', value: byMap(PROFILE_FIELD_LABEL) } },
+  USER_STATUS_CHANGED: change(byMap(ACCOUNT_STATUS_LABEL)),
+  CALENDAR_DAY_SAVED: { workday: { name: 'вид дня', value: (raw) => (raw === 'true' ? 'рабочий' : 'нерабочий') } },
+  STAGE_APPROVED: STAGE_CHANGE,
+  STAGE_STATE_CHANGED: STAGE_CHANGE,
+  STAGE_REOPENED: STAGE_CHANGE,
+  STAGE_RETURNED: STAGE_CHANGE,
+  ASSIGNMENT_STATUS: change(byMap(ASSIGNMENT_STATUS_LABEL)),
+  BRIEF_APPLIED: { fields: { name: 'обновлено', value: byMap(WORK_BRIEF_LABEL) } },
+  CONTACT_ADDED: CONTACT_KIND,
+  CONTACT_REMOVED: CONTACT_KIND,
+  CONTACT_PREFERRED: CONTACT_KIND,
+  CHECKLIST_MARKED: {
+    checklist: { name: 'чек-лист', value: (raw) => quoted(checklistOf(raw)?.title ?? raw) },
+    added: { name: 'отмечено', value: stepValue },
+    removed: { name: 'снято', value: stepValue },
+  },
+  ERASURE_REQUESTED: { scope: { name: 'объём', value: byMap(ERASURE_SCOPE_LABEL) } },
+  EXPERT_APPLICATION_REVIEWED: {
+    status: { name: 'состояние', fields: change(byMap(EXPERT_STATUS_LABEL)) },
+    note: { name: 'есть пометка' },
+  },
+  FEEDBACK_REVIEWED: {
+    status: { name: 'состояние', fields: change(byMap(FEEDBACK_STATUS_LABEL)) },
+    severity: { name: 'критичность', fields: change(byMap(SEVERITY_LABEL)) },
+    note: { name: 'есть «Что сделано»' },
+    via: BY_KEY,
+  },
+  FEEDBACK_EXPORTED: { via: BY_KEY },
+  TRANCHE_STATUS_CHANGED: change(byMap(TRANCHE_STATUS_LABEL)),
+  TRANCHE_RESCHEDULED: change(dayLabel),
+  HEAD_CHECK_CLOSED: {
+    kind: { name: 'дело', value: (raw) => quoted(byMap(CHECK_TITLE)(raw)) },
+    note: { name: 'отметка' },
+  },
+  CLIENT_MERGED: { projects: { name: 'работ перенесено' } },
+  LEAD_STATUS_CHANGED: change(leadStatusLabel),
+  LEAD_EDITED: { fields: { name: 'исправлено', value: byMap(LEAD_FIELD_LABEL) } },
+  MESSAGE_SENT: { thread: { name: '', value: byMap(THREAD_LABEL) } },
+  TEMPLATE_UPLOADED: TEMPLATE_AUDIENCE,
+  TEMPLATE_REPLACED: TEMPLATE_AUDIENCE,
+  // Дата начала учёта — днём; срок реакции и пороги — числами, как есть.
+  PRACTICE_SETTING_SAVED: change(dayLabel),
+  // Статья расхода — ключ справочника в базе: подписи статей живут в базе,
+  // словарю без базы их взять неоткуда, ключ остаётся (решение Р-766).
+  EXPENSE_ADDED: EXPENSE,
+  EXPENSE_REMOVED: EXPENSE,
+  LEAD_FILES_MOVED: { count: { name: 'перенесено' }, failed: { name: 'не перенесено' } },
+  PROJECT_EDITED: {
+    expertRoleFrom: { name: 'роль куратора была', value: expertRoleLabel },
+    expertRoleTo: { name: 'роль куратора стала', value: expertRoleLabel },
+  },
+  PROJECT_STATUS_CHANGED: change(byMap(PROJECT_STATUS_LABEL)),
+  PLAN_CHANGED: {
+    moved: { name: 'место этапа', fields: { from: { name: 'было' }, to: { name: 'стало' } } },
+    removed: { name: 'удалён этап' },
+    template: { name: 'этапов по шаблону' },
+  },
+  RECOMMENDATION_MARKED: { status: { name: 'отметка', value: byMap(MARK_LABEL) } },
+  // Отбор выгрузки — подписями полей отбора экрана журнала.
+  JOURNAL_EXPORTED: {
+    filter: {
+      name: 'отбор',
+      fields: {
+        from: { name: 'с даты', value: dayLabel },
+        to: { name: 'по дату', value: dayLabel },
+        actorId: { name: 'по действующему лицу' },
+        action: { name: 'действие', value: (raw) => quoted(ACTIONS[raw] ?? FILE_ACTION_LABEL[raw] ?? raw) },
+        projectTitle: { name: 'по названию работы' },
+      },
+    },
+  },
+  // Прогоны по расписанию — словами экрана «Зеркало на облачном диске».
+  BOOK_PULL: { held: { name: 'на разбор' }, erased: { name: 'стёрто по требованию субъекта' } },
+  DISK_SYNC: {
+    uploaded: { name: 'ушло' },
+    removed: { name: 'удалено' },
+    failed: { name: 'ошибок' },
+    files: { name: 'в зеркале' },
+    scope: { name: 'объём', value: byMap(DISK_SCOPE_LABEL) },
+  },
 };
 
 /** Поля с суммой: журнал хранит их строкой копеек, bigint в JSON не кладётся. */
-const MONEY_KEYS = new Set(['amount', 'total', 'totalFrom']);
+const MONEY_KEYS = new Set(['amount', 'total', 'totalFrom', 'contractTotal', 'revenue', 'costs', 'defaultPayout']);
 
-/** Значение поля для человека: рубли вместо копеек, «да»/«нет» вместо true/false. */
+/** Поля с днём: «ГГГГ-ММ-ДД» или полночь дня из поля даты формы. */
+const DAY_KEYS = new Set(['dueOn', 'dueFrom', 'dueTo', 'paidOn', 'plannedDate', 'signedOn']);
+
+/** Поля с моментом: срок ссылки входа — до минуты, по Москве. */
+const MOMENT_KEYS = new Set(['expiresAt']);
+
+/**
+ * Значение поля для человека: рубли вместо копеек, «да»/«нет» вместо
+ * true/false, день и момент словами вместо записи ISO.
+ */
 function valueLabel(key: string, value: unknown): string {
   if (typeof value === 'boolean') return value ? 'да' : 'нет';
   if (typeof value === 'string' && MONEY_KEYS.has(key) && /^-?\d+$/u.test(value)) {
     return formatAmount(BigInt(value));
   }
+  if (typeof value === 'string' && DAY_KEYS.has(key)) return dayLabel(value);
+  if (typeof value === 'string' && MOMENT_KEYS.has(key)) return momentLabel(value);
   return String(value);
 }
+
+/** Имя поля и подпись значения; пустое из двух не печатается. */
+const named = (name: string, text: string): string => [name, text].filter((part) => part !== '').join(' ');
 
 export function detailsLabel(payload: unknown, action?: string): string {
   const parts = flatten(payload, '', action === undefined ? undefined : ACTION_FIELDS[action]);
@@ -339,8 +665,9 @@ function flatten(value: unknown, prefix = '', rules?: Readonly<Record<string, Fi
     return shown.length === 0 ? [] : [`${prefix}${shown.map((item) => String(item)).join(', ')}`];
   }
 
+  const data = value as Record<string, unknown>;
   const out: string[] = [];
-  for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
+  for (const [key, inner] of Object.entries(data)) {
     const rule = rules?.[key];
     if (rule?.hidden === true) continue;
     // Поле со значением-идентификатором: у поля со своим правилом остаётся
@@ -348,16 +675,23 @@ function flatten(value: unknown, prefix = '', rules?: Readonly<Record<string, Fi
     // был; общее поле («было», «куратор») без значения ничего не говорит и
     // не печатается вовсе (решение Р-758).
     if (isRecordId(inner)) {
-      if (rule !== undefined) out.push(rule.name);
+      if (rule !== undefined && rule.name !== '') out.push(rule.name);
       continue;
     }
     if (rule !== undefined && inner !== null && inner !== undefined && typeof inner !== 'object') {
-      const text = rule.value === undefined ? valueLabel('', inner) : rule.value(String(inner));
-      out.push(text === '' ? rule.name : `${rule.name} ${text}`);
+      const text = named(rule.name, rule.value === undefined ? valueLabel('', inner) : rule.value(String(inner), data));
+      if (text !== '') out.push(text);
       continue;
     }
     if (rule?.value !== undefined && Array.isArray(inner)) {
-      if (inner.length > 0) out.push(`${rule.name}: ${inner.map((item) => rule.value!(String(item))).join(', ')}`);
+      if (inner.length > 0) out.push(`${rule.name}: ${inner.map((item) => rule.value!(String(item), data)).join(', ')}`);
+      continue;
+    }
+    // Вложенный объект со своими правилами — одной частью с именем поля:
+    // «критичность: было высокая, стало низкая» (решение Р-766).
+    if (rule?.fields !== undefined && inner !== null && typeof inner === 'object' && !Array.isArray(inner)) {
+      const parts = flatten(inner, '', rule.fields);
+      if (parts.length > 0) out.push(`${rule.name}: ${parts.join(', ')}`);
       continue;
     }
     const name = rule?.name ?? FIELDS[key] ?? key;

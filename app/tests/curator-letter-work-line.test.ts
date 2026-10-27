@@ -10,7 +10,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -39,5 +39,27 @@ describe('первая строка писем куратору — `workLine` (
   it('правило строки — то же, что у писем сотрудникам (Р-362)', () => {
     const source = readFileSync(path.join(LIB, 'work-line.ts'), 'utf8');
     assert.match(source, /`Работа \$\{project\.code\} — \$\{project\.title\}\.`/u);
+  });
+});
+
+describe('ни одно письмо сотруднику не начинается одним кодом (Р-764)', () => {
+  // «Срок этапа изменён» и «Версия vN опубликована» куратору, «Ваше
+  // замечание опубликовано» куратору и «Куратор сдал этап» менеджеру шли
+  // мимо `notifyExpert` и остались с одной строкой «Работа PD-….».
+  // Единственное исключение — письмо о назначении куратору без договора
+  // поручения: название работы ему не уходит (Р-237, Р-455).
+  const lone = readdirSync(LIB)
+    .filter((file) => file.endsWith('.ts'))
+    .flatMap((file) =>
+      [...readFileSync(path.join(LIB, file), 'utf8').matchAll(/`Работа \$\{[\w.]*code\}\./gu)].map(() => file),
+    );
+
+  it('строка «Работа {код}.» — только в письме куратору без договора', () => {
+    assert.deepEqual(lone, ['curator-letters.ts']);
+  });
+
+  it('письмо о назначении без договора — без названия работы', () => {
+    const source = readFileSync(path.join(LIB, 'curator-letters.ts'), 'utf8');
+    assert.match(source, /: \[\n\s+`Работа \$\{work\.code\}\.`,\n\s+\.\.\.common,/u);
   });
 });

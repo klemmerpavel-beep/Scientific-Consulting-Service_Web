@@ -18,7 +18,11 @@ export interface WorkBriefRow {
   readonly mode: 'replace' | 'fill' | 'same' | 'keep';
 }
 
-const LABELS: Readonly<Record<WorkBriefKey, string>> = {
+/**
+ * Подписи полей сравнения. Их же журнал действий печатает в «Карточка
+ * обновлена из документа» вместо ключей полей (решение Р-766).
+ */
+export const WORK_BRIEF_LABEL: Readonly<Record<WorkBriefKey, string>> = {
   topic: 'Тема',
   summary: 'Суть задачи',
   university: 'Вуз или организация (карточка клиента)',
@@ -50,7 +54,7 @@ export function workBriefRows(
     const before = (current[key] ?? '').trim();
     const client = key === 'university' || key === 'speciality';
     const mode = before === after ? 'same' : client ? (before === '' ? 'fill' : 'keep') : 'replace';
-    rows.push({ key, label: LABELS[key], before, after, mode });
+    rows.push({ key, label: WORK_BRIEF_LABEL[key], before, after, mode });
   }
   return rows;
 }

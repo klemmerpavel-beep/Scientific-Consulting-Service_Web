@@ -17,17 +17,14 @@ import type { HeadCheckKind, Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { ensure, scopeProjects, type Actor } from './access.ts';
 import { record } from './audit.ts';
+// Как согласован этап — в чистом модуле: те же слова читает журнал
+// действий, проверяемый без базы (решение Р-766).
+import { APPROVAL_VIA_LABEL } from './code-labels.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
 import { moscowToday, now as clockNow } from './clock.ts';
 
 type Db = Prisma.TransactionClient | typeof prisma;
-
-const HOW: Record<string, string> = {
-  CLIENT_APPROVE: 'клиент согласовал этап',
-  STAFF_FOR_CLIENT: 'менеджер согласовал этап за клиента',
-  AUTO_ACCEPT: 'этап принят по истечении срока согласования',
-};
 
 /**
  * Этап принят — дело руководителю и сигнал. Одно открытое дело на этап:
@@ -53,7 +50,7 @@ export async function openAcceptCheck(db: Db, stageId: string, via: string): Pro
       eventKind: 'STAGE_ACCEPTED',
       subject: `Этап принят: ${stage.project.code}`,
       body:
-        `Работа ${stage.project.code}: ${HOW[via] ?? 'этап принят'} — «${stage.title}».\n` +
+        `Работа ${stage.project.code}: ${APPROVAL_VIA_LABEL[via] ?? 'этап принят'} — «${stage.title}».\n` +
         'По оферте следом оформляется акт и выставляется счёт за следующий этап — «Оплаты и документы» работы.',
       dedupKey: `head-check:${check.id}:${head.id}`,
       path: `/cabinet/projects/${stage.project.code}/payments`,
@@ -108,11 +105,9 @@ export async function closeCheck(actor: Actor, checkId: string, note: string): P
   });
 }
 
-export const CHECK_TITLE: Record<HeadCheckKind, string> = {
-  ACT_AFTER_ACCEPT: 'Этап принят: приложить акт и выставить счёт за следующий этап',
-  ACT_AFTER_REOPEN: 'Этап возвращён в работу: проверьте акт и транш',
-  CONTRACT_BY_MANAGER: 'Проверьте договор',
-};
+// Подпись — в чистом модуле: её читает и журнал действий, который
+// проверяется без базы (решение Р-766).
+export { CHECK_TITLE } from './code-labels.ts';
 
 /** Открытые дела руководителя — по всем работам; по одной работе — `projectId`. */
 export async function openChecks(actor: Actor, projectId?: string) {

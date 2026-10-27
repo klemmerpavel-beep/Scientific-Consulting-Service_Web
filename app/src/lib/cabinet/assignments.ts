@@ -26,12 +26,9 @@ import { dayKey } from './workdays.ts';
 const DAY = 86_400_000;
 export const ASSIGNMENT_TEXT_MAX = 2000;
 
-export const ASSIGNMENT_STATUS_LABEL: Record<AssignmentStatus, string> = {
-  ASSIGNED: 'поставлено',
-  IN_PROGRESS: 'в работе',
-  DONE: 'сделано',
-  WITHDRAWN: 'отозвано',
-};
+// Подпись — в чистом модуле: её читает и журнал действий, который
+// проверяется без базы (решение Р-766).
+export { ASSIGNMENT_STATUS_LABEL } from './code-labels.ts';
 
 const OPEN: AssignmentStatus[] = ['ASSIGNED', 'IN_PROGRESS'];
 

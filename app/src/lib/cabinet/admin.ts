@@ -28,11 +28,9 @@ export const ROLE_LABEL: Record<Role, string> = {
   HEAD: 'руководитель',
 };
 
-export const STATUS_LABEL: Record<Status, string> = {
-  ACTIVE: 'действует',
-  SUSPENDED: 'приостановлена',
-  ERASED: 'обезличена',
-};
+// Подпись — в чистом модуле: её читает и журнал действий, который
+// проверяется без базы (решение Р-766).
+export { ACCOUNT_STATUS_LABEL as STATUS_LABEL } from './code-labels.ts';
 
 /** Сколько учётных записей показывается на одной странице. */
 export const USER_PAGE_SIZE = 20;

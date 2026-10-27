@@ -33,12 +33,9 @@ export interface Mark {
   readonly legacy?: string;
 }
 
-export const MARK_LABEL: Record<RecommendationMarkStatus, string> = {
-  ACCEPTED: 'принято',
-  DECLINED: 'отклонено',
-  DONE: 'сделано',
-  POSTPONED: 'отложено',
-};
+// Подпись — в чистом модуле: её читает и журнал действий, который
+// проверяется без базы (решение Р-766).
+export { MARK_LABEL } from './code-labels.ts';
 
 /** Отметки, которые ставит руководитель (решения Р-349, Р-491). */
 export const MARK_STATUSES: readonly RecommendationMarkStatus[] = ['ACCEPTED', 'DECLINED', 'DONE', 'POSTPONED'];
