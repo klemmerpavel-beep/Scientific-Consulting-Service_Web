@@ -34418,6 +34418,7 @@ Form inline (ui.tsx:476-477, alignItems: 'end') выравнивает кноп�
   каталогом; без подъёма `LATEST_MIGRATION` падает.
 - Тесты на базе — весь набор на базе с новой миграцией.
 - Проверка типов, `npm test`, `build`.
+- Итог на `ca0141b9`: тесты на базе — 710 из 710 (весь набор на базе с новой миграцией); проверка типов; `npm test` — 5024 из 5024; `build`, `build:preview`; `git diff --exit-code -- app/src/components/pages` чист.
 
 ## Р-764 · Письма сотрудникам вне `notifyExpert` называют работу названием, а не одним кодом (27.10.2026)
 
@@ -34473,6 +34474,5 @@ Form inline (ui.tsx:476-477, alignItems: 'end') выравнивает кноп�
 - app/tests/curator-letter-work-line.db.test.ts — на базе: «Срок этапа
   «Глава 3» изменён» куратору после переноса срока начинается «Работа
   PD-WL-… — Сопровождение диссертационного исследования.».
-- Проверка типов, `npm test`, тесты на базе: curator-letter-work-line,
-  curator-letters, curator-notify, handover, materials, moderation,
-  stage-guards.
+- Проверка типов, `npm test`, тесты на базе (итог ниже).
+- Итог на `ca0141b9`: тесты на базе затронутых модулей (closed-work, curator-letter-work-line, curator-letters, curator-notify, curator-turn, handover, head-control, messaging-accounts, notice-fate, production-flow, production-loop, stage-guards, upload-with-note, version-moderation) — 115 из 115; случай «Срок этапа изменён» на старом `projects.ts` падает. Весь набор на базе — 710 из 710, `npm test` — 5024 из 5024 после пересъёмки снимков (правка `lib/cabinet` меняет отпечаток, Р-214; разметка экранов прежняя).
