@@ -34564,3 +34564,4 @@ Form inline (ui.tsx:476-477, alignItems: 'end') выравнивает кноп�
 - app/tests/audit-journal-work.test.ts (Р-758) — четыре ожидания переведены на слова («заполнено: Учёная степень», «отбор: по действующему лицу, по названию работы да», «название Диссертация», «было действует · стало приостановлена»); на старом коде 4 из 10 падают.
 - app/tests/finance.test.ts (суммы и выгрузки в журнале) и cabinet-markup.test.ts (действия в словаре) — без правок, зелёные.
 - Проверка типов, npm test (кроме отпечатка снимков, Р-214), тесты на базе: assignments, channels, owner-templates, recommendation-marks, recommendations, journal, journal-coverage, stage-paperwork, approval-deadline, work-brief, curator-profile, regalia — 80 из 80.
+- При переносе в ветку выпуска (`3c59fd64`): проверка типов; `npm test` — 5107 из 5107 после пересъёмки снимков (разметка экранов прежняя, изменились только файлы отпечатка, Р-214); весь набор на базе — 710 из 710.
