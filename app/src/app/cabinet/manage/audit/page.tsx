@@ -24,6 +24,7 @@ import { can } from '../../../../lib/cabinet/access';
 import {
   actionLabel,
   detailsLabel,
+  FILE_ACTION_LABEL,
   objectLabel,
   roleLabel,
 } from '../../../../lib/cabinet/journal-labels';
@@ -43,13 +44,6 @@ import { homeFor } from '../../../../lib/cabinet/nav';
 const WORK_LINK = { padding: '14px 0' } as const;
 
 export const dynamic = 'force-dynamic';
-
-const FILE_ACTION_LABEL: Record<string, string> = {
-  UPLOAD: 'загрузка',
-  PRESIGN: 'выдача ссылки',
-  DOWNLOAD: 'скачивание',
-  PURGE: 'изъятие',
-};
 
 function date(value: string | undefined): Date | null {
   if (value === undefined || value.length === 0) return null;

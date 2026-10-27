@@ -26,13 +26,9 @@ import { prisma } from '../db.ts';
 
 export type ContactKind = 'EMAIL' | 'TELEGRAM' | 'PHONE_CALL' | 'MESSENGER' | 'FULL_SUPPORT';
 
-export const CONTACT_LABEL: Record<ContactKind, string> = {
-  EMAIL: 'Письмо на почту',
-  TELEGRAM: 'Сообщение в Telegram',
-  PHONE_CALL: 'Звонок менеджера',
-  MESSENGER: 'Мессенджер или социальная сеть',
-  FULL_SUPPORT: 'Полное сопровождение',
-};
+// Подпись — в чистом модуле: её читает и журнал действий, который
+// проверяется без базы (решение Р-766).
+export { CONTACT_LABEL } from './code-labels.ts';
 
 /** Что человек получит, выбрав этот способ. Пишется на экране под строкой. */
 export const CONTACT_NOTE: Record<ContactKind, string> = {

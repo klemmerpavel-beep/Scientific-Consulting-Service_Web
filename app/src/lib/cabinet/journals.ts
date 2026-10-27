@@ -13,7 +13,7 @@
 import { ensure, type Actor } from './access.ts';
 import { prisma } from '../db.ts';
 import { toCsv } from './csv.ts';
-import { actionCodes } from './journal-labels.ts';
+import { actionCodes, formatMoment } from './journal-labels.ts';
 
 
 export interface JournalFilter {
@@ -208,6 +208,6 @@ export function journalActions(actor: Actor): string[] {
 
 export { toCsv };
 
-export function formatMoment(value: Date): string {
-  return value.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
-}
+// Момент — в словаре журнала: им же подписан срок ссылки входа в
+// подробностях события (решение Р-766).
+export { formatMoment };
