@@ -24,7 +24,7 @@ import {
 } from '../../../../../components/cabinet/ui';
 import { ensure } from '../../../../../lib/cabinet/access';
 import { SUMMARY_HREF, menuLabel } from '../../../../../lib/cabinet/nav';
-import { chosenServiceType, contactHref, leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
+import { chosenServiceType, contactHref, leadNumberLabel, leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
 import { declineLetterNote, leadAddress } from '../../../../../lib/cabinet/lead-letter';
 import { curators, leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
@@ -107,7 +107,10 @@ export default async function LeadScreen({
             </>
           }
           note={`${lead.contactKind === 'email' ? 'Почта' : 'Телефон'}: ${lead.contact}`}
-          aside={formatDay(lead.createdAt)}
+          // Номер заявки — тот же, что в письме «Заявка получена» и в
+          // сигнале Telegram: заявитель называет его, менеджер сверяет
+          // (П-3, решение Р-763).
+          aside={`Заявка ${leadNumberLabel(lead.number)} от ${formatDay(lead.createdAt)}`}
         />
 
         <ActionError id={flags.error} />

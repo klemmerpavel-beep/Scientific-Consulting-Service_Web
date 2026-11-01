@@ -31,6 +31,7 @@ import { can } from '../../../../lib/cabinet/access';
 import {
   LEAD_SOURCE_LABEL,
   LEAD_STATUS_LABEL,
+  leadNumberLabel,
   leadSourceLabel,
   } from '../../../../lib/cabinet/lead-labels';
 import { LEAD_LIST_PAGE_SIZE, leadList, leadStatusCounts } from '../../../../lib/cabinet/queries';
@@ -146,7 +147,7 @@ export default async function AllLeadsScreen({
               label="Поиск"
               name="query"
               defaultValue={filter.query}
-              placeholder="имя, почта, телефон, тема"
+              placeholder="номер, имя, почта, телефон, тема"
             />
           </FormRow>
           <FormActions>
@@ -216,6 +217,10 @@ export default async function AllLeadsScreen({
                 <tr key={lead.id}>
                   {columns.map((column) => {
                     switch (column.key) {
+                      // Номер — «№ 17» без переноса: по нему заявитель
+                      // называет обращение (П-3, решение Р-763).
+                      case 'number':
+                        return <td key={column.key} style={{ ...CELL, whiteSpace: 'nowrap' }}>{leadNumberLabel(lead.number)}</td>;
                       // Мгновение — днём по Москве; в книге — с минутами (Р-245).
                       case 'createdAt':
                         return <td key={column.key} style={{ ...CELL, whiteSpace: 'nowrap' }}>{formatDay(lead.createdAt)}</td>;

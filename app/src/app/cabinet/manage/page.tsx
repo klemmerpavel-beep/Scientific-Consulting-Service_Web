@@ -35,7 +35,7 @@ import {
   Pager,
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
-import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
+import { leadNumberLabel, leadSourceLabel } from '../../../lib/cabinet/lead-labels';
 import { formatAmount, formatRounded, outstandingOf, workMoneyNote, type OpenTranche } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
@@ -1033,7 +1033,9 @@ export default async function ManageQueue({
                 {lead.name ?? 'Без имени'}
               </a>
               <Text muted size={13}>
-                {leadSourceLabel(lead.source)} · {formatDay(lead.createdAt)}
+                {/* Номер — первым: по нему заявитель называет обращение
+                    (П-3, решение Р-763). */}
+                {leadNumberLabel(lead.number)} · {leadSourceLabel(lead.source)} · {formatDay(lead.createdAt)}
                 {lead.topic === null ? '' : ` · ${lead.topic}`}
               </Text>
               <Text size={13}>{lead.contact}</Text>

@@ -20,7 +20,7 @@ import { previousWorkday } from './workdays.ts';
 import { clientWaitDays, turnLabel, type StageStateKey } from './stage-state.ts';
 import { curatorTasks } from './curator-tasks.ts';
 import { moscowToday, now as today } from './clock.ts';
-import { LEAD_STATUS_LABEL } from './lead-labels.ts';
+import { LEAD_STATUS_LABEL, leadNumberLabel, leadNumberQuery } from './lead-labels.ts';
 import { outcomeSince } from './outcome-lines.ts';
 import { clientUploadedAt, uploadedLast } from './works-answer.ts';
 
@@ -763,6 +763,27 @@ export async function leadQueue(actor: Actor, page = 1) {
 }
 
 /**
+ * Заявка, из которой заведена работа, — строка «Из заявки № 17 от …» в
+ * «О работе» практике (П-3, решение Р-763). Выборка отдельная от
+ * `projectByCode` и закрыта правом разбора заявок: клиенту после
+ * одобрения номер не показывается (Р-189, Р-362) и в данные его экрана не
+ * попадает, куратору заявки не видны. Работа из книги или заведённая
+ * вручную заявки не имеет — `null`.
+ */
+export async function projectLead(
+  actor: Actor,
+  projectId: string,
+): Promise<{ id: string; number: number; createdAt: Date } | null> {
+  if (!can(actor, 'REQUEST_MODERATE')) return null;
+  const scope = scopeLeads(actor);
+  if (scope === null) return null;
+  return prisma.lead.findFirst({
+    where: { AND: [{ projectId }, scope] },
+    select: { id: true, number: true, createdAt: true },
+  });
+}
+
+/**
  * Одна заявка для разбора.
  *
  * Разобранные заявки тоже открываются: ссылка из журнала или из письма
@@ -1148,6 +1169,9 @@ function leadWhere(actor: Actor, filter: LeadFilter) {
   if (scope === null) return null;
 
   const query = (filter.query ?? '').trim();
+  // Поиск по номеру заявки: «17», «№ 17» (П-3, решение Р-763). Число ищется
+  // и как номер, и как текст — «900» может быть и номером, и частью телефона.
+  const number = leadNumberQuery(query);
   return {
     // Условие видимости стоит в AND: поиск ниже занимает собственный OR,
     // и сложение объектов одно из условий потеряло бы.
@@ -1176,6 +1200,7 @@ function leadWhere(actor: Actor, filter: LeadFilter) {
             { topic: { contains: query, mode: 'insensitive' as const } },
             // Столбец «Тема» выводит `topic ?? need`: искать нужно и там.
             { need: { contains: query, mode: 'insensitive' as const } },
+            ...(number === null ? [] : [{ number }]),
           ],
         }),
   };
@@ -1230,6 +1255,7 @@ export async function leadList(actor: Actor, filter: LeadFilter = {}) {
     take: LEAD_LIST_PAGE_SIZE,
     select: {
       id: true,
+      number: true,
       createdAt: true,
       source: true,
       form: true,
@@ -1341,7 +1367,7 @@ export async function createCabinetRequest(
   actor: Actor,
   draft: RequestDraft,
   consentVersion: string,
-): Promise<{ id: string; authorName: string; filesLost: number }> {
+): Promise<{ id: string; number: number; authorName: string; filesLost: number }> {
   ensure(actor, 'REQUEST_CREATE');
   if (draft.topic.length === 0) throw new Error('Тема работы не указана');
   // Пределы — как у правки заявки сотрудником (`lead-work.ts`): прежде
@@ -1480,14 +1506,34 @@ export async function createCabinetRequest(
     await enqueue(prisma, {
       userId: moderator.id,
       eventKind: 'REQUEST_CREATED',
-      subject: 'Новая заявка из кабинета',
+      // Номер — тот же, что видит заявитель после отправки (П-3, Р-763).
+      subject: `Новая заявка ${leadNumberLabel(lead.number)} из кабинета`,
       body: `${user.fullName}: ${draft.topic}\nЗаявка ждёт в очереди модерации.`,
       dedupKey: `lead:${lead.id}:created:${moderator.id}`,
       path: `/cabinet/manage/leads/${lead.id}`,
     });
   }
 
-  return { id: lead.id, authorName: user.fullName, filesLost };
+  return { id: lead.id, number: lead.number, authorName: user.fullName, filesLost };
+}
+
+/**
+ * Номер своей заявки из кабинета — для блока «Что будет дальше» после
+ * отправки (П-3, решение Р-763). Номер приходит адресом страницы и
+ * сверяется с базой: заявка из кабинета на почту этой учётной записи, ещё
+ * не ставшая работой. После одобрения клиенту номер не показывается
+ * (Р-189, Р-362): работа — по названию, договор — своим номером. Чужой
+ * номер, как и свой одобренный, — `null`: блок выходит без номера.
+ */
+export async function ownRequestNumber(actor: Actor, number: number): Promise<number | null> {
+  if (!can(actor, 'REQUEST_CREATE') || !Number.isSafeInteger(number) || number < 1 || number > 999_999_999) return null;
+  const user = await prisma.user.findUnique({ where: { id: actor.id }, select: { email: true } });
+  if (user === null) return null;
+  const lead = await prisma.lead.findFirst({
+    where: { number, source: 'cabinet', projectId: null, contact: { equals: user.email, mode: 'insensitive' } },
+    select: { number: true },
+  });
+  return lead?.number ?? null;
 }
 
 /**

@@ -51,6 +51,8 @@ export function sheetRows<Row>(columns: readonly Column<Row>[], rows: readonly R
 
 /** Строка «Всех заявок» — то, что отдаёт `leadList`. */
 export interface LeadRowView {
+  /** Сквозной номер заявки (П-3, решение Р-763). */
+  readonly number: number;
   readonly createdAt: Date;
   readonly source: string;
   readonly form: string;
@@ -72,11 +74,14 @@ const yesNo = (value: boolean) => (value ? 'да' : 'нет');
 
 /**
  * Столбцы «Всех заявок». Подробный набор — пятнадцать столбцов прежней
- * выгрузки (Р-159, Р-235); основной — шесть столбцов экрана. В основном
- * наборе «Тема» показывает тему, а если её нет — что нужно: так было на
- * экране; в подробном у того и другого свой столбец.
+ * выгрузки (Р-159, Р-235) и номер заявки; основной — семь столбцов экрана.
+ * Номер — первым столбцом в обоих наборах: по нему заявитель называет своё
+ * обращение, а менеджер его ищет (П-3, решение Р-763); в книге он — число.
+ * В основном наборе «Тема» показывает тему, а если её нет — что нужно:
+ * так было на экране; в подробном у того и другого свой столбец.
  */
 export const LEAD_COLUMNS: readonly Column<LeadRowView>[] = [
+  { key: 'number', head: '№', short: true, value: (lead) => lead.number },
   { key: 'createdAt', head: 'Дата (МСК)', short: true, value: (lead) => mskMoment(lead.createdAt) },
   { key: 'source', head: 'Страница', short: true, value: (lead) => leadSourceLabel(lead.source) },
   { key: 'form', head: 'Форма', short: false, value: (lead) => leadFormLabel(lead.form) },

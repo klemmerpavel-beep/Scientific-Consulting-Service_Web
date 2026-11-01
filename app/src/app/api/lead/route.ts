@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
   const automated = looksAutomated(lead);
 
   let id: string;
+  let number: number;
   try {
     const saved = await prisma.lead.create({
       data: {
@@ -116,9 +117,12 @@ export async function POST(req: NextRequest) {
         status: automated ? 'SPAM' : 'NEW',
         notes: automated ? `Признак автоматической отправки: ${automated}` : null,
       },
-      select: { id: true },
+      // Номер выдаёт база при записи (П-3, решение Р-763): им названа
+      // заявка в сигнале и письмах. В ответ формы он не попадает.
+      select: { id: true, number: true },
     });
     id = saved.id;
+    number = saved.number;
   } catch (e) {
     // База — единственное место, отказ которого обязан быть виден заявителю:
     // без записи нет ни заявки, ни журнала согласия.
@@ -146,7 +150,7 @@ export async function POST(req: NextRequest) {
       // (требование Т-05, решение Р-312). Отзыву и заявке без почты письма
       // нет; на один адрес — не больше письма в сутки.
       await enqueueLeadReceived(id).catch((e) => console.error('[lead] письмо «Заявка получена» не поставлено', e));
-      const results = await deliver(lead, id);
+      const results = await deliver(lead, id, number);
       await prisma.delivery
         .createMany({
           data: results.map((r) => ({ leadId: id, channel: r.channel, ok: r.ok, error: r.error ?? null })),
@@ -157,5 +161,7 @@ export async function POST(req: NextRequest) {
 
   // Номер записи наружу не отдаётся (Р-250): форме он не нужен, а первичный
   // ключ в ответе открытого маршрута — лишнее знание о внутреннем устройстве.
+  // Номер заявки «№ N» тоже: благодарность после формы (Р-406) его не
+  // показывает, он приходит письмом «Заявка получена» (решение Р-763).
   return NextResponse.json({ ok: true });
 }

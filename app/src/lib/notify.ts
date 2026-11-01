@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { leadNumberLabel } from './cabinet/lead-labels.ts';
 import type { Lead } from './lead-schema';
 
 /**
@@ -81,8 +82,15 @@ const escapeHtml = (s: string) =>
  * текст сообщения остаются на почте и в карточке заявки: для первого звонка
  * они не нужны, а за рубеж уходило бы больше, чем требует цель. Отзыв
  * контакта не собирает (Р-110): в сигнале — только подпись автора.
+ *
+ * Заголовок — «Новая заявка № 17» (П-3, решение Р-763): тот же номер
+ * заявитель видит в письме «Заявка получена» и называет при звонке. Номер
+ * выдаёт база и о человеке ничего не говорит — это отсылка к записи, как
+ * прежний идентификатор (Р-187). Идентификатор остаётся в ссылке на
+ * карточку, отдельной строкой не дублируется. Отзыв номера не показывает:
+ * он не заявка, в перечне заявок его нет.
  */
-export function telegramSignal(lead: Lead, id: string): string {
+export function telegramSignal(lead: Lead, id: string, number: number): string {
   const base = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') ?? '';
   const where = SOURCE_NAMES[lead.source] ?? lead.source;
   const review = lead.form === 'review';
@@ -94,7 +102,7 @@ export function telegramSignal(lead: Lead, id: string): string {
   const name = lead.name?.trim() ?? '';
   const contact = lead.contact.trim();
   return [
-    review ? '<b>Новый отзыв</b>' : '<b>Новая заявка</b>',
+    review ? '<b>Новый отзыв</b>' : `<b>Новая заявка ${leadNumberLabel(number)}</b>`,
     '',
     `<b>${review ? 'Автор' : 'Имя'}:</b> ${name === '' ? 'не указано' : escapeHtml(name)}`,
     // Почту и телефон Telegram сам делает ссылками: нажатие — письмо или звонок.
@@ -107,13 +115,11 @@ export function telegramSignal(lead: Lead, id: string): string {
     // Тема, организация и сообщение — в карточке заявки.
     review ? 'Отзыв — в карточке:' : 'Тема и подробности — в карточке заявки:',
     `${base}/cabinet/manage/leads/${encodeURIComponent(id)}`,
-    '',
-    `<code>${escapeHtml(id)}</code>`,
   ].join('\n');
 }
 
-async function sendTelegram(lead: Lead, id: string): Promise<DeliveryResult> {
-  return postTelegram(telegramSignal(lead, id));
+async function sendTelegram(lead: Lead, id: string, number: number): Promise<DeliveryResult> {
+  return postTelegram(telegramSignal(lead, id, number));
 }
 
 /**
@@ -182,9 +188,11 @@ const yesNo = (v: boolean | undefined) => (v ? 'да' : 'нет');
  * называется отзывом — прежде он приходил с темой «Заявка», а роль автора
  * стояла в строке «Имя». Подпись несёт весь журнал отметок, а не одно
  * согласие: менеджеру до ответа нужно знать, принята ли оферта и можно ли
- * писать о рассылке. Ссылка ведёт на карточку заявки в кабинете.
+ * писать о рассылке. Ссылка ведёт на карточку заявки в кабинете. Заявка
+ * названа номером — тем же, что у заявителя в письме «Заявка получена»
+ * (П-3, решение Р-763); у отзыва номера нет.
  */
-export function leadMail(lead: Lead, id: string): { subject: string; html: string; text: string } {
+export function leadMail(lead: Lead, id: string, number: number): { subject: string; html: string; text: string } {
   const review = lead.form === 'review';
   const where = SOURCE_NAMES[lead.source] ?? lead.source;
   const base = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') ?? '';
@@ -197,7 +205,8 @@ export function leadMail(lead: Lead, id: string): { subject: string; html: strin
         ['рассылка', yesNo(lead.marketing)],
       ];
   const footer = `${review ? 'Отзыв' : 'Заявка'} ${id} · ${marks.map(([k, v]) => `${k}: ${v}`).join(' · ')}`;
-  const title = review ? 'Новый отзыв с сайта' : 'Новая заявка с сайта';
+  const no = leadNumberLabel(number);
+  const title = review ? 'Новый отзыв с сайта' : `Новая заявка ${no} с сайта`;
 
   const rows = fields(lead)
     .map(
@@ -223,11 +232,11 @@ export function leadMail(lead: Lead, id: string): { subject: string; html: strin
     footer,
   ].join('\n');
 
-  const subject = header(`${review ? 'Отзыв' : 'Заявка'} · ${where}${lead.name ? ` · ${lead.name}` : ''}`);
+  const subject = header(`${review ? 'Отзыв' : `Заявка ${no}`} · ${where}${lead.name ? ` · ${lead.name}` : ''}`);
   return { subject, html, text };
 }
 
-async function sendMail(lead: Lead, id: string): Promise<DeliveryResult> {
+async function sendMail(lead: Lead, id: string, number: number): Promise<DeliveryResult> {
   const host = process.env.SMTP_HOST;
   const to = process.env.LEAD_MAIL_TO;
   // `||`, а не `??`: пустая переменная из описания сервиса оставляла поле
@@ -235,7 +244,7 @@ async function sendMail(lead: Lead, id: string): Promise<DeliveryResult> {
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
   if (!host || !to || !from) return { channel: 'email', ok: false, error: 'канал не настроен' };
 
-  const { subject, html, text } = leadMail(lead, id);
+  const { subject, html, text } = leadMail(lead, id, number);
 
   try {
     const transport = nodemailer.createTransport({
@@ -269,6 +278,6 @@ async function sendMail(lead: Lead, id: string): Promise<DeliveryResult> {
 // ------------------------------------------------------------------ Диспетчер
 
 /** Оба канала параллельно; отказ одного не влияет на другой */
-export async function deliver(lead: Lead, id: string): Promise<DeliveryResult[]> {
-  return Promise.all([sendTelegram(lead, id), sendMail(lead, id)]);
+export async function deliver(lead: Lead, id: string, number: number): Promise<DeliveryResult[]> {
+  return Promise.all([sendTelegram(lead, id, number), sendMail(lead, id, number)]);
 }

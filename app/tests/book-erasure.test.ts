@@ -239,7 +239,7 @@ describe('контакты субъекта в виде сверки', () => {
 describe('письмо об отказе', () => {
   it('заявке с сайта — без имени и темы с открытой формы', () => {
     const { body } = declineLetterFor(
-      { source: 'landing', name: 'https://example.invalid/приз', topic: 'Заберите выигрыш: example.invalid' },
+      { number: 41, source: 'landing', name: 'https://example.invalid/приз', topic: 'Заберите выигрыш: example.invalid' },
       'Тема вне наших направлений.',
     );
     assert.ok(body.startsWith('Здравствуйте.\n'));
@@ -248,7 +248,7 @@ describe('письмо об отказе', () => {
   });
 
   it('заявке из кабинета — с именем и темой', () => {
-    const { body } = declineLetterFor({ source: 'cabinet', name: 'Анна', topic: 'Кубиты' }, 'Причина.');
+    const { body } = declineLetterFor({ number: 42, source: 'cabinet', name: 'Анна', topic: 'Кубиты' }, 'Причина.');
     assert.ok(body.startsWith('Здравствуйте, Анна.'));
     assert.match(body, /по теме «Кубиты»/u);
   });

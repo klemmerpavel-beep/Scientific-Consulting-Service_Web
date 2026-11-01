@@ -26,9 +26,11 @@ import { requestDraftFromBrief } from '../../../lib/cabinet/brief/request-draft'
 import { variantFields } from '../../../lib/cabinet/brief/work-rows';
 import {
   REQUEST_FILES_MAX,
+  ownRequestNumber,
   requestDefaults,
   serviceTypes,
 } from '../../../lib/cabinet/queries';
+import { leadNumberLabel } from '../../../lib/cabinet/lead-labels';
 import { requireActor } from '../../../lib/cabinet/session';
 import { homeFor } from '../../../lib/cabinet/nav';
 import { parseRequestBrief, submitCabinetRequest } from '../actions';
@@ -77,6 +79,10 @@ export default async function NewRequestScreen({
   const draft = (await formDraft(params.error)) ?? {};
   // Число берётся из адреса, поэтому читается как число, а не как текст.
   const lost = Math.max(0, Number.parseInt(params.lost ?? '0', 10) || 0);
+  // Номер заявки — из адреса, сверенный с базой: своя заявка из кабинета,
+  // ещё не ставшая работой (П-3, решение Р-763). Иначе блок без номера.
+  const sentNumber =
+    params.sent !== undefined && /^\d{1,9}$/u.test(params.sent) ? await ownRequestNumber(actor, Number(params.sent)) : null;
 
   return (
     <Shell actor={actor} current="/cabinet/request">
@@ -274,14 +280,18 @@ export default async function NewRequestScreen({
             </Notice>
             {/* Тот же блок шагов, что после формы заявки на сайте; третий
                 шаг — для того, у кого кабинет уже есть (требование Т-24,
-                решение Р-318). */}
+                решение Р-318). Первый шаг называет номер заявки: по нему
+                заявитель спрашивает о ней до одобрения (П-3, решение
+                Р-763). */}
             <Card style={{ marginTop: 16 }}>
               <Heading level={2} size={3} style={{ marginBottom: 8 }}>
                 Что будет дальше
               </Heading>
               <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
                 <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
-                  Менеджер разберёт заявку и ответит в течение рабочего дня.
+                  {sentNumber === null
+                    ? 'Менеджер разберёт заявку и ответит в течение рабочего дня.'
+                    : `Менеджер разберёт заявку ${leadNumberLabel(sentNumber)} и ответит в течение рабочего дня.`}
                 </li>
                 <li style={{ fontFamily: SANS, fontSize: 15, lineHeight: 1.6 }}>
                   Свяжемся удобным вам способом, чтобы уточнить задачу.

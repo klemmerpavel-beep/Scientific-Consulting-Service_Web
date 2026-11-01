@@ -1103,6 +1103,7 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
   // (требование Т-22, решения Р-279, Р-296).
   let filesLost = 0;
   let briefLost = 0;
+  let number = 0;
   let failure: string | null = null;
   try {
     if (brief !== '') {
@@ -1110,7 +1111,7 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
       if (attachment === null) briefLost = 1;
       else files.unshift(attachment);
     }
-    ({ filesLost } = await createCabinetRequest(
+    ({ filesLost, number } = await createCabinetRequest(
       actor,
       {
         topic: String(form.get('topic') ?? '').trim(),
@@ -1154,7 +1155,9 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
 
   if (brief !== '') await dropBrief(actor, brief);
   const lost = filesLost + briefLost;
-  redirect(lost > 0 ? `/cabinet/request?sent=1&lost=${lost}` : '/cabinet/request?sent=1');
+  // Номер заявки — адресом: экран сверит его с базой и покажет в блоке
+  // «Что будет дальше» (П-3, решение Р-763).
+  redirect(lost > 0 ? `/cabinet/request?sent=${number}&lost=${lost}` : `/cabinet/request?sent=${number}`);
 }
 
 /**
