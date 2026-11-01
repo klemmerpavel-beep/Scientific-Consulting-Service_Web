@@ -1636,8 +1636,11 @@ export default async function ManageQueue({
                   </Text>
                 ) : (
                   <div style={{ marginTop: 12, display: 'grid', gap: 2 }}>
+                    {/* Рекомендация месяца — шаблон с названием вида из
+                        справочника; фраза о разбросе чека не обрывается
+                        на «проверьте, …» (П-9, Р-765). Дела — по 90 знаков. */}
                     <a href={group.first.href} className="cab-mark" style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
-                      {clip(group.first.title, 90)}
+                      {clip(group.first.title, group.key === 'chance' ? 160 : 90)}
                     </a>
                     {group.first.note === null ? null : (
                       <Text muted size={13}>

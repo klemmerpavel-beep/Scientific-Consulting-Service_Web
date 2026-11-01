@@ -8,6 +8,7 @@ import {
   Text,
 } from '../../../../../components/cabinet/ui';
 import { products } from '../../../../../lib/cabinet/analytics/metrics';
+import { PRICE_GUIDE } from '../../../../../lib/cabinet/analytics/price-guide';
 import { formatAmount, formatRounded } from '../../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from '../shared';
 
@@ -34,19 +35,20 @@ export default async function AnalyticsProducts() {
             <Tile label="Позиций" value={String(list.length)} />
             <Tile label="Заказов" value={String(list.reduce((acc, product) => acc + product.orders, 0))} />
             <Tile label="Сумма договоров" value={formatAmount(total)} />
+            {/* Разброс — повод проверить, а не прайс: стоимость не
+                унифицируется, сумму работы определяет Задание (П-8, П-9,
+                Р-765). Условие прежнее (Р-350). */}
             <Tile
-              label="Требуют прайса"
+              label="Разброс чека выше 40 %"
               value={String(scattered.length)}
-              note="разброс чека выше 40 % при трёх и более заказах"
+              note="позиций с тремя и более заказами"
             />
           </Tiles>
 
           {scattered.length === 0 ? null : (
             <div style={{ marginBottom: 28 }}>
               <Notice tone="quiet" role="status">
-                Цена по позициям {scattered.map((product) => product.typeName).join(', ')} назначается
-                по случаю: разброс чека выше 40 %. Прайс по ним из практики не выводится — его нужно
-                установить решением.
+                {`Разброс чека выше 40 % у позиций: ${scattered.map((product) => product.typeName).join(', ')}. Проверьте, объясняется ли он темой и сложностью работ. Медиана и диапазон в таблице — ${PRICE_GUIDE}.`}
               </Notice>
             </div>
           )}

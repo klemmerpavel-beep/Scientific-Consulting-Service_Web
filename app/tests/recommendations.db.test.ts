@@ -2,9 +2,10 @@
  * Раздел «Рекомендации» (требование РК-17, решение Р-350): «Возврат
  * клиентов» берёт согласие на рассылку из последней заявки клиента
  * (ОР-10); отметка убирает рекомендацию из числа у пункта меню; число у
- * пункта равно неотмеченным; «Рекомендация месяца» есть; письмо 1-го
- * числа — одно на месяц, без сумм, позже третьего числа не уходит;
- * менеджеру раздел закрыт.
+ * пункта равно неотмеченным; «Рекомендация месяца» есть; разброс чека
+ * вида даёт рекомендацию «Цена и пакеты» — ориентиром для Задания, без
+ * «зафиксировать цену» (П-9, Р-765); письмо 1-го числа — одно на месяц,
+ * без сумм, позже третьего числа не уходит; менеджеру раздел закрыт.
  *
  * Пропускается без заданного адреса базы; запускается `npm run test:db`.
  */
@@ -59,6 +60,18 @@ describe('«Рекомендации» (РК-17)', { skip: !enabled }, async () 
       prisma.project.create({ data: { ...base, clientId: silent.id, code: `PD-RS-${String(stamp).slice(-6)}-B`, title: 'Давняя работа 2' } }),
       prisma.project.create({ data: { ...base, clientId: erased.id, code: `PD-RS-${String(stamp).slice(-6)}-C`, title: '[удалено по требованию субъекта]' } }),
     ]);
+    // Чек вида разбросан: 20 000, 100 000 и 60 000 ₽ — разброс выше 40 % при
+    // трёх заказах, рекомендация «Цена и пакеты» (Р-350, Р-765).
+    const amounts: readonly (readonly [string, bigint])[] = [
+      [agreedWork.id, 2_000_000n],
+      [silentWork.id, 10_000_000n],
+      [erasedWork.id, 6_000_000n],
+    ];
+    await Promise.all(
+      amounts.map(([projectId, totalAmount], index) =>
+        prisma.contract.create({ data: { projectId, number: `Д-RS-${stamp}-${index}`, totalAmount } }),
+      ),
+    );
     const lead = await prisma.lead.create({
       data: {
         source: 'landing',
@@ -127,6 +140,19 @@ describe('«Рекомендации» (РК-17)', { skip: !enabled }, async () 
     assert.equal(returns.find((row) => row.clientId === ids.erased), undefined, 'стёртый клиент в рекомендациях');
   });
 
+  it('«Цена и пакеты» — разброс чека и ориентир для Задания, без «зафиксировать цену» (П-9, Р-765)', async () => {
+    const { price, month } = await recommendations.recommendationsFor(head());
+    const item = price.find((row) => row.typeCode === `rs-${stamp}`);
+    assert.ok(item !== undefined, 'рекомендации по разбросу чека нет');
+    assert.equal(item.medianCheck, 6_000_000n);
+    assert.equal(item.orders, 3);
+    // Рекомендация месяца — какая выйдет первой в общей базе стенда; в
+    // любой нет ни «зафиксировать цену», ни сумм (письмо берёт её же).
+    assert.ok(month !== null, 'рекомендации месяца нет');
+    assert.doesNotMatch(`${month.title} ${month.note ?? ''}`, /зафиксир|₽/iu);
+    if (month.href.endsWith('#price')) assert.equal(month.note, 'Медиана и диапазон — ориентир для Задания, а не цена');
+  });
+
   it('отметка убирает рекомендацию из числа «Ждут решения»', async () => {
     const before = await recommendations.recommendationsFor(head());
     assert.ok(before.month !== null, 'рекомендации месяца нет');
@@ -144,6 +170,7 @@ describe('«Рекомендации» (РК-17)', { skip: !enabled }, async () 
     assert.equal(letters[0]!.dedupKey, `head-monthly:2026-11:${ids.head}:email`);
     assert.match(letters[0]!.body, /^Рекомендация месяца: /u);
     assert.doesNotMatch(letters[0]!.body, /₽/u, 'сумма в письме');
+    assert.doesNotMatch(letters[0]!.body, /зафиксир/iu, '«зафиксировать цену» в письме (П-9)');
     await prisma.notificationOutbox.deleteMany({ where: { userId: ids.head, eventKind: 'HEAD_MONTHLY' } });
     await digest.enqueueHeadMonthly(new Date('2026-11-10T06:00:00Z'));
     assert.equal(await prisma.notificationOutbox.count({ where: { userId: ids.head, eventKind: 'HEAD_MONTHLY' } }), 0);
