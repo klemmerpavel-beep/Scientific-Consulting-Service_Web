@@ -428,7 +428,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Стоимость</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Из чего складывается смета и когда вы узнаёте сумму</h2>
 </div>
-<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Сумму называем на консультации, до договора и до оплаты</span>
+<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Сумму называем на консультации, до согласования Задания и до оплаты</span>
 </div>
 <div style="margin:0 0 32px;border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;background:var(--pd-ink-inverse)">
 <div style="display:flex;align-items:baseline;gap:12px;padding:14px 20px;background:var(--pd-surface-quiet);border-bottom:1px solid var(--pd-border)">
@@ -923,8 +923,8 @@ class Component extends DCLogic {
       ['06', 'Подготовка к защите', '', 'Репетиция ответов на вопросы совета и разбор замечаний рецензентов.']
     ];
     const stepTags = [
-      ['Разбор задачи', 'Оценка объёма', 'Профиль куратора'],
-      ['Постановка задачи', 'Подбор эксперта', 'Предварительный план'],
+      ['Разбор задачи', 'Оценка объёма', 'Ответ менеджера'],
+      ['Постановка задачи', 'Подбор куратора', 'Профиль куратора', 'Предварительный план'],
       ['Структура работы', 'Методология', 'Смета и договор'],
       ['Разбор глав', 'Научная редактура', 'Оформление по ГОСТ'],
       ['Комментарии куратора', 'Правки автора', 'Акт по этапу'],
@@ -1169,7 +1169,7 @@ class Component extends DCLogic {
       nextPlan: () => this.goPlan(1),
       requestPoints: [
         ['users', 'Разберём задачу с куратором по вашей научной области'],
-        ['calendar-days', 'Назовём сроки и этапы до подписания договора'],
+        ['calendar-days', 'Назовём сроки и этапы до согласования Задания'],
         ['shield-check', 'Материалы не передаются третьим лицам — NDA со всей командой']
       ].map(([icon, text], i) => ({
         text, mask: this.mask(icon),
