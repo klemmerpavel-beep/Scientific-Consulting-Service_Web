@@ -46,7 +46,12 @@ import {
   type MaterialKind,
 } from '../../lib/cabinet/materials';
 import { sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages';
-import { saveAnalyticsSince, saveConfidenceThresholds, saveReactionDays } from '../../lib/cabinet/practice-settings';
+import {
+  saveAnalyticsSince,
+  saveConfidenceThresholds,
+  saveLeadFirstResponseHours,
+  saveReactionDays,
+} from '../../lib/cabinet/practice-settings';
 import { markRecommendation } from '../../lib/cabinet/recommendations';
 import { createAssignment, setAssignmentStatus } from '../../lib/cabinet/assignments';
 import { addExpense, removeExpense } from '../../lib/cabinet/profit';
@@ -2122,15 +2127,20 @@ export async function closeHeadCheck(form: FormData): Promise<void> {
   redirect(back);
 }
 
-/** Срок реакции в рабочих днях (требование РК-05, решение Р-337). */
+/**
+ * Срок реакции в рабочих днях (требование РК-05, решение Р-337) и цель
+ * первого ответа на заявку в рабочих часах (п. 2.8 задания, Р-766) — одна
+ * форма, одна кнопка под обоими полями (Р-715).
+ */
 export async function saveReaction(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const back = '/cabinet/manage/directory?tab=calendar';
   let failure: string | null = null;
   try {
     await saveReactionDays(actor, String(form.get('days') ?? ''));
+    if (form.has('hours')) await saveLeadFirstResponseHours(actor, String(form.get('hours') ?? ''));
   } catch (error) {
-    failure = reasonOf(error, 'Не удалось сохранить срок реакции');
+    failure = reasonOf(error, 'Не удалось сохранить сроки ответа');
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);

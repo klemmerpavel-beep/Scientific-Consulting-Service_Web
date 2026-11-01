@@ -904,6 +904,9 @@ export function conclusions(
   rows: readonly ProjectRow[],
   controlDate: Date,
   since: Date = ANALYTICS_SINCE_DEFAULT,
+  // Выводы не по работам, а по заявкам — первый ответ за 90 дней (п. 2.8
+  // задания, Р-766): их считает свой модуль, здесь они встают в общий ряд.
+  extra: readonly Conclusion[] = [],
 ): Conclusion[] {
   const out: Conclusion[] = [];
   if (rows.length === 0) return out;
@@ -957,6 +960,10 @@ export function conclusions(
       next: NEXT.deadlines,
     });
   }
+
+  // 2а. Первый ответ на заявку дольше внутренней цели (Р-766) — после
+  //     сроков: тоже дело недели, а не сезона.
+  out.push(...extra);
 
   // 3. Что работает лучше и когда: тип с наибольшим средним чеком и месяцы
   //    пика сезона. Это и есть прямой ответ на вопрос заказчика.
@@ -1111,6 +1118,7 @@ export function verdict(
   rows: readonly ProjectRow[],
   controlDate: Date,
   since: Date = ANALYTICS_SINCE_DEFAULT,
+  extra: readonly Conclusion[] = [],
 ): Verdict | null {
   if (rows.length === 0) return null;
 
@@ -1118,7 +1126,7 @@ export function verdict(
   const debts = receivables(rows, controlDate).filter((debt) => (debt.overdueDays ?? 0) > 0);
   const overdueSum = sum(debts.map((debt) => debt.debt));
   const late = lateOpen(rows, controlDate);
-  const advice = conclusions(rows, controlDate, since);
+  const advice = conclusions(rows, controlDate, since, extra);
 
   // «Действующих» — идущие и приостановленные, как на главной и во
   // вкладке перечня; «в работе» здесь прежде значило одни идущие, а на

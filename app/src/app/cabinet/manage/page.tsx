@@ -30,6 +30,7 @@ import {
   clip,
   formatDate,
   formatDay,
+  formatTime,
   plural,
   turnLabel,
   Pager,
@@ -619,6 +620,22 @@ export default async function ManageQueue({
       todo: 'Назначить куратора',
       // Сразу на форме «Куратор», как кнопка под названием (Р-743; Р-487).
       href: `/cabinet/projects/${row.code}?manage=1#manage-expert`,
+    })),
+    // Цель первого ответа — рабочие часы, обещание сайта — рабочий день:
+    // дело «ждёт ответа» встаёт раньше дела Р-304 и гаснет, когда оно
+    // наступает (п. 2.8 задания, решение Р-766).
+    ...parts.waitingLeads.map((lead) => ({
+      key: `waitlead-${lead.id}`,
+      kind: 'lead' as const,
+      step: 0 as const,
+      // Заявка — заголовком, вид дела — пометкой, как у дела Р-304 (Р-182).
+      title: lead.name ?? 'Без имени',
+      mark: `заявка ждёт ответа ${lead.hours} ч`,
+      urgent: false,
+      // Время прихода — по Москве (Р-470): цель считается часами.
+      detail: `пришла ${formatDay(lead.createdAt)} в ${formatTime(lead.createdAt)} МСК · считаются рабочие часы`,
+      todo: 'Ответить заявителю и отметить состояние заявки',
+      href: `/cabinet/manage/leads/${lead.id}`,
     })),
     ...parts.lateLeads.map((lead) => ({
       key: `latelead-${lead.id}`,

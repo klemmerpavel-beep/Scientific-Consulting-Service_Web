@@ -16,7 +16,8 @@ import {
 } from './access.ts';
 import { fileRefusal } from './file-guard.ts';
 import { loadCalendar } from './approval.ts';
-import { previousWorkday } from './workdays.ts';
+import { previousWorkday, workMinutesBetween } from './workdays.ts';
+import { leadFirstResponseHours } from './practice-settings.ts';
 import { clientWaitDays, turnLabel, type StageStateKey } from './stage-state.ts';
 import { curatorTasks } from './curator-tasks.ts';
 import { moscowToday, now as today } from './clock.ts';
@@ -1626,8 +1627,11 @@ export async function pendingReview(
  * руководителем, и чужие работы заняли бы его делами других. Заявки — общие
  * для всех, кто их разбирает. У каждого дела — экран, где его закрывают, и
  * условие, при котором оно исчезает само.
+ *
+ * `at` — мгновение расчёта: экраны его не передают, проверки рабочих часов
+ * дела «заявка ждёт ответа» задают его явно (решение Р-766).
  */
-export async function todayItems(actor: Actor) {
+export async function todayItems(actor: Actor, at: Date = new Date()) {
   const empty = {
     // Клиент — в пояснении дела: одноимённые работы различаются по нему
     // (решение Р-721).
@@ -1638,11 +1642,13 @@ export async function todayItems(actor: Actor) {
     noNda: [] as { code: string; title: string; expert: string; client: string }[],
     ndaWaiting: [] as { id: string; fullName: string; requestedAt: Date | null; works: number }[],
     week: [] as { key: string; title: string; dueOn: Date; href: string; turn: string | null }[],
+    // Новая заявка без первого ответа дольше цели в рабочих часах — раньше
+    // дела «без ответа дольше рабочего дня» (п. 2.8 задания, Р-766).
+    waitingLeads: [] as { id: string; name: string | null; createdAt: Date; hours: number }[],
     lateLeads: [] as { id: string; name: string | null; createdAt: Date }[],
     reviewLeads: [] as { id: string; name: string | null; status: string; since: Date }[],
   };
   if (!can(actor, 'REQUEST_MODERATE')) return empty;
-  const at = new Date();
   const today = moscowToday(at);
   const DAY = 86_400_000;
   const inWeek = new Date(today.getTime() + 7 * DAY);
@@ -1800,9 +1806,12 @@ export async function todayItems(actor: Actor) {
   const leadScope = scopeLeads(actor) ?? {};
   const calendar = await loadCalendar();
   const lastWorkday = previousWorkday(today, calendar);
-  const [late, review] = await Promise.all([
+  // Конец предыдущего рабочего дня по Москве: заявка, пришедшая до него, —
+  // дело Р-304 «без ответа дольше рабочего дня».
+  const lateBefore = new Date(lastWorkday.getTime() + DAY - 3 * 3_600_000);
+  const [late, review, fresh, target] = await Promise.all([
     prisma.lead.findMany({
-      where: { ...leadScope, status: 'NEW', projectId: null, form: { not: 'review' }, createdAt: { lt: new Date(lastWorkday.getTime() + DAY - 3 * 3_600_000) } },
+      where: { ...leadScope, status: 'NEW', projectId: null, form: { not: 'review' }, createdAt: { lt: lateBefore } },
       orderBy: { createdAt: 'asc' },
       take: 20,
       select: { id: true, name: true, createdAt: true },
@@ -1813,9 +1822,32 @@ export async function todayItems(actor: Actor) {
       take: 20,
       select: { id: true, name: true, status: true, statusChangedAt: true },
     }),
+    // Новые заявки моложе дела Р-304 без первого ответа: первый ответ —
+    // первая смена состояния менеджером из «Новой» (п. 2.8 задания, Р-766).
+    prisma.lead.findMany({
+      where: {
+        ...leadScope,
+        status: 'NEW',
+        projectId: null,
+        form: { not: 'review' },
+        firstResponseAt: null,
+        createdAt: { gte: lateBefore, lte: at },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 20,
+      select: { id: true, name: true, createdAt: true },
+    }),
+    leadFirstResponseHours(),
   ]);
+  // Ждёт ответа — рабочими часами 09:00–18:00 МСК по календарю практики:
+  // заявка, пришедшая вечером, ждёт с утра следующего рабочего дня. Одна
+  // заявка — одно дело: когда наступает дело Р-304, это гаснет.
+  const waiting = fresh
+    .map((lead) => ({ ...lead, hours: Math.floor(workMinutesBetween(lead.createdAt, at, calendar) / 60) }))
+    .filter((lead) => lead.hours >= target);
   return {
     ...out,
+    waitingLeads: waiting,
     lateLeads: late,
     reviewLeads: review.map((lead) => ({ id: lead.id, name: lead.name, status: lead.status, since: lead.statusChangedAt })),
   };

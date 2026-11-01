@@ -1,6 +1,7 @@
 /**
  * Настройки практики (требование РК-05, решение Р-337; дата начала учёта и
- * пороги уверенности — РК-16, Р-349). Первая — срок
+ * пороги уверенности — РК-16, Р-349; цель первого ответа на заявку —
+ * п. 2.8 задания, Р-766). Первая — срок
  * реакции: через сколько рабочих дней неразобранное дело менеджера
  * поднимается руководителю контрольным (решение владельца В-18). Правит
  * руководитель в «Справочниках»; изменение пишется в журнал.
@@ -44,6 +45,36 @@ export async function saveReactionDays(actor: Actor, raw: string): Promise<void>
     objectId: REACTION_KEY,
     payload: { from: before, to: value },
   });
+}
+
+// ───────────── Первый ответ на заявку (п. 2.8 задания, Р-766) ───────────────
+
+const LEAD_RESPONSE_KEY = 'leadFirstResponseHours';
+/**
+ * Внутренняя цель первого ответа на заявку — 2 рабочих часа (09:00–18:00
+ * МСК по производственному календарю). Публичное обещание «ответит в
+ * течение рабочего дня» (сайт, письмо «Заявка получена», Р-312) и срок
+ * реакции не меняются: цель — строже обещания и не длиннее рабочего дня.
+ */
+export const LEAD_RESPONSE_DEFAULT = 2;
+/** Рабочий день — девять часов: цель длиннее него разошлась бы с обещанием. */
+export const LEAD_RESPONSE_MAX = 9;
+
+/** Цель первого ответа на заявку в рабочих часах. */
+export async function leadFirstResponseHours(): Promise<number> {
+  const row = await prisma.practiceSetting.findUnique({ where: { key: LEAD_RESPONSE_KEY }, select: { value: true } });
+  const value = Number(row?.value);
+  return Number.isInteger(value) && value >= 1 && value <= LEAD_RESPONSE_MAX ? value : LEAD_RESPONSE_DEFAULT;
+}
+
+/** Сохранить цель первого ответа: целое число рабочих часов от 1 до 9. */
+export async function saveLeadFirstResponseHours(actor: Actor, raw: string): Promise<void> {
+  ensure(actor, 'DIRECTORY_EDIT');
+  const value = Number(raw.trim());
+  if (raw.trim() === '' || !Number.isInteger(value) || value < 1 || value > LEAD_RESPONSE_MAX) {
+    throw new Error(`Первый ответ на заявку — целое число рабочих часов от 1 до ${LEAD_RESPONSE_MAX}`);
+  }
+  await saveSetting(actor, LEAD_RESPONSE_KEY, String(value), String(await leadFirstResponseHours()));
 }
 
 // ───────────── Дата начала учёта и пороги уверенности (РК-16, Р-349) ────────

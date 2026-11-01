@@ -190,12 +190,18 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
     // пришедший между проверкой и записью, оставлял заявку «отклонённой» с
     // работой при ней (решение Р-240). Захват держит строку до конца
     // транзакции: второй ждёт и не находит заявку свободной.
+    const claimedAt = new Date();
     const claimed = await tx.lead.updateMany({
       where: { id: lead.id, projectId: null, status: { not: 'DECLINED' } },
-      data: { status: 'CONTRACTED', statusChangedAt: new Date() },
+      data: { status: 'CONTRACTED', statusChangedAt: claimedAt },
     });
     if (claimed.count === 0) {
       throw new Error('Заявку уже разобрали: обновите страницу');
+    }
+    // Одобрение «Новой» — первый ответ на заявку (п. 2.8 задания, решение
+    // Р-766); уже записанный первый ответ не переписывается.
+    if (lead.status === 'NEW') {
+      await tx.lead.updateMany({ where: { id: lead.id, firstResponseAt: null }, data: { firstResponseAt: claimedAt } });
     }
 
     // Учётная запись клиента заводится только при известном адресе почты:
@@ -525,12 +531,17 @@ export async function declineLead(actor: Actor, leadId: string, reason: string) 
     // Захват по состоянию: одобрение, начатое раньше, держит строку, и
     // отказ после его завершения видит заявку уже развёрнутой (решение
     // Р-240).
+    const claimedAt = new Date();
     const claimed = await tx.lead.updateMany({
       where: { id: leadId, projectId: null, status: { not: 'DECLINED' } },
-      data: { status: 'DECLINED', declineReason: trimmed, statusChangedAt: new Date() },
+      data: { status: 'DECLINED', declineReason: trimmed, statusChangedAt: claimedAt },
     });
     if (claimed.count === 0) {
       throw new Error('Заявку уже разобрали: обновите страницу');
+    }
+    // Отказ по «Новой» — тоже первый ответ (п. 2.8 задания, решение Р-766).
+    if (found.status === 'NEW') {
+      await tx.lead.updateMany({ where: { id: leadId, firstResponseAt: null }, data: { firstResponseAt: claimedAt } });
     }
     const lead = await tx.lead.findUniqueOrThrow({ where: { id: leadId } });
     // Заявке, помеченной при приёме как машинная, письма нет: адрес в ней

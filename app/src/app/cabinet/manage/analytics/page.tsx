@@ -12,7 +12,8 @@ import { formatAmount, formatRounded } from '../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num } from './shared';
 import { now as clockNow } from '../../../../lib/cabinet/clock';
 import { analyticsSince } from '../../../../lib/cabinet/practice-settings';
-import { leadConversion, leadRows, leadsByMonth, leadsBySource } from '../../../../lib/cabinet/analytics/leads';
+import { leadConversion, leadResponse, leadRows, leadsByMonth, leadsBySource } from '../../../../lib/cabinet/analytics/leads';
+import { RESPONSE_NEXT, responseConclusion, workTime } from '../../../../lib/cabinet/analytics/response';
 import { leadSourceLabel } from '../../../../lib/cabinet/lead-labels';
 import { MONTHS_SHORT } from '../../../../lib/cabinet/analytics/metrics';
 
@@ -53,11 +54,16 @@ export default async function AnalyticsOverview() {
   const productRows = products(rows);
   // Сезонная норма — от даты начала учёта практики (РК-16, Р-349; ОР-6).
   const since = await analyticsSince();
-  const outputs = conclusions(rows, now, since);
-  const digest = verdict(rows, now, since);
   // Заявки: по месяцам, по страницам сайта и конверсия «заявка → заказ»;
   // спам и отзывы не входят (требование РК-18, решение Р-351).
   const leads = await leadRows(actor);
+  // Скорость первого ответа за 90 дней — медиана в рабочих часах и вывод,
+  // когда она дольше цели (п. 2.8 задания, решение Р-766).
+  const speed = await leadResponse(actor, now, leads);
+  const speedAdvice = responseConclusion(speed);
+  const extra = speedAdvice === null ? [] : [speedAdvice];
+  const outputs = conclusions(rows, now, since, extra);
+  const digest = verdict(rows, now, since, extra);
   const leadMonths = leadsByMonth(leads, now);
   const leadSources = leadsBySource(leads);
   const conversion = leadConversion(leads);
@@ -327,6 +333,49 @@ export default async function AnalyticsOverview() {
               </>
             )}
           </ChartCard>
+
+          {/* Скорость ответа: медиана за 90 дней в рабочих часах (п. 2.8
+              задания, решение Р-766). Отрезки «одобрение → созвон»,
+              «созвон → Задание» и «Задание → согласование» встанут сюда
+              строками, когда в кабинете появятся созвон и Задание. */}
+          <Card style={{ marginBottom: 28 }}>
+            <Heading level={2} style={{ marginBottom: 12 }}>
+              Скорость ответа
+            </Heading>
+            <TableScroll label="Скорость ответа">
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+                <thead>
+                  <tr>
+                    <th style={head} scope="col">Отрезок</th>
+                    <th style={{ ...head, textAlign: 'right' }} scope="col">Медиана</th>
+                    <th style={{ ...head, textAlign: 'right' }} scope="col">Цель</th>
+                    <th style={{ ...head, textAlign: 'right' }} scope="col">Не дольше цели</th>
+                    <th style={{ ...head, textAlign: 'right' }} scope="col">Ждут ответа</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {/* Стрелка-символ в подписи не ставится (Р-165): отрезок — словами. */}
+                    <td style={cell}>От заявки до первого ответа</td>
+                    <td style={num}>{speed.medianMinutes === null ? '—' : workTime(speed.medianMinutes)}</td>
+                    <td style={num}>{`${speed.targetHours} ч`}</td>
+                    <td style={num}>{speed.answered === 0 ? '—' : `${speed.withinTarget} из ${speed.answered}`}</td>
+                    <td style={num}>{speed.waiting}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </TableScroll>
+            <Text muted size={13} style={{ marginTop: 12 }}>
+              {`Медиана рабочего времени — 09:00–18:00 МСК по производственному календарю — по заявкам за 90 дней без спама и отзывов${
+                speed.answered === 0 ? '; ответов на заявки за это время нет' : `: ${speed.answered} ${plural(speed.answered, 'ответ', 'ответа', 'ответов')}`
+              }. Первый ответ — первая смена состояния заявки из «Новой». Цель — внутренняя, из «Справочников»; заявителю обещан ответ в течение рабочего дня.`}
+            </Text>
+            <Text size={14} style={{ marginTop: 8 }}>
+              <a className="cab-mark" href={RESPONSE_NEXT.href}>
+                {RESPONSE_NEXT.label}
+              </a>
+            </Text>
+          </Card>
 
           <ChartCard title="Структура по типам сопровождения" note="Доля в сумме договоров.">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 32, alignItems: 'center' }}>

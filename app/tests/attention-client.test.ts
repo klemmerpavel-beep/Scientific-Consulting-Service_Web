@@ -22,9 +22,11 @@ const assignments = read('lib', 'cabinet', 'assignments.ts');
 
 /**
  * Части «Требует внимания», не связанные с работой: вопрос сотрудника,
- * ответ руководителя (Р-739), заявки, очередь, календарь, договор куратора.
+ * ответ руководителя (Р-739), заявки (в том числе «ждёт ответа», Р-766),
+ * очередь, календарь, договор куратора.
  */
-const NOT_WORK = new Set(['staff', 'headReply', 'lateLeads', 'reviewLeads', 'outbox', 'calendar', 'ndaWaiting']);
+// «Заявка ждёт ответа N ч» — тоже дело по заявке, а не по работе (Р-766).
+const NOT_WORK = new Set(['staff', 'headReply', 'waitingLeads', 'lateLeads', 'reviewLeads', 'outbox', 'calendar', 'ndaWaiting']);
 
 describe('дела «Требует внимания» называют клиента (Р-721)', () => {
   const blocks = [...page.matchAll(/\.\.\.parts\.(\w+)\.map\(([\s\S]*?)\n    \}\)\)?,/gu)].map((match) => ({
