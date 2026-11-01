@@ -2011,7 +2011,7 @@ export async function requestNdaAction(): Promise<void> {
   redirect(homeFor(actor));
 }
 
-/** Профиль куратора — правит руководитель (требование Э-11). */
+/** Профиль куратора — правит руководитель (требование Э-11; П-1, решение Р-764). */
 export async function updateCuratorProfile(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const field = (name: string) => String(form.get(name) ?? '');
@@ -2025,6 +2025,16 @@ export async function updateCuratorProfile(form: FormData): Promise<void> {
       specialization: field('specialization'),
       university: field('university'),
       defaultPayout: field('defaultPayout'),
+      // Обезличенный профиль и согласия куратора (П-1, П-6; решение Р-764).
+      experienceYears: field('experienceYears'),
+      pubK1: field('pubK1'),
+      pubK2: field('pubK2'),
+      pubK3: field('pubK3'),
+      pubRsci: field('pubRsci'),
+      pubIntl: field('pubIntl'),
+      pubCheckedOn: field('pubCheckedOn'),
+      cameraConsent: form.get('cameraConsent') !== null,
+      showcaseConsent: form.get('showcaseConsent') !== null,
     });
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить профиль куратора');

@@ -83,6 +83,7 @@ import { MESSAGE_MAX, internalUnread, listMessages, unreadCount } from '../../..
 import { OUTCOME_ANCHOR, OUTCOME_FLAGS, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
 import { noticeFate } from '../../../../lib/cabinet/outbox';
 import DropFlag from '../../../../components/cabinet/DropFlag';
+import { CuratorProfileFold } from '../../../../components/cabinet/CuratorProfile';
 import {
   curators,
   curatorTasksData,
@@ -91,6 +92,7 @@ import {
   lastClientReturn,
   projectByCode,
   projectLead,
+  curatorDoneCount,
   projectMaterials,
   pendingActions,
 } from '../../../../lib/cabinet/queries';
@@ -770,6 +772,12 @@ export default async function ProjectScreen({
   // Р-763): клиенту после одобрения номер заявки не показывается.
   const fromLead = practice ? await projectLead(actor, project.id) : null;
 
+  // Обезличенный профиль куратора — клиенту, с назначения куратора, до
+  // согласования Задания и оплаты (П-1, решение Р-764): свёрткой внутри
+  // «О работе», а не новым блоком (Р-183). Число завершённых работ с
+  // куратором считает кабинет.
+  const curatorDone = forClient && project.expert !== null ? await curatorDoneCount(actor, project.expert.id) : null;
+
   // Короткое описание работы. На виду остаётся название и срок, остальное
   // — под раскрытием: тема, тип сопровождения, куратор, суть задачи и
   // последние слова сторон (требование заказчика, решение Р-190).
@@ -1013,6 +1021,9 @@ export default async function ProjectScreen({
             </div>
           ))}
         </dl>
+        {!forClient || project.expert === null ? null : (
+          <CuratorProfileFold profile={project.expert.expertProfile} done={curatorDone} style={{ marginTop: 14 }} />
+        )}
         {project.summary === null ? null : (
           <Text size={14} style={{ marginTop: 14 }}>
             {project.summary}

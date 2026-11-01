@@ -237,12 +237,30 @@ export async function projectByCode(actor: Actor, code: string) {
           expertProfile: { select: { degree: true, specialization: true } },
         },
       },
+      // Куратору в профиле — регалии и обезличенный профиль для свёртки
+      // «Профиль куратора» у клиента (П-1, Р-764): стаж и публикации числом
+      // по категориям. Должность, вуз, ставка и согласия не берутся (Р-418).
       expert: {
         select: {
           id: true,
           fullName: true,
           role: true,
-          expertProfile: { select: { degree: true, specialization: true, specialtyCode: true, ndaSignedAt: true } },
+          expertProfile: {
+            select: {
+              degree: true,
+              academicTitle: true,
+              specialization: true,
+              specialtyCode: true,
+              experienceYears: true,
+              pubK1: true,
+              pubK2: true,
+              pubK3: true,
+              pubRsci: true,
+              pubIntl: true,
+              pubCheckedOn: true,
+              ndaSignedAt: true,
+            },
+          },
         },
       },
       stages: { orderBy: { position: 'asc' } },
@@ -259,6 +277,28 @@ export async function projectByCode(actor: Actor, code: string) {
   });
   // Клиенту — без ФИО сотрудников и в данных, не только на экране (Р-297, ОЭ-3б).
   return withoutStaffNames(actor, project);
+}
+
+/**
+ * Сколько работ ProDisser завершено с куратором — строка обезличенного
+ * профиля (П-1, решение Р-764). Счёт по всей практике: клиент видит опыт
+ * куратора, а не свои работы, и число ничего не говорит о чужих клиентах.
+ *
+ * Отдаётся клиенту, которому куратор виден на его работе, самому куратору
+ * и руководителю. Менеджеру — `null`: по разнице с видимыми работами он
+ * узнавал бы о работах, которые выборка от него закрывает (Р-251).
+ */
+export async function curatorDoneCount(actor: Actor, expertId: string): Promise<number | null> {
+  if (actor.role === 'MANAGER') return null;
+  if (actor.role === 'CLIENT') {
+    const scope = scopeProjects(actor);
+    if (scope === null) return null;
+    const visible = await prisma.project.count({ where: { ...scope, expertId } });
+    if (visible === 0) return null;
+  } else if (actor.role === 'EXPERT' && actor.id !== expertId) {
+    return null;
+  }
+  return prisma.project.count({ where: { expertId, status: 'COMPLETED' } });
 }
 
 export async function stageById(actor: Actor, stageId: string) {

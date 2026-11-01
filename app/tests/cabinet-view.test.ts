@@ -151,14 +151,71 @@ describe('в ряду не больше двух плашек', () => {
  * Прежде проверка запрещала само слово «эксперт»; теперь клиент видит
  * эксперта по роли, а закрыты имя и способы связи (решение Р-277).
  */
-const EXPERT_TRACES = ['Григорьев', `expert@artboard.example`, '@artboard_expert'];
+const EXPERT_TRACES = [
+  'Григорьев',
+  `expert@artboard.example`,
+  '@artboard_expert',
+  // Обезличенный профиль (П-1, решение Р-764): должность, вуз, ставка по
+  // умолчанию, SPIN и ORCID из анкеты кандидата — следы наполнения снимков.
+  'заведующий кафедрой надёжности машин',
+  'Северо-Западный политехнический',
+  '17350',
+  '7351-2086',
+  '0000-0003-4172-9608',
+];
+
+/** Разметка без разрядных пробелов в числах: «17 350» ищется как «17350». */
+function digitsJoined(html: string): string {
+  return html.replace(/(\d)[\s  ](?=\d)/gu, '$1');
+}
 
 describe('клиент не видит имени и контактов эксперта', () => {
   for (const file of screens('client')) {
     it(path.relative(PROTOTYPE, file), () => {
-      const html = body(file);
+      const html = digitsJoined(body(file));
       const found = EXPERT_TRACES.filter((trace) => html.includes(trace));
-      assert.deepEqual(found, [], 'на клиентском экране имя или контакт эксперта');
+      assert.deepEqual(found, [], 'на клиентском экране имя, контакт или служебные сведения куратора');
+    });
+  }
+});
+
+/**
+ * Свёртка «Профиль куратора» (П-1, решение Р-764): у клиента — внутри «О
+ * работе», у куратора — в «Так вас видит клиент» на «Настройках».
+ * Сомкнута и несёт обезличенный профиль из наполнения: стаж, публикации
+ * по категориям со днём сверки, число завершённых работ; средней оценки
+ * в ней нет (П-8).
+ */
+describe('обезличенный профиль куратора — у клиента и в «Так вас видит клиент»', () => {
+  const folds = (folder: string) =>
+    screens(folder)
+      .map((file) => ({ file, html: body(file) }))
+      .filter(({ html }) => /<summary\b[^>]*>(?:(?!<\/summary>)[\s\S])*Профиль куратора/u.test(html));
+
+  it('свёртка есть на карточке работы клиента и в настройках куратора', () => {
+    assert.ok(folds('client').length >= 1, 'у клиента свёртки «Профиль куратора» нет');
+    assert.ok(
+      folds('expert').some(({ file }) => /settings/u.test(file)),
+      'в настройках куратора свёртки «Профиль куратора» нет',
+    );
+  });
+
+  for (const folder of ['client', 'expert']) {
+    it(`${folder}: строки профиля — степень, специальность, стаж, публикации со сверкой, завершённые работы`, () => {
+      for (const { file, html } of folds(folder)) {
+        const text = visibleText(html).replace(/\s+/gu, ' ');
+        for (const part of [
+          'д.т.н., профессор',
+          '2.8.6 — теория надёжности технических систем',
+          '23 года',
+          'ВАК: К1 — 4, К2 — 6, К3 — 2; RSCI — 3; Scopus и Web of Science — 5',
+          'за пять лет, сверено 24 августа 2026',
+          'Завершено работ в ProDisser',
+        ]) {
+          assert.ok(text.includes(part), `${path.relative(PROTOTYPE, file)}: нет «${part}»`);
+        }
+        assert.doesNotMatch(text, /средняя оценка|оценка сопровождения \d/iu, 'в профиле средняя оценка');
+      }
     });
   }
 });

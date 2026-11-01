@@ -6,13 +6,14 @@
  * меняется самим пользователем.
  */
 
-import { ensure, type Actor } from './access.ts';
+import { can, ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { revokeStaffIssuedSessions } from './auth.ts';
-import { moscowToday } from './clock.ts';
+import { moscowToday, now } from './clock.ts';
 import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
 import { parseAmount } from './money.ts';
+import { EXPERIENCE_YEARS_MAX, PUBLICATIONS_MAX, profileCheckedOn, profileCount } from './profile-input.ts';
 import { enqueue, LEAD_RETRY_PAUSE_MS, pruneCuratorDigests } from './outbox.ts';
 import { curatorAccessLetter, invitationLetter, ndaSignedLetter } from './curator-letters.ts';
 import { ndaRequestOpen, ndaWaitingLetter } from './curator-welcome.ts';
@@ -520,6 +521,9 @@ export async function saveRegalia(
  * Свой профиль куратора — только чтение (требование Э-10, решение Р-330):
  * регалии ведёт руководитель (Э-11, Р-324), куратор видит их и строку
  * «Так вас видит клиент». Только своя запись: идентификатор — из сессии.
+ * С П-1 (решение Р-764) — и обезличенный профиль: стаж, публикации по
+ * категориям, день сверки, а также отметки согласий на камеру на созвоне
+ * знакомства и на витрину кураторов: куратор видит, что о нём отмечено.
  */
 export async function ownCuratorProfile(actor: Actor) {
   if (actor.role !== 'EXPERT') return null;
@@ -533,32 +537,70 @@ export async function ownCuratorProfile(actor: Actor) {
       specialization: true,
       university: true,
       ndaSignedAt: true,
+      ...PUBLIC_PROFILE_SELECT,
+      cameraConsent: true,
+      showcaseConsentAt: true,
     },
   });
 }
 
-/** Кураторы с полным профилем — все, а не страница перечня (требование Э-11). */
+/** Поля обезличенного профиля куратора (П-1, решение Р-764). */
+const PUBLIC_PROFILE_SELECT = {
+  experienceYears: true,
+  pubK1: true,
+  pubK2: true,
+  pubK3: true,
+  pubRsci: true,
+  pubIntl: true,
+  pubCheckedOn: true,
+} as const;
+
+/** Всё, что руководитель правит в профиле куратора (Э-11, Р-324; П-1, Р-764). */
+const CURATOR_PROFILE_SELECT = {
+  degree: true,
+  academicTitle: true,
+  position: true,
+  specialtyCode: true,
+  specialization: true,
+  university: true,
+  defaultPayout: true,
+  ...PUBLIC_PROFILE_SELECT,
+  cameraConsent: true,
+  showcaseConsentAt: true,
+} as const;
+
+/**
+ * Кураторы с полным профилем — все, а не страница перечня (требование
+ * Э-11). К каждому — последняя анкета кандидата с той же почтой: по SPIN
+ * и ORCID из неё руководитель сверяет числа публикаций (П-1, Р-764;
+ * Р-597). Анкеты разбирает тот же руководитель (`EXPERT_APPLICATION_REVIEW`),
+ * другим ролям экран недоступен.
+ */
 export async function curatorProfiles(actor: Actor) {
   ensure(actor, 'USER_MANAGE');
-  return prisma.user.findMany({
+  const curators = await prisma.user.findMany({
     where: { role: 'EXPERT', status: { not: 'ERASED' } },
     orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
     select: {
       id: true,
       fullName: true,
-      expertProfile: {
-        select: {
-          degree: true,
-          academicTitle: true,
-          position: true,
-          specialtyCode: true,
-          specialization: true,
-          university: true,
-          defaultPayout: true,
-        },
-      },
+      email: true,
+      expertProfile: { select: CURATOR_PROFILE_SELECT },
     },
   });
+  const applications =
+    curators.length === 0 || !can(actor, 'EXPERT_APPLICATION_REVIEW')
+      ? []
+      : await prisma.expertApplication.findMany({
+          where: { OR: curators.map((user) => ({ email: { equals: user.email, mode: 'insensitive' as const } })) },
+          orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+          select: { id: true, email: true, elibrarySpin: true, orcid: true },
+        });
+  return curators.map(({ email, ...user }) => ({
+    ...user,
+    application:
+      applications.find((row) => row.email.trim().toLowerCase() === email.trim().toLowerCase()) ?? null,
+  }));
 }
 
 export interface CuratorProfileInput {
@@ -570,6 +612,28 @@ export interface CuratorProfileInput {
   readonly university: string;
   /** Ставка по умолчанию в рублях; пустая строка — ставки нет. */
   readonly defaultPayout: string;
+  /**
+   * Обезличенный профиль (П-1, решение Р-764). Поле без значения в запросе
+   * не трогается — так сохраняют прежние вызовы; пустая строка — `null`.
+   */
+  readonly experienceYears?: string;
+  readonly pubK1?: string;
+  readonly pubK2?: string;
+  readonly pubK3?: string;
+  readonly pubRsci?: string;
+  readonly pubIntl?: string;
+  /** День сверки публикаций, «ГГГГ-ММ-ДД». */
+  readonly pubCheckedOn?: string;
+  /** Согласие куратора на камеру на созвоне знакомства (П-6). */
+  readonly cameraConsent?: boolean;
+  /** Согласие куратора на витрину кураторов на сайте (п. 3.2 задания). */
+  readonly showcaseConsent?: boolean;
+}
+
+/** Совпадают ли значения поля профиля: даты — по времени, прочее — по значению. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime();
+  return (a ?? null) === (b ?? null);
 }
 
 /**
@@ -580,26 +644,19 @@ export interface CuratorProfileInput {
  * Пустые значения хранятся как `null` и клиенту не выводятся (Р-225).
  * Ставка — подсказка: в начисление она не подставляется (Р-150). В журнал
  * пишется перечень изменённых полей, ставка — суммой (Р-244).
+ *
+ * С П-1 (решение Р-764) здесь же — обезличенный профиль: стаж, публикации
+ * за пять лет по категориям и день сверки; числа без дня сверки не
+ * принимаются — клиент видит их только с ним. Отметки согласий куратора:
+ * камера на созвоне знакомства (П-6) и витрина кураторов (п. 3.2); день
+ * согласия на витрину ставится при отметке и не сдвигается при
+ * пересохранении. Изменение согласия пишется в журнал значением.
  */
 export async function saveCuratorProfile(actor: Actor, userId: string, input: CuratorProfileInput) {
   ensure(actor, 'USER_MANAGE');
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: {
-      role: true,
-      status: true,
-      expertProfile: {
-        select: {
-          degree: true,
-          academicTitle: true,
-          position: true,
-          specialtyCode: true,
-          specialization: true,
-          university: true,
-          defaultPayout: true,
-        },
-      },
-    },
+    select: { role: true, status: true, expertProfile: { select: CURATOR_PROFILE_SELECT } },
   });
   if (user === null || user.status === 'ERASED') throw new Error('Учётная запись не найдена');
   if (user.role !== 'EXPERT') throw new Error('Профиль куратора ведётся только у куратора');
@@ -608,7 +665,24 @@ export async function saveCuratorProfile(actor: Actor, userId: string, input: Cu
     if (text.length > limit) throw new Error(`${what} — не длиннее ${limit} знаков`);
     return text === '' ? null : text;
   };
+  const before = user.expertProfile;
   const payout = input.defaultPayout.trim();
+  const optional = {
+    experienceYears: profileCount(input.experienceYears, EXPERIENCE_YEARS_MAX, 'Стаж'),
+    pubK1: profileCount(input.pubK1, PUBLICATIONS_MAX, 'Публикации ВАК, К1'),
+    pubK2: profileCount(input.pubK2, PUBLICATIONS_MAX, 'Публикации ВАК, К2'),
+    pubK3: profileCount(input.pubK3, PUBLICATIONS_MAX, 'Публикации ВАК, К3'),
+    pubRsci: profileCount(input.pubRsci, PUBLICATIONS_MAX, 'Публикации RSCI'),
+    pubIntl: profileCount(input.pubIntl, PUBLICATIONS_MAX, 'Публикации Scopus и Web of Science'),
+    pubCheckedOn: profileCheckedOn(input.pubCheckedOn, moscowToday()),
+    cameraConsent: input.cameraConsent,
+    showcaseConsentAt:
+      input.showcaseConsent === undefined
+        ? undefined
+        : input.showcaseConsent
+          ? (before?.showcaseConsentAt ?? now())
+          : null,
+  };
   const data = {
     degree: clean(input.degree, 120, 'Учёная степень'),
     academicTitle: clean(input.academicTitle, 120, 'Учёное звание'),
@@ -617,13 +691,38 @@ export async function saveCuratorProfile(actor: Actor, userId: string, input: Cu
     specialization: clean(input.specialization, 200, 'Научная специальность'),
     university: clean(input.university, 300, 'Вуз'),
     defaultPayout: payout === '' ? null : parseAmount(payout),
+    ...Object.fromEntries(Object.entries(optional).filter(([, value]) => value !== undefined)),
+  } as {
+    degree: string | null;
+    academicTitle: string | null;
+    position: string | null;
+    specialtyCode: string | null;
+    specialization: string | null;
+    university: string | null;
+    defaultPayout: bigint | null;
+    experienceYears?: number | null;
+    pubK1?: number | null;
+    pubK2?: number | null;
+    pubK3?: number | null;
+    pubRsci?: number | null;
+    pubIntl?: number | null;
+    pubCheckedOn?: Date | null;
+    cameraConsent?: boolean;
+    showcaseConsentAt?: Date | null;
   };
   if (data.specialtyCode !== null && !/^\d+(\.\d+){1,3}$/u.test(data.specialtyCode)) {
     throw new Error('Шифр специальности — цифрами через точку, например «1.3.8»');
   }
-  const before = user.expertProfile;
+  // Числа публикаций — с днём сверки: клиент видит их только с ним.
+  const merged = { ...before, ...data };
+  const anyCount = (['pubK1', 'pubK2', 'pubK3', 'pubRsci', 'pubIntl'] as const).some(
+    (key) => (merged[key] ?? null) !== null,
+  );
+  if (anyCount && (merged.pubCheckedOn ?? null) === null) {
+    throw new Error('Укажите дату сверки публикаций: клиент видит числа вместе с ней');
+  }
   const changed = (Object.keys(data) as (keyof typeof data)[]).filter(
-    (key) => (before?.[key] ?? null) !== data[key],
+    (key) => !sameValue(before?.[key] ?? (key === 'cameraConsent' ? false : null), data[key]),
   );
   if (changed.length === 0) return;
   await prisma.expertProfile.upsert({ where: { userId }, create: { userId, ...data }, update: data });
@@ -634,6 +733,8 @@ export async function saveCuratorProfile(actor: Actor, userId: string, input: Cu
     payload: {
       changed,
       ...(changed.includes('defaultPayout') ? { defaultPayout: data.defaultPayout?.toString() ?? null } : {}),
+      ...(changed.includes('cameraConsent') ? { cameraConsent: data.cameraConsent === true } : {}),
+      ...(changed.includes('showcaseConsentAt') ? { showcaseConsent: data.showcaseConsentAt != null } : {}),
     },
   });
 }

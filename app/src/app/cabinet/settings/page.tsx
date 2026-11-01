@@ -30,6 +30,8 @@ import {
 import { telegramBindAvailable } from '../../../lib/cabinet/auth';
 import { ownChannels, ownCuratorProfile } from '../../../lib/cabinet/admin';
 import { CURATOR_FOR_CLIENT, expertLine } from '../../../lib/cabinet/access';
+import { curatorDoneCount } from '../../../lib/cabinet/queries';
+import { CuratorProfileFold } from '../../../components/cabinet/CuratorProfile';
 import {
   CONTACT_LABEL,
   CONTACT_MAX,
@@ -92,7 +94,7 @@ export default async function SettingsScreen({
 }) {
   const actor = await requireActor('/cabinet/settings');
 
-  const [params, user, allContacts, rules, profile, erasureAsked, sent] = await Promise.all([
+  const [params, user, allContacts, rules, profile, erasureAsked, sent, curatorDone] = await Promise.all([
     searchParams,
     ownChannels(actor),
     ownContacts(actor),
@@ -102,6 +104,8 @@ export default async function SettingsScreen({
     ownErasureRequest(actor),
     // Что и когда отправлено (П-04, Р-402).
     ownNotifications(actor),
+    // Завершённые работы с куратором — строка «Профиля куратора» (П-1, Р-764).
+    actor.role === 'EXPERT' ? curatorDoneCount(actor, actor.id) : Promise.resolve(null),
   ]);
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
   // Отказ «Добавить способ связи» — у своей формы, в раскрытой свёртке, с
@@ -231,6 +235,21 @@ export default async function SettingsScreen({
                           ? 'не отмечен — материалы клиентов закрыты'
                           : `отмечен ${formatDate(profile.ndaSignedAt)}`,
                     },
+                    // Согласия отмечает руководитель с ваших слов (П-6, п. 3.2
+                    // задания; решение Р-764): куратор видит, что о нём записано.
+                    {
+                      term: 'Камера на созвоне знакомства',
+                      value: profile?.cameraConsent
+                        ? 'согласие отмечено — камеру можно включить'
+                        : 'согласие не отмечено — камера не включается',
+                    },
+                    {
+                      term: 'Витрина кураторов на сайте',
+                      value:
+                        profile?.showcaseConsentAt == null
+                          ? 'согласие не отмечено — в витрину вы не попадаете'
+                          : `согласие отмечено ${formatDay(profile.showcaseConsentAt)}`,
+                    },
                   ].map((row) => (
                     <div
                       key={row.term}
@@ -250,6 +269,9 @@ export default async function SettingsScreen({
                 <Text size={14}>
                   {`Так вас видит клиент: ${[CURATOR_FOR_CLIENT, expertLine(profile ?? null)].filter(Boolean).join(', ')}.`}
                 </Text>
+                {/* Та же свёртка, что у клиента в «О работе» (П-1, решение
+                    Р-764): одна разметка и одни строки на оба места. */}
+                <CuratorProfileFold profile={profile ?? null} done={curatorDone} style={{ marginTop: 12 }} />
               </Card>
             )}
 

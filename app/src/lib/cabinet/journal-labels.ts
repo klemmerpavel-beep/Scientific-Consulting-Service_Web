@@ -272,6 +272,29 @@ const filterRules = {
 } satisfies Record<string, FieldRule>;
 
 /**
+ * Поля профиля куратора — словами (Э-11, Р-324; П-1, решение Р-764):
+ * руководитель читал перечень изменённых полей именами столбцов базы.
+ */
+export const CURATOR_PROFILE_FIELD_LABEL: Readonly<Record<string, string>> = {
+  degree: 'учёная степень',
+  academicTitle: 'учёное звание',
+  position: 'должность',
+  specialtyCode: 'шифр специальности',
+  specialization: 'научная специальность',
+  university: 'вуз',
+  defaultPayout: 'ставка',
+  experienceYears: 'стаж',
+  pubK1: 'публикации ВАК К1',
+  pubK2: 'публикации ВАК К2',
+  pubK3: 'публикации ВАК К3',
+  pubRsci: 'публикации RSCI',
+  pubIntl: 'публикации Scopus и Web of Science',
+  pubCheckedOn: 'дата сверки публикаций',
+  cameraConsent: 'согласие на камеру',
+  showcaseConsentAt: 'согласие на витрину',
+};
+
+/**
  * Поля, которые у действия значат не то, что в общем словаре, или хранят
  * код вместо слова. У выгрузки заявок `total` — число заявок в отборе, а
  * не сумма договора; вкладка, набор столбцов и плашки «Сводки» записаны
@@ -308,6 +331,14 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
   LEAD_APPROVED: { code: WORK_CODE },
   ORDER_CREATED: { code: WORK_CODE },
   ASSIGNMENT_CREATED: { project: WORK_CODE },
+  // Перечень изменённых полей профиля — словами, ставка — рублями,
+  // согласия — «да»/«нет» (П-1, решение Р-764).
+  CURATOR_PROFILE_SAVED: {
+    changed: { name: 'изменено', value: byMap(CURATOR_PROFILE_FIELD_LABEL) },
+    defaultPayout: { name: 'ставка', value: (raw) => (/^-?\d+$/u.test(raw) ? formatAmount(BigInt(raw)) : raw) },
+    cameraConsent: { name: 'согласие на камеру' },
+    showcaseConsent: { name: 'согласие на витрину' },
+  },
 };
 
 /** Поля с суммой: журнал хранит их строкой копеек, bigint в JSON не кладётся. */

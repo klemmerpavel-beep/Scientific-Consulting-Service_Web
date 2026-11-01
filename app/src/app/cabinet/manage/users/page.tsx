@@ -5,6 +5,7 @@ import Shell from '../../../../components/cabinet/Shell';
 import {
   Block,
   Button,
+  Checkbox,
   Disclosure,
   Empty,
   Chip,
@@ -26,7 +27,7 @@ import {
   formatDay,
   Pager,
 } from '../../../../components/cabinet/ui';
-import { can } from '../../../../lib/cabinet/access';
+import { PUBLICATION_CATEGORIES, can } from '../../../../lib/cabinet/access';
 import {
   ROLE_LABEL,
   STATUS_LABEL,
@@ -40,6 +41,7 @@ import {
 } from '../../../../lib/cabinet/admin';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { formatPlain } from '../../../../lib/cabinet/money';
+import { EXPERIENCE_YEARS_MAX, PUBLICATIONS_MAX } from '../../../../lib/cabinet/profile-input';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { AccessLink } from '../../../../components/cabinet/AccessLink';
 import { mailConfigured } from '../../../../lib/cabinet/mail';
@@ -63,6 +65,9 @@ const NOTICE_LINK = { color: 'inherit', textDecoration: 'underline', textUnderli
 
 type UserState = 'ACTIVE' | 'SUSPENDED' | 'ERASED';
 const STATES: UserState[] = ['ACTIVE', 'SUSPENDED', 'ERASED'];
+
+/** Ссылка в подсказке поля — строчная, подчёркнутая, как в переписке (Р-761). */
+const HINT_LINK = { textDecoration: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1 } as const;
 
 export default async function UsersScreen({
   searchParams,
@@ -464,11 +469,14 @@ export default async function UsersScreen({
           поручения (Р-183). */}
       {curators.length === 0 ? null : (
         <Disclosure title="Профиль куратора" style={{ marginTop: 20 }}>
+          {/* Обезличенный профиль (П-1, решение Р-764): клиент видит его
+              свёрткой «Профиль куратора» в «О работе». */}
           <Text size={14} style={{ marginBottom: 14 }}>
-            Клиент видит куратора словом «Куратор», степенью и шифром специальности — без имени и
-            контактов; пустые поля не выводятся. Звание, должность, вуз и ставка — для практики. Ставка
-            по умолчанию — подсказка при начислении, в расчёт она не подставляется. Куратор свой профиль
-            не правит.
+            Клиент видит куратора словом «Куратор», степенью и шифром специальности, а в свёртке
+            «Профиль куратора» — степень и звание, специальность, стаж, публикации за пять лет по
+            категориям с датой сверки и число завершённых работ. Имя, должность, вуз, контакты и ставка
+            клиенту не выводятся, пустые поля — тоже. Ставка по умолчанию — подсказка при начислении, в
+            расчёт она не подставляется. Куратор свой профиль не правит.
           </Text>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
             {curators.map((user) => (
@@ -537,6 +545,83 @@ export default async function UsersScreen({
                       }
                     />
                   </FormRow>
+                  {/* Стаж и публикации — числом, без названий: названия
+                      раскрывают имя (П-1, решение Р-764). Числа сверяются по
+                      SPIN и ORCID из анкеты кандидата (Р-597). */}
+                  <FormRow>
+                    <Field
+                      label="Стаж научной и преподавательской работы, лет"
+                      name="experienceYears"
+                      type="number"
+                      scope={`profile-${user.id}`}
+                      placeholder="18"
+                      defaultValue={user.expertProfile?.experienceYears?.toString() ?? ''}
+                      hint={`Целым числом от 0 до ${EXPERIENCE_YEARS_MAX}.`}
+                    />
+                    <Field
+                      label="Дата сверки публикаций"
+                      name="pubCheckedOn"
+                      type="date"
+                      scope={`profile-${user.id}`}
+                      defaultValue={user.expertProfile?.pubCheckedOn?.toISOString().slice(0, 10) ?? ''}
+                      hint={
+                        user.application === null ? (
+                          'Анкеты кандидата с почтой куратора нет: сверьте по его профилям eLIBRARY и ORCID.'
+                        ) : (
+                          <>
+                            {'Сверьте по '}
+                            {/* Строчная ссылка текста подсказки (Р-57, Р-761). */}
+                            <a href={`/cabinet/manage/experts/${user.application.id}`} style={HINT_LINK}>
+                              анкете кандидата
+                            </a>
+                            {user.application.elibrarySpin === null && user.application.orcid === null
+                              ? ': SPIN и ORCID в ней не указаны.'
+                              : `: ${[
+                                  user.application.elibrarySpin === null ? null : `SPIN ${user.application.elibrarySpin}`,
+                                  user.application.orcid === null ? null : `ORCID ${user.application.orcid}`,
+                                ]
+                                  .filter((part) => part !== null)
+                                  .join(', ')}.`}
+                          </>
+                        )
+                      }
+                    />
+                  </FormRow>
+                  <Text muted size={13}>
+                    {`Публикации за пять последних лет — числом статей по категориям, от 0 до ${PUBLICATIONS_MAX}; пустое поле клиенту не выводится, числа — только с датой сверки.`}
+                  </Text>
+                  <FormRow>
+                    {PUBLICATION_CATEGORIES.map((category) => (
+                      <Field
+                        key={category.key}
+                        label={category.label}
+                        name={category.key}
+                        type="number"
+                        scope={`profile-${user.id}`}
+                        defaultValue={user.expertProfile?.[category.key]?.toString() ?? ''}
+                      />
+                    ))}
+                  </FormRow>
+                  {/* Согласия — со слов куратора: камера на созвоне знакомства
+                      (П-6) и карточка без имени в витрине кураторов на сайте
+                      (п. 3.2 задания). Без отметки — нет. */}
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    <Checkbox
+                      name="cameraConsent"
+                      label="Куратор согласен включать камеру на созвоне знакомства"
+                      defaultChecked={user.expertProfile?.cameraConsent ?? false}
+                    />
+                    <Checkbox
+                      name="showcaseConsent"
+                      label="Куратор согласен на карточку без имени в витрине кураторов на сайте"
+                      defaultChecked={user.expertProfile?.showcaseConsentAt != null}
+                    />
+                    {user.expertProfile?.showcaseConsentAt == null ? null : (
+                      <Text muted size={13}>
+                        {`Согласие на витрину отмечено ${formatDay(user.expertProfile.showcaseConsentAt)}.`}
+                      </Text>
+                    )}
+                  </div>
                   <FormActions>
                     <Button tone="quiet">Сохранить профиль</Button>
                   </FormActions>
