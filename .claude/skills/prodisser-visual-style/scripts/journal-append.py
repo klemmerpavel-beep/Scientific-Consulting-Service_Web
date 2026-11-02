@@ -82,7 +82,14 @@ def main():
     row = f'| Р-{num} | {args.summary.strip()} |'
     if f'| Р-{num} |' in rows:
         sys.exit(f'Отказ: строка Р-{num} уже есть в сводке')
-    prev = [(int(n), mm.end()) for mm in ROW.finditer(rows) for n in [mm.group(1)] if int(n) < num]
+    # Таблица «Приёмки» тоже начинается строками «| Р-NNN |», но это не
+    # перечень решений: строка нового решения после строки приёмки (Р-717)
+    # попадала внутрь таблицы приёмок. Её раздел из поиска исключается.
+    acc = rows.find('\n## Приёмки')
+    acc_end = rows.find('\n## ', acc + 1) if acc >= 0 else -1
+    in_acc = lambda pos: acc >= 0 and acc < pos and (acc_end < 0 or pos < acc_end)
+    prev = [(int(n), mm.end()) for mm in ROW.finditer(rows) for n in [mm.group(1)]
+            if int(n) < num and not in_acc(mm.start())]
     if not prev:
         sys.exit('Отказ: в сводке не найдено строки с меньшим номером')
     _, pos = max(prev)
