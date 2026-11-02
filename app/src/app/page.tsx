@@ -3,6 +3,7 @@ import Page from '../components/pages/StartPage';
 import { meta } from '../components/pages/StartPage.meta';
 import { OG_COVER } from '../components/og-cover';
 import OrgSchema from '../components/OrgSchema';
+import WebSiteSchema from '../components/WebSiteSchema';
 
 export const metadata: Metadata = {
   title: meta.title,
@@ -16,6 +17,7 @@ export default function Route() {
     <>
       <Page />
       <OrgSchema />
+      <WebSiteSchema />
     </>
   );
 }

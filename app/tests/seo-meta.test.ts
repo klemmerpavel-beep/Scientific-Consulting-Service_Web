@@ -132,3 +132,22 @@ describe('доступное имя ссылки содержит её види�
     });
   }
 });
+
+describe('разметка сайта WebSite — на главной (Р-779)', () => {
+  const component = read('app', 'src', 'components', 'WebSiteSchema.tsx');
+
+  it('имя сайта — ProDisser, адрес — главная, язык — русский', () => {
+    assert.match(component, /'@type': 'WebSite',\n\s+name: 'ProDisser',\n\s+url: `\$\{url\}\/`,\n\s+inLanguage: 'ru',/u);
+  });
+
+  it('стоит на главной и только на ней', () => {
+    assert.match(read('app', 'src', 'app', 'page.tsx'), /<WebSiteSchema \/>/u);
+    for (const route of ['main', 'students', 'business', 'experts', 'offer', 'privacy', 'consent']) {
+      assert.doesNotMatch(read('app', 'src', 'app', route, 'page.tsx'), /WebSiteSchema/u);
+    }
+  });
+
+  it('витрина и сборка без адреса сайта разметку не выводят', () => {
+    assert.match(component, /if \(!url \|\| process\.env\.NEXT_PUBLIC_PREVIEW === '1'\) return null;/u);
+  });
+});
