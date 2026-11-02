@@ -151,7 +151,11 @@ async function main() {
     pubIntl: 5,
     // День сверки — полночью UTC, как дату без времени пишет форма.
     pubCheckedOn: new Date(Date.UTC(2026, 7, 24)),
-    cameraConsent: true,
+    // Согласие на камеру куратор отметил сам (П-12, решение Р-768); на
+    // витрину — нет: в «Настройках» у него текст согласия и «Даю согласие».
+    cameraConsentAt: day(20),
+    showcaseConsentAt: null,
+    showcaseConsentHash: null,
   };
   await prisma.expertProfile.upsert({
     where: { userId: expertUser.id },
@@ -164,6 +168,18 @@ async function main() {
       ...curatorPublic,
     },
     update: { ndaSignedAt: day(400), specialtyCode: '2.8.6', ...curatorPublic },
+  });
+  // Текст согласия на витрину кураторов — образец для снимков, не
+  // утверждённый текст: настоящий согласует юрист (П-12, решение Р-768).
+  const showcaseText =
+    'Даю ProDisser согласие на распространение сведений моего профиля куратора — учёной степени и звания, ' +
+    'шифра и названия научной специальности, стажа научной и преподавательской работы и числа публикаций ' +
+    'по категориям журналов — в витрине кураторов на сайте prodisser.ru, без имени, места работы и контактов.\n' +
+    'Согласие действует до отзыва; отозвать его можно в «Настройках» кабинета.';
+  await prisma.practiceSetting.upsert({
+    where: { key: 'showcaseConsentText' },
+    create: { key: 'showcaseConsentText', value: showcaseText },
+    update: { value: showcaseText },
   });
   // Регалии куратора: клиент видит его со степенью и специальностью
   // (требование Т-11, решение Р-297).

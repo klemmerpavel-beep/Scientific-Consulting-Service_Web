@@ -14,6 +14,8 @@ import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
 import { parseAmount } from './money.ts';
 import { EXPERIENCE_YEARS_MAX, PUBLICATIONS_MAX, profileCheckedOn, profileCount } from './profile-input.ts';
+import { CAMERA_CONSENT_TEXT, consentTextHash, shortHash, showcaseConsentValid, type ConsentKind } from './curator-consents.ts';
+import { showcaseConsentText } from './practice-settings.ts';
 import { enqueue, LEAD_RETRY_PAUSE_MS, pruneCuratorDigests } from './outbox.ts';
 import { curatorAccessLetter, invitationLetter, ndaSignedLetter } from './curator-letters.ts';
 import { ndaRequestOpen, ndaWaitingLetter } from './curator-welcome.ts';
@@ -522,8 +524,9 @@ export async function saveRegalia(
  * регалии ведёт руководитель (Э-11, Р-324), куратор видит их и строку
  * «Так вас видит клиент». Только своя запись: идентификатор — из сессии.
  * С П-1 (решение Р-764) — и обезличенный профиль: стаж, публикации по
- * категориям, день сверки, а также отметки согласий на камеру на созвоне
- * знакомства и на витрину кураторов: куратор видит, что о нём отмечено.
+ * категориям, день сверки. Отметки согласий на камеру на созвоне
+ * знакомства и на витрину кураторов куратор ставит здесь же сам (П-12,
+ * решение Р-768, `saveOwnConsent`).
  */
 export async function ownCuratorProfile(actor: Actor) {
   if (actor.role !== 'EXPERT') return null;
@@ -538,8 +541,7 @@ export async function ownCuratorProfile(actor: Actor) {
       university: true,
       ndaSignedAt: true,
       ...PUBLIC_PROFILE_SELECT,
-      cameraConsent: true,
-      showcaseConsentAt: true,
+      ...CONSENT_SELECT,
     },
   });
 }
@@ -555,7 +557,20 @@ const PUBLIC_PROFILE_SELECT = {
   pubCheckedOn: true,
 } as const;
 
-/** Всё, что руководитель правит в профиле куратора (Э-11, Р-324; П-1, Р-764). */
+/**
+ * Отметки согласий куратора (П-6, п. 3.2; П-12, решение Р-768): ставит и
+ * снимает сам куратор, руководитель только видит.
+ */
+const CONSENT_SELECT = {
+  cameraConsentAt: true,
+  showcaseConsentAt: true,
+  showcaseConsentHash: true,
+} as const;
+
+/**
+ * Всё, что руководитель правит в профиле куратора (Э-11, Р-324; П-1, Р-764).
+ * Согласий здесь нет: с П-12 (решение Р-768) их отмечает сам куратор.
+ */
 const CURATOR_PROFILE_SELECT = {
   degree: true,
   academicTitle: true,
@@ -565,8 +580,6 @@ const CURATOR_PROFILE_SELECT = {
   university: true,
   defaultPayout: true,
   ...PUBLIC_PROFILE_SELECT,
-  cameraConsent: true,
-  showcaseConsentAt: true,
 } as const;
 
 /**
@@ -585,7 +598,8 @@ export async function curatorProfiles(actor: Actor) {
       id: true,
       fullName: true,
       email: true,
-      expertProfile: { select: CURATOR_PROFILE_SELECT },
+      // Согласия — только для чтения: отметку и день (П-12, Р-768).
+      expertProfile: { select: { ...CURATOR_PROFILE_SELECT, ...CONSENT_SELECT } },
     },
   });
   const applications =
@@ -624,10 +638,8 @@ export interface CuratorProfileInput {
   readonly pubIntl?: string;
   /** День сверки публикаций, «ГГГГ-ММ-ДД». */
   readonly pubCheckedOn?: string;
-  /** Согласие куратора на камеру на созвоне знакомства (П-6). */
-  readonly cameraConsent?: boolean;
-  /** Согласие куратора на витрину кураторов на сайте (п. 3.2 задания). */
-  readonly showcaseConsent?: boolean;
+  // Согласий на камеру и витрину здесь нет: с П-12 (решение Р-768) их
+  // отмечает сам куратор (`saveOwnConsent`), руководитель только видит.
 }
 
 /** Совпадают ли значения поля профиля: даты — по времени, прочее — по значению. */
@@ -647,10 +659,9 @@ function sameValue(a: unknown, b: unknown): boolean {
  *
  * С П-1 (решение Р-764) здесь же — обезличенный профиль: стаж, публикации
  * за пять лет по категориям и день сверки; числа без дня сверки не
- * принимаются — клиент видит их только с ним. Отметки согласий куратора:
- * камера на созвоне знакомства (П-6) и витрина кураторов (п. 3.2); день
- * согласия на витрину ставится при отметке и не сдвигается при
- * пересохранении. Изменение согласия пишется в журнал значением.
+ * принимаются — клиент видит их только с ним. Согласия на камеру и витрину
+ * руководитель не ставит (П-12, решение Р-768): данные собираются только
+ * из полей ниже, и лишние поля запроса не попадают в запись.
  */
 export async function saveCuratorProfile(actor: Actor, userId: string, input: CuratorProfileInput) {
   ensure(actor, 'USER_MANAGE');
@@ -675,13 +686,6 @@ export async function saveCuratorProfile(actor: Actor, userId: string, input: Cu
     pubRsci: profileCount(input.pubRsci, PUBLICATIONS_MAX, 'Публикации RSCI'),
     pubIntl: profileCount(input.pubIntl, PUBLICATIONS_MAX, 'Публикации Scopus и Web of Science'),
     pubCheckedOn: profileCheckedOn(input.pubCheckedOn, moscowToday()),
-    cameraConsent: input.cameraConsent,
-    showcaseConsentAt:
-      input.showcaseConsent === undefined
-        ? undefined
-        : input.showcaseConsent
-          ? (before?.showcaseConsentAt ?? now())
-          : null,
   };
   const data = {
     degree: clean(input.degree, 120, 'Учёная степень'),
@@ -707,8 +711,6 @@ export async function saveCuratorProfile(actor: Actor, userId: string, input: Cu
     pubRsci?: number | null;
     pubIntl?: number | null;
     pubCheckedOn?: Date | null;
-    cameraConsent?: boolean;
-    showcaseConsentAt?: Date | null;
   };
   if (data.specialtyCode !== null && !/^\d+(\.\d+){1,3}$/u.test(data.specialtyCode)) {
     throw new Error('Шифр специальности — цифрами через точку, например «1.3.8»');
@@ -722,7 +724,7 @@ export async function saveCuratorProfile(actor: Actor, userId: string, input: Cu
     throw new Error('Укажите дату сверки публикаций: клиент видит числа вместе с ней');
   }
   const changed = (Object.keys(data) as (keyof typeof data)[]).filter(
-    (key) => !sameValue(before?.[key] ?? (key === 'cameraConsent' ? false : null), data[key]),
+    (key) => !sameValue(before?.[key] ?? null, data[key]),
   );
   if (changed.length === 0) return;
   await prisma.expertProfile.upsert({ where: { userId }, create: { userId, ...data }, update: data });
@@ -733,8 +735,64 @@ export async function saveCuratorProfile(actor: Actor, userId: string, input: Cu
     payload: {
       changed,
       ...(changed.includes('defaultPayout') ? { defaultPayout: data.defaultPayout?.toString() ?? null } : {}),
-      ...(changed.includes('cameraConsent') ? { cameraConsent: data.cameraConsent === true } : {}),
-      ...(changed.includes('showcaseConsentAt') ? { showcaseConsent: data.showcaseConsentAt != null } : {}),
+    },
+  });
+}
+
+/**
+ * Согласие куратора — отмечает и отзывает сам куратор в «Настройках»,
+ * блок «Мой профиль» (П-12, решение Р-768). Только своя запись:
+ * идентификатор — из сессии; руководитель и менеджер согласие не ставят.
+ *
+ * `seenHash` — свёртка текста, который куратор видел на экране. Отметка
+ * принимается, только если она совпадает со свёрткой текста сейчас: текст
+ * сменили, пока экран был открыт, — отказ, а не согласие на непрочитанное.
+ * Согласие на витрину без текста в настройках практики не принимается. У
+ * витрины в профиле хранится свёртка текста: сменился текст — согласие
+ * дано на прежний (`showcaseConsentValid`). Отзыв принимается всегда.
+ * В журнал — отметка и отзыв с короткой свёрткой текста.
+ */
+export async function saveOwnConsent(
+  actor: Actor,
+  input: { readonly kind: ConsentKind; readonly give: boolean; readonly seenHash?: string },
+): Promise<void> {
+  if (actor.role !== 'EXPERT') throw new Error('Согласие отмечает сам куратор в своих «Настройках»');
+  if (input.kind !== 'camera' && input.kind !== 'showcase') throw new Error('Согласие не распознано');
+  const marks = await prisma.expertProfile.findUnique({ where: { userId: actor.id }, select: CONSENT_SELECT });
+  const showcaseText = input.kind === 'showcase' ? await showcaseConsentText() : '';
+  const text = input.kind === 'camera' ? CAMERA_CONSENT_TEXT : showcaseText;
+  const hash = text === '' ? null : consentTextHash(text);
+
+  let data: { cameraConsentAt?: Date | null; showcaseConsentAt?: Date | null; showcaseConsentHash?: string | null };
+  if (input.give) {
+    if (hash === null) {
+      throw new Error('Текст согласия на витрину кураторов ещё не утверждён: отметить согласие пока нельзя');
+    }
+    if (input.seenHash !== hash) {
+      throw new Error('Текст согласия изменился, пока экран был открыт: прочитайте новый текст и отметьте согласие снова');
+    }
+    if (input.kind === 'camera') {
+      if (marks?.cameraConsentAt != null) return;
+      data = { cameraConsentAt: now() };
+    } else {
+      if (showcaseConsentValid(marks, showcaseText)) return;
+      data = { showcaseConsentAt: now(), showcaseConsentHash: hash };
+    }
+  } else if (input.kind === 'camera') {
+    if (marks?.cameraConsentAt == null) return;
+    data = { cameraConsentAt: null };
+  } else {
+    if (marks?.showcaseConsentAt == null) return;
+    data = { showcaseConsentAt: null, showcaseConsentHash: null };
+  }
+  await prisma.expertProfile.upsert({ where: { userId: actor.id }, create: { userId: actor.id, ...data }, update: data });
+  await record(actor, {
+    action: input.give ? 'CURATOR_CONSENT_GIVEN' : 'CURATOR_CONSENT_WITHDRAWN',
+    objectType: 'ExpertProfile',
+    objectId: actor.id,
+    payload: {
+      consent: input.kind,
+      ...(input.give ? { textHash: shortHash(hash) } : {}),
     },
   });
 }

@@ -129,8 +129,9 @@ describe('данные экрана клиента — только обезли
         university: 'Северо-Западный политехнический университет',
         defaultPayout: 1_735_000n,
         ndaSignedAt: new Date(0),
-        cameraConsent: true,
+        cameraConsentAt: new Date(0),
         showcaseConsentAt: new Date(0),
+        showcaseConsentHash: 'a'.repeat(64),
         ndaRequestedAt: new Date(0),
       },
     },
@@ -146,8 +147,9 @@ describe('данные экрана клиента — только обезли
       'заведующий кафедрой',
       'Северо-Западный',
       '1735000',
-      'cameraConsent',
+      'cameraConsentAt',
       'showcaseConsentAt',
+      'showcaseConsentHash',
       'ndaSignedAt',
       'менеджер практики',
       'Вуз менеджера',
@@ -171,7 +173,7 @@ describe('данные экрана клиента — только обезли
   });
 
   it('в перечне полей для клиента нет служебных и раскрывающих имя', () => {
-    for (const field of ['position', 'university', 'defaultPayout', 'ndaSignedAt', 'cameraConsent', 'showcaseConsentAt']) {
+    for (const field of ['position', 'university', 'defaultPayout', 'ndaSignedAt', 'cameraConsentAt', 'showcaseConsentAt', 'showcaseConsentHash']) {
       assert.equal(CURATOR_PUBLIC_FIELDS.includes(field), false, field);
     }
   });
@@ -190,7 +192,7 @@ describe('выборка экрана работы берёт обезличен
   });
 
   it('должность, вуз, ставка и согласия — нет', () => {
-    for (const field of ['position', 'university', 'defaultPayout', 'cameraConsent', 'showcaseConsentAt']) {
+    for (const field of ['position', 'university', 'defaultPayout', 'cameraConsentAt', 'showcaseConsentAt', 'showcaseConsentHash']) {
       assert.doesNotMatch(expert, new RegExp(`\\b${field}: true`, 'u'), field);
     }
   });

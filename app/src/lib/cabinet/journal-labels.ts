@@ -69,6 +69,10 @@ const ACTIONS: Record<string, string> = {
   CALENDAR_DAY_SAVED: 'День производственного календаря сохранён',
   STAFF_REGALIA_SAVED: 'Регалии сотрудника сохранены',
   CURATOR_PROFILE_SAVED: 'Профиль куратора изменён',
+  // Согласия куратор отмечает сам (П-12, решение Р-768).
+  CURATOR_CONSENT_GIVEN: 'Куратор дал согласие',
+  CURATOR_CONSENT_WITHDRAWN: 'Куратор отозвал согласие',
+  SHOWCASE_CONSENT_TEXT_SAVED: 'Изменён текст согласия на витрину кураторов',
   NDA_REQUESTED: 'Куратор сообщил руководителю, что ждёт договор поручения',
   PRACTICE_SETTING_SAVED: 'Изменена настройка практики',
   SUMMARY_LAYOUT_SAVED: 'Изменена раскладка «Сводки»',
@@ -290,8 +294,16 @@ export const CURATOR_PROFILE_FIELD_LABEL: Readonly<Record<string, string>> = {
   pubRsci: 'публикации RSCI',
   pubIntl: 'публикации Scopus и Web of Science',
   pubCheckedOn: 'дата сверки публикаций',
+  // Два поля ниже — у записей до П-12: с решения Р-768 согласия руководитель
+  // не правит.
   cameraConsent: 'согласие на камеру',
   showcaseConsentAt: 'согласие на витрину',
+};
+
+/** Согласия куратора в журнале (П-12, решение Р-768). */
+const CONSENT_LABEL: Readonly<Record<string, string>> = {
+  camera: 'камера на созвоне знакомства',
+  showcase: 'витрина кураторов на сайте',
 };
 
 /**
@@ -336,8 +348,24 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
   CURATOR_PROFILE_SAVED: {
     changed: { name: 'изменено', value: byMap(CURATOR_PROFILE_FIELD_LABEL) },
     defaultPayout: { name: 'ставка', value: (raw) => (/^-?\d+$/u.test(raw) ? formatAmount(BigInt(raw)) : raw) },
+    // Согласия в этой записи — только у записей до П-12: с решения Р-768
+    // их отмечает сам куратор, записи — ниже.
     cameraConsent: { name: 'согласие на камеру' },
     showcaseConsent: { name: 'согласие на витрину' },
+  },
+  // Какое согласие — словами; свёртка — по ней текст находится в записи
+  // «Изменён текст согласия на витрину кураторов» (П-12, решение Р-768).
+  CURATOR_CONSENT_GIVEN: {
+    consent: { name: 'согласие:', value: byMap(CONSENT_LABEL) },
+    textHash: { name: 'свёртка текста' },
+  },
+  CURATOR_CONSENT_WITHDRAWN: { consent: { name: 'согласие:', value: byMap(CONSENT_LABEL) } },
+  // Сам текст — в выгрузке CSV: на экране журнала он занял бы страницу.
+  SHOWCASE_CONSENT_TEXT_SAVED: {
+    from: { name: 'свёртка была' },
+    to: { name: 'свёртка стала' },
+    chars: { name: 'знаков' },
+    text: { name: 'текст', hidden: true },
   },
 };
 

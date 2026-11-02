@@ -6,7 +6,8 @@
  * в журнал пишется перечень изменённых полей.
  *
  * С П-1 (решение Р-764) — обезличенный профиль: стаж, публикации по
- * категориям с днём сверки, согласия куратора; в данных экрана клиента —
+ * категориям с днём сверки; согласия куратор с П-12 (Р-768) отмечает сам —
+ * `curator-consents.db.test.ts`. В данных экрана клиента —
  * только обезличенный профиль, без ФИО, должности, вуза, ставки, SPIN,
  * ORCID и средней оценки; число завершённых работ с куратором.
  *
@@ -196,38 +197,17 @@ describe('профиль куратора (Э-11)', { skip: !enabled }, async ()
     pubRsci: '3',
     pubIntl: '5',
     pubCheckedOn: '2026-10-15',
-    cameraConsent: true,
-    showcaseConsent: true,
   };
 
-  it('руководитель вносит стаж, публикации, день сверки и согласия', async () => {
+  it('руководитель вносит стаж, публикации и день сверки', async () => {
     await admin.saveCuratorProfile(head(), ids.curator!, publicProfile);
     const saved = await prisma.expertProfile.findUniqueOrThrow({ where: { userId: ids.curator } });
     assert.equal(saved.experienceYears, 23);
     assert.deepEqual([saved.pubK1, saved.pubK2, saved.pubK3, saved.pubRsci, saved.pubIntl], [4, 6, 2, 3, 5]);
     assert.equal(saved.pubCheckedOn?.toISOString(), '2026-10-15T00:00:00.000Z');
-    assert.equal(saved.cameraConsent, true);
-    assert.ok(saved.showcaseConsentAt instanceof Date, 'согласие на витрину не отмечено');
-  });
-
-  it('день согласия на витрину не сдвигается при пересохранении; снятие — null и строка журнала', async () => {
-    const first = (await prisma.expertProfile.findUniqueOrThrow({ where: { userId: ids.curator } })).showcaseConsentAt;
-    await admin.saveCuratorProfile(head(), ids.curator!, { ...publicProfile, experienceYears: '24' });
-    const kept = await prisma.expertProfile.findUniqueOrThrow({ where: { userId: ids.curator } });
-    assert.equal(kept.showcaseConsentAt?.getTime(), first?.getTime());
-    await admin.saveCuratorProfile(head(), ids.curator!, { ...publicProfile, experienceYears: '24', showcaseConsent: false, cameraConsent: false });
-    const dropped = await prisma.expertProfile.findUniqueOrThrow({ where: { userId: ids.curator } });
-    assert.equal(dropped.showcaseConsentAt, null);
-    assert.equal(dropped.cameraConsent, false);
-    const last = await prisma.auditEvent.findFirstOrThrow({
-      where: { action: 'CURATOR_PROFILE_SAVED', objectId: ids.curator },
-      orderBy: { occurredAt: 'desc' },
-    });
-    const payload = last.payload as { changed: string[]; cameraConsent: boolean; showcaseConsent: boolean };
-    assert.deepEqual(payload.changed, ['cameraConsent', 'showcaseConsentAt']);
-    assert.equal(payload.cameraConsent, false);
-    assert.equal(payload.showcaseConsent, false);
-    await admin.saveCuratorProfile(head(), ids.curator!, publicProfile);
+    // Согласия форма руководителя не ставит (П-12, Р-768).
+    assert.equal(saved.cameraConsentAt, null);
+    assert.equal(saved.showcaseConsentAt, null);
   });
 
   it('числа без дня сверки, день в будущем и не числа — отказ без записи', async () => {
@@ -269,7 +249,6 @@ describe('профиль куратора (Э-11)', { skip: !enabled }, async ()
     assert.equal(saved.position, 'профессор кафедры');
     assert.equal(saved.experienceYears, 23);
     assert.equal(saved.pubK1, 4);
-    assert.equal(saved.cameraConsent, true);
     await admin.saveCuratorProfile(head(), ids.curator!, full);
   });
 
@@ -300,8 +279,9 @@ describe('профиль куратора (Э-11)', { skip: !enabled }, async ()
       '0000-0001-7531-8642',
       'Отзыв для проверки профиля',
       'score',
-      'cameraConsent',
+      'cameraConsentAt',
       'showcaseConsentAt',
+      'showcaseConsentHash',
       'ndaSignedAt',
     ]) {
       assert.ok(!text.includes(trace), `в данных экрана клиента — ${trace}`);
@@ -333,8 +313,7 @@ describe('профиль куратора (Э-11)', { skip: !enabled }, async ()
   it('свой профиль куратор читает с согласиями и числами', async () => {
     const own = await admin.ownCuratorProfile(who(ids.curator!, 'EXPERT'));
     assert.equal(own?.experienceYears, 23);
-    assert.equal(own?.cameraConsent, true);
-    assert.ok(own?.showcaseConsentAt instanceof Date);
+    assert.ok(own !== null && 'cameraConsentAt' in own && 'showcaseConsentHash' in own, 'в своём профиле нет согласий');
     assert.equal(await admin.ownCuratorProfile(head()), null);
   });
 });

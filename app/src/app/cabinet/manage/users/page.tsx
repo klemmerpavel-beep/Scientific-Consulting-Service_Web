@@ -5,7 +5,6 @@ import Shell from '../../../../components/cabinet/Shell';
 import {
   Block,
   Button,
-  Checkbox,
   Disclosure,
   Empty,
   Chip,
@@ -54,7 +53,15 @@ import {
   updateExpertNda,
   updateRegalia,
   updateCuratorProfile,
+  updateShowcaseConsentText,
 } from '../../actions';
+import { showcaseConsentText } from '../../../../lib/cabinet/practice-settings';
+import {
+  CONSENT_TITLE,
+  SHOWCASE_TEXT_MAX,
+  consentStatusForHead,
+  type ConsentKind,
+} from '../../../../lib/cabinet/curator-consents';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +84,7 @@ export default async function UsersScreen({
     created?: string;
     link?: string;
     new?: string;
+    text?: string;
     role?: string;
     status?: string;
     page?: string;
@@ -94,6 +102,8 @@ export default async function UsersScreen({
   // встаёт на верх экрана: причина над ней оставалась выше края. Она
   // выводится в самой свёртке, над полями (решение Р-706).
   const inviteFailed = flags.new === '1' && failure !== undefined;
+  // Отказ сохранения текста согласия на витрину — в его свёртке (Р-706).
+  const textFailed = flags.text === '1' && failure !== undefined;
   const role = ROLES.includes(flags.role as Role) ? (flags.role as Role) : undefined;
   const status = STATES.includes(flags.status as UserState)
     ? (flags.status as UserState)
@@ -102,12 +112,14 @@ export default async function UsersScreen({
   // перечня в двадцать строк эксперты и нужные люди уходили на следующие
   // страницы (решение Р-225). Ссылка выдаётся только действующим записям:
   // приостановленной и обезличенной вход закрыт (решение Р-195).
-  const [list, experts, active, staffRegalia, curators] = await Promise.all([
+  const [list, experts, active, staffRegalia, curators, showcaseText] = await Promise.all([
     listUsers(actor, { role, status, page: Number(flags.page ?? '1') }),
     expertsForNda(actor),
     accessLinkPeople(actor),
     staffForRegalia(actor),
     curatorProfiles(actor),
+    // Текст согласия на витрину кураторов (П-12, решение Р-768).
+    showcaseConsentText(),
   ]);
   const users = list.rows;
   // Текст блока зависит от того, настроена ли почта: с ней ссылка отсюда
@@ -141,7 +153,7 @@ export default async function UsersScreen({
         note="Роль назначается здесь и нигде больше: она не приходит с формы входа и не меняется самим пользователем. При смене роли и при приостановке доступа все сессии отзываются."
       />
 
-      {failure === undefined || inviteFailed ? null : (
+      {failure === undefined || inviteFailed || textFailed ? null : (
         <Block as="div" style={{ marginBottom: 20 }}>
           <Notice tone="error" role="alert">
             {failure}
@@ -476,7 +488,8 @@ export default async function UsersScreen({
             «Профиль куратора» — степень и звание, специальность, стаж, публикации за пять лет по
             категориям с датой сверки и число завершённых работ. Имя, должность, вуз, контакты и ставка
             клиенту не выводятся, пустые поля — тоже. Ставка по умолчанию — подсказка при начислении, в
-            расчёт она не подставляется. Куратор свой профиль не правит.
+            расчёт она не подставляется. Куратор свой профиль не правит. Согласия на камеру и на витрину
+            куратор отмечает сам в «Настройках», прочитав текст согласия; здесь видны отметка и день.
           </Text>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
             {curators.map((user) => (
@@ -602,25 +615,15 @@ export default async function UsersScreen({
                       />
                     ))}
                   </FormRow>
-                  {/* Согласия — со слов куратора: камера на созвоне знакомства
-                      (П-6) и карточка без имени в витрине кураторов на сайте
-                      (п. 3.2 задания). Без отметки — нет. */}
+                  {/* Согласия ставит и снимает сам куратор (П-12, решение
+                      Р-768): руководителю — только отметка и день, полей в
+                      форме нет, и сервер их не принимает. */}
                   <div style={{ display: 'grid', gap: 4 }}>
-                    <Checkbox
-                      name="cameraConsent"
-                      label="Куратор согласен включать камеру на созвоне знакомства"
-                      defaultChecked={user.expertProfile?.cameraConsent ?? false}
-                    />
-                    <Checkbox
-                      name="showcaseConsent"
-                      label="Куратор согласен на карточку без имени в витрине кураторов на сайте"
-                      defaultChecked={user.expertProfile?.showcaseConsentAt != null}
-                    />
-                    {user.expertProfile?.showcaseConsentAt == null ? null : (
-                      <Text muted size={13}>
-                        {`Согласие на витрину отмечено ${formatDay(user.expertProfile.showcaseConsentAt)}.`}
+                    {(['camera', 'showcase'] as const satisfies readonly ConsentKind[]).map((kind) => (
+                      <Text key={kind} muted size={13}>
+                        {`${CONSENT_TITLE[kind]}: ${consentStatusForHead(kind, user.expertProfile ?? null, showcaseText)}.`}
                       </Text>
-                    )}
+                    ))}
                   </div>
                   <FormActions>
                     <Button tone="quiet">Сохранить профиль</Button>
@@ -631,6 +634,36 @@ export default async function UsersScreen({
           </ul>
         </Disclosure>
       )}
+
+      {/* Текст согласия куратора на витрину кураторов — настройка практики
+          (ст. 10.1 152-ФЗ; П-12, решение Р-768). Пустой — куратор отметки
+          витрины не видит; новый — прежние согласия даны на прежний текст. */}
+      <Disclosure title="Текст согласия на витрину кураторов" open={textFailed} id="showcase-text" style={{ marginTop: 20 }}>
+        <Form action={updateShowcaseConsentText}>
+          {textFailed ? (
+            <Notice tone="error" role="alert">
+              {failure}
+            </Notice>
+          ) : null}
+          <Text size={14}>
+            Согласие куратора на распространение сведений профиля — степени, специальности, стажа и
+            публикаций числом — в витрине кураторов на сайте, без имени. Текст согласует юрист. Пока поле
+            пустое, куратор отметки витрины не видит и сервер её не принимает. После смены текста прежние
+            согласия считаются данными на прежний текст: в витрину куратор попадёт, когда отметит новый.
+          </Text>
+          <Field
+            label="Текст согласия"
+            name="text"
+            multiline
+            maxLength={SHOWCASE_TEXT_MAX}
+            defaultValue={textFailed ? (draft.text ?? showcaseText) : showcaseText}
+            hint={`Не длиннее ${SHOWCASE_TEXT_MAX} знаков. Каждая редакция сохраняется в журнале.`}
+          />
+          <FormActions>
+            <Button tone="quiet">Сохранить текст</Button>
+          </FormActions>
+        </Form>
+      </Disclosure>
 
       {/* Регалии менеджеров и руководителей — для служебного учёта:
           клиенту имя и регалии менеджера не выводятся (Э-01, ответы ОЭ-3б

@@ -1,7 +1,8 @@
 /**
  * Настройки практики (требование РК-05, решение Р-337; дата начала учёта и
  * пороги уверенности — РК-16, Р-349; цель первого ответа на заявку —
- * п. 2.8 задания, Р-766). Первая — срок
+ * п. 2.8 задания, Р-766; текст согласия на витрину кураторов — П-12,
+ * Р-768). Первая — срок
  * реакции: через сколько рабочих дней неразобранное дело менеджера
  * поднимается руководителю контрольным (решение владельца В-18). Правит
  * руководитель в «Справочниках»; изменение пишется в журнал.
@@ -12,6 +13,7 @@ import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { ANALYTICS_SINCE_DEFAULT } from './analytics/metrics.ts';
 import { moscowToday } from './clock.ts';
+import { SHOWCASE_TEXT_MAX, consentTextHash, normalizeConsentText, shortHash } from './curator-consents.ts';
 
 const REACTION_KEY = 'reactionDays';
 /** По умолчанию — один рабочий день (В-18). */
@@ -157,4 +159,51 @@ export async function saveConfidenceThresholds(actor: Actor, raw: string): Promi
     `${value.sure},${value.likely},${value.maybe}`,
     `${current.sure},${current.likely},${current.maybe}`,
   );
+}
+
+// ───────────── Текст согласия на витрину кураторов (П-12, Р-768) ────────────
+
+const SHOWCASE_TEXT_KEY = 'showcaseConsentText';
+
+/**
+ * Текст согласия куратора на распространение для витрины кураторов на
+ * сайте (ст. 10.1 152-ФЗ). Вносит руководитель, текст согласует юрист;
+ * пустой — отметки витрины у куратора нет и сервер её не принимает.
+ */
+export async function showcaseConsentText(): Promise<string> {
+  const row = await prisma.practiceSetting.findUnique({ where: { key: SHOWCASE_TEXT_KEY }, select: { value: true } });
+  return normalizeConsentText(row?.value ?? '');
+}
+
+/**
+ * Сохранить текст согласия на витрину. Пустой текст убирает отметку из
+ * «Настроек» куратора. Прежние согласия не снимаются, но после смены
+ * текста считаются данными на прежний текст (`showcaseConsentValid`). В
+ * журнал — свёртки прежнего и нового текста и сам новый текст: по
+ * свёртке в профиле куратора видно, на какой текст он согласился.
+ */
+export async function saveShowcaseConsentText(actor: Actor, raw: string): Promise<void> {
+  ensure(actor, 'USER_MANAGE');
+  const text = normalizeConsentText(raw);
+  if (text.length > SHOWCASE_TEXT_MAX) {
+    throw new Error(`Текст согласия на витрину — не длиннее ${SHOWCASE_TEXT_MAX} знаков`);
+  }
+  const before = await showcaseConsentText();
+  if (before === text) return;
+  await prisma.practiceSetting.upsert({
+    where: { key: SHOWCASE_TEXT_KEY },
+    create: { key: SHOWCASE_TEXT_KEY, value: text, updatedById: actor.id },
+    update: { value: text, updatedById: actor.id, updatedAt: new Date() },
+  });
+  await record(actor, {
+    action: 'SHOWCASE_CONSENT_TEXT_SAVED',
+    objectType: 'PracticeSetting',
+    objectId: SHOWCASE_TEXT_KEY,
+    payload: {
+      from: before === '' ? null : shortHash(consentTextHash(before)),
+      to: text === '' ? null : shortHash(consentTextHash(text)),
+      chars: text.length,
+      text,
+    },
+  });
 }

@@ -51,6 +51,7 @@ import {
   saveConfidenceThresholds,
   saveLeadFirstResponseHours,
   saveReactionDays,
+  saveShowcaseConsentText,
 } from '../../lib/cabinet/practice-settings';
 import { markRecommendation } from '../../lib/cabinet/recommendations';
 import { createAssignment, setAssignmentStatus } from '../../lib/cabinet/assignments';
@@ -76,6 +77,7 @@ import {
   saveCalendarDay,
   saveRegalia,
   saveCuratorProfile,
+  saveOwnConsent,
   removeStageTemplateItem,
   saveServiceType,
   saveStageTemplateItem,
@@ -90,6 +92,7 @@ import {
   type Role,
 } from '../../lib/cabinet/admin';
 import type { AccessLinkState } from '../../components/cabinet/AccessLink';
+import type { ConsentKind } from '../../lib/cabinet/curator-consents';
 import type { RecommendationMarkStatus } from '../../generated/prisma/client.js';
 import {
   rulesFor,
@@ -2016,7 +2019,10 @@ export async function requestNdaAction(): Promise<void> {
   redirect(homeFor(actor));
 }
 
-/** Профиль куратора — правит руководитель (требование Э-11; П-1, решение Р-764). */
+/**
+ * Профиль куратора — правит руководитель (требование Э-11; П-1, решение
+ * Р-764). Согласий в форме нет: их отмечает сам куратор (П-12, Р-768).
+ */
 export async function updateCuratorProfile(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const field = (name: string) => String(form.get(name) ?? '');
@@ -2030,7 +2036,7 @@ export async function updateCuratorProfile(form: FormData): Promise<void> {
       specialization: field('specialization'),
       university: field('university'),
       defaultPayout: field('defaultPayout'),
-      // Обезличенный профиль и согласия куратора (П-1, П-6; решение Р-764).
+      // Обезличенный профиль куратора (П-1; решение Р-764).
       experienceYears: field('experienceYears'),
       pubK1: field('pubK1'),
       pubK2: field('pubK2'),
@@ -2038,14 +2044,51 @@ export async function updateCuratorProfile(form: FormData): Promise<void> {
       pubRsci: field('pubRsci'),
       pubIntl: field('pubIntl'),
       pubCheckedOn: field('pubCheckedOn'),
-      cameraConsent: form.get('cameraConsent') !== null,
-      showcaseConsent: form.get('showcaseConsent') !== null,
     });
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить профиль куратора');
   }
   if (failure !== null) redirect(await withError('/cabinet/manage/users', failure));
   redirect('/cabinet/manage/users');
+}
+
+/**
+ * Текст согласия куратора на витрину кураторов (ст. 10.1 152-ФЗ) — вносит
+ * руководитель, текст согласует юрист (П-12, решение Р-768).
+ */
+export async function updateShowcaseConsentText(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const text = String(form.get('text') ?? '');
+  let failure: string | null = null;
+  try {
+    await saveShowcaseConsentText(actor, text);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить текст согласия');
+  }
+  // Отказ — в свёртке текста, с набранным (решения Р-543, Р-706).
+  if (failure !== null) {
+    redirect(await withError('/cabinet/manage/users?text=1', failure, { anchor: 'showcase-text', draft: { text } }));
+  }
+  redirect('/cabinet/manage/users#showcase-text');
+}
+
+/**
+ * Своё согласие куратора — дать или отозвать (П-12, решение Р-768). Форма
+ * несёт свёртку текста, который куратор прочитал на экране.
+ */
+export async function saveConsent(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await settingsStep(
+    () =>
+      saveOwnConsent(actor, {
+        // Вид проверяет `saveOwnConsent`: чужое значение — отказ.
+        kind: String(form.get('kind') ?? '') as ConsentKind,
+        give: form.get('give') === 'yes',
+        seenHash: String(form.get('textHash') ?? ''),
+      }),
+    'Не удалось сохранить согласие',
+  );
+  redirect('/cabinet/settings?saved=1#consents');
 }
 
 export async function updateExpertNda(form: FormData): Promise<void> {
