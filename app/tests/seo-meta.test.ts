@@ -172,3 +172,24 @@ describe('Open Graph страниц несёт имя сайта, язык и т
     });
   }
 });
+
+describe('«Компаниям»: имена кнопок и ссылок содержат видимую надпись (Р-781)', () => {
+  const sources = [read('design', 'BusinessPage.dc.html'), read('app', 'src', 'components', 'pages', 'BusinessPage.tsx')];
+
+  it('шкала уровней готовности: «01 Идея — уровень готовности технологии», номер и название разделены пробелом', () => {
+    const design = sources[0]!;
+    assert.match(design, /aria: '0' \+ num \+ ' ' \+ short \+ ' — уровень готовности технологии',/u);
+    // Без пробела axe читает видимую надпись как «01Идея», и имя её не содержит.
+    assert.match(design, /\{\{ t\.num \}\}<\/span> <span[^>]*>\{\{ t\.short \}\}<\/span>/u);
+    assert.match(sources[1]!, /\{t\.num\}<\/span> <span/u);
+  });
+
+  it('ссылка «Обсудить это направление» и кнопки «Чем закреплено»', () => {
+    for (const source of sources) {
+      assert.match(source, /cta: 'Обсудить это направление «' \+ title \+ '»',/u);
+      assert.match(source, /proofAria: 'Чем закреплено: механизм «' \+ title \+ '»',/u);
+      assert.match(source, />Обсудить это направление</u);
+      assert.match(source, /<span>Чем закреплено<\/span>/u);
+    }
+  });
+});

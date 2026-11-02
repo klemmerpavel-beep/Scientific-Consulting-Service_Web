@@ -422,8 +422,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <sc-for list="{{ trlScale }}" as="t" hint-placeholder-count="9">
 <button type="button" aria-pressed="{{ t.pressed }}" aria-label="{{ t.aria }}" onClick="{{ t.pick }}" class="bp-trlstep" style="appearance:none;border:0;cursor:pointer;background:transparent;padding:0 8px 0 0;text-align:left;display:flex;flex-direction:column;gap:10px;border-radius:10px">
 <span aria-hidden="true" style="width:{{ t.dotSize }};height:{{ t.dotSize }};flex:0 0 auto;margin-top:{{ t.dotShift }};border-radius:50%;background:{{ t.dot }};border:{{ t.dotRing }};box-sizing:border-box;display:block;transition:background 220ms cubic-bezier(.2,0,.2,1),width 220ms cubic-bezier(.2,0,.2,1),height 220ms cubic-bezier(.2,0,.2,1),margin-top 220ms cubic-bezier(.2,0,.2,1)"></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.24;color:{{ t.numColor }};font-variant-numeric:tabular-nums;transition:color 220ms cubic-bezier(.2,0,.2,1)">{{ t.num }}</span>
-<span style="font-size:12px;line-height:1.4;font-weight:600;color:{{ t.titleColor }};transition:color 220ms cubic-bezier(.2,0,.2,1)">{{ t.short }}</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.24;color:{{ t.numColor }};font-variant-numeric:tabular-nums;transition:color 220ms cubic-bezier(.2,0,.2,1)">{{ t.num }}</span> <span style="font-size:12px;line-height:1.4;font-weight:600;color:{{ t.titleColor }};transition:color 220ms cubic-bezier(.2,0,.2,1)">{{ t.short }}</span>
 </button>
 </sc-for>
 </div>
@@ -1103,7 +1102,10 @@ class Component extends DCLogic {
     const sel = this.state.trl;
     const trlScale = trlData.map(({ num, short }) => ({
       num: '0' + num, short,
-      aria: 'Уровень готовности ' + num + ': ' + short,
+      // Имя начинается с видимой надписи «01 Идея»: голосовое управление и
+      // программа экранного доступа находят кнопку по тому, что на экране
+      // (Р-781, axe label-content-name-mismatch).
+      aria: '0' + num + ' ' + short + ' — уровень готовности технологии',
       pressed: num === sel ? 'true' : 'false',
       numColor: num <= sel ? 'var(--pd-accent)' : 'var(--pd-ink-muted)',
       titleColor: num === sel ? 'var(--pd-ink)' : 'var(--pd-ink-muted)',
@@ -1179,7 +1181,7 @@ class Component extends DCLogic {
         art: "url('./assets/art/cat-" + (gi + 1) + ".webp')",
         // Семь ссылок ведут в одну форму: без названия направления список
         // ссылок страницы читается как семь одинаковых строк.
-        cta: 'Обсудить направление «' + title + '»',
+        cta: 'Обсудить это направление «' + title + '»',
         plusV: open ? 'none' : 'block',
         headBg: open ? 'var(--pd-accent-tint)' : 'var(--pd-ink-inverse)',
         count: items.length + ' поз.',
@@ -1344,8 +1346,10 @@ class Component extends DCLogic {
           proofExpanded: open ? 'true' : 'false',
           plusV: open ? 'none' : 'block',
           // Кнопка одна на карточку, поэтому подпись называет механизм —
-          // иначе шесть кнопок «Чем закреплено» неразличимы на слух.
-          proofAria: (open ? 'Скрыть' : 'Показать') + ', чем закреплен механизм «' + title + '»',
+          // иначе шесть кнопок «Чем закреплено» неразличимы на слух. Имя
+          // начинается с видимой надписи (Р-781); раскрыто или нет, говорит
+          // aria-expanded.
+          proofAria: 'Чем закреплено: механизм «' + title + '»',
           proofToggle: () => this.setState(st => ({ mech: { ...st.mech, [i]: !st.mech[i] } }))
         };
       }),
