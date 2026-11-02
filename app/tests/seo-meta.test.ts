@@ -113,3 +113,22 @@ describe('robots.txt: метки рекламы не плодят дублей �
     assert.ok(!robotsTxt({ demoStand: false, base: null }).includes('Sitemap:'));
   });
 });
+
+describe('доступное имя ссылки содержит её видимую надпись (Р-778)', () => {
+  // Ссылка-значок с подписью «VK» и именем «Сообщество ProDisser во
+  // ВКонтакте»: голосовое управление («нажать VK») и программа экранного
+  // доступа такую ссылку не находят (axe: label-content-name-mismatch).
+  const pages = [
+    'StartPage', 'MainPage', 'StudentsPage', 'BusinessPage', 'ExpertsPage',
+    'OfferPage', 'PrivacyPage', 'ConsentPage', 'NotFoundPage',
+  ];
+  for (const page of pages) {
+    it(page, () => {
+      const html = read('design', `${page}.dc.html`);
+      for (const m of html.matchAll(/<a [^>]*aria-label="([^"]*)"[^>]*><span aria-hidden="true"[^>]*>([^<]+)<\/span><\/a>/gu)) {
+        const [, name, text] = m;
+        assert.ok(name!.includes(text!.trim()), `«${name}» не содержит видимую надпись «${text}»`);
+      }
+    });
+  }
+});
