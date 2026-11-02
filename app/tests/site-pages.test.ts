@@ -40,13 +40,17 @@ describe('цель Метрики «Заявка отправлена» (Р-409)
     assert.match(metrika, /export const LEAD_GOAL = 'lead';/u);
     assert.match(metrika, /import \{ LEAD_SENT_EVENT \} from '\.\/LeadThanks';/u);
     assert.match(metrika, /if \(!METRIKA_ID \|\| cabinet \|\| choice !== 'yes'\) return;/u);
-    assert.match(metrika, /ym\(Number\(METRIKA_ID\), 'reachGoal', LEAD_GOAL\)/u);
+    assert.match(metrika, /ym\(Number\(METRIKA_ID\), 'reachGoal', LEAD_GOAL, /u);
     assert.match(metrika, /window\.removeEventListener\(LEAD_SENT_EVENT, onSent\)/u);
   });
 
-  it('в цель не уходит ничего из формы', () => {
-    const call = /ym\(Number\(METRIKA_ID\), 'reachGoal', LEAD_GOAL([^)]*)\)/u.exec(metrika);
+  it('в цель не уходит ничего из формы: только адрес страницы и место формы (Р-777)', () => {
+    const call = /ym\(Number\(METRIKA_ID\), 'reachGoal', LEAD_GOAL, (\{[^}]*\})\);/u.exec(metrika);
     assert.ok(call);
-    assert.equal(call[1], '');
+    assert.equal(call[1], '{ page: window.location.pathname, form: leadPlace(form) }');
+    // Место формы выводится из её положения, а не из содержимого.
+    const place = /export function leadPlace\(form: unknown\): string \{([\s\S]*?)\n\}/u.exec(metrika);
+    assert.ok(place);
+    assert.doesNotMatch(place[1]!, /FormData|\.elements|\.value|querySelector|\.name\b/u);
   });
 });
