@@ -151,3 +151,24 @@ describe('разметка сайта WebSite — на главной (Р-779)',
     assert.match(component, /if \(!url \|\| process\.env\.NEXT_PUBLIC_PREVIEW === '1'\) return null;/u);
   });
 });
+
+describe('Open Graph страниц несёт имя сайта, язык и тип (Р-780)', () => {
+  const routes = [
+    ['app', 'src', 'app', 'page.tsx'],
+    ['app', 'src', 'app', 'not-found.tsx'],
+    ...['main', 'students', 'business', 'experts', 'offer', 'privacy', 'consent'].map((r) => ['app', 'src', 'app', r, 'page.tsx']),
+  ];
+
+  it('общие поля совпадают с layout.tsx', () => {
+    assert.match(read('app', 'src', 'components', 'og-cover.ts'), /export const OG_SITE = \{ siteName: 'ProDisser', locale: 'ru_RU', type: 'website' \} as const;/u);
+    assert.match(read('app', 'src', 'app', 'layout.tsx'), /openGraph: \{ siteName: 'ProDisser', locale: 'ru_RU', type: 'website' \}/u);
+  });
+
+  for (const parts of routes) {
+    it(parts.slice(3).join('/'), () => {
+      // Блок страницы заменяет родительский целиком: без разворота общие
+      // поля до разметки не доходят.
+      assert.match(read(...parts), /openGraph: \{ \.\.\.OG_SITE, /u);
+    });
+  }
+});

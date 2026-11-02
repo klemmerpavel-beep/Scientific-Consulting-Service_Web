@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Page from '../components/pages/NotFoundPage';
 import { meta } from '../components/pages/NotFoundPage.meta';
-import { OG_COVER } from '../components/og-cover';
+import { OG_COVER, OG_SITE } from '../components/og-cover';
 
 export const metadata: Metadata = {
   title: meta.title,
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   // Ссылка на несуществующий адрес всё равно расходится по мессенджерам:
   // с обложкой видно, чей это сайт, без неё — голый серый прямоугольник.
   // Адрес в openGraph не указываем: у этой страницы его нет.
-  openGraph: { title: meta.title, description: meta.description, images: [OG_COVER] },
+  openGraph: { ...OG_SITE, title: meta.title, description: meta.description, images: [OG_COVER] },
 };
 
 export default function NotFound() {
