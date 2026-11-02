@@ -44,6 +44,20 @@ const METRIKA_ID = process.env.NEXT_PUBLIC_METRIKA_ID;
 /** Идентификатор цели «Заявка отправлена» в Метрике (Р-409). */
 export const LEAD_GOAL = 'lead';
 
+/**
+ * Где на странице стоит форма, из которой ушла заявка (Р-777): первый экран
+ * или раздел по его `id` («request», «anketa»). Окно заявки из шапки — та же
+ * форма раздела `#request` (Р-484), к моменту события окно уже закрыто, и
+ * обе дают «request». Формы своих признаков в разметке не несут, поэтому
+ * место выводится из положения формы. Ни поля, ни значения формы здесь не
+ * читаются.
+ */
+export function leadPlace(form: unknown): string {
+  if (typeof HTMLFormElement === 'undefined' || !(form instanceof HTMLFormElement)) return 'unknown';
+  if (form.getBoundingClientRect().top + window.scrollY < window.innerHeight) return 'first-screen';
+  return form.closest('section[id]')?.id ?? 'page';
+}
+
 /** Хранилище выбора; в частном окне обращение к нему может бросить ошибку. */
 function store(): Storage | null {
   try {
@@ -103,12 +117,15 @@ export default function Metrika() {
   // что открывает окно благодарности (Р-406): только успешная отправка,
   // только при включённом счётчике и данном согласии. Нужна Директу, чтобы
   // считать заявки и учиться на них (решение Р-409). В цель не кладётся
-  // ничего из формы: ни контакта, ни текста — только сам факт отправки.
+  // ничего из формы: ни контакта, ни текста. С Р-777 к факту отправки
+  // добавлены адрес страницы и место формы на ней — чтобы в отчёте было
+  // видно, какая посадочная и какая форма приводят заявки.
   useEffect(() => {
     if (!METRIKA_ID || cabinet || choice !== 'yes') return;
-    const onSent = () => {
+    const onSent = (event: Event) => {
       const ym = (window as unknown as { ym?: (...args: unknown[]) => void }).ym;
-      if (typeof ym === 'function') ym(Number(METRIKA_ID), 'reachGoal', LEAD_GOAL);
+      const form = (event as CustomEvent<{ form?: unknown } | null>).detail?.form;
+      if (typeof ym === 'function') ym(Number(METRIKA_ID), 'reachGoal', LEAD_GOAL, { page: window.location.pathname, form: leadPlace(form) });
     };
     window.addEventListener(LEAD_SENT_EVENT, onSent);
     return () => window.removeEventListener(LEAD_SENT_EVENT, onSent);

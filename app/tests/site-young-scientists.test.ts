@@ -45,11 +45,16 @@ describe('«Аспирантам»: первый экран называет м�
     assert.doesNotMatch(h1, /^ProDisser/u);
   });
 
-  it('h1 согласован с <title> и og:title', () => {
+  it('h1 согласован с og:title макета; <title> — поисковый, по Р-773 (seo-meta.test.ts)', () => {
+    // С слиянием SEO-выпуска main title и description «Аспирантам» — под
+    // запрос «сопровождение диссертации» (Р-773, утверждено владельцем
+    // 02.11.2026): их охраняет seo-meta.test.ts, здесь — только h1 и
+    // og:title макета, которые называют молодых учёных (Р-769).
+    const og = MAIN.match(/<meta property="og:title" content="([^"]+)">/u)?.[1] ?? '';
+    assert.match(og, /^Научное сопровождение аспирантов и молодых учёных/u);
+    assert.ok(h1Of(MAIN).startsWith(og.replace(/ — ProDisser$/u, '')), 'h1 начинается не с og:title');
     const title = MAIN.match(/<title>([^<]+)<\/title>/u)?.[1] ?? '';
-    assert.match(title, /^Научное сопровождение аспирантов и молодых учёных/u);
-    assert.match(MAIN, /<meta property="og:title" content="Научное сопровождение аспирантов и молодых учёных/u);
-    assert.ok(h1Of(MAIN).startsWith(title.replace(/ — ProDisser$/u, '')), 'h1 начинается не с <title>');
+    assert.match(title, /сопровождение диссертации/iu);
   });
 
   it('метка первого экрана — «Аспирантам и молодым учёным»', () => {
