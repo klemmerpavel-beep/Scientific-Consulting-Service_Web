@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Научное сопровождение аспирантов и молодых учёных — ProDisser</title>
-<meta name="description" content="Диссертация, статьи и заявки на гранты: методология, научная редактура, оформление по ГОСТ и подготовка к защите. Куратор с учёной степенью, этапы с приёмкой, смета в договоре.">
+<meta name="description" content="Диссертация, статьи и заявки на гранты: методология, научная редактура, оформление по ГОСТ и подготовка к защите. Куратор с учёной степенью, этапы с приёмкой, смета в Задании.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ProDisser">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:title" content="Научное сопровождение аспирантов и молодых учёных — ProDisser">
-<meta property="og:description" content="Диссертация, статьи и заявки на гранты: методология, научная редактура, оформление по ГОСТ и подготовка к защите. Куратор с учёной степенью, этапы с приёмкой, смета в договоре.">
+<meta property="og:description" content="Диссертация, статьи и заявки на гранты: методология, научная редактура, оформление по ГОСТ и подготовка к защите. Куратор с учёной степенью, этапы с приёмкой, смета в Задании.">
 <meta name="twitter:card" content="summary_large_image">
 <script src="./support.js"></script>
 </head>
@@ -72,7 +72,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 
 .pd-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .pd-request{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
-@media (max-width:1024px){.pd-usp{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto;width:100%}.pd-orbit>.pd-ring,.pd-orbit>.pd-dot,.pd-orbit>.pd-core{display:none!important}.pd-orbit>.pd-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}}
+@media (max-width:1024px){.pd-usp{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.pd-orbit>.pd-ring,.pd-orbit>.pd-dot,.pd-orbit>.pd-core{display:none!important}.pd-orbit>.pd-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}}
 .pd-nav{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 /* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
 @media (max-width:1200px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-services,.pd-cost,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px!important}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
@@ -224,7 +224,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
 <li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
 <li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
-<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+<li>Менеджер откроет вам личный кабинет — ссылка придёт на почту; там вы приложите материалы по перечню «Что подготовить»</li>
 </ol>
 </div>
 </sc-if>
@@ -245,9 +245,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <div class="pd-faceb" style="display:flex;flex-direction:column;gap:10px;max-width:clamp(110px,11.3vw,152px);padding-top:clamp(48px,10.4vw,150px);align-items:center;text-align:center">
 <span class="pd-faceb-c" style="width:clamp(110px,11.3vw,152px);height:clamp(110px,11.3vw,152px);border-radius:50%;background:var(--pd-accent-soft);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<image-slot id="mp-photo-2" shape="circle" data-alt="Научный редактор проекта" placeholder="Фото редактора" style="width:100%;height:100%"></image-slot>
+<image-slot id="mp-photo-2" shape="circle" data-alt="Менеджер проекта" placeholder="Фото менеджера" style="width:100%;height:100%"></image-slot>
 </span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Научный редактор проекта</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Менеджер проекта — сроки, документы, оплаты</span>
 </div>
 </div>
 <div class="pd-metrics" style="gap:12px;margin-top:auto">
@@ -257,8 +257,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Услуги куратора<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent-edge);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a class="pd-lift" href="#process" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark)" style-active="background:var(--pd-accent-mark)">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">6 этапов</span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">план работы от заявки до защиты</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">6 шагов</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">от заявки до защиты, этапы — с приёмкой</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Как устроена работа<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a class="pd-lift" href="#team" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)">
@@ -465,7 +465,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Стоимость</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Из чего складывается смета и когда вы узнаёте сумму</h2>
 </div>
-<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Сумму называем на консультации, до согласования Задания и до оплаты</span>
+<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Сумму вы видите в Задании, до оплаты</span>
 </div>
 <div style="margin:0 0 32px;border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;background:var(--pd-ink-inverse)">
 <div style="display:flex;align-items:baseline;gap:12px;padding:14px 20px;background:var(--pd-surface-quiet);border-bottom:1px solid var(--pd-border)">
@@ -478,7 +478,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;color:var(--pd-accent);flex:0 0 auto;text-align:right;font-variant-numeric:tabular-nums">{{ t.term }}</span>
 </div>
 </sc-for>
-<p style="margin:0;padding:14px 20px;font-size:14px;line-height:1.6;color:var(--pd-ink-muted);max-width:72ch">Срок считается от подписания договора и разбит на этапы. Смета фиксируется в договоре и меняется только дополнительным соглашением, которое подписываете вы.</p>
+<p style="margin:0;padding:14px 20px;font-size:14px;line-height:1.6;color:var(--pd-ink-muted);max-width:72ch">Срок считается по календарному плану Задания и разбит на этапы. Стоимость фиксируется в Задании и меняется только дополнительным соглашением к нему, которое подписываете вы.</p>
 </div>
 <div class="pd-cost" style="gap:16px">
 <sc-for list="{{ costFactors }}" as="c" hint-placeholder-count="3">
@@ -496,12 +496,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <section id="process" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Этапы</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Шесть этапов от заявки до защиты</h2>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Порядок работы</span>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Шесть шагов от заявки до защиты</h2>
 </div>
-<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Каждый этап закрывается актом приёмки</span>
+<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Этапы по Заданию закрываются актом приёмки</span>
 </div>
-<div data-carousel="process" tabindex="0" role="group" aria-label="Этапы работы — прокрутите стрелками" onScroll="{{ onStepScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:10px 2px 12px;margin:-10px -2px -12px">
+<div data-carousel="process" tabindex="0" role="group" aria-label="Шаги работы — прокрутите стрелками" onScroll="{{ onStepScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:10px 2px 12px;margin:-10px -2px -12px">
 <sc-for list="{{ steps }}" as="p" hint-placeholder-count="6">
 <article class="pd-lift" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px 22px;min-height:232px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
@@ -523,8 +523,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="height:100%;border-radius:999px;background:var(--pd-accent);transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ stepScale }}"></div>
 </div>
 <div style="display:flex;gap:10px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущий этап" onClick="{{ prevStep }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-accent-edge);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:var(--pd-accent);-webkit-mask:{{ prevMask }};mask:{{ prevMask }}"></span></button>
-<button type="button" aria-label="Следующий этап" onClick="{{ nextStep }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-accent-edge);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:var(--pd-accent);-webkit-mask:{{ nextMask }};mask:{{ nextMask }}"></span></button>
+<button type="button" aria-label="Предыдущий шаг" onClick="{{ prevStep }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-accent-edge);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:var(--pd-accent);-webkit-mask:{{ prevMask }};mask:{{ prevMask }}"></span></button>
+<button type="button" aria-label="Следующий шаг" onClick="{{ nextStep }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-accent-edge);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:var(--pd-accent);-webkit-mask:{{ nextMask }};mask:{{ nextMask }}"></span></button>
 </div>
 </div>
 </section>
@@ -565,15 +565,16 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
+<!-- «Кто сопровождает»: для клиента две роли — менеджер и куратор (С-5, решение Р-770); методологический разбор и научная редактура — работа куратора. До 1024 px орбита — сетка без квадратной пропорции: двум карточкам квадрат оставлял пустую строку. -->
 <section id="team" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div class="pd-team" style="gap:40px;align-items:center">
 <div style="display:flex;flex-direction:column;gap:24px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Команда</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:24ch;text-wrap:balance">Кто сопровождает проект</h2>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:40ch">Менеджер, эксперт по специальности, методолог и научный редактор ведут проект до защиты. Каждый отвечает за свой участок.</p>
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:40ch">Менеджер отвечает за сроки, документы и оплаты. Куратор со степенью по вашей специальности — за содержание и методологию: методологический разбор и научная редактура — его работа.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">С 2016</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">работаем с аспирантами и соискателями из России и СНГ</span></div>
-<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">04</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">специалиста закрепляем за проектом до самой защиты</span></div>
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">02</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">роли на всё время работы: менеджер и куратор</span></div>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px">
 <span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Методология</span>
@@ -605,29 +606,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Менеджер</span>
 <span style="margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">01</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Держит сроки и отвечает на вопросы в рабочее время.</span>
-</div>
-</div>
-<div class="pd-crew" style="position:absolute;left:55.677%;top:7.077%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
-<img class="pd-crewfig" src="./assets/crew/method.webp" alt="" aria-hidden="true" width="218" height="440" loading="lazy" decoding="async">
-<div class="pd-crewcard pd-lift" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
-<div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
-<span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--pd-accent)"><span style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ methodMask }};mask:{{ methodMask }}"></span></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Методолог</span>
-<span style="margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">02</span>
-</div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Выстраивает структуру исследования и методологическую основу работы.</span>
-</div>
-</div>
-<div class="pd-crew" style="position:absolute;left:0.617%;top:63.385%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
-<img class="pd-crewfig" src="./assets/crew/editor.webp" alt="" aria-hidden="true" width="212" height="440" loading="lazy" decoding="async">
-<div class="pd-crewcard pd-lift" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
-<div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
-<span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--pd-accent)"><span style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ editorMask }};mask:{{ editorMask }}"></span></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Научный редактор</span>
-<span style="margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">03</span>
-</div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Проверяет логику изложения, оформление и соответствие требованиям.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Сроки, документы, оплаты; отвечает в рабочее время.</span>
 </div>
 </div>
 <div class="pd-crew" style="position:absolute;left:55.677%;top:68.923%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
@@ -635,15 +614,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="pd-crewcard pd-lift" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--pd-accent)"><span style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ expertMask }};mask:{{ expertMask }}"></span></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Эксперт по специальности</span>
-<span style="margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">04</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Куратор</span>
+<span style="margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">02</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Разбирает тему с автором и помогает выстроить содержание глав.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Содержание и методология: разбор глав и научная редактура вашего текста.</span>
 </div>
 </div>
 <div class="pd-dot" style="position:absolute;left:23.307%;top:31.308%;width:15px;height:15px;border-radius:50%;background:var(--pd-accent);display:flex;align-items:center;justify-content:center"><span style="width:4.4px;height:4.4px;border-radius:50%;background:var(--pd-ink-inverse);display:block"></span></div>
-<div class="pd-dot" style="position:absolute;left:70.887%;top:28.462%;width:15px;height:15px;border-radius:50%;background:var(--pd-accent);display:flex;align-items:center;justify-content:center"><span style="width:4.4px;height:4.4px;border-radius:50%;background:var(--pd-ink-inverse);display:block"></span></div>
-<div class="pd-dot" style="position:absolute;left:22.536%;top:64.769%;width:15px;height:15px;border-radius:50%;background:var(--pd-accent);display:flex;align-items:center;justify-content:center"><span style="width:4.4px;height:4.4px;border-radius:50%;background:var(--pd-ink-inverse);display:block"></span></div>
 <div class="pd-dot" style="position:absolute;left:71.581%;top:68.000%;width:15px;height:15px;border-radius:50%;background:var(--pd-accent);display:flex;align-items:center;justify-content:center"><span style="width:4.4px;height:4.4px;border-radius:50%;background:var(--pd-ink-inverse);display:block"></span></div>
 </div>
 </div></section>
@@ -754,7 +731,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
 <li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
 <li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
-<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+<li>Менеджер откроет вам личный кабинет — ссылка придёт на почту; там вы приложите материалы по перечню «Что подготовить»</li>
 </ol>
 </div>
 </sc-if>
@@ -952,22 +929,22 @@ class Component extends DCLogic {
   mask(i){ return "url('./assets/icons/" + i + ".svg') center/contain no-repeat"; }
   renderVals(){
     const stepData = [
-      ['01', 'Заявка', '', 'Принимаем задачу, уточняем стадию работы и срок защиты, назначаем менеджера проекта.'],
-      ['02', 'Экспертная консультация', '', 'Смотрим текст и материалы, называем объём работ и сроки.'],
-      ['03', 'Анализ и ТЗ', '', 'Фиксируем структуру исследования, методологию и требования диссовета в договоре.'],
-      ['04', 'Работа по этапам', '', 'Куратор ведёт разбор, автор пишет. Каждый этап проходит вычитку научного редактора.'],
-      ['05', 'Приёмка и правки', '', 'Вы принимаете этап и видите, что изменено и почему. Правки в рамках объёма не тарифицируются.'],
-      ['06', 'Подготовка к защите', '', 'Репетиция ответов на вопросы совета и разбор замечаний рецензентов.']
+      ['01', 'Заявка и ответ менеджера', '', 'Менеджер отвечает в течение рабочего дня, Пн⁠—⁠Пт 10:00⁠—⁠19:00: уточняет задачу, стадию работы и срок защиты.'],
+      ['02', 'Личный кабинет', '', 'Менеджер открывает вам доступ. Вы прикладываете материалы по перечню «Что подготовить»: требования совета, паспорт специальности, текст.'],
+      ['03', 'Куратор и созвон знакомства', '', 'Куратор со степенью по вашей специальности, его профиль — в кабинете. Созвон знакомства до 20 минут ведёт менеджер.'],
+      ['04', 'Итог консультации и Задание', '', 'Задание: состав работ, календарный план и стоимость по этапам. Вы согласуете его в кабинете.'],
+      ['05', 'Этапы с приёмкой', '', 'Куратор разбирает главы, текст пишете вы. Следующий этап оплачивается после приёмки предыдущего.'],
+      ['06', 'Подготовка к защите', '', 'Завершающий этап Задания: репетиция ответов на вопросы совета и разбор замечаний рецензентов.']
     ];
     const stepTags = [
-      ['Разбор задачи', 'Оценка объёма', 'Ответ менеджера'],
-      ['Постановка задачи', 'Подбор куратора', 'Профиль куратора', 'Предварительный план'],
-      ['Структура работы', 'Методология', 'Смета и договор'],
-      ['Разбор глав', 'Научная редактура', 'Оформление по ГОСТ'],
-      ['Комментарии куратора', 'Правки автора', 'Акт по этапу'],
+      ['Разбор задачи', 'Ответ менеджера', 'Срок защиты'],
+      ['Доступ в кабинет', 'Что подготовить', 'Материалы'],
+      ['Подбор куратора', 'Профиль куратора', 'Созвон до 20 минут'],
+      ['Итог консультации', 'Календарный план', 'Стоимость по этапам'],
+      ['Разбор глав', 'Научная редактура', 'Акт по этапу'],
       ['Разбор доклада', 'Презентация', 'Репетиция вопросов']
     ];
-    const stepImg = ['ex-3d-envelope', 'ex-3d-question', 'pd-3d-checklist', 'ex-3d-form', 'pd-3d-badge', 'pd-3d-bubbles'];
+    const stepImg = ['ex-3d-envelope', 'pd-3d-checklist', 'ex-3d-question', 'ex-3d-form', 'pd-3d-badge', 'pd-3d-bubbles'];
     const steps = stepData.map(([num, title, time, text], i) => ({
       num, title, text, img: './assets/art/' + stepImg[i] + '.webp',
       numColor: i === this.state.stepPage ? 'var(--pd-accent)' : 'var(--pd-ink-muted)',
@@ -977,17 +954,17 @@ class Component extends DCLogic {
     const stepScale = 'scaleX(' + (1 / steps.length + stepFrac * (steps.length - 1) / steps.length) + ')';
     const gains = [
       ['flask-conical', 'Методология', 'Объект, предмет и логика доказательства зафиксированы до первой главы.'],
-      ['calendar-days', 'План с датами', 'Этапы, сроки и промежуточная приёмка прописаны в договоре.'],
-      ['message-circle', 'Разбор с куратором', 'Замечания эксперта по вашей научной области: раздел, проблема, способ исправления.'],
+      ['calendar-days', 'План с датами', 'Этапы, сроки и промежуточная приёмка прописаны в Задании.'],
+      ['message-circle', 'Разбор с куратором', 'Замечания куратора по вашей научной области: раздел, проблема, способ исправления.'],
       ['award', 'Готовность к защите', 'Доклад, презентация и репетиция вопросов совета.']
     ].map(([icon, title, text], i) => ({
       title, text, mask: this.mask(icon),
       chip: 'var(--pd-accent)'
     }));
     const faqData = [
-      ['Как именно вы помогаете с работой?', 'Куратор разбирает методологию и логику глав, методолог — структуру исследования, научный редактор — язык и оформление. Текст пишете вы; мы указываем, что и почему нужно исправить, и готовим вас к вопросам совета.'],
+      ['Как именно вы помогаете с работой?', 'Куратор разбирает методологию, структуру исследования и логику глав, ведёт научную редактуру и проверяет оформление. Текст пишете вы; мы указываем, что и почему нужно исправить, и готовим вас к вопросам совета.'],
       ['Кто будет вести мою работу?', 'Куратор с учёной степенью в вашей области. Профиль куратора — степень, специальность, стаж и публикации по категориям журналов — вы видите до согласования Задания.'],
-      ['Сколько это стоит?', 'Считаем по этапам, после того как посмотрим ваш материал. Смета попадает в договор и без вашего согласия не меняется.'],
+      ['Сколько это стоит?', 'Считаем по этапам после разбора ваших материалов. Сумму вы видите в Задании, до оплаты, и без вашего согласия она не меняется.'],
       ['Что с конфиденциальностью?', 'Соглашение о неразглашении подписывают все, кто работает над проектом. Тема и текст не передаются третьим лицам и не используются в других работах.'],
       ['А если понадобятся правки?', 'Замечания по сданному этапу отрабатываем без доплаты. Число правок внутри этапа не ограничено, срок ответа прописан в договоре.'],
       ['Когда платить?', 'По этапам. Каждый этап вы принимаете отдельно и оплачиваете следующий только после приёмки.'],
@@ -1028,9 +1005,9 @@ class Component extends DCLogic {
     }));
     const usp = [
       ['pd-degree', 'Куратор со степенью по вашей специальности', 'Специалист с учёной степенью в вашей области разбирает методологию, показывает слабые места аргументации и готовит к вопросам оппонентов.', 'Профиль куратора вы видите до согласования Задания'],
-      ['pd-gost', 'Соответствие требованиям ВАК и ГОСТ', 'Структура, оформление, библиография и ссылочный аппарат проверяются по ГОСТ Р 7.0.11-2011 и требованиям вашего диссовета.', 'Чек-лист из 74 пунктов — доступен до начала работы'],
+      ['pd-gost', 'Соответствие требованиям ВАК и ГОСТ', 'Структура, оформление, библиография и ссылочный аппарат проверяются по ГОСТ Р 7.0.11-2011 и требованиям вашего диссовета.', 'Перечень «Что подготовить» по виду работы — в кабинете до начала работы'],
       ['pd-editing', 'Языковая и терминологическая поддержка', 'Научная редактура на русском, перевод для англоязычных журналов, сопровождение иностранных аспирантов вплоть до выступления на защите.', 'Отдельное направление — иностранные аспиранты российских вузов'],
-      ['pd-stages', 'Этапы с актом приёмки', 'Договор с зафиксированным объёмом и сроками, этапы с приёмкой, отчёт и акт по каждому этапу с комментариями эксперта.', 'Следующий этап оплачивается после приёмки предыдущего']
+      ['pd-stages', 'Этапы с актом приёмки', 'Задание фиксирует объём, сроки и стоимость по этапам; по каждому этапу — отчёт и акт с комментариями куратора.', 'Следующий этап оплачивается после приёмки предыдущего']
     ].map(([icon, title, text, proof], i) => ({
       title, text, proof, num: '0' + (i + 1),
       icon: "url('./assets/icons/" + icon + ".svg') center/contain no-repeat"
@@ -1241,8 +1218,7 @@ class Component extends DCLogic {
       ].map(([icon, text], i) => ({
         text, mask: this.mask(icon),
         chip: 'var(--pd-accent)',
-      })), crewMask: this.mask('users'), methodMask: this.mask('flask-conical'),
-      editorMask: this.mask('pencil-line'), expertMask: this.mask('award'),
+      })), crewMask: this.mask('users'), expertMask: this.mask('award'),
       phoneMask: this.mask('phone'), mailMask: this.mask('mail'),
       prevMask: this.mask('arrow-left'), nextMask: this.mask('arrow-right'),
       prevStep: () => this.goStep(this.state.stepPage - 1),

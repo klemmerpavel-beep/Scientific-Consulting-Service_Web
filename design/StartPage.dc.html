@@ -172,7 +172,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
 <li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
 <li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
-<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+<li>Менеджер откроет вам личный кабинет — ссылка придёт на почту; там вы приложите материалы по перечню «Что подготовить»</li>
 </ol>
 </div>
 </sc-if>
@@ -201,8 +201,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Куратор проекта — кандидат наук вашего направления</span>
 </div><div class="pd-sfb" style="display:flex;flex-direction:column;gap:2px;max-width:130px;padding-top:124px;align-items:center;text-align:center">
 <span style="width:130px;height:130px;border-radius:50%;background:var(--pd-art-line);overflow:hidden;display:block">
-<image-slot id="sp-avatar-2c" shape="circle" data-alt="Научный редактор проекта" placeholder="Фото редактора" style="width:130px;height:130px"></image-slot>
-</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Научный редактор проекта</span>
+<image-slot id="sp-avatar-2c" shape="circle" data-alt="Менеджер проекта" placeholder="Фото менеджера" style="width:130px;height:130px"></image-slot>
+</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Менеджер проекта — сроки, документы, оплаты</span>
 
 </div>
 
@@ -213,8 +213,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Каталог для компаний<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent-edge);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a class="pd-lift" href="./main.html#process" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark)" style-active="background:var(--pd-accent-mark)">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">6 этапов</span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">от разбора методологии до репетиции защиты, каждый с приёмкой</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">6 шагов</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">от заявки до репетиции защиты, этапы — с приёмкой</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">План работы<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a class="pd-lift" href="./main.html#team" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)">
@@ -334,7 +334,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">02</span><img src="./assets/art/pd-3d-checklist.webp" alt="" aria-hidden="true" width="72" height="72" decoding="async" loading="lazy" style="width:72px;height:72px;flex:0 0 72px;display:block;margin:-10px -6px -10px 0"></div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Оформление под требования вашего диссовета</h3>
 <p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Структуру, библиографию и ссылочный аппарат сверяем с ГОСТ Р 7.0.11-2011. Затем&nbsp;— с&nbsp;регламентом совета, где вы защищаетесь.</p>
-<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink)">Чек-лист из 74 пунктов выдаётся до начала работы.</p>
+<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink)">Перечень «Что подготовить» по виду работы — в кабинете до начала работы.</p>
 </article>
 <article class="pd-card pd-lift" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">03</span><img src="./assets/art/ex-3d-form.webp" alt="" aria-hidden="true" width="72" height="72" decoding="async" loading="lazy" style="width:72px;height:72px;flex:0 0 72px;display:block;margin:-10px -6px -10px 0"></div>
@@ -346,18 +346,18 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">04</span><img src="./assets/art/pd-3d-stairs.webp" alt="" aria-hidden="true" width="72" height="72" decoding="async" loading="lazy" style="width:72px;height:72px;flex:0 0 72px;display:block;margin:-10px -6px -10px 0"></div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Работа разбита на этапы с приёмкой</h3>
 <p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">По каждому этапу вы получаете отчёт и акт приёмки.</p>
-<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink)">Состав каждого этапа и дата сдачи указаны в приложении к договору.</p>
+<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink)">Состав каждого этапа и дата сдачи указаны в Задании.</p>
 </article>
 <article class="pd-card pd-lift" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">05</span><img src="./assets/art/pd-3d-team.webp" alt="" aria-hidden="true" width="72" height="72" decoding="async" loading="lazy" style="width:72px;height:72px;flex:0 0 72px;display:block;margin:-10px -6px -10px 0"></div>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Четыре роли на проекте</h3>
-<p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Куратор по специальности, методолог, научный редактор и менеджер проекта. Каждый отвечает за свой участок и подписывает NDA.</p>
-<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink)">Состав команды и зоны ответственности вы получаете до старта работы.</p>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Две роли: менеджер и куратор</h3>
+<p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Менеджер — сроки, документы, оплаты. Куратор со степенью по вашей специальности — содержание и методология.</p>
+<p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink)">Методологический разбор и научная редактура — работа куратора. Оба подписывают NDA.</p>
 </article>
 <article class="pd-card pd-lift" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">06</span><img src="./assets/art/pd-3d-laptop.webp" alt="" aria-hidden="true" width="72" height="72" decoding="async" loading="lazy" style="width:72px;height:72px;flex:0 0 72px;display:block;margin:-10px -6px -10px 0"></div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Ход работы виден в личном кабинете</h3>
-<p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Этапы, сроки, версии файлов и комментарии эксперта собраны в кабинете проекта.</p>
+<p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Этапы, сроки, версии файлов и комментарии куратора собраны в кабинете проекта.</p>
 <p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink)">Вопросы по этапу разбираем с куратором на созвоне, решения фиксируем письменно.</p>
 </article>
 </div>
@@ -381,12 +381,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05)">
 <span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-contract.svg') center/contain no-repeat;mask:url('./assets/icons/pd-contract.svg') center/contain no-repeat"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Договор об оказании услуг</span></span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Объём, сроки и порядок приёмки зафиксированы письменно</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">В договоре зафиксированы этапы, состав работ, требования к результату и дата сдачи. Изменение объёма оформляется дополнительным соглашением.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">В Задании зафиксированы этапы, состав работ, требования к результату и календарный план. Изменение объёма оформляется дополнительным соглашением к Заданию.</p>
 </article>
 <article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05)">
 <span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-refund.svg') center/contain no-repeat;mask:url('./assets/icons/pd-refund.svg') center/contain no-repeat"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Возврат по заявлению</span></span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Этап не сдан в срок — оплата за него возвращается</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Возврат касается конкретного этапа и оформляется заявлением. Решение диссовета мы не гарантируем и в договор не выносим. Работу оцениваем до оплаты, на консультации.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Возврат касается конкретного этапа и оформляется заявлением. Решение диссовета мы не гарантируем и в договор не выносим. Сумму вы видите в Задании, до оплаты.</p>
 </article>
 <article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-edge-neutral),0 1px 2px rgba(20,22,28,.05)">
 <span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-nda.svg') center/contain no-repeat;mask:url('./assets/icons/pd-nda.svg') center/contain no-repeat"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Соглашение о неразглашении</span></span>
@@ -396,7 +396,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05)">
 <span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-estimate.svg') center/contain no-repeat;mask:url('./assets/icons/pd-estimate.svg') center/contain no-repeat"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Смета</span></span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Смета считается после разбора материала</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Стоимость зависит от объёма, стадии и срока работы. Смета фиксируется в договоре.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Стоимость зависит от объёма, стадии и срока работы. Смета фиксируется в Задании.</p>
 </article>
 <article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05)">
 <span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-stagepay.svg') center/contain no-repeat;mask:url('./assets/icons/pd-stagepay.svg') center/contain no-repeat"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Оплата по этапам</span></span>
@@ -429,7 +429,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span aria-hidden="true" style="width:32px;height:32px;flex:0 0 32px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--pd-ink-inverse)"><span style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/shield-check.svg') center/contain no-repeat;mask:url('./assets/icons/shield-check.svg') center/contain no-repeat"></span></span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Принцип работы</span>
 </div>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-inverse);max-width:52ch">Исследование ведёт автор. Мы разбираем логику работы, приводим её к требованиям ГОСТ и диссовета и готовим к защите. Каждый этап проверяют куратор и научный редактор.</p>
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-inverse);max-width:52ch">Исследование ведёт автор. Мы разбираем логику работы, приводим её к требованиям ГОСТ и диссовета и готовим к защите. Каждый этап проверяет куратор.</p>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px">
 <span style="background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:6px 14px;font-size:13px;line-height:1.4;font-weight:500;color:var(--pd-ink-inverse)">Методология</span>
@@ -483,7 +483,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
 <li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
 <li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
-<li>После согласования откроем вам личный кабинет — ссылка придёт на почту</li>
+<li>Менеджер откроет вам личный кабинет — ссылка придёт на почту; там вы приложите материалы по перечню «Что подготовить»</li>
 </ol>
 </div>
 </sc-if>
