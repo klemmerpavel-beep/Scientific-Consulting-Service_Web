@@ -68,7 +68,7 @@ describe('реестр рекламы перенесён из marketing/', () =>
     assert.doesNotThrow(() => validateRegistry(source));
   });
 
-  it('даты теста и кампаний — обе ГГГГ-ММ-ДД или обе null: «назначит владелец» (П-15, Р-774)', () => {
+  it('даты теста и кампаний — обе ГГГГ-ММ-ДД или обе null: «назначит владелец» (П-15, Р-784)', () => {
     const source = JSON.parse(readFileSync(path.join(ROOT, 'marketing', 'registry.json'), 'utf8'));
     const campaign = source.campaigns[0];
     const dated = { ...source.test, from: '2026-12-01', to: '2026-12-28' };

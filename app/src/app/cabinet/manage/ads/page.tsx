@@ -294,7 +294,7 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
     );
   }
 
-  // Сводка. Даты теста не назначены (П-15, Р-774) — периода теста нет:
+  // Сводка. Даты теста не назначены (П-15, Р-784) — периода теста нет:
   // заявки шести недель до сегодняшнего дня — базовый уровень.
   const dates =
     registry.test.from !== null && registry.test.to !== null ? { from: registry.test.from, to: registry.test.to } : null;

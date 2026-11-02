@@ -21,7 +21,7 @@ export interface AdsCampaign {
   readonly platform: string;
   readonly direction: AdsDirection | string;
   readonly status: CampaignStatus | string;
-  /** `null` — даты назначит владелец (П-15, Р-774). */
+  /** `null` — даты назначит владелец (П-15, Р-784). */
   readonly from: string | null;
   readonly to: string | null;
   /** Рубли без НДС: так суммы показывают кабинеты площадок. */
@@ -98,7 +98,7 @@ export interface AdsDoc {
 export interface AdsRegistry {
   readonly updated: string;
   readonly test: {
-    /** Обе `null` — реклама не запущена, даты назначит владелец (П-15, Р-774). */
+    /** Обе `null` — реклама не запущена, даты назначит владелец (П-15, Р-784). */
     readonly from: string | null;
     readonly to: string | null;
     /** Бюджет теста по двум направлениям, рубли с НДС. */
@@ -220,7 +220,7 @@ export type TestPhase = 'unscheduled' | 'before' | 'running' | 'after';
 /**
  * Где сегодня относительно периода теста и какой это день теста. Даты не
  * назначены — `unscheduled`: прежний план прошёл, а реклама не запущена,
- * и «идёт день N» было бы неправдой (П-15, Р-774).
+ * и «идёт день N» было бы неправдой (П-15, Р-784).
  */
 export function testPhase(registry: Pick<AdsRegistry, 'test'>, now: Date): { phase: TestPhase; day: number; days: number } {
   if (registry.test.from === null || registry.test.to === null) return { phase: 'unscheduled', day: 0, days: 0 };

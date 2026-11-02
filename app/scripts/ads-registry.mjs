@@ -68,7 +68,7 @@ function number(value, what) {
 export function validateRegistry(source) {
   check(DAY.test(source.updated), 'дата обновления — ГГГГ-ММ-ДД');
   const test = source.test;
-  // Даты теста назначает владелец (П-15, Р-774): до того обе — null.
+  // Даты теста назначает владелец (П-15, Р-784): до того обе — null.
   check(
     (test.from === null && test.to === null) || (DAY.test(test.from) && DAY.test(test.to) && test.from <= test.to),
     'период теста задан неверно: обе даты ГГГГ-ММ-ДД или обе null — «назначит владелец»',
