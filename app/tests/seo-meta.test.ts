@@ -39,3 +39,22 @@ describe('«Аспирантам» отвечает запросу «сопро�
     assert.ok(meta.includes(JSON.stringify(description)), 'description в PostgradPage.meta.ts не совпадает с макетом');
   });
 });
+
+describe('«Аспирантам»: «диссертация» и «нормоконтроль» в тексте первого экрана и раздела услуг (Р-774)', () => {
+  const sources = [read('design', 'MainPage.dc.html'), read('app', 'src', 'components', 'pages', 'PostgradPage.tsx')];
+
+  it('лид первого экрана называет диссертацию', () => {
+    for (const source of sources) assert.match(source, />Разбираем методологию диссертации, ведём научную редактуру/u);
+  });
+
+  it('заголовок раздела услуг — «Сопровождаем диссертацию от первой главы до защиты», подсветка на прежнем месте', () => {
+    for (const source of sources) {
+      // Предлоги в подсветке стоят с неразрывным пробелом (§3.4).
+      assert.match(source, />Сопровождаем диссертацию <span[^>]*>от первой главы до защиты<\/span><\/h2>/u);
+    }
+  });
+
+  it('карточка услуги называет нормоконтроль', () => {
+    for (const source of sources) assert.match(source, /'pd-gost', 'Нормоконтроль по ГОСТ и требованиям ВАК'/u);
+  });
+});
