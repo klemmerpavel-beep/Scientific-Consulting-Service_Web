@@ -62,6 +62,15 @@ export const BANNED = [
 
 const MARKUP = { STU: 'StudentsPage.dc.html', PG: 'MainPage.dc.html' };
 
+/**
+ * Расписание показов — рабочее время ответа менеджера, одно с сайтом
+ * («Отвечаем Пн—Пт, 10:00—19:00») и окном рабочих часов кабинета
+ * (решение владельца П-18, Р-774): клик вне этих часов ждал бы ответа до
+ * утра или до понедельника.
+ */
+export const WORK_HOURS = 'Пн—Пт 10:00—19:00';
+const DAY = /^\d{4}-\d{2}-\d{2}$/u;
+
 function normalize(word) {
   return word.toLowerCase().replace(/ё/g, 'е');
 }
@@ -124,7 +133,14 @@ export function validateCampaigns(source, { root = ROOT } = {}) {
     names.add(at);
     check(/^PD_(STU|PG)_SRCH_[A-Z-]+_[A-Z]+_v\d+$/.test(at), `${at}: имя вне схемы PD_{направление}_SRCH_{гео}_{вариант}_v{n}`);
     check(at.startsWith(`PD_${campaign.direction}_`), `${at}: направление ${campaign.direction} не совпадает с именем`);
-    check(campaign.start <= campaign.end, `${at}: начало позже окончания`);
+    // Даты теста назначает владелец (П-15): до того — обе null.
+    const dated = campaign.start !== null || campaign.end !== null;
+    check(
+      !dated || (DAY.test(campaign.start ?? '') && DAY.test(campaign.end ?? '')),
+      `${at}: даты — обе ГГГГ-ММ-ДД или обе null («назначит владелец»)`,
+    );
+    check(!dated || campaign.start <= campaign.end, `${at}: начало позже окончания`);
+    check(campaign.hours === WORK_HOURS, `${at}: показы — «${WORK_HOURS}», рабочее время ответа (П-18)`);
     check(campaign.dailyBudget > 0 && campaign.bid > 0, `${at}: бюджет и ставка — больше нуля`);
     length(campaign.displayPath, LIMITS.displayPath, `${at}, отображаемая ссылка`);
     check(/^[\p{L}\d\-№/%#]+$/u.test(campaign.displayPath ?? ''), `${at}: в отображаемой ссылке допустимы буквы, цифры и - № / % #`);

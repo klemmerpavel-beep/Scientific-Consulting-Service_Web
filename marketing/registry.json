@@ -1,8 +1,8 @@
 {
-  "updated": "2026-10-12",
+  "updated": "2026-11-02",
   "test": {
-    "from": "2026-10-27",
-    "to": "2026-11-23",
+    "from": null,
+    "to": null,
     "budgetWithVat": 20000,
     "vatRate": 0.22,
     "baselineDays": 42
@@ -14,15 +14,15 @@
       "platform": "Яндекс Директ",
       "direction": "students",
       "status": "DRAFT",
-      "from": "2026-10-27",
-      "to": "2026-11-23",
+      "from": null,
+      "to": null,
       "budgetPlan": 5330,
       "spend": 0,
       "impressions": 0,
       "clicks": 0,
       "leads": 0,
       "doc": "direct-students",
-      "note": null
+      "note": "Не запущена (П-15); даты назначит владелец"
     },
     {
       "id": "stu-avito",
@@ -30,15 +30,15 @@
       "platform": "Авито",
       "direction": "students",
       "status": "DRAFT",
-      "from": "2026-10-27",
-      "to": "2026-11-23",
+      "from": null,
+      "to": null,
       "budgetPlan": 2869,
       "spend": 0,
       "impressions": 0,
       "clicks": 0,
       "leads": 0,
       "doc": "avito-students",
-      "note": null
+      "note": "Не запущена (П-15); даты назначит владелец"
     },
     {
       "id": "pg-direct",
@@ -46,15 +46,15 @@
       "platform": "Яндекс Директ",
       "direction": "postgrad",
       "status": "DRAFT",
-      "from": "2026-10-27",
-      "to": "2026-11-23",
+      "from": null,
+      "to": null,
       "budgetPlan": 8197,
       "spend": 0,
       "impressions": 0,
       "clicks": 0,
       "leads": 0,
       "doc": "direct-postgrad",
-      "note": null
+      "note": "Не запущена (П-15); даты назначит владелец"
     }
   ],
   "weeks": [],
@@ -252,9 +252,9 @@
     },
     {
       "id": "w-04",
-      "title": "Счётчик Метрики и цель «Заявка отправлена»",
+      "title": "Счётчик Метрики на рабочей учётной записи, цель «Заявка отправлена»",
       "owner": "Владелец",
-      "due": "2026-10-14",
+      "due": null,
       "status": "WAITING_OWNER",
       "doc": "launch"
     },
@@ -262,39 +262,39 @@
       "id": "w-05",
       "title": "Запрос в Авито о причине блокировки",
       "owner": "Владелец",
-      "due": "2026-10-14",
+      "due": null,
       "status": "WAITING_OWNER",
       "doc": "launch-avito"
     },
     {
       "id": "w-06",
-      "title": "Письмо в Роскомнадзор до включения счётчика",
+      "title": "Письмо в Роскомнадзор: исправить до отправки, затем отправить до включения счётчика",
       "owner": "Владелец",
-      "due": "2026-10-16",
+      "due": null,
       "status": "WAITING_OWNER",
       "doc": "launch-rkn"
     },
     {
       "id": "w-07",
-      "title": "Включить счётчик на сайте и проверить цель",
+      "title": "Включить счётчик и «Настройки cookies», пересобрать сайт, проверить цель",
       "owner": "Claude",
-      "due": "2026-10-19",
+      "due": null,
       "status": "PLANNED",
       "doc": "audit"
     },
     {
       "id": "w-08",
-      "title": "Свой аккаунт Директа на ООО, данные рекламодателя, оплата",
+      "title": "Свой аккаунт Директа на ООО «РУСДРОН», данные рекламодателя для маркировки, оплата",
       "owner": "Владелец",
-      "due": "2026-10-20",
+      "due": null,
       "status": "WAITING_OWNER",
       "doc": "launch-direct"
     },
     {
       "id": "w-09",
-      "title": "Заключение юриста по текстам и отзывам",
+      "title": "Заключение юриста по текстам объявлений, посадочных и отзывам",
       "owner": "Юрист",
-      "due": "2026-10-20",
+      "due": null,
       "status": "WAITING_OWNER",
       "doc": "launch-lawyer"
     },
@@ -302,15 +302,15 @@
       "id": "w-10",
       "title": "Заявка на доступ к API Директа",
       "owner": "Владелец",
-      "due": "2026-10-21",
+      "due": null,
       "status": "WAITING_OWNER",
       "doc": "launch-api"
     },
     {
       "id": "w-11",
-      "title": "Создать кампании, загрузить объявления, модерация",
+      "title": "Создать кампании с показами Пн—Пт 10:00—19:00, загрузить объявления, модерация",
       "owner": "Владелец",
-      "due": "2026-10-26",
+      "due": null,
       "status": "PLANNED",
       "doc": "launch-direct"
     },
@@ -318,31 +318,31 @@
       "id": "w-12",
       "title": "Новый аккаунт Авито на ООО «РУСДРОН» и объявление",
       "owner": "Владелец",
-      "due": "2026-10-23",
+      "due": null,
       "status": "PLANNED",
       "doc": "avito-students"
     },
     {
       "id": "w-13",
-      "title": "Ввести регламент обработки заявок",
+      "title": "Ввести регламент обработки заявок (редакция 02.11.2026)",
       "owner": "Менеджер",
-      "due": "2026-10-23",
+      "due": null,
       "status": "PLANNED",
       "doc": "lead-rules"
     },
     {
       "id": "w-14",
-      "title": "Запуск рекламы",
+      "title": "Запуск «Студентам» и «Аспирантам»",
       "owner": "Владелец",
-      "due": "2026-10-27",
+      "due": null,
       "status": "PLANNED",
       "doc": "audit"
     },
     {
       "id": "w-15",
-      "title": "Контрольные точки: 03.11, 10.11, 17.11",
+      "title": "Контрольные точки — раз в неделю после запуска",
       "owner": "Claude",
-      "due": "2026-11-17",
+      "due": null,
       "status": "PLANNED",
       "doc": "students"
     },
@@ -350,7 +350,7 @@
       "id": "w-16",
       "title": "Итог теста и решение о бюджете",
       "owner": "Владелец",
-      "due": "2026-11-24",
+      "due": null,
       "status": "PLANNED",
       "doc": "plan"
     }
@@ -362,8 +362,8 @@
       "purpose": "Учёт заявок с сайта",
       "status": "NOT_CONNECTED",
       "mode": null,
-      "next": "Нужен номер счётчика, до 14.10",
-      "updated": "2026-10-12"
+      "next": "Нужен номер счётчика на рабочей учётной записи; срок назначит владелец",
+      "updated": "2026-11-02"
     },
     {
       "id": "direct-api",
@@ -371,8 +371,8 @@
       "purpose": "Управление кампаниями и отчёты",
       "status": "NOT_CONNECTED",
       "mode": null,
-      "next": "Заявка после первой кампании, до 21.10",
-      "updated": "2026-10-12"
+      "next": "Заявка после первой кампании; срок назначит владелец",
+      "updated": "2026-11-02"
     },
     {
       "id": "wordstat",
@@ -381,7 +381,7 @@
       "status": "NOT_CONNECTED",
       "mode": null,
       "next": "Выгрузка по списку фраз",
-      "updated": "2026-10-12"
+      "updated": "2026-11-02"
     },
     {
       "id": "mcp-direct",
@@ -390,7 +390,7 @@
       "status": "NOT_CONNECTED",
       "mode": null,
       "next": "Каркас готов; подключение после доступа к API",
-      "updated": "2026-10-12"
+      "updated": "2026-11-02"
     },
     {
       "id": "avito-api",
@@ -399,7 +399,7 @@
       "status": "NOT_CONNECTED",
       "mode": null,
       "next": "После нового аккаунта",
-      "updated": "2026-10-12"
+      "updated": "2026-11-02"
     }
   ],
   "docs": [

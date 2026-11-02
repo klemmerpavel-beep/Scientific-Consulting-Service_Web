@@ -104,7 +104,7 @@ export function textsDocument(source) {
       `## ${campaign.name}`,
       '',
       `Страница — ${source.site}${campaign.page}; отображаемая ссылка — prodisser.ru/${campaign.displayPath}.`,
-      `Период ${campaign.start} — ${campaign.end}; ${campaign.regions.join(', ')}; показы ${campaign.hours} по Москве.`,
+      `Период ${campaign.start === null ? 'назначит владелец' : `${campaign.start} — ${campaign.end}`}; ${campaign.regions.join(', ')}; показы ${campaign.hours} по Москве.`,
       `Дневной бюджет ${campaign.dailyBudget} ₽ без НДС; ставка до ${campaign.bid} ₽.`,
       '',
     );

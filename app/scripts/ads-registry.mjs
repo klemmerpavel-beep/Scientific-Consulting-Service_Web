@@ -68,7 +68,11 @@ function number(value, what) {
 export function validateRegistry(source) {
   check(DAY.test(source.updated), 'дата обновления — ГГГГ-ММ-ДД');
   const test = source.test;
-  check(DAY.test(test.from) && DAY.test(test.to) && test.from <= test.to, 'период теста задан неверно');
+  // Даты теста назначает владелец (П-15, Р-774): до того обе — null.
+  check(
+    (test.from === null && test.to === null) || (DAY.test(test.from) && DAY.test(test.to) && test.from <= test.to),
+    'период теста задан неверно: обе даты ГГГГ-ММ-ДД или обе null — «назначит владелец»',
+  );
   number(test.budgetWithVat, 'бюджет теста');
   check(test.vatRate > 0 && test.vatRate < 1, 'ставка НДС — доля от 0 до 1');
   number(test.baselineDays, 'дни базового уровня');
@@ -81,7 +85,7 @@ export function validateRegistry(source) {
   for (const row of source.campaigns) {
     check(CAMPAIGN.includes(row.status), `кампания ${row.id}: состояние «${row.status}»`);
     check(['students', 'postgrad'].includes(row.direction), `кампания ${row.id}: направление «${row.direction}»`);
-    check(DAY.test(row.from) && DAY.test(row.to), `кампания ${row.id}: даты`);
+    check((row.from === null && row.to === null) || (DAY.test(row.from) && DAY.test(row.to)), `кампания ${row.id}: даты`);
     for (const field of ['budgetPlan', 'spend', 'impressions', 'clicks', 'leads']) number(row[field], `кампания ${row.id}, ${field}`);
     check(row.clicks <= row.impressions || row.impressions === 0, `кампания ${row.id}: кликов больше показов`);
     docRef(row.doc, `кампания ${row.id}`);

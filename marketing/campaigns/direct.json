@@ -10,13 +10,13 @@
       "direction": "STU",
       "doc": "direct-студенты.md",
       "page": "/students",
-      "start": "2026-10-27",
-      "end": "2026-11-23",
+      "start": null,
+      "end": null,
       "regions": [
         "Москва и Московская область",
         "Санкт-Петербург и Ленинградская область"
       ],
-      "hours": "09:00-22:00",
+      "hours": "Пн—Пт 10:00—19:00",
       "dailyBudget": 190,
       "bid": 165,
       "displayPath": "vkr",
@@ -217,13 +217,13 @@
       "direction": "PG",
       "doc": "direct-аспиранты.md",
       "page": "/main",
-      "start": "2026-10-27",
-      "end": "2026-11-23",
+      "start": null,
+      "end": null,
       "regions": [
         "Москва и Московская область",
         "Санкт-Петербург и Ленинградская область"
       ],
-      "hours": "09:00-22:00",
+      "hours": "Пн—Пт 10:00—19:00",
       "dailyBudget": 300,
       "bid": 360,
       "displayPath": "aspirantam",

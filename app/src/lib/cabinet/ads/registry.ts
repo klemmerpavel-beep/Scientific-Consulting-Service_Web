@@ -21,8 +21,9 @@ export interface AdsCampaign {
   readonly platform: string;
   readonly direction: AdsDirection | string;
   readonly status: CampaignStatus | string;
-  readonly from: string;
-  readonly to: string;
+  /** `null` — даты назначит владелец (П-15, Р-774). */
+  readonly from: string | null;
+  readonly to: string | null;
   /** Рубли без НДС: так суммы показывают кабинеты площадок. */
   readonly budgetPlan: number;
   readonly spend: number;
@@ -97,8 +98,9 @@ export interface AdsDoc {
 export interface AdsRegistry {
   readonly updated: string;
   readonly test: {
-    readonly from: string;
-    readonly to: string;
+    /** Обе `null` — реклама не запущена, даты назначит владелец (П-15, Р-774). */
+    readonly from: string | null;
+    readonly to: string | null;
     /** Бюджет теста по двум направлениям, рубли с НДС. */
     readonly budgetWithVat: number;
     readonly vatRate: number;
@@ -213,10 +215,15 @@ export function moscowDayStart(day: string): Date {
   return new Date(`${day}T00:00:00+03:00`);
 }
 
-export type TestPhase = 'before' | 'running' | 'after';
+export type TestPhase = 'unscheduled' | 'before' | 'running' | 'after';
 
-/** Где сегодня относительно периода теста и какой это день теста. */
+/**
+ * Где сегодня относительно периода теста и какой это день теста. Даты не
+ * назначены — `unscheduled`: прежний план прошёл, а реклама не запущена,
+ * и «идёт день N» было бы неправдой (П-15, Р-774).
+ */
 export function testPhase(registry: Pick<AdsRegistry, 'test'>, now: Date): { phase: TestPhase; day: number; days: number } {
+  if (registry.test.from === null || registry.test.to === null) return { phase: 'unscheduled', day: 0, days: 0 };
   const from = moscowDayStart(registry.test.from).getTime();
   const end = moscowDayStart(registry.test.to).getTime() + 86_400_000;
   const days = Math.round((end - from) / 86_400_000);

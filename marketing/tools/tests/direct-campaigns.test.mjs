@@ -16,6 +16,20 @@ test('источник кампаний проходит все проверки
   assert.deepEqual(validateCampaigns(source), []);
 });
 
+test('показы — рабочее время ответа Пн—Пт 10:00—19:00; даты — обе или ни одной (П-18, П-15)', () => {
+  for (const campaign of source.campaigns) assert.equal(campaign.hours, 'Пн—Пт 10:00—19:00', campaign.name);
+  const broken = copy();
+  broken.campaigns[0].hours = '09:00-22:00';
+  broken.campaigns[1].start = '2026-12-01';
+  const problems = validateCampaigns(broken).join('\n');
+  assert.match(problems, /PD_STU_SRCH_MSK-SPB_C_v1: показы — «Пн—Пт 10:00—19:00»/);
+  assert.match(problems, /PD_PG_SRCH_MSK-SPB_AB_v1: даты — обе ГГГГ-ММ-ДД или обе null/);
+  const dated = copy();
+  dated.campaigns[0].start = '2026-12-01';
+  dated.campaigns[0].end = '2026-12-28';
+  assert.deepEqual(validateCampaigns(dated), []);
+});
+
 test('минус-слово гасит свои словоформы, но не похожие слова', () => {
   assert.deepEqual(negativeHits('пример курсовой работы', ['курсовая']), ['курсовая']);
   assert.deepEqual(negativeHits('сопровождение кандидатской диссертации', ['диссертоп']), []);
