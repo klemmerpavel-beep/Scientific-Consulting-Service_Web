@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-12",
+  "updated": "2026-11-02",
   "format": "Комбинаторные объявления ЕПК: до 7 заголовков по 56 знаков и до 3 текстов по 81; дополнительного заголовка нет (Директ, с 30.06.2026)",
   "site": "https://prodisser.ru",
   "utm": "utm_source=yandex&utm_medium=cpc&utm_campaign={campaign_id}&utm_content={ad_id}&utm_term={keyword}",
@@ -234,14 +234,19 @@
           "description": "От разбора задачи до защиты: что происходит на каждом этапе"
         },
         {
-          "title": "Команда кураторов",
-          "anchor": "team",
-          "description": "Куратор с учёной степенью по вашей специальности"
+          "title": "Статьи и гранты",
+          "anchor": "articles",
+          "description": "Журнал из перечня ВАК, Scopus и WoS; заявка в РНФ и фонды"
         },
         {
           "title": "Вопросы и оплата",
           "anchor": "faq",
           "description": "Договор, этапы с актом приёмки, конфиденциальность"
+        },
+        {
+          "title": "Команда кураторов",
+          "anchor": "team",
+          "description": "Куратор с учёной степенью по вашей специальности"
         }
       ],
       "callouts": [
@@ -388,7 +393,7 @@
           "name": "PG_ARTICLES",
           "set": "B",
           "bid": 300,
-          "anchor": "services",
+          "anchor": "articles",
           "phrases": [
             "научное редактирование статьи",
             "редактирование статьи для журнала ВАК",
@@ -409,7 +414,7 @@
           "name": "PG_GRANTS",
           "set": "B",
           "bid": 300,
-          "anchor": "services",
+          "anchor": "articles",
           "phrases": [
             "подготовка заявки на грант РНФ",
             "консультация по грантовой заявке",

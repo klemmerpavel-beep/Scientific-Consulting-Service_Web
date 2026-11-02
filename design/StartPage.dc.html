@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ProDisser — научное сопровождение аспирантов, студентов и компаний</title>
+<title>ProDisser — научный консалтинг для студентов, аспирантов, молодых учёных и компаний</title>
 <meta name="description" content="Методологический разбор, научная редактура, оформление по ГОСТ и подготовка к защите. Куратор с учёной степенью, этапы с приёмкой, договор. Первичная консультация бесплатно.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ProDisser">
 <meta property="og:locale" content="ru_RU">
-<meta property="og:title" content="ProDisser — научное сопровождение аспирантов, студентов и компаний">
+<meta property="og:title" content="ProDisser — научный консалтинг для студентов, аспирантов, молодых учёных и компаний">
 <meta property="og:description" content="Методологический разбор, научная редактура, оформление по ГОСТ и подготовка к защите. Куратор с учёной степенью, этапы с приёмкой, договор. Первичная консультация бесплатно.">
 <meta name="twitter:card" content="summary_large_image">
 <script src="./support.js"></script>
@@ -63,6 +63,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-routes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+/* Ссылки направлений под формой первого экрана (Р-769): на телефоне — столбцом, без точек-разделителей, чтобы точка не повисала в начале или конце строки. */
+@media (max-width:480px){.pd-dirs{flex-direction:column;align-items:flex-start!important}.pd-dirs-dot{display:none}}
 .pd-cta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-routes a:hover .pd-routebg,.pd-routes a:focus-visible .pd-routebg{background:transparent!important}
 @media (max-width:1024px){.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -132,7 +134,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="min-width:0">
 
 <h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(30px,3vw,44px);line-height:1.24;font-weight:400;letter-spacing:-.012em;color:var(--pd-ink);text-wrap:pretty;max-width:20ch">
-<span style="display:block"><span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 10px;margin-left:-10px;box-decoration-break:clone;-webkit-box-decoration-break:clone">ProDisser</span> — научное сопровождение</span>аспирантов, студентов и компаний
+<span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 10px;margin-left:-10px;box-decoration-break:clone;-webkit-box-decoration-break:clone">ProDisser</span> — научный консалтинг для студентов, аспирантов, молодых учёных и компаний
 </h1>
 <p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">{{ lead }}</p>
 
@@ -179,6 +181,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-size:14px;line-height:1.5;color:var(--pd-err-ink)">{{ errorTop }}</span>
 </div>
 </sc-if>
+<!-- Вход в три направления под формой первого экрана (Р-769, П-19): ссылки стоят после формы, а не между заголовком и формой (Р-59); меню в шапке не возвращается (Р-105). -->
+<nav aria-label="Направления работы" data-dirs="top" class="pd-dirs" style="margin-top:16px;display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:0">
+<a href="./students.html" style="display:inline-flex;align-items:center;min-height:44px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Студентам</a><span aria-hidden="true" class="pd-dirs-dot" style="color:var(--pd-ink-muted)">·</span>
+<a href="./main.html" style="display:inline-flex;align-items:center;min-height:44px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Аспирантам и молодым учёным</a><span aria-hidden="true" class="pd-dirs-dot" style="color:var(--pd-ink-muted)">·</span>
+<a href="./business.html" style="display:inline-flex;align-items:center;min-height:44px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Компаниям</a>
+</nav>
 </div>
 
 <div class="pd-hero-art" style="min-width:0;display:flex;flex-direction:column;gap:24px;padding-bottom:68px">
@@ -234,9 +242,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </span>
 <span style="display:flex;flex-direction:column;gap:16px;padding:24px 24px 24px;flex:1 1 auto">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Научная степень</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:20px;line-height:1.4;font-weight:600;letter-spacing:-.01em;color:var(--pd-ink);text-wrap:pretty">Довести диссертацию до защиты</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:20px;line-height:1.4;font-weight:600;letter-spacing:-.01em;color:var(--pd-ink);text-wrap:pretty">Диссертация, статьи и гранты</span>
 <span style="margin-top:auto;padding-top:16px;border-top:1px solid var(--pd-divider);display:flex;align-items:center;justify-content:space-between;gap:12px">
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Аспирантам и соискателям</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Аспирантам и молодым учёным</span>
 <span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span>
 </span>
 </span>
