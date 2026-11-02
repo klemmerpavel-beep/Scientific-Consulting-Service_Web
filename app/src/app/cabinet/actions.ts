@@ -49,8 +49,8 @@ import { sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages
 import {
   saveAnalyticsSince,
   saveConfidenceThresholds,
-  saveLeadFirstResponseHours,
   saveReactionDays,
+  saveResponseTerms,
   saveShowcaseConsentText,
 } from '../../lib/cabinet/practice-settings';
 import { markRecommendation } from '../../lib/cabinet/recommendations';
@@ -2173,19 +2173,25 @@ export async function closeHeadCheck(form: FormData): Promise<void> {
 /**
  * Срок реакции в рабочих днях (требование РК-05, решение Р-337) и цель
  * первого ответа на заявку в рабочих часах (п. 2.8 задания, Р-766) — одна
- * форма, одна кнопка под обоими полями (Р-715).
+ * форма, одна кнопка под обоими полями (Р-715). Сохраняются вместе: ошибка
+ * в любом поле не записывает ничего, а отказ возвращает набранное в оба
+ * поля (решение владельца к Р-766). Форма прежней сборки без поля цели
+ * сохраняет один срок реакции.
  */
 export async function saveReaction(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const back = '/cabinet/manage/directory?tab=calendar';
   let failure: string | null = null;
   try {
-    await saveReactionDays(actor, String(form.get('days') ?? ''));
-    if (form.has('hours')) await saveLeadFirstResponseHours(actor, String(form.get('hours') ?? ''));
+    if (form.has('hours')) {
+      await saveResponseTerms(actor, String(form.get('days') ?? ''), String(form.get('hours') ?? ''));
+    } else {
+      await saveReactionDays(actor, String(form.get('days') ?? ''));
+    }
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить сроки ответа');
   }
-  if (failure !== null) redirect(await withError(back, failure));
+  if (failure !== null) redirect(await withError(back, failure, { draft: fieldsOf(form, form.has('hours') ? ['days', 'hours'] : ['days']) }));
   redirect(back);
 }
 

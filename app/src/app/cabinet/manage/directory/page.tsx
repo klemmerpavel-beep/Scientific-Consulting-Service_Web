@@ -405,7 +405,8 @@ export default async function DirectoryScreen({
               (решение Р-715). */}
           {/* Рядом — цель первого ответа на заявку в рабочих часах: обещание
               сайта «ответит в течение рабочего дня» она не меняет (п. 2.8
-              задания, решение Р-766). */}
+              задания, решение Р-766). Оба поля сохраняются вместе; отказ
+              возвращает набранное (решение владельца к Р-766). */}
           <Card style={{ marginBottom: 20 }}>
             <Form action={saveReaction}>
               <FormRow>
@@ -413,14 +414,14 @@ export default async function DirectoryScreen({
                   label="Срок реакции, рабочих дней"
                   name="days"
                   type="number"
-                  defaultValue={String(reaction)}
+                  defaultValue={draft.days ?? String(reaction)}
                   hint="Сообщение клиента, публикация, заявка или сданный этап, не разобранные за этот срок, поднимаются руководителю в «Контроль»."
                 />
                 <Field
                   label="Первый ответ на заявку, рабочих часов"
                   name="hours"
                   type="number"
-                  defaultValue={String(firstResponse)}
+                  defaultValue={draft.hours ?? String(firstResponse)}
                   hint="Внутренняя цель, 09:00–18:00 МСК по календарю ниже. Новая заявка без ответа дольше неё — дело «Заявка ждёт ответа» на «Сегодня». Обещание сайта — ответ в течение рабочего дня — прежнее."
                 />
               </FormRow>

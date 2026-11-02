@@ -13,7 +13,7 @@ import { prisma } from '../../db.ts';
 import { ensure, type Actor } from '../access.ts';
 import { loadCalendar } from '../approval.ts';
 import { moscowToday } from '../clock.ts';
-import { leadFirstResponseHours } from '../practice-settings.ts';
+import { confidenceThresholds, leadFirstResponseHours } from '../practice-settings.ts';
 import { responseSpeed, type ResponseSpeed } from './response.ts';
 
 export interface LeadRow {
@@ -54,16 +54,18 @@ export async function leadRows(actor: Actor): Promise<LeadRow[]> {
 
 /**
  * Скорость первого ответа за 90 дней по заявкам практики — для обзора
- * «Аналитики» и «Что делать» отчёта (п. 2.8 задания, Р-766). Цель и
- * календарь — настройки практики.
+ * «Аналитики» и «Что делать» отчёта (п. 2.8 задания, Р-766). Цель,
+ * календарь и порог «уверенно» (общий для выводов, «Справочники», Р-349) —
+ * настройки практики.
  */
 export async function leadResponse(actor: Actor, controlDate: Date, rows?: readonly LeadRow[]): Promise<ResponseSpeed> {
-  const [leads, calendar, target] = await Promise.all([
+  const [leads, calendar, target, thresholds] = await Promise.all([
     rows === undefined ? leadRows(actor) : Promise.resolve(rows),
     loadCalendar(),
     leadFirstResponseHours(),
+    confidenceThresholds(),
   ]);
-  return responseSpeed(leads, controlDate, target, calendar);
+  return responseSpeed(leads, controlDate, target, calendar, thresholds.sure);
 }
 
 export interface LeadMonth {

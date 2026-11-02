@@ -24,13 +24,6 @@ import { median, periodBounds, type Conclusion } from './metrics.ts';
 /** Окно медианы — 90 московских дней по сегодняшний (Р-342, Р-448). */
 export const RESPONSE_WINDOW_DAYS = 90;
 
-/**
- * С какого числа ответов вывод о медиане — «подтверждено числами»: прямой
- * счёт по своим данным (Р-194). Меньше — «вероятно»: одна-две заявки с
- * долгим ответом сдвигают медиану.
- */
-export const RESPONSE_SURE_FROM = 10;
-
 /** Заявка для расчёта: без спама и отзывов (как в «Заявках» аналитики, Р-351). */
 export interface ResponseRow {
   readonly createdAt: Date;
@@ -46,6 +39,13 @@ export interface ResponseSpeed {
   readonly to: Date;
   /** Цель в рабочих часах. */
   readonly targetHours: number;
+  /**
+   * С какого числа ответов вывод о медиане — «подтверждено числами»: общий
+   * порог «уверенно» практики из «Справочников» (РК-16, Р-349; решение
+   * владельца к Р-766). Меньше — «вероятно»: одна-две заявки с долгим
+   * ответом сдвигают медиану.
+   */
+  readonly sureFrom: number;
   /** Заявок окна с первым ответом. */
   readonly answered: number;
   /** Медиана рабочих минут до первого ответа; `null` — ответов нет. */
@@ -66,6 +66,7 @@ export function responseSpeed(
   controlDate: Date,
   targetHours: number,
   calendar: CalendarOverrides,
+  sureFrom: number,
 ): ResponseSpeed {
   const { from, to } = periodBounds(moscowToday(controlDate), RESPONSE_WINDOW_DAYS);
   const minutes: number[] = [];
@@ -83,6 +84,7 @@ export function responseSpeed(
     from,
     to,
     targetHours,
+    sureFrom,
     answered: minutes.length,
     medianMinutes: minutes.length === 0 ? null : Math.round(median(minutes)),
     withinTarget: minutes.filter((value) => value <= targetHours * 60).length,
@@ -117,7 +119,8 @@ export const RESPONSE_NEXT = { href: '/cabinet/manage/leads?status=NEW', label: 
  * первого ответа за 90 дней дольше цели, то есть в цель уложилось меньше
  * половины ответов. Оценки эффекта нет: деньги от быстрого ответа из
  * своих чисел честно не выводятся. Медиана в цели — вывода нет: делать
- * нечего, число стоит в таблице «Скорость ответа».
+ * нечего, число стоит в таблице «Скорость ответа». Уверенность —
+ * «подтверждено числами» с порога «уверенно» практики (`sureFrom`).
  */
 export function responseConclusion(speed: ResponseSpeed): Conclusion | null {
   if (speed.medianMinutes === null || speed.medianMinutes <= speed.targetHours * 60) return null;
@@ -134,7 +137,7 @@ export function responseConclusion(speed: ResponseSpeed): Conclusion | null {
       'Отвечать на новую заявку по делу «Заявка ждёт ответа» на «Сегодня» и сразу отмечать её ' +
       'состояние. Если менеджер занят консультациями, договориться, кто смотрит очередь заявок ' +
       'в первой и во второй половине дня.',
-    confidence: n >= RESPONSE_SURE_FROM ? 'sure' : 'likely',
+    confidence: n >= speed.sureFrom ? 'sure' : 'likely',
     term: 'две недели',
     effect: null,
     next: RESPONSE_NEXT,

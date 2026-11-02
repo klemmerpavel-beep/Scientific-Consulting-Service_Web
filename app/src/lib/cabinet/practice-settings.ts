@@ -8,12 +8,15 @@
  * руководитель в «Справочниках»; изменение пишется в журнал.
  */
 
+import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { ANALYTICS_SINCE_DEFAULT } from './analytics/metrics.ts';
 import { moscowToday } from './clock.ts';
 import { SHOWCASE_TEXT_MAX, consentTextHash, normalizeConsentText, shortHash } from './curator-consents.ts';
+
+type Db = Prisma.TransactionClient | typeof prisma;
 
 const REACTION_KEY = 'reactionDays';
 /** По умолчанию — один рабочий день (В-18). */
@@ -27,26 +30,40 @@ export async function reactionDays(): Promise<number> {
   return Number.isInteger(value) && value >= 1 && value <= REACTION_MAX ? value : REACTION_DEFAULT;
 }
 
-/** Сохранить срок реакции: целое число рабочих дней от 1 до 10. */
-export async function saveReactionDays(actor: Actor, raw: string): Promise<void> {
-  ensure(actor, 'DIRECTORY_EDIT');
+/** Срок реакции из набранного: целое число рабочих дней от 1 до 10, иначе отказ. */
+function reactionValue(raw: string): number {
   const value = Number(raw.trim());
   if (!Number.isInteger(value) || value < 1 || value > REACTION_MAX) {
     throw new Error(`Срок реакции — целое число рабочих дней от 1 до ${REACTION_MAX}`);
   }
-  const before = await reactionDays();
+  return value;
+}
+
+/** Записать срок реакции и журнал; прежнее значение — без записи. */
+async function writeReaction(actor: Actor, value: number, before: number, db: Db = prisma): Promise<void> {
   if (before === value) return;
-  await prisma.practiceSetting.upsert({
+  await db.practiceSetting.upsert({
     where: { key: REACTION_KEY },
     create: { key: REACTION_KEY, value: String(value), updatedById: actor.id },
     update: { value: String(value), updatedById: actor.id, updatedAt: new Date() },
   });
-  await record(actor, {
-    action: 'PRACTICE_SETTING_SAVED',
-    objectType: 'PracticeSetting',
-    objectId: REACTION_KEY,
-    payload: { from: before, to: value },
-  });
+  await record(
+    actor,
+    {
+      action: 'PRACTICE_SETTING_SAVED',
+      objectType: 'PracticeSetting',
+      objectId: REACTION_KEY,
+      payload: { from: before, to: value },
+    },
+    db,
+  );
+}
+
+/** Сохранить срок реакции: целое число рабочих дней от 1 до 10. */
+export async function saveReactionDays(actor: Actor, raw: string): Promise<void> {
+  ensure(actor, 'DIRECTORY_EDIT');
+  const value = reactionValue(raw);
+  await writeReaction(actor, value, await reactionDays());
 }
 
 // ───────────── Первый ответ на заявку (п. 2.8 задания, Р-766) ───────────────
@@ -69,14 +86,39 @@ export async function leadFirstResponseHours(): Promise<number> {
   return Number.isInteger(value) && value >= 1 && value <= LEAD_RESPONSE_MAX ? value : LEAD_RESPONSE_DEFAULT;
 }
 
-/** Сохранить цель первого ответа: целое число рабочих часов от 1 до 9. */
-export async function saveLeadFirstResponseHours(actor: Actor, raw: string): Promise<void> {
-  ensure(actor, 'DIRECTORY_EDIT');
+/** Цель первого ответа из набранного: целое число рабочих часов от 1 до 9, иначе отказ. */
+function leadResponseValue(raw: string): number {
   const value = Number(raw.trim());
   if (raw.trim() === '' || !Number.isInteger(value) || value < 1 || value > LEAD_RESPONSE_MAX) {
     throw new Error(`Первый ответ на заявку — целое число рабочих часов от 1 до ${LEAD_RESPONSE_MAX}`);
   }
+  return value;
+}
+
+/** Сохранить цель первого ответа: целое число рабочих часов от 1 до 9. */
+export async function saveLeadFirstResponseHours(actor: Actor, raw: string): Promise<void> {
+  ensure(actor, 'DIRECTORY_EDIT');
+  const value = leadResponseValue(raw);
   await saveSetting(actor, LEAD_RESPONSE_KEY, String(value), String(await leadFirstResponseHours()));
+}
+
+/**
+ * Срок реакции и цель первого ответа — одна форма «Справочников» с одной
+ * кнопкой (Р-715), и сохраняются они вместе (решение владельца к Р-766):
+ * оба значения проверяются до записи, обе записи с журналом — одной
+ * транзакцией. Ошибка в любом поле не записывает ничего: прежде срок
+ * реакции успевал сохраниться, а неверная цель отклонялась, и форма
+ * сообщала об отказе, уже изменив одну настройку.
+ */
+export async function saveResponseTerms(actor: Actor, rawDays: string, rawHours: string): Promise<void> {
+  ensure(actor, 'DIRECTORY_EDIT');
+  const days = reactionValue(rawDays);
+  const hours = leadResponseValue(rawHours);
+  const [daysBefore, hoursBefore] = await Promise.all([reactionDays(), leadFirstResponseHours()]);
+  await prisma.$transaction(async (tx) => {
+    await writeReaction(actor, days, daysBefore, tx);
+    await saveSetting(actor, LEAD_RESPONSE_KEY, String(hours), String(hoursBefore), tx);
+  });
 }
 
 // ───────────── Дата начала учёта и пороги уверенности (РК-16, Р-349) ────────
@@ -119,19 +161,23 @@ export async function confidenceThresholds(): Promise<ConfidenceThresholds> {
   return (row === null ? null : parseThresholds(row.value)) ?? THRESHOLDS_DEFAULT;
 }
 
-async function saveSetting(actor: Actor, key: string, value: string, before: string): Promise<void> {
+async function saveSetting(actor: Actor, key: string, value: string, before: string, db: Db = prisma): Promise<void> {
   if (before === value) return;
-  await prisma.practiceSetting.upsert({
+  await db.practiceSetting.upsert({
     where: { key },
     create: { key, value, updatedById: actor.id },
     update: { value, updatedById: actor.id, updatedAt: new Date() },
   });
-  await record(actor, {
-    action: 'PRACTICE_SETTING_SAVED',
-    objectType: 'PracticeSetting',
-    objectId: key,
-    payload: { from: before, to: value },
-  });
+  await record(
+    actor,
+    {
+      action: 'PRACTICE_SETTING_SAVED',
+      objectType: 'PracticeSetting',
+      objectId: key,
+      payload: { from: before, to: value },
+    },
+    db,
+  );
 }
 
 /** Сохранить дату начала учёта: день не раньше 2000 года и не позже сегодняшнего. */

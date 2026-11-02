@@ -23,6 +23,8 @@ import { findForbidden } from '../src/lib/cabinet/text-guard.ts';
 import { workMinutesBetween } from '../src/lib/cabinet/workdays.ts';
 
 const none = new Map<string, boolean>();
+/** Порог «уверенно» практики по умолчанию — «20, 10, 5» в «Справочниках» (Р-349). */
+const SURE = 20;
 const at = (iso: string) => new Date(iso);
 const source = (file: string) => readFileSync(path.join(import.meta.dirname, '..', file), 'utf8');
 
@@ -92,7 +94,7 @@ describe('медиана «заявка → первый ответ» за 90 д
   ];
 
   it('медиана в рабочих минутах, доля в цели и ждущие — только по окну', () => {
-    const speed = responseSpeed(rows, CONTROL, 2, none);
+    const speed = responseSpeed(rows, CONTROL, 2, none, SURE);
     assert.equal(speed.answered, 4);
     assert.equal(speed.medianMinutes, 90);
     assert.equal(speed.withinTarget, 3);
@@ -103,7 +105,7 @@ describe('медиана «заявка → первый ответ» за 90 д
   });
 
   it('ответов нет — медианы нет, вывода нет', () => {
-    const speed = responseSpeed([{ createdAt: at('2026-10-19T07:00:00Z'), waiting: true }], CONTROL, 2, none);
+    const speed = responseSpeed([{ createdAt: at('2026-10-19T07:00:00Z'), waiting: true }], CONTROL, 2, none, SURE);
     assert.equal(speed.medianMinutes, null);
     assert.equal(speed.answered, 0);
     assert.equal(responseConclusion(speed), null);
@@ -118,8 +120,8 @@ describe('медиана «заявка → первый ответ» за 90 д
   });
 
   it('медиана в цели — вывода нет; дольше цели — вывод с действием, сроком и уверенностью (Р-194)', () => {
-    assert.equal(responseConclusion(responseSpeed(rows, CONTROL, 2, none)), null);
-    const advice = responseConclusion(responseSpeed(rows, CONTROL, 1, none));
+    assert.equal(responseConclusion(responseSpeed(rows, CONTROL, 2, none, SURE)), null);
+    const advice = responseConclusion(responseSpeed(rows, CONTROL, 1, none, SURE));
     assert.ok(advice !== null);
     assert.equal(advice.area, 'Заявки');
     assert.equal(advice.title, 'Сократить время первого ответа на заявку');
@@ -131,21 +133,36 @@ describe('медиана «заявка → первый ответ» за 90 д
     assert.match(advice.action, /«Заявка ждёт ответа» на «Сегодня»/u);
     assert.equal(advice.term, 'две недели');
     assert.equal(advice.effect, null, 'деньги от быстрого ответа из своих чисел не выводятся');
-    assert.equal(advice.confidence, 'likely', 'четыре ответа — меньше десяти');
+    assert.equal(advice.confidence, 'likely', 'четыре ответа — меньше порога «уверенно»');
     assert.deepEqual(advice.next, RESPONSE_NEXT);
     for (const text of [advice.title, advice.text, advice.action]) assert.deepEqual(findForbidden(text), [], text);
   });
 
-  it('десять ответов и больше — «подтверждено числами»; число заявок согласовано', () => {
-    const many: ResponseRow[] = Array.from({ length: 21 }, (_, index) => ({
-      createdAt: at(`2026-10-${String(1 + (index % 9)).padStart(2, '0')}T06:00:00Z`),
-      firstResponseAt: at(`2026-10-${String(1 + (index % 9)).padStart(2, '0')}T11:00:00Z`),
-    }));
-    const advice = responseConclusion(responseSpeed(many, CONTROL, 2, none));
+  it('с порога «уверенно» практики — «подтверждено числами»; число заявок согласовано', () => {
+    const answers = (count: number): ResponseRow[] =>
+      Array.from({ length: count }, (_, index) => ({
+        createdAt: at(`2026-10-${String(1 + (index % 9)).padStart(2, '0')}T06:00:00Z`),
+        firstResponseAt: at(`2026-10-${String(1 + (index % 9)).padStart(2, '0')}T11:00:00Z`),
+      }));
+    const advice = responseConclusion(responseSpeed(answers(21), CONTROL, 2, none, SURE));
     assert.ok(advice !== null);
     assert.equal(advice.confidence, 'sure');
     assert.match(advice.text, /по 21 заявке при цели 2 ч/u);
     assert.doesNotMatch(advice.text, /Ждут первого ответа/u);
+    // Порог — общий «уверенно» из «Справочников», а не своё число модуля:
+    // 19 ответов при пороге 20 — «вероятно», 20 — «подтверждено числами».
+    assert.equal(responseConclusion(responseSpeed(answers(19), CONTROL, 2, none, SURE))?.confidence, 'likely');
+    assert.equal(responseConclusion(responseSpeed(answers(20), CONTROL, 2, none, SURE))?.confidence, 'sure');
+    // Руководитель поставил «12, 6, 3» — двенадцати ответов достаточно.
+    assert.equal(responseConclusion(responseSpeed(answers(12), CONTROL, 2, none, 12))?.confidence, 'sure');
+    assert.equal(responseConclusion(responseSpeed(answers(11), CONTROL, 2, none, 12))?.confidence, 'likely');
+  });
+
+  it('порог берётся из настроек практики, своей константы у модуля нет', () => {
+    assert.doesNotMatch(source('src/lib/cabinet/analytics/response.ts'), /RESPONSE_SURE_FROM|>= 10\b/u);
+    const leads = source('src/lib/cabinet/analytics/leads.ts');
+    assert.match(leads, /confidenceThresholds\(\)/u);
+    assert.match(leads, /responseSpeed\(leads, controlDate, target, calendar, thresholds\.sure\)/u);
   });
 
   it('вывод встаёт в «Что делать» после сорванных сроков и не вытесняет их', () => {
@@ -170,7 +187,7 @@ describe('медиана «заявка → первый ответ» за 90 д
       writtenOff: 0n,
       payments: [],
     } as ProjectRow;
-    const advice = responseConclusion(responseSpeed(rows, CONTROL, 1, none))!;
+    const advice = responseConclusion(responseSpeed(rows, CONTROL, 1, none, SURE))!;
     const titles = conclusions([project], CONTROL, undefined, [advice]).map((item) => item.title);
     assert.deepEqual(titles.slice(0, 2), ['Разобрать сорванные сроки', 'Сократить время первого ответа на заявку']);
     assert.ok(!conclusions([project], CONTROL).some((item) => item.area === 'Заявки'), 'без медианы вывода нет');

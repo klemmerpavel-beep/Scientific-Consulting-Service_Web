@@ -3,7 +3,8 @@
  * Р-766): первый ответ пишется первой сменой состояния из «Новой» —
  * плашкой, одобрением или отказом — и больше не меняется; дело «Заявка
  * ждёт ответа N ч» считается рабочими часами и гаснет, когда наступает
- * дело Р-304; цель правит только руководитель; медиана за 90 дней —
+ * дело Р-304; цель правит только руководитель, вместе со сроком реакции
+ * она сохраняется атомарно; медиана за 90 дней —
  * только с правом на аналитику; миграция заполняет прежние заявки по
  * журналу.
  *
@@ -27,12 +28,16 @@ describe('скорость ответа на заявку (Р-766)', { skip: !en
   const { todayItems } = await import('../src/lib/cabinet/queries.ts');
   const { setLeadStatus } = await import('../src/lib/cabinet/lead-work.ts');
   const { approveLead, declineLead } = await import('../src/lib/cabinet/projects.ts');
-  const { leadFirstResponseHours, saveLeadFirstResponseHours } = await import('../src/lib/cabinet/practice-settings.ts');
+  const { leadFirstResponseHours, reactionDays, saveConfidenceThresholds, saveLeadFirstResponseHours, saveResponseTerms } =
+    await import('../src/lib/cabinet/practice-settings.ts');
   const { leadResponse } = await import('../src/lib/cabinet/analytics/leads.ts');
   const { AccessDenied } = await import('../src/lib/cabinet/access.ts');
 
   const ids: Record<string, string> = {};
   const leadIds: string[] = [];
+  // Настройки, которые проверки меняют, — прежние значения возвращаются в конце.
+  const KEYS = ['leadFirstResponseHours', 'reactionDays', 'confidenceThresholds'];
+  let savedSettings: { key: string; value: string; updatedById: string | null; updatedAt: Date }[] = [];
   const who = (id: string, role: Actor['role']): Actor => ({
     id,
     role,
@@ -64,7 +69,8 @@ describe('скорость ответа на заявку (Р-766)', { skip: !en
     (await prisma.lead.findUniqueOrThrow({ where: { id }, select: { firstResponseAt: true } })).firstResponseAt;
 
   before(async () => {
-    await prisma.practiceSetting.deleteMany({ where: { key: 'leadFirstResponseHours' } });
+    savedSettings = await prisma.practiceSetting.findMany({ where: { key: { in: KEYS } } });
+    await prisma.practiceSetting.deleteMany({ where: { key: { in: KEYS } } });
     const [managerUser, headUser] = await Promise.all([
       prisma.user.create({ data: { email: `lr-mgr-${stamp}@example.org`, fullName: 'Менеджер Ответа', role: 'MANAGER' } }),
       prisma.user.create({ data: { email: `lr-head-${stamp}@example.org`, fullName: 'Руководитель Ответа', role: 'HEAD' } }),
@@ -74,7 +80,8 @@ describe('скорость ответа на заявку (Р-766)', { skip: !en
   });
 
   after(async () => {
-    await prisma.practiceSetting.deleteMany({ where: { key: 'leadFirstResponseHours' } });
+    await prisma.practiceSetting.deleteMany({ where: { key: { in: KEYS } } });
+    if (savedSettings.length > 0) await prisma.practiceSetting.createMany({ data: savedSettings });
     const projects = await prisma.project.findMany({ where: { serviceTypeId: ids.type }, select: { id: true, clientId: true } });
     const projectIds = projects.map((project) => project.id);
     await prisma.lead.updateMany({ where: { id: { in: leadIds } }, data: { projectId: null } });
@@ -162,6 +169,43 @@ describe('скорость ответа на заявку (Р-766)', { skip: !en
     await prisma.practiceSetting.deleteMany({ where: { key: 'leadFirstResponseHours' } });
   });
 
+  it('срок реакции и цель сохраняются вместе: ошибка в одном поле не записывает ничего', async () => {
+    // Запись предыдущей проверки (цель 2 → 3) не должна смешаться с этими.
+    await prisma.auditEvent.deleteMany({ where: { actorId: ids.head!, action: 'PRACTICE_SETTING_SAVED' } });
+    const saved = () => prisma.auditEvent.count({ where: { actorId: ids.head!, action: 'PRACTICE_SETTING_SAVED' } });
+    const journal = await saved();
+    await assert.rejects(() => saveResponseTerms(manager(), '3', '4'), AccessDenied);
+    // Срок реакции верный, цель — нет: срок реакции не записан.
+    await assert.rejects(() => saveResponseTerms(head(), '3', '10'), /целое число рабочих часов от 1 до 9/u);
+    // Цель верная, срок реакции — нет: цель не записана.
+    await assert.rejects(() => saveResponseTerms(head(), '0', '4'), /целое число рабочих дней от 1 до 10/u);
+    assert.equal(await reactionDays(), 1);
+    assert.equal(await leadFirstResponseHours(), 2);
+    assert.equal(await prisma.practiceSetting.count({ where: { key: { in: ['reactionDays', 'leadFirstResponseHours'] } } }), 0);
+    assert.equal(await saved(), journal, 'отказ не пишет журнал');
+
+    await saveResponseTerms(head(), '3', '4');
+    assert.equal(await reactionDays(), 3);
+    assert.equal(await leadFirstResponseHours(), 4);
+    const entries = await prisma.auditEvent.findMany({
+      where: { actorId: ids.head!, action: 'PRACTICE_SETTING_SAVED', objectId: { in: ['reactionDays', 'leadFirstResponseHours'] } },
+      select: { objectId: true, payload: true },
+      orderBy: { objectId: 'asc' },
+    });
+    assert.deepEqual(
+      entries.map((entry) => [entry.objectId, entry.payload]),
+      [
+        ['leadFirstResponseHours', { from: '2', to: '4' }],
+        ['reactionDays', { from: 1, to: 3 }],
+      ],
+    );
+    // Прежнее значение одного поля — записывается только другое.
+    await saveResponseTerms(head(), '3', '5');
+    assert.equal(await saved(), journal + 3);
+    await prisma.practiceSetting.deleteMany({ where: { key: { in: ['reactionDays', 'leadFirstResponseHours'] } } });
+    await prisma.auditEvent.deleteMany({ where: { actorId: ids.head!, action: 'PRACTICE_SETTING_SAVED' } });
+  });
+
   it('медиана за 90 дней — по рабочим часам и только с правом на аналитику', async () => {
     // Вторник 01.03.2016, 10:00 МСК → 11:00: час; среда 02.03, 17:00 → четверг 03.03, 12:00: четыре часа.
     await newLead(new Date('2016-03-01T07:00:00Z'), { status: 'IN_PROGRESS', firstResponseAt: new Date('2016-03-01T08:00:00Z') });
@@ -178,6 +222,11 @@ describe('скорость ответа на заявку (Р-766)', { skip: !en
     assert.equal(speed.withinTarget, 2);
     assert.equal(speed.waiting, 1);
     assert.equal(speed.targetHours, 2);
+    // Порог «подтверждено числами» — общий «уверенно» из «Справочников» (Р-349).
+    assert.equal(speed.sureFrom, 20);
+    await saveConfidenceThresholds(head(), '12, 6, 3');
+    assert.equal((await leadResponse(head(), new Date('2016-03-04T12:00:00Z'))).sureFrom, 12);
+    await prisma.practiceSetting.deleteMany({ where: { key: 'confidenceThresholds' } });
     await assert.rejects(() => leadResponse(manager(), new Date('2016-03-04T12:00:00Z')), AccessDenied);
   });
 
