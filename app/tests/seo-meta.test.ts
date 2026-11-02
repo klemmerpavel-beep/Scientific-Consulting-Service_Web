@@ -50,11 +50,36 @@ describe('«Аспирантам»: «диссертация» и «нормок
   it('заголовок раздела услуг — «Сопровождаем диссертацию от первой главы до защиты», подсветка на прежнем месте', () => {
     for (const source of sources) {
       // Предлоги в подсветке стоят с неразрывным пробелом (§3.4).
-      assert.match(source, />Сопровождаем диссертацию <span[^>]*>от первой главы до защиты<\/span><\/h2>/u);
+      assert.match(source, />Сопровождаем диссертацию <span[^>]*>от\u00a0первой главы до\u00a0защиты<\/span><\/h2>/u);
     }
   });
 
   it('карточка услуги называет нормоконтроль', () => {
     for (const source of sources) assert.match(source, /'pd-gost', 'Нормоконтроль по ГОСТ и требованиям ВАК'/u);
+  });
+});
+
+describe('описание страницы помещается в сниппет: до 160 знаков (Р-775)', () => {
+  // Правовые страницы входят в перечень: их описание тоже показывается в
+  // выдаче. Текст правовых документов этим правилом не затрагивается —
+  // только мета-описание.
+  const pages = [
+    'StartPage', 'MainPage', 'StudentsPage', 'BusinessPage', 'ExpertsPage',
+    'OfferPage', 'PrivacyPage', 'ConsentPage', 'NotFoundPage',
+  ];
+  for (const page of pages) {
+    it(page, () => {
+      const { description } = head(page);
+      assert.ok(description.length > 0, `у ${page} нет description`);
+      assert.ok(description.length <= 160, `description ${page} — ${description.length} знаков: «${description}»`);
+    });
+  }
+
+  it('на главной призыв «первичная консультация бесплатно» остаётся в описании', () => {
+    assert.match(head('StartPage').description, /первичная консультация бесплатно\.$/iu);
+  });
+
+  it('на «Студентам» описание называет сопровождение диплома и ВКР', () => {
+    assert.match(head('StudentsPage').description, /^Сопровождение диплома и ВКР/u);
   });
 });
