@@ -83,3 +83,33 @@ describe('описание страницы помещается в сниппе
     assert.match(head('StudentsPage').description, /^Сопровождение диплома и ВКР/u);
   });
 });
+
+describe('robots.txt: метки рекламы не плодят дублей в Яндексе (Р-776)', async () => {
+  const { robotsTxt, CLEAN_PARAMS } = await import('../src/app/robots.txt/body.ts');
+  const prod = robotsTxt({ demoStand: false, base: 'https://prodisser.ru' });
+
+  it('Clean-param перечисляет метки Директа и отметки перехода Яндекса', () => {
+    assert.match(prod, /^Clean-param: utm_source&utm_medium&utm_campaign&utm_content&utm_term&yclid&ysclid$/mu);
+    // Каждая метка из объявлений `marketing/campaigns` закрыта.
+    const ads = read('marketing', 'campaigns', 'direct.json');
+    for (const param of new Set([...ads.matchAll(/[?&](utm_[a-z]+)=/gu)].map((m) => m[1]!))) {
+      assert.ok(CLEAN_PARAMS.includes(param), `метка ${param} из объявлений не входит в Clean-param`);
+    }
+  });
+
+  it('прежние правила на месте: API и кабинет закрыты, страница входа открыта для обхода, карта указана', () => {
+    for (const line of ['User-Agent: *', 'Allow: /', 'Disallow: /api/', 'Disallow: /cabinet/', 'Disallow: /cabinet-preview/', 'Sitemap: https://prodisser.ru/sitemap.xml']) {
+      assert.ok(prod.split('\n').includes(line), `нет строки «${line}»`);
+    }
+    // `Disallow: /cabinet` без косой черты спрятал бы от робота `noindex` страницы входа.
+    assert.ok(!prod.split('\n').includes('Disallow: /cabinet'));
+  });
+
+  it('демонстрационный стенд закрыт целиком, без карты', () => {
+    assert.equal(robotsTxt({ demoStand: true, base: 'https://prodisser.ru' }), 'User-Agent: *\nDisallow: /\n');
+  });
+
+  it('без адреса сайта строки карты нет', () => {
+    assert.ok(!robotsTxt({ demoStand: false, base: null }).includes('Sitemap:'));
+  });
+});

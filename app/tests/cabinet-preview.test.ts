@@ -90,9 +90,10 @@ describe('копия прототипа для сайта', () => {
 
   it('robots.txt закрывает адрес копии', () => {
     const source = readFileSync(
-      path.join(ROOT, 'app', 'src', 'app', 'robots.ts'),
+      path.join(ROOT, 'app', 'src', 'app', 'robots.txt', 'body.ts'),
       'utf8',
     );
-    assert.ok(source.includes("'/cabinet-preview/'"), 'адрес копии не закрыт в robots.txt');
+    // Правила robots.txt — в `robots.txt/body.ts` с Р-776 (обработчик вместо `robots.ts`).
+    assert.ok(source.includes("'Disallow: /cabinet-preview/'"), 'адрес копии не закрыт в robots.txt');
   });
 });
