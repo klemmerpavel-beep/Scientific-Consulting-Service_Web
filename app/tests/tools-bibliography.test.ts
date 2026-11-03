@@ -150,3 +150,45 @@ describe('границы страницы «Инструменты»', () => {
     assert.match(panel, /href="\.\/tools\.html"/u);
   });
 });
+
+describe('образцы записей на странице (Р-789)', () => {
+  c.state = { kind: 0, items: [], sort: true, typeTag: true };
+  const samples = (c.renderVals().samples as { label: string; text: string }[]).map((s) => ({
+    ...s,
+    text: s.text.replace(/\u00a0/gu, ' '),
+  }));
+
+  it('четыре образца разных видов, раздел в разметке', () => {
+    assert.equal(samples.length, 4);
+    assert.match(html, /<section aria-labelledby="tl-samples"/u);
+    assert.match(html, /<sc-for list="\{\{ samples \}\}"/u);
+  });
+
+  it('образцы составлены оформителем и следуют правилам', () => {
+    for (const s of samples) assert.ok(s.text && s.text.endsWith('.'), s.label);
+    const five = samples.find((s) => /пять авторов/u.test(s.label))!;
+    assert.match(five.text, /^Оценка устойчивости/u, 'пять авторов — запись под заглавием');
+    assert.match(five.text, /С\. С\. Сидоров \[и др\.\]/u);
+    assert.match(samples.find((s) => s.label === 'Страница сайта')!.text, /: \[сайт\]\. – URL: https:\/\/vak\.minobrnauki\.gov\.ru \(дата обращения: 01\.11\.2026\)\.$/u);
+  });
+
+  it('данные условные: издательство, журнал и организация — родовыми словами', () => {
+    const all = samples.map((s) => s.text).join('\n');
+    assert.match(all, /: Издательство, 2024/u);
+    assert.match(all, /\/\/ Название журнала\./u);
+    assert.match(all, /; Название организации\./u);
+  });
+});
+
+describe('вывод на странице', () => {
+  it('инициалы и номера не отрываются, копия — с обычными пробелами', () => {
+    const shown = c.display('Иванов, И. И. Название / И. И. Иванов. – Т. 12, № 3. – С. 45–52. – 256 с.');
+    assert.equal(shown, 'Иванов, И.\u00a0И.\u00a0Название / И.\u00a0И.\u00a0Иванов. – Т.\u00a012, №\u00a03. – С.\u00a045–52. – 256\u00a0с.');
+    assert.equal(c.display('Россия. Москва'), 'Россия. Москва', 'слово длиннее двух букв не трогается');
+    c.state = { kind: 0, items: [{ id: '1', kind: 0, data: { authors: 'Иванов И. И.', title: 'Название', year: '2024' } }], sort: true, typeTag: false };
+    const v = c.renderVals();
+    assert.match(v.list[0].text, /И\.\u00a0И\./u);
+    assert.equal(v.list[0].raw, 'Иванов, И. И. Название / И. И. Иванов. – 2024.');
+  });
+});
+
