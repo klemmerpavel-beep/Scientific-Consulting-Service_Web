@@ -7,7 +7,7 @@
 </head>
 <body>
 <x-dc>
-<!-- @template name="ProDisser — инструменты" description="Бесплатный оформитель списка литературы по ГОСТ Р 7.0.100-2018: работает в браузере, данные не уходят на сервер (Р-788)." -->
+<!-- @template name="ProDisser — инструменты" description="Бесплатный оформитель списка литературы по ГОСТ Р 7.0.100-2018: работает в браузере, данные не уходят на сервер (Р-793)." -->
 <helmet>
 <title>Список литературы по ГОСТ Р 7.0.100-2018 онлайн — ProDisser</title>
 <meta name="description" content="Бесплатное оформление списка литературы по ГОСТ Р 7.0.100-2018: книги, статьи, сайты и диссертации. Сортировка по алфавиту, копирование одной кнопкой.">
@@ -53,7 +53,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <a href="./cabinet.html" class="pd-cabinet" style="appearance:none;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;min-height:44px;background:transparent;border:1px solid transparent;color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 22px;border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-ink)" style-active="transform:scale(.97)">Личный кабинет</a>
 </header>
 <main id="main" class="doc-pad" style="max-width:1220px;margin:0 auto;padding:clamp(56px,7vw,96px) 30px clamp(72px,8vw,112px)">
-<!-- Р-788, Р-789: страница «Инструменты» — оформитель списка литературы по ГОСТ Р 7.0.100-2018 (П-1 конкурентного разбора 03.11.2026). Всё считается в браузере. -->
+<!-- Р-793, Р-794: страница «Инструменты» — оформитель списка литературы по ГОСТ Р 7.0.100-2018 (П-1 конкурентного разбора 03.11.2026). Всё считается в браузере. -->
 <div style="max-width:66ch">
 <span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Инструменты · бесплатно</span>
 <h1 style="margin:12px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3vw,40px);line-height:1.24;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Список литературы по <span style="background:var(--pd-accent-mark);border-radius:6px;padding:0 6px;white-space:nowrap;box-decoration-break:clone;-webkit-box-decoration-break:clone">ГОСТ Р 7.0.100-2018</span></h1>
@@ -258,7 +258,7 @@ class Component extends DCLogic {
   }
 
   /* Оформитель списка литературы по ГОСТ Р 7.0.100-2018 (П-1 конкурентного
-     разбора 03.11.2026, Р-788). Всё считается в браузере: введённое не
+     разбора 03.11.2026, Р-793). Всё считается в браузере: введённое не
      уходит на сервер и не сохраняется после закрытия вкладки. Обработчики
      названы не submit*: перенос оборачивает submit* в отправку заявки. */
 
@@ -509,7 +509,7 @@ class Component extends DCLogic {
       copyFail: this.state.copyFail,
       // Образцы считает тот же оформитель, поэтому они не расходятся с
       // записями посетителя. Данные условные: издательство, журнал и
-      // организация названы родовыми словами (Р-789).
+      // организация названы родовыми словами (Р-794).
       samples: [
         ['Книга, два автора', 0, { authors: 'Иванов И. И.\nПетров П. П.', title: 'Методология научного исследования', other: 'учебное пособие', edition: '2-е изд., перераб. и доп.', city: 'Москва', publisher: 'Издательство', year: '2024', pages: '256' }],
         ['Статья, пять авторов', 1, { authors: 'Иванов И. И.;Петров П. П.;Сидоров С. С.;Алексеев А. А.;Борисов Б. Б.', title: 'Оценка устойчивости региональных систем', journal: 'Название журнала', year: '2025', volume: '12', issue: '3', pages: '45-52' }],
