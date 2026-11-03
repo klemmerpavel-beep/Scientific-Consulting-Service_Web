@@ -24,7 +24,8 @@ TABLE="StartPage:StartPage:landing MainPage:PostgradPage:postgrad
 StudentsPage:StudentsPage:students BusinessPage:BusinessPage:business
 OfferPage:OfferPage:landing PrivacyPage:PrivacyPage:landing
 ConsentPage:ConsentPage:landing NotFoundPage:NotFoundPage:landing
-ExpertsPage:ExpertsPage:landing"
+ExpertsPage:ExpertsPage:landing
+ToolsPage:ToolsPage:landing"
 
 declare -A before
 for f in "$PAGES"/*.tsx "$PAGES"/*.ts; do [ -e "$f" ] || continue; before[$f]=$(sha1sum "$f" | cut -c1-40); done

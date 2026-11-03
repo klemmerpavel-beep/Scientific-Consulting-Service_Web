@@ -13,7 +13,7 @@
 уронит сборку: CI переносит макеты заново и сверяет результат с тем, что
 лежит в репозитории.
 
-Соответствие девяти макетов и компонентов:
+Соответствие десяти макетов и компонентов:
 
 | Макет | Компонент | Маршрут |
 |---|---|---|
@@ -26,6 +26,7 @@
 | `design/ConsentPage.dc.html` | `ConsentPage.tsx` | `/consent` |
 | `design/NotFoundPage.dc.html` | `NotFoundPage.tsx` | любой несуществующий адрес |
 | `design/ExpertsPage.dc.html` | `ExpertsPage.tsx` | `/experts` |
+| `design/ToolsPage.dc.html` | `ToolsPage.tsx` | `/tools` |
 
 Обратите внимание на вторую строку: макет называется `MainPage`, компонент —
 `PostgradPage`, а маршрут — `/main`. Это историческое расхождение, менять его
@@ -47,7 +48,8 @@ for t in "StartPage:StartPage:landing" \
          "PrivacyPage:PrivacyPage:landing" \
          "ConsentPage:ConsentPage:landing" \
          "NotFoundPage:NotFoundPage:landing" \
-         "ExpertsPage:ExpertsPage:landing"; do
+         "ExpertsPage:ExpertsPage:landing" \
+         "ToolsPage:ToolsPage:landing"; do
   IFS=: read -r src name source <<< "$t"
   node tools/dc-to-tsx.mjs "design/$src.dc.html" \
     "app/src/components/pages/$name.tsx" "$name" "$source"
