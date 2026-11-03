@@ -67,6 +67,29 @@ describe('реестр рекламы перенесён из marketing/', () =>
     );
     assert.doesNotThrow(() => validateRegistry(source));
   });
+
+  it('даты теста и кампаний — обе ГГГГ-ММ-ДД или обе null: «назначит владелец» (П-15, Р-784)', () => {
+    const source = JSON.parse(readFileSync(path.join(ROOT, 'marketing', 'registry.json'), 'utf8'));
+    const campaign = source.campaigns[0];
+    const dated = { ...source.test, from: '2026-12-01', to: '2026-12-28' };
+    assert.doesNotThrow(() => validateRegistry({ ...source, test: dated }));
+    assert.doesNotThrow(() => validateRegistry({ ...source, test: { ...source.test, from: null, to: null } }));
+    assert.throws(() => validateRegistry({ ...source, test: { ...dated, to: null } }), /период теста задан неверно/u);
+    assert.throws(() => validateRegistry({ ...source, test: { ...dated, from: '2026-12-29' } }), /период теста задан неверно/u);
+    assert.throws(
+      () => validateRegistry({ ...source, campaigns: [{ ...campaign, from: '2026-12-01', to: null }] }),
+      /кампания stu-direct: даты/u,
+    );
+  });
+
+  it('реклама не запущена: даты теста и кампаний пусты, кампании — черновики (П-15)', () => {
+    const source = JSON.parse(readFileSync(path.join(ROOT, 'marketing', 'registry.json'), 'utf8'));
+    assert.deepEqual([source.test.from, source.test.to], [null, null]);
+    for (const row of source.campaigns) {
+      assert.equal(row.status, 'DRAFT', row.id);
+      assert.deepEqual([row.from, row.to], [null, null], row.id);
+    }
+  });
 });
 
 describe('документы в кабинете держат словарь его экранов', () => {
@@ -199,6 +222,9 @@ describe('расчёты сводки', () => {
     assert.deepEqual([first.phase, first.day, first.days], ['running', 1, 28]);
     assert.equal(testPhase(registry, new Date('2026-11-23T21:00:00Z')).phase, 'after');
     assert.equal(moscowDayStart('2026-10-27').toISOString(), '2026-10-26T21:00:00.000Z');
+    // Даты не назначены — не «идёт день N», а отдельная фаза.
+    const unscheduled = testPhase({ test: { ...registry.test, from: null, to: null } }, new Date('2026-11-02T09:00:00Z'));
+    assert.deepEqual(unscheduled, { phase: 'unscheduled', day: 0, days: 0 });
   });
 
   it('открытые работы — по сроку, сделанные не входят', () => {

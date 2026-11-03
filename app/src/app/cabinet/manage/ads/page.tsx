@@ -120,7 +120,11 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
   const head = (
     <ScreenHead
       title="Реклама"
-      note={`Тест: ${day(registry.test.from)} — ${day(registry.test.to)}`}
+      note={
+        registry.test.from !== null && registry.test.to !== null
+          ? `Тест: ${day(registry.test.from)} — ${day(registry.test.to)}`
+          : 'Тест: даты назначит владелец'
+      }
     />
   );
 
@@ -290,9 +294,12 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
     );
   }
 
-  // Сводка.
-  const from = moscowDayStart(registry.test.from);
-  const to = new Date(moscowDayStart(registry.test.to).getTime() + DAY);
+  // Сводка. Даты теста не назначены (П-15, Р-784) — периода теста нет:
+  // заявки шести недель до сегодняшнего дня — базовый уровень.
+  const dates =
+    registry.test.from !== null && registry.test.to !== null ? { from: registry.test.from, to: registry.test.to } : null;
+  const from = dates ? moscowDayStart(dates.from) : now;
+  const to = dates ? new Date(moscowDayStart(dates.to).getTime() + DAY) : now;
   const baselineFrom = new Date(from.getTime() - registry.test.baselineDays * DAY);
   const sources = Object.values(DIRECTION_SOURCE);
   const rows = await funnelRows(actor, sources, baselineFrom, to);
@@ -316,11 +323,13 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
 
   const daysLeft = Math.ceil((from.getTime() - now.getTime()) / DAY);
   const phaseText =
-    phase.phase === 'before'
-      ? `До запуска ${daysLeft} ${plural(daysLeft, 'день', 'дня', 'дней')}.`
-      : phase.phase === 'running'
-        ? `Идёт день ${phase.day} из ${phase.days}.`
-        : 'Тест завершён.';
+    phase.phase === 'unscheduled'
+      ? 'Реклама не запущена: даты теста назначит владелец.'
+      : phase.phase === 'before'
+        ? `До запуска ${daysLeft} ${plural(daysLeft, 'день', 'дня', 'дней')}.`
+        : phase.phase === 'running'
+          ? `Идёт день ${phase.day} из ${phase.days}.`
+          : 'Тест завершён.';
 
   return (
     <Shell actor={actor} current={HREF}>
@@ -410,7 +419,8 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
           Заявки с посадочных
         </Heading>
         <Text muted size={13} style={{ margin: '6px 0 14px' }}>
-          Заявки со страниц сайта за время теста. Целевая — после консультации.
+          Заявки со страниц сайта за время теста. Целевая — «Консультация проведена» после разговора менеджера или
+          «Договор заключён».
         </Text>
         <TableScroll label="Заявки с посадочных за период теста">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>

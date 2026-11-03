@@ -83,6 +83,7 @@ import { MESSAGE_MAX, internalUnread, listMessages, unreadCount } from '../../..
 import { OUTCOME_ANCHOR, OUTCOME_FLAGS, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
 import { noticeFate } from '../../../../lib/cabinet/outbox';
 import DropFlag from '../../../../components/cabinet/DropFlag';
+import { CuratorProfileFold } from '../../../../components/cabinet/CuratorProfile';
 import {
   curators,
   curatorTasksData,
@@ -90,10 +91,13 @@ import {
   experts,
   lastClientReturn,
   projectByCode,
+  projectLead,
+  curatorDoneCount,
   projectMaterials,
   pendingActions,
 } from '../../../../lib/cabinet/queries';
 import { curatorPanel, curatorReturnHead } from '../../../../lib/cabinet/curator-tasks';
+import { leadNumberLabel } from '../../../../lib/cabinet/lead-labels';
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
 import { PAYMENT_CLOSED_STATUSES, formatAmount } from '../../../../lib/cabinet/money';
 import { ownPayoutTotals, paymentDocumentLines, projectContract } from '../../../../lib/cabinet/finance';
@@ -764,6 +768,16 @@ export default async function ProjectScreen({
           : authorName(event.actor, actor, event.actorId ?? undefined),
     }));
 
+  // Заявка, из которой заведена работа, — только практике (П-3, решение
+  // Р-763): клиенту после одобрения номер заявки не показывается.
+  const fromLead = practice ? await projectLead(actor, project.id) : null;
+
+  // Обезличенный профиль куратора — клиенту, с назначения куратора, до
+  // согласования Задания и оплаты (П-1, решение Р-764): свёрткой внутри
+  // «О работе», а не новым блоком (Р-183). Число завершённых работ с
+  // куратором считает кабинет.
+  const curatorDone = forClient && project.expert !== null ? await curatorDoneCount(actor, project.expert.id) : null;
+
   // Короткое описание работы. На виду остаётся название и срок, остальное
   // — под раскрытием: тема, тип сопровождения, куратор, суть задачи и
   // последние слова сторон (требование заказчика, решение Р-190).
@@ -781,6 +795,17 @@ export default async function ProjectScreen({
     // Клиент — практике: прежде его ФИО стояло только в свёрнутом
     // «Управлении работой» внизу экрана (решение Р-748).
     practice ? { term: 'Клиент', value: project.client.fullName } : null,
+    // Ссылкой на карточку заявки: там первое обращение и вложения.
+    fromLead === null
+      ? null
+      : {
+          term: 'Источник',
+          value: (
+            <a className="cab-mark" href={`/cabinet/manage/leads/${fromLead.id}`}>
+              {`Из заявки ${leadNumberLabel(fromLead.number)} от ${formatDay(fromLead.createdAt)}`}
+            </a>
+          ),
+        },
     // Менеджер — с регалиями, но только практике: клиенту имя менеджера не
     // показывается (Э-01, ответ ОЭ-3б). Куратор — регалиями без ФИО и
     // контактов; пустые части не выводятся (требование Т-11, Р-297).
@@ -996,6 +1021,9 @@ export default async function ProjectScreen({
             </div>
           ))}
         </dl>
+        {!forClient || project.expert === null ? null : (
+          <CuratorProfileFold profile={project.expert.expertProfile} done={curatorDone} style={{ marginTop: 14 }} />
+        )}
         {project.summary === null ? null : (
           <Text size={14} style={{ marginTop: 14 }}>
             {project.summary}

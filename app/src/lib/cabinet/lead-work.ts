@@ -24,7 +24,7 @@ async function visibleLead(actor: Actor, leadId: string) {
       ? null
       : await prisma.lead.findFirst({
           where: { AND: [{ id: leadId }, scope] },
-          select: { id: true, status: true, projectId: true, form: true },
+          select: { id: true, status: true, projectId: true, form: true, firstResponseAt: true },
         });
   if (lead === null) throw new LeadWorkError('Заявка не найдена');
   return lead;
@@ -55,9 +55,19 @@ export async function setLeadStatus(actor: Actor, leadId: string, status: string
   // Смена захватывает заявку в прочитанном состоянии и без работы: плашка,
   // нажатая во время одобрения или отказа, не возвращает отклонённую заявку
   // в разбор и не перекрашивает ставшую работой (решение Р-465).
+  //
+  // Первая смена из «Новой» — первый ответ на заявку (п. 2.8 задания,
+  // решение Р-766): он пишется один раз, и заявка, возвращённая в «Новую»
+  // и разобранная заново, первого ответа не переписывает. Захват по
+  // состоянию гарантирует, что смена была именно из «Новой».
+  const at = new Date();
   const { count } = await prisma.lead.updateMany({
     where: { id: lead.id, projectId: null, status: lead.status },
-    data: { status, statusChangedAt: new Date() },
+    data: {
+      status,
+      statusChangedAt: at,
+      ...(lead.status === 'NEW' && lead.firstResponseAt === null ? { firstResponseAt: at } : {}),
+    },
   });
   if (count === 0) throw new LeadWorkError('Состояние заявки уже изменилось: обновите страницу');
   await record(actor, {

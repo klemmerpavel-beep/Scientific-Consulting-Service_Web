@@ -44,7 +44,7 @@ describe('«Аспирантам»: «диссертация» и «нормок
   const sources = [read('design', 'MainPage.dc.html'), read('app', 'src', 'components', 'pages', 'PostgradPage.tsx')];
 
   it('лид первого экрана называет диссертацию', () => {
-    for (const source of sources) assert.match(source, />Разбираем методологию диссертации, ведём научную редактуру/u);
+    for (const source of sources) assert.match(source, />Разбираем методологию диссертации, проводим научную экспертизу текста/u);
   });
 
   it('заголовок раздела услуг — «Сопровождаем диссертацию от первой главы до защиты», подсветка на прежнем месте', () => {

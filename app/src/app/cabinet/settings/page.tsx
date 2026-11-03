@@ -3,6 +3,7 @@ import { flashEntry, formDraft } from '../../../lib/cabinet/flash';
 import ActionError from '../../../components/cabinet/ActionError';
 
 import Shell from '../../../components/cabinet/Shell';
+import { RADIUS } from '../../../components/cabinet/tokens';
 import {
   Button,
   Card,
@@ -30,6 +31,8 @@ import {
 import { telegramBindAvailable } from '../../../lib/cabinet/auth';
 import { ownChannels, ownCuratorProfile } from '../../../lib/cabinet/admin';
 import { CURATOR_FOR_CLIENT, expertLine } from '../../../lib/cabinet/access';
+import { curatorDoneCount } from '../../../lib/cabinet/queries';
+import { CuratorProfileFold } from '../../../components/cabinet/CuratorProfile';
 import {
   CONTACT_LABEL,
   CONTACT_MAX,
@@ -54,8 +57,19 @@ import {
 import { requireActor } from '../../../lib/cabinet/session';
 import { PRACTICE_EMAIL } from '../../../lib/practice-contacts';
 import {
+  CAMERA_CONSENT_TEXT,
+  CONSENT_TITLE,
+  consentStatusForCurator,
+  consentTextHash,
+  showcaseOffered,
+  showcaseState,
+  type ConsentKind,
+} from '../../../lib/cabinet/curator-consents';
+import { showcaseConsentText } from '../../../lib/cabinet/practice-settings';
+import {
   addContactChannel,
   dropTelegram,
+  saveConsent,
   makeContactPreferred,
   removeContactChannel,
   saveFullSupport,
@@ -84,6 +98,13 @@ const SETTINGS_GRID = {
 // форма с `height: 100%` (Form) мерилась от чужой высоты, и кнопка «Сохранить»
 // выпадала из карточки.
 const SETTINGS_STACK = { display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0, alignSelf: 'start' } as const;
+/** Текст согласия перед отметкой — тихой плашкой, отдельно от строк профиля (Р-768). */
+const CONSENT_TEXT_BOX = {
+  padding: '12px 14px',
+  borderLeft: '3px solid var(--pd-border)',
+  background: 'var(--pd-surface-quiet)',
+  borderRadius: RADIUS.mark,
+} as const;
 
 export default async function SettingsScreen({
   searchParams,
@@ -92,7 +113,7 @@ export default async function SettingsScreen({
 }) {
   const actor = await requireActor('/cabinet/settings');
 
-  const [params, user, allContacts, rules, profile, erasureAsked, sent] = await Promise.all([
+  const [params, user, allContacts, rules, profile, erasureAsked, sent, curatorDone, showcaseText] = await Promise.all([
     searchParams,
     ownChannels(actor),
     ownContacts(actor),
@@ -102,6 +123,10 @@ export default async function SettingsScreen({
     ownErasureRequest(actor),
     // Что и когда отправлено (П-04, Р-402).
     ownNotifications(actor),
+    // Завершённые работы с куратором — строка «Профиля куратора» (П-1, Р-764).
+    actor.role === 'EXPERT' ? curatorDoneCount(actor, actor.id) : Promise.resolve(null),
+    // Текст согласия на витрину кураторов — из настроек практики (П-12, Р-768).
+    actor.role === 'EXPERT' ? showcaseConsentText() : Promise.resolve(''),
   ]);
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
   // Отказ «Добавить способ связи» — у своей формы, в раскрытой свёртке, с
@@ -122,6 +147,48 @@ export default async function SettingsScreen({
   // Тексты экрана — по роли: менеджеру не пишут как клиенту (требование
   // М-20, решение Р-306).
   const texts = settingsTexts(actor.role);
+  // Согласия куратора (П-12, решение Р-768): камера — всегда, витрина —
+  // когда руководитель внёс текст или отметка уже стоит (чтобы отозвать).
+  // Действующее согласие — текст под свёрткой и «Отозвать»; согласия нет
+  // или оно дано на прежний текст — текст открыт и «Даю согласие» под ним.
+  const marks = profile ?? null;
+  const showcase = showcaseState(marks, showcaseText);
+  const consents: {
+    kind: ConsentKind;
+    status: string;
+    text: string;
+    hash: string;
+    given: boolean;
+    give: boolean;
+    withdraw: boolean;
+  }[] =
+    actor.role !== 'EXPERT'
+      ? []
+      : [
+          {
+            kind: 'camera',
+            status: consentStatusForCurator('camera', marks, showcaseText),
+            text: CAMERA_CONSENT_TEXT,
+            hash: consentTextHash(CAMERA_CONSENT_TEXT),
+            given: marks?.cameraConsentAt != null,
+            give: marks?.cameraConsentAt == null,
+            withdraw: marks?.cameraConsentAt != null,
+          },
+          ...(showcaseOffered(marks, showcaseText)
+            ? [
+                {
+                  kind: 'showcase' as const,
+                  status: consentStatusForCurator('showcase', marks, showcaseText),
+                  text: showcaseText,
+                  hash: showcaseText === '' ? '' : consentTextHash(showcaseText),
+                  given: showcase === 'valid',
+                  // Без текста отметить нельзя — только отозвать прежнюю.
+                  give: showcase !== 'valid' && showcaseText !== '',
+                  withdraw: showcase !== 'none',
+                },
+              ]
+            : []),
+        ];
   const ruleOn = (kind: string, channel: 'EMAIL' | 'TELEGRAM'): boolean => {
     const exact = rules.find((rule) => rule.eventKind === kind && rule.channel === channel);
     return exact === undefined ? true : exact.enabled;
@@ -250,6 +317,64 @@ export default async function SettingsScreen({
                 <Text size={14}>
                   {`Так вас видит клиент: ${[CURATOR_FOR_CLIENT, expertLine(profile ?? null)].filter(Boolean).join(', ')}.`}
                 </Text>
+                {/* Та же свёртка, что у клиента в «О работе» (П-1, решение
+                    Р-764): одна разметка и одни строки на оба места. */}
+                <CuratorProfileFold profile={profile ?? null} done={curatorDone} style={{ marginTop: 12 }} />
+                {/* Согласия отмечает и отзывает сам куратор, прочитав текст
+                    (П-12, решение Р-768); руководитель видит отметку и день.
+                    Отметки витрины нет, пока руководитель не внёс текст. */}
+                <div
+                  id="consents"
+                  style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--pd-divider)', display: 'grid', gap: 18 }}
+                >
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    <Heading level={3} size={3}>
+                      Согласия
+                    </Heading>
+                    <Text muted size={14}>
+                      Согласие даёте вы сами, прочитав его текст; руководитель видит отметку и день. Отозвать
+                      согласие можно здесь же в любой момент.
+                    </Text>
+                  </div>
+                  {consents.map((consent) => (
+                    <div key={consent.kind} style={{ display: 'grid', gap: 8 }}>
+                      <Text size={15} style={{ fontWeight: 500 }}>
+                        {CONSENT_TITLE[consent.kind]}
+                      </Text>
+                      <Text size={14}>{consent.status}</Text>
+                      {consent.text === '' ? null : consent.given ? (
+                        <Disclosure title="Текст согласия">
+                          <Text size={14} style={{ whiteSpace: 'pre-line' }}>
+                            {consent.text}
+                          </Text>
+                        </Disclosure>
+                      ) : (
+                        <div style={CONSENT_TEXT_BOX}>
+                          <Text size={14} style={{ whiteSpace: 'pre-line' }}>
+                            {consent.text}
+                          </Text>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        {consent.give ? (
+                          <Form action={saveConsent} inline>
+                            <input type="hidden" name="kind" value={consent.kind} />
+                            <input type="hidden" name="give" value="yes" />
+                            <input type="hidden" name="textHash" value={consent.hash} />
+                            <Button tone="quiet">Даю согласие</Button>
+                          </Form>
+                        ) : null}
+                        {consent.withdraw ? (
+                          <Form action={saveConsent} inline>
+                            <input type="hidden" name="kind" value={consent.kind} />
+                            <input type="hidden" name="give" value="no" />
+                            <Button tone="quiet">Отозвать согласие</Button>
+                          </Form>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </Card>
             )}
 

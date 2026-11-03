@@ -697,6 +697,132 @@ export function expertLine(profile: { readonly degree: string | null; readonly s
   return regalia([profile?.degree, profile?.specialtyCode]);
 }
 
+// ─────────────────── Обезличенный профиль куратора (П-1) ───────────────────
+
+/**
+ * Поля профиля сотрудника, которые могут попасть в данные экрана клиента
+ * (П-1, решение Р-764): степень и звание, специальность, стаж, публикации
+ * числом по категориям и день их сверки. Остальное — должность, вуз,
+ * ставка, договор поручения, согласия — клиенту не отдаётся ни на экране,
+ * ни в данных: `withoutStaffNames` оставляет в профиле сотрудника только
+ * эти поля, а выборки экрана работы прочих и не берут (Р-297, Р-418).
+ * ФИО и почту снимает та же функция. Названий публикаций, SPIN и ORCID в
+ * профиле нет вовсе: они раскрывают имя (Р-322).
+ */
+export const CURATOR_PUBLIC_FIELDS: readonly string[] = [
+  'degree',
+  'academicTitle',
+  'specialtyCode',
+  'specialization',
+  'experienceYears',
+  'pubK1',
+  'pubK2',
+  'pubK3',
+  'pubRsci',
+  'pubIntl',
+  'pubCheckedOn',
+];
+
+/** Категории публикаций за пять лет — в порядке профиля. */
+export const PUBLICATION_CATEGORIES = [
+  { key: 'pubK1', label: 'ВАК, К1', short: 'К1' },
+  { key: 'pubK2', label: 'ВАК, К2', short: 'К2' },
+  { key: 'pubK3', label: 'ВАК, К3', short: 'К3' },
+  { key: 'pubRsci', label: 'RSCI', short: 'RSCI' },
+  { key: 'pubIntl', label: 'Scopus и Web of Science', short: 'Scopus и Web of Science' },
+] as const;
+
+export type PublicationKey = (typeof PUBLICATION_CATEGORIES)[number]['key'];
+
+/** Профиль куратора в том составе, какой видит клиент. */
+export interface CuratorPublicProfile {
+  readonly degree: string | null;
+  readonly academicTitle?: string | null;
+  readonly specialtyCode: string | null;
+  readonly specialization?: string | null;
+  readonly experienceYears?: number | null;
+  readonly pubK1?: number | null;
+  readonly pubK2?: number | null;
+  readonly pubK3?: number | null;
+  readonly pubRsci?: number | null;
+  readonly pubIntl?: number | null;
+  readonly pubCheckedOn?: Date | null;
+}
+
+/** Пояснение свёртки «Профиль куратора»: почему в ней нет имени. */
+export const CURATOR_PROFILE_NOTE =
+  'Имя, место работы и контакты куратора не называются; публикации указаны числом по категориям журналов, без названий.';
+
+/** Согласование числительного без разметки: «1 год», «3 года», «12 лет». */
+function countWord(count: number, one: string, few: string, many: string): string {
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  const mod10 = count % 10;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
+
+/** «ВАК: К1 — 3, К3 — 1; RSCI — 2»: заполненные категории, пустые не выводятся. */
+export function publicationsLine(profile: CuratorPublicProfile | null): string {
+  if (profile === null) return '';
+  const filled = PUBLICATION_CATEGORIES.map((category) => ({
+    key: category.key,
+    text: `${category.short} — ${profile[category.key] ?? ''}`,
+    count: profile[category.key] ?? null,
+  })).filter((item) => item.count !== null);
+  const vak = filled.filter((item) => item.key === 'pubK1' || item.key === 'pubK2' || item.key === 'pubK3');
+  const rest = filled.filter((item) => !vak.includes(item));
+  return [...(vak.length === 0 ? [] : [`ВАК: ${vak.map((item) => item.text).join(', ')}`]), ...rest.map((item) => item.text)].join(
+    '; ',
+  );
+}
+
+/** День без времени («15 октября 2026»): даты профиля хранятся полночью UTC. */
+const PROFILE_DAY = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/**
+ * Строки свёртки «Профиль куратора» у клиента и в «Так вас видит клиент»
+ * у куратора (П-1, решение Р-764; Р-330): степень и звание, специальность
+ * шифром и названием, стаж, публикации по категориям «за пять лет,
+ * сверено {дата}», число завершённых работ ProDisser с этим куратором.
+ * Пустые части не выводятся (Р-225). Публикации без дня сверки не
+ * выводятся: клиент видит только сверенные числа. Средней оценки
+ * сопровождения в профиле нет (П-8, Р-565).
+ *
+ * `done` — завершённые работы; `null` — смотрящему число не отдаётся.
+ */
+export function curatorProfileRows(
+  profile: CuratorPublicProfile | null,
+  done: number | null,
+): { readonly term: string; readonly value: string; readonly note?: string }[] {
+  const rows: { term: string; value: string; note?: string }[] = [];
+  const titles = regalia([profile?.degree, profile?.academicTitle]);
+  if (titles !== '') rows.push({ term: 'Степень и звание', value: titles });
+  const specialty = [profile?.specialtyCode, profile?.specialization]
+    .map((part) => (part ?? '').trim())
+    .filter((part) => part !== '')
+    .join(' — ');
+  if (specialty !== '') rows.push({ term: 'Научная специальность', value: specialty });
+  const years = profile?.experienceYears ?? null;
+  if (years !== null) {
+    rows.push({
+      term: 'Стаж научной и преподавательской работы',
+      value: years === 0 ? 'менее года' : `${years} ${countWord(years, 'год', 'года', 'лет')}`,
+    });
+  }
+  const publications = publicationsLine(profile);
+  const checkedOn = profile?.pubCheckedOn ?? null;
+  if (publications !== '' && checkedOn !== null) {
+    const day = PROFILE_DAY.format(checkedOn).replace(/\s*г\.$/u, '');
+    rows.push({ term: 'Публикации', value: publications, note: `за пять лет, сверено ${day}` });
+  }
+  if (done !== null) {
+    rows.push({ term: 'Завершено работ в ProDisser', value: done === 0 ? 'пока нет' : String(done) });
+  }
+  return rows;
+}
+
 /** Роли, чьё имя и почта не попадают в данные экрана клиента. */
 const HIDDEN_FROM_CLIENT: readonly string[] = ['EXPERT', 'MANAGER', 'HEAD'];
 
@@ -724,6 +850,11 @@ const INTERNAL_FOR_CLIENT: readonly string[] = [
  * снимает их с данных: у любого вложенного объекта с ролью сотрудника имя
  * и почта пустеют. Заодно снимаются служебные поля сдачи этапа куратором
  * (Э-05, Р-325). Сотрудникам и куратору данные отдаются как есть.
+ *
+ * Профиль сотрудника (`expertProfile`) клиенту отдаётся только полями
+ * обезличенного профиля `CURATOR_PUBLIC_FIELDS` (П-1, решение Р-764):
+ * должность, вуз, ставка, договор поручения и согласия куратора не
+ * попадут в данные экрана клиента, даже если выборку расширят.
  */
 export function withoutStaffNames<T>(viewer: Actor, value: T): T {
   if (viewer.role !== 'CLIENT') return value;
@@ -739,6 +870,12 @@ export function withoutStaffNames<T>(viewer: Actor, value: T): T {
     const hidden = typeof out.role === 'string' && HIDDEN_FROM_CLIENT.includes(out.role);
     if (hidden && 'fullName' in out) out.fullName = '';
     if (hidden && 'email' in out) out.email = '';
+    const profile = out.expertProfile;
+    if (hidden && profile !== null && typeof profile === 'object' && !Array.isArray(profile)) {
+      out.expertProfile = Object.fromEntries(
+        Object.entries(profile).filter(([key]) => CURATOR_PUBLIC_FIELDS.includes(key)),
+      );
+    }
     return out;
   };
   return walk(value) as T;

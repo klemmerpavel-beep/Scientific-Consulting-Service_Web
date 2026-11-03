@@ -9,15 +9,20 @@
 import { PRACTICE_EMAIL, PRACTICE_PHONE } from '../practice-contacts.ts';
 import { siteUrl } from '../site-url.ts';
 import { CHANNEL_OFF } from './events.ts';
+import { leadNumberLabel } from './lead-labels.ts';
 
 /**
  * Текст письма об отказе. Отдельной функцией — его проверяют без базы.
  *
- * Письмо отвечает на обращение, а не утешает: называет тему, говорит
- * «взяться не можем», приводит причину словами менеджера и оставляет
- * дверь открытой. Ссылки входа нет — кабинета у человека нет.
+ * Письмо отвечает на обращение, а не утешает: называет заявку её номером
+ * и тему, говорит «взяться не можем», приводит причину словами менеджера и
+ * оставляет дверь открытой. Ссылки входа нет — кабинета у человека нет.
+ * Номер — тот же, что в письме «Заявка получена» (П-3, решение Р-763): по
+ * нему человек сводит ответ со своей заявкой, а практика — его вопрос с
+ * карточкой.
  */
 export function declineLetter(
+  number: number,
   name: string | null,
   topic: string | null,
   reason: string,
@@ -25,11 +30,12 @@ export function declineLetter(
   const base = siteUrl();
   const greeting = name === null || name.trim().length === 0 ? 'Здравствуйте.' : `Здравствуйте, ${name.trim()}.`;
   const about = topic === null || topic.trim().length === 0 ? '' : ` по теме «${topic.trim()}»`;
+  const no = leadNumberLabel(number);
   return {
-    subject: 'Ответ на заявку ProDisser',
+    subject: `Ответ на заявку ${no} — ProDisser`,
     body:
       `${greeting}\n` +
-      `Спасибо за обращение${about}. Взяться за эту работу мы не можем.\n` +
+      `Спасибо за заявку ${no}${about}. Взяться за эту работу мы не можем.\n` +
       `Причина: ${reason}\n` +
       (base === null
         ? 'Если обстоятельства изменятся, оставьте новую заявку на сайте ProDisser.'
@@ -45,13 +51,19 @@ export function declineLetter(
  * с сайта не подтверждён: имени, темы и ссылок в письме нет (Р-252) — оно
  * одинаково для любого адреса и чужой текст разослать через него нельзя.
  * Ссылки входа нет: кабинета у заявителя ещё нет.
+ *
+ * Номер заявки — в теме и в первой строке после обращения (П-3, решение
+ * Р-763): по нему заявитель называет своё обращение в письме и по
+ * телефону. Номер выдаёт база, а не форма, — чужого текста в письме
+ * по-прежнему нет.
  */
-export function receivedLetter(): { subject: string; body: string } {
+export function receivedLetter(number: number): { subject: string; body: string } {
+  const no = leadNumberLabel(number);
   return {
-    subject: 'Заявка получена — ProDisser',
+    subject: `Заявка ${no} получена — ProDisser`,
     body:
       'Здравствуйте.\n' +
-      'Ваша заявка получена. Менеджер разберёт её и ответит в течение рабочего дня; решение придёт письмом на этот адрес.\n' +
+      `Ваша заявка ${no} получена. Менеджер разберёт её и ответит в течение рабочего дня; решение придёт письмом на этот адрес.\n` +
       `Связаться с нами: ${PRACTICE_EMAIL}, ${PRACTICE_PHONE}.\n` +
       'Если вы не оставляли заявку, удалите это письмо.',
   };
@@ -71,12 +83,17 @@ export function receivedLetter(): { subject: string; body: string } {
  * возвращаются как есть.
  */
 export function declineLetterFor(
-  lead: { readonly source: string; readonly name: string | null; readonly topic: string | null },
+  lead: {
+    readonly number: number;
+    readonly source: string;
+    readonly name: string | null;
+    readonly topic: string | null;
+  },
   reason: string,
 ): { subject: string; body: string } {
   return lead.source === 'cabinet'
-    ? declineLetter(lead.name, lead.topic, reason)
-    : declineLetter(null, null, reason);
+    ? declineLetter(lead.number, lead.name, lead.topic, reason)
+    : declineLetter(lead.number, null, null, reason);
 }
 
 /** Адрес почты из заявки; `null`, если человек оставил телефон. */

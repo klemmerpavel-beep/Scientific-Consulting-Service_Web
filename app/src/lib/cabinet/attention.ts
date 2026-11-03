@@ -137,6 +137,9 @@ export function attentionParts(sources: AttentionSources) {
       .filter((row) => !lateCodes.has(row.code))
       .map((row) => ({ ...row, noExpert: unassigned.has(row.code) })),
     noExpert: today.noExpert.filter((row) => !lateCodes.has(row.code) && !planless.has(row.code)),
+    // Заявка ждёт первого ответа дольше цели в рабочих часах — перед делом
+    // Р-304 «без ответа дольше рабочего дня» (п. 2.8 задания, Р-766).
+    waitingLeads: today.waitingLeads,
     lateLeads: today.lateLeads,
     reviewLeads: today.reviewLeads,
     version: sources.versions,

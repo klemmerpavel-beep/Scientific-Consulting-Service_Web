@@ -69,6 +69,10 @@ const ACTIONS: Record<string, string> = {
   CALENDAR_DAY_SAVED: 'День производственного календаря сохранён',
   STAFF_REGALIA_SAVED: 'Регалии сотрудника сохранены',
   CURATOR_PROFILE_SAVED: 'Профиль куратора изменён',
+  // Согласия куратор отмечает сам (П-12, решение Р-768).
+  CURATOR_CONSENT_GIVEN: 'Куратор дал согласие',
+  CURATOR_CONSENT_WITHDRAWN: 'Куратор отозвал согласие',
+  SHOWCASE_CONSENT_TEXT_SAVED: 'Изменён текст согласия на витрину кураторов',
   NDA_REQUESTED: 'Куратор сообщил руководителю, что ждёт договор поручения',
   PRACTICE_SETTING_SAVED: 'Изменена настройка практики',
   SUMMARY_LAYOUT_SAVED: 'Изменена раскладка «Сводки»',
@@ -272,6 +276,37 @@ const filterRules = {
 } satisfies Record<string, FieldRule>;
 
 /**
+ * Поля профиля куратора — словами (Э-11, Р-324; П-1, решение Р-764):
+ * руководитель читал перечень изменённых полей именами столбцов базы.
+ */
+export const CURATOR_PROFILE_FIELD_LABEL: Readonly<Record<string, string>> = {
+  degree: 'учёная степень',
+  academicTitle: 'учёное звание',
+  position: 'должность',
+  specialtyCode: 'шифр специальности',
+  specialization: 'научная специальность',
+  university: 'вуз',
+  defaultPayout: 'ставка',
+  experienceYears: 'стаж',
+  pubK1: 'публикации ВАК К1',
+  pubK2: 'публикации ВАК К2',
+  pubK3: 'публикации ВАК К3',
+  pubRsci: 'публикации RSCI',
+  pubIntl: 'публикации Scopus и Web of Science',
+  pubCheckedOn: 'дата сверки публикаций',
+  // Два поля ниже — у записей до П-12: с решения Р-768 согласия руководитель
+  // не правит.
+  cameraConsent: 'согласие на камеру',
+  showcaseConsentAt: 'согласие на витрину',
+};
+
+/** Согласия куратора в журнале (П-12, решение Р-768). */
+const CONSENT_LABEL: Readonly<Record<string, string>> = {
+  camera: 'камера на созвоне знакомства',
+  showcase: 'витрина кураторов на сайте',
+};
+
+/**
  * Поля, которые у действия значат не то, что в общем словаре, или хранят
  * код вместо слова. У выгрузки заявок `total` — число заявок в отборе, а
  * не сумма договора; вкладка, набор столбцов и плашки «Сводки» записаны
@@ -308,6 +343,30 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
   LEAD_APPROVED: { code: WORK_CODE },
   ORDER_CREATED: { code: WORK_CODE },
   ASSIGNMENT_CREATED: { project: WORK_CODE },
+  // Перечень изменённых полей профиля — словами, ставка — рублями,
+  // согласия — «да»/«нет» (П-1, решение Р-764).
+  CURATOR_PROFILE_SAVED: {
+    changed: { name: 'изменено', value: byMap(CURATOR_PROFILE_FIELD_LABEL) },
+    defaultPayout: { name: 'ставка', value: (raw) => (/^-?\d+$/u.test(raw) ? formatAmount(BigInt(raw)) : raw) },
+    // Согласия в этой записи — только у записей до П-12: с решения Р-768
+    // их отмечает сам куратор, записи — ниже.
+    cameraConsent: { name: 'согласие на камеру' },
+    showcaseConsent: { name: 'согласие на витрину' },
+  },
+  // Какое согласие — словами; свёртка — по ней текст находится в записи
+  // «Изменён текст согласия на витрину кураторов» (П-12, решение Р-768).
+  CURATOR_CONSENT_GIVEN: {
+    consent: { name: 'согласие:', value: byMap(CONSENT_LABEL) },
+    textHash: { name: 'свёртка текста' },
+  },
+  CURATOR_CONSENT_WITHDRAWN: { consent: { name: 'согласие:', value: byMap(CONSENT_LABEL) } },
+  // Сам текст — в выгрузке CSV: на экране журнала он занял бы страницу.
+  SHOWCASE_CONSENT_TEXT_SAVED: {
+    from: { name: 'свёртка была' },
+    to: { name: 'свёртка стала' },
+    chars: { name: 'знаков' },
+    text: { name: 'текст', hidden: true },
+  },
 };
 
 /** Поля с суммой: журнал хранит их строкой копеек, bigint в JSON не кладётся. */

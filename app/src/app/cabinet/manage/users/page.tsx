@@ -26,7 +26,7 @@ import {
   formatDay,
   Pager,
 } from '../../../../components/cabinet/ui';
-import { can } from '../../../../lib/cabinet/access';
+import { PUBLICATION_CATEGORIES, can } from '../../../../lib/cabinet/access';
 import {
   ROLE_LABEL,
   STATUS_LABEL,
@@ -40,6 +40,7 @@ import {
 } from '../../../../lib/cabinet/admin';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { formatPlain } from '../../../../lib/cabinet/money';
+import { EXPERIENCE_YEARS_MAX, PUBLICATIONS_MAX } from '../../../../lib/cabinet/profile-input';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { AccessLink } from '../../../../components/cabinet/AccessLink';
 import { mailConfigured } from '../../../../lib/cabinet/mail';
@@ -52,7 +53,15 @@ import {
   updateExpertNda,
   updateRegalia,
   updateCuratorProfile,
+  updateShowcaseConsentText,
 } from '../../actions';
+import { showcaseConsentText } from '../../../../lib/cabinet/practice-settings';
+import {
+  CONSENT_TITLE,
+  SHOWCASE_TEXT_MAX,
+  consentStatusForHead,
+  type ConsentKind,
+} from '../../../../lib/cabinet/curator-consents';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +73,9 @@ const NOTICE_LINK = { color: 'inherit', textDecoration: 'underline', textUnderli
 type UserState = 'ACTIVE' | 'SUSPENDED' | 'ERASED';
 const STATES: UserState[] = ['ACTIVE', 'SUSPENDED', 'ERASED'];
 
+/** Ссылка в подсказке поля — строчная, подчёркнутая, как в переписке (Р-761). */
+const HINT_LINK = { textDecoration: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1 } as const;
+
 export default async function UsersScreen({
   searchParams,
 }: {
@@ -72,6 +84,7 @@ export default async function UsersScreen({
     created?: string;
     link?: string;
     new?: string;
+    text?: string;
     role?: string;
     status?: string;
     page?: string;
@@ -89,6 +102,8 @@ export default async function UsersScreen({
   // встаёт на верх экрана: причина над ней оставалась выше края. Она
   // выводится в самой свёртке, над полями (решение Р-706).
   const inviteFailed = flags.new === '1' && failure !== undefined;
+  // Отказ сохранения текста согласия на витрину — в его свёртке (Р-706).
+  const textFailed = flags.text === '1' && failure !== undefined;
   const role = ROLES.includes(flags.role as Role) ? (flags.role as Role) : undefined;
   const status = STATES.includes(flags.status as UserState)
     ? (flags.status as UserState)
@@ -97,12 +112,14 @@ export default async function UsersScreen({
   // перечня в двадцать строк эксперты и нужные люди уходили на следующие
   // страницы (решение Р-225). Ссылка выдаётся только действующим записям:
   // приостановленной и обезличенной вход закрыт (решение Р-195).
-  const [list, experts, active, staffRegalia, curators] = await Promise.all([
+  const [list, experts, active, staffRegalia, curators, showcaseText] = await Promise.all([
     listUsers(actor, { role, status, page: Number(flags.page ?? '1') }),
     expertsForNda(actor),
     accessLinkPeople(actor),
     staffForRegalia(actor),
     curatorProfiles(actor),
+    // Текст согласия на витрину кураторов (П-12, решение Р-768).
+    showcaseConsentText(),
   ]);
   const users = list.rows;
   // Текст блока зависит от того, настроена ли почта: с ней ссылка отсюда
@@ -136,7 +153,7 @@ export default async function UsersScreen({
         note="Роль назначается здесь и нигде больше: она не приходит с формы входа и не меняется самим пользователем. При смене роли и при приостановке доступа все сессии отзываются."
       />
 
-      {failure === undefined || inviteFailed ? null : (
+      {failure === undefined || inviteFailed || textFailed ? null : (
         <Block as="div" style={{ marginBottom: 20 }}>
           <Notice tone="error" role="alert">
             {failure}
@@ -464,11 +481,15 @@ export default async function UsersScreen({
           поручения (Р-183). */}
       {curators.length === 0 ? null : (
         <Disclosure title="Профиль куратора" style={{ marginTop: 20 }}>
+          {/* Обезличенный профиль (П-1, решение Р-764): клиент видит его
+              свёрткой «Профиль куратора» в «О работе». */}
           <Text size={14} style={{ marginBottom: 14 }}>
-            Клиент видит куратора словом «Куратор», степенью и шифром специальности — без имени и
-            контактов; пустые поля не выводятся. Звание, должность, вуз и ставка — для практики. Ставка
-            по умолчанию — подсказка при начислении, в расчёт она не подставляется. Куратор свой профиль
-            не правит.
+            Клиент видит куратора словом «Куратор», степенью и шифром специальности, а в свёртке
+            «Профиль куратора» — степень и звание, специальность, стаж, публикации за пять лет по
+            категориям с датой сверки и число завершённых работ. Имя, должность, вуз, контакты и ставка
+            клиенту не выводятся, пустые поля — тоже. Ставка по умолчанию — подсказка при начислении, в
+            расчёт она не подставляется. Куратор свой профиль не правит. Согласия на камеру и на витрину
+            куратор отмечает сам в «Настройках», прочитав текст согласия; здесь видны отметка и день.
           </Text>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 20 }}>
             {curators.map((user) => (
@@ -537,6 +558,73 @@ export default async function UsersScreen({
                       }
                     />
                   </FormRow>
+                  {/* Стаж и публикации — числом, без названий: названия
+                      раскрывают имя (П-1, решение Р-764). Числа сверяются по
+                      SPIN и ORCID из анкеты кандидата (Р-597). */}
+                  <FormRow>
+                    <Field
+                      label="Стаж научной и преподавательской работы, лет"
+                      name="experienceYears"
+                      type="number"
+                      scope={`profile-${user.id}`}
+                      placeholder="18"
+                      defaultValue={user.expertProfile?.experienceYears?.toString() ?? ''}
+                      hint={`Целым числом от 0 до ${EXPERIENCE_YEARS_MAX}.`}
+                    />
+                    <Field
+                      label="Дата сверки публикаций"
+                      name="pubCheckedOn"
+                      type="date"
+                      scope={`profile-${user.id}`}
+                      defaultValue={user.expertProfile?.pubCheckedOn?.toISOString().slice(0, 10) ?? ''}
+                      hint={
+                        user.application === null ? (
+                          'Анкеты кандидата с почтой куратора нет: сверьте по его профилям eLIBRARY и ORCID.'
+                        ) : (
+                          <>
+                            {'Сверьте по '}
+                            {/* Строчная ссылка текста подсказки (Р-57, Р-761). */}
+                            <a href={`/cabinet/manage/experts/${user.application.id}`} style={HINT_LINK}>
+                              анкете кандидата
+                            </a>
+                            {user.application.elibrarySpin === null && user.application.orcid === null
+                              ? ': SPIN и ORCID в ней не указаны.'
+                              : `: ${[
+                                  user.application.elibrarySpin === null ? null : `SPIN ${user.application.elibrarySpin}`,
+                                  user.application.orcid === null ? null : `ORCID ${user.application.orcid}`,
+                                ]
+                                  .filter((part) => part !== null)
+                                  .join(', ')}.`}
+                          </>
+                        )
+                      }
+                    />
+                  </FormRow>
+                  <Text muted size={13}>
+                    {`Публикации за пять последних лет — числом статей по категориям, от 0 до ${PUBLICATIONS_MAX}; пустое поле клиенту не выводится, числа — только с датой сверки.`}
+                  </Text>
+                  <FormRow>
+                    {PUBLICATION_CATEGORIES.map((category) => (
+                      <Field
+                        key={category.key}
+                        label={category.label}
+                        name={category.key}
+                        type="number"
+                        scope={`profile-${user.id}`}
+                        defaultValue={user.expertProfile?.[category.key]?.toString() ?? ''}
+                      />
+                    ))}
+                  </FormRow>
+                  {/* Согласия ставит и снимает сам куратор (П-12, решение
+                      Р-768): руководителю — только отметка и день, полей в
+                      форме нет, и сервер их не принимает. */}
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    {(['camera', 'showcase'] as const satisfies readonly ConsentKind[]).map((kind) => (
+                      <Text key={kind} muted size={13}>
+                        {`${CONSENT_TITLE[kind]}: ${consentStatusForHead(kind, user.expertProfile ?? null, showcaseText)}.`}
+                      </Text>
+                    ))}
+                  </div>
                   <FormActions>
                     <Button tone="quiet">Сохранить профиль</Button>
                   </FormActions>
@@ -546,6 +634,36 @@ export default async function UsersScreen({
           </ul>
         </Disclosure>
       )}
+
+      {/* Текст согласия куратора на витрину кураторов — настройка практики
+          (ст. 10.1 152-ФЗ; П-12, решение Р-768). Пустой — куратор отметки
+          витрины не видит; новый — прежние согласия даны на прежний текст. */}
+      <Disclosure title="Текст согласия на витрину кураторов" open={textFailed} id="showcase-text" style={{ marginTop: 20 }}>
+        <Form action={updateShowcaseConsentText}>
+          {textFailed ? (
+            <Notice tone="error" role="alert">
+              {failure}
+            </Notice>
+          ) : null}
+          <Text size={14}>
+            Согласие куратора на распространение сведений профиля — степени, специальности, стажа и
+            публикаций числом — в витрине кураторов на сайте, без имени. Текст согласует юрист. Пока поле
+            пустое, куратор отметки витрины не видит и сервер её не принимает. После смены текста прежние
+            согласия считаются данными на прежний текст: в витрину куратор попадёт, когда отметит новый.
+          </Text>
+          <Field
+            label="Текст согласия"
+            name="text"
+            multiline
+            maxLength={SHOWCASE_TEXT_MAX}
+            defaultValue={textFailed ? (draft.text ?? showcaseText) : showcaseText}
+            hint={`Не длиннее ${SHOWCASE_TEXT_MAX} знаков. Каждая редакция сохраняется в журнале.`}
+          />
+          <FormActions>
+            <Button tone="quiet">Сохранить текст</Button>
+          </FormActions>
+        </Form>
+      </Disclosure>
 
       {/* Регалии менеджеров и руководителей — для служебного учёта:
           клиенту имя и регалии менеджера не выводятся (Э-01, ответы ОЭ-3б

@@ -25,6 +25,7 @@ import {
 } from '../src/lib/cabinet/table-views.ts';
 
 const lead: LeadRowView = {
+  number: 17,
   createdAt: new Date('2026-10-14T21:30:00Z'),
   source: 'postgrad',
   form: 'top',
@@ -116,10 +117,11 @@ describe('наборы столбцов', () => {
 });
 
 describe('«Все заявки»', () => {
-  it('подробный набор — пятнадцать столбцов прежней выгрузки', () => {
+  it('подробный набор — номер заявки и пятнадцать столбцов прежней выгрузки', () => {
     assert.deepEqual(
       leadColumns('full').map((column) => column.head),
       [
+        '№',
         'Дата (МСК)',
         'Страница',
         'Форма',
@@ -139,11 +141,20 @@ describe('«Все заявки»', () => {
     );
   });
 
-  it('основной набор — шесть столбцов экрана', () => {
+  it('основной набор — номер заявки и шесть столбцов экрана (П-3, Р-763)', () => {
     assert.deepEqual(
       leadColumns('short').map((column) => column.head),
-      ['Дата (МСК)', 'Страница', 'Имя', 'Контакт', 'Тема', 'Состояние'],
+      ['№', 'Дата (МСК)', 'Страница', 'Имя', 'Контакт', 'Тема', 'Состояние'],
     );
+  });
+
+  it('номер заявки в книге — число, а не текст', () => {
+    const [sheet] = readWorkbook(Buffer.from(workbook('Заявки', leadColumns('short'), [lead])));
+    const head = sheet!.rows[0]!.cells;
+    const letter = Object.keys(head).find((key) => head[key]?.value === '№')!;
+    const cell = sheet!.rows[1]!.cells[letter];
+    assert.equal(cell?.value, '17');
+    assert.notEqual(cell?.type, 'inlineStr');
   });
 
   it('«Тема» без темы: в основном наборе — что нужно, в подробном — пусто, «что нужно» своим столбцом', () => {
@@ -159,7 +170,7 @@ describe('«Все заявки»', () => {
     assert.equal(byHead['Дата (МСК)'], '2026-10-15 00:30');
     assert.equal(byHead['Вид контакта'], 'Телефон');
     assert.equal(byHead['Форма'], 'Первый экран');
-    assert.equal(leadColumns('full')[2]!.value({ ...lead, form: 'neizvestnaya' }), 'neizvestnaya');
+    assert.equal(leadColumns('full')[3]!.value({ ...lead, form: 'neizvestnaya' }), 'neizvestnaya');
     assert.equal(byHead['Организация'], '');
     assert.equal(byHead['Согласие'], 'да');
     assert.equal(byHead['Рассылка'], 'нет');

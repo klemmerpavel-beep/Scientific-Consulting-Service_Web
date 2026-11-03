@@ -155,10 +155,19 @@ describe('ответ формы и разметка ошибок', () => {
     // тоже после ответа и только не машинной заявке (Т-05, Р-312).
     assert.match(
       route,
-      /if \(!automated\) \{\s*after\(async \(\) => \{[\s\S]*?enqueueLeadReceived\(id\)[\s\S]*?const results = await deliver\(lead, id\)/u,
+      /if \(!automated\) \{\s*after\(async \(\) => \{[\s\S]*?enqueueLeadReceived\(id\)[\s\S]*?const results = await deliver\(lead, id, number\)/u,
     );
     assert.match(route, /const lead = forIntake\(parsed\.data\)/u);
     assert.doesNotMatch(route, /lead\.form === 'review' \? '' :/u);
+  });
+
+  it('номер заявки уходит в доставку, но не в ответ формы (П-3, Р-763)', () => {
+    // Номер выдаёт база при записи; благодарность после формы (Р-406) его
+    // не показывает — он приходит письмом «Заявка получена».
+    const route = readFileSync(path.join(APP, 'src/app/api/lead/route.ts'), 'utf8');
+    assert.match(route, /select: \{ id: true, number: true \}/u);
+    assert.match(route, /return NextResponse\.json\(\{ ok: true \}\);\s*\}\s*$/u);
+    assert.equal(route.match(/NextResponse\.json\(\{ ok: true/gu)?.length, 1);
   });
 
   it('все поля с ошибкой получают aria-invalid, не только первое', () => {

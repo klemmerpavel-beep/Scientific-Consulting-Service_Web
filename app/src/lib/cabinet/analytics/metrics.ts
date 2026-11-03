@@ -21,6 +21,7 @@
 import { moscowToday } from '../clock.ts';
 import { workDuePassed } from '../missed.ts';
 import { expectsPayment } from '../money.ts';
+import { PRICE_GUIDE_NO_SUMS, priceFacts } from './price-guide.ts';
 
 /** Строка витрины: один проект со сведёнными деньгами. */
 export interface ProjectRow {
@@ -673,7 +674,11 @@ export interface ProductRow {
   readonly max: bigint | null;
   /** Коэффициент вариации чека: разброс относительно среднего; `null` — без договоров. */
   readonly variation: number | null;
-  /** Разброс выше 40% — цена назначается «на глаз», нужен прайс. */
+  /**
+   * Разброс выше 40 % — проверить, объясняется ли он темой и сложностью
+   * работ (П-9, Р-765; прежде — «нужен прайс»). Имя поля прежнее: условие
+   * и расчёт Р-350 не меняются.
+   */
   readonly needsPriceList: boolean;
 }
 
@@ -889,14 +894,19 @@ const NEXT = {
  * нести действие, срок и оценку эффекта (решение Р-194).
  *
  * Оценка эффекта считается только там, где её можно вывести из своих же
- * чисел: взыскиваемый остаток — это сумма долга, выравнивание цены к
- * собственной медиане — разница медианы и среднего на числе заказов.
- * Где честной величины нет, стоит `null`, а не выдуманный процент роста.
+ * чисел: взыскиваемый остаток — это сумма долга, возврат повторных
+ * клиентов — средний чек на их число. Где честной величины нет, стоит
+ * `null`, а не выдуманный процент роста. У разброса чека оценки нет с
+ * решения Р-765: «выравнивание цены к медиане» и было единой ценой вида,
+ * которую владелец отклонил (П-8, П-9).
  */
 export function conclusions(
   rows: readonly ProjectRow[],
   controlDate: Date,
   since: Date = ANALYTICS_SINCE_DEFAULT,
+  // Выводы не по работам, а по заявкам — первый ответ за 90 дней (п. 2.8
+  // задания, Р-766): их считает свой модуль, здесь они встают в общий ряд.
+  extra: readonly Conclusion[] = [],
 ): Conclusion[] {
   const out: Conclusion[] = [];
   if (rows.length === 0) return out;
@@ -950,6 +960,10 @@ export function conclusions(
       next: NEXT.deadlines,
     });
   }
+
+  // 2а. Первый ответ на заявку дольше внутренней цели (Р-766) — после
+  //     сроков: тоже дело недели, а не сезона.
+  out.push(...extra);
 
   // 3. Что работает лучше и когда: тип с наибольшим средним чеком и месяцы
   //    пика сезона. Это и есть прямой ответ на вопрос заказчика.
@@ -1006,31 +1020,27 @@ export function conclusions(
     });
   }
 
-  // 5. Цена назначается по случаю: выравнивание к собственной медиане.
-  const scattered = productRows.filter((product) => product.needsPriceList && product.orders >= 3);
+  // 5. Разброс чека вида — повод проверить, объясняется ли он темой и
+  //    сложностью работ; медиана и диапазон — ориентир для Задания, а не
+  //    цена. Стоимость не унифицируется: сумму работы определяет Задание
+  //    (П-8, П-9, Р-765). Условие прежнее (Р-350); оценки эффекта нет —
+  //    у проверки честной величины нет, а «выравнивание к медиане» и было
+  //    единой ценой вида.
+  const scattered = productRows.filter(
+    (product): product is ProductRow & { medianCheck: bigint; variation: number } =>
+      product.needsPriceList && product.orders >= 3 && product.medianCheck !== null && product.variation !== null,
+  );
   if (scattered.length > 0) {
-    const uplift = sum(
-      scattered.map((product) =>
-        product.medianCheck !== null &&
-        product.averageCheck !== null &&
-        product.medianCheck > product.averageCheck
-          ? (product.medianCheck - product.averageCheck) * BigInt(product.orders)
-          : 0n,
-      ),
-    );
     out.push({
       area: 'Продукт',
-      title: 'Вывести прайс там, где цена гуляет',
-      text:
-        `Разброс чека выше 40 % у позиций: ${scattered
-          .map((product) => `${product.typeName} (${Math.round((product.variation ?? 0) * 100)} %)`)
-          .join(', ')}. Одна и та же работа продаётся по разной цене без видимой причины.`,
+      title: 'Проверить разброс чека по видам работ',
+      text: `${scattered.map((product) => `${priceFacts(product, moneyWords)}.`).join(' ')} ${PRICE_GUIDE_NO_SUMS}.`,
       action:
-        'Назначить по этим позициям базовую цену — собственную медиану — и отклоняться от неё ' +
-        'только письменно, с причиной.',
+        'Проверить по каждому виду, объясняется ли разброс темой и сложностью работ. Сумму работы ' +
+        'по-прежнему определяет Задание по оценке темы и сложности; единая цена вида не назначается.',
       confidence: 'risky',
       term: 'месяц',
-      effect: uplift > 0n ? uplift : null,
+      effect: null,
       next: NEXT.price,
     });
   }
@@ -1108,6 +1118,7 @@ export function verdict(
   rows: readonly ProjectRow[],
   controlDate: Date,
   since: Date = ANALYTICS_SINCE_DEFAULT,
+  extra: readonly Conclusion[] = [],
 ): Verdict | null {
   if (rows.length === 0) return null;
 
@@ -1115,7 +1126,7 @@ export function verdict(
   const debts = receivables(rows, controlDate).filter((debt) => (debt.overdueDays ?? 0) > 0);
   const overdueSum = sum(debts.map((debt) => debt.debt));
   const late = lateOpen(rows, controlDate);
-  const advice = conclusions(rows, controlDate, since);
+  const advice = conclusions(rows, controlDate, since, extra);
 
   // «Действующих» — идущие и приостановленные, как на главной и во
   // вкладке перечня; «в работе» здесь прежде значило одни идущие, а на

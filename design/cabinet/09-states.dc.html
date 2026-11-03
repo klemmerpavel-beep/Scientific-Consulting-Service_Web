@@ -51,6 +51,10 @@ body{margin:0;background:var(--pd-surface-quiet);min-height:100dvh;display:flex;
 /* История работы длиннее прочих свёрток: по ней разбирают ход дела, и
    двух строк за раз для этого мало (решение Р-197). */
 .cab-board-main .cab-fold-tall{max-height:340px}
+/* Свёртка внутри свёртки («Профиль куратора» в «О работе», решение Р-764)
+   растёт по содержимому: прокручивается внешнее тело, а не два окна одно
+   в другом. */
+.cab-board-main .cab-fold-body .cab-fold-body{max-height:none;overflow:visible}
 main{flex:1}
 h1,h2,h3{text-wrap:balance;margin:0}
 h1,h2,h3,p,li,td,th,a,label,span{overflow-wrap:break-word}

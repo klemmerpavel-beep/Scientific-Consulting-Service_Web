@@ -12,6 +12,7 @@ import { ButtonLink, Card, Heading, ScreenHead, Text, formatDate, plural } from 
 import { can } from '../../../../lib/cabinet/access';
 import type { CalendarRow } from '../../../../lib/cabinet/analytics/calendar';
 import { MIN_TRANSITIONS, SILENCE_DAYS } from '../../../../lib/cabinet/analytics/advice';
+import { PRICE_GUIDE, priceGuide, priceSpread, spreadPercent } from '../../../../lib/cabinet/analytics/price-guide';
 import { formatAmount } from '../../../../lib/cabinet/money';
 import { RECOMMENDATIONS_HREF, homeFor } from '../../../../lib/cabinet/nav';
 import { laneOrder, limitedLane } from '../../../../lib/cabinet/recommendation-order';
@@ -121,21 +122,22 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
 
       <Card style={{ marginBottom: 20 }} id="price">
         <BlockHead title="Цена и пакеты" open={price.filter((row) => !marks.has(row.key)).length} any={price.length > 0} />
+        {/* Ориентир, а не цена: стоимость не унифицируется — сумму работы
+            определяет Задание по оценке темы и сложности (П-8, П-9,
+            Р-765). Условие, расчёт и ключи — прежние (Р-350, Р-656). */}
         <Text muted size={13} style={{ marginBottom: 14 }}>
-          На чём основано: разброс чека вида выше 40 % при трёх и более заказах — одна и та же
-          работа продаётся по разной цене. Правило предлагает зафиксировать цену по собственной
-          медиане до начала окна продвижения вида.
+          {`На чём основано: разброс чека вида выше 40 % при трёх и более заказах. Темы и сложность работ одного вида различаются, и сумму работы определяет Задание по их оценке. Разброс — повод проверить, объясняется ли он темой и сложностью; медиана и диапазон — ${PRICE_GUIDE}.`}
         </Text>
         {price.length === 0 ? (
-          <Text muted>Цена по видам работ держится: разброс нигде не выше 40 %.</Text>
+          <Text muted>Разброс чека по видам работ нигде не выше 40 %.</Text>
         ) : (
           <CardSlider label="Рекомендации по цене и пакетам">
             {priceLane.map((row) => (
               <RecommendationCard
                 key={row.key}
-                kind="Цена вида работ"
-                title={`Зафиксировать цену «${row.typeName}» на уровне медианы ${formatAmount(row.medianCheck)}${row.before === null ? '' : ` до ${formatDate(row.before)} — начала окна продвижения`}`}
-                details={`разброс ${Math.round(row.variation * 100)} % · ${row.orders} ${plural(row.orders, 'заказ', 'заказа', 'заказов')} · средний чек ${formatAmount(row.averageCheck)}${row.min === null || row.max === null ? '' : ` · от ${formatAmount(row.min)} до ${formatAmount(row.max)}`}`}
+                kind="Чек вида работ"
+                title={priceSpread(row)}
+                details={`${priceGuide(row)} · средний чек ${formatAmount(row.averageCheck)}${row.before === null ? '' : ` · окно продвижения вида — с ${formatDate(row.before)}`}`}
                 marked={marks.has(row.key)}
               >
                 <RecommendationMarks
@@ -144,7 +146,7 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
                   back="recommendations"
                   action={markRecommendationAction}
                   assignHref={assignHref(
-                    `Подготовить базовую цену «${row.typeName}» на уровне медианы ${formatAmount(row.medianCheck)}${row.before === null ? '' : ` до ${formatDate(row.before) ?? ''}`}`,
+                    `Проверить разброс чека «${row.typeName}» (${spreadPercent(row.variation)} %): объясняется ли он темой и сложностью работ. ${priceGuide(row)}`,
                   )}
                 />
               </RecommendationCard>

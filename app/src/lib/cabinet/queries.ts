@@ -16,11 +16,12 @@ import {
 } from './access.ts';
 import { fileRefusal } from './file-guard.ts';
 import { loadCalendar } from './approval.ts';
-import { previousWorkday } from './workdays.ts';
+import { previousWorkday, workMinutesBetween } from './workdays.ts';
+import { leadFirstResponseHours } from './practice-settings.ts';
 import { clientWaitDays, turnLabel, type StageStateKey } from './stage-state.ts';
 import { curatorTasks } from './curator-tasks.ts';
 import { moscowToday, now as today } from './clock.ts';
-import { LEAD_STATUS_LABEL } from './lead-labels.ts';
+import { LEAD_STATUS_LABEL, leadNumberLabel, leadNumberQuery } from './lead-labels.ts';
 import { outcomeSince } from './outcome-lines.ts';
 import { clientUploadedAt, uploadedLast } from './works-answer.ts';
 
@@ -237,12 +238,30 @@ export async function projectByCode(actor: Actor, code: string) {
           expertProfile: { select: { degree: true, specialization: true } },
         },
       },
+      // Куратору в профиле — регалии и обезличенный профиль для свёртки
+      // «Профиль куратора» у клиента (П-1, Р-764): стаж и публикации числом
+      // по категориям. Должность, вуз, ставка и согласия не берутся (Р-418).
       expert: {
         select: {
           id: true,
           fullName: true,
           role: true,
-          expertProfile: { select: { degree: true, specialization: true, specialtyCode: true, ndaSignedAt: true } },
+          expertProfile: {
+            select: {
+              degree: true,
+              academicTitle: true,
+              specialization: true,
+              specialtyCode: true,
+              experienceYears: true,
+              pubK1: true,
+              pubK2: true,
+              pubK3: true,
+              pubRsci: true,
+              pubIntl: true,
+              pubCheckedOn: true,
+              ndaSignedAt: true,
+            },
+          },
         },
       },
       stages: { orderBy: { position: 'asc' } },
@@ -259,6 +278,28 @@ export async function projectByCode(actor: Actor, code: string) {
   });
   // Клиенту — без ФИО сотрудников и в данных, не только на экране (Р-297, ОЭ-3б).
   return withoutStaffNames(actor, project);
+}
+
+/**
+ * Сколько работ ProDisser завершено с куратором — строка обезличенного
+ * профиля (П-1, решение Р-764). Счёт по всей практике: клиент видит опыт
+ * куратора, а не свои работы, и число ничего не говорит о чужих клиентах.
+ *
+ * Отдаётся клиенту, которому куратор виден на его работе, самому куратору
+ * и руководителю. Менеджеру — `null`: по разнице с видимыми работами он
+ * узнавал бы о работах, которые выборка от него закрывает (Р-251).
+ */
+export async function curatorDoneCount(actor: Actor, expertId: string): Promise<number | null> {
+  if (actor.role === 'MANAGER') return null;
+  if (actor.role === 'CLIENT') {
+    const scope = scopeProjects(actor);
+    if (scope === null) return null;
+    const visible = await prisma.project.count({ where: { ...scope, expertId } });
+    if (visible === 0) return null;
+  } else if (actor.role === 'EXPERT' && actor.id !== expertId) {
+    return null;
+  }
+  return prisma.project.count({ where: { expertId, status: 'COMPLETED' } });
 }
 
 export async function stageById(actor: Actor, stageId: string) {
@@ -763,6 +804,27 @@ export async function leadQueue(actor: Actor, page = 1) {
 }
 
 /**
+ * Заявка, из которой заведена работа, — строка «Из заявки № 17 от …» в
+ * «О работе» практике (П-3, решение Р-763). Выборка отдельная от
+ * `projectByCode` и закрыта правом разбора заявок: клиенту после
+ * одобрения номер не показывается (Р-189, Р-362) и в данные его экрана не
+ * попадает, куратору заявки не видны. Работа из книги или заведённая
+ * вручную заявки не имеет — `null`.
+ */
+export async function projectLead(
+  actor: Actor,
+  projectId: string,
+): Promise<{ id: string; number: number; createdAt: Date } | null> {
+  if (!can(actor, 'REQUEST_MODERATE')) return null;
+  const scope = scopeLeads(actor);
+  if (scope === null) return null;
+  return prisma.lead.findFirst({
+    where: { AND: [{ projectId }, scope] },
+    select: { id: true, number: true, createdAt: true },
+  });
+}
+
+/**
  * Одна заявка для разбора.
  *
  * Разобранные заявки тоже открываются: ссылка из журнала или из письма
@@ -1148,6 +1210,9 @@ function leadWhere(actor: Actor, filter: LeadFilter) {
   if (scope === null) return null;
 
   const query = (filter.query ?? '').trim();
+  // Поиск по номеру заявки: «17», «№ 17» (П-3, решение Р-763). Число ищется
+  // и как номер, и как текст — «900» может быть и номером, и частью телефона.
+  const number = leadNumberQuery(query);
   return {
     // Условие видимости стоит в AND: поиск ниже занимает собственный OR,
     // и сложение объектов одно из условий потеряло бы.
@@ -1176,6 +1241,7 @@ function leadWhere(actor: Actor, filter: LeadFilter) {
             { topic: { contains: query, mode: 'insensitive' as const } },
             // Столбец «Тема» выводит `topic ?? need`: искать нужно и там.
             { need: { contains: query, mode: 'insensitive' as const } },
+            ...(number === null ? [] : [{ number }]),
           ],
         }),
   };
@@ -1230,6 +1296,7 @@ export async function leadList(actor: Actor, filter: LeadFilter = {}) {
     take: LEAD_LIST_PAGE_SIZE,
     select: {
       id: true,
+      number: true,
       createdAt: true,
       source: true,
       form: true,
@@ -1341,7 +1408,7 @@ export async function createCabinetRequest(
   actor: Actor,
   draft: RequestDraft,
   consentVersion: string,
-): Promise<{ id: string; authorName: string; filesLost: number }> {
+): Promise<{ id: string; number: number; authorName: string; filesLost: number }> {
   ensure(actor, 'REQUEST_CREATE');
   if (draft.topic.length === 0) throw new Error('Тема работы не указана');
   // Пределы — как у правки заявки сотрудником (`lead-work.ts`): прежде
@@ -1480,14 +1547,34 @@ export async function createCabinetRequest(
     await enqueue(prisma, {
       userId: moderator.id,
       eventKind: 'REQUEST_CREATED',
-      subject: 'Новая заявка из кабинета',
+      // Номер — тот же, что видит заявитель после отправки (П-3, Р-763).
+      subject: `Новая заявка ${leadNumberLabel(lead.number)} из кабинета`,
       body: `${user.fullName}: ${draft.topic}\nЗаявка ждёт в очереди модерации.`,
       dedupKey: `lead:${lead.id}:created:${moderator.id}`,
       path: `/cabinet/manage/leads/${lead.id}`,
     });
   }
 
-  return { id: lead.id, authorName: user.fullName, filesLost };
+  return { id: lead.id, number: lead.number, authorName: user.fullName, filesLost };
+}
+
+/**
+ * Номер своей заявки из кабинета — для блока «Что будет дальше» после
+ * отправки (П-3, решение Р-763). Номер приходит адресом страницы и
+ * сверяется с базой: заявка из кабинета на почту этой учётной записи, ещё
+ * не ставшая работой. После одобрения клиенту номер не показывается
+ * (Р-189, Р-362): работа — по названию, договор — своим номером. Чужой
+ * номер, как и свой одобренный, — `null`: блок выходит без номера.
+ */
+export async function ownRequestNumber(actor: Actor, number: number): Promise<number | null> {
+  if (!can(actor, 'REQUEST_CREATE') || !Number.isSafeInteger(number) || number < 1 || number > 999_999_999) return null;
+  const user = await prisma.user.findUnique({ where: { id: actor.id }, select: { email: true } });
+  if (user === null) return null;
+  const lead = await prisma.lead.findFirst({
+    where: { number, source: 'cabinet', projectId: null, contact: { equals: user.email, mode: 'insensitive' } },
+    select: { number: true },
+  });
+  return lead?.number ?? null;
 }
 
 /**
@@ -1540,8 +1627,11 @@ export async function pendingReview(
  * руководителем, и чужие работы заняли бы его делами других. Заявки — общие
  * для всех, кто их разбирает. У каждого дела — экран, где его закрывают, и
  * условие, при котором оно исчезает само.
+ *
+ * `at` — мгновение расчёта: экраны его не передают, проверки рабочих часов
+ * дела «заявка ждёт ответа» задают его явно (решение Р-766).
  */
-export async function todayItems(actor: Actor) {
+export async function todayItems(actor: Actor, at: Date = new Date()) {
   const empty = {
     // Клиент — в пояснении дела: одноимённые работы различаются по нему
     // (решение Р-721).
@@ -1552,11 +1642,13 @@ export async function todayItems(actor: Actor) {
     noNda: [] as { code: string; title: string; expert: string; client: string }[],
     ndaWaiting: [] as { id: string; fullName: string; requestedAt: Date | null; works: number }[],
     week: [] as { key: string; title: string; dueOn: Date; href: string; turn: string | null }[],
+    // Новая заявка без первого ответа дольше цели в рабочих часах — раньше
+    // дела «без ответа дольше рабочего дня» (п. 2.8 задания, Р-766).
+    waitingLeads: [] as { id: string; name: string | null; createdAt: Date; hours: number }[],
     lateLeads: [] as { id: string; name: string | null; createdAt: Date }[],
     reviewLeads: [] as { id: string; name: string | null; status: string; since: Date }[],
   };
   if (!can(actor, 'REQUEST_MODERATE')) return empty;
-  const at = new Date();
   const today = moscowToday(at);
   const DAY = 86_400_000;
   const inWeek = new Date(today.getTime() + 7 * DAY);
@@ -1714,9 +1806,12 @@ export async function todayItems(actor: Actor) {
   const leadScope = scopeLeads(actor) ?? {};
   const calendar = await loadCalendar();
   const lastWorkday = previousWorkday(today, calendar);
-  const [late, review] = await Promise.all([
+  // Конец предыдущего рабочего дня по Москве: заявка, пришедшая до него, —
+  // дело Р-304 «без ответа дольше рабочего дня».
+  const lateBefore = new Date(lastWorkday.getTime() + DAY - 3 * 3_600_000);
+  const [late, review, fresh, target] = await Promise.all([
     prisma.lead.findMany({
-      where: { ...leadScope, status: 'NEW', projectId: null, form: { not: 'review' }, createdAt: { lt: new Date(lastWorkday.getTime() + DAY - 3 * 3_600_000) } },
+      where: { ...leadScope, status: 'NEW', projectId: null, form: { not: 'review' }, createdAt: { lt: lateBefore } },
       orderBy: { createdAt: 'asc' },
       take: 20,
       select: { id: true, name: true, createdAt: true },
@@ -1727,9 +1822,33 @@ export async function todayItems(actor: Actor) {
       take: 20,
       select: { id: true, name: true, status: true, statusChangedAt: true },
     }),
+    // Новые заявки моложе дела Р-304 без первого ответа: первый ответ —
+    // первая смена состояния менеджером из «Новой» (п. 2.8 задания, Р-766).
+    prisma.lead.findMany({
+      where: {
+        ...leadScope,
+        status: 'NEW',
+        projectId: null,
+        form: { not: 'review' },
+        firstResponseAt: null,
+        createdAt: { gte: lateBefore, lte: at },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 20,
+      select: { id: true, name: true, createdAt: true },
+    }),
+    leadFirstResponseHours(),
   ]);
+  // Ждёт ответа — рабочими часами 10:00–19:00 МСК по календарю практики
+  // (П-18, Р-784): заявка, пришедшая вечером, ждёт с утра следующего
+  // рабочего дня. Одна заявка — одно дело: когда наступает дело Р-304,
+  // это гаснет.
+  const waiting = fresh
+    .map((lead) => ({ ...lead, hours: Math.floor(workMinutesBetween(lead.createdAt, at, calendar) / 60) }))
+    .filter((lead) => lead.hours >= target);
   return {
     ...out,
+    waitingLeads: waiting,
     lateLeads: late,
     reviewLeads: review.map((lead) => ({ id: lead.id, name: lead.name, status: lead.status, since: lead.statusChangedAt })),
   };

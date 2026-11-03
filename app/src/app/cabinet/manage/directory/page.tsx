@@ -50,7 +50,13 @@ import {
   saveStageTemplate,
   saveType,
 } from '../../actions';
-import { analyticsSince, confidenceThresholds, reactionDays } from '../../../../lib/cabinet/practice-settings';
+import {
+  LEAD_RESPONSE_DEFAULT,
+  analyticsSince,
+  confidenceThresholds,
+  leadFirstResponseHours,
+  reactionDays,
+} from '../../../../lib/cabinet/practice-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,6 +111,8 @@ export default async function DirectoryScreen({
   const colors = tab === 'colors' ? await listColorMap(actor) : [];
   const calendar = tab === 'calendar' ? await listCalendarDays(actor) : [];
   const reaction = tab === 'calendar' ? await reactionDays() : 1;
+  // Цель первого ответа на заявку (п. 2.8 задания, решение Р-766).
+  const firstResponse = tab === 'calendar' ? await leadFirstResponseHours() : LEAD_RESPONSE_DEFAULT;
   // Дата начала учёта и пороги уверенности календаря продвижения
   // (требование РК-16, решение Р-349).
   const since = tab === 'calendar' ? await analyticsSince() : null;
@@ -395,15 +403,28 @@ export default async function DirectoryScreen({
               (требование РК-05, решение Р-337). Кнопка — отдельной строкой
               под полем: в ряду по низу она вставала напротив подсказки
               (решение Р-715). */}
+          {/* Рядом — цель первого ответа на заявку в рабочих часах: обещание
+              сайта «ответит в течение рабочего дня» она не меняет (п. 2.8
+              задания, решение Р-766). Оба поля сохраняются вместе; отказ
+              возвращает набранное (решение владельца к Р-766). */}
           <Card style={{ marginBottom: 20 }}>
             <Form action={saveReaction}>
-              <Field
-                label="Срок реакции, рабочих дней"
-                name="days"
-                type="number"
-                defaultValue={String(reaction)}
-                hint="Сообщение клиента, публикация, заявка или сданный этап, не разобранные за этот срок, поднимаются руководителю в «Контроль»."
-              />
+              <FormRow>
+                <Field
+                  label="Срок реакции, рабочих дней"
+                  name="days"
+                  type="number"
+                  defaultValue={draft.days ?? String(reaction)}
+                  hint="Сообщение клиента, публикация, заявка или сданный этап, не разобранные за этот срок, поднимаются руководителю в «Контроль»."
+                />
+                <Field
+                  label="Первый ответ на заявку, рабочих часов"
+                  name="hours"
+                  type="number"
+                  defaultValue={draft.hours ?? String(firstResponse)}
+                  hint="Внутренняя цель, 10:00–19:00 МСК по календарю ниже. Новая заявка без ответа дольше неё — дело «Заявка ждёт ответа» на «Сегодня». Обещание сайта — ответ в течение рабочего дня — прежнее."
+                />
+              </FormRow>
               <FormActions>
                 <Button tone="quiet">Сохранить</Button>
               </FormActions>

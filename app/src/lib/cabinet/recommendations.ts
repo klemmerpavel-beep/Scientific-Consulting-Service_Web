@@ -19,6 +19,7 @@ import { prisma } from '../db.ts';
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { priceAdvice, returnAdvice, type PriceAdvice, type ReturnAdvice } from './analytics/advice.ts';
+import { priceMonth } from './analytics/price-guide.ts';
 import { calendarKey, calendarNow, legacyCalendarKey, promoCalendar, seasonMarks, type CalendarRow } from './analytics/calendar.ts';
 import { loadRows } from './analytics/data.ts';
 import { leadRows, leadsForType } from './analytics/leads.ts';
@@ -198,7 +199,19 @@ export interface Recommendations {
   /** Неотмеченных рекомендаций — «Ждут решения» на экране. */
   readonly unmarked: number;
   /** «Рекомендация месяца» — главная из неотмеченных. */
-  readonly month: { readonly title: string; readonly href: string } | null;
+  readonly month: MonthAdvice | null;
+}
+
+/**
+ * «Рекомендация месяца»: строка и, у цены, вторая фраза — «Медиана и
+ * диапазон — ориентир для Задания, а не цена» (П-9, Р-765). Сумм нет ни в
+ * одной: строка уходит и в письмо `HEAD_MONTHLY` (Р-350).
+ */
+export interface MonthAdvice {
+  readonly title: string;
+  readonly href: string;
+  /** Вторая фраза рекомендации; у календаря и возврата клиентов её нет. */
+  readonly note?: string;
 }
 
 /** Согласие на рассылку по клиентам — из последней заявки, ставшей его работой (ОР-10). */
@@ -247,7 +260,7 @@ export async function recommendationsFor(actor: Actor, at: Date = clockNow()): P
   const lead = calendar.now[0];
   const firstPrice = open(price)[0];
   const firstReturn = open(returns)[0];
-  const month =
+  const month: MonthAdvice | null =
     lead !== undefined
       ? {
           title:
@@ -257,7 +270,11 @@ export async function recommendationsFor(actor: Actor, at: Date = clockNow()): P
           href: '/cabinet/manage/recommendations/calendar',
         }
       : firstPrice !== undefined
-        ? { title: `Зафиксировать цену «${firstPrice.typeName}» по медиане`, href: '/cabinet/manage/recommendations#price' }
+        ? {
+            // Разброс — повод проверить, а не выровнять цену (П-9, Р-765).
+            ...priceMonth(firstPrice),
+            href: '/cabinet/manage/recommendations#price',
+          }
         : firstReturn !== undefined
           ? { title: `Вернуться к клиенту: ${firstReturn.clientName}`, href: '/cabinet/manage/recommendations#returns' }
           : null;

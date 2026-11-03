@@ -29,10 +29,13 @@ const lead = {
 };
 
 describe('письмо о заявке', () => {
-  const mail = leadMail(lead as never, 'cmlead0001');
+  const mail = leadMail(lead as never, 'cmlead0001', 17);
 
   it('есть текстовая версия с полями и ссылкой на кабинет', () => {
-    assert.match(mail.text, /^Новая заявка с сайта/);
+    // Номер заявки — тот же, что у заявителя в письме «Заявка получена»
+    // (П-3, решение Р-763).
+    assert.match(mail.text, /^Новая заявка № 17 с сайта/);
+    assert.match(mail.subject, /^Заявка № 17 · Аспирантам/);
     assert.match(mail.text, /Специальность: 2\.3\.1/);
     assert.match(mail.text, /Открыть в кабинете: https:\/\/prodisser\.ru\/cabinet\/manage\/leads\/cmlead0001/);
   });
@@ -45,9 +48,9 @@ describe('письмо о заявке', () => {
   it('чужой текст экранирован в HTML и не рвёт тему', () => {
     assert.ok(mail.html.includes('Мария &lt;b&gt;Иванова&lt;/b&gt;'));
     assert.ok(!mail.html.includes('<b>Иванова'));
-    const broken = leadMail({ ...lead, name: 'Иван\r\nBcc: x@evil.test' } as never, 'id');
+    const broken = leadMail({ ...lead, name: 'Иван\r\nBcc: x@evil.test' } as never, 'id', 3);
     assert.ok(!/[\r\n]/.test(broken.subject));
-    assert.equal(broken.subject, 'Заявка · Аспирантам · Иван Bcc: x@evil.test');
+    assert.equal(broken.subject, 'Заявка № 3 · Аспирантам · Иван Bcc: x@evil.test');
   });
 });
 
@@ -55,6 +58,7 @@ describe('письмо об отзыве', () => {
   const mail = leadMail(
     { ...lead, form: 'review', contact: '', name: 'соискатель, технические науки', message: 'Разобрали вторую главу', publish: true } as never,
     'cmrev0001',
+    18,
   );
 
   it('называется отзывом, роль — не имя', () => {

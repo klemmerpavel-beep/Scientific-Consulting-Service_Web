@@ -447,7 +447,7 @@ export const LEAD_RECEIVED_PER_HOUR = 30;
 export async function enqueueLeadReceived(leadId: string): Promise<boolean> {
   const lead = await prisma.lead.findUnique({
     where: { id: leadId },
-    select: { id: true, form: true, status: true, contactKind: true, contact: true },
+    select: { id: true, number: true, form: true, status: true, contactKind: true, contact: true },
   });
   if (lead === null || lead.status === 'SPAM' || lead.form === 'review') return false;
   const address = leadAddress(lead);
@@ -477,7 +477,8 @@ export async function enqueueLeadReceived(leadId: string): Promise<boolean> {
     }),
   ]);
   if (recent > 0 || hourly >= LEAD_RECEIVED_PER_HOUR) return false;
-  const { subject, body } = receivedLetter();
+  // Номер заявки — в теме и в тексте (П-3, решение Р-763).
+  const { subject, body } = receivedLetter(lead.number);
   return enqueueToLead(prisma, { leadId: lead.id, eventKind: 'LEAD_RECEIVED', subject, body, dedupKey: `lead:${lead.id}:received` });
 }
 

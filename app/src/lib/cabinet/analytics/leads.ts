@@ -11,13 +11,20 @@
 
 import { prisma } from '../../db.ts';
 import { ensure, type Actor } from '../access.ts';
+import { loadCalendar } from '../approval.ts';
 import { moscowToday } from '../clock.ts';
+import { confidenceThresholds, leadFirstResponseHours } from '../practice-settings.ts';
+import { responseSpeed, type ResponseSpeed } from './response.ts';
 
 export interface LeadRow {
   readonly createdAt: Date;
   readonly source: string;
   readonly direction: string | null;
   readonly converted: boolean;
+  /** Первый ответ — первая смена состояния из «Новой» (п. 2.8, Р-766). */
+  readonly firstResponseAt?: Date | null;
+  /** «Новая» без первого ответа — ждёт его сейчас (Р-766). */
+  readonly waiting?: boolean;
 }
 
 /** Направление формы сайта → коды видов работ справочника. */
@@ -33,14 +40,32 @@ export async function leadRows(actor: Actor): Promise<LeadRow[]> {
   const rows = await prisma.lead.findMany({
     where: { status: { not: 'SPAM' }, form: { not: 'review' } },
     orderBy: { createdAt: 'asc' },
-    select: { createdAt: true, source: true, direction: true, projectId: true },
+    select: { createdAt: true, source: true, direction: true, projectId: true, status: true, firstResponseAt: true },
   });
   return rows.map((row) => ({
     createdAt: row.createdAt,
     source: row.source,
     direction: row.direction,
     converted: row.projectId !== null,
+    firstResponseAt: row.firstResponseAt,
+    waiting: row.status === 'NEW' && row.firstResponseAt === null && row.projectId === null,
   }));
+}
+
+/**
+ * Скорость первого ответа за 90 дней по заявкам практики — для обзора
+ * «Аналитики» и «Что делать» отчёта (п. 2.8 задания, Р-766). Цель,
+ * календарь и порог «уверенно» (общий для выводов, «Справочники», Р-349) —
+ * настройки практики.
+ */
+export async function leadResponse(actor: Actor, controlDate: Date, rows?: readonly LeadRow[]): Promise<ResponseSpeed> {
+  const [leads, calendar, target, thresholds] = await Promise.all([
+    rows === undefined ? leadRows(actor) : Promise.resolve(rows),
+    loadCalendar(),
+    leadFirstResponseHours(),
+    confidenceThresholds(),
+  ]);
+  return responseSpeed(leads, controlDate, target, calendar, thresholds.sure);
 }
 
 export interface LeadMonth {

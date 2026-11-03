@@ -30,12 +30,13 @@ import {
   clip,
   formatDate,
   formatDay,
+  formatTime,
   plural,
   turnLabel,
   Pager,
 } from '../../../components/cabinet/ui';
 import { can } from '../../../lib/cabinet/access';
-import { leadSourceLabel } from '../../../lib/cabinet/lead-labels';
+import { leadNumberLabel, leadSourceLabel } from '../../../lib/cabinet/lead-labels';
 import { formatAmount, formatRounded, outstandingOf, workMoneyNote, type OpenTranche } from '../../../lib/cabinet/money';
 import type { StageStateKey } from '../../../lib/cabinet/stage-state';
 import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
@@ -620,6 +621,22 @@ export default async function ManageQueue({
       // Сразу на форме «Куратор», как кнопка под названием (Р-743; Р-487).
       href: `/cabinet/projects/${row.code}?manage=1#manage-expert`,
     })),
+    // Цель первого ответа — рабочие часы, обещание сайта — рабочий день:
+    // дело «ждёт ответа» встаёт раньше дела Р-304 и гаснет, когда оно
+    // наступает (п. 2.8 задания, решение Р-766).
+    ...parts.waitingLeads.map((lead) => ({
+      key: `waitlead-${lead.id}`,
+      kind: 'lead' as const,
+      step: 0 as const,
+      // Заявка — заголовком, вид дела — пометкой, как у дела Р-304 (Р-182).
+      title: lead.name ?? 'Без имени',
+      mark: `заявка ждёт ответа ${lead.hours} ч`,
+      urgent: false,
+      // Время прихода — по Москве (Р-470): цель считается часами.
+      detail: `пришла ${formatDay(lead.createdAt)} в ${formatTime(lead.createdAt)} МСК · считаются рабочие часы`,
+      todo: 'Ответить заявителю и отметить состояние заявки',
+      href: `/cabinet/manage/leads/${lead.id}`,
+    })),
     ...parts.lateLeads.map((lead) => ({
       key: `latelead-${lead.id}`,
       kind: 'lead' as const,
@@ -1033,7 +1050,9 @@ export default async function ManageQueue({
                 {lead.name ?? 'Без имени'}
               </a>
               <Text muted size={13}>
-                {leadSourceLabel(lead.source)} · {formatDay(lead.createdAt)}
+                {/* Номер — первым: по нему заявитель называет обращение
+                    (П-3, решение Р-763). */}
+                {leadNumberLabel(lead.number)} · {leadSourceLabel(lead.source)} · {formatDay(lead.createdAt)}
                 {lead.topic === null ? '' : ` · ${lead.topic}`}
               </Text>
               <Text size={13}>{lead.contact}</Text>
@@ -1634,8 +1653,11 @@ export default async function ManageQueue({
                   </Text>
                 ) : (
                   <div style={{ marginTop: 12, display: 'grid', gap: 2 }}>
+                    {/* Рекомендация месяца — шаблон с названием вида из
+                        справочника; фраза о разбросе чека не обрывается
+                        на «проверьте, …» (П-9, Р-765). Дела — по 90 знаков. */}
                     <a href={group.first.href} className="cab-mark" style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600 }}>
-                      {clip(group.first.title, 90)}
+                      {clip(group.first.title, group.key === 'chance' ? 160 : 90)}
                     </a>
                     {group.first.note === null ? null : (
                       <Text muted size={13}>

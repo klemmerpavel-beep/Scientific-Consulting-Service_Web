@@ -36,7 +36,7 @@ const lead = {
 };
 
 describe('сигнал о заявке с сайта', () => {
-  const text = telegramSignal(lead as never, 'cmu8f230k00054y7d7vdfg843');
+  const text = telegramSignal(lead as never, 'cmu8f230k00054y7d7vdfg843', 17);
 
   it('несёт имя и контакт заявителя, чтобы связаться сразу (Р-547)', () => {
     assert.ok(text.includes(`<b>Имя:</b> ${lead.name}`), text);
@@ -44,18 +44,18 @@ describe('сигнал о заявке с сайта', () => {
   });
 
   it('телефон назван телефоном', () => {
-    const phone = telegramSignal({ ...lead, contactKind: 'phone', contact: '+7 916 123-45-67' } as never, 'x1');
+    const phone = telegramSignal({ ...lead, contactKind: 'phone', contact: '+7 916 123-45-67' } as never, 'x1', 1);
     assert.ok(phone.includes('<b>Телефон:</b> +7 916 123-45-67'), phone);
     assert.ok(!phone.includes('<b>Почта:</b>'), phone);
   });
 
   it('без имени — «не указано», а не пустая строка', () => {
-    const anonymous = telegramSignal({ ...lead, name: undefined } as never, 'x2');
+    const anonymous = telegramSignal({ ...lead, name: undefined } as never, 'x2', 2);
     assert.ok(anonymous.includes('<b>Имя:</b> не указано'), anonymous);
   });
 
   it('имя и контакт экранированы: разметку из формы Telegram не исполняет', () => {
-    const tricky = telegramSignal({ ...lead, name: '<b>Х</b> & Ко', contact: 'a<b>@x.ru' } as never, 'x3');
+    const tricky = telegramSignal({ ...lead, name: '<b>Х</b> & Ко', contact: 'a<b>@x.ru' } as never, 'x3', 3);
     assert.ok(tricky.includes('&lt;b&gt;Х&lt;/b&gt; &amp; Ко'), tricky);
     assert.ok(tricky.includes('a&lt;b&gt;@x.ru'), tricky);
   });
@@ -67,16 +67,24 @@ describe('сигнал о заявке с сайта', () => {
   });
 
   it('отзыв — с подписью автора и без контакта (Р-110)', () => {
-    const review = telegramSignal({ ...lead, form: 'review', name: 'аспирант', contact: '' } as never, 'x4');
+    const review = telegramSignal({ ...lead, form: 'review', name: 'аспирант', contact: '' } as never, 'x4', 4);
     assert.ok(review.includes('<b>Новый отзыв</b>'), review);
+    // Отзыв — не заявка: номера в сигнале у него нет (решение Р-763).
+    assert.ok(!review.includes('№'), review);
     assert.ok(review.includes('<b>Автор:</b> аспирант'), review);
     assert.ok(!review.includes('<b>Почта:</b>') && !review.includes('<b>Телефон:</b>'), review);
+  });
+
+  it('заголовок называет номер заявки — тот же, что в письме заявителю (П-3, Р-763)', () => {
+    assert.ok(text.startsWith('<b>Новая заявка № 17</b>\n'), text);
+    // Идентификатор записи — только в ссылке: второй «номер» рядом с
+    // настоящим путал бы.
+    assert.ok(!text.includes('<code>'), text);
   });
 
   it('говорит, откуда заявка и что открывать', () => {
     assert.ok(text.includes('Компаниям') || text.includes('Бизнесу'), text);
     assert.ok(text.includes('hero'), 'не указана форма');
-    assert.ok(text.includes('cmu8f230k00054y7d7vdfg843'), 'нет номера заявки');
     assert.ok(
       text.includes('/cabinet/manage/leads/cmu8f230k00054y7d7vdfg843'),
       'нет прямой ссылки на карточку заявки (Р-276)',

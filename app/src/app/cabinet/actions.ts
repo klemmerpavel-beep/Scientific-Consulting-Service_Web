@@ -46,7 +46,13 @@ import {
   type MaterialKind,
 } from '../../lib/cabinet/materials';
 import { sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages';
-import { saveAnalyticsSince, saveConfidenceThresholds, saveReactionDays } from '../../lib/cabinet/practice-settings';
+import {
+  saveAnalyticsSince,
+  saveConfidenceThresholds,
+  saveReactionDays,
+  saveResponseTerms,
+  saveShowcaseConsentText,
+} from '../../lib/cabinet/practice-settings';
 import { markRecommendation } from '../../lib/cabinet/recommendations';
 import { createAssignment, setAssignmentStatus } from '../../lib/cabinet/assignments';
 import { addExpense, removeExpense } from '../../lib/cabinet/profit';
@@ -71,6 +77,7 @@ import {
   saveCalendarDay,
   saveRegalia,
   saveCuratorProfile,
+  saveOwnConsent,
   removeStageTemplateItem,
   saveServiceType,
   saveStageTemplateItem,
@@ -85,6 +92,7 @@ import {
   type Role,
 } from '../../lib/cabinet/admin';
 import type { AccessLinkState } from '../../components/cabinet/AccessLink';
+import type { ConsentKind } from '../../lib/cabinet/curator-consents';
 import type { RecommendationMarkStatus } from '../../generated/prisma/client.js';
 import {
   rulesFor,
@@ -1103,6 +1111,7 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
   // (требование Т-22, решения Р-279, Р-296).
   let filesLost = 0;
   let briefLost = 0;
+  let number = 0;
   let failure: string | null = null;
   try {
     if (brief !== '') {
@@ -1110,7 +1119,7 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
       if (attachment === null) briefLost = 1;
       else files.unshift(attachment);
     }
-    ({ filesLost } = await createCabinetRequest(
+    ({ filesLost, number } = await createCabinetRequest(
       actor,
       {
         topic: String(form.get('topic') ?? '').trim(),
@@ -1154,7 +1163,9 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
 
   if (brief !== '') await dropBrief(actor, brief);
   const lost = filesLost + briefLost;
-  redirect(lost > 0 ? `/cabinet/request?sent=1&lost=${lost}` : '/cabinet/request?sent=1');
+  // Номер заявки — адресом: экран сверит его с базой и покажет в блоке
+  // «Что будет дальше» (П-3, решение Р-763).
+  redirect(lost > 0 ? `/cabinet/request?sent=${number}&lost=${lost}` : `/cabinet/request?sent=${number}`);
 }
 
 /**
@@ -2008,7 +2019,10 @@ export async function requestNdaAction(): Promise<void> {
   redirect(homeFor(actor));
 }
 
-/** Профиль куратора — правит руководитель (требование Э-11). */
+/**
+ * Профиль куратора — правит руководитель (требование Э-11; П-1, решение
+ * Р-764). Согласий в форме нет: их отмечает сам куратор (П-12, Р-768).
+ */
 export async function updateCuratorProfile(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const field = (name: string) => String(form.get(name) ?? '');
@@ -2022,12 +2036,59 @@ export async function updateCuratorProfile(form: FormData): Promise<void> {
       specialization: field('specialization'),
       university: field('university'),
       defaultPayout: field('defaultPayout'),
+      // Обезличенный профиль куратора (П-1; решение Р-764).
+      experienceYears: field('experienceYears'),
+      pubK1: field('pubK1'),
+      pubK2: field('pubK2'),
+      pubK3: field('pubK3'),
+      pubRsci: field('pubRsci'),
+      pubIntl: field('pubIntl'),
+      pubCheckedOn: field('pubCheckedOn'),
     });
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить профиль куратора');
   }
   if (failure !== null) redirect(await withError('/cabinet/manage/users', failure));
   redirect('/cabinet/manage/users');
+}
+
+/**
+ * Текст согласия куратора на витрину кураторов (ст. 10.1 152-ФЗ) — вносит
+ * руководитель, текст согласует юрист (П-12, решение Р-768).
+ */
+export async function updateShowcaseConsentText(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const text = String(form.get('text') ?? '');
+  let failure: string | null = null;
+  try {
+    await saveShowcaseConsentText(actor, text);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось сохранить текст согласия');
+  }
+  // Отказ — в свёртке текста, с набранным (решения Р-543, Р-706).
+  if (failure !== null) {
+    redirect(await withError('/cabinet/manage/users?text=1', failure, { anchor: 'showcase-text', draft: { text } }));
+  }
+  redirect('/cabinet/manage/users#showcase-text');
+}
+
+/**
+ * Своё согласие куратора — дать или отозвать (П-12, решение Р-768). Форма
+ * несёт свёртку текста, который куратор прочитал на экране.
+ */
+export async function saveConsent(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  await settingsStep(
+    () =>
+      saveOwnConsent(actor, {
+        // Вид проверяет `saveOwnConsent`: чужое значение — отказ.
+        kind: String(form.get('kind') ?? '') as ConsentKind,
+        give: form.get('give') === 'yes',
+        seenHash: String(form.get('textHash') ?? ''),
+      }),
+    'Не удалось сохранить согласие',
+  );
+  redirect('/cabinet/settings?saved=1#consents');
 }
 
 export async function updateExpertNda(form: FormData): Promise<void> {
@@ -2109,17 +2170,28 @@ export async function closeHeadCheck(form: FormData): Promise<void> {
   redirect(back);
 }
 
-/** Срок реакции в рабочих днях (требование РК-05, решение Р-337). */
+/**
+ * Срок реакции в рабочих днях (требование РК-05, решение Р-337) и цель
+ * первого ответа на заявку в рабочих часах (п. 2.8 задания, Р-766) — одна
+ * форма, одна кнопка под обоими полями (Р-715). Сохраняются вместе: ошибка
+ * в любом поле не записывает ничего, а отказ возвращает набранное в оба
+ * поля (решение владельца к Р-766). Форма прежней сборки без поля цели
+ * сохраняет один срок реакции.
+ */
 export async function saveReaction(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const back = '/cabinet/manage/directory?tab=calendar';
   let failure: string | null = null;
   try {
-    await saveReactionDays(actor, String(form.get('days') ?? ''));
+    if (form.has('hours')) {
+      await saveResponseTerms(actor, String(form.get('days') ?? ''), String(form.get('hours') ?? ''));
+    } else {
+      await saveReactionDays(actor, String(form.get('days') ?? ''));
+    }
   } catch (error) {
-    failure = reasonOf(error, 'Не удалось сохранить срок реакции');
+    failure = reasonOf(error, 'Не удалось сохранить сроки ответа');
   }
-  if (failure !== null) redirect(await withError(back, failure));
+  if (failure !== null) redirect(await withError(back, failure, { draft: fieldsOf(form, form.has('hours') ? ['days', 'hours'] : ['days']) }));
   redirect(back);
 }
 

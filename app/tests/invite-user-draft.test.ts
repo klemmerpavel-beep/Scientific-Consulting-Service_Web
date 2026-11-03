@@ -43,7 +43,8 @@ describe('отказ заведения учётной записи не тер�
     assert.match(fold.slice(notice, notice + 80), /\{failure\}/u);
     // Над свёрткой та же причина не выводится второй раз.
     const top = page.slice(0, start);
-    assert.match(top, /failure === undefined \|\| inviteFailed \? null : \(/u);
+    // Отказ текста согласия на витрину тоже стоит в своей свёртке (Р-768).
+    assert.match(top, /failure === undefined \|\| inviteFailed \|\| textFailed \? null : \(/u);
     assert.match(page, /const inviteFailed = flags\.new === '1' && failure !== undefined;/u);
   });
 });

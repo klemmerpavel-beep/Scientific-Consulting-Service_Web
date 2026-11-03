@@ -44,6 +44,8 @@ import {
 } from "../../../../lib/cabinet/analytics/metrics";
 import { moscowToday, now as clockNow } from "../../../../lib/cabinet/clock";
 import { analyticsSince } from "../../../../lib/cabinet/practice-settings";
+import { leadResponse } from "../../../../lib/cabinet/analytics/leads";
+import { responseConclusion } from "../../../../lib/cabinet/analytics/response";
 
 export const dynamic = "force-dynamic";
 
@@ -164,8 +166,12 @@ export default async function ReportScreen({
   const debtSum = debts.reduce((acc, debt) => acc + debt.debt, 0n);
   // Сезонная норма — от даты начала учёта практики (РК-16, Р-349; ОР-6).
   const since = await analyticsSince();
-  const advice = conclusions(all, today, since);
-  const digest = verdict(all, today, since);
+  // Первый ответ на заявку дольше цели — тот же вывод, что в обзоре
+  // «Аналитики» (п. 2.8 задания, решение Р-766).
+  const speedAdvice = responseConclusion(await leadResponse(actor, today));
+  const extra = speedAdvice === null ? [] : [speedAdvice];
+  const advice = conclusions(all, today, since, extra);
+  const digest = verdict(all, today, since, extra);
 
   return (
     <Shell actor={actor} current="/cabinet/manage">

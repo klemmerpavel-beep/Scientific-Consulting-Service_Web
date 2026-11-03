@@ -12,22 +12,23 @@ import { CHANNEL_OFF } from '../src/lib/cabinet/events.ts';
 import { EVENT_LABEL } from '../src/lib/cabinet/events.ts';
 
 describe('письмо об отказе', () => {
-  it('называет человека, тему и причину словами менеджера', () => {
-    const { subject, body } = declineLetter('Анна', 'Моделирование кубитов', 'Тема вне наших направлений.');
-    assert.equal(subject, 'Ответ на заявку ProDisser');
+  it('называет человека, номер заявки, тему и причину словами менеджера', () => {
+    const { subject, body } = declineLetter(17, 'Анна', 'Моделирование кубитов', 'Тема вне наших направлений.');
+    // Номер — тот же, что в письме «Заявка получена» (П-3, решение Р-763).
+    assert.equal(subject, 'Ответ на заявку № 17 — ProDisser');
     assert.ok(body.startsWith('Здравствуйте, Анна.'));
-    assert.ok(body.includes('по теме «Моделирование кубитов»'));
+    assert.ok(body.includes('Спасибо за заявку № 17 по теме «Моделирование кубитов».'));
     assert.ok(body.includes('Причина: Тема вне наших направлений.'));
   });
 
-  it('без имени и темы письмо остаётся связным', () => {
-    const { body } = declineLetter(null, '  ', 'Сроки не позволяют.');
+  it('без имени и темы письмо остаётся связным и называет номер', () => {
+    const { body } = declineLetter(5, null, '  ', 'Сроки не позволяют.');
     assert.ok(body.startsWith('Здравствуйте.\n'));
-    assert.ok(body.includes('Спасибо за обращение. Взяться'));
+    assert.ok(body.includes('Спасибо за заявку № 5. Взяться'));
   });
 
   it('ссылки входа в письме нет: кабинета у заявителя нет', () => {
-    const { body } = declineLetter('Анна', null, 'Причина.');
+    const { body } = declineLetter(1, 'Анна', null, 'Причина.');
     assert.ok(!body.includes('/cabinet'));
   });
 
@@ -78,8 +79,11 @@ describe('судьба письма на экране заявки', () => {
 
 describe('письмо «Заявка получена» (Т-05, Р-312)', () => {
   it('что дальше, срок ответа, контакты; без имени, темы и ссылок', () => {
-    const { subject, body } = receivedLetter();
-    assert.equal(subject, 'Заявка получена — ProDisser');
+    const { subject, body } = receivedLetter(17);
+    // Номер заявки — в теме, а значит в первой строке письма (её набирает
+    // `renderLetter`), и в тексте (П-3, решение Р-763).
+    assert.equal(subject, 'Заявка № 17 получена — ProDisser');
+    assert.match(body, /^Здравствуйте\.\nВаша заявка № 17 получена\./u);
     assert.match(body, /ответит в течение рабочего дня/u);
     assert.ok(body.includes(PRACTICE_EMAIL) && body.includes(PRACTICE_PHONE));
     assert.match(body, /Если вы не оставляли заявку, удалите это письмо\./u);

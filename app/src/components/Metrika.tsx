@@ -1,10 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
 
 import { LEAD_SENT_EVENT } from './LeadThanks';
+import {
+  dropCounterData,
+  openCookieSettings,
+  readChoice,
+  saveChoice,
+  type Choice,
+} from './cookie-choice';
 
 /**
  * Счётчик посещаемости и уведомление о файлах cookies.
@@ -19,6 +26,12 @@ import { LEAD_SENT_EVENT } from './LeadThanks';
  * согласие, выражаемое в этом самом уведомлении. Пока выбор не сделан,
  * счётчик не грузится и cookies сервиса не ставятся; отказ запоминается
  * так же, как согласие, и уведомление больше не показывается.
+ *
+ * Выбор можно изменить в любой момент (решение Р-783, исполняет Р-250):
+ * ссылка «Настройки cookies» в подвале стирает его и снова показывает
+ * уведомление. Отказ после согласия стирает cookies счётчика и
+ * перезагружает страницу — уже загруженный сценарий Метрики иначе
+ * продолжал бы работать до ухода со страницы.
  *
  * Вебвизор, запись движений курсора и копирование форм не включаются
  * намеренно. Вебвизор пишет содержимое полей, то есть имя, телефон и тему
@@ -45,17 +58,11 @@ export function leadPlace(form: unknown): string {
   return form.closest('section[id]')?.id ?? 'page';
 }
 
-/** Ключ выбора посетителя. Хранится у него в браузере и никуда не уходит. */
-const KEY = 'pd-analytics';
-
-type Choice = 'yes' | 'no' | null;
-
-function readChoice(): Choice {
+/** Хранилище выбора; в частном окне обращение к нему может бросить ошибку. */
+function store(): Storage | null {
   try {
-    const v = localStorage.getItem(KEY);
-    return v === 'yes' || v === 'no' ? v : null;
+    return window.localStorage;
   } catch {
-    // Частное окно или запрещённые данные сайта: считаем, что выбора нет.
     return null;
   }
 }
@@ -64,6 +71,12 @@ export default function Metrika() {
   // До монтирования выбора не знаем: на сервере localStorage нет. Держим
   // `undefined`, чтобы разметка сервера и первый проход в браузере совпали.
   const [choice, setChoice] = useState<Choice | undefined>(undefined);
+  // Счётчик уже загружен на этой странице: отказ тогда требует перезагрузки.
+  const started = useRef(false);
+  // Уведомление открыто ссылкой «Настройки cookies» — фокус переводится на
+  // него, чтобы с клавиатуры и в чтении экрана выбор был следующим шагом.
+  const [reopened, setReopened] = useState(false);
+  const region = useRef<HTMLDivElement>(null);
   // Кабинет счётчику не показывается (Р-250): ключ входа стоит прямо в
   // адресе `/cabinet/enter/<ключ>`, а в строке поиска реестров бывают ФИО,
   // телефоны и почта — Метрика унесла бы их в свои отчёты, хотя политика
@@ -75,8 +88,30 @@ export default function Metrika() {
   const cabinet = pathname === '/cabinet' || (pathname ?? '').startsWith('/cabinet/');
 
   useEffect(() => {
-    if (METRIKA_ID && !cabinet) setChoice(readChoice());
+    if (METRIKA_ID && !cabinet) setChoice(readChoice(store()));
   }, [cabinet]);
+
+  // «Настройки cookies» в подвале (Р-783): ссылка ведёт в раздел политики,
+  // а при включённом счётчике перехватывается — выбор стирается, и
+  // уведомление появляется снова.
+  useEffect(() => {
+    if (!METRIKA_ID || cabinet) return;
+    const onClick = (event: MouseEvent) => {
+      if (!openCookieSettings(event, store())) return;
+      setChoice(null);
+      setReopened(true);
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, [cabinet]);
+
+  useEffect(() => {
+    if (choice === 'yes') started.current = true;
+  }, [choice]);
+
+  useEffect(() => {
+    if (reopened && choice === null) region.current?.focus();
+  }, [reopened, choice]);
 
   // Цель «Заявка отправлена» (идентификатор `lead`) — по тому же событию,
   // что открывает окно благодарности (Р-406): только успешная отправка,
@@ -99,11 +134,14 @@ export default function Metrika() {
   if (!METRIKA_ID || cabinet || choice === undefined) return null;
 
   const decide = (v: Exclude<Choice, null>) => {
-    try {
-      localStorage.setItem(KEY, v);
-    } catch {
-      // Записать не удалось — уведомление появится снова. Это лучше, чем
-      // считать согласие полученным без возможности его подтвердить.
+    saveChoice(store(), v);
+    setReopened(false);
+    if (v === 'no' && started.current) {
+      // Согласие отозвано, а сценарий счётчика уже работает на странице:
+      // стираем его cookies и записи и загружаем страницу заново без него.
+      dropCounterData(document, store(), window.location.hostname);
+      window.location.reload();
+      return;
     }
     setChoice(v);
   };
@@ -136,6 +174,8 @@ ym(${Number(METRIKA_ID)},"init",{clickmap:true,trackLinks:true,accurateTrackBoun
 
   return (
     <div
+      ref={region}
+      tabIndex={-1}
       role="region"
       aria-label="Уведомление о файлах cookies"
       // По этой метке кнопка замечаний поднимается над уведомлением, пока
@@ -171,9 +211,26 @@ ym(${Number(METRIKA_ID)},"init",{clickmap:true,trackLinks:true,accurateTrackBoun
           color: 'var(--pd-ink-secondary)',
         }}
       >
-        Сайт собирает статистику посещений счётчиком Яндекс.Метрики. Данные обезличены и
-        используются только для оценки удобства страниц. Подробности —{' '}
-        <a href="/privacy#cookies" style={{ color: 'var(--pd-accent)' }}>
+        {/* Формулировка по Политике 1.1, раздел «Файлы cookies и
+            веб-аналитика»; её согласует юрист (Р-783, решение по умолчанию).
+            Политика относит к данным счётчика адрес соединения — текст
+            перечисляет данные так же, как она. */}
+        Сайт использует счётчик Яндекс.Метрики для анализа посещаемости и оценки удобства
+        страниц. С вашего согласия счётчик сохраняет файлы cookies и получает адрес
+        соединения, сведения о браузере и устройстве, просмотренные страницы и действия на
+        них. Имя, контакты и содержание заявок ему не передаются. Изменить выбор можно
+        ссылкой «Настройки cookies» внизу страниц сайта. Подробности —{' '}
+        {/* Подчёркнута: по одному цвету ссылку в абзаце не отличить
+            (axe, link-in-text-block) — как «напишите нам» на странице 404. */}
+        <a
+          href="/privacy#cookies"
+          style={{
+            color: 'var(--pd-accent)',
+            textDecoration: 'underline',
+            textUnderlineOffset: 3,
+            textDecorationThickness: 1,
+          }}
+        >
           в политике
         </a>
         .

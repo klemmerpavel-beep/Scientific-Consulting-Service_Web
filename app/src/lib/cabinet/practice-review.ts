@@ -38,7 +38,16 @@ export interface ReviewInput {
   /** «На этой неделе» — по сроку, ближайший первым. */
   readonly watch: readonly ReviewLine[];
   /** Неотмеченные рекомендации и «Рекомендация месяца». */
-  readonly chance: { readonly count: number; readonly month: { readonly title: string; readonly href: string } | null };
+  readonly chance: {
+    readonly count: number;
+    readonly month: { readonly title: string; readonly href: string; readonly note?: string } | null;
+  };
+}
+
+/** Пометка под рекомендацией месяца; вторая фраза рекомендации — после точки посередине. */
+function monthNote(note: string | undefined): string {
+  if (note === undefined) return 'рекомендация месяца';
+  return `рекомендация месяца · ${note.charAt(0).toLowerCase()}${note.slice(1)}`;
 }
 
 export function practiceReview(input: ReviewInput): ReviewGroup[] {
@@ -70,7 +79,9 @@ export function practiceReview(input: ReviewInput): ReviewGroup[] {
       label: 'Возможность',
       count: chance.count,
       scope: 'окна продвижения, цена, возврат клиентов',
-      first: chance.month === null ? null : { title: chance.month.title, note: 'рекомендация месяца', href: chance.month.href },
+      // У цены пометка несёт и вторую фразу: «медиана и диапазон —
+      // ориентир для Задания, а не цена» (П-9, Р-765).
+      first: chance.month === null ? null : { title: chance.month.title, note: monthNote(chance.month.note), href: chance.month.href },
       empty: 'Новых рекомендаций нет.',
       all: chance.count === 0 ? null : { href: '/cabinet/manage/recommendations', label: 'Все рекомендации' },
     },

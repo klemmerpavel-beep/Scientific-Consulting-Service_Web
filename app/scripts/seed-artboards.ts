@@ -134,17 +134,52 @@ async function main() {
     create: { email: `expert@${DOMAIN}`, fullName: 'Григорьев Антон Эдуардович', role: 'EXPERT' },
     update: {},
   });
+  // Обезличенный профиль куратора (П-1, решение Р-764): стаж и публикации
+  // числом — их клиент видит в свёртке «Профиль куратора». Должность, вуз
+  // и ставка — служебные: машинная проверка клиентских снимков ищет их
+  // следы (Р-147, Р-764), поэтому они заполнены узнаваемыми значениями.
+  const curatorPublic = {
+    academicTitle: 'профессор',
+    position: 'заведующий кафедрой надёжности машин',
+    university: 'Северо-Западный политехнический университет',
+    defaultPayout: money(17_350),
+    experienceYears: 23,
+    pubK1: 4,
+    pubK2: 6,
+    pubK3: 2,
+    pubRsci: 3,
+    pubIntl: 5,
+    // День сверки — полночью UTC, как дату без времени пишет форма.
+    pubCheckedOn: new Date(Date.UTC(2026, 7, 24)),
+    // Согласие на камеру куратор отметил сам (П-12, решение Р-768); на
+    // витрину — нет: в «Настройках» у него текст согласия и «Даю согласие».
+    cameraConsentAt: day(20),
+    showcaseConsentAt: null,
+    showcaseConsentHash: null,
+  };
   await prisma.expertProfile.upsert({
     where: { userId: expertUser.id },
     create: {
       userId: expertUser.id,
       degree: 'д.т.н.',
-      academicTitle: 'профессор',
       specialization: 'теория надёжности технических систем',
       specialtyCode: '2.8.6',
       ndaSignedAt: day(400),
+      ...curatorPublic,
     },
-    update: { ndaSignedAt: day(400), specialtyCode: '2.8.6' },
+    update: { ndaSignedAt: day(400), specialtyCode: '2.8.6', ...curatorPublic },
+  });
+  // Текст согласия на витрину кураторов — образец для снимков, не
+  // утверждённый текст: настоящий согласует юрист (П-12, решение Р-768).
+  const showcaseText =
+    'Даю ProDisser согласие на распространение сведений моего профиля куратора — учёной степени и звания, ' +
+    'шифра и названия научной специальности, стажа научной и преподавательской работы и числа публикаций ' +
+    'по категориям журналов — в витрине кураторов на сайте prodisser.ru, без имени, места работы и контактов.\n' +
+    'Согласие действует до отзыва; отозвать его можно в «Настройках» кабинета.';
+  await prisma.practiceSetting.upsert({
+    where: { key: 'showcaseConsentText' },
+    create: { key: 'showcaseConsentText', value: showcaseText },
+    update: { value: showcaseText },
   });
   // Регалии куратора: клиент видит его со степенью и специальностью
   // (требование Т-11, решение Р-297).
@@ -828,6 +863,27 @@ async function main() {
         status: 'REVIEW',
         statusChangedAt: day(5),
         note: 'Созвониться о задачах по НИОКР.',
+      },
+      // Анкета куратора прототипа, по которой его позвали (Р-580): по SPIN
+      // и ORCID из неё руководитель сверяет числа публикаций (П-1, Р-764).
+      // Клиентские снимки не должны нести ни того, ни другого (Р-147).
+      {
+        createdAt: day(420),
+        fullName: 'Григорьев Антон Эдуардович',
+        email: `expert@${DOMAIN}`,
+        degree: 'Доктор наук',
+        speciality: '2.8.6. Теория надёжности технических систем',
+        fields: 'Надёжность машин, кандидатские диссертации по техническим наукам.',
+        experience: 'Профессор, научный руководитель аспирантов, оппонент диссертационного совета.',
+        academicTitle: 'Профессор',
+        seniority: 'Более 10 лет',
+        services: ['Кандидатские и докторские диссертации'],
+        roles: ['Научное руководство аспирантами', 'Официальный оппонент'],
+        elibrarySpin: '7351-2086',
+        orcid: '0000-0003-4172-9608',
+        consentVersion: '2026-10-14',
+        status: 'INVITED',
+        statusChangedAt: day(410),
       },
     ],
   });

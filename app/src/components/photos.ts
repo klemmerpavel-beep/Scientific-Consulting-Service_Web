@@ -86,26 +86,26 @@ const EXPERT: Photo = {
 export const PHOTOS: Record<string, Slot> = {
   // ——— Посадочная ———
   'sp-avatar-1': { photo: CURATOR },    // круг 190px — куратор проекта
-  'sp-avatar-2c': { photo: EDITOR },    // круг 130px — научный редактор
+  'sp-avatar-2c': { photo: EDITOR },    // круг 130px — менеджер проекта (Р-770)
   'sp-route-1': { photo: POSTGRAD },    // аспирантам
   'sp-route-2b': { photo: STUDENT },    // студентам
   'sp-route-3': { photo: BUSINESS },    // бизнесу
 
   // ——— Аспирантам ———
   'mp-photo-1': { photo: CURATOR },     // круг 168px
-  'mp-photo-2': { photo: EDITOR },      // круг 112px
+  'mp-photo-2': { photo: EDITOR },      // круг 112px — менеджер проекта (Р-770)
   'mp-request-photo': { photo: STUDENT },
   'mp-faq-photo': { photo: ADVISER },
 
   // ——— Студентам ———
   'sp-stud-1': { photo: CURATOR },      // круг до 224px — куратор проекта
-  'sp-stud-2': { photo: EDITOR },       // круг до 162px — научный редактор
+  'sp-stud-2': { photo: EDITOR },       // круг до 162px — менеджер проекта (Р-770)
   'sp-request-photo': { photo: STUDENT },
   'sp-faq-photo': { photo: LECTURER },
 
   // ——— Бизнесу ———
-  'bp-photo-1': { photo: EXPERT },      // круг 178px
-  'bp-photo-2': { photo: CURATOR },     // круг 122px
+  'bp-photo-1': { photo: EXPERT },      // круг 178px — куратор, отраслевой эксперт
+  'bp-photo-2': { photo: EDITOR },      // круг 122px — менеджер проекта: то же лицо, что на трёх других страницах (Р-770)
   'bp-faq-photo': { photo: BLUEPRINTS }, // кадр во всю карточку, как на двух других профильных
 
   // ——— Экспертам (Р-584) ———

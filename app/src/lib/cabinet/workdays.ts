@@ -87,3 +87,49 @@ export function previousWorkday(day: Date, calendar: CalendarOverrides): Date {
   }
   return back;
 }
+
+// ──────── Рабочие часы (п. 2.8 задания, решения Р-766 и Р-784, П-18) ────────
+
+/**
+ * Рабочее время практики по Москве: с 10:00 до 19:00 рабочего дня
+ * производственного календаря — одно для сайта («Отвечаем Пн—Пт,
+ * 10:00—19:00»), показов рекламы и регламента заявок (П-18, Р-784). По нему
+ * считается внутренняя цель первого ответа на заявку. Сокращённый
+ * предпраздничный день календарь практики не хранит (`CalendarDay` знает
+ * только «рабочий» и «нерабочий»), и он считается полным — решение
+ * владельца 02.11.2026 (П-23).
+ */
+export const WORK_HOURS = { from: 10, to: 19 } as const;
+
+/**
+ * Москва — UTC+3 круглый год (перехода на летнее время нет с 2014 года);
+ * тот же сдвиг стоит в деле Р-304 «заявка без ответа дольше рабочего дня».
+ */
+const MOSCOW_OFFSET_MS = 3 * 3_600_000;
+const HOUR_MS = 3_600_000;
+
+/** Предел перебора дней рабочих часов: десять лет. */
+const MAX_HOUR_SCAN_DAYS = 3660;
+
+/**
+ * Рабочих минут между двумя мгновениями: сумма пересечений отрезка с
+ * 10:00–19:00 МСК каждого рабочего дня календаря. Вечер, ночь, выходные и
+ * праздники не считаются; 0, если `to` не позже `from`.
+ */
+export function workMinutesBetween(from: Date, to: Date, calendar: CalendarOverrides): number {
+  if (to.getTime() <= from.getTime()) return 0;
+  // Московский день начала — полночью UTC, как кабинет хранит дни.
+  let day = new Date(Math.floor((from.getTime() + MOSCOW_OFFSET_MS) / DAY_MS) * DAY_MS);
+  let total = 0;
+  for (let step = 0; day.getTime() - MOSCOW_OFFSET_MS < to.getTime() && step < MAX_HOUR_SCAN_DAYS; step += 1) {
+    if (isWorkday(day, calendar)) {
+      const open = day.getTime() - MOSCOW_OFFSET_MS + WORK_HOURS.from * HOUR_MS;
+      const close = day.getTime() - MOSCOW_OFFSET_MS + WORK_HOURS.to * HOUR_MS;
+      const start = Math.max(open, from.getTime());
+      const end = Math.min(close, to.getTime());
+      if (end > start) total += end - start;
+    }
+    day = shift(day, 1);
+  }
+  return Math.floor(total / 60_000);
+}
