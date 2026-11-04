@@ -54,6 +54,16 @@
 .bp-rights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr}
 .bp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
+/* Шкала шагов «Что будет после отправки» (Р-800) — один компонент на «Студентам» и «Компаниям». Шаги — последовательность, поэтому с номерами: узлы 28 px на общей линии 2 px --pd-edge-neutral, разделителей под шагами нет. Горизонтальная: узел над текстом, линия от узла к узлу соседней колонки (промежуток колонок 24 px), колонки ряда одной высоты. Вертикальная (.pd-track-v): узел слева, линия вниз к следующему узлу. Последний шаг ряда линии не ведёт. */
+.pd-track{list-style:none;margin:0;padding:0;gap:28px 24px}
+.pd-track>li{position:relative;min-width:0;display:flex;flex-direction:column;gap:14px}
+.pd-track>li::after{content:"";position:absolute;top:13px;left:28px;right:-24px;height:2px;border-radius:999px;background:var(--pd-edge-neutral)}
+.pd-track>li:last-child::after{display:none}
+.pd-track-v{display:flex;flex-direction:column;gap:0}
+.pd-track-v>li{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:14px;padding-bottom:20px}
+.pd-track-v>li:last-child{padding-bottom:0}
+.pd-track-v>li::after{top:28px;bottom:0;left:13px;right:auto;width:2px;height:auto}
+.pd-track-v .pd-track-body{padding-top:4px}
 .bp-support{display:grid;grid-template-columns:minmax(0,1fr)}
 @media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-trl{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-mech{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq,.bp-mech{grid-template-columns:minmax(0,1fr)}.bp-mech,.bp-rights{grid-auto-rows:auto}.bp-pack{grid-column:span 6!important}}
@@ -771,17 +781,20 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-if>
 </form>
 <div style="display:flex;flex-direction:column;gap:12px;height:100%">
-<div style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+<!-- Р-800: шкала шагов, как на «Студентам», — вертикальная: блок стоит в колонке у формы. Узлы-номера на общей линии, без разделителей под шагами. -->
+<div style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:20px 24px;display:flex;flex-direction:column;gap:16px">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что будет после отправки</h3>
+<ol class="pd-track pd-track-v" role="list">
 <sc-for list="{{ afterSteps }}" as="s" hint-placeholder-count="5">
-<div style="display:flex;gap:12px;align-items:flex-start;padding-bottom:10px;border-bottom:1px solid var(--pd-border)">
-<span style="flex:0 0 auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-accent);padding-top:2px">{{ s.num }}</span>
-<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
-<span style="font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span>
+<li>
+<span class="pd-track-node" style="position:relative;z-index:1;width:28px;height:28px;box-sizing:border-box;border-radius:50%;border:2px solid var(--pd-accent);background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ s.num }}</span>
+<span class="pd-track-body" style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ s.text }}</span>
 </span>
-</div>
+</li>
 </sc-for>
+</ol>
 </div>
 <div style="flex:1 1 auto;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);padding:18px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(20,22,28,.05)">
 <span aria-hidden="true" style="display:block;height:112px;flex:0 0 112px;margin:-18px -20px 6px;border-top-left-radius:13px;border-top-right-radius:13px;border-bottom:1px solid var(--pd-divider);background:var(--pd-surface-quiet) url('./assets/art/svc-grants.webp');background-size:cover;background-position:center"></span>
