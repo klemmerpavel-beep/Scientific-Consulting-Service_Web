@@ -69,6 +69,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (max-width:560px){.pd-gains{grid-template-columns:minmax(0,1fr)}}
 /* 769—1024 px: раздел в одну колонку, карточка решения и шкала плана — рядом, чтобы строки этапов не растягивались на всю ширину. */
 @media (min-width:769px) and (max-width:1024px){.pd-solve{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.pd-solve .pd-gains{grid-template-columns:minmax(0,1fr)}}
+/* 481—768 px: карточки решения одна под другой на всю ширину раздела; шкала плана — не шире 360 px, как в колонке на 769—1024 px: статус стоит рядом с названием этапа, а не у дальнего края (шлифовка Р-796). */
+@media (min-width:481px) and (max-width:768px){.pd-plan-steps{max-width:360px}}
 .pd-usp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .pd-services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
@@ -273,7 +275,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </a>
 <a class="pd-lift" href="#process" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark)" style-active="background:var(--pd-accent-mark)">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">6 шагов</span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">от заявки до защиты, этапы — с приёмкой</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">от заявки до защиты, этапы — с приёмкой</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Как устроена работа<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a class="pd-lift" href="#team" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px;min-height:132px;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)">
@@ -302,7 +304,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <ol class="pd-stalls" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column">
 <sc-for list="{{ stalls }}" as="p" hint-placeholder-count="6">
 <li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:12px 0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:21px;letter-spacing:.05em;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ p.num }}</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:21px;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ p.num }}</span>
 <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ p.title }}</span>
 <span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">{{ p.text }}</span>
@@ -334,7 +336,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Как это выглядит у вас</span>
 <p style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">План с датами: что сделано и что дальше</p>
 </div>
-<div role="group" aria-label="Ход работы по этапам" style="position:relative;display:flex;flex-direction:column;gap:4px">
+<div role="group" aria-label="Ход работы по этапам" class="pd-plan-steps" style="position:relative;display:flex;flex-direction:column;gap:4px">
 <span aria-hidden="true" style="position:absolute;left:13px;top:22px;bottom:22px;width:2px;border-radius:999px;background:var(--pd-border)"></span>
 <span aria-hidden="true" style="position:absolute;left:13px;top:22px;bottom:22px;width:2px;border-radius:999px;background:var(--pd-accent);transform-origin:center top;transform:{{ planLine }};transition:transform 220ms cubic-bezier(.2,0,.2,1)"></span>
 <sc-for list="{{ track }}" as="t" hint-placeholder-count="6">
@@ -1012,7 +1014,7 @@ class Component extends DCLogic {
     // Типовые точки остановки диссертации — перечнем, без оценок и эмоций:
     // посетитель узнаёт свою ситуацию по признаку, а не по настроению.
     const stalls = [
-      ['Положения на защиту не сходятся с главами', 'Объект, предмет и новизна во введении описывают одну работу, а главы — другую.'],
+      ['Положения на защиту не сходятся с главами', 'Объект, предмет и новизна во введении описывают одну работу, а главы — другую.'],
       ['Замечания руководителя приходят частями', 'Правки копятся в разных файлах, и неясно, какие из них обязательны до предзащиты.'],
       ['У глав нет дат', 'План существует в общих чертах, дата предзащиты сдвигается вслед за очередной главой.'],
       ['Требования совета собираются в последний месяц', 'Оформление по ГОСТ, публикации из перечня ВАК и апробация проверяются перед подачей.'],
@@ -1171,7 +1173,7 @@ class Component extends DCLogic {
     // Тексты сверены с экранами кабинета клиента; суммы на снимке оплат
     // размыты: цены на сайте не публикуются (Р-03).
     const IN_TABS = [
-      { label: 'Карточка работы', title: 'Карточка работы', text: 'План этапов, ход работы и то, что ждут от вас, — на одной карточке. Рядом — переписка с менеджером.',
+      { label: 'Карточка работы', title: 'Карточка работы', text: 'План этапов, ход работы и то, что ждут от вас, — на одной карточке. Рядом — переписка с менеджером.',
         points: ['Что нужно от вас — первой строкой, со сроком', 'Пройденные этапы отмечены на шкале', 'Переписка ведётся в кабинете и остаётся при работе'],
         img: './assets/art/cl-tab-card.webp', alt: 'Карточка работы в кабинете клиента: этап на согласовании, план работ и переписка с менеджером. Данные вымышленные.',
         caption: 'Карточка работы. На снимке вымышленные данные.' },
