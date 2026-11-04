@@ -73,9 +73,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
 .pd-cost{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-/* «Статьи и гранты» (Р-769): две карточки рядом, до 768 px — одна под другой. */
+/* «Статьи и гранты» (Р-769): две карточки рядом, до 768 px — одна под другой.
+   Р-797: строка «Патент…» — текст и кнопка справа по центру, до 768 px — кнопка на всю ширину под текстом. */
 .pd-articles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-@media (max-width:768px){.pd-articles{grid-template-columns:minmax(0,1fr)!important}}
+.pd-patent{display:grid;grid-template-columns:minmax(0,1fr) auto}
+@media (max-width:768px){.pd-articles{grid-template-columns:minmax(0,1fr)!important}.pd-patent{grid-template-columns:minmax(0,1fr)!important}.pd-patent>a{width:100%}}
 
 .pd-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .pd-request{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
@@ -443,29 +445,33 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Без диссертации или вместе с ней</span>
 </div>
+<!-- Р-797: шапка карточки — название и срок меткой-фактом; одна тонкая акцентная кромка сверху у обеих карточек; проверки — ровным списком; решение редакции или фонда — примечанием в подвале карточки. -->
 <div class="pd-articles" style="gap:16px">
 <sc-for list="{{ articleTracks }}" as="a" hint-placeholder-count="2">
-<article style="background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;padding:22px 24px 24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<div style="display:flex;align-items:center;justify-content:space-between;gap:8px 14px;flex-wrap:wrap">
+<article class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-top:2px solid var(--pd-accent);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-width:0;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<div style="flex:1 1 auto;padding:22px 24px 22px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ a.title }}</h3>
-<span style="display:flex;align-items:center;gap:8px">
-<span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ clockMask }};mask:{{ clockMask }}"></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ a.term }}</span>
+<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 10px;border-radius:999px;background:var(--pd-accent-tint)">
+<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:{{ clockMask }};mask:{{ clockMask }}"></span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums;white-space:nowrap">{{ a.term }}</span>
 </span>
 </div>
 <p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ a.text }}</p>
-<ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px">
+<ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px">
 <sc-for list="{{ a.items }}" as="it" hint-placeholder-count="4">
-<li style="display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)"><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;margin-top:1px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span><span>{{ it.text }}</span></li>
+<li style="display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:start;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)"><span aria-hidden="true" style="width:18px;height:18px;margin-top:2px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span><span>{{ it.text }}</span></li>
 </sc-for>
 </ul>
-<p style="margin:auto 0 0;padding-top:14px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">{{ a.note }}</p>
+</div>
+<p style="margin:0;padding:14px 24px;background:var(--pd-surface-quiet);border-top:1px solid var(--pd-border);font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ a.note }}</p>
 </article>
 </sc-for>
 </div>
-<div style="margin-top:16px;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-<p style="margin:0;flex:1 1 320px;min-width:0;max-width:76ch;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)"><span style="font-weight:600;color:var(--pd-ink)">Патент на изобретение и программа для ЭВМ.</span> Проверяем описание и комплект документов к подаче; о выдаче патента и регистрации программы решает Роспатент.</p>
-<a href="#request" style="display:inline-flex;align-items:center;min-height:44px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a>
+<!-- Р-797: «Патент…» — третья строка той же системы на ширину сетки: заголовок как у карточек, кнопка справа по центру, до 768 px — на всю ширину под текстом. -->
+<div class="pd-patent pd-lift" style="margin-top:16px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 24px;gap:14px 32px;align-items:center;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<p style="margin:0;min-width:0;max-width:76ch;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)"><span style="display:block;margin-bottom:4px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Патент на изобретение и программа для ЭВМ.</span> Проверяем описание и комплект документов к подаче; о выдаче патента и регистрации программы решает Роспатент.</p>
+<a href="#request" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;box-sizing:border-box;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;text-decoration:none;white-space:nowrap;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a>
 </div>
 </section>
 
