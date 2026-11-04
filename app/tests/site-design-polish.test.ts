@@ -82,3 +82,32 @@ describe('Р-797: «Статьи и гранты» на «Аспирантам»
     assert.match(both('MainPage')[1][1], /<h3 style=\{\{[^}]*\}\}>Патент на изобретение и программа для ЭВМ\.<\/h3>/u);
   });
 });
+
+describe('Р-798: «Стоимость» на «Аспирантам»', () => {
+  it('тире не начинает строку: в факторах сметы перед тире — неразрывный пробел', () => {
+    for (const [where, source] of both('MainPage')) {
+      assert.doesNotMatch(data(source, 'const costFactors = ['), / —/u, `${where}: в факторах сметы перед тире обычный пробел`);
+      assert.ok(source.includes(`докторская${NB}— разная сложность`), `${where}: нет неразрывного пробела в «докторская — разная сложность»`);
+    }
+  });
+
+  it('у таблицы сроков доступное имя — заголовок раздела', () => {
+    for (const [where, source] of both('MainPage')) {
+      assert.match(source, /role="table" aria-labelledby="mp-cost-title"/u, `${where}: у role=table нет имени`);
+      assert.match(source, /<h2 id="mp-cost-title"/u, `${where}: нет заголовка с id mp-cost-title`);
+    }
+  });
+
+  it('пустых правил и правила .pd-cost в таблице стилей нет', () => {
+    const css = [...design('MainPage').matchAll(/<style>([\s\S]*?)<\/style>/gu)].map((m) => m[1]).join('\n').replace(/\/\*[\s\S]*?\*\//gu, '');
+    assert.doesNotMatch(css, /\.pd-cost[,{]/u, 'осталось правило .pd-cost');
+    assert.doesNotMatch(css, /,\s*\}/u, 'правило со списком селекторов без объявлений');
+    assert.ok(!both('MainPage')[1][1].includes('.pd-cost,'));
+  });
+
+  it('до 480 px срок стоит под направлением одной колонкой', () => {
+    for (const [where, source] of both('MainPage')) {
+      assert.ok(source.includes('@media (max-width:480px){.pd-termrow{grid-template-columns:minmax(0,1fr);row-gap:2px!important}'), `${where}: таблица до 480 px — в две колонки`);
+    }
+  });
+});

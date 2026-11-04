@@ -79,7 +79,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (max-width:1023px){.pd-costgrid{grid-template-columns:minmax(0,1fr)!important}}
 .pd-termrow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
 .pd-terms>[role=row]+[role=row]{border-top:1px solid var(--pd-border)}
-@media (max-width:480px){.pd-termrow{grid-template-columns:minmax(0,1.25fr) minmax(128px,1fr)}.pd-terms>[role=row]{padding-left:16px!important;padding-right:16px!important}.pd-costlist{padding-left:20px!important;padding-right:20px!important}}
+/* Шлифовка Р-798: до 480 px срок стоит под направлением одной колонкой — без переноса направлений на 2—3 строки и без трёхстрочной шапки. */
+@media (max-width:480px){.pd-termrow{grid-template-columns:minmax(0,1fr);row-gap:2px!important}.pd-terms>[role=row]{padding-left:16px!important;padding-right:16px!important}.pd-costlist{padding-left:20px!important;padding-right:20px!important}}
 .pd-costlist>li+li{border-top:1px solid var(--pd-border)}
 /* «Статьи и гранты» (Р-769): две карточки рядом, до 768 px — одна под другой.
    Р-797: строка «Патент…» — текст и кнопка справа по центру, до 768 px — кнопка на всю ширину под текстом. */
@@ -98,7 +99,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (max-width:1200px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-services,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px!important}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
 /* Подпись раздела на узком экране — под заголовком слева, а не прижатой вправо строкой (Р-250). */
 @media (max-width:768px){.pd-sub{text-align:left!important;margin-left:0!important}}
-@media (max-width:768px){.pd-metrics,.pd-usp,.pd-services,.pd-cost,}
 @media (max-width:480px){.pd-hero,.pd-metrics,.pd-problem,.pd-usp,.pd-services,.pd-team,.pd-faq,.pd-request,.pd-foot{grid-template-columns:minmax(0,1fr)!important}.pd-metrics,.pd-services,.pd-usp,.pd-foot,.pd-orbit{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}}@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}@media (max-width:768px){.pd-heroart{justify-content:flex-start!important;gap:28px!important}.pd-facea{max-width:184px!important}.pd-facea-c{width:184px!important;height:184px!important}.pd-faceb{max-width:132px!important;padding-top:76px!important}.pd-faceb-c{width:132px!important;height:132px!important}}@media (max-width:430px){.pd-facea{max-width:150px!important}.pd-facea-c{width:150px!important;height:150px!important}.pd-faceb{max-width:108px!important;padding-top:58px!important}.pd-faceb-c{width:108px!important;height:108px!important}}
 .pd-crewcard{position:relative;z-index:1}
 .pd-crewfig{position:absolute;left:50%;transform:translateX(-50%);top:-166px;height:210px;width:auto;z-index:0;pointer-events:none}
@@ -490,14 +490,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Стоимость</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Из чего складывается смета и когда вы узнаёте сумму</h2>
+<h2 id="mp-cost-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Из чего складывается смета и когда вы узнаёте сумму</h2>
 </div>
 <span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Сумму вы видите в Задании, до оплаты</span>
 </div>
 <!-- Р-798: на ≥1024 px две колонки — слева таблица сроков (срок рядом с направлением, линии без зебры, тихая шапка, примечание подписью под таблицей), справа три фактора одной карточкой-списком; ниже 1024 px — одна колонка. Пара «направление — срок» размечена ролями таблицы для читалки. -->
 <div class="pd-costgrid" style="gap:24px;align-items:start">
 <div style="min-width:0">
-<div class="pd-terms" role="table" aria-describedby="mp-cost-note" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<div class="pd-terms" role="table" aria-labelledby="mp-cost-title" aria-describedby="mp-cost-note" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <div class="pd-termrow" role="row" style="gap:6px 16px;padding:16px 22px 10px">
 <span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Направление работы</span>
 <span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Минимальный срок сопровождения</span>
@@ -1106,7 +1106,7 @@ class Component extends DCLogic {
     ].map(t => ({ ...t, items: t.items.map(text => ({ text })) }));
     const costFactors = [
       ['Специальность', 'По техническим направлениям больше расчётной части и экспертизы, поэтому сопровождение занимает дольше.'],
-      ['Тип работы', 'Магистерская, кандидатская и докторская — разная сложность, требования к автору и объём сопровождения.'],
+      ['Тип работы', 'Магистерская, кандидатская и докторская — разная сложность, требования к автору и объём сопровождения.'],
       ['Тема', 'Узкая или редкая тема требует дополнительной проработки источников и экспертизы профильного специалиста.']
     ].map(([title, text], i) => ({ title, text, num: '0' + (i + 1) }));
     // Сроки — единственная величина сметы, которую можно назвать до разбора
