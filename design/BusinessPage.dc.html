@@ -141,7 +141,9 @@
    одинаковых по эффекту набора кадров чередуются по чётности уровня. */
 .bp-trlhead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
 .bp-trl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr)}
-.bp-trlcol{display:flex;flex-direction:column;gap:12px;min-width:0}
+/* Шлифовка Р-801: колонки карточки уровня — подсетка из двух строк (шапка и содержимое): шапки трёх колонок стоят в одной строке сетки и прижаты к её низу, поэтому линии под шапками и последние строки шапок — на одной базовой линии, даже когда «Что делаем на этом уровне» переносится (769—850 px). */
+.bp-trlcol{display:grid;grid-row:span 2;grid-template-rows:subgrid;row-gap:12px;align-content:start;min-width:0}
+.bp-trlcolhead{align-self:end}
 .bp-trlcolhead{font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);padding-bottom:10px;border-bottom:1px solid var(--pd-border)}
 .bp-trllist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .bp-trllist>li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)}
@@ -1073,9 +1075,18 @@ class Component extends DCLogic {
       box.scrollTo({ left: box.scrollLeft + (b.left + b.width / 2) - (a.left + a.width / 2), behavior: 'instant' });
     };
     requestAnimationFrame(this.centerTrl);
+    // Шкала встаёт по центру только при смене ширины окна: на телефоне
+    // строка адреса при прокрутке меняет высоту окна, и шкала, которую
+    // посетитель листает пальцем, возвращалась бы к текущему уровню
+    // (шлифовка Р-801).
+    this.trlWidth = window.innerWidth;
     this.onResize = () => {
       if (this.raf) return;
-      this.raf = requestAnimationFrame(() => { this.raf = 0; this.forceUpdate(); this.centerTrl(); });
+      this.raf = requestAnimationFrame(() => {
+        this.raf = 0;
+        this.forceUpdate();
+        if (window.innerWidth !== this.trlWidth) { this.trlWidth = window.innerWidth; this.centerTrl(); }
+      });
     };
     window.addEventListener('resize', this.onResize);
     // На широком экране меню всегда развёрнуто: иначе атрибут hidden

@@ -140,3 +140,24 @@ describe('Р-800: «Что будет после отправки» на «Ст�
     assert.match(design('StudentsPage'), /<span class="pd-track-title" style="[^"]*">\{\{ s\.title \}\}<\/span>/u);
   });
 });
+
+describe('Р-801: «Уровень готовности технологии» на «Компаниям»', () => {
+  it('шкала встаёт по центру только при смене ширины окна, не высоты', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      const at = source.indexOf('this.onResize = () => {');
+      assert.ok(at > 0, `${where}: нет обработчика смены размера окна`);
+      const body = source.slice(at, source.indexOf("window.addEventListener('resize', this.onResize)", at));
+      assert.equal((body.match(/this\.centerTrl\(\)/gu) ?? []).length, 1, `${where}: центрирование шкалы — не одним вызовом`);
+      assert.match(body, /if \(window\.innerWidth !== this\.trlWidth\) \{ this\.trlWidth = window\.innerWidth; this\.centerTrl\(\); \}/u,
+        `${where}: шкала центрируется при любой смене размера — на телефоне строка адреса двигает её под пальцем`);
+      assert.match(source, /this\.trlWidth = window\.innerWidth;\s*this\.onResize = /u, `${where}: исходная ширина не запомнена`);
+    }
+  });
+
+  it('шапки колонок карточки уровня — в одной строке подсетки, прижаты к её низу', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      assert.ok(source.includes('.bp-trlcol{display:grid;grid-row:span 2;grid-template-rows:subgrid;row-gap:12px;align-content:start;min-width:0}'), `${where}: колонка не подсетка`);
+      assert.ok(source.includes('.bp-trlcolhead{align-self:end}'), `${where}: шапка не прижата к низу строки`);
+    }
+  });
+});
