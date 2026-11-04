@@ -61,7 +61,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-burger{display:none}
 .pd-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-.pd-problem{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+/* «Диагностика» (Р-796): перечень шире колонки решения, обе по содержимому; между пунктами — одна линия; этап шкалы под курсором — тихая подложка. */
+.pd-problem{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.pd-stalls>li+li{border-top:1px solid var(--pd-border)}
+.pd-plan-step[aria-pressed="false"]:hover .pd-plan-row{background:var(--pd-surface-quiet)!important}
+.pd-gains{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:560px){.pd-gains{grid-template-columns:minmax(0,1fr)}}
+/* 769—1024 px: раздел в одну колонку, карточка решения и шкала плана — рядом, чтобы строки этапов не растягивались на всю ширину. */
+@media (min-width:769px) and (max-width:1024px){.pd-solve{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.pd-solve .pd-gains{grid-template-columns:minmax(0,1fr)}}
 .pd-usp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .pd-services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
@@ -280,59 +287,57 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </div>
 <p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:60ch">Сопровождение начинается с диагностики: куратор читает текст и материалы к нему, сверяет их с требованиями диссертационного совета и называет, что мешает выйти на предзащиту. План этапов строится от этой точки.</p>
-<div class="pd-problem" style="gap:24px;align-items:stretch;margin-top:32px">
-<div style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:14px;padding:26px 28px 14px;display:flex;flex-direction:column">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);margin-bottom:12px">Где работа обычно останавливается</span>
-<ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column">
+<!-- Р-796: колонки по содержимому, без растяжения и пустот; план «Как это выглядит у вас» — вертикальная шкала всех шести этапов вместо карусели со стрелками и полосой; карточка-ссылка Р-791 — подвал левой колонки, в сетке перечня. -->
+<div class="pd-problem" style="gap:24px;align-items:start;margin-top:32px">
+<div style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:14px;padding:24px 26px 26px;display:flex;flex-direction:column;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);margin-bottom:6px">Где работа обычно останавливается</span>
+<ol class="pd-stalls" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column">
 <sc-for list="{{ stalls }}" as="p" hint-placeholder-count="6">
-<li style="display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--pd-border)">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.5;letter-spacing:.05em;color:var(--pd-ink-muted);padding-top:1px">{{ p.num }}</span>
-<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ p.title }}</span>
+<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:12px 0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:21px;letter-spacing:.05em;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ p.num }}</span>
+<span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ p.title }}</span>
 <span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">{{ p.text }}</span>
 </span>
 </li>
 </sc-for>
 </ol>
-<!-- Р-791: переход к заявке из перечня точек остановки — симптом ведёт к действию (конкурентный разбор 03.11.2026). -->
-<a class="pd-lift" href="#request" style="margin:6px 0 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)">
+<!-- Р-791: переход к заявке из перечня точек остановки — симптом ведёт к действию (конкурентный разбор 03.11.2026). Р-796: подвал левой колонки в сетке перечня — значок в колонке номеров, надпись по линии текста пунктов. -->
+<a class="pd-lift" href="#request" style="margin:10px -10px 0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:14px 16px 14px 10px;display:grid;grid-template-columns:28px minmax(0,1fr) 18px;gap:10px;align-items:center;min-height:44px;box-sizing:border-box;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<span aria-hidden="true" style="width:28px;height:28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;display:block;background:var(--pd-accent);-webkit-mask:{{ talkMask }};mask:{{ talkMask }}"></span></span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разобрать, где остановилась ваша работа</span>
-<span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
+<span aria-hidden="true" style="width:18px;height:18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
 </a>
 </div>
-<div style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:26px 28px 28px;display:flex;flex-direction:column;justify-content:space-between;gap:16px">
-<div style="display:flex;flex-direction:column;gap:16px">
+<div class="pd-solve" style="display:flex;flex-direction:column;gap:16px;min-width:0">
+<div class="pd-gains" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:24px 26px;gap:20px 22px">
 <sc-for list="{{ gains }}" as="g" hint-placeholder-count="4">
 <div style="display:flex;gap:12px;align-items:flex-start">
 <span aria-hidden="true" style="width:28px;height:28px;flex:0 0 28px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:{{ g.chip }}"><span style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ g.mask }};mask:{{ g.mask }}"></span></span>
-<span style="display:flex;flex-direction:column;gap:4px">
+<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ g.title }}</span>
 <span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">{{ g.text }}</span>
 </span>
 </div>
 </sc-for>
 </div>
-<div style="display:flex;flex-direction:column;gap:6px;padding-top:18px;border-top:1px solid var(--pd-divider)">
+<div style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:22px 26px 24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<div style="display:flex;flex-direction:column;gap:6px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Как это выглядит у вас</span>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">План с датами: что сделано и что дальше</p>
+<p style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">План с датами: что сделано и что дальше</p>
 </div>
-<div role="group" aria-label="Ход работы по этапам" data-carousel="plan" tabindex="0" style="display:flex;gap:14px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:2px;margin:-2px">
+<div role="group" aria-label="Ход работы по этапам" style="position:relative;display:flex;flex-direction:column;gap:4px">
+<span aria-hidden="true" style="position:absolute;left:13px;top:22px;bottom:22px;width:2px;border-radius:999px;background:var(--pd-border)"></span>
+<span aria-hidden="true" style="position:absolute;left:13px;top:22px;bottom:22px;width:2px;border-radius:999px;background:var(--pd-accent);transform-origin:center top;transform:{{ planLine }};transition:transform 220ms cubic-bezier(.2,0,.2,1)"></span>
 <sc-for list="{{ track }}" as="t" hint-placeholder-count="6">
-<button type="button" aria-pressed="{{ t.selected }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;padding:0;text-align:left;scroll-snap-align:start;flex:0 0 calc((100% - 42px) / 4);box-sizing:border-box;display:flex;flex-direction:column;gap:8px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);box-shadow:0 10px 20px rgba(20,22,28,.09)" style-active="transform:translateY(1px)">
-<span style="height:3px;border-radius:999px;background:{{ t.bar }};transition:background 200ms cubic-bezier(.2,0,.2,1)"></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;color:{{ t.numColor }}">{{ t.num }}</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:{{ t.titleColor }};white-space:nowrap">{{ t.title }}</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:{{ t.color }}">{{ t.status }}</span>
+<button type="button" class="pd-plan-step" aria-pressed="{{ t.selected }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;padding:0;margin:0;width:100%;text-align:left;position:relative;display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:center;min-height:44px;border-radius:10px;transition:transform 180ms cubic-bezier(.2,0,.2,1)" style-active="transform:translateY(1px)">
+<span style="position:relative;z-index:1;width:28px;height:28px;box-sizing:border-box;border-radius:50%;border:2px solid {{ t.ring }};background:{{ t.node }};display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1;font-weight:600;color:{{ t.numColor }};font-variant-numeric:tabular-nums">{{ t.num }}</span>
+<span class="pd-plan-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;box-sizing:border-box;padding:10px 14px;border-radius:10px;background:{{ t.row }};transition:background 180ms cubic-bezier(.2,0,.2,1)">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:{{ t.titleColor }};white-space:nowrap">{{ t.title }}</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;font-weight:{{ t.weight }};color:{{ t.color }};white-space:nowrap">{{ t.status }}</span>
+</span>
 </button>
 </sc-for>
-</div>
-<div style="display:flex;align-items:center;gap:16px;margin-top:16px">
-<div style="flex:1 1 auto;height:4px;border-radius:999px;background:var(--pd-divider);overflow:hidden">
-<div style="height:100%;border-radius:999px;background:var(--pd-accent);transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ planScale }}"></div>
-</div>
-<div style="display:flex;gap:8px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущие этапы" onClick="{{ prevPlan }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-accent);-webkit-mask:{{ prevMask }};mask:{{ prevMask }}"></span></button>
-<button type="button" aria-label="Следующие этапы" onClick="{{ nextPlan }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-accent);-webkit-mask:{{ nextMask }};mask:{{ nextMask }}"></span></button>
 </div>
 </div>
 </div>
@@ -881,7 +886,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, planPage: 0, planPages: 1, offerOpen: false, trackAt: 1, navOpen: false };
+  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, trackAt: 1, navOpen: false };
   componentDidMount(){
     // Всплывающее окно закрывается клавишей Esc — иначе с клавиатуры
     // из него не выйти, а закрывающая кнопка может быть прокручена.
@@ -910,12 +915,6 @@ class Component extends DCLogic {
       else if (!e.shiftKey && (at === last || !box.contains(at))) { e.preventDefault(); first.focus(); }
     };
     window.addEventListener('keydown', this.onRevKey);
-    this.measure = () => {
-      const t = document.querySelector('[data-carousel="plan"]');
-      const pages = t ? Math.max(1, Math.round(t.scrollWidth / Math.max(t.clientWidth, 1))) : 1;
-      this.setState({ planPages: pages });
-    };
-    this.measure();
     // Разделы в шапке: на широком экране они видны всегда, и атрибут
     // `hidden` там неуместен — читалка пропустила бы навигацию целиком.
     // Ниже 1200 панель открывается кнопкой — там же появляется сама кнопка:
@@ -925,26 +924,11 @@ class Component extends DCLogic {
     this.syncNav = () => this.setState({ navOpen: this.wide.matches });
     this.syncNav();
     this.wide.addEventListener('change', this.syncNav);
-    this.onResize = () => {
-      if (this.raf) return;
-      this.raf = requestAnimationFrame(() => { this.raf = 0; this.measure(); this.forceUpdate(); });
-    };
-    window.addEventListener('resize', this.onResize);
     this.forceUpdate();
   }
   componentWillUnmount(){
     window.removeEventListener('keydown', this.onRevKey);
     if (this.wide) this.wide.removeEventListener('change', this.syncNav);
-    window.removeEventListener('resize', this.onResize);
-    if (this.raf) cancelAnimationFrame(this.raf);
-  }
-  goPlan(dir){
-    const t = document.querySelector('[data-carousel="plan"]');
-    if (!t) return;
-    const pages = Math.max(1, Math.round(t.scrollWidth / Math.max(t.clientWidth, 1)));
-    const p = Math.min(pages - 1, Math.max(0, this.state.planPage + dir));
-    t.scrollLeft = p * t.clientWidth;
-    this.setState({ planPage: p, planPages: pages });
   }
   stepTrack(){ return document.querySelector('[data-carousel="process"]'); }
   goStep(i){
@@ -1018,23 +1002,26 @@ class Component extends DCLogic {
       ['Публикаций не хватает для допуска', 'Рецензирование в журнале занимает месяцы, а статьи начинают готовить после текста.'],
       ['Доклад готовится за неделю до заседания', 'Презентация и ответы на вопросы членов совета не проходят репетицию.']
     ].map(([title, text], i) => ({ title, text, num: '0' + (i + 1) }));
+    // План с датами (Р-796) — вертикальная шкала всех шести этапов: пройденные
+    // залиты акцентом, текущий выделен подложкой, впереди — приглушены.
+    // Нажатие на этап делает его текущим; линия связи растёт до него (scaleY).
     const trackAt = this.state.trackAt;
-    const track = ['1 глава', '2 глава', '3 глава', 'Апробация', 'Предзащита', 'Защита'].map((title, i) => ({
+    const trackTitles = ['1 глава', '2 глава', '3 глава', 'Апробация', 'Предзащита', 'Защита'];
+    const track = trackTitles.map((title, i) => ({
       title,
       num: '0' + (i + 1),
       selected: i === trackAt ? 'true' : 'false',
-      bar: i <= trackAt ? 'var(--pd-accent)' : 'var(--pd-border)',
+      node: i < trackAt ? 'var(--pd-accent)' : 'var(--pd-ink-inverse)',
+      ring: i <= trackAt ? 'var(--pd-accent)' : 'var(--pd-border)',
+      numColor: i < trackAt ? 'var(--pd-ink-inverse)' : (i === trackAt ? 'var(--pd-accent)' : 'var(--pd-ink-muted)'),
+      row: i === trackAt ? 'var(--pd-accent-tint)' : 'transparent',
       titleColor: i <= trackAt ? 'var(--pd-ink)' : 'var(--pd-ink-muted)',
-      numColor: i <= trackAt ? 'var(--pd-accent)' : 'var(--pd-ink-muted)',
       color: i < trackAt ? 'var(--pd-accent)' : (i === trackAt ? 'var(--pd-ink)' : 'var(--pd-ink-muted)'),
+      weight: i === trackAt ? '600' : '400',
       status: i < trackAt ? 'Одобрено' : (i === trackAt ? 'В работе' : 'Впереди'),
-      pick: () => {
-        this.setState({ trackAt: i });
-        const t = document.querySelector('[data-carousel="plan"]');
-        const el = t && t.children[i];
-        if (t && el) t.scrollLeft = Math.max(0, Math.min(el.offsetLeft - t.offsetLeft, t.scrollWidth - t.clientWidth));
-      }
+      pick: () => this.setState({ trackAt: i })
     }));
+    const planLine = 'scaleY(' + (trackAt / (trackTitles.length - 1)) + ')';
     const usp = [
       ['pd-degree', 'Куратор со степенью по вашей специальности', 'Специалист с учёной степенью в вашей области разбирает методологию, показывает слабые места аргументации и готовит к вопросам оппонентов.', 'Профиль куратора вы видите до согласования Задания'],
       ['pd-gost', 'Нормоконтроль по ГОСТ и требованиям ВАК', 'Структура, оформление, библиография и ссылочный аппарат проверяются по ГОСТ Р 7.0.11-2011 и требованиям вашего диссовета.', 'Перечень «Что подготовить» по виду работы — в кабинете до начала работы'],
@@ -1228,7 +1215,7 @@ class Component extends DCLogic {
       reviews, revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
       revPrev: () => this.setState(s => ({ revAt: (s.revAt - 1 + revN) % revN })),
       revNext: () => this.setState(s => ({ revAt: (s.revAt + 1) % revN })),
-      steps, faq, stalls, track, usp, gains, offerTop, offerMid, offerRest, articleTracks, stepScale, costFactors, termRows,
+      steps, faq, stalls, track, planLine, usp, gains, offerTop, offerMid, offerRest, articleTracks, stepScale, costFactors, termRows,
       contactTabs: ['E-mail', 'Телефон'].map((label, i) => ({
         label, active: i === this.state.contact, inactive: i !== this.state.contact,
         pick: () => this.setState({ contact: i })
@@ -1240,9 +1227,6 @@ class Component extends DCLogic {
       navHidden: this.state.navOpen ? undefined : true,
       navOpenAttr: this.state.navOpen ? 'true' : 'false',
       toggleNav: () => this.setState(s => ({ navOpen: !s.navOpen })),
-      planScale: 'scaleX(' + Math.min(1, (this.state.planPage + 1) / Math.max(1, this.state.planPages)) + ')',
-      prevPlan: () => this.goPlan(-1),
-      nextPlan: () => this.goPlan(1),
       requestPoints: [
         ['users', 'Разберём задачу с куратором по вашей научной области'],
         ['calendar-days', 'Назовём сроки и этапы до согласования Задания'],
@@ -1266,7 +1250,7 @@ class Component extends DCLogic {
         const frac = Math.min(1, Math.max(0, t.scrollLeft / max));
         if (p !== this.state.stepPage || Math.abs(frac - this.state.stepFrac) > 0.005) this.setState({ stepPage: p, stepFrac: frac });
       },
-      checkMask: this.mask('square-check'), linkMask: this.mask('arrow-right'),
+      checkMask: this.mask('square-check'), linkMask: this.mask('arrow-right'), talkMask: this.mask('message-circle'),
       clockMask: this.mask('clock'), offerOpen,
       offerToggleLabel: offerOpen ? 'Свернуть список' : 'Полный список услуг',
       offerToggleMask: this.mask(offerOpen ? 'arrow-left' : 'arrow-down'),
