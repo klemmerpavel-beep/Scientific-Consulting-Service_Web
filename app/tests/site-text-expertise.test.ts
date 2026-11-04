@@ -61,9 +61,11 @@ describe('роль куратора и услуги называют научн�
   const business = plain(read('design/BusinessPage.dc.html'));
   const start = plain(read('design/StartPage.dc.html'));
 
-  it('«Кто сопровождает»: методологический разбор и научная экспертиза текста — работа куратора', () => {
+  it('главная: методологический разбор и научная экспертиза текста — работа куратора', () => {
+    // В «Кто сопровождает» профильных страниц с 04.11.2026 снова четыре роли
+    // (Р-795): метка направления там — «Научная экспертиза текста».
     for (const [page, html] of [['MainPage', main], ['StudentsPage', students], ['BusinessPage', business]] as const) {
-      assert.match(html, /методологический разбор и научная экспертиза текста — его работа\./u, page);
+      if (page !== 'BusinessPage') assert.match(html, /Научная экспертиза текста/u, page);
     }
     assert.match(start, /Методологический разбор и научная экспертиза текста — работа куратора\./u);
   });
