@@ -294,6 +294,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </li>
 </sc-for>
 </ol>
+<!-- Р-791: переход к заявке из перечня точек остановки — симптом ведёт к действию (конкурентный разбор 03.11.2026). -->
+<a class="pd-lift" href="#request" style="margin:6px 0 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разобрать, где остановилась ваша работа</span>
+<span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
+</a>
 </div>
 <div style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:26px 28px 28px;display:flex;flex-direction:column;justify-content:space-between;gap:16px">
 <div style="display:flex;flex-direction:column;gap:16px">
@@ -965,6 +970,7 @@ class Component extends DCLogic {
     const faqData = [
       ['Как именно вы помогаете с работой?', 'Куратор разбирает методологию, структуру исследования и логику глав, проводит научную экспертизу текста и проверяет оформление. Текст пишете вы; мы указываем, что и почему нужно исправить, и готовим вас к вопросам совета.'],
       ['Кто будет вести мою работу?', 'Куратор с учёной степенью в вашей области. Профиль куратора — степень, специальность, стаж и публикации по категориям журналов — вы видите до согласования Задания.'],
+      ['С кем заключается договор и с какого года вы работаете?', 'Договор заключается с ООО «РУСДРОН», ProDisser — его коммерческое обозначение; реквизиты — в оферте. Практика ведёт сопровождение с 2016 года, общество зарегистрировано в 2025 году.'],
       ['Сколько это стоит?', 'Считаем по этапам после разбора ваших материалов. Сумму вы видите в Задании, до оплаты, и без вашего согласия она не меняется.'],
       ['Что с конфиденциальностью?', 'Соглашение о неразглашении подписывают все, кто работает над проектом. Тема и текст не передаются третьим лицам и не используются в других работах.'],
       ['А если понадобятся правки?', 'Замечания по сданному этапу отрабатываем без доплаты. Число правок внутри этапа не ограничено, срок ответа прописан в договоре.'],

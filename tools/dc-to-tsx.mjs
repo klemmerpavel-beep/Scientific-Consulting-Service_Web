@@ -31,6 +31,7 @@ const ROUTES = {
   './business.html': '/business', './offer.html': '/offer',
   './privacy.html': '/privacy', './consent.html': '/consent',
   './cabinet.html': '/cabinet', './experts.html': '/experts',
+  './tools.html': '/tools',
 };
 
 const ATTR_MAP = { class: 'className', for: 'htmlFor', autocomplete: 'autoComplete',
@@ -47,7 +48,7 @@ const ATTR_MAP = { class: 'className', for: 'htmlFor', autocomplete: 'autoComple
   'viewbox': 'viewBox', 'preserveaspectratio': 'preserveAspectRatio',
   'shape-rendering': 'shapeRendering', 'vector-effect': 'vectorEffect',
   'dominant-baseline': 'dominantBaseline', 'paint-order': 'paintOrder',
-  'accent-color': 'accentColor',
+  'accent-color': 'accentColor', inputmode: 'inputMode',
 };
 
 const problems = [];
