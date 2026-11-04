@@ -161,3 +161,32 @@ describe('Р-801: «Уровень готовности технологии» �
     }
   });
 });
+
+describe('Р-802: «Условия, закреплённые договором и приёмкой» на «Компаниям»', () => {
+  it('карточки по своей высоте — без провала над «Чем закреплено» и без сдвига соседки при раскрытии', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      assert.ok(source.includes('.bp-mech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}'), `${where}: карточки тянутся до соседки`);
+      assert.doesNotMatch(source, /pairOpen|r\.align\b|align: pairOpen/u, `${where}: высоту карточки снова задаёт логика раскрытия`);
+    }
+    assert.doesNotMatch(design('BusinessPage'), /align-self:\{\{ r\.align \}\}/u);
+  });
+
+  it('на 769—1100 px — изображение 64 px рядом с заголовком, текст на всю ширину', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      assert.ok(source.includes('@media (min-width:769px) and (max-width:1100px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";'), `${where}: нет раскладки 769—1100 px`);
+    }
+  });
+
+  it('у кнопки «Чем закреплено» внутренний отступ: кольцо фокуса не касается буквы', () => {
+    const button = design('BusinessPage').match(/<button type="button" class="bp-mechbtn"[^>]*>/u)?.[0] ?? '';
+    assert.match(button, /padding:0 8px;margin:0 -8px;width:calc\(100% \+ 16px\);box-sizing:border-box/u);
+  });
+
+  it('тире не начинает строку: перед тире — неразрывный пробел', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      for (const phrase of [`Предмет договора${NB}— соответствие требованиям`, `ждут от вас,${NB}— на одной карточке. Рядом${NB}— переписка`]) {
+        assert.ok(source.includes(phrase), `${where}: нет неразрывного пробела в «${phrase.replace(/ /gu, '·')}»`);
+      }
+    }
+  });
+});

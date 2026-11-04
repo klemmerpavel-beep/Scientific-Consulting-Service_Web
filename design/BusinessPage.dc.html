@@ -52,7 +52,8 @@
    паре ряда раскрыта строка «Чем закреплено», обе карточки пары стоят по
    своей высоте (align-self из логики): иначе в соседке раскрытой
    карточки появлялся провал высотой в раскрытый текст. */
-.bp-mech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Шлифовка Р-802: карточки стоят по своей высоте (align-items: start) — между текстом и «Чем закреплено» провала нет ни на одной ширине, а раскрытие одной карточки не трогает соседнюю. На 769—1100 px колонка узкая для медиаобъекта 96 px: изображение 64 px рядом с заголовком, текст — на всю ширину карточки под ними, как до 480 px. */
+.bp-mech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
 .bp-mechcard{display:grid;grid-template-columns:96px minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "img text" "foot foot";column-gap:20px;row-gap:8px}
 .bp-mechimg{grid-area:img;width:96px;height:96px}
 .bp-mechhead{grid-area:head;display:flex;flex-direction:row-reverse;align-items:baseline;justify-content:space-between;gap:16px;min-width:0}
@@ -60,6 +61,7 @@
 .bp-mechfoot{grid-area:foot;margin-top:12px}
 .bp-mechplus{position:relative;width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:var(--pd-accent-tint);transition:background 180ms cubic-bezier(.2,0,.2,1)}
 .bp-mechbtn:hover .bp-mechplus{background:var(--pd-accent-mark)}
+@media (min-width:769px) and (max-width:1100px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";column-gap:16px;row-gap:12px}.bp-mechimg{width:64px;height:64px}.bp-mechhead{align-self:center}}
 @media (max-width:480px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";column-gap:16px;row-gap:12px;padding:18px 20px 0!important}.bp-mechimg{width:64px;height:64px}.bp-mechhead{align-self:center}}
 .bp-proof{animation:bp-proof 200ms cubic-bezier(.2,0,.2,1) both}
 @keyframes bp-proof{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
@@ -674,7 +676,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <div class="bp-mech" style="gap:16px">
 <sc-for list="{{ reasons }}" as="r" hint-placeholder-count="6">
-<article class="bp-mechcard pd-lift" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:20px 22px 0;box-sizing:border-box;min-width:0;align-self:{{ r.align }}">
+<article class="bp-mechcard pd-lift" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:20px 22px 0;box-sizing:border-box;min-width:0">
 <img class="bp-mechimg" src="{{ r.img }}" alt="" aria-hidden="true" width="96" height="96" loading="lazy" decoding="async" style="display:block;box-sizing:border-box;border-radius:10px;border:1px solid var(--pd-border);background:var(--pd-surface-quiet);object-fit:cover">
 <div class="bp-mechhead">
 <span style="flex:0 0 auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ r.num }}</span>
@@ -682,7 +684,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <p class="bp-mechtext" style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ r.text }}</p>
 <div class="bp-mechfoot" style="border-top:1px solid var(--pd-divider)">
-<button type="button" class="bp-mechbtn" aria-expanded="{{ r.proofExpanded }}" aria-label="{{ r.proofAria }}" onClick="{{ r.proofToggle }}" style="appearance:none;border:0;background:transparent;cursor:pointer;padding:0;margin:0;width:100%;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:var(--pd-accent);border-radius:10px" style-hover="color:var(--pd-accent-press)">
+<button type="button" class="bp-mechbtn" aria-expanded="{{ r.proofExpanded }}" aria-label="{{ r.proofAria }}" onClick="{{ r.proofToggle }}" style="appearance:none;border:0;background:transparent;cursor:pointer;padding:0 8px;margin:0 -8px;width:calc(100% + 16px);box-sizing:border-box;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:var(--pd-accent);border-radius:10px" style-hover="color:var(--pd-accent-press)">
 <span>Чем закреплено</span>
 <span aria-hidden="true" class="bp-mechplus"><span style="position:absolute;left:8px;top:13px;width:12px;height:2px;background:var(--pd-accent);border-radius:999px"></span><span style="position:absolute;left:13px;top:8px;width:2px;height:12px;background:var(--pd-accent);border-radius:999px;display:{{ r.plusV }}"></span></span>
 </button>
@@ -1385,7 +1387,7 @@ class Component extends DCLogic {
     // Тексты сверены с экранами кабинета клиента; суммы на снимке оплат
     // размыты: цены на сайте не публикуются (Р-03).
     const IN_TABS = [
-      { label: 'Карточка работы', title: 'Карточка работы', text: 'План этапов, ход работы и то, что ждут от вас, — на одной карточке. Рядом — переписка с менеджером.',
+      { label: 'Карточка работы', title: 'Карточка работы', text: 'План этапов, ход работы и то, что ждут от вас, — на одной карточке. Рядом — переписка с менеджером.',
         points: ['Что нужно от вас — первой строкой, со сроком', 'Пройденные этапы отмечены на шкале', 'Переписка ведётся в кабинете и остаётся при работе'],
         img: './assets/art/cl-tab-card.webp', alt: 'Карточка работы в кабинете клиента: этап на согласовании, план работ и переписка с менеджером. Данные вымышленные.',
         caption: 'Карточка работы. На снимке вымышленные данные.' },
@@ -1475,15 +1477,11 @@ class Component extends DCLogic {
         ['03', 'Исключительные права принадлежат заказчику', 'Всё, что создано в проекте, переходит вам.', 'пункт договора об отчуждении прав, NDA с каждым исполнителем, акт передачи материалов.'],
         ['04', 'Работу ведёт отраслевой эксперт со степенью', 'Кандидат или доктор наук в вашей области с публикациями по теме проекта.', 'профиль куратора — степень, специальность, стаж и публикации по категориям журналов — вы видите до согласования Задания.'],
         ['05', 'Следующий этап оплачивается после приёмки предыдущего', 'Этап не сдан в срок — оплата за него возвращается по заявлению.', 'календарный план с датами, акт по каждому этапу, порядок возврата в договоре.'],
-        ['06', 'Предмет договора — соответствие требованиям', 'Решение принимают фонд, ведомство и налоговый орган, и мы его не обещаем. Отвечаем за соответствие документа требованиям на дату подачи.', 'формулировка предмета договора и чек-лист требований получателя.']
+        ['06', 'Предмет договора — соответствие требованиям', 'Решение принимают фонд, ведомство и налоговый орган, и мы его не обещаем. Отвечаем за соответствие документа требованиям на дату подачи.', 'формулировка предмета договора и чек-лист требований получателя.']
       ].map(([num, title, text, proof], i) => {
         const open = !!this.state.mech[i];
-        // Две колонки — пары 0–1, 2–3, 4–5: раскрыта строка у карточки или
-        // у её соседки по ряду — обе стоят по своей высоте (Р-802).
-        const pairOpen = open || !!this.state.mech[i ^ 1];
         return {
           num, title, text, proof,
-          align: pairOpen ? 'start' : 'stretch',
           // Изображение условия — натюрморт 150 × 150 из набора страницы
           // (Р-78), показ 96 px (до 480 px — 64 px) тегом img: ленивая
           // загрузка и чёткий масштаб вместо фона карточки (Р-802).
