@@ -21,6 +21,16 @@ const read = (relative: string) => readFileSync(path.join(ROOT, relative), 'utf8
 /** Неразрывный пробел — обычный, без «склейки слов» (U+2060): так фразы сверяются без оглядки на вёрстку. */
 const plain = (source: string) => source.replace(/\u00a0|&nbsp;/gu, ' ').replace(/\u2060/gu, '');
 const design = (page: string) => plain(read(`design/${page}.dc.html`));
+/**
+ * Источник без раздела «Кто сопровождает» (орбита ролей): там четыре роли и
+ * карточки возвращены указанием владельца 04.11.2026 (Р-795), на остальной
+ * странице для клиента по-прежнему две роли — менеджер и куратор (Р-770).
+ */
+const withoutTeam = (source: string) => {
+  const k = source.search(/class(?:Name)?="(?:pd|sp|bp)-orbit"/u);
+  if (k < 0) return source;
+  return source.slice(0, source.lastIndexOf('<section', k)) + source.slice(source.indexOf('</section>', k));
+};
 
 /** Пять шагов концепции: название шага и что обязательно сказано в его тексте. */
 const CONCEPT: ReadonlyArray<readonly [string, readonly RegExp[]]> = [
@@ -145,9 +155,9 @@ describe('две роли для клиента — менеджер и кура
     ['BusinessPage', 'BusinessPage'],
   ] as const;
 
-  it('нет «четырёх ролей», «четверых», «04 специалиста», «состава команды» и отдельных методолога и редактора', () => {
+  it('вне «Кто сопровождает» нет «четырёх ролей», «четверых», «04 специалиста», «состава команды» и отдельных методолога и редактора', () => {
     for (const [page, component] of SITE) {
-      for (const source of [design(page), plain(read(`app/src/components/pages/${component}.tsx`))]) {
+      for (const source of [withoutTeam(design(page)), withoutTeam(plain(read(`app/src/components/pages/${component}.tsx`)))]) {
         assert.doesNotMatch(source, /[Чч]етыре роли|закреплены четверо|специалиста закрепляем|[Сс]остав команды/u, page);
         assert.doesNotMatch(source, />Методолог<|>Научный редактор|Эксперт по специальности|научный редактор —|методолог —/u, page);
         assert.doesNotMatch(source, /проверяют куратор и научный редактор|вычитку научного редактора/u, page);
@@ -164,25 +174,26 @@ describe('две роли для клиента — менеджер и кура
     assert.ok(design('MainPage').includes("'Перечень «Что подготовить» по виду работы — в кабинете до начала работы'"));
   });
 
-  it('«Кто сопровождает»: две роли словами задания, на орбите — две карточки, «Менеджер» и «Куратор»', () => {
-    for (const [page, cls] of [['MainPage', 'pd'], ['StudentsPage', 'sp'], ['BusinessPage', 'bp']] as const) {
+  it('«Кто сопровождает»: четыре роли и четыре карточки на орбите (Р-795)', () => {
+    const ROLES = {
+      MainPage: ['pd', ['Менеджер', 'Методолог', 'Научный редактор', 'Эксперт по специальности'], 'Менеджер, эксперт по специальности, методолог и научный редактор ведут проект до защиты.'],
+      StudentsPage: ['sp', ['Менеджер', 'Методолог', 'Научный редактор', 'Куратор по специальности'], 'Над работой закреплены четверо: менеджер, куратор по специальности, методолог и научный редактор.'],
+      BusinessPage: ['bp', ['Менеджер', 'Методолог', 'Научный редактор', 'Эксперт по специальности'], 'За проектом закреплены четверо: менеджер, отраслевой эксперт, методолог и научный редактор.'],
+    } as const;
+    for (const [page, [cls, titles, lead]] of Object.entries(ROLES)) {
       const html = design(page);
-      // «Компаниям» называет роли словами С-7 (Р-772): у проекта организации
-      // менеджер ведёт календарный план и приёмку этапов, куратор — Задание.
-      const roles = page === 'BusinessPage'
-        ? /Менеджер ведёт календарный план, приёмку этапов и документы\. Куратор — отраслевой эксперт со степенью — отвечает за Задание, содержание и экспертизу: методологический разбор и научная экспертиза текста — его работа\./u
-        : /Менеджер отвечает за сроки, документы и оплаты\. Куратор[^<]*за содержание и методологию: методологический разбор и научная экспертиза текста — его работа\./u;
-      assert.match(html, roles, page);
-      assert.match(html, />02<\/span><span [^>]*>роли на всё время (?:работы|проекта): менеджер и куратор<\/span>/u, page);
-      const cards = [...html.matchAll(new RegExp(`<div class="${cls}-crew" `, 'gu'))];
-      assert.equal(cards.length, 2, `${page}: карточек ролей не две`);
+      assert.ok(html.includes(lead), `${page}: нет лида четырёх ролей`);
+      assert.match(html, />04<\/span><span [^>]*>специалиста закрепляем за (?:проектом|работой) до (?:самой защиты|сдачи результата)<\/span>/u, page);
+      assert.equal([...html.matchAll(new RegExp(`<div class="${cls}-crew" `, 'gu'))].length, 4, `${page}: карточек ролей не четыре`);
       const orbit = html.slice(html.indexOf(`<div class="${cls}-orbit"`), html.indexOf('</section>', html.indexOf(`<div class="${cls}-orbit"`)));
-      const titles = [...orbit.matchAll(/font-weight:600;color:var\(--pd-ink\)">([^<]+)<\/span>/gu)].map((m) => m[1]);
-      assert.deepEqual(titles, ['Менеджер', 'Куратор'], page);
-      assert.equal([...orbit.matchAll(new RegExp(`class="${cls}-dot"`, 'gu'))].length, 2, `${page}: точек орбиты не две`);
-      // До 1024 px орбита — сетка: встроенная пропорция 1:1 оставляла бы
-      // под одной строкой из двух карточек пустое место.
+      const found = [...orbit.matchAll(/font-weight:600;color:var\(--pd-ink\)">([^<]+)<\/span>/gu)].map((m) => m[1]);
+      assert.deepEqual(found, [...titles], page);
+      assert.equal([...orbit.matchAll(new RegExp(`class="${cls}-dot"`, 'gu'))].length, 4, `${page}: точек орбиты не четыре`);
+      for (const fig of ['manager', 'method', 'editor', 'expert']) assert.ok(orbit.includes(`./assets/crew/${fig}.webp`), `${page}: нет фигуры ${fig}`);
+      // Движение и раскладка блока — прежние: до 1024 px орбита — сетка в две колонки.
       assert.ok(html.includes(`.${cls}-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}`), page);
+      // Метки направлений — словами Р-771 и Р-785, без «научной редактуры».
+      assert.doesNotMatch(orbit, /научн[а-яё]*[\s ]+редактур/iu, page);
     }
   });
 
