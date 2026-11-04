@@ -86,6 +86,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-articles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .pd-patent{display:grid;grid-template-columns:minmax(0,1fr) auto}
 @media (max-width:768px){.pd-articles{grid-template-columns:minmax(0,1fr)!important}.pd-patent{grid-template-columns:minmax(0,1fr)!important}.pd-patent>a{width:100%}}
+/* Шлифовка Р-797: кромка 2 px --pd-accent — псевдоэлементом по верхнему краю и скруглениям: толщина ровная, без «серпа», который давала border-top 2 px рядом с боковой рамкой 1 px; на высоте радиуса кромка переходит в рамку карточки. */
+.pd-edge{position:relative}
+.pd-edge::before{content:"";position:absolute;top:-1px;left:-1px;right:-1px;height:15px;box-sizing:border-box;border:2px solid var(--pd-accent);border-bottom:0;border-radius:14px 14px 0 0;pointer-events:none}
 
 .pd-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .pd-request{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
@@ -456,7 +459,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <!-- Р-797: шапка карточки — название и срок меткой-фактом; одна тонкая акцентная кромка сверху у обеих карточек; проверки — ровным списком; решение редакции или фонда — примечанием в подвале карточки. -->
 <div class="pd-articles" style="gap:16px">
 <sc-for list="{{ articleTracks }}" as="a" hint-placeholder-count="2">
-<article class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-top:2px solid var(--pd-accent);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-width:0;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<article class="pd-lift pd-edge" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;display:flex;flex-direction:column;min-width:0;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <div style="flex:1 1 auto;padding:22px 24px 22px;display:flex;flex-direction:column;gap:14px">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ a.title }}</h3>
@@ -472,13 +475,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-for>
 </ul>
 </div>
-<p style="margin:0;padding:14px 24px;background:var(--pd-surface-quiet);border-top:1px solid var(--pd-border);font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ a.note }}</p>
+<p style="margin:0;padding:14px 24px;background:var(--pd-surface-quiet);border-top:1px solid var(--pd-border);border-radius:0 0 13px 13px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ a.note }}</p>
 </article>
 </sc-for>
 </div>
 <!-- Р-797: «Патент…» — третья строка той же системы на ширину сетки: заголовок как у карточек, кнопка справа по центру, до 768 px — на всю ширину под текстом. -->
 <div class="pd-patent pd-lift" style="margin-top:16px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 24px;gap:14px 32px;align-items:center;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<p style="margin:0;min-width:0;max-width:76ch;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)"><span style="display:block;margin-bottom:4px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Патент на изобретение и программа для ЭВМ.</span> Проверяем описание и комплект документов к подаче; о выдаче патента и регистрации программы решает Роспатент.</p>
+<div style="min-width:0;max-width:76ch"><h3 style="margin:0 0 4px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Патент на изобретение и программа для ЭВМ.</h3><p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Проверяем описание и комплект документов к подаче; о выдаче патента и регистрации программы решает Роспатент.</p></div>
 <a href="#request" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;box-sizing:border-box;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;text-decoration:none;white-space:nowrap;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a>
 </div>
 </section>

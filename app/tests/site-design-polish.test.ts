@@ -57,3 +57,28 @@ describe('Р-796: «Диагностика» на «Аспирантам»', () 
     assert.match(design('MainPage'), /<div role="group" aria-label="Ход работы по этапам" class="pd-plan-steps"/u);
   });
 });
+
+describe('Р-797: «Статьи и гранты» на «Аспирантам»', () => {
+  it('кромка — псевдоэлементом ровной толщины, без border-top 2 px на скруглённой карточке', () => {
+    for (const page of Object.keys(COMPONENT) as Page[]) {
+      for (const tag of design(page).match(/<[a-z][^>]*\bstyle="[^"]*"[^>]*>/gu) ?? []) {
+        const style = tag.match(/\bstyle="([^"]*)"/u)![1];
+        assert.ok(!(/border-top:2px solid/u.test(style) && /border-radius/u.test(style)), `${page}: border-top 2 px у скруглённого блока даёт «серп»: ${tag.slice(0, 140)}`);
+      }
+    }
+    for (const [where, source] of both('MainPage')) {
+      assert.ok(source.includes('.pd-edge::before{content:"";position:absolute;top:-1px;left:-1px;right:-1px;height:15px;box-sizing:border-box;border:2px solid var(--pd-accent);border-bottom:0;border-radius:14px 14px 0 0;pointer-events:none}'), `${where}: нет правила кромки`);
+    }
+    assert.equal((design('MainPage').match(/<article class="pd-lift pd-edge"/gu) ?? []).length, 1, 'у карточки «Статьи и гранты» нет кромки pd-edge');
+  });
+
+  it('«Патент на изобретение и программа для ЭВМ.» — заголовок h3, как у карточек', () => {
+    const html = design('MainPage');
+    const section = html.slice(html.indexOf('<section id="articles"'), html.indexOf('</section>', html.indexOf('<section id="articles"')));
+    const card = section.match(/<h3 style="margin:0;([^"]*)">\{\{ a\.title \}\}<\/h3>/u)?.[1];
+    const patent = section.match(/<h3 style="margin:0 0 4px;([^"]*)">Патент на изобретение и программа для ЭВМ\.<\/h3>/u)?.[1];
+    assert.ok(card && patent, 'название «Патент…» не заголовок h3');
+    assert.equal(patent, card, 'заголовок «Патент…» набран иначе, чем заголовки карточек');
+    assert.match(both('MainPage')[1][1], /<h3 style=\{\{[^}]*\}\}>Патент на изобретение и программа для ЭВМ\.<\/h3>/u);
+  });
+});
