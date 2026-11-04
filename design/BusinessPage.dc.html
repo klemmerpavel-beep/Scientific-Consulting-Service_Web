@@ -66,7 +66,24 @@
 @media (prefers-reduced-motion:reduce){.bp-proof{animation:none}}
 .bp-cat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 
-.bp-rights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr}
+/* «Права и конфиденциальность» (Р-803): композиция, отличная от сетки
+   «Условий» двумя разделами выше. Слева — главный тезис «Исключительные
+   права» тёмной панелью --pd-accent-deep (на странице она одна, Р-608):
+   значок и номер сверху, заголовок и абзац прижаты книзу, в углу — пара
+   колец орбиты, неподвижных. Справа — остальные пять пунктов одной белой
+   карточкой-списком: значок 40 px, заголовок, спокойный номер справа и
+   текст, между пунктами одна линия --pd-border. Синие кромки снизу у
+   части карточек сняты; панель и список поднимаются при наведении
+   одинаково (pd-lift, Р-628). До 768 px — столбцом, панель по
+   содержимому и без колец: в невысокой панели они заходили под текст. */
+.bp-rights{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}
+.bp-rightlead{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:32px;min-width:0}
+.bp-rightlist{list-style:none;min-width:0}
+.bp-rightlist>li{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:16px;align-items:start;padding:18px 0;border-top:1px solid var(--pd-border)}
+.bp-rightlist>li:first-child{border-top:0}
+.bp-righthead{display:flex;flex-direction:row-reverse;align-items:baseline;justify-content:space-between;gap:16px;min-width:0}
+@media (max-width:480px){.bp-rightlist{padding:0 20px!important}.bp-rightlist>li{grid-template-columns:36px minmax(0,1fr);column-gap:14px}.bp-rightlist>li>span:first-child{width:36px!important;height:36px!important;flex-basis:36px!important}}
+@media (max-width:768px){.bp-rightart{display:none}}
 .bp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
 /* Шкала шагов «Что будет после отправки» (Р-800) — один компонент на «Студентам» и «Компаниям». Шаги — последовательность, поэтому с номерами: узлы 28 px на общей линии 2 px --pd-edge-neutral, разделителей под шагами нет. Горизонтальная: узел над текстом, линия от узла к узлу соседней колонки (промежуток колонок 24 px), колонки ряда одной высоты. Вертикальная (.pd-track-v): узел слева, линия вниз к следующему узлу. Последний шаг ряда линии не ведёт. */
@@ -81,7 +98,7 @@
 .pd-track-v .pd-track-body{padding-top:4px}
 .bp-support{display:grid;grid-template-columns:minmax(0,1fr)}
 @media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq,.bp-mech{grid-template-columns:minmax(0,1fr)}.bp-mech,.bp-rights{grid-auto-rows:auto}.bp-pack{grid-column:span 6!important}}
+@media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq,.bp-mech{grid-template-columns:minmax(0,1fr)}.bp-pack{grid-column:span 6!important}}
 /* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
 @media (max-width:1200px){.bp-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.bp-nav[hidden]{display:none!important}.bp-burger{display:inline-flex}}
 /* Подпись раздела на узком экране — под заголовком слева, а не прижатой вправо строкой (Р-250). */
@@ -722,18 +739,35 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Права на результат остаются у вашей компании</span>
 </div>
 <div class="bp-rights" style="gap:16px">
-<sc-for list="{{ rights }}" as="r" hint-placeholder-count="6">
-<article class="pd-lift" style="display:flex;flex-direction:column;gap:12px;box-sizing:border-box;background:{{ r.bg }};border:1px solid {{ r.border }};border-radius:14px;padding:20px 22px 22px;box-shadow:inset 0 -3px 0 {{ r.edge }},0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)">
-<div style="display:flex;align-items:center;gap:12px">
-<span aria-hidden="true" style="width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:{{ r.iconBg }};display:flex;align-items:center;justify-content:center">
-<span style="width:21px;height:21px;display:block;background:{{ r.ink }};-webkit-mask:{{ r.icon }};mask:{{ r.icon }}"></span>
+<article class="bp-rightlead pd-lift" style="box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:clamp(24px,3vw,36px);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<svg aria-hidden="true" class="bp-rightart" viewBox="0 0 400 400" width="400" height="400" fill="none" style="position:absolute;right:-150px;top:-150px;pointer-events:none"><circle cx="200" cy="200" r="96" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="148" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="196" stroke="rgba(255,255,255,.1)" stroke-width="1" stroke-dasharray="4 6"></circle><circle cx="95" cy="305" r="4" fill="#B4C9E5"></circle><circle cx="104" cy="200" r="6" fill="rgba(255,255,255,.24)"></circle></svg>
+<div style="position:relative;display:flex;align-items:center;gap:14px">
+<span aria-hidden="true" style="width:48px;height:48px;flex:0 0 48px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);box-sizing:border-box;display:flex;align-items:center;justify-content:center">
+<span style="width:24px;height:24px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ rightsLead.icon }};mask:{{ rightsLead.icon }}"></span>
 </span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;color:{{ r.ink }};font-variant-numeric:tabular-nums">{{ r.num }}</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-accent-edge);font-variant-numeric:tabular-nums">{{ rightsLead.num }}</span>
 </div>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:{{ r.title }}">{{ r.label }}</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:{{ r.body }}">{{ r.text }}</p>
+<div style="position:relative;display:flex;flex-direction:column;gap:10px">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink-inverse)">{{ rightsLead.label }}</h3>
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-accent-mark)">{{ rightsLead.text }}</p>
+</div>
 </article>
+<ul role="list" class="bp-rightlist pd-lift" style="box-sizing:border-box;margin:0;padding:0 24px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<sc-for list="{{ rightsRest }}" as="r" hint-placeholder-count="5">
+<li>
+<span aria-hidden="true" style="width:40px;height:40px;flex:0 0 40px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center">
+<span style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:{{ r.icon }};mask:{{ r.icon }}"></span>
+</span>
+<div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<div class="bp-righthead">
+<span style="flex:0 0 auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ r.num }}</span>
+<h3 style="margin:0;min-width:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ r.label }}</h3>
+</div>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:66ch">{{ r.text }}</p>
+</div>
+</li>
 </sc-for>
+</ul>
 </div>
 </section>
 
@@ -1473,29 +1507,23 @@ class Component extends DCLogic {
         closed: this.state.faqOpen !== i,
         toggle: () => this.setState(s => ({ faqOpen: s.faqOpen === i ? -1 : i }))
       })),
-      rights: [
-        ['Исключительные права', 'Права на результаты интеллектуальной деятельности переходят заказчику. Условие закреплено пунктом договора об отчуждении прав.', 'pd-asset'],
-        ['Кто подписывает NDA', 'Соглашение о неразглашении подписывает каждый участник проектной команды до получения доступа к материалам.', 'pd-nda'],
-        ['Материалы после проекта', 'По акту передаём материалы и удаляем рабочие копии. Срок хранения и порядок удаления записаны в договоре.', 'pd-contract'],
-        ['На кого оформляется охранный документ', 'Заявитель и правообладатель — ваша компания. Мы готовим документы и сопровождаем подачу, не выступая правообладателем.', 'award'],
-        ['Повторное использование', 'Материалы проекта не используются в других работах и не показываются как пример. Публичных кейсов у нас нет.', 'shield'],
-        ['Служебные результаты', 'Помогаем оформить положение о служебных результатах, уведомления авторов и приказы внутри вашей компании.', 'pd-team']
-      ].map(([label, text, icon], i) => {
-        // Первая карточка акцентная — тем же приёмом, что первая плашка на
-        // первом экране: разница задаётся плотностью и рамкой, не градиентом.
-        const lead = i === 0;
-        return {
+      // Права и конфиденциальность (Р-803): первый пункт — главный тезис
+      // тёмной панелью, остальные пять — карточкой-списком; порядок и
+      // номера 01—06 прежние.
+      ...(() => {
+        const rights = [
+          ['Исключительные права', 'Права на результаты интеллектуальной деятельности переходят заказчику. Условие закреплено пунктом договора об отчуждении прав.', 'pd-asset'],
+          ['Кто подписывает NDA', 'Соглашение о неразглашении подписывает каждый участник проектной команды до получения доступа к материалам.', 'pd-nda'],
+          ['Материалы после проекта', 'По акту передаём материалы и удаляем рабочие копии. Срок хранения и порядок удаления записаны в договоре.', 'pd-contract'],
+          ['На кого оформляется охранный документ', 'Заявитель и правообладатель — ваша компания. Мы готовим документы и сопровождаем подачу, не выступая правообладателем.', 'award'],
+          ['Повторное использование', 'Материалы проекта не используются в других работах и не показываются как пример. Публичных кейсов у нас нет.', 'shield'],
+          ['Служебные результаты', 'Помогаем оформить положение о служебных результатах, уведомления авторов и приказы внутри вашей компании.', 'pd-team']
+        ].map(([label, text, icon], i) => ({
           label, text, num: '0' + (i + 1),
-          icon: "url('./assets/icons/" + icon + ".svg') center/contain no-repeat",
-          bg: lead ? 'var(--pd-accent-deep)' : 'var(--pd-ink-inverse)',
-          border: lead ? 'var(--pd-accent-deep)' : 'var(--pd-border)',
-          edge: lead ? 'var(--pd-accent)' : ['var(--pd-accent-mark)', 'var(--pd-accent-edge)', 'var(--pd-accent-tint)'][i % 3],
-          iconBg: lead ? 'rgba(255,255,255,.14)' : 'var(--pd-accent-tint)',
-          ink: lead ? 'var(--pd-ink-inverse)' : 'var(--pd-accent)',
-          title: lead ? 'var(--pd-ink-inverse)' : 'var(--pd-ink)',
-          body: lead ? 'var(--pd-accent-mark)' : 'var(--pd-ink-secondary)'
-        };
-      }),
+          icon: "url('./assets/icons/" + icon + ".svg') center/contain no-repeat"
+        }));
+        return { rightsLead: rights[0], rightsRest: rights.slice(1) };
+      })(),
       afterSteps: [
         ['01', 'Заявка и ответ менеджера', 'Менеджер отвечает в течение рабочего дня, Пн⁠—⁠Пт 10:00⁠—⁠19:00, присылает NDA и проект договора; задачу обсуждаем после подписания NDA.'],
         ['02', 'Личный кабинет', 'Менеджер открывает доступ после подписания NDA, вы прикладываете материалы по перечню «Что подготовить».'],
