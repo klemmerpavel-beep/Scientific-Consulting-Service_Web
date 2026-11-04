@@ -69,6 +69,8 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 .pd-track-v .pd-track-body{padding-top:4px}
 /* «Студентам» (Р-800): пять колонок на ≥1200 px, 3 + 2 по сетке на 768—1199 px (третий шаг линии не ведёт), до 767 px — вертикальная шкала. */
 @media (min-width:1025px) and (max-width:1199px){.sp-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* Шлифовка Р-800: на ≥1200 px заголовок шага 14 px и колонки под длину заголовков — «Куратор и созвон знакомства» и «Итог консультации и Задание» стоят в одну строку, пятый, самый короткий шаг уже; поля блока 24 px и промежуток 20 px, линия — до узла следующего шага. */
+@media (min-width:1200px){.sp-afterbox{padding:24px!important}.sp-steps{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.06fr) minmax(0,1.06fr) minmax(0,.88fr);column-gap:20px}.sp-steps>li::after{right:-20px}.sp-steps .pd-track-title{font-size:14px!important}}
 @media (min-width:768px) and (max-width:1199px){.sp-steps>li:nth-child(3)::after{display:none}}
 @media (max-width:767px){.sp-steps{display:flex!important;flex-direction:column;gap:0!important}.sp-steps>li{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:14px;padding-bottom:20px}.sp-steps>li:last-child{padding-bottom:0}.sp-steps>li::after{top:28px;bottom:0;left:13px;right:auto;width:2px;height:auto}.sp-steps .pd-track-body{padding-top:4px}}
 @media (max-width:480px){.sp-afterbox{padding:20px!important}}
@@ -754,14 +756,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="sp-afterbox" style="margin-top:16px;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:24px 28px">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap;margin-bottom:24px">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что будет после отправки</h3>
-<span style="display:inline-flex;align-items:center;gap:8px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)"><span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ clockMask }};mask:{{ clockMask }}"></span>Срок ответа — рабочий день</span>
+<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 10px;border-radius:999px;background:var(--pd-accent-tint)"><span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:{{ clockMask }};mask:{{ clockMask }}"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums;white-space:nowrap">Срок ответа — рабочий день</span></span>
 </div>
 <ol class="sp-steps pd-track" role="list">
 <sc-for list="{{ afterSteps }}" as="s" hint-placeholder-count="5">
 <li>
 <span class="pd-track-node" style="position:relative;z-index:1;width:28px;height:28px;box-sizing:border-box;border-radius:50%;border:2px solid var(--pd-accent);background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ s.num }}</span>
 <span class="pd-track-body" style="display:flex;flex-direction:column;gap:6px;min-width:0">
-<span style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span>
+<span class="pd-track-title" style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ s.text }}</span>
 </span>
 </li>
@@ -1328,7 +1330,7 @@ class Component extends DCLogic {
       afterSteps: [
         ['Заявка и ответ менеджера', 'Менеджер отвечает в течение рабочего дня, Пн⁠—⁠Пт 10:00⁠—⁠19:00, и уточняет задачу.'],
         ['Личный кабинет', 'Менеджер открывает доступ, вы прикладываете материалы по перечню «Что подготовить».'],
-        ['Куратор и созвон знакомства', 'Куратор со степенью по вашей специальности; созвон до 20 минут ведёт менеджер.'],
+        ['Куратор и созвон знакомства', 'Куратор со степенью по вашей специальности; созвон до 20 минут ведёт менеджер.'],
         ['Итог консультации и Задание', 'Состав работ, календарный план и стоимость по этапам; Задание вы согласуете в кабинете.'],
         ['Этапы с приёмкой', 'Следующий этап оплачивается после приёмки предыдущего.']
       ].map(([title, text], i) => ({ title, text, num: '0' + (i + 1) })),

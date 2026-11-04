@@ -121,3 +121,22 @@ describe('Р-799: «Смета на диплом» на «Студентам»',
     }
   });
 });
+
+describe('Р-800: «Что будет после отправки» на «Студентам»', () => {
+  it('«Срок ответа — рабочий день» — тем же компонентом «Метка-факт», что срок на «Аспирантам»', () => {
+    const fact = design('MainPage').match(/<span style="([^"]*)">\s*<span aria-hidden="true" style="([^"]*)"><\/span>\s*<span style="([^"]*)">\{\{ a\.term \}\}<\/span>/u);
+    const label = design('StudentsPage').match(/<span style="([^"]*)"><span aria-hidden="true" style="([^"]*)"><\/span><span style="([^"]*)">Срок ответа — рабочий день<\/span><\/span>/u);
+    assert.ok(fact, 'нет метки-факта срока на «Аспирантам»');
+    assert.ok(label, 'подпись «Срок ответа — рабочий день» не метка-факт');
+    assert.equal(label[1], fact[1], 'подложка метки другая');
+    assert.equal(label[3], fact[3], 'текст метки набран иначе');
+    assert.doesNotMatch(label[0], /text-transform:uppercase/u);
+  });
+
+  it('на ≥1200 px заголовок шага 14 px, колонки под длину заголовков', () => {
+    for (const [where, source] of both('StudentsPage')) {
+      assert.ok(source.includes('@media (min-width:1200px){.sp-afterbox{padding:24px!important}.sp-steps{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.06fr) minmax(0,1.06fr) minmax(0,.88fr);column-gap:20px}.sp-steps>li::after{right:-20px}.sp-steps .pd-track-title{font-size:14px!important}}'), `${where}: нет правила шкалы на ≥1200 px`);
+    }
+    assert.match(design('StudentsPage'), /<span class="pd-track-title" style="[^"]*">\{\{ s\.title \}\}<\/span>/u);
+  });
+});
