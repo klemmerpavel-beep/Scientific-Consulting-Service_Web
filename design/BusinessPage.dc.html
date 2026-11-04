@@ -35,7 +35,6 @@
 .bp-scroll{overflow-x:auto;overscroll-behavior-x:contain;scroll-behavior:smooth}
 .bp-hero{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr)}
 .bp-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
-.bp-trl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .bp-mech{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr}
 /* Полоса натюрморта фиксирована 96 пикселями и не тянется вместе с
    карточкой. Карточки одного ряда равны по высоте, но ряд высотой в
@@ -65,7 +64,7 @@
 .pd-track-v>li::after{top:28px;bottom:0;left:13px;right:auto;width:2px;height:auto}
 .pd-track-v .pd-track-body{padding-top:4px}
 .bp-support{display:grid;grid-template-columns:minmax(0,1fr)}
-@media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-trl{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-mech{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-mech{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq,.bp-mech{grid-template-columns:minmax(0,1fr)}.bp-mech,.bp-rights{grid-auto-rows:auto}.bp-pack{grid-column:span 6!important}}
 /* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
 @media (max-width:1200px){.bp-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.bp-nav[hidden]{display:none!important}.bp-burger{display:inline-flex}}
@@ -73,25 +72,67 @@
 @media (max-width:768px){.bp-sub{text-align:left!important;margin-left:0!important}}
 @media (max-width:430px){.bp-head{gap:12px!important}.bp-logo{font-size:22px!important}.bp-cta{padding:12px 16px!important;font-size:12px!important}}
 @media (max-width:480px){.bp-hero,.bp-team,.bp-trl,.bp-cat,.bp-rights,.bp-req,.bp-support{grid-template-columns:minmax(0,1fr)!important}.bp-pad{padding-left:20px!important;padding-right:20px!important}.bp-orbit{grid-template-columns:minmax(0,1fr)}}
-/* Шкала УГТ. Высота карточки уровня зафиксирована по самому объёмному
-   состоянию (уровень 8) — иначе при переключении страница
-   под блоком прыгает на 40—80 пикселей. Смена содержимого проигрывается
+/* В каталоге на телефоне миниатюра направления уступает место названию —
+   иначе «Интеллектуальная собственность» ложилась на счётчик позиций (Р-250). */
+@media (max-width:480px){.bp-catart{display:none!important}}
+/* Шкала УГТ (Р-801). Девять уровней — последовательность, поэтому номер
+   стоит в узле 28 px на общей линии, как у «Шкалы плана» (Р-796):
+   пройденный уровень залит --pd-accent, номер белый; текущий — белый узел
+   с кольцом 2 px --pd-accent и подпись на подложке --pd-accent-tint;
+   будущие — кольцо --pd-border, номер и подпись --pd-ink-muted. Кнопка
+   уровня — вся колонка с узлом и подписью, не ниже 44 px; под курсором
+   подпись другого уровня — на --pd-surface-quiet. Линия идёт от центра
+   первого узла до центра девятого, пройденный участок растёт
+   transform: scaleX за 220 мс. Девять колонок по 106 px вмещают
+   «Подтверждение» 12 px, от 1200 px подписи 13 px; уже 1014 px шкала
+   прокручивается в своей области, текущий уровень при загрузке встаёт в
+   её середину (Р-250: подписи не наезжают друг на друга). */
+.bp-trlscroll{margin:0 -4px 16px;padding:0 4px;scroll-snap-type:x proximity}
+.bp-trlscale{position:relative;min-width:954px;padding:4px 0 6px}
+.bp-trlline{position:absolute;left:calc(100% / 18);right:calc(100% / 18);top:17px;height:2px;border-radius:999px;background:var(--pd-border);overflow:hidden}
+.bp-trlfill{position:absolute;inset:0;background:var(--pd-accent);transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1)}
+.bp-trlstep{appearance:none;border:0;background:transparent;cursor:pointer;margin:0;padding:0 2px;min-width:0;min-height:44px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;border-radius:10px;scroll-snap-align:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif}
+.bp-trlstep:focus-visible{outline:2px solid var(--pd-accent);outline-offset:2px}
+.bp-trlnode{width:28px;height:28px;flex:0 0 28px;box-sizing:border-box;border:2px solid;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1.24;font-weight:600;font-variant-numeric:tabular-nums;transition:background 220ms cubic-bezier(.2,0,.2,1),border-color 220ms cubic-bezier(.2,0,.2,1),color 220ms cubic-bezier(.2,0,.2,1)}
+.bp-trlchip{display:block;max-width:100%;box-sizing:border-box;padding:4px;border-radius:10px;font-size:12px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.bp-trlstep:hover .bp-trlchip{background:var(--pd-surface-quiet)}
+.bp-trlstep[aria-pressed="true"] .bp-trlchip{background:var(--pd-accent-tint)}
+@media (min-width:1200px){.bp-trlchip{font-size:13px;padding:4px 8px}}
+/* Карточка уровня (Р-801): шапка — метка, тезис и плашка границы
+   ответственности; ниже три колонки с одинаковыми шапками на общей линии,
+   «Документы на выходе» — таблицей с нормой по правому краю; подвал —
+   «Подходящее предложение» со ссылкой к пакету. Высота карточки на
+   широком экране — по самому объёмному уровню: иначе при переключении
+   страница под блоком прыгает. Смена содержимого проигрывается
    CSS-анимацией; она перезапускается только при смене имени, поэтому два
    одинаковых по эффекту набора кадров чередуются по чётности уровня. */
-/* Шкала УГТ: девять делений по 84 px не вмещали «Подтверждение» и
-   «Демонстрация» — подписи наезжали на соседние. 940 px дают ~104 px на
-   деление; на узких экранах шкала по-прежнему прокручивается в своей
-   области. В каталоге на телефоне миниатюра направления уступает место
-   названию — иначе «Интеллектуальная собственность» ложилась на счётчик
-   позиций (Р-250). */
-@media (max-width:480px){.bp-catart{display:none!important}}
-.bp-trlcard{min-height:500px}
-.bp-trlstep:focus-visible{outline:2px solid var(--pd-accent);outline-offset:3px}
+.bp-trlhead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+.bp-trl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr)}
+.bp-trlcol{display:flex;flex-direction:column;gap:12px;min-width:0}
+.bp-trlcolhead{font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);padding-bottom:10px;border-bottom:1px solid var(--pd-border)}
+.bp-trllist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.bp-trllist>li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)}
+.bp-trldot{width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:var(--pd-accent)}
+.bp-trldocs{display:flex;flex-direction:column;gap:10px}
+.bp-trldocs>[role=row]{display:grid;grid-template-columns:minmax(0,1fr) fit-content(42%);gap:16px;align-items:baseline;padding-bottom:10px;border-bottom:1px solid var(--pd-divider)}
+.bp-trldocs>[role=row]:last-child{padding-bottom:0;border-bottom:0}
+.bp-trlfoot{background:var(--pd-surface-quiet);transition:background 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)}
+.bp-trlfoot:hover{background:var(--pd-accent-tint)}
+.bp-trlfoot:active{opacity:.82}
+.bp-trlfoot:focus-visible{outline-offset:-4px}
+.bp-trlgo{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;min-height:44px;box-sizing:border-box;padding:0 20px;border:1px solid transparent;border-radius:999px;background:var(--pd-ink-inverse);font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);transition:border-color 180ms cubic-bezier(.2,0,.2,1)}
+.bp-trlfoot:hover .bp-trlgo{border-color:var(--pd-accent)}
+.bp-trlarrow{width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);transition:transform 180ms cubic-bezier(.2,0,.2,1)}
+.bp-trlfoot:hover .bp-trlarrow{transform:translateX(3px)}
+.bp-trlcard{min-height:438px}
 @keyframes bp-trl-a{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes bp-trl-b{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .bp-trlbody-a{animation:bp-trl-a 260ms cubic-bezier(.2,0,.2,1) both}
 .bp-trlbody-b{animation:bp-trl-b 260ms cubic-bezier(.2,0,.2,1) both}
+@media (max-width:1199px){.bp-trlcard{min-height:478px}}
 @media (max-width:1024px){.bp-trlcard{min-height:0}}
+@media (max-width:768px){.bp-trlhead,.bp-trl{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:480px){.bp-trlhead,.bp-trl,.bp-trlfoot{padding-left:20px!important;padding-right:20px!important}.bp-trlgo{padding:0 16px}}
 @media (prefers-reduced-motion:reduce){.bp-trlbody-a,.bp-trlbody-b{animation:none}}
 
 
@@ -426,64 +467,67 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Состав работ и документов для каждого уровня</span>
 </div>
 
-<div class="bp-scroll" style="margin-bottom:20px">
-<div role="group" aria-label="Уровень готовности технологии" style="min-width:940px;position:relative;padding-top:18px">
-<span aria-hidden="true" style="position:absolute;left:0;right:0;top:22px;height:3px;border-radius:999px;background:var(--pd-border)"></span>
-<span aria-hidden="true" style="position:absolute;left:0;top:22px;height:3px;border-radius:999px;background:var(--pd-accent);width:{{ trlFill }};transition:width 320ms cubic-bezier(.2,0,.2,1)"></span>
+<div class="bp-scroll bp-trlscroll">
+<div role="group" aria-label="Уровень готовности технологии" class="bp-trlscale">
+<span aria-hidden="true" class="bp-trlline"><span class="bp-trlfill" style="transform:scaleX({{ trlFill }})"></span></span>
 <div style="position:relative;display:grid;grid-template-columns:repeat(9,minmax(0,1fr))">
 <sc-for list="{{ trlScale }}" as="t" hint-placeholder-count="9">
-<button type="button" aria-pressed="{{ t.pressed }}" aria-label="{{ t.aria }}" onClick="{{ t.pick }}" class="bp-trlstep" style="appearance:none;border:0;cursor:pointer;background:transparent;padding:0 8px 0 0;text-align:left;display:flex;flex-direction:column;gap:10px;border-radius:10px">
-<span aria-hidden="true" style="width:{{ t.dotSize }};height:{{ t.dotSize }};flex:0 0 auto;margin-top:{{ t.dotShift }};border-radius:50%;background:{{ t.dot }};border:{{ t.dotRing }};box-sizing:border-box;display:block;transition:background 220ms cubic-bezier(.2,0,.2,1),width 220ms cubic-bezier(.2,0,.2,1),height 220ms cubic-bezier(.2,0,.2,1),margin-top 220ms cubic-bezier(.2,0,.2,1)"></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.24;color:{{ t.numColor }};font-variant-numeric:tabular-nums;transition:color 220ms cubic-bezier(.2,0,.2,1)">{{ t.num }}</span> <span style="font-size:12px;line-height:1.4;font-weight:600;color:{{ t.titleColor }};transition:color 220ms cubic-bezier(.2,0,.2,1)">{{ t.short }}</span>
+<button type="button" aria-pressed="{{ t.pressed }}" aria-label="{{ t.aria }}" onClick="{{ t.pick }}" class="bp-trlstep">
+<span class="bp-trlnode" style="background:{{ t.nodeBg }};border-color:{{ t.nodeRing }};color:{{ t.numColor }}">{{ t.num }}</span> <span class="bp-trlchip" style="color:{{ t.titleColor }}">{{ t.short }}</span>
 </button>
 </sc-for>
 </div>
 </div>
 </div>
 
-<div class="bp-trlcard" style="border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column">
+<div class="bp-trlcard" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);overflow:hidden;display:flex;flex-direction:column">
 <div class="{{ trl.bodyClass }}" style="display:flex;flex-direction:column;flex:1 1 auto">
-<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:16px">
-<div style="display:flex;flex-direction:column;gap:6px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">УГТ {{ trl.num }} · {{ trl.short }}</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink);max-width:56ch">{{ trl.title }}</span>
+<div class="bp-trlhead" style="gap:16px 32px;padding:22px 24px 20px;border-bottom:1px solid var(--pd-border)">
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent);font-variant-numeric:tabular-nums">УГТ {{ trl.num }} · {{ trl.short }}</span>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink);max-width:44ch">{{ trl.title }}</h3>
 </div>
-</div>
-
-<div role="status" style="border:1px solid {{ trl.noteBorder }};background:{{ trl.noteBg }};border-radius:10px;padding:12px 16px;margin-bottom:16px;min-height:64px;box-sizing:border-box;display:flex;flex-direction:column;gap:4px;justify-content:center">
+<div role="status" style="align-self:start;border:1px solid {{ trl.noteBorder }};background:{{ trl.noteBg }};border-radius:10px;padding:12px 16px;box-sizing:border-box;display:flex;flex-direction:column;gap:4px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:{{ trl.noteInk }}">{{ trl.noteLabel }}</span>
 <span style="font-size:14px;line-height:1.5;color:{{ trl.noteText }};max-width:72ch">{{ trl.note }}</span>
 </div>
+</div>
 
-<div class="bp-trl" style="gap:16px">
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);padding-bottom:8px;border-bottom:1px solid var(--pd-border)">Что делаем на этом уровне</span>
+<div class="bp-trl" style="gap:24px 32px;padding:20px 24px 24px;flex:1 1 auto;align-content:start">
+<div class="bp-trlcol">
+<span class="bp-trlcolhead">Что делаем на этом уровне</span>
+<ul role="list" class="bp-trllist">
 <sc-for list="{{ trl.can }}" as="c" hint-placeholder-count="3">
-<span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:var(--pd-accent)"></span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ c.text }}</span></span>
+<li><span aria-hidden="true" class="bp-trldot"></span><span>{{ c.text }}</span></li>
 </sc-for>
+</ul>
 </div>
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);padding-bottom:8px;border-bottom:1px solid var(--pd-border)">Документы на выходе</span>
+<div class="bp-trlcol">
+<span id="bp-trl-docs" class="bp-trlcolhead">Документы на выходе</span>
+<div role="table" aria-labelledby="bp-trl-docs" class="bp-trldocs">
 <sc-for list="{{ trl.docs }}" as="d" hint-placeholder-count="3">
-<span style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:1px solid var(--pd-divider)"><span style="font-size:14px;line-height:1.5;color:var(--pd-ink);min-width:0">{{ d.name }}</span><span style="flex:0 0 auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted);text-align:right">{{ d.norm }}</span></span>
+<div role="row"><span role="cell" style="font-size:14px;line-height:1.5;color:var(--pd-ink);min-width:0">{{ d.name }}</span><span role="cell" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;text-wrap:balance">{{ d.norm }}</span></div>
 </sc-for>
 </div>
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);padding-bottom:8px;border-bottom:1px solid var(--pd-border)">Финансирование</span>
+</div>
+<div class="bp-trlcol">
+<span class="bp-trlcolhead">Финансирование</span>
+<ul role="list" class="bp-trllist">
 <sc-for list="{{ trl.money }}" as="m" hint-placeholder-count="2">
-<span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:var(--pd-accent)"></span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ m.text }}</span></span>
+<li><span aria-hidden="true" class="bp-trldot"></span><span>{{ m.text }}</span></li>
 </sc-for>
+</ul>
 </div>
 </div>
 
-</div>
-<button class="pd-lift" type="button" onClick="{{ trl.goPack }}" style="margin:18px 0 0;appearance:none;cursor:pointer;width:100%;text-align:left;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-active="opacity:.82">
+<button type="button" class="bp-trlfoot" onClick="{{ trl.goPack }}" style="appearance:none;cursor:pointer;width:100%;margin:auto 0 0;text-align:left;border:0;border-top:1px solid var(--pd-border);padding:12px 24px;min-height:68px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:var(--pd-ink)">
 <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Подходящее предложение</span>
-<span style="font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ trl.packLabel }}</span>
+<span style="font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Подходящее предложение</span>
+<span style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ trl.packLabel }}</span>
 </span>
-<span style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-accent)">Перейти к пакету<span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
+<span class="bp-trlgo">Перейти к пакету<span aria-hidden="true" class="bp-trlarrow" style="-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
 </button>
+</div>
 </div>
 </section>
 
@@ -967,9 +1011,21 @@ class Component extends DCLogic {
       else if (!e.shiftKey && (at === last || !box.contains(at))) { e.preventDefault(); first.focus(); }
     };
     window.addEventListener('keydown', this.onRevKey);
+    // Шкала УГТ уже 1014 px прокручивается в своей области: текущий
+    // уровень ставится в её середину, иначе на телефоне видны только
+    // первые три уровня, а выбран пятый (Р-801). Страница при этом не
+    // прокручивается — сдвигается только сама шкала.
+    this.centerTrl = () => {
+      const box = document.querySelector('#trl .bp-trlscroll');
+      const cur = box && box.querySelector('[aria-pressed="true"]');
+      if (!box || !cur || box.scrollWidth <= box.clientWidth) return;
+      const a = box.getBoundingClientRect(), b = cur.getBoundingClientRect();
+      box.scrollTo({ left: box.scrollLeft + (b.left + b.width / 2) - (a.left + a.width / 2), behavior: 'instant' });
+    };
+    requestAnimationFrame(this.centerTrl);
     this.onResize = () => {
       if (this.raf) return;
-      this.raf = requestAnimationFrame(() => { this.raf = 0; this.forceUpdate(); });
+      this.raf = requestAnimationFrame(() => { this.raf = 0; this.forceUpdate(); this.centerTrl(); });
     };
     window.addEventListener('resize', this.onResize);
     // На широком экране меню всегда развёрнуто: иначе атрибут hidden
@@ -1128,21 +1184,19 @@ class Component extends DCLogic {
       // (Р-781, axe label-content-name-mismatch).
       aria: '0' + num + ' ' + short + ' — уровень готовности технологии',
       pressed: num === sel ? 'true' : 'false',
-      numColor: num <= sel ? 'var(--pd-accent)' : 'var(--pd-ink-muted)',
+      // Узел уровня (Р-801, как «Шкала плана» Р-796): пройденный залит
+      // акцентом с белым номером, текущий — белый с кольцом акцента,
+      // будущие — белые с кольцом --pd-border и приглушённым номером.
+      nodeBg: num < sel ? 'var(--pd-accent)' : 'var(--pd-ink-inverse)',
+      nodeRing: num <= sel ? 'var(--pd-accent)' : 'var(--pd-border)',
+      numColor: num < sel ? 'var(--pd-ink-inverse)' : num === sel ? 'var(--pd-accent)' : 'var(--pd-ink-muted)',
       titleColor: num === sel ? 'var(--pd-ink)' : 'var(--pd-ink-muted)',
-      // Точка на дорожке: пройденные уровни залиты акцентом, выбранный
-      // получает кольцо, будущие остаются серыми.
-      dot: num < sel ? 'var(--pd-accent)' : num === sel ? 'var(--pd-ink-inverse)' : 'var(--pd-border)',
-      dotRing: num === sel ? '3px solid var(--pd-accent)' : '0',
-      dotSize: num === sel ? '14px' : '10px',
-      // Центр точки садится на дорожку: она проходит на 23,5 пикселя от верха
-      // контейнера, точка начинается на 18-м, значит сдвиг = 5,5 − радиус.
-      dotShift: num === sel ? '-1.5px' : '0.5px',
       pick: () => this.setState({ trl: num })
     }));
-    // Заливка дорожки тянется до центра выбранной точки: девять колонок,
-    // центр k-й — (k − 0,5) / 9 ширины.
-    const trlFill = ((sel - 0.5) / trlData.length * 100).toFixed(2) + '%';
+    // Пройденный участок линии: она идёт от центра первого узла до центра
+    // девятого, восемь промежутков; заливка растёт transform: scaleX до
+    // центра выбранного узла.
+    const trlFill = ((sel - 1) / (trlData.length - 1)).toFixed(4);
     const cur = trlData[sel - 1];
     const goPack = anchor => () => {
       this.setState({ highlight: anchor });
