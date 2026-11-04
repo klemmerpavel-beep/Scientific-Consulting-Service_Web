@@ -190,3 +190,15 @@ describe('Р-802: «Условия, закреплённые договором 
     }
   });
 });
+
+describe('Р-803: «Права и конфиденциальность» на «Компаниям»', () => {
+  it('тёмная панель по устройству Р-608 и по своему содержимому', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      assert.ok(source.includes('.bp-rights{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);align-items:start}'), `${where}: панель тянется до высоты списка`);
+      assert.ok(source.includes('.bp-rightlead{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:28px;min-width:0}'), `${where}: содержимое панели разнесено по высоте`);
+    }
+    const panel = design('BusinessPage').match(/<article class="bp-rightlead pd-lift" style="([^"]*)">/u)?.[1] ?? '';
+    assert.match(panel, /padding:clamp\(28px,4vw,56px\)/u, 'поля тёмной панели — не по Р-608');
+    assert.match(design('BusinessPage'), /<p style="[^"]*max-width:60ch">\{\{ rightsLead\.text \}\}<\/p>/u);
+  });
+});

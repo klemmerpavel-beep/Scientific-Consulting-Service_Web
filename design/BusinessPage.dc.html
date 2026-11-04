@@ -78,8 +78,10 @@
    части карточек сняты; панель и список поднимаются при наведении
    одинаково (pd-lift, Р-628). До 768 px — столбцом, панель по
    содержимому и без колец: в невысокой панели они заходили под текст. */
-.bp-rights{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}
-.bp-rightlead{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:32px;min-width:0}
+/* Шлифовка Р-803: тёмная панель — по устройству Р-608 (поля clamp(28px, 4vw, 56px)) и по своему содержимому, без пустой заливки; от 1200 px — рядом со списком, колонки 1.05fr / .95fr, чтобы абзац уложился в три строки; до 1199 px — над списком на всю ширину, абзац — не длиннее 60 знаков в строке. Кольца орбиты сдвинуты в угол — мимо текста. */
+.bp-rights{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);align-items:start}
+@media (max-width:1199px){.bp-rights{grid-template-columns:minmax(0,1fr)!important}}
+.bp-rightlead{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:28px;min-width:0}
 .bp-rightlist{list-style:none;min-width:0}
 .bp-rightlist>li{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:16px;align-items:start;padding:18px 0;border-top:1px solid var(--pd-border)}
 .bp-rightlist>li:first-child{border-top:0}
@@ -743,8 +745,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Права на результат остаются у вашей компании</span>
 </div>
 <div class="bp-rights" style="gap:16px">
-<article class="bp-rightlead pd-lift" style="box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:clamp(24px,3vw,36px);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<svg aria-hidden="true" class="bp-rightart" viewBox="0 0 400 400" width="400" height="400" fill="none" style="position:absolute;right:-150px;top:-150px;pointer-events:none"><circle cx="200" cy="200" r="96" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="148" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="196" stroke="rgba(255,255,255,.1)" stroke-width="1" stroke-dasharray="4 6"></circle><circle cx="95" cy="305" r="4" fill="#B4C9E5"></circle><circle cx="104" cy="200" r="6" fill="rgba(255,255,255,.24)"></circle></svg>
+<article class="bp-rightlead pd-lift" style="box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:clamp(28px,4vw,56px);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<svg aria-hidden="true" class="bp-rightart" viewBox="0 0 400 400" width="400" height="400" fill="none" style="position:absolute;right:-210px;top:-240px;pointer-events:none"><circle cx="200" cy="200" r="96" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="148" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="196" stroke="rgba(255,255,255,.1)" stroke-width="1" stroke-dasharray="4 6"></circle><circle cx="95" cy="305" r="4" fill="#B4C9E5"></circle><circle cx="104" cy="200" r="6" fill="rgba(255,255,255,.24)"></circle></svg>
 <div style="position:relative;display:flex;align-items:center;gap:14px">
 <span aria-hidden="true" style="width:48px;height:48px;flex:0 0 48px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);box-sizing:border-box;display:flex;align-items:center;justify-content:center">
 <span style="width:24px;height:24px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ rightsLead.icon }};mask:{{ rightsLead.icon }}"></span>
@@ -753,7 +755,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <div style="position:relative;display:flex;flex-direction:column;gap:10px">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink-inverse)">{{ rightsLead.label }}</h3>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-accent-mark)">{{ rightsLead.text }}</p>
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-accent-mark);max-width:60ch">{{ rightsLead.text }}</p>
 </div>
 </article>
 <ul role="list" class="bp-rightlist pd-lift" style="box-sizing:border-box;margin:0;padding:0 24px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
