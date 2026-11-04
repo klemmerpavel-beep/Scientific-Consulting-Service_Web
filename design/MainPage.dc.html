@@ -72,7 +72,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-usp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .pd-services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
-.pd-cost{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+/* «Стоимость» (Р-798): на ≥1024 px таблица сроков и факторы рядом, ниже — одна колонка; строки таблицы — одна линия между строками, без зебры. */
+.pd-costgrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)}
+@media (max-width:1023px){.pd-costgrid{grid-template-columns:minmax(0,1fr)!important}}
+.pd-termrow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+.pd-terms>[role=row]+[role=row]{border-top:1px solid var(--pd-border)}
+@media (max-width:480px){.pd-termrow{grid-template-columns:minmax(0,1.25fr) minmax(128px,1fr)}.pd-terms>[role=row]{padding-left:16px!important;padding-right:16px!important}.pd-costlist{padding-left:20px!important;padding-right:20px!important}}
+.pd-costlist>li+li{border-top:1px solid var(--pd-border)}
 /* «Статьи и гранты» (Р-769): две карточки рядом, до 768 px — одна под другой.
    Р-797: строка «Патент…» — текст и кнопка справа по центру, до 768 px — кнопка на всю ширину под текстом. */
 .pd-articles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -84,11 +90,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (max-width:1024px){.pd-usp{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.pd-orbit>.pd-ring,.pd-orbit>.pd-dot,.pd-orbit>.pd-core{display:none!important}.pd-orbit>.pd-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}}
 .pd-nav{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 /* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
-@media (max-width:1200px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-services,.pd-cost,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px!important}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
+@media (max-width:1200px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-services,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px!important}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
 /* Подпись раздела на узком экране — под заголовком слева, а не прижатой вправо строкой (Р-250). */
 @media (max-width:768px){.pd-sub{text-align:left!important;margin-left:0!important}}
 @media (max-width:768px){.pd-metrics,.pd-usp,.pd-services,.pd-cost,}
-@media (max-width:480px){.pd-hero,.pd-metrics,.pd-problem,.pd-usp,.pd-services,.pd-team,.pd-cost,.pd-faq,.pd-request,.pd-foot{grid-template-columns:minmax(0,1fr)!important}.pd-metrics,.pd-services,.pd-cost,.pd-usp,.pd-foot,.pd-orbit{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}}@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}@media (max-width:768px){.pd-heroart{justify-content:flex-start!important;gap:28px!important}.pd-facea{max-width:184px!important}.pd-facea-c{width:184px!important;height:184px!important}.pd-faceb{max-width:132px!important;padding-top:76px!important}.pd-faceb-c{width:132px!important;height:132px!important}}@media (max-width:430px){.pd-facea{max-width:150px!important}.pd-facea-c{width:150px!important;height:150px!important}.pd-faceb{max-width:108px!important;padding-top:58px!important}.pd-faceb-c{width:108px!important;height:108px!important}}
+@media (max-width:480px){.pd-hero,.pd-metrics,.pd-problem,.pd-usp,.pd-services,.pd-team,.pd-faq,.pd-request,.pd-foot{grid-template-columns:minmax(0,1fr)!important}.pd-metrics,.pd-services,.pd-usp,.pd-foot,.pd-orbit{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}}@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}@media (max-width:768px){.pd-heroart{justify-content:flex-start!important;gap:28px!important}.pd-facea{max-width:184px!important}.pd-facea-c{width:184px!important;height:184px!important}.pd-faceb{max-width:132px!important;padding-top:76px!important}.pd-faceb-c{width:132px!important;height:132px!important}}@media (max-width:430px){.pd-facea{max-width:150px!important}.pd-facea-c{width:150px!important;height:150px!important}.pd-faceb{max-width:108px!important;padding-top:58px!important}.pd-faceb-c{width:108px!important;height:108px!important}}
 .pd-crewcard{position:relative;z-index:1}
 .pd-crewfig{position:absolute;left:50%;transform:translateX(-50%);top:-166px;height:210px;width:auto;z-index:0;pointer-events:none}
 /* Облако «проблем» — сцена 440 px с чипами на абсолютных местах. В три
@@ -483,29 +489,34 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Сумму вы видите в Задании, до оплаты</span>
 </div>
-<div style="margin:0 0 32px;border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;background:var(--pd-ink-inverse)">
-<div style="display:flex;align-items:baseline;gap:12px;padding:14px 20px;background:var(--pd-surface-quiet);border-bottom:1px solid var(--pd-border)">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);flex:1 1 auto">Направление работы</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);flex:0 1 auto;min-width:0;text-align:right">Минимальный срок сопровождения</span>
+<!-- Р-798: на ≥1024 px две колонки — слева таблица сроков (срок рядом с направлением, линии без зебры, тихая шапка, примечание подписью под таблицей), справа три фактора одной карточкой-списком; ниже 1024 px — одна колонка. Пара «направление — срок» размечена ролями таблицы для читалки. -->
+<div class="pd-costgrid" style="gap:24px;align-items:start">
+<div style="min-width:0">
+<div class="pd-terms" role="table" aria-describedby="mp-cost-note" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<div class="pd-termrow" role="row" style="gap:6px 16px;padding:16px 22px 10px">
+<span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Направление работы</span>
+<span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Минимальный срок сопровождения</span>
 </div>
 <sc-for list="{{ termRows }}" as="t" hint-placeholder-count="6">
-<div style="display:flex;align-items:baseline;gap:16px;padding:14px 20px;border-bottom:1px solid var(--pd-divider);background:{{ t.zebra }}">
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink);flex:1 1 auto;min-width:0">{{ t.title }}</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;color:var(--pd-accent);flex:0 0 auto;text-align:right;font-variant-numeric:tabular-nums">{{ t.term }}</span>
+<div class="pd-termrow" role="row" style="gap:6px 16px;padding:12px 22px;align-items:baseline">
+<span role="rowheader" style="font-size:14px;line-height:1.5;color:var(--pd-ink)">{{ t.title }}</span>
+<span role="cell" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ t.term }}</span>
 </div>
 </sc-for>
-<p style="margin:0;padding:14px 20px;font-size:14px;line-height:1.6;color:var(--pd-ink-muted);max-width:72ch">Срок считается по календарному плану Задания и разбит на этапы. Стоимость фиксируется в Задании и меняется только дополнительным соглашением к нему, которое подписываете вы.</p>
 </div>
-<div class="pd-cost" style="gap:16px">
+<p id="mp-cost-note" style="margin:12px 0 0;padding:0 4px;font-size:13px;line-height:1.6;color:var(--pd-ink-muted)">Срок считается по календарному плану Задания и разбит на этапы. Стоимость фиксируется в Задании и меняется только дополнительным соглашением к нему, которое подписываете вы.</p>
+</div>
+<ul class="pd-costlist" style="list-style:none;margin:0;padding:4px 24px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <sc-for list="{{ costFactors }}" as="c" hint-placeholder-count="3">
-<article class="pd-lift" style="background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;padding:22px 24px 24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
-<div style="display:flex;align-items:center;gap:12px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink-inverse);background:{{ c.chip }};border-radius:10px;padding:6px 10px">{{ c.num }}</span>
+<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:16px 0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:21px;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ c.num }}</span>
+<div style="display:flex;flex-direction:column;gap:6px;min-width:0">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ c.title }}</h3>
-</div>
 <p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ c.text }}</p>
-</article>
+</div>
+</li>
 </sc-for>
+</ul>
 </div>
 </section>
 
@@ -1092,10 +1103,7 @@ class Component extends DCLogic {
       ['Специальность', 'По техническим направлениям больше расчётной части и экспертизы, поэтому сопровождение занимает дольше.'],
       ['Тип работы', 'Магистерская, кандидатская и докторская — разная сложность, требования к автору и объём сопровождения.'],
       ['Тема', 'Узкая или редкая тема требует дополнительной проработки источников и экспертизы профильного специалиста.']
-    ].map(([title, text], i) => ({
-      title, text, num: '0' + (i + 1),
-      chip: 'var(--pd-accent)',
-    }));
+    ].map(([title, text], i) => ({ title, text, num: '0' + (i + 1) }));
     // Сроки — единственная величина сметы, которую можно назвать до разбора
     // материала. Денежные значения не публикуются, пока нет утверждённого
     // прайса: цифра без источника — это обещание, а не факт.
@@ -1106,7 +1114,7 @@ class Component extends DCLogic {
       ['Автореферат и доклад к защите', 'от 10 дней'],
       ['Научная статья в рецензируемый журнал', 'от 14 дней'],
       ['Заявка на грант в научный фонд', 'от 21 дня']
-    ].map(([title, term], i) => ({ title, term, zebra: i % 2 ? 'var(--pd-surface-quiet)' : 'var(--pd-ink-inverse)' }));
+    ].map(([title, term]) => ({ title, term }));
     // Карусель отзывов. Карточка со смещением 0 — впереди и резкая, ±1
     // приглушены и размыты, ±2 уходят за край сцены. Смещение считается по
     // кругу, поэтому список листается бесконечно в обе стороны.
