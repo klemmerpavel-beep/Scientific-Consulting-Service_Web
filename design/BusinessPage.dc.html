@@ -35,16 +35,32 @@
 .bp-scroll{overflow-x:auto;overscroll-behavior-x:contain;scroll-behavior:smooth}
 .bp-hero{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr)}
 .bp-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
-.bp-mech{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr}
 /* Полоса натюрморта фиксирована 96 пикселями и не тянется вместе с
    карточкой. Карточки одного ряда равны по высоте, но ряд высотой в
    самый длинный пакет не навязывается: второй ряд шире и короче, и
    равные ряды оставляли в нём до 150 px пустоты, а в одну колонку —
    у каждого короткого пакета. */
-/* Шесть карточек механизмов равны по высоте, но высоту задаёт содержимое:
-   `grid-auto-rows: 1fr` тянет ряды до самой высокой карточки, а не до
-   заранее заданного числа. Прежний резерв под раскрытую строку «чем
-   закреплено» оставлял в карточках с коротким текстом до 40 % пустоты. */
+/* Условия «Как устроена работа» (Р-802): шесть карточек в две колонки
+   (до 768 px — одна), ряд высотой по своей более длинной карточке, без
+   общей высоты всех рядов: при `grid-auto-rows: 1fr` в карточке с
+   одной строкой текста между текстом и «Чем закреплено» оставалось до
+   110 px пустоты. Карточка — медиаобъект: изображение 96 px слева на
+   высоту заголовка и текста, номер спокойный справа от заголовка (условия
+   не последовательность), подвал «Чем закреплено» на всю ширину под
+   изображением — он стоит сразу под более высоким из двух столбцов. До
+   480 px изображение 64 px рядом с заголовком, текст под ними. Пока в
+   паре ряда раскрыта строка «Чем закреплено», обе карточки пары стоят по
+   своей высоте (align-self из логики): иначе в соседке раскрытой
+   карточки появлялся провал высотой в раскрытый текст. */
+.bp-mech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.bp-mechcard{display:grid;grid-template-columns:96px minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "img text" "foot foot";column-gap:20px;row-gap:8px}
+.bp-mechimg{grid-area:img;width:96px;height:96px}
+.bp-mechhead{grid-area:head;display:flex;flex-direction:row-reverse;align-items:baseline;justify-content:space-between;gap:16px;min-width:0}
+.bp-mechtext{grid-area:text}
+.bp-mechfoot{grid-area:foot;margin-top:12px}
+.bp-mechplus{position:relative;width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:var(--pd-accent-tint);transition:background 180ms cubic-bezier(.2,0,.2,1)}
+.bp-mechbtn:hover .bp-mechplus{background:var(--pd-accent-mark)}
+@media (max-width:480px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";column-gap:16px;row-gap:12px;padding:18px 20px 0!important}.bp-mechimg{width:64px;height:64px}.bp-mechhead{align-self:center}}
 .bp-proof{animation:bp-proof 200ms cubic-bezier(.2,0,.2,1) both}
 @keyframes bp-proof{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.bp-proof{animation:none}}
@@ -64,7 +80,7 @@
 .pd-track-v>li::after{top:28px;bottom:0;left:13px;right:auto;width:2px;height:auto}
 .pd-track-v .pd-track-body{padding-top:4px}
 .bp-support{display:grid;grid-template-columns:minmax(0,1fr)}
-@media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-mech{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq,.bp-mech{grid-template-columns:minmax(0,1fr)}.bp-mech,.bp-rights{grid-auto-rows:auto}.bp-pack{grid-column:span 6!important}}
 /* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
 @media (max-width:1200px){.bp-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.bp-nav[hidden]{display:none!important}.bp-burger{display:inline-flex}}
@@ -639,20 +655,20 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <div class="bp-mech" style="gap:16px">
 <sc-for list="{{ reasons }}" as="r" hint-placeholder-count="6">
-<article class="bp-mechcard pd-lift" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05);padding:18px 20px 16px;display:flex;flex-direction:column;gap:12px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)">
-<div style="display:flex;align-items:center;gap:12px">
-<span aria-hidden="true" style="width:52px;height:52px;flex:0 0 52px;border-radius:10px;border:1px solid var(--pd-border);background:var(--pd-surface-quiet) {{ r.art }};background-size:cover;background-position:center;display:block"></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ r.num }}</span>
+<article class="bp-mechcard pd-lift" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:20px 22px 0;box-sizing:border-box;min-width:0;align-self:{{ r.align }}">
+<img class="bp-mechimg" src="{{ r.img }}" alt="" aria-hidden="true" width="96" height="96" loading="lazy" decoding="async" style="display:block;box-sizing:border-box;border-radius:10px;border:1px solid var(--pd-border);background:var(--pd-surface-quiet);object-fit:cover">
+<div class="bp-mechhead">
+<span style="flex:0 0 auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ r.num }}</span>
+<h3 style="margin:0;min-width:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ r.title }}</h3>
 </div>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ r.title }}</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ r.text }}</p>
-<div style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider)">
-<button type="button" aria-expanded="{{ r.proofExpanded }}" aria-label="{{ r.proofAria }}" onClick="{{ r.proofToggle }}" style="appearance:none;border:0;background:transparent;cursor:pointer;padding:0;width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">
+<p class="bp-mechtext" style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ r.text }}</p>
+<div class="bp-mechfoot" style="border-top:1px solid var(--pd-divider)">
+<button type="button" class="bp-mechbtn" aria-expanded="{{ r.proofExpanded }}" aria-label="{{ r.proofAria }}" onClick="{{ r.proofToggle }}" style="appearance:none;border:0;background:transparent;cursor:pointer;padding:0;margin:0;width:100%;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:var(--pd-accent);border-radius:10px" style-hover="color:var(--pd-accent-press)">
 <span>Чем закреплено</span>
-<span aria-hidden="true" style="position:relative;width:14px;height:14px;flex:0 0 14px;display:block"><span style="position:absolute;left:0;top:6px;width:14px;height:2px;background:var(--pd-accent);border-radius:999px"></span><span style="position:absolute;left:6px;top:0;width:2px;height:14px;background:var(--pd-accent);border-radius:999px;display:{{ r.plusV }}"></span></span>
+<span aria-hidden="true" class="bp-mechplus"><span style="position:absolute;left:8px;top:13px;width:12px;height:2px;background:var(--pd-accent);border-radius:999px"></span><span style="position:absolute;left:13px;top:8px;width:2px;height:12px;background:var(--pd-accent);border-radius:999px;display:{{ r.plusV }}"></span></span>
 </button>
 <sc-if value="{{ r.proofOpen }}" hint-placeholder-val="{{ true }}">
-<p class="bp-proof" style="margin:0;padding-left:12px;border-left:2px solid var(--pd-accent-mark);font-size:12px;line-height:1.6;color:var(--pd-ink-muted)">{{ r.proof }}</p>
+<p class="bp-proof" style="margin:0 0 18px;padding-left:12px;border-left:2px solid var(--pd-accent-mark);font-size:13px;line-height:1.6;color:var(--pd-ink-muted)">{{ r.proof }}</p>
 </sc-if>
 </div>
 </article>
@@ -1417,9 +1433,16 @@ class Component extends DCLogic {
         ['06', 'Предмет договора — соответствие требованиям', 'Решение принимают фонд, ведомство и налоговый орган, и мы его не обещаем. Отвечаем за соответствие документа требованиям на дату подачи.', 'формулировка предмета договора и чек-лист требований получателя.']
       ].map(([num, title, text, proof], i) => {
         const open = !!this.state.mech[i];
+        // Две колонки — пары 0–1, 2–3, 4–5: раскрыта строка у карточки или
+        // у её соседки по ряду — обе стоят по своей высоте (Р-802).
+        const pairOpen = open || !!this.state.mech[i ^ 1];
         return {
           num, title, text, proof,
-          art: "url('./assets/art/mech-" + (i + 1) + ".webp')",
+          align: pairOpen ? 'start' : 'stretch',
+          // Изображение условия — натюрморт 150 × 150 из набора страницы
+          // (Р-78), показ 96 px (до 480 px — 64 px) тегом img: ленивая
+          // загрузка и чёткий масштаб вместо фона карточки (Р-802).
+          img: './assets/art/mech-' + (i + 1) + '.webp',
           proofOpen: open, proofClosed: !open,
           proofExpanded: open ? 'true' : 'false',
           plusV: open ? 'none' : 'block',
