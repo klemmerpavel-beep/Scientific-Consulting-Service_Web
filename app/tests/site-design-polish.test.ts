@@ -140,7 +140,9 @@ describe('Р-796: «Диагностика» на «Аспирантам»', () 
   });
 });
 
-describe('Р-797: «Статьи и гранты» на «Аспирантам»', () => {
+describe('Р-797: кромка карточки статьи на «Аспирантам» (раздел «Публикации к защите», Р-808)', () => {
+  // Строка «Патент…» и её проверка сняты вместе с прежним разделом по указанию
+  // владельца (З-3, Р-808); карточка статьи с кромкой осталась.
   it('кромка — псевдоэлементом ровной толщины, без border-top 2 px на скруглённой карточке', () => {
     for (const page of Object.keys(COMPONENT) as Page[]) {
       for (const tag of design(page).match(/<[a-z][^>]*\bstyle="[^"]*"[^>]*>/gu) ?? []) {
@@ -151,17 +153,7 @@ describe('Р-797: «Статьи и гранты» на «Аспирантам»
     for (const [where, source] of both('MainPage')) {
       assert.ok(source.includes('.pd-edge::before{content:"";position:absolute;top:-1px;left:-1px;right:-1px;height:15px;box-sizing:border-box;border:2px solid var(--pd-accent);border-bottom:0;border-radius:14px 14px 0 0;pointer-events:none}'), `${where}: нет правила кромки`);
     }
-    assert.equal((design('MainPage').match(/<article class="pd-lift pd-edge"/gu) ?? []).length, 1, 'у карточки «Статьи и гранты» нет кромки pd-edge');
-  });
-
-  it('«Патент на изобретение и программа для ЭВМ.» — заголовок h3, как у карточек', () => {
-    const html = design('MainPage');
-    const section = html.slice(html.indexOf('<section id="articles"'), html.indexOf('</section>', html.indexOf('<section id="articles"')));
-    const card = section.match(/<h3 style="margin:0;([^"]*)">\{\{ a\.title \}\}<\/h3>/u)?.[1];
-    const patent = section.match(/<h3 style="margin:0 0 4px;([^"]*)">Патент на изобретение и программа для ЭВМ\.<\/h3>/u)?.[1];
-    assert.ok(card && patent, 'название «Патент…» не заголовок h3');
-    assert.equal(patent, card, 'заголовок «Патент…» набран иначе, чем заголовки карточек');
-    assert.match(both('MainPage')[1][1], /<h3 style=\{\{[^}]*\}\}>Патент на изобретение и программа для ЭВМ\.<\/h3>/u);
+    assert.equal((design('MainPage').match(/<article class="pd-lift pd-edge"/gu) ?? []).length, 1, 'у карточки статьи нет кромки pd-edge');
   });
 });
 
@@ -225,7 +217,8 @@ describe('Р-799: «Смета на диплом» на «Студентам»',
 
 describe('Р-800: «Что будет после отправки» на «Студентам»', () => {
   it('«Срок ответа — рабочий день» — тем же компонентом «Метка-факт», что срок на «Аспирантам»', () => {
-    const fact = design('MainPage').match(/<span style="([^"]*)">\s*<span aria-hidden="true" style="([^"]*)"><\/span>\s*<span style="([^"]*)">\{\{ a\.term \}\}<\/span>/u);
+    // Срок карточки статьи «Публикаций к защите» (данные articleCard, Р-808; до Р-808 — articleTracks).
+    const fact = design('MainPage').match(/<span style="([^"]*)">\s*<span aria-hidden="true" style="([^"]*)"><\/span>\s*<span style="([^"]*)">\{\{ articleCard\.term \}\}<\/span>/u);
     const label = design('StudentsPage').match(/<span style="([^"]*)"><span aria-hidden="true" style="([^"]*)"><\/span><span style="([^"]*)">Срок ответа\u00a0— рабочий день<\/span><\/span>/u);
     assert.ok(fact, 'нет метки-факта срока на «Аспирантам»');
     assert.ok(label, 'подпись «Срок ответа — рабочий день» не метка-факт');

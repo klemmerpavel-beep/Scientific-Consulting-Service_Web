@@ -74,11 +74,19 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-usp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .pd-services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
-/* «Статьи и гранты» (Р-769): две карточки рядом, до 768 px — одна под другой.
-   Р-797: строка «Патент…» — текст и кнопка справа по центру, до 768 px — кнопка на всю ширину под текстом. */
-.pd-articles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-.pd-patent{display:grid;grid-template-columns:minmax(0,1fr) auto}
-@media (max-width:768px){.pd-articles{grid-template-columns:minmax(0,1fr)!important}.pd-patent{grid-template-columns:minmax(0,1fr)!important}.pd-patent>a{width:100%}}
+/* «Публикации к защите» (Р-808, #articles): от 1100 px инфографика п. 13 и карточка статьи рядом (1.4fr / .6fr), по высоте ряда; до 1099 px — одна колонка.
+   Таблица «отрасль × степень»: от 601 px — три колонки под общей шапкой; до 600 px отрасль — строкой над двумя числами, метка «Отрасль науки» остаётся для читалки.
+   Точки — по одной на публикацию, по десять в ряд. Строка гранта — текст и кнопка справа по центру, до 768 px — кнопка на всю ширину под текстом. */
+.pd-pub{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,.6fr)}
+@media (max-width:1099px){.pd-pub{grid-template-columns:minmax(0,1fr)!important}}
+.pd-pubrow{display:grid;grid-template-columns:minmax(0,2.4fr) minmax(0,1fr) minmax(0,1fr);column-gap:20px;row-gap:12px;padding-left:24px;padding-right:24px}
+.pd-pubmx>[role=row]+[role=row]{border-top:1px solid var(--pd-border)}
+.pd-pubdots{display:grid;grid-template-columns:repeat(10,8px);gap:4px;margin-top:4px}
+.pd-pubdeg{display:none!important}
+@media (max-width:600px){.pd-pubrow{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-pubrow>[role=rowheader]{grid-column:1/-1}.pd-pubhead{display:none!important}.pd-pubdeg{display:block!important}}
+.pd-pubgrant{display:grid;grid-template-columns:minmax(0,1fr) auto}
+@media (max-width:768px){.pd-pubgrant{grid-template-columns:minmax(0,1fr)!important}.pd-pubgrant>a{width:100%}}
+@media (max-width:480px){.pd-pubrow,.pd-pubpad{padding-left:20px!important;padding-right:20px!important}.pd-pubgrant{padding-left:20px!important;padding-right:20px!important}}
 /* Шлифовка Р-797: кромка 2 px --pd-accent — псевдоэлементом по верхнему краю и скруглениям: толщина ровная, без «серпа», который давала border-top 2 px рядом с боковой рамкой 1 px; на высоте радиуса кромка переходит в рамку карточки. */
 .pd-edge{position:relative}
 .pd-edge::before{content:"";position:absolute;top:-1px;left:-1px;right:-1px;height:15px;box-sizing:border-box;border:2px solid var(--pd-accent);border-bottom:0;border-radius:14px 14px 0 0;pointer-events:none}
@@ -456,37 +464,76 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <section id="articles" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Статьи и гранты</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Статья и заявка на грант: что проверяем до подачи</h2>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Публикации к защите</span>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Сколько статей нужно к защите и что в них проверяем</h2>
 </div>
-<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Без диссертации или вместе с ней</span>
+<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Для кандидатской и докторской диссертации</span>
 </div>
-<!-- Р-797: шапка карточки — название и срок меткой-фактом; одна тонкая акцентная кромка сверху у обеих карточек; проверки — ровным списком; решение редакции или фонда — примечанием в подвале карточки. -->
-<div class="pd-articles" style="gap:16px">
-<sc-for list="{{ articleTracks }}" as="a" hint-placeholder-count="2">
+<!-- Р-808 (З-3): «Публикации к защите» вместо «Статей и грантов» (Р-797), якорь #articles прежний — на него ведут группы B Директа и быстрая ссылка (Р-769). Слева — инфографика п. 13 Положения о присуждении учёных степеней: таблица «отрасль науки × степень», число крупно и столько же точек по десять в ряд; справа — карточка статьи прежней системы (кромка, метка-факт срока, проверки, подвал о решении редакции); под ними — строка о заявке на грант для молодых учёных и кнопка к прежней форме #request. -->
+<div class="pd-pub" style="gap:16px;align-items:stretch">
+<div class="pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;display:flex;flex-direction:column;min-width:0;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<div class="pd-pubpad" style="padding:22px 24px 6px;display:flex;flex-direction:column;gap:4px">
+<h3 id="mp-pub-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Публикации в рецензируемых изданиях</h3>
+<p style="margin:0;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">Минимальное число по п. 13 Положения о присуждении учёных степеней</p>
+</div>
+<div class="pd-pubmx" role="table" aria-labelledby="mp-pub-title" aria-describedby="mp-pub-note" style="flex:1 1 auto">
+<div class="pd-pubrow pd-pubhead" role="row" style="padding-top:14px;padding-bottom:8px">
+<span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Отрасль науки</span>
+<span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Кандидатская</span>
+<span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Докторская</span>
+</div>
+<sc-for list="{{ pubRows }}" as="r" hint-placeholder-count="2">
+<div class="pd-pubrow" role="row" style="padding-top:16px;padding-bottom:18px;align-items:start">
+<span role="rowheader" style="font-size:14px;line-height:1.5;color:var(--pd-ink)">{{ r.title }}</span>
+<div role="cell" style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<span class="pd-pubdeg" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">{{ r.candDeg }}</span>
+<span style="font-size:13px;line-height:1.4;color:var(--pd-ink-muted)">не менее <span style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:28px;line-height:1.24;font-weight:500;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ r.cand }}</span></span>
+<span class="pd-pubdots" aria-hidden="true"><sc-for list="{{ r.candDots }}" as="d" hint-placeholder-count="3"><span style="display:block;width:8px;height:8px;border-radius:50%;background:var(--pd-accent)"></span></sc-for></span>
+</div>
+<div role="cell" style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<span class="pd-pubdeg" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">{{ r.docDeg }}</span>
+<span style="font-size:13px;line-height:1.4;color:var(--pd-ink-muted)">не менее <span style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:28px;line-height:1.24;font-weight:500;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ r.doc }}</span></span>
+<span class="pd-pubdots" aria-hidden="true"><sc-for list="{{ r.docDots }}" as="d" hint-placeholder-count="3"><span style="display:block;width:8px;height:8px;border-radius:50%;background:var(--pd-accent)"></span></sc-for></span>
+</div>
+</div>
+</sc-for>
+</div>
+<div class="pd-pubpad" style="padding:14px 24px 16px;background:var(--pd-surface-quiet);border-top:1px solid var(--pd-border);border-radius:0 0 13px 13px;display:flex;flex-direction:column;gap:6px">
+<p id="mp-pub-note" style="margin:0;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">К публикациям приравниваются патенты на изобретение, полезную модель, промышленный образец и селекционное достижение, свидетельства на программу для ЭВМ, базу данных и топологию интегральных микросхем, зарегистрированные в установленном порядке.</p>
+<p style="margin:0;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">Положение утверждено постановлением Правительства РФ от 24.09.2013 № 842. Для диссертации в виде научного доклада в п. 13 — свои требования, а у организаций, которые присуждают степени самостоятельно, свой порядок.</p>
+</div>
+</div>
 <article class="pd-lift pd-edge" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;display:flex;flex-direction:column;min-width:0;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<div style="flex:1 1 auto;padding:22px 24px 22px;display:flex;flex-direction:column;gap:14px">
+<div class="pd-pubpad" style="flex:1 1 auto;padding:22px 24px 22px;display:flex;flex-direction:column;gap:14px">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ a.title }}</h3>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ articleCard.title }}</h3>
 <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 10px;border-radius:999px;background:var(--pd-accent-tint)">
 <span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:{{ clockMask }};mask:{{ clockMask }}"></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums;white-space:nowrap">{{ a.term }}</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums;white-space:nowrap">{{ articleCard.term }}</span>
 </span>
 </div>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ a.text }}</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ articleCard.text }}</p>
 <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px">
-<sc-for list="{{ a.items }}" as="it" hint-placeholder-count="4">
+<sc-for list="{{ articleCard.items }}" as="it" hint-placeholder-count="3">
 <li style="display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:start;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)"><span aria-hidden="true" style="width:18px;height:18px;margin-top:2px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span><span>{{ it.text }}</span></li>
 </sc-for>
 </ul>
 </div>
-<p style="margin:0;padding:14px 24px;background:var(--pd-surface-quiet);border-top:1px solid var(--pd-border);border-radius:0 0 13px 13px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ a.note }}</p>
+<p class="pd-pubpad" style="margin:0;padding:14px 24px;background:var(--pd-surface-quiet);border-top:1px solid var(--pd-border);border-radius:0 0 13px 13px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ articleCard.note }}</p>
 </article>
-</sc-for>
 </div>
-<!-- Р-797: «Патент…» — третья строка той же системы на ширину сетки: заголовок как у карточек, кнопка справа по центру, до 768 px — на всю ширину под текстом. -->
-<div class="pd-patent pd-lift" style="margin-top:16px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 24px;gap:14px 32px;align-items:center;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<div style="min-width:0;max-width:76ch"><h3 style="margin:0 0 4px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Патент на изобретение и программа для ЭВМ.</h3><p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Проверяем описание и комплект документов к подаче; о выдаче патента и регистрации программы решает Роспатент.</p></div>
+<!-- Р-808: заявка на грант для молодых учёных — одной строкой в подвале раздела (решение по умолчанию, ждёт подтверждения владельца): на #articles ведёт группа PG_GRANTS (Р-769). -->
+<div class="pd-pubgrant pd-lift" style="margin-top:16px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 24px;gap:14px 32px;align-items:center;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<div style="min-width:0;max-width:80ch;display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Молодым учёным: заявка на грант</h3>
+<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 10px;border-radius:999px;background:var(--pd-accent-tint)">
+<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:{{ clockMask }};mask:{{ clockMask }}"></span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums;white-space:nowrap">от 21 дня</span>
+</span>
+</div>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">РНФ и другие научные фонды: куратор сверяет заявку с условиями конкурса. О поддержке проекта решает фонд по итогам экспертизы.</p>
+</div>
 <a href="#request" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;box-sizing:border-box;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;text-decoration:none;white-space:nowrap;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a>
 </div>
 </section>
@@ -1198,35 +1245,35 @@ class Component extends DCLogic {
     const offerAll = ['Патентование', 'НИОКР для бизнеса', 'Отчёты по практике и НИР', 'Публикации в рецензируемых журналах', 'Автореферат диссертации', 'Монографии', 'Перевод статей на английский', 'Разбор отзывов оппонентов и ведущей организации', 'Методика статистической обработки данных', 'Подбор журнала и подготовка статьи к подаче в индексируемые издания', 'Оформление списка литературы по ГОСТ', 'Доклад и презентация к защите', 'Научная экспертиза текста и вычитка', 'Проверка на заимствования и корректная цитируемость', 'Сопровождение иностранных аспирантов', 'Регистрация программ для ЭВМ и баз данных', 'Экспертиза технической документации', 'Обоснование научной новизны', 'Планирование эксперимента', 'Апробация на конференциях'];
     const offerOpen = this.state.offerOpen;
     const offerRest = (offerOpen ? offerAll : offerAll.slice(0, 5)).map(title => ({ title }));
-    // «Статьи и гранты» (Р-769, П-19): вход для молодых учёных, которым
-    // нужна статья или заявка в фонд без диссертации. Пункты — глаголами
-    // проверки: автор статьи и заявки — клиент (п. 10 ст. 7 закона
-    // «О рекламе», Р-549); решение редакции и фонда не обещается. Сроки —
-    // те же, что в карточках «Научные статьи» и «Гранты и заявки». Кнопка
+    // «Публикации к защите» (Р-808, З-3) вместо «Статей и грантов» (Р-769,
+    // Р-797). Числа — только из п. 13 Положения о присуждении учёных степеней
+    // (постановление Правительства РФ от 24.09.2013 № 842) по выдержкам
+    // справочных систем, сверка с официальным текстом — владелец, вместе
+    // с пп. 23—26 (Р-804, Р-808). Отрасли — словами пункта: «по историческим,
+    // педагогическим, политическим, психологическим, социологическим,
+    // филологическим, философским, экономическим, юридическим отраслям науки,
+    // искусствоведению, культурологии и теологии — не менее 15 (3); по
+    // остальным отраслям науки — не менее 10 (2)». Точки — по одной на
+    // публикацию (aria-hidden: число читается текстом).
+    const dots = n => Array.from({ length: n }, (_, i) => ({ i }));
+    const pubRows = [
+      ['Исторические, педагогические, политические, психологические, социологические, филологические, философские, экономические, юридические науки; искусствоведение, культурология, теология', 3, 15],
+      ['Остальные отрасли науки', 2, 10]
+    ].map(([title, cand, doc]) => ({ title, cand, doc, candDeg: 'Кандидатская', docDeg: 'Докторская', candDots: dots(cand), docDots: dots(doc) }));
+    // Карточка статьи — прежние формулировки Р-769: автор статьи — клиент
+    // (п. 10 ст. 7 закона «О рекламе», Р-549), решение редакции не
+    // обещается; срок — тот же, что в карточке «Научные статьи». Кнопка
     // раздела ведёт к прежней форме #request, новой формы нет (Р-96).
-    const articleTracks = [
-      {
-        title: 'Научная статья', term: 'от 14 дней',
-        text: 'Сопровождаем статью до подачи в рецензируемый журнал: куратор проверяет рукопись по требованиям издания.',
-        items: [
-          'Подбираем журнал из перечня ВАК или индексируемый в Scopus и Web of Science — по теме и специальности',
-          'Проверяем структуру, аннотацию и ссылочный аппарат по правилам журнала',
-          'Разбираем замечания рецензентов и проверяем ваш ответ по каждому пункту'
-        ],
-        note: 'О публикации решает редакция журнала.'
-      },
-      {
-        title: 'Заявка на грант', term: 'от 21 дня',
-        text: 'РНФ и другие научные фонды: куратор сверяет заявку с условиями конкурса и сопровождает проект до отчёта.',
-        items: [
-          'Проверяем обоснование научной новизны и задела по критериям конкурса',
-          'Сверяем план работ с этапами и сроками фонда',
-          'Проверяем смету заявки по статьям расходов, которые допускает фонд',
-          'Сверяем отчёт по этапу с планом и показателями заявки'
-        ],
-        note: 'О поддержке проекта решает фонд по итогам экспертизы.'
-      }
-    ].map(t => ({ ...t, items: t.items.map(text => ({ text })) }));
+    const articleCard = {
+      title: 'Научная статья', term: 'от 14 дней',
+      text: 'Сопровождаем статью до подачи в рецензируемый журнал: куратор проверяет рукопись по требованиям издания.',
+      items: [
+        'Подбираем журнал из перечня ВАК или индексируемый в Scopus и Web of Science — по теме и специальности',
+        'Проверяем структуру, аннотацию и ссылочный аппарат по правилам журнала',
+        'Разбираем замечания рецензентов и проверяем ваш ответ по каждому пункту'
+      ].map(text => ({ text })),
+      note: 'О публикации решает редакция журнала.'
+    };
     // Карусель отзывов. Карточка со смещением 0 — впереди и резкая, ±1
     // приглушены и размыты, ±2 уходят за край сцены. Смещение считается по
     // кругу, поэтому список листается бесконечно в обе стороны.
@@ -1341,7 +1388,7 @@ class Component extends DCLogic {
       reviews, revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
       revPrev: () => this.setState(s => ({ revAt: (s.revAt - 1 + revN) % revN })),
       revNext: () => this.setState(s => ({ revAt: (s.revAt + 1) % revN })),
-      steps, faq, stalls, track, planLine, usp, gains, offerTop, offerMid, offerRest, articleTracks, stepScale,
+      steps, faq, stalls, track, planLine, usp, gains, offerTop, offerMid, offerRest, pubRows, articleCard, stepScale,
       dpRows: this.dpPlan(this.state.dpDate, this.state.dpKind, this.dpToday()),
       dpKinds: ['Кандидатская', 'Докторская'].map((label, i) => ({
         label, active: i === this.state.dpKind, inactive: i !== this.state.dpKind,
