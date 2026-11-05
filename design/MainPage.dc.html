@@ -61,15 +61,17 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-burger{display:none}
 .pd-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-/* «Диагностика» (Р-796): перечень шире колонки решения, обе по содержимому; между пунктами — одна линия; этап шкалы под курсором — тихая подложка. */
-.pd-problem{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-.pd-stalls>li+li{border-top:1px solid var(--pd-border)}
-.pd-plan-step[aria-pressed="false"]:hover .pd-plan-row{background:var(--pd-surface-quiet)!important}
-.pd-gains{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-@media (max-width:560px){.pd-gains{grid-template-columns:minmax(0,1fr)}}
-/* 769—1024 px: раздел в одну колонку, карточка решения и шкала плана — рядом, чтобы строки этапов не растягивались на всю ширину. */
-@media (min-width:769px) and (max-width:1024px){.pd-solve{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.pd-solve .pd-gains{grid-template-columns:minmax(0,1fr)}}
-/* 481—768 px: карточки решения одна под другой на всю ширину раздела; шкала плана — не шире 360 px, как в колонке на 769—1024 px: статус стоит рядом с названием этапа, а не у дальнего края (шлифовка Р-796). */
+/* «Диагностика» (Р-809): карта «точка остановки → что делает разбор» на всю ширину — строка сеткой «номер · точка остановки · ячейка разбора»; до 600 px ячейка разбора встаёт под точкой остановки, вторая метка шапки скрыта. Ниже «Итог разбора»: три результата и шкала плана рядом; до 1199 px результаты — в три колонки над шкалой, до 768 px — столбцом. */
+.pd-diag-row{display:grid;grid-template-columns:28px minmax(0,.8fr) minmax(0,1fr);column-gap:14px;row-gap:6px;align-items:center}
+@media (max-width:600px){.pd-diag-row{grid-template-columns:28px minmax(0,1fr)}.pd-diag-row>:nth-child(3){grid-column:2}.pd-diag-head>:nth-child(3){display:none}}
+.pd-diag-out{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)}
+.pd-diag-res{display:grid;grid-template-columns:minmax(0,1fr)}
+@media (max-width:1199px){.pd-diag-out{grid-template-columns:minmax(0,1fr)}.pd-diag-res{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:768px){.pd-diag-res{grid-template-columns:minmax(0,1fr)}}
+/* Шкала плана (Р-796, Р-809): этап под курсором — белая подложка на тихой панели. От 769 px — по горизонтали: шесть колонок без промежутка, узел над подписью, линия связи между центрами крайних узлов, пройденная часть растёт scaleX; до 768 px — вертикально, как в Р-796. */
+.pd-plan-step[aria-pressed="false"]:hover .pd-plan-row{background:var(--pd-ink-inverse)!important}
+@media (min-width:769px){.pd-plan-steps{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:0!important}.pd-plan-v{display:none!important}.pd-plan-h{display:block!important}.pd-plan-step{grid-template-columns:minmax(0,1fr)!important;justify-items:center;align-items:start!important;row-gap:6px!important}.pd-plan-row{flex-direction:column;justify-content:flex-start!important;gap:2px!important;width:100%;min-height:0!important;padding:6px 4px!important;text-align:center}.pd-plan-row>span:first-child{font-size:13px!important}}
+/* 481—768 px: шкала вертикальная и не шире 360 px — статус стоит рядом с названием этапа, а не у дальнего края (шлифовка Р-796). */
 @media (min-width:481px) and (max-width:768px){.pd-plan-steps{max-width:360px}}
 .pd-usp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .pd-services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -96,17 +98,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (max-width:1024px){.pd-usp{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.pd-orbit>.pd-ring,.pd-orbit>.pd-dot,.pd-orbit>.pd-core{display:none!important}.pd-orbit>.pd-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}}
 .pd-nav{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 /* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
-@media (max-width:1200px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request,.pd-problem{grid-template-columns:minmax(0,1fr)}.pd-services,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px!important}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
+@media (max-width:1200px){.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}@media (max-width:768px){.pd-hero,.pd-team,.pd-faq,.pd-request{grid-template-columns:minmax(0,1fr)}.pd-services,.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-heroart{min-height:220px!important}.pd-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.pd-nav[hidden]{display:none!important}.pd-burger{display:inline-flex}}
 /* Подпись раздела на узком экране — под заголовком слева, а не прижатой вправо строкой (Р-250). */
 @media (max-width:768px){.pd-sub{text-align:left!important;margin-left:0!important}}
-@media (max-width:480px){.pd-hero,.pd-metrics,.pd-problem,.pd-usp,.pd-services,.pd-team,.pd-faq,.pd-request,.pd-foot{grid-template-columns:minmax(0,1fr)!important}.pd-metrics,.pd-services,.pd-usp,.pd-foot,.pd-orbit{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}}@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}@media (max-width:768px){.pd-heroart{justify-content:flex-start!important;gap:28px!important}.pd-facea{max-width:184px!important}.pd-facea-c{width:184px!important;height:184px!important}.pd-faceb{max-width:132px!important;padding-top:76px!important}.pd-faceb-c{width:132px!important;height:132px!important}}@media (max-width:430px){.pd-facea{max-width:150px!important}.pd-facea-c{width:150px!important;height:150px!important}.pd-faceb{max-width:108px!important;padding-top:58px!important}.pd-faceb-c{width:108px!important;height:108px!important}}
+@media (max-width:480px){.pd-hero,.pd-metrics,.pd-usp,.pd-services,.pd-team,.pd-faq,.pd-request,.pd-foot{grid-template-columns:minmax(0,1fr)!important}.pd-metrics,.pd-services,.pd-usp,.pd-foot,.pd-orbit{grid-template-columns:minmax(0,1fr)}.pd-pad{padding-left:20px!important;padding-right:20px!important}}@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}@media (max-width:768px){.pd-heroart{justify-content:flex-start!important;gap:28px!important}.pd-facea{max-width:184px!important}.pd-facea-c{width:184px!important;height:184px!important}.pd-faceb{max-width:132px!important;padding-top:76px!important}.pd-faceb-c{width:132px!important;height:132px!important}}@media (max-width:430px){.pd-facea{max-width:150px!important}.pd-facea-c{width:150px!important;height:150px!important}.pd-faceb{max-width:108px!important;padding-top:58px!important}.pd-faceb-c{width:108px!important;height:108px!important}}
 .pd-crewcard{position:relative;z-index:1}
 .pd-crewfig{position:absolute;left:50%;transform:translateX(-50%);top:-166px;height:210px;width:auto;z-index:0;pointer-events:none}
-/* Облако «проблем» — сцена 440 px с чипами на абсолютных местах. В три
-   колонки на 769—1024 px ей оставалось ~370 px, на телефоне ~320—350 px, и
-   правые чипы срезались. До 1024 px блок идёт в одну колонку со стрелкой
-   вниз, а на узком телефоне сцена масштабируется целиком (Р-250). */
-@media (max-width:1024px){.pd-problem{grid-template-columns:minmax(0,1fr)!important}}
 .pd-orbit{margin-top:156px}
 @media (max-width:1024px){.pd-orbit{margin-top:0}.pd-crewfig{position:relative;left:auto;top:auto;transform:none;display:block;height:190px;margin:0 auto -42px}}
 @media (max-width:480px){.pd-crewfig{height:168px;margin-bottom:-38px}}
@@ -306,55 +303,62 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 
 
 <section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:14px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Диагностика</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Сначала — разбор: где и почему встала работа</h2>
 </div>
 </div>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:60ch">Сопровождение начинается с диагностики: куратор читает текст и материалы к нему, сверяет их с требованиями диссертационного совета и называет, что мешает выйти на предзащиту. План этапов строится от этой точки.</p>
-<!-- Р-796: колонки по содержимому, без растяжения и пустот; план «Как это выглядит у вас» — вертикальная шкала всех шести этапов вместо карусели со стрелками и полосой; карточка-ссылка Р-791 — подвал левой колонки, в сетке перечня. -->
-<div class="pd-problem" style="gap:24px;align-items:start;margin-top:32px">
-<div style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:14px;padding:24px 26px 26px;display:flex;flex-direction:column;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);margin-bottom:6px">Где работа обычно останавливается</span>
-<ol class="pd-stalls" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column">
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:60ch">Куратор читает текст и называет, что мешает выйти на предзащиту.</p>
+<!-- Р-809 (З-1): инфографика вместо перечня с абзацами и четырёх свойств — карта «где работа останавливается → что делает разбор» короткими метками (номер, точка остановки, ячейка разбора на белой подложке со стрелкой-акцентом), карточка-ссылка Р-791 — подвалом карты; ниже «Итог разбора»: три результата со значками на --pd-accent-tint и шкала плана — от 769 px по горизонтали, до 768 px вертикально. Тёмной панели и градиентов нет (Р-51, Р-608). -->
+<div class="pd-diag" style="display:flex;flex-direction:column;gap:16px;margin-top:26px">
+<div style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:14px;padding:18px 22px 20px;display:flex;flex-direction:column;min-width:0">
+<div class="pd-diag-row pd-diag-head" style="padding:0 0 10px">
+<span aria-hidden="true"></span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Где работа обычно останавливается</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent);padding-left:13px">Что делает разбор</span>
+</div>
+<ol class="pd-stalls" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
 <sc-for list="{{ stalls }}" as="p" hint-placeholder-count="6">
-<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:12px 0">
+<li class="pd-diag-row">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:21px;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ p.num }}</span>
-<span style="display:flex;flex-direction:column;gap:2px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ p.title }}</span>
-<span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">{{ p.text }}</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);min-width:0">{{ p.title }}</span>
+<span style="display:flex;align-items:flex-start;gap:8px;min-width:0;box-sizing:border-box;min-height:38px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;padding:8px 12px">
+<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;margin-top:3px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
+<span style="font-size:14px;line-height:1.4;color:var(--pd-ink-secondary);min-width:0">{{ p.fix }}</span>
 </span>
 </li>
 </sc-for>
 </ol>
-<!-- Р-791: переход к заявке из перечня точек остановки — симптом ведёт к действию (конкурентный разбор 03.11.2026). Р-796: подвал левой колонки в сетке перечня — значок в колонке номеров, надпись по линии текста пунктов. -->
-<a class="pd-lift" href="#request" style="margin:10px -10px 0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:14px 16px 14px 10px;display:grid;grid-template-columns:28px minmax(0,1fr) 18px;gap:10px;align-items:center;min-height:44px;box-sizing:border-box;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<!-- Р-791: переход к заявке из карты точек остановки — симптом ведёт к действию; Р-809: подвал карты по ширине надписи, значок в колонке номеров. -->
+<a class="pd-lift" href="#request" style="align-self:flex-start;margin:14px 0 0 -10px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:12px 16px 12px 10px;display:grid;grid-template-columns:28px minmax(0,auto) 18px;gap:10px;align-items:center;min-height:44px;max-width:calc(100% + 10px);box-sizing:border-box;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <span aria-hidden="true" style="width:28px;height:28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;display:block;background:var(--pd-accent);-webkit-mask:{{ talkMask }};mask:{{ talkMask }}"></span></span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разобрать, где остановилась ваша работа</span>
 <span aria-hidden="true" style="width:18px;height:18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
 </a>
 </div>
-<div class="pd-solve" style="display:flex;flex-direction:column;gap:16px;min-width:0">
-<div class="pd-gains" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:24px 26px;gap:20px 22px">
-<sc-for list="{{ gains }}" as="g" hint-placeholder-count="4">
-<div style="display:flex;gap:12px;align-items:flex-start">
-<span aria-hidden="true" style="width:28px;height:28px;flex:0 0 28px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:{{ g.chip }}"><span style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ g.mask }};mask:{{ g.mask }}"></span></span>
-<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ g.title }}</span>
-<span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">{{ g.text }}</span>
+<div class="pd-diag-out" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 22px 20px;gap:16px 28px;align-items:center;min-width:0;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Итог разбора</span>
+<ul class="pd-diag-res" style="list-style:none;margin:0;padding:0;gap:14px 24px">
+<sc-for list="{{ outcomes }}" as="o" hint-placeholder-count="3">
+<li style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;align-items:center;min-width:0">
+<span aria-hidden="true" style="width:36px;height:36px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:18px;height:18px;display:block;background:var(--pd-accent);-webkit-mask:{{ o.mask }};mask:{{ o.mask }}"></span></span>
+<span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ o.title }}</span>
+<span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">{{ o.text }}</span>
 </span>
-</div>
+</li>
 </sc-for>
+</ul>
 </div>
-<div style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:22px 26px 24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<div style="display:flex;flex-direction:column;gap:6px">
+<div style="background:var(--pd-surface-quiet);border-radius:10px;padding:14px 16px 12px;display:flex;flex-direction:column;gap:10px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Как это выглядит у вас</span>
-<p style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">План с датами: что сделано и что дальше</p>
-</div>
 <div role="group" aria-label="Ход работы по этапам" class="pd-plan-steps" style="position:relative;display:flex;flex-direction:column;gap:4px">
-<span aria-hidden="true" style="position:absolute;left:13px;top:22px;bottom:22px;width:2px;border-radius:999px;background:var(--pd-border)"></span>
-<span aria-hidden="true" style="position:absolute;left:13px;top:22px;bottom:22px;width:2px;border-radius:999px;background:var(--pd-accent);transform-origin:center top;transform:{{ planLine }};transition:transform 220ms cubic-bezier(.2,0,.2,1)"></span>
+<span aria-hidden="true" class="pd-plan-v" style="position:absolute;left:13px;top:22px;bottom:22px;width:2px;border-radius:999px;background:var(--pd-border)"></span>
+<span aria-hidden="true" class="pd-plan-v" style="position:absolute;left:13px;top:22px;bottom:22px;width:2px;border-radius:999px;background:var(--pd-accent);transform-origin:center top;transform:{{ planLine }};transition:transform 220ms cubic-bezier(.2,0,.2,1)"></span>
+<span aria-hidden="true" class="pd-plan-h" style="display:none;position:absolute;top:13px;left:calc(100% / 12);right:calc(100% / 12);height:2px;border-radius:999px;background:var(--pd-border)"></span>
+<span aria-hidden="true" class="pd-plan-h" style="display:none;position:absolute;top:13px;left:calc(100% / 12);right:calc(100% / 12);height:2px;border-radius:999px;background:var(--pd-accent);transform-origin:left center;transform:{{ planLineX }};transition:transform 220ms cubic-bezier(.2,0,.2,1)"></span>
 <sc-for list="{{ track }}" as="t" hint-placeholder-count="6">
 <button type="button" class="pd-plan-step" aria-pressed="{{ t.selected }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;padding:0;margin:0;width:100%;text-align:left;position:relative;display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:center;min-height:44px;border-radius:10px;transition:transform 180ms cubic-bezier(.2,0,.2,1)" style-active="transform:translateY(1px)">
 <span style="position:relative;z-index:1;width:28px;height:28px;box-sizing:border-box;border-radius:50%;border:2px solid {{ t.ring }};background:{{ t.node }};display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1;font-weight:600;color:{{ t.numColor }};font-variant-numeric:tabular-nums">{{ t.num }}</span>
@@ -1156,15 +1160,13 @@ class Component extends DCLogic {
     }));
     const stepFrac = this.state.stepFrac;
     const stepScale = 'scaleX(' + (1 / steps.length + stepFrac * (steps.length - 1) / steps.length) + ')';
-    const gains = [
-      ['flask-conical', 'Методология', 'Объект, предмет и логика доказательства зафиксированы до первой главы.'],
-      ['calendar-days', 'План с датами', 'Этапы, сроки и промежуточная приёмка прописаны в Задании.'],
-      ['message-circle', 'Разбор с куратором', 'Замечания куратора по вашей научной области: раздел, проблема, способ исправления.'],
-      ['award', 'Готовность к защите', 'Доклад, презентация и репетиция вопросов совета.']
-    ].map(([icon, title, text], i) => ({
-      title, text, mask: this.mask(icon),
-      chip: 'var(--pd-accent)'
-    }));
+    // «Итог разбора» (Р-809): три результата вместо четырёх свойств; смысл
+    // «Готовности к защите» — в строке 06 карты.
+    const outcomes = [
+      ['message-circle', 'Замечания куратора', 'Раздел, проблема, способ исправления'],
+      ['flask-conical', 'Методология', 'Объект, предмет и логика доказательства'],
+      ['calendar-days', 'План с датами', 'Сроки глав, апробации и предзащиты']
+    ].map(([icon, title, text]) => ({ title, text, mask: this.mask(icon) }));
     // «Сколько это стоит?» (Р-807): раздел «Стоимость» с «Аспирантам» снят, его
     // факт — одним ответом: сумма в Задании до оплаты, меняется только
     // дополнительным соглашением к Заданию (оферта, пп. 6.1 и 6.4).
@@ -1184,19 +1186,23 @@ class Component extends DCLogic {
       closed: this.state.open !== i,
       toggle: () => this.setState(s => ({ open: s.open === i ? -1 : i }))
     }));
-    // Типовые точки остановки диссертации — перечнем, без оценок и эмоций:
-    // посетитель узнаёт свою ситуацию по признаку, а не по настроению.
+    // Карта «где работа останавливается → что делает разбор» (Р-809): точка
+    // остановки — прежним заголовком пункта (04 и 06 короче), без абзаца;
+    // справа — что делает разбор, короткой меткой. Без оценок и эмоций: посетитель узнаёт свою
+    // ситуацию по признаку, а не по настроению.
     const stalls = [
-      ['Положения на защиту не сходятся с главами', 'Объект, предмет и новизна во введении описывают одну работу, а главы — другую.'],
-      ['Замечания руководителя приходят частями', 'Правки копятся в разных файлах, и неясно, какие из них обязательны до предзащиты.'],
-      ['У глав нет дат', 'План существует в общих чертах, дата предзащиты сдвигается вслед за очередной главой.'],
-      ['Требования совета собираются в последний месяц', 'Оформление по ГОСТ, публикации из перечня ВАК и апробация проверяются перед подачей.'],
-      ['Публикаций не хватает для допуска', 'Рецензирование в журнале занимает месяцы, а статьи начинают готовить после текста.'],
-      ['Доклад готовится за неделю до заседания', 'Презентация и ответы на вопросы членов совета не проходят репетицию.']
-    ].map(([title, text], i) => ({ title, text, num: '0' + (i + 1) }));
-    // План с датами (Р-796) — вертикальная шкала всех шести этапов: пройденные
+      ['Положения на защиту не сходятся с главами', 'Сверяет введение с главами'],
+      ['Замечания руководителя приходят частями', 'Отделяет правки, нужные до предзащиты'],
+      ['У глав нет дат', 'Ставит главам даты'],
+      ['Требования совета — в последний месяц', 'Проверяет оформление по ГОСТ'],
+      ['Публикаций не хватает для допуска', 'Вносит статьи и апробацию в план'],
+      ['Доклад — за неделю до заседания', 'Закладывает репетицию доклада']
+    ].map(([title, fix], i) => ({ title, fix, num: '0' + (i + 1) }));
+    // План с датами (Р-796, Р-809) — шкала всех шести этапов, от 769 px по
+    // горизонтали, до 768 px вертикально: пройденные
     // залиты акцентом, текущий выделен подложкой, впереди — приглушены.
-    // Нажатие на этап делает его текущим; линия связи растёт до него (scaleY).
+    // Нажатие на этап делает его текущим; линия связи растёт до него
+    // (scaleY по вертикали, scaleX по горизонтали).
     const trackAt = this.state.trackAt;
     const trackTitles = ['1 глава', '2 глава', '3 глава', 'Апробация', 'Предзащита', 'Защита'];
     const track = trackTitles.map((title, i) => ({
@@ -1214,6 +1220,7 @@ class Component extends DCLogic {
       pick: () => this.setState({ trackAt: i })
     }));
     const planLine = 'scaleY(' + (trackAt / (trackTitles.length - 1)) + ')';
+    const planLineX = 'scaleX(' + (trackAt / (trackTitles.length - 1)) + ')';
     const usp = [
       ['pd-degree', 'Куратор со степенью по вашей специальности', 'Специалист с учёной степенью в вашей области разбирает методологию, показывает слабые места аргументации и готовит к вопросам оппонентов.', 'Профиль куратора вы видите до согласования Задания'],
       ['pd-gost', 'Нормоконтроль по ГОСТ и требованиям ВАК', 'Структура, оформление, библиография и ссылочный аппарат проверяются по ГОСТ Р 7.0.11-2011 и требованиям вашего диссовета.', 'Перечень «Что подготовить» по виду работы — в кабинете до начала работы'],
@@ -1388,7 +1395,7 @@ class Component extends DCLogic {
       reviews, revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
       revPrev: () => this.setState(s => ({ revAt: (s.revAt - 1 + revN) % revN })),
       revNext: () => this.setState(s => ({ revAt: (s.revAt + 1) % revN })),
-      steps, faq, stalls, track, planLine, usp, gains, offerTop, offerMid, offerRest, pubRows, articleCard, stepScale,
+      steps, faq, stalls, track, planLine, planLineX, usp, outcomes, offerTop, offerMid, offerRest, pubRows, articleCard, stepScale,
       dpRows: this.dpPlan(this.state.dpDate, this.state.dpKind, this.dpToday()),
       dpKinds: ['Кандидатская', 'Докторская'].map((label, i) => ({
         label, active: i === this.state.dpKind, inactive: i !== this.state.dpKind,
