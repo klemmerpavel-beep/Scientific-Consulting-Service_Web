@@ -239,6 +239,10 @@ describe('Р-801: «Уровень готовности технологии» �
     }
   });
 
+  it('во всём видимом тексте страницы перед тире — неразрывный пробел (доводка 05.11.2026)', () => {
+    assertDashesBound('BusinessPage');
+  });
+
   it('шапки колонок карточки уровня — в одной строке подсетки, прижаты к её низу', () => {
     for (const [where, source] of both('BusinessPage')) {
       assert.ok(source.includes('.bp-trlcol{display:grid;grid-row:span 2;grid-template-rows:subgrid;row-gap:12px;align-content:start;min-width:0}'), `${where}: колонка не подсетка`);
