@@ -124,16 +124,18 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (max-width:768px){.pd-in-tablist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-radius:14px!important}.pd-in-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
 /* «План от даты защиты» (Р-804): сроки Положения о присуждении учёных степеней обратным счётом от даты защиты, в браузере. Карточка: сверху тихая полоса с датой и видом диссертации, ниже шкала из шести точек — на ≥1200 px в ряд, на 769—1199 px — 3 + 3, до 768 px — вертикальная. Заголовок шага — Inter 15 px / 600, в шести колонках — 14 px, как у «Шкалы шагов». Точка 14 px: срок Положения — кольцо --pd-accent, защита — заливка, шаг без срока — кольцо --pd-edge-neutral и связь пунктиром. */
 .pd-dp-bar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 28px}
-.pd-dp-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:28px 20px}
+.pd-dp-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) repeat(4,minmax(0,1fr));gap:28px 20px}
 .pd-dp-step{position:relative;display:flex;flex-direction:column;min-width:0}
-.pd-dp-date{min-height:44px}
+.pd-dp-date{min-height:64px}
+.pd-dp-step[aria-current="step"]{isolation:isolate}
+.pd-dp-step[aria-current="step"]::before{content:"";position:absolute;z-index:-1;top:-14px;bottom:-14px;left:-10px;right:-10px;border-radius:10px;background:var(--pd-accent-tint)}
 @media (min-width:1200px){.pd-dp-title{font-size:14px!important}}
 .pd-dp-rail{position:relative;display:block;height:14px;margin:8px 0 14px}
 .pd-dp-rail::after{content:"";position:absolute;left:22px;right:-12px;top:6px;height:2px;background:var(--pd-edge-neutral)}
 .pd-dp-step:last-child .pd-dp-rail::after{display:none}
 .pd-dp-step[data-kind="free"] .pd-dp-rail::after{height:0;background:none;border-top:2px dashed var(--pd-edge-neutral)}
 @media (min-width:769px) and (max-width:1199px){.pd-dp-steps{grid-template-columns:repeat(3,minmax(0,1fr))}.pd-dp-step:nth-child(3n) .pd-dp-rail::after{display:none}}
-@media (max-width:768px){.pd-dp-steps{grid-template-columns:minmax(0,1fr);gap:0}.pd-dp-step{display:grid;grid-template-columns:14px minmax(0,1fr);column-gap:16px;grid-template-areas:"rail date" "rail body";padding-bottom:22px}.pd-dp-step:last-child{padding-bottom:0}.pd-dp-date{grid-area:date;min-height:0}.pd-dp-rail{grid-area:rail;height:auto;margin:4px 0 0}.pd-dp-rail>span{position:relative;z-index:1}.pd-dp-rail::after{left:6px;right:auto;top:22px;bottom:-20px;width:2px;height:auto}.pd-dp-step[data-kind="free"] .pd-dp-rail::after{width:0;height:auto;border-top:0;border-left:2px dashed var(--pd-edge-neutral)}.pd-dp-body{grid-area:body;margin-top:4px}.pd-dp-hint{flex:1 1 100%;margin-left:0!important;max-width:none!important}}
+@media (max-width:768px){.pd-dp-steps{grid-template-columns:minmax(0,1fr);gap:0}.pd-dp-step{display:grid;grid-template-columns:14px minmax(0,1fr);column-gap:16px;grid-template-areas:"rail date" "rail body";padding-bottom:22px}.pd-dp-step:last-child{padding-bottom:0}.pd-dp-date{grid-area:date;min-height:0}.pd-dp-rail{grid-area:rail;height:auto;margin:4px 0 0}.pd-dp-rail>span{position:relative;z-index:1}.pd-dp-rail::after{left:6px;right:auto;top:22px;bottom:-20px;width:2px;height:auto}.pd-dp-step[data-kind="free"] .pd-dp-rail::after{width:0;height:auto;border-top:0;border-left:2px dashed var(--pd-edge-neutral)}.pd-dp-body{grid-area:body;margin-top:4px}.pd-dp-step[aria-current="step"]::before{top:-10px;bottom:10px;left:-12px;right:-12px}.pd-dp-step[aria-current="step"]:last-child::before{bottom:-10px}.pd-dp-hint{flex:1 1 100%;margin-left:0!important;max-width:none!important}}
 @media (max-width:560px){.pd-dp-bar>*{flex:1 1 100%}.pd-dp-bar input{width:100%!important}.pd-dp-kinds{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))}.pd-dp-kinds button{justify-content:center}}
 @media (max-width:480px){.pd-dp-pad{padding-left:20px!important;padding-right:20px!important}.pd-dp-foot>a{width:100%;justify-content:center}}
 .pd-in-body{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
@@ -592,7 +594,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </div>
 </section>
-<!-- «План от даты защиты» (Р-804, приём калькулятора сроков из разбора конкурентов 03.11.2026): посетитель выбирает дату защиты и вид диссертации, страница отсчитывает назад сроки, которые задаёт Положение о присуждении учёных степеней (пп. 23—26), у каждой строки — пункт. Шаг без срока в Положении показан без даты. Считается в браузере: формы нет, обработчики не submit*, на сервер ничего не уходит; действие — ссылка на форму заявки #request (Р-96). -->
+<!-- «План от даты защиты» (Р-804, приём калькулятора сроков из разбора конкурентов 03.11.2026): посетитель выбирает дату защиты и вид диссертации, страница отсчитывает назад сроки, которые задаёт Положение о присуждении учёных степеней (пп. 23—26), у каждой строки — пункт. Шаг без срока в Положении показан без даты. Доработка Р-811 (замечание владельца З-5): пока дата не выбрана — пример на защиту через 6 месяцев от сегодняшнего дня по Москве с меткой «Пример»; под будущей датой — «осталось N дней», ближайший предстоящий срок — на подложке --pd-accent-tint (aria-current="step"); названия шагов короткие, полная формулировка — подсказкой title и для чтения с экрана. Считается в браузере: формы нет, обработчики не submit*, на сервер ничего не уходит; действие — ссылка на форму заявки #request (Р-96). -->
 <section id="defense-plan" class="pd-pad" aria-labelledby="mp-dp-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
@@ -624,16 +626,22 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <span aria-live="polite" aria-atomic="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">{{ dpSay }}</span>
 <div class="pd-dp-pad" style="padding:28px 28px 0">
+<sc-if value="{{ dpExample }}" hint-placeholder-val="{{ true }}">
+<p data-dp-example="true" style="margin:0 0 24px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)"><span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;background:var(--pd-accent-tint);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Пример</span><span>Защита через 6 месяцев от сегодняшнего дня. Укажите свою дату, и сроки пересчитаются.</span></p>
+</sc-if>
 <ol class="pd-dp-steps" role="list">
 <sc-for list="{{ dpRows }}" as="r" hint-placeholder-count="6">
-<li class="pd-dp-step" data-kind="{{ r.kind }}">
+<li class="pd-dp-step" data-kind="{{ r.kind }}" aria-current="{{ r.current }}">
 <p class="pd-dp-date" style="margin:0;display:flex;flex-direction:column;gap:2px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:{{ r.dateInk }};font-variant-numeric:tabular-nums;white-space:nowrap">{{ r.dateText }}</span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ r.note }}</span>
+<sc-if value="{{ r.hasLeft }}" hint-placeholder-val="{{ true }}">
+<span class="pd-dp-left" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:{{ r.leftWeight }};color:{{ r.leftInk }};font-variant-numeric:tabular-nums;white-space:nowrap">{{ r.left }}</span>
+</sc-if>
 </p>
 <span class="pd-dp-rail" aria-hidden="true"><span style="display:block;box-sizing:border-box;width:14px;height:14px;border-radius:50%;border:2px solid {{ r.ring }};background:{{ r.fill }}"></span></span>
 <div class="pd-dp-body" style="display:flex;flex-direction:column;gap:6px;min-width:0">
-<h3 class="pd-dp-title" style="margin:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ r.title }}</h3>
+<h3 class="pd-dp-title" style="margin:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)"><span aria-hidden="true" title="{{ r.full }}">{{ r.title }}</span><span style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">{{ r.full }}</span></h3>
 <sc-if value="{{ r.hasRule }}" hint-placeholder-val="{{ true }}">
 <p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ r.rule }}</p>
 </sc-if>
@@ -1000,7 +1008,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, trackAt: 1, navOpen: false, dpDate: '', dpKind: 0, dpSaid: false };
+  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, trackAt: 1, navOpen: false, dpDate: '', dpKind: 0, dpSaid: false, dpNow: '' };
   componentDidMount(){
     // Всплывающее окно закрывается клавишей Esc — иначе с клавиатуры
     // из него не выйти, а закрывающая кнопка может быть прокручена.
@@ -1038,6 +1046,10 @@ class Component extends DCLogic {
     this.syncNav = () => this.setState({ navOpen: this.wide.matches });
     this.syncNav();
     this.wide.addEventListener('change', this.syncNav);
+    // «Сегодня» для плана от даты защиты (Р-811) — только в браузере, после
+    // монтирования: страница собирается заранее, и дата сборки в разметке
+    // разошлась бы с датой посещения при гидратации.
+    this.setState({ dpNow: this.dpToday() });
     this.forceUpdate();
   }
   componentWillUnmount(){
@@ -1065,19 +1077,22 @@ class Component extends DCLogic {
   // соискателю — не позднее чем за 10 дней. Дни календарные: Положение не
   // называет их рабочими. Новый срок — только с пунктом документа и правкой
   // теста site-defense-plan, который сверяет этот перечень.
+  // Названия шагов короткие — до двух строк на 1440 px (Р-811, З-5); полная
+  // формулировка (full) — подсказкой title и в тексте для чтения с экрана.
   // Даты — календарные числа без часового пояса: счёт идёт в UTC-полях Date,
   // поэтому смена пояса браузера дату не сдвигает. Месяц назад — то же
   // число; если его в месяце нет (31 → февраль) — последний день месяца.
   // «Сегодня» — по Москве (UTC+3 круглый год с 26.10.2014): с ним сверяется
-  // только отметка «срок прошёл». Библиотек дат нет.
+  // отметка «срок прошёл», «осталось N дней», ближайший срок и пример плана
+  // (Р-811). Библиотек дат нет.
   dpRules(){
     return [
-      { title: 'Разбор текста с куратором и предзащита на кафедре', free: true },
-      { title: 'Объявление о защите и автореферат на сайте ВАК', back: [{ months: 2 }, { months: 3 }], point: 'п. 26' },
-      { title: 'Рассылка автореферата членам совета и заинтересованным организациям', back: [{ months: 1 }, { months: 1 }], point: 'п. 25' },
-      { title: 'Отзывы оппонентов и ведущей организации в совете', back: [{ days: 15 }, { days: 15 }], point: 'пп. 23 и 24' },
-      { title: 'Копии отзывов вручаются вам', back: [{ days: 10 }, { days: 10 }], point: 'пп. 23 и 24' },
-      { title: 'Защита диссертации', back: [{ days: 0 }, { days: 0 }], day: true }
+      { title: 'Разбор текста и предзащита', full: 'Разбор текста с куратором и предзащита на кафедре', free: true },
+      { title: 'Объявление и автореферат на сайте ВАК', full: 'Объявление о защите и автореферат на сайте ВАК', back: [{ months: 2 }, { months: 3 }], point: 'п. 26' },
+      { title: 'Рассылка автореферата', full: 'Рассылка автореферата членам совета и заинтересованным организациям', back: [{ months: 1 }, { months: 1 }], point: 'п. 25' },
+      { title: 'Отзывы в совете', full: 'Отзывы оппонентов и ведущей организации в совете', back: [{ days: 15 }, { days: 15 }], point: 'пп. 23 и 24' },
+      { title: 'Копии отзывов вам', full: 'Копии отзывов вручаются вам', back: [{ days: 10 }, { days: 10 }], point: 'пп. 23 и 24' },
+      { title: 'Защита диссертации', full: 'Защита диссертации', back: [{ days: 0 }, { days: 0 }], day: true }
     ];
   }
   dpDays(y, m){ return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
@@ -1107,6 +1122,28 @@ class Component extends DCLogic {
     const u = new Date((now === undefined ? Date.now() : now) + 3 * 3600 * 1000);
     return this.dpIso({ y: u.getUTCFullYear(), m: u.getUTCMonth() + 1, d: u.getUTCDate() });
   }
+  // Пример плана (Р-811): пока дата не выбрана, шкала показывает защиту через
+  // 6 месяцев от сегодняшнего дня — то же число или последний день месяца.
+  dpExample(today){
+    const t = this.dpParse(today);
+    if (!t) return '';
+    const k = t.y * 12 + (t.m - 1) + 6;
+    const y = Math.floor(k / 12), m = k - y * 12 + 1;
+    return this.dpIso({ y, m, d: Math.min(t.d, this.dpDays(y, m)) });
+  }
+  // Сколько дней от сегодняшнего (по Москве) до даты: разность календарных чисел.
+  dpDaysTo(iso, today){
+    const a = this.dpParse(iso), b = this.dpParse(today);
+    return Math.round((Date.UTC(a.y, a.m - 1, a.d) - Date.UTC(b.y, b.m - 1, b.d)) / 86400000);
+  }
+  // «осталось N дней»: глагол согласуется с числом — «остался 1 день»,
+  // «остался 21 день», «осталось 2 дня», «осталось 11 дней»; срок сегодня — «сегодня».
+  dpLeft(n){
+    if (n === 0) return 'сегодня';
+    const one = n % 10 === 1 && n % 100 !== 11;
+    const few = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14);
+    return (one ? 'остался ' : 'осталось ') + n + '\xa0' + (one ? 'день' : (few ? 'дня' : 'дней'));
+  }
   dpRuleText(back){
     const n = back.months || back.days;
     const word = back.months
@@ -1118,18 +1155,33 @@ class Component extends DCLogic {
     const t = this.dpParse(value);
     const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
     const WEEK = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
-    return this.dpRules().map(r => {
+    const rules = this.dpRules();
+    const dates = rules.map(r => {
       const back = r.back ? r.back[kind === 1 ? 1 : 0] : null;
-      const at = t && back ? this.dpBack(t, back) : null;
+      return t && back ? this.dpBack(t, back) : null;
+    });
+    // Ближайший предстоящий срок — первая дата шкалы не раньше сегодняшней.
+    const next = today ? dates.findIndex(at => at && this.dpIso(at) >= today) : -1;
+    return rules.map((r, i) => {
+      const back = r.back ? r.back[kind === 1 ? 1 : 0] : null;
+      const at = dates[i];
       const iso = at ? this.dpIso(at) : '';
       const past = Boolean(iso && today && iso < today);
       const muted = r.free || !at || past;
+      const soon = i === next;
+      // Без даты (до монтирования) у шага со сроком — неразрывные пробелы на
+      // месте дня недели и отсчёта: строки заняты заранее, шкала не прыгает.
+      const left = at ? (today && !past ? this.dpLeft(this.dpDaysTo(iso, today)) : '') : (r.free ? '' : '\xa0');
       return {
         kind: r.free ? 'free' : (r.day ? 'day' : 'rule'),
-        title: r.title, iso, past,
+        title: r.title, full: r.full, iso, past,
         dateText: r.free ? 'До объявления' : (at ? at.d + ' ' + MONTHS[at.m - 1] + ' ' + at.y : '—'),
-        dateInk: muted ? 'var(--pd-ink-muted)' : 'var(--pd-ink)',
-        note: at ? (past ? (r.day ? 'дата прошла' : 'срок прошёл') : WEEK[new Date(Date.UTC(at.y, at.m - 1, at.d)).getUTCDay()]) : '',
+        dateInk: soon ? 'var(--pd-accent)' : (muted ? 'var(--pd-ink-muted)' : 'var(--pd-ink)'),
+        note: at ? (past ? (r.day ? 'дата прошла' : 'срок прошёл') : WEEK[new Date(Date.UTC(at.y, at.m - 1, at.d)).getUTCDay()]) : (r.free ? '' : '\xa0'),
+        left, hasLeft: Boolean(left),
+        leftInk: soon ? 'var(--pd-accent)' : 'var(--pd-ink-secondary)',
+        leftWeight: soon ? '600' : '400',
+        soon, current: soon ? 'step' : 'false',
         rule: r.free ? 'Срок Положением не задан' : (r.day ? '' : this.dpRuleText(back)),
         hasRule: !r.day,
         cite: r.point ? r.point + ' Положения' : '',
@@ -1143,11 +1195,12 @@ class Component extends DCLogic {
   // aria-live="polite" после смены даты или вида диссертации — дата защиты,
   // вид и что произошло, без повтора плана. Вид входит в строку, чтобы смена
   // вида при той же дате меняла текст области и объявлялась. До первого
-  // действия посетителя область пуста (dpSaid).
+  // действия посетителя область пуста (dpSaid). Без даты шкала показывает
+  // пример (Р-811) — сводка так и говорит.
   dpSay(value, kind, today){
     const day = this.dpPlan(value, kind, today).find(r => r.kind === 'day');
     const what = kind === 1 ? 'докторская диссертация' : 'кандидатская диссертация';
-    if (!day || !day.iso) return what.charAt(0).toUpperCase() + what.slice(1) + ', план обновлён, дата защиты не выбрана';
+    if (!day || !day.iso) return what.charAt(0).toUpperCase() + what.slice(1) + ', дата защиты не выбрана, показан пример плана';
     return 'Защита ' + day.dateText + ', ' + what + (day.past ? ', дата защиты прошла' : ', план обновлён');
   }
   renderVals(){
@@ -1381,6 +1434,10 @@ class Component extends DCLogic {
         caption: 'Оплаты и документы. Суммы на снимке скрыты: смета считается для каждой работы.' },
     ];
     const inTab = IN_TABS[this.state.inTab];
+    // План от даты защиты: без выбранной даты — пример на 6 месяцев вперёд (Р-811).
+    const dpNow = this.state.dpNow;
+    const dpExample = !this.dpParse(this.state.dpDate);
+    const dpValue = dpExample && dpNow ? this.dpExample(dpNow) : this.state.dpDate;
     return {
       inTabs: IN_TABS.map((t, i) => ({
         label: t.label, id: 'pd-in-tab-' + i,
@@ -1422,13 +1479,13 @@ class Component extends DCLogic {
       revPrev: () => this.setState(s => ({ revAt: (s.revAt - 1 + revN) % revN })),
       revNext: () => this.setState(s => ({ revAt: (s.revAt + 1) % revN })),
       steps, faq, stalls, track, planLine, planLineX, usp, outcomes, offerTop, offerMid, offerRest, pubRows, articleCard, stepScale,
-      dpRows: this.dpPlan(this.state.dpDate, this.state.dpKind, this.dpToday()),
+      dpRows: this.dpPlan(dpValue, this.state.dpKind, dpNow), dpExample,
       dpKinds: ['Кандидатская', 'Докторская'].map((label, i) => ({
         label, active: i === this.state.dpKind, inactive: i !== this.state.dpKind,
-        pick: () => this.setState({ dpKind: i, dpSaid: true })
+        pick: () => this.setState({ dpKind: i, dpSaid: true, dpNow: this.dpToday() })
       })),
-      dpPick: e => this.setState({ dpDate: e.target.value, dpSaid: true }),
-      dpSay: this.state.dpSaid ? this.dpSay(this.state.dpDate, this.state.dpKind, this.dpToday()) : '',
+      dpPick: e => this.setState({ dpDate: e.target.value, dpSaid: true, dpNow: this.dpToday() }),
+      dpSay: this.state.dpSaid ? this.dpSay(this.state.dpDate, this.state.dpKind, dpNow) : '',
       contactTabs: ['E-mail', 'Телефон'].map((label, i) => ({
         label, active: i === this.state.contact, inactive: i !== this.state.contact,
         pick: () => this.setState({ contact: i })
