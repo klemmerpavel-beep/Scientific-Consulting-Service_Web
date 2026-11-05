@@ -74,14 +74,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-usp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .pd-services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
-/* «Стоимость» (Р-798): на ≥1024 px таблица сроков и факторы рядом, ниже — одна колонка; строки таблицы — одна линия между строками, без зебры. */
-.pd-costgrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)}
-@media (max-width:1023px){.pd-costgrid{grid-template-columns:minmax(0,1fr)!important}}
-.pd-termrow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
-.pd-terms>[role=row]+[role=row]{border-top:1px solid var(--pd-border)}
-/* Шлифовка Р-798: до 480 px срок стоит под направлением одной колонкой — без переноса направлений на 2—3 строки и без трёхстрочной шапки. */
-@media (max-width:480px){.pd-termrow{grid-template-columns:minmax(0,1fr);row-gap:2px!important}.pd-terms>[role=row]{padding-left:16px!important;padding-right:16px!important}.pd-costlist{padding-left:20px!important;padding-right:20px!important}}
-.pd-costlist>li+li{border-top:1px solid var(--pd-border)}
 /* «Статьи и гранты» (Р-769): две карточки рядом, до 768 px — одна под другой.
    Р-797: строка «Патент…» — текст и кнопка справа по центру, до 768 px — кнопка на всю ширину под текстом. */
 .pd-articles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -209,7 +201,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </button>
 <nav id="pd-nav" class="pd-nav" hidden="{{ navHidden }}" aria-label="Разделы сайта">
 <a href="#services" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Направления</a>
-<a href="#cost" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Стоимость</a>
 <a href="#process" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Как мы работаем</a>
 <a href="#faq" style="display:inline-flex;align-items:center;height:44px;box-sizing:border-box;padding:0 12px;border:1px solid transparent;border-radius:999px;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap;transition:color 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink)">Вопросы</a>
 <!-- «Стать экспертом» и «Личный кабинет» — обводка проявляется при наведении (замечание владельца 14.10.2026, решение Р-588). -->
@@ -497,45 +488,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="pd-patent pd-lift" style="margin-top:16px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 24px;gap:14px 32px;align-items:center;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <div style="min-width:0;max-width:76ch"><h3 style="margin:0 0 4px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Патент на изобретение и программа для ЭВМ.</h3><p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Проверяем описание и комплект документов к подаче; о выдаче патента и регистрации программы решает Роспатент.</p></div>
 <a href="#request" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;box-sizing:border-box;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;text-decoration:none;white-space:nowrap;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a>
-</div>
-</section>
-
-<section id="cost" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Стоимость</span>
-<h2 id="mp-cost-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Из чего складывается смета и когда вы узнаёте сумму</h2>
-</div>
-<span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Сумму вы видите в Задании, до оплаты</span>
-</div>
-<!-- Р-798: на ≥1024 px две колонки — слева таблица сроков (срок рядом с направлением, линии без зебры, тихая шапка, примечание подписью под таблицей), справа три фактора одной карточкой-списком; ниже 1024 px — одна колонка. Пара «направление — срок» размечена ролями таблицы для читалки. -->
-<div class="pd-costgrid" style="gap:24px;align-items:start">
-<div style="min-width:0">
-<div class="pd-terms" role="table" aria-labelledby="mp-cost-title" aria-describedby="mp-cost-note" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<div class="pd-termrow" role="row" style="gap:6px 16px;padding:16px 22px 10px">
-<span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Направление работы</span>
-<span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Минимальный срок сопровождения</span>
-</div>
-<sc-for list="{{ termRows }}" as="t" hint-placeholder-count="6">
-<div class="pd-termrow" role="row" style="gap:6px 16px;padding:12px 22px;align-items:baseline">
-<span role="rowheader" style="font-size:14px;line-height:1.5;color:var(--pd-ink)">{{ t.title }}</span>
-<span role="cell" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ t.term }}</span>
-</div>
-</sc-for>
-</div>
-<p id="mp-cost-note" style="margin:12px 0 0;padding:0 4px;font-size:13px;line-height:1.6;color:var(--pd-ink-muted)">Срок считается по календарному плану Задания и разбит на этапы. Стоимость фиксируется в Задании и меняется только дополнительным соглашением к нему, которое подписываете вы.</p>
-</div>
-<ul class="pd-costlist" style="list-style:none;margin:0;padding:4px 24px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<sc-for list="{{ costFactors }}" as="c" hint-placeholder-count="3">
-<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:16px 0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:21px;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ c.num }}</span>
-<div style="display:flex;flex-direction:column;gap:6px;min-width:0">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ c.title }}</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ c.text }}</p>
-</div>
-</li>
-</sc-for>
-</ul>
 </div>
 </section>
 
@@ -1166,11 +1118,14 @@ class Component extends DCLogic {
       title, text, mask: this.mask(icon),
       chip: 'var(--pd-accent)'
     }));
+    // «Сколько это стоит?» (Р-807): раздел «Стоимость» с «Аспирантам» снят, его
+    // факт — одним ответом: сумма в Задании до оплаты, меняется только
+    // дополнительным соглашением к Заданию (оферта, пп. 6.1 и 6.4).
     const faqData = [
       ['Как именно вы помогаете с работой?', 'Куратор разбирает методологию, структуру исследования и логику глав, проводит научную экспертизу текста и проверяет оформление. Текст пишете вы; мы указываем, что и почему нужно исправить, и готовим вас к вопросам совета.'],
       ['Кто будет вести мою работу?', 'Куратор с учёной степенью в вашей области. Профиль куратора — степень, специальность, стаж и публикации по категориям журналов — вы видите до согласования Задания.'],
       ['С кем заключается договор и с какого года вы работаете?', 'Договор заключается с ООО «РУСДРОН», ProDisser — его коммерческое обозначение; реквизиты — в оферте. Практика ведёт сопровождение с 2016 года, общество зарегистрировано в 2025 году.'],
-      ['Сколько это стоит?', 'Считаем по этапам после разбора ваших материалов. Сумму вы видите в Задании, до оплаты, и без вашего согласия она не меняется.'],
+      ['Сколько это стоит?', 'Считаем по этапам после разбора ваших материалов. Сумму вы видите в Задании, до оплаты; стоимость фиксируется в Задании и меняется только дополнительным соглашением к нему, которое подписываете вы.'],
       ['Что с конфиденциальностью?', 'Соглашение о неразглашении подписывают все, кто работает над проектом. Тема и текст не передаются третьим лицам и не используются в других работах.'],
       ['А если понадобятся правки?', 'Замечания по сданному этапу отрабатываем без доплаты. Число правок внутри этапа не ограничено, срок ответа прописан в договоре.'],
       ['Когда платить?', 'По этапам. Каждый этап вы принимаете отдельно и оплачиваете следующий только после приёмки.'],
@@ -1272,22 +1227,6 @@ class Component extends DCLogic {
         note: 'О поддержке проекта решает фонд по итогам экспертизы.'
       }
     ].map(t => ({ ...t, items: t.items.map(text => ({ text })) }));
-    const costFactors = [
-      ['Специальность', 'По техническим направлениям больше расчётной части и экспертизы, поэтому сопровождение занимает дольше.'],
-      ['Тип работы', 'Магистерская, кандидатская и докторская — разная сложность, требования к автору и объём сопровождения.'],
-      ['Тема', 'Узкая или редкая тема требует дополнительной проработки источников и экспертизы профильного специалиста.']
-    ].map(([title, text], i) => ({ title, text, num: '0' + (i + 1) }));
-    // Сроки — единственная величина сметы, которую можно назвать до разбора
-    // материала. Денежные значения не публикуются, пока нет утверждённого
-    // прайса: цифра без источника — это обещание, а не факт.
-    const termRows = [
-      ['Кандидатская диссертация', 'от 2 месяцев'],
-      ['Докторская диссертация', 'от 4 месяцев'],
-      ['Магистерская диссертация', 'от 1 месяца'],
-      ['Автореферат и доклад к защите', 'от 10 дней'],
-      ['Научная статья в рецензируемый журнал', 'от 14 дней'],
-      ['Заявка на грант в научный фонд', 'от 21 дня']
-    ].map(([title, term]) => ({ title, term }));
     // Карусель отзывов. Карточка со смещением 0 — впереди и резкая, ±1
     // приглушены и размыты, ±2 уходят за край сцены. Смещение считается по
     // кругу, поэтому список листается бесконечно в обе стороны.
@@ -1402,7 +1341,7 @@ class Component extends DCLogic {
       reviews, revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
       revPrev: () => this.setState(s => ({ revAt: (s.revAt - 1 + revN) % revN })),
       revNext: () => this.setState(s => ({ revAt: (s.revAt + 1) % revN })),
-      steps, faq, stalls, track, planLine, usp, gains, offerTop, offerMid, offerRest, articleTracks, stepScale, costFactors, termRows,
+      steps, faq, stalls, track, planLine, usp, gains, offerTop, offerMid, offerRest, articleTracks, stepScale,
       dpRows: this.dpPlan(this.state.dpDate, this.state.dpKind, this.dpToday()),
       dpKinds: ['Кандидатская', 'Докторская'].map((label, i) => ({
         label, active: i === this.state.dpKind, inactive: i !== this.state.dpKind,

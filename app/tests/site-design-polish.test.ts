@@ -122,14 +122,14 @@ describe('Р-796: «Диагностика» на «Аспирантам»', () 
     assertDashesBound('MainPage');
   });
 
-  it('номер пункта перечня — в исполнении номера фактора сметы (одно исполнение номера, К-9)', () => {
+  it('номер пункта перечня — исполнение «Карточки-списка»: Inter 13 px / 600 --pd-ink-muted, tabular-nums, без разрядки (К-9)', () => {
+    // Факторы сметы, с которыми номер сравнивался, сняты вместе с разделом
+    // «Стоимость» (Р-807): исполнение номера К-9 проверяется по значениям.
+    const K9 = "font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:21px;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums";
     const html = design('MainPage');
-    const stall = html.match(/<span style="([^"]*)">\{\{ p\.num \}\}<\/span>/u)?.[1];
-    const factor = html.match(/<span style="([^"]*)">\{\{ c\.num \}\}<\/span>/u)?.[1];
-    assert.ok(stall && factor, 'нет номера перечня или фактора');
-    assert.equal(stall, factor, 'номера перечня и факторов сметы набраны по-разному');
+    assert.equal(html.match(/<span style="([^"]*)">\{\{ p\.num \}\}<\/span>/u)?.[1], K9, 'номер перечня набран не по К-9');
     const tsx = both('MainPage')[1][1];
-    assert.equal(tsx.match(/<span style=\{\{([^}]*)\}\}>\{p\.num\}<\/span>/u)?.[1], tsx.match(/<span style=\{\{([^}]*)\}\}>\{c\.num\}<\/span>/u)?.[1]);
+    assert.match(tsx, /<span style=\{\{ fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", fontSize: "13px", lineHeight: "21px", fontWeight: "600", color: "var\(--pd-ink-muted\)", fontVariantNumeric: "tabular-nums" \}\}>\{p\.num\}<\/span>/u, 'перенос изменил номер перечня');
   });
 
   it('шкала плана на 481—768 px — не шире 360 px: статус рядом с названием этапа', () => {
@@ -165,19 +165,41 @@ describe('Р-797: «Статьи и гранты» на «Аспирантам»
   });
 });
 
-describe('Р-798: «Стоимость» на «Аспирантам»', () => {
-  it('тире не начинает строку: в факторах сметы перед тире — неразрывный пробел', () => {
+describe('Р-807: раздел «Стоимость» снят с «Аспирантам»', () => {
+  // Р-798 оформлял раздел; по указанию владельца 05.11.2026 (З-4) раздел снят
+  // с «Аспирантам» вместе со стилями и данными, факт о сумме — ответом «Вопросов».
+  it('раздела #cost, пункта «Стоимость» в шапке и ссылок на #cost нет', () => {
     for (const [where, source] of both('MainPage')) {
-      assert.doesNotMatch(data(source, 'const costFactors = ['), / —/u, `${where}: в факторах сметы перед тире обычный пробел`);
-      assert.ok(source.includes(`докторская${NB}— разная сложность`), `${where}: нет неразрывного пробела в «докторская — разная сложность»`);
+      assert.doesNotMatch(source, /id="cost"/u, `${where}: раздел #cost остался`);
+      assert.doesNotMatch(source, /href="#cost"/u, `${where}: ссылка на #cost осталась`);
+      assert.doesNotMatch(source, />Стоимость</u, `${where}: пункт или метка «Стоимость» остались`);
+    }
+    for (const page of ['StartPage', 'StudentsPage', 'BusinessPage', 'ExpertsPage', 'NotFoundPage']) {
+      assert.doesNotMatch(read('design', `${page}.dc.html`), /main\.html#cost|\/main#cost/u, `${page}: ссылка на /main#cost`);
+    }
+    // У «Студентам» своя «Стоимость» (#cost) — её правка не касается.
+    assert.match(design('StudentsPage'), /<section id="cost"/u, '«Студентам»: раздел #cost пропал');
+  });
+
+  it('стилей и данных раздела не осталось', () => {
+    for (const [where, source] of both('MainPage')) {
+      for (const name of ['pd-costgrid', 'pd-termrow', 'pd-terms', 'pd-costlist', 'mp-cost-title', 'mp-cost-note', 'costFactors', 'termRows']) {
+        assert.ok(!source.includes(name), `${where}: осталось «${name}»`);
+      }
     }
   });
 
-  it('у таблицы сроков доступное имя — заголовок раздела', () => {
+  it('факт раздела — одним ответом «Сколько это стоит?», без повтора на странице', () => {
+    const fact = `Сумму вы видите в${NB}Задании, до${NB}оплаты; стоимость фиксируется в${NB}Задании и${NB}меняется только дополнительным соглашением к${NB}нему, которое подписываете вы.`;
     for (const [where, source] of both('MainPage')) {
-      assert.match(source, /role="table" aria-labelledby="mp-cost-title"/u, `${where}: у role=table нет имени`);
-      assert.match(source, /<h2 id="mp-cost-title"/u, `${where}: нет заголовка с id mp-cost-title`);
+      const faq = data(source, 'const faqData = [');
+      assert.ok(faq.includes(`['Сколько это стоит?', 'Считаем по${NB}этапам после разбора ваших материалов. ${fact}']`), `${where}: ответ «Сколько это стоит?» не дополнен`);
+      assert.equal(faq.split(/стоит\?'/u).length - 1, 1, `${where}: второй вопрос о стоимости`);
     }
+    // Видимый текст макета (без комментариев): факт стоит один раз (Р-258).
+    const shown = visibleText(design('MainPage')).join('\n');
+    assert.equal(shown.split(/Сумму вы видите/u).length - 1, 1, '«Сумму вы видите…» повторено на странице');
+    assert.equal(shown.split(/дополнительным соглашением/u).length - 1, 1, '«…дополнительным соглашением…» повторено на странице');
   });
 
   it('пустых правил и правила .pd-cost в таблице стилей нет', () => {
@@ -185,12 +207,6 @@ describe('Р-798: «Стоимость» на «Аспирантам»', () => {
     assert.doesNotMatch(css, /\.pd-cost[,{]/u, 'осталось правило .pd-cost');
     assert.doesNotMatch(css, /,\s*\}/u, 'правило со списком селекторов без объявлений');
     assert.ok(!both('MainPage')[1][1].includes('.pd-cost,'));
-  });
-
-  it('до 480 px срок стоит под направлением одной колонкой', () => {
-    for (const [where, source] of both('MainPage')) {
-      assert.ok(source.includes('@media (max-width:480px){.pd-termrow{grid-template-columns:minmax(0,1fr);row-gap:2px!important}'), `${where}: таблица до 480 px — в две колонки`);
-    }
   });
 });
 
