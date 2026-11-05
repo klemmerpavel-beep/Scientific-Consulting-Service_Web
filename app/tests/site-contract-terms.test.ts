@@ -1,7 +1,7 @@
 /**
  * Сайт (Р-810, замечание владельца З-2 от 05.11.2026): раздел «Что
  * закреплено в договоре» на «Аспирантам» — каждая карточка в три строки
- * «что вы получаете → как проверить до подписания → где это видно
+ * «что вы получаете → как проверить до согласования Задания → где это видно
  * (Задание, кабинет, акт)» прежними формулировками и объёмное изображение
  * владельца 96 px. Решение владельца 05.11.2026 дополняет Р-633: на
  * «Аспирантам» объёмные изображения получают два блока — «Шесть шагов» и
@@ -79,9 +79,9 @@ describe('Р-810: «Что закреплено в договоре» на «А�
     assert.match(img, /width:96px;height:96px/u);
   });
 
-  it('в карточке три строки: что вы получаете → как проверить до подписания → где это видно', () => {
-    const labels = [...SECTION.matchAll(/<div class="pd-term-row"[^>]*>\s*<span[^>]*>([^<]+)<\/span>/gu)].map((m) => m[1]);
-    assert.deepEqual(labels, ['Что вы получаете', 'Как проверить до подписания', 'Где это видно']);
+  it('в карточке три строки: что вы получаете → как проверить до согласования Задания → где это видно', () => {
+    const labels = [...SECTION.matchAll(/<div class="pd-term-row"[^>]*>\s*<span[^>]*>([^<]+)<\/span>/gu)].map((m) => m[1]!.replace(/\u00a0/gu, ' '));
+    assert.deepEqual(labels, ['Что вы получаете', 'Как проверить до согласования Задания', 'Где это видно']);
     for (const field of ['u.text', 'u.check', 'u.place', 'u.where']) assert.ok(SECTION.includes(`{{ ${field} }}`), `строка без ${field}`);
     for (const card of CARDS) {
       assert.equal(card.length, 6, `у карточки «${card[1]}» не шесть полей`);
@@ -111,6 +111,7 @@ describe('Р-810: «Что закреплено в договоре» на «А�
       assert.ok(source.includes('.pd-term{display:grid;grid-row:span 4;grid-template-rows:subgrid;row-gap:0;grid-template-columns:96px minmax(0,1fr);column-gap:20px;min-width:0}'), `${where}: нет подсетки карточки`);
     }
     assert.match(TSX, /const uspArt = \{ 'pd-degree': 'pd-3d-degree', 'pd-gost': 'pd-3d-sheets', 'pd-editing': 'pd-3d-laptop', 'pd-stages': 'pd-3d-stairs' \};/u);
-    assert.ok(plain(TSX).includes('Как проверить до подписания'));
+    assert.ok(plain(TSX).includes('Как проверить до согласования Задания'));
+    assert.ok(!plain(MAIN).includes('до подписания'), 'на «Аспирантам» осталось «до подписания»: договор заключается акцептом оферты');
   });
 });
