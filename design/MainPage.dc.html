@@ -602,7 +602,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-for>
 </div>
 </div>
-<p id="mp-dp-hint" class="pd-dp-hint" style="margin:0 0 0 auto;max-width:34ch;padding-bottom:4px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">Сроки отсчитываются назад от даты защиты в календарных днях и месяцах</p>
+<p id="mp-dp-hint" class="pd-dp-hint" style="margin:0 0 0 auto;max-width:34ch;padding-bottom:4px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">Сроки отсчитываются назад от даты защиты полными календарными днями и месяцами</p>
 </div>
 <span aria-live="polite" aria-atomic="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">{{ dpSay }}</span>
 <div class="pd-dp-pad" style="padding:28px 28px 0">
@@ -1070,13 +1070,18 @@ class Component extends DCLogic {
     if (y < 1900 || y > 2200 || mo < 1 || mo > 12 || d < 1 || d > this.dpDays(y, mo)) return null;
     return { y, m: mo, d };
   }
+  // Полные единицы (решение владельца 05.11.2026, Р-804): между сроком и днём
+  // защиты — не меньше N полных дней или месяцев, поэтому от отсчёта берётся
+  // ещё день назад: защита 31.03 → «за 15 дней» 15.03, «за 2 месяца» 30.01.
   dpBack(t, back){
+    if (!back.months && !back.days) return t;
+    let y = t.y, m = t.m, d = t.d - (back.days || 0);
     if (back.months) {
       const k = t.y * 12 + (t.m - 1) - back.months;
-      const y = Math.floor(k / 12), m = k - y * 12 + 1;
-      return { y, m, d: Math.min(t.d, this.dpDays(y, m)) };
+      y = Math.floor(k / 12); m = k - y * 12 + 1;
+      d = Math.min(t.d, this.dpDays(y, m));
     }
-    const u = new Date(Date.UTC(t.y, t.m - 1, t.d - (back.days || 0)));
+    const u = new Date(Date.UTC(y, m - 1, d - 1));
     return { y: u.getUTCFullYear(), m: u.getUTCMonth() + 1, d: u.getUTCDate() };
   }
   dpIso(t){ return t.y + '-' + String(t.m).padStart(2, '0') + '-' + String(t.d).padStart(2, '0'); }
