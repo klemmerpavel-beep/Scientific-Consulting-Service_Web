@@ -59,8 +59,9 @@ describe('фото авторов отзывов — только прислан
   it('подпись под отзывами не обещает, что фото нет', () => {
     for (const page of ['MainPage', 'StudentsPage']) {
       const design = read('design', `${page}.dc.html`);
-      assert.doesNotMatch(design, /фамилии и фотографии — нет/u);
-      assert.match(design, /фото — только с согласия автора/u);
+      // Перед тире — неразрывный пробел (доводка 05.11.2026); вид пробела охраняет site-design-polish.
+      assert.doesNotMatch(design, /фамилии и фотографии[ \u00a0]— нет/u);
+      assert.match(design, /фото[ \u00a0]— только с согласия автора/u);
     }
   });
 });

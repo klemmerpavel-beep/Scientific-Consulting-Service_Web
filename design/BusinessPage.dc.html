@@ -35,55 +35,170 @@
 .bp-scroll{overflow-x:auto;overscroll-behavior-x:contain;scroll-behavior:smooth}
 .bp-hero{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr)}
 .bp-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
-.bp-trl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-.bp-mech{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr}
 /* Полоса натюрморта фиксирована 96 пикселями и не тянется вместе с
    карточкой. Карточки одного ряда равны по высоте, но ряд высотой в
    самый длинный пакет не навязывается: второй ряд шире и короче, и
    равные ряды оставляли в нём до 150 px пустоты, а в одну колонку —
    у каждого короткого пакета. */
-/* Шесть карточек механизмов равны по высоте, но высоту задаёт содержимое:
-   `grid-auto-rows: 1fr` тянет ряды до самой высокой карточки, а не до
-   заранее заданного числа. Прежний резерв под раскрытую строку «чем
-   закреплено» оставлял в карточках с коротким текстом до 40 % пустоты. */
+/* Условия «Как устроена работа» (Р-802): шесть карточек в две колонки
+   (до 768 px — одна). Каждая карточка стоит по своей высоте
+   (align-items: start у сетки .bp-mech, логика высоту не задаёт):
+   карточка не тянется до соседки по ряду, поэтому между текстом и «Чем
+   закреплено» провала нет, а раскрытие строки «Чем закреплено» не
+   меняет соседнюю карточку. Карточка — медиаобъект: изображение 96 px
+   слева в строках заголовка и текста, номер спокойный справа от
+   заголовка (условия не последовательность), подвал «Чем закреплено» на
+   всю ширину под изображением. Строка текста — 1fr: при коротком тексте
+   она доходит до низа изображения, и подвал стоит сразу под более
+   высоким из двух столбцов. На 769—1100 px и до 480 px изображение 64 px
+   рядом с заголовком, текст на всю ширину под ними. */
+/* Шлифовка Р-802: карточки стоят по своей высоте (align-items: start) — между текстом и «Чем закреплено» провала нет ни на одной ширине, а раскрытие одной карточки не трогает соседнюю. На 769—1100 px колонка узкая для медиаобъекта 96 px: изображение 64 px рядом с заголовком, текст — на всю ширину карточки под ними, как до 480 px. */
+.bp-mech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.bp-mechcard{display:grid;grid-template-columns:96px minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "img text" "foot foot";column-gap:20px;row-gap:8px}
+.bp-mechimg{grid-area:img;width:96px;height:96px}
+.bp-mechhead{grid-area:head;display:flex;flex-direction:row-reverse;align-items:baseline;justify-content:space-between;gap:16px;min-width:0}
+.bp-mechtext{grid-area:text}
+.bp-mechfoot{grid-area:foot;margin-top:12px}
+.bp-mechplus{position:relative;width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:var(--pd-accent-tint);transition:background 180ms cubic-bezier(.2,0,.2,1)}
+.bp-mechbtn:hover .bp-mechplus{background:var(--pd-accent-mark)}
+@media (min-width:769px) and (max-width:1100px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";column-gap:16px;row-gap:12px}.bp-mechimg{width:64px;height:64px}.bp-mechhead{align-self:center}}
+@media (max-width:480px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";column-gap:16px;row-gap:12px;padding:18px 20px 0!important}.bp-mechimg{width:64px;height:64px}.bp-mechhead{align-self:center}}
 .bp-proof{animation:bp-proof 200ms cubic-bezier(.2,0,.2,1) both}
 @keyframes bp-proof{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.bp-proof{animation:none}}
 .bp-cat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 
-.bp-rights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr}
+/* «Права и конфиденциальность» (Р-803): композиция, отличная от сетки
+   «Условий» двумя разделами выше. Главный тезис «Исключительные права» —
+   тёмной панелью --pd-accent-deep (на странице она одна, Р-608): значок
+   и номер сверху, под ними заголовок и абзац; панель по своему
+   содержимому (align-items: start у сетки .bp-rights, в панели — столбец
+   с промежутком 28 px), в углу — пара колец орбиты, неподвижных.
+   Остальные пять пунктов — одной белой карточкой-списком: значок 40 px,
+   заголовок, спокойный номер справа и текст, между пунктами одна линия
+   --pd-border. Синие кромки снизу у части карточек сняты; панель и
+   список поднимаются при наведении одинаково (pd-lift, Р-628). От
+   1200 px панель слева, список справа; до 1199 px — столбцом, панель над
+   списком; до 768 px панель без колец: в невысокой панели они заходили
+   под текст. */
+/* Шлифовка Р-803: тёмная панель — по устройству Р-608 (поля clamp(28px, 4vw, 56px)) и по своему содержимому, без пустой заливки; от 1200 px — рядом со списком, колонки 1.05fr / .95fr, чтобы абзац уложился в три строки; до 1199 px — над списком на всю ширину, абзац — не длиннее 60 знаков в строке. Кольца орбиты сдвинуты в угол — мимо текста. */
+.bp-rights{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);align-items:start}
+@media (max-width:1199px){.bp-rights{grid-template-columns:minmax(0,1fr)!important}}
+.bp-rightlead{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:28px;min-width:0}
+.bp-rightlist{list-style:none;min-width:0}
+.bp-rightlist>li{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:16px;align-items:start;padding:18px 0;border-top:1px solid var(--pd-border)}
+.bp-rightlist>li:first-child{border-top:0}
+.bp-righthead{display:flex;flex-direction:row-reverse;align-items:baseline;justify-content:space-between;gap:16px;min-width:0}
+@media (max-width:480px){.bp-rightlist{padding:0 20px!important}.bp-rightlist>li{grid-template-columns:36px minmax(0,1fr);column-gap:14px}.bp-rightlist>li>span:first-child{width:36px!important;height:36px!important;flex-basis:36px!important}}
+@media (max-width:768px){.bp-rightart{display:none}}
 .bp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
+/* Шкала шагов «Что будет после отправки» (Р-800) — один компонент на «Студентам» и «Компаниям». Шаги — последовательность, поэтому с номерами: узлы 28 px на общей линии 2 px --pd-edge-neutral, разделителей под шагами нет. Горизонтальная: узел над текстом, линия от узла к узлу соседней колонки (промежуток колонок 24 px), колонки ряда одной высоты. Вертикальная (.pd-track-v): узел слева, линия вниз к следующему узлу. Последний шаг ряда линии не ведёт. */
+.pd-track{list-style:none;margin:0;padding:0;gap:28px 24px}
+.pd-track>li{position:relative;min-width:0;display:flex;flex-direction:column;gap:14px}
+.pd-track>li::after{content:"";position:absolute;top:13px;left:28px;right:-24px;height:2px;border-radius:999px;background:var(--pd-edge-neutral)}
+.pd-track>li:last-child::after{display:none}
+.pd-track-v{display:flex;flex-direction:column;gap:0}
+.pd-track-v>li{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:14px;padding-bottom:20px}
+.pd-track-v>li:last-child{padding-bottom:0}
+.pd-track-v>li::after{top:28px;bottom:0;left:13px;right:auto;width:2px;height:auto}
+.pd-track-v .pd-track-body{padding-top:4px}
 .bp-support{display:grid;grid-template-columns:minmax(0,1fr)}
-@media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-trl{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}.bp-mech{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq,.bp-mech{grid-template-columns:minmax(0,1fr)}.bp-mech,.bp-rights{grid-auto-rows:auto}.bp-pack{grid-column:span 6!important}}
+@media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq,.bp-mech{grid-template-columns:minmax(0,1fr)}.bp-pack{grid-column:span 6!important}}
 /* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
 @media (max-width:1200px){.bp-nav{position:absolute;right:30px;top:78px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.bp-nav[hidden]{display:none!important}.bp-burger{display:inline-flex}}
 /* Подпись раздела на узком экране — под заголовком слева, а не прижатой вправо строкой (Р-250). */
 @media (max-width:768px){.bp-sub{text-align:left!important;margin-left:0!important}}
 @media (max-width:430px){.bp-head{gap:12px!important}.bp-logo{font-size:22px!important}.bp-cta{padding:12px 16px!important;font-size:12px!important}}
 @media (max-width:480px){.bp-hero,.bp-team,.bp-trl,.bp-cat,.bp-rights,.bp-req,.bp-support{grid-template-columns:minmax(0,1fr)!important}.bp-pad{padding-left:20px!important;padding-right:20px!important}.bp-orbit{grid-template-columns:minmax(0,1fr)}}
-/* Шкала УГТ. Высота карточки уровня зафиксирована по самому объёмному
-   состоянию (уровень 8) — иначе при переключении страница
-   под блоком прыгает на 40—80 пикселей. Смена содержимого проигрывается
+/* В каталоге на телефоне миниатюра направления уступает место названию —
+   иначе «Интеллектуальная собственность» ложилась на счётчик позиций (Р-250). */
+@media (max-width:480px){.bp-catart{display:none!important}}
+/* Шкала УГТ (Р-801). Девять уровней — последовательность, поэтому номер
+   стоит в узле 28 px на общей линии, как у «Шкалы плана» (Р-796):
+   пройденный уровень залит --pd-accent, номер белый; текущий — белый узел
+   с кольцом 2 px --pd-accent и подпись на подложке --pd-accent-tint;
+   будущие — кольцо --pd-border, номер и подпись --pd-ink-muted. Кнопка
+   уровня — вся колонка с узлом и подписью, не ниже 44 px; под курсором
+   подпись другого уровня — на --pd-surface-quiet. Линия идёт от центра
+   первого узла до центра девятого, пройденный участок растёт
+   transform: scaleX за 220 мс. Девять колонок по 106 px вмещают
+   «Подтверждение» 12 px, от 1200 px подписи 13 px; уже 1014 px шкала
+   прокручивается в своей области, текущий уровень при загрузке встаёт в
+   её середину (Р-250: подписи не наезжают друг на друга). */
+.bp-trlscroll{margin:0 -4px 16px;padding:0 4px;scroll-snap-type:x proximity}
+.bp-trlscale{position:relative;min-width:954px;padding:4px 0 6px}
+.bp-trlline{position:absolute;left:calc(100% / 18);right:calc(100% / 18);top:17px;height:2px;border-radius:999px;background:var(--pd-border);overflow:hidden}
+.bp-trlfill{position:absolute;inset:0;background:var(--pd-accent);transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1)}
+.bp-trlstep{appearance:none;border:0;background:transparent;cursor:pointer;margin:0;padding:0 2px;min-width:0;min-height:44px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;border-radius:10px;scroll-snap-align:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif}
+.bp-trlstep:focus-visible{outline:2px solid var(--pd-accent);outline-offset:2px}
+.bp-trlnode{width:28px;height:28px;flex:0 0 28px;box-sizing:border-box;border:2px solid;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1.24;font-weight:600;font-variant-numeric:tabular-nums;transition:background 220ms cubic-bezier(.2,0,.2,1),border-color 220ms cubic-bezier(.2,0,.2,1),color 220ms cubic-bezier(.2,0,.2,1)}
+.bp-trlchip{display:block;max-width:100%;box-sizing:border-box;padding:4px;border-radius:10px;font-size:12px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.bp-trlstep:hover .bp-trlchip{background:var(--pd-surface-quiet)}
+.bp-trlstep[aria-pressed="true"] .bp-trlchip{background:var(--pd-accent-tint)}
+@media (min-width:1200px){.bp-trlchip{font-size:13px;padding:4px 8px}}
+/* Карточка уровня (Р-801): шапка — метка, тезис и плашка границы
+   ответственности; ниже три колонки с одинаковыми шапками на общей линии,
+   «Документы на выходе» — таблицей с нормой по правому краю; подвал —
+   «Подходящее предложение» со ссылкой к пакету. Высота карточки на
+   широком экране — по самому объёмному уровню: иначе при переключении
+   страница под блоком прыгает. Смена содержимого проигрывается
    CSS-анимацией; она перезапускается только при смене имени, поэтому два
    одинаковых по эффекту набора кадров чередуются по чётности уровня. */
-/* Шкала УГТ: девять делений по 84 px не вмещали «Подтверждение» и
-   «Демонстрация» — подписи наезжали на соседние. 940 px дают ~104 px на
-   деление; на узких экранах шкала по-прежнему прокручивается в своей
-   области. В каталоге на телефоне миниатюра направления уступает место
-   названию — иначе «Интеллектуальная собственность» ложилась на счётчик
-   позиций (Р-250). */
-@media (max-width:480px){.bp-catart{display:none!important}}
-.bp-trlcard{min-height:500px}
-.bp-trlstep:focus-visible{outline:2px solid var(--pd-accent);outline-offset:3px}
+.bp-trlhead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+.bp-trl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr)}
+/* Шлифовка Р-801: колонки карточки уровня — подсетка из двух строк (шапка и содержимое): шапки трёх колонок стоят в одной строке сетки и прижаты к её низу, поэтому линии под шапками и последние строки шапок — на одной базовой линии, даже когда «Что делаем на этом уровне» переносится (769—850 px). */
+.bp-trlcol{display:grid;grid-row:span 2;grid-template-rows:subgrid;row-gap:12px;align-content:start;min-width:0}
+.bp-trlcolhead{align-self:end}
+.bp-trlcolhead{font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);padding-bottom:10px;border-bottom:1px solid var(--pd-border)}
+.bp-trllist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.bp-trllist>li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)}
+.bp-trldot{width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:var(--pd-accent)}
+.bp-trldocs{display:flex;flex-direction:column;gap:10px}
+.bp-trldocs>[role=row]{display:grid;grid-template-columns:minmax(0,1fr) fit-content(42%);gap:16px;align-items:baseline;padding-bottom:10px;border-bottom:1px solid var(--pd-divider)}
+.bp-trldocs>[role=row]:last-child{padding-bottom:0;border-bottom:0}
+.bp-trlfoot{background:var(--pd-surface-quiet);transition:background 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)}
+.bp-trlfoot:hover{background:var(--pd-accent-tint)}
+.bp-trlfoot:active{opacity:.82}
+.bp-trlfoot:focus-visible{outline-offset:-4px}
+.bp-trlgo{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;min-height:44px;box-sizing:border-box;padding:0 20px;border:1px solid transparent;border-radius:999px;background:var(--pd-ink-inverse);font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);transition:border-color 180ms cubic-bezier(.2,0,.2,1)}
+.bp-trlfoot:hover .bp-trlgo{border-color:var(--pd-accent)}
+.bp-trlarrow{width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);transition:transform 180ms cubic-bezier(.2,0,.2,1)}
+.bp-trlfoot:hover .bp-trlarrow{transform:translateX(3px)}
+.bp-trlcard{min-height:438px}
 @keyframes bp-trl-a{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes bp-trl-b{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .bp-trlbody-a{animation:bp-trl-a 260ms cubic-bezier(.2,0,.2,1) both}
 .bp-trlbody-b{animation:bp-trl-b 260ms cubic-bezier(.2,0,.2,1) both}
+@media (max-width:1199px){.bp-trlcard{min-height:478px}}
 @media (max-width:1024px){.bp-trlcard{min-height:0}}
+@media (max-width:768px){.bp-trlhead,.bp-trl{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:480px){.bp-trlhead,.bp-trl,.bp-trlfoot{padding-left:20px!important;padding-right:20px!important}.bp-trlgo{padding:0 16px}}
 @media (prefers-reduced-motion:reduce){.bp-trlbody-a,.bp-trlbody-b{animation:none}}
 
+
+/* «Шесть задач компании» (Р-806): перечень строк-ссылок «задача → что делаем → требования → где подробнее» одной белой карточкой на ширину контейнера. Композиция — таблица строк: выше шкала УГТ с карточкой уровня, ниже сетка карточек пакетов. От 1100 px строка — пять колонок под общей шапкой (шапка — подсказка для глаза, aria-hidden: смысл ячеек несёт их текст); на 769—1099 px шапки нет, задача и действие слева, требования и цель справа одной стопкой (обёртка .bp-taskmeta, от 1100 px — display: contents, ячейки встают в свои колонки); до 768 px — столбцом, цель одной строкой. Строка — ссылка целиком (не ниже 44 px): под курсором тихая подложка и сдвиг стрелки, как у «Подходящего предложения» шкалы; кольцо фокуса внутри строки — карточка обрезает края. */
+.bp-tasks{border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);overflow:hidden}
+.bp-taskrow{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1.35fr) minmax(0,.62fr) minmax(0,.9fr) 28px;grid-template-areas:"say does norm to go";column-gap:24px;row-gap:6px;align-items:baseline}
+.bp-taskhead{padding:12px 24px;background:var(--pd-surface-quiet);border-bottom:1px solid var(--pd-border);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)}
+.bp-tasklist{list-style:none;margin:0;padding:0}
+.bp-tasklist>li+li{border-top:1px solid var(--pd-border)}
+.bp-task{padding:20px 24px;min-height:44px;box-sizing:border-box;text-decoration:none;color:var(--pd-ink);transition:background 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)}
+.bp-task:hover{background:var(--pd-surface-quiet);color:var(--pd-ink)}
+.bp-task:active{opacity:.82}
+.bp-task:focus-visible{outline-offset:-4px}
+.bp-taskmeta{display:contents}
+.bp-taskto{display:flex;flex-direction:column;gap:2px;min-width:0}
+.bp-taskgo{align-self:center;width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center;transition:background 180ms cubic-bezier(.2,0,.2,1)}
+.bp-task:hover .bp-taskgo{background:var(--pd-accent-mark)}
+.bp-taskarrow{width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);transition:transform 180ms cubic-bezier(.2,0,.2,1)}
+.bp-task:hover .bp-taskarrow{transform:translateX(3px)}
+.bp-taskfoot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 24px;padding:14px 24px;background:var(--pd-surface-quiet);border-top:1px solid var(--pd-border)}
+@media (max-width:1099px){.bp-taskhead{display:none}.bp-taskrow{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 28px;grid-template-areas:"say meta go" "does meta go";row-gap:8px}.bp-taskmeta{grid-area:meta;align-self:start;display:flex;flex-direction:column;gap:6px;min-width:0;padding-top:2px}}
+@media (max-width:768px){.bp-taskrow{grid-template-columns:minmax(0,1fr) 28px;grid-template-areas:"say go" "does does" "meta meta"}.bp-taskmeta{padding-top:0}.bp-taskgo{align-self:start}.bp-taskto{flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:8px}}
+@media (max-width:480px){.bp-task,.bp-taskfoot{padding-left:20px!important;padding-right:20px!important}.bp-task{padding-top:18px!important;padding-bottom:18px!important}}
+@media (prefers-reduced-motion:reduce){.bp-task:hover .bp-taskarrow{transform:none}}
 
 /* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
    поэтому приглушение объявлено важным. */
@@ -239,7 +354,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="min-width:0">
 <span style="display:inline-block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);margin-bottom:24px">Бизнесу и стартап-командам</span>
 <h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3vw,40px);line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink);max-width:22ch;text-wrap:balance"><span style="display:block">Оформить разработку по требованиям</span><span style="background:var(--pd-accent-mark);border-radius:6px;box-shadow:-10px 0 0 var(--pd-accent-mark),10px 0 0 var(--pd-accent-mark);box-decoration-break:clone;-webkit-box-decoration-break:clone">приёмки, гранта и патента</span></h1>
-<p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">Техническое задание, отчётность по НИОКР, заявки на патенты и гранты, постановка прав на баланс — по действующим ГОСТ и требованиям получателя документа.</p>
+<p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">Техническое задание, отчётность по НИОКР, заявки на патенты и гранты, постановка прав на баланс — по действующим ГОСТ и требованиям получателя документа.</p>
 
 <form onSubmit="{{ submitTop }}" style="margin:36px 0 0;max-width:520px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
 <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
@@ -274,7 +389,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
 <li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
 <li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
-<li>Менеджер откроет вам личный кабинет — ссылка придёт на почту; там вы приложите материалы по перечню «Что подготовить»</li>
+<li>Менеджер откроет вам личный кабинет — ссылка придёт на почту; там вы приложите материалы по перечню «Что подготовить»</li>
 </ol>
 </div>
 </sc-if>
@@ -292,7 +407,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="width:178px;height:178px;border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block">
 <image-slot id="bp-photo-1" shape="circle" data-alt="Куратор — отраслевой эксперт со степенью" placeholder="Фото: куратор" style="width:178px;height:178px"></image-slot>
 </span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Куратор — отраслевой эксперт со&nbsp;степенью</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Куратор — отраслевой эксперт со&nbsp;степенью</span>
 </div>
 <div style="display:flex;flex-direction:column;gap:2px;max-width:122px;padding-top:96px;align-items:center;text-align:center">
 <span style="width:122px;height:122px;border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block">
@@ -304,7 +419,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="bp-support" style="gap:12px;padding-top:8px">
 <a class="pd-lift" href="#catalog" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:16px;min-height:116px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-hover);border-color:var(--pd-accent-hover)" style-active="background:var(--pd-accent-active)">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink-inverse)">52 позиции</span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-accent-edge)">в семи направлениях — каталог открыт целиком, без заявки</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-accent-edge)">в семи направлениях — каталог открыт целиком, без заявки</span>
 <span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Каталог работ<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent-edge);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
 </a>
 <a class="pd-lift" href="#trl" style="display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:16px;min-height:116px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark)" style-active="background:var(--pd-accent-mark)">
@@ -416,64 +531,105 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Состав работ и документов для каждого уровня</span>
 </div>
 
-<div class="bp-scroll" style="margin-bottom:20px">
-<div role="group" aria-label="Уровень готовности технологии" style="min-width:940px;position:relative;padding-top:18px">
-<span aria-hidden="true" style="position:absolute;left:0;right:0;top:22px;height:3px;border-radius:999px;background:var(--pd-border)"></span>
-<span aria-hidden="true" style="position:absolute;left:0;top:22px;height:3px;border-radius:999px;background:var(--pd-accent);width:{{ trlFill }};transition:width 320ms cubic-bezier(.2,0,.2,1)"></span>
+<div class="bp-scroll bp-trlscroll">
+<div role="group" aria-label="Уровень готовности технологии" class="bp-trlscale">
+<span aria-hidden="true" class="bp-trlline"><span class="bp-trlfill" style="transform:scaleX({{ trlFill }})"></span></span>
 <div style="position:relative;display:grid;grid-template-columns:repeat(9,minmax(0,1fr))">
 <sc-for list="{{ trlScale }}" as="t" hint-placeholder-count="9">
-<button type="button" aria-pressed="{{ t.pressed }}" aria-label="{{ t.aria }}" onClick="{{ t.pick }}" class="bp-trlstep" style="appearance:none;border:0;cursor:pointer;background:transparent;padding:0 8px 0 0;text-align:left;display:flex;flex-direction:column;gap:10px;border-radius:10px">
-<span aria-hidden="true" style="width:{{ t.dotSize }};height:{{ t.dotSize }};flex:0 0 auto;margin-top:{{ t.dotShift }};border-radius:50%;background:{{ t.dot }};border:{{ t.dotRing }};box-sizing:border-box;display:block;transition:background 220ms cubic-bezier(.2,0,.2,1),width 220ms cubic-bezier(.2,0,.2,1),height 220ms cubic-bezier(.2,0,.2,1),margin-top 220ms cubic-bezier(.2,0,.2,1)"></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.24;color:{{ t.numColor }};font-variant-numeric:tabular-nums;transition:color 220ms cubic-bezier(.2,0,.2,1)">{{ t.num }}</span> <span style="font-size:12px;line-height:1.4;font-weight:600;color:{{ t.titleColor }};transition:color 220ms cubic-bezier(.2,0,.2,1)">{{ t.short }}</span>
+<button type="button" aria-pressed="{{ t.pressed }}" aria-label="{{ t.aria }}" onClick="{{ t.pick }}" class="bp-trlstep">
+<span class="bp-trlnode" style="background:{{ t.nodeBg }};border-color:{{ t.nodeRing }};color:{{ t.numColor }}">{{ t.num }}</span> <span class="bp-trlchip" style="color:{{ t.titleColor }}">{{ t.short }}</span>
 </button>
 </sc-for>
 </div>
 </div>
 </div>
 
-<div class="bp-trlcard" style="border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column">
+<div class="bp-trlcard" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);overflow:hidden;display:flex;flex-direction:column">
 <div class="{{ trl.bodyClass }}" style="display:flex;flex-direction:column;flex:1 1 auto">
-<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:16px">
-<div style="display:flex;flex-direction:column;gap:6px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">УГТ {{ trl.num }} · {{ trl.short }}</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink);max-width:56ch">{{ trl.title }}</span>
+<div class="bp-trlhead" style="gap:16px 32px;padding:22px 24px 20px;border-bottom:1px solid var(--pd-border)">
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent);font-variant-numeric:tabular-nums">УГТ {{ trl.num }} · {{ trl.short }}</span>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink);max-width:44ch">{{ trl.title }}</h3>
 </div>
-</div>
-
-<div role="status" style="border:1px solid {{ trl.noteBorder }};background:{{ trl.noteBg }};border-radius:10px;padding:12px 16px;margin-bottom:16px;min-height:64px;box-sizing:border-box;display:flex;flex-direction:column;gap:4px;justify-content:center">
+<div role="status" style="align-self:start;border:1px solid {{ trl.noteBorder }};background:{{ trl.noteBg }};border-radius:10px;padding:12px 16px;box-sizing:border-box;display:flex;flex-direction:column;gap:4px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:{{ trl.noteInk }}">{{ trl.noteLabel }}</span>
 <span style="font-size:14px;line-height:1.5;color:{{ trl.noteText }};max-width:72ch">{{ trl.note }}</span>
 </div>
+</div>
 
-<div class="bp-trl" style="gap:16px">
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);padding-bottom:8px;border-bottom:1px solid var(--pd-border)">Что делаем на этом уровне</span>
+<div class="bp-trl" style="gap:24px 32px;padding:20px 24px 24px;flex:1 1 auto;align-content:start">
+<div class="bp-trlcol">
+<span class="bp-trlcolhead">Что делаем на этом уровне</span>
+<ul role="list" class="bp-trllist">
 <sc-for list="{{ trl.can }}" as="c" hint-placeholder-count="3">
-<span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:var(--pd-accent)"></span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ c.text }}</span></span>
+<li><span aria-hidden="true" class="bp-trldot"></span><span>{{ c.text }}</span></li>
 </sc-for>
+</ul>
 </div>
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);padding-bottom:8px;border-bottom:1px solid var(--pd-border)">Документы на выходе</span>
+<div class="bp-trlcol">
+<span id="bp-trl-docs" class="bp-trlcolhead">Документы на выходе</span>
+<div role="table" aria-labelledby="bp-trl-docs" class="bp-trldocs">
 <sc-for list="{{ trl.docs }}" as="d" hint-placeholder-count="3">
-<span style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:1px solid var(--pd-divider)"><span style="font-size:14px;line-height:1.5;color:var(--pd-ink);min-width:0">{{ d.name }}</span><span style="flex:0 0 auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted);text-align:right">{{ d.norm }}</span></span>
+<div role="row"><span role="cell" style="font-size:14px;line-height:1.5;color:var(--pd-ink);min-width:0">{{ d.name }}</span><span role="cell" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;text-wrap:balance">{{ d.norm }}</span></div>
 </sc-for>
 </div>
-<div style="display:flex;flex-direction:column;gap:10px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);padding-bottom:8px;border-bottom:1px solid var(--pd-border)">Финансирование</span>
+</div>
+<div class="bp-trlcol">
+<span class="bp-trlcolhead">Финансирование</span>
+<ul role="list" class="bp-trllist">
 <sc-for list="{{ trl.money }}" as="m" hint-placeholder-count="2">
-<span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:var(--pd-accent)"></span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ m.text }}</span></span>
+<li><span aria-hidden="true" class="bp-trldot"></span><span>{{ m.text }}</span></li>
 </sc-for>
+</ul>
 </div>
 </div>
 
-</div>
-<button class="pd-lift" type="button" onClick="{{ trl.goPack }}" style="margin:18px 0 0;appearance:none;cursor:pointer;width:100%;text-align:left;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-active="opacity:.82">
+<button type="button" class="bp-trlfoot" onClick="{{ trl.goPack }}" style="appearance:none;cursor:pointer;width:100%;margin:auto 0 0;text-align:left;border:0;border-top:1px solid var(--pd-border);padding:12px 24px;min-height:68px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:var(--pd-ink)">
 <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Подходящее предложение</span>
-<span style="font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ trl.packLabel }}</span>
+<span style="font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Подходящее предложение</span>
+<span style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ trl.packLabel }}</span>
 </span>
-<span style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-accent)">Перейти к пакету<span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
+<span class="bp-trlgo">Перейти к пакету<span aria-hidden="true" class="bp-trlarrow" style="-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
 </button>
+</div>
+</div>
+</section>
+
+<!-- Р-806: «Шесть задач компании и что делаем в каждой» — перед пакетами: задача компании ведёт к пакету этой страницы или к шкале УГТ. Приём — dissertatsia.ru (снимок 42.png, конкурентный разбор 03.11.2026): задача посетителя ведёт к шагу; формулировки свои. Задачи — только из пакетов и каталога страницы; решения фонда, налогового органа и Роспатента не обещаются. Соседи — шкала УГТ с карточкой уровня и сетка пакетов, поэтому здесь таблица строк одной карточкой. Строка — ссылка целиком на карточку пакета (#pack-N, рамка пакета подсвечивается, как у «Подходящего предложения» шкалы) или на #trl; к заявке — кнопка в подвале на прежнюю форму #request. Формы и отправки нет (Р-96). -->
+<section id="tasks" class="bp-pad" aria-labelledby="bp-tasks-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">С чего начать</span>
+<h2 id="bp-tasks-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:balance">Шесть задач компании и что делаем в каждой</h2>
+</div>
+<span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Строка ведёт к пакету или к шкале готовности</span>
+</div>
+<div class="bp-tasks">
+<div class="bp-taskrow bp-taskhead" aria-hidden="true">
+<span style="grid-area:say">Задача компании</span>
+<span style="grid-area:does">Что делаем</span>
+<span style="grid-area:norm">Требования</span>
+<span style="grid-area:to">Где подробнее</span>
+</div>
+<ul class="bp-tasklist" role="list">
+<sc-for list="{{ tasks }}" as="t" hint-placeholder-count="6">
+<li>
+<a class="bp-taskrow bp-task" href="{{ t.href }}" onClick="{{ t.go }}">
+<span style="grid-area:say;min-width:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:500;color:var(--pd-ink);text-wrap:balance">{{ t.say }}</span>
+<span style="grid-area:does;min-width:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ t.does }}</span>
+<span class="bp-taskmeta">
+<span style="grid-area:norm;min-width:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;color:var(--pd-ink)">{{ t.norm }}</span>
+<span class="bp-taskto" style="grid-area:to;font-family:'Inter','Helvetica Neue',Arial,sans-serif"><span style="font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ t.kind }}</span><span style="font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent)">{{ t.to }}</span></span>
+</span>
+<span aria-hidden="true" class="bp-taskgo" style="grid-area:go"><span class="bp-taskarrow" style="-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
+</a>
+</li>
+</sc-for>
+</ul>
+<div class="bp-taskfoot">
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Другая задача — опишите её в заявке своими словами.</span>
+<a href="#request" style="display:inline-flex;align-items:center;min-height:44px;box-sizing:border-box;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Обсудить задачу</a>
+</div>
 </div>
 </section>
 
@@ -562,7 +718,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <!-- Направление 07: диссертация сотрудника — работа самого сотрудника; её сопровождение описано на «Аспирантам», здесь — ссылка туда, а не позиция каталога (С-7, С-1, решение Р-772). -->
 <sc-if value="{{ g.postgrad }}" hint-placeholder-val="{{ false }}">
-<a href="./main.html#services" style="align-self:flex-start;display:inline-flex;align-items:center;min-height:44px;gap:8px;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Сопровождение диссертаций сотрудников — на&nbsp;странице «Аспирантам»<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
+<a href="./main.html#services" style="align-self:flex-start;display:inline-flex;align-items:center;min-height:44px;gap:8px;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Сопровождение диссертаций сотрудников — на&nbsp;странице «Аспирантам»<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </sc-if>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--pd-border)">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:var(--pd-ink-muted)">{{ g.norm }}</span>
@@ -585,20 +741,20 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <div class="bp-mech" style="gap:16px">
 <sc-for list="{{ reasons }}" as="r" hint-placeholder-count="6">
-<article class="bp-mechcard pd-lift" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05);padding:18px 20px 16px;display:flex;flex-direction:column;gap:12px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)">
-<div style="display:flex;align-items:center;gap:12px">
-<span aria-hidden="true" style="width:52px;height:52px;flex:0 0 52px;border-radius:10px;border:1px solid var(--pd-border);background:var(--pd-surface-quiet) {{ r.art }};background-size:cover;background-position:center;display:block"></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ r.num }}</span>
+<article class="bp-mechcard pd-lift" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:20px 22px 0;box-sizing:border-box;min-width:0">
+<img class="bp-mechimg" src="{{ r.img }}" alt="" aria-hidden="true" width="96" height="96" loading="lazy" decoding="async" style="display:block;box-sizing:border-box;border-radius:10px;border:1px solid var(--pd-border);background:var(--pd-surface-quiet);object-fit:cover">
+<div class="bp-mechhead">
+<span style="flex:0 0 auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ r.num }}</span>
+<h3 style="margin:0;min-width:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ r.title }}</h3>
 </div>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ r.title }}</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ r.text }}</p>
-<div style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider)">
-<button type="button" aria-expanded="{{ r.proofExpanded }}" aria-label="{{ r.proofAria }}" onClick="{{ r.proofToggle }}" style="appearance:none;border:0;background:transparent;cursor:pointer;padding:0;width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">
+<p class="bp-mechtext" style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ r.text }}</p>
+<div class="bp-mechfoot" style="border-top:1px solid var(--pd-divider)">
+<button type="button" class="bp-mechbtn" aria-expanded="{{ r.proofExpanded }}" aria-label="{{ r.proofAria }}" onClick="{{ r.proofToggle }}" style="appearance:none;border:0;background:transparent;cursor:pointer;padding:0 8px;margin:0 -8px;width:calc(100% + 16px);box-sizing:border-box;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:var(--pd-accent);border-radius:10px" style-hover="color:var(--pd-accent-press)">
 <span>Чем закреплено</span>
-<span aria-hidden="true" style="position:relative;width:14px;height:14px;flex:0 0 14px;display:block"><span style="position:absolute;left:0;top:6px;width:14px;height:2px;background:var(--pd-accent);border-radius:999px"></span><span style="position:absolute;left:6px;top:0;width:2px;height:14px;background:var(--pd-accent);border-radius:999px;display:{{ r.plusV }}"></span></span>
+<span aria-hidden="true" class="bp-mechplus"><span style="position:absolute;left:8px;top:13px;width:12px;height:2px;background:var(--pd-accent);border-radius:999px"></span><span style="position:absolute;left:13px;top:8px;width:2px;height:12px;background:var(--pd-accent);border-radius:999px;display:{{ r.plusV }}"></span></span>
 </button>
 <sc-if value="{{ r.proofOpen }}" hint-placeholder-val="{{ true }}">
-<p class="bp-proof" style="margin:0;padding-left:12px;border-left:2px solid var(--pd-accent-mark);font-size:12px;line-height:1.6;color:var(--pd-ink-muted)">{{ r.proof }}</p>
+<p class="bp-proof" style="margin:0 0 18px;padding-left:12px;border-left:2px solid var(--pd-accent-mark);font-size:13px;line-height:1.6;color:var(--pd-ink-muted)">{{ r.proof }}</p>
 </sc-if>
 </div>
 </article>
@@ -652,18 +808,35 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Права на результат остаются у вашей компании</span>
 </div>
 <div class="bp-rights" style="gap:16px">
-<sc-for list="{{ rights }}" as="r" hint-placeholder-count="6">
-<article class="pd-lift" style="display:flex;flex-direction:column;gap:12px;box-sizing:border-box;background:{{ r.bg }};border:1px solid {{ r.border }};border-radius:14px;padding:20px 22px 22px;box-shadow:inset 0 -3px 0 {{ r.edge }},0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)">
-<div style="display:flex;align-items:center;gap:12px">
-<span aria-hidden="true" style="width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:{{ r.iconBg }};display:flex;align-items:center;justify-content:center">
-<span style="width:21px;height:21px;display:block;background:{{ r.ink }};-webkit-mask:{{ r.icon }};mask:{{ r.icon }}"></span>
+<article class="bp-rightlead pd-lift" style="box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:clamp(28px,4vw,56px);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<svg aria-hidden="true" class="bp-rightart" viewBox="0 0 400 400" width="400" height="400" fill="none" style="position:absolute;right:-210px;top:-240px;pointer-events:none"><circle cx="200" cy="200" r="96" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="148" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="196" stroke="rgba(255,255,255,.1)" stroke-width="1" stroke-dasharray="4 6"></circle><circle cx="95" cy="305" r="4" fill="#B4C9E5"></circle><circle cx="104" cy="200" r="6" fill="rgba(255,255,255,.24)"></circle></svg>
+<div style="position:relative;display:flex;align-items:center;gap:14px">
+<span aria-hidden="true" style="width:48px;height:48px;flex:0 0 48px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);box-sizing:border-box;display:flex;align-items:center;justify-content:center">
+<span style="width:24px;height:24px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ rightsLead.icon }};mask:{{ rightsLead.icon }}"></span>
 </span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;color:{{ r.ink }};font-variant-numeric:tabular-nums">{{ r.num }}</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-accent-edge);font-variant-numeric:tabular-nums">{{ rightsLead.num }}</span>
 </div>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:{{ r.title }}">{{ r.label }}</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:{{ r.body }}">{{ r.text }}</p>
+<div style="position:relative;display:flex;flex-direction:column;gap:10px">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink-inverse)">{{ rightsLead.label }}</h3>
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-accent-mark);max-width:60ch">{{ rightsLead.text }}</p>
+</div>
 </article>
+<ul role="list" class="bp-rightlist pd-lift" style="box-sizing:border-box;margin:0;padding:0 24px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<sc-for list="{{ rightsRest }}" as="r" hint-placeholder-count="5">
+<li>
+<span aria-hidden="true" style="width:40px;height:40px;flex:0 0 40px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center">
+<span style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:{{ r.icon }};mask:{{ r.icon }}"></span>
+</span>
+<div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<div class="bp-righthead">
+<span style="flex:0 0 auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ r.num }}</span>
+<h3 style="margin:0;min-width:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ r.label }}</h3>
+</div>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:66ch">{{ r.text }}</p>
+</div>
+</li>
 </sc-for>
+</ul>
 </div>
 </section>
 
@@ -760,7 +933,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
 <li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
 <li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
-<li>Менеджер откроет вам личный кабинет — ссылка придёт на почту; там вы приложите материалы по перечню «Что подготовить»</li>
+<li>Менеджер откроет вам личный кабинет — ссылка придёт на почту; там вы приложите материалы по перечню «Что подготовить»</li>
 </ol>
 </div>
 </sc-if>
@@ -771,17 +944,20 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-if>
 </form>
 <div style="display:flex;flex-direction:column;gap:12px;height:100%">
-<div style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+<!-- Р-800: шкала шагов, как на «Студентам», — вертикальная: блок стоит в колонке у формы. Узлы-номера на общей линии, без разделителей под шагами. -->
+<div style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:20px 24px;display:flex;flex-direction:column;gap:16px">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что будет после отправки</h3>
+<ol class="pd-track pd-track-v" role="list">
 <sc-for list="{{ afterSteps }}" as="s" hint-placeholder-count="5">
-<div style="display:flex;gap:12px;align-items:flex-start;padding-bottom:10px;border-bottom:1px solid var(--pd-border)">
-<span style="flex:0 0 auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-accent);padding-top:2px">{{ s.num }}</span>
-<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
-<span style="font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span>
+<li>
+<span class="pd-track-node" style="position:relative;z-index:1;width:28px;height:28px;box-sizing:border-box;border-radius:50%;border:2px solid var(--pd-accent);background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ s.num }}</span>
+<span class="pd-track-body" style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ s.text }}</span>
 </span>
-</div>
+</li>
 </sc-for>
+</ol>
 </div>
 <div style="flex:1 1 auto;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);padding:18px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(20,22,28,.05)">
 <span aria-hidden="true" style="display:block;height:112px;flex:0 0 112px;margin:-18px -20px 6px;border-top-left-radius:13px;border-top-right-radius:13px;border-bottom:1px solid var(--pd-divider);background:var(--pd-surface-quiet) url('./assets/art/svc-grants.webp');background-size:cover;background-position:center"></span>
@@ -846,7 +1022,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
 <label for="bp-rev-who" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Кто вы
 <input id="bp-rev-who" name="name" type="text" autocomplete="off" required="{{ true }}" placeholder="Например: руководитель НИОКР, приборостроение" style="width:100%;box-sizing:border-box;padding:0 16px;height:48px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
-<span style="font-size:13px;line-height:1.5;color:var(--pd-ink-muted);margin-top:-6px">Имя указывать не нужно — только роль и направление.</span>
+<span style="font-size:13px;line-height:1.5;color:var(--pd-ink-muted);margin-top:-6px">Имя указывать не нужно — только роль и направление.</span>
 <label for="bp-rev-text" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Отзыв
 <textarea id="bp-rev-text" name="message" required="{{ true }}" rows="{{ 4 }}" placeholder="Что было сделано и что из этого вышло" style="width:100%;box-sizing:border-box;padding:12px 16px;min-height:112px;resize:vertical;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></textarea></label>
 <label for="bp-rev-pub" style="margin:2px 0 0;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="bp-rev-pub" name="publish" type="checkbox" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Разрешаю опубликовать отзыв на сайте без указания имени</span></label>
@@ -954,9 +1130,30 @@ class Component extends DCLogic {
       else if (!e.shiftKey && (at === last || !box.contains(at))) { e.preventDefault(); first.focus(); }
     };
     window.addEventListener('keydown', this.onRevKey);
+    // Шкала УГТ уже 1014 px прокручивается в своей области: текущий
+    // уровень ставится в её середину, иначе на телефоне видны только
+    // первые три уровня, а выбран пятый (Р-801). Страница при этом не
+    // прокручивается — сдвигается только сама шкала.
+    this.centerTrl = () => {
+      const box = document.querySelector('#trl .bp-trlscroll');
+      const cur = box && box.querySelector('[aria-pressed="true"]');
+      if (!box || !cur || box.scrollWidth <= box.clientWidth) return;
+      const a = box.getBoundingClientRect(), b = cur.getBoundingClientRect();
+      box.scrollTo({ left: box.scrollLeft + (b.left + b.width / 2) - (a.left + a.width / 2), behavior: 'instant' });
+    };
+    requestAnimationFrame(this.centerTrl);
+    // Шкала встаёт по центру только при смене ширины окна: на телефоне
+    // строка адреса при прокрутке меняет высоту окна, и шкала, которую
+    // посетитель листает пальцем, возвращалась бы к текущему уровню
+    // (шлифовка Р-801).
+    this.trlWidth = window.innerWidth;
     this.onResize = () => {
       if (this.raf) return;
-      this.raf = requestAnimationFrame(() => { this.raf = 0; this.forceUpdate(); });
+      this.raf = requestAnimationFrame(() => {
+        this.raf = 0;
+        this.forceUpdate();
+        if (window.innerWidth !== this.trlWidth) { this.trlWidth = window.innerWidth; this.centerTrl(); }
+      });
     };
     window.addEventListener('resize', this.onResize);
     // На широком экране меню всегда развёрнуто: иначе атрибут hidden
@@ -1046,7 +1243,7 @@ class Component extends DCLogic {
       {
         num: 3, short: 'Подтверждение',
         title: 'Получено лабораторное подтверждение ключевых функций.',
-        note: 'Документацию этого уровня ведём полностью — от технического задания до приёмки этапов.', noteKind: 'full',
+        note: 'Документацию этого уровня ведём полностью — от технического задания до приёмки этапов.', noteKind: 'full',
         can: ['Формулируем техническое задание на НИОКР.', 'Планируем эксперимент и разрабатываем методику исследования.'],
         docs: [['Техническое задание на НИОКР', 'ГОСТ Р 15.101-2021'], ['Методика исследования', 'внутренний документ'], ['Календарный план и смета', 'приложение к договору']],
         money: ['Гранты на прикладные исследования.', 'Повышающий коэффициент к расходам на НИОКР из перечня, п. 7 ст. 262 НК РФ.'],
@@ -1055,7 +1252,7 @@ class Component extends DCLogic {
       {
         num: 4, short: 'Макет',
         title: 'Работает лабораторный макет, компоненты проверены по отдельности.',
-        note: 'Документацию этого уровня ведём полностью — от технического задания до приёмки этапов.', noteKind: 'full',
+        note: 'Документацию этого уровня ведём полностью — от технического задания до приёмки этапов.', noteKind: 'full',
         can: ['Ведём НИОКР по этапам с промежуточной приёмкой.', 'Обрабатываем экспериментальные данные и строим расчётное обоснование.'],
         docs: [['Отчёт о научно-исследовательской работе', 'ГОСТ 7.32-2017'], ['Акты сдачи-приёмки этапов', 'по договору'], ['Регистрационная карта НИОКТР', 'ПП РФ № 327']],
         money: ['Гранты на разработку.', 'Учёт расходов на НИОКР с коэффициентом 2, п. 7 ст. 262 НК РФ.'],
@@ -1064,7 +1261,7 @@ class Component extends DCLogic {
       {
         num: 5, short: 'Испытания',
         title: 'Макет проверен в условиях, приближенных к рабочим.',
-        note: 'Документацию этого уровня ведём полностью — от программы испытаний до заявки на охранный документ.', noteKind: 'full',
+        note: 'Документацию этого уровня ведём полностью — от программы испытаний до заявки на охранный документ.', noteKind: 'full',
         can: ['Разрабатываем программу и методику испытаний.', 'Оформляем заявку на охранный документ по полученному результату.'],
         docs: [['Программа и методика испытаний', 'ГОСТ Р 15.301-2016'], ['Протоколы испытаний', 'по программе'], ['Заявка на изобретение или полезную модель', 'гл. 72 ГК РФ']],
         money: ['Программы поддержки разработки.', 'Учёт расходов на НИОКР с коэффициентом 2, п. 7 ст. 262 НК РФ.'],
@@ -1073,7 +1270,7 @@ class Component extends DCLogic {
       {
         num: 6, short: 'Прототип',
         title: 'Испытан прототип в реальных условиях эксплуатации.',
-        note: 'Документацию этого уровня ведём полностью — от заявки в фонд до отчётности по гранту.', noteKind: 'full',
+        note: 'Документацию этого уровня ведём полностью — от заявки в фонд до отчётности по гранту.', noteKind: 'full',
         can: ['Оформляем заявку на грант или субсидию под требования конкурса.', 'Считаем бюджет и финансово-экономическое обоснование.'],
         docs: [['Заявка по форме конкурса', ''], ['Финансово-экономическое обоснование', 'по форме конкурса'], ['Дорожная карта проекта', 'по форме конкурса']],
         money: ['Конкурсы на коммерциализацию.', 'Субсидии на внедрение.'],
@@ -1082,7 +1279,7 @@ class Component extends DCLogic {
       {
         num: 7, short: 'Демонстрация',
         title: 'Опытный образец продемонстрирован заказчику или на площадке.',
-        note: 'Документацию этого уровня ведём полностью — от заявки на охранный документ до постановки прав на баланс.', noteKind: 'full',
+        note: 'Документацию этого уровня ведём полностью — от заявки на охранный документ до постановки прав на баланс.', noteKind: 'full',
         can: ['Оформляем права: патент, программа для ЭВМ, коммерческая тайна.', 'Собираем документы для постановки прав на баланс.'],
         docs: [['Заявка на охранный документ', 'гл. 72 ГК РФ'], ['Свидетельство на программу для ЭВМ', 'ст. 1262 ГК РФ'], ['Документы по коммерческой тайне', '98-ФЗ'], ['Документы для учёта НМА', 'ФСБУ 14/2022']],
         money: ['Программы масштабирования.', 'Постановка НМА на баланс как источник капитализации.'],
@@ -1091,7 +1288,7 @@ class Component extends DCLogic {
       {
         num: 8, short: 'Опытный образец',
         title: 'Образец испытан и подтверждён в составе системы. Документацию этого уровня ведёт предприятие.',
-        note: 'Конструкторскую и технологическую документацию ведёт предприятие. За нами — обоснование, права и рынок.', noteKind: 'plant',
+        note: 'Конструкторскую и технологическую документацию ведёт предприятие. За нами — обоснование, права и рынок.', noteKind: 'plant',
         can: ['Считаем экономику внедрения и сравниваем с решениями конкурентов.', 'Конструкторскую и технологическую документацию на этом уровне готовит предприятие.'],
         docs: [['Технико-экономическое обоснование', 'расчёт эффекта'], ['Обзор нормативных барьеров', 'действующие требования'], ['Технологический бенчмаркинг', 'открытые данные']],
         money: ['Инвестиционное финансирование по обоснованию.', 'Программы поддержки серийного освоения.'],
@@ -1100,7 +1297,7 @@ class Component extends DCLogic {
       {
         num: 9, short: 'Серия',
         title: 'Технология освоена в серийном производстве. Серийную документацию ведёт предприятие.',
-        note: 'Серийную документацию ведёт предприятие. За нами — оценка эффекта, сопровождение публикаций и развитие продукта.', noteKind: 'plant',
+        note: 'Серийную документацию ведёт предприятие. За нами — оценка эффекта, сопровождение публикаций и развитие продукта.', noteKind: 'plant',
         can: ['Оцениваем объём рынка и собираем данные для решения о масштабировании.', 'Сопровождаем подготовку статьи и доклада по результатам работ: структура, требования журнала, экспертиза рукописи авторов.'],
         docs: [['Аналитический отчёт по рынку', 'вторичные источники'], ['Оценка экономического эффекта', 'расчёт'], ['Заключение по рукописи статьи', 'требования журнала']],
         money: ['Собственные средства и инвестиции.', 'Учёт расходов на развитие продукта, п. 7 ст. 262 НК РФ.'],
@@ -1115,21 +1312,19 @@ class Component extends DCLogic {
       // (Р-781, axe label-content-name-mismatch).
       aria: '0' + num + ' ' + short + ' — уровень готовности технологии',
       pressed: num === sel ? 'true' : 'false',
-      numColor: num <= sel ? 'var(--pd-accent)' : 'var(--pd-ink-muted)',
+      // Узел уровня (Р-801, как «Шкала плана» Р-796): пройденный залит
+      // акцентом с белым номером, текущий — белый с кольцом акцента,
+      // будущие — белые с кольцом --pd-border и приглушённым номером.
+      nodeBg: num < sel ? 'var(--pd-accent)' : 'var(--pd-ink-inverse)',
+      nodeRing: num <= sel ? 'var(--pd-accent)' : 'var(--pd-border)',
+      numColor: num < sel ? 'var(--pd-ink-inverse)' : num === sel ? 'var(--pd-accent)' : 'var(--pd-ink-muted)',
       titleColor: num === sel ? 'var(--pd-ink)' : 'var(--pd-ink-muted)',
-      // Точка на дорожке: пройденные уровни залиты акцентом, выбранный
-      // получает кольцо, будущие остаются серыми.
-      dot: num < sel ? 'var(--pd-accent)' : num === sel ? 'var(--pd-ink-inverse)' : 'var(--pd-border)',
-      dotRing: num === sel ? '3px solid var(--pd-accent)' : '0',
-      dotSize: num === sel ? '14px' : '10px',
-      // Центр точки садится на дорожку: она проходит на 23,5 пикселя от верха
-      // контейнера, точка начинается на 18-м, значит сдвиг = 5,5 − радиус.
-      dotShift: num === sel ? '-1.5px' : '0.5px',
       pick: () => this.setState({ trl: num })
     }));
-    // Заливка дорожки тянется до центра выбранной точки: девять колонок,
-    // центр k-й — (k − 0,5) / 9 ширины.
-    const trlFill = ((sel - 0.5) / trlData.length * 100).toFixed(2) + '%';
+    // Пройденный участок линии: она идёт от центра первого узла до центра
+    // девятого, восемь промежутков; заливка растёт transform: scaleX до
+    // центра выбранного узла.
+    const trlFill = ((sel - 1) / (trlData.length - 1)).toFixed(4);
     const cur = trlData[sel - 1];
     const goPack = anchor => () => {
       this.setState({ highlight: anchor });
@@ -1257,19 +1452,19 @@ class Component extends DCLogic {
     // Тексты сверены с экранами кабинета клиента; суммы на снимке оплат
     // размыты: цены на сайте не публикуются (Р-03).
     const IN_TABS = [
-      { label: 'Карточка работы', title: 'Карточка работы', text: 'План этапов, ход работы и то, что ждут от вас, — на одной карточке. Рядом — переписка с менеджером.',
-        points: ['Что нужно от вас — первой строкой, со сроком', 'Пройденные этапы отмечены на шкале', 'Переписка ведётся в кабинете и остаётся при работе'],
+      { label: 'Карточка работы', title: 'Карточка работы', text: 'План этапов, ход работы и то, что ждут от вас, — на одной карточке. Рядом — переписка с менеджером.',
+        points: ['Что нужно от вас — первой строкой, со сроком', 'Пройденные этапы отмечены на шкале', 'Переписка ведётся в кабинете и остаётся при работе'],
         img: './assets/art/cl-tab-card.webp', alt: 'Карточка работы в кабинете клиента: этап на согласовании, план работ и переписка с менеджером. Данные вымышленные.',
         caption: 'Карточка работы. На снимке вымышленные данные.' },
       { label: 'Согласование этапа', title: 'Согласование этапа', text: 'Когда этап готов, менеджер публикует итог: что сделано и что дальше. Вы согласуете этап или возвращаете его с замечаниями.',
-        points: ['Итог этапа и последние версии материалов — на одной странице', 'Срок согласования виден заранее', 'Этап можно вернуть с замечаниями'],
+        points: ['Итог этапа и последние версии материалов — на одной странице', 'Срок согласования виден заранее', 'Этап можно вернуть с замечаниями'],
         img: './assets/art/cl-tab-stage.webp', alt: 'Страница этапа в кабинете клиента: итог этапа, срок согласования, кнопки «Согласовать этап» и «Вернуть с замечаниями». Данные вымышленные.',
         caption: 'Этап на согласовании. На снимке вымышленные данные.' },
-      { label: 'Материалы и версии', title: 'Материалы и версии', text: 'Материалы хранятся версиями: каждая загрузка — отдельная версия, прежние остаются доступными.',
-        points: ['Версии одного материала — по порядку, с датой и автором', 'Замечание оставляется к конкретной версии', 'Свои файлы вы прикладываете здесь же'],
+      { label: 'Материалы и версии', title: 'Материалы и версии', text: 'Материалы хранятся версиями: каждая загрузка — отдельная версия, прежние остаются доступными.',
+        points: ['Версии одного материала — по порядку, с датой и автором', 'Замечание оставляется к конкретной версии', 'Свои файлы вы прикладываете здесь же'],
         img: './assets/art/cl-tab-materials.webp', alt: 'Материалы работы в кабинете клиента: две версии главы и загрузка новой. Данные вымышленные.',
         caption: 'Материалы работы. На снимке вымышленные данные.' },
-      { label: 'Оплаты и документы', title: 'Оплаты и документы', text: 'Договор, платежи по нему и документы — на одном экране: что оплачено, что ожидается и каким документом закрыт платёж.',
+      { label: 'Оплаты и документы', title: 'Оплаты и документы', text: 'Договор, платежи по нему и документы — на одном экране: что оплачено, что ожидается и каким документом закрыт платёж.',
         points: ['Номер и дата договора', 'Платежи со сроками и состоянием', 'Счета и акты приложены к платежам'],
         img: './assets/art/cl-tab-payments.webp', alt: 'Оплаты и документы в кабинете клиента: договор, доля оплаченного и платежи; суммы скрыты. Данные вымышленные.',
         caption: 'Оплаты и документы. Суммы на снимке скрыты: смета считается для каждой работы.' },
@@ -1339,20 +1534,67 @@ class Component extends DCLogic {
         };
       })(),
       trlScale, trl, trlFill, packs, catalog,
+      ...(() => {
+        // «Шесть задач компании и что делаем в каждой» (Р-806): задача
+        // компании, что делает сервис, норма или форма документа и куда ведёт
+        // строка. Задачи — только из пакетов и каталога этой страницы. Цели —
+        // карточки пакетов (#pack-N; номер и название берутся из packData,
+        // поэтому подпись не расходится с карточкой) и шкала УГТ (#trl).
+        // Переход к пакету подсвечивает его рамку, как «Подходящее
+        // предложение» шкалы; прокрутку делает сам якорь. Решения фонда,
+        // налогового органа и Роспатента не обещаются. Формы и отправки нет
+        // (Р-96).
+        const TASKS = [
+          { say: 'Определить уровень готовности технологии для заявки или инвестора',
+            does: 'Оцениваем уровень с обоснованием. От уровня зависят состав работ и документы на выходе.',
+            norm: 'ГОСТ Р 58048-2017', href: '#trl', kind: 'Шкала УГТ', to: 'Уровень готовности' },
+          { say: 'Проверить патентную чистоту до технического задания',
+            does: 'Патентный поиск — первый этап со своим актом. Техническое задание формулируем по его итогам.',
+            norm: 'ГОСТ Р 15.011-2024', pack: 'pack-1' },
+          { say: 'Сдать отчёт о НИОКР заказчику или комиссии',
+            does: 'Сверяем структуру и оформление отчёта со стандартом, сопровождаем приёмку этапов по актам.',
+            norm: 'ГОСТ 7.32-2017', pack: 'pack-2' },
+          { say: 'Учесть расходы на НИОКР из перечня Правительства с повышающим коэффициентом',
+            does: 'Собираем документальное обоснование расходов к отчёту и актам этапов.',
+            norm: 'п. 7 ст. 262 НК РФ', pack: 'pack-2' },
+          { say: 'Подать заявку в фонд поддержки',
+            does: 'Подбираем программу под стадию и отрасль, сверяем заявку и бюджет с требованиями конкурса.',
+            norm: 'по форме конкурса', pack: 'pack-3' },
+          { say: 'Поставить разработку на баланс как нематериальный актив',
+            does: 'Оформляем права на результат и собираем документы, по которым бухгалтерия принимает актив к учёту.',
+            norm: 'ФСБУ 14/2022', pack: 'pack-4' }
+        ];
+        return { tasks: TASKS.map(t => {
+          const p = t.pack ? packData.find(([anchor]) => anchor === t.pack) : null;
+          return {
+            say: t.say, does: t.does, norm: t.norm,
+            href: p ? '#' + p[0] : t.href,
+            kind: p ? 'Пакет ' + p[1] : t.kind,
+            // Предлог или союз в одну-две буквы не остаётся в конце строки:
+            // в packData названия набраны обычными пробелами.
+            to: p ? p[2].replace(/(^|\s)([А-Яа-яЁё]{1,2}) /gu, '$1$2 ') : t.to,
+            pack: p ? p[0] : '',
+            go: p ? () => this.setState({ highlight: p[0] }) : undefined
+          };
+        }) };
+      })(),
       catalogToggleLabel: this.state.allOpen ? 'Свернуть каталог' : 'Показать весь каталог',
       toggleAll: () => this.setState(s => ({ allOpen: !s.allOpen, open: s.allOpen ? { 0: true } : {} })),
       reasons: [
         ['01', 'Получатель документа фиксируется до старта', 'До согласования Задания определяем, кто принимает результат: фонд, банк, налоговая, комиссия заказчика или ведомство. Его требования становятся критерием готовности.', 'чек-лист требований получателя прикладывается к техническому заданию и к акту сдачи этапа.'],
-        ['02', 'Патентный поиск идёт до утверждения техзадания', 'Сначала выясняем, свободна ли ниша, затем считаем смету на работы.', 'отчёт о патентном поиске — отдельный первый этап с собственным актом.'],
+        ['02', 'Патентный поиск идёт до утверждения техзадания', 'Сначала выясняем, свободна ли ниша, затем считаем смету на работы.', 'отчёт о патентном поиске — отдельный первый этап с собственным актом.'],
         ['03', 'Исключительные права принадлежат заказчику', 'Всё, что создано в проекте, переходит вам.', 'пункт договора об отчуждении прав, NDA с каждым исполнителем, акт передачи материалов.'],
-        ['04', 'Работу ведёт отраслевой эксперт со степенью', 'Кандидат или доктор наук в вашей области с публикациями по теме проекта.', 'профиль куратора — степень, специальность, стаж и публикации по категориям журналов — вы видите до согласования Задания.'],
-        ['05', 'Следующий этап оплачивается после приёмки предыдущего', 'Этап не сдан в срок — оплата за него возвращается по заявлению.', 'календарный план с датами, акт по каждому этапу, порядок возврата в договоре.'],
-        ['06', 'Предмет договора — соответствие требованиям', 'Решение принимают фонд, ведомство и налоговый орган, и мы его не обещаем. Отвечаем за соответствие документа требованиям на дату подачи.', 'формулировка предмета договора и чек-лист требований получателя.']
+        ['04', 'Работу ведёт отраслевой эксперт со степенью', 'Кандидат или доктор наук в вашей области с публикациями по теме проекта.', 'профиль куратора — степень, специальность, стаж и публикации по категориям журналов — вы видите до согласования Задания.'],
+        ['05', 'Следующий этап оплачивается после приёмки предыдущего', 'Этап не сдан в срок — оплата за него возвращается по заявлению.', 'календарный план с датами, акт по каждому этапу, порядок возврата в договоре.'],
+        ['06', 'Предмет договора — соответствие требованиям', 'Решение принимают фонд, ведомство и налоговый орган, и мы его не обещаем. Отвечаем за соответствие документа требованиям на дату подачи.', 'формулировка предмета договора и чек-лист требований получателя.']
       ].map(([num, title, text, proof], i) => {
         const open = !!this.state.mech[i];
         return {
           num, title, text, proof,
-          art: "url('./assets/art/mech-" + (i + 1) + ".webp')",
+          // Изображение условия — натюрморт 150 × 150 из набора страницы
+          // (Р-78), показ 96 px (до 480 px — 64 px) тегом img: ленивая
+          // загрузка и чёткий масштаб вместо фона карточки (Р-802).
+          img: './assets/art/mech-' + (i + 1) + '.webp',
           proofOpen: open, proofClosed: !open,
           proofExpanded: open ? 'true' : 'false',
           plusV: open ? 'none' : 'block',
@@ -1366,15 +1608,15 @@ class Component extends DCLogic {
       }),
       faq: [
         ['С чего начинается работа?',
-         'С заявки: менеджер отвечает в течение рабочего дня и присылает NDA и проект договора — задачу обсуждаем только после подписания NDA. Затем менеджер открывает вам личный кабинет, где вы прикладываете материалы по перечню «Что подготовить». На созвоне знакомства до 20 минут менеджер и куратор — отраслевой эксперт со степенью — разбирают разработку, её стадию и получателя документа: фонд, комиссию заказчика, ведомство или налоговый орган. По итогам консультации готовим Задание: состав работ, календарный план и стоимость по этапам; вы согласуете его в кабинете, до этого работы не начинаются.'],
+         'С заявки: менеджер отвечает в течение рабочего дня и присылает NDA и проект договора — задачу обсуждаем только после подписания NDA. Затем менеджер открывает вам личный кабинет, где вы прикладываете материалы по перечню «Что подготовить». На созвоне знакомства до 20 минут менеджер и куратор — отраслевой эксперт со степенью — разбирают разработку, её стадию и получателя документа: фонд, комиссию заказчика, ведомство или налоговый орган. По итогам консультации готовим Задание: состав работ, календарный план и стоимость по этапам; вы согласуете его в кабинете, до этого работы не начинаются.'],
         ['Кто заключает договор и что в нём фиксируется?',
-         'Договор заключается с ООО «РУСДРОН»; ProDisser — коммерческое обозначение. С организацией заключаем договор по форме, согласованной юристом; проект договора и NDA присылаем после заявки. В Задании к договору фиксируются состав работ, требования получателя документа, календарный план и стоимость по этапам. Изменение объёма, сроков или стоимости оформляется дополнительным соглашением.'],
+         'Договор заключается с ООО «РУСДРОН»; ProDisser — коммерческое обозначение. С организацией заключаем договор по форме, согласованной юристом; проект договора и NDA присылаем после заявки. В Задании к договору фиксируются состав работ, требования получателя документа, календарный план и стоимость по этапам. Изменение объёма, сроков или стоимости оформляется дополнительным соглашением.'],
         ['Что будет, если документ не примут?',
-         'Предмет договора — соответствие документа требованиям получателя на дату подачи. Само решение принимают фонд, комиссия или ведомство по своему усмотрению, и его мы не обещаем. Замечания в пределах согласованного объёма отрабатываем без доплаты. Если этап не сдан в срок, оплата за него возвращается по вашему заявлению.'],
+         'Предмет договора — соответствие документа требованиям получателя на дату подачи. Само решение принимают фонд, комиссия или ведомство по своему усмотрению, и его мы не обещаем. Замечания в пределах согласованного объёма отрабатываем без доплаты. Если этап не сдан в срок, оплата за него возвращается по вашему заявлению.'],
         ['Кому принадлежат права на результат?',
          'Исключительные права на всё, что создано в проекте, переходят вашей компании с подписанием акта по этапу. Заявителем и правообладателем по заявкам на охранные документы выступаете вы: мы готовим документы и сопровождаем подачу, не становясь правообладателем. Материалы проекта не используются в других работах и не публикуются как примеры.'],
         ['Как считается смета и когда платить?',
-         'Стоимость складывается из состава работ и стадии готовности разработки, поэтому считается после разбора материалов — цен на сайте нет. Оплата идёт по этапам: следующий оплачивается после приёмки предыдущего. Вперёд за всю работу платить не нужно.'],
+         'Стоимость складывается из состава работ и стадии готовности разработки, поэтому считается после разбора материалов — цен на сайте нет. Оплата идёт по этапам: следующий оплачивается после приёмки предыдущего. Вперёд за всю работу платить не нужно.'],
         ['Подойдут ли документы для учёта расходов на НИОКР?',
          'Комплект под учёт собираем: отчёт по ГОСТ 7.32-2017, акты сдачи-приёмки этапов, регистрационную и информационную карту НИОКТР. Решение о применении коэффициента по п. 7 ст. 262 НК РФ принимает налоговый орган; мы отвечаем за состав и оформление документов.']
       ].map(([q, a], i) => ({
@@ -1383,34 +1625,28 @@ class Component extends DCLogic {
         closed: this.state.faqOpen !== i,
         toggle: () => this.setState(s => ({ faqOpen: s.faqOpen === i ? -1 : i }))
       })),
-      rights: [
-        ['Исключительные права', 'Права на результаты интеллектуальной деятельности переходят заказчику. Условие закреплено пунктом договора об отчуждении прав.', 'pd-asset'],
-        ['Кто подписывает NDA', 'Соглашение о неразглашении подписывает каждый участник проектной команды до получения доступа к материалам.', 'pd-nda'],
-        ['Материалы после проекта', 'По акту передаём материалы и удаляем рабочие копии. Срок хранения и порядок удаления записаны в договоре.', 'pd-contract'],
-        ['На кого оформляется охранный документ', 'Заявитель и правообладатель — ваша компания. Мы готовим документы и сопровождаем подачу, не выступая правообладателем.', 'award'],
-        ['Повторное использование', 'Материалы проекта не используются в других работах и не показываются как пример. Публичных кейсов у нас нет.', 'shield'],
-        ['Служебные результаты', 'Помогаем оформить положение о служебных результатах, уведомления авторов и приказы внутри вашей компании.', 'pd-team']
-      ].map(([label, text, icon], i) => {
-        // Первая карточка акцентная — тем же приёмом, что первая плашка на
-        // первом экране: разница задаётся плотностью и рамкой, не градиентом.
-        const lead = i === 0;
-        return {
+      // Права и конфиденциальность (Р-803): первый пункт — главный тезис
+      // тёмной панелью, остальные пять — карточкой-списком; порядок и
+      // номера 01—06 прежние.
+      ...(() => {
+        const rights = [
+          ['Исключительные права', 'Права на результаты интеллектуальной деятельности переходят заказчику. Условие закреплено пунктом договора об отчуждении прав.', 'pd-asset'],
+          ['Кто подписывает NDA', 'Соглашение о неразглашении подписывает каждый участник проектной команды до получения доступа к материалам.', 'pd-nda'],
+          ['Материалы после проекта', 'По акту передаём материалы и удаляем рабочие копии. Срок хранения и порядок удаления записаны в договоре.', 'pd-contract'],
+          ['На кого оформляется охранный документ', 'Заявитель и правообладатель — ваша компания. Мы готовим документы и сопровождаем подачу, не выступая правообладателем.', 'award'],
+          ['Повторное использование', 'Материалы проекта не используются в других работах и не показываются как пример. Публичных кейсов у нас нет.', 'shield'],
+          ['Служебные результаты', 'Помогаем оформить положение о служебных результатах, уведомления авторов и приказы внутри вашей компании.', 'pd-team']
+        ].map(([label, text, icon], i) => ({
           label, text, num: '0' + (i + 1),
-          icon: "url('./assets/icons/" + icon + ".svg') center/contain no-repeat",
-          bg: lead ? 'var(--pd-accent-deep)' : 'var(--pd-ink-inverse)',
-          border: lead ? 'var(--pd-accent-deep)' : 'var(--pd-border)',
-          edge: lead ? 'var(--pd-accent)' : ['var(--pd-accent-mark)', 'var(--pd-accent-edge)', 'var(--pd-accent-tint)'][i % 3],
-          iconBg: lead ? 'rgba(255,255,255,.14)' : 'var(--pd-accent-tint)',
-          ink: lead ? 'var(--pd-ink-inverse)' : 'var(--pd-accent)',
-          title: lead ? 'var(--pd-ink-inverse)' : 'var(--pd-ink)',
-          body: lead ? 'var(--pd-accent-mark)' : 'var(--pd-ink-secondary)'
-        };
-      }),
+          icon: "url('./assets/icons/" + icon + ".svg') center/contain no-repeat"
+        }));
+        return { rightsLead: rights[0], rightsRest: rights.slice(1) };
+      })(),
       afterSteps: [
         ['01', 'Заявка и ответ менеджера', 'Менеджер отвечает в течение рабочего дня, Пн⁠—⁠Пт 10:00⁠—⁠19:00, присылает NDA и проект договора; задачу обсуждаем после подписания NDA.'],
         ['02', 'Личный кабинет', 'Менеджер открывает доступ после подписания NDA, вы прикладываете материалы по перечню «Что подготовить».'],
-        ['03', 'Куратор и созвон знакомства', 'Куратор — отраслевой эксперт со степенью. На созвоне знакомства до 20 минут менеджер и куратор разбирают разработку, стадию и получателя документа.'],
-        ['04', 'Итог консультации и Задание', 'Состав работ, календарный план и стоимость по этапам — в Задании к договору; Задание вы согласуете в кабинете.'],
+        ['03', 'Куратор и созвон знакомства', 'Куратор — отраслевой эксперт со степенью. На созвоне знакомства до 20 минут менеджер и куратор разбирают разработку, стадию и получателя документа.'],
+        ['04', 'Итог консультации и Задание', 'Состав работ, календарный план и стоимость по этапам — в Задании к договору; Задание вы согласуете в кабинете.'],
         ['05', 'Этапы с приёмкой', 'Следующий этап оплачивается после приёмки предыдущего.']
       ].map(([num, title, text]) => ({ num, title, text })),
       askFor: [
