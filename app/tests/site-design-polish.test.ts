@@ -202,12 +202,15 @@ describe('Р-799: «Смета на диплом» на «Студентам»',
       }
     }
   });
+  it('во всём видимом тексте страницы перед тире — неразрывный пробел (доводка 05.11.2026)', () => {
+    assertDashesBound('StudentsPage');
+  });
 });
 
 describe('Р-800: «Что будет после отправки» на «Студентам»', () => {
   it('«Срок ответа — рабочий день» — тем же компонентом «Метка-факт», что срок на «Аспирантам»', () => {
     const fact = design('MainPage').match(/<span style="([^"]*)">\s*<span aria-hidden="true" style="([^"]*)"><\/span>\s*<span style="([^"]*)">\{\{ a\.term \}\}<\/span>/u);
-    const label = design('StudentsPage').match(/<span style="([^"]*)"><span aria-hidden="true" style="([^"]*)"><\/span><span style="([^"]*)">Срок ответа — рабочий день<\/span><\/span>/u);
+    const label = design('StudentsPage').match(/<span style="([^"]*)"><span aria-hidden="true" style="([^"]*)"><\/span><span style="([^"]*)">Срок ответа\u00a0— рабочий день<\/span><\/span>/u);
     assert.ok(fact, 'нет метки-факта срока на «Аспирантам»');
     assert.ok(label, 'подпись «Срок ответа — рабочий день» не метка-факт');
     assert.equal(label[1], fact[1], 'подложка метки другая');
