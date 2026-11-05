@@ -15,13 +15,19 @@
  *   в отправку заявки), сетевых вызовов и хранилищ нет; действие — ссылка
  *   на существующую форму #request (Р-96); блок стоит сразу за «Порядком
  *   работы»; тексты проходят text-guard.
+ * - сводка для чтения с экрана (доводка 05.11.2026): одна область
+ *   aria-live="polite" вне экрана; до первого действия пуста, после смены
+ *   даты или вида — одна строка без повтора плана;
+ * - Метрика без Вебвизора, пока подпись блока обещает, что даты не уходят
+ *   на сервер: Вебвизор записал бы введённую дату и отправил её третьему
+ *   лицу.
  *
  * Логика живёт в макете и переносится в компонент дословно, поэтому
  * выполняется сам сценарий макета с заглушкой DCLogic.
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -204,5 +210,79 @@ describe('границы блока «План от даты защиты»', ()
     const all = `${visible}\n${data}\n${plan('2027-03-31').map((r) => `${plain(r.rule)}\n${plain(r.cite)}\n${r.note}`).join('\n')}`;
     assert.deepEqual(findForbidden(all, 'План от даты защиты'), []);
     assert.doesNotMatch(all, /гарант|успешн|под ключ|напиш|уникальн|антиплагиат|₽|руб\./iu);
+  });
+});
+
+describe('сводка изменений для чтения с экрана (доводка Р-804)', () => {
+  const fresh = () => new Component();
+  const FAR = '2099-03-31';
+
+  it('одна область aria-live="polite" вне экрана, с выражением dpSay', () => {
+    assert.equal((section.match(/aria-live=/gu) ?? []).length, 1, 'в блоке ровно одна живая область');
+    assert.match(section, /<span aria-live="polite" aria-atomic="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">\{\{ dpSay \}\}<\/span>/u);
+    assert.match(tsx, /<span aria-live="polite" aria-atomic="true" style=\{\{[^}]*left: "-9999px"[^}]*\}\}>\{dpSay\}<\/span>/u, 'перенос потерял живую область');
+  });
+
+  it('до первого действия пуста; смена даты и смена вида дают по одной строке', () => {
+    const p: any = fresh();
+    assert.equal(p.renderVals().dpSay, '', 'область объявила бы план при загрузке страницы');
+    p.renderVals().dpPick({ target: { value: FAR } });
+    assert.equal(plain(p.renderVals().dpSay), 'Защита 31 марта 2099, кандидатская диссертация, план обновлён');
+    p.renderVals().dpKinds[1].pick();
+    assert.equal(plain(p.renderVals().dpSay), 'Защита 31 марта 2099, докторская диссертация, план обновлён');
+    p.renderVals().dpPick({ target: { value: '' } });
+    assert.equal(plain(p.renderVals().dpSay), 'Докторская диссертация, план обновлён, дата защиты не выбрана');
+    const q: any = fresh();
+    q.renderVals().dpKinds[1].pick();
+    assert.equal(plain(q.renderVals().dpSay), 'Докторская диссертация, план обновлён, дата защиты не выбрана');
+  });
+
+  it('смена вида при той же дате меняет текст области — иначе её не объявят', () => {
+    assert.notEqual(c.dpSay(FAR, 0, '2026-11-05'), c.dpSay(FAR, 1, '2026-11-05'));
+  });
+
+  it('прошедшая дата защиты названа прошедшей', () => {
+    assert.equal(plain(c.dpSay('2026-10-01', 0, '2026-11-05')), 'Защита 1 октября 2026, кандидатская диссертация, дата защиты прошла');
+    assert.match(plain(c.dpSay('2026-11-05', 0, '2026-11-05')), /план обновлён$/u, 'день защиты сегодня — не прошедший');
+  });
+
+  it('сводка — одна строка без повтора плана', () => {
+    const rules = c.dpRules() as Array<Record<string, any>>;
+    for (const [date, kind] of [['2027-03-31', 0], ['2027-03-31', 1], ['', 0], ['2026-10-01', 1]] as const) {
+      const say = plain(c.dpSay(date, kind, '2026-11-05'));
+      assert.ok(say.length <= 80, `«${say}» длиннее 80 знаков`);
+      assert.doesNotMatch(say, /\n/u);
+      for (const r of rules) assert.ok(!say.includes(plain(r.title)), `«${say}» повторяет шаг «${plain(r.title)}»`);
+      for (const r of plan(date, kind).filter((x) => x.kind === 'rule')) {
+        assert.ok(!say.includes(plain(r.rule)), `«${say}» повторяет срок`);
+        if (r.dateText !== '—') assert.ok(!say.includes(plain(r.dateText)), `«${say}» повторяет дату срока`);
+      }
+      assert.deepEqual(findForbidden(say, 'Сводка плана'), []);
+      assert.doesNotMatch(say, /гарант|успешн|под ключ|напиш|уникальн|антиплагиат|₽|руб\./iu);
+    }
+  });
+});
+
+describe('Метрика без Вебвизора, пока подпись блока обещает, что даты не уходят на сервер', () => {
+  const PROMISE = 'Даты считаются в браузере и не уходят на сервер';
+  const sources = (dir: string): string[] => readdirSync(path.join(ROOT, dir), { withFileTypes: true }).flatMap((e) => {
+    const rel = path.join(dir, e.name);
+    if (e.isDirectory()) return e.name === 'generated' ? [] : sources(rel);
+    return /\.(tsx?|mjs|js)$/u.test(e.name) ? [rel] : [];
+  });
+
+  it('подпись есть на странице — счётчик инициализируется с webvisor:false', () => {
+    const promised = plain(section).includes(PROMISE) || plain(tsx).includes(PROMISE);
+    if (!promised) return; // подписи нет — обещания тоже нет
+    const metrika = read('app/src/components/Metrika.tsx');
+    const inits = [...metrika.matchAll(/ym\([\s\S]{0,60}?["']init["']\s*,\s*(\{[^}]*\})/gu)].map((m) => m[1]!);
+    assert.equal(inits.length, 1, 'Metrika.tsx: инициализация счётчика не найдена или не одна');
+    assert.match(inits[0]!, /(^|[{,\s])webvisor\s*:\s*false\b/u, `Metrika.tsx: Вебвизор не выключен явно (${inits[0]}) — он записал бы введённую дату`);
+    assert.doesNotMatch(metrika, /webvisor\s*:\s*(true|!0|1)\b/u, 'Metrika.tsx: Вебвизор включён');
+  });
+
+  it('сценарий Метрики и её инициализация — только в Metrika.tsx', () => {
+    const files = sources('app/src').filter((f) => /mc\.yandex\.ru\/metrika|["']init["']\s*,\s*\{[^}]*webvisor/u.test(read(f)));
+    assert.deepEqual(files, [path.join('app', 'src', 'components', 'Metrika.tsx')], 'счётчик подключается мимо Metrika.tsx');
   });
 });
