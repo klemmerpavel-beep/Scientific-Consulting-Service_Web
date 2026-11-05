@@ -1,5 +1,6 @@
 /**
- * Шлифовка Р-796…Р-803 по проверке арт-директора 04.11.2026 (и снятые по
+ * Шлифовка Р-796…Р-803 по проверке арт-директора 04.11.2026 (раскладка Р-803 —
+ * по Р-814; снятые по
  * указанию владельца разделы — Р-807, Р-813): облик, который
  * программные проверки страницы не ловят, а правка макета легко вернёт, —
  * тире в начале строки, разнобой номеров, «серп» кромки на скруглении,
@@ -320,14 +321,75 @@ describe('Р-813: раздел «Шесть задач компании» сня
   });
 });
 
-describe('Р-803: «Права и конфиденциальность» на «Компаниям»', () => {
-  it('тёмная панель по устройству Р-608 и по своему содержимому', () => {
+describe('Р-814: «Права и конфиденциальность» на «Компаниям» — сетка 3 × 2 (раскладка Р-803 заменена)', () => {
+  // Р-803 ставил тёмную панель по её содержимому рядом со списком из пяти
+  // пунктов: под панелью оставалось пустое поле в 250—270 px. По замечанию
+  // владельца З-8 (05.11.2026) шесть пунктов — шесть плиток одной сеткой,
+  // плитки ряда одной высоты; первая — тёмная. Тексты, значки, номера и
+  // порядок — прежние.
+  /** Разметка раздела #rights — в макете и в перенесённом компоненте (JSX). */
+  const section = (source: string) => {
+    const at = source.lastIndexOf('<section', source.indexOf('id="rights"'));
+    assert.ok(at >= 0 && source.indexOf('id="rights"') > 0, 'нет раздела #rights');
+    return source.slice(at, source.indexOf('</section>', at));
+  };
+
+  it('шесть плиток одной сеткой: 3 колонки от 1200 px, 2 на 769—1199 px, одна до 768 px; высота ряда общая', () => {
     for (const [where, source] of both('BusinessPage')) {
-      assert.ok(source.includes('.bp-rights{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);align-items:start}'), `${where}: панель тянется до высоты списка`);
-      assert.ok(source.includes('.bp-rightlead{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:28px;min-width:0}'), `${where}: содержимое панели разнесено по высоте`);
+      assert.ok(source.includes('.bp-rights{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(2,minmax(0,1fr));align-items:stretch;list-style:none;margin:0;padding:0}'), `${where}: сетка плиток не 3 колонки с общей высотой ряда`);
+      assert.ok(source.includes('@media (max-width:1199px){.bp-rights{grid-template-columns:repeat(2,minmax(0,1fr))}}'), `${where}: на 769—1199 px не две колонки`);
+      assert.match(source, /@media \(max-width:768px\)\{[^{}]*\.bp-rights[,{][^{}]*\{grid-template-columns:minmax\(0,1fr\)\}/u, `${where}: до 768 px не одна колонка`);
+      assert.ok(source.includes('.bp-right{display:flex;flex-direction:column;gap:20px;min-width:0;box-sizing:border-box;border-radius:14px;padding:clamp(20px,2vw,28px);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)}'), `${where}: устройство плитки`);
+      for (const gone of ['bp-rightlead', 'bp-rightlist', 'bp-rightart', 'align-items:start}']) {
+        assert.ok(!section(source).includes(gone) && !source.includes(`.${gone}`), `${where}: осталась раскладка Р-803 — «${gone}»`);
+      }
     }
-    const panel = design('BusinessPage').match(/<article class="bp-rightlead pd-lift" style="([^"]*)">/u)?.[1] ?? '';
-    assert.match(panel, /padding:clamp\(28px,4vw,56px\)/u, 'поля тёмной панели — не по Р-608');
-    assert.match(design('BusinessPage'), /<p style="[^"]*max-width:60ch">\{\{ rightsLead\.text \}\}<\/p>/u);
+    const html = section(design('BusinessPage'));
+    assert.match(html, /<ul role="list" class="bp-rights" style="gap:16px">\n<li class="bp-right bp-right-lead pd-lift"/u, 'первая плитка — не первым пунктом сетки');
+    assert.match(html, /<sc-for list="\{\{ rightsRest \}\}" as="r" hint-placeholder-count="5">\n<li class="bp-right pd-lift" style="background:var\(--pd-ink-inverse\);border:1px solid var\(--pd-border\)">/u, 'пять светлых плиток — не в той же сетке');
+    assert.equal((html.match(/<li class="bp-right[ "]/gu) ?? []).length, 2, 'плитки размечены не двумя ветками (первая и цикл)');
+    assert.ok(!/<article|<svg/u.test(html), 'в разделе панель-статья или кольца');
+  });
+
+  it('тёмная одна — первая плитка «Исключительные права»; у всех плиток значок 22 на плашке 44, номер и заголовок 17 px', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      const html = section(source);
+      assert.equal((html.match(/accent-deep/gu) ?? []).length, 2, `${where}: в разделе не одна тёмная плитка (фон и рамка)`);
+      const split = html.indexOf('rightsRest');
+      assert.ok(split > 0, `${where}: нет цикла пяти светлых плиток`);
+      assert.ok(html.slice(0, split).includes('accent-deep'), `${where}: тёмная — не первая плитка`);
+      assert.ok(!html.slice(split).includes('accent-deep'), `${where}: тёмная плитка среди пяти светлых`);
+    }
+    const jsx = section(read('app', 'src', 'components', 'pages', 'BusinessPage.tsx'));
+    assert.ok(jsx.includes('<li className="bp-right bp-right-lead pd-lift" style={{ background: "var(--pd-accent-deep)", border: "1px solid var(--pd-accent-deep)" }}>'), 'BusinessPage.tsx: первая плитка не тёмная');
+    assert.ok(jsx.includes('{(rightsRest ?? []).map((r: any, _i0: number) => (<React.Fragment key={_i0}><li className="bp-right pd-lift" style={{ background: "var(--pd-ink-inverse)", border: "1px solid var(--pd-border)" }}>'), 'BusinessPage.tsx: пять светлых плиток не циклом в той же сетке');
+    const html = section(design('BusinessPage'));
+    const split = html.indexOf('rightsRest');
+    for (const [part, name] of [[html.slice(0, split), 'rightsLead'], [html.slice(split), 'r']] as const) {
+      assert.match(part, /<span aria-hidden="true" style="width:44px;height:44px;flex:0 0 44px;border-radius:10px;/u, `плашка значка не 44 px (${name})`);
+      assert.match(part, new RegExp(`<span style="width:22px;height:22px;display:block;[^"]*mask:\\{\\{ ${name}\\.icon \\}\\}"`, 'u'), `значок не 22 px (${name})`);
+      assert.match(part, new RegExp(`<div class="bp-righthead">\\n<span aria-hidden="true"[^\\n]*\\n<span style="[^"]*tabular-nums[^"]*">\\{\\{ ${name}\\.num \\}\\}</span>\\n</div>`, 'u'), `номер не справа от значка (${name})`);
+      assert.match(part, new RegExp(`<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1\\.4;font-weight:600;[^"]*">\\{\\{ ${name}\\.label \\}\\}</h3>`, 'u'), `заголовок плитки не 17 px (${name})`);
+      assert.match(part, new RegExp(`<p style="margin:0;font-size:14px;line-height:1\\.6;[^"]*">\\{\\{ ${name}\\.text \\}\\}</p>`, 'u'), `текст плитки не 14 px (${name})`);
+    }
+  });
+
+  it('тексты, значки и порядок шести пунктов прежние (Р-803)', () => {
+    const accepted = [
+      ['Исключительные права', 'Права на результаты интеллектуальной деятельности переходят заказчику. Условие закреплено пунктом договора об отчуждении прав.', 'pd-asset'],
+      ['Кто подписывает NDA', 'Соглашение о неразглашении подписывает каждый участник проектной команды до получения доступа к материалам.', 'pd-nda'],
+      ['Материалы после проекта', 'По акту передаём материалы и удаляем рабочие копии. Срок хранения и порядок удаления записаны в договоре.', 'pd-contract'],
+      ['На кого оформляется охранный документ', `Заявитель и правообладатель${NB}— ваша компания. Мы готовим документы и сопровождаем подачу, не выступая правообладателем.`, 'award'],
+      ['Повторное использование', 'Материалы проекта не используются в других работах и не показываются как пример. Публичных кейсов у нас нет.', 'shield'],
+      ['Служебные результаты', 'Помогаем оформить положение о служебных результатах, уведомления авторов и приказы внутри вашей компании.', 'pd-team'],
+    ];
+    for (const [where, source] of both('BusinessPage')) {
+      const rows = [...data(source, 'const rights = [').matchAll(/\['([^']*)', '([^']*)', '([^']*)'\]/gu)].map((m) => [m[1], m[2], m[3]]);
+      assert.deepEqual(rows, accepted, `${where}: тексты, значки или порядок пунктов изменились`);
+      assert.ok(source.includes("label, text, num: '0' + (i + 1),"), `${where}: номера 01—06`);
+      assert.ok(source.includes('return { rightsLead: rights[0], rightsRest: rights.slice(1) };'), `${where}: первая плитка — не первый пункт`);
+    }
+    const head = visibleText(section(design('BusinessPage'))).map((t) => t.trim()).filter(Boolean);
+    assert.deepEqual(head, ['Права и конфиденциальность', `Кому принадлежит результат и${NB}что происходит с${NB}материалами`, 'Права на результат остаются у вашей компании'], 'шапка раздела изменилась');
   });
 });

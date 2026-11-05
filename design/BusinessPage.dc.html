@@ -68,29 +68,13 @@
 @media (prefers-reduced-motion:reduce){.bp-proof{animation:none}}
 .bp-cat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 
-/* «Права и конфиденциальность» (Р-803): композиция, отличная от сетки
-   «Условий» двумя разделами выше. Главный тезис «Исключительные права» —
-   тёмной панелью --pd-accent-deep (на странице она одна, Р-608): значок
-   и номер сверху, под ними заголовок и абзац; панель по своему
-   содержимому (align-items: start у сетки .bp-rights, в панели — столбец
-   с промежутком 28 px), в углу — пара колец орбиты, неподвижных.
-   Остальные пять пунктов — одной белой карточкой-списком: значок 40 px,
-   заголовок, спокойный номер справа и текст, между пунктами одна линия
-   --pd-border. Синие кромки снизу у части карточек сняты; панель и
-   список поднимаются при наведении одинаково (pd-lift, Р-628). От
-   1200 px панель слева, список справа; до 1199 px — столбцом, панель над
-   списком; до 768 px панель без колец: в невысокой панели они заходили
-   под текст. */
-/* Шлифовка Р-803: тёмная панель — по устройству Р-608 (поля clamp(28px, 4vw, 56px)) и по своему содержимому, без пустой заливки; от 1200 px — рядом со списком, колонки 1.05fr / .95fr, чтобы абзац уложился в три строки; до 1199 px — над списком на всю ширину, абзац — не длиннее 60 знаков в строке. Кольца орбиты сдвинуты в угол — мимо текста. */
-.bp-rights{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);align-items:start}
-@media (max-width:1199px){.bp-rights{grid-template-columns:minmax(0,1fr)!important}}
-.bp-rightlead{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:28px;min-width:0}
-.bp-rightlist{list-style:none;min-width:0}
-.bp-rightlist>li{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:16px;align-items:start;padding:18px 0;border-top:1px solid var(--pd-border)}
-.bp-rightlist>li:first-child{border-top:0}
-.bp-righthead{display:flex;flex-direction:row-reverse;align-items:baseline;justify-content:space-between;gap:16px;min-width:0}
-@media (max-width:480px){.bp-rightlist{padding:0 20px!important}.bp-rightlist>li{grid-template-columns:36px minmax(0,1fr);column-gap:14px}.bp-rightlist>li>span:first-child{width:36px!important;height:36px!important;flex-basis:36px!important}}
-@media (max-width:768px){.bp-rightart{display:none}}
+/* «Права и конфиденциальность» (Р-803, раскладка — Р-814 по замечанию владельца З-8): шесть пунктов — шесть плиток одной сеткой ul.bp-rights, 3 колонки от 1200 px, 2 на 769—1199 px, одна до 768 px (общее правило страницы); плитки ряда одной высоты (align-items: stretch), пустого поля под плиткой нет. От 1200 px первая колонка шире (1.3fr): самый длинный заголовок «На кого оформляется охранный документ» встаёт в одну строку, и в каждом ряду текст плиток отличается не больше чем на строку. У всех плиток одно устройство: сверху значок 22 px на плашке 44 px и номер справа, ниже заголовок 17 px и текст 14 px; поля clamp(20px, 2vw, 28px), радиус 14, тень уровня 2, pd-lift (Р-628). Первая — «Исключительные права» — тёмная --pd-accent-deep (тёмная панель на странице одна, Р-608); пять светлых — белые с рамкой --pd-border. Кольца орбиты Р-803 в плитке сняты: в плитке высотой 184—251 px текст идёт на всю ширину, и кольца заходили под абзац. */
+.bp-rights{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(2,minmax(0,1fr));align-items:stretch;list-style:none;margin:0;padding:0}
+@media (max-width:1199px){.bp-rights{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bp-right{display:flex;flex-direction:column;gap:20px;min-width:0;box-sizing:border-box;border-radius:14px;padding:clamp(20px,2vw,28px);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)}
+.bp-righthead{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.bp-rightbody{display:flex;flex-direction:column;gap:8px;min-width:0}
+@media (max-width:480px){.bp-right{padding:20px!important;gap:16px!important}}
 .bp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
 /* Шкала шагов «Что будет после отправки» (Р-800) — один компонент на «Студентам» и «Компаниям». Шаги — последовательность, поэтому с номерами: узлы 28 px на общей линии 2 px --pd-edge-neutral, разделителей под шагами нет. Горизонтальная: узел над текстом, линия от узла к узлу соседней колонки (промежуток колонок 24 px), колонки ряда одной высоты. Вертикальная (.pd-track-v): узел слева, линия вниз к следующему узлу. Последний шаг ряда линии не ведёт. */
@@ -747,37 +731,30 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Права на результат остаются у вашей компании</span>
 </div>
-<div class="bp-rights" style="gap:16px">
-<article class="bp-rightlead pd-lift" style="box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:clamp(28px,4vw,56px);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<svg aria-hidden="true" class="bp-rightart" viewBox="0 0 400 400" width="400" height="400" fill="none" style="position:absolute;right:-210px;top:-240px;pointer-events:none"><circle cx="200" cy="200" r="96" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="148" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="196" stroke="rgba(255,255,255,.1)" stroke-width="1" stroke-dasharray="4 6"></circle><circle cx="95" cy="305" r="4" fill="#B4C9E5"></circle><circle cx="104" cy="200" r="6" fill="rgba(255,255,255,.24)"></circle></svg>
-<div style="position:relative;display:flex;align-items:center;gap:14px">
-<span aria-hidden="true" style="width:48px;height:48px;flex:0 0 48px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);box-sizing:border-box;display:flex;align-items:center;justify-content:center">
-<span style="width:24px;height:24px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ rightsLead.icon }};mask:{{ rightsLead.icon }}"></span>
-</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-accent-edge);font-variant-numeric:tabular-nums">{{ rightsLead.num }}</span>
-</div>
-<div style="position:relative;display:flex;flex-direction:column;gap:10px">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink-inverse)">{{ rightsLead.label }}</h3>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-accent-mark);max-width:60ch">{{ rightsLead.text }}</p>
-</div>
-</article>
-<ul role="list" class="bp-rightlist pd-lift" style="box-sizing:border-box;margin:0;padding:0 24px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<sc-for list="{{ rightsRest }}" as="r" hint-placeholder-count="5">
-<li>
-<span aria-hidden="true" style="width:40px;height:40px;flex:0 0 40px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center">
-<span style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:{{ r.icon }};mask:{{ r.icon }}"></span>
-</span>
-<div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<ul role="list" class="bp-rights" style="gap:16px">
+<li class="bp-right bp-right-lead pd-lift" style="background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep)">
 <div class="bp-righthead">
-<span style="flex:0 0 auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ r.num }}</span>
-<h3 style="margin:0;min-width:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ r.label }}</h3>
+<span aria-hidden="true" style="width:44px;height:44px;flex:0 0 44px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);box-sizing:border-box;display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ rightsLead.icon }};mask:{{ rightsLead.icon }}"></span></span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;font-variant-numeric:tabular-nums;color:var(--pd-accent-edge)">{{ rightsLead.num }}</span>
 </div>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:66ch">{{ r.text }}</p>
+<div class="bp-rightbody">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink-inverse)">{{ rightsLead.label }}</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-accent-mark)">{{ rightsLead.text }}</p>
+</div>
+</li>
+<sc-for list="{{ rightsRest }}" as="r" hint-placeholder-count="5">
+<li class="bp-right pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border)">
+<div class="bp-righthead">
+<span aria-hidden="true" style="width:44px;height:44px;flex:0 0 44px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;display:block;background:var(--pd-accent);-webkit-mask:{{ r.icon }};mask:{{ r.icon }}"></span></span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;font-variant-numeric:tabular-nums;color:var(--pd-ink-muted)">{{ r.num }}</span>
+</div>
+<div class="bp-rightbody">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ r.label }}</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ r.text }}</p>
 </div>
 </li>
 </sc-for>
 </ul>
-</div>
 </section>
 
 <section id="faq" class="bp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
@@ -1521,9 +1498,9 @@ class Component extends DCLogic {
         closed: this.state.faqOpen !== i,
         toggle: () => this.setState(s => ({ faqOpen: s.faqOpen === i ? -1 : i }))
       })),
-      // Права и конфиденциальность (Р-803): первый пункт — главный тезис
-      // тёмной панелью, остальные пять — карточкой-списком; порядок и
-      // номера 01—06 прежние.
+      // Права и конфиденциальность (Р-803, раскладка — Р-814): шесть плиток
+      // сеткой 3 × 2; первая — тёмная плитка «Исключительные права», остальные
+      // пять — светлые; порядок, тексты, значки и номера 01—06 прежние.
       ...(() => {
         const rights = [
           ['Исключительные права', 'Права на результаты интеллектуальной деятельности переходят заказчику. Условие закреплено пунктом договора об отчуждении прав.', 'pd-asset'],
