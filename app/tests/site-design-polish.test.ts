@@ -1,5 +1,6 @@
 /**
- * Шлифовка Р-796…Р-803 по проверке арт-директора 04.11.2026: облик, который
+ * Шлифовка Р-796…Р-803 по проверке арт-директора 04.11.2026 (и снятые по
+ * указанию владельца разделы — Р-807, Р-813): облик, который
  * программные проверки страницы не ловят, а правка макета легко вернёт, —
  * тире в начале строки, разнобой номеров, «серп» кромки на скруглении,
  * таблица без имени, провалы в карточках, шкала, прыгающая под пальцем.
@@ -287,6 +288,34 @@ describe('Р-802: «Условия, закреплённые договором 
       for (const phrase of [`Предмет договора${NB}— соответствие требованиям`, `ждут от вас,${NB}— на одной карточке. Рядом${NB}— переписка`]) {
         assert.ok(source.includes(phrase), `${where}: нет неразрывного пробела в «${phrase.replace(/ /gu, '·')}»`);
       }
+    }
+  });
+});
+
+describe('Р-813: раздел «Шесть задач компании» снят с «Компаниям»', () => {
+  // Р-806 добавил раздел #tasks между шкалой УГТ и пакетами; по указанию
+  // владельца 05.11.2026 (З-7) он снят вместе со стилями, данными и
+  // ограничителем site-business-tasks, который охранял только его.
+  it('раздела, ссылок на него, стилей и данных не осталось', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      assert.doesNotMatch(source, /id="tasks"|href="#tasks"|bp-tasks-title/u, `${where}: раздел #tasks или ссылка на него остались`);
+      for (const name of ['bp-task', 'const TASKS', 'Шесть задач компании', 'Обсудить задачу', 'Другая задача', 'Строка ведёт к пакету']) {
+        assert.ok(!source.includes(name), `${where}: осталось «${name}»`);
+      }
+    }
+    for (const page of ['StartPage', 'MainPage', 'StudentsPage', 'ExpertsPage', 'NotFoundPage']) {
+      assert.doesNotMatch(read('design', `${page}.dc.html`), /business\.html#tasks|\/business#tasks/u, `${page}: ссылка на /business#tasks`);
+    }
+    assert.doesNotMatch(read('docs', 'DESIGN-SYSTEM.md'), /Перечень «задача → пакет»/u, 'DESIGN-SYSTEM, §7: строка снятого компонента');
+  });
+
+  it('за шкалой УГТ сразу «Пять пакетов»; уточнение «из перечня» на шкале осталось', () => {
+    const html = design('BusinessPage');
+    const trl = html.indexOf('<section id="trl"');
+    const next = html.indexOf('<section', html.indexOf('</section>', trl));
+    assert.ok(trl > 0 && html.startsWith('<section id="packs"', next), 'за #trl не «Пять пакетов»');
+    for (const [where, source] of both('BusinessPage')) {
+      assert.ok(source.includes('Повышающий коэффициент к расходам на НИОКР из перечня, п. 7 ст. 262 НК РФ.'), `${where}: на шкале УГТ пропало «из перечня»`);
     }
   });
 });
