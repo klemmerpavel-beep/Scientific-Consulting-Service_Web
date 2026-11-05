@@ -30,6 +30,84 @@ const data = (source: string, head: string) => {
 };
 const NB = ' ';
 
+/**
+ * Видимый текст макета (доводка 05.11.2026): текстовые узлы шаблона вне
+ * <head>, <style>, <script>, комментариев и выражений {{ }} и строковые
+ * литералы сценария data-dc-script вне комментариев JS. Атрибуты, CSS,
+ * комментарии и код сюда не входят, литерал значения атрибута (`aria: '…'`)
+ * тоже: тире там строку не начинает.
+ */
+const visibleText = (html: string): string[] => {
+  const out: string[] = [];
+  const body = html.replace(/<head>[\s\S]*?<\/head>/u, '');
+  const markup = body.replace(/<!--[\s\S]*?-->|<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gu, '<>');
+  for (const m of markup.matchAll(/>([^<>]*)</gu)) {
+    for (const part of m[1]!.split(/\{\{[\s\S]*?\}\}/u)) if (part.trim()) out.push(part);
+  }
+  const code = body.match(/<script[^>]*data-dc-script[^>]*>([\s\S]*?)<\/script>/u)?.[1] ?? '';
+  let lineStart = 0;
+  let prev = '';
+  for (let i = 0; i < code.length; ) {
+    const c = code[i]!;
+    if (c === '\n') { lineStart = i + 1; i++; continue; }
+    if (code.startsWith('//', i)) { const j = code.indexOf('\n', i); i = j < 0 ? code.length : j; continue; }
+    if (code.startsWith('/*', i)) { const j = code.indexOf('*/', i + 2); i = j < 0 ? code.length : j + 2; continue; }
+    if (c === "'" || c === '"' || c === '`') {
+      const parts: string[] = [];
+      let part = '';
+      let j = i + 1;
+      while (j < code.length && code[j] !== c) {
+        if (code[j] === '\\') { part += code.slice(j, j + 2); j += 2; continue; }
+        if (c === '`' && code.startsWith('${', j)) {
+          parts.push(part);
+          part = '';
+          let depth = 1;
+          for (j += 2; j < code.length && depth; j++) depth += code[j] === '{' ? 1 : code[j] === '}' ? -1 : 0;
+          continue;
+        }
+        part += code[j];
+        j++;
+      }
+      parts.push(part);
+      if (!/\baria\s*:[^,\n]*$/u.test(code.slice(lineStart, i))) out.push(...parts.filter((p) => p.trim()));
+      i = j + 1;
+      prev = 'x';
+      continue;
+    }
+    if (c === '/' && /^$|[(,=:[!&|?{};]$|^return$/u.test(prev)) {
+      // регулярное выражение: кавычки внутри него — не строка
+      let j = i + 1;
+      for (let cls = false; j < code.length && (code[j] !== '/' || cls); j++) {
+        if (code[j] === '\\') j++;
+        else if (code[j] === '[') cls = true;
+        else if (code[j] === ']') cls = false;
+      }
+      for (i = j + 1; i < code.length && /[a-z]/u.test(code[i]!); ) i++;
+      prev = 'x';
+      continue;
+    }
+    if (/\s/u.test(c)) { i++; continue; }
+    const word = /^[\w$]+/u.exec(code.slice(i, i + 40))?.[0];
+    if (word) { prev = /^(return|typeof|case)$/u.test(word) ? 'return' : 'x'; i += word.length; continue; }
+    prev = c;
+    i++;
+  }
+  return out;
+};
+/** Обычный пробел или перенос строки разметки перед тире: здесь тире уйдёт в начало строки. */
+const dashGaps = (html: string): string[] =>
+  visibleText(html).flatMap((t) => [...t.matchAll(/[ \t\r\n]+(?=[—–])/gu)].map((m) =>
+    `${t.slice(Math.max(0, m.index - 24), m.index)}·${t.slice(m.index + m[0].length, m.index + m[0].length + 16)}`.replace(/\s+/gu, ' ')));
+/** В видимом тексте макета перед тире нет обычного пробела, и перенос в компонент сохранил неразрывные. */
+const assertDashesBound = (page: Page) => {
+  const html = design(page);
+  assert.deepEqual(dashGaps(html), [], `design/${page}.dc.html: обычный пробел перед тире — тире уйдёт в начало строки`);
+  const bound = visibleText(html).flatMap((t) => [...t.matchAll(/[^\s<>{}&;]{1,16} [—–]/gu)].map((m) => m[0]));
+  assert.ok(bound.length > 0, `design/${page}.dc.html: нет ни одного тире с неразрывным пробелом`);
+  const tsx = both(page)[1];
+  for (const phrase of new Set(bound)) assert.ok(tsx[1].includes(phrase), `${tsx[0]}: перенос потерял неразрывный пробел в «${phrase.replace(/ /gu, '·')}»`);
+};
+
 describe('Р-796: «Диагностика» на «Аспирантам»', () => {
   it('тире не начинает строку: перед тире — неразрывный пробел', () => {
     for (const [where, source] of both('MainPage')) {
@@ -38,6 +116,10 @@ describe('Р-796: «Диагностика» на «Аспирантам»', () 
         assert.ok(source.includes(phrase), `${where}: нет неразрывного пробела в «${phrase.replace(/ /gu, '·')}»`);
       }
     }
+  });
+
+  it('во всём видимом тексте страницы перед тире — неразрывный пробел (доводка 05.11.2026)', () => {
+    assertDashesBound('MainPage');
   });
 
   it('номер пункта перечня — в исполнении номера фактора сметы (одно исполнение номера, К-9)', () => {

@@ -13,7 +13,10 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 
 const DESIGN = path.join(import.meta.dirname, '..', '..', 'design');
-const read = (page: string) => readFileSync(path.join(DESIGN, `${page}.dc.html`), 'utf8');
+// Тексты сверяются по словам: перед тире на «Аспирантам», «Студентам» и
+// «Компаниям» — неразрывный пробел (доводка 05.11.2026), на остальных
+// страницах — обычный; вид пробела перед тире охраняет site-design-polish.
+const read = (page: string) => readFileSync(path.join(DESIGN, `${page}.dc.html`), 'utf8').replace(/\u00a0(?=[—–])/gu, ' ');
 
 const PAGES = ['StartPage', 'MainPage', 'StudentsPage', 'BusinessPage', 'OfferPage', 'PrivacyPage', 'ConsentPage', 'NotFoundPage'];
 const FORMS: Record<string, readonly string[]> = {
