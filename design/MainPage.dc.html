@@ -74,6 +74,14 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 /* 481—768 px: шкала вертикальная и не шире 360 px — статус стоит рядом с названием этапа, а не у дальнего края (шлифовка Р-796). */
 @media (min-width:481px) and (max-width:768px){.pd-plan-steps{max-width:360px}}
 .pd-usp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+/* «Что закреплено в договоре» (Р-810): карточка — подсетка из четырёх строк ряда (заголовок, «что вы получаете», «как проверить до подписания», «где это видно»), поэтому линии и подписи соседних карточек стоят на одной высоте. От 1101 px и на 561—768 px изображение 96 px — колонкой на высоту карточки; на 769—1100 px и до 560 px изображение рядом с заголовком, строки — на всю ширину под ними. До 768 px — одна колонка карточек: в две колонки длинные слова заголовков («терминологическая») не помещаются. */
+.pd-term{display:grid;grid-row:span 4;grid-template-rows:subgrid;row-gap:0;grid-template-columns:96px minmax(0,1fr);column-gap:20px;min-width:0}
+.pd-term-img{grid-column:1;grid-row:1 / span 4}
+.pd-term-head,.pd-term-row{grid-column:2}
+@media (min-width:769px) and (max-width:1100px),(max-width:560px){.pd-term{column-gap:16px}.pd-term-img{grid-row:1}.pd-term-head{align-self:center;padding-bottom:0!important}.pd-term-row{grid-column:1 / -1}.pd-term-head+.pd-term-row{padding-top:14px}}
+@media (max-width:768px){.pd-usp{grid-template-columns:minmax(0,1fr)!important}}
+/* До 400 px рядом с изображением 96 px длинное слово заголовка («терминологическая») не помещается: изображение — над заголовком, карточка столбцом (в одну колонку подсетке нечего выравнивать). */
+@media (max-width:400px){.pd-term{display:flex!important;flex-direction:column}.pd-term-img{margin-bottom:6px}.pd-term-head{align-self:stretch!important;padding-bottom:14px!important}.pd-term-head+.pd-term-row{padding-top:0!important}}
 .pd-services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
 /* «Публикации к защите» (Р-808, #articles): от 1100 px инфографика п. 13 и карточка статьи рядом (1.4fr / .6fr), по высоте ряда; до 1099 px — одна колонка.
@@ -382,19 +390,26 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Каждый пункт можно проверить до подписания</span>
 </div>
+<!-- Р-810 (З-2): карточка условия — объёмное изображение владельца 96 px слева (одно понятие — одно изображение, Р-633; второй блок с объёмными изображениями на «Аспирантам» — по решению владельца 05.11.2026, изображения не повторяют «Шесть шагов») и три строки: что вы получаете → как проверить до подписания → где это видно (Задание, кабинет, акт). Строки карточек одного ряда стоят на общих линиях — подсеткой (subgrid). -->
 <ol class="pd-usp" style="list-style:none;margin:0;padding:0;gap:16px">
 <sc-for list="{{ usp }}" as="u" hint-placeholder-count="4">
-<li style="display:flex;gap:18px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px 22px;box-shadow:0 1px 2px rgba(20,22,28,.05)">
-<span aria-hidden="true" style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px">
-<span style="width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center">
-<span style="width:21px;height:21px;display:block;background:var(--pd-accent);-webkit-mask:{{ u.icon }};mask:{{ u.icon }}"></span>
-</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;letter-spacing:.02em;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ u.num }}</span>
-</span>
-<div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+<li class="pd-term" style="box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<img class="pd-term-img" src="{{ u.img }}" alt="" aria-hidden="true" width="96" height="96" loading="lazy" decoding="async" style="display:block;width:96px;height:96px">
+<div class="pd-term-head" style="display:flex;flex-direction:column;gap:4px;min-width:0;padding-bottom:14px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:21px;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ u.num }}</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink);max-width:30ch;text-wrap:balance">{{ u.title }}</h3>
+</div>
+<div class="pd-term-row" style="display:flex;flex-direction:column;gap:4px;min-width:0;padding-bottom:12px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Что вы получаете</span>
 <p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">{{ u.text }}</p>
-<p style="margin:6px 0 0;padding-left:14px;border-left:2px solid var(--pd-accent-mark);font-size:13px;line-height:1.5;color:var(--pd-ink-muted);max-width:50ch">{{ u.proof }}</p>
+</div>
+<div class="pd-term-row" style="display:flex;flex-direction:column;gap:4px;min-width:0;padding:12px 0;border-top:1px solid var(--pd-divider)">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Как проверить до подписания</span>
+<p style="margin:0;display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.5;color:var(--pd-ink);max-width:52ch"><span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span><span style="min-width:0">{{ u.check }}</span></p>
+</div>
+<div class="pd-term-row" style="display:flex;flex-direction:column;gap:6px;min-width:0;padding-top:12px;border-top:1px solid var(--pd-divider)">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Где это видно</span>
+<p style="margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-accent);background:var(--pd-accent-tint);border-radius:999px;padding:3px 10px">{{ u.place }}</span><span style="min-width:0">{{ u.where }}</span></p>
 </div>
 </li>
 </sc-for>
@@ -1221,14 +1236,25 @@ class Component extends DCLogic {
     }));
     const planLine = 'scaleY(' + (trackAt / (trackTitles.length - 1)) + ')';
     const planLineX = 'scaleX(' + (trackAt / (trackTitles.length - 1)) + ')';
+    // «Что закреплено в договоре» (Р-810): что вы получаете → как проверить до
+    // подписания → где это видно. Тексты — прежние формулировки карточек
+    // (текст и подтверждение) и страницы: профиль куратора — в кабинете
+    // («Порядок работы», шаг 03), Задание определяет требования к результату
+    // и состав работ (оферта, «Задание»), версии и замечания — в кабинете
+    // («Материалы и версии»), акты приложены к платежам («Оплаты и
+    // документы»). Новых обещаний нет.
+    // Объёмные изображения — по понятию карточки (Р-633), без повтора
+    // «Шести шагов» (stepImg): степень — шапка, нормоконтроль — стопка листов,
+    // языковая поддержка — ноутбук с текстом, этапы с приёмкой — ступени.
+    const uspArt = { 'pd-degree': 'pd-3d-degree', 'pd-gost': 'pd-3d-sheets', 'pd-editing': 'pd-3d-laptop', 'pd-stages': 'pd-3d-stairs' };
     const usp = [
-      ['pd-degree', 'Куратор со степенью по вашей специальности', 'Специалист с учёной степенью в вашей области разбирает методологию, показывает слабые места аргументации и готовит к вопросам оппонентов.', 'Профиль куратора вы видите до согласования Задания'],
-      ['pd-gost', 'Нормоконтроль по ГОСТ и требованиям ВАК', 'Структура, оформление, библиография и ссылочный аппарат проверяются по ГОСТ Р 7.0.11-2011 и требованиям вашего диссовета.', 'Перечень «Что подготовить» по виду работы — в кабинете до начала работы'],
-      ['pd-editing', 'Языковая и терминологическая поддержка', 'Научная экспертиза текста на русском, перевод для англоязычных журналов, сопровождение иностранных аспирантов вплоть до выступления на защите.', 'Отдельное направление — иностранные аспиранты российских вузов'],
-      ['pd-stages', 'Этапы с актом приёмки', 'Задание фиксирует объём, сроки и стоимость по этапам; по каждому этапу — отчёт и акт с комментариями куратора.', 'Следующий этап оплачивается после приёмки предыдущего']
-    ].map(([icon, title, text, proof], i) => ({
-      title, text, proof, num: '0' + (i + 1),
-      icon: "url('./assets/icons/" + icon + ".svg') center/contain no-repeat"
+      ['pd-degree', 'Куратор со степенью по вашей специальности', 'Специалист с учёной степенью в вашей области разбирает методологию, показывает слабые места аргументации и готовит к вопросам оппонентов.', 'Профиль куратора вы видите до согласования Задания', 'Кабинет', 'профиль куратора'],
+      ['pd-gost', 'Нормоконтроль по ГОСТ и требованиям ВАК', 'Структура, оформление, библиография и ссылочный аппарат проверяются по ГОСТ Р 7.0.11-2011 и требованиям вашего диссовета.', 'Перечень «Что подготовить» по виду работы — в кабинете до начала работы', 'Задание', 'требования к результату'],
+      ['pd-editing', 'Языковая и терминологическая поддержка', 'Научная экспертиза текста на русском, перевод для англоязычных журналов, сопровождение иностранных аспирантов вплоть до выступления на защите.', 'Состав работ — в Задании, вы согласуете его в кабинете', 'Кабинет', 'версии текста и замечания к ним'],
+      ['pd-stages', 'Этапы с актом приёмки', 'По каждому этапу — отчёт и акт с комментариями куратора.', 'Задание фиксирует объём, сроки и стоимость по этапам', 'Акт', 'приложен к платежу в кабинете']
+    ].map(([key, title, text, check, place, where], i) => ({
+      title, text, check, place, where, num: '0' + (i + 1),
+      img: './assets/art/' + uspArt[key] + '.webp'
     }));
     const offerTop = [
       ['Кандидатские диссертации', 'Ведём от плана глав до предзащиты: научная новизна, положения на защиту, оформление и доклад.', 'от 2 месяцев'],
