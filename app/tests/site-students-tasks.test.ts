@@ -1,7 +1,8 @@
 /**
- * «Шесть случаев и первый шаг в каждом» на «Студентам» (Р-805).
+ * «Шесть случаев и первый шаг в каждом» на «Студентам» (Р-805; место
+ * и облик — Р-812).
  *
- * Раздел «Разбор ситуации» сразу за первым экраном: случай словами студента
+ * Самопроверка перед «Вопросами» и заявкой: случай словами студента
  * → что делает сервис → куда ведёт карточка (приём dissertatsia.ru, разбор
  * конкурентов 03.11.2026; формулировки свои). Охраняется:
  *
@@ -14,8 +15,14 @@
  * - текст: действие — глаголом разбора или проверки (Р-771), без написания,
  *   уникальности, антиплагиата, гарантий и цен; проходит text-guard;
  * - границы: формы нет, обработчики не submit* (перенос обернул бы их
- *   в отправку заявки), сетевых вызовов и хранилищ нет (Р-96); место — между
- *   первым экраном и «Кто сопровождает».
+ *   в отправку заявки), сетевых вызовов и хранилищ нет (Р-96);
+ * - место (Р-812, решение по умолчанию): после «Как это выглядит внутри»,
+ *   перед «Вопросами»;
+ * - облик (Р-812): текст раздела прежний дословно; карточки на светлой
+ *   подложке без тихой полосы, у каждого случая свой значок на плашке
+ *   44 px (файл в обеих папках ассетов), объёмных изображений нет (Р-633);
+ *   зоны — подсеткой, сетка 3 → 2 → 1 колонки; номер стандарта с годом
+ *   не переносится по дефису.
  *
  * Логика живёт в макете и переносится в компонент дословно, поэтому
  * выполняется сам сценарий макета с заглушкой DCLogic.
@@ -146,14 +153,18 @@ describe('«Шесть случаев»: текст и границы блока
     assert.doesNotMatch(logic, /submit|\bfetch\(|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|indexedDB/u);
   });
 
-  it('стоит между первым экраном и «Кто сопровождает»', () => {
-    const works = html.indexOf('<section id="works"');
+  it('стоит после «Как это выглядит внутри» и перед «Вопросами» (Р-812)', () => {
+    const inside = html.indexOf('<section id="inside"');
     const here = html.indexOf('<section id="tasks"');
-    assert.ok(works > 0 && works < here, '#tasks не за первым экраном');
-    assert.equal(html.slice(html.indexOf('</section>', works), here).match(/<section/gu), null, 'между первым экраном и #tasks другой раздел');
+    assert.ok(inside > 0 && inside < here, '#tasks не после «Как это выглядит внутри»');
+    assert.equal(html.slice(html.indexOf('</section>', inside), here).match(/<section/gu), null, 'между #inside и #tasks другой раздел');
     const next = html.slice(here + section.length);
-    const team = next.indexOf('<section');
-    assert.match(plain(next.slice(team, next.indexOf('</h2>', team))), /Кто сопровождает работу$/u, 'за #tasks не «Кто сопровождает»');
+    assert.match(next, /^\s*<section id="faq"/u, 'за #tasks не «Вопросы»');
+    const works = html.indexOf('<section id="works"');
+    const team = html.indexOf('<section', html.indexOf('</section>', works));
+    assert.match(plain(html.slice(team, html.indexOf('</h2>', team))), /Кто сопровождает работу$/u, 'за первым экраном снова «Кто сопровождает», как до Р-805');
+    const order = ['id="inside"', 'id="tasks"', 'id="faq"'].map((id) => tsx.indexOf(id));
+    assert.ok(order[0] > 0 && order[0] < order[1] && order[1] < order[2], 'в компоненте порядок разделов не перенесён');
   });
 
   it('перенесено в компонент', () => {
@@ -161,5 +172,83 @@ describe('«Шесть случаев»: текст и границы блока
     assert.match(tsx, /<a className="pd-lift pd-task" href=\{t\.href\} onClick=\{t\.go\}/u);
     assert.match(tsx, /<a className="pd-lift pd-task" href="\/tools"/u);
     assert.match(tsx, /const TASKS = \[/u);
+    assert.match(tsx, /className="pd-tasks-tray"/u);
+    assert.match(tsx, /\(t\.doesParts \?\? \[\]\)\.map\(\(d: any, _i1: number\) => \(<React\.Fragment key=\{_i1\}><span style=\{\{ whiteSpace: d\.ws \}\}>\{d\.text\}<\/span>/u);
+  });
+});
+
+/** Тексты раздела, принятые Р-805: облик (Р-812) их не меняет ни на символ. */
+const TEXTS = [
+  ['Руководитель не согласовал план ВКР', 'Проверяем план и логику глав: как цель и задачи раскрываются в главах и выводах.', 'Состав работ'],
+  ['Руководитель вернул работу с замечаниями', 'Разбираем замечания по пунктам и проверяем ваши правки по каждому из них.', 'Этапы доработки'],
+  ['Нужно оформить список литературы по ГОСТ', 'Оформитель составляет записи по ГОСТ Р 7.0.100-2018 в браузере. Список целиком сверяем с методичкой кафедры.', 'Оформитель списка'],
+  ['Работу вернули с нормоконтроля', 'Проверяем оформление по ГОСТ 7.32 и методичке кафедры: поля, нумерацию, таблицы и ссылки.', 'Нормоконтроль'],
+  ['До защиты осталось меньше месяца', 'Определяем, какие этапы укладываются в ваш срок. Календарный план до сдачи фиксируем в Задании.', 'Этапы на короткий срок'],
+  ['Нужно подготовить доклад и презентацию к защите', 'Разбираем ваш доклад и презентацию под регламент защиты и репетируем вопросы комиссии.', 'Обсудить доклад'],
+];
+/** Правило стилей макета по селектору (первое вхождение вне медиазапроса или внутри заданного). */
+const rule = (css: string, sel: string) => {
+  const at = css.indexOf(`${sel}{`);
+  assert.ok(at >= 0, `нет правила ${sel}`);
+  return css.slice(at + sel.length + 1, css.indexOf('}', at));
+};
+const styles = html.slice(html.indexOf('<style'), html.indexOf('</style>'));
+
+describe('«Шесть случаев»: облик без смены текста (Р-812)', () => {
+  it('текст карточек и шапки — прежний, в прежнем порядке', () => {
+    const { tasks } = fresh();
+    assert.deepEqual(tasks.map((t) => [plain(t.say), plain(t.does), plain(t.to)]), TEXTS);
+    const head = plain(section.slice(0, section.indexOf('<div class="pd-tasks-tray"')).replace(/<[^>]+>/gu, '\n')).split('\n').map((x) => x.trim()).filter(Boolean);
+    assert.deepEqual(head, ['С чего начать', 'Шесть случаев и первый шаг в каждом', 'Карточка ведёт к разделу, оформителю или заявке']);
+    for (const t of tasks) assert.equal(t.doesParts.map((d: any) => d.text).join(''), t.does, `${plain(t.say)}: части действия не складываются в прежний текст`);
+  });
+
+  it('номер стандарта с годом — неразрывной частью, остальное переносится как прежде', () => {
+    const { tasks } = fresh();
+    const parts = tasks.flatMap((t) => t.doesParts as Array<{ text: string; ws: string }>);
+    assert.deepEqual(parts.filter((d) => d.ws === 'nowrap').map((d) => d.text), ['7.0.100-2018']);
+    for (const d of parts) assert.ok(d.ws === 'nowrap' || d.ws === 'normal', `неизвестное значение white-space: ${d.ws}`);
+    assert.match(section, /<sc-for list="\{\{ t\.doesParts \}\}" as="d"[^>]*><span style="white-space:\{\{ d\.ws \}\}">\{\{ d\.text \}\}<\/span><\/sc-for>/u);
+  });
+
+  it('у каждого случая свой значок на плашке 44 px, файл — в обеих папках ассетов', () => {
+    const { c, tasks } = fresh();
+    const files = tasks.map((t) => {
+      const m = String(t.icon).match(/^url\('\.\/assets\/icons\/([\w-]+)\.svg'\) center\/contain no-repeat$/u);
+      assert.ok(m, `${plain(t.say)}: значок не по образцу mask()`);
+      assert.equal(t.icon, c.mask(m[1]));
+      for (const dir of ['design/assets/icons', 'app/public/assets/icons']) assert.ok(existsSync(path.join(ROOT, dir, `${m[1]}.svg`)), `${dir}/${m[1]}.svg нет`);
+      return m[1];
+    });
+    assert.equal(new Set(files).size, 6, 'значки повторяются');
+    const tiles = [...section.matchAll(/<span aria-hidden="true" class="pd-task-icon" style="([^"]+)"><span style="([^"]+)"><\/span><\/span>/gu)];
+    assert.equal(tiles.length, 2, 'плашка значка — в обеих ветках разметки');
+    for (const [, tile, glyph] of tiles) {
+      assert.match(tile!, /width:44px;height:44px/u);
+      assert.match(tile!, /border-radius:10px;background:var\(--pd-accent-tint\)/u);
+      assert.match(glyph!, /width:22px;height:22px/u);
+      assert.match(glyph!, /background:var\(--pd-accent\);-webkit-mask:\{\{ t\.icon \}\};mask:\{\{ t\.icon \}\}/u);
+    }
+  });
+
+  it('тихой полосы нет, объёмных изображений нет (Р-633), подложка — светлая', () => {
+    assert.doesNotMatch(section, /--pd-surface-quiet|--pd-accent-deep/u, 'в разделе тихая полоса или тёмная панель');
+    assert.doesNotMatch(section, /<img|image-slot|assets\/art\//u, 'объёмные изображения на «Студентам» — только в блоке ролей');
+    assert.match(section, /<div class="pd-tasks-tray" style="background:var\(--pd-accent-tint\);border-radius:14px">\s*<ul class="pd-tasks" role="list">/u);
+    for (const a of cards) {
+      assert.match(a, /background:var\(--pd-ink-inverse\);border:1px solid var\(--pd-border\);border-radius:14px/u);
+      assert.doesNotMatch(a, /overflow:hidden/u);
+    }
+  });
+
+  it('зоны — подсеткой, случай рядом со значком, сетка 3 → 2 → 1', () => {
+    assert.match(rule(styles, '.pd-tasks>li'), /grid-row:span 3;grid-template-rows:subgrid/u);
+    assert.match(rule(styles, '.pd-task'), /grid-row:span 3;grid-template-rows:subgrid/u);
+    assert.match(rule(styles, '.pd-task-head'), /grid-template-columns:44px minmax\(0,1fr\);column-gap:12px;align-items:center/u);
+    assert.match(rule(styles, '.pd-tasks'), /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/u);
+    assert.match(styles, /@media \(max-width:1199px\)\{\.pd-tasks\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}\}/u);
+    assert.match(styles, /@media \(max-width:768px\)\{\.pd-tasks\{grid-template-columns:minmax\(0,1fr\);gap:12px\}\}/u);
+    const zones = [...section.matchAll(/<span class="pd-task-(head|does|to)"/gu)].map((m) => m[1]);
+    assert.deepEqual(zones, ['head', 'does', 'to', 'head', 'does', 'to'], 'три зоны карточки в обеих ветках');
   });
 });

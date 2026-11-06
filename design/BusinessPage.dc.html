@@ -68,29 +68,13 @@
 @media (prefers-reduced-motion:reduce){.bp-proof{animation:none}}
 .bp-cat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 
-/* «Права и конфиденциальность» (Р-803): композиция, отличная от сетки
-   «Условий» двумя разделами выше. Главный тезис «Исключительные права» —
-   тёмной панелью --pd-accent-deep (на странице она одна, Р-608): значок
-   и номер сверху, под ними заголовок и абзац; панель по своему
-   содержимому (align-items: start у сетки .bp-rights, в панели — столбец
-   с промежутком 28 px), в углу — пара колец орбиты, неподвижных.
-   Остальные пять пунктов — одной белой карточкой-списком: значок 40 px,
-   заголовок, спокойный номер справа и текст, между пунктами одна линия
-   --pd-border. Синие кромки снизу у части карточек сняты; панель и
-   список поднимаются при наведении одинаково (pd-lift, Р-628). От
-   1200 px панель слева, список справа; до 1199 px — столбцом, панель над
-   списком; до 768 px панель без колец: в невысокой панели они заходили
-   под текст. */
-/* Шлифовка Р-803: тёмная панель — по устройству Р-608 (поля clamp(28px, 4vw, 56px)) и по своему содержимому, без пустой заливки; от 1200 px — рядом со списком, колонки 1.05fr / .95fr, чтобы абзац уложился в три строки; до 1199 px — над списком на всю ширину, абзац — не длиннее 60 знаков в строке. Кольца орбиты сдвинуты в угол — мимо текста. */
-.bp-rights{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);align-items:start}
-@media (max-width:1199px){.bp-rights{grid-template-columns:minmax(0,1fr)!important}}
-.bp-rightlead{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:28px;min-width:0}
-.bp-rightlist{list-style:none;min-width:0}
-.bp-rightlist>li{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:16px;align-items:start;padding:18px 0;border-top:1px solid var(--pd-border)}
-.bp-rightlist>li:first-child{border-top:0}
-.bp-righthead{display:flex;flex-direction:row-reverse;align-items:baseline;justify-content:space-between;gap:16px;min-width:0}
-@media (max-width:480px){.bp-rightlist{padding:0 20px!important}.bp-rightlist>li{grid-template-columns:36px minmax(0,1fr);column-gap:14px}.bp-rightlist>li>span:first-child{width:36px!important;height:36px!important;flex-basis:36px!important}}
-@media (max-width:768px){.bp-rightart{display:none}}
+/* «Права и конфиденциальность» (Р-803, раскладка — Р-814 по замечанию владельца З-8): шесть пунктов — шесть плиток одной сеткой ul.bp-rights, 3 колонки от 1200 px, 2 на 769—1199 px, одна до 768 px (общее правило страницы); плитки ряда одной высоты (align-items: stretch), пустого поля под плиткой нет. От 1200 px первая колонка шире (1.3fr): самый длинный заголовок «На кого оформляется охранный документ» встаёт в одну строку, и в каждом ряду текст плиток отличается не больше чем на строку. У всех плиток одно устройство: сверху значок 22 px на плашке 44 px и номер справа, ниже заголовок 17 px и текст 14 px; поля clamp(20px, 2vw, 28px), радиус 14, тень уровня 2, pd-lift (Р-628). Первая — «Исключительные права» — тёмная --pd-accent-deep (тёмная панель на странице одна, Р-608); пять светлых — белые с рамкой --pd-border. Кольца орбиты Р-803 в плитке сняты: в плитке высотой 184—251 px текст идёт на всю ширину, и кольца заходили под абзац. */
+.bp-rights{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(2,minmax(0,1fr));align-items:stretch;list-style:none;margin:0;padding:0}
+@media (max-width:1199px){.bp-rights{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bp-right{display:flex;flex-direction:column;gap:20px;min-width:0;box-sizing:border-box;border-radius:14px;padding:clamp(20px,2vw,28px);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)}
+.bp-righthead{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.bp-rightbody{display:flex;flex-direction:column;gap:8px;min-width:0}
+@media (max-width:480px){.bp-right{padding:20px!important;gap:16px!important}}
 .bp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
 /* Шкала шагов «Что будет после отправки» (Р-800) — один компонент на «Студентам» и «Компаниям». Шаги — последовательность, поэтому с номерами: узлы 28 px на общей линии 2 px --pd-edge-neutral, разделителей под шагами нет. Горизонтальная: узел над текстом, линия от узла к узлу соседней колонки (промежуток колонок 24 px), колонки ряда одной высоты. Вертикальная (.pd-track-v): узел слева, линия вниз к следующему узлу. Последний шаг ряда линии не ведёт. */
@@ -178,28 +162,6 @@
 @media (prefers-reduced-motion:reduce){.bp-trlbody-a,.bp-trlbody-b{animation:none}}
 
 
-/* «Шесть задач компании» (Р-806): перечень строк-ссылок «задача → что делаем → требования → где подробнее» одной белой карточкой на ширину контейнера. Композиция — таблица строк: выше шкала УГТ с карточкой уровня, ниже сетка карточек пакетов. От 1100 px строка — пять колонок под общей шапкой (шапка — подсказка для глаза, aria-hidden: смысл ячеек несёт их текст); на 769—1099 px шапки нет, задача и действие слева, требования и цель справа одной стопкой (обёртка .bp-taskmeta, от 1100 px — display: contents, ячейки встают в свои колонки); до 768 px — столбцом, цель одной строкой. Строка — ссылка целиком (не ниже 44 px): под курсором тихая подложка и сдвиг стрелки, как у «Подходящего предложения» шкалы; кольцо фокуса внутри строки — карточка обрезает края. */
-.bp-tasks{border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);overflow:hidden}
-.bp-taskrow{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1.35fr) minmax(0,.62fr) minmax(0,.9fr) 28px;grid-template-areas:"say does norm to go";column-gap:24px;row-gap:6px;align-items:baseline}
-.bp-taskhead{padding:12px 24px;background:var(--pd-surface-quiet);border-bottom:1px solid var(--pd-border);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)}
-.bp-tasklist{list-style:none;margin:0;padding:0}
-.bp-tasklist>li+li{border-top:1px solid var(--pd-border)}
-.bp-task{padding:20px 24px;min-height:44px;box-sizing:border-box;text-decoration:none;color:var(--pd-ink);transition:background 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)}
-.bp-task:hover{background:var(--pd-surface-quiet);color:var(--pd-ink)}
-.bp-task:active{opacity:.82}
-.bp-task:focus-visible{outline-offset:-4px}
-.bp-taskmeta{display:contents}
-.bp-taskto{display:flex;flex-direction:column;gap:2px;min-width:0}
-.bp-taskgo{align-self:center;width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center;transition:background 180ms cubic-bezier(.2,0,.2,1)}
-.bp-task:hover .bp-taskgo{background:var(--pd-accent-mark)}
-.bp-taskarrow{width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);transition:transform 180ms cubic-bezier(.2,0,.2,1)}
-.bp-task:hover .bp-taskarrow{transform:translateX(3px)}
-.bp-taskfoot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 24px;padding:14px 24px;background:var(--pd-surface-quiet);border-top:1px solid var(--pd-border)}
-@media (max-width:1099px){.bp-taskhead{display:none}.bp-taskrow{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 28px;grid-template-areas:"say meta go" "does meta go";row-gap:8px}.bp-taskmeta{grid-area:meta;align-self:start;display:flex;flex-direction:column;gap:6px;min-width:0;padding-top:2px}}
-@media (max-width:768px){.bp-taskrow{grid-template-columns:minmax(0,1fr) 28px;grid-template-areas:"say go" "does does" "meta meta"}.bp-taskmeta{padding-top:0}.bp-taskgo{align-self:start}.bp-taskto{flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:8px}}
-@media (max-width:480px){.bp-task,.bp-taskfoot{padding-left:20px!important;padding-right:20px!important}.bp-task{padding-top:18px!important;padding-bottom:18px!important}}
-@media (prefers-reduced-motion:reduce){.bp-task:hover .bp-taskarrow{transform:none}}
-
 /* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
    поэтому приглушение объявлено важным. */
 button[disabled]{opacity:.7!important;cursor:progress!important}
@@ -257,8 +219,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <circle cx="330" cy="104" r="4" fill="#14417A"></circle>
 </svg>
 <div style="position:absolute;left:0;right:0;top:0;height:1100px;background-image:radial-gradient(var(--pd-art-dot) 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
-<div style="position:absolute;top:0;bottom:0;left:max(30px,calc(50% - 610px + 30px));width:1px;background:var(--pd-art-line)"></div>
-<div style="position:absolute;top:0;bottom:0;right:max(30px,calc(50% - 610px + 30px));width:1px;background:var(--pd-art-line)"></div>
 <div class="pd-glow" style="position:absolute;left:calc(50% - 1020px);top:1070px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:1000px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
@@ -595,44 +555,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<!-- Р-806: «Шесть задач компании и что делаем в каждой» — перед пакетами: задача компании ведёт к пакету этой страницы или к шкале УГТ. Приём — dissertatsia.ru (снимок 42.png, конкурентный разбор 03.11.2026): задача посетителя ведёт к шагу; формулировки свои. Задачи — только из пакетов и каталога страницы; решения фонда, налогового органа и Роспатента не обещаются. Соседи — шкала УГТ с карточкой уровня и сетка пакетов, поэтому здесь таблица строк одной карточкой. Строка — ссылка целиком на карточку пакета (#pack-N, рамка пакета подсвечивается, как у «Подходящего предложения» шкалы) или на #trl; к заявке — кнопка в подвале на прежнюю форму #request. Формы и отправки нет (Р-96). -->
-<section id="tasks" class="bp-pad" aria-labelledby="bp-tasks-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
-<div style="display:flex;flex-direction:column;gap:8px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">С чего начать</span>
-<h2 id="bp-tasks-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:balance">Шесть задач компании и что делаем в каждой</h2>
-</div>
-<span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Строка ведёт к пакету или к шкале готовности</span>
-</div>
-<div class="bp-tasks">
-<div class="bp-taskrow bp-taskhead" aria-hidden="true">
-<span style="grid-area:say">Задача компании</span>
-<span style="grid-area:does">Что делаем</span>
-<span style="grid-area:norm">Требования</span>
-<span style="grid-area:to">Где подробнее</span>
-</div>
-<ul class="bp-tasklist" role="list">
-<sc-for list="{{ tasks }}" as="t" hint-placeholder-count="6">
-<li>
-<a class="bp-taskrow bp-task" href="{{ t.href }}" onClick="{{ t.go }}">
-<span style="grid-area:say;min-width:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:500;color:var(--pd-ink);text-wrap:balance">{{ t.say }}</span>
-<span style="grid-area:does;min-width:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ t.does }}</span>
-<span class="bp-taskmeta">
-<span style="grid-area:norm;min-width:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;color:var(--pd-ink)">{{ t.norm }}</span>
-<span class="bp-taskto" style="grid-area:to;font-family:'Inter','Helvetica Neue',Arial,sans-serif"><span style="font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ t.kind }}</span><span style="font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent)">{{ t.to }}</span></span>
-</span>
-<span aria-hidden="true" class="bp-taskgo" style="grid-area:go"><span class="bp-taskarrow" style="-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
-</a>
-</li>
-</sc-for>
-</ul>
-<div class="bp-taskfoot">
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Другая задача — опишите её в заявке своими словами.</span>
-<a href="#request" style="display:inline-flex;align-items:center;min-height:44px;box-sizing:border-box;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Обсудить задачу</a>
-</div>
-</div>
-</section>
-
 <section id="packs" class="bp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
@@ -807,37 +729,30 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Права на результат остаются у вашей компании</span>
 </div>
-<div class="bp-rights" style="gap:16px">
-<article class="bp-rightlead pd-lift" style="box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:clamp(28px,4vw,56px);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<svg aria-hidden="true" class="bp-rightart" viewBox="0 0 400 400" width="400" height="400" fill="none" style="position:absolute;right:-210px;top:-240px;pointer-events:none"><circle cx="200" cy="200" r="96" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="148" stroke="rgba(255,255,255,.1)" stroke-width="1"></circle><circle cx="200" cy="200" r="196" stroke="rgba(255,255,255,.1)" stroke-width="1" stroke-dasharray="4 6"></circle><circle cx="95" cy="305" r="4" fill="#B4C9E5"></circle><circle cx="104" cy="200" r="6" fill="rgba(255,255,255,.24)"></circle></svg>
-<div style="position:relative;display:flex;align-items:center;gap:14px">
-<span aria-hidden="true" style="width:48px;height:48px;flex:0 0 48px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);box-sizing:border-box;display:flex;align-items:center;justify-content:center">
-<span style="width:24px;height:24px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ rightsLead.icon }};mask:{{ rightsLead.icon }}"></span>
-</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-accent-edge);font-variant-numeric:tabular-nums">{{ rightsLead.num }}</span>
-</div>
-<div style="position:relative;display:flex;flex-direction:column;gap:10px">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink-inverse)">{{ rightsLead.label }}</h3>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-accent-mark);max-width:60ch">{{ rightsLead.text }}</p>
-</div>
-</article>
-<ul role="list" class="bp-rightlist pd-lift" style="box-sizing:border-box;margin:0;padding:0 24px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<sc-for list="{{ rightsRest }}" as="r" hint-placeholder-count="5">
-<li>
-<span aria-hidden="true" style="width:40px;height:40px;flex:0 0 40px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center">
-<span style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:{{ r.icon }};mask:{{ r.icon }}"></span>
-</span>
-<div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<ul role="list" class="bp-rights" style="gap:16px">
+<li class="bp-right bp-right-lead pd-lift" style="background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep)">
 <div class="bp-righthead">
-<span style="flex:0 0 auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ r.num }}</span>
-<h3 style="margin:0;min-width:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ r.label }}</h3>
+<span aria-hidden="true" style="width:44px;height:44px;flex:0 0 44px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);box-sizing:border-box;display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ rightsLead.icon }};mask:{{ rightsLead.icon }}"></span></span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;font-variant-numeric:tabular-nums;color:var(--pd-accent-edge)">{{ rightsLead.num }}</span>
 </div>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:66ch">{{ r.text }}</p>
+<div class="bp-rightbody">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink-inverse)">{{ rightsLead.label }}</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-accent-mark)">{{ rightsLead.text }}</p>
+</div>
+</li>
+<sc-for list="{{ rightsRest }}" as="r" hint-placeholder-count="5">
+<li class="bp-right pd-lift" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border)">
+<div class="bp-righthead">
+<span aria-hidden="true" style="width:44px;height:44px;flex:0 0 44px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;display:block;background:var(--pd-accent);-webkit-mask:{{ r.icon }};mask:{{ r.icon }}"></span></span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;font-variant-numeric:tabular-nums;color:var(--pd-ink-muted)">{{ r.num }}</span>
+</div>
+<div class="bp-rightbody">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ r.label }}</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ r.text }}</p>
 </div>
 </li>
 </sc-for>
 </ul>
-</div>
 </section>
 
 <section id="faq" class="bp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
@@ -1534,50 +1449,6 @@ class Component extends DCLogic {
         };
       })(),
       trlScale, trl, trlFill, packs, catalog,
-      ...(() => {
-        // «Шесть задач компании и что делаем в каждой» (Р-806): задача
-        // компании, что делает сервис, норма или форма документа и куда ведёт
-        // строка. Задачи — только из пакетов и каталога этой страницы. Цели —
-        // карточки пакетов (#pack-N; номер и название берутся из packData,
-        // поэтому подпись не расходится с карточкой) и шкала УГТ (#trl).
-        // Переход к пакету подсвечивает его рамку, как «Подходящее
-        // предложение» шкалы; прокрутку делает сам якорь. Решения фонда,
-        // налогового органа и Роспатента не обещаются. Формы и отправки нет
-        // (Р-96).
-        const TASKS = [
-          { say: 'Определить уровень готовности технологии для заявки или инвестора',
-            does: 'Оцениваем уровень с обоснованием. От уровня зависят состав работ и документы на выходе.',
-            norm: 'ГОСТ Р 58048-2017', href: '#trl', kind: 'Шкала УГТ', to: 'Уровень готовности' },
-          { say: 'Проверить патентную чистоту до технического задания',
-            does: 'Патентный поиск — первый этап со своим актом. Техническое задание формулируем по его итогам.',
-            norm: 'ГОСТ Р 15.011-2024', pack: 'pack-1' },
-          { say: 'Сдать отчёт о НИОКР заказчику или комиссии',
-            does: 'Сверяем структуру и оформление отчёта со стандартом, сопровождаем приёмку этапов по актам.',
-            norm: 'ГОСТ 7.32-2017', pack: 'pack-2' },
-          { say: 'Учесть расходы на НИОКР из перечня Правительства с повышающим коэффициентом',
-            does: 'Собираем документальное обоснование расходов к отчёту и актам этапов.',
-            norm: 'п. 7 ст. 262 НК РФ', pack: 'pack-2' },
-          { say: 'Подать заявку в фонд поддержки',
-            does: 'Подбираем программу под стадию и отрасль, сверяем заявку и бюджет с требованиями конкурса.',
-            norm: 'по форме конкурса', pack: 'pack-3' },
-          { say: 'Поставить разработку на баланс как нематериальный актив',
-            does: 'Оформляем права на результат и собираем документы, по которым бухгалтерия принимает актив к учёту.',
-            norm: 'ФСБУ 14/2022', pack: 'pack-4' }
-        ];
-        return { tasks: TASKS.map(t => {
-          const p = t.pack ? packData.find(([anchor]) => anchor === t.pack) : null;
-          return {
-            say: t.say, does: t.does, norm: t.norm,
-            href: p ? '#' + p[0] : t.href,
-            kind: p ? 'Пакет ' + p[1] : t.kind,
-            // Предлог или союз в одну-две буквы не остаётся в конце строки:
-            // в packData названия набраны обычными пробелами.
-            to: p ? p[2].replace(/(^|\s)([А-Яа-яЁё]{1,2}) /gu, '$1$2 ') : t.to,
-            pack: p ? p[0] : '',
-            go: p ? () => this.setState({ highlight: p[0] }) : undefined
-          };
-        }) };
-      })(),
       catalogToggleLabel: this.state.allOpen ? 'Свернуть каталог' : 'Показать весь каталог',
       toggleAll: () => this.setState(s => ({ allOpen: !s.allOpen, open: s.allOpen ? { 0: true } : {} })),
       reasons: [
@@ -1625,9 +1496,9 @@ class Component extends DCLogic {
         closed: this.state.faqOpen !== i,
         toggle: () => this.setState(s => ({ faqOpen: s.faqOpen === i ? -1 : i }))
       })),
-      // Права и конфиденциальность (Р-803): первый пункт — главный тезис
-      // тёмной панелью, остальные пять — карточкой-списком; порядок и
-      // номера 01—06 прежние.
+      // Права и конфиденциальность (Р-803, раскладка — Р-814): шесть плиток
+      // сеткой 3 × 2; первая — тёмная плитка «Исключительные права», остальные
+      // пять — светлые; порядок, тексты, значки и номера 01—06 прежние.
       ...(() => {
         const rights = [
           ['Исключительные права', 'Права на результаты интеллектуальной деятельности переходят заказчику. Условие закреплено пунктом договора об отчуждении прав.', 'pd-asset'],

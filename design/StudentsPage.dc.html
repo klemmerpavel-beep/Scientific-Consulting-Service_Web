@@ -74,13 +74,17 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 @media (min-width:768px) and (max-width:1199px){.sp-steps>li:nth-child(3)::after{display:none}}
 @media (max-width:767px){.sp-steps{display:flex!important;flex-direction:column;gap:0!important}.sp-steps>li{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:14px;padding-bottom:20px}.sp-steps>li:last-child{padding-bottom:0}.sp-steps>li::after{top:28px;bottom:0;left:13px;right:auto;width:2px;height:auto}.sp-steps .pd-track-body{padding-top:4px}}
 @media (max-width:480px){.sp-afterbox{padding:20px!important}}
-/* «Шесть случаев» (Р-805): карточки-ссылки «случай → что делаем → куда ведёт» сеткой 3 колонки, 2 на 561—1024 px, одна до 560 px; до 480 px поля зон ужаты. Зоны карточки — подсеткой (subgrid): в ряду полоса случая, действие и подпись перехода стоят на общих линиях, провалов внутри карточки нет. */
+/* «Шесть случаев» (Р-805, облик — Р-812): карточки-ссылки «случай → что делаем → куда ведёт» на светлой подложке --pd-accent-tint (поля clamp(16px, 2vw, 32px), радиус 14) сеткой 3 колонки от 1200 px, 2 на 769—1199 px, одна до 768 px. Зоны карточки — подсеткой (subgrid): в ряду случай, действие и подпись перехода стоят на общих линиях. Случай — рядом со значком 22 px на плашке 44 px: одна и две строки случая занимают одну высоту, пустоты под однострочным случаем нет; тихой полосы нет. До 480 px поля карточки ужаты. */
+.pd-tasks-tray{padding:clamp(16px,2vw,32px)}
 .pd-tasks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;list-style:none;margin:0;padding:0}
 .pd-tasks>li{display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:0;min-width:0}
-.pd-task{display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:0}
-@media (max-width:1024px){.pd-tasks{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:560px){.pd-tasks{grid-template-columns:minmax(0,1fr);gap:12px}}
-@media (max-width:480px){.pd-task>span{padding-left:16px!important;padding-right:16px!important}.pd-task>span:first-child{padding-top:14px!important;padding-bottom:12px!important}.pd-task>span:nth-child(2){padding-top:12px!important}.pd-task>span:last-child{padding-top:12px!important;padding-bottom:16px!important}}
+.pd-task{display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:0;padding:20px 20px 0}
+.pd-task-head{display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:12px;align-items:center}
+.pd-task-does{padding-top:14px}
+.pd-task-to{margin-top:16px;padding:14px 0 18px}
+@media (max-width:1199px){.pd-tasks{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:768px){.pd-tasks{grid-template-columns:minmax(0,1fr);gap:12px}}
+@media (max-width:480px){.pd-task{padding:16px 16px 0!important}.pd-task-does{padding-top:12px!important}.pd-task-to{margin-top:14px!important;padding:12px 0 16px!important}}
 .sp-after{display:flex}
 @media (max-width:1024px){.sp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.sp-orbit>.sp-ring,.sp-orbit>.sp-dot,.sp-orbit>.sp-core{display:none!important}.sp-orbit>.sp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.sp-offer{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.sp-hero,.sp-req,.sp-faq,.sp-team,.sp-duo{grid-template-columns:minmax(0,1fr)}.sp-after{grid-template-columns:minmax(0,1fr)}}
@@ -133,7 +137,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
    слева текст, справа снимок экрана в рамке. */
 .pd-in-tablist{display:inline-flex;gap:4px;padding:4px;background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}
 .pd-in-tablist::-webkit-scrollbar{display:none}
-@media (max-width:480px){.sp-guide{display:none}}
 @media (max-width:768px){.pd-in-tablist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-radius:14px!important}.pd-in-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}.sp-sit>button{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
 .pd-in-body{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
 @media (max-width:1024px){.pd-in-body{grid-template-columns:minmax(0,1fr)}}
@@ -151,8 +154,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <circle cx="330" cy="104" r="4" fill="#14417A"></circle>
 </svg>
 <div style="position:absolute;left:0;right:0;top:0;height:1180px;background-image:radial-gradient(var(--pd-art-dot) 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
-<div class="sp-guide" style="position:absolute;top:0;bottom:0;left:max(30px,calc(50% - 610px + 30px));width:1px;background:var(--pd-art-line)"></div>
-<div class="sp-guide" style="position:absolute;top:0;bottom:0;right:max(30px,calc(50% - 610px + 30px));width:1px;background:var(--pd-art-line)"></div>
 <div class="pd-glow" style="position:absolute;left:calc(50% - 1020px);top:1070px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:1000px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
@@ -306,37 +307,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </div>
 
-</section>
-
-<!-- Р-805: «Шесть случаев и первый шаг в каждом» — разбор ситуации (каталог разделов, §2.2) сразу за первым экраном. Приём — dissertatsia.ru (снимок 42.png, конкурентный разбор 03.11.2026): симптом посетителя ведёт к шагу; формулировки свои. Карточка — ссылка целиком (pd-lift, Р-628): сверху тихая полоса со случаем словами студента, ниже — что делаем (глаголы проверки, Р-771) и подпись перехода. Соседи — развороты первого экрана и «Кто сопровождает», поэтому здесь сетка на ширину контейнера. Ссылки — на разделы этой страницы, оформитель /tools (Р-793) и форму #request; карточки этапов включают свою ситуацию маршрута. Формы и отправки нет (Р-96). -->
-<section id="tasks" class="sp-pad" aria-labelledby="sp-tasks-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
-<div style="display:flex;flex-direction:column;gap:8px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">С чего начать</span>
-<h2 id="sp-tasks-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:balance">Шесть случаев и первый шаг в каждом</h2>
-</div>
-<span class="sp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Карточка ведёт к разделу, оформителю или заявке</span>
-</div>
-<ul class="pd-tasks" role="list">
-<sc-for list="{{ tasks }}" as="t" hint-placeholder-count="6">
-<li>
-<sc-if value="{{ t.here }}" hint-placeholder-val="{{ true }}">
-<a class="pd-lift pd-task" href="{{ t.href }}" onClick="{{ t.go }}" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;min-height:44px;box-sizing:border-box;text-decoration:none;color:var(--pd-ink);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<span style="display:block;padding:18px 20px 16px;background:var(--pd-surface-quiet);border-bottom:1px solid var(--pd-border);font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:500;color:var(--pd-ink);text-wrap:balance">«{{ t.say }}»</span>
-<span style="display:block;padding:16px 20px 0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ t.does }}</span>
-<span style="display:flex;align-items:flex-end;gap:8px;padding:14px 20px 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent)">{{ t.to }}<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-bottom:2px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
-</a>
-</sc-if>
-<sc-if value="{{ t.tool }}" hint-placeholder-val="{{ false }}">
-<a class="pd-lift pd-task" href="./tools.html" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;min-height:44px;box-sizing:border-box;text-decoration:none;color:var(--pd-ink);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<span style="display:block;padding:18px 20px 16px;background:var(--pd-surface-quiet);border-bottom:1px solid var(--pd-border);font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:500;color:var(--pd-ink);text-wrap:balance">«{{ t.say }}»</span>
-<span style="display:block;padding:16px 20px 0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ t.does }}</span>
-<span style="display:flex;align-items:flex-end;gap:8px;padding:14px 20px 18px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent)">{{ t.to }}<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-bottom:2px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
-</a>
-</sc-if>
-</li>
-</sc-for>
-</ul>
 </section>
 
 <!-- «Кто сопровождает»: для клиента две роли — менеджер и куратор (С-5, решение Р-770); методологический разбор и научная экспертиза текста — работа куратора. До 1024 px орбита — сетка без квадратной пропорции: двум карточкам квадрат оставлял пустую строку. -->
@@ -679,6 +649,38 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
+<!-- Р-805, облик и место — Р-812 (замечание владельца З-6, 05.11.2026): «Шесть случаев и первый шаг в каждом» — самопроверка перед «Вопросами» и заявкой: найдите свой случай → первый шаг. Стоит после «Как это выглядит внутри» (вкладки и разворот со снимком) и перед «Вопросами» (разворот: карточка контактов и список вопросов), поэтому здесь третья композиция — сетка карточек на светлой подложке --pd-accent-tint во всю ширину контейнера. Карточка — ссылка целиком (pd-lift, Р-628) без тихой полосы: значок 22 px на плашке 44 px рядом со случаем (одна и две строки случая занимают одну высоту), что делаем, подпись перехода под волосяной линией; зоны — подсеткой, линии подписи в ряду общие. Объёмных изображений нет: на «Студентам» они в блоке ролей (Р-633). Текст карточек прежний (Р-805). Ссылки — на разделы этой страницы, оформитель /tools (Р-793) и форму #request; карточки этапов включают свою ситуацию маршрута. Формы и отправки нет (Р-96). -->
+<section id="tasks" class="sp-pad" aria-labelledby="sp-tasks-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">С чего начать</span>
+<h2 id="sp-tasks-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:balance">Шесть случаев и первый шаг в каждом</h2>
+</div>
+<span class="sp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Карточка ведёт к разделу, оформителю или заявке</span>
+</div>
+<div class="pd-tasks-tray" style="background:var(--pd-accent-tint);border-radius:14px">
+<ul class="pd-tasks" role="list">
+<sc-for list="{{ tasks }}" as="t" hint-placeholder-count="6">
+<li>
+<sc-if value="{{ t.here }}" hint-placeholder-val="{{ true }}">
+<a class="pd-lift pd-task" href="{{ t.href }}" onClick="{{ t.go }}" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;min-height:44px;box-sizing:border-box;text-decoration:none;color:var(--pd-ink);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<span class="pd-task-head"><span aria-hidden="true" class="pd-task-icon" style="width:44px;height:44px;flex:0 0 44px;box-sizing:border-box;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:{{ t.icon }};mask:{{ t.icon }}"></span></span><span style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:500;color:var(--pd-ink);text-wrap:balance">«{{ t.say }}»</span></span>
+<span class="pd-task-does" style="display:block;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)"><sc-for list="{{ t.doesParts }}" as="d" hint-placeholder-count="1"><span style="white-space:{{ d.ws }}">{{ d.text }}</span></sc-for></span>
+<span class="pd-task-to" style="display:flex;align-items:center;gap:8px;border-top:1px solid var(--pd-divider);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent)">{{ t.to }}<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
+</a>
+</sc-if>
+<sc-if value="{{ t.tool }}" hint-placeholder-val="{{ false }}">
+<a class="pd-lift pd-task" href="./tools.html" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;min-height:44px;box-sizing:border-box;text-decoration:none;color:var(--pd-ink);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<span class="pd-task-head"><span aria-hidden="true" class="pd-task-icon" style="width:44px;height:44px;flex:0 0 44px;box-sizing:border-box;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:{{ t.icon }};mask:{{ t.icon }}"></span></span><span style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:500;color:var(--pd-ink);text-wrap:balance">«{{ t.say }}»</span></span>
+<span class="pd-task-does" style="display:block;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)"><sc-for list="{{ t.doesParts }}" as="d" hint-placeholder-count="1"><span style="white-space:{{ d.ws }}">{{ d.text }}</span></sc-for></span>
+<span class="pd-task-to" style="display:flex;align-items:center;gap:8px;border-top:1px solid var(--pd-divider);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent)">{{ t.to }}<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></span>
+</a>
+</sc-if>
+</li>
+</sc-for>
+</ul>
+</div>
+</section>
 
 <section id="faq" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
@@ -1327,29 +1329,30 @@ class Component extends DCLogic {
         return { offerTop: svc.slice(0, 3), offerMid: svc.slice(3) };
       })(),
       ...(() => {
-        // «Шесть случаев и первый шаг в каждом» (Р-805): случай словами
+        // «Шесть случаев и первый шаг в каждом» (Р-805; значки — Р-812:
+        // плашка 44 px рядом со случаем, файл — assets/icons): случай словами
         // студента, что делаем и куда ведёт карточка. Действия — услуги этой
         // страницы глаголами проверки (Р-771). Ссылки — разделы страницы,
         // оформитель /tools (Р-793, адрес — в разметке, у данных флаг tool)
         // и форма #request. Карточка этапов переключает маршрут на ситуацию
         // по её названию в situationData. Формы и отправки нет (Р-96).
         const TASKS = [
-          { say: 'Руководитель не согласовал план ВКР',
+          { icon: 'clipboard-list', say: 'Руководитель не согласовал план ВКР',
             does: 'Проверяем план и логику глав: как цель и задачи раскрываются в главах и выводах.',
             to: 'Состав работ', href: '#services' },
-          { say: 'Руководитель вернул работу с замечаниями',
+          { icon: 'pd-revision', say: 'Руководитель вернул работу с замечаниями',
             does: 'Разбираем замечания по пунктам и проверяем ваши правки по каждому из них.',
             to: 'Этапы доработки', href: '#route', route: 'Работу вернули на доработку' },
-          { say: 'Нужно оформить список литературы по ГОСТ',
+          { icon: 'file-text', say: 'Нужно оформить список литературы по ГОСТ',
             does: 'Оформитель составляет записи по ГОСТ Р 7.0.100-2018 в браузере. Список целиком сверяем с методичкой кафедры.',
             to: 'Оформитель списка', tool: true },
-          { say: 'Работу вернули с нормоконтроля',
+          { icon: 'pd-gost', say: 'Работу вернули с нормоконтроля',
             does: 'Проверяем оформление по ГОСТ 7.32 и методичке кафедры: поля, нумерацию, таблицы и ссылки.',
             to: 'Нормоконтроль', href: '#norm' },
-          { say: 'До защиты осталось меньше месяца',
+          { icon: 'calendar-days', say: 'До защиты осталось меньше месяца',
             does: 'Определяем, какие этапы укладываются в ваш срок. Календарный план до сдачи фиксируем в Задании.',
             to: 'Этапы на короткий срок', href: '#route', route: 'До защиты меньше месяца' },
-          { say: 'Нужно подготовить доклад и презентацию к защите',
+          { icon: 'message-circle', say: 'Нужно подготовить доклад и презентацию к защите',
             does: 'Разбираем ваш доклад и презентацию под регламент защиты и репетируем вопросы комиссии.',
             to: 'Обсудить доклад', href: '#request' }
         ];
@@ -1357,6 +1360,11 @@ class Component extends DCLogic {
           const at = t.route ? situationData.findIndex(([label]) => label === t.route) : -1;
           return {
             say: t.say, does: t.does, to: t.to, href: t.href || '', route: t.route || '',
+            icon: this.mask(t.icon),
+            // Обозначение стандарта с годом («7.0.100-2018») не переносится по дефису
+            // (Р-812): текст тот же, номер — неразрывной частью.
+            doesParts: t.does.split(/(\d[\d.]*-\d{4})/u).filter(Boolean)
+              .map(text => ({ text, ws: /^\d[\d.]*-\d{4}$/u.test(text) ? 'nowrap' : 'normal' })),
             here: !t.tool, tool: Boolean(t.tool),
             go: at >= 0 ? () => this.setState({ situation: at, step: 0 }) : undefined
           };
