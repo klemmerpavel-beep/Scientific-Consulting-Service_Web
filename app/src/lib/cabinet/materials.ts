@@ -628,7 +628,7 @@ export async function moderateVersion(
       projectId: project.id,
       eventKind: 'EXPERT_DECISION',
       subject: `Версия v${version.number} опубликована: ${version.material.title}`,
-      body: `Работа ${project.code}.\nМенеджер опубликовал клиенту версию v${version.number} материала «${version.material.title}».`,
+      body: `${workLine(project, false)}\nМенеджер опубликовал клиенту версию v${version.number} материала «${version.material.title}».`,
       dedupKey: `version:${version.id}:published:expert`,
       path: materialPath(project.code, version.material.stageId),
     });
@@ -835,7 +835,7 @@ export async function moderateComment(
               title: true,
               stageId: true,
               project: {
-                select: { id: true, code: true, clientId: true, managerId: true, expertId: true, status: true },
+                select: { id: true, code: true, title: true, clientId: true, managerId: true, expertId: true, status: true },
               },
             },
           },
@@ -900,7 +900,7 @@ export async function moderateComment(
           ? `Ваше замечание опубликовано: ${material.title}`
           : `Ваше замечание не опубликовано: ${material.title}`,
       body:
-        `Работа ${material.project.code}.\n` +
+        `${workLine(material.project, false)}\n` +
         (decision === 'PUBLISHED'
           ? `Менеджер опубликовал клиенту ваше замечание к версии v${target.version.number} материала «${material.title}».`
           : `Менеджер не опубликовал ваше замечание к версии v${target.version.number} материала «${material.title}».\nПричина: ${reason}`),
