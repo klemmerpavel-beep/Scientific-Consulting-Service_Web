@@ -63,10 +63,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 /* «Диагностика» (Р-809, Р-826; по замечанию владельца 07.11.2026 — Р-836): одна карточка-инфографика: от 769 px две панели рядом — слева «где работа останавливается» на тихой подложке (четыре точки, под каждой — что делает разбор), справа «итог разбора»; стрелка-узел 44 px на границе панелей. До 768 px панели столбцом, стрелка повёрнута вниз на границе. Переход к заявке — строкой под карточкой (.pd-diag-cta). */
 .pd-flow{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr)}
-.pd-flow-in{padding:20px 40px 22px 22px;border-radius:13px 0 0 13px}
+.pd-flow-in{padding:20px 40px 22px 22px}
 .pd-flow-out{padding:20px 22px 22px 40px}
 .pd-flow-arrow{top:50%;right:-22px;transform:translateY(-50%)}
-@media (max-width:768px){.pd-flow{grid-template-columns:minmax(0,1fr)}.pd-flow-in{padding:18px 20px 30px;border-radius:13px 13px 0 0}.pd-flow-out{padding:30px 20px 20px}.pd-flow-arrow{top:auto;right:auto;left:50%;bottom:-22px;transform:translateX(-50%) rotate(90deg)}}
+@media (max-width:768px){.pd-flow{grid-template-columns:minmax(0,1fr)}.pd-flow-in{padding:18px 20px 30px}.pd-flow-out{padding:30px 20px 20px}.pd-flow-arrow{top:auto;right:auto;left:50%;bottom:-22px;transform:translateX(-50%) rotate(90deg)}}
 .pd-diag-cta{box-sizing:border-box;min-height:44px;padding:8px 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px}
 .pd-diag-cta{display:grid;grid-template-columns:28px minmax(0,1fr) 18px;column-gap:14px;align-items:center;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)}
 @media (max-width:480px){.pd-diag-cta{padding-left:12px;padding-right:12px}}
@@ -389,7 +389,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:60ch">Куратор читает текст и называет, что мешает выйти на предзащиту.</p>
 <!-- Р-836 (замечание владельца 07.11.2026: «доработать наполнение, чтобы по высоте уменьшить на 30 %, только важное + инфографику добавить»): одна карточка-инфографика «где работа останавливается → итог разбора»: слева на тихой подложке четыре главные точки остановки, под каждой — что делает разбор; стрелка-узел на границе панелей; справа — три результата разбора. Шкала «Как это выглядит у вас» снята. Переход к заявке — строкой под карточкой (Р-791, Р-826). Тексты прежние, без тёмной панели и градиентов (Р-51, Р-608). -->
 <div class="pd-diag" style="display:flex;flex-direction:column;gap:12px;margin-top:22px">
-<div class="pd-flow" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:0">
+<div class="pd-flow" style="border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:0">
 <div class="pd-flow-in" style="position:relative;background:var(--pd-surface-quiet);display:flex;flex-direction:column;gap:12px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Где работа обычно останавливается</span>
 <ol class="pd-stalls" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px">

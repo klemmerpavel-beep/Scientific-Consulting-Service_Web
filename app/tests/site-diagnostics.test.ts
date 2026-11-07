@@ -137,4 +137,15 @@ describe('Р-836: «Диагностика» — инфографика «где
       ]) assert.ok(source.includes(rule), `${where}: нет правила «${rule.slice(0, 48)}…»`);
     }
   });
+
+  it('скругления по шкале: карточка 14 px обрезает панели, у панелей своего скругления нет', () => {
+    for (const [where, source] of [['макет', MAIN], ['компонент', TSX]] as const) {
+      const css = [...source.matchAll(/\.pd-flow-in\{[^}]*\}/gu)].map((m) => m[0]);
+      assert.ok(css.length >= 2, `${where}: нет правил .pd-flow-in`);
+      for (const rule of css) assert.doesNotMatch(rule, /border-radius/u, `${where}: у панели своё скругление: ${rule}`);
+    }
+    const card = SECTION.match(/<div class="pd-flow" style="([^"]*)"/u);
+    assert.ok(card, 'нет карточки .pd-flow');
+    assert.match(card[1]!, /border-radius:14px;overflow:hidden;/u);
+  });
 });
