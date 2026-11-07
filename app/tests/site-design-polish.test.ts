@@ -297,6 +297,46 @@ describe('Р-801: «Уровень готовности технологии» �
   });
 });
 
+describe('Р-835: блок заявки «Компаниям» без пустоты под формой', () => {
+  // Владелец 07.11.2026: «под формой пустое пространство… выровнять блоки по
+  // размерам и наполнению». Форма и шаги — две колонки одной высоты,
+  // «Что прислать для сметы» — полосой на всю ширину под ними.
+  const block = (source: string) => {
+    const at = source.search(/<section\b[^>]*\bid="request"/u);
+    assert.ok(at > 0, 'нет блока заявки');
+    return source.slice(at, source.indexOf('</section>', at));
+  };
+
+  it('в сетке .bp-req три ячейки по порядку: форма, «Что будет после отправки», полоса «Что прислать для сметы»', () => {
+    const html = block(design('BusinessPage'));
+    const form = html.indexOf('<form ');
+    const steps = html.indexOf('<div class="bp-reqsteps"');
+    const ask = html.indexOf('<div class="bp-reqask"');
+    assert.ok(form > 0 && steps > html.indexOf('</form>') && ask > steps, 'порядок ячеек другой');
+    assert.doesNotMatch(html, /flex-direction:column;gap:12px;height:100%/u, 'правая колонка снова обёрткой на высоту формы');
+    assert.match(html.slice(steps, ask), /Что будет после отправки/u);
+    assert.match(html.slice(ask), /Что прислать для сметы[\s\S]*<div class="bp-asklist"[\s\S]*askFor/u);
+  });
+
+  it('стили: полоса на всю ширину, изображение слева от 769 px, пункты в две колонки от 1025 px', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      for (const rule of [
+        '.bp-reqask{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr)}',
+        '@media (min-width:769px){.bp-reqask{grid-template-columns:240px minmax(0,1fr)}',
+        '@media (min-width:1025px){.bp-asklist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px!important}}',
+      ]) assert.ok(source.includes(rule), `${where}: нет правила «${rule.slice(0, 40)}…»`);
+    }
+  });
+
+  it('форма прежняя: поля, их порядок и согласия не менялись', () => {
+    const html = block(design('BusinessPage'));
+    const form = html.slice(html.indexOf('<form '), html.indexOf('</form>'));
+    const fields = [...form.matchAll(/<(input|select|textarea)\b[^>]*\bid="([^"]+)"/gu)].map((m) => m[2]);
+    assert.ok(fields.length >= 5, `полей формы ${fields.length}`);
+    assert.match(form, /согласие на обработку персональных данных/u);
+  });
+});
+
 describe('Р-834: шесть карточек условий на «Компаниям» одной высоты', () => {
   // Владелец 07.11.2026: «все блоки сделать одинакового размера». Общая
   // высота закрытых карточек — по самой высокой, от 769 px; раскрытие растит
