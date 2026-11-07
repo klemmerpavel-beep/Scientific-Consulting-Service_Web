@@ -1566,6 +1566,25 @@ export function TableScroll({
   );
 }
 
+/**
+ * Числа графика текстом — только для читалки.
+ *
+ * График объявлен картинкой, и читалка получает от него одно название,
+ * поэтому значения стоят рядом таблицей (правило Р-176). Глазу таблица
+ * повторяла график: владелец 28.10.2026 — «графиков достаточно всегда,
+ * дублировать не нужно» (решение Р-828). Свёртка «Числа» снята, таблица
+ * убрана с глаз тем же приёмом, что подпись поля (`VISUALLY_HIDDEN`), и
+ * осталась в дереве под именем группы. Фокуса у неё нет: невидимая
+ * прокручиваемая область забирала бы Tab.
+ */
+export function ChartNumbers({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div role="group" aria-label={label} data-chart-numbers="" style={VISUALLY_HIDDEN}>
+      {children}
+    </div>
+  );
+}
+
 export function Empty({
   title,
   children,

@@ -70,10 +70,24 @@ function bareFoldTables(text: string): number[] {
 }
 
 describe('Р-688. таблица в свёртке прокручивается в своей области', () => {
-  it('«Числа» графика аналитики стоят в TableScroll', () => {
+  it('числа графика аналитики — таблица для читалки без свёртки (Р-176, Р-828)', () => {
+    // Р-828: свёртки «Числа» под графиками сняты — таблица осталась в дереве
+    // для читалки и убрана с глаз; прокручивать невидимую область незачем.
     const card = code(component(read(SCREENS, 'manage', 'analytics', 'shared.tsx'), 'ChartCard'));
-    const fold = card.slice(card.indexOf('<Disclosure title="Числа"'));
-    assert.match(fold, /<Disclosure title="Числа"[^>]*>\s*<TableScroll\b[^>]*>\s*\{numbers\}\s*<\/TableScroll>/u);
+    assert.match(card, /<ChartNumbers label=\{`\$\{title\}: числа`\}>\{numbers\}<\/ChartNumbers>/u);
+    assert.doesNotMatch(card, /<Disclosure title="Числа"/u);
+  });
+
+  it('Р-828: свёрток «Числа» в кабинете нет, числа графиков — ChartNumbers', () => {
+    const files = [...sources(SCREENS), ...sources(COMPONENTS)];
+    const folds = files.filter((file) => code(read(file)).includes('<Disclosure title="Числа"'));
+    assert.deepEqual(folds.map((file) => path.relative(SRC, file)), []);
+    const ui = code(read(COMPONENTS, 'ui.tsx'));
+    const chart = ui.slice(ui.indexOf('export function ChartNumbers'));
+    assert.match(chart.slice(0, 400), /<div role="group" aria-label=\{label\} data-chart-numbers="" style=\{VISUALLY_HIDDEN\}>/u, 'числа не убраны с глаз или без имени группы');
+    assert.doesNotMatch(chart.slice(0, 400), /tabIndex/u, 'у невидимой области есть фокус');
+    const uses = files.reduce((n, file) => n + (code(read(file)).match(/<ChartNumbers\b/gu) ?? []).length, 0);
+    assert.ok(uses >= 6, `ChartNumbers стоит в ${uses} местах — числа графиков потерялись`);
   });
 
   it('ни одна таблица кабинета не стоит в свёртке голой', () => {

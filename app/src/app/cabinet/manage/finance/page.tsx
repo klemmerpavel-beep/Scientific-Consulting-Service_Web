@@ -11,7 +11,7 @@ import {
 } from '../../../../components/cabinet/Charts';
 import {
   Card,
-  Disclosure,
+  ChartNumbers,
   Heading,
   Mono,
   ScreenHead,
@@ -26,7 +26,6 @@ import {
   TABLE_NUM,
   TABLE_NUM_HEAD,
   TableCard,
-  TableScroll,
   plural,
   Pager,
 } from '../../../../components/cabinet/ui';
@@ -198,8 +197,7 @@ export default async function FinanceScreen({
                 Полученное по работам, начатым в месяце, — когда бы оно ни пришло; это не
                 поступления месяца. Последние двенадцать месяцев, включая текущий.
               </Text>
-              <Disclosure title="Числа" style={{ marginTop: 12 }}>
-                <TableScroll label="Оплаты по месяцу начала работы: числа">
+              <ChartNumbers label="Оплаты по месяцу начала работы: числа">
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
@@ -218,8 +216,7 @@ export default async function FinanceScreen({
                     ))}
                   </tbody>
                 </table>
-                </TableScroll>
-              </Disclosure>
+                </ChartNumbers>
             </>
           )}
         </Card>

@@ -13,7 +13,7 @@ import {
   ButtonLink,
   Card,
   Chip,
-  Disclosure,
+  ChartNumbers,
   Heading,
   Mono,
   Notice,
@@ -22,7 +22,6 @@ import {
   TABLE_CELL,
   TABLE_HEAD,
   TABLE_NUM,
-  TableScroll,
   Tabs,
   Text,
   Tile,
@@ -1213,8 +1212,7 @@ export default async function ManageQueue({
               получает от него одно название (правило Р-176). */}
           <div style={{ marginTop: 'auto' }} />
           {load.points.length === 0 ? null : (
-            <Disclosure title="Числа" style={{ marginTop: 12 }}>
-              <TableScroll label="Чем занята практика: числа">
+            <ChartNumbers label="Чем занята практика: числа">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
@@ -1240,8 +1238,7 @@ export default async function ManageQueue({
                       ))}
                 </tbody>
               </table>
-              </TableScroll>
-            </Disclosure>
+              </ChartNumbers>
           )}
         </Card>
       </>
@@ -1313,8 +1310,7 @@ export default async function ManageQueue({
           )}
           <div style={{ marginTop: 'auto' }} />
           {yearOrders === 0 ? null : (
-            <Disclosure title="Числа" style={{ marginTop: 12 }}>
-              <TableScroll label="Заказы по месяцам: числа">
+            <ChartNumbers label="Заказы по месяцам: числа">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
@@ -1331,8 +1327,7 @@ export default async function ManageQueue({
                   ))}
                 </tbody>
               </table>
-              </TableScroll>
-            </Disclosure>
+              </ChartNumbers>
           )}
         </Card>
       </>
@@ -1377,8 +1372,7 @@ export default async function ManageQueue({
                 ))}
               </dl>
               <div style={{ marginTop: 'auto' }} />
-              <Disclosure title="Числа" style={{ marginTop: 12 }}>
-                <TableScroll label="Что заказывают: числа">
+              <ChartNumbers label="Что заказывают: числа">
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
@@ -1399,8 +1393,7 @@ export default async function ManageQueue({
                     ))}
                   </tbody>
                 </table>
-                </TableScroll>
-              </Disclosure>
+                </ChartNumbers>
             </>
           )}
         </Card>
@@ -1554,8 +1547,7 @@ export default async function ManageQueue({
                 Суммы — в рублях; остаток по работам — на экране денег,
                 просроченные платежи — в «Должниках» по ссылке у числа (РК-10,
                 Р-345). */}
-            <Disclosure title="Числа" style={{ marginTop: 12 }}>
-              <TableScroll label="Деньги: числа">
+            <ChartNumbers label="Деньги: числа">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
@@ -1572,8 +1564,7 @@ export default async function ManageQueue({
                   ))}
                 </tbody>
               </table>
-              </TableScroll>
-            </Disclosure>
+              </ChartNumbers>
             <div style={{ marginTop: 'auto', paddingTop: 12 }}>
               <ButtonLink href="/cabinet/manage/finance">Деньги и расчёты</ButtonLink>
             </div>
