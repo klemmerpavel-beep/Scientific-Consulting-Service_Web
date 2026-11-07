@@ -84,6 +84,8 @@
 .bp-reqbody{padding:16px 20px 18px}
 @media (min-width:769px){.bp-reqask{grid-template-columns:240px minmax(0,1fr)}.bp-reqart{height:auto;min-height:160px;border-bottom:0;border-right:1px solid var(--pd-divider)}.bp-reqbody{padding:20px 24px}}
 @media (min-width:1025px){.bp-asklist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px!important}}
+/* Шаги «Что будет после отправки» в колонке у формы (Р-835): от 769 px шкала занимает остаток карточки, лишняя высота делится между промежутками шагов — линия связи тянется до следующего узла, под последним шагом пустоты нет. */
+@media (min-width:769px){.bp-reqsteps .pd-track-v{flex:1 1 auto}.bp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}
 /* Шкала шагов «Что будет после отправки» (Р-800) — один компонент на «Студентам» и «Компаниям». Шаги — последовательность, поэтому с номерами: узлы 28 px на общей линии 2 px --pd-edge-neutral, разделителей под шагами нет. Горизонтальная: узел над текстом, линия от узла к узлу соседней колонки (промежуток колонок 24 px), колонки ряда одной высоты. Вертикальная (.pd-track-v): узел слева, линия вниз к следующему узлу. Последний шаг ряда линии не ведёт. */
 .pd-track{list-style:none;margin:0;padding:0;gap:28px 24px}
 .pd-track>li{position:relative;min-width:0;display:flex;flex-direction:column;gap:14px}

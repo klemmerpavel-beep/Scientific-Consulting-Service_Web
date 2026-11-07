@@ -324,6 +324,7 @@ describe('Р-835: блок заявки «Компаниям» без пусто
         '.bp-reqask{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr)}',
         '@media (min-width:769px){.bp-reqask{grid-template-columns:240px minmax(0,1fr)}',
         '@media (min-width:1025px){.bp-asklist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px!important}}',
+        '@media (min-width:769px){.bp-reqsteps .pd-track-v{flex:1 1 auto}.bp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}',
       ]) assert.ok(source.includes(rule), `${where}: нет правила «${rule.slice(0, 40)}…»`);
     }
   });
