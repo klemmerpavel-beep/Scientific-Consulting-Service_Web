@@ -1,7 +1,7 @@
 /**
  * Шлифовка Р-796…Р-803 по проверке арт-директора 04.11.2026 (раскладка Р-803 —
  * по Р-814; снятые по
- * указанию владельца разделы — Р-807, Р-813): облик, который
+ * указанию владельца разделы — Р-807, Р-813, Р-824): облик, который
  * программные проверки страницы не ловят, а правка макета легко вернёт, —
  * тире в начале строки, разнобой номеров, «серп» кромки на скруглении,
  * таблица без имени, провалы в карточках, шкала, прыгающая под пальцем.
@@ -203,6 +203,39 @@ describe('Р-807: раздел «Стоимость» снят с «Аспира
     assert.doesNotMatch(css, /\.pd-cost[,{]/u, 'осталось правило .pd-cost');
     assert.doesNotMatch(css, /,\s*\}/u, 'правило со списком селекторов без объявлений');
     assert.ok(!both('MainPage')[1][1].includes('.pd-cost,'));
+  });
+});
+
+describe('Р-824: «План от даты защиты» снят с «Аспирантам»', () => {
+  // Р-804 и Р-811 строили раздел; по замечанию владельца 06.11.2026 («сложно
+  // говорить точно о сроках») раздел снят вместе со стилями, сценарием счёта
+  // сроков и состоянием. Этапы работы — в «Шести шагах» (#process).
+  it('раздела #defense-plan и ссылок на него нет ни на одной странице', () => {
+    for (const [where, source] of both('MainPage')) {
+      assert.doesNotMatch(source, /id="defense-plan"|mp-dp-title/u, `${where}: раздел остался`);
+      assert.doesNotMatch(source, />План от даты защиты</u, `${where}: метка раздела осталась`);
+      assert.doesNotMatch(source, /Сроки по Положению/u, `${where}: заголовок раздела остался`);
+    }
+    for (const page of ['MainPage', 'StartPage', 'StudentsPage', 'BusinessPage', 'ExpertsPage', 'NotFoundPage', 'ToolsPage']) {
+      assert.doesNotMatch(read('design', `${page}.dc.html`), /#defense-plan/u, `${page}: ссылка на #defense-plan`);
+    }
+  });
+
+  it('стилей, сценария и состояния раздела не осталось', () => {
+    for (const [where, source] of both('MainPage')) {
+      for (const name of ['pd-dp-', 'dpRules', 'dpPlan', 'dpSay', 'dpToday', 'dpNow', 'dpDate', 'dpKind', 'dpRows', 'dpPick']) {
+        assert.ok(!source.includes(name), `${where}: осталось «${name}»`);
+      }
+    }
+  });
+
+  it('за «Шестью шагами» сразу идёт «Как это выглядит внутри»', () => {
+    for (const [where, source] of both('MainPage')) {
+      const process = source.search(/<section\b[^>]*\bid="process"/u);
+      assert.ok(process > 0, `${where}: нет раздела #process`);
+      const next = source.slice(source.indexOf('</section>', process) + '</section>'.length).match(/<section\b[^>]*\bid="([a-z-]+)"/u)?.[1];
+      assert.equal(next, 'inside', `${where}: после #process — #${next}`);
+    }
   });
 });
 

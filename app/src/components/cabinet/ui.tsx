@@ -1464,6 +1464,11 @@ export function Tile({
         padding: '16px 20px 18px',
         borderTop: '1px solid var(--pd-divider)',
         borderLeft: '1px solid var(--pd-divider)',
+        // Плитка с мини-графиком — столбцом на всю высоту ряда, график
+        // прижат к низу: подписи изменения разной длины ставили графики
+        // «Пульса» на разную высоту (замечание владельца 23.10.2026,
+        // решение Р-829). Ячейки сетки и так тянутся на высоту ряда.
+        ...(chart === undefined ? {} : { display: 'flex', flexDirection: 'column' as const }),
       }}
     >
       <Mono>{label}</Mono>
@@ -1495,8 +1500,9 @@ export function Tile({
           {note}
         </Text>
       )}
-      {/* Мини-график под числом — у плиток «Пульса» (Р-585). */}
-      {chart ?? null}
+      {/* Мини-график под числом — у плиток «Пульса» (Р-585); у всех плиток
+          ряда — на одной линии по нижнему краю (Р-829). */}
+      {chart === undefined ? null : <div data-tile-chart="" style={{ marginTop: 'auto' }}>{chart}</div>}
       {/* Главная строка группы — у плиток «Разбора практики» (Р-586). */}
       {children ?? null}
     </div>
@@ -1561,6 +1567,25 @@ export function TableScroll({
 }) {
   return (
     <div role="region" aria-label={label} tabIndex={0} style={{ position: 'relative', overflowX: 'auto', ...style }}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Числа графика текстом — только для читалки.
+ *
+ * График объявлен картинкой, и читалка получает от него одно название,
+ * поэтому значения стоят рядом таблицей (правило Р-176). Глазу таблица
+ * повторяла график: владелец 28.10.2026 — «графиков достаточно всегда,
+ * дублировать не нужно» (решение Р-828). Свёртка «Числа» снята, таблица
+ * убрана с глаз тем же приёмом, что подпись поля (`VISUALLY_HIDDEN`), и
+ * осталась в дереве под именем группы. Фокуса у неё нет: невидимая
+ * прокручиваемая область забирала бы Tab.
+ */
+export function ChartNumbers({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div role="group" aria-label={label} data-chart-numbers="" style={VISUALLY_HIDDEN}>
       {children}
     </div>
   );

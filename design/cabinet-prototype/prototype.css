@@ -144,6 +144,12 @@ details[open].cab-block>summary{border-radius:13px 13px 0 0}
 .cab-slider-compact .cab-slider-track{grid-auto-columns:calc((100% - 32px) / 3)}
 @container (max-width:719px){.cab-slider-compact .cab-slider-track{grid-auto-columns:calc((100% - 16px) / 2)}}
 @container (max-width:419px){.cab-slider-compact .cab-slider-track{grid-auto-columns:100%}}
+/* Лента на всю высоту плашки (Р-830): лента занимает остаток плашки
+   между заголовком и кнопками, строка ленты растягивается на её высоту,
+   карточки — вслед за строкой. Ниже 960 px плашка по содержимому (Р-320),
+   и растягивать нечего. */
+.cab-slider-fill{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.cab-slider-fill .cab-slider-track{flex:1 1 auto}
 @media (prefers-reduced-motion:no-preference){.cab-slider-track{scroll-behavior:smooth}}
 /* Бесконечные движения — покачивание волны (3,2 с) и пульс заготовки
    (1,4 с) — сняты: в системе движется только появление и отклик на

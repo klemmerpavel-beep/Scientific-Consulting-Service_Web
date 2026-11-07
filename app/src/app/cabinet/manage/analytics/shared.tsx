@@ -6,14 +6,13 @@ import Shell from '../../../../components/cabinet/Shell';
 import { SANS } from '../../../../components/cabinet/tokens';
 import {
   Card,
-  Disclosure,
+  ChartNumbers,
   Heading,
   Mono,
   TABLE_CELL,
   TABLE_HEAD,
   LongTable,
   TABLE_NUM,
-  TableScroll,
   Text,
   Tile,
   Tiles,
@@ -95,7 +94,7 @@ export function ChartCard({
 }: {
   title: string;
   note?: string;
-  /** Те же значения текстом: таблица под свёрткой. */
+  /** Те же значения текстом: таблица для читалки, с глаз убрана (Р-828). */
   numbers?: ReactNode;
   children: ReactNode;
 }) {
@@ -111,12 +110,8 @@ export function ChartCard({
         </Text>
       )}
       {numbers === undefined ? null : (
-        <Disclosure title="Числа" style={{ marginTop: 16 }}>
-          {/* Тело свёртки не прокручивается, и таблица с шапками в одну
-              строку выходила за рамку на телефоне — прокрутка своя, с
-              фокусом и именем (решения Р-168, Р-688). */}
-          <TableScroll label={`${title}: числа`}>{numbers}</TableScroll>
-        </Disclosure>
+        // Числа графика — для читалки, глазу хватает графика (Р-176, Р-828).
+        <ChartNumbers label={`${title}: числа`}>{numbers}</ChartNumbers>
       )}
     </Card>
   );

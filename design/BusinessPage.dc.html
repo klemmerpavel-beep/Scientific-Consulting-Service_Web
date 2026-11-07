@@ -897,12 +897,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <sc-for list="{{ reviews }}" as="r" hint-placeholder-count="5">
 <article aria-hidden="{{ r.hidden }}" style="position:absolute;left:50%;top:8px;width:min(430px,84vw);height:236px;margin-left:calc(min(430px,84vw) / -2);box-sizing:border-box;display:flex;flex-direction:column;gap:14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:transform 420ms cubic-bezier(.2,0,.2,1),filter 420ms cubic-bezier(.2,0,.2,1),opacity 420ms cubic-bezier(.2,0,.2,1);transform:{{ r.tf }};filter:{{ r.fl }};opacity:{{ r.op }};z-index:{{ r.z }};pointer-events:{{ r.pe }}">
 <div style="display:flex;align-items:center;gap:12px">
-<!-- Фото автора отзыва — только присланное им самим с письменным согласием на публикацию (Р-590, Р-617); без фото — инициал. Сгенерированные и чужие лица не ставятся: читатель принял бы их за автора. -->
+<!-- Фото автора отзыва — только присланное им самим с письменным согласием на публикацию (Р-590, Р-617); без фото — заглушка-силуэт (Р-827). Сгенерированные и чужие лица не ставятся: читатель принял бы их за автора. -->
 <sc-if value="{{ r.hasPhoto }}" hint-placeholder-val="{{ false }}">
 <img src="{{ r.photo }}" alt="" aria-hidden="true" width="56" height="56" loading="lazy" decoding="async" style="display:block;width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint);object-fit:cover">
 </sc-if>
+<!-- Р-827: до присланного автором фото — нейтральная заглушка-силуэт в той же рамке, что и фото (замечание владельца 06.11.2026: «пока заглушками, чтобы не было пустых мест»); лицо не ставится — Р-590, Р-617. Загрузка не отложена: файл в 300 байт один на все карточки, и карточки за краем сцены не стоят пустыми. -->
 <sc-if value="{{ r.noPhoto }}" hint-placeholder-val="{{ true }}">
-<span aria-hidden="true" style="width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);display:flex;align-items:center;justify-content:center;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1;font-weight:600;color:var(--pd-accent)">{{ r.initial }}</span>
+<img src="./assets/reviews/placeholder.svg" alt="" aria-hidden="true" width="56" height="56" decoding="async" style="display:block;width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint)">
 </sc-if>
 <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
 <span style="font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink)">{{ r.role }}</span>
@@ -1323,7 +1324,7 @@ class Component extends DCLogic {
     // Фото автора (Р-590, Р-617): поле photo ставится, только если автор
     // сам прислал снимок и письменно согласился на его публикацию; рядом —
     // consent, дата согласия. Файл — 112×112 WebP в design/assets/reviews/
-    // и app/public/assets/reviews/. Без photo у карточки инициал имени.
+    // и app/public/assets/reviews/. Без photo у карточки заглушка-силуэт (Р-827).
     // Сгенерированные и чужие лица не ставятся.
     const REVIEWS = [
       // Отзывы, где речь об оценке и преподавателях, — студенческие: на «Компаниям» их нет (Р-605).
@@ -1349,7 +1350,6 @@ class Component extends DCLogic {
       const a = Math.abs(d);
       return {
         ...r,
-        initial: r.role.slice(0, 1),
         hasPhoto: Boolean(r.photo),
         noPhoto: !r.photo,
         // Смещение подобрано так, чтобы дальняя карточка заходила за край

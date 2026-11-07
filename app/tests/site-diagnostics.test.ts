@@ -112,3 +112,32 @@ describe('Р-809: «Диагностика» на «Аспирантам» — �
     }
   });
 });
+
+describe('Р-826: доработка «Диагностики» по замечанию владельца 06.11.2026', () => {
+  it('пара «точка остановки → что делает разбор» — одной строкой-карточкой, ячейка разбора без своей рамки', () => {
+    const li = SECTION.match(/<li class="([^"]+)">\s*<span[^>]*>\{\{ p\.num \}\}/u);
+    assert.ok(li, 'нет строки карты с номером');
+    assert.equal(li[1], 'pd-diag-row pd-diag-pair', 'строка карты — не карточка пары');
+    assert.match(SECTION, /<span class="pd-diag-fix">\s*<span aria-hidden="true"[^>]*mask:\{\{ linkMask \}\}[^>]*><\/span>\s*<span[^>]*>\{\{ p\.fix \}\}<\/span>/u, 'ячейка разбора без стрелки-акцента');
+    assert.doesNotMatch(SECTION, /min-height:38px;background:var\(--pd-ink-inverse\);border:1px solid var\(--pd-border\);border-radius:10px;padding:8px 12px/u, 'вернулась отдельная белая ячейка разбора');
+  });
+
+  it('переход к заявке — последней строкой карты на всю ширину, без пустого места справа', () => {
+    const cta = SECTION.match(/<a class="pd-lift pd-diag-cta" href="#request"([^>]*)>/u);
+    assert.ok(cta, 'нет строки-ссылки pd-diag-cta');
+    assert.doesNotMatch(cta[1]!, /align-self:flex-start|max-width/u, 'ссылка снова по ширине надписи');
+    assert.ok(SECTION.indexOf('pd-diag-cta') > SECTION.indexOf('</ol>'), 'ссылка не после перечня');
+  });
+
+  it('стили в макете и в компоненте: строка-карточка, линия ячейки разбора, ссылка-строка, телефон', () => {
+    for (const [where, source] of [['макет', MAIN], ['компонент', TSX]] as const) {
+      for (const rule of [
+        '.pd-diag-pair,.pd-diag-cta{box-sizing:border-box;min-height:44px;padding:8px 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px}',
+        '.pd-diag-fix{align-self:stretch;display:flex;align-items:center;gap:10px;min-width:0;padding-left:14px;border-left:1px solid var(--pd-divider)}',
+        '.pd-diag-cta{display:grid;grid-template-columns:28px minmax(0,1fr) 18px;column-gap:14px;align-items:center;',
+        '.pd-diag-fix{padding-left:0;border-left:0}',
+        '@media (max-width:480px){.pd-diag-map{padding:14px 12px 16px!important}',
+      ]) assert.ok(source.includes(rule), `${where}: нет правила «${rule.slice(0, 48)}…»`);
+    }
+  });
+});
