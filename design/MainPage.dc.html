@@ -61,9 +61,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-burger{display:none}
 .pd-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-/* «Диагностика» (Р-809): карта «точка остановки → что делает разбор» на всю ширину — строка сеткой «номер · точка остановки · ячейка разбора»; до 600 px ячейка разбора встаёт под точкой остановки, вторая метка шапки скрыта. Ниже «Итог разбора»: три результата и шкала плана рядом; до 1199 px результаты — в три колонки над шкалой, до 768 px — столбцом. */
+/* «Диагностика» (Р-809, доработка Р-826): карта «точка остановки → что делает разбор» на всю ширину — строка сеткой «номер · точка остановки · ячейка разбора»; пара — одной белой строкой-карточкой (.pd-diag-pair), ячейка разбора отделена тонкой линией; переход к заявке — последней строкой карты (.pd-diag-cta) на всю ширину; до 600 px ячейка разбора встаёт под точкой остановки без линии, вторая метка шапки скрыта. Ниже «Итог разбора»: три результата и шкала плана рядом; до 1199 px результаты — в три колонки над шкалой, до 768 px — столбцом. */
 .pd-diag-row{display:grid;grid-template-columns:28px minmax(0,.8fr) minmax(0,1fr);column-gap:14px;row-gap:6px;align-items:center}
-@media (max-width:600px){.pd-diag-row{grid-template-columns:28px minmax(0,1fr)}.pd-diag-row>:nth-child(3){grid-column:2}.pd-diag-head>:nth-child(3){display:none}}
+.pd-diag-pair,.pd-diag-cta{box-sizing:border-box;min-height:44px;padding:8px 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px}
+.pd-diag-fix{align-self:stretch;display:flex;align-items:center;gap:10px;min-width:0;padding-left:14px;border-left:1px solid var(--pd-divider)}
+.pd-diag-cta{display:grid;grid-template-columns:28px minmax(0,1fr) 18px;column-gap:14px;align-items:center;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)}
+@media (max-width:600px){.pd-diag-row{grid-template-columns:28px minmax(0,1fr)}.pd-diag-row>:nth-child(3){grid-column:2}.pd-diag-head>:nth-child(3){display:none}.pd-diag-fix{padding-left:0;border-left:0}.pd-diag-pair{padding-top:10px;padding-bottom:10px}}
+@media (max-width:480px){.pd-diag-map{padding:14px 12px 16px!important}.pd-diag-pair,.pd-diag-cta{padding-left:12px;padding-right:12px}.pd-diag-head{padding-left:13px!important;padding-right:13px!important}}
 .pd-diag-out{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)}
 .pd-diag-res{display:grid;grid-template-columns:minmax(0,1fr)}
 @media (max-width:1199px){.pd-diag-out{grid-template-columns:minmax(0,1fr)}.pd-diag-res{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -392,29 +396,29 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:60ch">Куратор читает текст и называет, что мешает выйти на предзащиту.</p>
 <!-- Р-809 (З-1): инфографика вместо перечня с абзацами и четырёх свойств — карта «где работа останавливается → что делает разбор» короткими метками (номер, точка остановки, ячейка разбора на белой подложке со стрелкой-акцентом), карточка-ссылка Р-791 — подвалом карты; ниже «Итог разбора»: три результата со значками на --pd-accent-tint и шкала плана — от 769 px по горизонтали, до 768 px вертикально. Тёмной панели и градиентов нет (Р-51, Р-608). -->
 <div class="pd-diag" style="display:flex;flex-direction:column;gap:16px;margin-top:26px">
-<div style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:14px;padding:18px 22px 20px;display:flex;flex-direction:column;min-width:0">
-<div class="pd-diag-row pd-diag-head" style="padding:0 0 10px">
+<div class="pd-diag-map" style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:14px;padding:18px 22px 20px;display:flex;flex-direction:column;min-width:0">
+<div class="pd-diag-row pd-diag-head" style="padding:0 15px 10px">
 <span aria-hidden="true"></span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Где работа обычно останавливается</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent);padding-left:13px">Что делает разбор</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent);padding-left:15px">Что делает разбор</span>
 </div>
 <ol class="pd-stalls" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
 <sc-for list="{{ stalls }}" as="p" hint-placeholder-count="6">
-<li class="pd-diag-row">
+<li class="pd-diag-row pd-diag-pair">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:21px;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ p.num }}</span>
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);min-width:0">{{ p.title }}</span>
-<span style="display:flex;align-items:flex-start;gap:8px;min-width:0;box-sizing:border-box;min-height:38px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;padding:8px 12px">
-<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;margin-top:3px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
+<span class="pd-diag-fix">
+<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
 <span style="font-size:14px;line-height:1.4;color:var(--pd-ink-secondary);min-width:0">{{ p.fix }}</span>
 </span>
 </li>
 </sc-for>
 </ol>
-<!-- Р-791: переход к заявке из карты точек остановки — симптом ведёт к действию; Р-809: подвал карты по ширине надписи, значок в колонке номеров. -->
-<a class="pd-lift" href="#request" style="align-self:flex-start;margin:14px 0 0 -10px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:12px 16px 12px 10px;display:grid;grid-template-columns:28px minmax(0,auto) 18px;gap:10px;align-items:center;min-height:44px;max-width:calc(100% + 10px);box-sizing:border-box;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<!-- Р-791: переход к заявке из карты точек остановки — симптом ведёт к действию; Р-826: последняя строка карты на всю ширину, значок в колонке номеров, стрелка у правого края — пустого места справа от кнопки нет. -->
+<a class="pd-lift pd-diag-cta" href="#request" style="margin-top:12px">
 <span aria-hidden="true" style="width:28px;height:28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;display:block;background:var(--pd-accent);-webkit-mask:{{ talkMask }};mask:{{ talkMask }}"></span></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разобрать, где остановилась ваша работа</span>
-<span aria-hidden="true" style="width:18px;height:18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разобрать, где остановилась ваша работа</span>
+<span aria-hidden="true" style="width:18px;height:18px;display:block;background:var(--pd-ink);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
 </a>
 </div>
 <div class="pd-diag-out" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 22px 20px;gap:16px 28px;align-items:center;min-width:0;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">

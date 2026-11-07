@@ -43,7 +43,8 @@ describe('переход к заявке у перечня симптомов', 
       const after = html.indexOf(c.after, from);
       assert.ok(after > from, 'нет перечня симптомов');
       const block = html.slice(after, html.indexOf(c.end, html.indexOf('</a>', after)) + c.end.length);
-      const link = block.match(/<a class="pd-lift" href="#request"[^>]*>([\s\S]*?)<\/a>/u);
+      // Класс pd-lift обязателен; рядом может стоять класс раскладки (Р-826: pd-diag-cta).
+      const link = block.match(/<a class="pd-lift(?: [a-z-]+)*" href="#request"[^>]*>([\s\S]*?)<\/a>/u);
       assert.ok(link, 'под перечнем нет карточки-ссылки на #request');
       assert.ok(link[1]!.replace(/<[^>]+>/gu, '').includes(c.label), `надпись ссылки — не «${c.label}»`);
       assert.match(html, /<section id="request"/u, 'на странице нет формы #request');
