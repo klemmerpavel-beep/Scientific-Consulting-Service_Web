@@ -133,6 +133,10 @@ const DASH_FIGURE_VALUE = {
   fontVariantNumeric: 'tabular-nums',
 } as const;
 
+/** Строки «где стоят работы» в карточке сотрудника «Команды» (Р-830). */
+const TEAM_POINT_LABEL = { fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-secondary)', lineHeight: 1.5 } as const;
+const TEAM_POINT_VALUE = { margin: 0, fontFamily: SANS, fontSize: 13, fontWeight: 600, lineHeight: 1.5, color: 'var(--pd-ink)', fontVariantNumeric: 'tabular-nums' } as const;
+
 /**
  * Запись в колонках «Ведутся сейчас» и «Заявки» — отдельной плашкой с
  * рамкой и тихим фоном, с промежутком до соседней. Прежде записи
@@ -1103,9 +1107,9 @@ export default async function ManageQueue({
                 В команде пока нет сотрудников.
               </Text>
             ) : (
-              <CardSlider label="Сотрудники практики" compact>
+              <CardSlider label="Сотрудники практики" compact fill>
                 {team.map((row) => (
-                  <Card as="article" link key={`${row.side}-${row.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '16px 18px' }}>
+                  <Card as="article" link key={`${row.side}-${row.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 18px' }}>
                     <div style={{ display: 'grid', gap: 6 }}>
                       {/* Ссылка растянута на плашку: нажимается плашка
                           целиком (решения Р-209, Р-253). Ведёт в «Работы» с
@@ -1133,11 +1137,23 @@ export default async function ManageQueue({
                         </div>
                       ))}
                     </dl>
-                    <Text muted size={13}>
-                      {row.points.length === 0
-                        ? 'Действующих работ нет.'
-                        : row.points.map((point) => `${point.label.toLowerCase()} ${point.count}`).join(' · ')}
-                    </Text>
+                    {/* Где стоят его работы — строками у нижнего края плашки:
+                        карточка тянется на высоту ленты (Р-830), и строка
+                        через точку оставляла под собой пустоту. */}
+                    {row.points.length === 0 ? (
+                      <Text muted size={13} style={{ marginTop: 'auto' }}>
+                        Действующих работ нет.
+                      </Text>
+                    ) : (
+                      <dl style={{ display: 'grid', gap: 4, margin: 'auto 0 0', paddingTop: 10, borderTop: '1px solid var(--pd-divider)' }}>
+                        {row.points.map((point) => (
+                          <div key={point.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+                            <dt style={TEAM_POINT_LABEL}>{point.label}</dt>
+                            <dd style={TEAM_POINT_VALUE}>{point.count}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
                   </Card>
                 ))}
               </CardSlider>

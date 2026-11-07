@@ -189,6 +189,32 @@ async function main() {
     update: { degree: 'к.т.н.', specialization: 'горные машины и оборудование' },
   });
 
+  // Тестовые сотрудники ленты «Команда» на «Сводке» (замечание владельца
+  // 28.10.2026, решение Р-830): с тремя людьми лента почти не листалась, и
+  // движение было не понять. Люди вымышленные, как все люди прототипа;
+  // работ у них нет — числа «Сводки», аналитики и денег не меняются.
+  const TEST_STAFF = [
+    ['manager-2', 'Лебедева Ольга Викторовна', 'MANAGER', null],
+    ['manager-3', 'Захаров Игорь Петрович', 'MANAGER', null],
+    ['curator-2', 'Морозова Анна Сергеевна', 'EXPERT', ['к.э.н.', 'экономика отраслевых рынков']],
+    ['curator-3', 'Кузнецов Алексей Николаевич', 'EXPERT', ['д.ф.-м.н.', 'математическое моделирование']],
+    ['curator-4', 'Павлова Елена Игоревна', 'EXPERT', ['к.п.н.', 'теория и методика профессионального образования']],
+    ['curator-5', 'Смирнов Денис Олегович', 'EXPERT', ['к.т.н.', 'системный анализ и обработка информации']],
+  ] as const;
+  for (const [login, fullName, role, regalia] of TEST_STAFF) {
+    const person = await prisma.user.upsert({
+      where: { email: `${login}@${DOMAIN}` },
+      create: { email: `${login}@${DOMAIN}`, fullName, role },
+      update: {},
+    });
+    if (regalia === null) continue;
+    await prisma.expertProfile.upsert({
+      where: { userId: person.id },
+      create: { userId: person.id, degree: regalia[0], specialization: regalia[1], ndaSignedAt: day(300) },
+      update: { degree: regalia[0], specialization: regalia[1], ndaSignedAt: day(300) },
+    });
+  }
+
   // ── Клиенты и проекты ───────────────────────────────────────────────────
   //
   // Двенадцать заказчиков, двадцать пять работ за два года: столько нужно,
