@@ -2,7 +2,7 @@ import { Fragment, type ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
-import { MONO, SANS } from '../../../components/cabinet/tokens';
+import { MONO, SANS, SERIF } from '../../../components/cabinet/tokens';
 import {
   ButtonLink,
   Button,
@@ -84,6 +84,8 @@ const FILTER_LABEL: Record<ProjectFilter, string> = {
 // документе «Рекламы» (Р-567). Над растянутой ссылкой плашки ссылки стоят
 // по-прежнему (Р-341, решение Р-679).
 const PERSON_LINK = { position: 'relative', zIndex: 1, padding: '14px 0' } as const;
+/** Вид работы в шапке карточки, когда у работы своё название (Р-831): облик третьей ступени заголовка, без уровня. */
+const WORK_TYPE_HEAD = { margin: 0, fontFamily: SERIF, fontSize: 17, fontWeight: 600, lineHeight: 1.4, letterSpacing: '-.012em', color: 'var(--pd-ink)' } as const;
 
 export default async function ProjectsScreen({
   searchParams,
@@ -826,19 +828,20 @@ export default async function ProjectsScreen({
                     человеку и сбивает при чтении плашки (замечание
                     заказчика, решение Р-189). В адресе страницы код
                     остаётся — он ключ маршрута. */}
-                {/* Тип не дублируется чипом, когда он же стоит заголовком
+                {/* Тип не дублируется, когда он же стоит заголовком
                     карточки: у всего, что перенесено из книги заказов, это
-                    одна и та же строка. */}
+                    одна и та же строка (шапка Р-831 ниже). */}
                 {/* Срок стоял в строке с чипом и при длинном типе
                     сопровождения переносился под него к правому краю —
                     у каждой плашки на своей высоте. Теперь он внизу, над
                     строкой фактов (решение Р-272). */}
-                {project.title === project.serviceType.name ? null : (
-                  <div style={{ display: 'flex', marginBottom: 8 }}>
-                    <Chip tone="accent">{project.serviceType.name}</Chip>
-                  </div>
-                )}
-
+                {/* Вид работы — шапкой карточки по центру, отделённой
+                    линией (замечание владельца 28.10.2026, решение Р-831):
+                    «Сопровождение диссертационного исследования» и другие
+                    виды стоят на одном месте у каждой плашки. Когда
+                    название работы совпадает с видом (всё, что перенесено
+                    из книги заказов), шапка и есть заголовок-ссылка; когда
+                    у работы своё название, оно стоит заголовком под шапкой. */}
                 {/* Заголовок ведёт внутрь: отдельная строка «Открыть работу»
                     под каждой плашкой стоила у эксперта восемьсот пикселей
                     и вела туда же. */}
@@ -846,15 +849,28 @@ export default async function ProjectsScreen({
                     блок «Требует внимания» появляется не всегда, и при его
                     отсутствии третий уровень оказывался сразу после
                     первого — пропуск, который ловит правило облика. */}
-                <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-                  <a
-                    href={`/cabinet/projects/${project.code}`}
-                    className="cab-stretch"
-                    style={{ color: 'var(--pd-ink)' }}
-                  >
-                    {project.title}
-                  </a>
-                </Heading>
+                <div data-work-type="" style={{ textAlign: 'center', padding: '0 0 10px', margin: '0 0 10px', borderBottom: '1px solid var(--pd-divider)' }}>
+                  {project.title === project.serviceType.name ? (
+                    <Heading level={2} size={3}>
+                      <a href={`/cabinet/projects/${project.code}`} className="cab-stretch" style={{ color: 'var(--pd-ink)' }}>
+                        {project.title}
+                      </a>
+                    </Heading>
+                  ) : (
+                    <p style={WORK_TYPE_HEAD}>{project.serviceType.name}</p>
+                  )}
+                </div>
+                {project.title === project.serviceType.name ? null : (
+                  <Heading level={2} size={3} style={{ marginBottom: 4 }}>
+                    <a
+                      href={`/cabinet/projects/${project.code}`}
+                      className="cab-stretch"
+                      style={{ color: 'var(--pd-ink)' }}
+                    >
+                      {project.title}
+                    </a>
+                  </Heading>
+                )}
 
                 {/* Короткое описание заказа: у перенесённых работ заголовок —
                     это тип сопровождения, и без темы карточки неразличимы. */}
