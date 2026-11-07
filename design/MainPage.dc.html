@@ -61,22 +61,15 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-burger{display:none}
 .pd-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-/* «Диагностика» (Р-809, доработка Р-826): карта «точка остановки → что делает разбор» на всю ширину — строка сеткой «номер · точка остановки · ячейка разбора»; пара — одной белой строкой-карточкой (.pd-diag-pair), ячейка разбора отделена тонкой линией; переход к заявке — последней строкой карты (.pd-diag-cta) на всю ширину; до 600 px ячейка разбора встаёт под точкой остановки без линии, вторая метка шапки скрыта. Ниже «Итог разбора»: три результата и шкала плана рядом; до 1199 px результаты — в три колонки над шкалой, до 768 px — столбцом. */
-.pd-diag-row{display:grid;grid-template-columns:28px minmax(0,.8fr) minmax(0,1fr);column-gap:14px;row-gap:6px;align-items:center}
-.pd-diag-pair,.pd-diag-cta{box-sizing:border-box;min-height:44px;padding:8px 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px}
-.pd-diag-fix{align-self:stretch;display:flex;align-items:center;gap:10px;min-width:0;padding-left:14px;border-left:1px solid var(--pd-divider)}
+/* «Диагностика» (Р-809, Р-826; по замечанию владельца 07.11.2026 — Р-836): одна карточка-инфографика: от 769 px две панели рядом — слева «где работа останавливается» на тихой подложке (четыре точки, под каждой — что делает разбор), справа «итог разбора»; стрелка-узел 44 px на границе панелей. До 768 px панели столбцом, стрелка повёрнута вниз на границе. Переход к заявке — строкой под карточкой (.pd-diag-cta). */
+.pd-flow{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr)}
+.pd-flow-in{padding:20px 40px 22px 22px;border-radius:13px 0 0 13px}
+.pd-flow-out{padding:20px 22px 22px 40px}
+.pd-flow-arrow{top:50%;right:-22px;transform:translateY(-50%)}
+@media (max-width:768px){.pd-flow{grid-template-columns:minmax(0,1fr)}.pd-flow-in{padding:18px 20px 30px;border-radius:13px 13px 0 0}.pd-flow-out{padding:30px 20px 20px}.pd-flow-arrow{top:auto;right:auto;left:50%;bottom:-22px;transform:translateX(-50%) rotate(90deg)}}
+.pd-diag-cta{box-sizing:border-box;min-height:44px;padding:8px 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px}
 .pd-diag-cta{display:grid;grid-template-columns:28px minmax(0,1fr) 18px;column-gap:14px;align-items:center;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)}
-@media (max-width:600px){.pd-diag-row{grid-template-columns:28px minmax(0,1fr)}.pd-diag-row>:nth-child(3){grid-column:2}.pd-diag-head>:nth-child(3){display:none}.pd-diag-fix{padding-left:0;border-left:0}.pd-diag-pair{padding-top:10px;padding-bottom:10px}}
-@media (max-width:480px){.pd-diag-map{padding:14px 12px 16px!important}.pd-diag-pair,.pd-diag-cta{padding-left:12px;padding-right:12px}.pd-diag-head{padding-left:13px!important;padding-right:13px!important}}
-.pd-diag-out{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)}
-.pd-diag-res{display:grid;grid-template-columns:minmax(0,1fr)}
-@media (max-width:1199px){.pd-diag-out{grid-template-columns:minmax(0,1fr)}.pd-diag-res{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:768px){.pd-diag-res{grid-template-columns:minmax(0,1fr)}}
-/* Шкала плана (Р-796, Р-809): этап под курсором — белая подложка на тихой панели. От 769 px — по горизонтали: шесть колонок без промежутка, узел над подписью, линия связи между центрами крайних узлов, пройденная часть растёт scaleX; до 768 px — вертикально, как в Р-796. */
-.pd-plan-step[aria-pressed="false"]:hover .pd-plan-row{background:var(--pd-ink-inverse)!important}
-@media (min-width:769px){.pd-plan-steps{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:0!important}.pd-plan-v{display:none!important}.pd-plan-h{display:block!important}.pd-plan-step{grid-template-columns:minmax(0,1fr)!important;justify-items:center;align-items:start!important;row-gap:6px!important}.pd-plan-row{flex-direction:column;justify-content:flex-start!important;gap:2px!important;width:100%;min-height:0!important;padding:6px 4px!important;text-align:center}.pd-plan-row>span:first-child{font-size:13px!important}}
-/* 481—768 px: шкала вертикальная и не шире 360 px — статус стоит рядом с названием этапа, а не у дальнего края (шлифовка Р-796). */
-@media (min-width:481px) and (max-width:768px){.pd-plan-steps{max-width:360px}}
+@media (max-width:480px){.pd-diag-cta{padding-left:12px;padding-right:12px}}
 .pd-usp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 /* «Что закреплено в договоре» (Р-810; строка «где это видно» снята по Р-825): карточка — подсетка из трёх строк ряда (заголовок, «что вы получаете», «как проверить до согласования Задания»), поэтому линии и подписи соседних карточек стоят на одной высоте. От 1101 px и на 561—768 px изображение 96 px — колонкой на высоту карточки; на 769—1100 px и до 560 px изображение рядом с заголовком, строки — на всю ширину под ними. До 768 px — одна колонка карточек: в две колонки длинные слова заголовков («терминологическая») не помещаются. */
 .pd-term{display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:0;grid-template-columns:96px minmax(0,1fr);column-gap:20px;min-width:0}
@@ -394,37 +387,25 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </div>
 <p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:60ch">Куратор читает текст и называет, что мешает выйти на предзащиту.</p>
-<!-- Р-809 (З-1): инфографика вместо перечня с абзацами и четырёх свойств — карта «где работа останавливается → что делает разбор» короткими метками (номер, точка остановки, ячейка разбора на белой подложке со стрелкой-акцентом), карточка-ссылка Р-791 — подвалом карты; ниже «Итог разбора»: три результата со значками на --pd-accent-tint и шкала плана — от 769 px по горизонтали, до 768 px вертикально. Тёмной панели и градиентов нет (Р-51, Р-608). -->
-<div class="pd-diag" style="display:flex;flex-direction:column;gap:16px;margin-top:26px">
-<div class="pd-diag-map" style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:14px;padding:18px 22px 20px;display:flex;flex-direction:column;min-width:0">
-<div class="pd-diag-row pd-diag-head" style="padding:0 15px 10px">
-<span aria-hidden="true"></span>
+<!-- Р-836 (замечание владельца 07.11.2026: «доработать наполнение, чтобы по высоте уменьшить на 30 %, только важное + инфографику добавить»): одна карточка-инфографика «где работа останавливается → итог разбора»: слева на тихой подложке четыре главные точки остановки, под каждой — что делает разбор; стрелка-узел на границе панелей; справа — три результата разбора. Шкала «Как это выглядит у вас» снята. Переход к заявке — строкой под карточкой (Р-791, Р-826). Тексты прежние, без тёмной панели и градиентов (Р-51, Р-608). -->
+<div class="pd-diag" style="display:flex;flex-direction:column;gap:12px;margin-top:22px">
+<div class="pd-flow" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:0">
+<div class="pd-flow-in" style="position:relative;background:var(--pd-surface-quiet);display:flex;flex-direction:column;gap:12px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Где работа обычно останавливается</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent);padding-left:15px">Что делает разбор</span>
-</div>
-<ol class="pd-stalls" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
-<sc-for list="{{ stalls }}" as="p" hint-placeholder-count="6">
-<li class="pd-diag-row pd-diag-pair">
+<ol class="pd-stalls" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ stalls }}" as="p" hint-placeholder-count="4">
+<li class="pd-flow-stall" style="display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:12px;row-gap:3px;align-items:baseline;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:21px;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ p.num }}</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);min-width:0">{{ p.title }}</span>
-<span class="pd-diag-fix">
-<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
-<span style="font-size:14px;line-height:1.4;color:var(--pd-ink-secondary);min-width:0">{{ p.fix }}</span>
-</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink);min-width:0">{{ p.title }}</span>
+<span style="grid-column:2;display:flex;align-items:center;gap:8px;min-width:0"><span aria-hidden="true" style="width:13px;height:13px;flex:0 0 13px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span><span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary);min-width:0">{{ p.fix }}</span></span>
 </li>
 </sc-for>
 </ol>
-<!-- Р-791: переход к заявке из карты точек остановки — симптом ведёт к действию; Р-826: последняя строка карты на всю ширину, значок в колонке номеров, стрелка у правого края — пустого места справа от кнопки нет. -->
-<a class="pd-lift pd-diag-cta" href="#request" style="margin-top:12px">
-<span aria-hidden="true" style="width:28px;height:28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;display:block;background:var(--pd-accent);-webkit-mask:{{ talkMask }};mask:{{ talkMask }}"></span></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разобрать, где остановилась ваша работа</span>
-<span aria-hidden="true" style="width:18px;height:18px;display:block;background:var(--pd-ink);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
-</a>
+<span class="pd-flow-arrow" aria-hidden="true" style="position:absolute;z-index:1;width:44px;height:44px;box-sizing:border-box;border-radius:50%;background:var(--pd-ink-inverse);border:1px solid var(--pd-accent-edge);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(20,22,28,.05)"><span style="width:18px;height:18px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span></span>
 </div>
-<div class="pd-diag-out" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 22px 20px;gap:16px 28px;align-items:center;min-width:0;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<div style="display:flex;flex-direction:column;gap:12px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Итог разбора</span>
-<ul class="pd-diag-res" style="list-style:none;margin:0;padding:0;gap:14px 24px">
+<div class="pd-flow-out" style="display:flex;flex-direction:column;gap:12px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Итог разбора</span>
+<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px">
 <sc-for list="{{ outcomes }}" as="o" hint-placeholder-count="3">
 <li style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;align-items:center;min-width:0">
 <span aria-hidden="true" style="width:36px;height:36px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:18px;height:18px;display:block;background:var(--pd-accent);-webkit-mask:{{ o.mask }};mask:{{ o.mask }}"></span></span>
@@ -436,25 +417,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-for>
 </ul>
 </div>
-<div style="background:var(--pd-surface-quiet);border-radius:10px;padding:14px 16px 12px;display:flex;flex-direction:column;gap:10px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Как это выглядит у вас</span>
-<div role="group" aria-label="Ход работы по этапам" class="pd-plan-steps" style="position:relative;display:flex;flex-direction:column;gap:4px">
-<span aria-hidden="true" class="pd-plan-v" style="position:absolute;left:13px;top:22px;bottom:22px;width:2px;border-radius:999px;background:var(--pd-border)"></span>
-<span aria-hidden="true" class="pd-plan-v" style="position:absolute;left:13px;top:22px;bottom:22px;width:2px;border-radius:999px;background:var(--pd-accent);transform-origin:center top;transform:{{ planLine }};transition:transform 220ms cubic-bezier(.2,0,.2,1)"></span>
-<span aria-hidden="true" class="pd-plan-h" style="display:none;position:absolute;top:13px;left:calc(100% / 12);right:calc(100% / 12);height:2px;border-radius:999px;background:var(--pd-border)"></span>
-<span aria-hidden="true" class="pd-plan-h" style="display:none;position:absolute;top:13px;left:calc(100% / 12);right:calc(100% / 12);height:2px;border-radius:999px;background:var(--pd-accent);transform-origin:left center;transform:{{ planLineX }};transition:transform 220ms cubic-bezier(.2,0,.2,1)"></span>
-<sc-for list="{{ track }}" as="t" hint-placeholder-count="6">
-<button type="button" class="pd-plan-step" aria-pressed="{{ t.selected }}" onClick="{{ t.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;padding:0;margin:0;width:100%;text-align:left;position:relative;display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:center;min-height:44px;border-radius:10px;transition:transform 180ms cubic-bezier(.2,0,.2,1)" style-active="transform:translateY(1px)">
-<span style="position:relative;z-index:1;width:28px;height:28px;box-sizing:border-box;border-radius:50%;border:2px solid {{ t.ring }};background:{{ t.node }};display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1;font-weight:600;color:{{ t.numColor }};font-variant-numeric:tabular-nums">{{ t.num }}</span>
-<span class="pd-plan-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;box-sizing:border-box;padding:10px 14px;border-radius:10px;background:{{ t.row }};transition:background 180ms cubic-bezier(.2,0,.2,1)">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:{{ t.titleColor }};white-space:nowrap">{{ t.title }}</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;font-weight:{{ t.weight }};color:{{ t.color }};white-space:nowrap">{{ t.status }}</span>
-</span>
-</button>
-</sc-for>
 </div>
-</div>
-</div>
+<!-- Р-791: переход к заявке из карты точек остановки — симптом ведёт к действию; Р-826, Р-836: строка на всю ширину под инфографикой, значок в колонке номеров, стрелка у правого края — пустого места справа от кнопки нет. -->
+<a class="pd-lift pd-diag-cta" href="#request">
+<span aria-hidden="true" style="width:28px;height:28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;display:block;background:var(--pd-accent);-webkit-mask:{{ talkMask }};mask:{{ talkMask }}"></span></span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разобрать, где остановилась ваша работа</span>
+<span aria-hidden="true" style="width:18px;height:18px;display:block;background:var(--pd-ink);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
+</a>
 </div>
 </section>
 
@@ -926,7 +895,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, trackAt: 1, navOpen: false };
+  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, navOpen: false };
   componentDidMount(){
     // Всплывающее окно закрывается клавишей Esc — иначе с клавиатуры
     // из него не выйти, а закрывающая кнопка может быть прокручена.
@@ -1037,37 +1006,15 @@ class Component extends DCLogic {
     // остановки — прежним заголовком пункта (04 и 06 короче), без абзаца;
     // справа — что делает разбор, короткой меткой. Без оценок и эмоций: посетитель узнаёт свою
     // ситуацию по признаку, а не по настроению.
+    // Четыре главные точки остановки (Р-836): «У глав нет дат» и «Доклад —
+    // за неделю до заседания» сняты — их закрывают «План с датами» в итоге
+    // разбора и «Подготовка к защите» в «Шести шагах».
     const stalls = [
       ['Положения на защиту не сходятся с главами', 'Сверяет введение с главами'],
       ['Замечания руководителя приходят частями', 'Отделяет правки, нужные до предзащиты'],
-      ['У глав нет дат', 'Ставит главам даты'],
       ['Требования совета — в последний месяц', 'Проверяет оформление по ГОСТ'],
-      ['Публикаций не хватает для допуска', 'Вносит статьи и апробацию в план'],
-      ['Доклад — за неделю до заседания', 'Закладывает репетицию доклада']
+      ['Публикаций не хватает для допуска', 'Вносит статьи и апробацию в план']
     ].map(([title, fix], i) => ({ title, fix, num: '0' + (i + 1) }));
-    // План с датами (Р-796, Р-809) — шкала всех шести этапов, от 769 px по
-    // горизонтали, до 768 px вертикально: пройденные
-    // залиты акцентом, текущий выделен подложкой, впереди — приглушены.
-    // Нажатие на этап делает его текущим; линия связи растёт до него
-    // (scaleY по вертикали, scaleX по горизонтали).
-    const trackAt = this.state.trackAt;
-    const trackTitles = ['1 глава', '2 глава', '3 глава', 'Апробация', 'Предзащита', 'Защита'];
-    const track = trackTitles.map((title, i) => ({
-      title,
-      num: '0' + (i + 1),
-      selected: i === trackAt ? 'true' : 'false',
-      node: i < trackAt ? 'var(--pd-accent)' : 'var(--pd-ink-inverse)',
-      ring: i <= trackAt ? 'var(--pd-accent)' : 'var(--pd-border)',
-      numColor: i < trackAt ? 'var(--pd-ink-inverse)' : (i === trackAt ? 'var(--pd-accent)' : 'var(--pd-ink-muted)'),
-      row: i === trackAt ? 'var(--pd-accent-tint)' : 'transparent',
-      titleColor: i <= trackAt ? 'var(--pd-ink)' : 'var(--pd-ink-muted)',
-      color: i < trackAt ? 'var(--pd-accent)' : (i === trackAt ? 'var(--pd-ink)' : 'var(--pd-ink-muted)'),
-      weight: i === trackAt ? '600' : '400',
-      status: i < trackAt ? 'Одобрено' : (i === trackAt ? 'В работе' : 'Впереди'),
-      pick: () => this.setState({ trackAt: i })
-    }));
-    const planLine = 'scaleY(' + (trackAt / (trackTitles.length - 1)) + ')';
-    const planLineX = 'scaleX(' + (trackAt / (trackTitles.length - 1)) + ')';
     // «Что закреплено в договоре» (Р-810): что вы получаете → как проверить до
     // подписания → где это видно. Тексты — прежние формулировки карточек
     // (текст и подтверждение) и страницы: профиль куратора — в кабинете
@@ -1252,7 +1199,7 @@ class Component extends DCLogic {
       reviews, revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
       revPrev: () => this.setState(s => ({ revAt: (s.revAt - 1 + revN) % revN })),
       revNext: () => this.setState(s => ({ revAt: (s.revAt + 1) % revN })),
-      steps, faq, stalls, track, planLine, planLineX, usp, outcomes, offerTop, offerMid, offerRest, pubRows, articleCard, stepScale,
+      steps, faq, stalls, usp, outcomes, offerTop, offerMid, offerRest, pubRows, articleCard, stepScale,
       contactTabs: ['E-mail', 'Телефон'].map((label, i) => ({
         label, active: i === this.state.contact, inactive: i !== this.state.contact,
         pick: () => this.setState({ contact: i })

@@ -44,8 +44,8 @@ describe('Р-809: «Диагностика» на «Аспирантам» — �
   const stalls = rows('stalls');
   const outcomes = rows('outcomes');
 
-  it('карта: шесть точек остановки, у каждой — что делает разбор, короткими метками без абзацев', () => {
-    assert.equal(stalls.length, 6, 'точек остановки не шесть');
+  it('карта: четыре главные точки остановки (Р-836), у каждой — что делает разбор, короткими метками без абзацев', () => {
+    assert.equal(stalls.length, 4, 'точек остановки не четыре');
     for (const [title, fix, extra] of stalls) {
       assert.equal(extra, undefined, `у точки «${title}» больше двух полей — абзац вернулся`);
       assert.ok(title && title.length <= 46, `точка остановки длиннее метки: «${title}»`);
@@ -56,7 +56,7 @@ describe('Р-809: «Диагностика» на «Аспирантам» — �
     assert.ok(volume <= 380, `карта — ${volume} знаков, метки разрослись (было 690 у перечня с абзацами)`);
     assert.match(SECTION, /\{\{ p\.title \}\}[\s\S]*\{\{ p\.fix \}\}/u, 'строка карты без ячейки разбора');
     assert.doesNotMatch(SECTION, /\{\{ p\.text \}\}/u, 'в строке карты снова абзац');
-    for (const label of ['Где работа обычно останавливается', 'Что делает разбор']) {
+    for (const label of ['Где работа обычно останавливается', 'Итог разбора']) {
       assert.ok(templateText.includes(label), `нет метки «${label}»`);
     }
   });
@@ -85,15 +85,11 @@ describe('Р-809: «Диагностика» на «Аспирантам» — �
     assert.doesNotMatch(SECTION, /--pd-accent-deep|gradient/u);
   });
 
-  it('шкала плана: от 769 px по горизонтали (scaleX), до 768 px вертикально (scaleY)', () => {
+  it('шкалы плана «Как это выглядит у вас» нет (Р-836)', () => {
     for (const [where, source] of [['макет', MAIN], ['компонент', TSX]] as const) {
-      assert.ok(source.includes('@media (min-width:769px){.pd-plan-steps{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:0!important}.pd-plan-v{display:none!important}.pd-plan-h{display:block!important}'), `${where}: нет горизонтальной шкалы от 769 px`);
+      const code = source.replace(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}|\/\*[\s\S]*?\*\//gu, '');
+      assert.doesNotMatch(code, /pd-plan-|trackAt|planLine|Как это выглядит у вас/u, `${where}: осталась шкала плана`);
     }
-    assert.equal((SECTION.match(/class="pd-plan-h"/gu) ?? []).length, 2, 'у горизонтальной шкалы нет линии связи и пройденной части');
-    assert.equal((SECTION.match(/class="pd-plan-v"/gu) ?? []).length, 2, 'у вертикальной шкалы нет линии связи и пройденной части');
-    assert.match(SECTION, /transform:\{\{ planLineX \}\}/u);
-    assert.match(MAIN, /const planLineX = 'scaleX\(' \+ \(trackAt \/ \(trackTitles\.length - 1\)\) \+ '\)';/u);
-    assert.match(SECTION, /<button type="button" class="pd-plan-step" aria-pressed="\{\{ t\.selected \}\}"/u, 'этап шкалы — не кнопка с aria-pressed');
   });
 
   it('объём раздела — около половины прежнего', () => {
@@ -113,30 +109,31 @@ describe('Р-809: «Диагностика» на «Аспирантам» — �
   });
 });
 
-describe('Р-826: доработка «Диагностики» по замечанию владельца 06.11.2026', () => {
-  it('пара «точка остановки → что делает разбор» — одной строкой-карточкой, ячейка разбора без своей рамки', () => {
-    const li = SECTION.match(/<li class="([^"]+)">\s*<span[^>]*>\{\{ p\.num \}\}/u);
-    assert.ok(li, 'нет строки карты с номером');
-    assert.equal(li[1], 'pd-diag-row pd-diag-pair', 'строка карты — не карточка пары');
-    assert.match(SECTION, /<span class="pd-diag-fix">\s*<span aria-hidden="true"[^>]*mask:\{\{ linkMask \}\}[^>]*><\/span>\s*<span[^>]*>\{\{ p\.fix \}\}<\/span>/u, 'ячейка разбора без стрелки-акцента');
-    assert.doesNotMatch(SECTION, /min-height:38px;background:var\(--pd-ink-inverse\);border:1px solid var\(--pd-border\);border-radius:10px;padding:8px 12px/u, 'вернулась отдельная белая ячейка разбора');
+describe('Р-836: «Диагностика» — инфографика «где работа останавливается → итог разбора»', () => {
+  // Владелец 07.11.2026: «уменьшить по высоте на 30 %, только важное +
+  // инфографику добавить». Одна карточка с двумя панелями и стрелкой-узлом.
+  it('карточка-инфографика: слева точки остановки со стрелкой-узлом, справа «Итог разбора»', () => {
+    const left = SECTION.slice(SECTION.indexOf('<div class="pd-flow-in"'), SECTION.indexOf('<div class="pd-flow-out"'));
+    const right = SECTION.slice(SECTION.indexOf('<div class="pd-flow-out"'), SECTION.indexOf('<!-- Р-791'));
+    assert.ok(left.length > 0 && right.length > 0, 'нет двух панелей инфографики');
+    assert.match(left, /Где работа обычно останавливается[\s\S]*\{\{ p\.title \}\}[\s\S]*\{\{ p\.fix \}\}[\s\S]*class="pd-flow-arrow" aria-hidden="true"/u);
+    assert.match(right, /Итог разбора[\s\S]*\{\{ o\.title \}\}[\s\S]*\{\{ o\.text \}\}/u);
+    assert.doesNotMatch(SECTION, /pd-diag-(?:map|row|pair|fix|head|out|res)\b/u, 'осталась прежняя карта строк-пар');
   });
 
-  it('переход к заявке — последней строкой карты на всю ширину, без пустого места справа', () => {
-    const cta = SECTION.match(/<a class="pd-lift pd-diag-cta" href="#request"([^>]*)>/u);
-    assert.ok(cta, 'нет строки-ссылки pd-diag-cta');
-    assert.doesNotMatch(cta[1]!, /align-self:flex-start|max-width/u, 'ссылка снова по ширине надписи');
-    assert.ok(SECTION.indexOf('pd-diag-cta') > SECTION.indexOf('</ol>'), 'ссылка не после перечня');
+  it('переход к заявке — строкой под карточкой, на всю ширину', () => {
+    const cta = SECTION.indexOf('<a class="pd-lift pd-diag-cta" href="#request">');
+    assert.ok(cta > SECTION.indexOf('<div class="pd-flow-out"'), 'ссылка не под инфографикой');
   });
 
-  it('стили в макете и в компоненте: строка-карточка, линия ячейки разбора, ссылка-строка, телефон', () => {
+  it('стили в макете и в компоненте: две панели от 769 px, столбец до 768 px, стрелка на границе', () => {
     for (const [where, source] of [['макет', MAIN], ['компонент', TSX]] as const) {
       for (const rule of [
-        '.pd-diag-pair,.pd-diag-cta{box-sizing:border-box;min-height:44px;padding:8px 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px}',
-        '.pd-diag-fix{align-self:stretch;display:flex;align-items:center;gap:10px;min-width:0;padding-left:14px;border-left:1px solid var(--pd-divider)}',
-        '.pd-diag-cta{display:grid;grid-template-columns:28px minmax(0,1fr) 18px;column-gap:14px;align-items:center;',
-        '.pd-diag-fix{padding-left:0;border-left:0}',
-        '@media (max-width:480px){.pd-diag-map{padding:14px 12px 16px!important}',
+        '.pd-flow{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr)}',
+        '.pd-flow-arrow{top:50%;right:-22px;transform:translateY(-50%)}',
+        '@media (max-width:768px){.pd-flow{grid-template-columns:minmax(0,1fr)}',
+        'transform:translateX(-50%) rotate(90deg)',
+        '.pd-diag-cta{box-sizing:border-box;min-height:44px;padding:8px 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px}',
       ]) assert.ok(source.includes(rule), `${where}: нет правила «${rule.slice(0, 48)}…»`);
     }
   });

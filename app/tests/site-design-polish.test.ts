@@ -115,8 +115,9 @@ describe('Р-796: «Диагностика» на «Аспирантам»', () 
     for (const [where, source] of both('MainPage')) {
       assert.doesNotMatch(data(source, 'const stalls = ['), / —/u, `${where}: в перечне перед тире обычный пробел — тире уйдёт в начало строки`);
       // Абзац «…а главы — другую.» снят с картой «точка остановки → что делает
-      // разбор» (Р-809, указание владельца З-1): тире карты — в метках 04 и 06.
-      for (const phrase of [`Требования совета${NB}— в${NB}последний месяц`, `Доклад${NB}— за${NB}неделю`, `этапы${NB}— с приёмкой`, `ждут от вас,${NB}— на одной карточке. Рядом${NB}— переписка`]) {
+      // разбор» (Р-809, указание владельца З-1): тире карты — в метке «Требования
+      // совета»; метка «Доклад — за неделю…» снята с картой из шести точек (Р-836).
+      for (const phrase of [`Требования совета${NB}— в${NB}последний месяц`, `этапы${NB}— с приёмкой`, `ждут от вас,${NB}— на одной карточке. Рядом${NB}— переписка`]) {
         assert.ok(source.includes(phrase), `${where}: нет неразрывного пробела в «${phrase.replace(/ /gu, '·')}»`);
       }
     }
@@ -136,11 +137,10 @@ describe('Р-796: «Диагностика» на «Аспирантам»', () 
     assert.match(tsx, /<span style=\{\{ fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", fontSize: "13px", lineHeight: "21px", fontWeight: "600", color: "var\(--pd-ink-muted\)", fontVariantNumeric: "tabular-nums" \}\}>\{p\.num\}<\/span>/u, 'перенос изменил номер перечня');
   });
 
-  it('шкала плана на 481—768 px — не шире 360 px: статус рядом с названием этапа', () => {
+  it('шкалы плана «Как это выглядит у вас» нет — снята с инфографикой Р-836', () => {
     for (const [where, source] of both('MainPage')) {
-      assert.ok(source.includes('@media (min-width:481px) and (max-width:768px){.pd-plan-steps{max-width:360px}}'), `${where}: нет ограничения ширины шкалы`);
+      assert.doesNotMatch(source, /pd-plan-|Ход работы по этапам|trackAt|planLine/u, `${where}: осталась шкала плана`);
     }
-    assert.match(design('MainPage'), /<div role="group" aria-label="Ход работы по этапам" class="pd-plan-steps"/u);
   });
 });
 
