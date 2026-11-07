@@ -187,13 +187,18 @@ describe('производственный контур (П5)', { skip: !enabled
       { timeout: 15_000 },
     );
     await started;
-    const racing = action();
+    // Исход действия собирается сразу при запуске. Ожидаемый отказ «Работа
+    // не в действии» приходит, как только приостановка зафиксирована, и
+    // под нагрузкой опережал продолжение после `await pause`: обработчик
+    // вешался позже отказа, Node считал его необработанным и ронял тест
+    // (unhandledRejection), хотя отказ и был проверяемым исходом.
+    const racing = Promise.allSettled([action()]);
     // Перевод этапа успевает дойти до записи, пока приостановка не
     // зафиксирована.
     await new Promise((resolve) => setTimeout(resolve, 600));
     release();
     await pause;
-    const [result] = await Promise.allSettled([racing]);
+    const [result] = await racing;
     return result!;
   }
 
