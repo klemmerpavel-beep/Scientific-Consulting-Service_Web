@@ -297,6 +297,32 @@ describe('Р-801: «Уровень готовности технологии» �
   });
 });
 
+describe('Р-834: шесть карточек условий на «Компаниям» одной высоты', () => {
+  // Владелец 07.11.2026: «все блоки сделать одинакового размера». Общая
+  // высота закрытых карточек — по самой высокой, от 769 px; раскрытие растит
+  // только свою карточку (сетка остаётся align-items: start, Р-802).
+  it('у карточки min-height из --bp-mech-h, подвал — нижняя строка, лишнее — в строку текста', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      assert.ok(source.includes('row-gap:8px;min-height:var(--bp-mech-h,auto)}'), `${where}: у карточки нет общей высоты`);
+      assert.ok(source.includes('grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "img text" "foot foot"'), `${where}: строка текста не забирает лишнюю высоту`);
+    }
+  });
+
+  it('fitMech: по самой высокой закрытой карточке, только от 769 px, после шрифтов и при смене ширины окна', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      const at = source.indexOf('this.fitMech = () => {');
+      assert.ok(at > 0, `${where}: нет расчёта общей высоты`);
+      const body = source.slice(at, source.indexOf('};', source.indexOf("grid.style.setProperty('--bp-mech-h'", at)));
+      assert.match(body, /grid\.style\.removeProperty\('--bp-mech-h'\);\s*if \(!window\.matchMedia\('\(min-width:769px\)'\)\.matches\) return;/u, `${where}: до 768 px общая высота не снимается`);
+      assert.match(body, /c\.offsetHeight - \(p \? p\.offsetHeight \+ 18 : 0\)/u, `${where}: раскрытое пояснение входит в общую высоту`);
+      assert.match(body, /Math\.max\(/u, `${where}: высота — не по самой высокой карточке`);
+      assert.match(source, /this\.onMechResize = \(\) => \{ if \(window\.innerWidth !== this\.mechWidth\) \{ this\.mechWidth = window\.innerWidth; this\.fitMech\(\); \} \};/u, `${where}: пересчёт не по смене ширины`);
+      assert.match(source, /document\.fonts\.ready\.then\(\(\) => this\.fitMech\(\)\)/u, `${where}: нет пересчёта после шрифтов`);
+      assert.match(source, /window\.removeEventListener\('resize', this\.onMechResize\)/u, `${where}: обработчик не снимается`);
+    }
+  });
+});
+
 describe('Р-802: «Условия, закреплённые договором и приёмкой» на «Компаниям»', () => {
   it('карточки по своей высоте — без провала над «Чем закреплено» и без сдвига соседки при раскрытии', () => {
     for (const [where, source] of both('BusinessPage')) {
@@ -308,7 +334,7 @@ describe('Р-802: «Условия, закреплённые договором 
 
   it('на 769—1100 px — изображение 64 px рядом с заголовком, текст на всю ширину', () => {
     for (const [where, source] of both('BusinessPage')) {
-      assert.ok(source.includes('@media (min-width:769px) and (max-width:1100px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";'), `${where}: нет раскладки 769—1100 px`);
+      assert.ok(source.includes('@media (min-width:769px) and (max-width:1100px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "text text" "foot foot";'), `${where}: нет раскладки 769—1100 px`);
     }
   });
 

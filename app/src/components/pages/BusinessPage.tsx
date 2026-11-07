@@ -47,16 +47,17 @@ const css = `
    она доходит до низа изображения, и подвал стоит сразу под более
    высоким из двух столбцов. На 769—1100 px и до 480 px изображение 64 px
    рядом с заголовком, текст на всю ширину под ними. */
-/* Шлифовка Р-802: карточки стоят по своей высоте (align-items: start) — между текстом и «Чем закреплено» провала нет ни на одной ширине, а раскрытие одной карточки не трогает соседнюю. На 769—1100 px колонка узкая для медиаобъекта 96 px: изображение 64 px рядом с заголовком, текст — на всю ширину карточки под ними, как до 480 px. */
+/* Р-834 (замечание владельца 07.11.2026: «все блоки сделать одинакового размера»): от 769 px все шесть карточек в закрытом виде одной высоты — по самой высокой (min-height из переменной --bp-mech-h, её ставит сценарий fitMech после монтирования и при смене ширины окна); подвал «Чем закреплено» — нижняя строка сетки карточки, лишняя высота уходит в строку текста (1fr). Раскрытие «Чем закреплено» растит только свою карточку: сетка по-прежнему align-items: start, соседки остаются общей высоты. До 768 px — одна колонка, высота по содержимому.
+   Шлифовка Р-802: карточки стоят по своей высоте (align-items: start) — между текстом и «Чем закреплено» провала нет ни на одной ширине, а раскрытие одной карточки не трогает соседнюю. На 769—1100 px колонка узкая для медиаобъекта 96 px: изображение 64 px рядом с заголовком, текст — на всю ширину карточки под ними, как до 480 px. */
 .bp-mech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
-.bp-mechcard{display:grid;grid-template-columns:96px minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "img text" "foot foot";column-gap:20px;row-gap:8px}
+.bp-mechcard{display:grid;grid-template-columns:96px minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "img text" "foot foot";column-gap:20px;row-gap:8px;min-height:var(--bp-mech-h,auto)}
 .bp-mechimg{grid-area:img;width:96px;height:96px}
 .bp-mechhead{grid-area:head;display:flex;flex-direction:row-reverse;align-items:baseline;justify-content:space-between;gap:16px;min-width:0}
 .bp-mechtext{grid-area:text}
 .bp-mechfoot{grid-area:foot;margin-top:12px}
 .bp-mechplus{position:relative;width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:var(--pd-accent-tint);transition:background 180ms cubic-bezier(.2,0,.2,1)}
 .bp-mechbtn:hover .bp-mechplus{background:var(--pd-accent-mark)}
-@media (min-width:769px) and (max-width:1100px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";column-gap:16px;row-gap:12px}.bp-mechimg{width:64px;height:64px}.bp-mechhead{align-self:center}}
+@media (min-width:769px) and (max-width:1100px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "text text" "foot foot";column-gap:16px;row-gap:12px}.bp-mechimg{width:64px;height:64px}.bp-mechhead{align-self:center}}
 @media (max-width:480px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";column-gap:16px;row-gap:12px;padding:18px 20px 0!important}.bp-mechimg{width:64px;height:64px}.bp-mechhead{align-self:center}}
 .bp-proof{animation:bp-proof 200ms cubic-bezier(.2,0,.2,1) both}
 @keyframes bp-proof{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
@@ -313,6 +314,25 @@ class BusinessPageView extends React.Component<any, any> {
       });
     };
     window.addEventListener('resize', this.onResize);
+    // Карточки условий одной высоты (Р-834): общая высота — по самой
+    // высокой карточке в закрытом виде (у раскрытой вычитается её
+    // пояснение с отступом 18 px), только от 769 px, где карточки в две
+    // колонки. Пересчёт — после загрузки шрифтов и при смене ширины окна.
+    this.fitMech = () => {
+      const grid = document.querySelector('.bp-mech');
+      if (!grid) return;
+      grid.style.removeProperty('--bp-mech-h');
+      if (!window.matchMedia('(min-width:769px)').matches) return;
+      const cards = [...grid.querySelectorAll('.bp-mechcard')];
+      if (!cards.length) return;
+      const h = Math.max(...cards.map(c => { const p = c.querySelector('.bp-proof'); return c.offsetHeight - (p ? p.offsetHeight + 18 : 0); }));
+      grid.style.setProperty('--bp-mech-h', h + 'px');
+    };
+    this.mechWidth = window.innerWidth;
+    this.onMechResize = () => { if (window.innerWidth !== this.mechWidth) { this.mechWidth = window.innerWidth; this.fitMech(); } };
+    window.addEventListener('resize', this.onMechResize);
+    requestAnimationFrame(this.fitMech);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => this.fitMech());
     // На широком экране меню всегда развёрнуто: иначе атрибут hidden
     // остаётся на видимом <nav>, и программа чтения с экрана его минует.
     this.wide = window.matchMedia('(min-width:1201px)');
@@ -323,6 +343,7 @@ class BusinessPageView extends React.Component<any, any> {
   componentWillUnmount(){
     window.removeEventListener('keydown', this.onRevKey);
     window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('resize', this.onMechResize);
     if (this.raf) cancelAnimationFrame(this.raf);
     if (this.wide) this.wide.removeEventListener('change', this.syncNav);
   }
