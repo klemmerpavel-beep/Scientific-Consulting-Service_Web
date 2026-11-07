@@ -115,8 +115,9 @@ describe('Р-796: «Диагностика» на «Аспирантам»', () 
     for (const [where, source] of both('MainPage')) {
       assert.doesNotMatch(data(source, 'const stalls = ['), / —/u, `${where}: в перечне перед тире обычный пробел — тире уйдёт в начало строки`);
       // Абзац «…а главы — другую.» снят с картой «точка остановки → что делает
-      // разбор» (Р-809, указание владельца З-1): тире карты — в метках 04 и 06.
-      for (const phrase of [`Требования совета${NB}— в${NB}последний месяц`, `Доклад${NB}— за${NB}неделю`, `этапы${NB}— с приёмкой`, `ждут от вас,${NB}— на одной карточке. Рядом${NB}— переписка`]) {
+      // разбор» (Р-809, указание владельца З-1): тире карты — в метке «Требования
+      // совета»; метка «Доклад — за неделю…» снята с картой из шести точек (Р-836).
+      for (const phrase of [`Требования совета${NB}— в${NB}последний месяц`, `этапы${NB}— с приёмкой`, `ждут от вас,${NB}— на одной карточке. Рядом${NB}— переписка`]) {
         assert.ok(source.includes(phrase), `${where}: нет неразрывного пробела в «${phrase.replace(/ /gu, '·')}»`);
       }
     }
@@ -136,11 +137,10 @@ describe('Р-796: «Диагностика» на «Аспирантам»', () 
     assert.match(tsx, /<span style=\{\{ fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", fontSize: "13px", lineHeight: "21px", fontWeight: "600", color: "var\(--pd-ink-muted\)", fontVariantNumeric: "tabular-nums" \}\}>\{p\.num\}<\/span>/u, 'перенос изменил номер перечня');
   });
 
-  it('шкала плана на 481—768 px — не шире 360 px: статус рядом с названием этапа', () => {
+  it('шкалы плана «Как это выглядит у вас» нет — снята с инфографикой Р-836', () => {
     for (const [where, source] of both('MainPage')) {
-      assert.ok(source.includes('@media (min-width:481px) and (max-width:768px){.pd-plan-steps{max-width:360px}}'), `${where}: нет ограничения ширины шкалы`);
+      assert.doesNotMatch(source, /pd-plan-|Ход работы по этапам|trackAt|planLine/u, `${where}: осталась шкала плана`);
     }
-    assert.match(design('MainPage'), /<div role="group" aria-label="Ход работы по этапам" class="pd-plan-steps"/u);
   });
 });
 
@@ -297,6 +297,73 @@ describe('Р-801: «Уровень готовности технологии» �
   });
 });
 
+describe('Р-835: блок заявки «Компаниям» без пустоты под формой', () => {
+  // Владелец 07.11.2026: «под формой пустое пространство… выровнять блоки по
+  // размерам и наполнению». Форма и шаги — две колонки одной высоты,
+  // «Что прислать для сметы» — полосой на всю ширину под ними.
+  const block = (source: string) => {
+    const at = source.search(/<section\b[^>]*\bid="request"/u);
+    assert.ok(at > 0, 'нет блока заявки');
+    return source.slice(at, source.indexOf('</section>', at));
+  };
+
+  it('в сетке .bp-req три ячейки по порядку: форма, «Что будет после отправки», полоса «Что прислать для сметы»', () => {
+    const html = block(design('BusinessPage'));
+    const form = html.indexOf('<form ');
+    const steps = html.indexOf('<div class="bp-reqsteps"');
+    const ask = html.indexOf('<div class="bp-reqask"');
+    assert.ok(form > 0 && steps > html.indexOf('</form>') && ask > steps, 'порядок ячеек другой');
+    assert.doesNotMatch(html, /flex-direction:column;gap:12px;height:100%/u, 'правая колонка снова обёрткой на высоту формы');
+    assert.match(html.slice(steps, ask), /Что будет после отправки/u);
+    assert.match(html.slice(ask), /Что прислать для сметы[\s\S]*<div class="bp-asklist"[\s\S]*askFor/u);
+  });
+
+  it('стили: полоса на всю ширину, изображение слева от 769 px, пункты в две колонки от 1025 px', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      for (const rule of [
+        '.bp-reqask{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr)}',
+        '@media (min-width:769px){.bp-reqask{grid-template-columns:240px minmax(0,1fr)}',
+        '@media (min-width:1025px){.bp-asklist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px!important}}',
+        '@media (min-width:769px){.bp-reqsteps .pd-track-v{flex:1 1 auto}.bp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}',
+      ]) assert.ok(source.includes(rule), `${where}: нет правила «${rule.slice(0, 40)}…»`);
+    }
+  });
+
+  it('форма прежняя: поля, их порядок и согласия не менялись', () => {
+    const html = block(design('BusinessPage'));
+    const form = html.slice(html.indexOf('<form '), html.indexOf('</form>'));
+    const fields = [...form.matchAll(/<(input|select|textarea)\b[^>]*\bid="([^"]+)"/gu)].map((m) => m[2]);
+    assert.ok(fields.length >= 5, `полей формы ${fields.length}`);
+    assert.match(form, /согласие на обработку персональных данных/u);
+  });
+});
+
+describe('Р-834: шесть карточек условий на «Компаниям» одной высоты', () => {
+  // Владелец 07.11.2026: «все блоки сделать одинакового размера». Общая
+  // высота закрытых карточек — по самой высокой, от 769 px; раскрытие растит
+  // только свою карточку (сетка остаётся align-items: start, Р-802).
+  it('у карточки min-height из --bp-mech-h, подвал — нижняя строка, лишнее — в строку текста', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      assert.ok(source.includes('row-gap:8px;min-height:var(--bp-mech-h,auto)}'), `${where}: у карточки нет общей высоты`);
+      assert.ok(source.includes('grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "img text" "foot foot"'), `${where}: строка текста не забирает лишнюю высоту`);
+    }
+  });
+
+  it('fitMech: по самой высокой закрытой карточке, только от 769 px, после шрифтов и при смене ширины окна', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      const at = source.indexOf('this.fitMech = () => {');
+      assert.ok(at > 0, `${where}: нет расчёта общей высоты`);
+      const body = source.slice(at, source.indexOf('};', source.indexOf("grid.style.setProperty('--bp-mech-h'", at)));
+      assert.match(body, /grid\.style\.removeProperty\('--bp-mech-h'\);\s*if \(!window\.matchMedia\('\(min-width:769px\)'\)\.matches\) return;/u, `${where}: до 768 px общая высота не снимается`);
+      assert.match(body, /c\.offsetHeight - \(p \? p\.offsetHeight \+ 18 : 0\)/u, `${where}: раскрытое пояснение входит в общую высоту`);
+      assert.match(body, /Math\.max\(/u, `${where}: высота — не по самой высокой карточке`);
+      assert.match(source, /this\.onMechResize = \(\) => \{ if \(window\.innerWidth !== this\.mechWidth\) \{ this\.mechWidth = window\.innerWidth; this\.fitMech\(\); \} \};/u, `${where}: пересчёт не по смене ширины`);
+      assert.match(source, /document\.fonts\.ready\.then\(\(\) => this\.fitMech\(\)\)/u, `${where}: нет пересчёта после шрифтов`);
+      assert.match(source, /window\.removeEventListener\('resize', this\.onMechResize\)/u, `${where}: обработчик не снимается`);
+    }
+  });
+});
+
 describe('Р-802: «Условия, закреплённые договором и приёмкой» на «Компаниям»', () => {
   it('карточки по своей высоте — без провала над «Чем закреплено» и без сдвига соседки при раскрытии', () => {
     for (const [where, source] of both('BusinessPage')) {
@@ -308,7 +375,7 @@ describe('Р-802: «Условия, закреплённые договором 
 
   it('на 769—1100 px — изображение 64 px рядом с заголовком, текст на всю ширину', () => {
     for (const [where, source] of both('BusinessPage')) {
-      assert.ok(source.includes('@media (min-width:769px) and (max-width:1100px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";'), `${where}: нет раскладки 769—1100 px`);
+      assert.ok(source.includes('@media (min-width:769px) and (max-width:1100px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "text text" "foot foot";'), `${where}: нет раскладки 769—1100 px`);
     }
   });
 

@@ -52,16 +52,17 @@
    она доходит до низа изображения, и подвал стоит сразу под более
    высоким из двух столбцов. На 769—1100 px и до 480 px изображение 64 px
    рядом с заголовком, текст на всю ширину под ними. */
-/* Шлифовка Р-802: карточки стоят по своей высоте (align-items: start) — между текстом и «Чем закреплено» провала нет ни на одной ширине, а раскрытие одной карточки не трогает соседнюю. На 769—1100 px колонка узкая для медиаобъекта 96 px: изображение 64 px рядом с заголовком, текст — на всю ширину карточки под ними, как до 480 px. */
+/* Р-834 (замечание владельца 07.11.2026: «все блоки сделать одинакового размера»): от 769 px все шесть карточек в закрытом виде одной высоты — по самой высокой (min-height из переменной --bp-mech-h, её ставит сценарий fitMech после монтирования и при смене ширины окна); подвал «Чем закреплено» — нижняя строка сетки карточки, лишняя высота уходит в строку текста (1fr). Раскрытие «Чем закреплено» растит только свою карточку: сетка по-прежнему align-items: start, соседки остаются общей высоты. До 768 px — одна колонка, высота по содержимому.
+   Шлифовка Р-802: карточки стоят по своей высоте (align-items: start) — между текстом и «Чем закреплено» провала нет ни на одной ширине, а раскрытие одной карточки не трогает соседнюю. На 769—1100 px колонка узкая для медиаобъекта 96 px: изображение 64 px рядом с заголовком, текст — на всю ширину карточки под ними, как до 480 px. */
 .bp-mech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
-.bp-mechcard{display:grid;grid-template-columns:96px minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "img text" "foot foot";column-gap:20px;row-gap:8px}
+.bp-mechcard{display:grid;grid-template-columns:96px minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "img text" "foot foot";column-gap:20px;row-gap:8px;min-height:var(--bp-mech-h,auto)}
 .bp-mechimg{grid-area:img;width:96px;height:96px}
 .bp-mechhead{grid-area:head;display:flex;flex-direction:row-reverse;align-items:baseline;justify-content:space-between;gap:16px;min-width:0}
 .bp-mechtext{grid-area:text}
 .bp-mechfoot{grid-area:foot;margin-top:12px}
 .bp-mechplus{position:relative;width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:var(--pd-accent-tint);transition:background 180ms cubic-bezier(.2,0,.2,1)}
 .bp-mechbtn:hover .bp-mechplus{background:var(--pd-accent-mark)}
-@media (min-width:769px) and (max-width:1100px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";column-gap:16px;row-gap:12px}.bp-mechimg{width:64px;height:64px}.bp-mechhead{align-self:center}}
+@media (min-width:769px) and (max-width:1100px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"img head" "text text" "foot foot";column-gap:16px;row-gap:12px}.bp-mechimg{width:64px;height:64px}.bp-mechhead{align-self:center}}
 @media (max-width:480px){.bp-mechcard{grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"img head" "text text" "foot foot";column-gap:16px;row-gap:12px;padding:18px 20px 0!important}.bp-mechimg{width:64px;height:64px}.bp-mechhead{align-self:center}}
 .bp-proof{animation:bp-proof 200ms cubic-bezier(.2,0,.2,1) both}
 @keyframes bp-proof{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
@@ -77,6 +78,14 @@
 @media (max-width:480px){.bp-right{padding:20px!important;gap:16px!important}}
 .bp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 .bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
+/* Блок заявки (Р-835): форма и «Что будет после отправки» — две колонки одной высоты по содержимому (ячейки сетки тянутся на высоту ряда), «Что прислать для сметы» — полосой на всю ширину под ними: до 768 px изображение сверху, от 769 px — слева на высоту полосы, от 1025 px четыре пункта в две колонки. */
+.bp-reqask{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr)}
+.bp-reqart{height:112px;border-bottom:1px solid var(--pd-divider)}
+.bp-reqbody{padding:16px 20px 18px}
+@media (min-width:769px){.bp-reqask{grid-template-columns:240px minmax(0,1fr)}.bp-reqart{height:auto;min-height:160px;border-bottom:0;border-right:1px solid var(--pd-divider)}.bp-reqbody{padding:20px 24px}}
+@media (min-width:1025px){.bp-asklist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px!important}}
+/* Шаги «Что будет после отправки» в колонке у формы (Р-835): от 769 px шкала занимает остаток карточки, лишняя высота делится между промежутками шагов — линия связи тянется до следующего узла, под последним шагом пустоты нет. */
+@media (min-width:769px){.bp-reqsteps .pd-track-v{flex:1 1 auto}.bp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}
 /* Шкала шагов «Что будет после отправки» (Р-800) — один компонент на «Студентам» и «Компаниям». Шаги — последовательность, поэтому с номерами: узлы 28 px на общей линии 2 px --pd-edge-neutral, разделителей под шагами нет. Горизонтальная: узел над текстом, линия от узла к узлу соседней колонки (промежуток колонок 24 px), колонки ряда одной высоты. Вертикальная (.pd-track-v): узел слева, линия вниз к следующему узлу. Последний шаг ряда линии не ведёт. */
 .pd-track{list-style:none;margin:0;padding:0;gap:28px 24px}
 .pd-track>li{position:relative;min-width:0;display:flex;flex-direction:column;gap:14px}
@@ -858,9 +867,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </sc-if>
 </form>
-<div style="display:flex;flex-direction:column;gap:12px;height:100%">
 <!-- Р-800: шкала шагов, как на «Студентам», — вертикальная: блок стоит в колонке у формы. Узлы-номера на общей линии, без разделителей под шагами. -->
-<div style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:20px 24px;display:flex;flex-direction:column;gap:16px">
+<div class="bp-reqsteps" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:20px 24px;display:flex;flex-direction:column;gap:16px;min-width:0">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что будет после отправки</h3>
 <ol class="pd-track pd-track-v" role="list">
 <sc-for list="{{ afterSteps }}" as="s" hint-placeholder-count="5">
@@ -874,12 +882,16 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-for>
 </ol>
 </div>
-<div style="flex:1 1 auto;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);padding:18px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(20,22,28,.05)">
-<span aria-hidden="true" style="display:block;height:112px;flex:0 0 112px;margin:-18px -20px 6px;border-top-left-radius:13px;border-top-right-radius:13px;border-bottom:1px solid var(--pd-divider);background:var(--pd-surface-quiet) url('./assets/art/svc-grants.webp');background-size:cover;background-position:center"></span>
+<!-- Р-835 (замечание владельца 07.11.2026: «под формой пустое пространство… выровнять блоки по размерам и наполнению»): «Что прислать для сметы» — полосой на всю ширину под формой и шагами: от 769 px изображение слева, текст справа, от 1025 px четыре пункта в две колонки; форма и «Что будет после отправки» — две колонки одной высоты, пустоты под кнопкой нет. Состав и порядок полей формы не менялись. -->
+<div class="bp-reqask" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05);overflow:hidden;min-width:0">
+<span aria-hidden="true" class="bp-reqart" style="display:block;background:var(--pd-surface-quiet) url('./assets/art/svc-grants.webp');background-size:cover;background-position:center"></span>
+<div class="bp-reqbody" style="display:flex;flex-direction:column;gap:10px;min-width:0">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что прислать для сметы</h3>
+<div class="bp-asklist" style="display:flex;flex-direction:column;gap:10px">
 <sc-for list="{{ askFor }}" as="a" hint-placeholder-count="4">
 <span style="display:flex;gap:10px;align-items:flex-start"><span aria-hidden="true" style="width:4px;height:4px;flex:0 0 4px;margin-top:8px;border-radius:50%;background:var(--pd-accent)"></span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ a.text }}</span></span>
 </sc-for>
+</div>
 <p style="margin:2px 0 0;padding-top:10px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Материалы загружаете в&nbsp;личный кабинет после подписания NDA&nbsp;— доступ откроет менеджер.</p>
 </div>
 </div>
@@ -1072,6 +1084,25 @@ class Component extends DCLogic {
       });
     };
     window.addEventListener('resize', this.onResize);
+    // Карточки условий одной высоты (Р-834): общая высота — по самой
+    // высокой карточке в закрытом виде (у раскрытой вычитается её
+    // пояснение с отступом 18 px), только от 769 px, где карточки в две
+    // колонки. Пересчёт — после загрузки шрифтов и при смене ширины окна.
+    this.fitMech = () => {
+      const grid = document.querySelector('.bp-mech');
+      if (!grid) return;
+      grid.style.removeProperty('--bp-mech-h');
+      if (!window.matchMedia('(min-width:769px)').matches) return;
+      const cards = [...grid.querySelectorAll('.bp-mechcard')];
+      if (!cards.length) return;
+      const h = Math.max(...cards.map(c => { const p = c.querySelector('.bp-proof'); return c.offsetHeight - (p ? p.offsetHeight + 18 : 0); }));
+      grid.style.setProperty('--bp-mech-h', h + 'px');
+    };
+    this.mechWidth = window.innerWidth;
+    this.onMechResize = () => { if (window.innerWidth !== this.mechWidth) { this.mechWidth = window.innerWidth; this.fitMech(); } };
+    window.addEventListener('resize', this.onMechResize);
+    requestAnimationFrame(this.fitMech);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => this.fitMech());
     // На широком экране меню всегда развёрнуто: иначе атрибут hidden
     // остаётся на видимом <nav>, и программа чтения с экрана его минует.
     this.wide = window.matchMedia('(min-width:1201px)');
@@ -1082,6 +1113,7 @@ class Component extends DCLogic {
   componentWillUnmount(){
     window.removeEventListener('keydown', this.onRevKey);
     window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('resize', this.onMechResize);
     if (this.raf) cancelAnimationFrame(this.raf);
     if (this.wide) this.wide.removeEventListener('change', this.syncNav);
   }
