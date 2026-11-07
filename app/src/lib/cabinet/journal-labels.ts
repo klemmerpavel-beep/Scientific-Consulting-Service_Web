@@ -139,7 +139,7 @@ const ACTIONS: Record<string, string> = {
 /**
  * Виды объектов. Каждый вид, который пишет сервисный слой, назван здесь:
  * правило проверки следит, чтобы новый не завёлся мимо словаря, — иначе
- * руководитель читал бы «HeadCheck» и «PracticeSetting» (решение Р-766).
+ * руководитель читал бы «HeadCheck» и «PracticeSetting» (решение Р-821).
  */
 const OBJECTS: Record<string, string> = {
   Assignment: 'поручение',
@@ -217,7 +217,7 @@ export function roleLabel(code: string): string {
 /**
  * Действия журнала доступа к файлам. Стояли на экране журнала; отсюда их
  * берёт и экран, и подробности выгрузки журнала, где отбор по действию
- * записан кодом (решение Р-766).
+ * записан кодом (решение Р-821).
  */
 export const FILE_ACTION_LABEL: Record<string, string> = {
   UPLOAD: 'загрузка',
@@ -253,7 +253,7 @@ export function isRecordId(value: unknown): value is string {
  *
  * Каждый ключ, который сервисный слой пишет в данные события, назван здесь
  * или правилом действия ниже: правило проверки следит, чтобы новый не
- * завёлся мимо словаря (решение Р-766). Названы и поля, где лежит
+ * завёлся мимо словаря (решение Р-821). Названы и поля, где лежит
  * идентификатор: сам он на экран не выводится (Р-758), а имя печатается,
  * если значение — не идентификатор.
  */
@@ -295,7 +295,7 @@ const FIELDS: Record<string, string> = {
   year: 'год',
   consentGiven: 'согласие и акцепт отмечены в ней',
   staffLink: 'вход по ссылке сотрудника',
-  // Ниже — поля, которые печатались ключом (решение Р-766). Слова — с
+  // Ниже — поля, которые печатались ключом (решение Р-821). Слова — с
   // экранов, где поле правится или показывается.
   name: 'название',
   number: 'номер',
@@ -361,7 +361,7 @@ interface FieldRule {
    * Правила полей вложенного объекта. У разбора замечания `status` и
    * `severity` — оба `{from, to}`, и листья подписываются каждый своим
    * перечнем, а имя поля стоит перед ними: «состояние: было новое, стало
-   * исправлено» (решение Р-766).
+   * исправлено» (решение Р-821).
    */
   readonly fields?: Readonly<Record<string, FieldRule>>;
   /**
@@ -389,7 +389,7 @@ const quoted = (text: string): string => `«${text}»`;
  * «Было — стало» со своей подписью значения. Одно и то же состояние у
  * разных действий значит разное — `DONE` этапа «Завершён», поручения
  * «сделано», рекомендации «сделано», — поэтому подпись берётся по
- * действию, а не одним словарём кодов (решение Р-766).
+ * действию, а не одним словарём кодов (решение Р-821).
  */
 const change = (value: (raw: string) => string) =>
   ({ from: { name: 'было', value }, to: { name: 'стало', value } }) satisfies Record<string, FieldRule>;
@@ -499,7 +499,7 @@ const BY_KEY = { name: '', value: byMap({ key: 'по ключу выгрузки
  * не сумма договора; вкладка, набор столбцов и плашки «Сводки» записаны
  * кодами, и руководитель читал бы «state all» и «hidden pulse» (К-3, К-5).
  * Состояния «было — стало», виды и ключи полей — так же: подписи берутся
- * из тех перечней, которыми их называют экраны (решение Р-766).
+ * из тех перечней, которыми их называют экраны (решение Р-821).
  */
 const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>>> = {
   LEAD_EXPORT: {
@@ -535,7 +535,7 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
   LEAD_APPROVED: { code: WORK_CODE },
   ORDER_CREATED: { code: WORK_CODE },
   ASSIGNMENT_CREATED: { project: WORK_CODE },
-  // Ниже — коды значений, которые печатались как есть (решение Р-766).
+  // Ниже — коды значений, которые печатались как есть (решение Р-821).
   ACCESS_LINK_ISSUED: { via: { name: '', value: byMap({ project: 'вход открыт клиенту на карточке работы' }) } },
   OUTBOX_RETRY: { eventKind: { name: 'уведомление', value: (raw) => quoted(eventLabel(raw)) } },
   STAFF_REGALIA_SAVED: { position: { name: 'должность' }, code: { name: 'шифр специальности' } },
@@ -583,7 +583,7 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
   // Дата начала учёта — днём; срок реакции и пороги — числами, как есть.
   PRACTICE_SETTING_SAVED: change(dayLabel),
   // Статья расхода — ключ справочника в базе: подписи статей живут в базе,
-  // словарю без базы их взять неоткуда, ключ остаётся (решение Р-766).
+  // словарю без базы их взять неоткуда, ключ остаётся (решение Р-821).
   EXPENSE_ADDED: EXPENSE,
   EXPENSE_REMOVED: EXPENSE,
   LEAD_FILES_MOVED: { count: { name: 'перенесено' }, failed: { name: 'не перенесено' } },
@@ -688,7 +688,7 @@ function flatten(value: unknown, prefix = '', rules?: Readonly<Record<string, Fi
       continue;
     }
     // Вложенный объект со своими правилами — одной частью с именем поля:
-    // «критичность: было высокая, стало низкая» (решение Р-766).
+    // «критичность: было высокая, стало низкая» (решение Р-821).
     if (rule?.fields !== undefined && inner !== null && typeof inner === 'object' && !Array.isArray(inner)) {
       const parts = flatten(inner, '', rule.fields);
       if (parts.length > 0) out.push(`${rule.name}: ${parts.join(', ')}`);

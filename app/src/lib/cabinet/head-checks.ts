@@ -18,7 +18,7 @@ import { prisma } from '../db.ts';
 import { ensure, scopeProjects, type Actor } from './access.ts';
 import { record } from './audit.ts';
 // Как согласован этап — в чистом модуле: те же слова читает журнал
-// действий, проверяемый без базы (решение Р-766).
+// действий, проверяемый без базы (решение Р-821).
 import { APPROVAL_VIA_LABEL } from './code-labels.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
@@ -106,7 +106,7 @@ export async function closeCheck(actor: Actor, checkId: string, note: string): P
 }
 
 // Подпись — в чистом модуле: её читает и журнал действий, который
-// проверяется без базы (решение Р-766).
+// проверяется без базы (решение Р-821).
 export { CHECK_TITLE } from './code-labels.ts';
 
 /** Открытые дела руководителя — по всем работам; по одной работе — `projectId`. */

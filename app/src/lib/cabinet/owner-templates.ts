@@ -21,7 +21,7 @@ import { sha256, storage } from './storage.ts';
 export type TemplateAudience = 'STAFF' | 'ALL';
 
 // Подпись — в чистом модуле: её читает и журнал действий, который
-// проверяется без базы (решение Р-766).
+// проверяется без базы (решение Р-821).
 export { AUDIENCE_LABEL } from './code-labels.ts';
 
 /** Предел файла шаблона: документ Word или таблица, не архив материалов. */

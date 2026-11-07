@@ -89,7 +89,7 @@ describe('письма куратору называют работу (Р-734)',
     assert.ok(turn.body.startsWith(`Работа ${code} — Сопровождение диссертационного исследования.\n`), turn.body);
   });
 
-  it('«Срок этапа изменён» куратору — с названием работы (Р-764)', async () => {
+  it('«Срок этапа изменён» куратору — с названием работы (Р-819)', async () => {
     await projects.rescheduleStage(manager(), {
       stageId: ids.stage!,
       dueOn: new Date(Date.UTC(2026, 11, 15)),

@@ -36,7 +36,7 @@ describe('подробности журнала — словами, без ид�
 
   it('роль учётной записи — словом', () => {
     assert.equal(detailsLabel({ role: 'MANAGER' }, 'USER_CREATED'), 'роль менеджер');
-    // Перечень заполненных регалий — подписями формы, не ключами (Р-766).
+    // Перечень заполненных регалий — подписями формы, не ключами (Р-821).
     assert.equal(detailsLabel({ role: 'EXPERT', profile: ['degree'] }, 'USER_CREATED'), 'роль куратор · заполнено: Учёная степень');
     assert.equal(detailsLabel({ from: 'EXPERT', to: 'HEAD' }, 'USER_ROLE_CHANGED'), 'было куратор · стало руководитель');
   });
@@ -46,7 +46,7 @@ describe('подробности журнала — словами, без ид�
     assert.equal(detailsLabel({ from: ID, to: ID2, reason: 'отпуск' }, 'MANAGER_ASSIGNED'), 'причина отпуск');
     assert.equal(detailsLabel({ stageId: ID, position: 2, reason: 'нет главы' }), 'номер 2 · причина нет главы');
     // Отбор выгрузки журнала — подписями полей отбора; у поля со своим
-    // правилом остаётся имя, идентификатор — нет (Р-766).
+    // правилом остаётся имя, идентификатор — нет (Р-821).
     assert.equal(
       detailsLabel({ rows: 3, filter: { actorId: ID, projectTitle: true } }, 'JOURNAL_EXPORTED'),
       'строк 3 · отбор: по действующему лицу, по названию работы да',
@@ -67,12 +67,12 @@ describe('подробности журнала — словами, без ид�
     assert.equal(detailsLabel({ code: 'dissertation', name: 'Диссертация' }, 'SERVICE_TYPE_SAVED'), 'код dissertation · название Диссертация');
   });
 
-  it('прежние подписи не изменились; состояние доступа — словом (Р-766)', () => {
+  it('прежние подписи не изменились; состояние доступа — словом (Р-821)', () => {
     assert.equal(
       detailsLabel({ rows: 6, counts: { SKIP: 0, CREATE: 6, UPDATE: 0 }, fileName: 'Книга.xlsx' }, 'IMPORT_PREVIEWED'),
       'строк 6 · уже перенесено 0 · к заведению 6 · к обновлению 0 · файл Книга.xlsx',
     );
-    // Состояние доступа — словом экрана «Учётные записи» (Р-766).
+    // Состояние доступа — словом экрана «Учётные записи» (Р-821).
     assert.equal(detailsLabel({ from: 'ACTIVE', to: 'SUSPENDED' }, 'USER_STATUS_CHANGED'), 'было действует · стало приостановлена');
   });
 });

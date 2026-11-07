@@ -27,7 +27,7 @@ import { prisma } from '../db.ts';
 export type ContactKind = 'EMAIL' | 'TELEGRAM' | 'PHONE_CALL' | 'MESSENGER' | 'FULL_SUPPORT';
 
 // Подпись — в чистом модуле: её читает и журнал действий, который
-// проверяется без базы (решение Р-766).
+// проверяется без базы (решение Р-821).
 export { CONTACT_LABEL } from './code-labels.ts';
 
 /** Что человек получит, выбрав этот способ. Пишется на экране под строкой. */

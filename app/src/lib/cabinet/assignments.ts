@@ -27,7 +27,7 @@ const DAY = 86_400_000;
 export const ASSIGNMENT_TEXT_MAX = 2000;
 
 // Подпись — в чистом модуле: её читает и журнал действий, который
-// проверяется без базы (решение Р-766).
+// проверяется без базы (решение Р-821).
 export { ASSIGNMENT_STATUS_LABEL } from './code-labels.ts';
 
 const OPEN: AssignmentStatus[] = ['ASSIGNED', 'IN_PROGRESS'];

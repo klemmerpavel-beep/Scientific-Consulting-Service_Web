@@ -209,5 +209,5 @@ export function journalActions(actor: Actor): string[] {
 export { toCsv };
 
 // Момент — в словаре журнала: им же подписан срок ссылки входа в
-// подробностях события (решение Р-766).
+// подробностях события (решение Р-821).
 export { formatMoment };

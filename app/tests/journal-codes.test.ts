@@ -1,6 +1,6 @@
 /**
- * Журнал действий — словами, без машинных кодов (решение Р-766; Р-179,
- * Р-758). Итоговая проверка доработки взаимодействия (Р-762) нашла на
+ * Журнал действий — словами, без машинных кодов (решение Р-821; Р-179,
+ * Р-758). Итоговая проверка доработки взаимодействия (Р-817) нашла на
  * экране журнала английские коды: в «Объекте» — «HeadCheck»,
  * «PracticeSetting», «Assignment»; в «Подробностях» — имена полей
  * («approvalDaysFrom», «note», «kind», «via»), значения-коды («было ACTIVE ·
@@ -212,7 +212,7 @@ function calls(): Call[] {
 
 const CALLS = calls();
 
-describe('ограничитель: всё, что пишет record(), подписано (Р-766)', () => {
+describe('ограничитель: всё, что пишет record(), подписано (Р-821)', () => {
   it('записи журнала найдены, у каждой — действие и вид объекта литералом', () => {
     // Порог — чтобы проверка не прошла впустую при сломанном разборе.
     assert.ok(CALLS.length >= 100, `записей журнала найдено ${CALLS.length}`);
@@ -415,7 +415,7 @@ const CASES: readonly (readonly [string, Record<string, unknown>, string])[] = [
   ['DISK_SYNC', { uploaded: 3, removed: 1, failed: 0, files: 120, scope: 'tables' }, 'ушло 3 · удалено 1 · ошибок 0 · в зеркале 120 · объём только таблицы реестров'],
 ];
 
-describe('подробности журнала словами, суммы рублями (Р-766)', () => {
+describe('подробности журнала словами, суммы рублями (Р-821)', () => {
   for (const [action, data, expected] of CASES) {
     it(`${action}: ${expected}`, () => {
       const text = detailsLabel(data, action);
@@ -455,7 +455,7 @@ describe('подробности журнала словами, суммы ру�
 
 // ─────────────────────────── Источник подписей один ──────────────────────
 
-describe('подписи из модулей с базой — в чистом модуле, прежние места реэкспортируют (Р-766)', () => {
+describe('подписи из модулей с базой — в чистом модуле, прежние места реэкспортируют (Р-821)', () => {
   const moved: readonly (readonly [string, RegExp, RegExp])[] = [
     ['admin.ts', /export \{ ACCOUNT_STATUS_LABEL as STATUS_LABEL \} from '\.\/code-labels\.ts';/u, /export const STATUS_LABEL\b/u],
     ['assignments.ts', /export \{ ASSIGNMENT_STATUS_LABEL \} from '\.\/code-labels\.ts';/u, /export const ASSIGNMENT_STATUS_LABEL\b/u],
