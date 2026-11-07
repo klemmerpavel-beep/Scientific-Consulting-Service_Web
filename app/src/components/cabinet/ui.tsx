@@ -1464,6 +1464,11 @@ export function Tile({
         padding: '16px 20px 18px',
         borderTop: '1px solid var(--pd-divider)',
         borderLeft: '1px solid var(--pd-divider)',
+        // Плитка с мини-графиком — столбцом на всю высоту ряда, график
+        // прижат к низу: подписи изменения разной длины ставили графики
+        // «Пульса» на разную высоту (замечание владельца 23.10.2026,
+        // решение Р-829). Ячейки сетки и так тянутся на высоту ряда.
+        ...(chart === undefined ? {} : { display: 'flex', flexDirection: 'column' as const }),
       }}
     >
       <Mono>{label}</Mono>
@@ -1495,8 +1500,9 @@ export function Tile({
           {note}
         </Text>
       )}
-      {/* Мини-график под числом — у плиток «Пульса» (Р-585). */}
-      {chart ?? null}
+      {/* Мини-график под числом — у плиток «Пульса» (Р-585); у всех плиток
+          ряда — на одной линии по нижнему краю (Р-829). */}
+      {chart === undefined ? null : <div data-tile-chart="" style={{ marginTop: 'auto' }}>{chart}</div>}
       {/* Главная строка группы — у плиток «Разбора практики» (Р-586). */}
       {children ?? null}
     </div>

@@ -4,6 +4,8 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, it } from 'node:test';
 
 import type { LeadRow } from '../src/lib/cabinet/analytics/leads.ts';
@@ -106,5 +108,24 @@ describe('показатели «Пульса»', () => {
     // Меньше половины процента — не «+0 %» рядом с ненулевой разницей.
     assert.equal(pulseChange(1001n, 1000n, 'к прежним 7 дням', f), '+1 (менее 1 %) к прежним 7 дням');
     assert.equal(pulseChange(999n, 1000n, 'к прежним 7 дням', f), '−1 (менее 1 %) к прежним 7 дням');
+  });
+});
+
+describe('Р-829: мини-графики «Пульса» на одной линии', () => {
+  // Замечание владельца 23.10.2026: «все графики должны быть на одном
+  // уровне». Подписи изменения разной длины ставили графики на разную
+  // высоту; плитка с графиком — столбцом, график прижат к низу ряда.
+  const ui = readFileSync(path.join(import.meta.dirname, '..', 'src', 'components', 'cabinet', 'ui.tsx'), 'utf8');
+  const tile = ui.slice(ui.indexOf('export function Tile('), ui.indexOf('export function Tiles('));
+
+  it('плитка с графиком — столбец, график в обёртке с marginTop: auto', () => {
+    assert.match(tile, /\.\.\.\(chart === undefined \? \{\} : \{ display: 'flex', flexDirection: 'column' as const \}\)/u);
+    assert.match(tile, /<div data-tile-chart="" style=\{\{ marginTop: 'auto' \}\}>\{chart\}<\/div>/u);
+    assert.doesNotMatch(tile, /\{chart \?\? null\}/u, 'график снова стоит сразу под подписью');
+  });
+
+  it('сетка плиток не выравнивает ячейки по началу: ячейки тянутся на высоту ряда', () => {
+    const tiles = ui.slice(ui.indexOf('export function Tiles('), ui.indexOf('export function TableScroll('));
+    assert.doesNotMatch(tiles, /alignItems: '(?:start|flex-start|center)'/u);
   });
 });
