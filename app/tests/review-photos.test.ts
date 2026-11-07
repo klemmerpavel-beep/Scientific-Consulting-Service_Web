@@ -53,6 +53,9 @@ describe('фото авторов отзывов — только прислан
       assert.match(design, /<sc-if value="\{\{ r\.hasPhoto \}\}"[^>]*>\n<img src="\{\{ r\.photo \}\}" alt="" aria-hidden="true" width="56" height="56"/u);
       assert.match(design, /<sc-if value="\{\{ r\.noPhoto \}\}"[^>]*>\n<img src="\.\/assets\/reviews\/placeholder\.svg" alt="" aria-hidden="true" width="56" height="56"[^>]*border-radius:50%;border:1px solid var\(--pd-accent-mark\)/u);
       assert.doesNotMatch(design, /r\.initial|initial: r\.role/u, 'инициал вернулся');
+      // Заглушка без отложенной загрузки: карточки за краем сцены иначе
+      // стояли пустыми до прокрутки (проверка ui-checks, 07.11.2026).
+      assert.doesNotMatch(design, /<img src="\.\/assets\/reviews\/placeholder\.svg"[^>]*loading="lazy"/u, 'заглушка с отложенной загрузкой');
       const code = read('app', 'src', 'components', 'pages', `${component}.tsx`);
       assert.match(code, /\{r\.hasPhoto \? \(<><img src=\{r\.photo\}/u);
       assert.match(code, /\{r\.noPhoto \? \(<><img src="\.\/assets\/reviews\/placeholder\.svg" alt="" aria-hidden="true"/u);

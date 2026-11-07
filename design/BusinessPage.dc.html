@@ -901,9 +901,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <sc-if value="{{ r.hasPhoto }}" hint-placeholder-val="{{ false }}">
 <img src="{{ r.photo }}" alt="" aria-hidden="true" width="56" height="56" loading="lazy" decoding="async" style="display:block;width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint);object-fit:cover">
 </sc-if>
-<!-- Р-827: до присланного автором фото — нейтральная заглушка-силуэт в той же рамке, что и фото (замечание владельца 06.11.2026: «пока заглушками, чтобы не было пустых мест»); лицо не ставится — Р-590, Р-617. -->
+<!-- Р-827: до присланного автором фото — нейтральная заглушка-силуэт в той же рамке, что и фото (замечание владельца 06.11.2026: «пока заглушками, чтобы не было пустых мест»); лицо не ставится — Р-590, Р-617. Загрузка не отложена: файл в 300 байт один на все карточки, и карточки за краем сцены не стоят пустыми. -->
 <sc-if value="{{ r.noPhoto }}" hint-placeholder-val="{{ true }}">
-<img src="./assets/reviews/placeholder.svg" alt="" aria-hidden="true" width="56" height="56" loading="lazy" decoding="async" style="display:block;width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint)">
+<img src="./assets/reviews/placeholder.svg" alt="" aria-hidden="true" width="56" height="56" decoding="async" style="display:block;width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint)">
 </sc-if>
 <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
 <span style="font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink)">{{ r.role }}</span>
