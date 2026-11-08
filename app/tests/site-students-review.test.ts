@@ -140,6 +140,15 @@ describe('«Студентам»: «Как это выглядит внутри�
   });
 });
 
+describe('«Студентам»: одна формулировка действия (Р-847)', () => {
+  it('кнопки-действия ведут к заявке словами «Оставить заявку»; «Обсудить работу» и «Обсудить мой срок» сняты', () => {
+    const buttons = [...PAGE.matchAll(/<a (?:[^>]*\s)?href="#request"[^>]*background:var\(--pd-ink\)[^>]*>([^<]+)</gu)].map((m) => m[1]!.trim());
+    assert.ok(buttons.length >= 3, `кнопок действия ${buttons.length}`);
+    for (const label of buttons) assert.equal(label, 'Оставить заявку');
+    assert.doesNotMatch(PAGE, />Обсудить работу<|>Обсудить мой срок</u);
+  });
+});
+
 describe('«Студентам»: карточки и перечень услуг', () => {
   const list = (() => {
     const at = PAGE.indexOf('const all = [');
