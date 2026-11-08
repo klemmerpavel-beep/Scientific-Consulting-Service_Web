@@ -11,7 +11,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -111,6 +111,32 @@ describe('«Студентам»: порядок разделов и услов�
     assert.deepEqual(titles, ['Задание до начала работ', 'Акт приёмки по каждому этапу', 'Замечания по сданному этапу', 'Конфиденциальность и авторство']);
     assert.match(section, /<a href="\.\/offer\.html" target="_blank" rel="noopener"/u);
     assert.doesNotMatch(text(section), /гарант|под ключ|100 %/iu);
+  });
+});
+
+describe('«Студентам»: «Как это выглядит внутри» — карточка из двух панелей (Р-845)', () => {
+  it('текст и снимок в одной карточке, внизу текста — «Экран N из 4» и переход к следующей вкладке', () => {
+    const at = PAGE.indexOf('<section id="inside"');
+    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    assert.match(section, /<div id="pd-in-panel" role="tabpanel" aria-labelledby="\{\{ inTabLabelledBy \}\}" class="sp-in-card"/u);
+    assert.match(section, /<div class="sp-in-text"[\s\S]*\{\{ inStep \}\}[\s\S]*onClick="\{\{ inNext \}\}"[\s\S]*\{\{ inCaption \}\}[\s\S]*<div class="sp-in-shot"/u);
+    assert.doesNotMatch(section, /<figure/u, 'у снимка снова своя рамка');
+    assert.ok(PAGE.includes(".sp-in-card{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}"));
+  });
+
+  it('четыре вкладки: карточка работы — на первом экране, вместо неё «Переписка с менеджером»', () => {
+    const at = PAGE.indexOf('const IN_TABS = [');
+    const data = PAGE.slice(at, PAGE.indexOf('];', at));
+    const labels = [...data.matchAll(/\{ label: '([^']+)'/gu)].map((m) => m[1]);
+    assert.deepEqual(labels, ['Согласование этапа', 'Материалы и версии', 'Переписка с менеджером', 'Оплаты и документы']);
+    const imgs = [...data.matchAll(/img: '\.\/assets\/art\/(st-tab-[a-z]+)\.webp', alt: '([^']+)'/gu)];
+    assert.equal(imgs.length, 4);
+    for (const [, name, alt] of imgs) {
+      for (const dir of [['design', 'assets', 'art'], ['app', 'public', 'assets', 'art']]) {
+        assert.ok(existsSync(path.join(ROOT, ...dir, `${name}.webp`)), `нет ${dir.join('/')}/${name}.webp`);
+      }
+      assert.match(alt!, /Данные вымышленные\.$/u, name);
+    }
   });
 });
 
