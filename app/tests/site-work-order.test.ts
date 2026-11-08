@@ -197,6 +197,16 @@ describe('две роли для клиента — менеджер и кура
     }
   });
 
+  it('«Студентам»: номер роли в углу карточки с одним отступом, описание куратора в три строки (Р-840)', () => {
+    const html = design('StudentsPage');
+    const orbit = html.slice(html.indexOf('<div class="sp-orbit"'), html.indexOf('</section>', html.indexOf('<div class="sp-orbit"')));
+    const nums = [...orbit.matchAll(/<span class="sp-crewnum" style="position:absolute;top:20px;right:19px;[^"]*">(0[1-4])<\/span>/gu)].map((m) => m[1]);
+    assert.deepEqual(nums, ['01', '02', '03', '04'], 'номера ролей не в углу карточки');
+    // Номер больше не стоит в строке заголовка: «специальности» выталкивало «04» на поле карточки.
+    assert.doesNotMatch(orbit, /margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1\.4;color:var\(--pd-ink-muted\)">0[1-4]</u);
+    assert.ok(orbit.includes('>Разбирает с автором тему и содержание глав.</span>'), 'описание куратора');
+  });
+
   it('главная: карточка «Две роли» словами задания', () => {
     const start = design('StartPage');
     assert.ok(start.includes('>Менеджер — сроки, документы, оплаты. Куратор со степенью по вашей специальности — содержание и методология.</p>'));

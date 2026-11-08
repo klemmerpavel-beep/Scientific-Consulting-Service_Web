@@ -312,6 +312,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <!-- «Кто сопровождает»: для клиента две роли — менеджер и куратор (С-5, решение Р-770); методологический разбор и научная экспертиза текста — работа куратора. До 1024 px орбита — сетка без квадратной пропорции: двум карточкам квадрат оставлял пустую строку. -->
 <section class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
 <!-- Р-795: четыре роли и карточки «Кто сопровождает» возвращены по указанию владельца 04.11.2026 (состояние приёмки 02.11.2026); метки направлений — по Р-771 и Р-785, движение блока — как было. -->
+<!-- Р-840: номер роли — в углу карточки с отступом 19 px, как у карточек 01—03; заголовку отдана вся ширина строки, слово «специальности» больше не выталкивает «04» на поле. Описание куратора — в три строки, карточка одного размера с остальными (замечание владельца 08.11.2026). -->
 <div class="sp-team" style="gap:40px;align-items:center">
 <div style="display:flex;flex-direction:column;gap:24px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Команда</span>
@@ -349,7 +350,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <img src="./assets/art/pd-3d-calendar.webp" alt="" aria-hidden="true" width="40" height="40" decoding="async" loading="lazy" style="width:40px;height:40px;flex:0 0 40px;display:block;margin:-7px 0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Менеджер</span>
-<span style="margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">01</span>
+<span class="sp-crewnum" style="position:absolute;top:20px;right:19px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">01</span>
 </div>
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Держит сроки и отвечает на вопросы в рабочее время.</span>
 </div>
@@ -360,7 +361,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <img src="./assets/art/pd-3d-flask.webp" alt="" aria-hidden="true" width="40" height="40" decoding="async" loading="lazy" style="width:40px;height:40px;flex:0 0 40px;display:block;margin:-7px 0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Методолог</span>
-<span style="margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">02</span>
+<span class="sp-crewnum" style="position:absolute;top:20px;right:19px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">02</span>
 </div>
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Выстраивает структуру работы и план по главам.</span>
 </div>
@@ -371,7 +372,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <img src="./assets/art/ex-3d-form.webp" alt="" aria-hidden="true" width="40" height="40" decoding="async" loading="lazy" style="width:40px;height:40px;flex:0 0 40px;display:block;margin:-7px 0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Научный редактор</span>
-<span style="margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">03</span>
+<span class="sp-crewnum" style="position:absolute;top:20px;right:19px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">03</span>
 </div>
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Отвечает за логику глав, оформление и нормоконтроль.</span>
 </div>
@@ -382,9 +383,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <img src="./assets/art/pd-3d-degree.webp" alt="" aria-hidden="true" width="40" height="40" decoding="async" loading="lazy" style="width:40px;height:40px;flex:0 0 40px;display:block;margin:-7px 0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Куратор по специальности</span>
-<span style="margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">04</span>
+<span class="sp-crewnum" style="position:absolute;top:20px;right:19px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">04</span>
 </div>
-<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Разбирает тему с автором и помогает собрать содержание глав.</span>
+<span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Разбирает с автором тему и содержание глав.</span>
 </div>
 </div>
 <div class="sp-dot" style="position:absolute;left:23.307%;top:31.308%;width:15px;height:15px;border-radius:50%;background:var(--pd-accent);display:flex;align-items:center;justify-content:center"><span style="width:4.4px;height:4.4px;border-radius:50%;background:var(--pd-ink-inverse);display:block"></span></div>
