@@ -23,8 +23,6 @@ import StickyBar from './StickyBar';
  * возвращается на кнопку в шапке (Р-510).
  *
  * Без скриптов ссылка остаётся якорем и прокручивает к форме, как прежде.
- * Окно открывает и главная кнопка первого экрана с меткой `data-pd-dialog`
- * (Р-841): на «Студентам» формы на первом экране нет, заявка — тем же окном.
  * Остальные ссылки «#request» на странице (в тексте разделов) окно не
  * открывают: они ведут к форме рядом с местом чтения.
  *
@@ -222,9 +220,8 @@ export default function RequestDialog() {
       if (event.defaultPrevented || event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const link = (event.target as Element | null)?.closest?.('a[href="#request"]');
-      // Кнопка шапки, её копия в закреплённой полосе (Р-609) и главная
-      // кнопка первого экрана с меткой data-pd-dialog (Р-841).
-      if (!(link instanceof HTMLElement) || link.closest('header, .pd-stick, [data-pd-dialog]') === null) return;
+      // Кнопка шапки и её копия в закреплённой полосе (Р-609).
+      if (!(link instanceof HTMLElement) || link.closest('header, .pd-stick') === null) return;
       const form = document.querySelector<HTMLFormElement>('#request form');
       if (form === null) return;
       event.preventDefault();

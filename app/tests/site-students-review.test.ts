@@ -83,17 +83,35 @@ describe('«Студентам»: колонка «Мы» и состав эта
     assert.deepEqual(findForbidden(PAGE, 'StudentsPage.dc.html'), []);
   });
 
-  it('первый экран по образцу «Экспертам» (Р-841): плашка «Научный коллектив с 2016 года», заголовок Р-480, без формы', () => {
-    const hero = PAGE.slice(PAGE.indexOf('<section id="works"'), PAGE.indexOf('</section>', PAGE.indexOf('<section id="works"')));
-    assert.match(text(hero), /Научный коллектив с 2016 года/u);
-    assert.match(text(hero.slice(hero.indexOf('<h1'), hero.indexOf('</h1>'))), /^Готовьте диплом к защите под контролем куратора с учёной степенью$/u);
-    assert.doesNotMatch(hero, /<form |<input /u);
-    assert.match(hero, /<img src="\.\/assets\/art\/st-cabinet\.webp" alt="[^"]+Данные вымышленные\." width="1600" height="1000"/u);
+  it('метка над портретами первого экрана — «Кто сопровождает работу»', () => {
+    const art = PAGE.slice(PAGE.indexOf('class="sp-art"'));
+    assert.match(text(art.slice(0, art.indexOf('</span>') + 7)), /Кто сопровождает работу$/u);
   });
 
   it('ответы о помощи с дипломом и о возврате работы — разбор и проверка', () => {
     assert.match(PAGE, /'Разбираем структуру и логику глав, проверяем ваш текст и оформление по ГОСТ 7\.32/u);
     assert.match(PAGE, /Замечания по сданному этапу разбираем без доплаты/u);
+  });
+});
+
+describe('«Студентам»: первый экран как до Р-841, плашки условий под ним (Р-852)', () => {
+  const hero = PAGE.slice(PAGE.indexOf('<section id="works"'), PAGE.indexOf('</section>', PAGE.indexOf('<section id="works"')));
+
+  it('форма заявки, портреты куратора и менеджера, три плашки с цифрами; «7 причин» — к разделу нормоконтроля', () => {
+    assert.match(hero, /<form onSubmit="\{\{ submitTop \}\}"/u);
+    assert.match(hero, /<image-slot id="sp-stud-1"/u);
+    assert.match(hero, /<image-slot id="sp-stud-2"/u);
+    const plates = [...hero.matchAll(/<a class="pd-lift" href="(#[a-z]+)"[\s\S]*?white-space:nowrap[^>]*>([^<]+)<\/span>/gu)].map((m) => [m[1], m[2]]);
+    assert.deepEqual(plates, [['#services', '23 позиции'], ['#norm', '7 причин'], ['#route', '4 ситуации']]);
+    assert.doesNotMatch(hero, /data-pd-dialog|st-cabinet|sp-node/u, 'элементы первого экрана Р-841');
+  });
+
+  it('под сеткой первого экрана — плашки «Консультация», «Оплата», «Авторство» к ответам в «Вопросах»', () => {
+    const at = hero.indexOf('<div class="sp-terms"');
+    assert.ok(at > hero.indexOf('class="sp-art"'), 'плашки условий — после сетки первого экрана');
+    const terms = [...hero.slice(at).matchAll(/<a class="sp-term" href="(#sp-faq-\d)"/gu)].map((m) => m[1]);
+    assert.deepEqual(terms, ['#sp-faq-1', '#sp-faq-7', '#sp-faq-0']);
+    for (const word of ['Консультация', 'Оплата', 'Авторство']) assert.match(text(hero.slice(at)), new RegExp(word, 'u'));
   });
 });
 
@@ -205,7 +223,8 @@ describe('«Студентам»: заголовки разделов и фра�
     const joined = h2.join(' | ');
     for (const phrase of [/ВКР/u, /[Пп]одготовка к защите диплома/u, /Нормоконтроль ВКР/u, /смета на диплом/u]) assert.match(joined, phrase);
     const all = text(PAGE.slice(0, PAGE.indexOf('<script type="text/x-dc"')));
-    for (const phrase of [/Сопровождение дипломной работы, ВКР и магистерской диссертации/u, /Консультация по дипломной работе/u]) assert.match(all, phrase);
+    // Подводка «Сопровождение дипломной работы, ВКР и магистерской диссертации» ушла вместе с первым экраном Р-841 (Р-852).
+    assert.match(all, /Консультация по дипломной работе/u);
     assert.doesNotMatch(all, /написани[ея] (?:диплом|ВКР|работ)|вычитк|редактировани[ея] (?:диплом|ВКР)/iu, 'формулировки под п. 10 ст. 7 ФЗ «О рекламе»');
   });
 });
@@ -220,9 +239,10 @@ describe('«Студентам»: карточки и перечень услу�
     return [...PAGE.slice(at, PAGE.indexOf('].map', at)).matchAll(/\['([^']+)', '([^']+)'/gu)].map((m) => ({ title: m[1]!, text: m[2]! }));
   })();
 
-  it('шесть карточек и 17 строк перечня', () => {
+  it('шесть карточек и 17 строк перечня — «23 позиции» на первом экране', () => {
     assert.equal(cards.length, 6);
     assert.equal(list.length, 17);
+    assert.match(text(PAGE), /23 позиции в перечне работ/u);
   });
 
   it('услуги к защите и документы к ней названы проверкой', () => {
@@ -256,9 +276,12 @@ describe('«Студентам»: якоря объявлений', () => {
     assert.match(text(PAGE.slice(at, PAGE.indexOf('</h2>', at))), /^Состав работ /u);
   });
 
-  it('пункт меню «Состав работ» ведёт на #services', () => {
+  it('пункт меню «Состав работ» и карточка «23 позиции» ведут на #services', () => {
     const nav = PAGE.slice(PAGE.indexOf('<nav id="sp-nav"'), PAGE.indexOf('</nav>', PAGE.indexOf('<nav id="sp-nav"')));
     assert.match(nav, /<a href="#services"[^>]*>Состав работ<\/a>/u);
+    const card = PAGE.slice(PAGE.indexOf('<a class="pd-lift" href="#services"'));
+    assert.ok(PAGE.includes('<a class="pd-lift" href="#services"'), 'карточка не ведёт на #services');
+    assert.match(text(card.slice(0, card.indexOf('</a>'))), /^23 позиции/u);
     assert.doesNotMatch(PAGE, /href="#works"/u, 'ссылка на первый экран вместо состава работ');
   });
 
