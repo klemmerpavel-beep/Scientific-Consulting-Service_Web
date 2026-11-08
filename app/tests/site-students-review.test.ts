@@ -83,9 +83,12 @@ describe('«Студентам»: колонка «Мы» и состав эта
     assert.deepEqual(findForbidden(PAGE, 'StudentsPage.dc.html'), []);
   });
 
-  it('метка над портретами первого экрана — «Кто сопровождает работу»', () => {
-    const art = PAGE.slice(PAGE.indexOf('class="sp-art"'));
-    assert.match(text(art.slice(0, art.indexOf('</span>') + 7)), /Кто сопровождает работу$/u);
+  it('первый экран по образцу «Экспертам» (Р-841): плашка «Научный коллектив с 2016 года», заголовок Р-480, без формы', () => {
+    const hero = PAGE.slice(PAGE.indexOf('<section id="works"'), PAGE.indexOf('</section>', PAGE.indexOf('<section id="works"')));
+    assert.match(text(hero), /Научный коллектив с 2016 года/u);
+    assert.match(text(hero.slice(hero.indexOf('<h1'), hero.indexOf('</h1>'))), /^Готовьте диплом к защите под контролем куратора с учёной степенью$/u);
+    assert.doesNotMatch(hero, /<form |<input /u);
+    assert.match(hero, /<img src="\.\/assets\/art\/st-cabinet\.webp" alt="[^"]+Данные вымышленные\." width="1600" height="1000"/u);
   });
 
   it('ответы о помощи с дипломом и о возврате работы — разбор и проверка', () => {
@@ -104,10 +107,9 @@ describe('«Студентам»: карточки и перечень услу�
     return [...PAGE.slice(at, PAGE.indexOf('].map', at)).matchAll(/\['([^']+)', '([^']+)'/gu)].map((m) => ({ title: m[1]!, text: m[2]! }));
   })();
 
-  it('шесть карточек и 17 строк перечня — «23 позиции» на первом экране', () => {
+  it('шесть карточек и 17 строк перечня', () => {
     assert.equal(cards.length, 6);
     assert.equal(list.length, 17);
-    assert.match(text(PAGE), /23 позиции в перечне работ/u);
   });
 
   it('услуги к защите и документы к ней названы проверкой', () => {
@@ -141,12 +143,9 @@ describe('«Студентам»: якоря объявлений', () => {
     assert.match(text(PAGE.slice(at, PAGE.indexOf('</h2>', at))), /^Состав работ /u);
   });
 
-  it('пункт меню «Состав работ» и карточка «23 позиции» ведут на #services', () => {
+  it('пункт меню «Состав работ» ведёт на #services', () => {
     const nav = PAGE.slice(PAGE.indexOf('<nav id="sp-nav"'), PAGE.indexOf('</nav>', PAGE.indexOf('<nav id="sp-nav"')));
     assert.match(nav, /<a href="#services"[^>]*>Состав работ<\/a>/u);
-    const card = PAGE.slice(PAGE.indexOf('<a class="pd-lift" href="#services"'));
-    assert.ok(PAGE.includes('<a class="pd-lift" href="#services"'), 'карточка не ведёт на #services');
-    assert.match(text(card.slice(0, card.indexOf('</a>'))), /^23 позиции/u);
     assert.doesNotMatch(PAGE, /href="#works"/u, 'ссылка на первый экран вместо состава работ');
   });
 

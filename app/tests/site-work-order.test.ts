@@ -217,14 +217,14 @@ describe('две роли для клиента — менеджер и кура
   it('первые экраны: второй портрет — менеджер, а не научный редактор; на «Компаниям» куратор один', () => {
     assert.ok(design('StartPage').includes('>Менеджер проекта — сроки, документы, оплаты</span>'));
     assert.ok(design('MainPage').includes('>Менеджер проекта — сроки, документы, оплаты</span>'));
-    assert.ok(design('StudentsPage').includes('>Менеджер<br><span style="color:var(--pd-ink-muted)">сроки, документы, оплаты</span></span>'));
     const business = design('BusinessPage');
     assert.ok(business.includes('>Куратор — отраслевой эксперт со степенью</span>'));
     assert.ok(business.includes('>Менеджер проекта</span>'));
     assert.doesNotMatch(business, />Куратор проекта</u);
     // Одно лицо — одна роль на всех страницах: портрет менеджера — тот же снимок.
     const photos = read('app/src/components/photos.ts');
-    for (const slot of ['sp-avatar-2c', 'mp-photo-2', 'sp-stud-2', 'bp-photo-2']) {
+    // На «Студентам» портретов на первом экране нет (Р-841).
+    for (const slot of ['sp-avatar-2c', 'mp-photo-2', 'bp-photo-2']) {
       assert.match(photos, new RegExp(`'${slot}': \\{ photo: EDITOR \\}`, 'u'), slot);
     }
   });

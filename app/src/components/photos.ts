@@ -98,8 +98,6 @@ export const PHOTOS: Record<string, Slot> = {
   'mp-faq-photo': { photo: ADVISER },
 
   // ——— Студентам ———
-  'sp-stud-1': { photo: CURATOR },      // круг до 224px — куратор проекта
-  'sp-stud-2': { photo: EDITOR },       // круг до 162px — менеджер проекта (Р-770)
   'sp-request-photo': { photo: STUDENT },
   'sp-faq-photo': { photo: LECTURER },
 
@@ -116,6 +114,5 @@ export const PHOTOS: Record<string, Slot> = {
 export const ABOVE_THE_FOLD = new Set([
   'sp-avatar-1', 'sp-avatar-2c',
   'mp-photo-1', 'mp-photo-2',
-  'sp-stud-1', 'sp-stud-2',
   'bp-photo-1', 'bp-photo-2',
 ]);
