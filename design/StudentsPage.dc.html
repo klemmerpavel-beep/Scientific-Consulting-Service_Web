@@ -70,8 +70,13 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 @media (max-width:1024px){.sp-deal{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:480px){.sp-deal ol{padding:4px 20px!important}}
 .sp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
-.sp-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
-@media (max-width:1024px){.sp-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* Р-846: блок заявки — форма и вертикальная шкала шагов одной высоты, «Что прислать для сметы» полосой под ними (как «Компаниям», Р-835). */
+@media (min-width:769px){.sp-reqsteps .pd-track-v{flex:1 1 auto}.sp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}
+.sp-reqask{display:grid;grid-template-columns:minmax(0,1fr)}
+.sp-reqart{height:120px;border-bottom:1px solid var(--pd-divider)}
+.sp-reqbody{padding:16px 20px 18px}
+@media (min-width:769px){.sp-reqask{grid-template-columns:220px minmax(0,1fr)}.sp-reqart{height:auto;min-height:170px;border-bottom:0;border-right:1px solid var(--pd-divider)}.sp-reqbody{padding:20px 24px}}
+@media (min-width:1025px){.sp-asklist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px!important}}
 /* Шкала шагов «Что будет после отправки» (Р-800) — один компонент на «Студентам» и «Компаниям». Шаги — последовательность, поэтому с номерами: узлы 28 px на общей линии 2 px --pd-edge-neutral, разделителей под шагами нет. Горизонтальная: узел над текстом, линия от узла к узлу соседней колонки (промежуток колонок 24 px), колонки ряда одной высоты. Вертикальная (.pd-track-v): узел слева, линия вниз к следующему узлу. Последний шаг ряда линии не ведёт. */
 .pd-track{list-style:none;margin:0;padding:0;gap:28px 24px}
 .pd-track>li{position:relative;min-width:0;display:flex;flex-direction:column;gap:14px}
@@ -82,13 +87,6 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 .pd-track-v>li:last-child{padding-bottom:0}
 .pd-track-v>li::after{top:28px;bottom:0;left:13px;right:auto;width:2px;height:auto}
 .pd-track-v .pd-track-body{padding-top:4px}
-/* «Студентам» (Р-800): пять колонок на ≥1200 px, 3 + 2 по сетке на 768—1199 px (третий шаг линии не ведёт), до 767 px — вертикальная шкала. */
-@media (min-width:1025px) and (max-width:1199px){.sp-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
-/* Шлифовка Р-800: на ≥1200 px заголовок шага 14 px и колонки под длину заголовков — «Куратор и созвон знакомства» и «Итог консультации и Задание» стоят в одну строку, пятый, самый короткий шаг уже; поля блока 24 px и промежуток 20 px, линия — до узла следующего шага. */
-@media (min-width:1200px){.sp-afterbox{padding:24px!important}.sp-steps{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.06fr) minmax(0,1.06fr) minmax(0,.88fr);column-gap:20px}.sp-steps>li::after{right:-20px}.sp-steps .pd-track-title{font-size:14px!important}}
-@media (min-width:768px) and (max-width:1199px){.sp-steps>li:nth-child(3)::after{display:none}}
-@media (max-width:767px){.sp-steps{display:flex!important;flex-direction:column;gap:0!important}.sp-steps>li{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:14px;padding-bottom:20px}.sp-steps>li:last-child{padding-bottom:0}.sp-steps>li::after{top:28px;bottom:0;left:13px;right:auto;width:2px;height:auto}.sp-steps .pd-track-body{padding-top:4px}}
-@media (max-width:480px){.sp-afterbox{padding:20px!important}}
 /* «Шесть случаев» (Р-805, облик — Р-812): карточки-ссылки «случай → что делаем → куда ведёт» на светлой подложке --pd-accent-tint (поля clamp(16px, 2vw, 32px), радиус 14) сеткой 3 колонки от 1200 px, 2 на 769—1199 px, одна до 768 px. Зоны карточки — подсеткой (subgrid): в ряду случай, действие и подпись перехода стоят на общих линиях. Случай — рядом со значком 22 px на плашке 44 px: одна и две строки случая занимают одну высоту, пустоты под однострочным случаем нет; тихой полосы нет. До 480 px поля карточки ужаты. */
 .pd-tasks-tray{padding:clamp(16px,2vw,32px)}
 .pd-tasks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;list-style:none;margin:0;padding:0}
@@ -100,7 +98,6 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 @media (max-width:1199px){.pd-tasks{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.pd-tasks{grid-template-columns:minmax(0,1fr);gap:12px}}
 @media (max-width:480px){.pd-task{padding:16px 16px 0!important}.pd-task-does{padding-top:12px!important}.pd-task-to{margin-top:14px!important;padding:12px 0 16px!important}}
-.sp-after{display:flex}
 @media (max-width:1024px){.sp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.sp-orbit>.sp-ring,.sp-orbit>.sp-dot,.sp-orbit>.sp-core{display:none!important}.sp-orbit>.sp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.sp-offer{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.sp-req,.sp-faq,.sp-team,.sp-duo{grid-template-columns:minmax(0,1fr)}.sp-after{grid-template-columns:minmax(0,1fr)}}
 /* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
@@ -603,18 +600,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </li>
 </sc-for>
 </ul>
-<div class="sp-req" style="gap:16px;margin-top:16px;align-items:stretch">
-<div style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:22px 24px;display:flex;flex-direction:column;gap:14px;min-width:0">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что прислать для сметы</h3>
-<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px">
-<sc-for list="{{ askFor }}" as="a" hint-placeholder-count="4">
-<li style="display:flex;gap:10px;align-items:flex-start">
-<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ a.text }}</span>
-</li>
-</sc-for>
-</ul>
-</div>
+<div style="margin-top:16px">
 <div style="background:var(--pd-accent-deep);border-radius:14px;padding:22px 24px;display:flex;flex-direction:column;gap:14px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Консультация 20 минут · не оплачивается</span>
 <p style="margin:0;font-size:16px;line-height:1.5;color:var(--pd-ink-inverse);max-width:44ch">Читаем работу, называем объём правок и срок. После этого считаем смету — до согласования Задания и до оплаты.</p>
@@ -832,19 +818,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </sc-if>
 </form>
-<div class="sp-after" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);overflow:hidden;flex-direction:column;align-self:stretch">
-<div style="position:relative;width:100%;flex:1 1 auto;min-height:300px;background:transparent">
-<image-slot id="sp-request-photo" shape="rect" fit="cover" data-alt="Студентка присылает работу на разбор" placeholder="Фото: студентка" style="position:absolute;inset:0;width:100%;height:100%"></image-slot>
-</div>
-</div>
-</div>
-<!-- Р-800: шкала шагов — узлы-номера на общей линии, без разделителей под шагами; на ≥1200 px пять колонок, на 768—1199 px — 3 + 2 по сетке, до 767 px — вертикальная шкала. Тот же компонент .pd-track — на «Компаниям». -->
-<div class="sp-afterbox" style="margin-top:16px;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:24px 28px">
-<div style="display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap;margin-bottom:24px">
+<!-- Р-846: справа от формы — «Что будет после отправки» вертикальной шкалой на высоту колонки (как «Компаниям», Р-835): шаги растягиваются, пустоты под формой нет. Синтезированное фото студентки снято. -->
+<div class="sp-reqsteps" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:20px 24px;display:flex;flex-direction:column;gap:16px;min-width:0">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что будет после отправки</h3>
 <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 10px;border-radius:999px;background:var(--pd-accent-tint)"><span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:{{ clockMask }};mask:{{ clockMask }}"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums;white-space:nowrap">Срок ответа — рабочий день</span></span>
 </div>
-<ol class="sp-steps pd-track" role="list">
+<ol class="pd-track pd-track-v" role="list">
 <sc-for list="{{ afterSteps }}" as="s" hint-placeholder-count="5">
 <li>
 <span class="pd-track-node" style="position:relative;z-index:1;width:28px;height:28px;box-sizing:border-box;border-radius:50%;border:2px solid var(--pd-accent);background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ s.num }}</span>
@@ -855,6 +835,22 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </li>
 </sc-for>
 </ol>
+</div>
+</div>
+<!-- Р-846: «Что прислать для сметы» — полосой на всю ширину под формой и шагами (как «Компаниям», Р-835): изображение стопки листов слева, перечень справа, от 1025 px — в две колонки. -->
+<div class="sp-reqask" style="margin-top:16px;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05);overflow:hidden;min-width:0">
+<span aria-hidden="true" class="sp-reqart" style="display:block;background:var(--pd-surface-quiet) url('./assets/art/st-stack.webp') center/auto 82% no-repeat"></span>
+<div class="sp-reqbody" style="display:flex;flex-direction:column;gap:10px;min-width:0">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что прислать для сметы</h3>
+<ul class="sp-asklist" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ askFor }}" as="a" hint-placeholder-count="4">
+<li style="display:flex;gap:10px;align-items:flex-start">
+<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ a.text }}</span>
+</li>
+</sc-for>
+</ul>
+</div>
 </div>
 </section>
 

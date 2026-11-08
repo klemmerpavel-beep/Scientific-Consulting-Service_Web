@@ -98,7 +98,6 @@ export const PHOTOS: Record<string, Slot> = {
   'mp-faq-photo': { photo: ADVISER },
 
   // ——— Студентам ———
-  'sp-request-photo': { photo: STUDENT },
   'sp-faq-photo': { photo: LECTURER },
 
   // ——— Бизнесу ———

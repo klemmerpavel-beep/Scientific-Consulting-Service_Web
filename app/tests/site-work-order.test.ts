@@ -96,10 +96,9 @@ describe('шаги работы — в порядке концепции (С-3, 
       assert.equal(PAGES[page].list().length, 5, page);
       assert.ok(design(page).includes('<sc-for list="{{ afterSteps }}" as="s" hint-placeholder-count="5">'), page);
     }
-    // Пять шагов «Студентам» — пятью колонками, на планшете — тремя.
+    // Пять шагов «Студентам» — вертикальной шкалой справа от формы (Р-846).
     const students = design('StudentsPage');
-    assert.ok(students.includes('.sp-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}'));
-    assert.ok(students.includes('@media (max-width:1024px){.sp-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}'));
+    assert.ok(students.includes('<ol class="pd-track pd-track-v" role="list">'));
   });
 
   it('вопрос «С чего начинается работа?» — тем же порядком («Студентам», «Компаниям»)', () => {
