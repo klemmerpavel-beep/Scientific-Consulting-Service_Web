@@ -144,7 +144,27 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-orb-b{animation-duration:58s;animation-delay:-29s;animation-direction:alternate-reverse}
 .pd-orb-hero{animation-name:pd-swing-hero;animation-duration:36s;animation-delay:-18s}
 .pd-orb-calm{animation-name:pd-swing-calm;animation-duration:30s;animation-delay:-15s}
-.pd-glow{animation:pd-breathe 13s ease-in-out infinite alternate}@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}
+.pd-glow{animation:pd-breathe 13s ease-in-out infinite alternate}
+/* Р-850: фоновая сборка работы. В правом поле страницы три листа по мере
+   прокрутки сходятся в стопку, в конце страницы на них закрывается обложка
+   «ВКР». Прогресс — прокрутка страницы (scroll-driven animations), только
+   transform и opacity; слой под разделами, без событий указателя. Показан
+   от 1400 px, где правое поле шире листа; без поддержки привязки к
+   прокрутке и при уменьшенном движении слоя нет. */
+.sp-build{display:none}
+@keyframes sp-build-s1{0%{opacity:0;transform:translate(-8px,-58vh) rotate(-14deg)}6%{opacity:.72}78%{opacity:.72;transform:translate(-2px,-10px) rotate(-4deg)}90%{opacity:.72;transform:translate(0,0) rotate(-1deg)}96%,100%{opacity:0;transform:translate(0,0) rotate(0)}}
+@keyframes sp-build-s2{0%{opacity:0;transform:translate(10px,-38vh) rotate(10deg)}10%{opacity:.72}82%{opacity:.72;transform:translate(2px,-6px) rotate(3deg)}90%{opacity:.72;transform:translate(0,0) rotate(1deg)}96%,100%{opacity:0;transform:translate(0,0) rotate(0)}}
+@keyframes sp-build-s3{0%{opacity:0;transform:translate(-6px,-18vh) rotate(-6deg)}14%{opacity:.72}86%{opacity:.72;transform:translate(0,-3px) rotate(-1deg)}90%{opacity:.72;transform:translate(0,0) rotate(0)}96%,100%{opacity:0;transform:translate(0,0) rotate(0)}}
+@keyframes sp-build-cover{0%,84%{opacity:0;transform:perspective(520px) rotateY(-88deg)}88%{opacity:.94;transform:perspective(520px) rotateY(-80deg)}97%,100%{opacity:.94;transform:perspective(520px) rotateY(0)}}
+@media (min-width:1400px) and (prefers-reduced-motion:no-preference){@supports (animation-timeline:scroll()){
+.sp-build{display:block;position:fixed;top:0;bottom:0;left:calc(75vw + 263px);width:84px;z-index:0;pointer-events:none}
+.sp-build>*{position:absolute;left:0;bottom:128px;display:block;width:84px;height:112px;animation-duration:auto;animation-timing-function:linear;animation-fill-mode:both;animation-timeline:scroll(root block)}
+.sp-build-s1{animation-name:sp-build-s1}
+.sp-build-s2{animation-name:sp-build-s2}
+.sp-build-s3{animation-name:sp-build-s3}
+.sp-build-cover{transform-origin:left center;backface-visibility:hidden;animation-name:sp-build-cover}
+}}
+@media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}
 .sp-crewcard{position:relative;z-index:1}
 .sp-crewfig{position:absolute;left:50%;transform:translateX(-50%);top:-166px;height:210px;width:auto;z-index:0;pointer-events:none}
 .sp-orbit{margin-top:156px}
@@ -183,22 +203,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
-<div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:2120px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
-<svg class="pd-orb pd-orb-b" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% + 238px);top:2050px">
-<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
-<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
-<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
-<circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
-</svg>
 <div class="pd-glow" style="position:absolute;left:calc(50% - 1020px);top:3170px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:3100px">
-<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
-<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
-<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
-<circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
-</svg>
-<div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:4220px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
-<svg class="pd-orb pd-orb-b" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% + 238px);top:4150px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
 <circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
@@ -211,17 +217,16 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
-<div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:6320px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
-<svg class="pd-orb pd-orb-b" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% + 238px);top:6250px">
-<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
-<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
-<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
-<circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
-</svg>
 <span class="sp-node" style="position:absolute;left:calc(50% + 359px);top:268px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/st-3d-thesis.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
 <span class="sp-node" style="position:absolute;left:calc(50% + 384px);top:650px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/st-3d-deadline.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
 <span class="sp-node" style="position:absolute;left:calc(50% - 409px);top:384px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/st-3d-review.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
 <span class="sp-node" style="position:absolute;left:calc(50% - 388px);top:628px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/st-3d-gost.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
+</div>
+<div class="sp-build" aria-hidden="true">
+<img class="sp-build-s1" src="./assets/art/st-sheet-1.webp" alt="" width="300" height="400" loading="lazy" decoding="async">
+<img class="sp-build-s2" src="./assets/art/st-sheet-2.webp" alt="" width="300" height="400" loading="lazy" decoding="async">
+<img class="sp-build-s3" src="./assets/art/st-sheet-3.webp" alt="" width="300" height="400" loading="lazy" decoding="async">
+<span class="sp-build-cover"><img src="./assets/art/st-cover.webp" alt="" width="480" height="640" loading="lazy" decoding="async" style="display:block;width:100%;height:100%"><span style="position:absolute;left:0;right:12%;top:30%;text-align:center;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.24;font-weight:600;letter-spacing:.04em;color:var(--pd-ink-inverse)">ВКР</span><span style="position:absolute;left:30%;right:42%;top:54%;height:2px;border-radius:999px;background:var(--pd-ink-inverse);opacity:.6"></span></span>
 </div>
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
 
