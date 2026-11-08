@@ -149,6 +149,22 @@ describe('«Студентам»: одна формулировка действ
   });
 });
 
+describe('«Студентам»: заголовки разделов и фразы ядра (Р-848)', () => {
+  const h2 = [...PAGE.matchAll(/<h2 [^>]*>([\s\S]*?)<\/h2>/gu)].map((m) => text(m[1]!));
+
+  it('заголовки разделов — до 52 знаков (шкала скилла, Р-607)', () => {
+    for (const title of h2) assert.ok([...title].length <= 52, `«${title}» — ${[...title].length} знаков`);
+  });
+
+  it('фразы ядра marketing/research/05-семантика.md — в заголовках и тексте', () => {
+    const joined = h2.join(' | ');
+    for (const phrase of [/ВКР/u, /[Пп]одготовка к защите диплома/u, /Нормоконтроль ВКР/u, /смета на диплом/u]) assert.match(joined, phrase);
+    const all = text(PAGE.slice(0, PAGE.indexOf('<script type="text/x-dc"')));
+    for (const phrase of [/Сопровождение дипломной работы, ВКР и магистерской диссертации/u, /Консультация по дипломной работе/u]) assert.match(all, phrase);
+    assert.doesNotMatch(all, /написани[ея] (?:диплом|ВКР|работ)|вычитк|редактировани[ея] (?:диплом|ВКР)/iu, 'формулировки под п. 10 ст. 7 ФЗ «О рекламе»');
+  });
+});
+
 describe('«Студентам»: карточки и перечень услуг', () => {
   const list = (() => {
     const at = PAGE.indexOf('const all = [');
