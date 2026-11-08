@@ -116,6 +116,16 @@ describe('«Студентам»: порядок разделов и услов�
     assert.doesNotMatch(section, /<animate|<set /u, 'движение — только классом с transform и opacity');
   });
 
+  it('кнопки действия между этапами и формой (Р-851): «Оставить заявку» в «Договоре» и «Географии», к форме без окна', () => {
+    for (const id of ['deal', 'geo']) {
+      const at = PAGE.indexOf(`<section id="${id}"`);
+      const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+      const cta = section.match(/<a href="#request"( data-pd-dialog)? style="[^"]*background:var\(--pd-ink\)[^"]*"[^>]*>Оставить заявку</u);
+      assert.ok(cta, `нет кнопки действия в #${id}`);
+      assert.equal(cta[1], undefined, `#${id}: окно заявки открывает только кнопка первого экрана`);
+    }
+  });
+
   it('«География»: силуэт России — по ст. 65 Конституции РФ, отметки городов — в своих координатах', () => {
     const files = ['design/assets/art/st-russia.svg', 'app/public/assets/art/st-russia.svg'].map(read);
     assert.equal(files[0], files[1], 'st-russia.svg в папках ассетов различается');
