@@ -100,7 +100,42 @@ describe('«Студентам»: колонка «Мы» и состав эта
 describe('«Студентам»: порядок разделов и условия договора (Р-844)', () => {
   it('порядок вопросов посетителя: смета — после разделов ценности, отзывы — перед «Вопросами»', () => {
     const ids = [...PAGE.matchAll(/<section id="([a-z]+)"/gu)].map((m) => m[1]);
-    assert.deepEqual(ids, ['works', 'services', 'route', 'inside', 'tasks', 'deal', 'cost', 'norm', 'reviews', 'faq', 'request']);
+    assert.deepEqual(ids, ['works', 'services', 'route', 'inside', 'tasks', 'deal', 'cost', 'norm', 'reviews', 'geo', 'faq', 'request']);
+  });
+
+  it('«География» (Р-849): команды в двух городах, счётчик по книге заказов, схема с подписью, без слова «офис»', () => {
+    const at = PAGE.indexOf('<section id="geo"');
+    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    const words = text(section.replace(/<\/(?:span|li|text)>/gu, ' $&'));
+    assert.match(words, /Сопровождаем дипломы и ВКР по всей России/u);
+    assert.match(words, /430\+ работ с 2016 года по книге заказов практики/u);
+    assert.match(words, /Москва команда практики/u);
+    assert.match(words, /Санкт-Петербург команда практики/u);
+    assert.doesNotMatch(words, /офис/iu, 'адреса офисов на сайте не заявлены');
+    assert.match(section, /<img class="sp-geo-map" src="\.\/assets\/art\/st-russia\.svg" alt="Схема: Россия[^"]+" width="640" height="353"/u);
+    assert.doesNotMatch(section, /<animate|<set /u, 'движение — только классом с transform и opacity');
+  });
+
+  it('«География»: силуэт России — по ст. 65 Конституции РФ, отметки городов — в своих координатах', () => {
+    const files = ['design/assets/art/st-russia.svg', 'app/public/assets/art/st-russia.svg'].map(read);
+    assert.equal(files[0], files[1], 'st-russia.svg в папках ассетов различается');
+    assert.match(files[0]!, /viewBox="0 0 640 353" width="640" height="353"/u);
+    const dots = [...files[0]!.matchAll(/M([\d.]+) ([\d.]+)h0/gu)].map((m) => [Number(m[1]), Number(m[2])] as const);
+    assert.ok(dots.length > 1500, `точек силуэта: ${dots.length}`);
+    // Точки tools/russia-dots.mjs (Альберс 95°/25°/65°): у каждой — точка сетки ближе шага 8.
+    const places: Record<string, [number, number]> = {
+      'Симферополь': [11.4, 248], 'Севастополь': [6.8, 248.3], 'Донецк': [44.8, 239.5], 'Луганск': [54.4, 240.3],
+      'Мелитополь': [28, 239.4], 'Геническ': [21.6, 242.1], 'Калининград': [24, 135.7], 'Итуруп': [613.3, 275.6],
+    };
+    for (const [name, [x, y]] of Object.entries(places)) {
+      assert.ok(dots.some(([dx, dy]) => Math.hypot(dx - x, dy - y) <= 8), `${name} вне силуэта`);
+    }
+    const at = PAGE.indexOf('<section id="geo"');
+    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    assert.match(section, /<circle cx="87\.5" cy="183\.6" r="6\.5"/u, 'отметка Москвы');
+    assert.match(section, /<circle cx="87\.8" cy="134\.4" r="5\.5"/u, 'отметка Санкт-Петербурга');
+    assert.match(section, /left:calc\(13\.67% \+ 14px\);top:52\.01%[^"]*">Москва</u);
+    assert.match(section, /left:calc\(13\.72% \+ 14px\);top:38\.07%[^"]*">Санкт-Петербург</u);
   });
 
   it('«Что закреплено в договоре»: четыре условия из оферты и ответа о замечаниях, ссылка на оферту', () => {
