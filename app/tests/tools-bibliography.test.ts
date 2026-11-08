@@ -143,11 +143,12 @@ describe('границы страницы «Инструменты»', () => {
     assert.match(read('CONTRIBUTING.md'), /`design\/ToolsPage\.dc\.html` \| `ToolsPage\.tsx` \| `\/tools`/u);
   });
 
-  it('на страницу ведут 404 и панель нормоконтроля «Студентам»', () => {
+  it('на страницу ведут 404 и раздел нормоконтроля «Студентам» (Р-843)', () => {
     assert.match(read('design/NotFoundPage.dc.html'), /<a href="\.\/tools\.html"[^>]*>Инструменты<\/a>/u);
     const stu = read('design/StudentsPage.dc.html');
-    const panel = stu.slice(stu.indexOf('id="norm-panel"'), stu.indexOf('</sc-if>', stu.indexOf('id="norm-panel"')));
-    assert.match(panel, /href="\.\/tools\.html"/u);
+    const at = stu.indexOf('<section id="norm"');
+    assert.ok(at > 0, 'нет раздела нормоконтроля');
+    assert.match(stu.slice(at, stu.indexOf('</section>', at)), /href="\.\/tools\.html"/u);
   });
 });
 

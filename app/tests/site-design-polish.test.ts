@@ -242,7 +242,7 @@ describe('Р-824: «План от даты защиты» снят с «Аспи
 describe('Р-799: «Смета на диплом» на «Студентам»', () => {
   it('тире не начинает строку: перед тире — неразрывный пробел', () => {
     for (const [where, source] of both('StudentsPage')) {
-      for (const phrase of [`черновик готов${NB}— разный объём разбора.`, `ждут от вас,${NB}— на одной карточке. Рядом${NB}— переписка`]) {
+      for (const phrase of [`черновик готов${NB}— разный объём разбора.`, `каждая загрузка${NB}— отдельная версия`]) {
         assert.ok(source.includes(phrase), `${where}: нет неразрывного пробела в «${phrase.replace(/ /gu, '·')}»`);
       }
     }
@@ -264,11 +264,16 @@ describe('Р-800: «Что будет после отправки» на «Ст�
     assert.doesNotMatch(label[0], /text-transform:uppercase/u);
   });
 
-  it('на ≥1200 px заголовок шага 14 px, колонки под длину заголовков', () => {
+  it('шаги — вертикальной шкалой справа от формы на её высоту, как на «Компаниям» (Р-846)', () => {
     for (const [where, source] of both('StudentsPage')) {
-      assert.ok(source.includes('@media (min-width:1200px){.sp-afterbox{padding:24px!important}.sp-steps{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.06fr) minmax(0,1.06fr) minmax(0,.88fr);column-gap:20px}.sp-steps>li::after{right:-20px}.sp-steps .pd-track-title{font-size:14px!important}}'), `${where}: нет правила шкалы на ≥1200 px`);
+      assert.ok(source.includes('@media (min-width:769px){.sp-reqsteps .pd-track-v{flex:1 1 auto}.sp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}'), `${where}: шаги не на высоту формы`);
     }
-    assert.match(design('StudentsPage'), /<span class="pd-track-title" style="[^"]*">\{\{ s\.title \}\}<\/span>/u);
+    const html = design('StudentsPage');
+    const req = html.slice(html.indexOf('<section id="request"'), html.indexOf('</section>', html.indexOf('<section id="request"')));
+    assert.match(req, /<\/form>\s*<!--[\s\S]*?-->\s*<div class="sp-reqsteps"[\s\S]*<ol class="pd-track pd-track-v" role="list">/u);
+    assert.match(req, /<div class="sp-reqask"[\s\S]*Что прислать для сметы[\s\S]*<ul class="sp-asklist"[\s\S]*askFor/u);
+    assert.doesNotMatch(req, /image-slot|sp-afterbox/u, 'фото и горизонтальная шкала вернулись');
+    assert.match(html, /<span class="pd-track-title" style="[^"]*">\{\{ s\.title \}\}<\/span>/u);
   });
 });
 

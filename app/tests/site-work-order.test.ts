@@ -96,10 +96,9 @@ describe('шаги работы — в порядке концепции (С-3, 
       assert.equal(PAGES[page].list().length, 5, page);
       assert.ok(design(page).includes('<sc-for list="{{ afterSteps }}" as="s" hint-placeholder-count="5">'), page);
     }
-    // Пять шагов «Студентам» — пятью колонками, на планшете — тремя.
+    // Пять шагов «Студентам» — вертикальной шкалой справа от формы (Р-846).
     const students = design('StudentsPage');
-    assert.ok(students.includes('.sp-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}'));
-    assert.ok(students.includes('@media (max-width:1024px){.sp-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}'));
+    assert.ok(students.includes('<ol class="pd-track pd-track-v" role="list">'));
   });
 
   it('вопрос «С чего начинается работа?» — тем же порядком («Студентам», «Компаниям»)', () => {
@@ -197,6 +196,16 @@ describe('две роли для клиента — менеджер и кура
     }
   });
 
+  it('«Студентам»: номер роли в углу карточки с одним отступом, описание куратора в три строки (Р-840)', () => {
+    const html = design('StudentsPage');
+    const orbit = html.slice(html.indexOf('<div class="sp-orbit"'), html.indexOf('</section>', html.indexOf('<div class="sp-orbit"')));
+    const nums = [...orbit.matchAll(/<span class="sp-crewnum" style="position:absolute;top:20px;right:19px;[^"]*">(0[1-4])<\/span>/gu)].map((m) => m[1]);
+    assert.deepEqual(nums, ['01', '02', '03', '04'], 'номера ролей не в углу карточки');
+    // Номер больше не стоит в строке заголовка: «специальности» выталкивало «04» на поле карточки.
+    assert.doesNotMatch(orbit, /margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1\.4;color:var\(--pd-ink-muted\)">0[1-4]</u);
+    assert.ok(orbit.includes('>Разбирает с автором тему и содержание глав.</span>'), 'описание куратора');
+  });
+
   it('главная: карточка «Две роли» словами задания', () => {
     const start = design('StartPage');
     assert.ok(start.includes('>Менеджер — сроки, документы, оплаты. Куратор со степенью по вашей специальности — содержание и методология.</p>'));
@@ -207,14 +216,14 @@ describe('две роли для клиента — менеджер и кура
   it('первые экраны: второй портрет — менеджер, а не научный редактор; на «Компаниям» куратор один', () => {
     assert.ok(design('StartPage').includes('>Менеджер проекта — сроки, документы, оплаты</span>'));
     assert.ok(design('MainPage').includes('>Менеджер проекта — сроки, документы, оплаты</span>'));
-    assert.ok(design('StudentsPage').includes('>Менеджер<br><span style="color:var(--pd-ink-muted)">сроки, документы, оплаты</span></span>'));
     const business = design('BusinessPage');
     assert.ok(business.includes('>Куратор — отраслевой эксперт со степенью</span>'));
     assert.ok(business.includes('>Менеджер проекта</span>'));
     assert.doesNotMatch(business, />Куратор проекта</u);
     // Одно лицо — одна роль на всех страницах: портрет менеджера — тот же снимок.
     const photos = read('app/src/components/photos.ts');
-    for (const slot of ['sp-avatar-2c', 'mp-photo-2', 'sp-stud-2', 'bp-photo-2']) {
+    // На «Студентам» портретов на первом экране нет (Р-841).
+    for (const slot of ['sp-avatar-2c', 'mp-photo-2', 'bp-photo-2']) {
       assert.match(photos, new RegExp(`'${slot}': \\{ photo: EDITOR \\}`, 'u'), slot);
     }
   });

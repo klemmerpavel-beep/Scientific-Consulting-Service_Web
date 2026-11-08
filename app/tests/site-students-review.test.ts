@@ -11,7 +11,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -83,14 +83,130 @@ describe('«Студентам»: колонка «Мы» и состав эта
     assert.deepEqual(findForbidden(PAGE, 'StudentsPage.dc.html'), []);
   });
 
-  it('метка над портретами первого экрана — «Кто сопровождает работу»', () => {
-    const art = PAGE.slice(PAGE.indexOf('class="sp-art"'));
-    assert.match(text(art.slice(0, art.indexOf('</span>') + 7)), /Кто сопровождает работу$/u);
+  it('первый экран по образцу «Экспертам» (Р-841): плашка «Научный коллектив с 2016 года», заголовок Р-480, без формы', () => {
+    const hero = PAGE.slice(PAGE.indexOf('<section id="works"'), PAGE.indexOf('</section>', PAGE.indexOf('<section id="works"')));
+    assert.match(text(hero), /Научный коллектив с 2016 года/u);
+    assert.match(text(hero.slice(hero.indexOf('<h1'), hero.indexOf('</h1>'))), /^Готовьте диплом к защите под контролем куратора с учёной степенью$/u);
+    assert.doesNotMatch(hero, /<form |<input /u);
+    assert.match(hero, /<img src="\.\/assets\/art\/st-cabinet\.webp" alt="[^"]+Данные вымышленные\." width="1600" height="1000"/u);
   });
 
   it('ответы о помощи с дипломом и о возврате работы — разбор и проверка', () => {
     assert.match(PAGE, /'Разбираем структуру и логику глав, проверяем ваш текст и оформление по ГОСТ 7\.32/u);
     assert.match(PAGE, /Замечания по сданному этапу разбираем без доплаты/u);
+  });
+});
+
+describe('«Студентам»: порядок разделов и условия договора (Р-844)', () => {
+  it('порядок вопросов посетителя: смета — после разделов ценности, отзывы — перед «Вопросами»', () => {
+    const ids = [...PAGE.matchAll(/<section id="([a-z]+)"/gu)].map((m) => m[1]);
+    assert.deepEqual(ids, ['works', 'services', 'route', 'inside', 'tasks', 'deal', 'cost', 'norm', 'reviews', 'geo', 'faq', 'request']);
+  });
+
+  it('«География» (Р-849): команды в двух городах, счётчик по книге заказов, схема с подписью, без слова «офис»', () => {
+    const at = PAGE.indexOf('<section id="geo"');
+    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    const words = text(section.replace(/<\/(?:span|li|text)>/gu, ' $&'));
+    assert.match(words, /Сопровождаем дипломы и ВКР по всей России/u);
+    assert.match(words, /430\+ работ с 2016 года по книге заказов практики/u);
+    assert.match(words, /Москва команда практики/u);
+    assert.match(words, /Санкт-Петербург команда практики/u);
+    assert.doesNotMatch(words, /офис/iu, 'адреса офисов на сайте не заявлены');
+    assert.match(section, /<img class="sp-geo-map" src="\.\/assets\/art\/st-russia\.svg" alt="Схема: Россия[^"]+" width="640" height="353"/u);
+    assert.doesNotMatch(section, /<animate|<set /u, 'движение — только классом с transform и opacity');
+  });
+
+  it('кнопки действия между этапами и формой (Р-851): «Оставить заявку» в «Договоре» и «Географии», к форме без окна', () => {
+    for (const id of ['deal', 'geo']) {
+      const at = PAGE.indexOf(`<section id="${id}"`);
+      const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+      const cta = section.match(/<a href="#request"( data-pd-dialog)? style="[^"]*background:var\(--pd-ink\)[^"]*"[^>]*>Оставить заявку</u);
+      assert.ok(cta, `нет кнопки действия в #${id}`);
+      assert.equal(cta[1], undefined, `#${id}: окно заявки открывает только кнопка первого экрана`);
+    }
+  });
+
+  it('«География»: силуэт России — по ст. 65 Конституции РФ, отметки городов — в своих координатах', () => {
+    const files = ['design/assets/art/st-russia.svg', 'app/public/assets/art/st-russia.svg'].map(read);
+    assert.equal(files[0], files[1], 'st-russia.svg в папках ассетов различается');
+    assert.match(files[0]!, /viewBox="0 0 640 353" width="640" height="353"/u);
+    const dots = [...files[0]!.matchAll(/M([\d.]+) ([\d.]+)h0/gu)].map((m) => [Number(m[1]), Number(m[2])] as const);
+    assert.ok(dots.length > 1500, `точек силуэта: ${dots.length}`);
+    // Точки tools/russia-dots.mjs (Альберс 95°/25°/65°): у каждой — точка сетки ближе шага 8.
+    const places: Record<string, [number, number]> = {
+      'Симферополь': [11.4, 248], 'Севастополь': [6.8, 248.3], 'Донецк': [44.8, 239.5], 'Луганск': [54.4, 240.3],
+      'Мелитополь': [28, 239.4], 'Геническ': [21.6, 242.1], 'Калининград': [24, 135.7], 'Итуруп': [613.3, 275.6],
+    };
+    for (const [name, [x, y]] of Object.entries(places)) {
+      assert.ok(dots.some(([dx, dy]) => Math.hypot(dx - x, dy - y) <= 8), `${name} вне силуэта`);
+    }
+    const at = PAGE.indexOf('<section id="geo"');
+    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    assert.match(section, /<circle cx="87\.5" cy="183\.6" r="6\.5"/u, 'отметка Москвы');
+    assert.match(section, /<circle cx="87\.8" cy="134\.4" r="5\.5"/u, 'отметка Санкт-Петербурга');
+    assert.match(section, /left:calc\(13\.67% \+ 14px\);top:52\.01%[^"]*">Москва</u);
+    assert.match(section, /left:calc\(13\.72% \+ 14px\);top:38\.07%[^"]*">Санкт-Петербург</u);
+  });
+
+  it('«Что закреплено в договоре»: четыре условия из оферты и ответа о замечаниях, ссылка на оферту', () => {
+    const at = PAGE.indexOf('<section id="deal"');
+    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    assert.match(text(section), /Что закреплено в договоре/u);
+    const titles = [...section.matchAll(/<h3 [^>]*>([^<]+)<\/h3>/gu)].map((m) => text(m[1]!));
+    assert.deepEqual(titles, ['Задание до начала работ', 'Акт приёмки по каждому этапу', 'Замечания по сданному этапу', 'Конфиденциальность и авторство']);
+    assert.match(section, /<a href="\.\/offer\.html" target="_blank" rel="noopener"/u);
+    assert.doesNotMatch(text(section), /гарант|под ключ|100 %/iu);
+  });
+});
+
+describe('«Студентам»: «Как это выглядит внутри» — карточка из двух панелей (Р-845)', () => {
+  it('текст и снимок в одной карточке, внизу текста — «Экран N из 4» и переход к следующей вкладке', () => {
+    const at = PAGE.indexOf('<section id="inside"');
+    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    assert.match(section, /<div id="pd-in-panel" role="tabpanel" aria-labelledby="\{\{ inTabLabelledBy \}\}" class="sp-in-card"/u);
+    assert.match(section, /<div class="sp-in-text"[\s\S]*\{\{ inStep \}\}[\s\S]*onClick="\{\{ inNext \}\}"[\s\S]*\{\{ inCaption \}\}[\s\S]*<div class="sp-in-shot"/u);
+    assert.doesNotMatch(section, /<figure/u, 'у снимка снова своя рамка');
+    assert.ok(PAGE.includes(".sp-in-card{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}"));
+  });
+
+  it('четыре вкладки: карточка работы — на первом экране, вместо неё «Переписка с менеджером»', () => {
+    const at = PAGE.indexOf('const IN_TABS = [');
+    const data = PAGE.slice(at, PAGE.indexOf('];', at));
+    const labels = [...data.matchAll(/\{ label: '([^']+)'/gu)].map((m) => m[1]);
+    assert.deepEqual(labels, ['Согласование этапа', 'Материалы и версии', 'Переписка с менеджером', 'Оплаты и документы']);
+    const imgs = [...data.matchAll(/img: '\.\/assets\/art\/(st-tab-[a-z]+)\.webp', alt: '([^']+)'/gu)];
+    assert.equal(imgs.length, 4);
+    for (const [, name, alt] of imgs) {
+      for (const dir of [['design', 'assets', 'art'], ['app', 'public', 'assets', 'art']]) {
+        assert.ok(existsSync(path.join(ROOT, ...dir, `${name}.webp`)), `нет ${dir.join('/')}/${name}.webp`);
+      }
+      assert.match(alt!, /Данные вымышленные\.$/u, name);
+    }
+  });
+});
+
+describe('«Студентам»: одна формулировка действия (Р-847)', () => {
+  it('кнопки-действия ведут к заявке словами «Оставить заявку»; «Обсудить работу» и «Обсудить мой срок» сняты', () => {
+    const buttons = [...PAGE.matchAll(/<a (?:[^>]*\s)?href="#request"[^>]*background:var\(--pd-ink\)[^>]*>([^<]+)</gu)].map((m) => m[1]!.trim());
+    assert.ok(buttons.length >= 3, `кнопок действия ${buttons.length}`);
+    for (const label of buttons) assert.equal(label, 'Оставить заявку');
+    assert.doesNotMatch(PAGE, />Обсудить работу<|>Обсудить мой срок</u);
+  });
+});
+
+describe('«Студентам»: заголовки разделов и фразы ядра (Р-848)', () => {
+  const h2 = [...PAGE.matchAll(/<h2 [^>]*>([\s\S]*?)<\/h2>/gu)].map((m) => text(m[1]!));
+
+  it('заголовки разделов — до 52 знаков (шкала скилла, Р-607)', () => {
+    for (const title of h2) assert.ok([...title].length <= 52, `«${title}» — ${[...title].length} знаков`);
+  });
+
+  it('фразы ядра marketing/research/05-семантика.md — в заголовках и тексте', () => {
+    const joined = h2.join(' | ');
+    for (const phrase of [/ВКР/u, /[Пп]одготовка к защите диплома/u, /Нормоконтроль ВКР/u, /смета на диплом/u]) assert.match(joined, phrase);
+    const all = text(PAGE.slice(0, PAGE.indexOf('<script type="text/x-dc"')));
+    for (const phrase of [/Сопровождение дипломной работы, ВКР и магистерской диссертации/u, /Консультация по дипломной работе/u]) assert.match(all, phrase);
+    assert.doesNotMatch(all, /написани[ея] (?:диплом|ВКР|работ)|вычитк|редактировани[ея] (?:диплом|ВКР)/iu, 'формулировки под п. 10 ст. 7 ФЗ «О рекламе»');
   });
 });
 
@@ -104,10 +220,9 @@ describe('«Студентам»: карточки и перечень услу�
     return [...PAGE.slice(at, PAGE.indexOf('].map', at)).matchAll(/\['([^']+)', '([^']+)'/gu)].map((m) => ({ title: m[1]!, text: m[2]! }));
   })();
 
-  it('шесть карточек и 17 строк перечня — «23 позиции» на первом экране', () => {
+  it('шесть карточек и 17 строк перечня', () => {
     assert.equal(cards.length, 6);
     assert.equal(list.length, 17);
-    assert.match(text(PAGE), /23 позиции в перечне работ/u);
   });
 
   it('услуги к защите и документы к ней названы проверкой', () => {
@@ -141,25 +256,21 @@ describe('«Студентам»: якоря объявлений', () => {
     assert.match(text(PAGE.slice(at, PAGE.indexOf('</h2>', at))), /^Состав работ /u);
   });
 
-  it('пункт меню «Состав работ» и карточка «23 позиции» ведут на #services', () => {
+  it('пункт меню «Состав работ» ведёт на #services', () => {
     const nav = PAGE.slice(PAGE.indexOf('<nav id="sp-nav"'), PAGE.indexOf('</nav>', PAGE.indexOf('<nav id="sp-nav"')));
     assert.match(nav, /<a href="#services"[^>]*>Состав работ<\/a>/u);
-    const card = PAGE.slice(PAGE.indexOf('<a class="pd-lift" href="#services"'));
-    assert.ok(PAGE.includes('<a class="pd-lift" href="#services"'), 'карточка не ведёт на #services');
-    assert.match(text(card.slice(0, card.indexOf('</a>'))), /^23 позиции/u);
     assert.doesNotMatch(PAGE, /href="#works"/u, 'ссылка на первый экран вместо состава работ');
   });
 
-  it('#norm раскрывает нормоконтроль при загрузке и по hashchange — в макете и в перенесённом компоненте', () => {
-    for (const [name, source] of [['макет', HTML], ['StudentsPage.tsx', TSX]] as const) {
-      const mount = source.slice(source.indexOf('componentDidMount(){'), source.indexOf('componentWillUnmount(){'));
-      assert.match(mount, /window\.location\.hash === '#norm'\) this\.setState\(\{ normOpen: true \}\)/u, name);
-      assert.match(mount, /this\.openNorm\(\);/u, `${name}: при загрузке не проверяется`);
-      assert.match(mount, /window\.addEventListener\('hashchange', this\.openNorm\)/u, name);
-      const unmount = source.slice(source.indexOf('componentWillUnmount(){'));
-      assert.match(unmount, /window\.removeEventListener\('hashchange', this\.openNorm\)/u, `${name}: слушатель не снимается`);
-    }
-    assert.match(PAGE, /<div id="norm"/u);
+  it('#norm — открытый раздел «Нормоконтроль ВКР: семь причин возврата» без свёртки (Р-843)', () => {
+    const at = PAGE.indexOf('<section id="norm"');
+    assert.ok(at > 0, 'нет раздела #norm');
+    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    assert.match(text(section.slice(0, section.indexOf('</h2>'))), /Нормоконтроль ВКР: семь причин возврата$/u);
+    assert.match(section, /<sc-for list="\{\{ normchecks \}\}" as="n" hint-placeholder-count="7">/u);
+    assert.doesNotMatch(section, /<sc-if|aria-expanded|toggleNorm/u, 'причины снова спрятаны в свёртку');
+    for (const source of [HTML, TSX]) assert.doesNotMatch(source, /normOpen|openNorm|onNormLink/u);
+    assert.ok(PAGE.indexOf('<section id="norm"') > PAGE.indexOf('<section id="cost"'), '#norm — сразу за «Сметой»');
   });
 });
 

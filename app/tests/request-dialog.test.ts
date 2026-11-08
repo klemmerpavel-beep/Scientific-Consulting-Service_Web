@@ -25,12 +25,20 @@ describe('заявка из шапки — окном', () => {
     assert.match(LAYOUT, /<RequestDialog \/>/u);
   });
 
-  it('перехватывается только ссылка «#request» в шапке и её копия в закреплённой полосе, форма — нижняя форма страницы', () => {
+  it('перехватывается только ссылка «#request» в шапке, её копия в закреплённой полосе и кнопка с data-pd-dialog, форма — нижняя форма страницы', () => {
     assert.match(COMPONENT, /closest\?\.\('a\[href="#request"\]'\)/u);
-    assert.match(COMPONENT, /link\.closest\('header, \.pd-stick'\) === null\) return;/u);
+    assert.match(COMPONENT, /link\.closest\('header, \.pd-stick, \[data-pd-dialog\]'\) === null\) return;/u);
     assert.match(COMPONENT, /document\.querySelector<HTMLFormElement>\('#request form'\)/u);
     // Своей формы у окна нет: ни полей, ни отправки.
     assert.doesNotMatch(COMPONENT, /<form|<input|fetch\(/u);
+  });
+
+  it('«Студентам»: главная кнопка первого экрана открывает окно заявки, других меток data-pd-dialog нет (Р-841)', () => {
+    const design = read('design', 'StudentsPage.dc.html');
+    const hero = design.slice(design.indexOf('<section id="works"'), design.indexOf('</section>', design.indexOf('<section id="works"')));
+    assert.equal([...design.matchAll(/data-pd-dialog/gu)].length, 1, 'метка окна — только у кнопки первого экрана');
+    assert.match(hero, /<a href="#request" data-pd-dialog [^>]*>Оставить заявку<\/a>/u);
+    assert.doesNotMatch(hero, /<form /u, 'на первом экране формы нет');
   });
 
   it('у каждой из четырёх страниц в шапке есть кнопка «#request» и форма в разделе заявки', () => {

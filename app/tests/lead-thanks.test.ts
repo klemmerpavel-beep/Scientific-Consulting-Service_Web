@@ -24,7 +24,8 @@ const LEAD_THANKS_MS = Number(/export const LEAD_THANKS_MS = (\d+);/u.exec(COMPO
 const PAGES = [
   { design: 'StartPage', code: 'StartPage', forms: 2 },
   { design: 'MainPage', code: 'PostgradPage', forms: 2 },
-  { design: 'StudentsPage', code: 'StudentsPage', forms: 2 },
+  // На «Студентам» формы на первом экране нет: заявка — окном той же формы раздела (Р-841).
+  { design: 'StudentsPage', code: 'StudentsPage', forms: 1 },
   { design: 'BusinessPage', code: 'BusinessPage', forms: 2 },
 ];
 

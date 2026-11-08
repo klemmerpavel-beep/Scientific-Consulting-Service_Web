@@ -27,9 +27,10 @@ const CASES = [
   {
     page: 'StudentsPage',
     component: 'app/src/components/pages/StudentsPage.tsx',
-    start: 'id="norm-panel"',
+    // С Р-843 причины — открытым разделом #norm, а не свёрткой.
+    start: '<section id="norm"',
     after: '<sc-for list="{{ normchecks }}"',
-    end: '</sc-if>',
+    end: '</section>',
     label: 'Разобрать замечания нормоконтроля',
   },
 ] as const;

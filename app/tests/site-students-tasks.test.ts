@@ -153,13 +153,16 @@ describe('«Шесть случаев»: текст и границы блока
     assert.doesNotMatch(logic, /submit|\bfetch\(|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|indexedDB/u);
   });
 
-  it('стоит после «Как это выглядит внутри» и перед «Вопросами» (Р-812)', () => {
+  it('стоит после «Как это выглядит внутри», перед «Что закреплено в договоре» и «Вопросами» (Р-812, Р-844)', () => {
     const inside = html.indexOf('<section id="inside"');
     const here = html.indexOf('<section id="tasks"');
     assert.ok(inside > 0 && inside < here, '#tasks не после «Как это выглядит внутри»');
     assert.equal(html.slice(html.indexOf('</section>', inside), here).match(/<section/gu), null, 'между #inside и #tasks другой раздел');
+    // С Р-844 за «Шестью случаями» — «Что закреплено в договоре», смета,
+    // нормоконтроль и отзывы; «Вопросы» — после них.
     const next = html.slice(here + section.length);
-    assert.match(next, /^\s*<section id="faq"/u, 'за #tasks не «Вопросы»');
+    assert.match(next, /^\s*(?:<!--[\s\S]*?-->\s*)?<section id="deal"/u, 'за #tasks не «Что закреплено в договоре»');
+    assert.ok(html.indexOf('<section id="faq"') > here, '«Вопросы» не после #tasks');
     const works = html.indexOf('<section id="works"');
     const team = html.indexOf('<section', html.indexOf('</section>', works));
     assert.match(plain(html.slice(team, html.indexOf('</h2>', team))), /Кто сопровождает работу$/u, 'за первым экраном снова «Кто сопровождает», как до Р-805');
