@@ -149,16 +149,15 @@ describe('«Студентам»: якоря объявлений', () => {
     assert.doesNotMatch(PAGE, /href="#works"/u, 'ссылка на первый экран вместо состава работ');
   });
 
-  it('#norm раскрывает нормоконтроль при загрузке и по hashchange — в макете и в перенесённом компоненте', () => {
-    for (const [name, source] of [['макет', HTML], ['StudentsPage.tsx', TSX]] as const) {
-      const mount = source.slice(source.indexOf('componentDidMount(){'), source.indexOf('componentWillUnmount(){'));
-      assert.match(mount, /window\.location\.hash === '#norm'\) this\.setState\(\{ normOpen: true \}\)/u, name);
-      assert.match(mount, /this\.openNorm\(\);/u, `${name}: при загрузке не проверяется`);
-      assert.match(mount, /window\.addEventListener\('hashchange', this\.openNorm\)/u, name);
-      const unmount = source.slice(source.indexOf('componentWillUnmount(){'));
-      assert.match(unmount, /window\.removeEventListener\('hashchange', this\.openNorm\)/u, `${name}: слушатель не снимается`);
-    }
-    assert.match(PAGE, /<div id="norm"/u);
+  it('#norm — открытый раздел «Нормоконтроль ВКР: семь причин возврата» без свёртки (Р-843)', () => {
+    const at = PAGE.indexOf('<section id="norm"');
+    assert.ok(at > 0, 'нет раздела #norm');
+    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    assert.match(text(section.slice(0, section.indexOf('</h2>'))), /Нормоконтроль ВКР: семь причин возврата$/u);
+    assert.match(section, /<sc-for list="\{\{ normchecks \}\}" as="n" hint-placeholder-count="7">/u);
+    assert.doesNotMatch(section, /<sc-if|aria-expanded|toggleNorm/u, 'причины снова спрятаны в свёртку');
+    for (const source of [HTML, TSX]) assert.doesNotMatch(source, /normOpen|openNorm|onNormLink/u);
+    assert.ok(PAGE.indexOf('<section id="norm"') > PAGE.indexOf('<section id="cost"'), '#norm — сразу за «Сметой»');
   });
 });
 
