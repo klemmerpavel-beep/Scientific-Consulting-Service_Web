@@ -97,6 +97,23 @@ describe('«Студентам»: колонка «Мы» и состав эта
   });
 });
 
+describe('«Студентам»: порядок разделов и условия договора (Р-844)', () => {
+  it('порядок вопросов посетителя: смета — после разделов ценности, отзывы — перед «Вопросами»', () => {
+    const ids = [...PAGE.matchAll(/<section id="([a-z]+)"/gu)].map((m) => m[1]);
+    assert.deepEqual(ids, ['works', 'services', 'route', 'inside', 'tasks', 'deal', 'cost', 'norm', 'reviews', 'faq', 'request']);
+  });
+
+  it('«Что закреплено в договоре»: четыре условия из оферты и ответа о замечаниях, ссылка на оферту', () => {
+    const at = PAGE.indexOf('<section id="deal"');
+    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    assert.match(text(section), /Что закреплено в договоре/u);
+    const titles = [...section.matchAll(/<h3 [^>]*>([^<]+)<\/h3>/gu)].map((m) => text(m[1]!));
+    assert.deepEqual(titles, ['Задание до начала работ', 'Акт приёмки по каждому этапу', 'Замечания по сданному этапу', 'Конфиденциальность и авторство']);
+    assert.match(section, /<a href="\.\/offer\.html" target="_blank" rel="noopener"/u);
+    assert.doesNotMatch(text(section), /гарант|под ключ|100 %/iu);
+  });
+});
+
 describe('«Студентам»: карточки и перечень услуг', () => {
   const list = (() => {
     const at = PAGE.indexOf('const all = [');
