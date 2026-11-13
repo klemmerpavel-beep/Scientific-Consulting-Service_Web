@@ -171,15 +171,15 @@ describe('главная: вход для молодых учёных', () => {
     assert.match(START, new RegExp(`<meta property="og:title" content="${expected}">`, 'u'));
   });
 
-  it('под формой первого экрана — «Студентам · Аспирантам и молодым учёным · Компаниям» (после формы, Р-59)', () => {
-    const form = START.indexOf('<form');
-    const nav = START.indexOf('<nav aria-label="Направления работы" data-dirs="top"');
-    assert.ok(nav > START.indexOf('</form>', form), 'ссылки стоят не после формы первого экрана');
-    assert.ok(nav < START.indexOf('class="pd-hero-art"'), 'ссылки ушли из колонки формы');
-    const block = START.slice(nav, START.indexOf('</nav>', nav));
-    const links = [...block.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/gu)].map((m) => `${m[2]!.replace(/ /gu, ' ')} → ${m[1]}`);
-    assert.deepEqual(links, ['Студентам → ./students.html', 'Аспирантам и молодым учёным → ./main.html', 'Компаниям → ./business.html']);
-    assert.equal(text(block).replace(/\s*·\s*/gu, ' · '), 'Студентам · Аспирантам и молодым учёным · Компаниям');
+  it('под формой первого экрана строки направлений нет (Р-861): вход в направления — карточками «Три направления работы» ниже', () => {
+    const tsx = read('app/src/components/pages/StartPage.tsx');
+    for (const [where, source] of [['макет', START], ['StartPage.tsx', tsx]] as const) {
+      assert.doesNotMatch(source, /data-dirs|pd-dirs|aria-label="Направления работы"/u, `${where}: строка направлений под формой вернулась`);
+      const hero = source.slice(source.indexOf('<form'), source.indexOf('pd-hero-art'));
+      assert.doesNotMatch(hero, /href="(?:\.\/|\/)(?:students|main|business)(?:\.html)?"/u, `${where}: ссылки на направления в колонке формы`);
+    }
+    const cards = [...START.matchAll(/<a class="pd-lift" href="\.\/(students|main|business)\.html"/gu)].map((m) => m[1]);
+    assert.deepEqual([...cards].sort(), ['business', 'main', 'students'], 'ссылки на три направления ниже по странице');
   });
 
   it('карточка направления 1 — «Диссертация, статьи и гранты» / «Аспирантам и молодым учёным»', () => {
