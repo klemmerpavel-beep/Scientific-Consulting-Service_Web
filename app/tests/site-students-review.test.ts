@@ -115,6 +115,21 @@ describe('«Студентам»: первый экран как до Р-841, п
   });
 });
 
+describe('«Студентам»: над заголовком первого экрана — плашка «Научный коллектив с 2016 года» (Р-855)', () => {
+  const hero = PAGE.slice(PAGE.indexOf('<section id="works"'), PAGE.indexOf('</section>', PAGE.indexOf('<section id="works"')));
+
+  it('плашка с тремя портретами ролей стоит прямо перед h1, метки «Студентам, магистрантам и специалистам» нет', () => {
+    const at = hero.indexOf('<span class="sp-proof"');
+    assert.ok(at > 0, 'нет плашки');
+    const plate = hero.slice(at, hero.indexOf('<h1', at));
+    assert.match(text(plate), /^Научный коллектив с 2016 года$/u);
+    const faces = [...plate.matchAll(/<img src="\.\/assets\/avatars\/(ph-[a-z]+)\.webp" alt="" aria-hidden="true"/gu)].map((m) => m[1]);
+    assert.deepEqual(faces, ['ph-curator', 'ph-expert', 'ph-editor']);
+    assert.ok(hero.indexOf('<h1') > at && hero.indexOf('<h1') - at < plate.length + 1, 'между плашкой и заголовком другой элемент');
+    assert.doesNotMatch(hero.replace(/<!--[\s\S]*?-->/gu, ''), /Студентам, магистрантам и специалистам/u);
+  });
+});
+
 describe('«Студентам»: порядок разделов как на выкате № 155 (Р-853)', () => {
   it('первый экран, команда, состав работ, смета, этапы, кабинет, случаи, «География», вопросы, заявка, отзывы', () => {
     const ids = [...PAGE.matchAll(/<section id="([a-z]+)"/gu)].map((m) => m[1]);
