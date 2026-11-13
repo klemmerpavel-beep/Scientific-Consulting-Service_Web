@@ -11,7 +11,6 @@ import {
   TABLE_NUM_HEAD,
   TableCard,
   Tabs,
-  formatDate,
 } from '../../../../components/cabinet/ui';
 import { can } from '../../../../lib/cabinet/access';
 import { formatPlain } from '../../../../lib/cabinet/money';
@@ -26,7 +25,7 @@ import {
 } from '../../../../lib/cabinet/orders';
 import { PROJECT_STATUS_LABEL } from '../../../../lib/cabinet/project-status';
 import { requireActor } from '../../../../lib/cabinet/session';
-import { ORDER_COLUMNS, orderTotals } from '../../../../lib/cabinet/table-views';
+import { ORDER_COLUMNS, orderDescription, orderTotals } from '../../../../lib/cabinet/table-views';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +36,17 @@ const STATUS_TAB: Record<OrderStatusFilter, string> = {
   COMPLETED: PROJECT_STATUS_LABEL.COMPLETED,
   CANCELLED: PROJECT_STATUS_LABEL.CANCELLED,
 };
+
+/**
+ * День строкой книги — «22.09.2026»: таблица из девяти столбцов должна
+ * помещаться на 1440 px целиком, с деньгами справа, а «22 сентября 2026»
+ * в двух столбцах дат отнимало у них сто пятьдесят пикселей.
+ */
+function bookDay(value: Date | null): string {
+  if (value === null) return '—';
+  const [year, month, day] = value.toISOString().slice(0, 10).split('-');
+  return `${day}.${month}.${year}`;
+}
 
 const DEBT_TAB: Record<OrderDebtFilter, string> = {
   all: 'С долгом и без',
@@ -110,11 +120,17 @@ export default async function OrdersScreen({
       </FilterBar>
 
       <TableCard label="Заказы">
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1180 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1080 }}>
           <thead>
             <tr>
               {ORDER_COLUMNS.map((column) => (
-                <th key={column.key} scope="col" style={column.numeric ? TABLE_NUM_HEAD : TABLE_HEAD}>
+                // Шапка переносится по словам: девять подписей книги в одну
+                // строку не дают таблице поместиться на 1440 px.
+                <th
+                  key={column.key}
+                  scope="col"
+                  style={{ ...(column.numeric ? TABLE_NUM_HEAD : TABLE_HEAD), whiteSpace: 'normal', verticalAlign: 'bottom' }}
+                >
                   {column.head}
                 </th>
               ))}
@@ -134,25 +150,27 @@ export default async function OrdersScreen({
             ) : (
               table.rows.map((row) => (
                 <tr key={row.code}>
-                  <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{formatDate(row.orderedOn)}</td>
+                  <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{bookDay(row.orderedOn)}</td>
                   <td style={TABLE_CELL}>{row.client}</td>
                   <td style={TABLE_CELL}>{row.type}</td>
-                  <td style={{ ...TABLE_CELL, minWidth: 240 }}>
+                  <td style={TABLE_CELL}>
                     {/* Строка ведёт на карточку работы (Р-184): ссылкой —
-                        название, тема — под ним, если не повторяет его. */}
+                        описание, тем же правилом, что в книге, — без
+                        повтора типа работы и названия. */}
                     <a className="cab-mark" href={`/cabinet/projects/${encodeURIComponent(row.code)}`}>
-                      {row.title}
+                      {orderDescription(row)}
                     </a>
-                    {row.topic === null || row.topic === row.title ? null : (
-                      <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>{row.topic}</div>
-                    )}
                   </td>
-                  <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{formatDate(row.dueOn) ?? '—'}</td>
+                  <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{bookDay(row.dueOn)}</td>
                   <td style={TABLE_NUM}>{row.contract === null ? '—' : formatPlain(row.contract)}</td>
                   <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{PROJECT_STATUS_LABEL[row.status]}</td>
                   <td style={TABLE_NUM}>{formatPlain(row.received)}</td>
                   <td style={TABLE_NUM}>
-                    {row.rest === null ? '—' : row.overpaid > 0n ? `переплата ${formatPlain(row.overpaid)}` : formatPlain(row.rest)}
+                    {/* Переплата — минусом, как в книге, и словом под числом. */}
+                    {row.rest === null ? '—' : row.overpaid > 0n ? `−${formatPlain(row.overpaid)}` : formatPlain(row.rest)}
+                    {row.overpaid > 0n ? (
+                      <div style={{ fontSize: 13, color: 'var(--pd-ink-muted)' }}>переплата</div>
+                    ) : null}
                   </td>
                 </tr>
               ))

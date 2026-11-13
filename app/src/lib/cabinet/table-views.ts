@@ -232,8 +232,11 @@ export const PROJECT_COLUMNS: readonly Column<ProjectRowView>[] = [
 /** Строка «Заказов» — то, что отдаёт `ordersTable` (решение Р-874). */
 export interface OrderRowView {
   readonly code: string;
-  /** День заказа: начало работы, а без него — день заведения. */
-  readonly orderedOn: Date;
+  /**
+   * День заказа — начало работы. У строки книги без даты заказа его нет:
+   * подставлять день переноса значило бы выдумывать дату (как `openContract`).
+   */
+  readonly orderedOn: Date | null;
   readonly client: string;
   readonly type: string;
   readonly title: string;

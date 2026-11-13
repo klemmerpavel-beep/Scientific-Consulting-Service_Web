@@ -365,7 +365,8 @@ const owing = (row: OrderRowView) => (row.rest ?? 0n) > 0n;
  * (`scopeProjects`, Р-149). Столбцы — как в книге владельца: дата,
  * заказчик, тип, описание, срок, стоимость, статус, оплачено и остаток.
  * Отбор — по состоянию работы и по долгу; числа у вкладок — по другому
- * отбору, как стоит на экране. Порядок — новые заказы сверху.
+ * отбору, как стоит на экране. Порядок — новые заказы сверху, строки
+ * книги без даты заказа — в конце.
  *
  * Деньги здесь — договор и поступления, без маржи и вознаграждения
  * кураторов: их видит только руководитель на «Деньгах» (Р-870).
@@ -399,7 +400,6 @@ export async function ordersTable(
       status: true,
       dueOn: true,
       startedOn: true,
-      createdAt: true,
       client: { select: { fullName: true } },
       serviceType: { select: { name: true } },
       contract: {
@@ -412,7 +412,7 @@ export async function ordersTable(
       project.contract === null ? null : orderBalance(project.status, project.contract.totalAmount, project.contract.tranches);
     return {
       code: project.code,
-      orderedOn: project.startedOn ?? project.createdAt,
+      orderedOn: project.startedOn,
       client: project.client.fullName,
       type: project.serviceType.name,
       title: project.title,
