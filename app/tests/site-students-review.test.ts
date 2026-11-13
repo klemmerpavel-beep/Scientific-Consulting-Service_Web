@@ -210,6 +210,34 @@ describe('«Студентам»: фон без сборки ВКР, кольц�
   });
 });
 
+describe('«Студентам»: выравнивание оставленных блоков (Р-856)', () => {
+  it('«Кто сопровождает работу»: карточки ролей попарно на одной высоте — 01 с 02, 03 с 04', () => {
+    const orbit = PAGE.slice(PAGE.indexOf('<div class="sp-orbit"'), PAGE.indexOf('</section>', PAGE.indexOf('<div class="sp-orbit"')));
+    const crews = [...orbit.matchAll(/<div class="sp-crew" style="position:absolute;left:([\d.]+)%;top:([\d.]+)%;[\s\S]*?<span class="sp-crewnum"[^>]*>(0[1-4])<\/span>/gu)]
+      .map((m) => ({ num: m[3]!, left: Number(m[1]), top: Number(m[2]) }));
+    assert.deepEqual(crews.map((c) => c.num), ['01', '02', '03', '04']);
+    const [c1, c2, c3, c4] = crews;
+    assert.equal(c1!.top, c2!.top, '01 и 02 на разной высоте');
+    assert.equal(c3!.top, c4!.top, '03 и 04 на разной высоте');
+    assert.ok(c1!.top < c3!.top, 'верхний ряд — 01 и 02');
+    assert.ok(c1!.left < c2!.left && c3!.left < c4!.left, '01 и 03 — слева');
+    // Портреты стоят над своими карточками: фигура — первый потомок карточки роли.
+    assert.equal((orbit.match(/<div class="sp-crew" [^>]*>\n<img class="sp-crewfig"/gu) ?? []).length, 4);
+  });
+
+  it('«География»: карточка карты на высоту левой колонки, карта — по центру между верхом карточки и легендой', () => {
+    const at = PAGE.indexOf('<section id="geo"');
+    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    assert.match(section, /<div class="sp-geo" style="gap:40px;align-items:stretch">/u);
+    assert.match(section, /<div class="sp-geo-card" style="[^"]*display:flex;flex-direction:column">\n<div style="flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;min-height:0">\n<div style="position:relative">\n<img class="sp-geo-map"/u);
+  });
+
+  it('«Как это выглядит внутри»: поля текста и снимка по 24 px сверху и снизу — заголовок со снимком и подпись с его низом на одних линиях', () => {
+    assert.ok(PAGE.includes('.sp-in-text{padding:24px 28px;border-right:1px solid var(--pd-border)}'), 'поля текстовой панели');
+    assert.ok(PAGE.includes('.sp-in-shot{padding:24px}'), 'поля панели снимка');
+  });
+});
+
 describe('«Студентам»: «Как это выглядит внутри» — карточка из двух панелей (Р-845)', () => {
   it('текст и снимок в одной карточке, внизу текста — «Экран N из 4» и переход к следующей вкладке', () => {
     const at = PAGE.indexOf('<section id="inside"');
