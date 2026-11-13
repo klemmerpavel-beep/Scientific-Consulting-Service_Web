@@ -99,7 +99,8 @@ import {
 import { curatorPanel, curatorReturnHead } from '../../../../lib/cabinet/curator-tasks';
 import { leadNumberLabel } from '../../../../lib/cabinet/lead-labels';
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
-import { PAYMENT_CLOSED_STATUSES, formatAmount } from '../../../../lib/cabinet/money';
+import { PAYMENT_CLOSED_STATUSES, formatAmount, orderBalance } from '../../../../lib/cabinet/money';
+import { orderMoneyLine } from '../../../../components/cabinet/OrderMoney';
 import { ownPayoutTotals, paymentDocumentLines, projectContract } from '../../../../lib/cabinet/finance';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
@@ -324,7 +325,13 @@ export default async function ProjectScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string; manage?: string; briefApplied?: string; rated?: string; created?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    manage?: string;
+    briefApplied?: string;
+    rated?: string;
+    created?: string;
+  }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}`);
 
@@ -768,6 +775,16 @@ export default async function ProjectScreen({
           : authorName(event.actor, actor, event.actorId ?? undefined),
     }));
 
+  // «Деньги по заказу» — тому, кто ведёт деньги работы: руководителю и
+  // менеджеру своей работы (запрос владельца 13.11.2026, Р-870, Р-871).
+  // Числа — строкой в шапке, кнопка ведёт к записи поступления на экране
+  // оплат: отдельным блоком карточки они не стоят — у менеджера их уже
+  // пять, предел Р-183. Клиенту и куратору не строится ничего.
+  const mayMoney = can(actor, 'PAYMENT_EDIT', ref);
+  const moneyContract = mayMoney ? await projectContract(actor, project.id) : null;
+  const moneyFigures =
+    moneyContract === null ? null : orderBalance(project.status, moneyContract.totalAmount, moneyContract.tranches);
+
   // Заявка, из которой заведена работа, — только практике (П-3, решение
   // Р-763): клиенту после одобрения номер заявки не показывается.
   const fromLead = practice ? await projectLead(actor, project.id) : null;
@@ -931,11 +948,18 @@ export default async function ProjectScreen({
         {/* Правка карточки, куратор и менеджер — на виду, а не только в
             свёрнутом «Управлении работой» в конце экрана: руководитель их
             не находил (замечание владельца 08.10.2026, решение Р-487). */}
-        {(mayEdit && !closed) || mayAssign || maySetManager || mayInstruct || checklist !== undefined || prepareCount !== null ? (
+        {(mayEdit && !closed) || mayMoney || mayAssign || maySetManager || mayInstruct || checklist !== undefined || prepareCount !== null ? (
           <div style={{ flexBasis: '100%', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {mayEdit && !closed ? (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-card`}>
                 Изменить карточку
+              </ButtonLink>
+            ) : null}
+            {/* Деньги заказа — на виду и у закрытой работы: закрытость
+                запрещает этапы, а не учёт (Р-871). */}
+            {mayMoney ? (
+              <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/payments#money`}>
+                Деньги по заказу
               </ButtonLink>
             ) : null}
             {/* Исходные данные на утверждение — документом (Р-561). */}
@@ -970,6 +994,11 @@ export default async function ProjectScreen({
               </ButtonLink>
             )}
           </div>
+        ) : null}
+        {mayMoney ? (
+          <Text muted size={13} style={{ flexBasis: '100%', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+            {orderMoneyLine(moneyFigures)}
+          </Text>
         ) : null}
       </ScreenTop>
       {/* Причина отказа переписки — у её формы; без формы на экране — здесь

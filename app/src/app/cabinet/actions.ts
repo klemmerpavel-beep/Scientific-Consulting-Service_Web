@@ -61,7 +61,9 @@ import { handBackStage, handOverStage, recallHandover } from '../../lib/cabinet/
 import {
   addPayout,
   addTranche,
+  correctReceipt,
   markPayoutPaid,
+  recordReceipt,
   saveContract,
   removeTranche,
   setTrancheStatus,
@@ -1617,6 +1619,59 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);
+}
+
+/**
+ * «Записать поступление» — сумма, дата и комментарий одним действием
+ * (решение Р-871). Форма стоит на экране оплат: отказ — у неё, с
+ * набранным (приём Р-279, Р-722); исход — в сводке договора.
+ */
+export async function recordReceiptAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const back = `/cabinet/projects/${code}/payments`;
+  let failure: string | null = null;
+  try {
+    await recordReceipt(actor, {
+      projectId: String(form.get('projectId') ?? ''),
+      amount: parseAmount(String(form.get('amount') ?? '')),
+      paidOn: dateOrNull(form.get('paidOn')),
+      note: String(form.get('note') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось записать поступление. Введённое сохранено в форме.');
+  }
+  if (failure !== null) {
+    redirect(
+      await withError(back, failure, {
+        slot: 'receipt',
+        draft: fieldsOf(form, ['amount', 'paidOn', 'note']),
+        anchor: 'receipt',
+      }),
+    );
+  }
+  redirect(`${back}?received=1#money`);
+}
+
+/** Исправить сумму, дату или комментарий ошибочной записи поступления (Р-871). */
+export async function correctReceiptAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const trancheId = String(form.get('trancheId') ?? '');
+  const back = `/cabinet/projects/${code}/payments`;
+  let failure: string | null = null;
+  try {
+    await correctReceipt(actor, trancheId, {
+      amount: parseAmount(String(form.get('amount') ?? '')),
+      paidOn: dateOrNull(form.get('paidOn')),
+      note: String(form.get('note') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось исправить поступление');
+  }
+  const anchor = /^[A-Za-z0-9_-]{1,64}$/u.test(trancheId) ? `tranche-${trancheId}` : 'tranches';
+  if (failure !== null) redirect(await withError(back, failure, { slot: `correct-${trancheId}`, anchor }));
+  redirect(`${back}#${anchor}`);
 }
 
 /** Удалить введённый год — после подтверждения второй формой (РК-15, Р-346). */

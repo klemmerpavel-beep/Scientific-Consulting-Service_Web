@@ -21,6 +21,7 @@ import { prisma } from '../../db.ts';
 import { ensure, type Actor } from '../access.ts';
 import { record } from '../audit.ts';
 import { nextProjectCode } from '../projects.ts';
+import { REST_TRANCHE_TITLE } from '../money.ts';
 import {
   DEFAULT_FILLS,
   ERASED_KEY_PREFIX,
@@ -141,7 +142,9 @@ function valuesOf(row: ParsedRow) {
 }
 
 /** Название транша, которым перенос заводит неоплаченный остаток договора. */
-const REST_TITLE = 'Остаток по договору';
+// Плановый транш «остатка»: название — одно с поступлениями кабинета,
+// которые его пересчитывают (`settleRest`, решение Р-871).
+const REST_TITLE = REST_TRANCHE_TITLE;
 /** Поступление сверх стоимости из книги — доплата за дополнительную услугу (Р-273). */
 export const EXTRA_TITLE = 'Доплата сверх стоимости по книге (доп. услуги)';
 

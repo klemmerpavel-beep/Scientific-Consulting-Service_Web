@@ -109,6 +109,9 @@ const ACTIONS: Record<string, string> = {
   TRANCHE_ADDED: 'Заведён транш',
   TRANCHE_REMOVED: 'Удалён плановый транш',
   TRANCHE_RESCHEDULED: 'Перенесена плановая дата транша',
+  // «Деньги по заказу» (решение Р-871).
+  TRANCHE_RECEIVED: 'Записано поступление',
+  TRANCHE_CORRECTED: 'Исправлено поступление',
   RECOMMENDATION_MARKED: 'Отмечена рекомендация',
   ASSIGNMENT_CREATED: 'Поставлено поручение',
   ASSIGNMENT_STATUS: 'Изменено состояние поручения',
@@ -349,6 +352,13 @@ const FIELDS: Record<string, string> = {
   score: 'оценка',
   withText: 'с отзывом',
   publishAllowed: 'публикация отзыва на сайте разрешена',
+  // Поступление и его исправление (решение Р-871).
+  noted: 'с комментарием',
+  amountFrom: 'сумма была',
+  amountTo: 'сумма стала',
+  paidOnFrom: 'дата поступления была',
+  paidOnTo: 'дата поступления стала',
+  noteChanged: 'комментарий изменён',
 };
 
 /** Правило поля у одного действия: своё имя и, если нужно, подпись значения. */
@@ -689,10 +699,10 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
 };
 
 /** Поля с суммой: журнал хранит их строкой копеек, bigint в JSON не кладётся. */
-const MONEY_KEYS = new Set(['amount', 'total', 'totalFrom', 'contractTotal', 'revenue', 'costs', 'defaultPayout']);
+const MONEY_KEYS = new Set(['amount', 'amountFrom', 'amountTo', 'total', 'totalFrom', 'contractTotal', 'revenue', 'costs', 'defaultPayout']);
 
 /** Поля с днём: «ГГГГ-ММ-ДД» или полночь дня из поля даты формы. */
-const DAY_KEYS = new Set(['dueOn', 'dueFrom', 'dueTo', 'paidOn', 'plannedDate', 'signedOn']);
+const DAY_KEYS = new Set(['dueOn', 'dueFrom', 'dueTo', 'paidOn', 'paidOnFrom', 'paidOnTo', 'plannedDate', 'signedOn']);
 
 /** Поля с моментом: срок ссылки входа — до минуты, по Москве. */
 const MOMENT_KEYS = new Set(['expiresAt']);

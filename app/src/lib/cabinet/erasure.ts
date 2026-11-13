@@ -487,9 +487,11 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     // туда писали «оплата Ивановой за гл. 2», а комментарий начисления
     // после исполнения требования продолжал видеть эксперт (решение Р-244).
     // Суммы и даты остаются: это учёт, а не сведения о субъекте.
+    // Внутренний комментарий к поступлению — тоже свободный текст («перевод
+    // от мамы, Ивановой») и стирается целиком (решение Р-871).
     await tx.tranche.updateMany({
       where: { contract: { projectId: { in: projectIds } } },
-      data: { title: ERASED },
+      data: { title: ERASED, note: null },
     });
     await tx.expertPayout.updateMany({
       where: { projectId: { in: projectIds } },
