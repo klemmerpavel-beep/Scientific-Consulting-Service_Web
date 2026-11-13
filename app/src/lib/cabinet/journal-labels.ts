@@ -61,6 +61,7 @@ const ACTIONS: Record<string, string> = {
   FEEDBACK_EXPORTED: 'Замечания выгружены',
   FINANCE_EXPORTED: 'Деньги по работам выгружены',
   PROJECTS_EXPORTED: 'Работы выгружены',
+  ORDERS_EXPORTED: 'Заказы выгружены',
   FEEDBACK_REVIEWED: 'Замечание разобрано',
   EXPERT_APPLICATION_REVIEWED: 'Анкета кандидата разобрана',
   EXPERT_APPLICATION_DELETED: 'Анкета кандидата удалена',
@@ -569,6 +570,11 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
       name: 'вкладка',
       value: byMap({ active: 'Действующие', waiting: 'Ждут клиента', done: 'Завершённые', all: 'Все' }),
     },
+  },
+  // «Заказы» (решение Р-874): отбор — подписями вкладок экрана.
+  ORDERS_EXPORTED: {
+    status: { name: 'состояние', value: (raw) => (raw === 'all' ? 'все' : byMap(PROJECT_STATUS_LABEL)(raw).toLowerCase()) },
+    debt: { name: 'долг', value: byMap({ all: 'с долгом и без', owing: 'с долгом', settled: 'без долга' }) },
   },
   FINANCE_EXPORTED: {
     ...filterRules,

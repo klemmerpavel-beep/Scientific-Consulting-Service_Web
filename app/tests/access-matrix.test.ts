@@ -440,6 +440,9 @@ describe('меню подсвечивает раздел, в котором че
     ['/cabinet/manage/finance/years', '/cabinet/manage/finance'],
     ['/cabinet/manage/analytics', '/cabinet/manage/analytics'],
     ['/cabinet/manage/analytics/money', '/cabinet/manage/analytics'],
+    // «Заказы» — свой пункт; «Новый заказ» — внутри него (Р-874).
+    ['/cabinet/manage/orders', '/cabinet/manage/orders'],
+    ['/cabinet/manage/orders/new', '/cabinet/manage/orders'],
     // «Рекомендации» — свой пункт (РК-17, Р-350).
     ['/cabinet/manage/recommendations', '/cabinet/manage/recommendations'],
     ['/cabinet/manage/recommendations/calendar', '/cabinet/manage/recommendations'],
@@ -469,12 +472,13 @@ describe('меню менеджера и начальный экран роли 
   const head: Actor = { ...manager, id: 'head-home', role: 'HEAD' };
   const items = navFor(manager);
 
-  it('пункты менеджера: Сегодня, Мои работы, Заявки, Реестры, Управление, Настройки (Р-559)', () => {
+  it('пункты менеджера: Сегодня, Мои работы, Заказы, Заявки, Реестры, Управление, Настройки (Р-559, Р-874)', () => {
     assert.deepEqual(
       items.map((item) => [item.href, item.label]),
       [
         ['/cabinet/manage', 'Сегодня'],
         ['/cabinet/projects', 'Мои работы'],
+        ['/cabinet/manage/orders', 'Заказы'],
         ['/cabinet/manage/leads', 'Заявки'],
         ['/cabinet/manage/registry', 'Реестры'],
         ['/cabinet/manage/tools', 'Управление'],

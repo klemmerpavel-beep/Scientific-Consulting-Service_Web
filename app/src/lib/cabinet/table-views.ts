@@ -227,6 +227,113 @@ export const PROJECT_COLUMNS: readonly Column<ProjectRowView>[] = [
   },
 ];
 
+// ── Заказы ──────────────────────────────────────────────────────────────
+
+/** Строка «Заказов» — то, что отдаёт `ordersTable` (решение Р-874). */
+export interface OrderRowView {
+  readonly code: string;
+  /** День заказа: начало работы, а без него — день заведения. */
+  readonly orderedOn: Date;
+  readonly client: string;
+  readonly type: string;
+  readonly title: string;
+  readonly topic: string | null;
+  readonly dueOn: Date | null;
+  readonly status: ProjectStatusKey;
+  /** Сумма договора; `null` — договора нет. */
+  readonly contract: bigint | null;
+  readonly received: bigint;
+  /** Остаток к получению (`receivableOf`); `null` — договора нет. */
+  readonly rest: bigint | null;
+  /** Поступило сверх суммы договора. */
+  readonly overpaid: bigint;
+}
+
+/**
+ * Описание работы строкой книги: название, если оно не повторяет вид
+ * работы, и тема, если она не повторяет название. У работ из книги
+ * название — это «Тип работы» книги, а тема — её «Описание работы».
+ */
+export function orderDescription(row: Pick<OrderRowView, 'type' | 'title' | 'topic'>): string {
+  const parts = [row.title !== row.type ? row.title : null, row.topic !== null && row.topic !== row.title ? row.topic : null].filter(
+    (part): part is string => part !== null && part.trim() !== '',
+  );
+  return parts.length === 0 ? row.title : parts.join(' — ');
+}
+
+/** Остаток со знаком: переплата — меньше нуля, как «оплачено сверх суммы». */
+export function orderBalanceValue(row: Pick<OrderRowView, 'rest' | 'overpaid'>): bigint | null {
+  if (row.rest === null) return null;
+  return row.rest > 0n ? row.rest : -row.overpaid;
+}
+
+/**
+ * Столбцы «Заказов» — столбцы книги заказов владельца в её порядке: «Дата,
+ * Заказчик (ФИО), Тип работы, Описание работы, Дедлайн по работе,
+ * Стоимость, руб., Статус работы, Оплачено, руб.» и «Остаток, руб.»
+ * (запрос владельца 13.11.2026, решение Р-874). Экран и книга — один набор.
+ */
+export const ORDER_COLUMNS: readonly Column<OrderRowView>[] = [
+  { key: 'orderedOn', head: 'Дата', short: true, value: (row) => mskDay(row.orderedOn) },
+  { key: 'client', head: 'Заказчик (ФИО)', short: true, value: (row) => row.client },
+  { key: 'type', head: 'Тип работы', short: true, value: (row) => row.type },
+  { key: 'description', head: 'Описание работы', short: true, value: (row) => orderDescription(row) },
+  { key: 'dueOn', head: 'Дедлайн по работе', short: true, value: (row) => mskDay(row.dueOn) },
+  {
+    key: 'contract',
+    head: 'Стоимость, руб.',
+    short: true,
+    numeric: true,
+    value: (row) => (row.contract === null ? null : money(row.contract)),
+  },
+  { key: 'status', head: 'Статус работы', short: true, value: (row) => PROJECT_STATUS_LABEL[row.status] },
+  { key: 'received', head: 'Оплачено, руб.', short: true, numeric: true, value: (row) => money(row.received) },
+  {
+    key: 'rest',
+    head: 'Остаток, руб.',
+    short: true,
+    numeric: true,
+    value: (row) => {
+      const balance = orderBalanceValue(row);
+      return balance === null ? null : money(balance);
+    },
+  },
+];
+
+/** Итоговая строка «Сумма» — по столбцам денег (Р-874). */
+export function orderTotals(rows: readonly OrderRowView[]): {
+  readonly contract: bigint;
+  readonly received: bigint;
+  readonly rest: bigint;
+  readonly overpaid: bigint;
+} {
+  return rows.reduce(
+    (acc, row) => ({
+      contract: acc.contract + (row.contract ?? 0n),
+      received: acc.received + row.received,
+      rest: acc.rest + (row.rest ?? 0n),
+      overpaid: acc.overpaid + row.overpaid,
+    }),
+    { contract: 0n, received: 0n, rest: 0n, overpaid: 0n },
+  );
+}
+
+/** Строка «Сумма» книги: подпись в первом столбце, суммы — под своими. */
+export function orderFoot(rows: readonly OrderRowView[]): XlsxCell[] {
+  const totals = orderTotals(rows);
+  return ORDER_COLUMNS.map((column, index) =>
+    index === 0
+      ? 'Сумма'
+      : column.key === 'contract'
+        ? money(totals.contract)
+        : column.key === 'received'
+          ? money(totals.received)
+          : column.key === 'rest'
+            ? money(totals.rest - totals.overpaid)
+            : null,
+  );
+}
+
 // ── Книга ───────────────────────────────────────────────────────────────
 
 export const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -236,6 +343,14 @@ export const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsh
  * заголовка и автофильтр (`lib/disk/xlsx.ts`, Р-260). Файл на сервере не
  * остаётся — маршрут отдаёт его в браузер.
  */
-export function workbook<Row>(title: string, columns: readonly Column<Row>[], rows: readonly Row[]): Uint8Array<ArrayBuffer> {
-  return new Uint8Array(xlsx({ title, head: columns.map((column) => column.head), rows: sheetRows(columns, rows) }));
+export function workbook<Row>(
+  title: string,
+  columns: readonly Column<Row>[],
+  rows: readonly Row[],
+  /** Итоговая строка под таблицей («Сумма» «Заказов», Р-874). */
+  foot?: readonly XlsxCell[],
+): Uint8Array<ArrayBuffer> {
+  return new Uint8Array(
+    xlsx({ title, head: columns.map((column) => column.head), rows: sheetRows(columns, rows), ...(foot === undefined ? {} : { foot }) }),
+  );
 }

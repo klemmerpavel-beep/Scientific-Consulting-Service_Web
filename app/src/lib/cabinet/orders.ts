@@ -15,11 +15,14 @@
  */
 
 import { prisma } from '../db.ts';
-import { ensure, workClosed, type Actor } from './access.ts';
+import { ensure, scopeProjects, workClosed, type Actor } from './access.ts';
 import { APPROVAL_DAYS_MAX, APPROVAL_DAYS_MIN } from './approval.ts';
 import { record } from './audit.ts';
 import { ORDER_FIELD_LABEL } from './code-labels.ts';
 import { setOrderTotal } from './finance.ts';
+import { orderBalance } from './money.ts';
+import type { ProjectStatusKey } from './project-status.ts';
+import type { OrderRowView } from './table-views.ts';
 import { announceWorkDueChange, dueChange, normalizeName, projectRef } from './projects.ts';
 
 export interface OrderEditInput {
@@ -337,4 +340,104 @@ export async function moveOrderToClient(
       tx,
     );
   });
+}
+
+// ──────────────────────────────── «Заказы» ─────────────────────────────────
+
+export const ORDER_STATUS_FILTERS = ['all', 'ACTIVE', 'PAUSED', 'COMPLETED', 'CANCELLED'] as const;
+export type OrderStatusFilter = (typeof ORDER_STATUS_FILTERS)[number];
+export const ORDER_DEBT_FILTERS = ['all', 'owing', 'settled'] as const;
+export type OrderDebtFilter = (typeof ORDER_DEBT_FILTERS)[number];
+
+/** Отбор из адреса: неизвестное значение — «все» (как Р-245). */
+export function orderFilters(status: string | undefined, debt: string | undefined) {
+  return {
+    status: (ORDER_STATUS_FILTERS as readonly string[]).includes(status ?? '') ? (status as OrderStatusFilter) : 'all',
+    debt: (ORDER_DEBT_FILTERS as readonly string[]).includes(debt ?? '') ? (debt as OrderDebtFilter) : 'all',
+  } as const;
+}
+
+const owing = (row: OrderRowView) => (row.rest ?? 0n) > 0n;
+
+/**
+ * «Заказы» — книга заказов в кабинете (запрос владельца 13.11.2026,
+ * решение Р-874): у руководителя все работы, у менеджера — свои
+ * (`scopeProjects`, Р-149). Столбцы — как в книге владельца: дата,
+ * заказчик, тип, описание, срок, стоимость, статус, оплачено и остаток.
+ * Отбор — по состоянию работы и по долгу; числа у вкладок — по другому
+ * отбору, как стоит на экране. Порядок — новые заказы сверху.
+ *
+ * Деньги здесь — договор и поступления, без маржи и вознаграждения
+ * кураторов: их видит только руководитель на «Деньгах» (Р-870).
+ */
+export async function ordersTable(
+  actor: Actor,
+  filter: { readonly status: OrderStatusFilter; readonly debt: OrderDebtFilter },
+): Promise<{
+  readonly rows: OrderRowView[];
+  readonly all: number;
+  readonly byStatus: Record<OrderStatusFilter, number>;
+  readonly byDebt: Record<OrderDebtFilter, number>;
+}> {
+  ensure(actor, 'REGISTRY_VIEW');
+  const scope = scopeProjects(actor);
+  if (scope === null) {
+    return {
+      rows: [],
+      all: 0,
+      byStatus: { all: 0, ACTIVE: 0, PAUSED: 0, COMPLETED: 0, CANCELLED: 0 },
+      byDebt: { all: 0, owing: 0, settled: 0 },
+    };
+  }
+  const projects = await prisma.project.findMany({
+    where: scope,
+    orderBy: [{ startedOn: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { code: 'desc' }],
+    select: {
+      code: true,
+      title: true,
+      topic: true,
+      status: true,
+      dueOn: true,
+      startedOn: true,
+      createdAt: true,
+      client: { select: { fullName: true } },
+      serviceType: { select: { name: true } },
+      contract: {
+        select: { totalAmount: true, tranches: { select: { id: true, amount: true, status: true, plannedDate: true } } },
+      },
+    },
+  });
+  const every: OrderRowView[] = projects.map((project) => {
+    const balance =
+      project.contract === null ? null : orderBalance(project.status, project.contract.totalAmount, project.contract.tranches);
+    return {
+      code: project.code,
+      orderedOn: project.startedOn ?? project.createdAt,
+      client: project.client.fullName,
+      type: project.serviceType.name,
+      title: project.title,
+      topic: project.topic,
+      dueOn: project.dueOn,
+      status: project.status as ProjectStatusKey,
+      contract: balance?.contract ?? null,
+      received: balance?.received ?? 0n,
+      rest: balance?.rest ?? null,
+      overpaid: balance?.overpaid ?? 0n,
+    };
+  });
+  const byStatusOf = (row: OrderRowView, status: OrderStatusFilter) => status === 'all' || row.status === status;
+  const byDebtOf = (row: OrderRowView, debt: OrderDebtFilter) =>
+    debt === 'all' || (debt === 'owing' ? owing(row) : !owing(row));
+  const inDebt = every.filter((row) => byDebtOf(row, filter.debt));
+  const inStatus = every.filter((row) => byStatusOf(row, filter.status));
+  return {
+    rows: inStatus.filter((row) => byDebtOf(row, filter.debt)),
+    all: every.length,
+    byStatus: Object.fromEntries(
+      ORDER_STATUS_FILTERS.map((status) => [status, inDebt.filter((row) => byStatusOf(row, status)).length]),
+    ) as Record<OrderStatusFilter, number>,
+    byDebt: Object.fromEntries(
+      ORDER_DEBT_FILTERS.map((debt) => [debt, inStatus.filter((row) => byDebtOf(row, debt)).length]),
+    ) as Record<OrderDebtFilter, number>,
+  };
 }
