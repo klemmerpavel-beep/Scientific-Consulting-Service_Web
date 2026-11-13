@@ -500,3 +500,45 @@ describe('Р-814: «Права и конфиденциальность» на «
     assert.deepEqual(head, ['Права и конфиденциальность', `Кому принадлежит результат и${NB}что происходит с${NB}материалами`, 'Права на результат остаются у вашей компании'], 'шапка раздела изменилась');
   });
 });
+
+describe('Р-878: «Пять пакетов» на «Компаниям» — карточки без «Документов на выходе» и строки-итога', () => {
+  // Замечание владельца 13.11.2026: «блоки немного сократить по размеру, по
+  // ширине пусть такие, а по высоте уменьшить на 30 %, убрать такую
+  // информацию». На 1440 px карточки 01—03 — 778 → 497 px, 04—05 — 645 →
+  // 410 px (64 % прежней высоты); ширина и сетка прежние.
+  const section = (source: string) => {
+    const at = source.lastIndexOf('<section', source.indexOf('id="packs"'));
+    assert.ok(at >= 0 && source.indexOf('id="packs"') > 0, 'нет раздела #packs');
+    return source.slice(at, source.indexOf('</section>', at));
+  };
+
+  it('в карточке пакета нет перечня «Документы на выходе» и строки-итога; «Для кого», «Что делаем» и «Обсудить пакет» на месте', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      const html = section(source);
+      assert.ok(!html.includes('Документы на выходе'), `${where}: в карточке пакета остался перечень документов`);
+      assert.doesNotMatch(html, /p\.docs|p\.why|\{\s*d\.name\s*\}/u, `${where}: в карточке пакета остались документы или строка-итог`);
+      for (const kept of ['Для кого', 'Что делаем', 'Обсудить пакет']) assert.ok(html.includes(kept), `${where}: нет «${kept}»`);
+    }
+  });
+
+  it('данные пакетов — без документов и итога; сетка packSpans и полоса изображения 96 px прежние', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      const block = source.slice(source.indexOf('const packData = ['), source.indexOf('const packSpans'));
+      assert.ok(block.length > 0, `${where}: нет данных пакетов`);
+      for (const gone of ['ГОСТ Р 15.101-2021', 'Не финансировать разработку', 'Документ, собранный под требования', 'по формальным основаниям', 'учитывается на балансе как нематериальный актив', 'опирается на расчёт рынка']) {
+        assert.ok(!block.includes(gone), `${where}: в данных пакетов осталось «${gone}»`);
+      }
+      assert.ok(!block.includes('[['), `${where}: в данных пакетов остались перечни документов`);
+      assert.ok(source.includes("const packs = packData.map(([anchor, num, title, term, span, titleSize, who, what], i) => ({"), `${where}: разбор данных пакета ждёт снятые поля`);
+      assert.ok(source.includes("const packSpans = { 'pack-1': 2, 'pack-2': 2, 'pack-3': 2, 'pack-4': 3, 'pack-5': 3 };"), `${where}: сетка пакетов изменилась`);
+    }
+    assert.match(section(design('BusinessPage')), /height:96px;flex:0 0 96px;border-bottom:1px solid var\(--pd-divider\)/u, 'полоса изображения пакета не 96 px');
+  });
+
+  it('колонка «Документы на выходе» в карточке уровня #trl не тронута', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      const at = source.indexOf('id="trl"');
+      assert.ok(at > 0 && source.slice(at, source.indexOf('id="packs"')).includes('Документы на выходе'), `${where}: в #trl нет «Документов на выходе»`);
+    }
+  });
+});
