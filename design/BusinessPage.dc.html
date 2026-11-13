@@ -410,6 +410,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <!-- «Кто сопровождает»: для клиента две роли — менеджер и куратор (С-5, решение Р-770; слова ролей «Компаниям» — С-7, решение Р-772); методологический разбор и научная экспертиза текста — работа куратора. До 1024 px орбита — сетка без квадратной пропорции: двум карточкам квадрат оставлял пустую строку. -->
 <section class="bp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
 <!-- Р-795: четыре роли и карточки «Кто сопровождает» возвращены по указанию владельца 04.11.2026 (состояние приёмки 02.11.2026); метки направлений — по Р-771 и Р-785, движение блока — как было. -->
+<!-- Р-877: под метками направлений — кнопка «Обсудить проект» к форме заявки, та же, что в разделе «Кто сопровождает проект» на «Аспирантам» (замечание владельца 13.11.2026 «здесь пропала кнопка»). -->
 <div class="bp-team" style="gap:40px;align-items:start">
 <div style="display:flex;flex-direction:column;gap:24px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Команда</span>
@@ -427,6 +428,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Приёмка этапов</span>
 <span style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:8px 14px;font-size:12px;line-height:1.4;font-weight:500;color:var(--pd-ink)">Обоснование внедрения</span>
 </div>
+<a href="#request" style="align-self:flex-start;display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Обсудить проект<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
 <div class="bp-orbit" style="justify-self:stretch;position:relative;width:100%;aspect-ratio:648.388 / 650">
 <div style="position:absolute;left:0;top:0;width:98.482%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(216,228,243,.62) 0%,rgba(180,201,229,.16) 58%,rgba(255,255,255,0) 74%)"></div>

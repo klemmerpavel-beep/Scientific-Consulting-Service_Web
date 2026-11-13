@@ -140,6 +140,23 @@ describe('«Компаниям»: роли (С-7, С-5; «Кто работае�
     assert.ok(page.includes('>Ведёт содержательную часть: расчёты, эксперимент, обоснование.</span>'));
   });
 
+  it('«Кто работает над проектом»: под метками направлений — кнопка «Обсудить проект» к форме, как на «Аспирантам» (Р-877)', () => {
+    for (const [where, source] of both()) {
+      const k = source.search(/class(?:Name)?="bp-orbit"/u);
+      assert.ok(k > 0, `${where}: нет орбиты ролей`);
+      const left = source.slice(source.lastIndexOf('<section', k), k);
+      const chips = left.indexOf('Обоснование внедрения</span>');
+      const link = left.search(/<a (?:className="[^"]*" )?href="#request"[^>]*>Обсудить проект</u);
+      assert.ok(chips > 0, `${where}: нет меток направлений`);
+      assert.ok(link > chips, `${where}: под метками направлений нет ссылки «Обсудить проект» на #request`);
+    }
+    // Разметка и оформление — те же, что у кнопки раздела «Кто сопровождает проект» на «Аспирантам».
+    const style = (source: string) => source.match(/<a href="#request" (style="[^"]*" style-hover="[^"]*" style-active="[^"]*")>Обсудить проект</u)?.[1];
+    const main = style(plain(read('design/MainPage.dc.html')));
+    assert.ok(main, 'на «Аспирантам» нет кнопки «Обсудить проект»');
+    assert.equal(style(html()), main);
+  });
+
   it('вне «Кто работает над проектом» нет «четырёх» и «четверых» в значении ролей', () => {
     for (const [where, source] of both()) {
       assert.doesNotMatch(withoutTeam(source), /четыр[её]х? (?:рол|специал|человек)|[Чч]етвер[оы]|04 специалист/u, where);
