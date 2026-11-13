@@ -72,10 +72,12 @@ describe('Р-884: фон четырёх страниц — как на «Экс�
       assert.ok(nodes.length >= 3 && nodes.length <= 4, `${page}: узлов ${nodes.length}`);
       assert.equal(new Set(nodes).size, nodes.length, `${page}: изображение узла повторено`);
       assert.equal((bg.match(/class="pd-node"/gu) ?? []).length, nodes.length, `${page}: узел другого устройства`);
-      // Точки стоят на кольцах (радиусы 120, 196, 262 от центра 330, 300).
+      // Точки — в пределах колец (от центра 330, 300 не дальше внешнего
+      // кольца 262): угол и радиус подобраны так, чтобы дуга ±30° не заходила
+      // под текст, кнопки и снимки (Р-884, дополнения после слияния).
       const dots = [...hero.matchAll(/<circle cx="(\d+)" cy="(\d+)" r="\d+"/gu)].map((m) => Math.hypot(Number(m[1]) - 330, Number(m[2]) - 300));
       assert.equal(dots.length, 2, `${page}: точек на кольце первого экрана ${dots.length}`);
-      for (const r of dots) assert.ok([120, 196, 262].some((ring) => Math.abs(ring - r) < 1), `${page}: точка не на кольце (${r.toFixed(1)})`);
+      for (const r of dots) assert.ok(r >= 99 && r <= 263, `${page}: точка вне колец (${r.toFixed(1)})`);
     }
   });
 });
