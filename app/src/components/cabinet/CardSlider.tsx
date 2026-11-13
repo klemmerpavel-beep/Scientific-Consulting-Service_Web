@@ -20,7 +20,6 @@ import { sameView, visibleSlides } from './slider-view';
 export default function CardSlider({
   label,
   compact = false,
-  fill = false,
   children,
 }: {
   label: string;
@@ -30,13 +29,6 @@ export default function CardSlider({
    * по две они стояли бы полупустыми.
    */
   compact?: boolean;
-  /**
-   * Лента на всю высоту плашки, карточки тянутся на её высоту: в плашке
-   * «Команда» единого размера «Сводки» маленькие карточки стояли внутри
-   * большой рамки с пустотой ниже (замечание владельца 28.10.2026,
-   * решение Р-830).
-   */
-  fill?: boolean;
   children: ReactNode;
 }) {
   const items = Children.toArray(children);
@@ -90,7 +82,9 @@ export default function CardSlider({
   const shown = view.first === view.last ? `${view.first + 1}` : `${view.first + 1}–${view.last + 1}`;
 
   return (
-    <div className={['cab-slider', compact ? 'cab-slider-compact' : '', fill ? 'cab-slider-fill' : ''].filter(Boolean).join(' ')}>
+    // Ленты на высоту плашки (`fill`, Р-830) больше нет: карточки сотрудников
+    // растягивались на неё, и посреди карточки стояла пустота (Р-887).
+    <div className={compact ? 'cab-slider cab-slider-compact' : 'cab-slider'}>
       {count < 2 ? null : (
         <div className="cab-slider-nav">
           <span className="cab-slider-count" aria-live={measured ? 'polite' : 'off'}>
