@@ -139,6 +139,7 @@ const ACTIONS: Record<string, string> = {
   STAGE_REOPENED: 'Этап возвращён в работу',
   STAGE_EDITED: 'Этап изменён',
   PROJECT_EDITED: 'Карточка работы изменена',
+  PROJECT_CLIENT_CHANGED: 'Работа перенесена к другому клиенту',
   PROJECT_STATUS_CHANGED: 'Состояние работы изменено',
   MATERIAL_UPLOADED: 'Приложен материал',
   MESSAGE_SENT: 'Отправлено сообщение',

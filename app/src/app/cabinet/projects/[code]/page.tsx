@@ -141,6 +141,8 @@ const EVENT_LABEL: Record<string, string> = {
   STAGE_HANDED_OVER: 'Куратор сдал этап менеджеру',
   STAGE_HANDOVER_RECALLED: 'Куратор отозвал сдачу этапа',
   STAGE_HANDED_BACK: 'Этап возвращён куратору',
+  // Перенос работы к другому клиенту — строка для практики (Р-873).
+  CLIENT_CHANGED: 'Работа перенесена к другому клиенту',
 };
 
 /**
@@ -148,6 +150,8 @@ const EVENT_LABEL: Record<string, string> = {
  * остаётся «В работе» (требование Э-05, решение Р-325).
  */
 const CLIENT_HIDDEN_EVENTS = new Set([
+  // Что работа была у другого клиента, новому клиенту знать незачем (Р-873).
+  'CLIENT_CHANGED',
   'EXPERT_ASSIGNED',
   'STAGE_HANDED_OVER',
   'STAGE_HANDOVER_RECALLED',

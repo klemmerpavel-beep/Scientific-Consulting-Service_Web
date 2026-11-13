@@ -20,7 +20,7 @@ import { APPROVAL_DAYS_MAX, APPROVAL_DAYS_MIN } from './approval.ts';
 import { record } from './audit.ts';
 import { ORDER_FIELD_LABEL } from './code-labels.ts';
 import { setOrderTotal } from './finance.ts';
-import { announceWorkDueChange, dueChange, projectRef } from './projects.ts';
+import { announceWorkDueChange, dueChange, normalizeName, projectRef } from './projects.ts';
 
 export interface OrderEditInput {
   readonly projectId: string;
@@ -178,4 +178,163 @@ export async function editOrder(actor: Actor, input: OrderEditInput): Promise<{ 
     }
   });
   return { changed };
+}
+
+// ───────────────────── Перенос работы к другому клиенту ─────────────────────
+
+/** Почему письмо прежнему клиенту не ушло: работу перенесли к другому (Р-873). */
+export const CLIENT_MOVED_NOTE = 'работа перенесена к другому клиенту до отправки';
+
+/** Карточки, к которым менеджер переносит работу: те же, что в «Новом заказе» (Р-419). */
+function reachable(actor: Actor) {
+  return actor.role === 'MANAGER' ? { projects: { none: { managerId: { not: actor.id } } } } : {};
+}
+
+const ALIVE = { mergedIntoId: null, erasedAt: null } as const;
+
+/**
+ * Что держит работу у прежнего клиента (решение Р-873).
+ *
+ * Клиент видит свою работу целиком: материалы, переписку, историю. Если у
+ * работы есть материалы (в них и ФИО на титуле, и вложения заявки),
+ * переписка с клиентом, его согласования и возвраты в истории или его
+ * оценка, перенос открыл бы их новому клиенту — чужому человеку. Такую
+ * работу кабинет не переносит: если это один человек с двумя карточками,
+ * руководитель сводит карточки; если работа заведена не на того — её
+ * заводят заново на нужного клиента. Работа без этого — чаще всего
+ * перенесённая из книги или ручной заказ — переносится.
+ */
+export async function transferBlockers(actor: Actor, projectId: string): Promise<string[]> {
+  const ref = await projectRef(projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'PROJECT_EDIT', ref);
+  const [card, materials, messages, clientEvents, rating] = await Promise.all([
+    prisma.clientProfile.findUniqueOrThrow({ where: { id: ref.clientId }, select: { erasedAt: true } }),
+    prisma.material.count({ where: { projectId, deletedAt: null } }),
+    prisma.message.count({ where: { projectId, thread: 'CLIENT_MANAGER' } }),
+    prisma.projectEvent.count({ where: { projectId, actor: { role: 'CLIENT' } } }),
+    prisma.workRating.count({ where: { projectId } }),
+  ]);
+  const out: string[] = [];
+  if (card.erasedAt !== null) out.push('данные прежнего клиента удалены по его требованию');
+  if (materials > 0) out.push(`материалы работы — ${materials}`);
+  if (messages > 0) out.push(`переписка с клиентом — ${messages}`);
+  if (clientEvents > 0) out.push('согласования и возвраты клиента в истории работы');
+  if (rating > 0) out.push('оценка сопровождения от клиента');
+  return out;
+}
+
+export interface ClientCandidate {
+  readonly id: string;
+  readonly fullName: string;
+  readonly email: string | null;
+  readonly phone: string | null;
+  readonly works: number;
+}
+
+/**
+ * Карточки, к которым можно перенести работу, по части ФИО, почты или
+ * телефона: живые, не текущая, менеджеру — только не занятые другим
+ * менеджером (Р-419). Не больше двадцати: остальное уточняется запросом.
+ */
+export async function clientCandidates(actor: Actor, projectId: string, query: string): Promise<ClientCandidate[]> {
+  const ref = await projectRef(projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'PROJECT_EDIT', ref);
+  const q = query.replace(/\s+/gu, ' ').trim();
+  if (q.length < 2) return [];
+  const digits = q.replace(/\D/gu, '');
+  const rows = await prisma.clientProfile.findMany({
+    where: {
+      ...ALIVE,
+      ...reachable(actor),
+      id: { not: ref.clientId },
+      OR: [
+        { normalizedName: { contains: normalizeName(q) } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { user: { email: { contains: q, mode: 'insensitive' } } },
+        ...(digits.length >= 5 ? [{ phone: { contains: digits.slice(-7) } }] : []),
+      ],
+    },
+    orderBy: [{ fullName: 'asc' }, { createdAt: 'asc' }],
+    take: 20,
+    select: { id: true, fullName: true, email: true, phone: true, user: { select: { email: true } }, _count: { select: { projects: true } } },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    fullName: row.fullName,
+    email: row.email ?? row.user?.email ?? null,
+    phone: row.phone,
+    works: row._count.projects,
+  }));
+}
+
+/**
+ * Перенести работу к другому существующему клиенту (запрос владельца
+ * 13.11.2026, решение Р-873). Только с явным подтверждением: прежний
+ * клиент сразу теряет доступ к работе — выборки кабинета строятся от
+ * `Project.clientId`, своего доступа у клиента к работе нет. Его
+ * неотправленные письма по работе гасятся. Договор, оплаты, этапы, заявка,
+ * из которой работа заведена (она видна только практике), и строки книги
+ * заказов остаются при работе: мост книги узнаёт строку по её ключу, а не по
+ * карточке клиента. Писем клиентам нет; в истории работы — строка для
+ * практики, клиенту она не показывается.
+ */
+export async function moveOrderToClient(
+  actor: Actor,
+  input: { readonly projectId: string; readonly clientId: string; readonly confirm: boolean },
+): Promise<void> {
+  const ref = await projectRef(input.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'PROJECT_EDIT', ref);
+  if (input.clientId === '') throw new Error('Выберите карточку нового клиента');
+  if (input.clientId === ref.clientId) throw new Error('Работа уже у этого клиента');
+  if (!input.confirm) {
+    throw new Error('Подтвердите перенос: прежний клиент сразу потеряет доступ к работе и её материалам');
+  }
+  const blockers = await transferBlockers(actor, input.projectId);
+  if (blockers.length > 0) {
+    throw new Error(`Работа не переносится: перенос открыл бы новому клиенту то, что относится к прежнему (${blockers.join('; ')})`);
+  }
+  const target = await prisma.clientProfile.findFirst({
+    where: { id: input.clientId, ...ALIVE, ...reachable(actor) },
+    select: { id: true },
+  });
+  if (target === null) {
+    throw new Error(
+      actor.role === 'MANAGER'
+        ? 'Карточка не найдена или это клиент другого менеджера: такой перенос делает руководитель'
+        : 'Карточка не найдена: она сведена в другую или удалена',
+    );
+  }
+  const former = await prisma.clientProfile.findUniqueOrThrow({ where: { id: ref.clientId }, select: { userId: true } });
+
+  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.project.updateMany({
+      where: { id: input.projectId, clientId: ref.clientId },
+      data: { clientId: target.id },
+    });
+    if (claimed.count === 0) throw new Error('Клиента работы уже сменили: обновите страницу');
+    // Неотправленное прежнему клиенту о работе не уходит (приём Р-421).
+    if (former.userId !== null) {
+      await tx.notificationOutbox.updateMany({
+        where: { userId: former.userId, projectId: input.projectId, state: { in: ['PENDING', 'FAILED'] } },
+        data: { state: 'EXPIRED', failure: null, lastError: CLIENT_MOVED_NOTE, scheduledAt: new Date() },
+      });
+    }
+    await tx.projectEvent.create({
+      data: { projectId: input.projectId, actorId: actor.id, kind: 'CLIENT_CHANGED', payload: { from: ref.clientId, to: target.id } },
+    });
+    await record(
+      actor,
+      {
+        action: 'PROJECT_CLIENT_CHANGED',
+        objectType: 'Project',
+        objectId: input.projectId,
+        projectId: input.projectId,
+        payload: { from: ref.clientId, to: target.id },
+      },
+      tx,
+    );
+  });
 }

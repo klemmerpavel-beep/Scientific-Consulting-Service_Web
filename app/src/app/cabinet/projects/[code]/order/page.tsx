@@ -6,11 +6,13 @@ import {
   Button,
   ButtonLink,
   Card,
+  Checkbox,
   Field,
   Form,
   FormActions,
   FormRow,
   Heading,
+  Notice,
   Outcome,
   ScreenHead,
   Select,
@@ -28,7 +30,9 @@ import {
 } from '../../../../../lib/cabinet/project-status';
 import { projectByCode, serviceTypes } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
-import { saveOrder } from '../../../actions';
+import { candidateLine } from '../../../../../lib/cabinet/client-match';
+import { clientCandidates, transferBlockers } from '../../../../../lib/cabinet/orders';
+import { moveOrderToClientAction, saveOrder } from '../../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +50,7 @@ export default async function OrderEditScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string; saved?: string }>;
+  searchParams: Promise<{ error?: string; saved?: string; q?: string; moved?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}/order`);
   const { code } = await params;
@@ -78,6 +82,12 @@ export default async function OrderEditScreen({
   const quiet = closed || fromBook;
   const status = project.status as ProjectStatusKey;
   const base = `/cabinet/projects/${encodeURIComponent(project.code)}`;
+  // Перенос к другому клиенту (Р-873): что держит работу у прежнего, и
+  // карточки по запросу — только когда переносить можно.
+  const query = (sp.q ?? '').trim().slice(0, 100);
+  const blockers = await transferBlockers(actor, project.id);
+  const candidates = blockers.length === 0 && query.length >= 2 ? await clientCandidates(actor, project.id, query) : [];
+  const moved = sp.moved === '1' && sp.error === undefined;
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -196,6 +206,82 @@ export default async function OrderEditScreen({
             </ButtonLink>
           ))}
         </div>
+      </Card>
+
+      {/* Клиент заказа: перенос к другой существующей карточке — с явным
+          подтверждением; прежний клиент сразу теряет доступ (Р-873). */}
+      <Card id="client" style={{ scrollMarginTop: 24 }}>
+        <Heading level={2} size={3} style={{ marginBottom: 8 }}>
+          Клиент
+        </Heading>
+        {moved ? <Outcome>{`Работа перенесена к клиенту ${project.client.fullName}. Прежний клиент её больше не видит.`}</Outcome> : null}
+        <Text size={15}>{project.client.fullName}</Text>
+        {[project.client.email, project.client.phone].some((value) => (value ?? '').trim() !== '') ? (
+          <Text muted size={13}>
+            {[project.client.email, project.client.phone].filter((value) => (value ?? '').trim() !== '').join(' · ')}
+          </Text>
+        ) : null}
+        <div style={{ marginTop: 16 }}>
+          <ActionError id={sp.error} slot="client" />
+        </div>
+        {blockers.length > 0 ? (
+          <Notice tone="quiet" role="status">
+            {`К другому клиенту эта работа не переносится: перенос открыл бы новому клиенту то, что относится к прежнему — ${blockers.join('; ')}. Если это один человек с двумя карточками, руководитель сводит карточки в «Переносе книги заказов»; если работа заведена не на того клиента, заведите заказ заново на нужного.`}
+          </Notice>
+        ) : (
+          <>
+            <Form action={`${base}/order#client`} method="get" inline>
+              <Field
+                label="Перенести работу к другому клиенту: найти карточку"
+                name="q"
+                scope="client"
+                defaultValue={query}
+                placeholder="Фамилия, почта или телефон"
+                minWidth={260}
+              />
+              <Button tone="quiet">Найти</Button>
+            </Form>
+            {query.length >= 2 && candidates.length === 0 ? (
+              <Text muted size={14} style={{ marginTop: 12 }}>
+                {actor.role === 'MANAGER'
+                  ? 'Карточек не найдено. Клиентов других менеджеров здесь нет: такой перенос делает руководитель.'
+                  : 'Карточек не найдено. Новая карточка заводится «Новым заказом».'}
+              </Text>
+            ) : null}
+            {candidates.length === 0 ? null : (
+              <Form action={moveOrderToClientAction} style={{ marginTop: 16 }}>
+                <input type="hidden" name="projectId" value={project.id} />
+                <input type="hidden" name="code" value={project.code} />
+                <input type="hidden" name="q" value={query} />
+                <Select
+                  label="Новый клиент работы"
+                  name="clientId"
+                  scope="client"
+                  required
+                  defaultValue=""
+                  hint="Почта и телефон скрыты частично, видно число работ карточки."
+                >
+                  <option value="" disabled>
+                    — выберите карточку —
+                  </option>
+                  {candidates.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidateLine(candidate)}
+                    </option>
+                  ))}
+                </Select>
+                <Checkbox
+                  name="confirm"
+                  required
+                  label="Понимаю: прежний клиент сразу потеряет доступ к работе; договор, оплаты и история остаются при работе"
+                />
+                <FormActions>
+                  <Button>Перенести работу</Button>
+                </FormActions>
+              </Form>
+            )}
+          </>
+        )}
       </Card>
     </Shell>
   );

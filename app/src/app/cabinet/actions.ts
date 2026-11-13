@@ -20,7 +20,7 @@ import { draftFits, markedDraft } from '../../lib/cabinet/flash-value';
 import { draftsFor } from '../../lib/cabinet/message-drafts';
 import { OUTCOME_ANCHOR } from '../../lib/cabinet/outcome-lines';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
-import { editOrder } from '../../lib/cabinet/orders';
+import { editOrder, moveOrderToClient } from '../../lib/cabinet/orders';
 import { ClientChoiceNeeded, orderRetryDraft } from '../../lib/cabinet/client-match';
 import { homeFor } from '../../lib/cabinet/nav';
 import {
@@ -806,6 +806,32 @@ export async function saveOrder(form: FormData): Promise<void> {
     );
   }
   redirect(`${back}?saved=1#card`);
+}
+
+/**
+ * Перенести работу к другому клиенту — с подтверждением (решение Р-873).
+ * Отказ — у формы «Клиент», с прежним поиском; исход — там же.
+ */
+export async function moveOrderToClientAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const query = String(form.get('q') ?? '').trim().slice(0, 100);
+  const back = `/cabinet/projects/${code}/order`;
+  let failure: string | null = null;
+  try {
+    await moveOrderToClient(actor, {
+      projectId: String(form.get('projectId') ?? ''),
+      clientId: String(form.get('clientId') ?? ''),
+      confirm: form.get('confirm') === 'on',
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось перенести работу к другому клиенту');
+  }
+  if (failure !== null) {
+    const searched = query === '' ? back : `${back}?q=${encodeURIComponent(query)}`;
+    redirect(await withError(searched, failure, { slot: 'client', anchor: 'client' }));
+  }
+  redirect(`${back}?moved=1#client`);
 }
 
 /**
