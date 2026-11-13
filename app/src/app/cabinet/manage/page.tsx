@@ -12,7 +12,6 @@ import {
   Button,
   ButtonLink,
   Card,
-  Chip,
   ChartNumbers,
   Heading,
   Mono,
@@ -133,6 +132,13 @@ const DASH_FIGURE_VALUE = {
   fontVariantNumeric: 'tabular-nums',
 } as const;
 
+/**
+ * Блок «где стоят работы» в плашке сотрудника «Команды»: сразу под числами,
+ * за волосяной линией, отступ 12 px — шаг плашки (решение Р-887). Прежде
+ * блок прижимался к низу (`margin-top: auto`, Р-830), и в плашке на высоту
+ * ленты между числами и состояниями стояла пустота.
+ */
+const TEAM_POINTS = { margin: 0, paddingTop: 12, borderTop: '1px solid var(--pd-divider)' } as const;
 /** Строки «где стоят работы» в карточке сотрудника «Команды» (Р-830). */
 const TEAM_POINT_LABEL = { fontFamily: SANS, fontSize: 13, color: 'var(--pd-ink-secondary)', lineHeight: 1.5 } as const;
 const TEAM_POINT_VALUE = { margin: 0, fontFamily: SANS, fontSize: 13, fontWeight: 600, lineHeight: 1.5, color: 'var(--pd-ink)', fontVariantNumeric: 'tabular-nums' } as const;
@@ -1094,9 +1100,15 @@ export default async function ManageQueue({
             человека (замечание владельца 13.10.2026, решение Р-575). В
             плашке — работ, просрочено, ждёт его решения и где стоят его
             работы; первыми — у кого больше просроченного и ждущего
-            (требование РК-06, решение Р-343). */}
+            (требование РК-06, решение Р-343). Плашка «Команда» — по
+            содержимому: не тянется по соседу в ряду (`cab-dash-team`), и
+            кнопки стоят сразу под лентой; ряд с ней — по более высокой из
+            двух плашек, а не 540 px. Плашка сотрудника — по содержимому,
+            части через 12 px; в ленте плашки одной высоты, по самой
+            высокой, и запас уходит вниз, а не между числами и состояниями
+            (замечание владельца 13.11.2026, решение Р-887). */}
         {actor.role !== 'HEAD' ? null : (
-          <Card style={{ display: 'flex', flexDirection: 'column' }}>
+          <Card className="cab-dash-team">
             <Heading level={2} size={3} style={{ marginBottom: 10 }}>
               {team.length === 0 ? 'Команда' : `Команда · ${team.length}`}
             </Heading>
@@ -1107,10 +1119,10 @@ export default async function ManageQueue({
                 В команде пока нет сотрудников.
               </Text>
             ) : (
-              <CardSlider label="Сотрудники практики" compact fill>
+              <CardSlider label="Сотрудники практики" compact>
                 {team.map((row) => (
-                  <Card as="article" link key={`${row.side}-${row.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 18px' }}>
-                    <div style={{ display: 'grid', gap: 6 }}>
+                  <Card as="article" link key={`${row.side}-${row.id}`} style={{ display: 'grid', alignContent: 'start', gap: 12, padding: '16px 18px' }}>
+                    <div style={{ display: 'grid', gap: 2 }}>
                       {/* Ссылка растянута на плашку: нажимается плашка
                           целиком (решения Р-209, Р-253). Ведёт в «Работы» с
                           отбором по человеку (РК-03). */}
@@ -1119,9 +1131,11 @@ export default async function ManageQueue({
                           {row.fullName}
                         </a>
                       </Heading>
-                      <span>
-                        <Chip>{row.side}</Chip>
-                      </span>
+                      {/* Роль — строкой под именем, а не овалом: овал брал
+                          лишнюю строку высоты (решение Р-887). */}
+                      <Text muted size={13}>
+                        {row.side}
+                      </Text>
                     </div>
                     {/* Числа — строками «подпись — число»: в узкой плашке
                         три столбца рвали подписи посреди слова. */}
@@ -1137,15 +1151,14 @@ export default async function ManageQueue({
                         </div>
                       ))}
                     </dl>
-                    {/* Где стоят его работы — строками у нижнего края плашки:
-                        карточка тянется на высоту ленты (Р-830), и строка
-                        через точку оставляла под собой пустоту. */}
+                    {/* Где стоят его работы — строками «состояние — число»
+                        (Р-830) сразу под числами, за линией (Р-887). */}
                     {row.points.length === 0 ? (
-                      <Text muted size={13} style={{ marginTop: 'auto' }}>
+                      <Text muted size={13} style={TEAM_POINTS}>
                         Действующих работ нет.
                       </Text>
                     ) : (
-                      <dl style={{ display: 'grid', gap: 4, margin: 'auto 0 0', paddingTop: 10, borderTop: '1px solid var(--pd-divider)' }}>
+                      <dl style={{ ...TEAM_POINTS, display: 'grid', gap: 4 }}>
                         {row.points.map((point) => (
                           <div key={point.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
                             <dt style={TEAM_POINT_LABEL}>{point.label}</dt>
@@ -1159,8 +1172,10 @@ export default async function ManageQueue({
               </CardSlider>
             )}
             {/* Новый человек — отдельной кнопкой, сразу в форму заведения
-                с ролью и исходными данными (решение Р-488). */}
-            <div style={{ marginTop: 'auto', paddingTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                с ролью и исходными данными (решение Р-488). Кнопки — сразу
+                под лентой: у ленты снизу свои 10 px под тень плашки, вместе
+                12 (Р-887). */}
+            <div style={{ paddingTop: team.length === 0 ? 12 : 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <ButtonLink href="/cabinet/manage/team" tone="quiet">
                 Вся команда
               </ButtonLink>
