@@ -177,6 +177,24 @@ describe('«Студентам»: порядок разделов как на в
 
 });
 
+describe('«Студентам»: фон без сборки ВКР, кольца справа — как на выкате № 155 (Р-854)', () => {
+  it('слоя сборки, его кадров и привязки движения к прокрутке нет — в макете и в компоненте', () => {
+    for (const source of [HTML, TSX]) {
+      assert.doesNotMatch(source, /sp-build|animation-timeline|st-sheet-/u);
+    }
+    for (const dir of [['design', 'assets', 'art'], ['app', 'public', 'assets', 'art']]) {
+      for (const n of [1, 2, 3]) assert.ok(!existsSync(path.join(ROOT, ...dir, `st-sheet-${n}.webp`)), `осталось ${dir.join('/')}/st-sheet-${n}.webp`);
+    }
+  });
+
+  it('справа ниже первого экрана — три пары «пятно света + кольца», как на выкате № 155', () => {
+    const rings = [...HTML.matchAll(/<svg class="pd-orb pd-orb-b" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc\(50% \+ 238px\);top:(\d+)px">/gu)].map((m) => Number(m[1]));
+    assert.deepEqual(rings, [2050, 4150, 6250]);
+    const glows = [...HTML.matchAll(/<div class="pd-glow" style="position:absolute;left:calc\(50% \+ 360px\);top:(\d+)px;/gu)].map((m) => Number(m[1]));
+    assert.deepEqual(glows, [2120, 4220, 6320]);
+  });
+});
+
 describe('«Студентам»: «Как это выглядит внутри» — карточка из двух панелей (Р-845)', () => {
   it('текст и снимок в одной карточке, внизу текста — «Экран N из 4» и переход к следующей вкладке', () => {
     const at = PAGE.indexOf('<section id="inside"');
