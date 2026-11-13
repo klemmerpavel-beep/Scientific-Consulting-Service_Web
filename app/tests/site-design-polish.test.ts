@@ -439,9 +439,11 @@ describe('Р-814: «Права и конфиденциальность» на «
     return source.slice(at, source.indexOf('</section>', at));
   };
 
-  it('шесть плиток одной сеткой: 3 колонки от 1200 px, 2 на 769—1199 px, одна до 768 px; высота ряда общая', () => {
+  it('шесть плиток одной сеткой: 3 равные колонки от 1200 px (Р-863), 2 на 769—1199 px, одна до 768 px; высота ряда общая', () => {
     for (const [where, source] of both('BusinessPage')) {
-      assert.ok(source.includes('.bp-rights{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(2,minmax(0,1fr));align-items:stretch;list-style:none;margin:0;padding:0}'), `${where}: сетка плиток не 3 колонки с общей высотой ряда`);
+      // Р-863: от 1200 px все три колонки одной ширины (до этого первая — 1.3fr).
+      assert.ok(source.includes('.bp-rights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;list-style:none;margin:0;padding:0}'), `${where}: сетка плиток не 3 равные колонки с общей высотой ряда`);
+      assert.doesNotMatch(source, /\.bp-rights\{[^}]*1\.3fr/u, `${where}: первая колонка снова шире`);
       assert.ok(source.includes('@media (max-width:1199px){.bp-rights{grid-template-columns:repeat(2,minmax(0,1fr))}}'), `${where}: на 769—1199 px не две колонки`);
       assert.match(source, /@media \(max-width:768px\)\{[^{}]*\.bp-rights[,{][^{}]*\{grid-template-columns:minmax\(0,1fr\)\}/u, `${where}: до 768 px не одна колонка`);
       assert.ok(source.includes('.bp-right{display:flex;flex-direction:column;gap:20px;min-width:0;box-sizing:border-box;border-radius:14px;padding:clamp(20px,2vw,28px);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)}'), `${where}: устройство плитки`);
