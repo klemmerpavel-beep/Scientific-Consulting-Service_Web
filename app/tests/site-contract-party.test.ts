@@ -1,11 +1,13 @@
 /**
- * Сайт (Р-792): на «Аспирантам» и «Студентам» в вопросах есть ответ, с кем
- * заключается договор и с какого года работает практика. Год регистрации
- * общества в ответе совпадает с годом присвоения ОГРН из оферты (цифры 2—3
- * номера, приказ ФНС от 31.08.2020 № ЕД-7-14/617@): заявление «с 2016 года»
- * сопровождается носителем, и расхождение с реквизитами не остаётся без
- * пояснения (конкурентный разбор 03.11.2026). На «Компаниям» ответ о сторонах
- * договора уже есть (Р-772) и здесь не меняется.
+ * Сайт (Р-862, прежде Р-792): наименование общества-исполнителя на
+ * содержательных страницах не называется — оно, как и реквизиты (Р-404),
+ * есть в публичной оферте, политике и согласии. Вопрос о договоре
+ * сформулирован по смыслу: «Как заключается договор…» — ответ говорит, что
+ * договор заключается по публичной оферте и реквизиты исполнителя — в ней;
+ * «с 2016 года» на «Аспирантам» и «Студентам» сохранено. Единственное
+ * упоминание общества на содержательных страницах — текст согласия анкеты
+ * «Экспертам» (заморожен по 152-ФЗ, CONTRIBUTING, правило 2). Правовые
+ * страницы и разметка для поисковиков (OrgSchema) не меняются.
  */
 
 import assert from 'node:assert/strict';
@@ -13,34 +15,80 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
-const DESIGN = path.join(import.meta.dirname, '..', '..', 'design');
-const read = (page: string) => readFileSync(path.join(DESIGN, `${page}.dc.html`), 'utf8');
+const ROOT = path.join(import.meta.dirname, '..', '..');
+const read = (...parts: string[]) => readFileSync(path.join(ROOT, ...parts), 'utf8');
+const plain = (source: string) => source.replace(/\u00a0|&nbsp;/gu, ' ').replace(/\u2060/gu, '');
+const NAME = /РУСДРОН/u;
 
-const QUESTION = 'С кем заключается договор и с какого года вы работаете?';
+const CONTENT = [
+  { design: 'StartPage', code: 'StartPage' },
+  { design: 'MainPage', code: 'PostgradPage' },
+  { design: 'StudentsPage', code: 'StudentsPage' },
+  { design: 'BusinessPage', code: 'BusinessPage' },
+  { design: 'ExpertsPage', code: 'ExpertsPage' },
+  { design: 'NotFoundPage', code: 'NotFoundPage' },
+  { design: 'ToolsPage', code: 'ToolsPage' },
+] as const;
 
-function faqAnswer(html: string, q: string): string | undefined {
-  const data = html.slice(html.indexOf('const faqData = ['), html.indexOf('];', html.indexOf('const faqData = [')));
-  const m = data.match(new RegExp(`\\['${q.replace(/[?()]/gu, '\\$&')}',\\s*'([^']+)'\\]`, 'u'));
+/** Источник без текста согласия анкеты «Экспертам» — абзаца с «даю согласие ООО „РУСДРОН“». */
+function withoutExpertConsent(source: string): string {
+  const at = source.search(/даю согласие ООО «РУСДРОН»/u);
+  if (at < 0) return source;
+  const from = source.lastIndexOf('>', at);
+  const to = source.indexOf('<', at);
+  return source.slice(0, from) + source.slice(to);
+}
+
+/** Ответ на вопрос из данных вопросов макета: ['вопрос', 'ответ']. */
+function answer(source: string, question: string): string | undefined {
+  const m = plain(source).match(new RegExp(`\\['${question}',\\s*'([^']+)'\\]`, 'u'));
   return m?.[1];
 }
 
-describe('ответ о сторонах договора и годе начала работы', () => {
-  const offer = read('OfferPage');
-  const ogrn = offer.match(/ОГРН\s+(\d{13})/u)?.[1];
-
-  it('ОГРН в оферте найден', () => {
-    assert.ok(ogrn, 'в оферте нет ОГРН из 13 цифр');
-  });
-
-  for (const page of ['MainPage', 'StudentsPage']) {
-    it(page, () => {
-      const answer = faqAnswer(read(page), QUESTION);
-      assert.ok(answer, `в вопросах нет «${QUESTION}»`);
-      assert.match(answer, /ООО «РУСДРОН»/u);
-      assert.match(answer, /в оферте/u);
-      assert.match(answer, /с 2016 года/u);
-      const year = `20${ogrn!.slice(1, 3)}`;
-      assert.ok(answer.includes(`зарегистрировано в ${year} году`), `год регистрации в ответе не совпадает с ОГРН (${year})`);
+describe('Р-862: общество-исполнитель не названо на содержательных страницах', () => {
+  for (const page of CONTENT) {
+    it(`${page.design}: «РУСДРОН» нет${page.design === 'ExpertsPage' ? ' вне текста согласия анкеты' : ''}`, () => {
+      for (const [where, source] of [
+        [`design/${page.design}.dc.html`, read('design', `${page.design}.dc.html`)],
+        [`${page.code}.tsx`, read('app', 'src', 'components', 'pages', `${page.code}.tsx`)],
+      ] as const) {
+        const rest = page.design === 'ExpertsPage' ? withoutExpertConsent(source) : source;
+        assert.doesNotMatch(rest, NAME, `${where}: наименование общества — только в оферте, политике, согласии`);
+      }
     });
   }
+
+  it('«Экспертам»: согласие анкеты не тронуто — общество в нём названо', () => {
+    for (const source of [read('design', 'ExpertsPage.dc.html'), read('app', 'src', 'components', 'pages', 'ExpertsPage.tsx')]) {
+      assert.match(source, /даю согласие ООО «РУСДРОН» \(ОГРН 1257700248860/u);
+    }
+  });
+
+  it('правовые страницы и OrgSchema по-прежнему называют исполнителя', () => {
+    for (const page of ['OfferPage', 'PrivacyPage', 'ConsentPage']) assert.match(read('design', `${page}.dc.html`), NAME, page);
+    assert.match(read('app', 'src', 'components', 'OrgSchema.tsx'), /legalName: 'Общество с ограниченной ответственностью «РУСДРОН»'/u);
+  });
+});
+
+describe('Р-862: вопрос о договоре — «Как заключается договор…», ответ по публичной оферте', () => {
+  for (const page of ['MainPage', 'StudentsPage']) {
+    it(`${page}: договор по публичной оферте, реквизиты исполнителя — в оферте, практика — с 2016 года`, () => {
+      const html = read('design', `${page}.dc.html`);
+      assert.doesNotMatch(plain(html), /С кем заключается договор/u);
+      const text = answer(html, 'Как заключается договор и с какого года вы работаете\\?');
+      assert.ok(text, 'нет вопроса «Как заключается договор и с какого года вы работаете?»');
+      assert.match(text, /^Договор заключается по публичной оферте/u);
+      assert.match(text, /реквизиты исполнителя — в оферте/u);
+      assert.match(text, /с 2016 года/u);
+    });
+  }
+
+  it('BusinessPage: договор по форме юриста, реквизиты и общие условия — в публичной оферте', () => {
+    const html = read('design', 'BusinessPage.dc.html');
+    assert.doesNotMatch(plain(html), /Кто заключает договор/u);
+    const text = answer(html.replace(/',\n\s+'/gu, "', '"), 'Как заключается договор и что в нём фиксируется\\?');
+    assert.ok(text, 'нет вопроса «Как заключается договор и что в нём фиксируется?»');
+    assert.match(text, /^С организацией заключаем договор по форме, согласованной юристом/u);
+    assert.match(text, /Реквизиты исполнителя и общие условия — в публичной оферте/u);
+  });
 });
