@@ -2,7 +2,6 @@ import ActionError from './ActionError';
 import { Button, Field, Form, FormActions, FormRow, Heading, Text } from './ui';
 import { formatAmount } from '../../lib/cabinet/money';
 import { RECEIPT_NOTE_MAX } from '../../lib/cabinet/finance';
-import { recordReceiptAction } from '../../app/cabinet/actions';
 
 /**
  * «Деньги по заказу» (запрос владельца 13.11.2026, решение Р-871).
@@ -39,12 +38,19 @@ export function orderMoneyLine(figures: OrderMoneyFigures | null): string {
  * Комментарий — внутренний: подсказка под полем говорит это прямо.
  */
 export function ReceiptForm({
+  action,
   code,
   projectId,
   errorId,
   draft,
   today,
 }: {
+  /**
+   * Серверное действие записи поступления — передаёт страница, как у
+   * соседних форм кабинета: витрина собирается без `app/cabinet`, и прямой
+   * импорт действий из компонента роняет её сборку.
+   */
+  action: (form: FormData) => Promise<void>;
   code: string;
   projectId: string;
   errorId?: string;
@@ -53,7 +59,7 @@ export function ReceiptForm({
   today: string;
 }) {
   return (
-    <Form action={recordReceiptAction} id="receipt" style={{ scrollMarginTop: 24 }}>
+    <Form action={action} id="receipt" style={{ scrollMarginTop: 24 }}>
       <input type="hidden" name="projectId" value={projectId} />
       <input type="hidden" name="code" value={code} />
       <input type="hidden" name="back" value="payments" />

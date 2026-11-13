@@ -56,6 +56,7 @@ import {
   correctReceiptAction,
   dropTranche,
   payPayout,
+  recordReceiptAction,
   saveProjectContract,
   uploadFinanceDocument,
 } from '../../../actions';
@@ -310,6 +311,7 @@ export default async function PaymentsScreen({
             {mayReceive ? (
               <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--pd-divider)' }}>
                 <ReceiptForm
+                  action={recordReceiptAction}
                   code={project.code}
                   projectId={project.id}
                   errorId={flags.error}
