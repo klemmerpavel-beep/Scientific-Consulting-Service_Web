@@ -106,7 +106,25 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-edge::before{content:"";position:absolute;top:-1px;left:-1px;right:-1px;height:15px;box-sizing:border-box;border:2px solid var(--pd-accent);border-bottom:0;border-radius:14px 14px 0 0;pointer-events:none}
 
 .pd-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
-.pd-request{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
+/* Р-885: колонки панели шагов и формы поровну (до панели снимок стоял в колонке .86fr): в узкой колонке карточки шагов выше формы. */
+.pd-request{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+/* «Что будет после отправки» у формы заявки (Р-885; образец — панель «Как проходит этап работы» на «Экспертам», .ex-flow): тёмная панель --pd-accent-deep, радиус 14; вертикальная линия 2 px --pd-accent-soft, круги 40 px с цифрой; справа белые карточки — заголовок шага 15/600, метка роли пилюлей, пояснение 14 px. Круг шага «Вы» — белый с цифрой --pd-accent, остальные — тёмные с обводкой --pd-accent-soft, как в образце. Когда панель доходит до чтения, карточки проявляются по очереди сверху вниз один раз (opacity и transform, 260 мс, шаг 90 мс; data-flow ставит сценарий страницы, без сценария и при уменьшенном движении шаги видны сразу); наведение и фокус подсвечивают шаг. От 769 px шаги делят высоту колонки формы. */
+.pd-afterflow{position:relative;margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.pd-afterflow::before{content:"";position:absolute;left:19px;top:24px;bottom:24px;width:2px;background:var(--pd-accent-soft);opacity:.55}
+.pd-afterflow>li{position:relative;display:flex;align-items:flex-start;gap:14px;border-radius:10px;transition:opacity 260ms cubic-bezier(.2,0,.2,1),transform 260ms cubic-bezier(.2,0,.2,1)}
+.pd-afterflow>li:nth-child(2){transition-delay:90ms}.pd-afterflow>li:nth-child(3){transition-delay:180ms}.pd-afterflow>li:nth-child(4){transition-delay:270ms}.pd-afterflow>li:nth-child(5){transition-delay:360ms}
+.pd-afterflow[data-flow="wait"]>li{opacity:0;transform:translateY(12px)}
+.pd-afterflow-num{transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.pd-afterflow-card{transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)}
+.pd-afterflow>li:hover .pd-afterflow-card,.pd-afterflow>li:focus-visible .pd-afterflow-card{background:var(--pd-accent-tint)!important;transform:translateX(4px)}
+.pd-afterflow>li:hover .pd-afterflow-num,.pd-afterflow>li:focus-visible .pd-afterflow-num{background:var(--pd-ink-inverse)!important;border-color:var(--pd-ink-inverse)!important;color:var(--pd-accent)!important}
+.pd-afterflow>li:focus-visible{outline:2px solid var(--pd-ink-inverse);outline-offset:4px}
+@media (prefers-reduced-motion:reduce){.pd-afterflow>li:hover .pd-afterflow-card,.pd-afterflow>li:focus-visible .pd-afterflow-card{transform:none!important}}
+@media (min-width:769px){.pd-after .pd-afterflow{flex:1 1 auto;justify-content:space-between}}
+@media (max-width:480px){.pd-after{padding:20px 16px!important}.pd-afterflow>li{gap:10px}.pd-afterflow-card{padding:12px 14px!important}}
+/* До 1024 px панель шагов — под формой на всю ширину карточки заявки: в колонке .86fr карточки шагов вытягивались выше формы. */
+@media (max-width:1024px){.pd-request{grid-template-columns:minmax(0,1fr)}.pd-request-after{order:2;padding:0 26px 26px!important}}
+@media (max-width:480px){.pd-request-after{padding:0 16px 16px!important}}
 @media (max-width:1024px){.pd-usp{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.pd-orbit>.pd-ring,.pd-orbit>.pd-dot,.pd-orbit>.pd-core{display:none!important}.pd-orbit>.pd-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}}
 .pd-nav{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 /* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
@@ -735,9 +753,15 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Ответим в рабочее время и предложим время консультации</span>
 </div>
 <div class="pd-request" style="background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<div style="position:relative;min-height:440px;padding:26px 0 26px 26px;display:flex;align-items:center">
-<div style="position:relative;width:100%;height:100%;min-height:388px">
-<image-slot id="mp-request-photo" shape="rect" fit="cover" data-alt="Автор работы за черновиком главы" placeholder="Фото: разбор задачи" style="position:absolute;inset:0;width:100%;height:100%;box-shadow:0 22px 30px rgba(20,22,28,.16),0 4px 8px rgba(20,22,28,.08)"></image-slot>
+<!-- Р-885: слева от формы — «Что будет после отправки» тёмной панелью по образцу «Как проходит этап работы» на «Экспертам» вместо снимка «Автор работы за черновиком главы»: круги с цифрой на линии, белые карточки шагов с меткой роли; текст шагов — вариант «Аспирантам». Панель на высоту колонки формы, шаги делят высоту. Единственная тёмная панель страницы выше 200 px (Р-608). -->
+<div style="padding:26px 0 26px 26px;display:flex;min-width:0" class="pd-request-after">
+<div class="mp-reqsteps pd-after" style="background:var(--pd-accent-deep);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:18px;min-width:0;flex:1 1 auto">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink-inverse)">Что будет после отправки</h3>
+<ol class="pd-afterflow" role="list" aria-label="Шаги после заявки">
+<sc-for list="{{ afterSteps }}" as="s" hint-placeholder-count="5">
+<li tabindex="0"><span aria-hidden="true" class="pd-afterflow-num" style="position:relative;z-index:1;width:40px;height:40px;flex:0 0 40px;box-sizing:border-box;border-radius:50%;background:{{ s.numBg }};border:2px solid {{ s.numEdge }};color:{{ s.numInk }};display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1;font-weight:600;font-variant-numeric:tabular-nums">{{ s.n }}</span><div class="pd-afterflow-card" style="flex:1 1 auto;min-width:0;background:var(--pd-ink-inverse);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:4px"><span style="display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap"><span style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span><span style="background:{{ s.roleBg }};border-radius:999px;padding:2px 10px;font-size:12px;line-height:1.5;font-weight:600;color:{{ s.roleInk }}">{{ s.role }}</span></span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ s.text }}</span></div></li>
+</sc-for>
+</ol>
 </div>
 </div>
 <div style="padding:34px 38px 36px;display:flex;flex-direction:column;gap:24px">
@@ -908,6 +932,20 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 class Component extends DCLogic {
   state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, navOpen: false };
   componentDidMount(){
+    // Шаги после заявки (Р-885) проявляются по очереди, когда панель доходит
+    // до чтения, — один раз. Если панель уже на экране, при уменьшенном
+    // движении или без IntersectionObserver шаги видны сразу.
+    this.flow = document.querySelector('.pd-afterflow');
+    if (this.flow && 'IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        && this.flow.getBoundingClientRect().top > window.innerHeight) {
+      this.flow.setAttribute('data-flow', 'wait');
+      this.flowSeen = new IntersectionObserver(entries => {
+        if (!entries.some(e => e.isIntersecting)) return;
+        this.flow.setAttribute('data-flow', 'in');
+        this.flowSeen.disconnect();
+      }, { rootMargin: '0px 0px -12% 0px' });
+      this.flowSeen.observe(this.flow);
+    }
     // Всплывающее окно закрывается клавишей Esc — иначе с клавиатуры
     // из него не выйти, а закрывающая кнопка может быть прокручена.
     // Окно отзыва модальное (aria-modal): при открытии фокус переходит в
@@ -947,6 +985,7 @@ class Component extends DCLogic {
     this.forceUpdate();
   }
   componentWillUnmount(){
+    if (this.flowSeen) this.flowSeen.disconnect();
     window.removeEventListener('keydown', this.onRevKey);
     if (this.wide) this.wide.removeEventListener('change', this.syncNav);
   }
@@ -1222,6 +1261,23 @@ class Component extends DCLogic {
       navHidden: this.state.navOpen ? undefined : true,
       navOpenAttr: this.state.navOpen ? 'true' : 'false',
       toggleNav: () => this.setState(s => ({ navOpen: !s.navOpen })),
+      // Шаги после заявки (Р-885): название, кто действует, пояснение. Круг и метка
+      // шага «Вы» — светлые, остальных — тёмный круг и серая метка, как на «Экспертам».
+      afterSteps: [
+        ['Менеджер отвечает', 'Менеджер', 'Отвечает в течение рабочего дня, Пн⁠—⁠Пт 10:00⁠—⁠19:00: уточняет задачу, стадию работы и срок защиты.'],
+        ['Доступ в личный кабинет', 'Вы', 'Менеджер открывает вам вход в кабинет. Туда вы загружаете то, что уже есть: требования совета, паспорт специальности, текст.'],
+        ['Знакомство с куратором', 'Куратор', 'Куратор со степенью по вашей специальности, его профиль — в кабинете. Созвон знакомства до 20 минут ведёт менеджер.'],
+        ['Задание и смета', 'Менеджер', 'В Задании — состав работ, календарный план и стоимость каждого этапа. Задание вы согласуете в кабинете.'],
+        ['Работа по этапам', 'Вы', 'Каждый этап вы принимаете в кабинете. Следующий этап оплачивается после приёмки предыдущего.']
+      ].map(([title, role, text], i) => {
+        const you = role === 'Вы';
+        return { title, role, text, n: String(i + 1),
+          numBg: you ? 'var(--pd-ink-inverse)' : 'var(--pd-accent-deep)',
+          numEdge: you ? 'var(--pd-ink-inverse)' : 'var(--pd-accent-soft)',
+          numInk: you ? 'var(--pd-accent)' : 'var(--pd-ink-inverse)',
+          roleBg: you ? 'var(--pd-accent-tint)' : 'var(--pd-surface-quiet)',
+          roleInk: you ? 'var(--pd-accent)' : 'var(--pd-ink-secondary)' };
+      }),
       requestPoints: [
         ['users', 'Разберём задачу с куратором по вашей научной области'],
         ['calendar-days', 'Назовём сроки и этапы до согласования Задания'],

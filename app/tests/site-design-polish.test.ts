@@ -264,16 +264,15 @@ describe('Р-800: «Что будет после отправки» на «Ст�
     assert.doesNotMatch(label[0], /text-transform:uppercase/u);
   });
 
-  it('шаги — вертикальной шкалой справа от формы на её высоту, как на «Компаниям» (Р-846)', () => {
+  it('шаги — тёмной панелью справа от формы на её высоту (Р-846, формат — Р-885)', () => {
     for (const [where, source] of both('StudentsPage')) {
-      assert.ok(source.includes('@media (min-width:769px){.sp-reqsteps .pd-track-v{flex:1 1 auto}.sp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}'), `${where}: шаги не на высоту формы`);
+      assert.ok(source.includes('@media (min-width:769px){.pd-after .pd-afterflow{flex:1 1 auto;justify-content:space-between}}'), `${where}: шаги не на высоту формы`);
     }
     const html = design('StudentsPage');
     const req = html.slice(html.indexOf('<section id="request"'), html.indexOf('</section>', html.indexOf('<section id="request"')));
-    assert.match(req, /<\/form>\s*<!--[\s\S]*?-->\s*<div class="sp-reqsteps"[\s\S]*<ol class="pd-track pd-track-v" role="list">/u);
+    assert.match(req, /<\/form>\s*<!--[\s\S]*?-->\s*<div class="sp-reqsteps pd-after" style="background:var\(--pd-accent-deep\)[\s\S]*<ol class="pd-afterflow" role="list"/u);
     assert.match(req, /<div class="sp-reqask"[\s\S]*Что прислать для сметы[\s\S]*<ul class="sp-asklist"[\s\S]*askFor/u);
-    assert.doesNotMatch(req, /image-slot|sp-afterbox/u, 'фото и горизонтальная шкала вернулись');
-    assert.match(html, /<span class="pd-track-title" style="[^"]*">\{\{ s\.title \}\}<\/span>/u);
+    assert.doesNotMatch(req, /image-slot|sp-afterbox|pd-track/u, 'фото или прежняя шкала вернулись');
   });
 });
 
@@ -315,7 +314,7 @@ describe('Р-835: блок заявки «Компаниям» без пусто
   it('в сетке .bp-req три ячейки по порядку: форма, «Что будет после отправки», полоса «Что прислать для сметы»', () => {
     const html = block(design('BusinessPage'));
     const form = html.indexOf('<form ');
-    const steps = html.indexOf('<div class="bp-reqsteps"');
+    const steps = html.indexOf('<div class="bp-reqsteps pd-after"');
     const ask = html.indexOf('<div class="bp-reqask"');
     assert.ok(form > 0 && steps > html.indexOf('</form>') && ask > steps, 'порядок ячеек другой');
     assert.doesNotMatch(html, /flex-direction:column;gap:12px;height:100%/u, 'правая колонка снова обёрткой на высоту формы');
@@ -329,7 +328,7 @@ describe('Р-835: блок заявки «Компаниям» без пусто
         '.bp-reqask{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr)}',
         '@media (min-width:769px){.bp-reqask{grid-template-columns:240px minmax(0,1fr)}',
         '@media (min-width:1025px){.bp-asklist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px!important}}',
-        '@media (min-width:769px){.bp-reqsteps .pd-track-v{flex:1 1 auto}.bp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}',
+        '@media (min-width:769px){.pd-after .pd-afterflow{flex:1 1 auto;justify-content:space-between}}',
       ]) assert.ok(source.includes(rule), `${where}: нет правила «${rule.slice(0, 40)}…»`);
     }
   });
