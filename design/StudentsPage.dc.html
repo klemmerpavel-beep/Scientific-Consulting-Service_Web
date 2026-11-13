@@ -30,7 +30,7 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);padding:12px 20px;border-radius:0 0 10px 0;font-size:13px;font-weight:600}
 .pd-skip:focus{left:0;color:var(--pd-ink-inverse)}
 .sp-nav{display:flex;align-items:center;gap:4px}
-/* Р-841: первый экран по образцу «Экспертам» — плашки условий ведут к ответам; объёмные объекты вокруг заголовка покачиваются (transform), до 1199 px скрыты, при уменьшенном движении стоят. */
+/* Р-841, Р-852: плашки условий под первым экраном ведут к ответам в «Вопросах». */
 .sp-terms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-term .sp-term-k,.sp-term .sp-term-t,.sp-term .sp-term-d,.sp-term .sp-term-l{transition:color 180ms cubic-bezier(.2,0,.2,1)}
 .sp-term .sp-term-a{transition:background 180ms cubic-bezier(.2,0,.2,1)}
@@ -41,34 +41,47 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 .sp-term:hover .sp-term-k,.sp-term:focus-visible .sp-term-k,.sp-term:active .sp-term-k,.sp-term:hover .sp-term-l,.sp-term:focus-visible .sp-term-l,.sp-term:active .sp-term-l{color:var(--pd-accent-tint)!important}
 .sp-term:hover .sp-term-a,.sp-term:focus-visible .sp-term-a,.sp-term:active .sp-term-a{background:var(--pd-accent-tint)!important}
 @media (prefers-reduced-motion:reduce){.sp-term,.sp-term:hover,.sp-term:focus-visible{transform:none!important}}
-@keyframes sp-float{from{transform:translateY(-6px)}to{transform:translateY(6px)}}
-.sp-node{animation:sp-float 5.5s ease-in-out infinite alternate}
-.sp-node:nth-of-type(2){animation-delay:-1.4s}
-.sp-node:nth-of-type(3){animation-delay:-2.8s}
-.sp-node:nth-of-type(4){animation-delay:-4.2s}
-@media (max-width:1199px){.sp-node{display:none!important}}
-@media (max-width:768px){.sp-br{display:none}.sp-terms{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:480px){.sp-hl{white-space:normal!important}}
+@media (max-width:768px){.sp-terms{grid-template-columns:minmax(0,1fr)}}
+/* Р-855: плашка «Научный коллектив с 2016 года» над заголовком первого экрана; на узком телефоне — в одну строку. */
+@media (max-width:400px){.sp-proof{gap:10px!important;padding-right:12px!important}.sp-proof>span:last-child{font-size:13px!important}}
 .sp-burger{display:none}
 .sp-cta{white-space:nowrap}
+.sp-hero{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr)}
+.sp-support{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+/* Р-629: плашки с цифрами — в правой колонке первого экрана под портретами, по одной в ряд; первый экран не вытягивается вниз */
+.sp-support.sp-support-col{grid-template-columns:minmax(0,1fr)}
 /* Р-630: этапы «Студентам» по образцу «Как это выглядит внутри»; на телефоне карточка этапа сразу под перечнем */
-@media (min-width:1025px){.sp-rt-a{grid-column:1;grid-row:1}.sp-rt-b{grid-column:2;grid-row:1 / span 2}.sp-rt-c{grid-column:1;grid-row:2}}
-.sp-duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+/* Р-859: «Этапы» — горизонтальная шкала: колонка этапа растёт по длительности (flex-grow — дни; от 1200 px не уже 168 px, на 769—1199 px — не уже 120 px, номер над названием), сверху полоса 6 px, ниже номер 24 px, название и срок; карточка этапа под шкалой — в две колонки. До 768 px шкала — компактный список строк, карточка — одной колонкой. */
+.sp-rt-head{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
+.sp-tl{display:flex;gap:8px}
+.sp-tl>li{flex-shrink:1;flex-basis:0;min-width:120px}
+@media (min-width:1200px){.sp-tl>li{min-width:168px}}
+@media (min-width:769px) and (max-width:1199px){.sp-tl>li{min-width:120px}.sp-tl-btn{padding:10px!important}.sp-tl-row{flex-direction:column;gap:8px}}
+/* Вкладки ситуаций не помещаются в строку уже 980 px — с этой ширины они сеткой 2 × 2, как на телефоне (Р-613). */
+@media (max-width:980px){.sp-sit{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-radius:14px!important}.sp-sit>button{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
+.sp-tl-btn{display:flex;flex-direction:column;gap:12px;padding:10px 12px 12px;min-height:44px}
+.sp-tl-bar{display:block;height:6px;border-radius:999px}
+.sp-tl-row{display:flex;align-items:flex-start;gap:10px}
+.sp-tl-num{flex:0 0 24px;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1;font-weight:600}
+.sp-tl-text{display:flex;flex-direction:column;gap:2px;min-width:0;padding-top:2px}
+.sp-stage-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}
+@media (max-width:768px){.sp-rt-head,.sp-stage-grid{grid-template-columns:minmax(0,1fr)}.sp-tl{flex-direction:column;gap:2px}.sp-tl>li{min-width:0;flex-grow:0!important}.sp-tl-bar{display:none!important}.sp-tl-btn{padding:10px 12px}.sp-tl-row{align-items:center}.sp-tl-text{flex:1 1 auto;flex-direction:row;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 12px;padding-top:0}}
+@media (max-width:480px){.sp-stage{padding:18px 20px!important}}
+@media (max-width:480px){.sp-support-col>a{grid-template-columns:minmax(0,1fr)!important}.sp-support-col>a>span:first-child{grid-row:auto!important}}
 .sp-offer{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 /* «Смета на диплом» (Р-799): факторы — карточка-список в ряд, между пунктами одна линия; до 768 px — столбцом. Причины нормоконтроля — тот же список в две колонки внутри карточки свёртки. Свёртка закрыта — карточка поднимается под курсором и при фокусе, как pd-lift (Р-628); раскрыта — стоит на месте. */
 .sp-costlist{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-costlist>li+li{border-left:1px solid var(--pd-border)}
 @media (max-width:768px){.sp-costlist{grid-template-columns:minmax(0,1fr)}.sp-costlist>li+li{border-left:0;border-top:1px solid var(--pd-border)}}
-@media (max-width:480px){.sp-costlist>li,.sp-normcard{padding-left:20px!important;padding-right:20px!important}}
+@media (max-width:480px){.sp-costlist>li,.sp-normbox>button,.sp-normbox>div{padding-left:20px!important;padding-right:20px!important}}
 .sp-normlist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:32px}
 .sp-normlist>li{border-top:1px solid var(--pd-border)}
 @media (max-width:768px){.sp-normlist{grid-template-columns:minmax(0,1fr)}}
+.sp-normbox{transition:transform 220ms cubic-bezier(.2,0,.2,1),box-shadow 220ms cubic-bezier(.2,0,.2,1)}
+.sp-normbox:has(>.sp-normbtn[aria-expanded="false"]:hover),.sp-normbox:has(>.sp-normbtn[aria-expanded="false"]:focus-visible){transform:translateY(-5px);box-shadow:0 10px 20px rgba(20,22,28,.09)!important}
+@media (prefers-reduced-motion:reduce){html .sp-normbox{transition:none!important}html .sp-normbox:has(>.sp-normbtn:hover),html .sp-normbox:has(>.sp-normbtn:focus-visible){transform:none!important}}
 .sp-req{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .sp-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
-/* Р-844: «Что закреплено в договоре» — заголовок слева, перечень справа; до 1024 px одной колонкой. */
-.sp-deal{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr)}
-@media (max-width:1024px){.sp-deal{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:480px){.sp-deal ol{padding:4px 20px!important}}
 .sp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 /* Р-849: «География» — текст и счётчик слева, схема справа; до 1024 px одной колонкой. Узлы схемы пульсируют transform и opacity, при уменьшенном движении стоят (общее правило). */
 .sp-geo{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}
@@ -80,7 +93,7 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 /* Р-846: блок заявки — форма и вертикальная шкала шагов одной высоты, «Что прислать для сметы» полосой под ними (как «Компаниям», Р-835). */
 @media (min-width:769px){.sp-reqsteps .pd-track-v{flex:1 1 auto}.sp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}
 .sp-reqask{display:grid;grid-template-columns:minmax(0,1fr)}
-.sp-reqart{height:120px;border-bottom:1px solid var(--pd-divider)}
+.sp-reqart{height:160px;border-bottom:1px solid var(--pd-divider)}
 .sp-reqbody{padding:16px 20px 18px}
 @media (min-width:769px){.sp-reqask{grid-template-columns:220px minmax(0,1fr)}.sp-reqart{height:auto;min-height:170px;border-bottom:0;border-right:1px solid var(--pd-divider)}.sp-reqbody{padding:20px 24px}}
 @media (min-width:1025px){.sp-asklist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px!important}}
@@ -106,14 +119,14 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 @media (max-width:768px){.pd-tasks{grid-template-columns:minmax(0,1fr);gap:12px}}
 @media (max-width:480px){.pd-task{padding:16px 16px 0!important}.pd-task-does{padding-top:12px!important}.pd-task-to{margin-top:14px!important;padding:12px 0 16px!important}}
 @media (max-width:1024px){.sp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.sp-orbit>.sp-ring,.sp-orbit>.sp-dot,.sp-orbit>.sp-core{display:none!important}.sp-orbit>.sp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.sp-offer{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:768px){.sp-req,.sp-faq,.sp-team,.sp-duo{grid-template-columns:minmax(0,1fr)}.sp-after{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:768px){.sp-hero,.sp-req,.sp-faq,.sp-team{grid-template-columns:minmax(0,1fr)}.sp-after{grid-template-columns:minmax(0,1fr)}}
 /* Меню разделов уходит под кнопку ниже 1200 px: с пунктами «Стать экспертом» и «Личный кабинет» строка шире (Р-588). */
 @media (max-width:1200px){.sp-nav{position:absolute;right:0;top:64px;flex-direction:column;align-items:stretch;gap:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:10px 14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:220px}.sp-nav[hidden]{display:none!important}.sp-burger{display:inline-flex}}
 /* Подпись раздела на узком экране — под заголовком слева, а не прижатой вправо строкой (Р-250). */
 @media (max-width:768px){.sp-sub{text-align:left!important;margin-left:0!important}}
 @media (max-width:768px){.sp-offer{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media (max-width:430px){.sp-head{gap:12px!important}.sp-logo{font-size:22px!important}.sp-cta{padding:12px 16px!important;font-size:12px!important}}
-@media (max-width:480px){.sp-duo,.sp-offer,.sp-req,.sp-team,.sp-faq,.sp-after{grid-template-columns:minmax(0,1fr)!important}.sp-pad{padding-left:20px!important;padding-right:20px!important}.sp-offer,.sp-orbit{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:480px){.sp-hero,.sp-support,.sp-offer,.sp-req,.sp-team,.sp-faq,.sp-after{grid-template-columns:minmax(0,1fr)!important}.sp-pad{padding-left:20px!important;padding-right:20px!important}.sp-offer,.sp-support,.sp-orbit{grid-template-columns:minmax(0,1fr)}}
 
 
 /* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
@@ -145,25 +158,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-orb-hero{animation-name:pd-swing-hero;animation-duration:36s;animation-delay:-18s}
 .pd-orb-calm{animation-name:pd-swing-calm;animation-duration:30s;animation-delay:-15s}
 .pd-glow{animation:pd-breathe 13s ease-in-out infinite alternate}
-/* Р-850: фоновая сборка работы. В правом поле страницы три листа по мере
-   прокрутки сходятся в стопку, в конце страницы на них закрывается обложка
-   «ВКР». Прогресс — прокрутка страницы (scroll-driven animations), только
-   transform и opacity; слой под разделами, без событий указателя. Показан
-   от 1400 px, где правое поле шире листа; без поддержки привязки к
-   прокрутке и при уменьшенном движении слоя нет. */
-.sp-build{display:none}
-@keyframes sp-build-s1{0%{opacity:0;transform:translate(-8px,-58vh) rotate(-14deg)}6%{opacity:.72}78%{opacity:.72;transform:translate(-2px,-10px) rotate(-4deg)}90%{opacity:.72;transform:translate(0,0) rotate(-1deg)}96%,100%{opacity:0;transform:translate(0,0) rotate(0)}}
-@keyframes sp-build-s2{0%{opacity:0;transform:translate(10px,-38vh) rotate(10deg)}10%{opacity:.72}82%{opacity:.72;transform:translate(2px,-6px) rotate(3deg)}90%{opacity:.72;transform:translate(0,0) rotate(1deg)}96%,100%{opacity:0;transform:translate(0,0) rotate(0)}}
-@keyframes sp-build-s3{0%{opacity:0;transform:translate(-6px,-18vh) rotate(-6deg)}14%{opacity:.72}86%{opacity:.72;transform:translate(0,-3px) rotate(-1deg)}90%{opacity:.72;transform:translate(0,0) rotate(0)}96%,100%{opacity:0;transform:translate(0,0) rotate(0)}}
-@keyframes sp-build-cover{0%,84%{opacity:0;transform:perspective(520px) rotateY(-88deg)}88%{opacity:.94;transform:perspective(520px) rotateY(-80deg)}97%,100%{opacity:.94;transform:perspective(520px) rotateY(0)}}
-@media (min-width:1400px) and (prefers-reduced-motion:no-preference){@supports (animation-timeline:scroll()){
-.sp-build{display:block;position:fixed;top:0;bottom:0;left:calc(75vw + 263px);width:84px;z-index:0;pointer-events:none}
-.sp-build>*{position:absolute;left:0;bottom:128px;display:block;width:84px;height:112px;animation-duration:auto;animation-timing-function:linear;animation-fill-mode:both;animation-timeline:scroll(root block)}
-.sp-build-s1{animation-name:sp-build-s1}
-.sp-build-s2{animation-name:sp-build-s2}
-.sp-build-s3{animation-name:sp-build-s3}
-.sp-build-cover{transform-origin:left center;backface-visibility:hidden;animation-name:sp-build-cover}
-}}
 @media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}
 .sp-crewcard{position:relative;z-index:1}
 .sp-crewfig{position:absolute;left:50%;transform:translateX(-50%);top:-166px;height:210px;width:auto;z-index:0;pointer-events:none}
@@ -178,8 +172,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-in-tablist::-webkit-scrollbar{display:none}
 @media (max-width:768px){.pd-in-tablist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-radius:14px!important}.pd-in-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}.sp-sit>button{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
 .sp-in-card{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
-.sp-in-text{padding:28px 28px 24px;border-right:1px solid var(--pd-border)}
-.sp-in-shot{padding:18px}
+.sp-in-text{padding:24px 28px;border-right:1px solid var(--pd-border)}
+.sp-in-shot{padding:24px}
 @media (max-width:1024px){.sp-in-card{grid-template-columns:minmax(0,1fr)}.sp-in-text{border-right:0;border-bottom:1px solid var(--pd-border)}}
 @media (max-width:480px){.sp-in-text{padding:20px}.sp-in-shot{padding:12px}}
 @media (max-width:768px){.pd-in-sub{text-align:left!important;margin-left:0!important}}
@@ -203,8 +197,22 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
+<div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:2120px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
+<svg class="pd-orb pd-orb-b" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% + 238px);top:2050px">
+<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
+<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
+</svg>
 <div class="pd-glow" style="position:absolute;left:calc(50% - 1020px);top:3170px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:3100px">
+<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
+<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
+</svg>
+<div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:4220px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
+<svg class="pd-orb pd-orb-b" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% + 238px);top:4150px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
 <circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
@@ -217,16 +225,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
-<span class="sp-node" style="position:absolute;left:calc(50% + 359px);top:268px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/st-3d-thesis.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
-<span class="sp-node" style="position:absolute;left:calc(50% + 384px);top:650px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/st-3d-deadline.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
-<span class="sp-node" style="position:absolute;left:calc(50% - 409px);top:384px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/st-3d-review.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
-<span class="sp-node" style="position:absolute;left:calc(50% - 388px);top:628px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/st-3d-gost.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
-</div>
-<div class="sp-build" aria-hidden="true">
-<img class="sp-build-s1" src="./assets/art/st-sheet-1.webp" alt="" width="300" height="400" loading="lazy" decoding="async">
-<img class="sp-build-s2" src="./assets/art/st-sheet-2.webp" alt="" width="300" height="400" loading="lazy" decoding="async">
-<img class="sp-build-s3" src="./assets/art/st-sheet-3.webp" alt="" width="300" height="400" loading="lazy" decoding="async">
-<span class="sp-build-cover"><img src="./assets/art/st-cover.webp" alt="" width="480" height="640" loading="lazy" decoding="async" style="display:block;width:100%;height:100%"><span style="position:absolute;left:0;right:12%;top:30%;text-align:center;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.24;font-weight:600;letter-spacing:.04em;color:var(--pd-ink-inverse)">ВКР</span><span style="position:absolute;left:30%;right:42%;top:54%;height:2px;border-radius:999px;background:var(--pd-ink-inverse);opacity:.6"></span></span>
+<div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:6320px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
+<svg class="pd-orb pd-orb-b" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% + 238px);top:6250px">
+<g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
+<ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
+<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
+</svg>
 </div>
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
 
@@ -253,22 +258,93 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 
 <main id="main">
 
-<section id="works" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:clamp(56px,8.4vw,124px) 30px 0">
-<!-- Р-841: первый экран по образцу эталона «Экспертам» (Р-839): по центру плашка-доказательство, заголовок Р-480 с одной подсветкой, подводка с фразой ядра, одна главная кнопка (окно заявки, Р-484) и ссылка на этапы; ниже — снимок карточки работы клиента и три плашки условий, каждая ведёт к своему ответу в «Вопросах». Формы на первом экране нет: та же форма раздела #request открывается окном. -->
-<div style="max-width:900px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center">
-<span style="display:inline-flex;align-items:center;gap:12px;padding:6px 16px 6px 8px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05)"><span style="display:inline-flex"><img src="./assets/avatars/ph-curator.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);background:var(--pd-accent-mark);margin-left:0"><img src="./assets/avatars/ph-expert.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);background:var(--pd-accent-mark);margin-left:-10px"><img src="./assets/avatars/ph-editor.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);background:var(--pd-accent-mark);margin-left:-10px"></span><span style="font-size:14px;line-height:1.4;color:var(--pd-ink-secondary)"><b style="font-weight:600;color:var(--pd-ink)">Научный коллектив</b> с 2016 года</span></span>
-<h1 style="margin:36px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3.8vw,54px);line-height:1.36;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Готовьте диплом к защите <br class="sp-br"><span class="sp-hl" style="background:var(--pd-accent-mark);border-radius:6px;padding:0 10px;white-space:nowrap;box-decoration-break:clone;-webkit-box-decoration-break:clone">под контролем куратора</span> с учёной степенью</h1>
-<p style="margin:32px 0 0;font-size:17px;line-height:1.6;color:var(--pd-ink-secondary);max-width:62ch">Сопровождение дипломной работы, ВКР и магистерской диссертации. Куратор разбирает вашу работу, сверяет её с требованиями кафедры и ГОСТ и ведёт вас от первого разбора до защиты.</p>
-<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:48px">
-<a href="#request" data-pd-dialog style="display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;box-sizing:border-box;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:0 34px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a>
-<a href="#route" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid transparent;color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:0 26px;border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-ink)" style-active="transform:scale(.97)">Как устроена работа<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></a>
+<section id="works" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:64px 30px clamp(56px,5vw,72px)">
+<div class="sp-hero" style="gap:40px;align-items:start">
+<div style="min-width:0">
+<!-- Р-855: над заголовком — плашка-доказательство «Научный коллектив с 2016 года» с тремя портретами ролей (из первого экрана Р-841, снимок владельца 13.11.2026) вместо метки «Студентам, магистрантам и специалистам». -->
+<span class="sp-proof" style="display:inline-flex;align-items:center;gap:12px;max-width:100%;box-sizing:border-box;margin-bottom:24px;padding:6px 16px 6px 8px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05)"><span style="display:inline-flex;flex:0 0 auto"><img src="./assets/avatars/ph-curator.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);background:var(--pd-accent-mark);margin-left:0"><img src="./assets/avatars/ph-expert.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);background:var(--pd-accent-mark);margin-left:-10px"><img src="./assets/avatars/ph-editor.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);background:var(--pd-accent-mark);margin-left:-10px"></span><span style="font-size:14px;line-height:1.4;color:var(--pd-ink-secondary)"><b style="font-weight:600;color:var(--pd-ink)">Научный коллектив</b> с 2016 года</span></span>
+<h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(30px,3vw,42px);line-height:1.4;font-weight:500;letter-spacing:-.018em;color:var(--pd-ink);max-width:22ch;text-wrap:balance"><span style="display:block">Готовьте диплом к защите</span><span style="background:var(--pd-accent-mark);border-radius:6px;box-shadow:-10px 0 0 var(--pd-accent-mark),10px 0 0 var(--pd-accent-mark);box-decoration-break:clone;-webkit-box-decoration-break:clone">под контролем куратора с учёной степенью</span></h1>
+<p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:48ch">Куратор разбирает работу, сверяет её с требованиями кафедры и ГОСТ и сопровождает вас от первого разбора до защиты.</p>
+
+<form onSubmit="{{ submitTop }}" style="margin:32px 0 0;max-width:420px;display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+<input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
+<div role="group" aria-label="Способ связи для консультации" style="display:inline-flex;gap:4px;padding:4px;background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;align-self:flex-start;flex:0 0 auto">
+<sc-for list="{{ contactTabsTop }}" as="c" hint-placeholder-count="2">
+<sc-if value="{{ c.active }}" hint-placeholder-val="{{ true }}">
+<button type="button" aria-pressed="true" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:var(--pd-ink);color:var(--pd-ink-inverse);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">{{ c.label }}</button>
+</sc-if>
+<sc-if value="{{ c.inactive }}" hint-placeholder-val="{{ false }}">
+<button type="button" aria-pressed="false" onClick="{{ c.pick }}" style="appearance:none;border:0;cursor:pointer;background:transparent;color:var(--pd-ink-muted);border-radius:999px;padding:0 20px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-ink-inverse);color:var(--pd-ink)" style-active="transform:scale(.97)">{{ c.label }}</button>
+</sc-if>
+</sc-for>
+</div>
+<input type="text" name="name" autocomplete="name" required="{{ true }}" placeholder="Ваше имя" aria-label="Ваше имя" style="flex:1 1 220px;min-width:0;box-sizing:border-box;height:48px;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
+<input id="sp-contact" name="contact" type="{{ contactTypeTop }}" autocomplete="{{ contactAutoTop }}" required="{{ true }}" placeholder="{{ contactPlaceholderTop }}" aria-label="{{ contactPlaceholderTop }}" style="flex:1 1 220px;min-width:0;box-sizing:border-box;height:48px;padding:0 16px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)">
+<div class="pd-agree" style="display:flex;flex-direction:column;gap:0;flex:1 1 100%">
+<label for="sp-consent-top" style="display:flex;min-height:32px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="sp-consent-top" name="consent" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Даю <a href="./consent.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">согласие на обработку персональных данных</a></span></label>
+<label for="sp-terms-top" style="display:flex;min-height:32px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="sp-terms-top" name="terms" type="checkbox" required="{{ true }}" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Принимаю <a href="./offer.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оферту</a> и <a href="./privacy.html" target="_blank" rel="noopener" style="color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">политику</a></span></label>
+</div>
+<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Оставить заявку</button>
+<sc-if value="{{ sentTop }}" hint-placeholder-val="{{ false }}">
+<div role="status" tabindex="{{ -1 }}" data-sent="top" style="flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
+<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;margin-top:2px;background:var(--pd-ok-ink);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Заявка принята. Ответим в рабочее время, Пн—Пт 10:00—19:00.</span>
+</div>
+<div data-next="top" style="margin-top:12px;flex:1 1 100%;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-surface-quiet);padding:12px 16px">
+<span style="display:block;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink);margin-bottom:8px">Что будет дальше</span>
+<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">
+<li>Менеджер разберёт заявку и ответит в течение рабочего дня</li>
+<li>Свяжемся удобным вам способом, чтобы уточнить задачу</li>
+<li>Менеджер откроет вам личный кабинет — ссылка придёт на почту; там вы приложите материалы по перечню «Что подготовить»</li>
+</ol>
+</div>
+</sc-if>
+<sc-if value="{{ errorTop }}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;background:var(--pd-err-bg);border:1px solid var(--pd-err-border);border-radius:10px;padding:12px 16px">
+<span style="font-size:14px;line-height:1.5;color:var(--pd-err-ink)">{{ errorTop }}</span>
+</div>
+</sc-if>
+</form>
+
+</div>
+
+<div class="sp-art" style="min-width:0;display:flex;flex-direction:column;gap:16px;padding-top:6px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Кто сопровождает работу</span>
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px">
+<div class="sp-facea" style="display:flex;flex-direction:column;gap:10px;max-width:clamp(152px,16.4vw,224px);align-items:center;text-align:center">
+<span class="sp-facea-c" style="width:clamp(152px,16.4vw,224px);height:clamp(152px,16.4vw,224px);border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<image-slot id="sp-stud-1" shape="circle" data-alt="Куратор проекта — кандидат наук" placeholder="Фото: куратор" style="width:100%;height:100%"></image-slot>
+</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Куратор со степенью<br><span style="color:var(--pd-ink-muted)">по вашей специальности</span></span>
+</div>
+<div class="sp-faceb" style="display:flex;flex-direction:column;gap:10px;max-width:clamp(112px,11.9vw,162px);padding-top:clamp(52px,10.8vw,152px);align-items:center;text-align:center">
+<span class="sp-faceb-c" style="width:clamp(112px,11.9vw,162px);height:clamp(112px,11.9vw,162px);border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<image-slot id="sp-stud-2" shape="circle" data-alt="Менеджер проекта" placeholder="Фото: менеджер" style="width:100%;height:100%"></image-slot>
+</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Менеджер<br><span style="color:var(--pd-ink-muted)">сроки, документы, оплаты</span></span>
 </div>
 </div>
-<figure style="margin:clamp(48px,6.4vw,92px) auto 0;max-width:1100px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:10px">
-<img src="./assets/art/st-cabinet.webp" alt="Карточка работы в кабинете клиента: этап на согласовании, план работ и переписка с менеджером. Данные вымышленные." width="1600" height="1000" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider)">
-<figcaption style="padding:10px 6px 2px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">Карточка работы в кабинете клиента. На снимке вымышленные данные.</figcaption>
-</figure>
-<div class="sp-terms" style="gap:12px;max-width:1100px;margin:16px auto 0">
+<div class="sp-support sp-support-col" style="gap:10px;margin-top:8px">
+<a class="pd-lift" href="#services" style="display:grid;grid-template-columns:132px minmax(0,1fr);align-items:center;column-gap:16px;row-gap:6px;box-sizing:border-box;background:var(--pd-accent-deep);border:1px solid var(--pd-accent-deep);border-radius:14px;padding:14px 16px;min-height:0;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-hover);border-color:var(--pd-accent-hover)" style-active="background:var(--pd-accent-active)">
+<span style="grid-row:1 / span 2;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink-inverse)">23 позиции</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-accent-edge)">в перечне работ: шесть основных направлений и полный список</span>
+<span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Услуги куратора<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent-edge);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
+</a>
+<a class="pd-lift" href="#norm" style="display:grid;grid-template-columns:132px minmax(0,1fr);align-items:center;column-gap:16px;row-gap:6px;box-sizing:border-box;background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);border-radius:14px;padding:14px 16px;min-height:0;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-accent-mark)" style-active="background:var(--pd-accent-mark)">
+<span style="grid-row:1 / span 2;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">7 причин</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">по которым нормоконтроль возвращает работу с кафедры</span>
+<span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Нормоконтроль<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
+</a>
+<a class="pd-lift" href="#route" style="display:grid;grid-template-columns:132px minmax(0,1fr);align-items:center;column-gap:16px;row-gap:6px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:14px 16px;min-height:0;text-decoration:none;box-shadow:0 1px 2px rgba(20,22,28,.05);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)">
+<span style="grid-row:1 / span 2;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:22px;line-height:1.24;font-weight:500;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--pd-ink)">4 ситуации</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">маршрут этапов пересобирается под стадию вашей работы</span>
+<span style="display:flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Этапы до защиты<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span>
+</a>
+</div>
+</div>
+</div>
+<!-- Р-852: первый экран — как до Р-841 (указание владельца 08.11.2026); три плашки условий Р-841 оставлены под ним, каждая ведёт к своему ответу в «Вопросах». -->
+<div class="sp-terms" style="gap:12px;margin:clamp(40px,4vw,56px) 0 0">
 <a class="sp-term" href="#sp-faq-1" onClick="{{ termStart }}" style="display:flex;flex-direction:column;gap:6px;box-sizing:border-box;background:var(--pd-accent-tint);border:0;border-radius:14px;padding:18px 20px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)"><span class="sp-term-k" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Консультация</span><span class="sp-term-t" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:20px;line-height:1.24;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink)">20 минут — бесплатно</span><span class="sp-term-d" style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Консультация по дипломной работе: называем объём правок и срок — до Задания и оплаты.</span><span class="sp-term-l" style="display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">С чего начинается работа<span class="sp-term-a" aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span></a>
 <a class="sp-term" href="#sp-faq-7" onClick="{{ termPay }}" style="display:flex;flex-direction:column;gap:6px;box-sizing:border-box;background:var(--pd-accent-tint);border:0;border-radius:14px;padding:18px 20px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)"><span class="sp-term-k" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Оплата</span><span class="sp-term-t" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:20px;line-height:1.24;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink)">По этапам</span><span class="sp-term-d" style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Смету называем до оплаты; следующий этап оплачивается после приёмки предыдущего.</span><span class="sp-term-l" style="display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Когда и как платить<span class="sp-term-a" aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span></a>
 <a class="sp-term" href="#sp-faq-0" onClick="{{ termAuthor }}" style="display:flex;flex-direction:column;gap:6px;box-sizing:border-box;background:var(--pd-accent-tint);border:0;border-radius:14px;padding:18px 20px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)"><span class="sp-term-k" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Авторство</span><span class="sp-term-t" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:20px;line-height:1.24;font-weight:500;letter-spacing:-.01em;color:var(--pd-ink)">Работу пишете вы</span><span class="sp-term-d" style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Куратор разбирает и проверяет текст; NDA подписывают все участники.</span><span class="sp-term-l" style="display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Как это видит руководитель<span class="sp-term-a" aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></span></a>
@@ -310,7 +386,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;text-align:center;color:var(--pd-ink-secondary)">Пишете работу и принимаете этапы</span>
 </div>
 </div>
-<div class="sp-crew" style="position:absolute;left:4.396%;top:14.154%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
+<div class="sp-crew" style="position:absolute;left:4.396%;top:7.077%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
 <img class="sp-crewfig" src="./assets/crew/manager.webp" alt="" aria-hidden="true" width="260" height="440" loading="lazy" decoding="async">
 <div class="sp-crewcard pd-lift" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
@@ -343,7 +419,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Отвечает за логику глав, оформление и нормоконтроль.</span>
 </div>
 </div>
-<div class="sp-crew" style="position:absolute;left:55.677%;top:68.923%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
+<div class="sp-crew" style="position:absolute;left:55.677%;top:63.385%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
 <img class="sp-crewfig" src="./assets/crew/expert.webp" alt="" aria-hidden="true" width="226" height="440" loading="lazy" decoding="async">
 <div class="sp-crewcard pd-lift" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
@@ -360,7 +436,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="sp-dot" style="position:absolute;left:71.581%;top:68.000%;width:15px;height:15px;border-radius:50%;background:var(--pd-accent);display:flex;align-items:center;justify-content:center"><span style="width:4.4px;height:4.4px;border-radius:50%;background:var(--pd-ink-inverse);display:block"></span></div>
 </div>
 </div></section>
-
 
 <section id="services" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <!-- Р-842: карточки направлений — в исполнении «Кураторы по шести направлениям» эталона (Р-839): снимок сверху во всю ширину, заголовок, текст, строка-факт под разделителем; шесть карточек одной сеткой. -->
@@ -400,14 +475,72 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-
-
+<section id="cost" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Смета</span>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:32ch;text-wrap:balance">Из чего складывается смета на диплом</h2>
+</div>
+<span class="sp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Считаем после того, как посмотрим работу</span>
+</div>
+<!-- Р-799: одна система контейнеров — белые карточки (рамка --pd-border, радиус 14, тень уровня 2) и единственная тёмная панель страницы (Р-608). Факторы — карточка-список в ряд с разделителями, номера спокойные: факторы не последовательность; тёмная панель консультации — на всю ширину («Что прислать для сметы» — в блоке заявки, Р-846); «Нормоконтроль» — карточка на ширину сетки, раскрытие и карточка-ссылка Р-791 — внутри неё. -->
+<ul class="sp-costlist" style="list-style:none;margin:0;padding:0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<sc-for list="{{ priceFactors }}" as="p" hint-placeholder-count="3">
+<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:20px 24px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ p.num }}</span>
+<div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ p.title }}</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ p.text }}</p>
+</div>
+</li>
+</sc-for>
+</ul>
+<div style="margin-top:16px">
+<div style="background:var(--pd-accent-deep);border-radius:14px;padding:22px 24px;display:flex;flex-direction:column;gap:14px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Консультация 20 минут · не оплачивается</span>
+<p style="margin:0;font-size:16px;line-height:1.5;color:var(--pd-ink-inverse);max-width:44ch">Читаем работу, называем объём правок и срок. После этого считаем смету — до согласования Задания и до оплаты.</p>
+<p style="margin:auto 0 0;padding-top:14px;border-top:1px solid rgba(255,255,255,.24);font-size:14px;line-height:1.6;color:var(--pd-accent-edge)">Оплата по этапам: следующий этап оплачивается после приёмки предыдущего.</p>
+</div>
+</div>
+<div id="norm" class="sp-normbox" style="margin-top:16px;scroll-margin-top:24px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<button class="sp-normbtn" type="button" onClick="{{ toggleNorm }}" aria-expanded="{{ normOpenAttr }}" aria-controls="norm-panel" style="appearance:none;cursor:pointer;width:100%;min-height:44px;text-align:left;border:0;background:transparent;border-radius:14px;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;transition:opacity 180ms cubic-bezier(.2,0,.2,1)" style-active="opacity:.82">
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Нормоконтроль · ГОСТ 7.32</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Семь причин возврата с нормоконтроля</span>
+</span>
+<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:var(--pd-accent);-webkit-mask:{{ normMask }};mask:{{ normMask }}"></span>
+</button>
+<sc-if value="{{ normOpen }}" hint-placeholder-val="{{ false }}">
+<div id="norm-panel" style="border-top:1px solid var(--pd-border);padding:20px 24px 24px">
+<p style="margin:0 0 8px;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:66ch">Нормоконтроль проверяет оформление: поля, нумерацию, таблицы, ссылки и список литературы. Каждый возврат сокращает время до защиты.</p>
+<ul class="sp-normlist" style="list-style:none;margin:0;padding:0">
+<sc-for list="{{ normchecks }}" as="n" hint-placeholder-count="7">
+<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:14px 0;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ n.num }}</span>
+<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<span style="font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink)">{{ n.cause }}</span>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ n.fix }}</span>
+</span>
+</li>
+</sc-for>
+</ul>
+<!-- Р-791: переход к заявке под причинами возврата с нормоконтроля — симптом ведёт к действию (конкурентный разбор 03.11.2026). Р-799: подвал перечня внутри карточки «Нормоконтроль» — значок в колонке номеров, надпись по линии причин, как у Р-796. -->
+<a class="pd-lift" href="#request" style="margin:8px -10px 0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:14px 16px 14px 10px;display:grid;grid-template-columns:28px minmax(0,1fr) 18px;gap:12px;align-items:center;min-height:44px;box-sizing:border-box;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<span aria-hidden="true" style="width:28px;height:28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;display:block;background:var(--pd-accent);-webkit-mask:{{ talkMask }};mask:{{ talkMask }}"></span></span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разобрать замечания нормоконтроля</span>
+<span aria-hidden="true" style="width:18px;height:18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span>
+</a>
+<p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Список литературы по ГОСТ Р 7.0.100-2018 можно оформить бесплатно: <a href="./tools.html" style="color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оформитель списка</a>.</p>
+</div>
+</sc-if>
+</div>
+</section>
 
 <section id="route" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Этапы работы</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:30ch;text-wrap:balance">Подготовка к защите диплома: <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-8px 0 0 var(--pd-accent-mark),8px 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone">этапы под вашу стадию</span></h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:30ch;text-wrap:balance">Этапы под вашу стадию работы: <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-8px 0 0 var(--pd-accent-mark),8px 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone">от разбора до защиты</span></h2>
 </div>
 <span class="sp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Маршрут перестраивается под стадию работы</span>
 </div>
@@ -422,30 +555,28 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-if>
 </sc-for>
 </div>
-<div class="pd-in-body sp-rt" style="gap:14px 32px;align-items:start;margin-top:24px">
-<div class="sp-rt-a" style="display:flex;flex-direction:column;gap:14px;min-width:0">
+<!-- Р-859: «Этапы» короче — около одного экрана на 1440 px. Вкладки ситуаций прежние; под ними сводка маршрута и пояснение в одну строку сетки; этапы — горизонтальной шкалой: ширина колонки — по длительности этапа (flex-grow — дни; от 1200 px не уже 168 px, на 769—1199 px — не уже 120 px, номер над названием), полоса сверху, номер, название и срок; карточка выбранного этапа — под шкалой в две колонки («Вы» и «Мы» слева, состав и результат справа), название и срок в ней не повторяются; ниже — условие приёмки и кнопка в одну строку. До 768 px шкала — компактный список строк «номер, название, срок», карточка — одной колонкой. Тексты и данные этапов не менялись. -->
+<div class="sp-rt-head" style="gap:6px 32px;align-items:baseline;margin-top:24px">
 <h3 role="status" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ routeSummary }}</h3>
-<p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">{{ routeNote }}</p>
-<ol aria-label="Этапы маршрута" style="list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:2px">
+<p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary);max-width:72ch">{{ routeNote }}</p>
+</div>
+<ol class="sp-tl" aria-label="Этапы маршрута" style="list-style:none;margin:20px 0 0;padding:0">
 <sc-for list="{{ stages }}" as="s" hint-placeholder-count="5">
-<sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}"><li><button type="button" aria-pressed="true" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:44px;border-radius:10px;background:var(--pd-accent-tint)"><span aria-hidden="true" style="flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:var(--pd-ink);color:var(--pd-ink-inverse);display:inline-flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;font-weight:600">{{ s.num }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-accent)">{{ s.term }}</span></span></button></li></sc-if>
-<sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}"><li><button type="button" aria-pressed="false" onClick="{{ s.pick }}" style="appearance:none;border:0;cursor:pointer;width:100%;box-sizing:border-box;text-align:left;display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:44px;border-radius:10px;background:transparent;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)"><span aria-hidden="true" style="flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:var(--pd-surface-quiet);color:var(--pd-ink-muted);display:inline-flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;font-weight:600">{{ s.num }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary)">{{ s.title }}</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-ink-muted)">{{ s.term }}</span></span></button></li></sc-if>
+<sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}"><li style="flex-grow:{{ s.flex }}"><button type="button" aria-pressed="true" onClick="{{ s.pick }}" class="sp-tl-btn" style="appearance:none;border:0;cursor:pointer;width:100%;height:100%;box-sizing:border-box;text-align:left;border-radius:10px;background:var(--pd-accent-tint)"><span aria-hidden="true" class="sp-tl-bar" style="background:var(--pd-accent)"></span><span class="sp-tl-row"><span aria-hidden="true" class="sp-tl-num" style="background:var(--pd-ink);color:var(--pd-ink-inverse)">{{ s.num }}</span><span class="sp-tl-text"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span><span class="sp-tl-term" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-accent);white-space:nowrap">{{ s.term }}</span></span></span></button></li></sc-if>
+<sc-if value="{{ s.inactive }}" hint-placeholder-val="{{ false }}"><li style="flex-grow:{{ s.flex }}"><button type="button" aria-pressed="false" onClick="{{ s.pick }}" class="sp-tl-btn" style="appearance:none;border:0;cursor:pointer;width:100%;height:100%;box-sizing:border-box;text-align:left;border-radius:10px;background:transparent;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)" style-active="background:var(--pd-surface-quiet)"><span aria-hidden="true" class="sp-tl-bar" style="background:var(--pd-accent-mark)"></span><span class="sp-tl-row"><span aria-hidden="true" class="sp-tl-num" style="background:var(--pd-surface-quiet);color:var(--pd-ink-muted)">{{ s.num }}</span><span class="sp-tl-text"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:500;color:var(--pd-ink-secondary)">{{ s.title }}</span><span class="sp-tl-term" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.04em;color:var(--pd-ink-muted);white-space:nowrap">{{ s.term }}</span></span></span></button></li></sc-if>
 </sc-for>
 </ol>
-</div>
-<div aria-live="polite" class="sp-stage sp-rt-b" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:22px 24px 24px;min-width:0">
+<div aria-live="polite" class="sp-stage" style="margin-top:16px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:22px 24px;min-width:0">
 <sc-for list="{{ stages }}" as="s" hint-placeholder-count="1">
 <sc-if value="{{ s.active }}" hint-placeholder-val="{{ true }}">
-<div style="display:flex;flex-direction:column;gap:12px;height:100%">
+<div class="sp-stage-grid" style="gap:16px 32px">
+<div style="display:flex;flex-direction:column;gap:14px;min-width:0">
 <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Этап {{ s.num }} из {{ s.of }}</span>
 <sc-if value="{{ s.isKey }}" hint-placeholder-val="{{ true }}">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase;color:var(--pd-accent);background:var(--pd-accent-mark);border-radius:999px;padding:6px 12px">Ключевой этап</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.04em;text-transform:uppercase;color:var(--pd-accent);background:var(--pd-accent-mark);border-radius:999px;padding:4px 12px">Ключевой этап</span>
 </sc-if>
-<span style="margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;letter-spacing:.04em;color:var(--pd-ink-secondary);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;padding:6px 12px;white-space:nowrap">{{ s.term }}</span>
 </span>
-<h3 style="margin:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</h3>
-<div class="sp-duo" style="gap:10px 24px">
 <span style="display:flex;flex-direction:column;gap:4px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Вы</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink)">{{ s.author }}</span>
@@ -455,7 +586,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ s.team }}</span>
 </span>
 </div>
-<div style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+<div style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Что входит в этап</span>
 <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
 <sc-for list="{{ s.works }}" as="w" hint-placeholder-count="4">
@@ -466,24 +598,24 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-for>
 </ul>
 </div>
-<div style="margin-top:auto;display:flex;align-items:flex-start;gap:10px;padding-top:12px;border-top:1px solid var(--pd-divider)">
+<div style="display:flex;align-items:flex-start;gap:10px;padding:0 16px">
 <span aria-hidden="true" style="width:15px;height:15px;flex:0 0 15px;margin-top:4px;display:block;background:var(--pd-ok-ink);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
 <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Результат этапа</span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink)">{{ s.result }}</span>
 </span>
 </div>
-
+</div>
 </div>
 </sc-if>
 </sc-for>
 </div>
-<div class="sp-rt-c" style="display:flex;flex-direction:column;gap:14px;min-width:0">
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-muted);max-width:52ch">Каждый этап заканчивается приёмкой: следующий оплачивается только после неё. Сроки ориентировочные, точные даты фиксируем в&nbsp;Задании после разбора работы.</p>
-<a href="#request" style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:13px;font-weight:600;padding:14px 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку<span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
-</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px 32px;flex-wrap:wrap;margin-top:20px">
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-muted);max-width:68ch;flex:1 1 320px">Каждый этап заканчивается приёмкой: следующий оплачивается только после неё. Сроки ориентировочные, точные даты фиксируем в&nbsp;Задании после разбора работы.</p>
+<a href="#request" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:13px;font-weight:600;padding:14px 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Обсудить мой срок<span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
 </section>
+
 <!-- «Как это выглядит внутри» — кабинет клиента на вымышленных данных (план владельца по образцу, С-1, решение Р-591). -->
 <section id="inside" class="sp-pad" aria-labelledby="pd-in-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
@@ -562,181 +694,16 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<!-- Р-844: «Что закреплено в договоре» — условия из оферты (Задание, акт этапа, конфиденциальность) и ответа «Что если работу вернут после правок?»; новых обещаний нет. Композиция — заголовок слева, перечень справа, как «Кто за что отвечает» эталона: соседние разделы — сетки карточек. -->
-<section id="deal" class="sp-pad" aria-labelledby="sp-deal-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:80px">
-<div class="sp-deal" style="gap:40px;align-items:start">
-<div style="display:flex;flex-direction:column;gap:16px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Условия</span>
-<h2 id="sp-deal-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:22ch;text-wrap:balance">Что закреплено в договоре</h2>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:40ch">Договор заключается с ООО «РУСДРОН», ProDisser — его бренд. Условия ниже — из оферты и Задания.</p>
-<a href="./offer.html" target="_blank" rel="noopener" style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;min-height:44px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Публичная оферта<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
-<a href="#request" style="align-self:flex-start;margin-top:8px;display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
-</div>
-<ol style="list-style:none;margin:0;padding:6px 24px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<li style="display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:14px;padding:18px 0;border-top:0">
-<span style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.24;font-weight:500;color:var(--pd-accent);font-variant-numeric:tabular-nums">01</span>
-<span style="display:flex;flex-direction:column;gap:6px;min-width:0"><h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Задание до начала работ</h3><span style="font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Состав работ, требования к результату, календарный план и стоимость по этапам. До согласования Задания работа не начинается.</span></span>
-</li>
-<li style="display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:14px;padding:18px 0;border-top:1px solid var(--pd-divider)">
-<span style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.24;font-weight:500;color:var(--pd-accent);font-variant-numeric:tabular-nums">02</span>
-<span style="display:flex;flex-direction:column;gap:6px;min-width:0"><h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Акт приёмки по каждому этапу</h3><span style="font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">У этапа свой результат, срок и стоимость; результат передаётся с актом. Следующий этап оплачивается после приёмки предыдущего.</span></span>
-</li>
-<li style="display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:14px;padding:18px 0;border-top:1px solid var(--pd-divider)">
-<span style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.24;font-weight:500;color:var(--pd-accent);font-variant-numeric:tabular-nums">03</span>
-<span style="display:flex;flex-direction:column;gap:6px;min-width:0"><h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Замечания по сданному этапу</h3><span style="font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Разбираем без доплаты в рамках согласованного объёма; срок ответа прописан в договоре.</span></span>
-</li>
-<li style="display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:14px;padding:18px 0;border-top:1px solid var(--pd-divider)">
-<span style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.24;font-weight:500;color:var(--pd-accent);font-variant-numeric:tabular-nums">04</span>
-<span style="display:flex;flex-direction:column;gap:6px;min-width:0"><h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Конфиденциальность и авторство</h3><span style="font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Режим конфиденциальности материалов закреплён в оферте, NDA подписывают все участники. Автор работы — вы.</span></span>
-</li>
-</ol>
-</div>
-</section>
-
-<section id="cost" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
-<div style="display:flex;flex-direction:column;gap:8px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Смета</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:32ch;text-wrap:balance">Из чего складывается смета на диплом</h2>
-</div>
-<span class="sp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Считаем после того, как посмотрим работу</span>
-</div>
-<!-- Р-799: одна система контейнеров — белые карточки (рамка --pd-border, радиус 14, тень уровня 2) и единственная тёмная панель страницы (Р-608). Факторы — карточка-список в ряд с разделителями, номера спокойные: факторы не последовательность; «Что прислать для сметы» и тёмная панель — пара одной высоты; «Нормоконтроль» — карточка на ширину сетки, раскрытие и карточка-ссылка Р-791 — внутри неё. -->
-<ul class="sp-costlist" style="list-style:none;margin:0;padding:0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<sc-for list="{{ priceFactors }}" as="p" hint-placeholder-count="3">
-<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:20px 24px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ p.num }}</span>
-<div style="display:flex;flex-direction:column;gap:6px;min-width:0">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ p.title }}</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ p.text }}</p>
-</div>
-</li>
-</sc-for>
-</ul>
-<div style="margin-top:16px">
-<div style="background:var(--pd-accent-deep);border-radius:14px;padding:22px 24px;display:flex;flex-direction:column;gap:14px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Консультация 20 минут · не оплачивается</span>
-<p style="margin:0;font-size:16px;line-height:1.5;color:var(--pd-ink-inverse);max-width:44ch">Читаем работу, называем объём правок и срок. После этого считаем смету — до согласования Задания и до оплаты.</p>
-<p style="margin:auto 0 0;padding-top:14px;border-top:1px solid rgba(255,255,255,.24);font-size:14px;line-height:1.6;color:var(--pd-accent-edge)">Оплата по этапам: следующий этап оплачивается после приёмки предыдущего.</p>
-</div>
-</div>
-</section>
-
-<!-- Р-843: «Нормоконтроль» — открытый раздел, а не свёртка внутри «Сметы»: семь причин возврата видны сразу и читаются поиском (группы ядра «нормоконтроль ВКР», «диплом вернули с нормоконтроля», якорь #norm Директа и меню). Тексты причин, переход к заявке (Р-791) и строка про оформитель (Р-793) — прежние. -->
-<section id="norm" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:80px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
-<div style="display:flex;flex-direction:column;gap:8px">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Нормоконтроль · ГОСТ 7.32</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:32ch;text-wrap:balance">Нормоконтроль ВКР: семь причин возврата</h2>
-</div>
-<span class="sp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">По методичке вашей кафедры</span>
-</div>
-<div class="sp-normcard" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:22px 24px 24px">
-<p style="margin:0 0 8px;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:66ch">Нормоконтроль проверяет оформление: поля, нумерацию, таблицы, ссылки и список литературы. Каждый возврат сокращает время до защиты.</p>
-<ul class="sp-normlist" style="list-style:none;margin:0;padding:0">
-<sc-for list="{{ normchecks }}" as="n" hint-placeholder-count="7">
-<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:14px 0;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ n.num }}</span>
-<span style="display:flex;flex-direction:column;gap:4px;min-width:0">
-<span style="font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink)">{{ n.cause }}</span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ n.fix }}</span>
-</span>
-</li>
-</sc-for>
-</ul>
-<!-- Р-791: переход к заявке под причинами возврата с нормоконтроля — симптом ведёт к действию (конкурентный разбор 03.11.2026). Р-799: подвал перечня внутри карточки «Нормоконтроль» — значок в колонке номеров, надпись по линии причин, как у Р-796. -->
-<a class="pd-lift" href="#request" style="margin:8px -10px 0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:14px 16px 14px 10px;display:grid;grid-template-columns:28px minmax(0,1fr) 18px;gap:12px;align-items:center;min-height:44px;box-sizing:border-box;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<span aria-hidden="true" style="width:28px;height:28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;display:block;background:var(--pd-accent);-webkit-mask:{{ talkMask }};mask:{{ talkMask }}"></span></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разобрать замечания нормоконтроля</span>
-<span aria-hidden="true" style="width:18px;height:18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span>
-</a>
-<p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Список литературы по ГОСТ Р 7.0.100-2018 можно оформить бесплатно: <a href="./tools.html" style="color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">оформитель списка</a>.</p>
-</div>
-</section>
-
-<section id="reviews" class="pd-pad" style="position:relative;z-index:20;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
-<div>
-<span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Отзывы</span>
-<h2 style="margin:10px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Отзывы о сопровождении диплома и ВКР</h2>
-</div>
-<p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:44ch">Отзывы клиентов с Авито. Тексты приведены дословно; публикуются имя и дата без фамилии, фото — только с согласия автора.</p>
-</div>
-<div class="pd-revstage" role="group" aria-roledescription="карусель" aria-label="Отзывы клиентов" style="position:relative;height:268px;margin-top:28px">
-<sc-for list="{{ reviews }}" as="r" hint-placeholder-count="5">
-<article aria-hidden="{{ r.hidden }}" style="position:absolute;left:50%;top:8px;width:min(430px,84vw);height:236px;margin-left:calc(min(430px,84vw) / -2);box-sizing:border-box;display:flex;flex-direction:column;gap:14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:transform 420ms cubic-bezier(.2,0,.2,1),filter 420ms cubic-bezier(.2,0,.2,1),opacity 420ms cubic-bezier(.2,0,.2,1);transform:{{ r.tf }};filter:{{ r.fl }};opacity:{{ r.op }};z-index:{{ r.z }};pointer-events:{{ r.pe }}">
-<div style="display:flex;align-items:center;gap:12px">
-<!-- Фото автора отзыва — только присланное им самим с письменным согласием на публикацию (Р-590, Р-617); без фото — заглушка-силуэт (Р-827). Сгенерированные и чужие лица не ставятся: читатель принял бы их за автора. -->
-<sc-if value="{{ r.hasPhoto }}" hint-placeholder-val="{{ false }}">
-<img src="{{ r.photo }}" alt="" aria-hidden="true" width="56" height="56" loading="lazy" decoding="async" style="display:block;width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint);object-fit:cover">
-</sc-if>
-<!-- Р-827: до присланного автором фото — нейтральная заглушка-силуэт в той же рамке, что и фото (замечание владельца 06.11.2026: «пока заглушками, чтобы не было пустых мест»); лицо не ставится — Р-590, Р-617. Загрузка не отложена: файл в 300 байт один на все карточки, и карточки за краем сцены не стоят пустыми. -->
-<sc-if value="{{ r.noPhoto }}" hint-placeholder-val="{{ true }}">
-<img src="./assets/reviews/placeholder.svg" alt="" aria-hidden="true" width="56" height="56" decoding="async" style="display:block;width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint)">
-</sc-if>
-<span style="display:flex;flex-direction:column;gap:2px;min-width:0">
-<span style="font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink)">{{ r.role }}</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">{{ r.field }}</span>
-</span>
-</div>
-<p style="margin:0;font-size:15px;line-height:1.5;color:var(--pd-ink-secondary)">{{ r.text }}</p>
-</article>
-</sc-for>
-</div>
-<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:20px">
-<button type="button" onClick="{{ revPrev }}" aria-label="Предыдущий отзыв" style="appearance:none;cursor:pointer;width:44px;height:44px;flex:0 0 44px;display:inline-flex;align-items:center;justify-content:center;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.94)">
-<span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span>
-</button>
-<span aria-live="polite" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">{{ revCounter }}</span>
-<button type="button" onClick="{{ revNext }}" aria-label="Следующий отзыв" style="appearance:none;cursor:pointer;width:44px;height:44px;flex:0 0 44px;display:inline-flex;align-items:center;justify-content:center;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.94)">
-<span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span>
-</button>
-</div>
-<div style="display:flex;justify-content:center;margin-top:20px">
-<button type="button" onClick="{{ toggleRevForm }}" aria-expanded="{{ revFormOpenAttr }}" aria-controls="sp-revform" id="sp-revbtn" style="appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;min-height:44px;background:transparent;border:1px solid transparent;color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 22px;border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-ink)" style-active="transform:scale(.97)">{{ revFormLabel }}</button>
-</div>
-<div id="sp-revform" onClick="{{ closeRevFormOnBackdrop }}" style="position:fixed;inset:0;z-index:40;display:{{ revFormDisplay }};align-items:center;justify-content:center;padding:20px;background:rgba(20,22,28,.55)">
-<div role="dialog" aria-modal="true" aria-labelledby="sp-revform-title" onClick="{{ stopInside }}" style="width:100%;max-width:440px;max-height:calc(100vh - 40px);overflow-y:auto;box-sizing:border-box;background:var(--pd-ink-inverse);border-radius:14px;padding:24px;box-shadow:0 10px 20px rgba(20,22,28,.09)">
-<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
-<h3 id="sp-revform-title" tabindex="-1" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Написать отзыв</h3>
-<button type="button" onClick="{{ toggleRevForm }}" aria-label="Закрыть окно" style="appearance:none;cursor:pointer;width:44px;height:44px;flex:0 0 44px;margin:-10px -10px 0 0;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)">
-<span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-ink-muted);-webkit-mask:url('./assets/icons/x-circle.svg') center/contain no-repeat;mask:url('./assets/icons/x-circle.svg') center/contain no-repeat"></span>
-</button>
-</div>
-<form onSubmit="{{ submitReview }}" style="display:flex;flex-direction:column;gap:14px;margin-top:18px">
-<input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
-<label for="sp-rev-who" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Кто вы
-<input id="sp-rev-who" name="name" type="text" autocomplete="off" required="{{ true }}" placeholder="Например: магистрант, экономика" style="width:100%;box-sizing:border-box;padding:0 16px;height:48px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
-<span style="font-size:13px;line-height:1.5;color:var(--pd-ink-muted);margin-top:-6px">Имя указывать не нужно — только роль и направление.</span>
-<label for="sp-rev-text" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Отзыв
-<textarea id="sp-rev-text" name="message" required="{{ true }}" rows="{{ 4 }}" placeholder="Что было сделано и что из этого вышло" style="width:100%;box-sizing:border-box;padding:12px 16px;min-height:112px;resize:vertical;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></textarea></label>
-<label for="sp-rev-pub" style="margin:2px 0 0;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="sp-rev-pub" name="publish" type="checkbox" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Разрешаю опубликовать отзыв на сайте без указания имени</span></label>
-<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;min-height:44px;padding:0 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Отправить отзыв</button>
-<sc-if value="{{ sentReview }}" hint-placeholder-val="{{ false }}">
-<div role="status" tabindex="{{ -1 }}" data-sent="review" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Спасибо, отзыв отправлен.</span>
-</div>
-</sc-if>
-<sc-if value="{{ errorReview }}" hint-placeholder-val="{{ false }}">
-<div role="alert" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-err-bg);border:1px solid var(--pd-err-border);border-radius:10px;padding:12px 16px">
-<span style="font-size:14px;line-height:1.5;color:var(--pd-err-ink)">{{ errorReview }}</span>
-</div>
-</sc-if>
-</form>
-</div>
-</div>
-</section>
-
-<!-- Р-849: «География» по указанию владельца 08.11.2026 («внизу карту России с отметками в Питере и Москве… небольшую карту, наши охваты и счётчик»): схема без контура государственных границ — точечное поле, узлы Москва и Санкт-Петербург и связи (изображение границ регулирует ФЗ № 431-ФЗ, рекомендованное решение принято); счётчик — статичное число (Р-43), «430+» — по книге заказов практики со слов владельца (Р-54); «команды», а не «офисы»: адресов приёма на сайте нет. Узлы мягко пульсируют (transform, opacity), при уменьшенном движении стоят. -->
+<!-- Р-849: «География» по указанию владельца 08.11.2026 («внизу карту России с отметками в Питере и Москве… небольшую карту, наши охваты и счётчик»): схема без контура государственных границ — точечное поле, узлы Москва и Санкт-Петербург и связи (изображение границ регулирует ФЗ № 431-ФЗ, рекомендованное решение принято); счётчик — статичное число (Р-43), «430+» — по книге заказов практики со слов владельца (Р-54), подпись-носитель снята по указанию владельца (Р-857); «команды», а не «офисы»: адресов приёма на сайте нет. Узлы мягко пульсируют (transform, opacity), при уменьшенном движении стоят. -->
 <section id="geo" class="sp-pad" aria-labelledby="sp-geo-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:80px">
-<div class="sp-geo" style="gap:40px;align-items:center">
+<div class="sp-geo" style="gap:40px;align-items:stretch">
 <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">География</span>
 <h2 id="sp-geo-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:24ch;text-wrap:balance">Сопровождаем дипломы и ВКР по всей России</h2>
 <p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">Команды практики — в Москве и Санкт-Петербурге. Работаем дистанционно: материалы, переписка и этапы — в личном кабинете.</p>
 <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px;padding:14px 18px;background:var(--pd-accent-tint);border-radius:14px;align-self:flex-start">
 <span style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:28px;line-height:1.24;font-weight:600;letter-spacing:-.012em;color:var(--pd-accent);font-variant-numeric:tabular-nums">430+</span>
-<span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">работ с 2016 года</span><span style="font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">по книге заказов практики</span></span>
+<span style="font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">работ с 2016 года</span>
 </div>
 <ul style="list-style:none;margin:8px 0 0;padding:0;border-bottom:1px solid var(--pd-divider)">
 <li style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--pd-divider)"><span aria-hidden="true" style="width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:var(--pd-accent);box-shadow:0 0 0 4px var(--pd-accent-mark)"></span><span style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Москва</span><span style="margin-left:auto;font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">команда практики</span></li>
@@ -744,7 +711,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </ul>
 <a href="#request" style="align-self:flex-start;margin-top:8px;display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
-<div class="sp-geo-card" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:22px 22px 16px;min-width:0">
+<div class="sp-geo-card" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:22px 22px 16px;min-width:0;display:flex;flex-direction:column">
+<div style="flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;min-height:0">
 <div style="position:relative">
 <img class="sp-geo-map" src="./assets/art/st-russia.svg" alt="Схема: Россия, команды практики в Москве и Санкт-Петербурге, работа дистанционно по всей стране" width="640" height="353" loading="lazy" decoding="async" style="display:block;width:100%;height:auto">
 <svg viewBox="0 0 640 353" aria-hidden="true" focusable="false" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
@@ -763,6 +731,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span aria-hidden="true" class="sp-geo-chip" style="left:calc(13.72% + 14px);top:38.07%;position:absolute;transform:translateY(-50%);display:inline-flex;align-items:center;padding:3px 9px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05);font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink);white-space:nowrap">Санкт-Петербург</span>
 <span aria-hidden="true" class="sp-geo-chip" style="left:calc(13.67% + 14px);top:52.01%;position:absolute;transform:translateY(-50%);display:inline-flex;align-items:center;padding:3px 9px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05);font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-ink);white-space:nowrap">Москва</span>
 </div>
+</div>
 <div style="display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:14px;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">
 <span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:10px;height:10px;border-radius:50%;background:var(--pd-accent);box-shadow:0 0 0 3px var(--pd-accent-mark)"></span>Команда практики</span>
 <span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:8px;height:8px;border-radius:50%;border:2px solid var(--pd-accent);background:var(--pd-ink-inverse)"></span>Дистанционно: этапы и материалы в кабинете</span>
@@ -775,7 +744,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Вопросы</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:36ch;text-wrap:balance">Вопросы о ВКР, кафедре и научном руководителе</h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:36ch;text-wrap:balance">Вопросы о защите, кафедре и научном руководителе</h2>
 </div>
 <span class="sp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Те же вопросы разбираем на консультации</span>
 </div>
@@ -894,9 +863,9 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </ol>
 </div>
 </div>
-<!-- Р-846: «Что прислать для сметы» — полосой на всю ширину под формой и шагами (как «Компаниям», Р-835): изображение стопки листов слева, перечень справа, от 1025 px — в две колонки. -->
+<!-- Р-846: «Что прислать для сметы» — полосой на всю ширину под формой и шагами (как «Компаниям», Р-835): изображение слева, перечень справа, от 1025 px — в две колонки. Р-858: изображение — синяя обложка ВКР с живой надписью «ВКР» (Literata 22 px, белая) и тонкой линией, по центру своей панели. -->
 <div class="sp-reqask" style="margin-top:16px;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05);overflow:hidden;min-width:0">
-<span aria-hidden="true" class="sp-reqart" style="display:block;background:var(--pd-surface-quiet) url('./assets/art/st-stack.webp') center/auto 82% no-repeat"></span>
+<span aria-hidden="true" class="sp-reqart" style="display:flex;align-items:center;justify-content:center;background:var(--pd-surface-quiet)"><span class="sp-reqcover" style="position:relative;display:block;flex:0 0 auto;width:96px;height:128px"><img src="./assets/art/st-cover.webp" alt="" width="480" height="640" loading="lazy" decoding="async" style="display:block;width:100%;height:100%"><span style="position:absolute;left:0;right:12%;top:30%;text-align:center;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.24;font-weight:600;letter-spacing:.04em;color:var(--pd-ink-inverse)">ВКР</span><span style="position:absolute;left:30%;right:42%;top:54%;height:2px;border-radius:999px;background:var(--pd-ink-inverse);opacity:.6"></span></span></span>
 <div class="sp-reqbody" style="display:flex;flex-direction:column;gap:10px;min-width:0">
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что прислать для сметы</h3>
 <ul class="sp-asklist" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px">
@@ -911,6 +880,78 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
+<section id="reviews" class="pd-pad" style="position:relative;z-index:20;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<div>
+<span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Отзывы</span>
+<h2 style="margin:10px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Что говорят клиенты</h2>
+</div>
+<p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:44ch">Отзывы клиентов с Авито. Тексты приведены дословно; публикуются имя и дата без фамилии, фото — только с согласия автора.</p>
+</div>
+<div class="pd-revstage" role="group" aria-roledescription="карусель" aria-label="Отзывы клиентов" style="position:relative;height:268px;margin-top:28px">
+<sc-for list="{{ reviews }}" as="r" hint-placeholder-count="5">
+<article aria-hidden="{{ r.hidden }}" style="position:absolute;left:50%;top:8px;width:min(430px,84vw);height:236px;margin-left:calc(min(430px,84vw) / -2);box-sizing:border-box;display:flex;flex-direction:column;gap:14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:transform 420ms cubic-bezier(.2,0,.2,1),filter 420ms cubic-bezier(.2,0,.2,1),opacity 420ms cubic-bezier(.2,0,.2,1);transform:{{ r.tf }};filter:{{ r.fl }};opacity:{{ r.op }};z-index:{{ r.z }};pointer-events:{{ r.pe }}">
+<div style="display:flex;align-items:center;gap:12px">
+<!-- Фото автора отзыва — только присланное им самим с письменным согласием на публикацию (Р-590, Р-617); без фото — заглушка-силуэт (Р-827). Сгенерированные и чужие лица не ставятся: читатель принял бы их за автора. -->
+<sc-if value="{{ r.hasPhoto }}" hint-placeholder-val="{{ false }}">
+<img src="{{ r.photo }}" alt="" aria-hidden="true" width="56" height="56" loading="lazy" decoding="async" style="display:block;width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint);object-fit:cover">
+</sc-if>
+<!-- Р-827: до присланного автором фото — нейтральная заглушка-силуэт в той же рамке, что и фото (замечание владельца 06.11.2026: «пока заглушками, чтобы не было пустых мест»); лицо не ставится — Р-590, Р-617. Загрузка не отложена: файл в 300 байт один на все карточки, и карточки за краем сцены не стоят пустыми. -->
+<sc-if value="{{ r.noPhoto }}" hint-placeholder-val="{{ true }}">
+<img src="./assets/reviews/placeholder.svg" alt="" aria-hidden="true" width="56" height="56" decoding="async" style="display:block;width:56px;height:56px;flex:0 0 56px;box-sizing:border-box;border-radius:50%;border:1px solid var(--pd-accent-mark);background:var(--pd-accent-tint)">
+</sc-if>
+<span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+<span style="font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink)">{{ r.role }}</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">{{ r.field }}</span>
+</span>
+</div>
+<p style="margin:0;font-size:15px;line-height:1.5;color:var(--pd-ink-secondary)">{{ r.text }}</p>
+</article>
+</sc-for>
+</div>
+<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:20px">
+<button type="button" onClick="{{ revPrev }}" aria-label="Предыдущий отзыв" style="appearance:none;cursor:pointer;width:44px;height:44px;flex:0 0 44px;display:inline-flex;align-items:center;justify-content:center;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.94)">
+<span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span>
+</button>
+<span aria-live="polite" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">{{ revCounter }}</span>
+<button type="button" onClick="{{ revNext }}" aria-label="Следующий отзыв" style="appearance:none;cursor:pointer;width:44px;height:44px;flex:0 0 44px;display:inline-flex;align-items:center;justify-content:center;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.94)">
+<span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span>
+</button>
+</div>
+<div style="display:flex;justify-content:center;margin-top:20px">
+<button type="button" onClick="{{ toggleRevForm }}" aria-expanded="{{ revFormOpenAttr }}" aria-controls="sp-revform" id="sp-revbtn" style="appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;min-height:44px;background:transparent;border:1px solid transparent;color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 22px;border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-ink)" style-active="transform:scale(.97)">{{ revFormLabel }}</button>
+</div>
+<div id="sp-revform" onClick="{{ closeRevFormOnBackdrop }}" style="position:fixed;inset:0;z-index:40;display:{{ revFormDisplay }};align-items:center;justify-content:center;padding:20px;background:rgba(20,22,28,.55)">
+<div role="dialog" aria-modal="true" aria-labelledby="sp-revform-title" onClick="{{ stopInside }}" style="width:100%;max-width:440px;max-height:calc(100vh - 40px);overflow-y:auto;box-sizing:border-box;background:var(--pd-ink-inverse);border-radius:14px;padding:24px;box-shadow:0 10px 20px rgba(20,22,28,.09)">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+<h3 id="sp-revform-title" tabindex="-1" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Написать отзыв</h3>
+<button type="button" onClick="{{ toggleRevForm }}" aria-label="Закрыть окно" style="appearance:none;cursor:pointer;width:44px;height:44px;flex:0 0 44px;margin:-10px -10px 0 0;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-surface-quiet)">
+<span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-ink-muted);-webkit-mask:url('./assets/icons/x-circle.svg') center/contain no-repeat;mask:url('./assets/icons/x-circle.svg') center/contain no-repeat"></span>
+</button>
+</div>
+<form onSubmit="{{ submitReview }}" style="display:flex;flex-direction:column;gap:14px;margin-top:18px">
+<input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
+<label for="sp-rev-who" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Кто вы
+<input id="sp-rev-who" name="name" type="text" autocomplete="off" required="{{ true }}" placeholder="Например: магистрант, экономика" style="width:100%;box-sizing:border-box;padding:0 16px;height:48px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></label>
+<span style="font-size:13px;line-height:1.5;color:var(--pd-ink-muted);margin-top:-6px">Имя указывать не нужно — только роль и направление.</span>
+<label for="sp-rev-text" style="display:flex;flex-direction:column;gap:6px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Отзыв
+<textarea id="sp-rev-text" name="message" required="{{ true }}" rows="{{ 4 }}" placeholder="Что было сделано и что из этого вышло" style="width:100%;box-sizing:border-box;padding:12px 16px;min-height:112px;resize:vertical;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--pd-ink);background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)" style-focus="border-color:var(--pd-accent);box-shadow:0 0 0 3px rgba(20,65,122,.16)"></textarea></label>
+<label for="sp-rev-pub" style="margin:2px 0 0;display:flex;min-height:44px;align-items:center;gap:8px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);cursor:pointer"><input id="sp-rev-pub" name="publish" type="checkbox" style="width:16px;height:16px;flex:0 0 16px;margin:0;cursor:pointer"><span>Разрешаю опубликовать отзыв на сайте без указания имени</span></label>
+<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;align-self:flex-start;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;min-height:44px;padding:0 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Отправить отзыв</button>
+<sc-if value="{{ sentReview }}" hint-placeholder-val="{{ false }}">
+<div role="status" tabindex="{{ -1 }}" data-sent="review" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-ok-bg);border:1px solid var(--pd-ok-border);border-radius:10px;padding:12px 16px">
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ok-ink)">Спасибо, отзыв отправлен.</span>
+</div>
+</sc-if>
+<sc-if value="{{ errorReview }}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="display:flex;gap:8px;align-items:flex-start;background:var(--pd-err-bg);border:1px solid var(--pd-err-border);border-radius:10px;padding:12px 16px">
+<span style="font-size:14px;line-height:1.5;color:var(--pd-err-ink)">{{ errorReview }}</span>
+</div>
+</sc-if>
+</form>
+</div>
+</div>
+</section>
 
 </main>
 
@@ -944,7 +985,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, situation: 1, step: 0, open: 0, sentMain: false, contactBottom: 0, offerOpen: false, navOpen: false };
+  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, situation: 1, step: 0, open: 0, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false, navOpen: false };
   componentDidMount(){
     // Всплывающее окно закрывается клавишей Esc — иначе с клавиатуры
     // из него не выйти, а закрывающая кнопка может быть прокручена.
@@ -984,10 +1025,21 @@ class Component extends DCLogic {
     this.syncNav = () => this.setState({ navOpen: this.wide.matches });
     this.syncNav();
     this.wide.addEventListener('change', this.syncNav);
+    // Переход по #norm — быстрая ссылка и группа STU_NORM Директа, пункт
+    // меню «Нормоконтроль» — раскрывает раздел: при загрузке страницы, при
+    // смене якоря и при повторном нажатии ссылки, когда якорь уже стоит
+    // в адресе (С-6). Свернуть раздел можно, как и прежде, его кнопкой.
+    this.openNorm = () => { if (window.location.hash === '#norm') this.setState({ normOpen: true }); };
+    this.onNormLink = e => { if (e.target instanceof Element && e.target.closest('a[href="#norm"]')) this.setState({ normOpen: true }); };
+    this.openNorm();
+    window.addEventListener('hashchange', this.openNorm);
+    document.addEventListener('click', this.onNormLink);
   }
   componentWillUnmount(){
     window.removeEventListener('keydown', this.onRevKey);
     window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('hashchange', this.openNorm);
+    document.removeEventListener('click', this.onNormLink);
     if (this.raf) cancelAnimationFrame(this.raf);
     if (this.wide) this.wide.removeEventListener('change', this.syncNav);
   }
@@ -1165,9 +1217,9 @@ class Component extends DCLogic {
       if (u >= 2 && u <= 4) return 'этапа';
       return 'этапов';
     };
-    // Этапы показываются целиком: слева перечень, справа состав выбранного.
-    // Высота блока задана в CSS и не меняется при переключении, поэтому
-    // страница не дёргается ни при смене ситуации, ни при выборе этапа.
+    // Этапы показываются целиком (Р-859): шкалой в строку, колонка этапа
+    // растёт по длительности (flex — дни), под шкалой — карточка выбранного
+    // этапа в две колонки; до 768 px шкала — компактный список строк.
     const step = Math.min(this.state.step, steps.length - 1);
     const stages = steps.map(([title, term, days, key, author, team, works, result], i) => ({
       num: String(i + 1), of: String(steps.length), title, term, author, team, result,
@@ -1182,7 +1234,7 @@ class Component extends DCLogic {
     const faqData = [
       ['Как это выглядит для научного руководителя?', 'Автор работы — вы, и с руководителем её обсуждаете вы. Мы не связываемся с кафедрой и вузом без вашей просьбы: разбор, правки и подготовку к защите вы проходите сами, а материалы руководителю передаёте тоже вы. Тема и текст не уходят третьим лицам: NDA подписывают все участники проекта.'],
       ['С чего начинается работа?', 'С заявки: менеджер отвечает в течение рабочего дня и открывает вам личный кабинет, где вы прикладываете материалы по перечню «Что подготовить». Куратор по вашей специальности разбирает работу и требования кафедры и на созвоне знакомства до 20 минут называет объём правок и срок. Сумму вы видите в Задании, до оплаты; решение остаётся за вами.'],
-      ['С кем заключается договор и с какого года вы работаете?', 'Договор заключается с ООО «РУСДРОН», ProDisser — его коммерческое обозначение; реквизиты — в оферте. Практика ведёт сопровождение с 2016 года, общество зарегистрировано в 2025 году.'],
+      ['Как заключается договор и с какого года вы работаете?', 'Договор заключается по публичной оферте: её принимают заявкой с отметкой о согласии, оплатой счёта или подписанием Задания. Состав работ, сроки и стоимость по этапам фиксируются в Задании, реквизиты исполнителя — в оферте. Практика ведёт сопровождение с 2016 года.'],
       ['Как именно вы помогаете с дипломом?', 'Разбираем структуру и логику глав, проверяем ваш текст и оформление по ГОСТ 7.32 и методичке кафедры. Отдельно разбираем доклад и репетируем вопросы комиссии.'],
       ['Что если работу вернут после правок?', 'Разбираем новый лист замечаний вместе с вами. Замечания по сданному этапу разбираем без доплаты в рамках согласованного объёма, срок ответа прописан в договоре.'],
       ['Успеем, если до защиты три недели?', 'Часто да, но зависит от стадии работы. На консультации разбираем текст и называем объём сопровождения: вся работа по этапам, отдельные разделы или только нормоконтроль и доклад.'],
@@ -1317,11 +1369,12 @@ class Component extends DCLogic {
           label, active: i === sel, inactive: i !== sel,
           pick: () => this.setState({ [key]: i })
         }));
-        const b = this.state.contactBottom || 0;
+        const a = this.state.contactTop || 0, b = this.state.contactBottom || 0;
         return {
-          contactTabsBottom: t('contactBottom', b),
-          contactTypeBottom: b === 0 ? 'email' : 'tel',
-          contactAutoBottom: b === 0 ? 'email' : 'tel',
+          contactTabsTop: t('contactTop', a), contactTabsBottom: t('contactBottom', b),
+          contactTypeTop: a === 0 ? 'email' : 'tel', contactTypeBottom: b === 0 ? 'email' : 'tel',
+          contactAutoTop: a === 0 ? 'email' : 'tel', contactAutoBottom: b === 0 ? 'email' : 'tel',
+          contactPlaceholderTop: a === 0 ? 'Ваш e-mail' : 'Ваш телефон',
           contactPlaceholderBottom: b === 0 ? 'Ваш e-mail' : 'Ваш телефон'
         };
       })(),
@@ -1439,6 +1492,10 @@ class Component extends DCLogic {
       offerToggleLabel: this.state.offerOpen ? 'Свернуть список' : 'Полный список услуг',
       offerToggleMask: this.mask(this.state.offerOpen ? 'arrow-left' : 'arrow-down'),
       toggleOffer: () => this.setState(s => ({ offerOpen: !s.offerOpen })),
+      normOpen: this.state.normOpen,
+      normOpenAttr: this.state.normOpen ? 'true' : 'false',
+      normMask: this.mask(this.state.normOpen ? 'arrow-left' : 'arrow-down'),
+      toggleNorm: () => this.setState(s => ({ normOpen: !s.normOpen })),
       terms: ['Срок пока не назначен', 'До защиты меньше месяца', '1—2 месяца', '2—3 месяца', 'Больше трёх месяцев'].map(label => ({ label })),
       afterSteps: [
         ['Заявка и ответ менеджера', 'Менеджер отвечает в течение рабочего дня, Пн⁠—⁠Пт 10:00⁠—⁠19:00, и уточняет задачу.'],
@@ -1447,7 +1504,9 @@ class Component extends DCLogic {
         ['Итог консультации и Задание', 'Состав работ, календарный план и стоимость по этапам; Задание вы согласуете в кабинете.'],
         ['Этапы с приёмкой', 'Следующий этап оплачивается после приёмки предыдущего.']
       ].map(([title, text], i) => ({ title, text, num: '0' + (i + 1) })),
+      sentTop: this.state.sentTop,
       sentMain: this.state.sentMain,
+      submitTop: e => { e.preventDefault(); this.setState({ sentTop: true }, () => { const el = document.querySelector('[data-sent="top"]'); if (el) el.focus(); }); },
       submitMain: e => { e.preventDefault(); this.setState({ sentMain: true }, () => { const el = document.querySelector('[data-sent="main"]'); if (el) el.focus(); }); },
       phoneMask: this.mask('phone'),
       mailMask: this.mask('mail'),

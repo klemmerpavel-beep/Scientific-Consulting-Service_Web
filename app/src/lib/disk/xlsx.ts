@@ -37,10 +37,16 @@ export interface XlsxSheet {
   readonly title: string;
   readonly head: readonly string[];
   readonly rows: readonly (readonly XlsxCell[])[];
+  /**
+   * Итоговая строка под таблицей — «Сумма», как в книге заказов (решение
+   * Р-874): полужирная, с линией сверху и вне фильтра — сортировка и отбор
+   * столбцов её не трогают. Без неё книга прежняя байт в байт.
+   */
+  readonly foot?: readonly XlsxCell[];
 }
 
 /** Стили в порядке `cellXfs` в `styles.xml`. */
-const STYLE = { plain: 0, head: 1, money: 2, integer: 3, text: 4 } as const;
+const STYLE = { plain: 0, head: 1, money: 2, integer: 3, text: 4, footText: 5, footMoney: 6 } as const;
 
 /** Ограничение Excel на длину текста в ячейке. */
 const CELL_LIMIT = 32_767;
@@ -92,6 +98,13 @@ function textCell(ref: string, text: string, style: number): string {
   return `<c r="${ref}" t="inlineStr" s="${style}"><is><t xml:space="preserve">${value}</t></is></c>`;
 }
 
+/** Ячейка итоговой строки: полужирная, с линией сверху (Р-874). */
+function footXml(ref: string, value: XlsxCell): string {
+  if (isMoney(value)) return `<c r="${ref}" s="${STYLE.footMoney}"><v>${moneyValue(value.kopecks)}</v></c>`;
+  if (typeof value === 'number' && Number.isFinite(value)) return `<c r="${ref}" s="${STYLE.footMoney}"><v>${value}</v></c>`;
+  return textCell(ref, value === null || value === undefined ? '' : String(value), STYLE.footText);
+}
+
 function cellXml(ref: string, value: XlsxCell): string {
   if (value === null || value === undefined || value === '') return '';
   if (isMoney(value)) return `<c r="${ref}" s="${STYLE.money}"><v>${moneyValue(value.kopecks)}</v></c>`;
@@ -128,6 +141,10 @@ function sheetXml(sheet: XlsxSheet): string {
       return `<row r="${n}">${cells}</row>`;
     })
     .join('');
+  const foot =
+    sheet.foot === undefined
+      ? ''
+      : `<row r="${sheet.rows.length + 2}">${sheet.head.map((_, c) => footXml(`${columnName(c)}${sheet.rows.length + 2}`, sheet.foot![c])).join('')}</row>`;
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
@@ -136,7 +153,7 @@ function sheetXml(sheet: XlsxSheet): string {
     '</sheetView></sheetViews>' +
     '<sheetFormatPr defaultRowHeight="15"/>' +
     `<cols>${cols}</cols>` +
-    `<sheetData><row r="1">${head}</row>${body}</sheetData>` +
+    `<sheetData><row r="1">${head}</row>${body}${foot}</sheetData>` +
     `<autoFilter ref="${filterRange(sheet, false)}"/>` +
     '</worksheet>'
   );
@@ -176,7 +193,7 @@ const WORKBOOK_RELS =
  * линией; деньги — `# ##0,00`; целое — `# ##0`; текст — с переносом по
  * словам, чтобы длинное сообщение заявки не уходило за край столбца.
  */
-const STYLES =
+const STYLES_HEAD =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
   '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
   '<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts>' +
@@ -192,7 +209,9 @@ const STYLES =
   '<borders count="2">' +
   '<border><left/><right/><top/><bottom/><diagonal/></border>' +
   '<border><left/><right/><top/><bottom style="thin"><color rgb="FFC4CAD4"/></bottom><diagonal/></border>' +
-  '</borders>' +
+  '</borders>';
+
+const STYLES_XFS =
   '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
   '<cellXfs count="5">' +
   '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
@@ -200,9 +219,35 @@ const STYLES =
   '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
   '<xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
   '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>' +
-  '</cellXfs>' +
+  '</cellXfs>';
+
+const STYLES_TAIL =
   '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
   '</styleSheet>';
+
+/**
+ * Стили книги. Без итоговой строки — прежние байт в байт: зеркало на Диске
+ * сверяет книги по свёртке, и лишняя пересылка неизменившихся таблиц ни к
+ * чему. С итоговой строкой (Р-874) добавлены граница сверху и два стиля —
+ * полужирный текст и полужирные деньги.
+ */
+function stylesXml(withFoot: boolean): string {
+  if (!withFoot) return STYLES_HEAD + STYLES_XFS + STYLES_TAIL;
+  const borders = STYLES_HEAD.replace(
+    '<borders count="2">',
+    '<borders count="3">',
+  ).replace(
+    '</borders>',
+    '<border><left/><right/><top style="thin"><color rgb="FF5C6370"/></top><bottom/><diagonal/></border></borders>',
+  );
+  const xfs = STYLES_XFS.replace('<cellXfs count="5">', '<cellXfs count="7">').replace(
+    '</cellXfs>',
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1"/>' +
+      '<xf numFmtId="164" fontId="1" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/>' +
+      '</cellXfs>',
+  );
+  return borders + xfs + STYLES_TAIL;
+}
 
 function workbookXml(title: string, range: string): string {
   const name = escapeXml(sheetTitle(title));
@@ -286,7 +331,7 @@ export function xlsx(sheet: XlsxSheet): Buffer {
     ['_rels/.rels', utf8(ROOT_RELS)],
     ['xl/workbook.xml', utf8(workbookXml(sheet.title, filterRange(sheet, true)))],
     ['xl/_rels/workbook.xml.rels', utf8(WORKBOOK_RELS)],
-    ['xl/styles.xml', utf8(STYLES)],
+    ['xl/styles.xml', utf8(stylesXml(sheet.foot !== undefined))],
     ['xl/worksheets/sheet1.xml', utf8(sheetXml(sheet))],
   ]);
 }

@@ -1362,7 +1362,7 @@ function dueKey(value: Date | null): string | null {
  * причиной — как перенос срока этапа (улучшение УМ-12, решение Р-391).
  * Куратору — без названия и темы работы до договора поручения не пишется.
  */
-async function announceWorkDueChange(
+export async function announceWorkDueChange(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
   actor: Actor,
   projectId: string,
@@ -1680,9 +1680,14 @@ export async function setProjectStatus(
 
   const current = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },
-    select: { status: true },
+    select: { status: true, source: true },
   });
   const from = current.status as ProjectStatusKey;
+  // Работа, перенесённая из книги заказов: владелец приводит в кабинете
+  // давние заказы в порядок, и письмо «работа завершена» или «работа
+  // возобновлена» по ним клиенту и куратору не уходит (запрос владельца
+  // 13.11.2026, решение Р-872). Событие в истории и журнал — как прежде.
+  const quiet = current.source === 'IMPORT';
   if (!canChangeProjectStatus(from, to)) {
     throw new Error(
       `Из состояния «${PROJECT_STATUS_LABEL[from]}» в «${PROJECT_STATUS_LABEL[to]}» работа не переводится`,
@@ -1740,8 +1745,8 @@ export async function setProjectStatus(
       include: { client: { select: { userId: true } } },
     });
     // Клиенту — письмо в той же транзакции; в мессенджер уходит только
-    // сигнал без причины (Р-187).
-    if (saved.client.userId !== null) {
+    // сигнал без причины (Р-187). По работе из книги — без письма (Р-872).
+    if (saved.client.userId !== null && !quiet) {
       const letter = STATUS_LETTER[to](saved.title, why);
       await enqueue(tx, {
         userId: saved.client.userId,
@@ -1752,8 +1757,9 @@ export async function setProjectStatus(
         dedupKey: `project:${projectId}:status:${from}-${to}:${Date.now()}`,
       });
     }
-    // Куратору — без причины: она написана клиенту (Э-09, Р-328).
-    await notifyExpert(tx, {
+    // Куратору — без причины: она написана клиенту (Э-09, Р-328). По
+    // работе из книги — без письма (Р-872).
+    if (!quiet) await notifyExpert(tx, {
       projectId,
       actorId: actor.id,
       eventKind: 'PROJECT_STATUS_CHANGED',
@@ -1863,7 +1869,7 @@ export function templateStages(
 }
 
 /** Перенос срока для журнала: пусто, если срок не менялся. */
-function dueChange(from: Date | null, to: Date | null) {
+export function dueChange(from: Date | null, to: Date | null) {
   const a = from?.toISOString().slice(0, 10) ?? null;
   const b = to?.toISOString().slice(0, 10) ?? null;
   return a === b ? {} : { dueFrom: a ?? 'без срока', dueTo: b ?? 'без срока' };

@@ -64,7 +64,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .pd-routes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 /* Ссылки направлений под формой первого экрана (Р-769): на телефоне — столбцом, без точек-разделителей, чтобы точка не повисала в начале или конце строки. */
-@media (max-width:480px){.pd-dirs{flex-direction:column;align-items:flex-start!important}.pd-dirs-dot{display:none}}
 .pd-cta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-routes a:hover .pd-routebg,.pd-routes a:focus-visible .pd-routebg{background:transparent!important}
 @media (max-width:1024px){.pd-routes{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -181,12 +180,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-size:14px;line-height:1.5;color:var(--pd-err-ink)">{{ errorTop }}</span>
 </div>
 </sc-if>
-<!-- Вход в три направления под формой первого экрана (Р-769, П-19): ссылки стоят после формы, а не между заголовком и формой (Р-59); меню в шапке не возвращается (Р-105). -->
-<nav aria-label="Направления работы" data-dirs="top" class="pd-dirs" style="margin-top:16px;display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:0">
-<a href="./students.html" style="display:inline-flex;align-items:center;min-height:44px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Студентам</a><span aria-hidden="true" class="pd-dirs-dot" style="color:var(--pd-ink-muted)">·</span>
-<a href="./main.html" style="display:inline-flex;align-items:center;min-height:44px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Аспирантам и молодым учёным</a><span aria-hidden="true" class="pd-dirs-dot" style="color:var(--pd-ink-muted)">·</span>
-<a href="./business.html" style="display:inline-flex;align-items:center;min-height:44px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Компаниям</a>
-</nav>
 </div>
 
 <div class="pd-hero-art" style="min-width:0;display:flex;flex-direction:column;gap:24px;padding-bottom:68px">

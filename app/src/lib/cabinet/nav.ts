@@ -23,6 +23,13 @@ export const RECOMMENDATIONS_HREF = '/cabinet/manage/recommendations';
 /** Раздел «Реклама» руководителя: продвижение, предложения, MCP (решение Р-550). */
 export const ADS_HREF = '/cabinet/manage/ads';
 
+/**
+ * «Заказы» — книга заказов в кабинете: руководителю и менеджеру, где
+ * править заказ и записывать деньги (запрос владельца 13.11.2026, решение
+ * Р-874).
+ */
+export const ORDERS_HREF = '/cabinet/manage/orders';
+
 /** Промежуточный экран служебных разделов — пункт «Управление». */
 export const TOOLS_HREF = '/cabinet/manage/tools';
 
@@ -70,6 +77,8 @@ export function navFor(actor: Actor): NavItem[] {
     return [
       { href: '/cabinet/manage', label: 'Сегодня' },
       { href: '/cabinet/projects', label: 'Мои работы' },
+      // Свои заказы таблицей книги: править и записывать деньги (Р-874).
+      { href: ORDERS_HREF, label: 'Заказы' },
       { href: '/cabinet/manage/leads', label: 'Заявки' },
       { href: '/cabinet/manage/registry', label: 'Реестры' },
       { href: TOOLS_HREF, label: 'Управление' },
@@ -81,6 +90,8 @@ export function navFor(actor: Actor): NavItem[] {
   const staff: NavItem[] = [
     { href: '/cabinet/manage', label: 'Сводка' },
     { href: '/cabinet/projects', label: 'Работы' },
+    // Все заказы таблицей книги заказов (Р-874).
+    { href: ORDERS_HREF, label: 'Заказы' },
   ];
   staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
   // «Рекомендации» — между «Деньгами» и «Аналитикой», с числом
@@ -151,6 +162,7 @@ export function activeItem(items: readonly NavItem[], current: string): string |
       (item.href === tools &&
         current.startsWith('/cabinet/manage/') &&
         !current.startsWith('/cabinet/manage/finance') &&
+        !current.startsWith(ORDERS_HREF) &&
         !current.startsWith(RECOMMENDATIONS_HREF) &&
         !current.startsWith('/cabinet/manage/analytics') &&
         !current.startsWith(ADS_HREF));

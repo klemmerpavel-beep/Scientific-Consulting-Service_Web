@@ -99,7 +99,8 @@ import {
 import { curatorPanel, curatorReturnHead } from '../../../../lib/cabinet/curator-tasks';
 import { leadNumberLabel } from '../../../../lib/cabinet/lead-labels';
 import { bookRowOf, paidShare } from '../../../../lib/cabinet/book-row';
-import { PAYMENT_CLOSED_STATUSES, formatAmount } from '../../../../lib/cabinet/money';
+import { PAYMENT_CLOSED_STATUSES, formatAmount, orderBalance } from '../../../../lib/cabinet/money';
+import { orderMoneyLine } from '../../../../components/cabinet/OrderMoney';
 import { ownPayoutTotals, paymentDocumentLines, projectContract } from '../../../../lib/cabinet/finance';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
@@ -109,7 +110,6 @@ import {
   shiftStage,
   planFromTemplate,
   postMessage,
-  saveProject,
   saveStage,
   setExpert,
   setManager,
@@ -141,6 +141,8 @@ const EVENT_LABEL: Record<string, string> = {
   STAGE_HANDED_OVER: 'Куратор сдал этап менеджеру',
   STAGE_HANDOVER_RECALLED: 'Куратор отозвал сдачу этапа',
   STAGE_HANDED_BACK: 'Этап возвращён куратору',
+  // Перенос работы к другому клиенту — строка для практики (Р-873).
+  CLIENT_CHANGED: 'Работа перенесена к другому клиенту',
 };
 
 /**
@@ -148,6 +150,8 @@ const EVENT_LABEL: Record<string, string> = {
  * остаётся «В работе» (требование Э-05, решение Р-325).
  */
 const CLIENT_HIDDEN_EVENTS = new Set([
+  // Что работа была у другого клиента, новому клиенту знать незачем (Р-873).
+  'CLIENT_CHANGED',
   'EXPERT_ASSIGNED',
   'STAGE_HANDED_OVER',
   'STAGE_HANDOVER_RECALLED',
@@ -324,7 +328,13 @@ export default async function ProjectScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ error?: string; manage?: string; briefApplied?: string; rated?: string; created?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    manage?: string;
+    briefApplied?: string;
+    rated?: string;
+    created?: string;
+  }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}`);
 
@@ -706,7 +716,7 @@ export default async function ProjectScreen({
     createdLine !== null && can(actor, 'PAYMENT_EDIT', ref) && (await projectContract(actor, project.id)) === null;
   const createdNext = [
     mayEdit && !closed
-      ? { what: 'срок', label: 'Изменить карточку', href: `/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-card` }
+      ? { what: 'срок', label: 'Редактировать заказ', href: `/cabinet/projects/${encodeURIComponent(project.code)}/order#due` }
       : null,
     contractDue
       ? { what: 'договор', label: 'Оплаты и документы', href: `/cabinet/projects/${project.code}/payments` }
@@ -767,6 +777,16 @@ export default async function ProjectScreen({
           ? null
           : authorName(event.actor, actor, event.actorId ?? undefined),
     }));
+
+  // «Деньги по заказу» — тому, кто ведёт деньги работы: руководителю и
+  // менеджеру своей работы (запрос владельца 13.11.2026, Р-870, Р-871).
+  // Числа — строкой в шапке, кнопка ведёт к записи поступления на экране
+  // оплат: отдельным блоком карточки они не стоят — у менеджера их уже
+  // пять, предел Р-183. Клиенту и куратору не строится ничего.
+  const mayMoney = can(actor, 'PAYMENT_EDIT', ref);
+  const moneyContract = mayMoney ? await projectContract(actor, project.id) : null;
+  const moneyFigures =
+    moneyContract === null ? null : orderBalance(project.status, moneyContract.totalAmount, moneyContract.tranches);
 
   // Заявка, из которой заведена работа, — только практике (П-3, решение
   // Р-763): клиенту после одобрения номер заявки не показывается.
@@ -931,11 +951,22 @@ export default async function ProjectScreen({
         {/* Правка карточки, куратор и менеджер — на виду, а не только в
             свёрнутом «Управлении работой» в конце экрана: руководитель их
             не находил (замечание владельца 08.10.2026, решение Р-487). */}
-        {(mayEdit && !closed) || mayAssign || maySetManager || mayInstruct || checklist !== undefined || prepareCount !== null ? (
+        {mayEdit || mayMoney || mayAssign || maySetManager || mayInstruct || checklist !== undefined || prepareCount !== null ? (
           <div style={{ flexBasis: '100%', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {mayEdit && !closed ? (
-              <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}?manage=1#manage-card`}>
-                Изменить карточку
+            {/* Заказ правится одним экраном — карточка, вид, срок, сумма,
+                состояние и клиент — и у закрытой работы: закрытость
+                запрещает этапы, а не учёт (запрос владельца 13.11.2026,
+                решение Р-872). */}
+            {mayEdit ? (
+              <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/order`}>
+                Редактировать заказ
+              </ButtonLink>
+            ) : null}
+            {/* Деньги заказа — на виду и у закрытой работы: закрытость
+                запрещает этапы, а не учёт (Р-871). */}
+            {mayMoney ? (
+              <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/payments#money`}>
+                Деньги по заказу
               </ButtonLink>
             ) : null}
             {/* Исходные данные на утверждение — документом (Р-561). */}
@@ -970,6 +1001,11 @@ export default async function ProjectScreen({
               </ButtonLink>
             )}
           </div>
+        ) : null}
+        {mayMoney ? (
+          <Text muted size={13} style={{ flexBasis: '100%', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+            {orderMoneyLine(moneyFigures)}
+          </Text>
         ) : null}
       </ScreenTop>
       {/* Причина отказа переписки — у её формы; без формы на экране — здесь
@@ -1492,68 +1528,22 @@ export default async function ProjectScreen({
 
               {mayEdit && closed ? (
                 <Text muted size={14}>
-                  {CLOSED_FOR_PRACTICE}. Карточка, куратор и этапы закрытой работы не
-                  меняются; переписка и документы оплат доступны.
+                  {CLOSED_FOR_PRACTICE}. Этапы и куратор закрытой работы не меняются; карточку заказа,
+                  сумму, состояние и клиента правят на «Редактировать заказ», поступления — на «Оплатах и документах».
                 </Text>
               ) : null}
 
-              {mayEdit && !closed ? <span id="manage-card" style={MANAGE_ANCHOR} /> : null}
-              {mayEdit && !closed ? (
-                <Form action={saveProject}>
-                  <input type="hidden" name="projectId" value={project.id} />
-                  <input type="hidden" name="code" value={project.code} />
-                  <ActionError id={errorId} slot="project" />
-                  <Field
-                    label="Название работы"
-                    name="title"
-                    scope="project"
-                    required
-                    defaultValue={draft.title ?? project.title}
-                  />
-                  <Field
-                    label="Тема"
-                    name="topic"
-                    scope="project"
-                    defaultValue={draft.topic ?? project.topic ?? ''}
-                  />
-                  <Field
-                    label="Короткое описание задачи"
-                    name="summary"
-                    scope="project"
-                    multiline
-                    defaultValue={draft.summary ?? project.summary ?? ''}
-                    hint="Видно клиенту под раскрытием «О работе»."
-                  />
-                  <Field
-                    label="Срок работы"
-                    name="dueOn"
-                    scope="project"
-                    type="date"
-                    defaultValue={draft.dueOn ?? project.dueOn?.toISOString().slice(0, 10) ?? ''}
-                  />
-                  {/* Перенос срока работы — с причиной для клиента (УМ-12, Р-391). */}
-                  <Field
-                    label="Причина переноса срока работы"
-                    name="dueReason"
-                    scope="project"
-                    defaultValue={draft.dueReason ?? ''}
-                    hint="Нужна, только если срок работы меняется: клиент и куратор получат её письмом."
-                  />
-                  {/* Срок согласования этапа — по п. 7.2 оферты не меньше
-                      пяти рабочих дней (требование Т-15, решение Р-290). */}
-                  <Field
-                    label="Срок согласования этапа, рабочих дней"
-                    name="approvalDays"
-                    scope="project"
-                    type="number"
-                    required
-                    defaultValue={draft.approvalDays ?? String(project.approvalDays)}
-                    hint="От 5 до 20. Новое число действует со следующей сдачи этапа на согласование."
-                  />
-                  <FormActions>
-                    <Button tone="quiet">Сохранить карточку</Button>
-                  </FormActions>
-                </Form>
+              {/* Карточка заказа — на своём экране «Редактировать заказ»:
+                  одно место для карточки, вида, срока, суммы, состояния и
+                  клиента (решение Р-872). Якорь прежней формы остаётся у
+                  ссылки на него. */}
+              {mayEdit ? <span id="manage-card" style={MANAGE_ANCHOR} /> : null}
+              {mayEdit ? (
+                <div>
+                  <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/order`}>
+                    Редактировать заказ
+                  </ButtonLink>
+                </div>
               ) : null}
 
               {mayAssign ? <span id="manage-expert" style={MANAGE_ANCHOR} /> : null}

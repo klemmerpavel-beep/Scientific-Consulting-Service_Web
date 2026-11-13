@@ -83,13 +83,17 @@ const NOTE: Record<HeadCheckKind, readonly string[]> = {
   CONTRACT_BY_MANAGER: ['проверено'],
 };
 
-/** Закрыть дело кнопкой: «Не требуется» или «Проверено». Право — деньги работы. */
+/**
+ * Закрыть дело кнопкой: «Не требуется» или «Проверено». Право — своё,
+ * руководителя: деньги работы с Р-870 ведёт и менеджер, а дело
+ * «Проверьте договор» ставится как раз на его договор.
+ */
 export async function closeCheck(actor: Actor, checkId: string, note: string): Promise<void> {
   const check = await prisma.headCheck.findUnique({ where: { id: checkId }, select: { kind: true, projectId: true, closedAt: true } });
   if (check === null) throw new Error('Дело не найдено');
   const ref = await projectRef(check.projectId);
   if (ref === null) throw new Error('Проект не найден');
-  ensure(actor, 'PAYMENT_EDIT', ref);
+  ensure(actor, 'HEAD_CHECK_CLOSE', ref);
   if (!NOTE[check.kind].includes(note)) throw new Error('Неизвестная отметка дела');
   const closed = await prisma.headCheck.updateMany({
     where: { id: checkId, closedAt: null },

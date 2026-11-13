@@ -12,6 +12,17 @@
 
 export type TrancheStatus = 'PLANNED' | 'INVOICED' | 'PAID' | 'WRITTEN_OFF' | 'REVERSED';
 
+/**
+ * Плановый транш «остатка» — разница между договором и заведёнными
+ * траншами. Его заводят перенос книги заказов и ручной заказ
+ * (`openContract`), пересчитывают мост книги и поступления кабинета
+ * (`settleRest`, решение Р-871).
+ */
+export const REST_TRANCHE_TITLE = 'Остаток по договору';
+
+/** Назначение транша, заведённого кнопкой «Записать поступление» (Р-871). */
+export const RECEIPT_TITLE = 'Поступление';
+
 export const STATUS_LABEL: Record<TrancheStatus, string> = {
   PLANNED: 'ожидается',
   INVOICED: 'выставлен счёт',
@@ -195,6 +206,29 @@ export function receivableOf(
   tranches: readonly OpenTranche[],
 ): bigint {
   return expectsPayment(status) ? outstandingOf(total, tranches) : 0n;
+}
+
+/**
+ * Деньги заказа одной строкой — для блока «Деньги по заказу» и «Заказов»
+ * (решение Р-871): договор, поступило, остаток и переплата.
+ *
+ * Остаток — то же «к получению», что на «Деньгах» и «Оплатах»
+ * (`receivableOf`): без списанного, ноль у отменённой работы (Р-257).
+ * Переплата — поступившее сверх суммы договора (ОМ-30): у неё остаток
+ * ноль, и она называется отдельно, а не долгом наоборот.
+ */
+export function orderBalance(
+  status: string,
+  total: bigint,
+  tranches: readonly OpenTranche[],
+): { readonly contract: bigint; readonly received: bigint; readonly rest: bigint; readonly overpaid: bigint } {
+  const received = tranches.filter((tranche) => tranche.status === 'PAID').reduce((acc, tranche) => acc + tranche.amount, 0n);
+  return {
+    contract: total,
+    received,
+    rest: receivableOf(status, total, tranches),
+    overpaid: received > total ? received - total : 0n,
+  };
 }
 
 /** Открытый транш для разнесения остатка договора. */

@@ -22,7 +22,7 @@ const PAGES = ['StartPage', 'MainPage', 'StudentsPage', 'BusinessPage', 'OfferPa
 const FORMS: Record<string, readonly string[]> = {
   StartPage: ['top', 'bottom'],
   MainPage: ['top', 'request'],
-  StudentsPage: ['main'], // формы первого экрана нет (Р-841)
+  StudentsPage: ['top', 'main'],
   BusinessPage: ['top', 'main'],
 };
 const STEPS = [

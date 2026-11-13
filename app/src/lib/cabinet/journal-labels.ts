@@ -25,6 +25,7 @@ import {
   CHECK_TITLE,
   CONTACT_LABEL,
   MARK_LABEL,
+  ORDER_FIELD_LABEL,
 } from './code-labels.ts';
 import { eventLabel } from './events.ts';
 import { leadSourceLabel, leadStatusLabel } from './lead-labels.ts';
@@ -60,6 +61,7 @@ const ACTIONS: Record<string, string> = {
   FEEDBACK_EXPORTED: 'Замечания выгружены',
   FINANCE_EXPORTED: 'Деньги по работам выгружены',
   PROJECTS_EXPORTED: 'Работы выгружены',
+  ORDERS_EXPORTED: 'Заказы выгружены',
   FEEDBACK_REVIEWED: 'Замечание разобрано',
   EXPERT_APPLICATION_REVIEWED: 'Анкета кандидата разобрана',
   EXPERT_APPLICATION_DELETED: 'Анкета кандидата удалена',
@@ -109,6 +111,9 @@ const ACTIONS: Record<string, string> = {
   TRANCHE_ADDED: 'Заведён транш',
   TRANCHE_REMOVED: 'Удалён плановый транш',
   TRANCHE_RESCHEDULED: 'Перенесена плановая дата транша',
+  // «Деньги по заказу» (решение Р-871).
+  TRANCHE_RECEIVED: 'Записано поступление',
+  TRANCHE_CORRECTED: 'Исправлено поступление',
   RECOMMENDATION_MARKED: 'Отмечена рекомендация',
   ASSIGNMENT_CREATED: 'Поставлено поручение',
   ASSIGNMENT_STATUS: 'Изменено состояние поручения',
@@ -135,6 +140,7 @@ const ACTIONS: Record<string, string> = {
   STAGE_REOPENED: 'Этап возвращён в работу',
   STAGE_EDITED: 'Этап изменён',
   PROJECT_EDITED: 'Карточка работы изменена',
+  PROJECT_CLIENT_CHANGED: 'Работа перенесена к другому клиенту',
   PROJECT_STATUS_CHANGED: 'Состояние работы изменено',
   MATERIAL_UPLOADED: 'Приложен материал',
   MESSAGE_SENT: 'Отправлено сообщение',
@@ -349,6 +355,13 @@ const FIELDS: Record<string, string> = {
   score: 'оценка',
   withText: 'с отзывом',
   publishAllowed: 'публикация отзыва на сайте разрешена',
+  // Поступление и его исправление (решение Р-871).
+  noted: 'с комментарием',
+  amountFrom: 'сумма была',
+  amountTo: 'сумма стала',
+  paidOnFrom: 'дата поступления была',
+  paidOnTo: 'дата поступления стала',
+  noteChanged: 'комментарий изменён',
 };
 
 /** Правило поля у одного действия: своё имя и, если нужно, подпись значения. */
@@ -558,6 +571,11 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
       value: byMap({ active: 'Действующие', waiting: 'Ждут клиента', done: 'Завершённые', all: 'Все' }),
     },
   },
+  // «Заказы» (решение Р-874): отбор — подписями вкладок экрана.
+  ORDERS_EXPORTED: {
+    status: { name: 'состояние', value: (raw) => (raw === 'all' ? 'все' : byMap(PROJECT_STATUS_LABEL)(raw).toLowerCase()) },
+    debt: { name: 'долг', value: byMap({ all: 'с долгом и без', owing: 'с долгом', settled: 'без долга' }) },
+  },
   FINANCE_EXPORTED: {
     ...filterRules,
     set: { name: 'отбор', value: byMap({ owing: 'С остатком', all: 'Все работы с договором' }) },
@@ -656,6 +674,10 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
   PROJECT_EDITED: {
     expertRoleFrom: { name: 'роль куратора была', value: expertRoleLabel },
     expertRoleTo: { name: 'роль куратора стала', value: expertRoleLabel },
+    // «Редактировать заказ» (решение Р-872): что изменено — подписями формы.
+    fields: { name: 'изменено', value: byMap(ORDER_FIELD_LABEL) },
+    serviceTypeFrom: { name: 'вид работы был' },
+    serviceTypeTo: { name: 'вид работы стал' },
   },
   PROJECT_STATUS_CHANGED: change(byMap(PROJECT_STATUS_LABEL)),
   PLAN_CHANGED: {
@@ -689,10 +711,10 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
 };
 
 /** Поля с суммой: журнал хранит их строкой копеек, bigint в JSON не кладётся. */
-const MONEY_KEYS = new Set(['amount', 'total', 'totalFrom', 'contractTotal', 'revenue', 'costs', 'defaultPayout']);
+const MONEY_KEYS = new Set(['amount', 'amountFrom', 'amountTo', 'total', 'totalFrom', 'contractTotal', 'revenue', 'costs', 'defaultPayout']);
 
 /** Поля с днём: «ГГГГ-ММ-ДД» или полночь дня из поля даты формы. */
-const DAY_KEYS = new Set(['dueOn', 'dueFrom', 'dueTo', 'paidOn', 'plannedDate', 'signedOn']);
+const DAY_KEYS = new Set(['dueOn', 'dueFrom', 'dueTo', 'paidOn', 'paidOnFrom', 'paidOnTo', 'plannedDate', 'signedOn']);
 
 /** Поля с моментом: срок ссылки входа — до минуты, по Москве. */
 const MOMENT_KEYS = new Set(['expiresAt']);

@@ -88,9 +88,15 @@ describe('отказ у своей формы и черновик (решени�
       assert.ok(start >= 0, `нет действия ${name}`);
       return source.slice(start, source.indexOf('\nexport ', start + 1));
     };
-    for (const name of ['saveProject', 'setExpert', 'setManager']) {
+    for (const name of ['setExpert', 'setManager']) {
       assert.match(body(name), /catch \(error\)[\s\S]*manageFailure\(/u, `${name} без перехвата отказа`);
     }
+    // Карточка заказа — на своём экране; отказ у формы, с набранным (Р-872).
+    assert.match(
+      body('saveOrder'),
+      /catch \(error\)[\s\S]*withError\(back, failure, \{[\s\S]*slot: 'order'/u,
+      'saveOrder без перехвата отказа',
+    );
     // Смена состояния отказывает на экране подтверждения, с набранной
     // причиной (требование М-09, решение Р-299).
     assert.match(
