@@ -323,11 +323,14 @@ describe('«Студентам»: «Как это выглядит внутри�
   });
 });
 
-describe('«Студентам»: подписи кнопок действия (Р-847, Р-853)', () => {
-  it('«Оставить заявку» везде, кроме «Этапов»: там — «Обсудить мой срок», как на выкате № 155', () => {
+describe('«Студентам»: подписи кнопок действия (Р-847, Р-853, Р-886)', () => {
+  it('«Оставить заявку» везде, кроме «Этапов» и «Подбора сметы»: там — «Обсудить мой срок» (как на выкате № 155) и «Получить смету» (выбор владельца 13.11.2026)', () => {
     const buttons = [...PAGE.matchAll(/<a (?:[^>]*\s)?href="#request"[^>]*background:var\(--pd-ink\)[^>]*>([^<]+)</gu)].map((m) => m[1]!.trim());
     assert.ok(buttons.length >= 3, `кнопок действия ${buttons.length}`);
-    for (const label of buttons) assert.ok(label === 'Оставить заявку' || label === 'Обсудить мой срок', label);
+    for (const label of buttons) assert.ok(label === 'Оставить заявку' || label === 'Обсудить мой срок' || label === 'Получить смету', label);
+    const cost = PAGE.slice(PAGE.indexOf('<section id="cost"'), PAGE.indexOf('</section>', PAGE.indexOf('<section id="cost"')));
+    assert.match(cost, /<a href="#request" onClick="\{\{ estGo \}\}"[^>]*>Получить смету</u);
+    assert.equal(buttons.filter((b) => b === 'Получить смету').length, 1, '«Получить смету» — только в «Подборе сметы»');
     const at = PAGE.indexOf('<section id="route"');
     const route = PAGE.slice(at, PAGE.indexOf('</section>', at));
     assert.match(route, /<a href="#request"[^>]*>Обсудить мой срок</u);
@@ -444,5 +447,69 @@ describe('Директ «Студентам»: быстрая ссылка на 
 
   it('описание кампании совпадает с источником', () => {
     assert.match(read('marketing/campaigns/direct-студенты.md'), /\| Состав работ \| `\/students#services` \|/u);
+  });
+});
+
+describe('«Студентам», «Смета»: «Подбор сметы» без цен (Р-886)', () => {
+  // Замечание владельца 13.11.2026: блок «очень простой по сравнению с
+  // остальными… доработать функционально и сделать более комплексным и
+  // понятным»; выбор владельца — «Подбор сметы» без денег.
+  const at = PAGE.indexOf('<section id="cost"');
+  const COST = PAGE.slice(at, PAGE.indexOf('</section>', at));
+  const LOGIC = PAGE.slice(PAGE.indexOf('// «Подбор сметы» (Р-886)'), PAGE.indexOf('estGo: () =>'));
+  const list = (name: string) => {
+    const m = LOGIC.match(new RegExp(`const ${name} = \\[([^\\n]*)\\];`, 'u'));
+    assert.ok(m, `нет ${name}`);
+    return [...m[1]!.matchAll(/\['([^']+)', ([^\]]*)\]/gu)].map((r) => [r[1]!, ...[...r[2]!.matchAll(/'([^']*)'|(\d+|true|false|Infinity)/gu)].map((x) => x[1] ?? x[2]!)]);
+  };
+
+  it('слева три переключателя — доступные кнопки aria-pressed, цели 44 px, текст 14 px', () => {
+    assert.match(COST, /<div class="sp-est" [^>]*>\n<div class="sp-estpick"/u);
+    assert.match(COST, /<div role="group" aria-labelledby="\{\{ g\.id \}\}"/u);
+    assert.match(COST, /<span id="\{\{ g\.id \}\}"[^>]*>\{\{ g\.title \}\}<\/span>/u);
+    const buttons = COST.match(/<button type="button" class="sp-estopt" aria-pressed="(?:true|false)" onClick="\{\{ o\.pick \}\}" style="[^"]*">\{\{ o\.label \}\}<\/button>/gu) ?? [];
+    assert.equal(buttons.length, 2, 'кнопка выбора — в обеих ветках разметки');
+    for (const b of buttons) {
+      assert.match(b, /min-height:44px/u);
+      assert.match(b, /font-size:14px/u);
+    }
+    // Три фактора прежние: их подписи — заголовки групп.
+    const factors = [...LOGIC.slice(LOGIC.indexOf('const factors = ['), LOGIC.indexOf('];', LOGIC.indexOf('const factors = ['))).matchAll(/\['([^']+)', '([^']+)'\]/gu)].map((m) => m[1]);
+    assert.deepEqual(factors, ['Тип работы', 'Стадия готовности', 'Срок до защиты']);
+    assert.ok(!/priceFactors|sp-costlist/u.test(HTML), 'осталась строка факторов');
+  });
+
+  it('значения — со страницы: виды из «Состава работ», стадии из «Этапов», сроки из поля «Срок сдачи»', () => {
+    const svc = [...PAGE.slice(PAGE.indexOf('const svc = ['), PAGE.indexOf('].map', PAGE.indexOf('const svc = ['))).matchAll(/\['([^']+)', '[^']+', '([^']+)'/gu)].map((m) => m[1]!);
+    for (const [, at] of list('EST_KINDS')) assert.ok(svc[Number(at)], `вид работы ${at} не из «Состава работ»`);
+    const situations = [...PAGE.slice(PAGE.indexOf('const situationData = ['), PAGE.indexOf('const sIdx')).matchAll(/^      \['([^']+)', '(около [^']+)'/gmu)].map((m) => m[1]!);
+    assert.equal(situations.length, 4);
+    assert.deepEqual(list('EST_STAGES').map((r) => r[0]), ['Работа не начата', 'Черновик есть', 'Вернули на доработку']);
+    assert.match(LOGIC, /const sit = tm === 3 \? 3 : st;/u, 'срок «Меньше месяца» — не маршрут «До защиты меньше месяца»');
+    assert.equal(situations[3], 'До защиты меньше месяца');
+    const terms = [...PAGE.slice(PAGE.indexOf('terms: ['), PAGE.indexOf('].map', PAGE.indexOf('terms: ['))).matchAll(/'([^']+)'/gu)].map((m) => m[1]!);
+    for (const row of list('EST_TERMS')) assert.ok(terms.includes(row[1]!), `«${row[1]}» нет среди вариантов поля «Срок сдачи»`);
+  });
+
+  it('справа — что войдёт в смету: этапы и длительности из «Этапов», проверка куратора, оплата, кнопка к форме', () => {
+    assert.match(COST, /<div class="sp-estcard"[\s\S]*<h3 role="status"[^>]*>\{\{ estHead \}\}<\/h3>/u);
+    assert.match(COST, /<ol class="sp-eststeps" aria-label="Этапы маршрута"[\s\S]*\{\{ t\.title \}\}[\s\S]*\{\{ t\.term \}\}/u);
+    assert.match(LOGIC, /estStages: hasRoute \? sitSteps\.map\(\(\[title, term\], i\) => \(\{ num: String\(i \+ 1\), title, term \}\)\) : \[\]/u, 'длительности не из данных «Этапов»');
+    assert.match(COST, /Что проверяет куратор<\/dt><dd[^>]*>\{\{ estCheck \}\}<\/dd>/u);
+    assert.match(text(COST), /По этапам: следующий этап оплачивается после приёмки предыдущего, стоимость каждого этапа — в Задании\./u);
+    assert.match(COST, /<a href="#request" onClick="\{\{ estGo \}\}"/u);
+    // Поле «Срок сдачи» только получает значение; форма не меняется (152-ФЗ).
+    assert.match(PAGE, /estGo: \(\) => \{ const field = document\.getElementById\('rq-term'\); if \(field\) field\.value = EST_TERMS\[tm\]\[1\]; \}/u);
+  });
+
+  it('цен и сумм нет (Р-03); тёмная панель в «Смете» одна, свёртка «Нормоконтроль» на месте', () => {
+    for (const source of [COST, LOGIC]) assert.doesNotMatch(nbsp(source), /₽|руб\.|рубл|\bот \d[\d ]*(?:₽|р\.)|стоимость от/iu);
+    assert.equal((COST.match(/background:var\(--pd-accent-deep\)/gu) ?? []).length, 1);
+    assert.match(text(COST), /Консультация 20 минут · не оплачивается/u);
+    assert.match(COST, /<div id="norm" class="sp-normbox"/u);
+  });
+
+  it('макет и компонент совпадают по устройству блока', () => {
+    for (const piece of ['sp-estpick', 'sp-estcard', 'sp-eststeps', 'Получить смету', 'Этапы подробно']) assert.ok(TSX.includes(piece), `компонент без «${piece}»`);
   });
 });

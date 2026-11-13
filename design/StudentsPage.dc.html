@@ -70,10 +70,14 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 @media (max-width:480px){.sp-support-col>a{grid-template-columns:minmax(0,1fr)!important}.sp-support-col>a>span:first-child{grid-row:auto!important}}
 .sp-offer{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 /* «Смета на диплом» (Р-799): факторы — карточка-список в ряд, между пунктами одна линия; до 768 px — столбцом. Причины нормоконтроля — тот же список в две колонки внутри карточки свёртки. Свёртка закрыта — карточка поднимается под курсором и при фокусе, как pd-lift (Р-628); раскрыта — стоит на месте. */
-.sp-costlist{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-.sp-costlist>li+li{border-left:1px solid var(--pd-border)}
-@media (max-width:768px){.sp-costlist{grid-template-columns:minmax(0,1fr)}.sp-costlist>li+li{border-left:0;border-top:1px solid var(--pd-border)}}
-@media (max-width:480px){.sp-costlist>li,.sp-normbox>button,.sp-normbox>div{padding-left:20px!important;padding-right:20px!important}}
+/* «Подбор сметы» (Р-886): слева три переключателя — вид работы, стадия, срок до защиты (кнопки aria-pressed, 44 px, 14 px); справа «Что войдёт в вашу смету» — этапы маршрута из «Этапов» с их ориентировочной длительностью, что проверяет куратор, оплата по этапам, кнопка к форме заявки. Цен и сумм нет (Р-03). До 1024 px — одной колонкой. */
+.sp-est{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)}
+@media (max-width:1024px){.sp-est{grid-template-columns:minmax(0,1fr)}}
+.sp-estopt{transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)}
+.sp-estopt[aria-pressed="false"]:hover{border-color:var(--pd-accent)!important;color:var(--pd-ink)!important}
+.sp-estopt:active{transform:scale(.97)}
+.sp-eststeps>li+li{border-top:1px solid var(--pd-divider)}
+@media (max-width:480px){.sp-estpick,.sp-estcard,.sp-normbox>button,.sp-normbox>div{padding-left:20px!important;padding-right:20px!important}.sp-estopts{padding-left:0!important}}
 .sp-normlist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:32px}
 .sp-normlist>li{border-top:1px solid var(--pd-border)}
 @media (max-width:768px){.sp-normlist{grid-template-columns:minmax(0,1fr)}}
@@ -81,6 +85,9 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 .sp-normbox:has(>.sp-normbtn[aria-expanded="false"]:hover),.sp-normbox:has(>.sp-normbtn[aria-expanded="false"]:focus-visible){transform:translateY(-5px);box-shadow:0 10px 20px rgba(20,22,28,.09)!important}
 @media (prefers-reduced-motion:reduce){html .sp-normbox{transition:none!important}html .sp-normbox:has(>.sp-normbtn:hover),html .sp-normbox:has(>.sp-normbtn:focus-visible){transform:none!important}}
 .sp-req{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+/* Р-885: шагам у формы — шире колонка на 1025—1199 px, до 1024 px форма и шаги одной колонкой: иначе карточки шагов выше формы. */
+@media (max-width:1199px){.sp-req{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}}
+@media (max-width:1024px){.sp-req{grid-template-columns:minmax(0,1fr)}}
 .sp-team{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1fr)}
 .sp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
 /* Р-849: «География» — текст и счётчик слева, схема справа; до 1024 px одной колонкой. Узлы схемы пульсируют transform и opacity, при уменьшенном движении стоят (общее правило). */
@@ -91,22 +98,25 @@ body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{t
 .sp-geo-pulse-b{animation-delay:-1.6s}
 @media (max-width:480px){.sp-geo-card{padding:16px 14px 14px!important}.sp-geo-chip{font-size:12px!important;padding:2px 7px!important}}
 /* Р-846: блок заявки — форма и вертикальная шкала шагов одной высоты, «Что прислать для сметы» полосой под ними (как «Компаниям», Р-835). */
-@media (min-width:769px){.sp-reqsteps .pd-track-v{flex:1 1 auto}.sp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}
 .sp-reqask{display:grid;grid-template-columns:minmax(0,1fr)}
 .sp-reqart{height:160px;border-bottom:1px solid var(--pd-divider)}
 .sp-reqbody{padding:16px 20px 18px}
 @media (min-width:769px){.sp-reqask{grid-template-columns:220px minmax(0,1fr)}.sp-reqart{height:auto;min-height:170px;border-bottom:0;border-right:1px solid var(--pd-divider)}.sp-reqbody{padding:20px 24px}}
 @media (min-width:1025px){.sp-asklist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px!important}}
-/* Шкала шагов «Что будет после отправки» (Р-800) — один компонент на «Студентам» и «Компаниям». Шаги — последовательность, поэтому с номерами: узлы 28 px на общей линии 2 px --pd-edge-neutral, разделителей под шагами нет. Горизонтальная: узел над текстом, линия от узла к узлу соседней колонки (промежуток колонок 24 px), колонки ряда одной высоты. Вертикальная (.pd-track-v): узел слева, линия вниз к следующему узлу. Последний шаг ряда линии не ведёт. */
-.pd-track{list-style:none;margin:0;padding:0;gap:28px 24px}
-.pd-track>li{position:relative;min-width:0;display:flex;flex-direction:column;gap:14px}
-.pd-track>li::after{content:"";position:absolute;top:13px;left:28px;right:-24px;height:2px;border-radius:999px;background:var(--pd-edge-neutral)}
-.pd-track>li:last-child::after{display:none}
-.pd-track-v{display:flex;flex-direction:column;gap:0}
-.pd-track-v>li{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:14px;padding-bottom:20px}
-.pd-track-v>li:last-child{padding-bottom:0}
-.pd-track-v>li::after{top:28px;bottom:0;left:13px;right:auto;width:2px;height:auto}
-.pd-track-v .pd-track-body{padding-top:4px}
+/* «Что будет после отправки» у формы заявки (Р-885; образец — панель «Как проходит этап работы» на «Экспертам», .ex-flow): тёмная панель --pd-accent-deep, радиус 14; вертикальная линия 2 px --pd-accent-soft, круги 40 px с цифрой; справа белые карточки — заголовок шага 15/600, метка роли пилюлей, пояснение 14 px. Круг шага «Вы» — белый с цифрой --pd-accent, остальные — тёмные с обводкой --pd-accent-soft, как в образце. Когда панель доходит до чтения, карточки проявляются по очереди сверху вниз один раз (opacity и transform, 260 мс, шаг 90 мс; data-flow ставит сценарий страницы, без сценария и при уменьшенном движении шаги видны сразу); наведение и фокус подсвечивают шаг. От 769 px шаги делят высоту колонки формы. */
+.pd-afterflow{position:relative;margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.pd-afterflow::before{content:"";position:absolute;left:19px;top:24px;bottom:24px;width:2px;background:var(--pd-accent-soft);opacity:.55}
+.pd-afterflow>li{position:relative;display:flex;align-items:flex-start;gap:14px;border-radius:10px;transition:opacity 260ms cubic-bezier(.2,0,.2,1),transform 260ms cubic-bezier(.2,0,.2,1)}
+.pd-afterflow>li:nth-child(2){transition-delay:90ms}.pd-afterflow>li:nth-child(3){transition-delay:180ms}.pd-afterflow>li:nth-child(4){transition-delay:270ms}.pd-afterflow>li:nth-child(5){transition-delay:360ms}
+.pd-afterflow[data-flow="wait"]>li{opacity:0;transform:translateY(12px)}
+.pd-afterflow-num{transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.pd-afterflow-card{transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)}
+.pd-afterflow>li:hover .pd-afterflow-card,.pd-afterflow>li:focus-visible .pd-afterflow-card{background:var(--pd-accent-tint)!important;transform:translateX(4px)}
+.pd-afterflow>li:hover .pd-afterflow-num,.pd-afterflow>li:focus-visible .pd-afterflow-num{background:var(--pd-ink-inverse)!important;border-color:var(--pd-ink-inverse)!important;color:var(--pd-accent)!important}
+.pd-afterflow>li:focus-visible{outline:2px solid var(--pd-ink-inverse);outline-offset:4px}
+@media (prefers-reduced-motion:reduce){.pd-afterflow>li:hover .pd-afterflow-card,.pd-afterflow>li:focus-visible .pd-afterflow-card{transform:none!important}}
+@media (min-width:769px){.pd-after .pd-afterflow{flex:1 1 auto;justify-content:space-between}}
+@media (max-width:480px){.pd-after{padding:20px 16px!important}.pd-afterflow>li{gap:10px}.pd-afterflow-card{padding:12px 14px!important}}
 /* «Шесть случаев» (Р-805, облик — Р-812): карточки-ссылки «случай → что делаем → куда ведёт» на светлой подложке --pd-accent-tint (поля clamp(16px, 2vw, 32px), радиус 14) сеткой 3 колонки от 1200 px, 2 на 769—1199 px, одна до 768 px. Зоны карточки — подсеткой (subgrid): в ряду случай, действие и подпись перехода стоят на общих линиях. Случай — рядом со значком 22 px на плашке 44 px: одна и две строки случая занимают одну высоту, пустоты под однострочным случаем нет; тихой полосы нет. До 480 px поля карточки ужаты. */
 .pd-tasks-tray{padding:clamp(16px,2vw,32px)}
 .pd-tasks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;list-style:none;margin:0;padding:0}
@@ -144,20 +154,27 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-lift:hover,.pd-lift:focus-visible{transform:translateY(-5px)!important;box-shadow:0 10px 20px rgba(20,22,28,.09)!important}
 @media (prefers-reduced-motion:reduce){html .pd-lift{transition:none!important}html .pd-lift:hover,html .pd-lift:focus-visible{transform:none!important}}
 
-/* Фон в движении (Р-624, по указанию владельца; устроено как на «Экспертам»,
-   Р-620): кольца с точками покачиваются вокруг центра, пятно света за
-   кольцом первого экрана дышит. Размах подобран по каждому кольцу так,
-   чтобы точки не заходили под строки текста. Только transform и opacity;
-   при уменьшенном движении всё стоит (Р-93). */
+/* Фон в движении — как на «Экспертам» (Р-620, Р-625; по указанию
+   владельца 13.11.2026 — Р-884): кольцо первого экрана покачивается на ±30°
+   за 34 с, кольца ниже — на ±12° за 46 и 58 с, соседние навстречу; пятна
+   света дышат; узлы на кольцах первого экрана парят на ±6 px за 5,5 с со
+   сдвигом фазы (от 1200 px, как на «Экспертам»); на первом экране — сетка
+   точек. Точки колец первого экрана стоят на углах, с которых дуга ±30° не
+   заходит под строки текста и кнопки на 390—1920 px (подбор Р-884); узлы —
+   в просветах между текстом, снимками и плашками. Отрицательная задержка —
+   начало из положения макета. Только transform и opacity; при уменьшенном
+   движении всё стоит (Р-93). Реакции на курсор нет (Р-43). */
 @keyframes pd-swing{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
-@keyframes pd-swing-hero{from{transform:rotate(-24deg)}to{transform:rotate(24deg)}}
-@keyframes pd-swing-calm{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+@keyframes pd-swing-hero{from{transform:rotate(-30deg)}to{transform:rotate(30deg)}}
 @keyframes pd-breathe{from{opacity:.55;transform:scale(.9)}to{opacity:1;transform:scale(1.06)}}
+@keyframes pd-float{from{transform:translateY(-6px)}to{transform:translateY(6px)}}
 .pd-orb{transform-origin:51.5625% 51.7241%;animation:pd-swing 46s ease-in-out -23s infinite alternate}
 .pd-orb-b{animation-duration:58s;animation-delay:-29s;animation-direction:alternate-reverse}
-.pd-orb-hero{animation-name:pd-swing-hero;animation-duration:36s;animation-delay:-18s}
-.pd-orb-calm{animation-name:pd-swing-calm;animation-duration:30s;animation-delay:-15s}
+.pd-orb-hero{animation-name:pd-swing-hero;animation-duration:34s;animation-delay:-17s}
 .pd-glow{animation:pd-breathe 13s ease-in-out infinite alternate}
+.pd-node{animation:pd-float 5.5s ease-in-out infinite alternate}
+.pd-node:nth-of-type(2){animation-delay:-1.4s}.pd-node:nth-of-type(3){animation-delay:-2.8s}.pd-node:nth-of-type(4){animation-delay:-4.2s}
+@media (max-width:1199px){.pd-node{display:none!important}}
 @media (max-width:1024px){.pd-foot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media (max-width:560px){.pd-foot{grid-template-columns:minmax(0,1fr)!important}}
 .sp-crewcard{position:relative;z-index:1}
 .sp-crewfig{position:absolute;left:50%;transform:translateX(-50%);top:-166px;height:210px;width:auto;z-index:0;pointer-events:none}
@@ -186,15 +203,19 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <svg class="pd-orb pd-orb-hero" viewBox="0 0 640 580" width="1280" height="1160" fill="none" style="position:absolute;right:calc(50% - 610px - 230px);top:-190px">
 <g stroke="#D9E1EC" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EDF2F8" stroke-width="1"></ellipse>
-<circle cx="450" cy="300" r="6" fill="#D8E4F3"></circle>
-<circle cx="330" cy="104" r="4" fill="#14417A"></circle>
+<circle cx="390" cy="196" r="6" fill="#D8E4F3"></circle>
+<circle cx="514" cy="233" r="4" fill="#14417A"></circle>
 </svg>
 <div style="position:absolute;left:0;right:0;top:0;height:1180px;background-image:radial-gradient(var(--pd-art-dot) 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
+<span class="pd-node" style="position:absolute;left:calc(50% + 520px);top:158px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/pd-3d-bubbles.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
+<span class="pd-node" style="position:absolute;left:calc(50% - 101px);top:185px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/pd-3d-sheets.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
+<span class="pd-node" style="position:absolute;left:calc(50% + 2px);top:511px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/pd-3d-checklist.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
+<span class="pd-node" style="position:absolute;left:calc(50% - 32px);top:710px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/pd-3d-stairs.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
 <div class="pd-glow" style="position:absolute;left:calc(50% - 1020px);top:1070px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:1000px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
-<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="448" cy="208" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
 <div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:2120px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
@@ -208,7 +229,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:3100px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
-<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="476" cy="334" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
 <div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:4220px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
@@ -222,7 +243,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:5200px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
-<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="467" cy="239" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
 <div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:6320px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
@@ -484,23 +505,56 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <span class="sp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Считаем после того, как посмотрим работу</span>
 </div>
-<!-- Р-799: одна система контейнеров — белые карточки (рамка --pd-border, радиус 14, тень уровня 2) и единственная тёмная панель страницы (Р-608). Факторы — карточка-список в ряд с разделителями, номера спокойные: факторы не последовательность; тёмная панель консультации — на всю ширину («Что прислать для сметы» — в блоке заявки, Р-846); «Нормоконтроль» — карточка на ширину сетки, раскрытие и карточка-ссылка Р-791 — внутри неё. -->
-<ul class="sp-costlist" style="list-style:none;margin:0;padding:0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
-<sc-for list="{{ priceFactors }}" as="p" hint-placeholder-count="3">
-<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:20px 24px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ p.num }}</span>
-<div style="display:flex;flex-direction:column;gap:6px;min-width:0">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ p.title }}</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">{{ p.text }}</p>
+<!-- Р-799: одна система контейнеров — белые карточки (рамка --pd-border, радиус 14, тень уровня 2) и единственная тёмная панель страницы (Р-608). Факторы — «Подбор сметы» (Р-886); тёмная панель консультации — на всю ширину («Что прислать для сметы» — в блоке заявки, Р-846); «Нормоконтроль» — карточка на ширину сетки, раскрытие и карточка-ссылка Р-791 — внутри неё. -->
+<!-- Р-886: «Подбор сметы» вместо трёх факторов строкой (замечание владельца 13.11.2026: блок «очень простой… доработать функционально и сделать более комплексным и понятным»). Слева — три фактора переключателями (кнопки aria-pressed, как вкладки «Этапов»), справа — что войдёт в смету: этапы маршрута из «Этапов» с ориентировочной длительностью (для диплома и магистерской; для отчёта и статьи — срок из «Состава работ»), что проверяет куратор (текст карточки «Состава работ»), оплата по этапам; «Получить смету» ведёт к форме заявки и ставит в поле «Срок сдачи» выбранный срок. Цен и сумм нет (Р-03). Тёмная панель консультации и свёртка «Нормоконтроль» — прежние; строка об оплате перешла из панели в карточку. -->
+<div class="sp-est" style="gap:16px;align-items:stretch">
+<div class="sp-estpick" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:22px 24px;display:flex;flex-direction:column;gap:20px;min-width:0">
+<div style="display:flex;flex-direction:column;gap:6px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Подбор сметы</span>
+<p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary);max-width:56ch">Отметьте вид работы, стадию и срок: карточка «Что войдёт в вашу смету» покажет этапы, проверку куратора и порядок оплаты.</p>
 </div>
-</li>
+<sc-for list="{{ estGroups }}" as="g" hint-placeholder-count="3">
+<div role="group" aria-labelledby="{{ g.id }}" style="display:flex;flex-direction:column;gap:10px;min-width:0">
+<span style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:baseline;min-width:0"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ g.num }}</span><span style="display:flex;flex-direction:column;gap:4px;min-width:0"><span id="{{ g.id }}" style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ g.title }}</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ g.text }}</span></span></span>
+<div class="sp-estopts" style="display:flex;flex-wrap:wrap;gap:8px;padding-left:40px">
+<sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="3">
+<sc-if value="{{ o.on }}" hint-placeholder-val="{{ true }}"><button type="button" class="sp-estopt" aria-pressed="true" onClick="{{ o.pick }}" style="appearance:none;cursor:pointer;min-height:44px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;text-align:left;border:1px solid var(--pd-ink);background:var(--pd-ink);color:var(--pd-ink-inverse)">{{ o.label }}</button></sc-if>
+<sc-if value="{{ o.off }}" hint-placeholder-val="{{ false }}"><button type="button" class="sp-estopt" aria-pressed="false" onClick="{{ o.pick }}" style="appearance:none;cursor:pointer;min-height:44px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;text-align:left;border:1px solid var(--pd-border);background:var(--pd-ink-inverse);color:var(--pd-ink-secondary)">{{ o.label }}</button></sc-if>
 </sc-for>
-</ul>
+</div>
+</div>
+</sc-for>
+</div>
+<div class="sp-estcard" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:22px 24px;display:flex;flex-direction:column;gap:16px;min-width:0">
+<div style="display:flex;flex-direction:column;gap:6px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Что войдёт в вашу смету</span>
+<h3 role="status" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ estHead }}</h3>
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">{{ estSub }}</span>
+</div>
+<sc-if value="{{ estRoute }}" hint-placeholder-val="{{ true }}">
+<ol class="sp-eststeps" aria-label="Этапы маршрута" style="list-style:none;margin:0;padding:0;border-top:1px solid var(--pd-divider);border-bottom:1px solid var(--pd-divider)">
+<sc-for list="{{ estStages }}" as="t" hint-placeholder-count="5">
+<li style="display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:12px;align-items:baseline;padding:8px 0;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ t.num }}</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink)">{{ t.title }}</span><span style="font-size:13px;line-height:1.5;color:var(--pd-ink-muted);white-space:nowrap;font-variant-numeric:tabular-nums">{{ t.term }}</span></li>
+</sc-for>
+</ol>
+</sc-if>
+<sc-if value="{{ estTight }}" hint-placeholder-val="{{ false }}">
+<p style="margin:0;background:var(--pd-accent-tint);border-radius:10px;padding:10px 14px;font-size:14px;line-height:1.5;color:var(--pd-ink)">Маршрут дольше вашего срока: на консультации определяем, какие этапы укладываются в срок; календарный план до сдачи фиксируем в Задании.</p>
+</sc-if>
+<dl style="margin:0;display:grid;grid-template-columns:minmax(0,1fr);gap:12px">
+<div style="display:flex;flex-direction:column;gap:4px;min-width:0"><dt style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Что проверяет куратор</dt><dd style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ estCheck }}</dd></div>
+<div style="display:flex;flex-direction:column;gap:4px;min-width:0"><dt style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Оплата</dt><dd style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">По этапам: следующий этап оплачивается после приёмки предыдущего, стоимость каждого этапа — в Задании.</dd></div>
+</dl>
+<div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap">
+<sc-if value="{{ estRoute }}" hint-placeholder-val="{{ true }}"><a href="#route" onClick="{{ estToRoute }}" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Этапы подробно</a></sc-if>
+<a href="#request" onClick="{{ estGo }}" style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;min-height:44px;box-sizing:border-box;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:14px;font-weight:600;padding:0 26px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Получить смету<span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
+</div>
+</div>
+</div>
 <div style="margin-top:16px">
 <div style="background:var(--pd-accent-deep);border-radius:14px;padding:22px 24px;display:flex;flex-direction:column;gap:14px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent-edge)">Консультация 20 минут · не оплачивается</span>
 <p style="margin:0;font-size:16px;line-height:1.5;color:var(--pd-ink-inverse);max-width:44ch">Читаем работу, называем объём правок и срок. После этого считаем смету — до согласования Задания и до оплаты.</p>
-<p style="margin:auto 0 0;padding-top:14px;border-top:1px solid rgba(255,255,255,.24);font-size:14px;line-height:1.6;color:var(--pd-accent-edge)">Оплата по этапам: следующий этап оплачивается после приёмки предыдущего.</p>
 </div>
 </div>
 <div id="norm" class="sp-normbox" style="margin-top:16px;scroll-margin-top:24px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
@@ -850,21 +904,15 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </sc-if>
 </form>
-<!-- Р-846: справа от формы — «Что будет после отправки» вертикальной шкалой на высоту колонки (как «Компаниям», Р-835): шаги растягиваются, пустоты под формой нет. Синтезированное фото студентки снято. -->
-<div class="sp-reqsteps" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:20px 24px;display:flex;flex-direction:column;gap:16px;min-width:0">
+<!-- Р-885: справа от формы — «Что будет после отправки» тёмной панелью по образцу «Как проходит этап работы» на «Экспертам»: круги с цифрой на линии, белые карточки шагов с меткой роли; метка-факт «Срок ответа — рабочий день» сохранена. Панель на высоту колонки формы (Р-846), шаги делят высоту. Тёмная панель у формы — вторая на странице по Р-608: длинная страница, блок заявки в конце, панель «Сметы» далеко. -->
+<div class="sp-reqsteps pd-after" style="background:var(--pd-accent-deep);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:18px;min-width:0">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что будет после отправки</h3>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink-inverse)">Что будет после отправки</h3>
 <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 10px;border-radius:999px;background:var(--pd-accent-tint)"><span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:var(--pd-accent);-webkit-mask:{{ clockMask }};mask:{{ clockMask }}"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums;white-space:nowrap">Срок ответа — рабочий день</span></span>
 </div>
-<ol class="pd-track pd-track-v" role="list">
+<ol class="pd-afterflow" role="list" aria-label="Шаги после заявки">
 <sc-for list="{{ afterSteps }}" as="s" hint-placeholder-count="5">
-<li>
-<span class="pd-track-node" style="position:relative;z-index:1;width:28px;height:28px;box-sizing:border-box;border-radius:50%;border:2px solid var(--pd-accent);background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ s.num }}</span>
-<span class="pd-track-body" style="display:flex;flex-direction:column;gap:6px;min-width:0">
-<span class="pd-track-title" style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ s.text }}</span>
-</span>
-</li>
+<li tabindex="0"><span aria-hidden="true" class="pd-afterflow-num" style="position:relative;z-index:1;width:40px;height:40px;flex:0 0 40px;box-sizing:border-box;border-radius:50%;background:{{ s.numBg }};border:2px solid {{ s.numEdge }};color:{{ s.numInk }};display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1;font-weight:600;font-variant-numeric:tabular-nums">{{ s.n }}</span><div class="pd-afterflow-card" style="flex:1 1 auto;min-width:0;background:var(--pd-ink-inverse);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:4px"><span style="display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap"><span style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span><span style="background:{{ s.roleBg }};border-radius:999px;padding:2px 10px;font-size:12px;line-height:1.5;font-weight:600;color:{{ s.roleInk }}">{{ s.role }}</span></span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ s.text }}</span></div></li>
 </sc-for>
 </ol>
 </div>
@@ -991,8 +1039,22 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, situation: 1, step: 0, open: 0, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false, navOpen: false };
+  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, situation: 1, step: 0, open: 0, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false, navOpen: false, estKind: 0, estStage: 1, estTerm: 1 };
   componentDidMount(){
+    // Шаги после заявки (Р-885) проявляются по очереди, когда панель доходит
+    // до чтения, — один раз. Если панель уже на экране, при уменьшенном
+    // движении или без IntersectionObserver шаги видны сразу.
+    this.flow = document.querySelector('.pd-afterflow');
+    if (this.flow && 'IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        && this.flow.getBoundingClientRect().top > window.innerHeight) {
+      this.flow.setAttribute('data-flow', 'wait');
+      this.flowSeen = new IntersectionObserver(entries => {
+        if (!entries.some(e => e.isIntersecting)) return;
+        this.flow.setAttribute('data-flow', 'in');
+        this.flowSeen.disconnect();
+      }, { rootMargin: '0px 0px -12% 0px' });
+      this.flowSeen.observe(this.flow);
+    }
     // Всплывающее окно закрывается клавишей Esc — иначе с клавиатуры
     // из него не выйти, а закрывающая кнопка может быть прокручена.
     // Окно отзыва модальное (aria-modal): при открытии фокус переходит в
@@ -1042,6 +1104,7 @@ class Component extends DCLogic {
     document.addEventListener('click', this.onNormLink);
   }
   componentWillUnmount(){
+    if (this.flowSeen) this.flowSeen.disconnect();
     window.removeEventListener('keydown', this.onRevKey);
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('hashchange', this.openNorm);
@@ -1426,7 +1489,45 @@ class Component extends DCLogic {
           title, text, term,
           src: './assets/art/' + file
         }));
-        return { offerCards: svc };
+        // «Подбор сметы» (Р-886): три фактора сметы — переключателями, без цен
+        // (Р-03). Справа — что войдёт в смету: для диплома и магистерской этапы
+        // маршрута из «Этапов» (situationData) с ориентировочной длительностью,
+        // для отчёта и статьи — срок из карточки «Состава работ»; что проверяет
+        // куратор — текст той же карточки; оплата по этапам. Стадия задаёт
+        // маршрут «Этапов», срок «Меньше месяца» — маршрут «До защиты меньше
+        // месяца». Если маршрут по дням дольше выбранного срока — пометка.
+        // «Получить смету» ставит выбранный срок в поле «Срок сдачи» формы
+        // заявки (значение из того же списка terms, форма не меняется).
+        const factors = [
+          ['Тип работы', 'Диплом, магистерская, отчёт и статья различаются объёмом и требованиями кафедры.'],
+          ['Стадия готовности', 'Работа не начата или черновик готов — разный объём разбора.'],
+          ['Срок до защиты', 'Короткий срок означает плотный график и параллельную работу над разделами.']
+        ];
+        const EST_KINDS = [['Диплом и ВКР', 0, true], ['Магистерская', 1, true], ['Отчёт по практике', 3, false], ['Статья РИНЦ', 4, false]];
+        const EST_STAGES = [['Работа не начата', 'работа не начата'], ['Черновик есть', 'черновик есть'], ['Вернули на доработку', 'работу вернули на доработку']];
+        const EST_TERMS = [['Больше трёх месяцев', 'Больше трёх месяцев', 'больше трёх месяцев', Infinity], ['2—3 месяца', '2—3 месяца', '2⁠—⁠3 месяца', 92], ['1—2 месяца', '1—2 месяца', '1⁠—⁠2 месяца', 61], ['Меньше месяца', 'До защиты меньше месяца', 'меньше месяца', 31]];
+        const { estKind: k, estStage: st, estTerm: tm } = this.state;
+        const [, svcAt, hasRoute] = EST_KINDS[k];
+        const sit = tm === 3 ? 3 : st;
+        const [, sitTerm, , sitSteps] = situationData[sit];
+        const days = sitSteps.reduce((sum, row) => sum + row[2], 0);
+        const work = svc[svcAt];
+        const groups = [[EST_KINDS.map(([label]) => label), k, 'estKind'], [EST_STAGES.map(([label]) => label), st, 'estStage'], [EST_TERMS.map(([label]) => label), tm, 'estTerm']];
+        return {
+          offerCards: svc,
+          estGroups: factors.map(([title, text], i) => ({
+            title, text, num: '0' + (i + 1), id: 'sp-est-' + i,
+            opts: groups[i][0].map((label, j) => ({ label, on: j === groups[i][1], off: j !== groups[i][1], pick: () => this.setState({ [groups[i][2]]: j }) }))
+          })),
+          estHead: hasRoute ? 'Маршрут: ' + sitSteps.length + ' ' + stepWord(sitSteps.length) + ', ' + sitTerm : 'Срок по виду работы: ' + work.term,
+          estSub: work.title + ' · ' + EST_STAGES[st][1] + ' · до ' + (hasRoute ? 'защиты ' : 'сдачи ') + EST_TERMS[tm][2],
+          estRoute: hasRoute,
+          estStages: hasRoute ? sitSteps.map(([title, term], i) => ({ num: String(i + 1), title, term })) : [],
+          estTight: hasRoute && days > EST_TERMS[tm][3],
+          estCheck: work.text + (hasRoute ? '' : ' Этапы и даты фиксируем в Задании после разбора работы.'),
+          estToRoute: () => this.setState({ situation: sit, step: 0 }),
+          estGo: () => { const field = document.getElementById('rq-term'); if (field) field.value = EST_TERMS[tm][1]; }
+        };
       })(),
       ...(() => {
         // «Шесть случаев и первый шаг в каждом» (Р-805; значки — Р-812:
@@ -1479,11 +1580,6 @@ class Component extends DCLogic {
         ['Объём и структура введения', 'Сверяем актуальность, цель, задачи и объект с требованиями кафедры.'],
         ['Оглавление не совпадает с текстом', 'Сверяем оглавление с заголовками и нумерацию страниц.']
       ].map(([cause, fix], i) => ({ cause, fix, num: '0' + (i + 1) })),
-      priceFactors: [
-        ['Тип работы', 'Диплом, магистерская, отчёт и статья различаются объёмом и требованиями кафедры.'],
-        ['Стадия готовности', 'Работа не начата или черновик готов — разный объём разбора.'],
-        ['Срок до защиты', 'Короткий срок означает плотный график и параллельную работу над разделами.']
-      ].map(([title, text], i) => ({ title, text, num: '0' + (i + 1) })),
       askFor: [
         'Тему работы и требования кафедры к оформлению.',
         'План по главам или задание научного руководителя.',
@@ -1509,13 +1605,23 @@ class Component extends DCLogic {
       normMask: this.mask(this.state.normOpen ? 'arrow-left' : 'arrow-down'),
       toggleNorm: () => this.setState(s => ({ normOpen: !s.normOpen })),
       terms: ['Срок пока не назначен', 'До защиты меньше месяца', '1—2 месяца', '2—3 месяца', 'Больше трёх месяцев'].map(label => ({ label })),
+      // Шаги после заявки (Р-885): название, кто действует, пояснение. Круг и метка
+      // шага «Вы» — светлые, остальных — тёмный круг и серая метка, как на «Экспертам».
       afterSteps: [
-        ['Заявка и ответ менеджера', 'Менеджер отвечает в течение рабочего дня, Пн⁠—⁠Пт 10:00⁠—⁠19:00, и уточняет задачу.'],
-        ['Личный кабинет', 'Менеджер открывает доступ, вы прикладываете материалы по перечню «Что подготовить».'],
-        ['Куратор и созвон знакомства', 'Куратор со степенью по вашей специальности; созвон до 20 минут ведёт менеджер.'],
-        ['Итог консультации и Задание', 'Состав работ, календарный план и стоимость по этапам; Задание вы согласуете в кабинете.'],
-        ['Этапы с приёмкой', 'Следующий этап оплачивается после приёмки предыдущего.']
-      ].map(([title, text], i) => ({ title, text, num: '0' + (i + 1) })),
+        ['Менеджер отвечает', 'Менеджер', 'Отвечает в течение рабочего дня, Пн⁠—⁠Пт 10:00⁠—⁠19:00, и уточняет тему работы и срок сдачи.'],
+        ['Доступ в личный кабинет', 'Вы', 'Менеджер открывает вам вход в кабинет. Туда вы загружаете то, что уже есть: тему, план, черновик, требования кафедры.'],
+        ['Знакомство с куратором', 'Куратор', 'Куратор со степенью по вашей специальности. Созвон знакомства до 20 минут ведёт менеджер.'],
+        ['Задание и смета', 'Менеджер', 'В Задании — состав работ, календарный план и стоимость каждого этапа. Задание вы согласуете в кабинете.'],
+        ['Работа по этапам', 'Вы', 'Каждый этап вы принимаете в кабинете. Следующий этап оплачивается после приёмки предыдущего.']
+      ].map(([title, role, text], i) => {
+        const you = role === 'Вы';
+        return { title, role, text, n: String(i + 1),
+          numBg: you ? 'var(--pd-ink-inverse)' : 'var(--pd-accent-deep)',
+          numEdge: you ? 'var(--pd-ink-inverse)' : 'var(--pd-accent-soft)',
+          numInk: you ? 'var(--pd-accent)' : 'var(--pd-ink-inverse)',
+          roleBg: you ? 'var(--pd-accent-tint)' : 'var(--pd-surface-quiet)',
+          roleInk: you ? 'var(--pd-accent)' : 'var(--pd-ink-secondary)' };
+      }),
       sentTop: this.state.sentTop,
       sentMain: this.state.sentMain,
       submitTop: e => { e.preventDefault(); this.setState({ sentTop: true }, () => { const el = document.querySelector('[data-sent="top"]'); if (el) el.focus(); }); },

@@ -63,10 +63,20 @@ describe('Р-810: «Что закреплено в договоре» на «А�
   });
 
   it('на «Аспирантам» объёмные изображения — ровно в двух блоках: «Шесть шагов» и «Условия»', () => {
-    const tags = MAIN.match(/<img\b[^>]*>/gu) ?? [];
+    // Узлы на кольцах первого экрана (Р-884) — декоративный фоновый слой
+    // aria-hidden, как на «Экспертам», а не блок страницы; их изображения
+    // не повторяют изображений двух блоков.
+    const bgAt = MAIN.indexOf('<div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none');
+    assert.ok(bgAt > 0, 'нет фонового слоя');
+    const bg = MAIN.slice(bgAt, MAIN.indexOf('class="pd-skip"', bgAt));
+    const page = MAIN.replace(bg, '');
+    const nodes = [...bg.matchAll(/<span class="pd-node"[^>]*><img src="\.\/assets\/art\/([a-z0-9-]+)\.webp" alt=""/gu)].map((m) => m[1]!);
+    assert.ok(nodes.length > 0, 'нет узлов первого экрана');
+    for (const name of nodes) assert.ok(!STEP_IMG.includes(name) && !Object.values(ART).includes(name), `${name} в узлах повторяет изображение блока`);
+    const tags = page.match(/<img\b[^>]*>/gu) ?? [];
     const art = tags.filter((t) => /src="(?:\.\/assets\/art\/(?:pd|ex)-3d-|\{\{ [a-z]+\.img \}\})/u.test(t));
     assert.deepEqual(art.map((t) => t.match(/src="([^"]+)"/u)![1]), ['{{ u.img }}', '{{ p.img }}'], 'объёмные изображения появились в третьем блоке');
-    const named = MAIN.split('\n').filter((l) => /\b(?:pd|ex)-3d-[a-z]+/u.test(l) && !/^\s*\/\//u.test(l));
+    const named = page.split('\n').filter((l) => /\b(?:pd|ex)-3d-[a-z]+/u.test(l) && !/^\s*\/\//u.test(l));
     assert.deepEqual(named.map((l) => l.trim().slice(0, 14)).sort(), ['const stepImg ', 'const uspArt ='], 'имя объёмного изображения вне двух блоков');
   });
 

@@ -83,7 +83,10 @@
 .bp-geo-pulse{transform-box:fill-box;transform-origin:center;animation:bp-geo-pulse 3.2s ease-in-out infinite alternate}
 .bp-geo-pulse-b{animation-delay:-1.6s}
 @media (max-width:480px){.bp-geo-card{padding:16px 14px 14px!important}.bp-geo-chip{font-size:12px!important;padding:2px 7px!important}}
-.bp-req{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)}
+/* Р-885: колонки формы и шагов поровну (было 1.05fr и .95fr), на 1025—1199 px шагам шире, до 1024 px — одной колонкой: иначе карточки шагов выше формы. */
+.bp-req{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:1199px){.bp-req{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}}
+@media (max-width:1024px){.bp-req{grid-template-columns:minmax(0,1fr)}}
 /* Блок заявки (Р-835): форма и «Что будет после отправки» — две колонки одной высоты по содержимому (ячейки сетки тянутся на высоту ряда), «Что прислать для сметы» — полосой на всю ширину под ними: до 768 px изображение сверху, от 769 px — слева на высоту полосы, от 1025 px четыре пункта в две колонки. */
 .bp-reqask{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr)}
 .bp-reqart{height:112px;border-bottom:1px solid var(--pd-divider)}
@@ -91,17 +94,20 @@
 @media (min-width:769px){.bp-reqask{grid-template-columns:240px minmax(0,1fr)}.bp-reqart{height:auto;min-height:160px;border-bottom:0;border-right:1px solid var(--pd-divider)}.bp-reqbody{padding:20px 24px}}
 @media (min-width:1025px){.bp-asklist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px!important}}
 /* Шаги «Что будет после отправки» в колонке у формы (Р-835): от 769 px шкала занимает остаток карточки, лишняя высота делится между промежутками шагов — линия связи тянется до следующего узла, под последним шагом пустоты нет. */
-@media (min-width:769px){.bp-reqsteps .pd-track-v{flex:1 1 auto}.bp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}
-/* Шкала шагов «Что будет после отправки» (Р-800) — один компонент на «Студентам» и «Компаниям». Шаги — последовательность, поэтому с номерами: узлы 28 px на общей линии 2 px --pd-edge-neutral, разделителей под шагами нет. Горизонтальная: узел над текстом, линия от узла к узлу соседней колонки (промежуток колонок 24 px), колонки ряда одной высоты. Вертикальная (.pd-track-v): узел слева, линия вниз к следующему узлу. Последний шаг ряда линии не ведёт. */
-.pd-track{list-style:none;margin:0;padding:0;gap:28px 24px}
-.pd-track>li{position:relative;min-width:0;display:flex;flex-direction:column;gap:14px}
-.pd-track>li::after{content:"";position:absolute;top:13px;left:28px;right:-24px;height:2px;border-radius:999px;background:var(--pd-edge-neutral)}
-.pd-track>li:last-child::after{display:none}
-.pd-track-v{display:flex;flex-direction:column;gap:0}
-.pd-track-v>li{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:14px;padding-bottom:20px}
-.pd-track-v>li:last-child{padding-bottom:0}
-.pd-track-v>li::after{top:28px;bottom:0;left:13px;right:auto;width:2px;height:auto}
-.pd-track-v .pd-track-body{padding-top:4px}
+/* «Что будет после отправки» у формы заявки (Р-885; образец — панель «Как проходит этап работы» на «Экспертам», .ex-flow): тёмная панель --pd-accent-deep, радиус 14; вертикальная линия 2 px --pd-accent-soft, круги 40 px с цифрой; справа белые карточки — заголовок шага 15/600, метка роли пилюлей, пояснение 14 px. Круг шага «Вы» — белый с цифрой --pd-accent, остальные — тёмные с обводкой --pd-accent-soft, как в образце. Когда панель доходит до чтения, карточки проявляются по очереди сверху вниз один раз (opacity и transform, 260 мс, шаг 90 мс; data-flow ставит сценарий страницы, без сценария и при уменьшенном движении шаги видны сразу); наведение и фокус подсвечивают шаг. От 769 px шаги делят высоту колонки формы. */
+.pd-afterflow{position:relative;margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.pd-afterflow::before{content:"";position:absolute;left:19px;top:24px;bottom:24px;width:2px;background:var(--pd-accent-soft);opacity:.55}
+.pd-afterflow>li{position:relative;display:flex;align-items:flex-start;gap:14px;border-radius:10px;transition:opacity 260ms cubic-bezier(.2,0,.2,1),transform 260ms cubic-bezier(.2,0,.2,1)}
+.pd-afterflow>li:nth-child(2){transition-delay:90ms}.pd-afterflow>li:nth-child(3){transition-delay:180ms}.pd-afterflow>li:nth-child(4){transition-delay:270ms}.pd-afterflow>li:nth-child(5){transition-delay:360ms}
+.pd-afterflow[data-flow="wait"]>li{opacity:0;transform:translateY(12px)}
+.pd-afterflow-num{transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.pd-afterflow-card{transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)}
+.pd-afterflow>li:hover .pd-afterflow-card,.pd-afterflow>li:focus-visible .pd-afterflow-card{background:var(--pd-accent-tint)!important;transform:translateX(4px)}
+.pd-afterflow>li:hover .pd-afterflow-num,.pd-afterflow>li:focus-visible .pd-afterflow-num{background:var(--pd-ink-inverse)!important;border-color:var(--pd-ink-inverse)!important;color:var(--pd-accent)!important}
+.pd-afterflow>li:focus-visible{outline:2px solid var(--pd-ink-inverse);outline-offset:4px}
+@media (prefers-reduced-motion:reduce){.pd-afterflow>li:hover .pd-afterflow-card,.pd-afterflow>li:focus-visible .pd-afterflow-card{transform:none!important}}
+@media (min-width:769px){.pd-after .pd-afterflow{flex:1 1 auto;justify-content:space-between}}
+@media (max-width:480px){.pd-after{padding:20px 16px!important}.pd-afterflow>li{gap:10px}.pd-afterflow-card{padding:12px 14px!important}}
 .bp-support{display:grid;grid-template-columns:minmax(0,1fr)}
 @media (max-width:1024px){.bp-pack{grid-column:span 3!important}.bp-orbit{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;aspect-ratio:auto!important;width:100%}.bp-orbit>.bp-ring,.bp-orbit>.bp-dot,.bp-orbit>.bp-core{display:none!important}.bp-orbit>.bp-crew{position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-width:0!important}.bp-cat{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:768px){.bp-hero,.bp-trl,.bp-req,.bp-rights,.bp-support,.bp-team,.bp-faq,.bp-mech{grid-template-columns:minmax(0,1fr)}.bp-pack{grid-column:span 6!important}}
@@ -192,20 +198,27 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-lift:hover,.pd-lift:focus-visible{transform:translateY(-5px)!important;box-shadow:0 10px 20px rgba(20,22,28,.09)!important}
 @media (prefers-reduced-motion:reduce){html .pd-lift{transition:none!important}html .pd-lift:hover,html .pd-lift:focus-visible{transform:none!important}}
 
-/* Фон в движении (Р-624, по указанию владельца; устроено как на «Экспертам»,
-   Р-620): кольца с точками покачиваются вокруг центра, пятно света за
-   кольцом первого экрана дышит. Размах подобран по каждому кольцу так,
-   чтобы точки не заходили под строки текста. Только transform и opacity;
-   при уменьшенном движении всё стоит (Р-93). */
+/* Фон в движении — как на «Экспертам» (Р-620, Р-625; по указанию
+   владельца 13.11.2026 — Р-884): кольцо первого экрана покачивается на ±30°
+   за 34 с, кольца ниже — на ±12° за 46 и 58 с, соседние навстречу; пятна
+   света дышат; узлы на кольцах первого экрана парят на ±6 px за 5,5 с со
+   сдвигом фазы (от 1200 px, как на «Экспертам»); на первом экране — сетка
+   точек. Точки колец первого экрана стоят на углах, с которых дуга ±30° не
+   заходит под строки текста и кнопки на 390—1920 px (подбор Р-884); узлы —
+   в просветах между текстом, снимками и плашками. Отрицательная задержка —
+   начало из положения макета. Только transform и opacity; при уменьшенном
+   движении всё стоит (Р-93). Реакции на курсор нет (Р-43). */
 @keyframes pd-swing{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
-@keyframes pd-swing-hero{from{transform:rotate(-24deg)}to{transform:rotate(24deg)}}
-@keyframes pd-swing-calm{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+@keyframes pd-swing-hero{from{transform:rotate(-30deg)}to{transform:rotate(30deg)}}
 @keyframes pd-breathe{from{opacity:.55;transform:scale(.9)}to{opacity:1;transform:scale(1.06)}}
+@keyframes pd-float{from{transform:translateY(-6px)}to{transform:translateY(6px)}}
 .pd-orb{transform-origin:51.5625% 51.7241%;animation:pd-swing 46s ease-in-out -23s infinite alternate}
 .pd-orb-b{animation-duration:58s;animation-delay:-29s;animation-direction:alternate-reverse}
-.pd-orb-hero{animation-name:pd-swing-hero;animation-duration:36s;animation-delay:-18s}
-.pd-orb-calm{animation-name:pd-swing-calm;animation-duration:30s;animation-delay:-15s}
+.pd-orb-hero{animation-name:pd-swing-hero;animation-duration:34s;animation-delay:-17s}
 .pd-glow{animation:pd-breathe 13s ease-in-out infinite alternate}
+.pd-node{animation:pd-float 5.5s ease-in-out infinite alternate}
+.pd-node:nth-of-type(2){animation-delay:-1.4s}.pd-node:nth-of-type(3){animation-delay:-2.8s}.pd-node:nth-of-type(4){animation-delay:-4.2s}
+@media (max-width:1199px){.pd-node{display:none!important}}
 .bp-crewcard{position:relative;z-index:1}
 .bp-crewfig{position:absolute;left:50%;transform:translateX(-50%);top:-166px;height:210px;width:auto;z-index:0;pointer-events:none}
 .bp-orbit{margin-top:156px}
@@ -230,10 +243,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <svg class="pd-orb pd-orb-hero" viewBox="0 0 640 580" width="1180" height="1069" fill="none" style="position:absolute;right:calc(50% - 610px - 210px);top:-200px">
 <g stroke="#D9E1EC" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EDF2F8" stroke-width="1"></ellipse>
-<circle cx="450" cy="300" r="6" fill="#D8E4F3"></circle>
-<circle cx="330" cy="104" r="4" fill="#14417A"></circle>
+<circle cx="390" cy="196" r="6" fill="#D8E4F3"></circle>
+<circle cx="519" cy="249" r="4" fill="#14417A"></circle>
 </svg>
 <div style="position:absolute;left:0;right:0;top:0;height:1100px;background-image:radial-gradient(var(--pd-art-dot) 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
+<span class="pd-node" style="position:absolute;left:calc(50% + 342px);top:153px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/ex-3d-contract.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
+<span class="pd-node" style="position:absolute;left:calc(50% - 79px);top:200px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/pd-3d-flask.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
+<span class="pd-node" style="position:absolute;left:calc(50% + 7px);top:771px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/ex-3d-shield.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
 <div class="pd-glow" style="position:absolute;left:calc(50% - 1020px);top:1070px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:1000px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
@@ -252,7 +268,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:3100px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
-<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="391" cy="437" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
 <div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:4220px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
@@ -266,7 +282,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:5200px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
-<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="364" cy="446" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
 <div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:6320px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
@@ -280,7 +296,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:7300px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
-<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="371" cy="444" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
 <div class="pd-glow" style="position:absolute;left:calc(50% + 360px);top:8420px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
@@ -294,7 +310,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:9400px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
 <ellipse cx="330" cy="300" rx="262" ry="262" stroke="#EFF1F4" stroke-width="1" stroke-dasharray="4 6"></ellipse>
-<circle cx="480" cy="300" r="5" fill="#D3DEEC"></circle>
+<circle cx="456" cy="218" r="5" fill="#D3DEEC"></circle>
 <circle cx="330" cy="64" r="4" fill="#B4C9E5"></circle>
 </svg>
 </div>
@@ -919,18 +935,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </sc-if>
 </form>
-<!-- Р-800: шкала шагов, как на «Студентам», — вертикальная: блок стоит в колонке у формы. Узлы-номера на общей линии, без разделителей под шагами. -->
-<div class="bp-reqsteps" style="border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-surface-quiet);padding:20px 24px;display:flex;flex-direction:column;gap:16px;min-width:0">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Что будет после отправки</h3>
-<ol class="pd-track pd-track-v" role="list">
+<!-- Р-885: «Что будет после отправки» — тёмная панель в колонке у формы по образцу «Как проходит этап работы» на «Экспертам»: круги с цифрой на линии, белые карточки шагов с меткой роли; на высоту колонки формы (Р-835), шаги делят высоту. Вторая тёмная панель страницы по Р-608: блок заявки в конце длинной страницы; плитку «Прав» отделяют «Вопросы». -->
+<div class="bp-reqsteps pd-after" style="background:var(--pd-accent-deep);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:18px;min-width:0">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink-inverse)">Что будет после отправки</h3>
+<ol class="pd-afterflow" role="list" aria-label="Шаги после заявки">
 <sc-for list="{{ afterSteps }}" as="s" hint-placeholder-count="5">
-<li>
-<span class="pd-track-node" style="position:relative;z-index:1;width:28px;height:28px;box-sizing:border-box;border-radius:50%;border:2px solid var(--pd-accent);background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1;font-weight:600;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ s.num }}</span>
-<span class="pd-track-body" style="display:flex;flex-direction:column;gap:6px;min-width:0">
-<span style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span>
-<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ s.text }}</span>
-</span>
-</li>
+<li tabindex="0"><span aria-hidden="true" class="pd-afterflow-num" style="position:relative;z-index:1;width:40px;height:40px;flex:0 0 40px;box-sizing:border-box;border-radius:50%;background:{{ s.numBg }};border:2px solid {{ s.numEdge }};color:{{ s.numInk }};display:flex;align-items:center;justify-content:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1;font-weight:600;font-variant-numeric:tabular-nums">{{ s.n }}</span><div class="pd-afterflow-card" style="flex:1 1 auto;min-width:0;background:var(--pd-ink-inverse);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:4px"><span style="display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap"><span style="font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ s.title }}</span><span style="background:{{ s.roleBg }};border-radius:999px;padding:2px 10px;font-size:12px;line-height:1.5;font-weight:600;color:{{ s.roleInk }}">{{ s.role }}</span></span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ s.text }}</span></div></li>
 </sc-for>
 </ol>
 </div>
@@ -1083,6 +1093,20 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 class Component extends DCLogic {
   state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, trl: 5, open: { 0: true }, allOpen: false, mech: {}, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, highlight: null, faqOpen: 0, navOpen: false };
   componentDidMount(){
+    // Шаги после заявки (Р-885) проявляются по очереди, когда панель доходит
+    // до чтения, — один раз. Если панель уже на экране, при уменьшенном
+    // движении или без IntersectionObserver шаги видны сразу.
+    this.flow = document.querySelector('.pd-afterflow');
+    if (this.flow && 'IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        && this.flow.getBoundingClientRect().top > window.innerHeight) {
+      this.flow.setAttribute('data-flow', 'wait');
+      this.flowSeen = new IntersectionObserver(entries => {
+        if (!entries.some(e => e.isIntersecting)) return;
+        this.flow.setAttribute('data-flow', 'in');
+        this.flowSeen.disconnect();
+      }, { rootMargin: '0px 0px -12% 0px' });
+      this.flowSeen.observe(this.flow);
+    }
     // Всплывающее окно закрывается клавишей Esc — иначе с клавиатуры
     // из него не выйти, а закрывающая кнопка может быть прокручена.
     // Окно отзыва модальное (aria-modal): при открытии фокус переходит в
@@ -1163,6 +1187,7 @@ class Component extends DCLogic {
     this.wide.addEventListener('change', this.syncNav);
   }
   componentWillUnmount(){
+    if (this.flowSeen) this.flowSeen.disconnect();
     window.removeEventListener('keydown', this.onRevKey);
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('resize', this.onMechResize);
@@ -1592,13 +1617,23 @@ class Component extends DCLogic {
         }));
         return { rightsLead: rights[0], rightsRest: rights.slice(1) };
       })(),
+      // Шаги после заявки (Р-885): название, кто действует, пояснение. Круг и метка
+      // шага «Вы» — светлые, остальных — тёмный круг и серая метка, как на «Экспертам».
       afterSteps: [
-        ['01', 'Заявка и ответ менеджера', 'Менеджер отвечает в течение рабочего дня, Пн⁠—⁠Пт 10:00⁠—⁠19:00, присылает NDA и проект договора; задачу обсуждаем после подписания NDA.'],
-        ['02', 'Личный кабинет', 'Менеджер открывает доступ после подписания NDA, вы прикладываете материалы по перечню «Что подготовить».'],
-        ['03', 'Куратор и созвон знакомства', 'Куратор — отраслевой эксперт со степенью. На созвоне знакомства до 20 минут менеджер и куратор разбирают разработку, стадию и получателя документа.'],
-        ['04', 'Итог консультации и Задание', 'Состав работ, календарный план и стоимость по этапам — в Задании к договору; Задание вы согласуете в кабинете.'],
-        ['05', 'Этапы с приёмкой', 'Следующий этап оплачивается после приёмки предыдущего.']
-      ].map(([num, title, text]) => ({ num, title, text })),
+        ['Менеджер отвечает', 'Менеджер', 'Отвечает в течение рабочего дня, Пн⁠—⁠Пт 10:00⁠—⁠19:00, присылает NDA и проект договора.'],
+        ['Доступ в личный кабинет', 'Вы', 'Менеджер открывает вход после подписания NDA. Туда вы загружаете материалы проекта, которые уже есть.'],
+        ['Знакомство с куратором', 'Куратор', 'Куратор — отраслевой эксперт со степенью. Задачу обсуждаем после подписания NDA: на созвоне до 20 минут менеджер и куратор разбирают разработку, стадию и получателя документа.'],
+        ['Задание и смета', 'Менеджер', 'Задание к договору: состав работ, календарный план и стоимость каждого этапа. Его вы согласуете в кабинете.'],
+        ['Работа по этапам', 'Вы', 'Каждый этап вы принимаете в кабинете. Следующий этап оплачивается после приёмки предыдущего.']
+      ].map(([title, role, text], i) => {
+        const you = role === 'Вы';
+        return { title, role, text, n: String(i + 1),
+          numBg: you ? 'var(--pd-ink-inverse)' : 'var(--pd-accent-deep)',
+          numEdge: you ? 'var(--pd-ink-inverse)' : 'var(--pd-accent-soft)',
+          numInk: you ? 'var(--pd-accent)' : 'var(--pd-ink-inverse)',
+          roleBg: you ? 'var(--pd-accent-tint)' : 'var(--pd-surface-quiet)',
+          roleInk: you ? 'var(--pd-accent)' : 'var(--pd-ink-secondary)' };
+      }),
       askFor: [
         'Описание разработки и решаемой задачи.',
         'Стадию готовности: лабораторные данные, макет, прототип, образец.',
