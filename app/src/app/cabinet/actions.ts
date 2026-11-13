@@ -20,6 +20,7 @@ import { draftFits, markedDraft } from '../../lib/cabinet/flash-value';
 import { draftsFor } from '../../lib/cabinet/message-drafts';
 import { OUTCOME_ANCHOR } from '../../lib/cabinet/outcome-lines';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
+import { editOrder } from '../../lib/cabinet/orders';
 import { ClientChoiceNeeded, orderRetryDraft } from '../../lib/cabinet/client-match';
 import { homeFor } from '../../lib/cabinet/nav';
 import {
@@ -115,7 +116,6 @@ import { enqueue, retryFailed, retryLeadLetter } from '../../lib/cabinet/outbox'
 import { reviewFeedback } from '../../lib/cabinet/feedback';
 import {
   addStage,
-  editProject,
   editStage,
   approveLead,
   assignExpert,
@@ -767,32 +767,45 @@ function fieldsOf(form: FormData, names: readonly string[]): Record<string, stri
   return Object.fromEntries(names.map((name) => [name, String(form.get(name) ?? '')]));
 }
 
-/** Правка карточки работы менеджером (решение Р-190). */
-export async function saveProject(form: FormData): Promise<void> {
+/**
+ * «Редактировать заказ» (решение Р-872; карточка — Р-190): карточка,
+ * вид работы, срок и сумма договора одной формой. Отказ — у формы, с
+ * набранным (Р-279, Р-722); исход — строкой над формой.
+ */
+export async function saveOrder(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
+  const back = `/cabinet/projects/${code}/order`;
+  let failure: string | null = null;
   try {
-    await editProject(actor, {
+    const days = String(form.get('approvalDays') ?? '').trim();
+    const total = String(form.get('contractTotal') ?? '').trim();
+    await editOrder(actor, {
       projectId: String(form.get('projectId') ?? ''),
+      updatedAt: String(form.get('updatedAt') ?? '') || null,
       title: String(form.get('title') ?? ''),
       topic: String(form.get('topic') ?? ''),
       summary: String(form.get('summary') ?? ''),
+      serviceTypeId: String(form.get('serviceTypeId') ?? ''),
       dueOn: dateOrNull(form.get('dueOn')),
-      reason: String(form.get('dueReason') ?? ''),
-      // Поле есть только у формы карточки; пустое значение не меняет срок.
-      ...(String(form.get('approvalDays') ?? '').trim() === ''
-        ? {}
-        : { approvalDays: Number(String(form.get('approvalDays')).trim()) }),
+      dueReason: String(form.get('dueReason') ?? ''),
+      ...(days === '' ? {} : { approvalDays: Number(days) }),
+      // Пустое поле суммы не снимает договор: сумма просто не меняется.
+      contractTotal: total === '' ? null : parseAmount(total),
     });
   } catch (error) {
-    await manageFailure(
-      code,
-      'project',
-      error,
-      fieldsOf(form, ['title', 'topic', 'summary', 'dueOn', 'dueReason', 'approvalDays']),
+    failure = reasonOf(error, 'Не удалось сохранить заказ: попробуйте ещё раз. Введённое сохранено в форме.');
+  }
+  if (failure !== null) {
+    redirect(
+      await withError(back, failure, {
+        slot: 'order',
+        draft: fieldsOf(form, ['title', 'topic', 'summary', 'serviceTypeId', 'dueOn', 'dueReason', 'approvalDays', 'contractTotal']),
+        anchor: 'card',
+      }),
     );
   }
-  redirect(`/cabinet/projects/${code}`);
+  redirect(`${back}?saved=1#card`);
 }
 
 /**

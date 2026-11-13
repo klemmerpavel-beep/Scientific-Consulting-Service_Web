@@ -25,6 +25,7 @@ import {
   CHECK_TITLE,
   CONTACT_LABEL,
   MARK_LABEL,
+  ORDER_FIELD_LABEL,
 } from './code-labels.ts';
 import { eventLabel } from './events.ts';
 import { leadSourceLabel, leadStatusLabel } from './lead-labels.ts';
@@ -666,6 +667,10 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
   PROJECT_EDITED: {
     expertRoleFrom: { name: 'роль куратора была', value: expertRoleLabel },
     expertRoleTo: { name: 'роль куратора стала', value: expertRoleLabel },
+    // «Редактировать заказ» (решение Р-872): что изменено — подписями формы.
+    fields: { name: 'изменено', value: byMap(ORDER_FIELD_LABEL) },
+    serviceTypeFrom: { name: 'вид работы был' },
+    serviceTypeTo: { name: 'вид работы стал' },
   },
   PROJECT_STATUS_CHANGED: change(byMap(PROJECT_STATUS_LABEL)),
   PLAN_CHANGED: {

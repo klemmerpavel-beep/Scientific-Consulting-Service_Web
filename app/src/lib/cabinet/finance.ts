@@ -1,7 +1,8 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { workLine } from './work-line.ts';
-import { can, ensure, scopePayouts, type Actor } from './access.ts';
+import { can, ensure, scopePayouts, type Actor, type ProjectRef } from './access.ts';
+import { openContractCheck } from './head-checks.ts';
 import { record } from './audit.ts';
 import { daysPast, moscowToday, now as clockNow } from './clock.ts';
 import { enqueue } from './outbox.ts';
@@ -157,6 +158,10 @@ export async function saveContract(actor: Actor, input: ContractInput) {
     },
     update: { number, signedOn: input.signedOn ?? null, totalAmount: input.totalAmount },
   });
+  // Плановый остаток — за новой суммой договора (Р-871); договор,
+  // заведённый или изменённый менеджером, руководитель проверяет (Р-872).
+  if (before !== null && before.totalAmount !== input.totalAmount) await settleRest(prisma, contract.id);
+  if (before === null || before.totalAmount !== input.totalAmount) await noteManagerContract(prisma, actor, input.projectId);
 
   // Правка договора — прежние номер и сумма рядом с новыми: иначе по
   // журналу не восстановить, с чего начиналось (решение Р-244).
@@ -176,6 +181,75 @@ export async function saveContract(actor: Actor, input: ContractInput) {
           },
   });
   return contract;
+}
+
+/**
+ * Договор, заведённый или изменённый менеджером, — дело руководителю
+ * «Проверьте договор» (Р-338): деньги своей работы менеджер с Р-870 ведёт
+ * сам, а руководитель узнаёт о сумме сразу. Одно открытое дело на работу:
+ * правка суммы за правкой не плодит дел (решение Р-872).
+ */
+async function noteManagerContract(db: Db, actor: Actor, projectId: string): Promise<void> {
+  if (actor.role !== 'MANAGER') return;
+  const open = await db.headCheck.count({ where: { projectId, kind: 'CONTRACT_BY_MANAGER', closedAt: null } });
+  if (open === 0) await openContractCheck(db, projectId);
+}
+
+/**
+ * Сумма заказа с экрана «Редактировать заказ» (решение Р-872): договор
+ * заводится или правится в той же транзакции, что карточка, — тем же
+ * правилом, что `saveContract`: сумма больше нуля и не ниже полученного,
+ * по обезличенному клиенту и отменённой работе новый договор не
+ * заводится. Номер нового договора — код работы, как у переноса книги и
+ * ручного заказа. `false` — сумма прежняя, записывать нечего.
+ */
+export async function setOrderTotal(
+  tx: Prisma.TransactionClient,
+  actor: Actor,
+  ref: ProjectRef,
+  code: string,
+  total: bigint,
+): Promise<boolean> {
+  ensure(actor, 'PAYMENT_EDIT', ref);
+  if (total <= 0n) throw new Error('Сумма договора должна быть больше нуля');
+  const before = await tx.contract.findUnique({
+    where: { projectId: ref.id },
+    select: { id: true, number: true, totalAmount: true, tranches: { select: { amount: true, status: true } } },
+  });
+  if (before !== null && before.totalAmount === total) return false;
+  await ensureMoneyWritable(ref.id, before === null);
+  if (before !== null) {
+    const received = before.tranches.filter((t) => t.status === 'PAID').reduce((acc, t) => acc + t.amount, 0n);
+    if (total < received) {
+      throw new Error(`Сумма договора меньше уже полученного по нему (${formatAmount(received)})`);
+    }
+  } else {
+    const taken = await tx.contract.findFirst({ where: { number: code }, select: { id: true } });
+    if (taken !== null) {
+      throw new Error(`Договор с номером «${code}» уже заведён по другой работе: заведите договор на «Оплатах и документах»`);
+    }
+  }
+  const contract =
+    before === null
+      ? await tx.contract.create({ data: { projectId: ref.id, number: code, totalAmount: total }, select: { id: true } })
+      : await tx.contract.update({ where: { id: before.id }, data: { totalAmount: total }, select: { id: true } });
+  await settleRest(tx, contract.id);
+  await record(
+    actor,
+    {
+      action: 'CONTRACT_SAVED',
+      objectType: 'Contract',
+      objectId: contract.id,
+      projectId: ref.id,
+      payload:
+        before === null
+          ? { number: code, total: money(total) }
+          : { number: before.number, total: money(total), totalFrom: money(before.totalAmount) },
+    },
+    tx,
+  );
+  await noteManagerContract(tx, actor, ref.id);
+  return true;
 }
 
 export interface TrancheInput {
