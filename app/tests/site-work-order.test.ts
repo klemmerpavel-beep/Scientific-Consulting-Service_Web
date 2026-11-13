@@ -32,13 +32,26 @@ const withoutTeam = (source: string) => {
   return source.slice(0, source.lastIndexOf('<section', k)) + source.slice(source.indexOf('</section>', k));
 };
 
-/** Пять шагов концепции: название шага и что обязательно сказано в его тексте. */
+/** Пять шагов концепции: название шага и что обязательно сказано в его тексте («Шесть шагов» «Аспирантам»). */
 const CONCEPT: ReadonlyArray<readonly [string, readonly RegExp[]]> = [
   ['Заявка и ответ менеджера', [/в течение рабочего дня/u, /Пн—Пт 10:00—19:00/u]],
   ['Личный кабинет', [/Менеджер открывает/u, /по перечню «Что подготовить»/u]],
   ['Куратор и созвон знакомства', [/до 20 минут/u]],
   ['Итог консультации и Задание', [/[Сс]остав работ, календарный план и стоимость по этапам/u, /согласуете [^']*в кабинете/u]],
   ['Этапы с приёмкой', [/Следующий этап оплачивается после приёмки предыдущего/u]],
+];
+/**
+ * Те же пять шагов в панели «Что будет после отправки» у формы заявки — в
+ * редакции Р-885 (замечание владельца 13.11.2026: «текст переработать,
+ * сделать более понятным»): порядок и факты прежние, вместо перечня
+ * «Что подготовить» — что именно загружается в кабинет.
+ */
+const AFTER: ReadonlyArray<readonly [string, readonly RegExp[]]> = [
+  ['Менеджер отвечает', [/в течение рабочего дня/u, /Пн—Пт 10:00—19:00/u]],
+  ['Доступ в личный кабинет', [/Менеджер открывает/u, /вы загружаете/u]],
+  ['Знакомство с куратором', [/до 20 минут/u]],
+  ['Задание и смета', [/[Сс]остав работ, календарный план и стоимость каждого этапа/u, /согласуете [^']*в кабинете/u]],
+  ['Работа по этапам', [/принимаете в кабинете/u, /Следующий этап оплачивается после приёмки предыдущего/u]],
 ];
 
 /** Строки массива данных макета: у каждой — название шага и его текст. */
@@ -54,17 +67,18 @@ function steps(html: string, head: string, end: string): Array<{ title: string; 
 }
 
 const PAGES = {
-  MainPage: { component: 'PostgradPage', list: () => steps(design('MainPage'), 'const stepData = [', '];') },
-  StudentsPage: { component: 'StudentsPage', list: () => steps(design('StudentsPage'), 'afterSteps: [', '].map') },
-  BusinessPage: { component: 'BusinessPage', list: () => steps(design('BusinessPage'), 'afterSteps: [', '].map') },
+  MainPage: { component: 'PostgradPage', concept: CONCEPT, list: () => steps(design('MainPage'), 'const stepData = [', '];') },
+  MainPageAfter: { component: 'PostgradPage', concept: AFTER, list: () => steps(design('MainPage'), 'afterSteps: [', '].map') },
+  StudentsPage: { component: 'StudentsPage', concept: AFTER, list: () => steps(design('StudentsPage'), 'afterSteps: [', '].map') },
+  BusinessPage: { component: 'BusinessPage', concept: AFTER, list: () => steps(design('BusinessPage'), 'afterSteps: [', '].map') },
 } as const;
 
 describe('шаги работы — в порядке концепции (С-3, П-5)', () => {
-  for (const [page, { component, list }] of Object.entries(PAGES)) {
+  for (const [page, { component, list, concept }] of Object.entries(PAGES)) {
     it(`${page}: заявка → кабинет → куратор и созвон → итог и Задание → этапы с приёмкой`, () => {
       const rows = list();
-      assert.deepEqual(rows.slice(0, 5).map((row) => row.title), CONCEPT.map(([title]) => title));
-      CONCEPT.forEach(([title, musts], i) => {
+      assert.deepEqual(rows.slice(0, 5).map((row) => row.title), concept.map(([title]) => title));
+      concept.forEach(([title, musts], i) => {
         for (const must of musts) assert.match(rows[i]!.text, must, `${title}: нет ${must}`);
       });
       // Кабинет не раньше ответа менеджера, куратор — не раньше кабинета.
@@ -72,7 +86,7 @@ describe('шаги работы — в порядке концепции (С-3, 
       assert.doesNotMatch(rows[1]!.text, /куратор/iu, 'куратор в шаге кабинета');
       const tsx = plain(read(`app/src/components/pages/${component}.tsx`));
       let from = 0;
-      for (const [title] of CONCEPT) {
+      for (const [title] of concept) {
         const at = tsx.indexOf(`'${title}'`, from);
         assert.ok(at > from, `в перенесённом компоненте нет шага «${title}» на месте`);
         from = at;
@@ -96,9 +110,11 @@ describe('шаги работы — в порядке концепции (С-3, 
       assert.equal(PAGES[page].list().length, 5, page);
       assert.ok(design(page).includes('<sc-for list="{{ afterSteps }}" as="s" hint-placeholder-count="5">'), page);
     }
-    // Пять шагов «Студентам» — вертикальной шкалой справа от формы (Р-846).
-    const students = design('StudentsPage');
-    assert.ok(students.includes('<ol class="pd-track pd-track-v" role="list">'));
+    // Пять шагов у формы — тёмной панелью по образцу «Экспертам» (Р-885).
+    for (const page of ['StudentsPage', 'BusinessPage', 'MainPage'] as const) {
+      assert.ok(design(page).includes('<ol class="pd-afterflow" role="list" aria-label="Шаги после заявки">'), page);
+    }
+    assert.equal(PAGES.MainPageAfter.list().length, 5);
   });
 
   it('вопрос «С чего начинается работа?» — тем же порядком («Студентам», «Компаниям»)', () => {

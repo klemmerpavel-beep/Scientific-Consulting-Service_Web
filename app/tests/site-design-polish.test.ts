@@ -264,16 +264,15 @@ describe('Р-800: «Что будет после отправки» на «Ст�
     assert.doesNotMatch(label[0], /text-transform:uppercase/u);
   });
 
-  it('шаги — вертикальной шкалой справа от формы на её высоту, как на «Компаниям» (Р-846)', () => {
+  it('шаги — тёмной панелью справа от формы на её высоту (Р-846, формат — Р-885)', () => {
     for (const [where, source] of both('StudentsPage')) {
-      assert.ok(source.includes('@media (min-width:769px){.sp-reqsteps .pd-track-v{flex:1 1 auto}.sp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}'), `${where}: шаги не на высоту формы`);
+      assert.ok(source.includes('@media (min-width:769px){.pd-after .pd-afterflow{flex:1 1 auto;justify-content:space-between}}'), `${where}: шаги не на высоту формы`);
     }
     const html = design('StudentsPage');
     const req = html.slice(html.indexOf('<section id="request"'), html.indexOf('</section>', html.indexOf('<section id="request"')));
-    assert.match(req, /<\/form>\s*<!--[\s\S]*?-->\s*<div class="sp-reqsteps"[\s\S]*<ol class="pd-track pd-track-v" role="list">/u);
+    assert.match(req, /<\/form>\s*<!--[\s\S]*?-->\s*<div class="sp-reqsteps pd-after" style="background:var\(--pd-accent-deep\)[\s\S]*<ol class="pd-afterflow" role="list"/u);
     assert.match(req, /<div class="sp-reqask"[\s\S]*Что прислать для сметы[\s\S]*<ul class="sp-asklist"[\s\S]*askFor/u);
-    assert.doesNotMatch(req, /image-slot|sp-afterbox/u, 'фото и горизонтальная шкала вернулись');
-    assert.match(html, /<span class="pd-track-title" style="[^"]*">\{\{ s\.title \}\}<\/span>/u);
+    assert.doesNotMatch(req, /image-slot|sp-afterbox|pd-track/u, 'фото или прежняя шкала вернулись');
   });
 });
 
@@ -315,7 +314,7 @@ describe('Р-835: блок заявки «Компаниям» без пусто
   it('в сетке .bp-req три ячейки по порядку: форма, «Что будет после отправки», полоса «Что прислать для сметы»', () => {
     const html = block(design('BusinessPage'));
     const form = html.indexOf('<form ');
-    const steps = html.indexOf('<div class="bp-reqsteps"');
+    const steps = html.indexOf('<div class="bp-reqsteps pd-after"');
     const ask = html.indexOf('<div class="bp-reqask"');
     assert.ok(form > 0 && steps > html.indexOf('</form>') && ask > steps, 'порядок ячеек другой');
     assert.doesNotMatch(html, /flex-direction:column;gap:12px;height:100%/u, 'правая колонка снова обёрткой на высоту формы');
@@ -329,7 +328,7 @@ describe('Р-835: блок заявки «Компаниям» без пусто
         '.bp-reqask{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr)}',
         '@media (min-width:769px){.bp-reqask{grid-template-columns:240px minmax(0,1fr)}',
         '@media (min-width:1025px){.bp-asklist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px!important}}',
-        '@media (min-width:769px){.bp-reqsteps .pd-track-v{flex:1 1 auto}.bp-reqsteps .pd-track-v>li:not(:last-child){flex:1 1 auto}}',
+        '@media (min-width:769px){.pd-after .pd-afterflow{flex:1 1 auto;justify-content:space-between}}',
       ]) assert.ok(source.includes(rule), `${where}: нет правила «${rule.slice(0, 40)}…»`);
     }
   });
@@ -498,5 +497,47 @@ describe('Р-814: «Права и конфиденциальность» на «
     }
     const head = visibleText(section(design('BusinessPage'))).map((t) => t.trim()).filter(Boolean);
     assert.deepEqual(head, ['Права и конфиденциальность', `Кому принадлежит результат и${NB}что происходит с${NB}материалами`, 'Права на результат остаются у вашей компании'], 'шапка раздела изменилась');
+  });
+});
+
+describe('Р-878: «Пять пакетов» на «Компаниям» — карточки без «Документов на выходе» и строки-итога', () => {
+  // Замечание владельца 13.11.2026: «блоки немного сократить по размеру, по
+  // ширине пусть такие, а по высоте уменьшить на 30 %, убрать такую
+  // информацию». На 1440 px карточки 01—03 — 778 → 497 px, 04—05 — 645 →
+  // 410 px (64 % прежней высоты); ширина и сетка прежние.
+  const section = (source: string) => {
+    const at = source.lastIndexOf('<section', source.indexOf('id="packs"'));
+    assert.ok(at >= 0 && source.indexOf('id="packs"') > 0, 'нет раздела #packs');
+    return source.slice(at, source.indexOf('</section>', at));
+  };
+
+  it('в карточке пакета нет перечня «Документы на выходе» и строки-итога; «Для кого», «Что делаем» и «Обсудить пакет» на месте', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      const html = section(source);
+      assert.ok(!html.includes('Документы на выходе'), `${where}: в карточке пакета остался перечень документов`);
+      assert.doesNotMatch(html, /p\.docs|p\.why|\{\s*d\.name\s*\}/u, `${where}: в карточке пакета остались документы или строка-итог`);
+      for (const kept of ['Для кого', 'Что делаем', 'Обсудить пакет']) assert.ok(html.includes(kept), `${where}: нет «${kept}»`);
+    }
+  });
+
+  it('данные пакетов — без документов и итога; сетка packSpans и полоса изображения 96 px прежние', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      const block = source.slice(source.indexOf('const packData = ['), source.indexOf('const packSpans'));
+      assert.ok(block.length > 0, `${where}: нет данных пакетов`);
+      for (const gone of ['ГОСТ Р 15.101-2021', 'Не финансировать разработку', 'Документ, собранный под требования', 'по формальным основаниям', 'учитывается на балансе как нематериальный актив', 'опирается на расчёт рынка']) {
+        assert.ok(!block.includes(gone), `${where}: в данных пакетов осталось «${gone}»`);
+      }
+      assert.ok(!block.includes('[['), `${where}: в данных пакетов остались перечни документов`);
+      assert.ok(source.includes("const packs = packData.map(([anchor, num, title, term, span, titleSize, who, what], i) => ({"), `${where}: разбор данных пакета ждёт снятые поля`);
+      assert.ok(source.includes("const packSpans = { 'pack-1': 2, 'pack-2': 2, 'pack-3': 2, 'pack-4': 3, 'pack-5': 3 };"), `${where}: сетка пакетов изменилась`);
+    }
+    assert.match(section(design('BusinessPage')), /height:96px;flex:0 0 96px;border-bottom:1px solid var\(--pd-divider\)/u, 'полоса изображения пакета не 96 px');
+  });
+
+  it('колонка «Документы на выходе» в карточке уровня #trl не тронута', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      const at = source.indexOf('id="trl"');
+      assert.ok(at > 0 && source.slice(at, source.indexOf('id="packs"')).includes('Документы на выходе'), `${where}: в #trl нет «Документов на выходе»`);
+    }
   });
 });

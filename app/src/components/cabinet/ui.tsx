@@ -62,6 +62,7 @@ export function Card({
   as: Tag = 'section',
   link = false,
   id,
+  className,
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -70,11 +71,16 @@ export function Card({
   link?: boolean;
   /** Якорь: отказ формы возвращает к карточке, а не в начало экрана. */
   id?: string;
+  /**
+   * Свой класс сверх общих — для правила раскладки, которое не задать
+   * стилем самой карточки: «Команда» в сетке «Сводки» (решение Р-887).
+   */
+  className?: string;
 }) {
   return (
     <Tag
       id={id}
-      className={link ? 'cab-block cab-card cab-link-card' : 'cab-block cab-card'}
+      className={[link ? 'cab-block cab-card cab-link-card' : 'cab-block cab-card', className].filter(Boolean).join(' ')}
       style={{
         background: 'var(--pd-ink-inverse)',
         border: '1px solid var(--pd-border)',

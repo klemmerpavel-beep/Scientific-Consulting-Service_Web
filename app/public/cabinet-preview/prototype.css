@@ -131,25 +131,26 @@ details[open].cab-block>summary{border-radius:13px 13px 0 0}
 .cab-slider-track>li>*{flex:1 1 auto;min-width:0}
 .cab-slider-one{grid-auto-columns:100%}
 @container (max-width:719px){.cab-slider-track{grid-auto-columns:100%}}
-/* Плашки «Сводки» одного размера (Р-576): два столбца, у всех строк одна
-   высота; перечни ограничены той же высотой и прокручиваются внутри.
-   Раскрытые «Числа» растят свою строку — единый размер задан на открытие
-   экрана. Ниже 960 px — один столбец по содержимому, без вложенной
-   прокрутки (Т-23, Р-320). */
-.cab-dash{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(540px,auto);gap:20px;margin:0 0 24px}
-.cab-dash>*{min-width:0}
+/* Плашки «Сводки» одного размера (Р-576): два столбца, плашки не ниже
+   540 px; перечни ограничены той же высотой и прокручиваются внутри.
+   Ниже 960 px — один столбец по содержимому, без вложенной прокрутки
+   (Т-23, Р-320).
+   «Команда» — по содержимому и не тянется по соседу; её сосед по ряду —
+   тоже без нижнего предела, и ряд встаёт по более высокой из двух: иначе
+   под короткой «Командой» или внутри соседа оставалась пустота
+   (замечание владельца 13.11.2026, решение Р-887). Предел задан плашке,
+   а не строке сетки (grid-auto-rows): строке его не снять. Сосед —
+   следующая плашка, когда «Команда» слева, и предыдущая, когда справа. */
+.cab-dash{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:0 0 24px}
+.cab-dash>*{min-width:0;min-height:540px}
+.cab-dash>.cab-dash-team{align-self:start}
+.cab-dash>.cab-dash-team,.cab-dash>.cab-dash-team:nth-child(odd)+*,.cab-dash>:has(+.cab-dash-team:nth-child(even)){min-height:0}
 .cab-dash-list{max-height:540px}
-@media (max-width:959px){.cab-dash{grid-template-columns:minmax(0,1fr);grid-auto-rows:auto}.cab-dash-list{max-height:none}.cab-dash-body{overflow:visible!important}}
+@media (max-width:959px){.cab-dash{grid-template-columns:minmax(0,1fr)}.cab-dash>*{min-height:0}.cab-dash-list{max-height:none}.cab-dash-body{overflow:visible!important}}
 /* Узкие плашки (Р-575): по три, по две, по одной. */
 .cab-slider-compact .cab-slider-track{grid-auto-columns:calc((100% - 32px) / 3)}
 @container (max-width:719px){.cab-slider-compact .cab-slider-track{grid-auto-columns:calc((100% - 16px) / 2)}}
 @container (max-width:419px){.cab-slider-compact .cab-slider-track{grid-auto-columns:100%}}
-/* Лента на всю высоту плашки (Р-830): лента занимает остаток плашки
-   между заголовком и кнопками, строка ленты растягивается на её высоту,
-   карточки — вслед за строкой. Ниже 960 px плашка по содержимому (Р-320),
-   и растягивать нечего. */
-.cab-slider-fill{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
-.cab-slider-fill .cab-slider-track{flex:1 1 auto}
 @media (prefers-reduced-motion:no-preference){.cab-slider-track{scroll-behavior:smooth}}
 /* Бесконечные движения — покачивание волны (3,2 с) и пульс заготовки
    (1,4 с) — сняты: в системе движется только появление и отклик на
