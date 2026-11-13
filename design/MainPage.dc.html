@@ -661,7 +661,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="margin-top:12px"><a href="#request" style="display:inline-flex;align-items:center;min-height:44px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a></div>
 </div>
 <figure style="margin:0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:10px">
-<img src="{{ inImg }}" alt="{{ inAlt }}" width="1440" height="900" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider)">
+<!-- Р-881: снимки всех вкладок — стопкой в одной области: виден снимок выбранной вкладки (opacity 1), остальные прозрачны и скрыты от читалки; смена — 220 мс. Прежде у единственного img менялся src, и на медленной сети браузер показывал снимок прежней вкладки, пока не загрузится новый. Первый снимок грузится сразу, остальные — с появлением раздела. -->
+<div class="pd-in-shots" style="display:grid;width:100%;border-radius:10px;background:var(--pd-surface-quiet)">
+<sc-for list="{{ inShots }}" as="shot" hint-placeholder-count="4">
+<img src="{{ shot.src }}" alt="{{ shot.alt }}" aria-hidden="{{ shot.hidden }}" width="1440" height="900" loading="{{ shot.loading }}" decoding="async" style="grid-area:1/1;display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider);opacity:{{ shot.op }};transition:opacity 220ms cubic-bezier(.2,0,.2,1)">
+</sc-for>
+</div>
 <figcaption style="padding:10px 6px 2px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ inCaption }}</figcaption>
 </figure>
 </div>
@@ -1178,8 +1183,14 @@ class Component extends DCLogic {
         this.setState({ inTab: i }, () => { const el = document.getElementById('pd-in-tab-' + i); if (el) el.focus(); });
       },
       inTabLabelledBy: 'pd-in-tab-' + this.state.inTab,
-      inTitle: inTab.title, inText: inTab.text, inImg: inTab.img, inAlt: inTab.alt, inCaption: inTab.caption,
+      inTitle: inTab.title, inText: inTab.text, inCaption: inTab.caption,
       inPoints: inTab.points.map(text => ({ text })),
+      // Р-881: снимки всех вкладок в разметке сразу; подпись alt — только у снимка
+      // выбранной вкладки, прочие прозрачны и скрыты от читалки.
+      inShots: IN_TABS.map((t, i) => {
+        const on = i === this.state.inTab;
+        return { src: t.img, alt: on ? t.alt : '', hidden: on ? undefined : 'true', op: on ? '1' : '0', loading: i === 0 ? undefined : 'lazy' };
+      }),
       inCheckMask: "url('./assets/icons/check.svg') center/contain no-repeat",
       // Форма отзыва: раскрывается по кнопке, чтобы не занимать место у тех,
       // кто пришёл читать. Контакт обязателен — не для связи ради связи, а

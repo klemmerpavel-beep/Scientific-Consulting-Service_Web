@@ -657,7 +657,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </div>
 <div class="sp-in-shot" style="display:flex;align-items:center;min-width:0">
-<img src="{{ inImg }}" alt="{{ inAlt }}" width="1440" height="900" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider)">
+<!-- Р-881: снимки всех вкладок — стопкой в одной области: виден снимок выбранной вкладки (opacity 1), остальные прозрачны и скрыты от читалки; смена — 220 мс. Прежде у единственного img менялся src, и на медленной сети браузер показывал снимок прежней вкладки, пока не загрузится новый. Первый снимок грузится сразу, остальные — с появлением раздела. -->
+<div class="pd-in-shots" style="display:grid;width:100%;border-radius:10px;background:var(--pd-surface-quiet)">
+<sc-for list="{{ inShots }}" as="shot" hint-placeholder-count="4">
+<img src="{{ shot.src }}" alt="{{ shot.alt }}" aria-hidden="{{ shot.hidden }}" width="1440" height="900" loading="{{ shot.loading }}" decoding="async" style="grid-area:1/1;display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider);opacity:{{ shot.op }};transition:opacity 220ms cubic-bezier(.2,0,.2,1)">
+</sc-for>
+</div>
 </div>
 </div>
 </section>
@@ -1341,8 +1346,14 @@ class Component extends DCLogic {
         this.setState({ inTab: i }, () => { const el = document.getElementById('pd-in-tab-' + i); if (el) el.focus(); });
       },
       inTabLabelledBy: 'pd-in-tab-' + this.state.inTab,
-      inTitle: inTab.title, inText: inTab.text, inImg: inTab.img, inAlt: inTab.alt, inCaption: inTab.caption,
+      inTitle: inTab.title, inText: inTab.text, inCaption: inTab.caption,
       inPoints: inTab.points.map(text => ({ text })),
+      // Р-881: снимки всех вкладок в разметке сразу; подпись alt — только у снимка
+      // выбранной вкладки, прочие прозрачны и скрыты от читалки.
+      inShots: IN_TABS.map((t, i) => {
+        const on = i === this.state.inTab;
+        return { src: t.img, alt: on ? t.alt : '', hidden: on ? undefined : 'true', op: on ? '1' : '0', loading: i === 0 ? undefined : 'lazy' };
+      }),
       inStep: 'Экран ' + (this.state.inTab + 1) + ' из ' + IN_TABS.length,
       inNextLabel: 'Следующий: ' + IN_TABS[(this.state.inTab + 1) % IN_TABS.length].label,
       inNext: () => this.setState(s => ({ inTab: (s.inTab + 1) % IN_TABS.length })),

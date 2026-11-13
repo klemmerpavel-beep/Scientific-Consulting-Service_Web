@@ -31,7 +31,8 @@ function webpSize(file: string): { width: number; height: number } {
 }
 
 const HERO = /<img src="\.\/assets\/art\/ex-cabinet\.webp" alt="([^"]+)" width="(\d+)" height="(\d+)"/u;
-const TAB_IMG = /<img src="\{\{ tabImg \}\}" alt="\{\{ tabAlt \}\}" width="(\d+)" height="(\d+)"/u;
+// Снимки вкладок — стопкой (Р-881): один шаблон img в цикле по tabShots.
+const TAB_IMG = /<img src="\{\{ shot\.src \}\}" alt="\{\{ shot\.alt \}\}" aria-hidden="\{\{ shot\.hidden \}\}" width="(\d+)" height="(\d+)"/u;
 const TABS = [...design.matchAll(/img: '\.\/assets\/art\/(ex-tab-[a-z]+)\.webp', alt: '([^']+)'/gu)].map((m) => ({ name: m[1]!, alt: m[2]! }));
 
 function bothFolders(name: string): string {

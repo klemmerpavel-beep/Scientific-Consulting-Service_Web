@@ -358,7 +358,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </ul>
 </div>
 <figure style="margin:0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:10px">
-<img src="{{ tabImg }}" alt="{{ tabAlt }}" width="1440" height="900" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider)">
+<!-- Р-881: снимки всех вкладок — стопкой в одной области: виден снимок выбранной вкладки (opacity 1), остальные прозрачны и скрыты от читалки; смена — 220 мс. Прежде у единственного img менялся src, и на медленной сети браузер показывал снимок прежней вкладки, пока не загрузится новый. Первый снимок грузится сразу, остальные — с появлением раздела. -->
+<div class="pd-in-shots" style="display:grid;width:100%;border-radius:10px;background:var(--pd-surface-quiet)">
+<sc-for list="{{ tabShots }}" as="shot" hint-placeholder-count="5">
+<img src="{{ shot.src }}" alt="{{ shot.alt }}" aria-hidden="{{ shot.hidden }}" width="1440" height="900" loading="{{ shot.loading }}" decoding="async" style="grid-area:1/1;display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider);opacity:{{ shot.op }};transition:opacity 220ms cubic-bezier(.2,0,.2,1)">
+</sc-for>
+</div>
 <figcaption style="padding:10px 6px 2px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ tabCaption }}</figcaption>
 </figure>
 </div>
@@ -795,8 +800,14 @@ class Component extends DCLogic {
         this.setState({ tab: i }, () => { const el = document.getElementById('ex-tab-' + i); if (el) el.focus(); });
       },
       tabLabelledBy: 'ex-tab-' + this.state.tab,
-      tabTitle: tab.title, tabText: tab.text, tabImg: tab.img, tabAlt: tab.alt, tabCaption: tab.caption ?? 'На снимке вымышленные данные.',
+      tabTitle: tab.title, tabText: tab.text, tabCaption: tab.caption ?? 'На снимке вымышленные данные.',
       tabPoints: tab.points.map(text => ({ text })),
+      // Р-881: снимки всех вкладок в разметке сразу; подпись alt — только у снимка
+      // выбранной вкладки, прочие прозрачны и скрыты от читалки.
+      tabShots: TABS.map((t, i) => {
+        const on = i === this.state.tab;
+        return { src: t.img, alt: on ? t.alt : '', hidden: on ? undefined : 'true', op: on ? '1' : '0', loading: i === 0 ? undefined : 'lazy' };
+      }),
       faq: faqData.map(([q, a], i) => ({
         id: 'ex-faq-' + i,
         q, a, open: this.state.open === i, closed: this.state.open !== i,
