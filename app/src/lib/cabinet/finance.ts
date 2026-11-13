@@ -23,7 +23,6 @@ export function paymentsLine(code: string | null): string {
     ? 'Документы и состояние оплат видны в кабинете.'
     : `Документы и состояние оплат: ${base}/cabinet/projects/${code}/payments`;
 }
-import { formatDay } from './approval-text.ts';
 import {
   RECEIPT_TITLE,
   REST_TRANCHE_TITLE,
@@ -399,7 +398,10 @@ export async function setTrancheStatus(
     // Списание — внутреннее решение практики, клиенту о нём не пишется
     // (решение Р-244).
     // Сторно — исправление учёта, о нём клиенту тоже не пишется (Р-249).
-    if (userId !== null && status !== 'WRITTEN_OFF' && status !== 'REVERSED') {
+    // Оплата — учёт поступивших денег: клиенту о ней не пишется (Р-876,
+    // ответ владельца 13.11.2026 «никогда не писать»); счёт и его отзыв —
+    // пишутся: по ним клиенту нужно действовать.
+    if (userId !== null && status !== 'WRITTEN_OFF' && status !== 'REVERSED' && status !== 'PAID') {
       await enqueue(tx, {
         userId,
         projectId: tranche.contract.projectId,
@@ -545,9 +547,8 @@ export interface ReceiptInput {
  * записи не заводятся (Р-244). Без договора поступления нет: не от чего
  * считать остаток.
  *
- * Клиенту — письмо «Оплата получена» без комментария, как при отметке
- * оплаты транша; по работе, перенесённой из книги заказов, — без письма:
- * владелец переносит в кабинет давние суммы из файла (Р-872).
+ * Клиенту о поступлении не пишется (Р-876): учёт денег — дело практики;
+ * клиент видит свои оплаты на «Оплатах и документах».
  */
 export async function recordReceipt(actor: Actor, input: ReceiptInput) {
   const ref = await projectRef(input.projectId);
@@ -581,24 +582,6 @@ export async function recordReceipt(actor: Actor, input: ReceiptInput) {
       },
       tx,
     );
-    const project = await tx.project.findUniqueOrThrow({
-      where: { id: input.projectId },
-      select: { code: true, title: true, source: true, client: { select: { userId: true } } },
-    });
-    if (project.client.userId !== null && project.source !== 'IMPORT') {
-      await enqueue(tx, {
-        userId: project.client.userId,
-        projectId: input.projectId,
-        eventKind: 'PAYMENT_STATUS_CHANGED',
-        subject: `Оплата получена: ${project.title}`,
-        body:
-          `${workLine(project, true)}\n` +
-          `Получена оплата ${formatAmount(input.amount)} от ${formatDay(paidOn)}.\n` +
-          paymentsLine(project.code),
-        dedupKey: `tranche:${tranche.id}:received`,
-        path: `/cabinet/projects/${project.code}/payments`,
-      });
-    }
     return tranche;
   });
 }

@@ -187,7 +187,7 @@ describe('деньги по заказу', { skip: !enabled }, async () => {
     );
   });
 
-  it('клиент не получает комментария ни в данных экрана, ни в письме', async () => {
+  it('клиент не получает комментария в данных экрана; письма о поступлении нет (Р-876)', async () => {
     const { projectId } = await newWork('N');
     const note = 'Внутреннее: перевод от родителей, счёт 15';
     const tranche = await finance.recordReceipt(head(), { projectId, amount: 2_500_000n, paidOn: day(-1), note });
@@ -198,12 +198,23 @@ describe('деньги по заказу', { skip: !enabled }, async () => {
     assert.ok(row !== undefined, 'клиент не видит поступления');
     assert.equal('note' in row, false, 'комментарий в данных экрана клиента');
     assert.doesNotMatch(JSON.stringify(seen, (_, value) => (typeof value === 'bigint' ? value.toString() : value)), /родителей/u);
-    const letters = await prisma.notificationOutbox.findMany({ where: { projectId, userId: ids.clientUser } });
-    assert.ok(letters.length > 0, 'клиенту не ушло письмо о поступлении');
-    for (const letter of letters) {
-      assert.doesNotMatch(`${letter.subject}\n${letter.body}`, /родителей|счёт 15/u, 'комментарий в письме клиенту');
-    }
-    assert.match(letters[0]!.body, /25\s000\s₽/u);
+    // Ответ владельца 13.11.2026: о поступлении клиенту не писать никогда.
+    assert.equal(
+      await prisma.notificationOutbox.count({ where: { projectId, userId: ids.clientUser } }),
+      0,
+      'клиенту ушло письмо о поступлении',
+    );
+  });
+
+  it('отметка оплаты транша письма клиенту не даёт, счёт — даёт (Р-876)', async () => {
+    const { projectId } = await newWork('P');
+    const contract = await prisma.contract.findUniqueOrThrow({ where: { projectId }, select: { id: true } });
+    const { tranche } = await finance.addTranche(head(), { contractId: contract.id, title: 'Аванс', amount: 1_000_000n });
+    await finance.setTrancheStatus(head(), tranche.id, 'INVOICED');
+    await finance.setTrancheStatus(head(), tranche.id, 'PAID', day(-1));
+    const keys = (await prisma.notificationOutbox.findMany({ where: { projectId, userId: ids.clientUser }, select: { dedupKey: true } })).map((l) => l.dedupKey);
+    assert.ok(keys.some((k) => k.startsWith(`tranche:${tranche.id}:invoiced:`)), 'письмо о счёте не ушло');
+    assert.equal(keys.filter((k) => k.startsWith(`tranche:${tranche.id}:paid`)).length, 0, 'клиенту ушло письмо об оплате');
   });
 
   it('закрытая и перенесённая из книги работа: поступление и исправление принимаются, письма клиенту нет', async () => {
