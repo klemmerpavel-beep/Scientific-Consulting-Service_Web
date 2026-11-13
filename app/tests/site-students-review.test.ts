@@ -106,12 +106,21 @@ describe('«Студентам»: первый экран как до Р-841, п
     assert.doesNotMatch(hero, /data-pd-dialog|st-cabinet|sp-node/u, 'элементы первого экрана Р-841');
   });
 
-  it('под сеткой первого экрана — плашки «Консультация», «Оплата», «Авторство» к ответам в «Вопросах»', () => {
+  it('под сеткой первого экрана — плашки «Консультация», «Оплата», «Сроки» к ответам в «Вопросах» (Р-879)', () => {
     const at = hero.indexOf('<div class="sp-terms"');
     assert.ok(at > hero.indexOf('class="sp-art"'), 'плашки условий — после сетки первого экрана');
-    const terms = [...hero.slice(at).matchAll(/<a class="sp-term" href="(#sp-faq-\d)"/gu)].map((m) => m[1]);
-    assert.deepEqual(terms, ['#sp-faq-1', '#sp-faq-7', '#sp-faq-0']);
-    for (const word of ['Консультация', 'Оплата', 'Авторство']) assert.match(text(hero.slice(at)), new RegExp(word, 'u'));
+    const terms = [...hero.slice(at).matchAll(/<a class="sp-term" href="#sp-faq-(\d)" onClick="\{\{ (\w+) \}\}"/gu)].map((m) => [m[1], m[2]]);
+    assert.deepEqual(terms.map(([n]) => '#sp-faq-' + n), ['#sp-faq-1', '#sp-faq-7', '#sp-faq-5']);
+    // Обработчик плашки раскрывает тот ответ, к которому ведёт её якорь.
+    for (const [n, handler] of terms) assert.match(PAGE, new RegExp(`${handler}: toFaq\\(${n}\\)`, 'u'), `плашка ${handler} раскрывает не ответ ${n}`);
+    const plates = text(hero.slice(at));
+    for (const word of ['Консультация', 'Оплата', 'Сроки']) assert.match(plates, new RegExp(word, 'u'));
+    // Р-879 (выбор владельца 13.11.2026): «Авторство · Работу пишете вы» заменена плашкой сроков.
+    assert.match(plates, /СрокиПод вашу дату защитыКалендарный план — от даты сдачи на кафедру; этапы с приёмкой\.Если до защиты три недели/u);
+    assert.doesNotMatch(plates, /Авторство|Работу пишете вы|Как это видит руководитель/u);
+    const faq = PAGE.slice(PAGE.indexOf('const faqData = ['), PAGE.indexOf('];', PAGE.indexOf('const faqData = [')));
+    const questions = [...faq.matchAll(/^\s*\['([^']+)'/gmu)].map((m) => m[1]);
+    assert.equal(questions[5], 'Успеем, если до защиты три недели?', 'ответ 5 — не о сроках');
   });
 });
 
