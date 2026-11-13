@@ -6,6 +6,7 @@ import { MONO, SANS } from '../../../../../components/cabinet/tokens';
 import {
   Button,
   Block,
+  Outcome,
   Card,
   Chip,
   Disclosure,
@@ -44,11 +45,15 @@ import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
 import { projectByCode } from '../../../../../lib/cabinet/queries';
 import { CHECK_TITLE, openChecks } from '../../../../../lib/cabinet/head-checks';
 import { requireActor } from '../../../../../lib/cabinet/session';
+import { flashEntry, formDraft } from '../../../../../lib/cabinet/flash';
+import { RECEIPT_NOTE_MAX } from '../../../../../lib/cabinet/finance';
+import { ReceiptForm } from '../../../../../components/cabinet/OrderMoney';
 import {
   accruePayout,
   addContractTranche,
   closeHeadCheck,
   changeTrancheStatus,
+  correctReceiptAction,
   dropTranche,
   payPayout,
   saveProjectContract,
@@ -84,7 +89,7 @@ export default async function PaymentsScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ exceeds?: string; error?: string }>;
+  searchParams: Promise<{ exceeds?: string; error?: string; received?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}/payments`);
 
@@ -131,6 +136,15 @@ export default async function PaymentsScreen({
   const forClient = actor.role === 'CLIENT';
   const ofPayable = forClient && money !== null && money.adjustment > 0n;
   const progress = money === null ? 0 : paidPercent(money, forClient);
+  // «Записать поступление» и исправление записи — тому, кто ведёт деньги
+  // работы (Р-870, Р-871): отказ у своей формы, с набранным (Р-722).
+  const failure = mayEdit ? await flashEntry(flags.error) : undefined;
+  const draft = mayEdit ? ((await formDraft(flags.error)) ?? {}) : {};
+  const received = mayEdit && flags.received === '1' && flags.error === undefined;
+  // По обезличенному клиенту новые денежные записи не заводятся (Р-244):
+  // форма, которая всегда отказывает, не показывается.
+  const mayReceive = mayEdit && project.client.erasedAt === null;
+  const overpaid = money !== null && money.received > money.contractTotal ? money.received - money.contractTotal : 0n;
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -184,7 +198,16 @@ export default async function PaymentsScreen({
         </Card>
       ) : (
         <>
-          <Card style={{ marginBottom: 20 }}>
+          {/* Якорь `money` — кнопка «Деньги по заказу» с карточки работы
+              ведёт сюда (Р-871). */}
+          <Card id="money" style={{ marginBottom: 20, scrollMarginTop: 24 }}>
+            {received ? (
+              <Outcome>
+                {overpaid > 0n
+                  ? `Поступление записано. Поступило больше суммы договора на ${formatAmount(overpaid)}: если это доплата, увеличьте сумму договора в «Редактировать заказ».`
+                  : 'Поступление записано.'}
+              </Outcome>
+            ) : null}
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <Chip mono>Договор № {contract.number}</Chip>
               {contract.signedOn === null ? null : (
@@ -280,6 +303,21 @@ export default async function PaymentsScreen({
                 ? ` · не разнесено по траншам ${formatAmount(money.awaiting - money.scheduled)}`
                 : ''}
             </Text>
+
+            {/* Сколько денег пришло — одним действием: оплаченный транш
+                «Поступление» с датой и внутренним комментарием (запрос
+                владельца 13.11.2026, решение Р-871). */}
+            {mayReceive ? (
+              <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--pd-divider)' }}>
+                <ReceiptForm
+                  code={project.code}
+                  projectId={project.id}
+                  errorId={flags.error}
+                  draft={draft}
+                  today={today.toISOString().slice(0, 10)}
+                />
+              </div>
+            ) : null}
           </Card>
 
           {/* Экономика работы — только руководителю: поступило,
@@ -433,6 +471,57 @@ export default async function PaymentsScreen({
                             ),
                           )
                         : null}
+                      {/* Ошибочную запись поступления исправляют здесь же:
+                          сумма, дата, комментарий; прежние значения — в
+                          журнале. Снять поступление целиком — сторно
+                          (Р-249, решение Р-871). */}
+                      {mayEdit && tranche.status === 'PAID' ? (
+                        <div style={{ flexBasis: '100%' }}>
+                          {'note' in tranche && typeof tranche.note === 'string' ? (
+                            <Text muted size={13} style={{ marginBottom: 8 }}>
+                              {`Комментарий практики: ${tranche.note}`}
+                            </Text>
+                          ) : null}
+                          <Disclosure
+                            title={`Исправить запись: ${formatAmount(tranche.amount)}${tranche.paidOn === null ? '' : ` от ${formatDate(tranche.paidOn)}`}`}
+                            open={failure?.slot === `correct-${tranche.id}`}
+                          >
+                            <Form action={correctReceiptAction}>
+                              <input type="hidden" name="trancheId" value={tranche.id} />
+                              <input type="hidden" name="code" value={project.code} />
+                              <ActionError id={flags.error} slot={`correct-${tranche.id}`} />
+                              <FormRow>
+                                <Field
+                                  label="Сумма"
+                                  name="amount"
+                                  scope={`correct-${tranche.id}`}
+                                  required
+                                  defaultValue={formatAmount(tranche.amount)}
+                                />
+                                <Field
+                                  label="Дата поступления"
+                                  name="paidOn"
+                                  type="date"
+                                  scope={`correct-${tranche.id}`}
+                                  required
+                                  defaultValue={tranche.paidOn?.toISOString().slice(0, 10) ?? ''}
+                                />
+                                <Field
+                                  label="Комментарий"
+                                  name="note"
+                                  scope={`correct-${tranche.id}`}
+                                  maxLength={RECEIPT_NOTE_MAX}
+                                  defaultValue={'note' in tranche && typeof tranche.note === 'string' ? tranche.note : ''}
+                                  hint="Виден только практике."
+                                />
+                              </FormRow>
+                              <FormActions>
+                                <Button tone="quiet">Сохранить исправление</Button>
+                              </FormActions>
+                            </Form>
+                          </Disclosure>
+                        </div>
+                      ) : null}
                       {/* Плановый транш без документов удаляется: прежде
                           опечатку в сумме лечило только списание (Р-244). */}
                       {mayEdit && tranche.status === 'PLANNED' && tranche.documents.length === 0 ? (

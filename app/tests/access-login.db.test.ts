@@ -402,10 +402,12 @@ describe('вход и границы доступа (Р-251)', { skip: !enabled 
     assert.equal(money.adjustment, 15_000n);
     assert.equal(money.contractTotal - money.adjustment - money.received, money.awaiting);
 
-    // Куратор работы видит ту же корректировку и тоже без списания (М-22).
+    // Менеджер работы видит ту же корректировку (М-22); с Р-870 он ведёт
+    // деньги своей работы и видит списание, но не маржу.
     const curatorMoney = await finance.projectMoney(mine(), ids.mine!);
     assert.equal(curatorMoney?.adjustment, 15_000n);
-    assert.equal(curatorMoney !== null && 'writtenOff' in curatorMoney, false, 'куратору отдано списанное');
+    assert.equal(curatorMoney?.writtenOff, 15_000n, 'менеджеру своей работы не отдано списанное');
+    assert.equal(curatorMoney !== null && 'margin' in curatorMoney, false, 'менеджеру отдана маржа');
 
     const forHead = await finance.projectContract(head(), ids.mine!);
     assert.equal(forHead?.tranches.length, 5);

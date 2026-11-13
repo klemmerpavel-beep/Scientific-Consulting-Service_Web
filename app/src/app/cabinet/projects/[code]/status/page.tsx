@@ -56,6 +56,9 @@ const CONSEQUENCES: Record<ProjectStatusKey, readonly string[]> = {
   ],
 };
 
+/** Работа, перенесённая из книги заказов, писем о состоянии не шлёт (Р-872). */
+const BOOK_QUIET = 'Работа перенесена из книги заказов: письма клиенту и куратору не уходят.';
+
 /** Причина для клиента обязательна при приостановке и отмене. */
 const NEEDS_REASON: ReadonlySet<ProjectStatusKey> = new Set(['PAUSED', 'CANCELLED']);
 
@@ -87,6 +90,12 @@ export default async function ProjectStatusScreen({
   }
   const draft = (await formDraft(sp.error)) ?? {};
   const review = to === 'COMPLETED' || to === 'CANCELLED' ? await pendingReview(actor, project.id) : null;
+  // Работа из книги заказов: при смене состояния писем клиенту и куратору
+  // нет (решение Р-872) — строка о письме заменяется этим.
+  const fromBook = project.source === 'IMPORT';
+  const consequences = fromBook
+    ? [...CONSEQUENCES[to].filter((line) => !line.startsWith('Клиент получит')), BOOK_QUIET]
+    : CONSEQUENCES[to];
 
   return (
     <Shell actor={actor} current="/cabinet/projects">
@@ -100,7 +109,7 @@ export default async function ProjectStatusScreen({
       <Card>
         <ActionError id={sp.error} />
         <ul style={{ margin: '0 0 16px', paddingLeft: 20, display: 'grid', gap: 6 }}>
-          {CONSEQUENCES[to].map((line) => (
+          {consequences.map((line) => (
             <li key={line}>
               <Text size={15} style={{ margin: 0 }}>
                 {line}
@@ -144,12 +153,16 @@ export default async function ProjectStatusScreen({
           <input type="hidden" name="status" value={to} />
           {NEEDS_REASON.has(to) ? (
             <Field
-              label="Причина для клиента"
+              label={fromBook ? 'Причина' : 'Причина для клиента'}
               name="reason"
               multiline
               required
               defaultValue={draft.reason ?? ''}
-              hint="Клиент получит её письмом; в мессенджер уходит только сигнал без причины."
+              hint={
+                fromBook
+                  ? 'Остаётся в истории работы; письма по работе из книги не уходят.'
+                  : 'Клиент получит её письмом; в мессенджер уходит только сигнал без причины.'
+              }
             />
           ) : null}
           <FormActions>

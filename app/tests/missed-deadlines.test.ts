@@ -115,11 +115,11 @@ describe('экраны сотрудников берут одно правило
     assert.match(manage, /row\.planless \? 'срок работы, плана нет' : 'срок работы прошёл'/u);
   });
 
-  it('дело «срок работы прошёл» открывает раскрытую форму «Изменить карточку»', () => {
+  it('дело «срок работы прошёл» открывает «Редактировать заказ» на поле срока (Р-872)', () => {
     const manage = read('app', 'cabinet', 'manage', 'page.tsx');
     const late = /\.\.\.parts\.late\.map\(([\s\S]*?)\n    \}\),/u.exec(manage);
     assert.ok(late !== null, 'нет дел «срок работы прошёл»');
-    assert.match(late[1]!, /href: `\/cabinet\/projects\/\$\{work\.code\}\?manage=1#manage-card`/u);
+    assert.match(late[1]!, /href: `\/cabinet\/projects\/\$\{work\.code\}\/order#due`/u);
   });
 
   it('«Работы»: у практики — по правилу, с приостановленными; клиенту и куратору — как прежде', () => {

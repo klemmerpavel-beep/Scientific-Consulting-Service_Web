@@ -121,7 +121,7 @@ describe('документы, материалы и шаблоны', { skip: !en
     await prisma.$disconnect();
   });
 
-  it('акт прикладывает только тот, кто ведёт деньги', async () => {
+  it('акт прикладывает только тот, кто ведёт деньги работы', async () => {
     const file = {
       projectId: ids.project,
       kind: 'ACT' as const,
@@ -132,17 +132,18 @@ describe('документы, материалы и шаблоны', { skip: !en
       body: Buffer.from('акт выполненных работ', 'utf8'),
     };
 
-    // Клиент и менеджер материалы грузить вправе, но закрывающий документ —
-    // часть финансового контура, а его ведёт руководитель.
+    // Клиент материалы грузить вправе, но закрывающий документ — часть
+    // денег работы, а их ведёт практика работы: руководитель и, с Р-870,
+    // менеджер своей работы. Чужой менеджер — нет.
     await assert.rejects(
       uploadVersion(actor(ids.clientUser, 'CLIENT', { clientProfileId: ids.client }), file),
       AccessDenied,
       'клиент приложил акт к траншу',
     );
     await assert.rejects(
-      uploadVersion(actor(ids.manager, 'MANAGER'), file),
+      uploadVersion(actor(`foreign-${stamp}`, 'MANAGER'), file),
       AccessDenied,
-      'менеджер приложил акт, хотя деньги ведёт руководитель',
+      'чужой менеджер приложил акт',
     );
 
     const version = await uploadVersion(actor(ids.head, 'HEAD'), file);

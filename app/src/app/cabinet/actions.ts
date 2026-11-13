@@ -20,6 +20,7 @@ import { draftFits, markedDraft } from '../../lib/cabinet/flash-value';
 import { draftsFor } from '../../lib/cabinet/message-drafts';
 import { OUTCOME_ANCHOR } from '../../lib/cabinet/outcome-lines';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
+import { editOrder, moveOrderToClient } from '../../lib/cabinet/orders';
 import { ClientChoiceNeeded, orderRetryDraft } from '../../lib/cabinet/client-match';
 import { homeFor } from '../../lib/cabinet/nav';
 import {
@@ -61,7 +62,9 @@ import { handBackStage, handOverStage, recallHandover } from '../../lib/cabinet/
 import {
   addPayout,
   addTranche,
+  correctReceipt,
   markPayoutPaid,
+  recordReceipt,
   saveContract,
   removeTranche,
   setTrancheStatus,
@@ -113,7 +116,6 @@ import { enqueue, retryFailed, retryLeadLetter } from '../../lib/cabinet/outbox'
 import { reviewFeedback } from '../../lib/cabinet/feedback';
 import {
   addStage,
-  editProject,
   editStage,
   approveLead,
   assignExpert,
@@ -765,32 +767,71 @@ function fieldsOf(form: FormData, names: readonly string[]): Record<string, stri
   return Object.fromEntries(names.map((name) => [name, String(form.get(name) ?? '')]));
 }
 
-/** Правка карточки работы менеджером (решение Р-190). */
-export async function saveProject(form: FormData): Promise<void> {
+/**
+ * «Редактировать заказ» (решение Р-872; карточка — Р-190): карточка,
+ * вид работы, срок и сумма договора одной формой. Отказ — у формы, с
+ * набранным (Р-279, Р-722); исход — строкой над формой.
+ */
+export async function saveOrder(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const code = String(form.get('code') ?? '');
+  const back = `/cabinet/projects/${code}/order`;
+  let failure: string | null = null;
   try {
-    await editProject(actor, {
+    const days = String(form.get('approvalDays') ?? '').trim();
+    const total = String(form.get('contractTotal') ?? '').trim();
+    await editOrder(actor, {
       projectId: String(form.get('projectId') ?? ''),
+      updatedAt: String(form.get('updatedAt') ?? '') || null,
       title: String(form.get('title') ?? ''),
       topic: String(form.get('topic') ?? ''),
       summary: String(form.get('summary') ?? ''),
+      serviceTypeId: String(form.get('serviceTypeId') ?? ''),
       dueOn: dateOrNull(form.get('dueOn')),
-      reason: String(form.get('dueReason') ?? ''),
-      // Поле есть только у формы карточки; пустое значение не меняет срок.
-      ...(String(form.get('approvalDays') ?? '').trim() === ''
-        ? {}
-        : { approvalDays: Number(String(form.get('approvalDays')).trim()) }),
+      dueReason: String(form.get('dueReason') ?? ''),
+      ...(days === '' ? {} : { approvalDays: Number(days) }),
+      // Пустое поле суммы не снимает договор: сумма просто не меняется.
+      contractTotal: total === '' ? null : parseAmount(total),
     });
   } catch (error) {
-    await manageFailure(
-      code,
-      'project',
-      error,
-      fieldsOf(form, ['title', 'topic', 'summary', 'dueOn', 'dueReason', 'approvalDays']),
+    failure = reasonOf(error, 'Не удалось сохранить заказ: попробуйте ещё раз. Введённое сохранено в форме.');
+  }
+  if (failure !== null) {
+    redirect(
+      await withError(back, failure, {
+        slot: 'order',
+        draft: fieldsOf(form, ['title', 'topic', 'summary', 'serviceTypeId', 'dueOn', 'dueReason', 'approvalDays', 'contractTotal']),
+        anchor: 'card',
+      }),
     );
   }
-  redirect(`/cabinet/projects/${code}`);
+  redirect(`${back}?saved=1#card`);
+}
+
+/**
+ * Перенести работу к другому клиенту — с подтверждением (решение Р-873).
+ * Отказ — у формы «Клиент», с прежним поиском; исход — там же.
+ */
+export async function moveOrderToClientAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const query = String(form.get('q') ?? '').trim().slice(0, 100);
+  const back = `/cabinet/projects/${code}/order`;
+  let failure: string | null = null;
+  try {
+    await moveOrderToClient(actor, {
+      projectId: String(form.get('projectId') ?? ''),
+      clientId: String(form.get('clientId') ?? ''),
+      confirm: form.get('confirm') === 'on',
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось перенести работу к другому клиенту');
+  }
+  if (failure !== null) {
+    const searched = query === '' ? back : `${back}?q=${encodeURIComponent(query)}`;
+    redirect(await withError(searched, failure, { slot: 'client', anchor: 'client' }));
+  }
+  redirect(`${back}?moved=1#client`);
 }
 
 /**
@@ -1617,6 +1658,59 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);
+}
+
+/**
+ * «Записать поступление» — сумма, дата и комментарий одним действием
+ * (решение Р-871). Форма стоит на экране оплат: отказ — у неё, с
+ * набранным (приём Р-279, Р-722); исход — в сводке договора.
+ */
+export async function recordReceiptAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const back = `/cabinet/projects/${code}/payments`;
+  let failure: string | null = null;
+  try {
+    await recordReceipt(actor, {
+      projectId: String(form.get('projectId') ?? ''),
+      amount: parseAmount(String(form.get('amount') ?? '')),
+      paidOn: dateOrNull(form.get('paidOn')),
+      note: String(form.get('note') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось записать поступление. Введённое сохранено в форме.');
+  }
+  if (failure !== null) {
+    redirect(
+      await withError(back, failure, {
+        slot: 'receipt',
+        draft: fieldsOf(form, ['amount', 'paidOn', 'note']),
+        anchor: 'receipt',
+      }),
+    );
+  }
+  redirect(`${back}?received=1#money`);
+}
+
+/** Исправить сумму, дату или комментарий ошибочной записи поступления (Р-871). */
+export async function correctReceiptAction(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const trancheId = String(form.get('trancheId') ?? '');
+  const back = `/cabinet/projects/${code}/payments`;
+  let failure: string | null = null;
+  try {
+    await correctReceipt(actor, trancheId, {
+      amount: parseAmount(String(form.get('amount') ?? '')),
+      paidOn: dateOrNull(form.get('paidOn')),
+      note: String(form.get('note') ?? ''),
+    });
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось исправить поступление');
+  }
+  const anchor = /^[A-Za-z0-9_-]{1,64}$/u.test(trancheId) ? `tranche-${trancheId}` : 'tranches';
+  if (failure !== null) redirect(await withError(back, failure, { slot: `correct-${trancheId}`, anchor }));
+  redirect(`${back}#${anchor}`);
 }
 
 /** Удалить введённый год — после подтверждения второй формой (РК-15, Р-346). */

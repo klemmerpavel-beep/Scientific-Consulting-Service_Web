@@ -73,3 +73,17 @@ export const APPROVAL_VIA_LABEL: Readonly<Record<string, string>> = {
   STAFF_FOR_CLIENT: 'менеджер согласовал этап за клиента',
   AUTO_ACCEPT: 'этап принят по истечении срока согласования',
 };
+
+/**
+ * Поля карточки заказа — подписями формы «Редактировать заказ» (решение
+ * Р-872): ими же журнал называет, что изменено.
+ */
+export const ORDER_FIELD_LABEL = {
+  title: 'Название',
+  topic: 'Тема',
+  summary: 'Описание',
+  serviceType: 'Вид работы',
+  dueOn: 'Срок работы',
+  approvalDays: 'Срок согласования этапа',
+  contract: 'Сумма договора',
+} as const;

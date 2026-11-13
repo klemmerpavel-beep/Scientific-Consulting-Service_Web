@@ -10,4 +10,4 @@
  * Проверка `schema-version.test.ts` не даёт забыть поднять имя вместе с
  * новой миграцией.
  */
-export const LATEST_MIGRATION = '20261107190000_feedback_review_release_1107';
+export const LATEST_MIGRATION = '20261113120000_tranche_note';

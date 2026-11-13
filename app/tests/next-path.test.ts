@@ -122,7 +122,8 @@ describe('файл или выгрузка без сеанса — вход и �
       .map((file) => file.split(path.sep).join('/'))
       .filter((file) => file.endsWith('route.ts') && !own.has(file));
     const checked = routes.filter((file) => readFileSync(path.join(root, file), 'utf8').includes('currentActor()'));
-    assert.equal(checked.length, 11, checked.join(', '));
+    // Двенадцатая — выгрузка «Заказов» (решение Р-874).
+    assert.equal(checked.length, 12, checked.join(', '));
     for (const file of checked) {
       const text = readFileSync(path.join(root, file), 'utf8');
       assert.doesNotMatch(text, /status: 401/u, file);

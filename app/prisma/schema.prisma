@@ -1125,6 +1125,10 @@ model Tranche {
   /// подсказка «Следующий этап не оплачен».
   stageId     String?
   stage       Stage?        @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  /// Внутренний комментарий практики к поступлению: откуда и по какому
+  /// счёту пришли деньги (решение Р-871). Клиенту не отдаётся ни на экране,
+  /// ни в данных экрана, ни в уведомлениях; обезличивание его стирает.
+  note        String?       @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,7 +1,8 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { workLine } from './work-line.ts';
-import { can, ensure, scopePayouts, type Actor } from './access.ts';
+import { can, ensure, scopePayouts, type Actor, type ProjectRef } from './access.ts';
+import { openContractCheck } from './head-checks.ts';
 import { record } from './audit.ts';
 import { daysPast, moscowToday, now as clockNow } from './clock.ts';
 import { enqueue } from './outbox.ts';
@@ -22,9 +23,13 @@ export function paymentsLine(code: string | null): string {
     ? 'Документы и состояние оплат видны в кабинете.'
     : `Документы и состояние оплат: ${base}/cabinet/projects/${code}/payments`;
 }
+import { formatDay } from './approval-text.ts';
 import {
+  RECEIPT_TITLE,
+  REST_TRANCHE_TITLE,
   STATUS_LABEL,
   allocateOpen,
+  formatAmount,
   canChangeTrancheStatus,
   expectsPayment,
   isTrancheStatus,
@@ -153,6 +158,10 @@ export async function saveContract(actor: Actor, input: ContractInput) {
     },
     update: { number, signedOn: input.signedOn ?? null, totalAmount: input.totalAmount },
   });
+  // Плановый остаток — за новой суммой договора (Р-871); договор,
+  // заведённый или изменённый менеджером, руководитель проверяет (Р-872).
+  if (before !== null && before.totalAmount !== input.totalAmount) await settleRest(prisma, contract.id);
+  if (before === null || before.totalAmount !== input.totalAmount) await noteManagerContract(prisma, actor, input.projectId);
 
   // Правка договора — прежние номер и сумма рядом с новыми: иначе по
   // журналу не восстановить, с чего начиналось (решение Р-244).
@@ -172,6 +181,75 @@ export async function saveContract(actor: Actor, input: ContractInput) {
           },
   });
   return contract;
+}
+
+/**
+ * Договор, заведённый или изменённый менеджером, — дело руководителю
+ * «Проверьте договор» (Р-338): деньги своей работы менеджер с Р-870 ведёт
+ * сам, а руководитель узнаёт о сумме сразу. Одно открытое дело на работу:
+ * правка суммы за правкой не плодит дел (решение Р-872).
+ */
+async function noteManagerContract(db: Db, actor: Actor, projectId: string): Promise<void> {
+  if (actor.role !== 'MANAGER') return;
+  const open = await db.headCheck.count({ where: { projectId, kind: 'CONTRACT_BY_MANAGER', closedAt: null } });
+  if (open === 0) await openContractCheck(db, projectId);
+}
+
+/**
+ * Сумма заказа с экрана «Редактировать заказ» (решение Р-872): договор
+ * заводится или правится в той же транзакции, что карточка, — тем же
+ * правилом, что `saveContract`: сумма больше нуля и не ниже полученного,
+ * по обезличенному клиенту и отменённой работе новый договор не
+ * заводится. Номер нового договора — код работы, как у переноса книги и
+ * ручного заказа. `false` — сумма прежняя, записывать нечего.
+ */
+export async function setOrderTotal(
+  tx: Prisma.TransactionClient,
+  actor: Actor,
+  ref: ProjectRef,
+  code: string,
+  total: bigint,
+): Promise<boolean> {
+  ensure(actor, 'PAYMENT_EDIT', ref);
+  if (total <= 0n) throw new Error('Сумма договора должна быть больше нуля');
+  const before = await tx.contract.findUnique({
+    where: { projectId: ref.id },
+    select: { id: true, number: true, totalAmount: true, tranches: { select: { amount: true, status: true } } },
+  });
+  if (before !== null && before.totalAmount === total) return false;
+  await ensureMoneyWritable(ref.id, before === null);
+  if (before !== null) {
+    const received = before.tranches.filter((t) => t.status === 'PAID').reduce((acc, t) => acc + t.amount, 0n);
+    if (total < received) {
+      throw new Error(`Сумма договора меньше уже полученного по нему (${formatAmount(received)})`);
+    }
+  } else {
+    const taken = await tx.contract.findFirst({ where: { number: code }, select: { id: true } });
+    if (taken !== null) {
+      throw new Error(`Договор с номером «${code}» уже заведён по другой работе: заведите договор на «Оплатах и документах»`);
+    }
+  }
+  const contract =
+    before === null
+      ? await tx.contract.create({ data: { projectId: ref.id, number: code, totalAmount: total }, select: { id: true } })
+      : await tx.contract.update({ where: { id: before.id }, data: { totalAmount: total }, select: { id: true } });
+  await settleRest(tx, contract.id);
+  await record(
+    actor,
+    {
+      action: 'CONTRACT_SAVED',
+      objectType: 'Contract',
+      objectId: contract.id,
+      projectId: ref.id,
+      payload:
+        before === null
+          ? { number: code, total: money(total) }
+          : { number: before.number, total: money(total), totalFrom: money(before.totalAmount) },
+    },
+    tx,
+  );
+  await noteManagerContract(tx, actor, ref.id);
+  return true;
 }
 
 export interface TrancheInput {
@@ -309,6 +387,9 @@ export async function setTrancheStatus(
       throw new Error('Статус транша уже изменён другим действием: обновите страницу');
     }
     const row = await tx.tranche.findUniqueOrThrow({ where: { id: trancheId } });
+    // Сторнированное снова к получению: плановый остаток растёт обратно
+    // тем же правилом, что у моста книги (Р-435, решение Р-871).
+    if (status === 'REVERSED') await settleRest(tx, row.contractId);
 
     const project = await tx.project.findUnique({
       where: { id: tranche.contract.projectId },
@@ -382,6 +463,204 @@ export async function removeTranche(actor: Actor, trancheId: string) {
     objectId: trancheId,
     projectId: tranche.contract.projectId,
     payload: { amount: money(tranche.amount) },
+  });
+}
+
+// ───────────────────────── Деньги по заказу (Р-871) ─────────────────────────
+
+/** Предел внутреннего комментария к поступлению. */
+export const RECEIPT_NOTE_MAX = 500;
+
+/** Комментарий одной строкой: пустой — `null`, длиннее предела — отказ. */
+function receiptNote(raw: string | null | undefined): string | null {
+  const text = (raw ?? '').replace(/\s+/gu, ' ').trim();
+  if (text.length > RECEIPT_NOTE_MAX) throw new Error(`Комментарий — не длиннее ${RECEIPT_NOTE_MAX} знаков`);
+  return text === '' ? null : text;
+}
+
+const dayKey = (day: Date | null) => day?.toISOString().slice(0, 10) ?? null;
+
+/**
+ * Плановый транш «Остаток по договору» — по договору (решение Р-871).
+ *
+ * Его заводят перенос книги и ручной заказ на разницу между договором и
+ * полученным, а мост книги пересчитывает при правке строки (Р-233, Р-435):
+ * договор без прочих несторнированных траншей. Тем же правилом его ведут
+ * поступление, исправление, сторно и правка суммы договора в кабинете:
+ * иначе после «Записать поступление» в оплатах стоял бы прежний остаток
+ * рядом с меньшим «Осталось оплатить». Не нужен — снимается, если к нему
+ * не приложены документы. Транша остатка нет или их несколько — ничего не
+ * меняется: разносить остаток по траншам за человека кабинет не берётся.
+ */
+export async function settleRest(db: Db, contractId: string): Promise<void> {
+  const contract = await db.contract.findUnique({
+    where: { id: contractId },
+    select: {
+      totalAmount: true,
+      tranches: {
+        select: {
+          id: true,
+          title: true,
+          amount: true,
+          status: true,
+          _count: { select: { documents: { where: { deletedAt: null } } } },
+        },
+      },
+    },
+  });
+  if (contract === null) return;
+  const rests = contract.tranches.filter((tranche) => tranche.title === REST_TRANCHE_TITLE && tranche.status === 'PLANNED');
+  if (rests.length !== 1) return;
+  const rest = rests[0]!;
+  const others = contract.tranches
+    .filter((tranche) => tranche.id !== rest.id && tranche.status !== 'REVERSED')
+    .reduce((acc, tranche) => acc + tranche.amount, 0n);
+  const left = contract.totalAmount - others;
+  if (left === rest.amount) return;
+  if (left > 0n) {
+    await db.tranche.updateMany({ where: { id: rest.id, status: 'PLANNED' }, data: { amount: left } });
+  } else if (rest._count.documents === 0) {
+    await db.tranche.deleteMany({ where: { id: rest.id, status: 'PLANNED' } });
+  }
+}
+
+export interface ReceiptInput {
+  readonly projectId: string;
+  /** В копейках. */
+  readonly amount: bigint;
+  readonly paidOn: Date | null;
+  /** Внутренний комментарий практики; клиенту не уходит. */
+  readonly note?: string | null;
+}
+
+/**
+ * «Записать поступление» — сколько денег пришло по заказу, одним действием
+ * (запрос владельца 13.11.2026, решение Р-871): оплаченный транш
+ * «Поступление» с датой и внутренним комментарием.
+ *
+ * Право — деньги работы (`PAYMENT_EDIT`, Р-870): руководитель и менеджер
+ * своей работы. Закрытая работа поступления принимает: закрытость
+ * запрещает этапы, а не учёт; у отменённой работы деньги, пришедшие до
+ * отмены, — тоже поступление. По обезличенному клиенту новые денежные
+ * записи не заводятся (Р-244). Без договора поступления нет: не от чего
+ * считать остаток.
+ *
+ * Клиенту — письмо «Оплата получена» без комментария, как при отметке
+ * оплаты транша; по работе, перенесённой из книги заказов, — без письма:
+ * владелец переносит в кабинет давние суммы из файла (Р-872).
+ */
+export async function recordReceipt(actor: Actor, input: ReceiptInput) {
+  const ref = await projectRef(input.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'PAYMENT_EDIT', ref);
+  if (input.amount <= 0n) throw new Error('Сумма поступления должна быть больше нуля');
+  if (input.paidOn === null || Number.isNaN(input.paidOn.getTime())) throw new Error('Укажите дату поступления');
+  ensurePastDate(input.paidOn, 'Дата поступления');
+  const note = receiptNote(input.note);
+  const { erased } = await ensureMoneyWritable(input.projectId, false);
+  if (erased) throw new Error('Данные клиента удалены по его требованию: новые денежные записи по работе не заводятся');
+  const contract = await prisma.contract.findUnique({ where: { projectId: input.projectId }, select: { id: true } });
+  if (contract === null) throw new Error('Сначала укажите сумму договора: без неё остаток не посчитать');
+  const paidOn = input.paidOn;
+
+  return prisma.$transaction(async (tx) => {
+    const tranche = await tx.tranche.create({
+      data: { contractId: contract.id, title: RECEIPT_TITLE, amount: input.amount, status: 'PAID', paidOn, note },
+    });
+    await settleRest(tx, contract.id);
+    // Текст комментария в журнал не пишется: только признак — сам текст
+    // при транше, и его стирает обезличивание (Р-234).
+    await record(
+      actor,
+      {
+        action: 'TRANCHE_RECEIVED',
+        objectType: 'Tranche',
+        objectId: tranche.id,
+        projectId: input.projectId,
+        payload: { amount: money(input.amount), paidOn: dayKey(paidOn), noted: note !== null },
+      },
+      tx,
+    );
+    const project = await tx.project.findUniqueOrThrow({
+      where: { id: input.projectId },
+      select: { code: true, title: true, source: true, client: { select: { userId: true } } },
+    });
+    if (project.client.userId !== null && project.source !== 'IMPORT') {
+      await enqueue(tx, {
+        userId: project.client.userId,
+        projectId: input.projectId,
+        eventKind: 'PAYMENT_STATUS_CHANGED',
+        subject: `Оплата получена: ${project.title}`,
+        body:
+          `${workLine(project, true)}\n` +
+          `Получена оплата ${formatAmount(input.amount)} от ${formatDay(paidOn)}.\n` +
+          paymentsLine(project.code),
+        dedupKey: `tranche:${tranche.id}:received`,
+        path: `/cabinet/projects/${project.code}/payments`,
+      });
+    }
+    return tranche;
+  });
+}
+
+/**
+ * Исправить ошибочную запись поступления: сумму, дату, комментарий
+ * (решение Р-871). Только оплаченный транш; прежние сумма и дата — рядом с
+ * новыми в журнале (как правка договора, Р-244). Деньги, отмеченные не на
+ * той работе или возвращённые клиенту, снимает сторно (Р-249), а не
+ * исправление. Клиенту не пишется: это исправление учёта.
+ */
+export async function correctReceipt(
+  actor: Actor,
+  trancheId: string,
+  input: { readonly amount: bigint; readonly paidOn: Date | null; readonly note?: string | null },
+) {
+  const tranche = await prisma.tranche.findUnique({
+    where: { id: trancheId },
+    select: { id: true, status: true, amount: true, paidOn: true, note: true, contractId: true, contract: { select: { projectId: true } } },
+  });
+  if (tranche === null) throw new Error('Поступление не найдено');
+  const ref = await projectRef(tranche.contract.projectId);
+  if (ref === null) throw new Error('Проект не найден');
+  ensure(actor, 'PAYMENT_EDIT', ref);
+  if (tranche.status !== 'PAID') throw new Error('Исправляется только поступление — оплаченный транш');
+  if (input.amount <= 0n) throw new Error('Сумма поступления должна быть больше нуля');
+  if (input.paidOn === null || Number.isNaN(input.paidOn.getTime())) throw new Error('Укажите дату поступления');
+  ensurePastDate(input.paidOn, 'Дата поступления');
+  const { erased } = await ensureMoneyWritable(tranche.contract.projectId, false);
+  // По обезличенному клиенту свободный текст не сохраняется (Р-244).
+  const note = erased ? null : receiptNote(input.note);
+  const amountChanged = input.amount !== tranche.amount;
+  const dayChanged = dayKey(input.paidOn) !== dayKey(tranche.paidOn);
+  const noteChanged = note !== tranche.note;
+  if (!amountChanged && !dayChanged && !noteChanged) return tranche;
+
+  return prisma.$transaction(async (tx) => {
+    // Захват по прочитанным сумме и дате: две правки из двух вкладок не
+    // перетирают друг друга молча, а сторно между чтением и записью не
+    // возвращается в «оплачен».
+    const claimed = await tx.tranche.updateMany({
+      where: { id: trancheId, status: 'PAID', amount: tranche.amount, paidOn: tranche.paidOn },
+      data: { amount: input.amount, paidOn: input.paidOn, note },
+    });
+    if (claimed.count === 0) throw new Error('Поступление уже изменено другим действием: обновите страницу');
+    await settleRest(tx, tranche.contractId);
+    await record(
+      actor,
+      {
+        action: 'TRANCHE_CORRECTED',
+        objectType: 'Tranche',
+        objectId: trancheId,
+        projectId: tranche.contract.projectId,
+        payload: {
+          ...(amountChanged ? { amountFrom: money(tranche.amount), amountTo: money(input.amount) } : {}),
+          ...(dayChanged ? { paidOnFrom: dayKey(tranche.paidOn), paidOnTo: dayKey(input.paidOn) } : {}),
+          ...(noteChanged ? { noteChanged: true } : {}),
+        },
+      },
+      tx,
+    );
+    return tx.tranche.findUniqueOrThrow({ where: { id: trancheId } });
   });
 }
 
@@ -935,6 +1214,9 @@ export async function projectContract(actor: Actor, projectId: string) {
       tranches: {
         where: mayEdit ? {} : { status: { in: [...CLIENT_TRANCHE_STATUSES] } },
         orderBy: [{ plannedDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+        // Внутренний комментарий к поступлению — только тому, кто ведёт
+        // деньги работы: клиенту его нет и в данных экрана (Р-871).
+        omit: { note: !mayEdit },
         include: {
           // Этап транша (РК-12, Р-338).
           stage: { select: { title: true, position: true } },
