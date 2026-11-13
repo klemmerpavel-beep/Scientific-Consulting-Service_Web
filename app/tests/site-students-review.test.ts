@@ -239,6 +239,26 @@ describe('«Студентам»: выравнивание оставленны�
   });
 });
 
+describe('«Студентам»: «Что прислать для сметы» — обложка ВКР вместо стопки листов (Р-858)', () => {
+  const at = PAGE.indexOf('<div class="sp-reqask"');
+  const strip = PAGE.slice(at, PAGE.indexOf('<div class="sp-reqbody"', at));
+
+  it('слева — синяя обложка с живой надписью «ВКР» Literata 22 px и тонкой линией, по центру панели', () => {
+    assert.ok(at > PAGE.indexOf('<section id="request"'), 'полоса — в блоке заявки');
+    assert.match(strip, /<span aria-hidden="true" class="sp-reqart" style="display:flex;align-items:center;justify-content:center;[^"]*">/u);
+    assert.match(strip, /<img src="\.\/assets\/art\/st-cover\.webp" alt=""/u);
+    assert.match(strip, /font-family:'Literata'[^"]*font-size:22px;[^"]*color:var\(--pd-ink-inverse\)">ВКР<\/span>/u);
+    assert.match(strip, /height:2px;[^"]*background:var\(--pd-ink-inverse\)/u, 'нет тонкой линии под надписью');
+    assert.doesNotMatch(PAGE, /st-stack/u);
+  });
+
+  it('обложка лежит в обеих папках ассетов, стопки листов нет', () => {
+    const [a, b] = ['design/assets/art', 'app/public/assets/art'].map((dir) => readFileSync(path.join(ROOT, dir, 'st-cover.webp')));
+    assert.ok(a!.equals(b!), 'st-cover.webp в папках ассетов различается');
+    for (const dir of ['design/assets/art', 'app/public/assets/art']) assert.ok(!existsSync(path.join(ROOT, dir, 'st-stack.webp')), `осталось ${dir}/st-stack.webp`);
+  });
+});
+
 describe('«Студентам»: «Как это выглядит внутри» — карточка из двух панелей (Р-845)', () => {
   it('текст и снимок в одной карточке, внизу текста — «Экран N из 4» и переход к следующей вкладке', () => {
     const at = PAGE.indexOf('<section id="inside"');
