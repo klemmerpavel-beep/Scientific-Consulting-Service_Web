@@ -118,8 +118,10 @@ describe('«Должники» (РК-10)', { skip: !enabled }, async () => {
     assert.ok(own[0]!.late >= 19);
   });
 
-  it('перенос даты — только руководителем и с причиной; причина в журнале', async () => {
-    await assert.rejects(finance.rescheduleTranche(manager(), ids.invoiced!, day(14), 'Просил клиент'), AccessDenied);
+  it('перенос даты — практикой работы и с причиной; причина в журнале', async () => {
+    // С Р-870 деньги своей работы ведёт и менеджер; чужой менеджер и клиент — нет.
+    await assert.rejects(finance.rescheduleTranche(who(`foreign-${stamp}`, 'MANAGER'), ids.invoiced!, day(14), 'Просил клиент'), AccessDenied);
+    await assert.rejects(finance.rescheduleTranche(client(), ids.invoiced!, day(14), 'Просил клиент'), AccessDenied);
     await assert.rejects(finance.rescheduleTranche(head(), ids.invoiced!, day(14), '  '), /причину переноса/u);
     await finance.rescheduleTranche(head(), ids.invoiced!, day(14), 'Клиент ждёт стипендию');
     assert.deepEqual((await mine()).map((row) => row.trancheId), [ids.old]);

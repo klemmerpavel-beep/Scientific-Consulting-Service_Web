@@ -82,15 +82,24 @@ describe('деньги проекта', { skip: !enabled }, async () => {
     await prisma.$disconnect();
   });
 
-  it('договор заводит только руководитель', async () => {
+  it('договор заводят руководитель и менеджер работы; чужой менеджер и куратор — нет (Р-870)', async () => {
     await assert.rejects(
-      finance.saveContract(actor(ids.manager, 'MANAGER'), {
+      finance.saveContract(actor(`foreign-${stamp}`, 'MANAGER'), {
         projectId: ids.project,
         number: `М-${stamp}`,
         totalAmount: parseAmount('600 000'),
       }),
       AccessDenied,
-      'менеджер завёл договор, хотя финансовый контур ведёт руководитель',
+      'чужой менеджер завёл договор',
+    );
+    await assert.rejects(
+      finance.saveContract(actor(ids.expert, 'EXPERT'), {
+        projectId: ids.project,
+        number: `Э-${stamp}`,
+        totalAmount: parseAmount('600 000'),
+      }),
+      AccessDenied,
+      'куратор завёл договор',
     );
 
     const contract = await finance.saveContract(actor(ids.head, 'HEAD'), {

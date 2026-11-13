@@ -122,7 +122,10 @@ const OWN: Record<Action, [boolean, boolean, boolean, boolean]> = {
   // Открыть клиенту вход — куратору своей работы и руководителю (Р-285).
   CLIENT_ACCESS_OPEN: [false, false, true, true],
   CONTRACT_VIEW: [true, false, true, true],
-  PAYMENT_EDIT: [false, false, false, true],
+  // Деньги заказа — менеджеру своей работы и руководителю (Р-870).
+  PAYMENT_EDIT: [false, false, true, true],
+  // Дела руководителя закрывает только он (Р-338, Р-870).
+  HEAD_CHECK_CLOSE: [false, false, false, true],
   PAYOUT_VIEW_OWN: [false, true, false, true],
   PAYOUT_MANAGE: [false, false, false, true],
   MARGIN_VIEW: [false, false, false, true],
@@ -224,6 +227,8 @@ describe('работа другого куратора', () => {
     'CURATOR_CONTACTS_VIEW',
     'CLIENT_ACCESS_OPEN',
     'CONTRACT_VIEW',
+    // Деньги чужой работы менеджер не ведёт (Р-870).
+    'PAYMENT_EDIT',
   ];
 
   for (const action of projectBound) {
@@ -237,10 +242,18 @@ describe('работа другого куратора', () => {
     // «Открыть клиенту вход» и способы связи куратора — не перечни, а
     // действия над одной работой: без работы они запрещены намеренно
     // (Р-285, Р-330), см. отдельные проверки.
-    const single: Action[] = ['CLIENT_ACCESS_OPEN', 'CURATOR_CONTACTS_VIEW', 'INTERNAL_MESSAGE'];
+    const single: Action[] = ['CLIENT_ACCESS_OPEN', 'CURATOR_CONTACTS_VIEW', 'INTERNAL_MESSAGE', 'PAYMENT_EDIT'];
     for (const action of projectBound.filter((item) => !single.includes(item))) {
       assert.equal(can(manager, action, null), true, action);
     }
+  });
+
+  it('деньги без работы — только руководителю: годы, расходы и «Деньги» менеджеру закрыты (Р-870)', () => {
+    assert.equal(can(manager, 'PAYMENT_EDIT', null), false);
+    assert.equal(can(head, 'PAYMENT_EDIT', null), true);
+    assert.equal(can(manager, 'MARGIN_VIEW', project), false, 'маржа своей работы — только руководителю');
+    assert.equal(can(manager, 'PAYOUT_MANAGE', project), false, 'выплаты кураторам — только руководителю');
+    assert.equal(can(manager, 'HEAD_CHECK_CLOSE', project), false, 'дело руководителя менеджер не закрывает');
   });
 
   it('способы связи куратора без работы не открываются никому (Э-10, Р-330)', () => {
