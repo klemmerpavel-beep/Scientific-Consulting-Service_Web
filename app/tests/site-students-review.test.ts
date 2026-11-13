@@ -115,10 +115,19 @@ describe('«Студентам»: первый экран как до Р-841, п
   });
 });
 
-describe('«Студентам»: порядок разделов и условия договора (Р-844)', () => {
-  it('порядок вопросов посетителя: смета — после разделов ценности, отзывы — перед «Вопросами»', () => {
+describe('«Студентам»: порядок разделов как на выкате № 155 (Р-853)', () => {
+  it('первый экран, команда, состав работ, смета, этапы, кабинет, случаи, «География», вопросы, заявка, отзывы', () => {
     const ids = [...PAGE.matchAll(/<section id="([a-z]+)"/gu)].map((m) => m[1]);
-    assert.deepEqual(ids, ['works', 'services', 'route', 'inside', 'tasks', 'deal', 'cost', 'norm', 'reviews', 'geo', 'faq', 'request']);
+    assert.deepEqual(ids, ['works', 'services', 'cost', 'route', 'inside', 'tasks', 'geo', 'faq', 'request', 'reviews']);
+    const team = PAGE.indexOf('<section', PAGE.indexOf('</section>', PAGE.indexOf('<section id="works"')));
+    assert.match(text(PAGE.slice(team, PAGE.indexOf('</h2>', team))), /Кто сопровождает работу$/u, 'за первым экраном не «Кто сопровождает»');
+  });
+
+  it('раздела «Что закреплено в договоре» (Р-844) и открытого раздела нормоконтроля (Р-843) нет', () => {
+    for (const source of [HTML, TSX]) {
+      assert.doesNotMatch(source, /id="deal"|sp-deal|Что закреплено в договоре/u);
+      assert.doesNotMatch(source, /<section id="norm"|sp-normcard/u);
+    }
   });
 
   it('«География» (Р-849): команды в двух городах, счётчик по книге заказов, схема с подписью, без слова «офис»', () => {
@@ -134,8 +143,8 @@ describe('«Студентам»: порядок разделов и услов�
     assert.doesNotMatch(section, /<animate|<set /u, 'движение — только классом с transform и opacity');
   });
 
-  it('кнопки действия между этапами и формой (Р-851): «Оставить заявку» в «Договоре» и «Географии», к форме без окна', () => {
-    for (const id of ['deal', 'geo']) {
+  it('кнопка действия между этапами и формой (Р-851): «Оставить заявку» в «Географии», к форме без окна', () => {
+    for (const id of ['geo']) {
       const at = PAGE.indexOf(`<section id="${id}"`);
       const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
       const cta = section.match(/<a href="#request"( data-pd-dialog)? style="[^"]*background:var\(--pd-ink\)[^"]*"[^>]*>Оставить заявку</u);
@@ -166,15 +175,6 @@ describe('«Студентам»: порядок разделов и услов�
     assert.match(section, /left:calc\(13\.72% \+ 14px\);top:38\.07%[^"]*">Санкт-Петербург</u);
   });
 
-  it('«Что закреплено в договоре»: четыре условия из оферты и ответа о замечаниях, ссылка на оферту', () => {
-    const at = PAGE.indexOf('<section id="deal"');
-    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
-    assert.match(text(section), /Что закреплено в договоре/u);
-    const titles = [...section.matchAll(/<h3 [^>]*>([^<]+)<\/h3>/gu)].map((m) => text(m[1]!));
-    assert.deepEqual(titles, ['Задание до начала работ', 'Акт приёмки по каждому этапу', 'Замечания по сданному этапу', 'Конфиденциальность и авторство']);
-    assert.match(section, /<a href="\.\/offer\.html" target="_blank" rel="noopener"/u);
-    assert.doesNotMatch(text(section), /гарант|под ключ|100 %/iu);
-  });
 });
 
 describe('«Студентам»: «Как это выглядит внутри» — карточка из двух панелей (Р-845)', () => {
@@ -203,25 +203,33 @@ describe('«Студентам»: «Как это выглядит внутри�
   });
 });
 
-describe('«Студентам»: одна формулировка действия (Р-847)', () => {
-  it('кнопки-действия ведут к заявке словами «Оставить заявку»; «Обсудить работу» и «Обсудить мой срок» сняты', () => {
+describe('«Студентам»: подписи кнопок действия (Р-847, Р-853)', () => {
+  it('«Оставить заявку» везде, кроме «Этапов»: там — «Обсудить мой срок», как на выкате № 155', () => {
     const buttons = [...PAGE.matchAll(/<a (?:[^>]*\s)?href="#request"[^>]*background:var\(--pd-ink\)[^>]*>([^<]+)</gu)].map((m) => m[1]!.trim());
     assert.ok(buttons.length >= 3, `кнопок действия ${buttons.length}`);
-    for (const label of buttons) assert.equal(label, 'Оставить заявку');
-    assert.doesNotMatch(PAGE, />Обсудить работу<|>Обсудить мой срок</u);
+    for (const label of buttons) assert.ok(label === 'Оставить заявку' || label === 'Обсудить мой срок', label);
+    const at = PAGE.indexOf('<section id="route"');
+    const route = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    assert.match(route, /<a href="#request"[^>]*>Обсудить мой срок</u);
+    assert.equal(buttons.filter((b) => b === 'Обсудить мой срок').length, 1, '«Обсудить мой срок» — только в «Этапах»');
+    // Блок ролей оставлен в виде Р-840 со снимка владельца: кнопка «Оставить заявку».
+    assert.doesNotMatch(PAGE, />Обсудить работу</u);
   });
 });
 
-describe('«Студентам»: заголовки разделов и фразы ядра (Р-848)', () => {
+describe('«Студентам»: заголовки разделов (Р-848, Р-853)', () => {
   const h2 = [...PAGE.matchAll(/<h2 [^>]*>([\s\S]*?)<\/h2>/gu)].map((m) => text(m[1]!));
 
   it('заголовки разделов — до 52 знаков (шкала скилла, Р-607)', () => {
     for (const title of h2) assert.ok([...title].length <= 52, `«${title}» — ${[...title].length} знаков`);
   });
 
-  it('фразы ядра marketing/research/05-семантика.md — в заголовках и тексте', () => {
+  it('заголовки «Этапов», «Вопросов» и «Отзывов» — как на выкате № 155; фразы ядра остаются в заголовках и тексте', () => {
+    for (const title of ['Этапы под вашу стадию работы: от разбора до защиты', 'Вопросы о защите, кафедре и научном руководителе', 'Что говорят клиенты']) {
+      assert.ok(h2.includes(title), `нет заголовка «${title}»`);
+    }
     const joined = h2.join(' | ');
-    for (const phrase of [/ВКР/u, /[Пп]одготовка к защите диплома/u, /Нормоконтроль ВКР/u, /смета на диплом/u]) assert.match(joined, phrase);
+    for (const phrase of [/ВКР/u, /смета на диплом/u]) assert.match(joined, phrase);
     const all = text(PAGE.slice(0, PAGE.indexOf('<script type="text/x-dc"')));
     // Подводка «Сопровождение дипломной работы, ВКР и магистерской диссертации» ушла вместе с первым экраном Р-841 (Р-852).
     assert.match(all, /Консультация по дипломной работе/u);
@@ -285,15 +293,19 @@ describe('«Студентам»: якоря объявлений', () => {
     assert.doesNotMatch(PAGE, /href="#works"/u, 'ссылка на первый экран вместо состава работ');
   });
 
-  it('#norm — открытый раздел «Нормоконтроль ВКР: семь причин возврата» без свёртки (Р-843)', () => {
-    const at = PAGE.indexOf('<section id="norm"');
-    assert.ok(at > 0, 'нет раздела #norm');
-    const section = PAGE.slice(at, PAGE.indexOf('</section>', at));
-    assert.match(text(section.slice(0, section.indexOf('</h2>'))), /Нормоконтроль ВКР: семь причин возврата$/u);
-    assert.match(section, /<sc-for list="\{\{ normchecks \}\}" as="n" hint-placeholder-count="7">/u);
-    assert.doesNotMatch(section, /<sc-if|aria-expanded|toggleNorm/u, 'причины снова спрятаны в свёртку');
-    for (const source of [HTML, TSX]) assert.doesNotMatch(source, /normOpen|openNorm|onNormLink/u);
-    assert.ok(PAGE.indexOf('<section id="norm"') > PAGE.indexOf('<section id="cost"'), '#norm — сразу за «Сметой»');
+  it('#norm раскрывает нормоконтроль при загрузке и по hashchange — в макете и в перенесённом компоненте (свёртка возвращена Р-853)', () => {
+    for (const [name, source] of [['макет', HTML], ['StudentsPage.tsx', TSX]] as const) {
+      const mount = source.slice(source.indexOf('componentDidMount(){'), source.indexOf('componentWillUnmount(){'));
+      assert.match(mount, /window\.location\.hash === '#norm'\) this\.setState\(\{ normOpen: true \}\)/u, name);
+      assert.match(mount, /this\.openNorm\(\);/u, `${name}: при загрузке не проверяется`);
+      assert.match(mount, /window\.addEventListener\('hashchange', this\.openNorm\)/u, name);
+      const unmount = source.slice(source.indexOf('componentWillUnmount(){'));
+      assert.match(unmount, /window\.removeEventListener\('hashchange', this\.openNorm\)/u, `${name}: слушатель не снимается`);
+    }
+    const at = PAGE.indexOf('<section id="cost"');
+    const cost = PAGE.slice(at, PAGE.indexOf('</section>', at));
+    assert.match(cost, /<div id="norm" class="sp-normbox"[\s\S]*<button class="sp-normbtn" type="button" onClick="\{\{ toggleNorm \}\}" aria-expanded="\{\{ normOpenAttr \}\}" aria-controls="norm-panel"/u, 'свёртка «Нормоконтроль» — внутри «Сметы»');
+    assert.match(text(cost), /Семь причин возврата с нормоконтроля/u);
   });
 });
 
