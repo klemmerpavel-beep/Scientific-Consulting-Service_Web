@@ -259,6 +259,35 @@ describe('«Студентам»: «Что прислать для сметы» 
   });
 });
 
+describe('«Студентам»: «Этапы» — горизонтальная шкала и карточка этапа под ней (Р-859)', () => {
+  const at = PAGE.indexOf('<section id="route"');
+  const route = PAGE.slice(at, PAGE.indexOf('</section>', at));
+  const css = PAGE.slice(PAGE.indexOf('<style>'), PAGE.indexOf('</style>'));
+
+  it('вкладки ситуаций сохранены, этапы — шкалой: колонка растёт по длительности этапа', () => {
+    assert.match(route, /<div role="group" aria-label="На какой стадии работа" class="pd-in-tablist sp-sit">/u);
+    assert.match(route, /<ol class="sp-tl" aria-label="Этапы маршрута"/u);
+    const items = route.match(/<li style="flex-grow:\{\{ s\.flex \}\}"><button type="button" aria-pressed="(?:true|false)" onClick="\{\{ s\.pick \}\}" class="sp-tl-btn"/gu) ?? [];
+    assert.equal(items.length, 2, 'выбранный и невыбранный этап — кнопки шкалы с долей по длительности');
+    assert.ok(css.includes('.sp-tl{display:flex;gap:8px}'), 'шкала — в строку');
+    assert.match(css, /@media \(max-width:768px\)\{[^\n]*\.sp-tl\{flex-direction:column;gap:2px\}/u, 'до 768 px — компактный список');
+    assert.match(PAGE, /flex: String\(days\)/u, 'доля колонки — длительность этапа в днях');
+  });
+
+  it('карточка выбранного этапа — две колонки без повторов: названия и срока этапа в ней нет', () => {
+    const card = route.slice(route.indexOf('<div aria-live="polite" class="sp-stage"'), route.indexOf('<a href="#request"'));
+    assert.match(card, /<div class="sp-stage-grid"/u);
+    for (const field of ['s.author', 's.team', 's.works', 's.result', 's.num', 's.of']) assert.ok(card.includes(`{{ ${field} }}`), `в карточке нет ${field}`);
+    assert.doesNotMatch(card, /\{\{ s\.title \}\}|\{\{ s\.term \}\}/u, 'название и срок повторяют шкалу');
+    assert.ok(css.includes('.sp-stage-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}'));
+  });
+
+  it('прежняя раскладка «перечень слева, карточка справа» снята; кнопка «Обсудить мой срок» — в строке с условием приёмки', () => {
+    for (const source of [HTML, TSX]) assert.doesNotMatch(source, /pd-in-body|sp-rt-a|sp-rt-b|sp-rt-c|sp-duo/u);
+    assert.match(route, /Каждый этап заканчивается приёмкой[^<]*<\/p>\n<a href="#request"[^>]*>Обсудить мой срок</u);
+  });
+});
+
 describe('«Студентам»: «Как это выглядит внутри» — карточка из двух панелей (Р-845)', () => {
   it('текст и снимок в одной карточке, внизу текста — «Экран N из 4» и переход к следующей вкладке', () => {
     const at = PAGE.indexOf('<section id="inside"');
