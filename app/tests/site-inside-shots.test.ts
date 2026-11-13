@@ -91,3 +91,38 @@ describe('Снимки вкладок кабинета — стопкой, ви�
     });
   }
 });
+
+/** Размер изображения WebP по заголовку: VP8 (с потерями), VP8L и VP8X. */
+function webpSize(file: string): { width: number; height: number } {
+  const b = readFileSync(file);
+  assert.equal(b.toString('ascii', 8, 12), 'WEBP', `${file}: не WebP`);
+  const chunk = b.toString('ascii', 12, 16);
+  if (chunk === 'VP8 ') return { width: b.readUInt16LE(26) & 0x3fff, height: b.readUInt16LE(28) & 0x3fff };
+  if (chunk === 'VP8L') {
+    const bits = b.readUInt32LE(21);
+    return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
+  }
+  if (chunk === 'VP8X') return { width: b.readUIntLE(24, 3) + 1, height: b.readUIntLE(27, 3) + 1 };
+  throw new Error(`${file}: неизвестный блок ${chunk}`);
+}
+
+describe('Снимки кабинета клиента и куратора (Р-883): одинаковы в обеих папках, 1440 × 900, подписи по экранам', () => {
+  for (const p of PAGES) {
+    it(`${p.page}: каждый снимок вкладки — в обеих папках ассетов, размер как в разметке`, () => {
+      const { tabs } = shotsFor(read('design', `${p.page}.dc.html`), p)(0);
+      for (const t of tabs) {
+        const name = t.img.replace(/^\.\/assets\/art\//u, '');
+        const files = [path.join(ROOT, 'design', 'assets', 'art', name), path.join(ROOT, 'app', 'public', 'assets', 'art', name)];
+        assert.ok(readFileSync(files[0]!).equals(readFileSync(files[1]!)), `${name} в папках ассетов различается`);
+        assert.deepEqual(webpSize(files[0]!), { width: 1440, height: 900 }, `${name}: не 1440 × 900`);
+        assert.match(t.alt, /(?:Данные вымышленные|Суммы на снимке размыты)\.$/u, `${name}: подпись без оговорки о данных`);
+      }
+    });
+  }
+
+  it('«Экспертам», «Назначенные работы»: поиск — по названию работы или клиенту, как в поле кабинета', () => {
+    const html = read('design', 'ExpertsPage.dc.html');
+    assert.ok(html.includes("'Поиск по названию работы или клиенту'"));
+    assert.ok(!html.includes("'Поиск по названию работы']"));
+  });
+});
