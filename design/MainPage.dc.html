@@ -114,6 +114,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-pubdots{display:grid;grid-template-columns:repeat(10,8px);gap:4px;margin-top:4px}
 .pd-pubdeg{display:none!important}
 @media (max-width:600px){.pd-pubrow{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-pubrow>[role=rowheader]{grid-column:1/-1}.pd-pubhead{display:none!important}.pd-pubdeg{display:block!important}}
+/* Р-890 (замечание владельца 14.11.2026: «много пустого места, заполнить и сделать полезным»): под таблицей п. 13 — тихий подвал карточки «Как помогаем с публикациями к защите»: два шага (сверка статей с требованиями к допуску, статьи и апробация в плане с датами) и переход к заявке. Таблица больше не растягивается: остаток высоты ряда забирает подвал, его содержимое — по центру. От 769 px метка и переход — строкой, под ними два шага в две колонки; до 768 px — столбцом, переход на всю ширину внизу. */
+.pd-pubfoot{flex:1 1 auto;justify-content:center}
+.pd-pubhelp{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label link" "list list";gap:12px 24px;align-items:center}
+.pd-pubhelp>span{grid-area:label}
+.pd-pubhelp>ul{grid-area:list;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px}
+.pd-pubhelp>a{grid-area:link;display:inline-flex;align-items:center;gap:10px;box-sizing:border-box;min-height:44px;padding:10px 16px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);text-decoration:none;white-space:nowrap}
+@media (max-width:768px){.pd-pubhelp{grid-template-columns:minmax(0,1fr);grid-template-areas:"label" "list" "link"}.pd-pubhelp>ul{grid-template-columns:minmax(0,1fr)}.pd-pubhelp>a{justify-content:space-between;white-space:normal}}
 .pd-pubgrant{display:grid;grid-template-columns:minmax(0,1fr) auto}
 @media (max-width:768px){.pd-pubgrant{grid-template-columns:minmax(0,1fr)!important}.pd-pubgrant>a{width:100%}}
 @media (max-width:480px){.pd-pubrow,.pd-pubpad{padding-left:20px!important;padding-right:20px!important}.pd-pubgrant{padding-left:20px!important;padding-right:20px!important}}
@@ -601,7 +608,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <h3 id="mp-pub-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Публикации в рецензируемых изданиях</h3>
 <p style="margin:0;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">Минимальное число по п. 13 Положения о присуждении учёных степеней</p>
 </div>
-<div class="pd-pubmx" role="table" aria-labelledby="mp-pub-title" style="flex:1 1 auto">
+<div class="pd-pubmx" role="table" aria-labelledby="mp-pub-title" style="flex:0 0 auto">
 <div class="pd-pubrow pd-pubhead" role="row" style="padding-top:14px;padding-bottom:8px">
 <span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Отрасль науки</span>
 <span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Кандидатская</span>
@@ -624,6 +631,18 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-for>
 </div>
 <!-- Р-833 (замечание владельца 07.11.2026): подвал с двумя абзацами 13 px под инфографикой — «К публикациям приравниваются…» и «Положение утверждено…» — снят: мелко и непонятно, для чего; источник чисел — в заголовке инфографики («по п. 13 Положения о присуждении учёных степеней»). -->
+<!-- Р-890 (замечание владельца 14.11.2026: «доработать этот блок, много пустого места, заполнить и сделать полезным»): вместо пустоты под таблицей — подвал «Как помогаем с публикациями к защите»: два шага по формулировкам страницы («Диагностика», точка 04 и итог «План с датами») и переход к заявке. Что приравнивается к публикациям, не возвращено: официальный текст Положения из среды не открывается, а пояснение снято по Р-833. -->
+<div class="pd-pubpad pd-pubfoot" style="display:flex;flex-direction:column;margin-top:16px;padding:14px 24px 18px;background:var(--pd-surface-quiet);border-top:1px solid var(--pd-border);border-radius:0 0 13px 13px">
+<div class="pd-pubhelp">
+<span id="mp-pub-help" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Как помогаем с публикациями к защите</span>
+<ul aria-labelledby="mp-pub-help" style="margin:0;padding:0;list-style:none">
+<sc-for list="{{ pubHelp }}" as="h" hint-placeholder-count="2">
+<li style="display:grid;grid-template-columns:32px minmax(0,1fr);column-gap:12px;align-items:start;min-width:0"><span aria-hidden="true" style="width:32px;height:32px;border-radius:10px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);box-sizing:border-box;display:flex;align-items:center;justify-content:center"><span style="width:16px;height:16px;display:block;background:var(--pd-accent);-webkit-mask:{{ h.mask }};mask:{{ h.mask }}"></span></span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary);min-width:0">{{ h.text }}</span></li>
+</sc-for>
+</ul>
+<a class="pd-lift" href="#request"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разобрать публикации к защите</span><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:var(--pd-ink);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span></a>
+</div>
+</div>
 </div>
 <article class="pd-lift pd-edge" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;display:flex;flex-direction:column;min-width:0;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <div class="pd-pubpad" style="flex:1 1 auto;padding:22px 24px 22px;display:flex;flex-direction:column;gap:14px">
@@ -1229,6 +1248,15 @@ class Component extends DCLogic {
     const offerAll = ['Патентование', 'НИОКР для бизнеса', 'Отчёты по практике и НИР', 'Публикации в рецензируемых журналах', 'Автореферат диссертации', 'Монографии', 'Перевод статей на английский', 'Разбор отзывов оппонентов и ведущей организации', 'Методика статистической обработки данных', 'Подбор журнала и подготовка статьи к подаче в индексируемые издания', 'Оформление списка литературы по ГОСТ', 'Доклад и презентация к защите', 'Научная экспертиза текста и вычитка', 'Проверка на заимствования и корректная цитируемость', 'Сопровождение иностранных аспирантов', 'Регистрация программ для ЭВМ и баз данных', 'Экспертиза технической документации', 'Обоснование научной новизны', 'Планирование эксперимента', 'Апробация на конференциях'];
     const offerOpen = this.state.offerOpen;
     const offerRest = (offerOpen ? offerAll : offerAll.slice(0, 5)).map(title => ({ title }));
+    // Р-890: подвал инфографики — как помогаем с публикациями к защите, по
+    // формулировкам этой страницы: «Диагностика», точка 04 («Публикаций не
+    // хватает для допуска» → «Сверяет публикации с требованиями к допуску»,
+    // «Вносит статьи и апробацию в план») и итог «План с датами» («Сроки глав,
+    // апробации и предзащиты»). Без новых обещаний и решения редакции.
+    const pubHelp = [
+      ['clipboard-list', 'Сверяем ваши статьи с требованиями к допуску — по отрасли науки и степени'],
+      ['calendar-days', 'Недостающие статьи и апробацию ставим в план с датами — рядом со сроками глав']
+    ].map(([icon, text]) => ({ text, mask: this.mask(icon) }));
     // «Публикации к защите» (Р-808, З-3) вместо «Статей и грантов» (Р-769,
     // Р-797). Числа — только из п. 13 Положения о присуждении учёных степеней
     // (постановление Правительства РФ от 24.09.2013 № 842) по выдержкам
@@ -1395,7 +1423,7 @@ class Component extends DCLogic {
         e.preventDefault();
         this.setState({ diagAt: i }, () => { const el = document.getElementById('pd-diag-tab-' + i); if (el) el.focus({ preventScroll: true }); });
       },
-      downMask: this.mask('arrow-down'), offerTop, offerMid, offerRest, pubRows, articleCard, stepScale,
+      downMask: this.mask('arrow-down'), offerTop, offerMid, offerRest, pubRows, pubHelp, articleCard, stepScale,
       contactTabs: ['E-mail', 'Телефон'].map((label, i) => ({
         label, active: i === this.state.contact, inactive: i !== this.state.contact,
         pick: () => this.setState({ contact: i })
