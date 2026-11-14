@@ -39,21 +39,20 @@ const keyframes = (source: string, name: string) => {
 describe('Р-884: фон четырёх страниц — как на «Экспертам»', () => {
   const experts = read('design', 'ExpertsPage.dc.html');
 
-  it('размах и периоды — те же, что у образца: ±30° за 34 с, парение ±6 px за 5,5 с', () => {
+  it('размах и периоды — те же, что у образца: ±30° за 34 с; объёмных узлов нет (Р-888)', () => {
     const swing = keyframes(experts, 'ex-swing-hero');
-    const float = keyframes(experts, 'ex-float');
     assert.ok(experts.includes('.ex-orb-hero{animation-name:ex-swing-hero;animation-duration:34s;animation-delay:-17s}'));
+    // Р-888: парящие объёмные узлы остаются только на «Экспертам».
     assert.ok(experts.includes('.ex-node{animation:ex-float 5.5s ease-in-out infinite alternate}'));
+    assert.ok((experts.match(/class="ex-node"/gu) ?? []).length >= 3, 'на «Экспертам» пропали узлы — образец Р-888');
     for (const page of Object.keys(PAGES) as Page[]) {
       for (const [where, source] of both(page)) {
         assert.deepEqual(keyframes(source, 'pd-swing-hero'), swing, `${where}: размах первого экрана не как на «Экспертам»`);
-        assert.deepEqual(keyframes(source, 'pd-float'), float, `${where}: парение узлов не как на «Экспертам»`);
+        // Р-888 (указание владельца 14.11.2026): объёмные картинки на фоне
+        // отвлекают — узлов и их парения на четырёх страницах нет.
+        assert.doesNotMatch(source, /pd-node|pd-float/u, `${where}: остались объёмные узлы фона`);
         for (const rule of [
           '.pd-orb-hero{animation-name:pd-swing-hero;animation-duration:34s;animation-delay:-17s}',
-          '.pd-node{animation:pd-float 5.5s ease-in-out infinite alternate}',
-          '.pd-node:nth-of-type(2){animation-delay:-1.4s}.pd-node:nth-of-type(3){animation-delay:-2.8s}.pd-node:nth-of-type(4){animation-delay:-4.2s}',
-          // Узлы — от 1200 px, как на «Экспертам» (Р-598).
-          '@media (max-width:1199px){.pd-node{display:none!important}}',
           '@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}',
         ]) assert.ok(source.includes(rule), `${where}: нет правила «${rule.slice(0, 48)}…»`);
         assert.doesNotMatch(source, /pd-orb-calm|pd-swing-calm/u, `${where}: осталось «почти неподвижное» кольцо`);
@@ -61,17 +60,14 @@ describe('Р-884: фон четырёх страниц — как на «Экс�
     }
   });
 
-  it('на первом экране: кольцо pd-orb-hero, сетка точек и узлы на кольцах — декоративные', () => {
+  it('на первом экране: кольцо pd-orb-hero и сетка точек, без объёмных узлов (Р-888)', () => {
     for (const page of Object.keys(PAGES) as Page[]) {
       const bg = layer(design(page));
       assert.match(bg, /^<div aria-hidden="true"[^>]*>\n<div class="pd-glow"[^>]*><\/div>\n<svg class="pd-orb pd-orb-hero" /u, `${page}: первым идёт не кольцо первого экрана`);
       const hero = bg.slice(bg.indexOf('<svg class="pd-orb pd-orb-hero"'), bg.indexOf('</svg>') + 6);
       const afterHero = bg.slice(bg.indexOf('</svg>') + 6);
       assert.match(afterHero, /^\n<div style="position:absolute;left:0;right:0;top:0;height:\d+px;background-image:radial-gradient\(var\(--pd-art-dot\) 1px,transparent 1\.2px\);background-size:34px 34px;opacity:\.4;/u, `${page}: нет сетки точек на первом экране`);
-      const nodes = [...bg.matchAll(/<span class="pd-node" style="position:absolute;left:calc\(50% [+-] \d+px\);top:\d+px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="\.\/assets\/art\/([a-z0-9-]+)\.webp" alt="" width="96" height="96" decoding="async"[^>]*><\/span>/gu)].map((m) => m[1]);
-      assert.ok(nodes.length >= 3 && nodes.length <= 4, `${page}: узлов ${nodes.length}`);
-      assert.equal(new Set(nodes).size, nodes.length, `${page}: изображение узла повторено`);
-      assert.equal((bg.match(/class="pd-node"/gu) ?? []).length, nodes.length, `${page}: узел другого устройства`);
+      assert.doesNotMatch(bg, /<img /u, `${page}: в фоновом слое — изображение (Р-888: объёмных картинок на фоне нет)`);
       // Точки — в пределах колец (от центра 330, 300 не дальше внешнего
       // кольца 262): угол и радиус подобраны так, чтобы дуга ±30° не заходила
       // под текст, кнопки и снимки (Р-884, дополнения после слияния).

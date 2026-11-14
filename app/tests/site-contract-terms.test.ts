@@ -63,16 +63,13 @@ describe('Р-810: «Что закреплено в договоре» на «А�
   });
 
   it('на «Аспирантам» объёмные изображения — ровно в двух блоках: «Шесть шагов» и «Условия»', () => {
-    // Узлы на кольцах первого экрана (Р-884) — декоративный фоновый слой
-    // aria-hidden, как на «Экспертам», а не блок страницы; их изображения
-    // не повторяют изображений двух блоков.
+    // Фоновый слой aria-hidden — не блок страницы. Объёмных узлов на кольцах
+    // первого экрана в нём нет: сняты по указанию владельца 14.11.2026 (Р-888).
     const bgAt = MAIN.indexOf('<div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none');
     assert.ok(bgAt > 0, 'нет фонового слоя');
     const bg = MAIN.slice(bgAt, MAIN.indexOf('class="pd-skip"', bgAt));
     const page = MAIN.replace(bg, '');
-    const nodes = [...bg.matchAll(/<span class="pd-node"[^>]*><img src="\.\/assets\/art\/([a-z0-9-]+)\.webp" alt=""/gu)].map((m) => m[1]!);
-    assert.ok(nodes.length > 0, 'нет узлов первого экрана');
-    for (const name of nodes) assert.ok(!STEP_IMG.includes(name) && !Object.values(ART).includes(name), `${name} в узлах повторяет изображение блока`);
+    assert.doesNotMatch(bg, /pd-node|<img /u, 'в фоновом слое — объёмные узлы (сняты по Р-888)');
     const tags = page.match(/<img\b[^>]*>/gu) ?? [];
     const art = tags.filter((t) => /src="(?:\.\/assets\/art\/(?:pd|ex)-3d-|\{\{ [a-z]+\.img \}\})/u.test(t));
     assert.deepEqual(art.map((t) => t.match(/src="([^"]+)"/u)![1]), ['{{ u.img }}', '{{ p.img }}'], 'объёмные изображения появились в третьем блоке');
