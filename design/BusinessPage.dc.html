@@ -77,7 +77,8 @@
 .bp-rightbody{display:flex;flex-direction:column;gap:8px;min-width:0}
 @media (max-width:480px){.bp-right{padding:20px!important;gap:16px!important}}
 .bp-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
-.bp-geo{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}
+/* Р-891 (указание владельца 14.11.2026: «картинку по ширине немного увеличить, на 15 %»): от 1025 px колонка карточки карты шире — 1fr у текста против 1.676fr вместо .9fr / 1.1fr; карта в карточке (поля 22 px) на 1440 px 655 px вместо 570, на 1025—1440 px — ×1,15. Отметки, маршруты и подписи стоят в долях карты (SVG с тем же viewBox и left/top в %), поэтому растут вместе с ней. До 1024 px карта и так на всю ширину карточки — без изменений. */
+.bp-geo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.676fr)}
 @media (max-width:1024px){.bp-geo{grid-template-columns:minmax(0,1fr)}}
 @keyframes bp-geo-pulse{from{opacity:.9;transform:scale(.8)}to{opacity:.25;transform:scale(1.25)}}
 .bp-geo-pulse{transform-box:fill-box;transform-origin:center;animation:bp-geo-pulse 3.2s ease-in-out infinite alternate}
@@ -784,7 +785,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">География</span>
 <h2 id="bp-geo-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:24ch;text-wrap:balance">Работаем с компаниями по всей России</h2>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">Команды практики — в Москве и Санкт-Петербурге. С компаниями из других регионов работаем дистанционно: материалы, переписка и приёмка этапов — в личном кабинете.</p>
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">Команды практики — в Москве и <span style="white-space:nowrap">Санкт-Петербурге.</span> С компаниями из других регионов работаем дистанционно: материалы, переписка и приёмка этапов — в личном кабинете.</p>
 <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px;padding:14px 18px;background:var(--pd-accent-tint);border-radius:14px;align-self:flex-start">
 <span style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:28px;line-height:1.24;font-weight:600;letter-spacing:-.012em;color:var(--pd-accent);font-variant-numeric:tabular-nums">430+</span>
 <span style="font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">работ с 2016 года</span>
