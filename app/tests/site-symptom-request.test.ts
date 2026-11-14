@@ -20,7 +20,9 @@ const CASES = [
     page: 'MainPage',
     component: 'app/src/components/pages/PostgradPage.tsx',
     start: 'Где работа обычно останавливается',
-    after: '</ol>',
+    // Р-889: точки остановки — вкладки, под ними панель и «Итог разбора»;
+    // ссылка к заявке — строкой под карточкой, сразу после итога разбора.
+    after: 'class="pd-diag-sum"',
     end: '</div>',
     label: 'Разобрать, где остановилась ваша работа',
   },

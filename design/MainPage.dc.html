@@ -63,12 +63,33 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-burger{display:none}
 .pd-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-/* «Диагностика» (Р-809, Р-826; по замечанию владельца 07.11.2026 — Р-836): одна карточка-инфографика: от 769 px две панели рядом — слева «где работа останавливается» на тихой подложке (четыре точки, под каждой — что делает разбор), справа «итог разбора»; стрелка-узел 44 px на границе панелей. До 768 px панели столбцом, стрелка повёрнута вниз на границе. Переход к заявке — строкой под карточкой (.pd-diag-cta). */
-.pd-flow{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr)}
+/* «Диагностика» (Р-809, Р-826, Р-836; по замечанию владельца 14.11.2026 — Р-889): одна карточка-инфографика с вкладками. От 769 px две панели рядом: слева на тихой подложке четыре точки остановки — вкладки WAI-ARIA (role=tablist, стрелки, Home, End), справа — панель выбранной точки (объёмное изображение, что делает куратор, что вы получите, переход к разделу страницы) и строка «Итог разбора» из трёх плашек, плашка выбранной точки подсвечена. Стрелка-узел 44 px на границе панелей указывает на выбранную строку: строки от 769 px одной высоты 56 px с промежутком 8 px, сдвиг узла — translateY(N × 64 px), 220 мс. Высота не прыгает: панели всех четырёх точек стоят стопкой в одной ячейке сетки (.pd-diag-pane, grid-area 1/1), видна выбранная, остальные прозрачны и скрыты visibility — карточка всегда по самой высокой панели, на любой ширине. Смена — opacity и translateY(6px) за 220 мс; при уменьшенном движении без переходов. До 768 px панели столбцом, стрелка повёрнута вниз на границе. Переход к заявке — строкой под карточкой (.pd-diag-cta). */
+.pd-flow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
 .pd-flow-in{padding:20px 40px 22px 22px}
 .pd-flow-out{padding:20px 22px 22px 40px}
-.pd-flow-arrow{top:50%;right:-22px;transform:translateY(-50%)}
-@media (max-width:768px){.pd-flow{grid-template-columns:minmax(0,1fr)}.pd-flow-in{padding:18px 20px 30px}.pd-flow-out{padding:30px 20px 20px}.pd-flow-arrow{top:auto;right:auto;left:50%;bottom:-22px;transform:translateX(-50%) rotate(90deg)}}
+.pd-diag-tabwrap{position:relative}
+.pd-diag-tabs{display:flex;flex-direction:column;gap:8px}
+.pd-diag-tab{appearance:none;box-sizing:border-box;display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:12px;align-items:center;width:100%;height:56px;margin:0;padding:0 14px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--pd-ink-secondary);text-align:left;cursor:pointer;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.pd-diag-tab:hover{background:var(--pd-ink-inverse);color:var(--pd-ink)}
+.pd-diag-tab[aria-selected="true"]{background:var(--pd-ink-inverse);border-color:var(--pd-accent-edge);color:var(--pd-ink);box-shadow:0 1px 2px rgba(20,22,28,.05)}
+.pd-diag-tab[aria-selected="true"]>span:first-child{color:var(--pd-accent)!important}
+.pd-flow-arrow{top:6px;right:-62px;transition:transform 220ms cubic-bezier(.2,0,.2,1)}
+.pd-diag-panes{display:grid;margin-bottom:12px}
+.pd-diag-pane{grid-area:1/1;display:grid;grid-template-columns:112px minmax(0,1fr);grid-template-areas:"img what" "img get" "img link";column-gap:20px;row-gap:8px;align-content:start;min-width:0;opacity:0;visibility:hidden;transform:translateY(6px)}
+.pd-diag-pane[data-on="true"]{opacity:1;visibility:visible;transform:none;transition:opacity 220ms cubic-bezier(.2,0,.2,1),transform 220ms cubic-bezier(.2,0,.2,1)}
+.pd-diag-img{grid-area:img}
+.pd-diag-what{grid-area:what}
+.pd-diag-get{grid-area:get}
+.pd-diag-link{grid-area:link;justify-self:start}
+.pd-diag-sum{margin-top:auto}
+.pd-diag-res{display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;min-height:32px;padding:5px 10px 5px 8px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);color:var(--pd-ink-secondary);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.pd-diag-res>span:first-child{background:var(--pd-ink-muted);transition:background 180ms cubic-bezier(.2,0,.2,1)}
+.pd-diag-res[data-on="true"]{background:var(--pd-accent-tint);border-color:var(--pd-accent-edge);color:var(--pd-accent)}
+.pd-diag-res[data-on="true"]>span:first-child{background:var(--pd-accent)}
+@media (min-width:769px) and (max-width:1100px){.pd-flow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.pd-diag-tab-t{font-size:14px!important}}
+@media (min-width:769px) and (max-width:1100px),(max-width:560px){.pd-diag-pane{grid-template-columns:96px minmax(0,1fr);grid-template-areas:"img get" "what what" "link link";column-gap:16px}.pd-diag-img{width:96px!important;height:96px!important}.pd-diag-get{align-self:center}}
+@media (max-width:768px){.pd-flow{grid-template-columns:minmax(0,1fr)}.pd-flow-in{padding:18px 20px 22px}.pd-flow-out{padding:22px 20px 20px}.pd-diag-tabwrap{position:static}.pd-diag-tabs{gap:4px}.pd-diag-tab{height:auto;min-height:48px;padding:6px 12px}.pd-diag-tab-t{font-size:14px!important}.pd-flow-arrow{top:auto;right:auto;left:50%;bottom:-18px;width:36px!important;height:36px!important;transform:translateX(-50%) rotate(90deg)!important;transition:none}}
+@media (prefers-reduced-motion:reduce){.pd-diag-pane{transform:none}}
 .pd-diag-cta{box-sizing:border-box;min-height:44px;padding:8px 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px}
 .pd-diag-cta{display:grid;grid-template-columns:28px minmax(0,1fr) 18px;column-gap:14px;align-items:center;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)}
 @media (max-width:480px){.pd-diag-cta{padding-left:12px;padding-right:12px}}
@@ -413,33 +434,50 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </div>
 <p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:60ch">Куратор читает текст и называет, что мешает выйти на предзащиту.</p>
-<!-- Р-836 (замечание владельца 07.11.2026: «доработать наполнение, чтобы по высоте уменьшить на 30 %, только важное + инфографику добавить»): одна карточка-инфографика «где работа останавливается → итог разбора»: слева на тихой подложке четыре главные точки остановки, под каждой — что делает разбор; стрелка-узел на границе панелей; справа — три результата разбора. Шкала «Как это выглядит у вас» снята. Переход к заявке — строкой под карточкой (Р-791, Р-826). Тексты прежние, без тёмной панели и градиентов (Р-51, Р-608). -->
+<!-- Р-836 (замечание владельца 07.11.2026: «доработать наполнение, чтобы по высоте уменьшить на 30 %, только важное + инфографику добавить»): одна карточка-инфографика «где работа останавливается → итог разбора». Р-889 (замечание владельца 14.11.2026: «по высоте зафиксировать, доработать функционал блока, сделать его интерактивным и добавить элементы интерактивные и объёмные картинки»): четыре точки остановки — вкладки; справа панель выбранной точки — объёмное изображение, что делает куратор, что вы получите (один из трёх итогов разбора) и переход к разделу страницы; под панелью — «Итог разбора» тремя плашками. Панели всех точек стоят стопкой в одной ячейке: высота карточки — по самой высокой панели и при переключении не меняется. Без автосмены и автопрокрутки (Р-43). Переход к заявке — строкой под карточкой (Р-791, Р-826). Тексты — прежние формулировки страницы, без тёмной панели и градиентов (Р-51, Р-608). -->
 <div class="pd-diag" style="display:flex;flex-direction:column;gap:12px;margin-top:22px">
 <div class="pd-flow" style="border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:0">
 <div class="pd-flow-in" style="position:relative;background:var(--pd-surface-quiet);display:flex;flex-direction:column;gap:12px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Где работа обычно останавливается</span>
-<ol class="pd-stalls" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px">
+<span id="pd-diag-label" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Где работа обычно останавливается</span>
+<div class="pd-diag-tabwrap">
+<div role="tablist" aria-labelledby="pd-diag-label" aria-orientation="vertical" class="pd-diag-tabs" onKeyDown="{{ diagKey }}">
 <sc-for list="{{ stalls }}" as="p" hint-placeholder-count="4">
-<li class="pd-flow-stall" style="display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:12px;row-gap:3px;align-items:baseline;min-width:0">
+<button type="button" role="tab" id="{{ p.tabId }}" aria-selected="{{ p.sel }}" aria-controls="{{ p.panelId }}" tabindex="{{ p.ti }}" onClick="{{ p.pick }}" class="pd-diag-tab">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:21px;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ p.num }}</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink);min-width:0">{{ p.title }}</span>
-<span style="grid-column:2;display:flex;align-items:center;gap:8px;min-width:0"><span aria-hidden="true" style="width:13px;height:13px;flex:0 0 13px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span><span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary);min-width:0">{{ p.fix }}</span></span>
-</li>
+<span class="pd-diag-tab-t" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;min-width:0">{{ p.title }}</span>
+</button>
 </sc-for>
-</ol>
-<span class="pd-flow-arrow" aria-hidden="true" style="position:absolute;z-index:1;width:44px;height:44px;box-sizing:border-box;border-radius:50%;background:var(--pd-ink-inverse);border:1px solid var(--pd-accent-edge);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(20,22,28,.05)"><span style="width:18px;height:18px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span></span>
 </div>
-<div class="pd-flow-out" style="display:flex;flex-direction:column;gap:12px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Итог разбора</span>
-<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px">
-<sc-for list="{{ outcomes }}" as="o" hint-placeholder-count="3">
-<li style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;align-items:center;min-width:0">
-<span aria-hidden="true" style="width:36px;height:36px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:18px;height:18px;display:block;background:var(--pd-accent);-webkit-mask:{{ o.mask }};mask:{{ o.mask }}"></span></span>
-<span style="display:flex;flex-direction:column;gap:2px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ o.title }}</span>
-<span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">{{ o.text }}</span>
+<span class="pd-flow-arrow" aria-hidden="true" style="position:absolute;z-index:1;width:44px;height:44px;box-sizing:border-box;border-radius:50%;background:var(--pd-ink-inverse);border:1px solid var(--pd-accent-edge);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(20,22,28,.05);transform:{{ diagArrow }}"><span style="width:18px;height:18px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span></span>
+</div>
+</div>
+<div class="pd-flow-out" style="display:flex;flex-direction:column;min-width:0">
+<div class="pd-diag-panes">
+<sc-for list="{{ diag }}" as="d" hint-placeholder-count="4">
+<div role="tabpanel" id="{{ d.panelId }}" aria-labelledby="{{ d.tabId }}" class="pd-diag-pane" data-on="{{ d.on }}">
+<img src="{{ d.img }}" alt="" aria-hidden="true" width="112" height="112" loading="lazy" decoding="async" class="pd-diag-img" style="display:block;width:112px;height:112px;object-fit:contain">
+<div class="pd-diag-what" style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Что делает куратор</span>
+<p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)"><span style="font-weight:600;color:var(--pd-ink)">{{ d.fix }}.</span> {{ d.text }}</p>
+</div>
+<div class="pd-diag-get" style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Что вы получите</span>
+<span style="display:grid;grid-template-columns:32px minmax(0,1fr);column-gap:10px;align-items:center;min-width:0">
+<span aria-hidden="true" style="width:32px;height:32px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:16px;height:16px;display:block;background:var(--pd-accent);-webkit-mask:{{ d.outMask }};mask:{{ d.outMask }}"></span></span>
+<span style="display:flex;flex-direction:column;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ d.outTitle }}</span>
+<span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">{{ d.outText }}</span>
 </span>
-</li>
+</span>
+</div>
+<a class="pd-diag-link" href="{{ d.href }}" style="display:inline-flex;align-items:center;gap:8px;min-height:44px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">{{ d.link }}<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:currentColor;-webkit-mask:{{ downMask }};mask:{{ downMask }}"></span></a>
+</div>
+</sc-for>
+</div>
+<ul class="pd-diag-sum" aria-labelledby="pd-diag-sum-label" style="list-style:none;margin:0;padding:12px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-top:1px solid var(--pd-divider)">
+<li id="pd-diag-sum-label" aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent);margin-right:4px">Итог разбора</li>
+<sc-for list="{{ outcomes }}" as="o" hint-placeholder-count="3">
+<li class="pd-diag-res" data-on="{{ o.on }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600"><span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;-webkit-mask:{{ o.mask }};mask:{{ o.mask }}"></span>{{ o.title }}</li>
 </sc-for>
 </ul>
 </div>
@@ -454,7 +492,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </section>
 
 <section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
+<!-- Р-889: якорь «Условий» — на шапке раздела (порядок разделов в site-postgrad-order читается по id раздела): к нему ведёт переход из «Диагностики» (точка 03, нормоконтроль). -->
+<div id="contract" style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px;scroll-margin-top:24px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Условия</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Что закреплено в договоре</h2>
@@ -978,7 +1017,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, navOpen: false };
+  state = { diagAt: 0, inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, navOpen: false };
   componentDidMount(){
     // Шаги после заявки (Р-885) проявляются по очереди, когда панель доходит
     // до чтения, — один раз. Если панель уже на экране, при уменьшенном
@@ -1076,11 +1115,16 @@ class Component extends DCLogic {
     const stepScale = 'scaleX(' + (1 / steps.length + stepFrac * (steps.length - 1) / steps.length) + ')';
     // «Итог разбора» (Р-809): три результата вместо четырёх свойств; смысл
     // «Готовности к защите» — в строке 06 карты.
+    // Р-889: выбранная точка остановки «Диагностики» (diagAt) и какой итог
+    // разбора ей отвечает (индекс в outcomes): 01 — методология, 02 и 03 —
+    // замечания куратора, 04 — план с датами. Плашка этого итога подсвечена.
+    const diagAt = this.state.diagAt;
+    const diagOut = [1, 0, 0, 2];
     const outcomes = [
       ['message-circle', 'Замечания куратора', 'Раздел, проблема, способ исправления'],
       ['flask-conical', 'Методология', 'Объект, предмет и логика доказательства'],
       ['calendar-days', 'План с датами', 'Сроки глав, апробации и предзащиты']
-    ].map(([icon, title, text]) => ({ title, text, mask: this.mask(icon) }));
+    ].map(([icon, title, text], i) => ({ title, text, mask: this.mask(icon), on: diagOut[diagAt] === i ? 'true' : 'false' }));
     // «Сколько это стоит?» (Р-807): раздел «Стоимость» с «Аспирантам» снят, его
     // факт — одним ответом: сумма в Задании до оплаты, меняется только
     // дополнительным соглашением к Заданию (оферта, пп. 6.1 и 6.4).
@@ -1112,7 +1156,37 @@ class Component extends DCLogic {
       ['Замечания руководителя приходят частями', 'Отделяет правки, нужные до предзащиты'],
       ['Требования совета — в последний месяц', 'Проверяет оформление по ГОСТ'],
       ['Публикаций не хватает для допуска', 'Вносит статьи и апробацию в план']
-    ].map(([title, fix], i) => ({ title, fix, num: '0' + (i + 1) }));
+    ].map(([title, fix], i) => ({
+      title, fix, num: '0' + (i + 1),
+      // Р-889: точки остановки — вкладки WAI-ARIA; выбранная — в порядке обхода.
+      tabId: 'pd-diag-tab-' + i, panelId: 'pd-diag-panel-' + i,
+      sel: i === diagAt ? 'true' : 'false', ti: i === diagAt ? 0 : -1,
+      pick: () => this.setState({ diagAt: i })
+    }));
+    // Панель выбранной точки (Р-889, замечание владельца 14.11.2026): объёмное
+    // изображение по смыслу точки — без повтора «Шести шагов» (stepImg) и
+    // «Условий» (uspArt): логика доказательства — колба, замечания
+    // руководителя — команда (руководитель, куратор и вы), требования
+    // совета — документ с печатью, статьи и апробация в плане — календарь.
+    // Что делает куратор — прежняя метка разбора и одно предложение из
+    // формулировок страницы («Итог разбора», «Вопросы», «Условия», «Публикации
+    // к защите»), без новых обещаний; переход — к разделу этой же страницы.
+    const diagArt = ['pd-3d-flask', 'pd-3d-team', 'ex-3d-contract', 'pd-3d-calendar'];
+    const diagMore = [
+      ['Положения на защиту, объект и предмет сопоставляет с тем, что доказано в главах.', '#process', 'Шесть шагов от заявки до защиты'],
+      ['Правки вносите вы — куратор указывает, что и почему исправить.', '#inside', 'Как это выглядит внутри'],
+      ['Структуру и библиографию сверяет с требованиями вашего диссовета уже на разборе.', '#contract', 'Что закреплено в договоре'],
+      ['Сверяет публикации с требованиями к допуску и ставит сроки статей рядом со сроками глав.', '#articles', 'Сколько статей нужно к защите']
+    ];
+    const diag = stalls.map((p, i) => {
+      const [text, href, link] = diagMore[i];
+      const o = outcomes[diagOut[i]];
+      return {
+        fix: p.fix, text, href, link, tabId: p.tabId, panelId: p.panelId, on: p.sel,
+        img: './assets/art/' + diagArt[i] + '.webp',
+        outTitle: o.title, outText: o.text, outMask: o.mask
+      };
+    });
     // «Что закреплено в договоре» (Р-810): что вы получаете → как проверить до
     // подписания → где это видно. Тексты — прежние формулировки карточек
     // (текст и подтверждение) и страницы: профиль куратора — в кабинете
@@ -1303,7 +1377,25 @@ class Component extends DCLogic {
       reviews, revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
       revPrev: () => this.setState(s => ({ revAt: (s.revAt - 1 + revN) % revN })),
       revNext: () => this.setState(s => ({ revAt: (s.revAt + 1) % revN })),
-      steps, faq, stalls, usp, outcomes, offerTop, offerMid, offerRest, pubRows, articleCard, stepScale,
+      steps, faq, stalls, usp, outcomes, diag,
+      // Стрелка-узел «Диагностики» указывает на выбранную строку: шаг строк
+      // от 769 px — 56 px высоты и 8 px промежутка (Р-889); до 768 px узел
+      // стоит на границе панелей, сдвиг перекрыт правилом макета.
+      diagArrow: 'translateY(' + diagAt * 64 + 'px)',
+      // Стрелки, Home и End переводят выбор и фокус (WAI-ARIA, вкладки);
+      // без автосмены и без прокрутки страницы (Р-43).
+      diagKey: e => {
+        const n = stalls.length;
+        let i = this.state.diagAt;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') i = (i + 1) % n;
+        else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') i = (i - 1 + n) % n;
+        else if (e.key === 'Home') i = 0;
+        else if (e.key === 'End') i = n - 1;
+        else return;
+        e.preventDefault();
+        this.setState({ diagAt: i }, () => { const el = document.getElementById('pd-diag-tab-' + i); if (el) el.focus({ preventScroll: true }); });
+      },
+      downMask: this.mask('arrow-down'), offerTop, offerMid, offerRest, pubRows, articleCard, stepScale,
       contactTabs: ['E-mail', 'Телефон'].map((label, i) => ({
         label, active: i === this.state.contact, inactive: i !== this.state.contact,
         pick: () => this.setState({ contact: i })
