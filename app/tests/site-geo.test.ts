@@ -94,6 +94,37 @@ describe('«География» на четырёх страницах (Р-849,
     });
   }
 
+  it('Р-891: карта шире на 15 % от 1025 px — колонка карточки 1.676fr против 1fr у текста; отметки и подписи — в долях карты', () => {
+    // Указание владельца 14.11.2026: «картинку по ширине немного увеличить, на 15 %».
+    // Карта — на всю ширину карточки без полей (22 + 22 px) и рамки (2 px). На 1440 px
+    // контейнер 1160 px, промежуток колонок 40 px: прежние .9fr / 1.1fr давали карту 570 px.
+    const CONTAINER = 1160, GAP = 40, INSET = 46;
+    const mapAt = (card: number, text: number) => (CONTAINER - GAP) * card / (card + text) - INSET;
+    const before = mapAt(1.1, 0.9);
+    for (const p of PAGES) {
+      const html = read('design', `${p.page}.dc.html`);
+      const tsx = read('app', 'src', 'components', 'pages', `${p.component}.tsx`);
+      const cols = html.match(new RegExp(`\\.${p.pre}-geo\\{display:grid;grid-template-columns:minmax\\(0,([.\\d]+)fr\\) minmax\\(0,([.\\d]+)fr\\)\\}`, 'u'));
+      assert.ok(cols, `${p.page}: нет сетки раздела`);
+      const [first, second] = [Number(cols[1]), Number(cols[2])];
+      // У «Экспертам» карточка карты — первая колонка (order:-1), у остальных — вторая.
+      const [cardFr, textFr] = p.pre === 'ex' ? [first, second] : [second, first];
+      const ratio = mapAt(cardFr, textFr) / before;
+      assert.ok(Math.abs(ratio - 1.15) < 0.005, `${p.page}: карта ×${ratio.toFixed(3)} вместо ×1,15`);
+      assert.ok(tsx.includes(cols[0]), `${p.page}: сетка не перенесена в компонент`);
+      const section = geo(html);
+      // Поля карточки, от которых считается ширина карты, прежние.
+      assert.match(section, new RegExp(`<div class="${p.pre}-geo-card" style="[^"]*padding:22px 22px 16px;`, 'u'));
+      // Карта — во всю ширину своей обёртки; разметка отметок — SVG с тем же viewBox на всю обёртку,
+      // подписи — left/top в процентах: всё растёт вместе с картой.
+      assert.match(section, /width="640" height="353" loading="lazy" decoding="async" style="display:block;width:100%;height:auto">\n<svg viewBox="0 0 640 353" aria-hidden="true" focusable="false" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">/u);
+      assert.match(section, /left:calc\(13\.67% \+ 14px\);top:52\.01%/u, `${p.page}: подпись «Москва» не в долях карты`);
+      assert.match(section, /left:calc\(13\.72% \+ 14px\);top:38\.07%/u, `${p.page}: подпись «Санкт-Петербург» не в долях карты`);
+      // В узкой колонке текста название города не рвётся по дефису.
+      assert.ok(section.includes('<span style="white-space:nowrap">Санкт-Петербурге.</span>'), `${p.page}: «Санкт-Петербурге» может разорваться по дефису`);
+    }
+  });
+
   it('«Экспертам»: от 1025 px карта слева, текст справа — у анкеты ниже текст слева и форма справа', () => {
     const html = read('design', 'ExpertsPage.dc.html');
     assert.ok(html.includes('.ex-geo>.ex-geo-card{order:-1}'));

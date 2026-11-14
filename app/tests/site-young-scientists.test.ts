@@ -14,7 +14,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -160,6 +160,57 @@ describe('«Аспирантам»: раздел «Публикации к за�
     const tsx = read('app/src/components/pages/PostgradPage.tsx');
     assert.match(tsx, /<section [^>]*id="articles"/u);
     assert.ok(tsx.includes('Публикации к\u00a0защите'), 'в компоненте нет метки «Публикации к защите»');
+  });
+});
+
+describe('«Аспирантам»: под таблицей п. 13 — «Как помогаем с публикациями к защите» вместо пустоты (Р-890)', () => {
+  // Владелец 14.11.2026: «доработать этот блок, много пустого места, заполнить
+  // и сделать полезным». Карточка инфографики тянулась по высоте карточки
+  // статьи, под таблицей оставалось ~155 px пустоты на 1440 px.
+  const block = section(MAIN, 'articles');
+  const TSX = read('app/src/components/pages/PostgradPage.tsx');
+  const infographic = block.slice(block.indexOf('<div class="pd-pubmx"'), block.indexOf('<article'));
+  const help = (() => {
+    const start = MAIN.indexOf('const pubHelp = [');
+    assert.ok(start > 0, 'нет данных pubHelp');
+    const body = MAIN.slice(start, MAIN.indexOf('].map', start));
+    return [...body.matchAll(/^\s*\['([a-z-]+)', '([^']+)'\],?$/gmu)].map((m) => [m[1]!, m[2]!.replace(/\u00a0/gu, ' ')]);
+  })();
+
+  it('подвал карточки инфографики — после таблицы: метка, два шага и переход к заявке', () => {
+    const foot = infographic.slice(infographic.indexOf('<div class="pd-pubpad pd-pubfoot"'));
+    assert.ok(foot.length > 0 && infographic.indexOf('<div class="pd-pubpad pd-pubfoot"') > infographic.indexOf('</sc-for>'), 'подвала под таблицей нет');
+    assert.match(text(foot), /^Как помогаем с публикациями к защите /u);
+    assert.match(foot, /<ul aria-labelledby="mp-pub-help"[^>]*>\s*<sc-for list="\{\{ pubHelp \}\}" as="h"/u);
+    assert.match(foot, /<a class="pd-lift" href="#request"><span[^>]*>Разобрать публикации к\u00a0защите<\/span>/u, 'нет перехода к заявке');
+    assert.match(foot, /\{\{ h\.mask \}\}[\s\S]*\{\{ h\.text \}\}/u);
+    assert.ok(TSX.includes('Разобрать публикации к\u00a0защите'), 'подвал не перенесён в компонент');
+  });
+
+  it('шаги — по формулировкам этой страницы («Диагностика», «План с датами»), без чисел, обещаний и пересказа п. 13', () => {
+    assert.equal(help.length, 2, 'шагов не два');
+    for (const [icon] of help) assert.ok(existsSync(path.join(ROOT, 'design', 'assets', 'icons', `${icon}.svg`)), `нет значка ${icon}`);
+    const all = help.map(([, t]) => t).join('\n');
+    assert.deepEqual(findForbidden(all, 'pubHelp'), []);
+    assert.doesNotMatch(all, /\d|гарант|опубликуем|под ключ|напишем|подготовим статью|приравнива/iu);
+    const page = MAIN.replace(/\u00a0/gu, ' ');
+    assert.ok(page.includes('Сверяет публикации с требованиями к допуску'), 'на странице нет носителя шага 1 («Диагностика», точка 04)');
+    assert.ok(page.includes("'Вносит статьи и апробацию в план'") && page.includes("'Сроки глав, апробации и предзащиты'"), 'на странице нет носителя шага 2');
+    assert.match(help[0]![1], /требованиями к допуску/u);
+    assert.match(help[1]![1], /статьи и апробацию .*план с датами/u);
+    // Пояснение о том, что приравнивается к публикациям, снято владельцем (Р-833)
+    // и без сверки с официальным текстом Положения не возвращается.
+    assert.doesNotMatch(text(block), /приравнива/iu);
+  });
+
+  it('таблица не растягивается: остаток высоты ряда забирает подвал (в макете и компоненте)', () => {
+    assert.match(block, /<div class="pd-pubmx" role="table" aria-labelledby="mp-pub-title" style="flex:0 0 auto">/u, 'таблица снова тянется по высоте ряда — под ней пустота');
+    for (const source of [MAIN, TSX]) {
+      assert.ok(source.includes('.pd-pubfoot{flex:1 1 auto;justify-content:center}'), 'подвал не забирает остаток высоты');
+      assert.ok(source.includes('.pd-pubhelp{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label link" "list list";'), 'нет раскладки подвала');
+      assert.ok(source.includes('@media (max-width:768px){.pd-pubhelp{grid-template-columns:minmax(0,1fr);grid-template-areas:"label" "list" "link"}'), 'до 768 px подвал не столбцом');
+    }
+    assert.doesNotMatch(TSX, /className="pd-pubmx" role="table" aria-labelledby="mp-pub-title" style=\{\{ flex: "1 1 auto" \}\}/u);
   });
 });
 

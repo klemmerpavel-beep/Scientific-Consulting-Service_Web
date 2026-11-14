@@ -45,35 +45,51 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 /* Фон в движении — как на «Экспертам» (Р-620, Р-625; по указанию
    владельца 13.11.2026 — Р-884): кольцо первого экрана покачивается на ±30°
    за 34 с, кольца ниже — на ±12° за 46 и 58 с, соседние навстречу; пятна
-   света дышат; узлы на кольцах первого экрана парят на ±6 px за 5,5 с со
-   сдвигом фазы (от 1200 px, как на «Экспертам»); на первом экране — сетка
-   точек. Точки колец первого экрана стоят на углах, с которых дуга ±30° не
-   заходит под строки текста и кнопки на 390—1920 px (подбор Р-884); узлы —
-   в просветах между текстом, снимками и плашками. Отрицательная задержка —
+   света дышат; на первом экране — сетка точек. Объёмных узлов на кольцах
+   нет: сняты по указанию владельца 14.11.2026 (Р-888), остаются только
+   на «Экспертам». Точки колец первого экрана стоят на углах, с которых дуга ±30° не
+   заходит под строки текста и кнопки на 390—1920 px (подбор Р-884). Отрицательная задержка —
    начало из положения макета. Только transform и opacity; при уменьшенном
    движении всё стоит (Р-93). Реакции на курсор нет (Р-43). */
 @keyframes pd-swing{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
 @keyframes pd-swing-hero{from{transform:rotate(-30deg)}to{transform:rotate(30deg)}}
 @keyframes pd-breathe{from{opacity:.55;transform:scale(.9)}to{opacity:1;transform:scale(1.06)}}
-@keyframes pd-float{from{transform:translateY(-6px)}to{transform:translateY(6px)}}
 .pd-orb{transform-origin:51.5625% 51.7241%;animation:pd-swing 46s ease-in-out -23s infinite alternate}
 .pd-orb-b{animation-duration:58s;animation-delay:-29s;animation-direction:alternate-reverse}
 .pd-orb-hero{animation-name:pd-swing-hero;animation-duration:34s;animation-delay:-17s}
 .pd-glow{animation:pd-breathe 13s ease-in-out infinite alternate}
-.pd-node{animation:pd-float 5.5s ease-in-out infinite alternate}
-.pd-node:nth-of-type(2){animation-delay:-1.4s}.pd-node:nth-of-type(3){animation-delay:-2.8s}.pd-node:nth-of-type(4){animation-delay:-4.2s}
-@media (max-width:1199px){.pd-node{display:none!important}}
 .pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}
 .pd-skip:focus{left:0;color:var(--pd-ink-inverse)}
 .pd-burger{display:none}
 .pd-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .pd-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-/* «Диагностика» (Р-809, Р-826; по замечанию владельца 07.11.2026 — Р-836): одна карточка-инфографика: от 769 px две панели рядом — слева «где работа останавливается» на тихой подложке (четыре точки, под каждой — что делает разбор), справа «итог разбора»; стрелка-узел 44 px на границе панелей. До 768 px панели столбцом, стрелка повёрнута вниз на границе. Переход к заявке — строкой под карточкой (.pd-diag-cta). */
-.pd-flow{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr)}
+/* «Диагностика» (Р-809, Р-826, Р-836; по замечанию владельца 14.11.2026 — Р-889): одна карточка-инфографика с вкладками. От 769 px две панели рядом: слева на тихой подложке четыре точки остановки — вкладки WAI-ARIA (role=tablist, стрелки, Home, End), справа — панель выбранной точки (объёмное изображение, что делает куратор, что вы получите, переход к разделу страницы) и строка «Итог разбора» из трёх плашек, плашка выбранной точки подсвечена. Стрелка-узел 44 px на границе панелей указывает на выбранную строку: строки от 769 px одной высоты 56 px с промежутком 8 px, сдвиг узла — translateY(N × 64 px), 220 мс. Высота не прыгает: панели всех четырёх точек стоят стопкой в одной ячейке сетки (.pd-diag-pane, grid-area 1/1), видна выбранная, остальные прозрачны и скрыты visibility — карточка всегда по самой высокой панели, на любой ширине. Смена — opacity и translateY(6px) за 220 мс; при уменьшенном движении без переходов. До 768 px панели столбцом, стрелка повёрнута вниз на границе. Переход к заявке — строкой под карточкой (.pd-diag-cta). */
+.pd-flow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
 .pd-flow-in{padding:20px 40px 22px 22px}
 .pd-flow-out{padding:20px 22px 22px 40px}
-.pd-flow-arrow{top:50%;right:-22px;transform:translateY(-50%)}
-@media (max-width:768px){.pd-flow{grid-template-columns:minmax(0,1fr)}.pd-flow-in{padding:18px 20px 30px}.pd-flow-out{padding:30px 20px 20px}.pd-flow-arrow{top:auto;right:auto;left:50%;bottom:-22px;transform:translateX(-50%) rotate(90deg)}}
+.pd-diag-tabwrap{position:relative}
+.pd-diag-tabs{display:flex;flex-direction:column;gap:8px}
+.pd-diag-tab{appearance:none;box-sizing:border-box;display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:12px;align-items:center;width:100%;height:56px;margin:0;padding:0 14px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--pd-ink-secondary);text-align:left;cursor:pointer;transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.pd-diag-tab:hover{background:var(--pd-ink-inverse);color:var(--pd-ink)}
+.pd-diag-tab[aria-selected="true"]{background:var(--pd-ink-inverse);border-color:var(--pd-accent-edge);color:var(--pd-ink);box-shadow:0 1px 2px rgba(20,22,28,.05)}
+.pd-diag-tab[aria-selected="true"]>span:first-child{color:var(--pd-accent)!important}
+.pd-flow-arrow{top:6px;right:-62px;transition:transform 220ms cubic-bezier(.2,0,.2,1)}
+.pd-diag-panes{display:grid;margin-bottom:12px}
+.pd-diag-pane{grid-area:1/1;display:grid;grid-template-columns:112px minmax(0,1fr);grid-template-areas:"img what" "img get" "img link";column-gap:20px;row-gap:8px;align-content:start;min-width:0;opacity:0;visibility:hidden;transform:translateY(6px)}
+.pd-diag-pane[data-on="true"]{opacity:1;visibility:visible;transform:none;transition:opacity 220ms cubic-bezier(.2,0,.2,1),transform 220ms cubic-bezier(.2,0,.2,1)}
+.pd-diag-img{grid-area:img}
+.pd-diag-what{grid-area:what}
+.pd-diag-get{grid-area:get}
+.pd-diag-link{grid-area:link;justify-self:start}
+.pd-diag-sum{margin-top:auto}
+.pd-diag-res{display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;min-height:32px;padding:5px 10px 5px 8px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);color:var(--pd-ink-secondary);transition:background 180ms cubic-bezier(.2,0,.2,1),border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1)}
+.pd-diag-res>span:first-child{background:var(--pd-ink-muted);transition:background 180ms cubic-bezier(.2,0,.2,1)}
+.pd-diag-res[data-on="true"]{background:var(--pd-accent-tint);border-color:var(--pd-accent-edge);color:var(--pd-accent)}
+.pd-diag-res[data-on="true"]>span:first-child{background:var(--pd-accent)}
+@media (min-width:769px) and (max-width:1100px){.pd-flow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.pd-diag-tab-t{font-size:14px!important}}
+@media (min-width:769px) and (max-width:1100px),(max-width:560px){.pd-diag-pane{grid-template-columns:96px minmax(0,1fr);grid-template-areas:"img get" "what what" "link link";column-gap:16px}.pd-diag-img{width:96px!important;height:96px!important}.pd-diag-get{align-self:center}}
+@media (max-width:768px){.pd-flow{grid-template-columns:minmax(0,1fr)}.pd-flow-in{padding:18px 20px 22px}.pd-flow-out{padding:22px 20px 20px}.pd-diag-tabwrap{position:static}.pd-diag-tabs{gap:4px}.pd-diag-tab{height:auto;min-height:48px;padding:6px 12px}.pd-diag-tab-t{font-size:14px!important}.pd-flow-arrow{top:auto;right:auto;left:50%;bottom:-18px;width:36px!important;height:36px!important;transform:translateX(-50%) rotate(90deg)!important;transition:none}}
+@media (prefers-reduced-motion:reduce){.pd-diag-pane{transform:none}}
 .pd-diag-cta{box-sizing:border-box;min-height:44px;padding:8px 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px}
 .pd-diag-cta{display:grid;grid-template-columns:28px minmax(0,1fr) 18px;column-gap:14px;align-items:center;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)}
 @media (max-width:480px){.pd-diag-cta{padding-left:12px;padding-right:12px}}
@@ -98,6 +114,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-pubdots{display:grid;grid-template-columns:repeat(10,8px);gap:4px;margin-top:4px}
 .pd-pubdeg{display:none!important}
 @media (max-width:600px){.pd-pubrow{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-pubrow>[role=rowheader]{grid-column:1/-1}.pd-pubhead{display:none!important}.pd-pubdeg{display:block!important}}
+/* Р-890 (замечание владельца 14.11.2026: «много пустого места, заполнить и сделать полезным»): под таблицей п. 13 — тихий подвал карточки «Как помогаем с публикациями к защите»: два шага (сверка статей с требованиями к допуску, статьи и апробация в плане с датами) и переход к заявке. Таблица больше не растягивается: остаток высоты ряда забирает подвал, его содержимое — по центру. От 769 px метка и переход — строкой, под ними два шага в две колонки; до 768 px — столбцом, переход на всю ширину внизу. */
+.pd-pubfoot{flex:1 1 auto;justify-content:center}
+.pd-pubhelp{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label link" "list list";gap:12px 24px;align-items:center}
+.pd-pubhelp>span{grid-area:label}
+.pd-pubhelp>ul{grid-area:list;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px}
+.pd-pubhelp>a{grid-area:link;display:inline-flex;align-items:center;gap:10px;box-sizing:border-box;min-height:44px;padding:10px 16px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);text-decoration:none;white-space:nowrap}
+@media (max-width:768px){.pd-pubhelp{grid-template-columns:minmax(0,1fr);grid-template-areas:"label" "list" "link"}.pd-pubhelp>ul{grid-template-columns:minmax(0,1fr)}.pd-pubhelp>a{justify-content:space-between;white-space:normal}}
 .pd-pubgrant{display:grid;grid-template-columns:minmax(0,1fr) auto}
 @media (max-width:768px){.pd-pubgrant{grid-template-columns:minmax(0,1fr)!important}.pd-pubgrant>a{width:100%}}
 @media (max-width:480px){.pd-pubrow,.pd-pubpad{padding-left:20px!important;padding-right:20px!important}.pd-pubgrant{padding-left:20px!important;padding-right:20px!important}}
@@ -106,7 +129,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-edge::before{content:"";position:absolute;top:-1px;left:-1px;right:-1px;height:15px;box-sizing:border-box;border:2px solid var(--pd-accent);border-bottom:0;border-radius:14px 14px 0 0;pointer-events:none}
 
 .pd-faq{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)}
-.pd-geo{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}
+/* Р-891 (указание владельца 14.11.2026: «картинку по ширине немного увеличить, на 15 %»): от 1025 px колонка карточки карты шире — 1fr у текста против 1.676fr вместо .9fr / 1.1fr; карта в карточке (поля 22 px) на 1440 px 655 px вместо 570, на 1025—1440 px — ×1,15. Отметки, маршруты и подписи стоят в долях карты (SVG с тем же viewBox и left/top в %), поэтому растут вместе с ней. До 1024 px карта и так на всю ширину карточки — без изменений. */
+.pd-geo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.676fr)}
 @media (max-width:1024px){.pd-geo{grid-template-columns:minmax(0,1fr)}}
 @keyframes pd-geo-pulse{from{opacity:.9;transform:scale(.8)}to{opacity:.25;transform:scale(1.25)}}
 .pd-geo-pulse{transform-box:fill-box;transform-origin:center;animation:pd-geo-pulse 3.2s ease-in-out infinite alternate}
@@ -166,10 +190,6 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <circle cx="516" cy="239" r="4" fill="#14417A"></circle>
 </svg>
 <div style="position:absolute;left:0;right:0;top:0;height:1180px;background-image:radial-gradient(var(--pd-art-dot) 1px,transparent 1.2px);background-size:34px 34px;opacity:.4;-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 46%,transparent 100%)"></div>
-<span class="pd-node" style="position:absolute;left:calc(50% + 520px);top:158px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/pd-3d-team.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
-<span class="pd-node" style="position:absolute;left:calc(50% - 19px);top:431px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/pd-3d-flask.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
-<span class="pd-node" style="position:absolute;left:calc(50% - 57px);top:687px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/pd-3d-calendar.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
-<span class="pd-node" style="position:absolute;left:calc(50% + 220px);top:934px;width:96px;height:96px;margin:-48px 0 0 -48px;display:block"><img src="./assets/art/ex-3d-contract.webp" alt="" width="96" height="96" decoding="async" style="display:block;width:100%;height:100%"></span>
 <div class="pd-glow" style="position:absolute;left:calc(50% - 1020px);top:1070px;width:680px;height:680px;border-radius:50%;background:radial-gradient(closest-side,rgba(216,228,243,0.45),rgba(216,228,243,0))"></div>
 <svg class="pd-orb" viewBox="0 0 640 580" width="896" height="812" fill="none" style="position:absolute;left:calc(50% - 1142px);top:1000px">
 <g stroke="#E3E9F1" stroke-width="1"><ellipse cx="330" cy="300" rx="120" ry="120"></ellipse><ellipse cx="330" cy="300" rx="196" ry="196"></ellipse></g>
@@ -422,33 +442,50 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </div>
 <p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:60ch">Куратор читает текст и называет, что мешает выйти на предзащиту.</p>
-<!-- Р-836 (замечание владельца 07.11.2026: «доработать наполнение, чтобы по высоте уменьшить на 30 %, только важное + инфографику добавить»): одна карточка-инфографика «где работа останавливается → итог разбора»: слева на тихой подложке четыре главные точки остановки, под каждой — что делает разбор; стрелка-узел на границе панелей; справа — три результата разбора. Шкала «Как это выглядит у вас» снята. Переход к заявке — строкой под карточкой (Р-791, Р-826). Тексты прежние, без тёмной панели и градиентов (Р-51, Р-608). -->
+<!-- Р-836 (замечание владельца 07.11.2026: «доработать наполнение, чтобы по высоте уменьшить на 30 %, только важное + инфографику добавить»): одна карточка-инфографика «где работа останавливается → итог разбора». Р-889 (замечание владельца 14.11.2026: «по высоте зафиксировать, доработать функционал блока, сделать его интерактивным и добавить элементы интерактивные и объёмные картинки»): четыре точки остановки — вкладки; справа панель выбранной точки — объёмное изображение, что делает куратор, что вы получите (один из трёх итогов разбора) и переход к разделу страницы; под панелью — «Итог разбора» тремя плашками. Панели всех точек стоят стопкой в одной ячейке: высота карточки — по самой высокой панели и при переключении не меняется. Без автосмены и автопрокрутки (Р-43). Переход к заявке — строкой под карточкой (Р-791, Р-826). Тексты — прежние формулировки страницы, без тёмной панели и градиентов (Р-51, Р-608). -->
 <div class="pd-diag" style="display:flex;flex-direction:column;gap:12px;margin-top:22px">
 <div class="pd-flow" style="border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);min-width:0">
 <div class="pd-flow-in" style="position:relative;background:var(--pd-surface-quiet);display:flex;flex-direction:column;gap:12px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Где работа обычно останавливается</span>
-<ol class="pd-stalls" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px">
+<span id="pd-diag-label" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Где работа обычно останавливается</span>
+<div class="pd-diag-tabwrap">
+<div role="tablist" aria-labelledby="pd-diag-label" aria-orientation="vertical" class="pd-diag-tabs" onKeyDown="{{ diagKey }}">
 <sc-for list="{{ stalls }}" as="p" hint-placeholder-count="4">
-<li class="pd-flow-stall" style="display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:12px;row-gap:3px;align-items:baseline;min-width:0">
+<button type="button" role="tab" id="{{ p.tabId }}" aria-selected="{{ p.sel }}" aria-controls="{{ p.panelId }}" tabindex="{{ p.ti }}" onClick="{{ p.pick }}" class="pd-diag-tab">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:21px;font-weight:600;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ p.num }}</span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;font-weight:600;color:var(--pd-ink);min-width:0">{{ p.title }}</span>
-<span style="grid-column:2;display:flex;align-items:center;gap:8px;min-width:0"><span aria-hidden="true" style="width:13px;height:13px;flex:0 0 13px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span><span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary);min-width:0">{{ p.fix }}</span></span>
-</li>
+<span class="pd-diag-tab-t" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;min-width:0">{{ p.title }}</span>
+</button>
 </sc-for>
-</ol>
-<span class="pd-flow-arrow" aria-hidden="true" style="position:absolute;z-index:1;width:44px;height:44px;box-sizing:border-box;border-radius:50%;background:var(--pd-ink-inverse);border:1px solid var(--pd-accent-edge);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(20,22,28,.05)"><span style="width:18px;height:18px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span></span>
 </div>
-<div class="pd-flow-out" style="display:flex;flex-direction:column;gap:12px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Итог разбора</span>
-<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px">
-<sc-for list="{{ outcomes }}" as="o" hint-placeholder-count="3">
-<li style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;align-items:center;min-width:0">
-<span aria-hidden="true" style="width:36px;height:36px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:18px;height:18px;display:block;background:var(--pd-accent);-webkit-mask:{{ o.mask }};mask:{{ o.mask }}"></span></span>
-<span style="display:flex;flex-direction:column;gap:2px;min-width:0">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ o.title }}</span>
-<span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">{{ o.text }}</span>
+<span class="pd-flow-arrow" aria-hidden="true" style="position:absolute;z-index:1;width:44px;height:44px;box-sizing:border-box;border-radius:50%;background:var(--pd-ink-inverse);border:1px solid var(--pd-accent-edge);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(20,22,28,.05);transform:{{ diagArrow }}"><span style="width:18px;height:18px;display:block;background:var(--pd-accent);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span></span>
+</div>
+</div>
+<div class="pd-flow-out" style="display:flex;flex-direction:column;min-width:0">
+<div class="pd-diag-panes">
+<sc-for list="{{ diag }}" as="d" hint-placeholder-count="4">
+<div role="tabpanel" id="{{ d.panelId }}" aria-labelledby="{{ d.tabId }}" class="pd-diag-pane" data-on="{{ d.on }}">
+<img src="{{ d.img }}" alt="" aria-hidden="true" width="112" height="112" loading="lazy" decoding="async" class="pd-diag-img" style="display:block;width:112px;height:112px;object-fit:contain">
+<div class="pd-diag-what" style="display:flex;flex-direction:column;gap:4px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Что делает куратор</span>
+<p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)"><span style="font-weight:600;color:var(--pd-ink)">{{ d.fix }}.</span> {{ d.text }}</p>
+</div>
+<div class="pd-diag-get" style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Что вы получите</span>
+<span style="display:grid;grid-template-columns:32px minmax(0,1fr);column-gap:10px;align-items:center;min-width:0">
+<span aria-hidden="true" style="width:32px;height:32px;border-radius:10px;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:16px;height:16px;display:block;background:var(--pd-accent);-webkit-mask:{{ d.outMask }};mask:{{ d.outMask }}"></span></span>
+<span style="display:flex;flex-direction:column;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ d.outTitle }}</span>
+<span style="font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">{{ d.outText }}</span>
 </span>
-</li>
+</span>
+</div>
+<a class="pd-diag-link" href="{{ d.href }}" style="display:inline-flex;align-items:center;gap:8px;min-height:44px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">{{ d.link }}<span aria-hidden="true" style="width:14px;height:14px;flex:0 0 14px;display:block;background:currentColor;-webkit-mask:{{ downMask }};mask:{{ downMask }}"></span></a>
+</div>
+</sc-for>
+</div>
+<ul class="pd-diag-sum" aria-labelledby="pd-diag-sum-label" style="list-style:none;margin:0;padding:12px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-top:1px solid var(--pd-divider)">
+<li id="pd-diag-sum-label" aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent);margin-right:4px">Итог разбора</li>
+<sc-for list="{{ outcomes }}" as="o" hint-placeholder-count="3">
+<li class="pd-diag-res" data-on="{{ o.on }}" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;font-weight:600"><span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;-webkit-mask:{{ o.mask }};mask:{{ o.mask }}"></span>{{ o.title }}</li>
 </sc-for>
 </ul>
 </div>
@@ -463,7 +500,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </section>
 
 <section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
-<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
+<!-- Р-889: якорь «Условий» — на шапке раздела (порядок разделов в site-postgrad-order читается по id раздела): к нему ведёт переход из «Диагностики» (точка 03, нормоконтроль). -->
+<div id="contract" style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px;scroll-margin-top:24px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Условия</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:34ch;text-wrap:pretty">Что закреплено в договоре</h2>
@@ -571,7 +609,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <h3 id="mp-pub-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Публикации в рецензируемых изданиях</h3>
 <p style="margin:0;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">Минимальное число по п. 13 Положения о присуждении учёных степеней</p>
 </div>
-<div class="pd-pubmx" role="table" aria-labelledby="mp-pub-title" style="flex:1 1 auto">
+<div class="pd-pubmx" role="table" aria-labelledby="mp-pub-title" style="flex:0 0 auto">
 <div class="pd-pubrow pd-pubhead" role="row" style="padding-top:14px;padding-bottom:8px">
 <span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Отрасль науки</span>
 <span role="columnheader" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Кандидатская</span>
@@ -594,6 +632,18 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-for>
 </div>
 <!-- Р-833 (замечание владельца 07.11.2026): подвал с двумя абзацами 13 px под инфографикой — «К публикациям приравниваются…» и «Положение утверждено…» — снят: мелко и непонятно, для чего; источник чисел — в заголовке инфографики («по п. 13 Положения о присуждении учёных степеней»). -->
+<!-- Р-890 (замечание владельца 14.11.2026: «доработать этот блок, много пустого места, заполнить и сделать полезным»): вместо пустоты под таблицей — подвал «Как помогаем с публикациями к защите»: два шага по формулировкам страницы («Диагностика», точка 04 и итог «План с датами») и переход к заявке. Что приравнивается к публикациям, не возвращено: официальный текст Положения из среды не открывается, а пояснение снято по Р-833. -->
+<div class="pd-pubpad pd-pubfoot" style="display:flex;flex-direction:column;margin-top:16px;padding:14px 24px 18px;background:var(--pd-surface-quiet);border-top:1px solid var(--pd-border);border-radius:0 0 13px 13px">
+<div class="pd-pubhelp">
+<span id="mp-pub-help" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Как помогаем с публикациями к защите</span>
+<ul aria-labelledby="mp-pub-help" style="margin:0;padding:0;list-style:none">
+<sc-for list="{{ pubHelp }}" as="h" hint-placeholder-count="2">
+<li style="display:grid;grid-template-columns:32px minmax(0,1fr);column-gap:12px;align-items:start;min-width:0"><span aria-hidden="true" style="width:32px;height:32px;border-radius:10px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);box-sizing:border-box;display:flex;align-items:center;justify-content:center"><span style="width:16px;height:16px;display:block;background:var(--pd-accent);-webkit-mask:{{ h.mask }};mask:{{ h.mask }}"></span></span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary);min-width:0">{{ h.text }}</span></li>
+</sc-for>
+</ul>
+<a class="pd-lift" href="#request"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Разобрать публикации к защите</span><span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:var(--pd-ink);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span></a>
+</div>
+</div>
 </div>
 <article class="pd-lift pd-edge" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;display:flex;flex-direction:column;min-width:0;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <div class="pd-pubpad" style="flex:1 1 auto;padding:22px 24px 22px;display:flex;flex-direction:column;gap:14px">
@@ -716,7 +766,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">География</span>
 <h2 id="pd-geo-title" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:24ch;text-wrap:balance">Сопровождаем диссертации по всей России</h2>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">Команды практики — в Москве и Санкт-Петербурге. С аспирантами и соискателями из других городов работаем дистанционно: материалы, переписка и этапы — в личном кабинете.</p>
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">Команды практики — в Москве и <span style="white-space:nowrap">Санкт-Петербурге.</span> С аспирантами и соискателями из других городов работаем дистанционно: материалы, переписка и этапы — в личном кабинете.</p>
 <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px;padding:14px 18px;background:var(--pd-accent-tint);border-radius:14px;align-self:flex-start">
 <span style="font-family:'Literata',Georgia,'Times New Roman',serif;font-size:28px;line-height:1.24;font-weight:600;letter-spacing:-.012em;color:var(--pd-accent);font-variant-numeric:tabular-nums">430+</span>
 <span style="font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">работ с 2016 года</span>
@@ -987,7 +1037,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, navOpen: false };
+  state = { diagAt: 0, inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, navOpen: false };
   componentDidMount(){
     // Шаги после заявки (Р-885) проявляются по очереди, когда панель доходит
     // до чтения, — один раз. Если панель уже на экране, при уменьшенном
@@ -1085,11 +1135,16 @@ class Component extends DCLogic {
     const stepScale = 'scaleX(' + (1 / steps.length + stepFrac * (steps.length - 1) / steps.length) + ')';
     // «Итог разбора» (Р-809): три результата вместо четырёх свойств; смысл
     // «Готовности к защите» — в строке 06 карты.
+    // Р-889: выбранная точка остановки «Диагностики» (diagAt) и какой итог
+    // разбора ей отвечает (индекс в outcomes): 01 — методология, 02 и 03 —
+    // замечания куратора, 04 — план с датами. Плашка этого итога подсвечена.
+    const diagAt = this.state.diagAt;
+    const diagOut = [1, 0, 0, 2];
     const outcomes = [
       ['message-circle', 'Замечания куратора', 'Раздел, проблема, способ исправления'],
       ['flask-conical', 'Методология', 'Объект, предмет и логика доказательства'],
       ['calendar-days', 'План с датами', 'Сроки глав, апробации и предзащиты']
-    ].map(([icon, title, text]) => ({ title, text, mask: this.mask(icon) }));
+    ].map(([icon, title, text], i) => ({ title, text, mask: this.mask(icon), on: diagOut[diagAt] === i ? 'true' : 'false' }));
     // «Сколько это стоит?» (Р-807): раздел «Стоимость» с «Аспирантам» снят, его
     // факт — одним ответом: сумма в Задании до оплаты, меняется только
     // дополнительным соглашением к Заданию (оферта, пп. 6.1 и 6.4).
@@ -1121,7 +1176,37 @@ class Component extends DCLogic {
       ['Замечания руководителя приходят частями', 'Отделяет правки, нужные до предзащиты'],
       ['Требования совета — в последний месяц', 'Проверяет оформление по ГОСТ'],
       ['Публикаций не хватает для допуска', 'Вносит статьи и апробацию в план']
-    ].map(([title, fix], i) => ({ title, fix, num: '0' + (i + 1) }));
+    ].map(([title, fix], i) => ({
+      title, fix, num: '0' + (i + 1),
+      // Р-889: точки остановки — вкладки WAI-ARIA; выбранная — в порядке обхода.
+      tabId: 'pd-diag-tab-' + i, panelId: 'pd-diag-panel-' + i,
+      sel: i === diagAt ? 'true' : 'false', ti: i === diagAt ? 0 : -1,
+      pick: () => this.setState({ diagAt: i })
+    }));
+    // Панель выбранной точки (Р-889, замечание владельца 14.11.2026): объёмное
+    // изображение по смыслу точки — без повтора «Шести шагов» (stepImg) и
+    // «Условий» (uspArt): логика доказательства — колба, замечания
+    // руководителя — команда (руководитель, куратор и вы), требования
+    // совета — документ с печатью, статьи и апробация в плане — календарь.
+    // Что делает куратор — прежняя метка разбора и одно предложение из
+    // формулировок страницы («Итог разбора», «Вопросы», «Условия», «Публикации
+    // к защите»), без новых обещаний; переход — к разделу этой же страницы.
+    const diagArt = ['pd-3d-flask', 'pd-3d-team', 'ex-3d-contract', 'pd-3d-calendar'];
+    const diagMore = [
+      ['Положения на защиту, объект и предмет сопоставляет с тем, что доказано в главах.', '#process', 'Шесть шагов от заявки до защиты'],
+      ['Правки вносите вы — куратор указывает, что и почему исправить.', '#inside', 'Как это выглядит внутри'],
+      ['Структуру и библиографию сверяет с требованиями вашего диссовета уже на разборе.', '#contract', 'Что закреплено в договоре'],
+      ['Сверяет публикации с требованиями к допуску и ставит сроки статей рядом со сроками глав.', '#articles', 'Сколько статей нужно к защите']
+    ];
+    const diag = stalls.map((p, i) => {
+      const [text, href, link] = diagMore[i];
+      const o = outcomes[diagOut[i]];
+      return {
+        fix: p.fix, text, href, link, tabId: p.tabId, panelId: p.panelId, on: p.sel,
+        img: './assets/art/' + diagArt[i] + '.webp',
+        outTitle: o.title, outText: o.text, outMask: o.mask
+      };
+    });
     // «Что закреплено в договоре» (Р-810): что вы получаете → как проверить до
     // подписания → где это видно. Тексты — прежние формулировки карточек
     // (текст и подтверждение) и страницы: профиль куратора — в кабинете
@@ -1164,6 +1249,15 @@ class Component extends DCLogic {
     const offerAll = ['Патентование', 'НИОКР для бизнеса', 'Отчёты по практике и НИР', 'Публикации в рецензируемых журналах', 'Автореферат диссертации', 'Монографии', 'Перевод статей на английский', 'Разбор отзывов оппонентов и ведущей организации', 'Методика статистической обработки данных', 'Подбор журнала и подготовка статьи к подаче в индексируемые издания', 'Оформление списка литературы по ГОСТ', 'Доклад и презентация к защите', 'Научная экспертиза текста и вычитка', 'Проверка на заимствования и корректная цитируемость', 'Сопровождение иностранных аспирантов', 'Регистрация программ для ЭВМ и баз данных', 'Экспертиза технической документации', 'Обоснование научной новизны', 'Планирование эксперимента', 'Апробация на конференциях'];
     const offerOpen = this.state.offerOpen;
     const offerRest = (offerOpen ? offerAll : offerAll.slice(0, 5)).map(title => ({ title }));
+    // Р-890: подвал инфографики — как помогаем с публикациями к защите, по
+    // формулировкам этой страницы: «Диагностика», точка 04 («Публикаций не
+    // хватает для допуска» → «Сверяет публикации с требованиями к допуску»,
+    // «Вносит статьи и апробацию в план») и итог «План с датами» («Сроки глав,
+    // апробации и предзащиты»). Без новых обещаний и решения редакции.
+    const pubHelp = [
+      ['clipboard-list', 'Сверяем ваши статьи с требованиями к допуску — по отрасли науки и степени'],
+      ['calendar-days', 'Недостающие статьи и апробацию ставим в план с датами — рядом со сроками глав']
+    ].map(([icon, text]) => ({ text, mask: this.mask(icon) }));
     // «Публикации к защите» (Р-808, З-3) вместо «Статей и грантов» (Р-769,
     // Р-797). Числа — только из п. 13 Положения о присуждении учёных степеней
     // (постановление Правительства РФ от 24.09.2013 № 842) по выдержкам
@@ -1312,7 +1406,25 @@ class Component extends DCLogic {
       reviews, revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
       revPrev: () => this.setState(s => ({ revAt: (s.revAt - 1 + revN) % revN })),
       revNext: () => this.setState(s => ({ revAt: (s.revAt + 1) % revN })),
-      steps, faq, stalls, usp, outcomes, offerTop, offerMid, offerRest, pubRows, articleCard, stepScale,
+      steps, faq, stalls, usp, outcomes, diag,
+      // Стрелка-узел «Диагностики» указывает на выбранную строку: шаг строк
+      // от 769 px — 56 px высоты и 8 px промежутка (Р-889); до 768 px узел
+      // стоит на границе панелей, сдвиг перекрыт правилом макета.
+      diagArrow: 'translateY(' + diagAt * 64 + 'px)',
+      // Стрелки, Home и End переводят выбор и фокус (WAI-ARIA, вкладки);
+      // без автосмены и без прокрутки страницы (Р-43).
+      diagKey: e => {
+        const n = stalls.length;
+        let i = this.state.diagAt;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') i = (i + 1) % n;
+        else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') i = (i - 1 + n) % n;
+        else if (e.key === 'Home') i = 0;
+        else if (e.key === 'End') i = n - 1;
+        else return;
+        e.preventDefault();
+        this.setState({ diagAt: i }, () => { const el = document.getElementById('pd-diag-tab-' + i); if (el) el.focus({ preventScroll: true }); });
+      },
+      downMask: this.mask('arrow-down'), offerTop, offerMid, offerRest, pubRows, pubHelp, articleCard, stepScale,
       contactTabs: ['E-mail', 'Телефон'].map((label, i) => ({
         label, active: i === this.state.contact, inactive: i !== this.state.contact,
         pick: () => this.setState({ contact: i })
