@@ -53,6 +53,8 @@ export default async function OutboxScreen({
   return (
     <Shell actor={actor} current="/cabinet/manage/outbox">
       <ScreenHead
+        backHref="/cabinet/manage/tools"
+        backLabel="Управление"
         title="Очередь отправки"
         note="Два разных пути. Уведомления кабинета копятся в очереди и уходят рассылкой раз в минуту. Обращения с сайта не ждут очереди: их отправляет сам приём заявки, а исход записывает в журнал доставки — он ниже."
       />

@@ -97,6 +97,8 @@ export default async function AuditScreen({
   return (
     <Shell actor={actor} current="/cabinet/manage/audit">
       <ScreenHead
+        backHref="/cabinet/manage/tools"
+        backLabel="Управление"
         title={files ? 'Доступ к файлам' : 'Журнал действий'}
         note={
           files

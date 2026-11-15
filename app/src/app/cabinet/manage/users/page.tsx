@@ -152,6 +152,8 @@ export default async function UsersScreen({
   return (
     <Shell actor={actor} current="/cabinet/manage/users">
       <ScreenHead
+        backHref="/cabinet/manage/tools"
+        backLabel="Управление"
         title="Учётные записи"
         note="Роль назначается здесь и нигде больше: она не приходит с формы входа и не меняется самим пользователем. При смене роли и при приостановке доступа все сессии отзываются."
       />

@@ -115,13 +115,16 @@ export default async function AllLeadsScreen({
       })),
   ];
 
+  const inMenu = menuLabel(actor, '/cabinet/manage/leads') !== null;
+
   return (
     <Shell actor={actor} current="/cabinet/manage/leads">
       <ScreenHead
-        backHref={SUMMARY_HREF}
-        // Экран-цель — по меню роли: менеджеру «Сегодня», руководителю
-        // «Сводка» (Р-703; решение Р-756).
-        backLabel={menuLabel(actor, SUMMARY_HREF) ?? 'Сводка'}
+        // У менеджера «Заявки» — пункт меню, и «назад» у экрана первого
+        // уровня вёл в соседний пункт (решение Р-895). Руководителю
+        // перечень открывает «Сводка» — к ней и возврат (Р-703, Р-756).
+        backHref={inMenu ? undefined : SUMMARY_HREF}
+        backLabel={inMenu ? undefined : (menuLabel(actor, SUMMARY_HREF) ?? 'Сводка')}
         title="Все заявки"
         note={`Обращения с сайта целиком, включая разобранные. Очередь на «${
           actor.role === 'MANAGER' ? 'Сегодня' : 'Сводке'

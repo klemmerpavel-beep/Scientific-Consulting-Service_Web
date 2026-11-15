@@ -25,7 +25,7 @@ import { NEW_CLIENT, candidateLine } from '../../../../../lib/cabinet/client-mat
 import { formDraft } from '../../../../../lib/cabinet/flash';
 import { nameCandidates } from '../../../../../lib/cabinet/manual-order';
 import { requireActor } from '../../../../../lib/cabinet/session';
-import { homeFor, menuLabel } from '../../../../../lib/cabinet/nav';
+import { ORDERS_HREF, homeFor, menuLabel } from '../../../../../lib/cabinet/nav';
 import { createOrder, parseOrderBrief } from '../../../actions';
 
 export const metadata: Metadata = { title: 'Новый заказ' };
@@ -59,12 +59,13 @@ export default async function NewOrderScreen({
     draft.clientChoiceNeeded === '1' ? await nameCandidates(actor, draft.customer ?? '') : [];
 
   return (
-    <Shell actor={actor} current="/cabinet/projects">
+    <Shell actor={actor} current="/cabinet/manage/orders/new">
       <ScreenHead
-        backHref="/cabinet/projects"
-        // Менеджеру — «Мои работы», руководителю — «Работы» (Р-703; решение
-        // Р-756).
-        backLabel={menuLabel(actor, '/cabinet/projects') ?? 'Работы'}
+        // «Новый заказ» — экран «Заказов» (Р-874): подсвечен их пункт меню
+        // и к ним же ведёт «назад». Прежде подсвечивались «Работы» и
+        // возврат вёл к ним (решение Р-895, уточняет Р-756).
+        backHref={ORDERS_HREF}
+        backLabel={menuLabel(actor, ORDERS_HREF) ?? 'Заказы'}
         title="Новый заказ"
         note={`Для заказа, пришедшего звонком, письмом или от постоянного клиента. Поля — как в книге заказов. Заказчик ищется по почте и телефону; если совпало только ФИО, выберите его карточку или заведите новую. Писем клиенту не уходит. Вход в кабинет открывается кнопкой «Открыть клиенту вход» в «Управлении работой» созданной работы: нужен адрес почты клиента.${
           head ? '' : ' Договор со стоимостью увидит руководитель: ему уходит уведомление и дело «Проверьте договор». Сумму и поступления дальше ведёте вы — на «Редактировать заказ» и «Оплатах и документах» работы.'

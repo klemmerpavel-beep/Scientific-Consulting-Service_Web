@@ -104,6 +104,7 @@ import { PAYMENT_CLOSED_STATUSES, formatAmount, orderBalance } from '../../../..
 import { orderMoneyLine } from '../../../../components/cabinet/OrderMoney';
 import { ownPayoutTotals, paymentDocumentLines, projectContract } from '../../../../lib/cabinet/finance';
 import { requireActor } from '../../../../lib/cabinet/session';
+import { menuLabel } from '../../../../lib/cabinet/nav';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import {
   createStage,
@@ -915,6 +916,8 @@ export default async function ProjectScreen({
     .filter((message) => message !== null)
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
+  const worksHref = forClient ? '/cabinet/projects?state=all' : '/cabinet/projects';
+
   return (
     <Shell actor={actor} current="/cabinet/projects" board listHref={forClient ? '/cabinet/projects?state=all' : undefined}>
       {/* Шапка заказа — одной полосой. Прежде код, название и тема занимали
@@ -924,6 +927,17 @@ export default async function ProjectScreen({
       <ScreenTop style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
         {/* Код работы с экранов убран (решение Р-189): человеку он
             ничего не сообщает, а взгляд цепляет первым. */}
+        {/* Возврат к перечню — как у вложенных экранов работы: у карточки
+            его не было, и к перечню вёл только пункт меню (решение Р-895).
+            Клиенту — перечень целиком: без отбора «Мои работы» единственной
+            работы ведут обратно на эту карточку (Р-311). */}
+        <a
+          className="cab-mark"
+          href={worksHref}
+          style={{ fontFamily: MONO, fontSize: 13, lineHeight: 1.4 }}
+        >
+          {menuLabel(actor, '/cabinet/projects') ?? 'Работы'}
+        </a>
         <Heading level={1} size={2}>
           {project.title}
         </Heading>

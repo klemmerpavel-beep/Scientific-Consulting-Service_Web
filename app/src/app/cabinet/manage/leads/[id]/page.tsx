@@ -24,7 +24,7 @@ import {
   formatSize,
 } from '../../../../../components/cabinet/ui';
 import { ensure } from '../../../../../lib/cabinet/access';
-import { SUMMARY_HREF, menuLabel } from '../../../../../lib/cabinet/nav';
+import { menuLabel } from '../../../../../lib/cabinet/nav';
 import { chosenServiceType, contactHref, leadNumberLabel, leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
 import { declineLetterNote, leadAddress } from '../../../../../lib/cabinet/lead-letter';
 import { curators, leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
@@ -33,6 +33,9 @@ import { commentLead, moderateLead, resendDeclineLetter, saveLead, switchLeadSta
 import { LeadStatusChip, LeadStatusSwitch } from '../../../../../components/cabinet/LeadStatus';
 
 export const metadata: Metadata = { title: 'Заявка' };
+
+/** Перечень заявок — экран, из которого карточку открывают. */
+const LEADS_HREF = '/cabinet/manage/leads';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,10 +101,13 @@ export default async function LeadScreen({
     <Shell actor={actor} current="/cabinet/manage/leads">
       <Narrow width={780}>
         <ScreenHead
-          backHref={SUMMARY_HREF}
-          // Менеджеру — «Сегодня», руководителю — «Сводка» (Р-703; решение
-          // Р-756).
-          backLabel={menuLabel(actor, SUMMARY_HREF) ?? 'Сводка'}
+          // Карточка заявки возвращает к перечню заявок: он подсвечен в
+          // меню и из него же заявку открывают. Прежде «назад» вело на
+          // «Сегодня» и «Сводку» — и тому, кто пришёл из перечня (решение
+          // Р-895, уточняет Р-756). Подпись — пункт меню роли (Р-703):
+          // менеджеру «Заявки», руководителю — название экрана.
+          backHref={LEADS_HREF}
+          backLabel={menuLabel(actor, LEADS_HREF) ?? 'Все заявки'}
           title={lead.name ?? 'Заявка без имени'}
           chips={
             <>
