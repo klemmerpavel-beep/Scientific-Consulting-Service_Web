@@ -173,9 +173,9 @@ export default async function FinanceYearsScreen({
               вылезает за край на телефоне (решение Р-130). */}
           <Form action={saveFinanceYear} style={{ gridTemplateColumns: 'minmax(0,1fr)' }}>
             <FormRow>
-              <Field label="Год" name="year" required placeholder="2025" />
-              <Field label="Выручка за год, ₽" name="revenue" required placeholder="1 250 000" />
-              <Field label="Расходы за год, ₽" name="costs" required placeholder="480 000" />
+              <Field label="Год" name="year" inputMode="numeric" required placeholder="2025" />
+              <Field label="Выручка за год, ₽" name="revenue" inputMode="decimal" required placeholder="1 250 000" />
+              <Field label="Расходы за год, ₽" name="costs" inputMode="decimal" required placeholder="480 000" />
             </FormRow>
             <Field
               label="Заметка"

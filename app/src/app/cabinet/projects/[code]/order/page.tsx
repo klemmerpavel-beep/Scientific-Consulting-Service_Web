@@ -180,6 +180,7 @@ export default async function OrderEditScreen({
               <Field
                 label="Сумма договора, ₽"
                 name="contractTotal"
+                inputMode="decimal"
                 scope="order"
                 placeholder="120 000"
                 defaultValue={draft.contractTotal ?? (contract === null ? '' : formatAmount(contract.totalAmount))}

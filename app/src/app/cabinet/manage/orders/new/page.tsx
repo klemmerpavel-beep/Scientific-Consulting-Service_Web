@@ -112,12 +112,13 @@ export default async function NewOrderScreen({
             <Field
               label="Заказчик (ФИО)"
               name="customer"
+              autoComplete="off"
               required
               placeholder="Иванов Иван Иванович"
               defaultValue={draft.customer}
             />
-            <Field label="Почта" name="email" type="email" placeholder="необязательно" defaultValue={draft.email} />
-            <Field label="Телефон" name="phone" type="tel" placeholder="необязательно" defaultValue={draft.phone} />
+            <Field label="Почта" name="email" autoComplete="off" type="email" placeholder="необязательно" defaultValue={draft.email} />
+            <Field label="Телефон" name="phone" autoComplete="off" type="tel" placeholder="необязательно" defaultValue={draft.phone} />
           </FormRow>
           {candidates.length === 0 ? null : (
             <Select
@@ -182,11 +183,12 @@ export default async function NewOrderScreen({
             <Field
               label="Стоимость, ₽"
               name="cost"
+              inputMode="decimal"
               placeholder="125 000"
               hint="Пусто — договор заводится позже, на экране «Оплаты и документы»."
               defaultValue={draft.cost}
             />
-            <Field label="Оплачено, ₽" name="paid" placeholder="0" defaultValue={draft.paid} />
+            <Field label="Оплачено, ₽" name="paid" inputMode="decimal" placeholder="0" defaultValue={draft.paid} />
           </FormRow>
           <FormRow>
             <Select label="Состояние" name="status" defaultValue={draft.status || 'ACTIVE'}>

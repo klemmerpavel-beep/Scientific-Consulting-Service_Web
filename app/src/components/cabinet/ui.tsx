@@ -369,6 +369,8 @@ export function Field({
   dense = false,
   maxLength,
   describedBy,
+  autoComplete,
+  inputMode,
 }: {
   label: string;
   name: string;
@@ -398,6 +400,19 @@ export function Field({
    * подсказка под самим полем сбила бы ряд (карточка работы, Р-722).
    */
   describedBy?: string;
+  /**
+   * Что браузер вправе подставить (WCAG 1.3.5, решение Р-910). Свои данные
+   * человека — `email`, `name`, `tel`; данные другого человека, которые
+   * вносит сотрудник, — `off`: иначе браузер подставит почту сотрудника
+   * в карточку клиента.
+   */
+  autoComplete?: string;
+  /**
+   * Клавиатура телефона (Р-910): суммам — `decimal`, целым — `numeric`.
+   * Тип поля остаётся текстовым: сумму набирают с пробелами («240 000»),
+   * а `type="number"` их не принимает и меняет значение колесом мыши.
+   */
+  inputMode?: 'decimal' | 'numeric' | 'tel' | 'email' | 'search';
 }) {
   // Рамка — `--pd-field-edge`, не светлее 3:1 к белому и к тихой
   // поверхности: прежняя кромка давала 1,65:1 (решение Р-253).
@@ -418,7 +433,7 @@ export function Field({
       {multiline ? (
         <textarea id={id} {...shared} rows={4} style={{ ...box, resize: 'vertical' }} />
       ) : (
-        <input id={id} type={type} {...shared} style={box} />
+        <input id={id} type={type} {...shared} autoComplete={autoComplete} inputMode={inputMode} style={box} />
       )}
       {/* Подсказка — строка текста: абзацем, и ссылка в ней — строчная
           ссылка текста, а не отдельная цель нажатия (Р-57; решение Р-761). */}

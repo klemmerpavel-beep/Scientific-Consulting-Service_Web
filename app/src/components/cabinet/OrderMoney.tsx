@@ -74,6 +74,7 @@ export function ReceiptForm({
         <Field
           label="Сумма поступления"
           name="amount"
+          inputMode="decimal"
           scope="receipt"
           required
           placeholder="50 000"

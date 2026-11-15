@@ -256,8 +256,8 @@ export default async function DirectoryScreen({
                   defaultValue={draft.code}
                 />
                 <Field label="Название" name="name" required placeholder="Научный перевод" defaultValue={draft.name} />
-                <Field label="Базовая цена" name="basePrice" placeholder="необязательно" defaultValue={draft.basePrice} />
-                <Field label="Порядок" name="sortOrder" placeholder="70" defaultValue={draft.sortOrder} />
+                <Field label="Базовая цена" name="basePrice" inputMode="decimal" placeholder="необязательно" defaultValue={draft.basePrice} />
+                <Field label="Порядок" name="sortOrder" inputMode="numeric" placeholder="70" defaultValue={draft.sortOrder} />
               </FormRow>
               <FormActions>
                 <Button>Сохранить</Button>
@@ -326,6 +326,7 @@ export default async function DirectoryScreen({
                 <Field
                   label="Порядковый номер"
                   name="position"
+                  inputMode="numeric"
                   scope="template"
                   required
                   placeholder="1"
@@ -340,6 +341,7 @@ export default async function DirectoryScreen({
                 <Field
                   label="Длительность, дней"
                   name="durationDays"
+                  inputMode="numeric"
                   scope="template"
                   placeholder="необязательно"
                 />

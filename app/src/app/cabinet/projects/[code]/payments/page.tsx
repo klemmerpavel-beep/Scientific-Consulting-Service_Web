@@ -508,6 +508,7 @@ export default async function PaymentsScreen({
                                 <Field
                                   label="Сумма"
                                   name="amount"
+                                  inputMode="decimal"
                                   scope={`correct-${tranche.id}`}
                                   required
                                   defaultValue={formatAmount(tranche.amount)}
@@ -646,7 +647,7 @@ export default async function PaymentsScreen({
                       required
                       placeholder="Старт работ"
                     />
-                    <Field label="Сумма" name="amount" scope="tranche" required placeholder="240 000" />
+                    <Field label="Сумма" name="amount" inputMode="decimal" scope="tranche" required placeholder="240 000" />
                     <Field label="Плановая дата" name="plannedDate" scope="tranche" type="date" />
                   </FormRow>
                   {/* Этап, за который транш: по нему подсказка «Следующий
@@ -817,6 +818,7 @@ export default async function PaymentsScreen({
                     <Field
                       label="Сумма начисления"
                       name="amount"
+                      inputMode="decimal"
                       scope="payout"
                       required
                       placeholder="80 000"
@@ -864,6 +866,7 @@ export default async function PaymentsScreen({
               <Field
                 label="Сумма договора"
                 name="totalAmount"
+                inputMode="decimal"
                 required
                 defaultValue={formatAmount(contract.totalAmount)}
               />
@@ -886,7 +889,7 @@ export default async function PaymentsScreen({
             <FormRow>
               <Field label="Номер" name="number" required placeholder="14-2026" />
               <Field label="Дата подписания" name="signedOn" type="date" />
-              <Field label="Сумма договора" name="totalAmount" required placeholder="600 000" />
+              <Field label="Сумма договора" name="totalAmount" inputMode="decimal" required placeholder="600 000" />
             </FormRow>
             <FormActions>
               <Button>Сохранить</Button>

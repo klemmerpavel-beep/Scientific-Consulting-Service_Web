@@ -317,10 +317,10 @@ export default async function LeadScreen({
                 required
                 defaultValue={lead.contact}
               />
-              <Field label="Дополнительный телефон" name="phone" defaultValue={lead.phone ?? ''} />
+              <Field label="Дополнительный телефон" name="phone" inputMode="tel" autoComplete="off" defaultValue={lead.phone ?? ''} />
             </FormRow>
             <FormRow>
-              <Field label="Организация или вуз" name="organization" defaultValue={lead.organization ?? ''} />
+              <Field label="Организация или вуз" name="organization" autoComplete="off" defaultValue={lead.organization ?? ''} />
               <Field label="Желаемый срок" name="deadline" defaultValue={lead.deadline ?? ''} />
             </FormRow>
             <Field label="Тема" name="topic" defaultValue={lead.topic ?? ''} />

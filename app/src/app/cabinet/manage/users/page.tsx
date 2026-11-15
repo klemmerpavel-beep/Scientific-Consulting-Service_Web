@@ -207,11 +207,12 @@ export default async function UsersScreen({
             <Field
               label="Имя и отчество"
               name="fullName"
+              autoComplete="off"
               required
               placeholder="Соловьёв Дмитрий Викторович"
               defaultValue={draft.fullName}
             />
-            <Field label="Почта" name="email" type="email" required placeholder="expert@example.org" defaultValue={draft.email} />
+            <Field label="Почта" name="email" autoComplete="off" type="email" required placeholder="expert@example.org" defaultValue={draft.email} />
             <Select label="Роль" name="role" defaultValue={ROLES.includes(draft.role as Role) ? draft.role : 'EXPERT'}>
               {ROLES.map((role) => (
                 <option key={role} value={role}>
@@ -554,6 +555,7 @@ export default async function UsersScreen({
                     <Field
                       label="Ставка по умолчанию, ₽"
                       name="defaultPayout"
+                      inputMode="decimal"
                       scope={`profile-${user.id}`}
                       placeholder="15 000"
                       defaultValue={

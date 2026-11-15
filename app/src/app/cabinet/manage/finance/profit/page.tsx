@@ -154,7 +154,7 @@ export default async function ProfitScreen({ searchParams }: { searchParams: Pro
                 </option>
               ))}
             </Select>
-            <Field label="Сумма, ₽" name="amount" required defaultValue={draft.amount ?? ''} placeholder="25 000" />
+            <Field label="Сумма, ₽" name="amount" inputMode="decimal" required defaultValue={draft.amount ?? ''} placeholder="25 000" />
             <Select label="Вид работ, если расход на него" name="serviceTypeId" defaultValue={draft.serviceTypeId ?? ''}>
               <option value="">Общий расход</option>
               {types.map((type) => (

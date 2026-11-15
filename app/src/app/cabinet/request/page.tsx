@@ -151,6 +151,7 @@ export default async function NewRequestScreen({
               <Field
                 label="Ваши ФИО"
                 name="applicantName"
+                autoComplete="name"
                 required
                 defaultValue={draft.applicantName ?? filled('applicantName') ?? defaults.fullName}
                 hint="Подставлено из вашей карточки. Если работа оформляется на другого человека, укажите его ФИО."
@@ -211,6 +212,7 @@ export default async function NewRequestScreen({
                 <Field
                   label="Организация или вуз"
                   name="organization"
+                  autoComplete="organization"
                   defaultValue={draft.organization ?? filled('organization') ?? defaults.organization}
                   placeholder="Горный университет"
                 />
@@ -223,6 +225,7 @@ export default async function NewRequestScreen({
                 <Field
                   label="Контактный телефон"
                   name="phone"
+                  autoComplete="tel"
                   type="tel"
                   defaultValue={draft.phone ?? defaults.phone}
                   hint="Для срочной связи; письма по-прежнему идут на адрес, которым вы вошли."
