@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
+import DropFlag from '../../../../../components/cabinet/DropFlag';
+import { OUTCOME_ANCHOR, OUTCOME_FLAGS, doneLine } from '../../../../../lib/cabinet/outcome-lines';
 import Shell from '../../../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../../../components/cabinet/tokens';
 import {
@@ -94,7 +96,7 @@ export default async function PaymentsScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ exceeds?: string; error?: string; received?: string }>;
+  searchParams: Promise<{ exceeds?: string; error?: string; received?: string; done?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}/payments`);
 
@@ -164,6 +166,9 @@ export default async function PaymentsScreen({
       />
 
       <ActionError id={flags.error} />
+      {/* Короткое подтверждение исхода действия (Ф-12, решение Р-923). */}
+      {doneLine(flags.done) === null ? null : <Outcome id={OUTCOME_ANCHOR}>{doneLine(flags.done)}</Outcome>}
+      {flags.done === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
 
       {/* Дела руководителя по работе: закрываются актом или отметкой
           (требование РК-12, решение Р-338). */}

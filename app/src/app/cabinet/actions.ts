@@ -18,7 +18,7 @@ import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
 import { draftFits, markedDraft } from '../../lib/cabinet/flash-value';
 import { draftsFor } from '../../lib/cabinet/message-drafts';
-import { OUTCOME_ANCHOR } from '../../lib/cabinet/outcome-lines';
+import { OUTCOME_ANCHOR, trancheDoneCode, type DoneCode } from '../../lib/cabinet/outcome-lines';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
 import { editOrder, moveOrderToClient } from '../../lib/cabinet/orders';
 import { ClientChoiceNeeded, orderRetryDraft } from '../../lib/cabinet/client-match';
@@ -461,7 +461,7 @@ export async function changeStageState(form: FormData): Promise<void> {
   redirect(
     to === 'IN_APPROVAL'
       ? withOutcome(`/cabinet/stages/${stageId}`, 'done', 'approval')
-      : `/cabinet/stages/${stageId}`,
+      : withOutcome(`/cabinet/stages/${stageId}`, 'done', 'stage-state'),
   );
 }
 
@@ -658,7 +658,7 @@ export async function createStage(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось завести этап');
   }
   if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
-  redirect(`/cabinet/projects/${code}`);
+  redirect(withOutcome(`/cabinet/projects/${code}`, 'done', 'stage-added'));
 }
 
 /** Перестановка этапа в плане (требование М-11, решение Р-303). */
@@ -1026,7 +1026,7 @@ export async function setExpert(form: FormData): Promise<void> {
   } catch (error) {
     await manageFailure(code, 'expert', error, { expertId, expertRole });
   }
-  redirect(`/cabinet/projects/${code}`);
+  redirect(withOutcome(`/cabinet/projects/${code}`, 'done', expertId === '' ? 'curator-unset' : 'curator-set'));
 }
 
 /** Передача работы другому менеджеру — с причиной. Доступна руководителю. */
@@ -1505,7 +1505,12 @@ function dateOrNull(value: FormDataEntryValue | null): Date | null {
  * внутренний комментарий (решение Р-270). Каждое действие возвращает на
  * экран заявки; отказ — с причиной.
  */
-async function leadStep(form: FormData, step: (actor: Actor, leadId: string) => Promise<void>, fallback: string) {
+async function leadStep(
+  form: FormData,
+  step: (actor: Actor, leadId: string) => Promise<void>,
+  fallback: string,
+  done?: DoneCode,
+) {
   const actor = await actorOrRedirect();
   const leadId = String(form.get('leadId') ?? '');
   const back = `/cabinet/manage/leads/${leadId}`;
@@ -1516,11 +1521,12 @@ async function leadStep(form: FormData, step: (actor: Actor, leadId: string) => 
     failure = error instanceof LeadWorkError ? error.message : reasonOf(error, fallback);
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  // Исход действия назван строкой, когда действие его задаёт (Р-923).
+  redirect(done === undefined ? back : withOutcome(back, 'done', done));
 }
 
 export async function switchLeadStatus(form: FormData): Promise<void> {
-  await leadStep(form, (actor, id) => setLeadStatus(actor, id, String(form.get('status') ?? '')), 'Не удалось сменить состояние');
+  await leadStep(form, (actor, id) => setLeadStatus(actor, id, String(form.get('status') ?? '')), 'Не удалось сменить состояние', 'lead-status');
 }
 
 export async function saveLead(form: FormData): Promise<void> {
@@ -1642,7 +1648,7 @@ export async function saveProjectContract(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось сохранить договор');
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  redirect(withOutcome(back, 'done', 'contract-saved'));
 }
 
 export async function addContractTranche(form: FormData): Promise<void> {
@@ -1666,7 +1672,7 @@ export async function addContractTranche(form: FormData): Promise<void> {
   if (failure !== null) redirect(await withError(back, failure));
   // Превышение суммы договора показывается на экране, а не теряется
   // (решение Р-224).
-  redirect(`${back}${exceeds ? '?exceeds=1' : ''}`);
+  redirect(exceeds ? `${back}?exceeds=1` : withOutcome(back, 'done', 'tranche-added'));
 }
 
 export async function changeTrancheStatus(form: FormData): Promise<void> {
@@ -1697,7 +1703,7 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось сменить состояние транша');
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  redirect(withOutcome(back, 'done', trancheDoneCode(String(form.get('status') ?? ''))));
 }
 
 /**
@@ -1814,7 +1820,7 @@ export async function dropTranche(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось удалить транш');
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  redirect(withOutcome(back, 'done', 'tranche-dropped'));
 }
 
 export async function saveFinanceYear(form: FormData): Promise<void> {
@@ -1852,7 +1858,7 @@ export async function accruePayout(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось начислить');
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  redirect(withOutcome(back, 'done', 'payout-accrued'));
 }
 
 export async function payPayout(form: FormData): Promise<void> {
@@ -1869,7 +1875,7 @@ export async function payPayout(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось отметить выплату');
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  redirect(withOutcome(back, 'done', 'payout-paid'));
 }
 
 /**

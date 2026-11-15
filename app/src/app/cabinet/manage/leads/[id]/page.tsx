@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
+import DropFlag from '../../../../../components/cabinet/DropFlag';
+import { OUTCOME_ANCHOR, OUTCOME_FLAGS, doneLine } from '../../../../../lib/cabinet/outcome-lines';
 import Shell from '../../../../../components/cabinet/Shell';
 import {
   Button,
@@ -55,7 +57,7 @@ export default async function LeadScreen({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; resent?: string }>;
+  searchParams: Promise<{ error?: string; resent?: string; done?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/manage/leads/${(await params).id}`);
   ensure(actor, 'REQUEST_MODERATE');
@@ -123,6 +125,9 @@ export default async function LeadScreen({
         />
 
         <ActionError id={flags.error} />
+        {/* Короткое подтверждение исхода действия (Ф-12, решение Р-923). */}
+        {doneLine(flags.done) === null ? null : <Outcome id={OUTCOME_ANCHOR}>{doneLine(flags.done)}</Outcome>}
+        {flags.done === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
 
         <Card style={{ marginBottom: 24 }}>
           {/* Связь в одно нажатие: сюда ведёт ссылка из сигнала в Telegram,

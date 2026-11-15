@@ -82,7 +82,7 @@ import { daysPast } from '../../../../lib/cabinet/clock';
 import { UPLOADED_NEXT, uploadedLine } from '../../../../lib/cabinet/works-answer';
 import { workDuePassed } from '../../../../lib/cabinet/missed';
 import { MESSAGE_MAX, internalUnread, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
-import { OUTCOME_ANCHOR, OUTCOME_FLAGS, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
+import { OUTCOME_ANCHOR, OUTCOME_FLAGS, doneLine, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
 import { noticeFate } from '../../../../lib/cabinet/outbox';
 import DropFlag from '../../../../components/cabinet/DropFlag';
 import { CuratorProfileFold } from '../../../../components/cabinet/CuratorProfile';
@@ -331,6 +331,7 @@ export default async function ProjectScreen({
     briefApplied?: string;
     rated?: string;
     created?: string;
+    done?: string;
   }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}`);
@@ -338,7 +339,9 @@ export default async function ProjectScreen({
   const { code } = await params;
   // Отказ действия «Управления работой»: причина у своей формы, свёртка
   // раскрыта, поля заполнены введённым (решение Р-279).
-  const { error: errorId, manage, briefApplied, rated, created } = await searchParams;
+  const { error: errorId, manage, briefApplied, rated, created, done: doneFlag } = await searchParams;
+  // Короткое подтверждение исхода действия (Ф-12, решение Р-923).
+  const doneText = doneLine(doneFlag);
   const failure = await flashEntry(errorId);
   const draft = (await formDraft(errorId)) ?? {};
   // Кнопки «Изменить карточку», «Куратор», «Менеджер» под названием открывают
@@ -1047,7 +1050,8 @@ export default async function ProjectScreen({
           )}
         </Outcome>
       )}
-      {created === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
+      {doneText === null ? null : <Outcome id={OUTCOME_ANCHOR}>{doneText}</Outcome>}
+      {created === undefined && doneFlag === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
       <Disclosure title="О работе">
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
           {/* Подпись и значение — строкой, пока значению хватает места, и

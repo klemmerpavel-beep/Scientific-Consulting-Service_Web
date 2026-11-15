@@ -56,6 +56,7 @@ import { daysPast, moscowToday, now as clockNow } from '../../../../lib/cabinet/
 import {
   OUTCOME_ANCHOR,
   OUTCOME_FLAGS,
+  doneLine,
   PUBLISHED_LINE,
   approvalSentLine,
   approvedLine,
@@ -376,6 +377,9 @@ export default async function StageScreen({
       )
     ) {
       outcome = PUBLISHED_LINE;
+    } else if (done === 'stage-state' && forStaff) {
+      // Прочие переводы этапа — короткой строкой (Ф-12, решение Р-923).
+      outcome = doneLine(done);
     }
   }
 
