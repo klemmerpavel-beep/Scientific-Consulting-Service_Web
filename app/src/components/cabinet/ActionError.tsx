@@ -36,5 +36,11 @@ export default async function ActionError({
   const here =
     entry.slot === slot || (slot === undefined && entry.slot !== undefined && unplaced.includes(entry.slot));
   if (!here) return null;
-  return <Outcome tone="error">{entry.text.slice(0, 300)}</Outcome>;
+  // Отметка — идентификатор отказа: повторный отказ в той же форме снова
+  // получает фокус (решение Р-919).
+  return (
+    <Outcome tone="error" mark={id}>
+      {entry.text.slice(0, 300)}
+    </Outcome>
+  );
 }

@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from 'react';
 
 import { WaveBar } from './Charts.tsx';
 import { FilePick } from './FilePick.tsx';
+import OutcomeFocus from './OutcomeFocus.tsx';
 import {
   BUTTON_PRIMARY,
   BUTTON_QUIET,
@@ -1345,15 +1346,19 @@ export function Outcome({
   children,
   tone = 'ok',
   id,
+  mark,
 }: {
   children: ReactNode;
   tone?: 'ok' | 'error';
   /** Якорь: после действия окно открывается на строке исхода (Р-725). */
   id?: string;
+  /** Отметка исхода: новый отказ в той же форме снова получает фокус (Р-919). */
+  mark?: string;
 }) {
   return (
     // Отступ над строкой при переходе по якорю: она не прилипает к краю окна.
-    <div className="cab-outcome" id={id} style={{ marginBottom: 20, scrollMarginTop: 24 }}>
+    <div className="cab-outcome" id={id} tabIndex={-1} style={{ marginBottom: 20, scrollMarginTop: 24 }}>
+      <OutcomeFocus mark={mark ?? id ?? tone} />
       <Notice tone={tone} role={tone === 'error' ? 'alert' : 'status'}>
         {children}
       </Notice>
