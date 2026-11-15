@@ -148,7 +148,7 @@ describe('деньги проекта', { skip: !enabled }, async () => {
     );
     await assert.rejects(
       finance.setTrancheStatus(actor(ids.head, 'HEAD'), ids.firstTranche, 'REFUNDED' as never),
-      /Неизвестный статус/u,
+      /Неизвестное состояние/u,
     );
     const kept = await prisma.tranche.findUniqueOrThrow({ where: { id: ids.firstTranche } });
     assert.equal(kept.status, 'PAID');
