@@ -139,8 +139,12 @@ export default async function PaymentsScreen({
   // договорённости; экран сотрудников и арифметика прежние (Р-315, решение
   // Р-746).
   const forClient = actor.role === 'CLIENT';
-  const ofPayable = forClient && money !== null && money.adjustment > 0n;
-  const progress = money === null ? 0 : paidPercent(money, forClient);
+  // Доля оплаты — одна для всех ролей: от суммы к оплате, когда есть
+  // корректировка. Прежде клиент читал «74 % суммы к оплате», а
+  // руководитель по тому же договору — «66 % суммы договора»
+  // (аудит 15.11.2026, Ф-14; решение Р-921; правило клиента — Р-746).
+  const ofPayable = money !== null && money.adjustment > 0n;
+  const progress = money === null ? 0 : paidPercent(money, true);
   // «Записать поступление» и исправление записи — тому, кто ведёт деньги
   // работы (Р-870, Р-871): отказ у своей формы, с набранным (Р-722).
   const failure = mayEdit ? await flashEntry(flags.error) : undefined;
@@ -244,7 +248,10 @@ export default async function PaymentsScreen({
                 <div>
                   <Mono>{money.adjustment > 0n ? 'Корректировка суммы' : 'Оплачено сверх суммы договора'}</Mono>
                   <Text size={20} style={{ marginTop: 6, color: 'var(--pd-ink)' }}>
-                    {formatAmount(money.adjustment > 0n ? money.adjustment : -money.adjustment)}
+                    {/* Корректировка уменьшает сумму к оплате и стоит со знаком
+                        «−», как в строке арифметики; оплаченное сверх договора
+                        — без знака (решение Р-921). */}
+                    {formatAmount(-money.adjustment)}
                   </Text>
                   {money.adjustment > 0n && !money.cancelled ? (
                     <Text muted size={13} style={{ marginTop: 4 }}>
@@ -393,7 +400,9 @@ export default async function PaymentsScreen({
                                 : isTrancheOverdue(tranche, project.status, today)
                                   ? `срок оплаты прошёл ${formatDate(tranche.plannedDate)}`
                                   : `срок ${formatDate(tranche.plannedDate)}`,
-                              tranche.paidOn === null ? null : `оплачен ${formatDate(tranche.paidOn)}`,
+                              // «Оплачен» говорит метка состояния справа: в строке
+                              // — только дата, без повтора слова (В-8, Р-921).
+                              tranche.paidOn === null ? null : `дата оплаты — ${formatDate(tranche.paidOn)}`,
                             ]
                               .filter((part) => part !== null)
                               .join(' · ')}
@@ -415,7 +424,7 @@ export default async function PaymentsScreen({
                                 : `срок ${formatDate(tranche.plannedDate)} · просрочен`}
                             {tranche.paidOn === null
                               ? ''
-                              : ` · оплачен ${formatDate(tranche.paidOn)}`}
+                              : ` · дата оплаты — ${formatDate(tranche.paidOn)}`}
                           </Text>
                         )}
                       </div>
