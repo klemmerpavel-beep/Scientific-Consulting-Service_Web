@@ -2126,9 +2126,9 @@ export function ScreenHead({
             // сорок знаков резали фразу многоточием на полуслове, и срок
             // или следующее дело терялись (аудит 15.11.2026, В-6; ответ
             // владельца 15.11.2026; решение Р-928). Предел — в стилях
-            // (`cab-answer-detail`), потому что зависит от ширины окна.
+            // (`cab-lead-detail`), потому что зависит от ширины окна.
             <p
-              className="cab-answer-detail"
+              className="cab-lead-detail"
               style={{
                 margin: 0,
                 maxWidth: '72ch',

@@ -20,8 +20,8 @@ void [ui, card, css, findForbidden];
 
 describe('Р-928: пояснение в ответе экрана на телефоне — целиком (В-6)', () => {
   it('предел в три строки — в стилях и только на широком экране', () => {
-    assert.match(css, /\.cab-answer-detail\{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden\}/u);
-    assert.match(css, /@media \(max-width:480px\)\{\.cab-answer-detail\{display:block;overflow:visible\}\}/u);
-    assert.match(ui, /className="cab-answer-detail"/u);
+    assert.match(css, /\.cab-lead-detail\{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden\}/u);
+    assert.match(css, /@media \(max-width:480px\)\{\.cab-lead-detail\{display:block;overflow:visible\}\}/u);
+    assert.match(ui, /className="cab-lead-detail"/u);
   });
 });

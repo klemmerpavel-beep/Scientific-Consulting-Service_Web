@@ -220,8 +220,8 @@ a:hover{color:var(--pd-accent-press)}
 .cab-answer *:focus-visible{outline-color:var(--pd-ink-inverse)}
 /* Пояснение в ответе экрана: три строки на широком экране (Р-210), целиком
    на телефоне (Р-928). */
-.cab-answer-detail{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-@media (max-width:480px){.cab-answer-detail{display:block;overflow:visible}}
+.cab-lead-detail{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+@media (max-width:480px){.cab-lead-detail{display:block;overflow:visible}}
 .cab-nav a{color:var(--pd-ink-secondary)}
 .cab-nav a:hover,.cab-nav a:focus-visible{color:var(--pd-accent)}
 .cab-nav a[aria-current="page"]{color:var(--pd-accent);box-shadow:inset 0 -2px 0 var(--pd-accent)}
