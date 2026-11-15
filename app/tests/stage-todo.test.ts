@@ -21,6 +21,7 @@ import {
   HANDED_TO_PUBLISH,
   IN_APPROVAL_CLEAR,
   RETURNED,
+  NOT_STARTED_ASSIGNED,
   STAFF_TODO,
   curatorStageLine,
   pendingVersionsLine,
@@ -78,6 +79,10 @@ describe('подсказка практике по сдаче, возврату,
     assert.deepEqual(todo({ state: 'IN_APPROVAL', materials: 1 }), { text: IN_APPROVAL_CLEAR, draft: 'approve' });
     assert.deepEqual(todo({ state: 'IN_APPROVAL', materials: 1, pendingComments: 2 }), { text: STAFF_TODO.IN_APPROVAL, draft: null });
     assert.equal(todo({ state: 'NOT_STARTED' }).text, STAFF_TODO.NOT_STARTED);
+    // Куратор назначен — «назначьте куратора» не советуется (Р-897).
+    assert.equal(todo({ state: 'NOT_STARTED', hasExpert: true }).text, NOT_STARTED_ASSIGNED);
+    assert.doesNotMatch(NOT_STARTED_ASSIGNED, /назначьте куратора/u);
+    assert.equal(todo({ state: 'NOT_STARTED', hasExpert: false }).text, STAFF_TODO.NOT_STARTED);
     assert.equal(todo({ state: 'DONE', hasNext: false }).text, DONE_LAST);
     // Закрытый этап просрочкой не помечается.
     assert.equal(todo({ state: 'DONE', hasNext: true, lateDays: 40 }).text, STAFF_TODO.DONE);

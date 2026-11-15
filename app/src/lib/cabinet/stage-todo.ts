@@ -38,6 +38,14 @@ export const STAFF_TODO: Record<StageStateKey, string> = {
 };
 
 /**
+ * Подсказка не начатого этапа, когда куратор уже назначен: совет
+ * «назначьте куратора» стоял на экране и под строкой «куратор — {ФИО}»
+ * (аудит 15.11.2026, находка Ф-16, решение Р-897).
+ */
+export const NOT_STARTED_ASSIGNED =
+  'Этап не начат: переведите его в работу, когда куратор приступил.';
+
+/**
  * Подсказка закрытого последнего этапа: следующего нет, и совет проверить
  * его расходился с экраном работы — «Все этапы завершены» (решение Р-710).
  */
@@ -105,6 +113,8 @@ export interface StaffStageFacts {
   readonly hasNext: boolean;
   /** Сколько дней прошло со срока этапа; до срока — `null`. */
   readonly lateDays: number | null;
+  /** У работы назначен куратор (Р-897); не задано — как «не назначен». */
+  readonly hasExpert?: boolean;
 }
 
 /**
@@ -139,6 +149,9 @@ export function staffStageTodo(facts: StaffStageFacts): { readonly text: string;
       break;
     case 'DONE':
       lead = facts.hasNext ? STAFF_TODO.DONE : DONE_LAST;
+      break;
+    case 'NOT_STARTED':
+      lead = facts.hasExpert === true ? NOT_STARTED_ASSIGNED : STAFF_TODO.NOT_STARTED;
       break;
     default:
       lead = STAFF_TODO[facts.state];

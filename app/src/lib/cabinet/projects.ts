@@ -14,6 +14,7 @@ import {
 import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
 import { enqueue, enqueueToLead, notifyCurator, notifyExpert, pruneCuratorDigests } from './outbox.ts';
+import { workTitleLine } from './work-title-line.ts';
 import { assignmentLetter, unassignedLetter } from './curator-letters.ts';
 import { openAcceptCheck, openReopenCheck } from './head-checks.ts';
 import { materialKey, storage } from './storage.ts';
@@ -367,7 +368,8 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
           ? `Заявка принята: работа «${title}»`
           : `Заведена новая работа «${title}»`,
         body:
-          `${title}${created.topic === null ? '' : ` — ${created.topic}`}.\n` +
+          // Тема — только когда она не повторяет название (решение Р-897).
+          `${workTitleLine(title, created.topic)}.\n` +
           (firstTime
             ? 'Ход работы, материалы и переписка с менеджером собраны в личном кабинете.\n' +
               `Откройте ${entrance} и укажите этот адрес почты — придёт ссылка для входа.\n` +

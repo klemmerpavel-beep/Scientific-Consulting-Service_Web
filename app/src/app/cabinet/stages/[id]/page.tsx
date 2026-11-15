@@ -310,6 +310,7 @@ export default async function StageScreen({
     returnedUnacked: lastReturn !== undefined && stage.returnAckAt === null,
     hasNext,
     lateDays: late,
+    hasExpert: stage.project.expertId !== null,
   });
   // Куратору первой строкой — чей ход с его стороны (Р-288, Р-329, Р-723).
   const curatorLine = curatorStageLine({
