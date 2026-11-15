@@ -268,14 +268,18 @@ function eventLine(
     const where = stage === undefined ? 'Этап' : `Этап ${atPosition(data, stage)} «${stage.title}»`;
     const to = typeof data.dueTo === 'string' ? formatDate(new Date(`${data.dueTo}T00:00:00Z`)) : null;
     const line = to === null ? `${where} — срок снят` : `${where} — срок перенесён на ${to}`;
-    return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
+    // Причину переноса пишут клиенту: куратору — без неё, как причину
+    // перевода этапа (Р-414; аудит 15.11.2026, П-4; решение Р-915).
+    const why = presentClientReason(actor, data.reason);
+    return why === null ? line : `${line}: ${why}`;
   }
 
   // Перенос срока работы — с датой и причиной (УМ-12, Р-391).
   if (kind === 'PROJECT_DUE_CHANGED') {
     const to = typeof data.dueTo === 'string' ? formatDate(new Date(`${data.dueTo}T00:00:00Z`)) : null;
     const line = to === null ? 'Срок работы снят' : `Срок работы перенесён на ${to}`;
-    return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
+    const why = presentClientReason(actor, data.reason);
+    return why === null ? line : `${line}: ${why}`;
   }
 
   if (kind === 'PROJECT_STATUS_CHANGED') {

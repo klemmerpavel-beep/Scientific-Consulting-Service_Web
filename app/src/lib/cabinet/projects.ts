@@ -1404,7 +1404,9 @@ export async function announceWorkDueChange(
       projectId,
       eventKind: 'PROJECT_DUE_CHANGED',
       subject: `Срок работы ${project.code} изменён`,
-      body: `${workLine(project, false)}\n${line}\nПричина: ${reason}`,
+      // Куратору — без причины: её пишут клиенту, и в ней бывают его
+      // обстоятельства и контакты (Р-414; аудит 15.11.2026, П-4; Р-915).
+      body: `${workLine(project, false)}\n${line}`,
       dedupKey: `project:${projectId}:due-changed-expert:${stamp}`,
       path: `/cabinet/projects/${project.code}`,
     });
@@ -1481,7 +1483,8 @@ async function announceDueChange(
       projectId: project.id,
       eventKind: 'STAGE_DUE_CHANGED',
       subject: `Срок этапа «${stage.title}» изменён`,
-      body: `${workLine(project, false)}\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
+      // Куратору — без причины, как и перенос срока работы (Р-414, Р-915).
+      body: `${workLine(project, false)}\n${line}\n${stageLink(stageId)}`,
       dedupKey: `stage:${stageId}:due-changed-expert:${dueKey(to) ?? 'none'}:${Date.now()}`,
       path: `/cabinet/stages/${stageId}`,
     });
